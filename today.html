@@ -717,6 +717,23 @@
 <script src="js/scratchpad.js"></script>
 <script src="js/siteApiMap.js"></script>
 
+<!-- Market Outlook horizon toggle — switches the per-pair Outlook chip (card
+     face) and the sidebar Market Outlook summary between Daily (the page's
+     existing per-pair reads — no overlay), 5-Day and 20-Day (js/outlookEngine.js).
+     Sits as a plain sibling after the Command Hub rather than inside
+     js/commandHub.js, since that file is shared with other pages this
+     feature doesn't apply to. -->
+<div class="outlook-hz help" id="outlookHzBar" title="How far out the per-pair Outlook chip and the sidebar's Market Outlook summary look. Daily = this page's own existing reads, no overlay. 5-Day / 20-Day = a labelled context composite from js/outlookEngine.js — not a new backtested signal.">
+  <span class="lbl">🔭 Outlook</span>
+  <button class="fchip" id="outlookHzBtn-daily" onclick="setOutlookHorizon('daily')">Daily</button>
+  <button class="fchip" id="outlookHzBtn-weekly" onclick="setOutlookHorizon('weekly')">5-Day</button>
+  <button class="fchip" id="outlookHzBtn-monthly" onclick="setOutlookHorizon('monthly')">20-Day</button>
+</div>
+<style>
+  .outlook-hz{display:flex;align-items:center;gap:5px;padding:6px 10px}
+  .outlook-hz .lbl{font-size:11px;color:var(--text3);margin-right:2px}
+</style>
+
 <div class="hdr">
   <h1>☀️ Daily Trading Brief</h1>
   <span class="sess" id="hdrSess">—</span>
@@ -805,6 +822,13 @@
       </h3>
       <div class="dr-sec-body"><div id="drSummary"></div></div>
     </div>
+  <div class="dr-sec" id="drOutlookSec" data-seckey="outlook">
+    <h3 class="help" title="A labelled 5-day / 20-day directional read, built from signals this page already computes for this pair (technical/COT/macro/carry composite, COT positioning, the vol-regime building/cooling read) plus the yield-spread z-score family where this pair has one. CONTEXT composite, NOT a new backtested signal — the yield-spread leg (when shown) is the one component here with a real OOS result behind it; everything else is arithmetic agreement across reads already on this card.">
+      <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>🔭 Market Outlook — 5-Day &amp; 20-Day</span>
+      <span class="chip warn" style="font-size:9px">context composite</span>
+    </h3>
+    <div class="dr-sec-body"><div id="drOutlook"></div></div>
+  </div>
   <div class="dr-sec" id="drChartSec" data-seckey="chart">
     <h3><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Today vs forecast — M5</span> <span class="muted" id="drChartNote"></span><button class="chart-resize" id="drChartResetBtn" onclick="resetDrawerChartZoom()" title="Reset zoom/pan back to auto-fit">⟲</button><button class="chart-resize" id="drChartBtn" onclick="resizeDrawerChart()" title="Taller / shorter chart">⤢</button></h3>
     <div class="dr-sec-body">
@@ -1021,6 +1045,7 @@ function toggleTheme() {
 document.addEventListener('DOMContentLoaded', () => {
   const btn = $('themeToggleBtn');
   if (btn) btn.textContent = document.body.classList.contains('light') ? '🌙 Dark' : '☀️ Light';
+  document.querySelectorAll('#outlookHzBar .fchip').forEach(b => b.classList.toggle('on', b.id === `outlookHzBtn-${outlookHorizon}`));
 });
 
 // Map daily-brief instrument NAME → TDE pair key + /api/levels key + display label
@@ -1127,6 +1152,7 @@ let riskFlags = null;    // /api/risk-flags — cross-asset risk-flag composite 
 let cvol = null;         // /api/cvol — EVZ/GVZ implied vol levels + 5y percentiles
 let macroScorecard = null; // /api/macro-scorecard — cross-engine fundamental composite per currency (CPI/GDP/labor/etc)
 let creditQuality = null; // /api/credit-quality — Baa10Y−Aaa10Y quality-spread z-score (credit-curve SHAPE, distinct from the HY-level credit gate)
+let yieldSpreadPlan = null; // /api/yield-spread/plan — today's spread-z per pair from the VALIDATED yield-spread engine (6 pairs only, see js/zscoreSpreadEngine.js ZSCORE_PAIRS); feeds the Market Outlook's one OOS-validated leg
 // MVE fair-value context (6 supported instruments only, /api/mve/:sym).
 // This project's OWN backtest found the underlying signal null-to-negative
 // for NQ and weak/null for the FX legs (js/mve/*, MARKET_VALUATION_ENGINE.md)
@@ -1214,6 +1240,13 @@ function statCardHtml(lbl, big, deltaTxt, deltaUp, sparkVals, sparkUp, wkTxt, wk
 }
 // Rate stat-card pip — 10Y / 2Y / 2s10s share one card slot so the top row
 // doesn't grow a 5th card just for the curve; state persists across reloads.
+let outlookHorizon = (() => { try { return localStorage.getItem('outlookHorizon') || 'daily'; } catch (e) { return 'daily'; } })();
+function setOutlookHorizon(key) {
+  outlookHorizon = key;
+  try { localStorage.setItem('outlookHorizon', key); } catch (e) {}
+  document.querySelectorAll('#outlookHzBar .fchip').forEach(b => b.classList.toggle('on', b.id === `outlookHzBtn-${key}`));
+  render();
+}
 let rateStatTab = (() => { try { return localStorage.getItem('rateStatTab') || 'us10y'; } catch (e) { return 'us10y'; } })();
 function setRateStatTab(id) {
   rateStatTab = id;
@@ -1359,7 +1392,7 @@ async function loadAll(manual) {
 const GATE_COUNTRIES = new Set(['US', 'EU', 'DE', 'GB', 'JP', 'CH', 'AU', 'CA', 'NZ', 'CN']);
 
 async function loadGate() {
-  const [ev, fr, ss, ct, oi, oiT, wk, ha, rf, cv, oh, mc, msc, cq] = await Promise.all([
+  const [ev, fr, ss, ct, oi, oiT, wk, ha, rf, cv, oh, mc, msc, cq, ysp] = await Promise.all([
     jget('/api/events').catch(() => null),
     jget('/api/fred').catch(() => null),
     jget('/api/session-stats').catch(() => null),
@@ -1374,6 +1407,7 @@ async function loadGate() {
     jget('/api/macro-changes').catch(() => null),
     jget('/api/macro-scorecard').catch(() => null),
     jget('/api/credit-quality').catch(() => null),
+    jget('/api/yield-spread/plan').catch(() => null),
   ]);
   if (Array.isArray(ev)) events = ev;
   if (fr && Object.keys(fr).length) fred = fr;
@@ -1391,6 +1425,7 @@ async function loadGate() {
   if (mc?.ok && mc.rows) macroMoved = mc.rows;
   if (msc?.ok) macroScorecard = msc;
   if (cq?.ok) creditQuality = cq;
+  if (ysp?.ok) yieldSpreadPlan = ysp.plan;
   getFredHist().then(() => render()).catch(() => {});   // populate HY OAS history for the credit gate
   loadMve().then(() => render()).catch(() => {});       // populate the 6 MVE-supported instruments' fair-value read
   jget('/api/ism').then(r => { if (r?.ok) { ism = r; render(); } }).catch(() => {});   // growth-surprise bars
@@ -3015,6 +3050,68 @@ function pairSignalComposite(r) {
     carry: { score: carryScore, label: 'Carry (10Y yield)' },
   });
 }
+
+// ── Market Outlook (js/outlookEngine.js) — 5-day / 20-day context composite ──
+// Reuses the composite/COT/vol-regime reads this page already computes for
+// every card; the yield-spread leg is the only piece that needed a new fetch
+// (/api/yield-spread/plan, see loadGate). CONTEXT composite, not a new
+// backtested signal — see that file's header for the full honesty posture.
+function outlookInputsFor(r) {
+  return {
+    composite: pairSignalComposite(r),
+    yieldSpread: yieldSpreadPlan?.[r.name.toLowerCase()] ?? null,
+    volRegime: { volPct: r.d.vol_pct ?? null, cone5d: r.d.cone_5d ?? null },
+    cot: r.ct ?? null,
+    events: pairEvents(r.name),
+  };
+}
+function pairOutlook(r, horizonKey) {
+  if (!window.outlookBrick) return null;
+  return window.outlookBrick.computeOutlook(outlookInputsFor(r), horizonKey);
+}
+function pairOutlookBoth(r) {
+  if (!window.outlookBrick) return null;
+  return window.outlookBrick.computeOutlookAllHorizons(outlookInputsFor(r));
+}
+// Drawer section — both horizons side by side, full driver breakdown with
+// each leg's VALIDATED/CONTEXT status badge (never averaged into one number
+// without saying which pieces are which — same discipline every other
+// drawer section on this page already follows).
+function renderDrawerOutlook(r) {
+  const el = $('drOutlook');
+  if (!el) return;
+  const both = pairOutlookBoth(r);
+  if (!both) { $('drOutlookSec').style.display = 'none'; return; }
+  const statusCls = s => s === 'VALIDATED' ? 'bull' : s === 'UNCALIBRATED' ? 'warn' : 'neu';
+  const col = (o) => {
+    if (!o?.bias) return `<div style="flex:1;min-width:220px"><h4 style="margin:0 0 6px">${o?.horizonLabel ?? ''}</h4><div class="muted">Not enough data for a read.</div></div>`;
+    const cls = o.bias === 'BULLISH' ? 'bull' : o.bias === 'BEARISH' ? 'bear' : 'neu';
+    const drivers = o.drivers.map(d => `<div style="margin:6px 0"><span class="chip ${statusCls(d.status)}" style="font-size:9px">${d.status}</span> <b>${d.label}</b><div class="muted" style="font-size:11px;margin-top:2px">${d.detail}</div></div>`).join('');
+    const evTxt = o.eventRisk.count
+      ? `${o.eventRisk.count} scheduled event(s) inside this window${o.eventRisk.highCount ? ` (${o.eventRisk.highCount} high-impact)` : ''}.`
+      : 'No scheduled events inside this window.';
+    return `<div style="flex:1;min-width:220px">
+      <h4 style="margin:0 0 6px">${o.horizonLabel}</h4>
+      <span class="chip ${cls}" style="font-size:13px;padding:5px 10px">${o.bias} · ${o.confidence}% confidence</span>
+      <div class="muted" style="margin:6px 0;font-size:11px">${o.agree}/${o.total} directional signals agree · ${evTxt}</div>
+      ${drivers || '<div class="muted">No drivers available.</div>'}
+    </div>`;
+  };
+  el.innerHTML = `<div style="display:flex;gap:18px;flex-wrap:wrap">${col(both.weekly)}${col(both.monthly)}</div>
+    <div class="muted" style="margin-top:10px;font-size:11px">${both.weekly?.disclaimer ?? both.monthly?.disclaimer ?? ''}</div>`;
+}
+// Card-face chip — only shown once the 5-Day/20-Day horizon toggle is active
+// (Daily is this page's own existing per-pair reads; the toggle is how the
+// user opts into the outlook overlay).
+function outlookChip(r) {
+  if (outlookHorizon === 'daily') return '';
+  const o = pairOutlook(r, outlookHorizon);
+  if (!o || !o.bias) return '';
+  const cls = o.bias === 'BULLISH' ? 'bull' : o.bias === 'BEARISH' ? 'bear' : 'neu';
+  const driverTxt = o.drivers.map(d => `${d.label} (${d.status}): ${d.detail}`).join(' | ');
+  const evTxt = o.eventRisk.highCount ? ` ${o.eventRisk.highCount} high-impact event(s) inside this window — could overturn the read.` : '';
+  return `<span class="chip ${cls}" title="${o.horizonLabel} Outlook — CONTEXT composite, not a validated predictive signal (the yield-spread leg, when present, is the one exception — see its own tag below). ${driverTxt}.${evTxt}">🔭 ${o.horizonLabel} ${o.bias.toLowerCase()} · ${o.confidence}%</span>`;
+}
 // ── Direction tag ────────────────────────────────────────────────────────────
 // The plain question the cards never answered at a glance: is price aiming up
 // or down? Feeds js/directionTag.js, which enforces the rule that only the
@@ -3622,7 +3719,7 @@ function analogShapeHtml(name) {
 // want while reading the detail. Shared rather than copied, so the two can't drift.
 function pairChipsHtml(r) {
   const d = r.d;
-  return `${directionChip(r)} ${biasLine(r)} ${r.agr?.chip ?? ''}${r.isProx ? `<span class="chip warn" title="Live price is right at one of the key levels now — this is a decision moment. Click the card to score it.">⚑ ${r.near.tag} ${r.near.pips.toFixed(0)}${d.ac === 'fx' ? 'p' : 'pt'} away</span>` : ''}${r.ct?.level === 'EXTREME' ? `<span class="chip warn" title="${r.ct.derived ? `Both legs of this cross are stretched the same way in CFTC positioning (base Z ${r.ct.baseRead?.z ?? '—'}, quote Z ${r.ct.quoteRead?.z ?? '—'}) — a reinforcing double-extreme, derived from each currency's own contract since this cross has no direct CFTC future.` : `The crowd (big speculators, from weekly CFTC data) is very heavily positioned ${r.ct.dir} — about ${r.ct.pct.toFixed(0)}% of the market.`} Crowded one-way bets can snap back hard (a 'squeeze'), so it's a warning against joining late.">⚠ COT ${r.ct.dir} extreme${r.ct.derived ? ' (derived)' : ''}</span>` : ''}${r.oi && !r.oi.stale && r.oi.regime ? `<span class="chip ${r.oi.regime === 'PIN' ? 'range' : 'bear'}" title="${r.oi.regime === 'PIN' ? "From options positioning: price is likely to stay STUCK near here today and drift back to the middle — favours fading the edges, not chasing." : "From options positioning: a move could ACCELERATE today — higher chance of a sharp break, so breakouts are more likely to run."}">◎ ${r.oi.regime}</span>` : ''}${compositeChip(r)}${mveChip(r)}${commodityChip(r)}${sessionResearchChip(r)}`;
+  return `${directionChip(r)} ${biasLine(r)} ${r.agr?.chip ?? ''}${r.isProx ? `<span class="chip warn" title="Live price is right at one of the key levels now — this is a decision moment. Click the card to score it.">⚑ ${r.near.tag} ${r.near.pips.toFixed(0)}${d.ac === 'fx' ? 'p' : 'pt'} away</span>` : ''}${r.ct?.level === 'EXTREME' ? `<span class="chip warn" title="${r.ct.derived ? `Both legs of this cross are stretched the same way in CFTC positioning (base Z ${r.ct.baseRead?.z ?? '—'}, quote Z ${r.ct.quoteRead?.z ?? '—'}) — a reinforcing double-extreme, derived from each currency's own contract since this cross has no direct CFTC future.` : `The crowd (big speculators, from weekly CFTC data) is very heavily positioned ${r.ct.dir} — about ${r.ct.pct.toFixed(0)}% of the market.`} Crowded one-way bets can snap back hard (a 'squeeze'), so it's a warning against joining late.">⚠ COT ${r.ct.dir} extreme${r.ct.derived ? ' (derived)' : ''}</span>` : ''}${r.oi && !r.oi.stale && r.oi.regime ? `<span class="chip ${r.oi.regime === 'PIN' ? 'range' : 'bear'}" title="${r.oi.regime === 'PIN' ? "From options positioning: price is likely to stay STUCK near here today and drift back to the middle — favours fading the edges, not chasing." : "From options positioning: a move could ACCELERATE today — higher chance of a sharp break, so breakouts are more likely to run."}">◎ ${r.oi.regime}</span>` : ''}${compositeChip(r)}${outlookChip(r)}${mveChip(r)}${commodityChip(r)}${sessionResearchChip(r)}`;
 }
 
 function pairStripsHtml(r) {
@@ -4018,6 +4115,21 @@ function renderSidebar() {
       <div class="volout-row"><span>σ cooling</span><b>${rs.filter(r => r.d.cone_5d != null && r.d.vol_pct != null && (r.d.cone_5d - r.d.vol_pct) <= -15).length} pairs</b></div>
     </div>
 
+    <div class="side-card"><h3>🔭 Market Outlook</h3>
+      ${(() => {
+        if (!window.outlookBrick) return '<div class="muted">Loading…</div>';
+        const tally = (key) => {
+          let bull = 0, bear = 0, neu = 0;
+          for (const r of rs) { const o = pairOutlook(r, key); if (!o?.bias) continue; if (o.bias === 'BULLISH') bull++; else if (o.bias === 'BEARISH') bear++; else neu++; }
+          return { bull, bear, neu };
+        };
+        const w = tally('weekly'), m = tally('monthly');
+        return `<div class="volout-row"><span>5-Day</span><b>${w.bull} bullish · ${w.neu} neutral · ${w.bear} bearish</b></div>
+          <div class="volout-row"><span>20-Day</span><b>${m.bull} bullish · ${m.neu} neutral · ${m.bear} bearish</b></div>
+          <div class="muted" style="font-size:10px;margin-top:4px">Context composite across this board's own signals — not a validated forecast. Use the 🔭 Outlook toggle above the header to overlay it on the cards.</div>`;
+      })()}
+    </div>
+
     <div class="side-card"><h3>Quick Links</h3>
       <div class="qtile-grid">
         <a class="qtile" href="macro-scorecard.html"><span class="qt-ic">📊</span><span class="qt-t">Macro Scorecard</span><span class="qt-s">Cross-engine ranking</span></a>
@@ -4079,6 +4191,7 @@ function toggleView() {
 const DR_SEC_DEFAULTS = { // true = open by default; anything not listed defaults open
   analysis: true,  // Full analysis — the plain-English translation, now the headline section
   atlas: true,     // Level Atlas — OOS-checked historical base rates at today's touch
+  outlook: true,   // Market Outlook — 5-day/20-day context composite (js/outlookEngine.js)
   thesis: true, story: true, tde: true, hits: true,
   levels: false,   // Bot Level Book — unvalidated star heuristic, minimised
   chart: true, rates: true, cone: true, path: true, vumanchu: true, sesspath: true,
@@ -4204,6 +4317,7 @@ async function openDrawer(name) {
   // Same summary the card shows — the card is behind the overlay now.
   try { $('drSummary').innerHTML = pairChipsHtml(r) + pairStripsHtml(r); }
   catch (e) { $('drSummarySec').style.display = 'none'; }
+  try { renderDrawerOutlook(r); } catch (e) { $('drOutlookSec').style.display = 'none'; }
   setDrTab(_drTab);
   // Sections hide themselves as their loaders resolve or fail, so tab states
   // can only be judged once those have had a chance to settle.
@@ -6623,6 +6737,15 @@ setInterval(() => { jget('/api/vol-forecast').then(f => { if (f?.instruments) fo
 <script type="module">
   import * as CreditHmm from './js/creditHmm.js';
   window.creditHmmBrick = CreditHmm;
+  try { window.render?.(); } catch (e) {}
+</script>
+<!-- Same pattern for the Market Outlook brick (js/outlookEngine.js) — composes
+     the composite/COT/vol-regime/yield-spread reads this page already loads
+     into a labelled 5-day / 20-day directional read per pair. CONTEXT
+     composite, not a new backtested signal — see that file's header. -->
+<script type="module">
+  import * as OutlookEngine from './js/outlookEngine.js';
+  window.outlookBrick = OutlookEngine;
   try { window.render?.(); } catch (e) {}
 </script>
 </body>

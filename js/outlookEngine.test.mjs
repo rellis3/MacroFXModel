@@ -1,0 +1,114 @@
+// Synthetic tests for outlookEngine.js. No network.
+//   node js/outlookEngine.test.mjs
+import { computeOutlook, computeOutlookAllHorizons, HORIZONS } from './outlookEngine.js';
+
+let failures = 0;
+const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) failures++; };
+
+console.log('[computeOutlook — no inputs at all -> neutral/null, not a crash]');
+{
+  const r = computeOutlook({}, 'weekly');
+  ok('bias is null (nothing to score)', r.bias === null);
+  ok('biasScore is null', r.biasScore === null);
+  ok('confidence is null', r.confidence === null);
+  ok('horizonLabel is Weekly', r.horizonLabel === 'Weekly', r.horizonLabel);
+  ok('drivers array is empty', Array.isArray(r.drivers) && r.drivers.length === 0);
+}
+
+console.log('[computeOutlook — every leg agrees bullish -> BULLISH, high confidence]');
+{
+  const inputs = {
+    composite: { score: 0.6, agree: 3, total: 4 },
+    yieldSpread: { z: 2.4, inverted: false },
+    cot: { dir: 'long', bias: 0.5, level: 'ELEVATED', derived: false },
+    events: [],
+  };
+  const r = computeOutlook(inputs, 'weekly');
+  ok('bias BULLISH', r.bias === 'BULLISH', r.biasScore);
+  ok('biasScore positive', r.biasScore > 0);
+  ok('all 3 directional legs agree', r.agree === 3 && r.total === 3, `${r.agree}/${r.total}`);
+  ok('yield-spread driver tagged VALIDATED', r.drivers.find(d => d.name === 'yieldSpread')?.status === 'VALIDATED');
+  ok('composite driver tagged CONTEXT', r.drivers.find(d => d.name === 'composite')?.status === 'CONTEXT');
+  ok('confidence high (agreement + validated bonus)', r.confidence >= 70, r.confidence);
+}
+
+console.log('[computeOutlook — legs conflict -> lower |biasScore| and lower agree count]');
+{
+  const inputs = {
+    composite: { score: 0.6, agree: 3, total: 4 },
+    yieldSpread: { z: -2.4, inverted: false },
+    events: [],
+  };
+  const r = computeOutlook(inputs, 'weekly');
+  ok('still produces a bias (not null)', r.bias !== null);
+  ok('agree count is 1 of 2 (legs disagree)', r.agree === 1 && r.total === 2, `${r.agree}/${r.total}`);
+}
+
+console.log('[computeOutlook — small composite score alone reads NEUTRAL]');
+{
+  const r = computeOutlook({ composite: { score: 0.05, agree: 1, total: 2 } }, 'weekly');
+  ok('bias NEUTRAL under the neutral band', r.bias === 'NEUTRAL', r.biasScore);
+}
+
+console.log('[computeOutlook — missing yieldSpread leg is left OUT, never a neutral zero]');
+{
+  const withYs = computeOutlook({ composite: { score: 0.5, agree: 2, total: 2 }, yieldSpread: { z: 0.1 } }, 'weekly');
+  const withoutYs = computeOutlook({ composite: { score: 0.5, agree: 2, total: 2 } }, 'weekly');
+  ok('with yieldSpread leg present, total legs = 2', withYs.total === 2, withYs.total);
+  ok('without yieldSpread leg, total legs = 1 (not padded to a zero)', withoutYs.total === 1, withoutYs.total);
+}
+
+console.log('[computeOutlook — volRegime never moves biasScore, only confidence]');
+{
+  const base = { composite: { score: 0.5, agree: 2, total: 2 } };
+  const stable = computeOutlook({ ...base, volRegime: { volPct: 50, cone5d: 50 } }, 'weekly');
+  const building = computeOutlook({ ...base, volRegime: { volPct: 50, cone5d: 80 } }, 'weekly');
+  ok('biasScore unchanged by vol regime', stable.biasScore === building.biasScore, `${stable.biasScore} vs ${building.biasScore}`);
+  ok('confidence LOWER when vol is building (less stable)', building.confidence < stable.confidence, `${building.confidence} vs ${stable.confidence}`);
+  ok('volRegime driver never counted in total (directional) legs', stable.total === 1, stable.total);
+}
+
+console.log('[computeOutlook — a high-impact event inside the horizon window lowers confidence]');
+{
+  const base = { composite: { score: 0.6, agree: 2, total: 2 } };
+  const now = Date.now();
+  const noEvents = computeOutlook(base, 'weekly');
+  const withHighImpact = computeOutlook({ ...base, events: [{ ms: now + 2 * 24 * 3600e3, impact: 'high' }] }, 'weekly');
+  ok('confidence drops with a high-impact event in-window', withHighImpact.confidence < noEvents.confidence, `${withHighImpact.confidence} vs ${noEvents.confidence}`);
+  ok('eventRisk reports the count', withHighImpact.eventRisk.count === 1 && withHighImpact.eventRisk.highCount === 1);
+}
+
+console.log('[computeOutlook — an event PAST the horizon window does not count]');
+{
+  const base = { composite: { score: 0.6, agree: 2, total: 2 } };
+  const now = Date.now();
+  const r = computeOutlook({ ...base, events: [{ ms: now + 40 * 24 * 3600e3, impact: 'high' }] }, 'weekly');
+  ok('event beyond the 5-day window is excluded', r.eventRisk.count === 0);
+}
+
+console.log('[computeOutlook — 20-day horizon weights yield-spread more, composite less]');
+{
+  const inputs = { composite: { score: 1, agree: 1, total: 1 }, yieldSpread: { z: -3, inverted: false } };
+  const weekly = computeOutlook(inputs, 'weekly');
+  const monthly = computeOutlook(inputs, 'monthly');
+  // Composite pulls +100, yield-spread pulls -100; monthly weights yieldSpread
+  // (1.0) over composite (0.7), so monthly's net score should be more negative
+  // (or less positive) than weekly's (composite 1.0 vs yieldSpread 0.5).
+  ok('monthly leans more toward the yield-spread leg than weekly does', monthly.biasScore < weekly.biasScore, `${monthly.biasScore} vs ${weekly.biasScore}`);
+}
+
+console.log('[computeOutlook — horizon labels/window match forecastCore.HORIZONS]');
+{
+  ok('weekly label is Weekly, windowDays 5', HORIZONS.weekly.label === 'Weekly' && HORIZONS.weekly.windowDays === 5);
+  ok('monthly label is 20-Day, windowDays 20', HORIZONS.monthly.label === '20-Day' && HORIZONS.monthly.windowDays === 20);
+}
+
+console.log('[computeOutlookAllHorizons — returns both horizons keyed correctly]');
+{
+  const r = computeOutlookAllHorizons({ composite: { score: 0.3, agree: 1, total: 1 } });
+  ok('has weekly and monthly keys', !!r.weekly && !!r.monthly);
+  ok('each carries its own horizonKey', r.weekly.horizonKey === 'weekly' && r.monthly.horizonKey === 'monthly');
+}
+
+if (failures) { console.error(`\n${failures} FAILURE(S)`); process.exit(1); }
+console.log('\nAll outlookEngine tests passed.');

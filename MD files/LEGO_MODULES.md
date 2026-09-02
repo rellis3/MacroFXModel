@@ -5332,3 +5332,27 @@ P0 cross-language unification
 **Not yet built (deliberate next steps, per `MVE_RUN_GUIDE.md` §7):** dashboard wiring
 (signal score / entry scanner / AI summary — the opt-in `signalAdapter` shows the blend),
 and OOS proof on real feeds before any real capital. The live endpoint is surfacing-only.
+
+### 1ar. Market Outlook engine (2026-09-02) — 5-day/20-day per-pair context composite + horizon toggle
+
+Owner request: fold everything the dashboard already reads per pair — the
+composite technical/COT/macro/carry read, COT positioning, the vol-regime
+building/cooling read, and the yield-spread z-score family (the one component
+in this repo with a real OOS result, `YIELD_SPREAD_STRATEGY.md`) — into a
+5-day / 20-day directional outlook, with a page-level toggle to switch the
+per-pair view between Daily / 5-Day / 20-Day, alongside a global
+bullish/neutral/bearish summary across the board. Deliberately built as a
+**composition of already-computed reads**, not a new signal: the only new
+network call is one cached fetch of `/api/yield-spread/plan`, and the engine
+inherits `§1am`'s pair-composite output rather than recomputing legs.
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **Outlook engine** | `js/outlookEngine.js` | `computeOutlook(inputs, horizonKey)` — takes `{composite, yieldSpread, volRegime, cot, events}` (each optional, missing legs left out never zeroed, same convention as `pairComposite`) and a horizon key from the re-exported `forecastCore.HORIZONS` (`'weekly'`=5-day, `'monthly'`=20-day), returns `{bias, biasScore, confidence, agree, total, drivers[], eventRisk, disclaimer}`. Each driver carries a `VALIDATED`/`CONTEXT` status — only the yield-spread leg is `VALIDATED` (with the USDJPY-sign caveat from `js/yieldSpreadEngine.js`'s own header note); the vol-regime driver never sets `biasScore`, only `confidence` (a market mid-transition says less about the next few sessions). Per-horizon leg weights are a small hand-set table (not fitted — CLAUDE.md "the brain is a selector, not more knobs"): yield-spread weighted up at 20d (mean-reversion plays out over weeks), vol-regime/composite weighted toward 5d. Confidence also falls when a high-impact event sits inside the horizon window. Pure, no DOM/network/globals. `computeOutlookAllHorizons(inputs)` convenience wrapper for both horizons at once. Unit-tested `js/outlookEngine.test.mjs` (17 cases: null-input safety, agreement/conflict, missing-leg discipline, vol-regime-never-moves-bias, event-risk penalty, horizon-window boundary, per-horizon weight shift). | `today.html` (module → `window.outlookBrick`, same pattern as `window.pairCompositeBrick`) | ✅ built + unit-tested — **context composite, not a validated predictive signal**, same posture as §1am; the yield-spread leg is the one exception, tagged accordingly |
+| **today.html: horizon toggle + outlook chip + drawer section + sidebar summary** | `today.html` (`outlookInputsFor`, `pairOutlook`, `pairOutlookBoth`, `outlookChip`, `renderDrawerOutlook`, `setOutlookHorizon`) | A Daily/5-Day/20-Day pill toggle (`#outlookHzBar`, sibling of `#commandHub` — not folded into `js/commandHub.js` since that file is shared with pages this feature doesn't apply to) persisted to `localStorage` (`outlookHorizon`, same pattern as `rateStatTab`). Daily = the page's existing reads, no overlay. 5-Day/20-Day add a `🔭 Weekly/20-Day bullish/bearish/neutral · confidence%` chip to `pairChipsHtml` (after the existing `⚖` composite chip) and drive a new "🔭 Market Outlook" drawer section (`drOutlookSec`, in the Read tab) showing BOTH horizons side by side with the full driver breakdown, regardless of the global toggle. The sidebar's "Market Outlook" card (after "Volatility Outlook") always shows bullish/neutral/bearish counts for both horizons across the whole board — the "global" view, not gated by the toggle. `loadGate()` gained one new cached fetch (`/api/yield-spread/plan` → `yieldSpreadPlan`, keyed by `js/zscoreSpreadEngine.js`'s lower-cased `ZSCORE_PAIRS` keys — 6 pairs only, everything else has no yield-spread leg). | `cardHtml`→`pairChipsHtml`, `openDrawer`→`renderDrawerOutlook`, `renderSidebar` | ✅ built; verified end-to-end (chip render, horizon switch, drawer breakdown, sidebar tally) with synthetic data via headless Chromium — no live OANDA/FRED path in the sandbox |
+
+Same evidentiary status as §1am/§1aj: a *selector* composing already-built
+reads, shipped with an in-UI disclaimer rather than a performance claim. If
+ever promoted toward a real forecast, pre-register the benchmark (does the
+5-day/20-day bias beat a naive baseline, OOS, per pair) before running it —
+same discipline every prior composite in this registry asks for.
