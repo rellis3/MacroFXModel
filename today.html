@@ -3078,21 +3078,30 @@ function cotFor(name) {
 // draws from.
 function pairSignalComposite(r) {
   if (!window.pairCompositeBrick) return null;
+  // FX-cross-only legs (need a base/quote currency to difference) — Gold and
+  // the equity indices have no PAIR_CCY entry, so these stay null for them,
+  // left out by pairComposite's own "missing is left out" discipline rather
+  // than the whole composite silently returning null. That silent-null was a
+  // real gap, not a design choice: pairSignal (technical) and r.ct (COT) both
+  // already work for ANY row, but this function used to bail out before ever
+  // computing them for Gold/indices, starving both the card's ⚖ composite
+  // chip AND the Outlook Engine's composite driver (its heaviest-weighted
+  // leg) of any read at all for anything outside the 26 tracked crosses.
   const cc = PAIR_CCY[r.name];
-  if (!cc) return null;
-  const [base, quote] = cc;
-  const macroScore = (() => {
+  const macroScore = cc ? (() => {
     if (!macroScorecard?.ranked) return null;
+    const [base, quote] = cc;
     const b = macroScorecard.ranked.find(x => x.ccy === base);
     const q = macroScorecard.ranked.find(x => x.ccy === quote);
     if (!b || !q) return null;
     return Math.max(-1, Math.min(1, (b.composite - q.composite) / 2));
-  })();
-  const carryScore = (() => {
+  })() : null;
+  const carryScore = cc ? (() => {
+    const [base, quote] = cc;
     const bfk = CCY_FRED10Y[base], qfk = CCY_FRED10Y[quote];
     if (!bfk || !qfk || fred?.[bfk]?.value == null || fred?.[qfk]?.value == null) return null;
     return Math.max(-1, Math.min(1, (fred[bfk].value - fred[qfk].value) / 3));
-  })();
+  })() : null;
   return window.pairCompositeBrick.pairComposite({
     technical: { score: pairSignal(r), label: "Today's flow (technical)" },
     cot: { score: r.ct?.bias ?? null, label: 'Positioning (COT)' },
@@ -3112,18 +3121,38 @@ function pairSignalComposite(r) {
 function _macroMovedByKey() {
   return Array.isArray(macroMoved) ? Object.fromEntries(macroMoved.map(x => [x.key, x])) : {};
 }
-// Non-FX single-asset DXY/risk character — same sign-only convention as
-// PAIR_CCY-derived pairs, for instruments the FX base/quote model doesn't
-// cover at all (so previously got NEITHER dxyMomentum NOR riskMomentum: real
-// gap, not a design choice — COT and vol-regime were the only drivers gold
-// ever received). Gold is USD-quoted (dollar strength = gold headwind, same
-// sign as a USD-quote FX pair) and a classic risk-off/haven asset (same +1
-// convention as CCY_RISK_LEAN's own havens). Equity indices are deliberately
-// NOT extended here — their dollar/risk relationship is a materially
-// different, contestable claim (growth-driven, not haven-driven) this repo
-// hasn't reasoned through; better to leave them on COT-only than guess.
+// Non-FX single-asset DXY/risk/real-yield character — same sign-only
+// convention as PAIR_CCY-derived pairs, for instruments the FX base/quote
+// model doesn't cover at all (so previously got NEITHER dxyMomentum NOR
+// riskMomentum: real gap, not a design choice — COT and vol-regime were the
+// only drivers gold ever received). Gold is USD-quoted (dollar strength =
+// gold headwind, same sign as a USD-quote FX pair) and a classic risk-off/
+// haven asset (same +1 convention as CCY_RISK_LEAN's own havens).
+//
+// Equity indices (NQ/SPX500/DE30/US30/US2000/UK100) now get a risk-momentum
+// AND real-yield-momentum lean too — covered below, both -1 (a risk-off or
+// rising-real-yield backdrop is a headwind for equities). This is NOT a new
+// claim this repo is guessing at: it is the exact same "risk-on backdrop
+// bullish/bearish" convention already hardcoded for every one of these
+// instruments in RISK_LEAN further down this file (used by thesisFor's trade
+// -thesis scorecard), just re-signed onto this engine's "netLean = benefits
+// from risk-OFF" axis (RISK_LEAN's +1 "risk-on bullish" for every index here
+// ⇒ -1 "hurt by risk-off" on this axis). Two independently-named tables
+// agreeing on the same real-world relationship is the closest thing to
+// "established" this repo has for equities' risk character.
+//
+// Dollar-index (DXY) momentum is DELIBERATELY still NOT extended to indices
+// — a stronger dollar's effect on index earnings/multiples is a materially
+// different, genuinely contestable claim (FX-flow effect vs multinational-
+// earnings effect can point either way) this repo hasn't reasoned through or
+// tested; better to leave that one driver out than guess. Real DE30/UK100
+// COT positioning is ALSO a flagged, unfilled gap: neither has a CFTC future
+// (the Bundesbank/ICE don't publish an equivalent free weekly
+// z-score/percentile feed this repo could plug in the same way) — a
+// documented data gap, not an oversight. See LEGO_MODULES.md §1ar.
 const ASSET_USD_SIDE = { GOLD: 'quote' };
-const ASSET_RISK_LEAN = { GOLD: 1 };
+const ASSET_RISK_LEAN = { GOLD: 1, NQ: -1, SPX500: -1, DE30: -1, US30: -1, US2000: -1, UK100: -1 };
+const ASSET_REALYIELD_LEAN = { NQ: -1, SPX500: -1, DE30: -1, US30: -1, US2000: -1, UK100: -1 };
 function outlookInputsFor(r) {
   const cc = PAIR_CCY[r.name];
   const mm = _macroMovedByKey();
@@ -3131,6 +3160,11 @@ function outlookInputsFor(r) {
   const netLean = cc
     ? (window.outlookBrick ? window.outlookBrick.pairRiskLean(cc[0], cc[1]) : 0)
     : (ASSET_RISK_LEAN[r.name] ?? 0);
+  // Real-yield lean reuses dxyMomentum's own resolved USD-side sign for FX
+  // pairs and Gold (same relationship, same sign convention — see
+  // realYieldMomentumDriver's header in js/outlookEngine.js); only the
+  // equity indices need their own table since they have no USD side at all.
+  const realYieldLean = usdSide ? (usdSide === 'base' ? 1 : -1) : (ASSET_REALYIELD_LEAN[r.name] ?? 0);
   return {
     composite: pairSignalComposite(r),
     yieldSpread: yieldSpreadPlan?.[r.name.toLowerCase()] ?? null,
@@ -3143,6 +3177,12 @@ function outlookInputsFor(r) {
     // has been MOVING. Zero new fetches — macroMoved was already loaded.
     dxyMomentum: (usdSide && mm.dxy) ? { deltas: mm.dxy.deltas, usdSide } : null,
     riskMomentum: (mm.vix || mm.hy) ? { vixDeltas: mm.vix?.deltas ?? {}, hyDeltas: mm.hy?.deltas ?? {}, netLean } : null,
+    // US real 10Y (TIPS) yield momentum — a textbook, low-controversy driver
+    // for gold (opportunity-cost of a non-yielding asset) and equities
+    // (discount-rate effect on valuations), and a rates-side echo of
+    // dxyMomentum for ordinary FX pairs. Zero new fetches — mm.tips comes
+    // from the same macroMoved payload dxyMomentum already reads.
+    realYieldMomentum: (mm.tips && realYieldLean) ? { deltas: mm.tips.deltas, lean: realYieldLean } : null,
     // The card's own existing HMM daily regime — already loaded for every
     // pair, zero new fetches. "Is price on a slope, and how cleanly" in the
     // simplest form this dashboard already computes.

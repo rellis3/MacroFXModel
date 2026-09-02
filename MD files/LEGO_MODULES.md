@@ -5333,7 +5333,7 @@ P0 cross-language unification
 (signal score / entry scanner / AI summary — the opt-in `signalAdapter` shows the blend),
 and OOS proof on real feeds before any real capital. The live endpoint is surfacing-only.
 
-### 1ar. Market Outlook engine (2026-09-02, v2+v3 same day) — 5-day/20-day per-pair context composite + horizon toggle + macro-momentum legs + AI-analysis integration
+### 1ar. Market Outlook engine (2026-09-02, v2 through v5 same day) — 5-day/20-day per-pair context composite + horizon toggle + macro-momentum legs + AI-analysis integration + all-asset-class coverage
 
 Owner request: fold everything the dashboard already reads per pair — the
 composite technical/COT/macro/carry read, COT positioning, the vol-regime
@@ -5367,7 +5367,7 @@ is NOT a recognized input" case).
 
 | Brick | File | Owns | Consumers | Status |
 |---|---|---|---|---|
-| **Outlook engine** | `js/outlookEngine.js` | `computeOutlook(inputs, horizonKey)` — takes `{composite, yieldSpread, volRegime, cot, events, dxyMomentum, riskMomentum}` (each optional, missing legs left out never zeroed, same convention as `pairComposite`) and a horizon key from the re-exported `forecastCore.HORIZONS` (`'weekly'`=5-day, `'monthly'`=20-day), returns `{bias, biasScore, confidence, agree, total, drivers[], eventRisk, disclaimer}`. Each driver carries a `VALIDATED`/`CONTEXT` status — only the yield-spread leg is `VALIDATED` (with the USDJPY-sign caveat from `js/yieldSpreadEngine.js`'s own header note); the vol-regime driver never sets `biasScore`, only `confidence`. **New drivers (v2):** `dxyMomentumDriver` (DXY's window-selected delta, signed by whether USD is this pair's base or quote — absent for USD-free crosses) and `riskMomentumDriver` (VIX+HY-OAS window-selected deltas, signed by the new `pairRiskLean(base, quote)` helper against the new `CCY_RISK_LEAN` table — a small, standard, hand-set FX haven/risk-currency classification, USD/JPY/CHF haven +1, AUD/NZD/CAD risk -1, EUR/GBP neutral 0; absent for neutral-vs-neutral pairs like EURGBP). Both tagged `CONTEXT` — untested hypotheses, explicitly distinct from the banked-null CB-sentiment claim (see above). Per-horizon leg weights are a small hand-set table (not fitted — CLAUDE.md "the brain is a selector, not more knobs"): yield-spread/dxyMomentum/riskMomentum/cot weighted up at 20d, composite/vol-regime weighted toward 5d. Confidence also falls when a high-impact event sits inside the horizon window. Pure, no DOM/network/globals. `computeOutlookAllHorizons(inputs)` convenience wrapper for both horizons at once. Unit-tested `js/outlookEngine.test.mjs` (30 cases: the original 17 plus `pairRiskLean` sign checks, dxy/risk-momentum driver presence/absence/sign/window-selection, and the CB-sentiment exclusion guard). | `today.html` (module → `window.outlookBrick`, same pattern as `window.pairCompositeBrick`) | ✅ built + unit-tested — **context composite, not a validated predictive signal**, same posture as §1am; the yield-spread leg is the one exception, tagged accordingly |
+| **Outlook engine** | `js/outlookEngine.js` | `computeOutlook(inputs, horizonKey)` — takes `{composite, yieldSpread, volRegime, cot, events, dxyMomentum, riskMomentum, realYieldMomentum, priceTrend}` (each optional, missing legs left out never zeroed, same convention as `pairComposite`; `realYieldMomentum` added v5 — see that addendum) and a horizon key from the re-exported `forecastCore.HORIZONS` (`'weekly'`=5-day, `'monthly'`=20-day), returns `{bias, biasScore, confidence, agree, total, drivers[], eventRisk, disclaimer}`. Each driver carries a `VALIDATED`/`CONTEXT` status — only the yield-spread leg is `VALIDATED` (with the USDJPY-sign caveat from `js/yieldSpreadEngine.js`'s own header note); the vol-regime driver never sets `biasScore`, only `confidence`. **New drivers (v2):** `dxyMomentumDriver` (DXY's window-selected delta, signed by whether USD is this pair's base or quote — absent for USD-free crosses) and `riskMomentumDriver` (VIX+HY-OAS window-selected deltas, signed by the new `pairRiskLean(base, quote)` helper against the new `CCY_RISK_LEAN` table — a small, standard, hand-set FX haven/risk-currency classification, USD/JPY/CHF haven +1, AUD/NZD/CAD risk -1, EUR/GBP neutral 0; absent for neutral-vs-neutral pairs like EURGBP). Both tagged `CONTEXT` — untested hypotheses, explicitly distinct from the banked-null CB-sentiment claim (see above). Per-horizon leg weights are a small hand-set table (not fitted — CLAUDE.md "the brain is a selector, not more knobs"): yield-spread/dxyMomentum/riskMomentum/cot weighted up at 20d, composite/vol-regime weighted toward 5d. Confidence also falls when a high-impact event sits inside the horizon window. Pure, no DOM/network/globals. `computeOutlookAllHorizons(inputs)` convenience wrapper for both horizons at once. Unit-tested `js/outlookEngine.test.mjs` (30 cases: the original 17 plus `pairRiskLean` sign checks, dxy/risk-momentum driver presence/absence/sign/window-selection, and the CB-sentiment exclusion guard). | `today.html` (module → `window.outlookBrick`, same pattern as `window.pairCompositeBrick`) | ✅ built + unit-tested — **context composite, not a validated predictive signal**, same posture as §1am; the yield-spread leg is the one exception, tagged accordingly |
 | **today.html: horizon toggle + outlook chip + drawer section + sidebar summary** | `today.html` (`outlookInputsFor`, `pairOutlook`, `pairOutlookBoth`, `outlookChip`, `renderDrawerOutlook`, `setOutlookHorizon`, `_macroMovedByKey`) | A Daily/5-Day/20-Day pill toggle (`#outlookHzBar`, sibling of `#commandHub` — not folded into `js/commandHub.js` since that file is shared with pages this feature doesn't apply to) persisted to `localStorage` (`outlookHorizon`, same pattern as `rateStatTab`). Daily = the page's existing reads, no overlay. 5-Day/20-Day add a `🔭 Weekly/20-Day bullish/bearish/neutral · confidence%` chip to `pairChipsHtml` (after the existing `⚖` composite chip) and drive a new "🔭 Market Outlook" drawer section (`drOutlookSec`, in the Read tab) showing BOTH horizons side by side with the full driver breakdown, regardless of the global toggle. The sidebar's "Market Outlook" card (after "Volatility Outlook") always shows bullish/neutral/bearish counts for both horizons across the whole board — the "global" view, not gated by the toggle. `loadGate()` gained one new cached fetch (`/api/yield-spread/plan` → `yieldSpreadPlan`, keyed by `js/zscoreSpreadEngine.js`'s lower-cased `ZSCORE_PAIRS` keys — 6 pairs only, everything else has no yield-spread leg). `outlookInputsFor` builds `dxyMomentum`/`riskMomentum` from the already-loaded `macroMoved` (no new fetch) + `PAIR_CCY`'s base/quote lookup. | `cardHtml`→`pairChipsHtml`, `openDrawer`→`renderDrawerOutlook`, `renderSidebar` | ✅ built; verified end-to-end (chip render, horizon switch, drawer breakdown incl. the new momentum drivers, sidebar tally) with synthetic data via headless Chromium — no live OANDA/FRED path in the sandbox |
 
 **Audit of what else is available but unused** (full findings kept in the PR
@@ -5433,7 +5433,8 @@ in `today.html` — not a gap.
    past expiry — the splice logic behaves exactly as designed.
 
 New/changed since v2: `js/outlookEngine.js` (`priceTrendDriver`,
-`describeCbTrend`, +12 tests, 42 total), `today.html` (`cbHistory` fetch,
+`describeCbTrend`, +12 tests, 42 total — see v5 addendum below for the +4
+bringing this to 46), `today.html` (`cbHistory` fetch,
 `cbToneFor`, `analysePair`'s splice cache, `loadDrawerAnalysis`'s new
 weekly/monthly cards), `server.js` (`buildAnalysisPrompt`'s new sections/rule
 19, the JSON schema's two new fields — **not live-tested end-to-end**: this
@@ -5492,3 +5493,90 @@ reads, shipped with an in-UI disclaimer rather than a performance claim. If
 ever promoted toward a real forecast, pre-register the benchmark (does the
 5-day/20-day bias beat a naive baseline, OOS, per pair) before running it —
 same discipline every prior composite in this registry asks for.
+
+**v5 addendum (2026-09-02)** — owner ask: "this needs to work for all FX, gold
+and indices, based on the best-case data we have or free data we could go
+get." Audited what each of the 26 FX pairs / Gold / 6 equity indices
+(NQ/SPX500/DE30/US30/US2000/UK100) actually gets fed into `computeOutlook`,
+using only data already loaded into `today.html`. Found and fixed one real
+bug and added one new leg; also inventoried the genuine remaining gaps rather
+than guessing at them.
+
+1. **The composite driver silently went null for anything outside the 26 FX
+   crosses — the single biggest gap.** `pairSignalComposite(r)` bailed out
+   entirely (`if (!cc) return null`) before computing ANYTHING for Gold or any
+   index, even though its `technical` leg (`pairSignal(r)`) and `cot` leg
+   (`r.ct`) both already work for any row — only the `macro`/`carry` legs
+   genuinely need a `PAIR_CCY` base/quote pair. This starved `composite` (the
+   Outlook Engine's heaviest-weighted leg, 1.0 at weekly) from Gold and every
+   index that has COT (NQ/SPX500/US30/US2000), and meant their AI-analysis
+   snapshot (`assembleSnapshot`'s `s.pairComposite`) carried nothing either.
+   Fixed by computing `macroScore`/`carryScore` only when `cc` exists,
+   letting `technical`+`cot` populate regardless — `pairComposite`'s own
+   "missing leg left out" discipline (unchanged, see `js/pairCompositeEngine.js`)
+   does the rest. Zero behavior change for the 26 FX pairs (`cc` was always
+   truthy there); DE30/UK100 (no COT either) now get a technical-only
+   composite instead of null — still below the `total < 2` chip-display
+   threshold at all 3 existing call sites, so no visual regression, just no
+   longer silently discarding the technical leg that WAS available.
+2. **New leg: `realYieldMomentum`** (`js/outlookEngine.js`) — US real 10Y
+   (TIPS) yield rate-of-change, read from `macroMoved`'s already-fetched
+   `tips` row (zero new fetch, same source `dxyMomentum` already reads).
+   Textbook, comparatively uncontestable relationship: rising real yields
+   raise the opportunity cost of a non-yielding asset (gold) and the discount
+   rate on future cash flows (equities) — a DIFFERENT, better-established
+   claim than the dollar-flow-vs-earnings ambiguity that keeps `dxyMomentum`
+   excluded from indices below. Sign convention deliberately reuses
+   `dxyMomentum`'s own resolved `usdSide` for FX pairs and Gold (same
+   relationship, same sign), so those need no new lookup table at all; only
+   the equity indices — which have no USD side — get a small new one,
+   `ASSET_REALYIELD_LEAN` (`today.html`, -1 for every tracked index). Tagged
+   CONTEXT, untested, same posture as every other momentum leg. Weighted like
+   `dxyMomentum` in `HORIZON_WEIGHTS` (a bit more at 20d). 4 new test cases in
+   `js/outlookEngine.test.mjs` (46 total): presence/absence by lean sign,
+   window selection at each horizon, zero-lean exclusion.
+3. **Equity indices now get `riskMomentum` too**, via `ASSET_RISK_LEAN`
+   extended to `{NQ:-1, SPX500:-1, DE30:-1, US30:-1, US2000:-1, UK100:-1}`
+   (Gold's existing `+1` unchanged). This is NOT a new claim invented for this
+   engine — it is the exact same "risk-on backdrop bullish for this
+   instrument" read already hardcoded for every one of these six in the
+   pre-existing `RISK_LEAN` table (`today.html`, used by `thesisFor`'s trade-
+   thesis scorecard), just re-signed onto this engine's opposite-facing
+   `netLean` axis ("+1 = benefits from risk-OFF"). Two independently-named,
+   independently-maintained tables agreeing on the same real-world relation
+   is the closest thing to "established" this repo has for equities' risk
+   character — a materially different bar than v4's earlier blanket "leave
+   indices alone, it's contestable" call, which conflated this well-worn risk
+   -on/off read with the genuinely murkier dollar/earnings one below.
+4. **Still deliberately excluded, and why (not an oversight):**
+   - **`dxyMomentum` for indices** — a stronger dollar's net effect on index
+     earnings/multiples can point either way (FX-translation drag on
+     multinational earnings vs. domestic-demand-driven flows) and this repo
+     hasn't reasoned through or tested which dominates; left out rather than
+     guessed at.
+   - **`yieldSpread` for Gold/indices** — inherent to the model, not a gap:
+     the engine mean-reverts a two-currency yield spread, and neither asset
+     has a second currency to spread against.
+   - **COT for DE30/UK100** — no CFTC-listed future exists for either index
+     (unlike NQ/SPX500/US30/US2000), and neither the Bundesbank/Eurex nor
+     ICE/LSE publish a free, machine-readable weekly z-score/percentile
+     positioning feed this repo could plug into `COT_MAP` the same way. A
+     genuine, checked data gap — not something to fake with a proxy.
+   - **Foreign real yields, for a true FX real-rate DIFFERENTIAL** (rather
+     than the one-sided US-TIPS-only lean above) — FRED does carry some
+     non-US index-linked/real-yield series (e.g. UK/Canada), patchily and
+     unverified for coverage/reliability; a genuine "bonus data, free,
+     not yet gone and got" candidate, deferred rather than half-built without
+     checking series availability/history depth first.
+   - **Equity risk premium (index earnings yield vs. 10Y bond yield, the
+     classic "Fed model")** for indices — would need forward/trailing EPS
+     data this repo has no free feed for; flagged as a real, larger candidate
+     for a future session, not attempted here.
+
+Validated: `node --check` on `js/outlookEngine.js` and the extracted
+`today.html` inline scripts; `node js/outlookEngine.test.mjs` — 46/46 passing;
+a standalone `pairComposite({technical, cot})`-only call (Gold/NQ's actual
+shape) confirmed `total:2`, clearing the `total < 2` chip/AI-snapshot
+threshold at all 3 call sites with no changes needed there. No live
+Railway/OANDA path in this sandbox to confirm the rendered chip/drawer visually
+— same standing caveat as every prior revision of this feature.
