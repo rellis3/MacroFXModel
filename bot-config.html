@@ -8513,6 +8513,28 @@ function _addDaysIso(iso, delta) {
   return d.toISOString().slice(0, 10);
 }
 
+// The live status-push path (_worker.js mergeTradeHistory) used to bucket a
+// closed trade under "today" at push time rather than its own close date —
+// a trade still in the bot's re-sent "last N closed" list at day rollover
+// got re-filed into the NEW day's bucket too, so the SAME trade can already
+// sit in two adjacent trade_hist_* KV buckets. Fixed server-side, but the
+// duplicate rows it already wrote are still in KV; collapse them here so
+// they don't double up in the table or double-count P&L totals.
+function _dedupeTrades(trades) {
+  const seen = new Set();
+  const out  = [];
+  for (const t of trades) {
+    const id  = t.position_id ?? t.ticket;
+    const key = id != null
+      ? `${t.bot_key}|${id}`
+      : `${t.bot_key}|${t.symbol}|${t.direction}|${t.lots}|${t.time_close}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(t);
+  }
+  return out;
+}
+
 // ── Analytics breakdown ───────────────────────────────────────────────────────
 
 let _histAnalyticsOpen = false;
@@ -8554,7 +8576,7 @@ async function toggleCrossBotAnalysis() {
   try {
     const r = await fetch(`/api/trade-history?from=${from}&to=${to}`);
     const j = await r.json();
-    trades = j.trades || [];
+    trades = _dedupeTrades(j.trades || []);
   } catch(e) {
     if (content) content.innerHTML = '<div style="padding:10px 0;color:var(--red);font-size:12px">Failed to load trade history.</div>';
     return;
@@ -8902,6 +8924,7 @@ async function loadHistoryTab() {
     const d = u ? _ukDate(u) : t.date;
     return d >= from && d <= to;
   });
+  trades = _dedupeTrades(trades);
   _lastHistTrades = trades;
 
   // Join the TDE shadow book (what the model said at entry, keyed by position_id).

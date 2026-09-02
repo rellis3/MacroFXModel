@@ -70,19 +70,39 @@ function isAllowedKVKey(key) {
 
 // Merge a bot's today_closed_trades into the persistent per-bot-per-day KV key.
 // Uses position_id for deduplication so repeated status pushes are idempotent.
+//
+// Buckets each trade by its OWN time_close date (broker-corrected via
+// tz_offset_sec, same rule as the /api/trade-history/backfill path below),
+// NOT by "today" at push time. broker.serialize_closed_trades() re-sends the
+// bot's last N closed trades on EVERY status push, not just newly-closed
+// ones — bucketing by push time meant a trade still in that window when the
+// UTC day rolled over got re-filed into the NEW day's bucket too (the old
+// bucket's dedup-by-position_id never saw it, since it's a different KV
+// key), producing a permanent duplicate that re-appeared every day it
+// survived in the bot's list. Bucketing by the trade's own close date makes
+// every push after the first a no-op for that trade, in its one true bucket.
 async function mergeTradeHistory(env, botKey, trades) {
   if (!trades || !trades.length || !env.FX_SCORES) return;
-  const date    = new Date().toISOString().slice(0, 10);
-  const histKey = `trade_hist_${botKey}_${date}`;
-  let existing  = [];
-  try {
-    const raw = await env.FX_SCORES.get(histKey);
-    if (raw) existing = JSON.parse(raw);
-  } catch(e) {}
-  const seen   = new Set(existing.map(t => t.position_id));
-  const toAdd  = trades.filter(t => t.position_id != null && !seen.has(t.position_id));
-  if (!toAdd.length) return;
-  await env.FX_SCORES.put(histKey, JSON.stringify([...existing, ...toAdd]));
+  const today  = new Date().toISOString().slice(0, 10); // fallback: no time_close yet
+  const byDate = {};
+  for (const t of trades) {
+    if (t.position_id == null) continue;
+    const off  = Number(t.tz_offset_sec) || 0;
+    const date = t.time_close ? new Date((t.time_close - off) * 1000).toISOString().slice(0, 10) : today;
+    (byDate[date] = byDate[date] || []).push(t);
+  }
+  await Promise.all(Object.entries(byDate).map(async ([date, dayTrades]) => {
+    const histKey = `trade_hist_${botKey}_${date}`;
+    let existing  = [];
+    try {
+      const raw = await env.FX_SCORES.get(histKey);
+      if (raw) existing = JSON.parse(raw);
+    } catch(e) {}
+    const seen  = new Set(existing.map(t => t.position_id));
+    const toAdd = dayTrades.filter(t => !seen.has(t.position_id));
+    if (!toAdd.length) return;
+    await env.FX_SCORES.put(histKey, JSON.stringify([...existing, ...toAdd]));
+  }));
 }
 
 // ── Equity symbols sourced from OANDA (not TwelveData) ───────────────────────
