@@ -1154,6 +1154,7 @@ let macroScorecard = null; // /api/macro-scorecard — cross-engine fundamental 
 let creditQuality = null; // /api/credit-quality — Baa10Y−Aaa10Y quality-spread z-score (credit-curve SHAPE, distinct from the HY-level credit gate)
 let yieldSpreadPlan = null; // /api/yield-spread/plan — today's spread-z per pair from the VALIDATED yield-spread engine (6 pairs only, see js/zscoreSpreadEngine.js ZSCORE_PAIRS); feeds the Market Outlook's one OOS-validated leg
 let cbHistory = null; // { fomc, ecb, boe, boj } — multi-meeting hawkish-score history per central bank. DESCRIPTIVE CONTEXT ONLY — never a Market Outlook driver (see js/outlookEngine.js describeCbTrend's header: this repo already banked a null on hawkish-score momentum predicting price, CB_SENTIMENT_PRICE_TEST.md)
+let goldEtfFlow = null; // /api/gold-etf-flow — GLD+IAU combined-AUM 1d/5d/20d % deltas (own KV-collected history, server.js). Gold-only Outlook Engine driver — no FX-pair equivalent exists
 // MVE fair-value context (6 supported instruments only, /api/mve/:sym).
 // This project's OWN backtest found the underlying signal null-to-negative
 // for NQ and weak/null for the FX legs (js/mve/*, MARKET_VALUATION_ENGINE.md)
@@ -1393,7 +1394,7 @@ async function loadAll(manual) {
 const GATE_COUNTRIES = new Set(['US', 'EU', 'DE', 'GB', 'JP', 'CH', 'AU', 'CA', 'NZ', 'CN']);
 
 async function loadGate() {
-  const [ev, fr, ss, ct, oi, oiT, wk, ha, rf, cv, oh, mc, msc, cq, ysp, fomcH, ecbH, boeH, bojH] = await Promise.all([
+  const [ev, fr, ss, ct, oi, oiT, wk, ha, rf, cv, oh, mc, msc, cq, ysp, fomcH, ecbH, boeH, bojH, gef] = await Promise.all([
     jget('/api/events').catch(() => null),
     jget('/api/fred').catch(() => null),
     jget('/api/session-stats').catch(() => null),
@@ -1417,6 +1418,11 @@ async function loadGate() {
     jget('/api/ecb/history?n=6').catch(() => null),
     jget('/api/boe/history?n=6').catch(() => null),
     jget('/api/boj/history?n=6').catch(() => null),
+    // GLD+IAU combined AUM, self-collected daily by the server — see
+    // server.js's _goldEtfFlowSeries header for why (no vendor-hosted flow
+    // history exists to fetch directly). UNVERIFIED IN SANDBOX like every
+    // OANDA/Yahoo-dependent feature; needs a live Railway check.
+    jget('/api/gold-etf-flow').catch(() => null),
   ]);
   if (Array.isArray(ev)) events = ev;
   if (fr && Object.keys(fr).length) fred = fr;
@@ -1441,6 +1447,7 @@ async function loadGate() {
       boe: boeH?.ok ? boeH.history : [], boj: bojH?.ok ? bojH.history : [],
     };
   }
+  if (gef?.ok) goldEtfFlow = gef;
   getFredHist().then(() => render()).catch(() => {});   // populate HY OAS history for the credit gate
   loadMve().then(() => render()).catch(() => {});       // populate the 6 MVE-supported instruments' fair-value read
   jget('/api/ism').then(r => { if (r?.ok) { ism = r; render(); } }).catch(() => {});   // growth-surprise bars
@@ -3187,6 +3194,11 @@ function outlookInputsFor(r) {
     // pair, zero new fetches. "Is price on a slope, and how cleanly" in the
     // simplest form this dashboard already computes.
     priceTrend: r.d.regime ? { label: r.d.regime.label, trendDir: r.d.regime.trend_dir, trendProb: r.d.regime.trend_prob, reliable: r.d.regime.reliable } : null,
+    // GLD+IAU combined-AUM flow — GOLD-ONLY, no FX-pair equivalent exists
+    // (there's no "ETF" for a currency pair the same way). Inflows = demand
+    // for gold = bullish, same convention every other momentum driver here
+    // uses (rising input = the sign the driver itself resolves).
+    goldEtfFlow: (r.name === 'GOLD' && goldEtfFlow?.deltas) ? { deltas: goldEtfFlow.deltas } : null,
   };
 }
 // Central-bank tone TREND (multi-meeting hawkish/dovish trajectory) for this

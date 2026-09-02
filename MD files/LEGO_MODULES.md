@@ -5580,3 +5580,93 @@ shape) confirmed `total:2`, clearing the `total < 2` chip/AI-snapshot
 threshold at all 3 call sites with no changes needed there. No live
 Railway/OANDA path in this sandbox to confirm the rendered chip/drawer visually
 — same standing caveat as every prior revision of this feature.
+
+**v6 addendum (2026-09-02)** — the owner posted a colleague's much richer
+gold morning-brief artifact and asked, directly: is any of that data missing
+from this system, or just unused? Audited every line of it against this
+repo's actual code (not memory) before answering. Confirmed already-present-
+and-richer: DXY, nominal/real 10Y (TIPS), breakevens, full COT (this repo's
+z/pctile/wkChg/raw-contracts read is more detailed than the brief's own COT
+line), the entire options/OI/gamma stack (`buildAnalysisPrompt`'s OI section
+already exceeds the brief's), VIX+term structure, HY OAS, 2s10s, SOFR/RRP,
+**Fed net liquidity** (`fedNetLiquidityLeg`, WALCL−TGA−RRP — already computed,
+just not labelled this way in the UI), GPR, the forecast expected-range bands,
+and live headlines (the general morning-brief builder already fetches Yahoo
+headlines for narrative grounding). Confirmed four genuine, code-verified
+gaps: gold ETF flows, central-bank gold buying (WGC), Fed hike/cut odds
+(CME FedWatch-style), and stock-bond correlation (the lesson's own 5th risk
+flag, already flagged absent in this exact file's comment). Owner said build
+whichever are useful; asked the owner which of the two hardest (CB buying,
+FedWatch odds — both genuinely have no clean free path: WGC data is
+quarterly-PDF-only, FedWatch needs paid futures pricing) to skip vs. revisit
+— chose **skip for now, revisit later** for both, rather than fake a proxy
+(CLAUDE.md: "don't run a lookalike and call it the thing"). Built the other
+two:
+
+1. **Stock-bond correlation — added as a 6th flag in `computeRiskFlags()`**
+   (`server.js`). SPY/TLT are already fetched live elsewhere in this file
+   (`fetchYahooOHLC`, `/api/diversification/data`) — reused directly rather
+   than adding a new fetch path. Rolling 20-obs daily-return correlation via
+   `js/statsCore.js`'s `spearman()` (imported, not re-implemented — rank
+   correlation is also more outlier-robust than Pearson for this). Flag fires
+   on `corr > 0` (zero-crossing, no fitted constant — the traditional hedge
+   is negative, so a positive reading is the anomaly, same reasoning as the
+   existing `vix_term` flag's own ratio ≥ 1.0 crossing point). `active`/
+   `level` thresholds (3+/2 of N) were NOT re-tuned for the new N=6 — same
+   absolute-count convention already used when `evz_stress` (a 5th flag
+   beyond the lesson's original 4) was added previously. No consumer
+   (`s.riskFlags`, `renderRiskFlags()`) hardcodes a flag count — both already
+   iterate the array generically, so this needed zero further wiring.
+2. **Gold ETF flow (GLD+IAU combined AUM)** — a real, code-confirmed gap (this
+   repo only ever fetched GLD's *price*, for an unrelated correlation
+   dataset, never fund AUM/flow). **UNVERIFIED IN SANDBOX**, flagged loudly in
+   code: `query1/query2.finance.yahoo.com` is unreachable from this dev
+   sandbox (same restriction already documented for `fetchYahooOHLC`), so the
+   exact Yahoo `quoteSummary` field parse (`defaultKeyStatistics.totalAssets`,
+   with `summaryDetail.totalAssets`/`price.marketCap` fallbacks) could not be
+   confirmed against a live response — chosen over scraping SPDR's/iShares'
+   own sites specifically because it reuses an ALREADY-proven-live domain
+   (`fetchYahooOHLC`'s own `query1.finance.yahoo.com`) rather than adding two
+   entirely new, equally-unverifiable external domains with their own
+   undocumented CSV formats. No vendor-hosted flow *history* is fetched
+   either way (funds publish current holdings, not a time series) — instead
+   `server.js`'s `_goldEtfFlowSeries` fetches TODAY's combined AUM once a day
+   and keeps its own running history in KV (`gold_etf_flow_history`, added to
+   `kv.js`'s `isCfKey()` persistent-prefix list — a missed day cannot be
+   recovered later, same reasoning as `fomc_`/`vmlog_`), then reuses
+   `js/macroChange.js`'s `seriesDeltas` (imported, not copied) for 1d/5d/20d
+   deltas, converted to a **percent** basis (not raw $) so the read doesn't
+   need re-tuning as the funds' AUM grows over time. New `goldEtfFlowDriver`
+   in `js/outlookEngine.js` — **GOLD-ONLY**, no FX-pair or index equivalent
+   (no other tracked instrument has an "ETF" the same way): inflow (rising
+   AUM) reads bullish, outflow bearish, `/8` divisor (8% over the window =
+   full-scale) is a small round non-fitted constant, sanity-checked against a
+   synthetic gentle-uptrend series (+7.1%/20d) landing well short of
+   saturating. Reaches the AI prompt for free through the EXISTING
+   `outlookWeekly`/`outlookMonthly` trimmed-driver mechanism (no new snapshot
+   field needed — the driver's own `label`/`status`/`detail` already flow
+   through `assembleSnapshot`→`buildAnalysisPrompt` the same way every other
+   driver does) and the drawer's generic `o.drivers.map(...)` render (same,
+   zero extra wiring).
+
+New/changed: `js/outlookEngine.js` (`goldEtfFlowDriver`, `HORIZON_WEIGHTS`
+entry, +4 tests, 50 total), `js/outlookEngine.test.mjs`, `today.html`
+(`goldEtfFlow` state var + `loadGate()` fetch + `outlookInputsFor`'s
+gold-only field), `server.js` (`_stockBondCorr`, `computeRiskFlags`'s new
+flag, `_fetchYahooFundAum`/`_goldEtfFlowSeries`/`/api/gold-etf-flow`, two new
+imports from `js/statsCore.js` and `js/macroChange.js`), `kv.js`
+(`gold_etf_flow_` persistent-prefix rule).
+
+Validated: `node --check` on `server.js`, `kv.js`, `js/outlookEngine.js`, and
+the extracted `today.html` inline scripts; `node js/outlookEngine.test.mjs` —
+50/50 passing. Sanity-traced both new math paths on synthetic data outside
+the test suite: `seriesDeltas` + percent-conversion on a synthetic 30-day AUM
+uptrend produced sane, non-saturating deltas (+7.1%/20d); `spearman` on
+synthetic same-direction vs. opposite-direction SPY/TLT return series
+produced exactly +1.0 ("broken") and −1.0 ("normal") respectively, confirming
+the flag's sign convention before trusting it. **Gold ETF flow is UNVERIFIED
+IN SANDBOX and needs a live Railway check** before trusting the field parse —
+same standing caveat as every OANDA/Yahoo-dependent feature in this repo; if
+Yahoo's schema doesn't match, the fetch fails closed (try/catch, warn-and-
+continue) rather than silently returning a wrong number, but the leg will
+just stay absent for Gold until confirmed working, not stay wrong.
