@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Algebra &amp; Functions — Visual Quick Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Foundation Mathematics / Algebra &amp; Functions — Visual Quick Guide</div>
+  <div class="tl-kicker">Foundation Mathematics · Visual Quick Guide</div>
+  <h1 class="tl-title">Algebra &amp; Functions, in Pictures</h1>
+  <p class="tl-dek">The same two ideas as the full lesson — balancing an equation, and what a "function" is — with a lot more pictures and a lot fewer words.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — not built or tested in this repo</span>
+    <span>~4 min read</span>
+    <span>Prereqs: none</span>
+  </div>
+
+  <div class="tl-callout">
+    <strong>This is the short version.</strong> Every idea here is explained properly, with derivations, a live calculator, and a full self-test, in the <a href="foundation-algebra-functions.html">complete Algebra &amp; Functions Refresher</a>. Start here if you just want the shape of the idea first.
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>An equation is a balance scale</h2>
+  <p>Whatever you do to one side, you must do to the other — that's the entire rule.</p>
+  <div class="tl-chart">
+    <div class="tl-chart-label">2x + 3 = 11, balanced</div>
+    <svg viewBox="0 0 640 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A balance scale with 2x+3 on the left pan and 11 on the right pan, sitting level">
+      <polygon points="300,220 340,220 320,188" style="fill:var(--border2)"/>
+      <rect x="316" y="118" width="8" height="72" style="fill:var(--border2)"/>
+      <line x1="120" y1="118" x2="520" y2="118" style="stroke:var(--blue);stroke-width:4"/>
+      <line x1="140" y1="118" x2="140" y2="158" style="stroke:var(--text3);stroke-width:1.5"/>
+      <line x1="500" y1="118" x2="500" y2="158" style="stroke:var(--text3);stroke-width:1.5"/>
+      <rect x="72" y="158" width="136" height="52" rx="12" style="fill:var(--blue-bg);stroke:var(--blue-bd)"/>
+      <text x="140" y="190" text-anchor="middle" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:19px;font-weight:700">2x + 3</text>
+      <rect x="432" y="158" width="136" height="52" rx="12" style="fill:var(--green-bg);stroke:var(--green-bd)"/>
+      <text x="500" y="190" text-anchor="middle" style="fill:var(--green);font-family:'DM Mono',monospace;font-size:19px;font-weight:700">11</text>
+      <text x="320" y="105" text-anchor="middle" style="fill:var(--text3);font-size:12px">⚖ level — both sides are equal</text>
+    </svg>
+    <div class="tl-chart-caption">Do the same thing to both pans and it stays level. Peel the equation apart one step at a time, below.</div>
+  </div>
+  <div class="tl-chart">
+    <div class="tl-chart-label">Solving it — one move at a time</div>
+    <svg viewBox="0 0 640 130" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="2x+3=11 becomes 2x=8 after subtracting 3 from both sides, then becomes x=4 after dividing both sides by 2">
+      <rect x="10" y="35" width="150" height="56" rx="12" style="fill:var(--blue-bg);stroke:var(--blue-bd)"/>
+      <text x="85" y="70" text-anchor="middle" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:16px;font-weight:700">2x + 3 = 11</text>
+      <text x="205" y="70" text-anchor="middle" style="fill:var(--text3);font-size:13px">−3 both sides →</text>
+      <rect x="245" y="35" width="150" height="56" rx="12" style="fill:var(--amber-bg);stroke:var(--amber-bd)"/>
+      <text x="320" y="70" text-anchor="middle" style="fill:var(--amber);font-family:'DM Mono',monospace;font-size:16px;font-weight:700">2x = 8</text>
+      <text x="440" y="70" text-anchor="middle" style="fill:var(--text3);font-size:13px">÷2 both sides →</text>
+      <rect x="480" y="35" width="150" height="56" rx="12" style="fill:var(--green-bg);stroke:var(--green-bd)"/>
+      <text x="555" y="70" text-anchor="middle" style="fill:var(--green);font-family:'DM Mono',monospace;font-size:16px;font-weight:700">x = 4</text>
+    </svg>
+    <div class="tl-chart-caption">Same rule, every time: subtract, then divide — evenly, on both sides — until x is alone.</div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>A function is an input → output machine</h2>
+  <p>One input always produces exactly one output — never two.</p>
+  <div class="tl-chart">
+    <div class="tl-chart-label">f(x) = x², fed two different inputs</div>
+    <svg viewBox="0 0 640 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Feeding 3 and -3 into the machine f(x)=x squared both produce output 9">
+      <circle cx="70" cy="60" r="30" style="fill:var(--s2);stroke:var(--border2)"/>
+      <text x="70" y="66" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:16px">3</text>
+      <circle cx="70" cy="150" r="30" style="fill:var(--s2);stroke:var(--border2)"/>
+      <text x="70" y="156" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:16px">−3</text>
+      <line x1="102" y1="65" x2="225" y2="95" style="stroke:var(--text3);stroke-width:2"/>
+      <line x1="102" y1="145" x2="225" y2="115" style="stroke:var(--text3);stroke-width:2"/>
+      <rect x="230" y="65" width="180" height="80" rx="14" style="fill:var(--purple-bg);stroke:var(--purple-bd)"/>
+      <text x="320" y="112" text-anchor="middle" style="fill:var(--purple);font-family:'DM Mono',monospace;font-size:18px;font-weight:700">f(x) = x²</text>
+      <line x1="412" y1="105" x2="538" y2="105" style="stroke:var(--text3);stroke-width:2"/>
+      <circle cx="570" cy="105" r="32" style="fill:var(--green-bg);stroke:var(--green-bd)"/>
+      <text x="570" y="112" text-anchor="middle" style="fill:var(--green);font-family:'DM Mono',monospace;font-size:17px;font-weight:700">9</text>
+      <text x="70" y="20" text-anchor="middle" style="fill:var(--text3);font-size:11px">inputs</text>
+      <text x="570" y="55" text-anchor="middle" style="fill:var(--text3);font-size:11px">output</text>
+    </svg>
+    <div class="tl-chart-caption">3 and −3 both go in — 9 always comes out. The machine only cares about the square, never the sign.</div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>Domain &amp; range: what it can eat, what it can spit out</h2>
+  <p><strong>Domain</strong> is every input a function accepts without breaking. <strong>Range</strong> is every output it can actually produce.</p>
+  <div class="tl-chart">
+    <div class="tl-chart-label">Domain of f(x) = 1/x — every real number except one</div>
+    <svg viewBox="0 0 640 110" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A number line from -5 to 5, entirely allowed except for an open circle at 0 marking the one blocked value">
+      <line x1="40" y1="55" x2="600" y2="55" style="stroke:var(--green);stroke-width:4"/>
+      <line x1="308" y1="55" x2="332" y2="55" style="stroke:var(--bg);stroke-width:4"/>
+      <circle cx="320" cy="55" r="8" style="fill:var(--bg);stroke:var(--red);stroke-width:3"/>
+      <text x="320" y="30" text-anchor="middle" style="fill:var(--red);font-size:12px;font-weight:700">0 — blocked (÷0)</text>
+      <text x="40" y="80" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:12px">−5</text>
+      <text x="600" y="80" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:12px">5</text>
+      <text x="320" y="95" text-anchor="middle" style="fill:var(--green);font-size:11px">allowed everywhere else</text>
+    </svg>
+    <div class="tl-chart-caption">Dividing by zero is undefined, so 0 is the one input this machine can't accept — every other real number is fair game.</div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>A straight line has one slope; a curve's slope keeps changing</h2>
+  <p>Drag the slider — the blue line always tilts evenly. The purple curve doesn't.</p>
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Slope and curvature, live</div>
+    <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A line and a parabola on the same axes, with a slider controlling the line's slope and a marker showing the parabola curving upward">
+      <line x1="40" y1="220" x2="600" y2="220" style="stroke:var(--border);stroke-width:1"/>
+      <line x1="320" y1="20" x2="320" y2="220" style="stroke:var(--border);stroke-width:1"/>
+      <path style="fill:none;stroke:var(--purple);stroke-width:2" d="M120,200 L160,150 L200,108 L240,74 L280,48 L320,30 L360,48 L400,74 L440,108 L480,150 L520,200"/>
+      <text x="500" y="60" text-anchor="middle" style="fill:var(--purple);font-size:11px">curve — slope always changing</text>
+      <line id="fam-line" x1="80" y1="180" x2="560" y2="180" style="stroke:var(--blue);stroke-width:2.5"/>
+      <circle id="fam-dot" cx="320" cy="180" r="5" style="fill:var(--blue);stroke:var(--s1);stroke-width:1.5"/>
+      <text x="565" y="176" text-anchor="start" style="fill:var(--blue);font-size:11px" id="fam-line-label">line — one fixed slope</text>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Line slope</span><span class="tl-live" id="fam-m-val">m = 0.00</span></div>
+        <input type="range" id="fam-m-slider" min="-100" max="100" step="5" value="0">
+      </div>
+    </div>
+    <div class="tl-chart-caption">The line rotates evenly no matter how you tilt it — a curve bends, meaning its own steepness is different at every point.</div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Same algebra, on a trading desk</h2>
+  <p>Rearranging a formula is a daily move — here it's solved backwards for the equity a trade needs.</p>
+  <div class="tl-chart">
+    <div class="tl-chart-label">equity = (position size × price) ÷ leverage</div>
+    <svg viewBox="0 0 640 130" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="10,000 units times 1.20 dollars divided by 20x leverage equals 600 dollars of required equity">
+      <rect x="6" y="30" width="140" height="56" rx="12" style="fill:var(--blue-bg);stroke:var(--blue-bd)"/>
+      <text x="76" y="55" text-anchor="middle" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:13px;font-weight:700">10,000 units</text>
+      <text x="76" y="75" text-anchor="middle" style="fill:var(--text3);font-size:10px">position size</text>
+      <text x="163" y="65" text-anchor="middle" style="fill:var(--text3);font-size:16px">×</text>
+      <rect x="180" y="30" width="110" height="56" rx="12" style="fill:var(--purple-bg);stroke:var(--purple-bd)"/>
+      <text x="235" y="55" text-anchor="middle" style="fill:var(--purple);font-family:'DM Mono',monospace;font-size:13px;font-weight:700">$1.20</text>
+      <text x="235" y="75" text-anchor="middle" style="fill:var(--text3);font-size:10px">price</text>
+      <text x="307" y="65" text-anchor="middle" style="fill:var(--text3);font-size:16px">÷</text>
+      <rect x="324" y="30" width="110" height="56" rx="12" style="fill:var(--amber-bg);stroke:var(--amber-bd)"/>
+      <text x="379" y="55" text-anchor="middle" style="fill:var(--amber);font-family:'DM Mono',monospace;font-size:13px;font-weight:700">20:1</text>
+      <text x="379" y="75" text-anchor="middle" style="fill:var(--text3);font-size:10px">leverage</text>
+      <text x="450" y="65" text-anchor="middle" style="fill:var(--text3);font-size:16px">=</text>
+      <rect x="466" y="24" width="168" height="68" rx="12" style="fill:var(--green-bg);stroke:var(--green-bd);stroke-width:2"/>
+      <text x="550" y="55" text-anchor="middle" style="fill:var(--green);font-family:'DM Mono',monospace;font-size:17px;font-weight:700">$600</text>
+      <text x="550" y="78" text-anchor="middle" style="fill:var(--text3);font-size:10px">equity required</text>
+    </svg>
+    <div class="tl-chart-caption">Same "isolate the variable" move as the balance-scale example — just applied to a formula with three inputs instead of one.</div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>Quick check</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Rearrange y = 3x − 7 for x.</summary>
+    <div class="tl-answer">x = (y + 7) / 3 — add 7 to both sides, then divide both sides by 3.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Can f(x) = x² ever output a negative number?</summary>
+    <div class="tl-answer">No. Squaring any real number always gives zero or a positive result — negative outputs simply aren't in this machine's range.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. 10,000 units at $1.20, 20:1 leverage — how much equity is needed?</summary>
+    <div class="tl-answer">$600 — (10,000 × 1.20) ÷ 20 = $600.</div>
+  </details>
+
+  <div class="tl-callout">
+    Want the full derivations, the compound-interest worked example with a live calculator, function composition, inverses, and a 5-question self-test? Read the <a href="foundation-algebra-functions.html">complete Algebra &amp; Functions Refresher</a>.
+  </div>
+
+  <div class="tl-footer-nav">
+    <a href="foundation-algebra-functions.html">← Full lesson</a>
+    <a href="../hub.html">Theory Lab hub →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var slider = document.getElementById('fam-m-slider');
+  var mVal = document.getElementById('fam-m-val');
+  var line = document.getElementById('fam-line');
+  var dot = document.getElementById('fam-dot');
+  var label = document.getElementById('fam-line-label');
+  if (!slider) return;
+
+  var X0 = 320, PX_PER_UNIT = 40, Y0 = 180;
+
+  function update(){
+    var m = parseInt(slider.value, 10) / 100;
+    mVal.textContent = 'm = ' + m.toFixed(2);
+
+    var xLeftData = (80 - X0) / PX_PER_UNIT;
+    var xRightData = (560 - X0) / PX_PER_UNIT;
+    var yLeftPix = Y0 - m * xLeftData * PX_PER_UNIT;
+    var yRightPix = Y0 - m * xRightData * PX_PER_UNIT;
+
+    line.setAttribute('y1', yLeftPix);
+    line.setAttribute('y2', yRightPix);
+    dot.setAttribute('cy', Y0);
+    label.textContent = m === 0 ? 'line — one fixed slope' : ('y = ' + m.toFixed(2) + 'x');
+  }
+
+  slider.addEventListener('input', update);
+  update();
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+</body>
+</html>
