@@ -23,7 +23,11 @@
 }
 html,body{height:100%}
 body{background:var(--bg);color:var(--text);font-family:'DM Sans',-apple-system,sans-serif;font-size:15px;line-height:1.65;overflow:hidden}
-#deck{display:flex;flex-direction:column;height:100vh}
+/* 100vh on mobile counts the space behind the browser's address bar, so the
+   deck (and its bottom nav bar) can render taller than what's actually
+   visible. 100dvh tracks the real visible viewport; svh/vh stay as fallbacks
+   for browsers that don't support dvh yet. */
+#deck{display:flex;flex-direction:column;height:100vh;height:100svh;height:100dvh}
 
 .sl-topbar{display:flex;align-items:center;gap:16px;padding:14px 22px;border-bottom:1px solid var(--border);flex-shrink:0}
 .sl-back{color:var(--text3);text-decoration:none;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-family:'DM Mono',monospace;white-space:nowrap}
@@ -496,6 +500,27 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',-apple-system,
     if (e.key === 'ArrowRight') go(1);
     if (e.key === 'ArrowLeft') go(-1);
   });
+
+  // Swipe navigation for touch devices. Ignored when the touch starts on an
+  // interactive control (slider, tab, quiz button, link) so dragging the
+  // slope slider or tapping a tab never gets mistaken for a page swipe.
+  (function(){
+    var startX = 0, startY = 0, tracking = false;
+    var SWIPE_MIN_PX = 60;
+    viewport.addEventListener('touchstart', function(e){
+      var t = e.changedTouches[0];
+      tracking = !t.target.closest('input, button, a, .sl-tabs');
+      startX = t.clientX; startY = t.clientY;
+    }, {passive: true});
+    viewport.addEventListener('touchend', function(e){
+      if (!tracking) return;
+      var t = e.changedTouches[0];
+      var dx = t.clientX - startX, dy = t.clientY - startY;
+      if (Math.abs(dx) >= SWIPE_MIN_PX && Math.abs(dx) > Math.abs(dy) * 1.5) {
+        go(dx < 0 ? 1 : -1);
+      }
+    }, {passive: true});
+  })();
 
   render();
 
