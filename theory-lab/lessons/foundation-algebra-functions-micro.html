@@ -118,6 +118,23 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',-apple-system,
 .sl-sliderhead{display:flex;justify-content:space-between;font-size:11.5px;color:var(--text2);margin-bottom:2px}
 .sl-live{font-family:'DM Mono',monospace;color:var(--blue);font-weight:600}
 
+/* Live-recalculating "try it yourself" calculators — editable number inputs
+   feeding a formula that recomputes on every keystroke, matching the
+   worked-example scratchpad pattern from the full article-style lessons. */
+.sl-calc-row{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.sl-calc-field{display:flex;flex-direction:column;gap:5px;flex:1 1 110px;min-width:100px}
+.sl-calc-field label{font-size:11px;color:var(--text2)}
+.sl-input{width:100%;background:var(--panel2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:'DM Mono',monospace;font-size:14px;padding:9px 10px}
+.sl-input:focus{outline:none;border-color:var(--blue)}
+.sl-calc-op{flex:none;color:var(--text3);font-size:16px;padding-bottom:9px}
+.sl-calc-result{flex:1 1 140px;min-width:130px;background:var(--green-bg);border:1px solid var(--green-bd);border-radius:10px;padding:8px 14px;text-align:center}
+.sl-calc-result-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em}
+.sl-calc-result-val{font-family:'DM Mono',monospace;font-weight:700;font-size:18px;color:var(--green)}
+.sl-reset-btn{background:transparent;border:1px solid var(--border2);color:var(--text2);font-family:'DM Sans',sans-serif;font-size:11.5px;padding:7px 13px;border-radius:8px;cursor:pointer;margin-top:10px}
+.sl-reset-btn:hover{border-color:var(--blue-bd);color:var(--text)}
+.sl-calc-steps{display:flex;flex-direction:column;gap:4px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-family:'DM Mono',monospace;font-size:13px;color:var(--text2)}
+.sl-calc-steps b{color:var(--text)}
+
 .sl-quiz-q{margin-bottom:26px}
 .sl-quiz-num{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:6px;font-family:'DM Mono',monospace}
 .sl-quiz-q h4{font-size:15px;margin-bottom:12px;color:var(--text)}
@@ -194,6 +211,22 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',-apple-system,
         <div class="sl-note">The one rule that can't be broken: an operation touching only one side doesn't simplify the equation — it makes the equation false.</div>
       </div>
       <p class="sl-p">This is the entire technique behind "solving for x" — and later, solving for an implied rate, a required position size, or any other unknown buried inside a bigger formula. Whatever you do to one side, you do to the other, and you undo the operations in the reverse order they were applied: x was multiplied by 2 and then had 3 added, so subtracting comes first, dividing second.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — solve your own equation</div>
+        <p class="sl-p" style="margin:0 0 14px">Change a, b, or c below. This is ax + b = c — the same equation above, generalised.</p>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>a</label><input type="number" class="sl-input" id="eqx-a" value="2" step="1"></div>
+          <div class="sl-calc-op">x +</div>
+          <div class="sl-calc-field"><label>b</label><input type="number" class="sl-input" id="eqx-b" value="3" step="1"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-field"><label>c</label><input type="number" class="sl-input" id="eqx-c" value="11" step="1"></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Subtract b: ax = <b id="eqx-step1">8</b></div>
+          <div>Divide by a: x = <b id="eqx-step2">4</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="eqx-reset">Reset to 2x + 3 = 11</button>
+      </div>
     </section>
 
     <section class="sl-slide" data-slide="3">
@@ -306,26 +339,20 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',-apple-system,
       <h2 class="sl-h2">Solving a leverage formula backwards</h2>
       <p class="sl-sub">A trader wants 10,000 units of exposure at $1.20, using 20:1 leverage. How much equity does that need?</p>
       <div class="sl-card">
-        <div class="sl-card-label"><i></i>Try it</div>
-        <div class="sl-svgwrap">
-          <svg viewBox="0 0 640 130" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="10,000 units times 1.20 dollars divided by 20x leverage equals 600 dollars of required equity">
-            <rect x="6" y="30" width="140" height="56" rx="12" style="fill:var(--blue-bg);stroke:var(--blue-bd)"/>
-            <text x="76" y="55" text-anchor="middle" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:13px;font-weight:700">10,000 units</text>
-            <text x="76" y="75" text-anchor="middle" style="fill:var(--text3);font-size:10px">position size</text>
-            <text x="163" y="65" text-anchor="middle" style="fill:var(--text3);font-size:16px">×</text>
-            <rect x="180" y="30" width="110" height="56" rx="12" style="fill:var(--purple-bg);stroke:var(--purple-bd)"/>
-            <text x="235" y="55" text-anchor="middle" style="fill:var(--purple);font-family:'DM Mono',monospace;font-size:13px;font-weight:700">$1.20</text>
-            <text x="235" y="75" text-anchor="middle" style="fill:var(--text3);font-size:10px">price</text>
-            <text x="307" y="65" text-anchor="middle" style="fill:var(--text3);font-size:16px">÷</text>
-            <rect x="324" y="30" width="110" height="56" rx="12" style="fill:var(--amber-bg);stroke:var(--amber-bd)"/>
-            <text x="379" y="55" text-anchor="middle" style="fill:var(--amber);font-family:'DM Mono',monospace;font-size:13px;font-weight:700">20:1</text>
-            <text x="379" y="75" text-anchor="middle" style="fill:var(--text3);font-size:10px">leverage</text>
-            <text x="450" y="65" text-anchor="middle" style="fill:var(--text3);font-size:16px">=</text>
-            <rect x="466" y="24" width="168" height="68" rx="12" style="fill:var(--green-bg);stroke:var(--green-bd);stroke-width:2"/>
-            <text x="550" y="55" text-anchor="middle" style="fill:var(--green);font-family:'DM Mono',monospace;font-size:17px;font-weight:700">$600</text>
-            <text x="550" y="78" text-anchor="middle" style="fill:var(--text3);font-size:10px">equity required</text>
-          </svg>
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Position size (units)</label><input type="number" class="sl-input" id="lev-size" value="10000" step="500" min="0"></div>
+          <div class="sl-calc-op">×</div>
+          <div class="sl-calc-field"><label>Price ($)</label><input type="number" class="sl-input" id="lev-price" value="1.20" step="0.01" min="0"></div>
+          <div class="sl-calc-op">÷</div>
+          <div class="sl-calc-field"><label>Leverage (x:1)</label><input type="number" class="sl-input" id="lev-leverage" value="20" step="1" min="1"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Equity required</div>
+            <div class="sl-calc-result-val" id="lev-result">$600.00</div>
+          </div>
         </div>
+        <button type="button" class="sl-reset-btn" id="lev-reset">Reset to worked-example numbers</button>
         <div class="sl-note">Rearranging isn't a detour from the "real" formula — it's the same formula, read backwards, which is most of what actually using a formula on a desk means.</div>
       </div>
       <p class="sl-p">The formula everyone starts from computes position size <em>from</em> equity: position size = equity × leverage ÷ price. But the question on the desk runs the other way — how much equity does a specific position actually require? Rearrange for equity by multiplying both sides by price, then dividing by leverage: equity = (position size × price) ÷ leverage = (10,000 × 1.20) ÷ 20 = <strong>$600</strong>.</p>
@@ -542,6 +569,64 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',-apple-system,
   }
   wireTabs('eq-tabs');
   wireTabs('dr-tabs');
+
+  // "Solve your own equation" — ax + b = c, live.
+  (function(){
+    var a = document.getElementById('eqx-a');
+    if (!a) return;
+    var b = document.getElementById('eqx-b'), c = document.getElementById('eqx-c');
+    var step1 = document.getElementById('eqx-step1'), step2 = document.getElementById('eqx-step2');
+    var resetBtn = document.getElementById('eqx-reset');
+    var DEFAULTS = { a: 2, b: 3, c: 11 };
+
+    function fmt(n){ return Math.abs(n - Math.round(n)) < 1e-9 ? Math.round(n).toString() : n.toFixed(2); }
+
+    function recompute(){
+      var av = parseFloat(a.value), bv = parseFloat(b.value), cv = parseFloat(c.value);
+      if (!isFinite(av) || !isFinite(bv) || !isFinite(cv) || av === 0) {
+        step1.textContent = '—';
+        step2.textContent = av === 0 ? 'undefined (a can\'t be 0)' : '—';
+        return;
+      }
+      var afterSubtract = cv - bv;
+      var x = afterSubtract / av;
+      step1.textContent = fmt(afterSubtract);
+      step2.textContent = fmt(x);
+    }
+
+    [a, b, c].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      a.value = DEFAULTS.a; b.value = DEFAULTS.b; c.value = DEFAULTS.c;
+      recompute();
+    });
+    recompute();
+  })();
+
+  // Leverage → required equity, live.
+  (function(){
+    var size = document.getElementById('lev-size');
+    if (!size) return;
+    var price = document.getElementById('lev-price'), leverage = document.getElementById('lev-leverage');
+    var result = document.getElementById('lev-result');
+    var resetBtn = document.getElementById('lev-reset');
+    var DEFAULTS = { size: 10000, price: 1.20, leverage: 20 };
+
+    function recompute(){
+      var s = parseFloat(size.value), p = parseFloat(price.value), l = parseFloat(leverage.value);
+      if (!isFinite(s) || !isFinite(p) || !isFinite(l) || l <= 0 || s < 0 || p < 0) {
+        result.textContent = '—';
+        return;
+      }
+      result.textContent = '$' + ((s * p) / l).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    [size, price, leverage].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      size.value = DEFAULTS.size; price.value = DEFAULTS.price; leverage.value = DEFAULTS.leverage;
+      recompute();
+    });
+    recompute();
+  })();
 
   (function(){
     var slider = document.getElementById('fam2-slider');
