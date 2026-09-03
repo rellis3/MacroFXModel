@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Q-Learning &amp; Temporal-Difference — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Q-Learning &amp; Temporal-Difference — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer full derivations, a live scratchpad, and a 5-question self-test?<a href="q-learning-temporal-difference.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Reinforcement Learning 2 · Reinforcement Learning</div>
+      <h1 class="sl-h1">Q-Learning, <em>Learning Without a Model</em></h1>
+      <p class="sl-lede">The previous lesson solved a 3-state trading MDP by hand — but only because every transition probability and every reward was already written down in the diagram. No real market hands you that table. This lesson is the direct sequel: Q-learning, a way to learn the same kind of action-values straight from a stream of raw experience — state, action, reward, next state — one step at a time, without ever needing to know in advance how the environment will respond.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">The previous lesson's hidden assumption</h2>
+      <p class="sl-sub">Value iteration and policy iteration solved the Bellman equation exactly — but only because of what they were handed first.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">What value / policy iteration need</span>
+          <ul>
+            <li>Every transition probability P(s′|s,a), written down in full</li>
+            <li>Every reward R(s,a), known before a single action is taken</li>
+            <li>The entire MDP diagram given up front, as a table or a picture</li>
+            <li>The 3-state Flat/Long/Short example only worked because all of this was handed to us</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">What a real trading agent actually has</span>
+          <ul>
+            <li>No one hands over the market's transition probabilities</li>
+            <li>Only a stream of lived experience: state, action, reward, next state</li>
+            <li>No way to "look ahead" through a model that doesn't exist</li>
+            <li>A need to learn values from exactly that stream, as it arrives</li>
+          </ul>
+        </div>
+      </div>
+      <p class="sl-p">A trading agent doesn't know in advance exactly how the market will respond to its actions — it can't write down P(s′|s,a) any more than it can write down tomorrow's order flow. That's not a minor gap in the previous lesson's method; it's disqualifying for most real environments. Everything in this lesson exists to remove that one assumption.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Where the previous lesson was upfront about this</div>
+        <p>The Bellman-equation lesson itself flagged this as its biggest limitation: the clean solution only works when P and R are already known. This lesson is that caveat, turned into an actual method.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Q-learning: model-free, action by action</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">Q</div><div><h4>Q(s,a) is an action-value</h4><p>Not "how good is this state" but "how good is taking this specific action a, in this specific state s, and acting well from then on." One number per (state, action) pair.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⊘</div><div><h4>Model-free, by design</h4><p>Q-learning never needs P(s′|s,a) or R(s,a) written down anywhere. It learns entirely from transitions it actually experiences, not from a model of the environment.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎲</div><div><h4>Learns from (s,a,r,s′) tuples</h4><p>"I was Flat, I opened a position, it cost me 0.1, I ended up Long." That single sentence is exactly the unit of data Q-learning consumes, one at a time.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>The best action just falls out</h4><p>Once Q(s,a) is learned for every action available at s, the best action is whichever one has the highest Q — no model, no lookahead, just a table lookup.</p></div></div>
+      </div>
+      <div class="sl-quote">The previous lesson solved for Q*(Long, Hold) = 10 by hand, using a fully known model. This lesson reaches that same number a different way — <strong>by sampling</strong>, never once looking at P or R directly.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">The temporal-difference update</h2>
+      <p class="sl-sub">After one real step, nudge the old estimate toward a target built from that one reward plus a discounted guess about what comes next.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The shape of the update</div>
+        <div class="sl-row">
+          <div class="sl-box">old Q(s,a)</div>
+          <div class="sl-arrow">+ α ×</div>
+          <div class="sl-box amber">TD error</div>
+          <div class="sl-arrow">=</div>
+          <div class="sl-box green">new Q(s,a)</div>
+        </div>
+        <div class="sl-verdict">TD error = <strong>TD target − old Q(s,a)</strong>, and the TD target itself is <strong>r + γ · max<sub>a′</sub> Q(s′,a′)</strong> — one real observed reward, plus the discounted value of the best action available from wherever you land next, judged by your <em>current</em> (possibly still wrong) estimates.</div>
+      </div>
+      <p class="sl-p">Nothing here waits for an episode to finish. The moment a single (s,a,r,s′) transition is observed, there's enough information to compute a target and take one small step toward it — learning incrementally, step by step, rather than only after a full trade or episode closes out.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — the one-step TD update, live</div>
+        <p class="sl-p" style="margin:0 0 14px">Starts on the numbers from step 3 of the worked example on the next slide. Change any field.</p>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Old Q(s,a)</label><input type="number" class="sl-input" id="td-oldq" value="0.5" step="0.05"></div>
+          <div class="sl-calc-field"><label>Reward r</label><input type="number" class="sl-input" id="td-r" value="1" step="0.1"></div>
+          <div class="sl-calc-field"><label>Discount γ</label><input type="number" class="sl-input" id="td-gamma" value="0.9" step="0.05" min="0" max="1"></div>
+          <div class="sl-calc-field"><label>max Q(s′,a′)</label><input type="number" class="sl-input" id="td-maxq" value="0.5" step="0.05"></div>
+          <div class="sl-calc-field"><label>Learning rate α</label><input type="number" class="sl-input" id="td-alpha" value="0.5" step="0.05" min="0" max="1"></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>TD target = r + γ·maxQ = <b id="td-target">1.450</b></div>
+          <div>TD error δ = target − oldQ = <b id="td-error">0.950</b></div>
+        </div>
+        <div class="sl-calc-row" style="margin-top:10px">
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">New Q(s,a)</div>
+            <div class="sl-calc-result-val" id="td-result">0.975</div>
+          </div>
+        </div>
+        <div class="sl-note" id="td-note"></div>
+        <button type="button" class="sl-reset-btn" id="td-reset">Reset to worked-example numbers</button>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Updating a Q-table, one step at a time</h2>
+      <p class="sl-sub">The same 3-state Flat / Long / Short world from the previous lesson (γ = 0.9), but Q(s,a) now starts at 0 everywhere and is learned purely from sampled experience — a deliberately large α = 0.5 keeps the arithmetic readable.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Step through the experience</div>
+        <div class="sl-tabs" id="tdstep-tabs">
+          <button class="sl-tab active" data-panel="tdstep-1">Step 1 — Flat → Long</button>
+          <button class="sl-tab" data-panel="tdstep-2">Step 2 — Long → Long</button>
+          <button class="sl-tab" data-panel="tdstep-3">Step 3 — Long → Long again</button>
+        </div>
+        <div class="sl-panel active" id="tdstep-1">
+          <div class="sl-row"><div class="sl-box">Flat</div><div class="sl-arrow">Act (Open), r = −0.1</div><div class="sl-box">Long</div></div>
+          <div class="sl-verdict">TD target = −0.1 + 0.9·max(0, 0) = <strong>−0.1</strong>. TD error = −0.1 − 0 = <strong>−0.1</strong>. Update: Q(Flat, Act) ← 0 + 0.5(−0.1) = <strong>−0.05</strong>.</div>
+        </div>
+        <div class="sl-panel" id="tdstep-2">
+          <div class="sl-row"><div class="sl-box green">Long</div><div class="sl-arrow">Hold, r = +1</div><div class="sl-box green">Long</div></div>
+          <div class="sl-verdict">TD target = 1 + 0.9·max(0, 0) = <strong>1</strong>. TD error = 1 − 0 = <strong>1</strong>. Update: Q(Long, Hold) ← 0 + 0.5(1) = <strong>0.5</strong>.</div>
+        </div>
+        <div class="sl-panel" id="tdstep-3">
+          <div class="sl-row"><div class="sl-box green">Long</div><div class="sl-arrow">Hold, r = +1</div><div class="sl-box green">Long</div></div>
+          <div class="sl-verdict">TD target = 1 + 0.9·max(0.5, 0) = <strong>1.45</strong>. TD error = 1.45 − 0.5 = <strong>0.95</strong>. Update: Q(Long, Hold) ← 0.5 + 0.5(0.95) = <strong>0.975</strong> — already visibly closing in on Q* = 10, solved by hand in the previous lesson.</div>
+        </div>
+        <div class="sl-note">Notice Q(Flat, Act) dipped <em>negative</em> after one sample — a small, honest opening cost, seen before any of Long's later upside has been sampled yet. Normal early-learning noise, not a sign the method is broken.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">The Q-table, after three samples</h2>
+      <p class="sl-sub">States down the side, actions across the top, shaded by value. Two cells have been touched; four are still exactly where they were initialized.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Q(s,a) heatmap</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 600 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Heatmap grid of Q values for three states, Flat, Long and Short, across two actions, Hold and Act, after three sampled transitions. Long, Hold is strongly positive at 0.975. Flat, Act is mildly negative at minus 0.05. The remaining four cells are unsampled zeros.">
+            <text x="270" y="40" text-anchor="middle" style="fill:var(--text2);font-size:12px;font-weight:700;font-family:'DM Mono',monospace">Hold</text>
+            <text x="480" y="40" text-anchor="middle" style="fill:var(--text2);font-size:12px;font-weight:700;font-family:'DM Mono',monospace">Act</text>
+
+            <text x="90" y="95" text-anchor="middle" style="fill:var(--text);font-size:13px;font-weight:700">Flat</text>
+            <rect x="170" y="60" width="200" height="55" rx="8" style="fill:var(--panel2);stroke:var(--border2)"/>
+            <text x="270" y="88" text-anchor="middle" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:14px;font-weight:700">0.000</text>
+            <text x="270" y="104" text-anchor="middle" style="fill:var(--text3);font-size:9.5px">not yet sampled</text>
+            <rect x="380" y="60" width="200" height="55" rx="8" style="fill:var(--red);fill-opacity:.16;stroke:var(--red-bd)"/>
+            <text x="480" y="88" text-anchor="middle" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:14px;font-weight:700">−0.050</text>
+            <text x="480" y="104" text-anchor="middle" style="fill:var(--text3);font-size:9.5px">updated, step 1</text>
+
+            <text x="90" y="160" text-anchor="middle" style="fill:var(--text);font-size:13px;font-weight:700">Long</text>
+            <rect x="170" y="125" width="200" height="55" rx="8" style="fill:var(--green);fill-opacity:.85;stroke:var(--green-bd)"/>
+            <text x="270" y="153" text-anchor="middle" style="fill:#05130f;font-family:'DM Mono',monospace;font-size:14px;font-weight:700">0.975</text>
+            <text x="270" y="169" text-anchor="middle" style="fill:#0a2018;font-size:9.5px">updated, steps 2–3</text>
+            <rect x="380" y="125" width="200" height="55" rx="8" style="fill:var(--panel2);stroke:var(--border2)"/>
+            <text x="480" y="153" text-anchor="middle" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:14px;font-weight:700">0.000</text>
+            <text x="480" y="169" text-anchor="middle" style="fill:var(--text3);font-size:9.5px">not yet sampled</text>
+
+            <text x="90" y="225" text-anchor="middle" style="fill:var(--text);font-size:13px;font-weight:700">Short</text>
+            <rect x="170" y="190" width="200" height="55" rx="8" style="fill:var(--panel2);stroke:var(--border2)"/>
+            <text x="270" y="218" text-anchor="middle" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:14px;font-weight:700">0.000</text>
+            <text x="270" y="234" text-anchor="middle" style="fill:var(--text3);font-size:9.5px">not yet sampled</text>
+            <rect x="380" y="190" width="200" height="55" rx="8" style="fill:var(--panel2);stroke:var(--border2)"/>
+            <text x="480" y="218" text-anchor="middle" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:14px;font-weight:700">0.000</text>
+            <text x="480" y="234" text-anchor="middle" style="fill:var(--text3);font-size:9.5px">not yet sampled</text>
+          </svg>
+        </div>
+        <div class="sl-note">Four cells are still zero not because they're known to be worthless, but because nothing has visited them yet. That gap — untouched (s,a) pairs — is exactly the problem exploration exists to close, a few slides ahead.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Getting close, never quite arriving</h2>
+      <p class="sl-sub">Keep sampling the same (Long, Hold, +1, Long) transition and Q(Long, Hold) climbs toward Q* = 10 — but with a fixed learning rate, never exactly onto it.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Q(Long, Hold) over 30 repeated updates</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart of Q of Long, Hold rising from zero toward a dashed asymptote at 10 over thirty simulated updates, following the recursion Q sub k plus one equals point nine five times Q sub k plus point five, approaching but never reaching the asymptote. Two points mark the first two hand-computed steps at 0.5 and 0.975.">
+            <line x1="70" y1="30" x2="70" y2="270" style="stroke:var(--border2)"/>
+            <line x1="70" y1="270" x2="610" y2="270" style="stroke:var(--border2)"/>
+            <line x1="70" y1="51.8" x2="610" y2="51.8" style="stroke:var(--text3);stroke-dasharray:3,3"/>
+            <text x="600" y="46" text-anchor="end" style="fill:var(--text3);font-size:10.5px;font-family:'DM Mono',monospace">Q* = 10</text>
+            <path d="M70,270 L88,259.1 L106,248.7 L124,238.9 L142,229.5 L160,220.6 L178,212.2 L196,204.2 L214,196.6 L232,189.3 L250,182.5 L268,175.9 L286,169.7 L304,163.8 L322,158.2 L340,152.9 L358,147.8 L376,143.0 L394,138.5 L412,134.1 L430,130.0 L448,126.1 L466,122.4 L484,118.9 L502,115.5 L520,112.3 L538,109.3 L556,106.4 L574,103.7 L592,101.1 L610,98.6" style="stroke:var(--blue);stroke-width:2.5;fill:none;stroke-linecap:round"/>
+            <circle cx="88" cy="259.1" r="4" style="fill:var(--amber)"/>
+            <text x="88" y="245" text-anchor="middle" style="fill:var(--amber);font-size:10.5px;font-family:'DM Mono',monospace">step 1: 0.5</text>
+            <circle cx="106" cy="248.7" r="4" style="fill:var(--amber)"/>
+            <text x="165" y="238" text-anchor="middle" style="fill:var(--amber);font-size:10.5px;font-family:'DM Mono',monospace">step 2: 0.975</text>
+            <text x="340" y="292" text-anchor="middle" style="fill:var(--text3);font-size:11px;font-family:'DM Mono',monospace">update number (sampled transitions)</text>
+          </svg>
+        </div>
+        <div class="sl-note">Each repeated sample closes about 5% of the remaining gap to Q* = 10 (that's α(1−γ) = 0.5 × 0.1 here) — fast early progress, then a long, slow approach that gets arbitrarily close but never exactly touches the asymptote in finite time.</div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>A constant learning rate never fully converges — it only settles into a neighborhood of Q*. Formal convergence needs a decaying step size (the Robbins-Monro conditions). There's a second pitfall too: because the update always bootstraps off a max over noisy estimates, Q-learning tends to systematically overestimate action values, especially early in learning — a known bias, with Double Q-learning as the standard fix.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Exploration vs. exploitation</h2>
+      <p class="sl-sub">Every one of those "not yet sampled" cells is a decision an agent has to make, over and over: try something new, or stick with what already looks best?</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🧭</div><div><h4>Exploitation</h4><p>Take the current best-known action — whichever has the highest Q(s,a) right now. Good short-term, but it starves untried actions of any information at all.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎲</div><div><h4>Exploration</h4><p>Deliberately try something else, even though it currently looks worse — purely to find out whether that impression is actually correct.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">ε</div><div><h4>ε-greedy — the simplest balance</h4><p>With small probability ε, act completely at random. The rest of the time, act greedily. One knob, one number, and it's enough to keep the convergence guarantee alive.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">♾</div><div><h4>Why it isn't optional</h4><p>Q-learning's convergence guarantee requires every (s,a) pair to be visited infinitely often, in the limit. A purely greedy agent can get permanently stuck never discovering a better alternative.</p></div></div>
+      </div>
+      <div class="sl-quote">A trading system that only ever takes the setup it currently rates highest can end up structurally blind to whether a different setup is actually better — it will never generate the data needed to find out. Exploration is the cost of keeping that door open.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">ε, made concrete</h2>
+      <p class="sl-sub">Drag the slider. Each dot below is one simulated action; amber dots are the exploratory ones ε sends off-script.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 170" id="eps-svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Grid of forty dots representing simulated actions, colored blue for greedy and amber for exploratory according to the epsilon slider">
+            <!-- 40 dots injected by script -->
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Exploration rate ε</span><span class="sl-live" id="eps-mval">ε = 0.25</span></div>
+        <input type="range" class="sl-slider" id="eps-slider" min="0" max="100" step="5" value="25">
+        <div class="sl-note" id="eps-readout">Simulated: 10 / 40 exploratory (25%) · 30 / 40 greedy (75%)</div>
+      </div>
+      <p class="sl-p">Push ε toward 0 and the agent almost never leaves its current best guess — fast to exploit what it already believes, but slow (or unable) to discover it might be wrong. Push ε toward 1 and it's exploring almost constantly — plenty of information, very little of it acted on. Most practical setups pick something small (often 0.05–0.2) and sometimes shrink it further as learning progresses.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Q-learning's off-policy sibling: SARSA</h2>
+      <p class="sl-sub">Change exactly one term in the update, and the entire character of what's being learned changes with it.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Q-learning — off-policy</span>
+          <p>Bootstraps off max<sub>a′</sub> Q(s′,a′) — the best available next action, full stop — regardless of what the agent's real, exploring behavior actually did next. It learns the value of the greedy policy while behaving ε-greedily.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">SARSA — on-policy</span>
+          <p>Bootstraps off Q(s′,a′) for whichever action a′ was actually taken next, exploration included. It learns the value of the policy genuinely being followed — noise, occasional bad detours, and all.</p>
+        </div>
+      </div>
+      <p class="sl-p">The name SARSA is literally the five things the update touches, in order: State, Action, Reward, next State, next Action. That's also the one substitution — max<sub>a′</sub>Q(s′,a′) becomes Q(s′,a′) for the action actually taken — separating it from Q-learning.</p>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>Off-policy learning is what lets a system keep exploring while its learned Q-values still track what the fully greedy policy would be worth — useful for a strategy that's still being refined. But it can also end up favoring paths that are optimal only <em>if you stop exploring off them entirely</em>. SARSA's numbers are more conservative precisely because they price in the real, ongoing cost of the exploration actually happening.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What does Q-learning need to know about P(s′|s,a) in advance?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Nothing — it learns entirely from sampled (s,a,r,s′) experience</button>
+        <button class="sl-quiz-opt">The full transition table, exactly as value iteration needed</button>
+        <button class="sl-quiz-opt">Only the rewards, not the transition probabilities</button>
+        <div class="sl-quiz-explain">Q-learning is model-free — the whole point is removing the previous lesson's need for a known P and R up front.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Which is the correct TD target for Q-learning's update?</h4>
+        <button class="sl-quiz-opt" data-correct="true">r + γ · max<sub>a′</sub> Q(s′,a′)</button>
+        <button class="sl-quiz-opt">r + γ · Q(s′,a′) for whichever action was actually taken next</button>
+        <button class="sl-quiz-opt">γ · r + Q(s,a)</button>
+        <div class="sl-quiz-explain">The max over next actions is exactly what makes it Q-learning rather than SARSA (option 2 is SARSA's target).</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Why is Q-learning specifically called "off-policy"?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It bootstraps off the best next action, regardless of the action actually taken</button>
+        <button class="sl-quiz-opt">Because it never uses a policy of any kind</button>
+        <button class="sl-quiz-opt">Because it can only be used offline, never during live trading</button>
+        <div class="sl-quiz-explain">Learning about the greedy policy's values while behaving under a different, exploring policy is exactly what "off-policy" means.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>What does an ε-greedy policy actually do?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Acts randomly with probability ε, and greedily the rest of the time</button>
+        <button class="sl-quiz-opt">Acts randomly all the time, with no greedy component</button>
+        <button class="sl-quiz-opt">Never explores once training has started</button>
+        <div class="sl-quiz-explain">ε-greedy is the simplest practical mechanism for keeping exploration alive without abandoning exploitation entirely.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>With a constant learning rate α, what happens to Q(Long, Hold) as sampling continues?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It converges only to a neighborhood of Q* = 10, never exactly onto it</button>
+        <button class="sl-quiz-opt">It converges exactly to Q* = 10 after enough updates</button>
+        <button class="sl-quiz-opt">It diverges to infinity</button>
+        <div class="sl-quiz-explain">A fixed α always closes the same fraction of the remaining gap — arbitrarily close, but not exact in finite time. Exact convergence needs a decaying step size.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Value/policy iteration need P and R known up front. Q-learning learns Q(s,a) directly from sampled (s,a,r,s′) experience — no model required.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>TD learning updates a value estimate toward a target built from one real reward plus a discounted guess about what's next, rather than waiting for a whole episode's actual outcome.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Q-learning's update — Q(s,a) ← Q(s,a) + α[r + γ·max<sub>a′</sub>Q(s′,a′) − Q(s,a)] — always bootstraps off the best next action, which is exactly why it's off-policy.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Repeated sampling of one transition follows a clean geometric recursion toward Q* — but with a constant learning rate, it gets arbitrarily close without ever exactly arriving.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Exploration isn't optional — every (state, action) pair needs enough visits for its Q-value to be learned correctly. ε-greedy is the simplest practical mechanism.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>SARSA changes one term — max becomes the action actually taken — to become on-policy, learning the value of the policy actually being followed, exploration included.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Estimate action-values directly from a stream of lived, trade-by-trade experience, without ever having to specify the market's transition probabilities up front. Update those estimates after every single step instead of waiting for a trade or episode to close. And treat the explore/exploit trade-off as an explicit, tunable knob (ε) rather than something left implicit or ignored.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Policy Gradients &amp; Actor-Critic Methods</h3>
+        <p>Q-learning learns values and picks actions by taking a max over them — which breaks down once actions are continuous. Next: learning a policy directly, by gradient ascent on expected return.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="policy-gradients-actor-critic-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="q-learning-temporal-difference.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // One-step TD update calculator — live.
+  (function(){
+    var oldq = document.getElementById('td-oldq');
+    if (!oldq) return;
+    var r = document.getElementById('td-r'), gamma = document.getElementById('td-gamma');
+    var maxq = document.getElementById('td-maxq'), alpha = document.getElementById('td-alpha');
+    var targetOut = document.getElementById('td-target'), errorOut = document.getElementById('td-error');
+    var resultOut = document.getElementById('td-result'), noteOut = document.getElementById('td-note');
+    var resetBtn = document.getElementById('td-reset');
+    var DEFAULTS = { oldq: 0.5, r: 1, gamma: 0.9, maxq: 0.5, alpha: 0.5 };
+
+    function fmt(n){ return n.toFixed(3); }
+
+    function recompute(){
+      var Q = parseFloat(oldq.value), R = parseFloat(r.value), G = parseFloat(gamma.value);
+      var M = parseFloat(maxq.value), A = parseFloat(alpha.value);
+      var vals = [Q, R, G, M, A];
+      var allFinite = vals.every(function(v){ return isFinite(v); });
+
+      if (!allFinite) {
+        targetOut.textContent = '—'; errorOut.textContent = '—'; resultOut.textContent = '—';
+        noteOut.textContent = 'Enter a number in every field.';
+        return;
+      }
+      if (G < 0 || G > 1 || A < 0 || A > 1) {
+        targetOut.textContent = '—'; errorOut.textContent = '—'; resultOut.textContent = '—';
+        noteOut.textContent = 'γ and α are both meant to stay between 0 and 1 — outside that range the update isn\'t meaningful.';
+        return;
+      }
+
+      var target = R + G * M;
+      var error = target - Q;
+      var qnew = Q + A * error;
+
+      targetOut.textContent = fmt(target);
+      errorOut.textContent = fmt(error);
+      resultOut.textContent = fmt(qnew);
+      noteOut.textContent = '';
+    }
+
+    [oldq, r, gamma, maxq, alpha].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      oldq.value = DEFAULTS.oldq; r.value = DEFAULTS.r; gamma.value = DEFAULTS.gamma;
+      maxq.value = DEFAULTS.maxq; alpha.value = DEFAULTS.alpha;
+      recompute();
+    });
+    recompute();
+  })();
+
+  // Epsilon-greedy dot grid — deterministic permutation so the on-screen
+  // exploratory count always exactly matches round(epsilon * 40).
+  (function(){
+    var slider = document.getElementById('eps-slider');
+    if (!slider) return;
+    var svg = document.getElementById('eps-svg');
+    var mVal = document.getElementById('eps-mval');
+    var readout = document.getElementById('eps-readout');
+    var N = 40, COLS = 10, ROWS = 4;
+
+    // Fixed "assignment" values: midpoints of 40 equal bins over [0,1],
+    // then shuffled into grid order with a fixed coprime-step permutation
+    // (order[k] = (k*7) mod 40) purely so same-epsilon dots aren't visually
+    // clustered together. Both the values and the permutation are fixed —
+    // nothing here is re-randomized on interaction.
+    var values = [];
+    for (var i = 0; i < N; i++) values.push((i + 0.5) / N);
+    var assigned = [];
+    for (var k = 0; k < N; k++) assigned.push(values[(k * 7) % N]);
+
+    var dots = [];
+    for (var d = 0; d < N; d++) {
+      var col = d % COLS, row = Math.floor(d / COLS);
+      var cx = 40 + col * 62, cy = 30 + row * 34;
+      var circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      circle.setAttribute('cx', cx);
+      circle.setAttribute('cy', cy);
+      circle.setAttribute('r', 8);
+      circle.setAttribute('stroke', 'none');
+      svg.appendChild(circle);
+      dots.push(circle);
+    }
+
+    function update(){
+      var pct = parseInt(slider.value, 10);
+      var eps = pct / 100;
+      mVal.textContent = 'ε = ' + eps.toFixed(2);
+      var exploreCount = 0;
+      dots.forEach(function(circle, k){
+        var isExplore = assigned[k] < eps;
+        if (isExplore) exploreCount++;
+        circle.setAttribute('fill', isExplore ? 'var(--amber)' : 'var(--blue)');
+      });
+      var greedyCount = N - exploreCount;
+      readout.textContent = 'Simulated: ' + exploreCount + ' / ' + N + ' exploratory (' +
+        Math.round(exploreCount / N * 100) + '%) · ' + greedyCount + ' / ' + N + ' greedy (' +
+        Math.round(greedyCount / N * 100) + '%)';
+    }
+
+    slider.addEventListener('input', update);
+    update();
+  })();
+})();
+</script>
+</body>
+</html>
