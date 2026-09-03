@@ -225,6 +225,14 @@
 </div>
 
 <div class="card">
+  <h2>Outlier sensitivity — is this carried by a handful of trades?</h2>
+  <div class="muted" style="margin-bottom:8px">Excess kurtosis above tells you the daily-return distribution's tail shape, but not whether a few individual trades are doing the work — several trades can land on the same day and average out in that number. This looks at the raw per-trade PnL directly: what share of total profit comes from the biggest winners, and what happens to Sharpe/CAGR/drawdown if you'd simply missed them. Excess kurtosis (normal = 0, not 3 — see the card above) is repeated here per-TRADE rather than per-day for the same reason.</div>
+  <div id="outlierKurt" class="kpi-grid" style="margin-bottom:12px"></div>
+  <div id="outlierConcentration" style="overflow-x:auto;margin-bottom:12px"></div>
+  <div id="outlierRemoval" style="overflow-x:auto"></div>
+</div>
+
+<div class="card">
   <h2>If levered to <span id="targetVolLabel">10</span>% target annual volatility</h2>
   <div class="muted" style="margin-bottom:10px">This is a dial YOU set, not a cap the system imposes — it doesn't limit upside, it just shows what the SAME risk-adjusted profile looks like scaled to whatever volatility you're willing to run. Set it above the realized vol below to see leverage UP, not just down.</div>
   <div class="kpi-grid" id="kpiLevered"></div>
@@ -315,6 +323,7 @@
 <script type="module">
 import { summarizeTrades, sortinoRatio, calmar as calmarRatio } from './js/metricsCore.js';
 import { createLevelChart } from './js/levelChart.js';
+import { portfolioStats } from './js/backtestStats.js';
 // The "26 multitasking portfolio" universe (same list scripts/run_asia_fib_atlas.mjs
 // already established), MINUS 5 pairs removed for real, cost-driven (not a
 // bug — verified against each pair's own spread) near-zero Sharpe-after-cost:
@@ -503,6 +512,60 @@ async function loadTradeChart(t) {
   }
 }
 
+// ── Outlier sensitivity — per-trade kurtosis + "remove the top-N winners"
+// robustness check. Same math validated ad hoc in conversation (real live
+// data: top 50 of 16,422 trades = 5.8% of total profit; removing them drops
+// Sharpe 3.59→3.40 and doesn't move maxDD at all) — persisted here so it's a
+// standing card next to the daily-return Skew/Excess Kurtosis KPIs above,
+// not a one-off answer. Client-side only: `lastTrades` already carries
+// everything needed (pnlPct, weight, date), same fields the CSV exports use.
+const OUTLIER_TOP_N = [1, 5, 10, 20, 50];
+
+function outlierDailySeriesExcluding(excludeSet) {
+  const m = new Map();
+  for (const t of lastTrades) {
+    if (excludeSet.has(t)) continue;
+    const p = t.pnlPct * (t.weight ?? 1);
+    m.set(t.date, (m.get(t.date) || 0) + p);
+  }
+  return [...m.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([, p]) => p);
+}
+
+function renderOutlierSensitivity() {
+  const kurtEl = document.getElementById('outlierKurt');
+  const concEl = document.getElementById('outlierConcentration');
+  const remEl = document.getElementById('outlierRemoval');
+  if (!kurtEl || !lastTrades.length) { if (kurtEl) kurtEl.innerHTML = ''; if (concEl) concEl.innerHTML = ''; if (remEl) remEl.innerHTML = ''; return; }
+
+  const pnls = lastTrades.map(t => t.pnlPct * (t.weight ?? 1));
+  const dates = lastTrades.map(t => t.date);
+  const summary = summarizeTrades(pnls, dates);
+  kurtEl.innerHTML = [
+    kpiCard('Trade Skew', fmt2(summary.skew), '', 'per-trade pnl distribution'),
+    kpiCard('Trade Excess Kurtosis', fmt2(summary.excessKurt), '', summary.excessKurt > 0 ? 'fatter tails than normal' : 'thinner tails than normal — bounded target/stop caps single-trade outliers'),
+  ].join('');
+
+  const totalProfit = pnls.reduce((a, b) => a + b, 0);
+  const sortedDesc = [...pnls].sort((a, b) => b - a);
+  concEl.innerHTML = `<table><thead><tr><th>Top N trades (of ${lastTrades.length})</th><th class="num">Summed pnl%</th><th class="num">% of total profit</th></tr></thead><tbody>`
+    + OUTLIER_TOP_N.map(n => {
+      const topSum = sortedDesc.slice(0, n).reduce((a, b) => a + b, 0);
+      return `<tr><td>${n}</td><td class="num">${fmtPct(topSum, 1)}</td><td class="num">${totalProfit !== 0 ? fmt1(topSum / totalProfit * 100) + '%' : '—'}</td></tr>`;
+    }).join('')
+    + '</tbody></table>';
+
+  const byPnlDesc = [...lastTrades].sort((a, b) => (b.pnlPct * (b.weight ?? 1)) - (a.pnlPct * (a.weight ?? 1)));
+  const base = portfolioStats(outlierDailySeriesExcluding(new Set()), { mc: false });
+  const rows = [['Nothing removed (base)', base]];
+  for (const n of OUTLIER_TOP_N) {
+    const excl = new Set(byPnlDesc.slice(0, n));
+    rows.push([`Top ${n} winners removed`, portfolioStats(outlierDailySeriesExcluding(excl), { mc: false })]);
+  }
+  remEl.innerHTML = `<table><thead><tr><th></th><th class="num">Sharpe</th><th class="num">CAGR</th><th class="num">Max DD</th></tr></thead><tbody>`
+    + rows.map(([label, s]) => `<tr><td>${label}</td><td class="num">${fmt2(s.sharpe)}</td><td class="num">${fmt1(s.cagr)}%</td><td class="num red">${fmt1(s.maxDD)}%</td></tr>`).join('')
+    + '</tbody></table>';
+}
+
 function syncTlPairOptions() {
   const pairs = [...new Set(lastTrades.map(t => t.pair).filter(Boolean))].sort();
   const key = pairs.join(',');
@@ -597,6 +660,7 @@ function render(j) {
   syncTlPairOptions();
   selectedTrade = null;
   renderTradeTable(filteredTrades());
+  renderOutlierSensitivity();
   const s = j.stats;
   document.getElementById('naiveSharpe').textContent = fmt2(j.naiveAvgSharpe);
   document.getElementById('combinedSharpe').textContent = fmt2(s.sharpe);
