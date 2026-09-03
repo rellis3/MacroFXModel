@@ -184,6 +184,9 @@
   .pcard.hot{border-color:rgba(210,153,34,.55)}
   .pcard.hot.dir-up,.pcard.hot.dir-dn{border-left-color:rgba(210,153,34,.55)}
   .pc-top{display:flex;align-items:baseline;gap:9px;margin-bottom:7px;flex-wrap:wrap}
+  .pc-fav{cursor:pointer;font-size:14px;color:var(--text3);line-height:1;user-select:none}
+  .pc-fav:hover{color:#f59e0b}
+  .pc-fav.on{color:#f59e0b}
   .pc-name{font-size:13.5px;font-weight:700;color:var(--text2);letter-spacing:.01em}
   .pc-price{font-size:19px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--text)}
   .pc-top .push{margin-left:auto;display:flex;gap:5px}
@@ -718,12 +721,18 @@
 <script src="js/siteApiMap.js"></script>
 
 <!-- Market Outlook horizon toggle — switches the per-pair Outlook chip (card
-     face) and the sidebar Market Outlook summary between Daily (the page's
-     existing per-pair reads — no overlay), 5-Day and 20-Day (js/outlookEngine.js).
-     Sits as a plain sibling after the Command Hub rather than inside
-     js/commandHub.js, since that file is shared with other pages this
+     face) between Daily (the page's existing per-pair reads — no overlay),
+     5-Day and 20-Day (js/outlookEngine.js). The GLOBAL 5-Day/20-Day read
+     (currency ranking + bullish/neutral/bearish tally) is no longer gated by
+     this toggle at all — after three rounds of "the pill changes nothing I
+     can see", it's now its own always-visible #outlookPanel section further
+     down the page instead, showing both horizons side by side permanently.
+     This toggle's only remaining job is the compact per-pair card chip,
+     where a toggle genuinely earns its keep (space-constrained, one horizon
+     at a time). Sits as a plain sibling after the Command Hub rather than
+     inside js/commandHub.js, since that file is shared with other pages this
      feature doesn't apply to. -->
-<div class="outlook-hz help" id="outlookHzBar" title="How far out the per-pair Outlook chip and the sidebar's Market Outlook summary look. Daily = this page's own existing reads, no overlay. 5-Day / 20-Day = a labelled context composite from js/outlookEngine.js — not a new backtested signal.">
+<div class="outlook-hz help" id="outlookHzBar" title="How far out the per-pair Outlook chip on each card looks. Daily = this page's own existing reads, no overlay. 5-Day / 20-Day = a labelled context composite from js/outlookEngine.js — not a new backtested signal. The global 5-Day/20-Day currency read is always visible further down the page, in its own Market Outlook section — this toggle no longer affects it.">
   <span class="lbl">🔭 Outlook</span>
   <button class="fchip" id="outlookHzBtn-daily" onclick="setOutlookHorizon('daily')">Daily</button>
   <button class="fchip" id="outlookHzBtn-weekly" onclick="setOutlookHorizon('weekly')">5-Day</button>
@@ -757,6 +766,8 @@
       <div class="qstrip delta" id="sinceYday" style="display:none"></div>
 
       <div class="mread" id="mread" style="display:none"></div>
+
+      <div class="mread" id="outlookPanel" style="display:none"></div>
 
       <div class="qstrip" id="weekCtx" style="display:none"></div>
       <div class="qstrip" id="concentration" style="display:none"></div>
@@ -1247,6 +1258,18 @@ function setOutlookHorizon(key) {
   outlookHorizon = key;
   try { localStorage.setItem('outlookHorizon', key); } catch (e) {}
   document.querySelectorAll('#outlookHzBar .fchip').forEach(b => b.classList.toggle('on', b.id === `outlookHzBtn-${key}`));
+  render();
+}
+// Per-pair favorites (★) — pinned instruments always sort first, in every
+// view (card/table/scorecard all funnel through sortRows()), ahead of
+// whichever sort mode is selected. Distinct from js/commandHub.js's own
+// "★ Favs" dropdown (bookmarked PAGES, a different feature/data domain) —
+// same star convention, unrelated storage key.
+let favPairs = (() => { try { return new Set(JSON.parse(localStorage.getItem('favPairs') || '[]')); } catch (e) { return new Set(); } })();
+function toggleFav(name, ev) {
+  ev.stopPropagation();   // the card itself opens the drawer on click
+  if (favPairs.has(name)) favPairs.delete(name); else favPairs.add(name);
+  try { localStorage.setItem('favPairs', JSON.stringify([...favPairs])); } catch (e) {}
   render();
 }
 let rateStatTab = (() => { try { return localStorage.getItem('rateStatTab') || 'us10y'; } catch (e) { return 'us10y'; } })();
@@ -1991,24 +2014,6 @@ function outlookCurrencyStrength(rs, horizonKey) {
   return out;
 }
 
-// The single switch point that makes the Daily/5-Day/20-Day toggle actually
-// change the GLOBAL reads (Market Read's narrative + currency bars, the
-// Market Tone gauge, Key Takeaways, the currency-detail drawer) — not just
-// the per-pair chip and the sidebar's own Market Outlook ranking card added
-// earlier. Flagged twice by the owner as "no difference" before this existed:
-// outlookCurrencyStrength() was built and wired into ONE new sidebar card,
-// but every pre-existing "global" surface kept calling currencyStrength()
-// directly and had no way to pick up the toggle. This wrapper is that missing
-// wire — swap the CALL, not the callers' downstream logic: rescales
-// outlookCurrencyStrength's -100..100 biasScore onto the same -1..1 scale
-// currencyStrength() uses (divide by 100), so every existing bar-width/
-// sentence-threshold calculation downstream (built for the -1..1 scale) keeps
-// working completely unchanged.
-function currencyStrengthForHorizon(rs, horizonKey) {
-  if (!horizonKey || horizonKey === 'daily') return currencyStrength(rs);
-  return outlookCurrencyStrength(rs, horizonKey).map(c => ({ ...c, score: c.score / 100 }));
-}
-
 // Growth-surprise strength per currency, from js/ismEngine.js's `activity`
 // score (already loaded via /api/ism at boot — see loadAll()). Shown paired
 // with the FX-strength bars above so you can see whether price already
@@ -2028,7 +2033,7 @@ function growthSurpriseRows() {
 }
 
 // Equities breadth + risk-on/off verdict (spans the indices).
-function equitiesRisk(rs, horizonKey = 'daily') {
+function equitiesRisk(rs) {
   const idx = rs.filter(r => r.d.ac === 'index');
   const chips = idx.map(r => {
     const g = r.d.regime, s = r.s;
@@ -2066,7 +2071,7 @@ function equitiesRisk(rs, horizonKey = 'daily') {
     gprRead = { ...gprRead, daysStale, stale: daysStale > 10 };
   }
   // Haven demand: JPY/CHF strong + gold bid; risk appetite: indices bid, vol low.
-  const cs = currencyStrengthForHorizon(rs, horizonKey);
+  const cs = currencyStrength(rs);
   const strOf = c => cs.find(x => x.ccy === c)?.score ?? 0;
   const haven = (strOf('JPY') + strOf('CHF')) / 2 + (goldSig ?? 0) * 0.5;
   const equity = idx.length ? (up - dn) / idx.length : 0;
@@ -2153,8 +2158,8 @@ function renderMarketRead() {
   if (!brief?.instruments) { el.style.display = 'none'; return; }
   const rs = allRows();   // global synthesis — ignores the FX/Indices/Gold filter
   if (rs.length < 4) { el.style.display = 'none'; return; }
-  const cs = currencyStrengthForHorizon(rs, outlookHorizon);
-  const risk = equitiesRisk(rs, outlookHorizon);
+  const cs = currencyStrength(rs);
+  const risk = equitiesRisk(rs);
   const trending = rs.filter(r => r.trending);
   const tUp = trending.filter(r => _trendDir(r.d.regime?.trend_dir) === 'up').length;
   const tDn = trending.filter(r => _trendDir(r.d.regime?.trend_dir) === 'down').length;
@@ -2184,12 +2189,9 @@ function renderMarketRead() {
   } else if (usd) {
     sentences.push(`The US dollar is fairly flat.`);
   }
-  // 3) strongest / weakest + the trade with momentum — wording matches
-  // whichever horizon cs/risk above were actually computed from, so this
-  // never says "today's" while the number underneath is a 5-day/20-day read.
+  // 3) strongest / weakest + the trade with momentum
   if (strongest && weakest && strongest.ccy !== weakest.ccy && (strongest.score - weakest.score) > 0.2) {
-    const hzLead = outlookHorizon === 'weekly' ? "This week's" : outlookHorizon === 'monthly' ? "This month's" : "Today's";
-    sentences.push(`${hzLead} <b>strongest is the ${ccyFull(strongest.ccy)}</b>, weakest is the <b>${ccyFull(weakest.ccy)}</b> — so buying the ${ccyShort(strongest.ccy)} and selling the ${ccyShort(weakest.ccy)} is the trade with the wind behind it.`);
+    sentences.push(`Today's <b>strongest is the ${ccyFull(strongest.ccy)}</b>, weakest is the <b>${ccyFull(weakest.ccy)}</b> — so buying the ${ccyShort(strongest.ccy)} and selling the ${ccyShort(weakest.ccy)} is the trade with the wind behind it.`);
   }
   // 4) trending vs chopping
   const trendMaj = trending.length > rs.length / 2;
@@ -2259,7 +2261,7 @@ function renderMarketRead() {
     <div class="mread-precise">${breadthSentence}</div>
     <div class="mread-cols">
       <div>
-        <div class="mread-h">Who's being bought (top) vs sold (bottom)${outlookHorizon !== 'daily' ? ` <span class="muted" style="font-weight:400">· ${outlookHorizon === 'weekly' ? '5-Day' : '20-Day'} outlook</span>` : ''}</div>
+        <div class="mread-h">Who's being bought (top) vs sold (bottom)</div>
         ${barsHtml}
         ${gs.length ? `<div class="mread-h" style="margin-top:10px">Growth surprise by currency <span class="muted" style="font-weight:400">(not official PMI)</span></div>${gsBarsHtml}` : ''}
       </div>
@@ -2281,6 +2283,67 @@ function renderMarketRead() {
       <span class="wk" style="margin-left:6px">Hottest</span>
       <span>${hotHtml || '—'}</span>
     </div>`)}`;
+}
+
+// ── Market Outlook panel — ALWAYS ON, both horizons side by side ────────────
+// Replaces the earlier design where the Daily/5-Day/20-Day pill tried to
+// switch Market Read/Market Tone between horizons — after three rounds of
+// "the pill changes nothing I can see", the simpler fix is to stop gating
+// the global read behind a toggle at all: 5-Day and 20-Day are just always
+// both visible here, permanently. Same underlying data as before
+// (outlookCurrencyStrength, pairOutlook — js/outlookEngine.js), reuses
+// Market Read's own bar visual (.csrow/.track/.barp/.barn) instead of the
+// small inline text chips the old sidebar version used, and a collapsible
+// section header (secChev/secBody) matching Market Read's own pattern.
+function outlookTallyHtml(rs, key) {
+  let bull = 0, bear = 0, neu = 0;
+  for (const r of rs) {
+    const o = pairOutlook(r, key);
+    if (!o?.bias) continue;
+    if (o.bias === 'BULLISH') bull++; else if (o.bias === 'BEARISH') bear++; else neu++;
+  }
+  return `<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+    <span class="chip bull">${bull} Bullish</span>
+    <span class="chip neu">${neu} Neutral</span>
+    <span class="chip bear">${bear} Bearish</span>
+  </div>`;
+}
+function outlookBarsHtml(rs, key) {
+  const cs = outlookCurrencyStrength(rs, key);
+  if (!cs.length) return '<div class="muted" style="font-size:11px">Not enough data for a read yet.</div>';
+  const maxAbs = Math.max(25, ...cs.map(c => Math.abs(c.score)));
+  return cs.map((c, i) => {
+    const pct = Math.min(50, 50 * Math.abs(c.score) / maxAbs);
+    const cls = i === 0 ? 'top' : i === cs.length - 1 ? 'bot' : '';
+    const bar = c.score >= 0
+      ? `<div class="barp" style="width:${pct}%"></div>`
+      : `<div class="barn" style="width:${pct}%"></div>`;
+    return `<div class="csrow ${cls}" title="${c.ccy}: net ${c.score >= 0 ? '+' : ''}${c.score.toFixed(0)} across ${c.pairs.join(', ')}">
+      <span class="ccy">${c.ccy}</span>
+      <span class="track"><span class="mid"></span>${bar}</span>
+      <span class="val">${c.score >= 0 ? '+' : ''}${c.score.toFixed(0)}</span></div>`;
+  }).join('');
+}
+function renderOutlookPanel() {
+  const el = $('outlookPanel');
+  if (!el) return;
+  if (!brief?.instruments || !window.outlookBrick) { el.style.display = 'none'; return; }
+  const rs = allRows();   // global synthesis, same scope as Market Read — ignores the FX/Indices/Gold filter
+  if (rs.length < 4) { el.style.display = 'none'; return; }
+  const col = (key, label) => `<div>
+    <div class="mread-h">${label} outlook</div>
+    ${outlookTallyHtml(rs, key)}
+    ${outlookBarsHtml(rs, key)}
+  </div>`;
+  el.style.display = 'block';
+  el.innerHTML = `
+    <div class="sec-hd-row"><span class="sec-title">🔭 Market Outlook — 5-Day &amp; 20-Day</span>${secChev('outlookPanel')}</div>
+    ${secBody('outlookPanel', `
+    <div class="mread-cols">
+      ${col('weekly', '5-Day')}
+      ${col('monthly', '20-Day')}
+    </div>
+    <div class="mread-precise" style="margin-top:10px">Context composite across this board's own signals (technical/COT/macro/carry, yield-spread z-score, DXY/risk/real-yield momentum, price trend) — not a validated forecast. Currency strength = average Outlook Engine bias across each currency's own pairs. Click any card below to see that one pair's own driver breakdown in its drawer's 🔭 Outlook section.</div>`)}`;
 }
 
 const CCY_NAMES = { USD: 'USD', EUR: 'EUR', GBP: 'GBP', JPY: 'JPY', CHF: 'CHF', AUD: 'AUD', CAD: 'CAD', NZD: 'NZD' };
@@ -2388,13 +2451,7 @@ function miniSparkline(points, { decimals = 2, suffix = '' } = {}) {
 
 function currencyDetail(ccy) {
   const rs = allRows();
-  // Horizon-aware so this drawer's headline number matches whatever the
-  // Market Read bar the user just clicked was actually showing — see
-  // currencyStrengthForHorizon's header. The per-pair "legs" breakdown below
-  // stays on today's technical pull (pairSignal) deliberately — additional
-  // daily context under a horizon-scaled headline, same layering the main
-  // Outlook drawer already uses.
-  const cs = currencyStrengthForHorizon(rs, outlookHorizon);
+  const cs = currencyStrength(rs);
   const row = cs.find(c => c.ccy === ccy);
 
   // 1) Technical — which pairs are actually pulling this currency, and how hard.
@@ -3470,7 +3527,11 @@ function sortRows(rs) {
     trend:     (a, b) => (b.trending - a.trending) || (b.d.regime?.trend_prob ?? 0) - (a.d.regime?.trend_prob ?? 0),
     name:      (a, b) => a.name.localeCompare(b.name),
   }[m];
-  return rs.sort(by);
+  // Favorites always sort first, ahead of whichever mode is selected above —
+  // each group (favorited / not) is still ordered by that same comparator,
+  // so starring a pair reorders it to the top of the board without changing
+  // how the rest of the board is sorted.
+  return rs.sort((a, b) => (favPairs.has(b.name) - favPairs.has(a.name)) || by(a, b));
 }
 
 // ── Header & summary ──────────────────────────────────────────────────────────
@@ -3957,6 +4018,7 @@ function cardHtml(r) {
   const dirCls = _dt?.direction === 'up' ? 'dir-up' : _dt?.direction === 'down' ? 'dir-dn' : '';
   return `<div class="pcard ${dirCls} ${(r.used ?? 0) >= 0.8 || d.news_flag ? 'hot' : ''} ${r.isProx ? 'prox' : ''}" onclick="openDrawer('${r.name}')">
     <div class="pc-top">
+      <span class="pc-fav ${favPairs.has(r.name) ? 'on' : ''}" onclick="toggleFav('${r.name}', event)" title="${favPairs.has(r.name) ? 'Remove from favorites' : 'Add to favorites — pins it to the top of the board'}">${favPairs.has(r.name) ? '★' : '☆'}</span>
       <span class="pc-name">${dispName(r.name)}</span>
       ${d.stale ? `<span class="chip warn" title="The live data fetch failed when this forecast was computed (e.g. an Oanda outage) — showing the last good forecast${d.carried_from ? `, from the ${d.carried_from} session` : ''}. It refreshes automatically once the data source recovers.">⟳ ${d.carried_from ?? 'carried'}</span>` : ''}
       <span class="pc-price">${d.current_price != null ? fmtN(d.current_price, d.dp) : ''}</span>
@@ -4248,8 +4310,8 @@ function renderSidebar() {
   if (!brief?.instruments) { el.innerHTML = ''; return; }
   const rs = allRows();
   if (rs.length < 4) { el.innerHTML = ''; return; }
-  const risk = equitiesRisk(rs, outlookHorizon);
-  const cs = currencyStrengthForHorizon(rs, outlookHorizon);
+  const risk = equitiesRisk(rs);
+  const cs = currencyStrength(rs);
   const strongest = cs[0], weakest = cs[cs.length - 1];
   const trending = rs.filter(r => r.trending);
   const hot = rs.slice().sort((a, b) => b.att - a.att).slice(0, 3);
@@ -4257,16 +4319,13 @@ function renderSidebar() {
   const rangeConsumed = rs.filter(r => (r.used ?? 0) >= 0.8).length;
   const hiVol = rs.filter(r => (r.d.vol_pct ?? 0) >= 80).length;
   const mood = riskLight();
-  // Wording only — the horizon word this card's own strongest/weakest takeaway
-  // uses, so it never says "today" while showing a 5-day/20-day-derived number.
-  const hzWord = outlookHorizon === 'weekly' ? 'over 5 days' : outlookHorizon === 'monthly' ? 'over 20 days' : 'today';
 
   // Key Takeaways — short, scannable version of the same reads Market Read
   // states in full sentences below. Each carries an icon+color matching the
   // kind of read it is (direction, attention, risk, data-health, timing).
   const takeaways = [];
   if (strongest && weakest && strongest.ccy !== weakest.ccy && (strongest.score - weakest.score) > 0.2) {
-    takeaways.push(['📈', 'bull', `<b>${ccyFull(strongest.ccy)}</b> strongest, <b>${ccyFull(weakest.ccy)}</b> weakest ${hzWord}.`]);
+    takeaways.push(['📈', 'bull', `<b>${ccyFull(strongest.ccy)}</b> strongest, <b>${ccyFull(weakest.ccy)}</b> weakest today.`]);
   }
   if (hot[0]) {
     const h = hot[0];
@@ -4278,7 +4337,7 @@ function renderSidebar() {
   if (nextEv) takeaways.push(['📅', 'blue', `Next high-impact release: ${nextEv}`]);
 
   el.innerHTML = `
-    <div class="side-card"><h3>Market Tone${outlookHorizon !== 'daily' ? ` <span class="muted" style="font-size:11px;font-weight:400">· ${outlookHorizon === 'weekly' ? '5-Day' : '20-Day'}</span>` : ''}</h3>${marketToneGaugeHtml(risk, cs, fred?.us10y, commodityDrivers?.wti, mood)}</div>
+    <div class="side-card"><h3>Market Tone</h3>${marketToneGaugeHtml(risk, cs, fred?.us10y, commodityDrivers?.wti, mood)}</div>
 
     ${driverBoardHtml()}
 
@@ -4310,36 +4369,6 @@ function renderSidebar() {
       <div class="volout-row"><span>σ cooling</span><b>${rs.filter(r => r.d.cone_5d != null && r.d.vol_pct != null && (r.d.cone_5d - r.d.vol_pct) <= -15).length} pairs</b></div>
     </div>
 
-    <div class="side-card"><h3>🔭 Market Outlook</h3>
-      ${(() => {
-        if (!window.outlookBrick) return '<div class="muted">Loading…</div>';
-        const tally = (key) => {
-          let bull = 0, bear = 0, neu = 0;
-          for (const r of rs) { const o = pairOutlook(r, key); if (!o?.bias) continue; if (o.bias === 'BULLISH') bull++; else if (o.bias === 'BEARISH') bear++; else neu++; }
-          return { bull, bear, neu };
-        };
-        const w = tally('weekly'), m = tally('monthly');
-        // The horizon-aware currency ranking — same aggregation shape as
-        // Market Tone's own currencyStrength(), just sourced from the
-        // Outlook Engine's biasScore per horizon instead of today's tape.
-        // This is the actual "global/currency-level" read the Daily/5-Day/
-        // 20-Day toggle was missing — flipping it used to change only the
-        // per-pair chip and the tally above; it now changes which currency
-        // reads strong/weak too.
-        const strengthRow = (key, label) => {
-          const cs = outlookCurrencyStrength(rs, key);
-          if (!cs.length) return '';
-          const chip = c => `<span class="help" title="${c.n} pair(s): ${c.pairs.join(', ')}" style="margin-right:8px;white-space:nowrap">${c.ccy} <b class="${c.score > 12 ? 'pos' : c.score < -12 ? 'neg' : ''}">${c.score >= 0 ? '+' : ''}${c.score.toFixed(0)}</b></span>`;
-          return `<div class="volout-row" style="flex-direction:column;align-items:flex-start;gap:2px"><span>${label} strength</span><div style="font-size:11px">${cs.map(chip).join('')}</div></div>`;
-        };
-        return `<div class="volout-row"><span>5-Day</span><b>${w.bull} bullish · ${w.neu} neutral · ${w.bear} bearish</b></div>
-          <div class="volout-row"><span>20-Day</span><b>${m.bull} bullish · ${m.neu} neutral · ${m.bear} bearish</b></div>
-          ${strengthRow('weekly', '5-Day')}
-          ${strengthRow('monthly', '20-Day')}
-          <div class="muted" style="font-size:10px;margin-top:4px">Context composite across this board's own signals — not a validated forecast. Currency strength = average outlook biasScore across each currency's own pairs (positive = base-favored). Use the 🔭 Outlook toggle above the header to overlay it on the cards.</div>`;
-      })()}
-    </div>
-
     <div class="side-card"><h3>Quick Links</h3>
       <div class="qtile-grid">
         <a class="qtile" href="macro-scorecard.html"><span class="qt-ic">📊</span><span class="qt-t">Macro Scorecard</span><span class="qt-s">Cross-engine ranking</span></a>
@@ -4355,6 +4384,7 @@ function renderSidebar() {
 function render() {
   renderStatRow();
   renderMarketRead();
+  renderOutlookPanel();
   renderSidebar();
   renderMacroMoved();
   renderGate();

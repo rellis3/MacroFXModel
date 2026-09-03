@@ -5809,3 +5809,49 @@ file, sanity re-run only). No live Railway path in this sandbox to click the
 toggle and watch the bars/gauge actually move — same standing caveat as every
 prior revision of this feature; this needs a live check to confirm the fix
 reads right, not just that it compiles.
+
+**v8 addendum (2026-09-03)** — owner: rather than fix the toggle further,
+stop gating the global read behind a toggle at all. "Do the always on, but
+make it prettier than a wall of text."
+
+**Reverted v7's global-surface wiring.** `equitiesRisk`, `renderMarketRead`,
+`renderSidebar`'s Market Tone card, and `currencyDetail` all go back to
+calling `currencyStrength(rs)`/`equitiesRisk(rs)` directly (no `horizonKey`
+param) — v7's rescale-and-swap wrapper served its purpose for one revision
+but is no longer needed with the toggle out of the picture for these
+surfaces, so `currencyStrengthForHorizon` (and the horizon-conditional
+wording it fed — "This week's/This month's strongest", the `· 5-Day outlook`
+header suffixes) was deleted rather than left as dead code.
+
+**New: `#outlookPanel`** — a permanent, always-visible section directly under
+Market Read (`renderOutlookPanel`, `outlookTallyHtml`, `outlookBarsHtml`),
+collapsible via the same `secChev`/`secBody` mechanism Market Read itself
+uses. Shows 5-Day AND 20-Day side by side, always, via a 2-column
+`.mread-cols` grid — each column: a bull/neutral/bearish tally as colored
+`.chip` pills (reused, not new CSS) and a per-currency strength ranking using
+Market Read's OWN bar visual (`.csrow`/`.track`/`.mid`/`.barp`/`.barn`) instead
+of the old sidebar card's cramped inline-chip list — same underlying data
+(`outlookCurrencyStrength`, `pairOutlook`), zero new CSS, just reused
+components instead of a bespoke look, directly answering "prettier than a
+wall of text." The old cramped sidebar "🔭 Market Outlook" card (inline
+chips, no bars) was deleted — this panel replaces it outright, not
+alongside it.
+
+**The Daily/5-Day/20-Day toggle's scope is now narrower and honest about it**:
+its only remaining job is the per-pair card's 🔭 chip, where a toggle
+genuinely earns its keep (space-constrained, one horizon at a time on a
+20+-card grid). Its help-text/comments were rewritten to say this plainly,
+instead of claiming to drive "the sidebar's Market Outlook summary" (a
+surface that no longer exists in the form that claim described).
+
+New/changed: `today.html` only — `renderOutlookPanel`/`outlookTallyHtml`/
+`outlookBarsHtml` (new), `currencyStrengthForHorizon` (removed), 4 call-site
+reverts, old sidebar Market Outlook card removed, `#outlookHzBar`'s
+title/comment rewritten, new `#outlookPanel` container inserted after
+`#mread`. No `js/outlookEngine.js` or `server.js` changes.
+
+Validated: `node --check` on every extracted `today.html` inline script;
+`node js/outlookEngine.test.mjs` — 50/50 still passing (unrelated file,
+sanity re-run only). No live Railway path in this sandbox to actually see the
+new panel's bars render or confirm the visual polish reads as intended —
+same standing caveat as every prior revision of this feature.
