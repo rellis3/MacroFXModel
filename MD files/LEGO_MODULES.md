@@ -5985,9 +5985,9 @@ into one pair's own drawer. Falls back to "no single factor dominates" when
 nothing clears the skew bar. New `OUTLOOK_NARRATIVE_LABEL` map (today.html's
 own copy of the same friendly-phrase table, since this file doesn't import
 outlookEngine.js's internal const — keep both in sync if a driver name
-changes). The bull/neutral/bear tally chips (`outlookTallyHtml`) are
-UNCHANGED — the owner's own read on those was neutral/positive, only the
-currency-strength narrative underneath was the complaint.
+changes). The bull/neutral/bear tally chips (`outlookTallyHtml`) were kept in
+this pass — the owner's own read on those was neutral/positive at the time —
+but see the v11 addendum below: removed shortly after.
 
 New/changed: `js/outlookEngine.js` (`teach` field on 8 drivers, `state` field
 on `volRegimeDriver`, `describeOutlookNarrative` rewritten, `NARRATIVE_LABEL`
@@ -6008,3 +6008,55 @@ was incorrectly passing the `skew>=0.5` filter as "dominant" before tightening
 it to strict `>0.5`). No live Railway path in this sandbox to read the actual
 generated prose against real market data or to eyeball the visual layout —
 same standing caveat as every prior revision of this feature.
+
+**v11 addendum (2026-09-03)** — owner, after seeing v10's board-wide panel
+live: "can we not list which are bullish/bearish?" — the `10 Bullish / 10
+Neutral / 9 Bearish` tally chips sitting above the new board-wide narrative
+were now read as redundant clutter once the prose itself already opens by
+naming the dominant theme; asked to drop them. Removed `outlookTallyHtml`
+entirely (its only caller) from `renderOutlookPanel`'s `col()` in
+`today.html` and deleted the now-dead function — each horizon column is just
+its `mread-h` label + `outlookBoardNarrative` prose now. No `js/outlookEngine.js`
+or `server.js` changes; the per-pair drawer's own bias badge (`BULLISH ·
+NN% confidence`) is untouched — that chip lives at the top of each drawer
+column, not in this global panel, and wasn't part of the complaint.
+
+Validated: `node --check` on every extracted `today.html` inline script;
+grepped for any other `outlookTallyHtml` caller before deleting (none) and
+for any leftover "Bullish"/"Bearish" panel reference (only the unrelated
+`currencyDetail` sign-reading helper matched, not this panel). No live
+Railway path in this sandbox to see the panel render without the chips.
+
+**v12 addendum (2026-09-03)** — v11 misread the owner's ask: "can we not
+list which are bullish/bearish?" meant "can we [go ahead and] list which
+[pairs] are bullish/bearish" (an ADD, not a remove) — confirmed directly:
+"I asked for all bullish and bearish pairs to be listed in the 5day and
+20day sections so it makes sense." v11's chip removal stands (that part was
+still correct — counts alone were the complaint), but the panel needed an
+actual per-pair list added back, not just prose.
+
+**New `outlookBiasListHtml(rs, key)`** (`today.html`) — lists every pair's
+name under a "Bullish (N):"/"Bearish (N):" header per horizon (neutral
+pairs excluded — not asked for), sorted by conviction (`|biasScore|`
+descending within each side) so the most-convicted pair leads, each name
+clickable straight into that pair's own drawer via `openDrawer(name)` — same
+interaction as Market Read's own "Hottest" line (`hotHtml`). Its CSS reuses
+that line's visual language (dotted-underline clickable text) but inlined
+rather than via the `.pl` class, since `.pl`'s rules are scoped to specific
+parent selectors (`.mread-verdict .pl`, `.mread-watch .pl`, `.qstrip .pl`)
+this panel isn't inside — adding a fourth scoped rule for one panel would've
+been more surface than inlining the two properties directly. Wired into
+`renderOutlookPanel`'s `col()` between the label and `outlookBoardNarrative`,
+so each horizon column now reads: label → who's bullish/bearish by name →
+the board-wide theme prose.
+
+New/changed: `today.html` only (`outlookBiasListHtml` added, `col()`
+updated). No `js/outlookEngine.js` or `server.js` changes — reuses
+`pairOutlook`'s already-computed `bias`/`biasScore` per row, no new data.
+
+Validated: `node --check` on every extracted `today.html` inline script;
+confirmed `openDrawer(name)`/`dispName(n)` signatures match the exact call
+shape `hotHtml` already uses. No live Railway path in this sandbox to see
+the list render or confirm it doesn't get too long/wide on a board where
+most pairs share a bias (e.g. a strong-dollar day putting 15+ names under
+one header) — worth a live look once deployed.

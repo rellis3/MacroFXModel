@@ -2260,19 +2260,6 @@ function renderMarketRead() {
 // (secChev/secBody) matching Market Read's own pattern, and board-wide
 // education-style prose (outlookBoardNarrative below) instead of a bar chart
 // or a single-currency pointer into one pair's own drawer.
-function outlookTallyHtml(rs, key) {
-  let bull = 0, bear = 0, neu = 0;
-  for (const r of rs) {
-    const o = pairOutlook(r, key);
-    if (!o?.bias) continue;
-    if (o.bias === 'BULLISH') bull++; else if (o.bias === 'BEARISH') bear++; else neu++;
-  }
-  return `<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
-    <span class="chip bull">${bull} Bullish</span>
-    <span class="chip neu">${neu} Neutral</span>
-    <span class="chip bear">${bear} Bearish</span>
-  </div>`;
-}
 // Friendlier mid-sentence phrase for a driver name — same small map as
 // js/outlookEngine.js's own NARRATIVE_LABEL (kept local here since this file
 // never imports that internal const; both must be read together if a driver
@@ -2346,6 +2333,32 @@ function outlookBoardNarrative(rs, key) {
   if (!sentences.length) sentences.push(`No single factor dominates across the board right now — the ${nRead} pairs with a read are splitting on different reasons of their own, not one shared theme.`);
   return `<div style="font-size:12.5px;line-height:1.65;color:var(--text2)">${sentences.join(' ')}</div>`;
 }
+// Lists which pairs are actually bullish/bearish at this horizon, by name —
+// the old tally chips only showed counts ("10 Bullish"), which doesn't make
+// sense on its own without knowing WHICH pairs those are. Neutral pairs are
+// left out (not asked for — the point was to see the two directional
+// groups), sorted by conviction (|biasScore| descending) so the most
+// convicted pair leads each list, each name clickable straight into that
+// pair's own drawer (same interaction/inline style as Market Read's own
+// "Hottest" line — .pl's CSS is scoped to specific parent selectors this
+// panel isn't inside, so the pointer/underline is inlined here instead of
+// relying on that class).
+function outlookBiasListHtml(rs, key) {
+  const bull = [], bear = [];
+  for (const r of rs) {
+    const o = pairOutlook(r, key);
+    if (!o?.bias) continue;
+    if (o.bias === 'BULLISH') bull.push({ r, score: o.biasScore ?? 0 });
+    else if (o.bias === 'BEARISH') bear.push({ r, score: o.biasScore ?? 0 });
+  }
+  bull.sort((a, b) => b.score - a.score);
+  bear.sort((a, b) => a.score - b.score);
+  const pill = (x) => `<span style="cursor:pointer;border-bottom:1px dotted var(--text3)" onclick="openDrawer('${x.r.name}')">${dispName(x.r.name)}</span>`;
+  const row = (label, colorVar, arr) => arr.length
+    ? `<div style="margin:0 0 6px"><b style="color:var(${colorVar})">${label} (${arr.length}):</b> <span style="font-size:12px">${arr.map(pill).join(', ')}</span></div>`
+    : '';
+  return `<div style="font-size:12.5px;line-height:1.6;margin-bottom:8px">${row('Bullish', '--bull', bull)}${row('Bearish', '--bear', bear)}</div>`;
+}
 function renderOutlookPanel() {
   const el = $('outlookPanel');
   if (!el) return;
@@ -2354,7 +2367,7 @@ function renderOutlookPanel() {
   if (rs.length < 4) { el.style.display = 'none'; return; }
   const col = (key, label) => `<div>
     <div class="mread-h">${label} outlook</div>
-    ${outlookTallyHtml(rs, key)}
+    ${outlookBiasListHtml(rs, key)}
     ${outlookBoardNarrative(rs, key)}
   </div>`;
   el.style.display = 'block';
