@@ -245,6 +245,13 @@
 </div>
 
 <div class="card">
+  <h2>Monte Carlo — randomised trade order <span class="muted" style="font-weight:400;text-transform:none;letter-spacing:0" id="mcRunsLabel"></span></h2>
+  <div class="muted" style="margin-bottom:10px">Same trades, same days — just reshuffled into a different chronological order — replayed <span id="mcRunsLabel2"></span> times to build a corridor of possible equity curves. This is path-dependent risk: total return is invariant to order (it's the same sum either way), but drawdown and how bumpy the ride feels are NOT — a bad stretch landing early vs. spread out changes what you'd have actually lived through. The bold line is what actually happened; the bands are what COULD have happened with the exact same edge, just different luck in the ordering.</div>
+  <canvas id="mcFanChart" style="height:340px"></canvas>
+  <div class="kpi-grid" id="mcKpi" style="margin-top:12px"></div>
+</div>
+
+<div class="card">
   <h2>Per-pair breakdown — where the diversification is coming from</h2>
   <table>
     <thead><tr>
@@ -323,7 +330,8 @@
 <script type="module">
 import { summarizeTrades, sortinoRatio, calmar as calmarRatio } from './js/metricsCore.js';
 import { createLevelChart } from './js/levelChart.js';
-import { portfolioStats } from './js/backtestStats.js';
+import { portfolioStats, backtestStats, shuffle } from './js/backtestStats.js';
+import { mulberry32 } from './js/statsCore.js';
 // The "26 multitasking portfolio" universe (same list scripts/run_asia_fib_atlas.mjs
 // already established), MINUS 5 pairs removed for real, cost-driven (not a
 // bug — verified against each pair's own spread) near-zero Sharpe-after-cost:
@@ -412,6 +420,7 @@ function syncSizingUI() {
 syncSizingUI();
 
 let eqChart = null;
+let mcFanChart = null;
 let lastTrades = [];
 let lastResponse = null;
 
@@ -566,6 +575,108 @@ function renderOutlierSensitivity() {
     + '</tbody></table>';
 }
 
+// ── Monte Carlo — reshuffle the SAME daily returns into a different
+// chronological order, replay each as a compounded equity path, and band
+// the result at every percentile — visualizes path-dependent risk (same
+// edge, same trades, different luck in the ORDER they arrived). Total
+// return is order-invariant (same sum) but drawdown and how the ride feels
+// are not, which is exactly what this corridor shows next to the real path.
+// Reuses `shuffle` (Fisher-Yates, exported from js/backtestStats.js — the
+// same primitive portfolioStats' own opt-in `mc:true` mode uses internally,
+// just extended here to keep the full PATH per run instead of only a
+// scalar drawdown-percentile summary) with a fixed seed so results are
+// reproducible across reloads of the SAME data, not fresh noise every time.
+const MC_RUNS = 300;
+function runOrderShuffleFan(dailyReturns, runs = MC_RUNS) {
+  const rng = mulberry32(0x9e3779b9);
+  const n = dailyReturns.length;
+  const paths = new Array(runs);
+  for (let r = 0; r < runs; r++) {
+    const shuffled = shuffle(dailyReturns, rng);
+    let eq = 1;
+    const path = new Array(n);
+    for (let i = 0; i < n; i++) { eq *= (1 + shuffled[i] / 100); path[i] = +((eq - 1) * 100).toFixed(3); }
+    paths[r] = path;
+  }
+  const q = (sorted, p) => {
+    const pos = p * (sorted.length - 1), lo = Math.floor(pos), frac = pos - lo;
+    return lo + 1 < sorted.length ? sorted[lo] + frac * (sorted[lo + 1] - sorted[lo]) : sorted[lo];
+  };
+  const bands = { p5: new Array(n), p25: new Array(n), p50: new Array(n), p75: new Array(n), p95: new Array(n) };
+  for (let i = 0; i < n; i++) {
+    const vals = paths.map(p => p[i]).sort((a, b) => a - b);
+    bands.p5[i] = +q(vals, 0.05).toFixed(2);
+    bands.p25[i] = +q(vals, 0.25).toFixed(2);
+    bands.p50[i] = +q(vals, 0.50).toFixed(2);
+    bands.p75[i] = +q(vals, 0.75).toFixed(2);
+    bands.p95[i] = +q(vals, 0.95).toFixed(2);
+  }
+  return bands;
+}
+
+function renderMonteCarlo(j) {
+  document.getElementById('mcRunsLabel').textContent = `(${MC_RUNS} reshuffles)`;
+  document.getElementById('mcRunsLabel2').textContent = MC_RUNS;
+  const dailyReturns = (j.equityCurve || []).map(p => p.dailyReturn);
+  const labels = (j.equityCurve || []).map(p => p.date);
+  if (mcFanChart) { mcFanChart.destroy(); mcFanChart = null; }
+  if (dailyReturns.length < 5) { document.getElementById('mcKpi').innerHTML = ''; return; }
+
+  const bands = runOrderShuffleFan(dailyReturns);
+  let eq = 1;
+  const actual = dailyReturns.map(r => { eq *= (1 + r / 100); return +((eq - 1) * 100).toFixed(2); });
+
+  // Same log-scale toggle the equity chart above uses, and for the same
+  // reason: a strongly compounding strategy's total return can reach
+  // thousands of percent, which crushes a linear axis flat for most of its
+  // length. `index = pctGain + 100` (100 = starting capital) is a strictly
+  // positive transform of the same % bands, so a log axis works on it —
+  // log(0) / log(negative) doesn't, which is why the linear view keeps the
+  // more intuitive "% gain" framing instead.
+  const logMode = logScaleChk.checked;
+  const toIndex = arr => arr.map(v => v + 100);
+  const plotBands = logMode
+    ? { p5: toIndex(bands.p5), p25: toIndex(bands.p25), p50: toIndex(bands.p50), p75: toIndex(bands.p75), p95: toIndex(bands.p95) }
+    : bands;
+  const plotActual = logMode ? toIndex(actual) : actual;
+
+  mcFanChart = new Chart(document.getElementById('mcFanChart'), {
+    type: 'line',
+    data: { labels, datasets: [
+      { label: '5th–95th pctile', data: plotBands.p95, borderColor: 'transparent', backgroundColor: 'rgba(96,165,250,.10)', fill: 1, pointRadius: 0, tension: .1 },
+      { label: '_p5', data: plotBands.p5, borderColor: 'transparent', backgroundColor: 'transparent', fill: false, pointRadius: 0, tension: .1 },
+      { label: '25th–75th pctile', data: plotBands.p75, borderColor: 'transparent', backgroundColor: 'rgba(96,165,250,.22)', fill: 3, pointRadius: 0, tension: .1 },
+      { label: '_p25', data: plotBands.p25, borderColor: 'transparent', backgroundColor: 'transparent', fill: false, pointRadius: 0, tension: .1 },
+      { label: 'Median reshuffled path', data: plotBands.p50, borderColor: '#94a3b8', borderDash: [3, 3], borderWidth: 1.2, pointRadius: 0, tension: .1, fill: false },
+      { label: 'What actually happened', data: plotActual, borderColor: '#5b9dff', borderWidth: 2, pointRadius: 0, tension: .1, fill: false },
+    ] },
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: true, labels: { color: '#94a3b8', boxWidth: 12, font: { size: 11 },
+        filter: item => !item.text.startsWith('_') } } },
+      scales: {
+        x: { ticks: { color: '#5a6380', maxTicksLimit: 10 }, grid: { display: false } },
+        y: { type: logMode ? 'logarithmic' : 'linear', ticks: { color: '#5a6380', callback: v => logMode ? Number(v).toLocaleString() : (v + '%') }, grid: { color: '#1e2436' },
+          title: { display: true, text: logMode ? 'Equity index (100 = start)' : '% gain', color: '#5a6380', font: { size: 10 } } },
+      } },
+  });
+
+  // Scalar summary alongside the chart — reuses backtestStats' own bootstrap
+  // (resample WITH replacement — sample uncertainty, "how sure are we given
+  // only this many trades") and montecarlo (shuffle order — the SAME thing
+  // the fan chart draws, collapsed to just the drawdown percentiles) fields
+  // directly rather than recomputing either. Per-TRADE basis (pnlPct×weight),
+  // matching the outlier-sensitivity card above.
+  const pnls = lastTrades.map(t => t.pnlPct * (t.weight ?? 1));
+  const dates = lastTrades.map(t => t.date);
+  const bs = backtestStats(pnls, dates);
+  document.getElementById('mcKpi').innerHTML = [
+    kpiCard('P(profitable)', fmt1(bs.bootstrap.pPositive * 100) + '%', bs.bootstrap.pPositive >= 0.95 ? 'green' : bs.bootstrap.pPositive >= 0.8 ? 'blue' : 'red', 'resampled with replacement — sample-size uncertainty'),
+    kpiCard('Total Return (5th–95th)', `${fmt1(bs.bootstrap.total.p5)}% – ${fmt1(bs.bootstrap.total.p95)}%`, '', `median ${fmt1(bs.bootstrap.total.p50)}%`),
+    kpiCard('Sharpe (5th–95th)', `${fmt2(bs.bootstrap.sharpe.p5)} – ${fmt2(bs.bootstrap.sharpe.p95)}`, '', `median ${fmt2(bs.bootstrap.sharpe.p50)}`),
+    kpiCard('Reshuffled Max DD (p50/p95/p99)', `${fmt1(bs.montecarlo.maxDD.p50)}% / ${fmt1(bs.montecarlo.maxDD.p95)}% / ${fmt1(bs.montecarlo.maxDD.p99)}%`, 'red', `vs ${fmt1(bs.maxDD)}% actually realised`),
+  ].join('');
+}
+
 function syncTlPairOptions() {
   const pairs = [...new Set(lastTrades.map(t => t.pair).filter(Boolean))].sort();
   const key = pairs.join(',');
@@ -661,6 +772,7 @@ function render(j) {
   selectedTrade = null;
   renderTradeTable(filteredTrades());
   renderOutlierSensitivity();
+  renderMonteCarlo(j);
   const s = j.stats;
   document.getElementById('naiveSharpe').textContent = fmt2(j.naiveAvgSharpe);
   document.getElementById('combinedSharpe').textContent = fmt2(s.sharpe);
