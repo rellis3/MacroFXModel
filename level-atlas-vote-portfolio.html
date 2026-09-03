@@ -260,6 +260,14 @@
 </div>
 
 <div class="card">
+  <h2>Capacity — cost-sensitivity test</h2>
+  <div class="muted" style="margin-bottom:10px">Proxy for "how much size/crowding can this absorb": re-prices every trade at a multiple of today's real per-pair transaction cost (bigger size and more competition for the same fades both show up as effectively higher realised cost) and finds where the edge dies. This does NOT give a clean £ capital figure — that needs a real assumption about how size maps to slippage, which there's no order-book data to calibrate — but it tells you the right order of magnitude and, more usefully, exactly which pairs run out of room first.</div>
+  <canvas id="capacityChart" style="height:280px"></canvas>
+  <div class="kpi-grid" id="capacityKpi" style="margin-top:12px;margin-bottom:12px"></div>
+  <div id="capacityTable" style="overflow-x:auto"></div>
+</div>
+
+<div class="card">
   <h2>Per-pair breakdown — where the diversification is coming from</h2>
   <table>
     <thead><tr>
@@ -431,6 +439,7 @@ syncSizingUI();
 let eqChart = null;
 let mcFanChart = null;
 let evtChart = null;
+let capacityChart = null;
 let lastTrades = [];
 let lastResponse = null;
 
@@ -770,6 +779,94 @@ function renderEvtTail(j) {
     + '</tbody></table>';
 }
 
+// ── Capacity — cost-sensitivity test ────────────────────────────────────────
+// Proxy for strategy capacity: every trade's pnlPct already has that pair's
+// FIXED roundtrip cost baked in at build time (priceBarrierTrade: pnlPct =
+// gross - cost, server-side js/levelAtlasVoteReview.js), so re-netting at a
+// higher multiplier is exact, not an approximation: pnlPct - cost*(mult-1).
+// `cost` comes straight from the server's own perPair[sym].cost (added
+// specifically for this) rather than re-deriving costForPair/assetClassFor
+// client-side, which would need js/forecastAnalyserStore.js's Node-only
+// (fs/R2) import chain that can't run in a browser.
+const CAPACITY_MULTS = [1, 1.5, 2, 3, 4, 5, 7, 10, 15, 20, 30, 50];
+function capacityDailySeriesAt(tradeList, mult, costByPair) {
+  const m = new Map();
+  for (const t of tradeList) {
+    const cost = costByPair[t.pair];
+    if (cost == null) continue;
+    const pnl = (t.pnlPct - cost * (mult - 1)) * (t.weight ?? 1);
+    m.set(t.date, (m.get(t.date) || 0) + pnl);
+  }
+  return [...m.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([, v]) => v);
+}
+// Linear-interpolated multiplier where Sharpe first crosses zero going down
+// the mult ladder; null if it never crosses within CAPACITY_MULTS' range.
+function capacityZeroCrossing(rows) {
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i - 1].sharpe > 0 && rows[i].sharpe <= 0) {
+      const a = rows[i - 1], b = rows[i];
+      const frac = a.sharpe / (a.sharpe - b.sharpe);
+      return a.mult + frac * (b.mult - a.mult);
+    }
+  }
+  return rows[rows.length - 1].sharpe > 0 ? null : rows[0].mult;
+}
+function computeCapacityTest(j) {
+  const trades = j.trades ?? [];
+  const costByPair = {};
+  for (const [sym, p] of Object.entries(j.perPair ?? {})) if (p.cost != null) costByPair[sym] = p.cost;
+  if (!trades.length || !Object.keys(costByPair).length) return null;
+  const portfolioRows = CAPACITY_MULTS.map(mult => {
+    const s = portfolioStats(capacityDailySeriesAt(trades, mult, costByPair), { mc: false });
+    return { mult, sharpe: s.sharpe, cagr: s.cagr, maxDD: s.maxDD };
+  });
+  const byPair = {};
+  for (const t of trades) (byPair[t.pair] ??= []).push(t);
+  const perPairResults = Object.entries(byPair)
+    .filter(([, ts]) => ts.length >= 30 && costByPair[ts[0].pair] != null)
+    .map(([pair, ts]) => {
+      const rows = CAPACITY_MULTS.map(mult => ({ mult, sharpe: portfolioStats(capacityDailySeriesAt(ts, mult, costByPair), { mc: false }).sharpe }));
+      return { pair, n: ts.length, cost: costByPair[pair], baseSharpe: rows[0].sharpe, crossing: capacityZeroCrossing(rows) };
+    })
+    .sort((a, b) => (a.crossing ?? 999) - (b.crossing ?? 999));
+  return { portfolioRows, portfolioCrossing: capacityZeroCrossing(portfolioRows), perPairResults };
+}
+
+function renderCapacity(j) {
+  const chartEl = document.getElementById('capacityChart');
+  const kpiEl = document.getElementById('capacityKpi');
+  const tableEl = document.getElementById('capacityTable');
+  if (capacityChart) { capacityChart.destroy(); capacityChart = null; }
+  const cap = computeCapacityTest(j);
+  if (!cap) { kpiEl.innerHTML = ''; tableEl.innerHTML = '<div class="muted">no cost data on these trades</div>'; return; }
+
+  capacityChart = new Chart(chartEl, {
+    type: 'line',
+    data: { labels: cap.portfolioRows.map(r => r.mult + 'x'), datasets: [
+      { label: 'Portfolio Sharpe', data: cap.portfolioRows.map(r => r.sharpe), borderColor: '#5b9dff', backgroundColor: 'rgba(91,157,255,.08)', fill: true, tension: .2, pointRadius: 2 },
+    ] },
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { title: { display: true, text: 'Cost multiplier (1x = today)', color: '#5a6380', font: { size: 10 } }, ticks: { color: '#5a6380' }, grid: { display: false } },
+        y: { title: { display: true, text: 'Sharpe', color: '#5a6380', font: { size: 10 } }, ticks: { color: '#5a6380' }, grid: { color: '#1e2436' } },
+      } },
+  });
+
+  const frag = cap.perPairResults.slice(0, 3);
+  const robust = cap.perPairResults.slice(-3).reverse();
+  kpiEl.innerHTML = [
+    kpiCard('Portfolio dies at', cap.portfolioCrossing != null ? fmt2(cap.portfolioCrossing) + 'x' : `>${CAPACITY_MULTS.at(-1)}x`, cap.portfolioCrossing == null || cap.portfolioCrossing >= 5 ? 'green' : cap.portfolioCrossing >= 2 ? 'blue' : 'red', "today's transaction cost"),
+    kpiCard('Most fragile', frag[0] ? `${frag[0].pair} (${fmt1(frag[0].crossing)}x)` : '—', 'red', frag[1] ? `then ${frag[1].pair} (${fmt1(frag[1].crossing)}x)` : ''),
+    kpiCard('Most robust', robust[0] ? `${robust[0].pair} (${robust[0].crossing != null ? fmt1(robust[0].crossing) + 'x' : '>' + CAPACITY_MULTS.at(-1) + 'x'})` : '—', 'green', ''),
+  ].join('');
+
+  tableEl.innerHTML = `<table><thead><tr><th>Pair</th><th class="num">Cost %</th><th class="num">Base Sharpe</th><th class="num">Dies at</th></tr></thead><tbody>`
+    + cap.perPairResults.map(r => `<tr><td style="color:${PAIR_COLORS[r.pair] ?? '#cbd5e1'}">${r.pair}</td><td class="num">${fmt2(r.cost)}%</td>`
+      + `<td class="num">${fmt2(r.baseSharpe)}</td><td class="num ${r.crossing != null && r.crossing < 3 ? 'red' : ''}">${r.crossing != null ? fmt1(r.crossing) + 'x' : '>' + CAPACITY_MULTS.at(-1) + 'x'}</td></tr>`).join('')
+    + '</tbody></table>';
+}
+
 function syncTlPairOptions() {
   const pairs = [...new Set(lastTrades.map(t => t.pair).filter(Boolean))].sort();
   const key = pairs.join(',');
@@ -867,6 +964,7 @@ function render(j) {
   renderOutlierSensitivity();
   renderMonteCarlo(j);
   renderEvtTail(j);
+  renderCapacity(j);
   const s = j.stats;
   document.getElementById('naiveSharpe').textContent = fmt2(j.naiveAvgSharpe);
   document.getElementById('combinedSharpe').textContent = fmt2(s.sharpe);
@@ -1313,6 +1411,7 @@ function buildPerformanceSummary(j) {
   const bs = trades.length ? backtestStats(pnls, trades.map(t => t.date)) : null;
   const evt = dailyReturns.length >= 30 ? fitTailModel(dailyReturns) : { ok: false };
   const evt995 = evt.ok ? evt.probes.find(p => p.p === 0.995) : null;
+  const cap = computeCapacityTest(j);
 
   return {
     dateFrom: eq[0]?.date, dateTo: eq[eq.length - 1]?.date,
@@ -1329,6 +1428,9 @@ function buildPerformanceSummary(j) {
     evtShape: evt.ok ? evt.shape : null,
     evtCeiling: evt.ok && evt.shape < -1e-6 ? evt.threshold + evt.scale / Math.abs(evt.shape) : null,
     evtVar995: evt995 ? evt995.varLossPct : null, evtCvar995: evt995 ? evt995.cvarLossPct : null,
+    capacityCrossing: cap?.portfolioCrossing ?? null,
+    capacityFragile: cap?.perPairResults?.slice(0, 3) ?? [],
+    capacityRobust: cap?.perPairResults?.slice(-3).reverse() ?? [],
   };
 }
 function perfRow(label, value) {
@@ -1388,7 +1490,12 @@ function renderPerformanceSummary() {
       perfRow('EVT Tail Shape (ξ)', r.evtShape != null ? fmt2(r.evtShape) + (r.evtShape < -0.05 ? ' (bounded)' : r.evtShape > 0.05 ? ' (fat)' : '') : '—'),
       perfRow('EVT Implied Ceiling (1 day)', r.evtCeiling != null ? fmt1(r.evtCeiling) + '%' : '— (unbounded fit)'),
       perfRow('EVT VaR 99.5% / CVaR 99.5%', r.evtVar995 != null ? `${fmt2(r.evtVar995)}% / ${r.evtCvar995 != null ? fmt2(r.evtCvar995) + '%' : '—'}` : '—'),
-    ].join(''), 'excess kurtosis: normal = 0, not 3. Top-10/reshuffle/EVT numbers are the same bricks as the standing cards on this page (Outlier sensitivity, Monte Carlo, Extreme tail fit) — see those for the full charts and per-confidence-level detail.');
+    ].join(''), 'excess kurtosis: normal = 0, not 3. Top-10/reshuffle/EVT numbers are the same bricks as the standing cards on this page (Outlier sensitivity, Monte Carlo, Extreme tail fit) — see those for the full charts and per-confidence-level detail.') +
+    perfSection('CAPACITY', [
+      perfRow('Portfolio Dies At (cost multiplier)', r.capacityCrossing != null ? fmt2(r.capacityCrossing) + 'x' : '>50x'),
+      ...r.capacityFragile.map((p, i) => perfRow(`Most Fragile #${i + 1}`, `${p.pair} — dies at ${p.crossing != null ? fmt1(p.crossing) + 'x' : '>50x'} (Sharpe now ${fmt2(p.baseSharpe)})`)),
+      ...r.capacityRobust.map((p, i) => perfRow(`Most Robust #${i + 1}`, `${p.pair} — dies at ${p.crossing != null ? fmt1(p.crossing) + 'x' : '>50x'} (Sharpe now ${fmt2(p.baseSharpe)})`)),
+    ].join(''), 'proxy for how much size/crowding the edge can absorb — reprices every trade at a multiple of its real per-pair transaction cost and finds where Sharpe crosses zero. NOT a £ capital figure (that needs an untested size-to-slippage assumption); the multiplier ranking of which pairs run out of room first is the honest, useful part. See the Capacity card for the full per-pair table.');
 }
 document.getElementById('perfSummaryBtn').addEventListener('click', () => {
   renderPerformanceSummary();
