@@ -252,6 +252,14 @@
 </div>
 
 <div class="card">
+  <h2>Extreme tail fit — Peaks-Over-Threshold (Generalized Pareto)</h2>
+  <div class="muted" style="margin-bottom:10px" id="evtExplainer"></div>
+  <canvas id="evtChart" style="height:320px"></canvas>
+  <div class="kpi-grid" id="evtKpi" style="margin-top:12px"></div>
+  <div id="evtCompare" style="overflow-x:auto;margin-top:12px"></div>
+</div>
+
+<div class="card">
   <h2>Per-pair breakdown — where the diversification is coming from</h2>
   <table>
     <thead><tr>
@@ -328,10 +336,11 @@
 </div>
 
 <script type="module">
-import { summarizeTrades, sortinoRatio, calmar as calmarRatio } from './js/metricsCore.js';
+import { summarizeTrades, sortinoRatio, calmar as calmarRatio, histVaR } from './js/metricsCore.js';
 import { createLevelChart } from './js/levelChart.js';
 import { portfolioStats, backtestStats, shuffle } from './js/backtestStats.js';
 import { mulberry32 } from './js/statsCore.js';
+import { fitTailModel } from './js/evtTail.js';
 // The "26 multitasking portfolio" universe (same list scripts/run_asia_fib_atlas.mjs
 // already established), MINUS 5 pairs removed for real, cost-driven (not a
 // bug — verified against each pair's own spread) near-zero Sharpe-after-cost:
@@ -421,6 +430,7 @@ syncSizingUI();
 
 let eqChart = null;
 let mcFanChart = null;
+let evtChart = null;
 let lastTrades = [];
 let lastResponse = null;
 
@@ -677,6 +687,89 @@ function renderMonteCarlo(j) {
   ].join('');
 }
 
+// ── Extreme tail fit — Peaks-Over-Threshold / Generalized Pareto (js/evtTail.js).
+// Answers a genuinely different question than the empirical VaR/CVaR cards
+// above: how bad could a day be BEYOND anything actually observed. Fit on
+// the daily-return series (same basis as Skew/Excess Kurtosis and the
+// Monte Carlo fan above), threshold at the 90th loss percentile.
+function renderEvtTail(j) {
+  const explainerEl = document.getElementById('evtExplainer');
+  const kpiEl = document.getElementById('evtKpi');
+  const compareEl = document.getElementById('evtCompare');
+  const dailyReturns = (j.equityCurve || []).map(p => p.dailyReturn);
+  const model = fitTailModel(dailyReturns);
+  if (evtChart) { evtChart.destroy(); evtChart = null; }
+
+  if (!model.ok) {
+    explainerEl.textContent = `Tail fit unavailable: ${model.reason}.`;
+    kpiEl.innerHTML = ''; compareEl.innerHTML = '';
+    return;
+  }
+  const tailType = model.shape > 0.05 ? 'a fat, unbounded tail — extreme losses genuinely more likely than the bulk of the data suggests'
+    : model.shape < -0.05 ? 'a bounded tail — the fit implies a hard ceiling on how bad a single day can get'
+    : 'a roughly exponential tail — moderate, no strong evidence either way';
+  const ceiling = model.shape < -1e-6 ? model.threshold + model.scale / Math.abs(model.shape) : null;
+  explainerEl.innerHTML = `Fit on the worst ${fmt1(model.freq * 100)}% of days (${model.nExceed} of ${model.n}, above a ${fmt2(model.threshold)}% loss threshold). `
+    + `Shape ξ = ${fmt2(model.shape)} → <b>${tailType}</b>.`
+    + (ceiling != null ? ` The fit's own implied ceiling: no single day should exceed roughly <b>${fmt1(ceiling)}%</b>.` : '')
+    + ` Dots = actual days; the line is the fitted model, extrapolated a bit past your worst day so far.`;
+
+  kpiEl.innerHTML = [
+    kpiCard('Shape (ξ)', fmt2(model.shape), model.shape < -0.05 ? 'green' : model.shape > 0.05 ? 'red' : '', model.shape < -0.05 ? 'bounded tail' : model.shape > 0.05 ? 'fat tail' : 'exponential-ish'),
+    kpiCard('Scale (β)', fmt2(model.scale), '', 'GPD scale, loss % units'),
+    kpiCard('Threshold', fmt2(model.threshold) + '%', '', `90th pctile of daily loss`),
+    kpiCard('Exceedances', `${model.nExceed} / ${model.n}`, '', 'days used to fit the tail'),
+    ...(ceiling != null ? [kpiCard('Implied ceiling', fmt1(ceiling) + '%', 'amber', "the fit's own worst-case claim")] : []),
+  ].join('');
+
+  // Log-probability axis is the standard way to look at a tail fit — the
+  // survival probabilities span ~2 orders of magnitude (roughly 10% down to
+  // 0.1%), which a linear axis would flatten into an unreadable hook.
+  // gpdSurvival can return an exact 0 beyond a bounded (shape<0) tail's own
+  // ceiling — filtered out here (log(0) is undefined), not in evtTail.js,
+  // since this is a presentation-layer constraint, not a math one.
+  const fittedPts = model.fittedCurve.filter(pt => pt.survival > 0);
+  evtChart = new Chart(document.getElementById('evtChart'), {
+    // Base type 'scatter' (not 'line') — both datasets use {x,y} object
+    // pairs rather than a shared `labels` array, which is what a scatter
+    // base expects; a bare 'line' base needs per-dataset type overrides to
+    // render the empirical points as unconnected dots instead of a jagged
+    // connected line through every observed exceedance.
+    type: 'scatter',
+    data: {
+      datasets: [
+        { type: 'scatter', label: 'Actual days (empirical)', data: model.empiricalPoints.map(p => ({ x: p.lossPct, y: p.survival })),
+          backgroundColor: '#5b9dff', pointRadius: 2.5, pointHoverRadius: 4 },
+        { type: 'line', label: 'Fitted GPD tail', data: fittedPts.map(p => ({ x: p.lossPct, y: p.survival })),
+          borderColor: '#f87171', backgroundColor: 'transparent', borderWidth: 1.5, pointRadius: 0, tension: 0 },
+      ],
+    },
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: true, labels: { color: '#94a3b8', boxWidth: 12, font: { size: 11 } } } },
+      scales: {
+        x: { type: 'linear', title: { display: true, text: 'Daily loss %', color: '#5a6380', font: { size: 10 } }, ticks: { color: '#5a6380', callback: v => v + '%' }, grid: { color: '#1e2436' } },
+        y: { type: 'logarithmic', title: { display: true, text: 'P(loss ≥ x) — log scale', color: '#5a6380', font: { size: 10 } }, ticks: { color: '#5a6380' }, grid: { color: '#1e2436' } },
+      } },
+  });
+
+  // Empirical VaR (a plain historical quantile) is computable at ANY
+  // confidence level from the raw sample — always shown, so every row is a
+  // real fit-vs-reality check. `pr.empirical` (from evtTail.js) instead
+  // describes whether the FITTED number needed the GPD at all: below the
+  // threshold's own crossing rate (~90th pctile of loss here) evtTail.js
+  // already falls back to a plain quantile internally, so fitted ≈ empirical
+  // by construction there — the label column is what tells you which is
+  // which, not the numbers being shown or hidden.
+  compareEl.innerHTML = `<table><thead><tr><th>Confidence</th><th class="num">Empirical VaR</th><th class="num">Fitted VaR</th><th class="num">Fitted CVaR</th><th></th></tr></thead><tbody>`
+    + model.probes.map(pr => {
+      const empVar = -histVaR(dailyReturns, pr.p); // histVaR returns signed (negative); flip to a positive loss%
+      return `<tr><td>${(pr.p * 100).toFixed(1)}%</td><td class="num">${fmt2(empVar)}%</td>`
+        + `<td class="num">${fmt2(pr.varLossPct)}%</td><td class="num">${pr.cvarLossPct != null ? fmt2(pr.cvarLossPct) + '%' : '—'}</td>`
+        + `<td class="muted" style="font-size:10px">${pr.empirical ? 'within sample (fitted ≈ empirical by construction)' : 'extrapolated beyond your worst day'}</td></tr>`;
+    }).join('')
+    + '</tbody></table>';
+}
+
 function syncTlPairOptions() {
   const pairs = [...new Set(lastTrades.map(t => t.pair).filter(Boolean))].sort();
   const key = pairs.join(',');
@@ -773,6 +866,7 @@ function render(j) {
   renderTradeTable(filteredTrades());
   renderOutlierSensitivity();
   renderMonteCarlo(j);
+  renderEvtTail(j);
   const s = j.stats;
   document.getElementById('naiveSharpe').textContent = fmt2(j.naiveAvgSharpe);
   document.getElementById('combinedSharpe').textContent = fmt2(s.sharpe);
