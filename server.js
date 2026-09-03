@@ -14477,6 +14477,81 @@ if (process.env.FIB_ATLAS_PLAN_REFRESH !== '0') {
   console.log('[fib-atlas-bot] plan refresh disabled (FIB_ATLAS_PLAN_REFRESH=0)');
 }
 
+// GET /api/fib-atlas-bot/rung-diagnostic — read-only aggregation over
+// fib_atlas_bot_decision_log (owner-flagged paper-trading review, 2026-09-03:
+// a 42% win rate over 60 trades vs the ~78-85% backtested baseline, with
+// EURGBP alone ~1/3 of all trades and every one of them a BUY). The decision
+// log has one 'entered'/'skipped'/'rejected'/'pair_blocked' event per
+// (pair, ladder, side, rung) touch already (fib_atlas_bot.py's
+// _record_decision), so this never re-derives anything — it just groups the
+// EXISTING events to answer the one question the raw log doesn't answer at a
+// glance: on a day one pair fired repeatedly, was that the SAME rung
+// re-arming (expected — the validated rearmFrac=0.3 rule legitimately
+// re-fires a level after a big enough pullback-and-return) or DIFFERENT
+// rungs stacking same-direction (NOT validated — fib_atlas_bot.py's
+// max_concurrent_per_pair cap is a flat count with no per-direction split,
+// see the same review). Returns a compact summary, not the raw log — "there
+// are hundreds" of events, so this is built to be pasted, not the dump.
+app.get('/api/fib-atlas-bot/rung-diagnostic', async (req, res) => {
+  try {
+    const raw = await kv.get('fib_atlas_bot_decision_log').catch(() => null);
+    if (!raw) return res.json({ ok: true, totalEvents: 0, byStatus: {}, byPair: [], clusters: [] });
+    const log = JSON.parse(raw).data ?? JSON.parse(raw);
+    const events = Array.isArray(log?.events) ? log.events : [];
+    const pairFilter = req.query.pair ? String(req.query.pair).toLowerCase() : null;
+
+    const byStatus = {};
+    const byPair = new Map();   // pair -> { entered, skipped, rejected, pair_blocked }
+    for (const e of events) {
+      byStatus[e.status] = (byStatus[e.status] || 0) + 1;
+      if (!e.pair || e.pair === '*') continue;
+      if (pairFilter && e.pair.toLowerCase() !== pairFilter) continue;
+      const row = byPair.get(e.pair) ?? { pair: e.pair, entered: 0, skipped: 0, rejected: 0, pair_blocked: 0 };
+      row[e.status] = (row[e.status] || 0) + 1;
+      byPair.set(e.pair, row);
+    }
+
+    // Cluster ONLY 'entered' events by (pair, ladder, UTC calendar day) — the
+    // exact grouping the EURGBP screenshot showed by eye. distinctRungs
+    // (dedupeTag) is the whole diagnostic: 1 == the same rung re-arming
+    // repeatedly (expected behavior, per rearmFrac); >1 == different rungs
+    // firing same-direction, the un-validated concurrency gap.
+    const groups = new Map();
+    for (const e of events) {
+      if (e.status !== 'entered' || !e.pair || !e.t) continue;
+      if (pairFilter && e.pair.toLowerCase() !== pairFilter) continue;
+      const day = new Date(e.t * 1000).toISOString().slice(0, 10);
+      const key = `${e.pair}|${e.ladder}|${day}`;
+      const g = groups.get(key) ?? { pair: e.pair, ladder: e.ladder, day, entries: [] };
+      g.entries.push(e);
+      groups.set(key, g);
+    }
+    const clusters = [...groups.values()]
+      .filter(g => g.entries.length >= 2)
+      .map(g => {
+        const sorted = g.entries.slice().sort((a, b) => a.t - b.t);
+        const rungs = [...new Set(sorted.map(e => e.dedupeTag))];
+        const sides = [...new Set(sorted.map(e => e.side))];
+        const gapsMin = sorted.slice(1).map((e, i) => +((e.t - sorted[i].t) / 60).toFixed(1));
+        return {
+          pair: g.pair, ladder: g.ladder, day: g.day, count: sorted.length,
+          distinctRungs: rungs.length, rungs, distinctSides: sides.length, sides,
+          firstT: sorted[0].t, lastT: sorted[sorted.length - 1].t, gapsMin,
+        };
+      })
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 100);
+
+    res.json({
+      ok: true, totalEvents: events.length, byStatus,
+      byPair: [...byPair.values()].sort((a, b) => b.entered - a.entered),
+      clusters,
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // Trade-history rollup — structural copy of `_oiAccumulateTradeLog` above.
 async function _volatilityV2AccumulateTradeLog() {
   try {
