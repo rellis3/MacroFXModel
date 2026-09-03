@@ -1,6 +1,6 @@
 // Synthetic tests for outlookEngine.js. No network.
 //   node js/outlookEngine.test.mjs
-import { computeOutlook, computeOutlookAllHorizons, HORIZONS, CCY_RISK_LEAN, pairRiskLean, describeCbTrend, describeOutlookNarrative } from './outlookEngine.js';
+import { computeOutlook, computeOutlookAllHorizons, HORIZONS, CCY_RISK_LEAN, pairRiskLean, describeCbTrend, describeOutlookNarrative, describeOutlookNarrativeParts } from './outlookEngine.js';
 
 let failures = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) failures++; };
@@ -404,6 +404,44 @@ console.log('[describeOutlookNarrative — per-driver hedge is not repeated; the
   const n = describeOutlookNarrative(r);
   ok('"not a tested signal" is never repeated per-driver', !/not a tested signal/i.test(n), n);
   ok('the single closing disclaimer still states the CONTEXT-not-validated posture', /not a tested forecast/i.test(n), n);
+}
+
+console.log('[describeOutlookNarrativeParts — no read yet -> headline-only fallback, no crash]');
+{
+  const r = computeOutlook({}, 'weekly');
+  const p = describeOutlookNarrativeParts(r);
+  ok('headline states no data', /not enough data/i.test(p.headline), p.headline);
+  ok('up/down are null, no drivers', p.up === null && p.down === null && p.upDrivers.length === 0 && p.downDrivers.length === 0);
+  ok('volCombo/eventRisk/disclaimer are null', p.volCombo === null && p.eventRisk === null && p.disclaimer === null);
+}
+
+console.log('[describeOutlookNarrativeParts — exposes raw driver arrays for bullet rendering, not just joined strings]');
+{
+  const r = computeOutlook({
+    composite: { score: 0.6, agree: 3, total: 4 },
+    yieldSpread: { z: 2.4, inverted: false },
+    cot: { dir: 'long', bias: 0.5, level: 'ELEVATED', derived: false },
+  }, 'weekly');
+  const p = describeOutlookNarrativeParts(r);
+  ok('upDrivers is an array of the 3 agreeing drivers', Array.isArray(p.upDrivers) && p.upDrivers.length === 3, p.upDrivers.length);
+  ok('each upDriver carries its own teach text', p.upDrivers.every(d => typeof (d.teach ?? d.detail) === 'string'));
+  ok('downDrivers is empty (nothing disagrees)', p.downDrivers.length === 0);
+  ok('up (joined string) still matches upDrivers joined the same way', p.up === p.upDrivers.map(d => d.teach ?? d.detail).join(' '));
+}
+
+console.log('[describeOutlookNarrativeParts + describeOutlookNarrative agree — the string version is exactly the parts joined]');
+{
+  const scenarios = [
+    { composite: { score: 0.6, agree: 3, total: 4 }, yieldSpread: { z: 2.4, inverted: false }, volRegime: { volPct: 50, cone5d: 80 }, events: [{ ms: Date.now() + 2 * 24 * 3600e3, impact: 'high' }] },
+    { composite: { score: 0.6, agree: 3, total: 4 }, yieldSpread: { z: -2.4, inverted: false } },
+    {},
+  ];
+  for (const inputs of scenarios) {
+    const r = computeOutlook(inputs, 'weekly');
+    const p = describeOutlookNarrativeParts(r);
+    const rebuilt = [p.headline, p.up && `Pointing up: ${p.up}`, p.down && `Pointing down: ${p.down}`, p.volCombo, p.eventRisk, p.disclaimer].filter(Boolean).join(' ');
+    ok('describeOutlookNarrative(o) === parts rebuilt by hand', describeOutlookNarrative(r) === rebuilt, describeOutlookNarrative(r));
+  }
 }
 
 if (failures) { console.error(`\n${failures} FAILURE(S)`); process.exit(1); }

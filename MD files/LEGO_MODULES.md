@@ -6060,3 +6060,56 @@ shape `hotHtml` already uses. No live Railway path in this sandbox to see
 the list render or confirm it doesn't get too long/wide on a board where
 most pairs share a bias (e.g. a strong-dollar day putting 15+ names under
 one header) — worth a live look once deployed.
+
+**v13 addendum (2026-09-03)** — owner, looking at the per-pair drawer's
+🔭 Outlook section live (screenshot of the Gold drawer): "can we make the
+per pair info easier to read make images icon something? bullets maybe?
+not sure." The narrative prose itself (v9-v10's `teach`-based writing) was
+fine content-wise, but `describeOutlookNarrative` only ever returns ONE
+joined string, so the drawer rendered it as a single dense paragraph per
+horizon — several drivers' `teach` sentences run together with no visual
+break, exactly the "wall of text" problem flagged repeatedly across this
+feature's whole history, just resurfaced one layer down (global panel fixed
+in earlier rounds, per-pair drawer not yet).
+
+**New `describeOutlookNarrativeParts(o)`** (`js/outlookEngine.js`) — same
+computation, same wording, but returns the narrative as separate labelled
+fields instead of one blob: `{ headline, up, down, upDrivers, downDrivers,
+volDriver, volCombo, eventRisk, disclaimer }`. `upDrivers`/`downDrivers` are
+the RAW driver objects (not pre-joined strings) so a renderer can lay each
+one out as its own bullet. `describeOutlookNarrative` is now a thin wrapper
+that joins these same fields with spaces — byte-identical output to before,
+confirmed by re-running all 65 pre-existing tests unchanged plus a new
+round-trip test that rebuilds the string by hand from the parts and checks
+it matches `describeOutlookNarrative(o)` exactly, across 3 scenarios
+(full-featured, conflicting legs, no-data). +8 test assertions (76 total
+— see the 4 new blocks after "per-driver hedge is not repeated").
+
+**Per-pair drawer** (`renderDrawerOutlook`'s `col()`, `today.html`) —
+rewritten to use `describeOutlookNarrativeParts` and lay the sections out
+as icon-labelled blocks instead of one paragraph: a new `sec(icon, label,
+color, bodyHtml)` helper renders a small caps header (▲ POINTING UP / ▼
+POINTING DOWN / ⚡ VOLATILITY / 📅 EVENT RISK) above each section's body,
+skipping the block entirely if that section has no content; a new
+`bulletList(drivers)` helper turns `upDrivers`/`downDrivers` into a real
+`<ul><li>` list — one bullet per driver's own `teach` text — instead of
+merging them into one run-on sentence. The closing disclaimer gets its own
+small ℹ️-prefixed footer block, separated by a dashed rule, same as before
+just visually set apart. No new claims or data — same `teach`/`detail` text
+as always, only the HTML structure around it changed.
+
+New/changed: `js/outlookEngine.js` (`describeOutlookNarrativeParts` added,
+`describeOutlookNarrative` now a thin wrapper around it), `js/outlookEngine.test.mjs`
+(+8 assertions, 76 total), `today.html` (`renderDrawerOutlook`'s `col()`
+rewritten with `sec()`/`bulletList()` helpers). No `server.js` changes.
+
+Validated: `node --check` on `js/outlookEngine.js` and every extracted
+`today.html` inline script; `node js/outlookEngine.test.mjs` — 76/76 passing.
+Hand-rendered `describeOutlookNarrativeParts`' output through a throwaway
+copy of the new `sec()`/`bulletList()` HTML logic in a scratch script and
+grepped for stray `undefined` and confirmed exactly 3 `<li>` tags for a
+3-driver bullish case — no crash, no leaked placeholders, empty sections
+correctly emit nothing. No live Railway path in this sandbox to see the
+actual rendered layout/spacing in a real browser — same standing caveat as
+every prior revision of this feature; the visual result (are the icons/
+bullets actually easier to scan, is the spacing right) needs a live look.
