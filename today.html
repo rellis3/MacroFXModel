@@ -2308,21 +2308,48 @@ function outlookTallyHtml(rs, key) {
     <span class="chip bear">${bear} Bearish</span>
   </div>`;
 }
-function outlookBarsHtml(rs, key) {
+// Which ONE pair is actually driving a currency's aggregate outlook score,
+// and that pair's own single strongest driver — so the currency-level read
+// comes with a reason attached, not just a number. `wantPositive` picks the
+// pair pulling this currency up vs down (the two standout currencies get
+// called with opposite values, see outlookGlobalNarrative below).
+function outlookTopDriverFor(rs, ccy, key, wantPositive) {
+  let best = null, bestAbs = -1;
+  for (const r of rs) {
+    const cc = PAIR_CCY[r.name];
+    if (!cc || !cc.includes(ccy)) continue;
+    const o = pairOutlook(r, key);
+    if (o?.biasScore == null) continue;
+    const ccySig = cc[0] === ccy ? o.biasScore : -o.biasScore;   // reoriented to this currency's own direction
+    if (wantPositive ? ccySig <= 0 : ccySig >= 0) continue;
+    if (Math.abs(ccySig) > bestAbs) { bestAbs = Math.abs(ccySig); best = { r, o }; }
+  }
+  if (!best) return null;
+  const directional = best.o.drivers.filter(d => d.name !== 'volRegime' && d.score !== 0);
+  if (!directional.length) return null;
+  directional.sort((a, b) => Math.abs(b.score) - Math.abs(a.score));
+  return { pair: dispName(best.r.name), driver: directional[0] };
+}
+// Education-style prose for the global (currency-level) read — names the
+// standout currencies and explains WHY using their own single biggest-moving
+// pair and that pair's top driver (reusing driver.detail text verbatim, same
+// "no new claims, just connected prose" discipline as describeOutlookNarrative
+// in js/outlookEngine.js). Replaces an earlier version of this panel that
+// just showed a bar chart of scores with no explanation attached — the
+// owner's own read on that: "is that chart actually useful? I would say not."
+function outlookGlobalNarrative(rs, key) {
   const cs = outlookCurrencyStrength(rs, key);
-  if (!cs.length) return '<div class="muted" style="font-size:11px">Not enough data for a read yet.</div>';
-  const maxAbs = Math.max(25, ...cs.map(c => Math.abs(c.score)));
-  return cs.map((c, i) => {
-    const pct = Math.min(50, 50 * Math.abs(c.score) / maxAbs);
-    const cls = i === 0 ? 'top' : i === cs.length - 1 ? 'bot' : '';
-    const bar = c.score >= 0
-      ? `<div class="barp" style="width:${pct}%"></div>`
-      : `<div class="barn" style="width:${pct}%"></div>`;
-    return `<div class="csrow ${cls}" title="${c.ccy}: net ${c.score >= 0 ? '+' : ''}${c.score.toFixed(0)} across ${c.pairs.join(', ')}">
-      <span class="ccy">${c.ccy}</span>
-      <span class="track"><span class="mid"></span>${bar}</span>
-      <span class="val">${c.score >= 0 ? '+' : ''}${c.score.toFixed(0)}</span></div>`;
-  }).join('');
+  if (cs.length < 2) return '<div class="muted" style="font-size:11px">Not enough data for a read yet.</div>';
+  const top = cs[0], bot = cs[cs.length - 1];
+  const say = (c, wantPositive) => {
+    const label = `${ccyFull(c.ccy)} (${c.score >= 0 ? '+' : ''}${c.score.toFixed(0)}, across ${c.n} pair${c.n === 1 ? '' : 's'})`;
+    const info = outlookTopDriverFor(rs, c.ccy, key, wantPositive);
+    return info ? `${label} — mainly from ${info.pair}: ${info.driver.detail}` : label;
+  };
+  return `<div style="font-size:12.5px;line-height:1.65;color:var(--text2)">
+    <div style="margin-bottom:6px"><b style="color:var(--bull)">Strongest:</b> ${say(top, true)}</div>
+    <div><b style="color:var(--bear)">Weakest:</b> ${say(bot, false)}</div>
+  </div>`;
 }
 function renderOutlookPanel() {
   const el = $('outlookPanel');
@@ -2333,7 +2360,7 @@ function renderOutlookPanel() {
   const col = (key, label) => `<div>
     <div class="mread-h">${label} outlook</div>
     ${outlookTallyHtml(rs, key)}
-    ${outlookBarsHtml(rs, key)}
+    ${outlookGlobalNarrative(rs, key)}
   </div>`;
   el.style.display = 'block';
   el.innerHTML = `
@@ -2343,7 +2370,7 @@ function renderOutlookPanel() {
       ${col('weekly', '5-Day')}
       ${col('monthly', '20-Day')}
     </div>
-    <div class="mread-precise" style="margin-top:10px">Context composite across this board's own signals (technical/COT/macro/carry, yield-spread z-score, DXY/risk/real-yield momentum, price trend) — not a validated forecast. Currency strength = average Outlook Engine bias across each currency's own pairs. Click any card below to see that one pair's own driver breakdown in its drawer's 🔭 Outlook section.</div>`)}`;
+    <div class="mread-precise" style="margin-top:10px">Context composite across this board's own signals (technical/COT/macro/carry, yield-spread z-score, DXY/risk/real-yield momentum, price trend) — not a validated forecast. Currency strength = average Outlook Engine bias across each currency's own pairs. Click any card below to see that one pair's own driver breakdown, written out in full, in its drawer's 🔭 Outlook section.</div>`)}`;
 }
 
 const CCY_NAMES = { USD: 'USD', EUR: 'EUR', GBP: 'GBP', JPY: 'JPY', CHF: 'CHF', AUD: 'AUD', CAD: 'CAD', NZD: 'NZD' };
@@ -3316,24 +3343,23 @@ function pairOutlookBoth(r) {
 // each leg's VALIDATED/CONTEXT status badge (never averaged into one number
 // without saying which pieces are which — same discipline every other
 // drawer section on this page already follows).
+// Education-style prose (js/outlookEngine.js's describeOutlookNarrative)
+// instead of a tagged bullet list of drivers — same underlying numbers, same
+// CONTEXT-not-validated posture, written as a connected paragraph that
+// explains WHY each factor matters rather than just stating that it exists.
 function renderDrawerOutlook(r) {
   const el = $('drOutlook');
   if (!el) return;
   const both = pairOutlookBoth(r);
   if (!both) { $('drOutlookSec').style.display = 'none'; return; }
-  const statusCls = s => s === 'VALIDATED' ? 'bull' : s === 'UNCALIBRATED' ? 'warn' : 'neu';
   const col = (o) => {
-    if (!o?.bias) return `<div style="flex:1;min-width:220px"><h4 style="margin:0 0 6px">${o?.horizonLabel ?? ''}</h4><div class="muted">Not enough data for a read.</div></div>`;
+    if (!o?.bias) return `<div style="flex:1;min-width:260px"><h4 style="margin:0 0 6px">${o?.horizonLabel ?? ''}</h4><div class="muted">Not enough data for a read.</div></div>`;
     const cls = o.bias === 'BULLISH' ? 'bull' : o.bias === 'BEARISH' ? 'bear' : 'neu';
-    const drivers = o.drivers.map(d => `<div style="margin:6px 0"><span class="chip ${statusCls(d.status)}" style="font-size:9px">${d.status}</span> <b>${d.label}</b><div class="muted" style="font-size:11px;margin-top:2px">${d.detail}</div></div>`).join('');
-    const evTxt = o.eventRisk.count
-      ? `${o.eventRisk.count} scheduled event(s) inside this window${o.eventRisk.highCount ? ` (${o.eventRisk.highCount} high-impact)` : ''}.`
-      : 'No scheduled events inside this window.';
-    return `<div style="flex:1;min-width:220px">
+    const narrative = window.outlookBrick ? window.outlookBrick.describeOutlookNarrative(o) : '';
+    return `<div style="flex:1;min-width:260px">
       <h4 style="margin:0 0 6px">${o.horizonLabel}</h4>
       <span class="chip ${cls}" style="font-size:13px;padding:5px 10px">${o.bias} · ${o.confidence}% confidence</span>
-      <div class="muted" style="margin:6px 0;font-size:11px">${o.agree}/${o.total} directional signals agree · ${evTxt}</div>
-      ${drivers || '<div class="muted">No drivers available.</div>'}
+      <div style="margin-top:8px;font-size:12.5px;line-height:1.55;color:var(--text2)">${narrative}</div>
     </div>`;
   };
   // Central-bank tone — deliberately rendered OUTSIDE the scored-driver
@@ -3346,8 +3372,7 @@ function renderDrawerOutlook(r) {
       ${cbRows.map(c => `<div class="muted" style="font-size:11px;margin:3px 0"><b>${c.bank}</b> (${c.ccy}): ${c.detail}</div>`).join('')}
     </div>` : '';
   el.innerHTML = `<div style="display:flex;gap:18px;flex-wrap:wrap">${col(both.weekly)}${col(both.monthly)}</div>
-    ${cbHtml}
-    <div class="muted" style="margin-top:10px;font-size:11px">${both.weekly?.disclaimer ?? both.monthly?.disclaimer ?? ''}</div>`;
+    ${cbHtml}`;
 }
 // Card-face chip — only shown once the 5-Day/20-Day horizon toggle is active
 // (Daily is this page's own existing per-pair reads; the toggle is how the
