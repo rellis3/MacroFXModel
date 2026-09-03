@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bootstrapping the Yield Curve — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Bootstrapping the Yield Curve — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivation, forward-rate proof, and a 5-question self-test?<a href="yield-curve-construction.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Fixed Income 3 · Fixed Income Mathematics</div>
+      <h1 class="sl-h1">Bootstrapping the Yield Curve, <em>One Rate at a Time</em></h1>
+      <p class="sl-lede">A single bond's yield to maturity looks like "the" interest rate for that bond's maturity — but it's actually a blend across every one of its cash flows, and it's the wrong rate to use on anyone else's cash flow. Bootstrapping is the sequential technique that untangles a handful of bond prices into a genuine per-maturity zero curve: the true, single-cash-flow rate that every serious discounting, hedging, and swap-pricing operation is actually built on.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">One yield, applied to every cash flow — that's the hidden assumption</h2>
+      <p class="sl-sub">A 3-year bond pays three cash flows, at three different future dates. Ordinary YTM pricing discounts all three at the exact same rate.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The assumption ordinary YTM makes</div>
+        <div class="sl-row">
+          <div class="sl-box">CF at t=1</div><div class="sl-arrow">discounted at</div><div class="sl-box amber">y</div>
+        </div>
+        <div class="sl-row">
+          <div class="sl-box">CF at t=2</div><div class="sl-arrow">discounted at</div><div class="sl-box amber">y (same rate)</div>
+        </div>
+        <div class="sl-row">
+          <div class="sl-box">CF at t=3 + Face</div><div class="sl-arrow">discounted at</div><div class="sl-box amber">y (same rate)</div>
+        </div>
+        <div class="sl-verdict">Convenient for pricing <strong>one bond in isolation</strong> — but the market doesn't actually charge the same "rent on money" for one year as it does for three.</div>
+      </div>
+      <p class="sl-p">What should really be happening is each cash flow discounted at the rate that actually applies to <em>its own</em> maturity — a genuinely different number at each date:</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>What's actually true underneath</div>
+        <div class="sl-row">
+          <div class="sl-box">CF at t=1</div><div class="sl-arrow">discounted at</div><div class="sl-box green">z₁</div>
+        </div>
+        <div class="sl-row">
+          <div class="sl-box">CF at t=2</div><div class="sl-arrow">discounted at</div><div class="sl-box green">z₂ (different)</div>
+        </div>
+        <div class="sl-row">
+          <div class="sl-box">CF at t=3 + Face</div><div class="sl-arrow">discounted at</div><div class="sl-box green">z₃ (different)</div>
+        </div>
+        <div class="sl-note">z₁, z₂, z₃ are <strong>zero rates</strong> — the subject of this whole lesson. Bootstrapping is how you recover them when all you ever observe are whole-bond prices.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Same maturity, different coupon, different YTM</h2>
+      <p class="sl-sub">Here's the concrete proof that a bond's YTM can't be "the" 5-year rate: two 5-year bonds, same underlying zero curve, different YTMs.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Bond A — 6% coupon</span>
+          <p>Pays back more of its value <em>early</em>, via large coupons. Its YTM is weighted more toward short-maturity zero rates — the very same "duration" idea from the bond-math lessons before this one.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Bond B — 2% coupon</span>
+          <p>Pays back most of its value only at maturity, via the face amount. Its YTM leans more heavily on the long-maturity zero rate — pulling its blended number away from Bond A's.</p>
+        </div>
+      </div>
+      <div class="sl-quote">Both bonds mature in exactly 5 years. Both are priced off the <strong>same</strong> true zero curve. And yet they will not, in general, share the same YTM — because YTM is a cash-flow-weighted blend, and the two bonds weight their cash flows differently. Neither number is "the" 5-year rate. Only a zero rate can claim that.</div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">The practical mistake this causes</div>
+        <p>Using one bond's YTM to discount an unrelated cash flow of the same maturity — say, a liability payment due in 5 years — silently mismatches what the number represents with what it's being used for. The error grows with how different the discounting bond's coupon is from the cash flow actually being valued.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Three rates, constantly confused with each other</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">⬡</div><div><h4>Par rate</h4><p>The coupon that makes a bond of a given maturity price exactly at face value — equivalently, that bond's YTM. A real, quotable rate, but a <em>blend</em> across every cash flow it pays.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">●</div><div><h4>Spot (zero) rate</h4><p>The discount rate for <strong>one single cash flow at one single maturity</strong> — the rate on a hypothetical zero-coupon bond of that exact date. This is the only "true" per-maturity rate.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">→</div><div><h4>Forward rate</h4><p>The rate, locked in <em>today</em>, for lending or borrowing between two future dates. Derived entirely from today's zero curve via no-arbitrage — it doesn't require waiting for the future date to know it.</p></div></div>
+      </div>
+      <p class="sl-p">Only the spot rate answers "what is the correct discount rate for a cash flow landing at time t" — and it's exactly the quantity bootstrapping exists to recover, one maturity at a time, from the par rates the market actually quotes.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">The bootstrapping algorithm, in three moves</h2>
+      <p class="sl-sub">Recovering z₁, z₂, z₃, … from a set of observed bond prices — strictly shortest maturity to longest.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">1</div><div><h4>Start with the shortest instrument</h4><p>A 1-year bond has exactly one cash flow left. One unknown, one equation — solve z₁ directly, the same way ordinary YTM works with n = 1.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">2</div><div><h4>Move to the next-shortest</h4><p>A 2-year bond's year-1 coupon gets discounted at the now-known z₁, leaving exactly one new unknown — z₂ — in its price equation. Solve it.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">3</div><div><h4>Repeat outward, one maturity at a time</h4><p>Every earlier cash flow always uses an already-solved shorter zero rate. The only new unknown at each step is that maturity's own zero rate — never more than one.</p></div></div>
+      </div>
+      <div class="sl-quote">One equation, one unknown, at <strong>every</strong> stage — that's what keeps each individual solve as simple as a single bond's YTM problem, even though the curve being built up is genuinely multi-point.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Watch it solve — a 3-bond worked example</h2>
+      <p class="sl-sub">Three par bonds (price = face = 100, annual coupons): 1yr at 3.00%, 2yr at 3.50%, 3yr at 4.00%. Step through the solve.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="boot-tabs">
+          <button class="sl-tab active" data-panel="boot-1">Step 1 — solve z₁</button>
+          <button class="sl-tab" data-panel="boot-2">Step 2 — solve z₂</button>
+          <button class="sl-tab" data-panel="boot-3">Step 3 — solve z₃</button>
+        </div>
+        <div class="sl-panel active" id="boot-1">
+          <div class="sl-row"><div class="sl-box">100</div><div class="sl-arrow">=</div><div class="sl-box">103 ÷ (1+z₁)</div></div>
+          <div class="sl-verdict">One cash flow ($3 coupon + $100 face at year 1), one unknown. <strong>z₁ = 103/100 − 1 = 3.00%.</strong> No bootstrapping needed yet — this is ordinary single-cash-flow YTM solving.</div>
+        </div>
+        <div class="sl-panel" id="boot-2">
+          <div class="sl-row"><div class="sl-box amber">100 − 3.50/1.03 = 96.60</div><div class="sl-arrow">=</div><div class="sl-box amber">103.50 ÷ (1+z₂)²</div></div>
+          <div class="sl-verdict">The year-1 coupon ($3.50) is stripped out at the already-known <strong>z₁ = 3.00%</strong>, leaving $96.60 of price to be explained by the year-2 cash flow alone. Solving: <strong>z₂ = √(103.50/96.60) − 1 ≈ 3.51%.</strong></div>
+        </div>
+        <div class="sl-panel" id="boot-3">
+          <div class="sl-row"><div class="sl-box green">100 − 4/1.03 − 4/1.0351² = 92.38</div><div class="sl-arrow">=</div><div class="sl-box green">104 ÷ (1+z₃)³</div></div>
+          <div class="sl-verdict">Both the year-1 and year-2 coupons are stripped out using <strong>z₁ = 3.00%</strong> and <strong>z₂ ≈ 3.51%</strong> — both already known. That leaves one unknown: <strong>z₃ = (104/92.38)^(1/3) − 1 ≈ 4.03%.</strong></div>
+        </div>
+        <div class="sl-note">Notice z₂ (3.51%) and z₃ (4.03%) both sit slightly <em>above</em> their bond's own coupon/par yield (3.50% / 4.00%) — direct numerical proof that a par yield and a zero rate are two different numbers, even for the same bond.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">The curve, built up point by point</h2>
+      <p class="sl-sub">Drag the slider to replay the bootstrap — each step adds exactly one new solved point to the curve.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Zero curve chart that reveals one solved point at a time as a slider moves from step 1 to step 3">
+            <line x1="60" y1="210" x2="600" y2="210" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="60" y1="20" x2="60" y2="210" style="stroke:var(--border2);stroke-width:1"/>
+            <text x="330" y="238" text-anchor="middle" style="fill:var(--text3);font-size:11px">Maturity (years)</text>
+            <text x="187" y="224" text-anchor="middle" style="fill:var(--text3);font-size:10px">1</text>
+            <text x="335" y="224" text-anchor="middle" style="fill:var(--text3);font-size:10px">2</text>
+            <text x="483" y="224" text-anchor="middle" style="fill:var(--text3);font-size:10px">3</text>
+            <text x="50" y="214" text-anchor="end" style="fill:var(--text3);font-size:10px">0%</text>
+            <text x="50" y="30" text-anchor="end" style="fill:var(--text3);font-size:10px">6%</text>
+            <path id="curve-path" style="fill:none;stroke:var(--blue);stroke-width:2.5" d=""/>
+            <circle id="curve-dot1" cx="187" cy="134.1" r="5" style="fill:var(--blue)"/>
+            <circle id="curve-dot2" cx="335" cy="115.6" r="5" style="fill:var(--blue);opacity:0"/>
+            <circle id="curve-dot3" cx="483" cy="96.6" r="5" style="fill:var(--blue);opacity:0"/>
+            <text id="curve-label1" x="187" y="118" text-anchor="middle" style="fill:var(--blue);font-size:10px">z₁ = 3.00%</text>
+            <text id="curve-label2" x="335" y="99" text-anchor="middle" style="fill:var(--blue);font-size:10px;opacity:0">z₂ ≈ 3.51%</text>
+            <text id="curve-label3" x="483" y="80" text-anchor="middle" style="fill:var(--blue);font-size:10px;opacity:0">z₃ ≈ 4.03%</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Bootstrap step</span><span class="sl-live" id="curve-mval">Step 1 of 3</span></div>
+        <input type="range" class="sl-slider" id="curve-slider" min="1" max="3" step="1" value="1">
+        <div class="sl-verdict" id="curve-verdict" style="margin-top:12px">Only the 1-year bond has been used so far. z₁ = 3.00% is on the curve; nothing else is known yet.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Why it's called "bootstrapping"</h2>
+      <div class="sl-quote">The name comes from the old idiom "pull yourself up by your own bootstraps" — achieving something using only resources you already have, with no outside help. Each step of this algorithm does exactly that: it solves a new zero rate using <strong>nothing but</strong> that maturity's own market price and the zero rates the algorithm <em>already solved for itself</em> at earlier steps.</div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">⛓</div><div><h4>Every step leans on every earlier step</h4><p>z₃'s solve needs z₁ and z₂. z₂'s solve needs z₁. Nothing after step 1 can be computed in isolation — the curve builds itself, one rate lifting the next.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">↛</div><div><h4>The order can't be shuffled</h4><p>Try solving z₃ before z₂ and there are two unknowns in one equation — unsolvable. Shortest-to-longest isn't a convention here, it's a mathematical requirement.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>Errors travel the same chain</h4><p>A stale or illiquid price at the short end doesn't just distort the short end — it corrupts every zero rate solved after it, since each later step trusts every earlier one.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Forward rates fall straight out of the zero curve</h2>
+      <p class="sl-sub">Once z₁ and z₂ are both known, a "1-year rate starting in 1 year" is already implied — no new market data required.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The no-arbitrage identity</div>
+        <div class="sl-row">
+          <div class="sl-box">(1+z₂)²</div><div class="sl-arrow">=</div><div class="sl-box">(1+z₁)(1+f₁,₂)</div>
+        </div>
+        <div class="sl-verdict">Two riskless routes to the same dollar, two years from now: invest directly at the 2-year zero rate, or invest one year at z₁ then roll into a forward rate f₁,₂ locked in <strong>today</strong>. Both routes must pay the same, or there's a free, riskless arbitrage.</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">1</div><div><h4>(1+z₂)² — direct 2-year growth</h4><p>Observable today from the bootstrapped 2-year zero rate alone.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">2</div><div><h4>(1+z₁) — the known 1-year leg</h4><p>Already solved in step 1 of the bootstrap.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">3</div><div><h4>f₁,₂ — the forward rate</h4><p>The only unknown — solved directly: f₁,₂ = (1+z₂)²/(1+z₁) − 1 ≈ 4.02%, using z₁=3.00%, z₂≈3.51%.</p></div></div>
+      </div>
+      <p class="sl-p">Because this curve slopes upward, the implied forward (≈4.02%) sits <em>above</em> both z₁ and z₂ — the zero curve is embedding an expectation that short rates run higher down the road.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Solve the second zero rate yourself</h2>
+      <p class="sl-sub">Given a known 1-year zero rate and a 2-year par bond's coupon and price, isolate z₂ — the exact move from step 2 above.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Known z₁ (%)</label><input type="number" class="sl-input" id="z2-z1" value="3.00" step="0.05"></div>
+          <div class="sl-calc-field"><label>2yr coupon (%)</label><input type="number" class="sl-input" id="z2-coupon" value="3.50" step="0.05"></div>
+          <div class="sl-calc-field"><label>2yr bond price ($)</label><input type="number" class="sl-input" id="z2-price" value="100" step="0.5"></div>
+          <div class="sl-calc-op">→</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Solved z₂</div>
+            <div class="sl-calc-result-val" id="z2-result">3.51%</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>PV of year-1 coupon at z₁: <b id="z2-pv1">3.398</b></div>
+          <div>Remaining price for year-2 cash flow: <b id="z2-remain">96.602</b></div>
+          <div>Year-2 cash flow (coupon + $100 face): <b id="z2-cf2">103.500</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="z2-reset">Reset to worked-example numbers</button>
+        <div class="sl-note">Face value is fixed at $100, matching the worked example. Blank, negative, or non-numeric inputs — and any input that leaves no positive remaining price for the year-2 cash flow — show "—" rather than a broken number.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">How a rates desk actually uses this</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">💱</div><div><h4>Pricing a swap's floating leg</h4><p>Fair value of a future floating payment is set to the forward rate for that period — read straight off a bootstrapped curve, never guessed at.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>Key-rate duration</h4><p>The finer-grained successor to single-number duration: sensitivity to a bump in <em>one</em> zero rate on the curve, holding the rest fixed — only definable once the curve is genuinely per-maturity.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📉</div><div><h4>Curve shape as a macro signal</h4><p>A steep curve is widely read as pricing in future hikes; an inversion (short above long) is a closely watched recession signal — neither reading is possible from a single blended YTM.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🏦</div><div><h4>In practice: deposits, futures, swaps</h4><p>Real desks bootstrap from short-dated deposit/OIS rates, futures, and swap rates rather than toy coupon bonds — but the sequential logic (shortest first, work outward) is identical.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Where this goes wrong in practice</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Common pitfalls</div>
+        <p><strong>Using a bond's own YTM to discount an unrelated cash flow</strong> — the exact mistake bootstrapping exists to prevent. <strong>Treating a forward rate as a forecast</strong> — it's a no-arbitrage identity, not a probability-weighted prediction of the future spot rate. <strong>Mixing compounding conventions</strong> across input instruments silently corrupts every zero rate solved downstream. <strong>Trusting a thin, illiquid short end</strong> — since the algorithm is sequential, a bad short-maturity input degrades every longer maturity too, not just the short end.</p>
+      </div>
+      <p class="sl-p">This lesson uses simple annual compounding throughout for clarity, exactly like the bond-math lessons before it — real curve construction has to be scrupulous about day-count and compounding conventions across every input instrument, since a mismatch there corrupts everything solved after it, the same way a bad short-end price does.</p>
+      <div class="sl-note">Verified against this repo's current source (Sept 2026): a yield-curve <em>slope</em> engine exists in production (comparing published 2yr/10yr par yields as a macro signal) — but no bootstrapping routine or bootstrapped zero/discount curve exists anywhere in this codebase. This lesson's algorithm remains conceptual here, not implemented in production.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Why can't a 5-year bond's YTM be used to discount an unrelated 5-year cash flow?</h4>
+        <button class="sl-quiz-opt">Nothing's wrong — YTM is the correct discount rate for any 5-year cash flow</button>
+        <button class="sl-quiz-opt" data-correct="true">YTM blends together the discount rates for all of that bond's own cash flows — it isn't a single-maturity rate</button>
+        <button class="sl-quiz-opt">YTM only applies to zero-coupon bonds</button>
+        <div class="sl-quiz-explain">The correct discount rate for a cash flow due at year 5 is the bootstrapped 5-year zero rate, z₅ — which applies to that maturity alone, unlike any bond's blended YTM.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Why must bootstrapping proceed from the shortest maturity to the longest?</h4>
+        <button class="sl-quiz-opt">It's just convention — the order doesn't actually matter</button>
+        <button class="sl-quiz-opt">Because the shortest-maturity bond is always the cheapest to buy</button>
+        <button class="sl-quiz-opt" data-correct="true">Each step's price equation has exactly one unknown only if every shorter cash flow was already discounted with an already-solved zero rate</button>
+        <div class="sl-quiz-explain">Solve a longer maturity first and you'd have multiple unknown zero rates in one equation, with no way to isolate any of them.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>In the worked example, why is z₂ (≈3.51%) slightly above the 2-year bond's own 3.50% par yield?</h4>
+        <button class="sl-quiz-opt">It's a rounding error — they should be identical</button>
+        <button class="sl-quiz-opt" data-correct="true">z₂ is the rate for the year-2 cash flow alone, while the 3.50% par yield blends the year-1 and year-2 cash flows together</button>
+        <button class="sl-quiz-opt">Because the bond actually pays semiannual coupons</button>
+        <div class="sl-quiz-explain">Since z₁ (3.00%) sits below the 2yr par yield, more "discounting work" falls on the year-2 cash flow's own rate to make the price come out to par — pushing z₂ slightly above the blended par yield.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>What does (1+z₂)² = (1+z₁)(1+f₁,₂) actually guarantee?</h4>
+        <button class="sl-quiz-opt">That the market's forecast of future rates will come true</button>
+        <button class="sl-quiz-opt" data-correct="true">That two riskless routes to the same future dollar must pay the same amount, or a riskless arbitrage would exist</button>
+        <button class="sl-quiz-opt">That forward rates are always higher than spot rates, on any curve</button>
+        <div class="sl-quiz-explain">It's a no-arbitrage identity, not a forecast — and forwards only sit above spot when the underlying curve is upward sloping, which isn't guaranteed.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>True or false: bootstrapping only works if every input bond happens to be priced exactly at par.</h4>
+        <button class="sl-quiz-opt">True — par pricing is a requirement of the algorithm</button>
+        <button class="sl-quiz-opt" data-correct="true">False — bootstrapping works from any observed price; par bonds just make the worked-example arithmetic especially clean</button>
+        <div class="sl-quiz-explain">The algorithm only needs a price, a coupon, and a maturity for each instrument. Par pricing (P=F) is a convenient teaching simplification, not a requirement.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>A bond's YTM is a blended average across all of its own cash flows' maturities — it is never the "true" rate for any single point in time.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>The zero (spot) rate is the discount rate for exactly one cash flow at exactly one maturity — it's the only rate that's correct to use on a cash flow of that maturity.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Bootstrapping solves zero rates sequentially, shortest to longest — each step has exactly one unknown because every shorter cash flow already uses an already-solved zero rate.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>It's called "bootstrapping" because every step lifts itself using only the market price at that maturity plus rates the algorithm already solved for itself.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Forward rates fall straight out of a no-arbitrage identity between two zero rates — they are not a probability-weighted forecast of the future.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>A stale or illiquid price at the short end corrupts every zero rate solved after it — the whole curve, not just the short maturities.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Build a genuine per-maturity discount curve from a handful of observed bond or swap prices, instead of leaning on any single bond's blended YTM. Discount any cash flow of a given maturity at the correct zero rate for that maturity, not someone else's bond's average rate. Read forward rates straight off the curve — to price a swap's floating leg, or to compare your own rate view against what's already priced in.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Nelson-Siegel-Svensson</h3>
+        <p>Bootstrapping only gives you a zero rate at the maturities where you happen to have an instrument. Pricing or hedging a cash flow that lands between those points needs a smooth curve fitted through them — that's the problem this next lesson takes on.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="nelson-siegel-svensson-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="yield-curve-construction.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Slide 7 — slider that redraws the zero curve, one bootstrapped point at a time.
+  (function(){
+    var slider = document.getElementById('curve-slider');
+    if (!slider) return;
+    var mVal = document.getElementById('curve-mval');
+    var path = document.getElementById('curve-path');
+    var dot1 = document.getElementById('curve-dot1'), dot2 = document.getElementById('curve-dot2'), dot3 = document.getElementById('curve-dot3');
+    var lbl1 = document.getElementById('curve-label1'), lbl2 = document.getElementById('curve-label2'), lbl3 = document.getElementById('curve-label3');
+    var verdict = document.getElementById('curve-verdict');
+    var P1 = '187,134.1', P2 = '335,115.6', P3 = '483,96.6';
+
+    var VERDICTS = {
+      1: 'Only the 1-year bond has been used so far. z₁ = 3.00% is on the curve; nothing else is known yet.',
+      2: 'The 2-year bond’s price is now used, with its year-1 coupon stripped out at the already-known z₁. z₂ ≈ 3.51% joins the curve.',
+      3: 'The 3-year bond’s price is used last, with both earlier coupons stripped out at z₁ and z₂. z₃ ≈ 4.03% completes the 3-point zero curve.'
+    };
+
+    function update(){
+      var step = parseInt(slider.value, 10);
+      mVal.textContent = 'Step ' + step + ' of 3';
+
+      dot1.style.opacity = 1;
+      lbl1.style.opacity = 1;
+      dot2.style.opacity = step >= 2 ? 1 : 0;
+      lbl2.style.opacity = step >= 2 ? 1 : 0;
+      dot3.style.opacity = step >= 3 ? 1 : 0;
+      lbl3.style.opacity = step >= 3 ? 1 : 0;
+
+      if (step === 1) path.setAttribute('d', '');
+      else if (step === 2) path.setAttribute('d', 'M' + P1 + ' L' + P2);
+      else path.setAttribute('d', 'M' + P1 + ' L' + P2 + ' L' + P3);
+
+      verdict.textContent = VERDICTS[step] || VERDICTS[1];
+    }
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Slide 10 — live "solve z2" calculator, with defensive guards.
+  (function(){
+    var z1In = document.getElementById('z2-z1');
+    if (!z1In) return;
+    var couponIn = document.getElementById('z2-coupon'), priceIn = document.getElementById('z2-price');
+    var pv1Out = document.getElementById('z2-pv1'), remainOut = document.getElementById('z2-remain'), cf2Out = document.getElementById('z2-cf2');
+    var resultOut = document.getElementById('z2-result');
+    var resetBtn = document.getElementById('z2-reset');
+    var FACE = 100;
+    var DEFAULTS = { z1: 3.00, coupon: 3.50, price: 100 };
+
+    function blank(){
+      pv1Out.textContent = '—';
+      remainOut.textContent = '—';
+      cf2Out.textContent = '—';
+      resultOut.textContent = '—';
+    }
+
+    function recompute(){
+      var z1pct = parseFloat(z1In.value);
+      var couponPct = parseFloat(couponIn.value);
+      var price = parseFloat(priceIn.value);
+
+      if (!isFinite(z1pct) || !isFinite(couponPct) || !isFinite(price)) { blank(); return; }
+
+      var z1 = z1pct / 100;
+      if (1 + z1 <= 0) { blank(); return; }
+
+      var couponAmt = (couponPct / 100) * FACE;
+      var pv1 = couponAmt / (1 + z1);
+      var remain = price - pv1;
+      var cf2 = couponAmt + FACE;
+
+      pv1Out.textContent = pv1.toFixed(3);
+      remainOut.textContent = remain.toFixed(3);
+      cf2Out.textContent = cf2.toFixed(3);
+
+      if (!(remain > 0) || !(cf2 > 0)) { resultOut.textContent = '—'; return; }
+
+      var ratio = cf2 / remain;
+      if (!isFinite(ratio) || ratio <= 0) { resultOut.textContent = '—'; return; }
+
+      var z2 = Math.sqrt(ratio) - 1;
+      if (!isFinite(z2)) { resultOut.textContent = '—'; return; }
+
+      resultOut.textContent = (z2 * 100).toFixed(2) + '%';
+    }
+
+    [z1In, couponIn, priceIn].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      z1In.value = DEFAULTS.z1; couponIn.value = DEFAULTS.coupon; priceIn.value = DEFAULTS.price;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

@@ -6,7 +6,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from fib_atlas_bot.engine import (      # noqa: E402
-    RearmTracker, rearm_distance, zone_is_long, chandelier_stop,
+    RearmTracker, rearm_distance, zone_is_long, chandelier_stop, occupied_directions,
 )
 
 fails = 0
@@ -125,6 +125,25 @@ flat = [{"high": 1.1000, "low": 1.1000, "close": 1.1000} for _ in range(5)]
 flat[0] = {"high": 1.1010, "low": 1.0990, "close": 1.1000}   # seed bar has real range
 r_flat = chandelier_stop(flat, mult=3.0, period=60, is_long=True)
 ok("doesn't crash / returns a number on degenerate (flat) bars", isinstance(r_flat, float))
+
+print("[occupied_directions — hedge-only concurrency: which direction(s) are already open for THIS (pair, ladder)]")
+EG = {"eurgbp", "EURGBP"}
+ok("no open positions on this pair -> empty",
+   occupied_directions([], {}, EG, "asia") == set())
+book_one_long = [{"ticket": 1, "symbol": "EURGBP", "direction": "BUY"}]
+ok("one open long on this (pair, ladder) -> {'BUY'} occupied",
+   occupied_directions(book_one_long, {1: "asia"}, EG, "asia") == {"BUY"})
+ok("SAME position, but querying a DIFFERENT ladder -> not occupied (ladders are independent budgets)",
+   occupied_directions(book_one_long, {1: "asia"}, EG, "monday") == set())
+book_hedged = [{"ticket": 1, "symbol": "EURGBP", "direction": "BUY"},
+               {"ticket": 2, "symbol": "EURGBP", "direction": "SELL"}]
+ok("one long + one short already open (a genuine hedge) -> BOTH directions occupied",
+   occupied_directions(book_hedged, {1: "asia", 2: "asia"}, EG, "asia") == {"BUY", "SELL"})
+book_other_pair = [{"ticket": 1, "symbol": "GBPUSD", "direction": "BUY"}]
+ok("a position on a DIFFERENT pair's symbol -> ignored entirely",
+   occupied_directions(book_other_pair, {1: "asia"}, EG, "asia") == set())
+ok("a ticket this bot never tracked the ladder for (opened before restart) -> ignored, not guessed",
+   occupied_directions(book_one_long, {}, EG, "asia") == set())
 
 print(f"\n{'ALL PASSED' if fails == 0 else f'{fails} FAILED'}")
 sys.exit(1 if fails else 0)

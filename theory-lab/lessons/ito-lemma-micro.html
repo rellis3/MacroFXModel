@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Itô's Lemma — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Itô's Lemma — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivation, the quadratic-variation proof, and a 6-question self-test?<a href="ito-lemma.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Lesson 26 · Advanced Stochastic Calculus &amp; Derivatives</div>
+      <h1 class="sl-h1">Itô's Lemma, <em>the Calculus Brownian Motion Actually Obeys</em></h1>
+      <p class="sl-lede">The Black-Scholes formula contains a term, σ²/2, hiding inside d₁ and d₂, that the Black-Scholes lesson simply asserts without deriving. It isn't a risk premium or a calibration fudge — it's the mechanical output of applying the chain rule correctly to a random process, and ordinary calculus's chain rule is quietly built on an assumption that a random process breaks. This deck derives exactly where that σ²/2 comes from, in fewer steps than the full lesson but with more to click on.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">A coastline that never gets straighter</h2>
+      <p class="sl-sub">Zoom in far enough on any smooth curve and it looks like a straight line — that's the entire justification for ordinary calculus. Zoom in on a Brownian-motion path and it never straightens. Compare the two zoom levels below.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="zoom-tabs">
+          <button class="sl-tab active" data-panel="zoom-1">1× — full path</button>
+          <button class="sl-tab" data-panel="zoom-2">256× zoom</button>
+        </div>
+        <div class="sl-panel active" id="zoom-1">
+          <div class="sl-svgwrap"><svg viewBox="0 0 200 140" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Full path at 1x zoom. A smooth blue curve wanders gently. A jagged red Brownian-style path is rough and irregular throughout.">
+            <rect x="1" y="1" width="198" height="138" fill="none" style="stroke:var(--border);stroke-width:1"/>
+            <g transform="translate(0,18)">
+              <line x1="12" y1="110" x2="188" y2="110" style="stroke:var(--text3);stroke-width:0.75"/>
+              <polyline points="12.00,60.00 20.00,31.39 28.00,13.55 33.60,10.00 40.00,13.34 48.00,21.76 56.00,25.96 64.00,21.76 72.00,13.34 78.40,10.00 84.00,13.55 92.00,31.39 100.00,60.00 108.00,88.61 116.00,106.45 122.40,109.95 128.00,106.66 136.00,98.24 144.00,94.04 150.40,95.16 156.00,102.47 164.00,109.49 167.20,109.92 172.00,106.45 180.00,88.61 188.00,60.00" style="stroke:var(--blue);stroke-width:1.75" fill="none"/>
+              <polyline points="12.00,68.87 19.98,60.84 27.95,67.77 33.54,61.60 39.12,75.43 46.30,62.00 52.68,64.73 59.06,35.70 66.24,24.04 73.42,23.75 79.00,16.34 86.98,11.14 94.15,21.15 100.53,22.93 106.92,25.04 113.30,34.32 120.47,48.16 126.86,57.74 133.24,59.91 140.41,95.43 146.00,107.42 152.38,86.91 158.76,82.72 165.14,105.03 172.32,91.91 179.50,68.21 185.88,73.93" style="stroke:var(--red);stroke-width:1.5" fill="none"/>
+            </g>
+          </svg></div>
+          <div class="sl-verdict">Blue: a smooth curve. Red: a Brownian-style path, generated so its displacement variance scales with segment length — same property real Brownian motion has.</div>
+        </div>
+        <div class="sl-panel" id="zoom-2">
+          <div class="sl-svgwrap"><svg viewBox="0 0 200 140" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Same curves zoomed in 256x. The smooth blue curve is now indistinguishable from a straight line. The jagged red path is exactly as rough as before, unchanged by the zoom.">
+            <rect x="1" y="1" width="198" height="138" fill="none" style="stroke:var(--border);stroke-width:1"/>
+            <g transform="translate(0,18)">
+              <line x1="12" y1="110" x2="188" y2="110" style="stroke:var(--text3);stroke-width:0.75"/>
+              <polyline points="12.00,10.00 32.00,20.52 52.00,31.26 68.00,40.00 84.00,48.89 100.00,57.91 116.00,67.07 132.00,76.36 148.00,85.80 164.00,95.38 188.00,110.00" style="stroke:var(--blue);stroke-width:1.75" fill="none"/>
+              <polyline points="12.00,100.43 17.50,81.12 23.00,51.55 28.50,49.05 34.00,83.33 39.50,102.05 45.00,77.35 50.50,92.75 56.00,89.47 61.50,96.51 67.00,89.71 72.50,85.11 78.00,91.20 83.50,49.05 89.00,54.35 94.50,66.08 100.00,62.20 105.50,51.01 111.00,50.84 116.50,51.16 122.00,62.81 127.50,50.20 133.00,44.34 138.50,32.65 144.00,43.50 149.50,30.71 155.00,34.32 160.50,28.85 166.00,13.28 171.50,44.66 177.00,62.22 182.50,35.00 188.00,59.85" style="stroke:var(--red);stroke-width:1.5" fill="none"/>
+            </g>
+          </svg></div>
+          <div class="sl-verdict">Same pair, replotted 256× deeper. The <strong>blue curve is now a straight line</strong>, exactly as calculus assumes. The <strong>red path is unchanged</strong> — it never resolves, at any zoom, because its quadratic variation over any interval is nonzero however small the interval.</div>
+        </div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">The assumption hiding inside the chain rule</div>
+        <p>A smooth function's own change Δx over a short time Δt is itself order Δt — so (Δx)², the term the chain rule quietly drops, is order Δt². As Δt → 0, Δt² shrinks far faster than Δt (Δt=0.01 makes Δt²=0.0001 — a hundred times smaller), so that term vanishes and only the first-order term survives. That's the entire chain rule. It holds for every smooth function calculus normally meets. Brownian motion is about to break it.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">The one fact: (dW)² = dt</h2>
+      <p class="sl-sub">A Brownian increment isn't the same size as a smooth function's — and that one difference is the entire reason ordinary calculus fails here.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Smooth function</span>
+          <p>Its increment Δx over a step Δt is itself order Δt. Square it: (Δx)² is order Δt² — negligible next to Δt as Δt → 0. Quadratic variation over any interval is exactly zero.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag red">Brownian motion</span>
+          <p>Its increment ΔW has variance Δt, so it's typically <em>size</em> √Δt — not Δt. Square it: (ΔW)² is order Δt, the <strong>same order</strong> as the first term. Not negligible.</p>
+        </div>
+      </div>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Why the aggregate, not any one draw</div>
+        <div class="sl-row">
+          <div class="sl-box">Σ (Wₜᵢ₊₁ − Wₜᵢ)²</div>
+          <div class="sl-arrow">→</div>
+          <div class="sl-box green">T, exactly</div>
+        </div>
+        <div class="sl-verdict">Partition [0,T] into n tiny steps. Each squared increment has expectation Δt, and there are n = T/Δt of them, so the sum's expectation is T for <strong>every</strong> partition — and as the partition is refined, the sum converges to the fixed number T, with no randomness left. This is Brownian motion's <strong>quadratic variation</strong>, written as shorthand: (dWₜ)² = dt.</div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">What this identity is NOT saying</div>
+        <p>It is not a claim that any single random draw of dWₜ, squared, literally equals the number dt — dWₜ stays random, mean zero, scattered on both sides of zero. It's a statement about the sum over many increments: the randomness of individual terms cancels out in the limit, leaving a fixed accumulation rate. Reading it as a single-draw fact is the single most common way this identity gets misunderstood.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Redo the Taylor expansion, honestly</h2>
+      <p class="sl-sub">Same second-order Taylor expansion as before, df = f′dX + ½f″(dX)² — but now (dX)² doesn't vanish. Expand it for dXₜ = μdt + σdWₜ: the (dt)² and dt·dWₜ cross terms are still negligible, but σ²(dWₜ)² becomes σ²dt — order dt, not negligible. Substituting that back in produces Itô's Lemma.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Itô's Lemma</div>
+        <div class="sl-row">
+          <div class="sl-box">df</div>
+          <div class="sl-arrow">=</div>
+          <div class="sl-box">(f′(Xₜ)μ + ½f″(Xₜ)σ²)dt</div>
+          <div class="sl-arrow">+</div>
+          <div class="sl-box">f′(Xₜ)σ dWₜ</div>
+        </div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge" style="background:var(--blue-bg);border-color:var(--blue-bd);color:var(--blue)">1</div><div><h4>f′(Xₜ)μ dt — ordinary drift</h4><p>Exactly what the plain chain rule would have produced. Nothing new here.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge" style="background:var(--amber-bg);border-color:var(--amber-bd);color:var(--amber)">+</div><div><h4>½f″(Xₜ)σ² dt — the Itô correction</h4><p>This is the whole lesson. It's the second-order Taylor term, evaluated with (Δx)² → σ²dt instead of → 0. No new derivative, no new function — just one substitution ordinary calculus never needs.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge" style="background:var(--purple-bg);border-color:var(--purple-bd);color:var(--purple)">2</div><div><h4>f′(Xₜ)σ dWₜ — diffusion</h4><p>Also exactly what ordinary calculus would have produced. The randomness itself doesn't change; only the drift picks up the extra term.</p></div></div>
+      </div>
+      <div class="sl-quote">There is no additional machinery beyond one substitution. Itô's Lemma is the Taylor expansion everyone already knows, applied to a random process, plus exactly one term ordinary calculus is entitled to throw away and stochastic calculus is not.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Ordinary chain rule vs. Itô's Lemma</h2>
+      <p class="sl-sub">Side by side, the difference is exactly one extra term.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Ordinary chain rule</span>
+          <p>d/dt f(x(t)) = f′(x(t)) · dx/dt</p>
+          <ul>
+            <li>One term — first-order only</li>
+            <li>Valid because a smooth x(t)'s own increment is order Δt</li>
+            <li>The second-order Taylor term is order Δt² and vanishes</li>
+          </ul>
+        </div>
+        <div class="sl-ccard amber">
+          <span class="sl-ctag red">Itô's Lemma</span>
+          <p>df = (f′μ + ½f″σ²)dt + f′σ dWₜ</p>
+          <ul>
+            <li>Two dt-order terms — drift <em>and</em> the ½f″σ² correction</li>
+            <li>Needed because dXₜ's own increment is order √dt</li>
+            <li>The second-order Taylor term is order dt and survives</li>
+          </ul>
+        </div>
+      </div>
+      <p class="sl-p">Every other piece of the derivation — the function f, its derivatives f′ and f″, the drift μ, the volatility σ — is identical between the two rules. The entire apparent strangeness of "stochastic calculus" reduces to this one extra surviving term.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">The correction's sign depends on f″</h2>
+      <p class="sl-sub">Itô's Lemma applies to <em>any</em> twice-differentiable f — not just the log. The sign of the correction always matches the sign of f″. Pick a function.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="fn-tabs">
+          <button class="sl-tab active" data-panel="fn-1">f(S) = ln S</button>
+          <button class="sl-tab" data-panel="fn-2">f(S) = S²</button>
+          <button class="sl-tab" data-panel="fn-3">f(S,t) = option value V</button>
+        </div>
+        <div class="sl-panel active" id="fn-1">
+          <div class="sl-row"><div class="sl-box">f″(S) = −1/S²</div><div class="sl-arrow">→</div><div class="sl-box red">correction is negative</div></div>
+          <div class="sl-verdict">This is the case Black-Scholes needs. Applied to GBM dS = μS dt + σS dW, every S cancels and the correction becomes exactly −σ²/2 — the drift of ln S is pulled <strong>down</strong> from μ.</div>
+        </div>
+        <div class="sl-panel" id="fn-2">
+          <div class="sl-row"><div class="sl-box">f″(S) = 2</div><div class="sl-arrow">→</div><div class="sl-box green">correction is positive</div></div>
+          <div class="sl-verdict">A convex function gets a <strong>positive</strong> Itô correction instead. Applying the lemma to f(S)=S² under GBM adds +σ²S² dt to the ordinary drift, on top of 2S·μS dt — convexity, not concavity, so the correction pushes up, not down.</div>
+        </div>
+        <div class="sl-panel" id="fn-3">
+          <div class="sl-row"><div class="sl-box">dV</div><div class="sl-arrow">=</div><div class="sl-box amber">(∂V/∂t + μS∂V/∂S + ½σ²S²∂²V/∂S²)dt + σS∂V/∂S dW</div></div>
+          <div class="sl-verdict">This is exactly how the Black-Scholes PDE gets its second-order term. Apply Itô to the option's value function V(S,t) itself, then build the riskless hedge and set its return to r — the ½σ²S²∂²V/∂S² term (option gamma × variance) is the direct fingerprint of the Itô correction inside the PDE.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Applying it to ln S — the lognormal SDE</h2>
+      <p class="sl-sub">Let Xₜ = Sₜ, following GBM dSₜ = μSₜdt + σSₜdWₜ, and apply Itô's Lemma with f(x) = ln x, f′(x) = 1/x, f″(x) = −1/x².</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Every S cancels</div>
+        <div class="sl-row">
+          <div class="sl-box">(1/S)·μS + ½·(−1/S²)·(σS)²</div>
+        </div>
+        <div class="sl-verdict">The 1/S cancels against μS and against S² from squaring the diffusion. What's left is pure numbers — no S at all.</div>
+        <div class="sl-row" style="margin-top:6px">
+          <div class="sl-box">d(ln Sₜ)</div>
+          <div class="sl-arrow">=</div>
+          <div class="sl-box amber">(μ − σ²/2) dt</div>
+          <div class="sl-arrow">+</div>
+          <div class="sl-box purple">σ dWₜ</div>
+        </div>
+        <div class="sl-note">The drift of ln Sₜ is not μ — the price's own drift — it's μ − σ²/2. This is not a risk premium or a fudge; it's the direct, mechanical output of f″(x) = −1/x² being negative combined with (dSₜ)² = σ²dt being positive.</div>
+      </div>
+      <p class="sl-p">Try your own drift and volatility below. The Itô correction term is always σ²/2, regardless of drift — only the sign it attaches to (here, negative, because f = ln) depends on which function is being transformed.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — the Itô correction, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Drift μ (%/yr)</label><input type="number" class="sl-input" id="ito1-mu" value="8" step="0.5"></div>
+          <div class="sl-calc-field"><label>Volatility σ (%/yr)</label><input type="number" class="sl-input" id="ito1-sigma" value="20" step="1" min="0"></div>
+          <div class="sl-calc-op">→</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Drift of ln S</div>
+            <div class="sl-calc-result-val" id="ito1-result">6.00%</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Itô correction, σ²/2 = <b id="ito1-corr">2.00%</b></div>
+          <div>Drift of the log, μ − σ²/2 = <b id="ito1-drift">6.00%</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="ito1-reset">Reset to μ=8%, σ=20%</button>
+        <div class="sl-note">A blank field, a negative volatility, or any non-finite entry shows "—" instead of a broken number.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">From the log-SDE to Black-Scholes's d₁ and d₂</h2>
+      <p class="sl-sub">Swap the real-world drift μ for the risk-free rate r (the replication argument Black-Scholes builds — formally a change of measure, next lesson's job). What's left is exactly the numerator of d₂.</p>
+      <div class="sl-row">
+        <div class="sl-box">ln(S₀/K) + (r − σ²/2)T</div>
+        <div class="sl-arrow">÷ σ√T =</div>
+        <div class="sl-box green">d₂</div>
+      </div>
+      <div class="sl-verdict" style="text-align:center;margin:-4px 0 18px">d₁ is just d₂ shifted by σ√T — adding σ√T to the (r−σ²/2)T numerator turns it into (r+σ²/2)T, matching Black-Scholes's d₁ exactly.</div>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — rebuild d₁ and d₂ from the Itô correction, live</div>
+        <p class="sl-p" style="margin:0 0 14px">Starts on Black-Scholes's own worked example: S₀=K=100, r=2%, σ=20%, T=1.</p>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Spot S₀</label><input type="number" class="sl-input" id="ito2-S" value="100" step="1" min="0"></div>
+          <div class="sl-calc-field"><label>Strike K</label><input type="number" class="sl-input" id="ito2-K" value="100" step="1" min="0"></div>
+          <div class="sl-calc-field"><label>Rate r (%)</label><input type="number" class="sl-input" id="ito2-r" value="2" step="0.25"></div>
+          <div class="sl-calc-field"><label>Vol σ (%)</label><input type="number" class="sl-input" id="ito2-sigma" value="20" step="1" min="0"></div>
+          <div class="sl-calc-field"><label>Time T (yrs)</label><input type="number" class="sl-input" id="ito2-T" value="1" step="0.25" min="0"></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Itô correction, σ²/2 = <b id="ito2-corr">2.00%</b></div>
+          <div>Risk-neutral drift, r − σ²/2 = <b id="ito2-drift">0.00%</b></div>
+          <div>ln(S₀/K) = <b id="ito2-lnsk">0.0000</b></div>
+          <div>d₂ = <b id="ito2-d2">0.00</b> &emsp; d₁ = d₂ + σ√T = <b id="ito2-d1">0.20</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="ito2-reset">Reset to the worked example</button>
+        <div class="sl-note" id="ito2-note">At these exact numbers, σ²/2 = 0.02 happens to exactly cancel r = 0.02 — a coincidence of round numbers, not a general rule. Blank or invalid inputs show "—", never NaN.</div>
+      </div>
+      <div class="sl-callout blue">
+        <div class="sl-callout-label">Where this shows up outside the classroom</div>
+        <p>This isn't just theoretical: <code>js/gammaGreeks.js</code> elsewhere in this repo computes charm and vanna — real, live Greeks used against options-flow data — from a d₁ built with exactly this <code>(r + 0.5·σ²)</code> term (see its <code>_d1d2</code> helper). The σ²/2 this lesson derives from first principles is the same σ²/2 already running in production code, not a separate academic construct.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Where this gets misread</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">Ø</div><div><h4>σ²/2 shrinks the log's drift, not the price's mean</h4><p>E[Sₜ] under GBM is completely unaffected by σ — what shrinks is the drift of ln S (the typical/median path). The gap exists because E[eˣ] ≠ eᴱ⁽ˣ⁾ (Jensen's inequality, since eˣ is convex), not because volatility destroys expected value.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">±</div><div><h4>The correction isn't always negative</h4><p>It's specific to f″ &lt; 0, which ln happens to be. A convex f (like S²) gets a positive correction instead — check the sign of f″ rather than assuming a downward σ²/2 adjustment by default.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⧉</div><div><h4>Two correlated processes need a cross term</h4><p>This single-variable formula covers a function of one Itô process. A basket, spread, or ratio of two correlated underlyings needs the multivariate (Itô-Doeblin) version, adding a covariance term ρσ₁σ₂ — using the plain formula silently drops correlation risk.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">∑</div><div><h4>(dW)² = dt is about the sum, never one draw</h4><p>Any single dWₜ stays random. The identity describes what happens after summing many squared increments across a partition — the randomness cancels only in that aggregate limit.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">One correction term, three appearances</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📐</div><div><h4>Every exotic option's pricing PDE</h4><p>Barriers, Asians, lookbacks — each is derived the same way as Black-Scholes: apply Itô's Lemma to the payoff's value function, build the hedge, set its return to r.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔗</div><div><h4>Multivariate extensions</h4><p>Basket and spread options need the multivariate form, adding a covariance cross-term ρσ₁σ₂ alongside each asset's own σ²/2.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📊</div><div><h4>Convexity adjustments</h4><p>Futures-vs-forward convexity, CMS convexity, XVA — anywhere a desk needs the expected value of a nonlinear function of a random rate, Itô's Lemma (via Feynman-Kac) makes it rigorous.</p></div></div>
+      </div>
+      <div class="sl-quote">The identical σ²/2 term already appears twice elsewhere in this curriculum, informally: as "volatility drag" in the Kelly Criterion lesson, and in the Returns &amp; Compounding primer's log-return approximation. Both use a discrete-time version of the same second-order Taylor expansion this lesson makes rigorous in continuous time. <strong>Three parts of this curriculum independently hit the same term because all three are really asking one question: what happens to a growth rate when you take the log of something random?</strong></div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Why does the ordinary chain rule drop the second-order Taylor term, but Itô's Lemma can't?</h4>
+        <button class="sl-quiz-opt">Because Brownian motion isn't continuous</button>
+        <button class="sl-quiz-opt" data-correct="true">Because a smooth increment is order Δt (so its square is order Δt²), while a Brownian increment is order √Δt (so its square is order Δt) — not negligible</button>
+        <button class="sl-quiz-opt">Because Itô's Lemma uses a third-order Taylor term instead</button>
+        <div class="sl-quiz-explain">A smooth function's own change over Δt is order Δt, so squaring it gives order Δt² — negligible in the limit. Brownian motion's increment has variance Δt, so it's typically size √Δt, making its square order Δt — the same order as the surviving first term.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Under GBM dSₜ = μSₜdt + σSₜdWₜ, what is d(ln Sₜ)?</h4>
+        <button class="sl-quiz-opt">μ dt + σ dWₜ — the log has the same drift as the price</button>
+        <button class="sl-quiz-opt" data-correct="true">(μ − σ²/2) dt + σ dWₜ</button>
+        <button class="sl-quiz-opt">(μ + σ²/2) dt + σ dWₜ</button>
+        <div class="sl-quiz-explain">Applying Itô's Lemma with f(x)=ln x, f′(x)=1/x, f″(x)=−1/x² makes every S cancel, leaving a drift of μ − σ²/2 — strictly below the price's own drift μ, because f″ is negative.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Does the σ²/2 correction mean E[Sₜ] is smaller than it would be with zero volatility?</h4>
+        <button class="sl-quiz-opt">Yes — higher volatility always lowers the expected price</button>
+        <button class="sl-quiz-opt" data-correct="true">No — E[Sₜ] is unaffected by σ under GBM; only the drift of ln S (roughly the median path) shrinks, because E[eˣ] ≠ eᴱ⁽ˣ⁾</button>
+        <button class="sl-quiz-opt">No — the correction only applies to bonds, not stocks</button>
+        <div class="sl-quiz-explain">This is the volatility-drag confusion: σ²/2 shrinks the drift of the log (the typical/median path), not the arithmetic mean of the price itself. The gap between the two is Jensen's inequality, since eˣ is convex.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>For f(S) = S² instead of ln S, is the Itô correction term positive or negative?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Positive — f″(S) = 2 &gt; 0</button>
+        <button class="sl-quiz-opt">Negative, same as for ln S</button>
+        <button class="sl-quiz-opt">Zero — the correction only exists for logarithms</button>
+        <div class="sl-quiz-explain">The sign of the Itô correction always matches the sign of f″. For f(S)=S², f″(S)=2 is positive, so the correction adds to the drift instead of subtracting — the opposite of the ln S case, because S² is convex where ln S is concave.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>The ordinary chain rule drops a term that isn't negligible for Brownian motion — a smooth increment is order Δt, a Brownian increment is order √Δt, so its square doesn't vanish.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>(dWₜ)² = dt is a quadratic-variation statement about the sum of many squared increments, not a claim about any single random draw.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Itô's Lemma is the same Taylor expansion as ordinary calculus, plus one extra term: df = (f′μ + ½f″σ²)dt + f′σ dWₜ.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Applying it to ln Sₜ under GBM derives d(ln Sₜ) = (μ − σ²/2)dt + σ dWₜ — the mechanical, non-arbitrary source of Black-Scholes's σ²/2.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Swapping μ for r produces exactly Black-Scholes's d₂, and shifting by σ√T produces d₁ — the same code path is live today in this repo's own options-Greeks calculator.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>The correction's sign follows f″, not the log specifically — and it needs a covariance cross-term the moment two correlated processes are involved.</p></div>
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">What this now lets you do</div>
+        <p>Read the σ²/2 inside any option-pricing formula as a derived fact, not an asserted one — and know exactly which second-order term to add whenever you apply the chain rule to a random process, whether that's deriving a new exotic option's PDE, checking a convexity adjustment, or explaining why compounded growth sits below the arithmetic average return.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Girsanov's Theorem &amp; the Risk-Neutral Measure</h3>
+        <p>This lesson swapped μ for r by hand-waving at "the replication argument." Girsanov's theorem is what actually justifies that swap — a formal change of probability measure, and the real reason d₁ needs a different measure than d₂.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="girsanov-risk-neutral-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="ito-lemma.html">Read the full Itô's Lemma lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  function fmtPct(n){ return isFinite(n) ? (n * 100).toFixed(2) + '%' : '—'; }
+  function fmtNum(n, d){ return isFinite(n) ? n.toFixed(d) : '—'; }
+
+  // Calculator 1 — Itô correction from drift/vol, section 6.
+  (function(){
+    var mu = document.getElementById('ito1-mu');
+    if (!mu) return;
+    var sigma = document.getElementById('ito1-sigma');
+    var corrOut = document.getElementById('ito1-corr'), driftOut = document.getElementById('ito1-drift');
+    var resultOut = document.getElementById('ito1-result');
+    var resetBtn = document.getElementById('ito1-reset');
+    var DEFAULTS = { mu: 8, sigma: 20 };
+
+    function recompute(){
+      var muV = parseFloat(mu.value) / 100;
+      var sigV = parseFloat(sigma.value) / 100;
+      if (!isFinite(muV) || !isFinite(sigV) || sigV < 0) {
+        corrOut.textContent = '—'; driftOut.textContent = '—'; resultOut.textContent = '—';
+        return;
+      }
+      var corr = (sigV * sigV) / 2;
+      var drift = muV - corr;
+      corrOut.textContent = fmtPct(corr);
+      driftOut.textContent = fmtPct(drift);
+      resultOut.textContent = fmtPct(drift);
+    }
+
+    [mu, sigma].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      mu.value = DEFAULTS.mu; sigma.value = DEFAULTS.sigma;
+      recompute();
+    });
+    recompute();
+  })();
+
+  // Calculator 2 — d1/d2 rebuilt from the Itô correction, section 7.
+  (function(){
+    var Sin = document.getElementById('ito2-S');
+    if (!Sin) return;
+    var Kin = document.getElementById('ito2-K'), rin = document.getElementById('ito2-r'),
+        sigmaIn = document.getElementById('ito2-sigma'), Tin = document.getElementById('ito2-T');
+    var corrOut = document.getElementById('ito2-corr'), driftOut = document.getElementById('ito2-drift'),
+        lnskOut = document.getElementById('ito2-lnsk'), d2Out = document.getElementById('ito2-d2'),
+        d1Out = document.getElementById('ito2-d1'), noteOut = document.getElementById('ito2-note');
+    var resetBtn = document.getElementById('ito2-reset');
+    var DEFAULT_NOTE = noteOut.textContent;
+    var DEFAULTS = { S: 100, K: 100, r: 2, sigma: 20, T: 1 };
+
+    function z(x){ return Math.abs(x) < 1e-9 ? 0 : x; }
+
+    function recompute(){
+      var S = parseFloat(Sin.value), K = parseFloat(Kin.value);
+      var r = parseFloat(rin.value) / 100, sigma = parseFloat(sigmaIn.value) / 100;
+      var T = parseFloat(Tin.value);
+
+      var inputsOk = isFinite(S) && isFinite(K) && isFinite(r) && isFinite(sigma) && isFinite(T)
+        && S > 0 && K > 0 && sigma >= 0 && T >= 0;
+      if (!inputsOk) {
+        corrOut.textContent = '—'; driftOut.textContent = '—'; lnskOut.textContent = '—';
+        d2Out.textContent = '—'; d1Out.textContent = '—';
+        noteOut.textContent = '(enter positive S₀ and K, and a non-negative σ and T)';
+        return;
+      }
+
+      var corr = (sigma * sigma) / 2;
+      var drift = z(r - corr);
+      var lnSK = z(Math.log(S / K));
+      corrOut.textContent = fmtPct(corr);
+      driftOut.textContent = fmtPct(drift);
+      lnskOut.textContent = fmtNum(lnSK, 4);
+
+      if (sigma === 0 || T === 0) {
+        d2Out.textContent = '—'; d1Out.textContent = '—';
+        noteOut.textContent = '(σ=0 or T=0: d₁/d₂ are undefined — no volatility or no time left for randomness to matter)';
+        return;
+      }
+
+      var d2 = z((lnSK + drift * T) / (sigma * Math.sqrt(T)));
+      var d1 = z(d2 + sigma * Math.sqrt(T));
+      d2Out.textContent = fmtNum(d2, 2);
+      d1Out.textContent = fmtNum(d1, 2);
+      noteOut.textContent = DEFAULT_NOTE;
+    }
+
+    [Sin, Kin, rin, sigmaIn, Tin].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      Sin.value = DEFAULTS.S; Kin.value = DEFAULTS.K; rin.value = DEFAULTS.r;
+      sigmaIn.value = DEFAULTS.sigma; Tin.value = DEFAULTS.T;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

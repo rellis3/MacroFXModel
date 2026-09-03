@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Model Selection: AIC &amp; BIC — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Model Selection: AIC &amp; BIC — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivations, both formal proofs, and a 6-question self-test?<a href="model-selection-aic-bic.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Lesson 20 · Applied Statistics &amp; Validation</div>
+      <h1 class="sl-h1">More Parameters Always Fit Better — <em>That's the Trap</em></h1>
+      <p class="sl-lede">Give a model one more free parameter and its in-sample fit can only improve, or at worst stay exactly the same — never get worse. That single mechanical fact is the entire root of overfitting: judge candidate models by raw fit alone, and the most complicated one in your set wins every time, whether or not its extra parameters describe anything real. AIC and BIC are the two standard tools for penalizing complexity honestly, and — as you'll see in a worked example — they don't always agree on the answer.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Why a bigger model can never lose, in-sample</h2>
+      <p class="sl-sub">Drag the slider to add lag terms to an AR spread model. Watch the in-sample fit — it only ever goes one direction.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar showing in-sample fit quality rising as parameter count increases via a slider">
+            <line x1="60" y1="180" x2="600" y2="180" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="60" y1="20" x2="60" y2="180" style="stroke:var(--border2);stroke-width:1"/>
+            <text x="30" y="185" text-anchor="end" style="fill:var(--text3);font-size:10px">0%</text>
+            <text x="30" y="28" text-anchor="end" style="fill:var(--text3);font-size:10px">100%</text>
+            <text x="330" y="205" text-anchor="middle" style="fill:var(--text3);font-size:11px">parameters (k)</text>
+            <rect id="nest-bar" x="80" y="160" width="500" height="20" rx="3" style="fill:var(--green)"/>
+            <text id="nest-pct" x="590" y="174" text-anchor="end" style="fill:var(--bg);font-size:11px;font-weight:700">R² = 0.20</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Parameters added (k)</span><span class="sl-live" id="nest-kval">k = 1</span></div>
+        <input type="range" class="sl-slider" id="nest-slider" min="1" max="10" step="1" value="1">
+        <div class="sl-verdict" id="nest-verdict"><strong>Never once did the bar shrink.</strong> Each extra parameter can only match or beat what came before — a model with more knobs always contains every simpler model as a special case (just set the new knobs to the value that reproduces it).</div>
+      </div>
+      <p class="sl-p">This isn't a quirk of this particular example — it's a mechanical guarantee. If Model B contains Model A as a special case (say, B is A plus three extra lag terms), B's best-fit search happens over a strictly larger space that includes everything A could reach. So B can always tie A, and generically beats it slightly by nudging the extra parameters away from zero to chase whatever pattern — real or noise — happens to sit in this one sample.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Connect-the-dots with enough dots</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">✏</div><div><h4>A curve with enough knobs fits everything</h4><p>A polynomial of degree n−1 fit to n data points passes through every point exactly — R² = 1, zero error — regardless of whether the true relationship is a straight line with noise or genuinely wiggly.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⊘</div><div><h4>"Perfect" isn't "true"</h4><p>That perfect fit is a mechanical consequence of having as many knobs as data points — not evidence the curve found real structure underneath.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📏</div><div><h4>The plain line often wins later</h4><p>A ruler-straight line has a worse in-sample fit but usually generalizes better — the wiggly curve spent its extra parameters chasing this sample's noise, not the underlying relationship.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚖</div><div><h4>The question is "how many dots is too many"</h4><p>AIC and BIC are the two standard ways of putting a number on that — a penalty that grows with parameter count, so extra parameters must earn their keep.</p></div></div>
+      </div>
+      <div class="sl-quote">Give someone a 3-piece jigsaw puzzle and they match it roughly. Give them a 300-piece version of the same picture and they can trace every tiny detail — but that's not deeper understanding, it's just more pieces to match anything with, including random smudges that were never part of the picture.</div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">The central hook</div>
+        <p>Adding more parameters can always improve your backtest, but that's not the same as improving your edge. A model can spend its extra freedom on real structure — or on this one sample's noise — and raw fit alone can never tell you which.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">The fix: fit minus a complexity penalty</h2>
+      <p class="sl-sub">Start from the deviance — the "badness of fit" both criteria then tax.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Likelihood, L̂</span>
+          <p>Fitting a model by maximum likelihood means picking the parameters that make the probability of the observed data, L, as large as possible. ln L̂ — the maximized log-likelihood — is higher when the fitted model assigns more probability to what actually happened. That's a purely in-sample notion of "fits well."</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Deviance, −2 ln L̂</span>
+          <p>Both AIC and BIC work with the deviance, −2 ln L̂, instead — a "badness of fit" number that falls as the fit improves. It can only fall or stay flat as k grows, exactly per the nesting argument. A complexity penalty gets added on top of it.</p>
+        </div>
+      </div>
+      <p class="sl-p">Both criteria answer the same reframed question: not "does adding this parameter help the fit?" (the answer is always "yes, weakly") but "does it help by <em>more</em> than the going rate for a free parameter?" That's what turns "always improves" into a real, decidable choice between models of different sizes. Lower is better for both scores below.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">AIC — priced for out-of-sample prediction</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The formula</div>
+        <div class="sl-row"><div class="sl-box purple">AIC</div><div class="sl-arrow">=</div><div class="sl-box amber">2k</div><div class="sl-arrow">+</div><div class="sl-box blue">−2 ln L̂</div></div>
+        <div class="sl-verdict"><strong>2k</strong> is a flat charge of 2 points per free parameter, no matter the sample size. <strong>−2 ln L̂</strong> is the deviance from the previous slide.</div>
+      </div>
+      <p class="sl-p">Akaike's (1974) argument starts from a different question than "which model fits my sample best?" — it asks "which model predicts <em>new</em> data, drawn from the same true process, best?" The in-sample log-likelihood is an optimistic estimate of that — it looks better than the model will actually do on new data — and the size of that optimism bias is, asymptotically, about k. Adding k back (doubled, to match the −2 ln L̂ scale) corrects for it.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>Tuned for prediction</h4><p>AIC is asymptotically equivalent to leave-one-out cross-validation — a reasonable default when the goal is forecasting accuracy.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎲</div><div><h4>A noise parameter shouldn't fool it — on average</h4><p>Under the null that a parameter is truly zero, adding it improves −2 ln L̂ by about 1 on average (a χ²₁ result) — smaller than AIC's 2-point penalty. It can still be fooled on any one noisy sample, just not systematically.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">BIC — priced for finding the true model</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The formula</div>
+        <div class="sl-row"><div class="sl-box purple">BIC</div><div class="sl-arrow">=</div><div class="sl-box amber">k·ln(n)</div><div class="sl-arrow">+</div><div class="sl-box blue">−2 ln L̂</div></div>
+        <div class="sl-verdict">Same deviance term as AIC — but the penalty is now <strong>ln(n) per parameter</strong>, which grows as the sample size n grows, instead of AIC's flat 2.</div>
+      </div>
+      <p class="sl-p">Schwarz's (1978) argument starts from Bayesian model comparison — comparing each model's marginal likelihood, averaged over its own prior, not just its single best-fitting point. That integral is generally intractable, but for large n a Laplace approximation reduces it to the log-likelihood minus a penalty of (k/2)ln(n), doubled to match convention. Because it approximates that Bayesian comparison, BIC has a property AIC lacks: it is <strong>model-selection consistent</strong> — if the true model is in your candidate set, BIC's chance of picking it approaches 1 as n → ∞. AIC has no such guarantee, even with infinite data.</p>
+      <div class="sl-quote">Think of AIC and BIC as two judges scoring the same complexity, with BIC charging a steeper "cover charge" per extra parameter once you have more than about 8 data points — and that charge keeps climbing the more data you collect. Same underlying idea, fit minus a penalty, just a different price tag.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Why they disagree: the price tag per parameter</h2>
+      <p class="sl-sub">AIC charges 2 per parameter, flat. BIC charges ln(n) per parameter — and ln(n) crosses 2 fast.</p>
+      <div class="sl-svgwrap">
+        <svg viewBox="0 0 640 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Chart of penalty per parameter versus sample size: AIC flat at 2, BIC rising as ln(n), crossing near n=7.4">
+          <line x1="60" y1="20" x2="60" y2="200" style="stroke:var(--border2);stroke-width:1"/>
+          <line x1="60" y1="200" x2="600" y2="200" style="stroke:var(--border2);stroke-width:1"/>
+          <line x1="60" y1="152" x2="600" y2="152" style="stroke:var(--amber);stroke-width:2" stroke-dasharray="4,3"/>
+          <text x="605" y="156" style="fill:var(--amber);font-size:11px">AIC: flat 2</text>
+          <path d="M60,200 C120,120 220,80 320,63 C420,50 520,42 600,36" style="fill:none;stroke:var(--blue);stroke-width:2.5"/>
+          <text x="430" y="70" style="fill:var(--blue);font-size:11px">BIC: ln(n)</text>
+          <circle cx="98" cy="152" r="5" style="fill:var(--green)"/>
+          <text x="98" y="132" text-anchor="middle" style="fill:var(--green);font-size:10px;font-weight:700">n≈7.4, penalties equal</text>
+          <circle cx="380" cy="55" r="4" style="fill:var(--purple)"/>
+          <text x="380" y="40" text-anchor="middle" style="fill:var(--purple);font-size:10px">n=100 → ln(100)≈4.6</text>
+          <text x="60" y="216" text-anchor="middle" style="fill:var(--text3);font-size:10px">n=1</text>
+          <text x="600" y="216" text-anchor="middle" style="fill:var(--text3);font-size:10px">n=500</text>
+          <text x="330" y="232" text-anchor="middle" style="fill:var(--text3);font-size:11px">sample size (n)</text>
+        </svg>
+      </div>
+      <p class="sl-p">The two penalties are equal exactly when ln(n) = 2, i.e. n = e² ≈ 7.39. For essentially any dataset with more than about 8 observations, BIC's per-parameter penalty is already stricter than AIC's, and the gap keeps widening (logarithmically) as n grows. At n = 100, BIC charges ln(100) ≈ 4.605 per parameter — more than double AIC's flat 2.</p>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">A genuine split in emphasis, not just arithmetic</div>
+        <p>AIC is oriented toward good out-of-sample predictive performance. BIC is oriented toward finding the most probable, most parsimonious model, assuming a "true," comparatively simple model exists among your candidates. Neither is "the correct one" in an absolute sense — reporting both, and noting when they disagree, beats picking whichever endorses the model you already wanted.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">A genuine tie on AIC, a clear call on BIC</h2>
+      <p class="sl-sub">Two models, n = 100 observations. Edit any field — both scores, and the winner, recompute live.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — the worked example, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Sample size n</label><input type="number" class="sl-input" id="aic-n" value="100" step="1" min="1"></div>
+        </div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Model A — params kₐ</label><input type="number" class="sl-input" id="aic-ka" value="2" step="1" min="0"></div>
+          <div class="sl-calc-field"><label>Model A — ln L̂ₐ</label><input type="number" class="sl-input" id="aic-lla" value="-50" step="1"></div>
+        </div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Model B — params k_B</label><input type="number" class="sl-input" id="aic-kb" value="5" step="1" min="0"></div>
+          <div class="sl-calc-field"><label>Model B — ln L̂_B</label><input type="number" class="sl-input" id="aic-llb" value="-47" step="1"></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>AIC — Model A: <b id="aic-aica">104.00</b> &nbsp;·&nbsp; Model B: <b id="aic-aicb">104.00</b> &nbsp;→ AIC prefers <b id="aic-aicwin">a tie</b></div>
+          <div>BIC — Model A: <b id="aic-bica">109.21</b> &nbsp;·&nbsp; Model B: <b id="aic-bicb">117.03</b> &nbsp;→ BIC prefers <b id="aic-bicwin">Model A</b></div>
+        </div>
+        <div class="sl-note" id="aic-warn"></div>
+        <button type="button" class="sl-reset-btn" id="aic-reset">Reset to worked-example numbers</button>
+      </div>
+      <p class="sl-p">Model B's three extra parameters bought a 6-point deviance improvement (100 → 94). Under AIC that costs exactly 3 × 2 = 6 points — a wash, hence the tie at 104 each. Under BIC at n = 100, those same three parameters cost 3 × ln(100) ≈ 13.8 points — more than double the improvement they bought, leaving Model B clearly worse off. Same data, same fit improvement, different verdict.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">How practitioners actually read the gap</h2>
+      <p class="sl-sub">Don't just crown the single winner — look at Δ, the gap to the best score in the set.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">✓</div><div><h4>Δ ≤ 2 — substantial support</h4><p>Effectively tied with the best model in the set. Treat these as indistinguishable, not as a confident pick of whichever landed a fraction lower.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">~</div><div><h4>Δ 4–7 — considerably less support</h4><p>A real but not overwhelming gap — worth noting, not decisive on its own.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">✕</div><div><h4>Δ &gt; 10 — essentially no support</h4><p>Safely ruled out relative to the leader.</p></div></div>
+      </div>
+      <p class="sl-p">Two caveats matter as much as the formula itself. First, AIC/BIC only rank a candidate set against <em>itself</em> — the best of five bad models still "wins," which doesn't make it a good model in any absolute sense. Second, the comparison is only valid across models fit on the identical response variable and identical usable sample — an AR(1) and an AR(5) fit "to the same data" don't automatically share the same usable n, because the AR(5) model consumes 5 initial observations as lagged inputs rather than fitted data points.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Common pitfall</div>
+        <p>Letting AIC/BIC substitute for a genuine out-of-sample check. Both are cheap, principled, in-sample-computable estimates of an out-of-sample quantity — not the same thing as actually holding out data and checking. A model that "wins" on AIC/BIC still has to prove itself on a true in-sample/out-of-sample split with realistic costs before it earns any trust.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Choosing a mean-reversion spread's lag length</h2>
+      <p class="sl-sub">A researcher is deciding how many lags to use in an AR model of a demeaned FX spread believed to revert toward zero.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Model 1 — AR(1), k=2</span>
+          <p>One mean-reversion coefficient plus the residual variance. Deviance −2 ln L̂ = 100 on n = 100 days.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Model 2 — AR(5), k=5</span>
+          <p>Five lag coefficients spanning the last week. Deviance −2 ln L̂ = 94 — better in-sample, exactly as the nesting argument guarantees it must be.</p>
+        </div>
+      </div>
+      <p class="sl-p">Read naively, "the 5-lag model explains the data better" sounds like a reason to prefer it. But the same arithmetic as the worked example applies: AIC ties the two models exactly at 104, and BIC prefers the 1-lag model by roughly 7.8 points. Both say the same thing — the extra four lags improved fit by <em>less</em> than the going rate for four more free parameters. Neither finds evidence that lags 2 through 5 pull their weight.</p>
+      <div class="sl-quote">Those four extra lag coefficients were very likely fitting sampling noise in this particular 100-day window, not real, persistent mean-reversion structure. A model that spends its extra parameters on noise has no reason to keep fitting a <em>different</em> sample's noise out-of-sample — so the simpler model is the one more likely to still work on data the researcher hasn't seen yet.</div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this stands in this repo, right now</div>
+        <p>The full lesson states this repo "currently has no coded AIC/BIC step in any engine" — checking the actual code, that's very nearly true, with one nuance. <code>forge/residual.py</code>'s Augmented Dickey-Fuller stationarity test calls statsmodels with <code>autolag="AIC"</code>, so AIC is doing quiet work choosing a lag count inside that one diagnostic. But no engine in this repo runs AIC or BIC as an explicit, reported step for comparing candidate <em>trading</em> models against each other — the mean-reversion scenario above is illustrative of a decision this repo doesn't yet automate, not a description of an existing pipeline.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Quick check</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Why does raw log-likelihood (or raw R²) always weakly favor a model with more parameters, even useless ones?</h4>
+        <button class="sl-quiz-opt" data-correct="true">A larger, nesting model's search space contains every point a smaller model could reach, so it can always match or beat that fit</button>
+        <button class="sl-quiz-opt">Because more parameters always describe more real structure in the data</button>
+        <button class="sl-quiz-opt">It doesn't — raw fit is already a fair way to compare models of different sizes</button>
+        <div class="sl-quiz-explain">Setting the extra parameters to the value that reproduces the smaller model recovers its exact fit, and generically the larger model does at least slightly better by nudging them toward whatever pattern — real or noise — exists in this sample. That's a mechanical consequence of optimizing over a bigger space, not evidence of anything real.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>What is the per-parameter penalty each criterion charges?</h4>
+        <button class="sl-quiz-opt" data-correct="true">AIC: a flat 2. BIC: ln(n), which grows with sample size</button>
+        <button class="sl-quiz-opt">Both charge a flat 2 per parameter</button>
+        <button class="sl-quiz-opt">AIC: ln(n). BIC: a flat 2</button>
+        <div class="sl-quiz-explain">AIC = 2k − 2 ln L̂ charges 2 per parameter no matter the sample size. BIC = k·ln(n) − 2 ln L̂ charges ln(n) per parameter — stricter than AIC once n exceeds about 7.4.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Model A (k=2) and Model B (k=5) tie on AIC at 104 each. At n=100, BIC prefers Model A by about 7.8 points. Why?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The 3 extra parameters improved deviance by 6, but cost only 6 under AIC (3×2) versus about 13.8 under BIC (3×ln 100)</button>
+        <button class="sl-quiz-opt">BIC made an arithmetic error somewhere in the formula</button>
+        <button class="sl-quiz-opt">BIC and AIC always agree once n is large enough</button>
+        <div class="sl-quiz-explain">The fit improvement was identical in both cases — only the price tag for the parameters that produced it changed, because BIC's per-parameter charge (ln n ≈ 4.605) is more than double AIC's flat 2 at n=100.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>AIC is oriented toward out-of-sample prediction; BIC toward finding the true model. Are these the same goal?</h4>
+        <button class="sl-quiz-opt" data-correct="true">No — AIC has no consistency guarantee even with infinite data; BIC's chance of picking the true model (if it's a candidate) approaches 1 as n → ∞</button>
+        <button class="sl-quiz-opt">Yes, they always select the identical model as n grows</button>
+        <button class="sl-quiz-opt">No — AIC always finds the true model and BIC never does</button>
+        <div class="sl-quiz-explain">AIC is asymptotically equivalent to leave-one-out cross-validation, tuned for prediction accuracy without assuming any candidate is exactly correct. BIC is model-selection consistent — a distinct, related, but not identical target.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>In the AR(1) vs. AR(5) spread scenario, why doesn't the 5-lag model's better in-sample fit make it the better model to trade?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Both AIC (tie) and BIC (clear preference for AR(1)) show the extra fit was no better than the going rate for the extra parameters — plausibly just fitted noise</button>
+        <button class="sl-quiz-opt">A better in-sample fit always means a better trading model, full stop</button>
+        <button class="sl-quiz-opt">AIC and BIC can't be applied to time-series models at all</button>
+        <div class="sl-quiz-explain">A model that fits noise in-sample has no reason to keep fitting a different sample's noise out-of-sample — the simpler model is more likely to still work on data the researcher hasn't seen, which is the actual point of the exercise.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Raw fit always favors the bigger model — a nesting model can match or beat a smaller one's log-likelihood by construction, so raw likelihood or R² alone can never validly choose between models of different sizes.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>AIC = 2k − 2 ln L̂ and BIC = k·ln(n) − 2 ln L̂ are both "fit minus a complexity penalty" — they just price the penalty differently, a flat 2 versus ln(n) per parameter.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>AIC and BIC optimize different targets — AIC for out-of-sample predictive accuracy, BIC for recovering the true, most-parsimonious model — and they can disagree outright, as the worked tie-versus-7.8-point-win example showed.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>AIC/BIC only rank a candidate set against itself — a low score is a relative statement, not proof any candidate fits well in an absolute sense.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Comparisons require identical usable data — an AR(1) vs. AR(5) comparison is invalid unless both are re-fit on the same trimmed, aligned sample.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Neither criterion replaces a genuine out-of-sample check — they're a cheap first filter, standing in for, not replacing, validating the survivor on data it hasn't seen.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Explain why a fancier model's better backtest isn't automatically a better model. Compute and compare AIC and BIC for any two candidates, and read a Δ gap without over-interpreting a fraction of a point. Recognize when a model's extra parameters bought real structure versus when they just bought a lower in-sample number — and know that either way, an out-of-sample check still has to happen before real risk goes on.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>ARIMA &amp; VAR</h3>
+        <p>Choosing lag order and differencing for time-series models — where AIC and BIC are exactly the tool used to pick how many lags actually earn their keep.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="arima-var-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="model-selection-aic-bic.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Slide 2 — nesting slider: in-sample fit only ever rises with k.
+  (function(){
+    var slider = document.getElementById('nest-slider');
+    if (!slider) return;
+    var kval = document.getElementById('nest-kval');
+    var bar = document.getElementById('nest-bar');
+    var pct = document.getElementById('nest-pct');
+    var verdict = document.getElementById('nest-verdict');
+    // Monotonically increasing, diminishing-returns fit curve — never decreases as k rises.
+    var FIT = [0.20, 0.38, 0.52, 0.63, 0.71, 0.78, 0.83, 0.87, 0.90, 0.92];
+    var MAXW = 500;
+    function update(){
+      var k = parseInt(slider.value, 10);
+      kval.textContent = 'k = ' + k;
+      var r2 = FIT[k - 1];
+      var w = Math.max(20, MAXW * r2);
+      bar.setAttribute('width', w);
+      pct.setAttribute('x', 80 + w - 10);
+      pct.textContent = 'R² = ' + r2.toFixed(2);
+      verdict.innerHTML = k === 1
+        ? '<strong>Baseline, k=1.</strong> One free parameter, a modest fit. Slide right to add more.'
+        : '<strong>Never once did the bar shrink.</strong> Each extra parameter can only match or beat what came before &mdash; from k=' + (k-1) + ' to k=' + k + ', in-sample fit rose from ' + FIT[k-2].toFixed(2) + ' to ' + r2.toFixed(2) + ', never the other way.';
+    }
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Slide 8 — live AIC/BIC calculator, both models, both criteria.
+  (function(){
+    var nEl = document.getElementById('aic-n');
+    if (!nEl) return;
+    var kaEl = document.getElementById('aic-ka'), llaEl = document.getElementById('aic-lla');
+    var kbEl = document.getElementById('aic-kb'), llbEl = document.getElementById('aic-llb');
+    var aicaOut = document.getElementById('aic-aica'), aicbOut = document.getElementById('aic-aicb'), aicwinOut = document.getElementById('aic-aicwin');
+    var bicaOut = document.getElementById('aic-bica'), bicbOut = document.getElementById('aic-bicb'), bicwinOut = document.getElementById('aic-bicwin');
+    var warn = document.getElementById('aic-warn');
+    var resetBtn = document.getElementById('aic-reset');
+    var DEFAULTS = { n: 100, ka: 2, lla: -50, kb: 5, llb: -47 };
+
+    function winner(a, b){
+      if (Math.abs(a - b) < 1e-9) return 'a tie';
+      return a < b ? 'Model A' : 'Model B';
+    }
+
+    function recompute(){
+      var n = parseFloat(nEl.value), ka = parseFloat(kaEl.value), lla = parseFloat(llaEl.value);
+      var kb = parseFloat(kbEl.value), llb = parseFloat(llbEl.value);
+      var bad = !isFinite(n) || !isFinite(ka) || !isFinite(lla) || !isFinite(kb) || !isFinite(llb) || n <= 0 || ka < 0 || kb < 0;
+      if (bad) {
+        [aicaOut, aicbOut, bicaOut, bicbOut].forEach(function(el){ el.textContent = '—'; });
+        aicwinOut.textContent = '—'; bicwinOut.textContent = '—';
+        warn.textContent = 'Enter a positive sample size n and non-negative parameter counts.';
+        return;
+      }
+      warn.textContent = '';
+      var aicA = 2 * ka - 2 * lla, aicB = 2 * kb - 2 * llb;
+      var bicA = ka * Math.log(n) - 2 * lla, bicB = kb * Math.log(n) - 2 * llb;
+      aicaOut.textContent = aicA.toFixed(2);
+      aicbOut.textContent = aicB.toFixed(2);
+      aicwinOut.textContent = winner(aicA, aicB);
+      bicaOut.textContent = bicA.toFixed(2);
+      bicbOut.textContent = bicB.toFixed(2);
+      bicwinOut.textContent = winner(bicA, bicB);
+    }
+
+    [nEl, kaEl, llaEl, kbEl, llbEl].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      nEl.value = DEFAULTS.n; kaEl.value = DEFAULTS.ka; llaEl.value = DEFAULTS.lla;
+      kbEl.value = DEFAULTS.kb; llbEl.value = DEFAULTS.llb;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

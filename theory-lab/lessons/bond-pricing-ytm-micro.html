@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bond Pricing &amp; YTM — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Bond Pricing &amp; Yield to Maturity — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivations, MathJax notation, and a Newton-Raphson worked example?<a href="bond-pricing-ytm.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Fixed Income 1 · Fixed Income Mathematics</div>
+      <h1 class="sl-h1">Bond Pricing &amp; Yield to Maturity, <em>as Present Value</em></h1>
+      <p class="sl-lede">A bond's price is nothing more than the present value of a known stream of future cash — the same discounting arithmetic behind any other asset, applied to coupons and a face-value repayment instead of dividends. Yield to maturity flips the question around: given the price the market is actually charging, what single discount rate explains it? Everything a rates desk does — quoting, comparing, and repricing bonds — sits on top of these two ideas.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">A bond is a stack of dated IOUs</h2>
+      <p class="sl-sub">A 5-year, 4% annual-coupon, $1,000 face bond pays exactly this — nothing more, nothing less.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Cashflow timeline</div>
+        <div class="sl-row">
+          <div class="sl-box">Yr 1<br>$40</div>
+          <div class="sl-arrow">→</div>
+          <div class="sl-box">Yr 2<br>$40</div>
+          <div class="sl-arrow">→</div>
+          <div class="sl-box">Yr 3<br>$40</div>
+          <div class="sl-arrow">→</div>
+          <div class="sl-box">Yr 4<br>$40</div>
+          <div class="sl-arrow">→</div>
+          <div class="sl-box amber">Yr 5<br>$40 + $1,000</div>
+        </div>
+        <div class="sl-note">Four ordinary coupons, then a fifth payment that bundles the last coupon together with the full face-value repayment. That's the entire promise — every bond pricing question is about what this stack of dated cash is worth today.</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">C</div><div><h4>The coupon</h4><p>A fixed payment, set at issuance, paid every period until maturity. It never changes for the life of the bond, no matter what happens to market rates.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">F</div><div><h4>The face value</h4><p>Also called par value or principal — repaid exactly once, alongside the final coupon, at maturity. Every bond redeems at exactly F, regardless of what it traded for along the way.</p></div></div>
+      </div>
+      <p class="sl-p">Whether $1,000 today is a fair price for that promise depends on one thing: what else you could do with your money instead. If the going rate elsewhere is 5%, a bond only paying a 4% coupon is a worse deal than the alternative — so it shouldn't cost a full $1,000. Bond pricing is exactly that comparison, made precise.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">The pricing formula, piece by piece</h2>
+      <p class="sl-sub">P = Σ C/(1+y)ᵗ + F/(1+y)ⁿ — discount every coupon, discount the face value, add them together.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">Σ</div><div><h4>The coupon annuity — Σ C/(1+y)ᵗ</h4><p>Every coupon, discounted back to today from the exact period it lands in. A coupon five years out is discounted more than one arriving next year.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">$</div><div><h4>The face-value lump sum — F/(1+y)ⁿ</h4><p>The one-time repayment of principal, discounted only from maturity — it isn't spread across every period the way the coupons are.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">P</div><div><h4>The price — everything added together</h4><p>What the entire promise is worth today, given a required discount rate y. Change y, and every term in the sum changes with it.</p></div></div>
+      </div>
+      <div class="sl-quote">Each term is ordinary present-value discounting: a dollar received t periods from now is worth 1/(1+y)ᵗ dollars today, because a dollar today could instead be invested at rate y and grow into (1+y)ᵗ dollars by then. The bond formula is that discounting applied once per coupon, plus once more for the face value — nothing more exotic than that.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Worked example — pricing it a step at a time</h2>
+      <p class="sl-sub">Same bond: $1,000 face, 4% annual coupon ($40/yr), 5 years to maturity, 5% required yield.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="wk-tabs">
+          <button class="sl-tab active" data-panel="wk-1">Step 1 — discount coupons</button>
+          <button class="sl-tab" data-panel="wk-2">Step 2 — sum them</button>
+          <button class="sl-tab" data-panel="wk-3">Step 3 — discount face value</button>
+          <button class="sl-tab" data-panel="wk-4">Step 4 — add for price</button>
+        </div>
+        <div class="sl-panel active" id="wk-1">
+          <div class="sl-calc-steps">
+            <div>40 ÷ 1.05¹ = <b>$38.10</b></div>
+            <div>40 ÷ 1.05² = <b>$36.28</b></div>
+            <div>40 ÷ 1.05³ = <b>$34.55</b></div>
+            <div>40 ÷ 1.05⁴ = <b>$32.91</b></div>
+            <div>40 ÷ 1.05⁵ = <b>$31.34</b></div>
+          </div>
+          <div class="sl-verdict">Each $40 coupon, discounted back from the exact year it arrives. The later coupons shrink more — more waiting means more discounting.</div>
+        </div>
+        <div class="sl-panel" id="wk-2">
+          <div class="sl-row"><div class="sl-box">38.10+36.28+34.55+32.91+31.34</div><div class="sl-arrow">=</div><div class="sl-box amber">$173.18</div></div>
+          <div class="sl-verdict">That's the entire coupon annuity — the present value of all five coupons, added together.</div>
+        </div>
+        <div class="sl-panel" id="wk-3">
+          <div class="sl-row"><div class="sl-box">1,000 ÷ 1.05⁵</div><div class="sl-arrow">=</div><div class="sl-box amber">≈ $783.53</div></div>
+          <div class="sl-verdict">The face value is discounted <strong>only once</strong>, from year 5 — it isn't a recurring payment like the coupons.</div>
+        </div>
+        <div class="sl-panel" id="wk-4">
+          <div class="sl-row"><div class="sl-box">173.18 + 783.53</div><div class="sl-arrow">=</div><div class="sl-box green">$956.71</div></div>
+          <div class="sl-verdict">The bond prices at <strong>$956.71</strong> — a <strong>discount</strong> to its $1,000 face value, exactly as expected, since its 4% coupon sits below the 5% yield the market demands.</div>
+        </div>
+        <div class="sl-note">This is the whole procedure, every time: discount each coupon from its own period, discount the face value from maturity alone, add. Longer bonds just repeat step 1 more times.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Yield up, price down — no exceptions</h2>
+      <p class="sl-sub">Every cashflow in the formula is divided by (1+y) raised to some positive power.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Raise the yield</span>
+          <p>Every denominator (1+y)ᵗ grows. Every single term in the sum — every discounted coupon, and the discounted face value — shrinks. There is no term in a plain fixed-coupon bond's formula that a higher y can make bigger.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Lower the yield</span>
+          <p>Every denominator shrinks instead, so every term grows, and the sum — the price — rises. Same logic, opposite direction, with the same "no exceptions" guarantee.</p>
+        </div>
+      </div>
+      <div class="sl-quote">This isn't an empirical tendency that occasionally breaks — it falls directly out of the algebra of discounting a fixed cashflow stream. It holds for every plain-vanilla fixed-coupon bond, always. It's also <strong>not a straight line</strong>: the curve connecting price to yield bends, an effect called convexity that the next slide makes visible.</div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Why this is the first thing a desk checks</div>
+        <p>When a headline says "the 10-year yield jumped 15 basis points," no one needs to re-run a pricing model to know the direction bond prices just moved — the inverse relationship says it immediately. The actual work starts one level deeper: <em>how much</em> did the price move, which is a duration-and-convexity question, not this slide's.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">The price-yield curve, live</h2>
+      <p class="sl-sub">Same 5-year, 4% coupon, $1,000 face bond. Drag the slider and watch the price move along the curve.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Curved line showing bond price falling as yield rises, with a movable marker for the currently selected yield">
+            <line x1="60" y1="210" x2="600" y2="210" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="60" y1="20" x2="60" y2="210" style="stroke:var(--border2);stroke-width:1"/>
+            <text x="330" y="240" text-anchor="middle" style="fill:var(--text3);font-size:11px">Yield to maturity</text>
+            <text x="16" y="115" text-anchor="middle" style="fill:var(--text3);font-size:11px" transform="rotate(-90 16 115)">Price ($)</text>
+            <text x="60" y="224" text-anchor="middle" style="fill:var(--text3);font-size:10px">0.1%</text>
+            <text x="600" y="224" text-anchor="middle" style="fill:var(--text3);font-size:10px">18%</text>
+            <text x="52" y="214" text-anchor="end" style="fill:var(--text3);font-size:10px">500</text>
+            <text x="52" y="24" text-anchor="end" style="fill:var(--text3);font-size:10px">1250</text>
+            <path id="pyc-path" style="fill:none;stroke:var(--blue);stroke-width:2.5" d=""/>
+            <line id="pyc-marker" x1="0" y1="20" x2="0" y2="210" style="stroke:var(--amber);stroke-width:1.5;stroke-dasharray:2,2"/>
+            <circle id="pyc-dot" cx="0" cy="0" r="5" style="fill:var(--amber);stroke:var(--bg);stroke-width:1.5"/>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Yield to maturity</span><span class="sl-live" id="pyc-yval">y = 5.00%</span></div>
+        <input type="range" class="sl-slider" id="pyc-slider" min="10" max="1800" step="5" value="500">
+        <div class="sl-note">Price at this yield: <b id="pyc-pval">$956.71</b> — <span id="pyc-note"></span></div>
+      </div>
+      <p class="sl-p">Notice the curve is <strong>bowed, not straight</strong>: price falls faster for the first percentage point of yield increase near low yields than it does further out. That curvature is convexity — the second-order effect the very next lesson in this series quantifies precisely.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Why YTM has to be searched for, not looked up</h2>
+      <p class="sl-sub">YTM is the same pricing formula, run backwards: given the market price, solve for y.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">1 or 2 periods</span>
+          <p>A single-payment bond rearranges directly: P=(C+F)/(1+y) gives y=(C+F)/P − 1, plain algebra. Two periods is a quadratic in y — still solvable by a closed-form formula, just a messier one.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">3+ periods — every real bond</span>
+          <p>y is raised to three or more different powers in the same equation simultaneously. There's no general algebraic formula — analogous to the quadratic formula, but for a degree-n polynomial — that isolates it. An iterative numerical search is the only option.</p>
+        </div>
+      </div>
+      <div class="sl-quote">The search itself is simple in spirit: guess a yield, price the bond, compare that price to the observed market price, adjust the guess in the direction that closes the gap, repeat. Newton-Raphson is the standard version of exactly this — start near the coupon rate, use the pricing formula's local slope to take a smarter step each time, and converge in a handful of iterations.</div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>Newton-Raphson can fail to converge, oscillate, or land on an economically meaningless root if the initial guess is poor or the local slope is unusual. Real pricing libraries bound the search to a sensible yield range and fall back to a slower but more robust method — bisection — if Newton-Raphson misbehaves.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Discount, par, or premium — read it off the coupon vs. yield</h2>
+      <p class="sl-sub">Same $1,000 face, 5-year bond at a 5% YTM. Only the coupon rate changes between tabs.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="ppd-tabs">
+          <button class="sl-tab active" data-panel="ppd-1">Discount — 4% coupon</button>
+          <button class="sl-tab" data-panel="ppd-2">Par — 5% coupon</button>
+          <button class="sl-tab" data-panel="ppd-3">Premium — 6% coupon</button>
+        </div>
+        <div class="sl-panel active" id="ppd-1">
+          <div class="sl-row"><div class="sl-box">Coupon 4%</div><div class="sl-arrow">&lt;</div><div class="sl-box">YTM 5%</div></div>
+          <div class="sl-verdict">Price = <strong>$956.71</strong> — below the $1,000 face value. The coupon is stingier than the going rate, so the price falls below face to compensate the buyer with a capital gain (bought cheap, redeemed at full face) for the below-market coupon.</div>
+        </div>
+        <div class="sl-panel" id="ppd-2">
+          <div class="sl-row"><div class="sl-box green">Coupon 5%</div><div class="sl-arrow">=</div><div class="sl-box green">YTM 5%</div></div>
+          <div class="sl-verdict">Price = <strong>$1,000.00</strong>, exactly. The coupon matches what the market currently demands — there's no gap to compensate for in either direction.</div>
+        </div>
+        <div class="sl-panel" id="ppd-3">
+          <div class="sl-row"><div class="sl-box amber">Coupon 6%</div><div class="sl-arrow">&gt;</div><div class="sl-box amber">YTM 5%</div></div>
+          <div class="sl-verdict">Price = <strong>$1,043.29</strong> — above the $1,000 face value. The coupon is richer than the market requires, so investors bid the price up until the higher purchase price brings the effective return back down to 5%.</div>
+        </div>
+        <div class="sl-note">All three panels use the exact same pricing formula — nothing structural changes, only the relationship between the coupon rate (C/F) and the yield (y). Every one of these bonds still redeems at exactly $1,000 at maturity, no matter what it traded for along the way.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Price any bond yourself</h2>
+      <p class="sl-sub">Edit any field. Starts on the worked-example numbers from Section 3.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Face value ($)</label><input type="number" class="sl-input" id="bc-face" value="1000" step="100" min="0"></div>
+          <div class="sl-calc-field"><label>Coupon rate (%)</label><input type="number" class="sl-input" id="bc-coupon" value="4" step="0.25"></div>
+          <div class="sl-calc-field"><label>Yield (%)</label><input type="number" class="sl-input" id="bc-yield" value="5" step="0.25"></div>
+          <div class="sl-calc-field"><label>Years to maturity</label><input type="number" class="sl-input" id="bc-years" value="5" step="1" min="1"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Bond price</div>
+            <div class="sl-calc-result-val" id="bc-result">$956.71</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Annual coupon C = $<b id="bc-coupon-amt">40.00</b></div>
+          <div>Trades at a <b id="bc-verdict">discount</b> to face value</div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="bc-reset">Reset to worked-example numbers</button>
+        <div class="sl-note">Blank, negative, or non-numeric input shows "—" instead of breaking — try clearing a field or typing a letter.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Two footnotes worth knowing</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">✂</div><div><h4>Clean price vs. dirty price</h4><p>The formula above assumes valuation exactly on a coupon date. Between coupon dates, the <strong>dirty price</strong> (what a buyer actually pays) adds accrued interest to the theoretical present value; the <strong>clean price</strong> — what trading screens quote — strips it back out, so quotes move smoothly instead of jumping by the coupon amount on every coupon date.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">↘</div><div><h4>Pull to par</h4><p>As maturity approaches, holding yield fixed, a premium bond's price decays smoothly toward face value and a discount bond's price rises smoothly toward it — because every bond redeems at exactly F regardless of what it traded for along the way. Traders holding premium bonds near maturity plan for this decay; it isn't a market move.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">↻</div><div><h4>YTM assumes coupons reinvest at YTM itself</h4><p>The realized return an investor actually earns depends on the rate each coupon gets reinvested at when it's paid — which may not match the original YTM. That gap is called reinvestment risk, and it grows for longer, higher-coupon bonds where more of the total return comes from reinvested coupons.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">How a rates desk actually uses this</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🗣</div><div><h4>Quoted in yield, not price</h4><p>A trader says "it's trading at 4.32%," not "it's trading at $978.40" — yield is what's comparable across different coupons, maturities, and issuers, which is exactly why it's the quoted convention.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚖</div><div><h4>Relative value & spread trades</h4><p>A 3% coupon bond and a 6% coupon bond of the same maturity aren't directly comparable by price, but their YTMs are, on the same scale — much like a z-score makes otherwise-unrelated series comparable.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧮</div><div><h4>Production systems solve for YTM iteratively</h4><p>Every pricing library and terminal runs Newton-Raphson (or bisection/secant) against the exact pricing equation from Section 6 — never by hand, and never via a closed form, because none exists beyond a couple of periods.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">➡</div><div><h4>Sets up the next two lessons directly</h4><p>Duration and convexity are, respectively, the first- and second-order sensitivity of this exact pricing formula to a change in yield — the slope and the bend of the curve drawn in Section 5.</p></div></div>
+      </div>
+      <div class="sl-quote">A stronger-than-expected inflation print hits the wire; headlines say "the 10-year yield jumped 15 basis points." No one re-runs a pricing model to know the direction — Section 4's inverse relationship says it instantly. The desk's actual work is <strong>how much</strong> the price moved, which is precisely the job duration and convexity do next.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What single discount rate makes the present value of every future cashflow equal a bond's observed market price?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Yield to maturity (YTM)</button>
+        <button class="sl-quiz-opt">The coupon rate</button>
+        <button class="sl-quiz-opt">The face value</button>
+        <div class="sl-quiz-explain">That's exactly how YTM is defined — it's solved backwards from an observed price, not read off a table or fixed at issuance like the coupon rate.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Market yields rise 25 basis points overnight. What happens to a plain fixed-coupon bond's price?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It falls</button>
+        <button class="sl-quiz-opt">It rises</button>
+        <button class="sl-quiz-opt">It's unaffected until maturity</button>
+        <div class="sl-quiz-explain">Every cashflow is discounted at a higher rate, so every term in the present-value sum shrinks — no exceptions for a plain fixed-coupon bond.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>A bond's coupon rate is 6% and its YTM is 4.5%. Does it trade above, at, or below face value?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Above face value — a premium bond</button>
+        <button class="sl-quiz-opt">Below face value — a discount bond</button>
+        <button class="sl-quiz-opt">Exactly at face value — a par bond</button>
+        <div class="sl-quiz-explain">Coupon rate &gt; YTM ⇒ premium. Investors bid the price up until the richer coupon's effective return matches the market's 4.5%.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Why is there no closed-form algebraic formula for YTM once a bond has 3 or more coupon periods?</h4>
+        <button class="sl-quiz-opt" data-correct="true">y appears raised to 3+ different powers in the same equation at once, with no general formula to isolate it</button>
+        <button class="sl-quiz-opt">Bond pricing formulas are only ever approximate</button>
+        <button class="sl-quiz-opt">Coupon payments are randomly sized</button>
+        <div class="sl-quiz-explain">n=1 is linear (solvable directly), n=2 is a quadratic (still closed-form), but n≥3 has no general algebraic solution — only an iterative numerical search, like Newton-Raphson.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>On the price-yield curve, why does it bend instead of running as a straight line?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The relationship between price and yield is convex, not linear</button>
+        <button class="sl-quiz-opt">Bond prices move randomly and noisily</button>
+        <button class="sl-quiz-opt">Coupon payments change automatically with the yield</button>
+        <div class="sl-quiz-explain">That curvature is convexity — the second-order effect the next lesson, Duration &amp; Convexity, quantifies precisely.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>A bond's price is nothing more than the present value of its coupons plus its face value, both discounted at the same required yield: P = Σ C/(1+y)ᵗ + F/(1+y)ⁿ.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Yield to maturity is that same formula solved backwards — the single rate that makes the present value of every cashflow equal the bond's observed market price.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Price and yield always move in opposite directions — a fixed cashflow discounted at a higher rate is worth less, with no exceptions for a plain fixed-coupon bond.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Beyond one or two coupon periods, there is no closed-form solution for YTM — every real bond's yield is found by an iterative numerical search, such as Newton-Raphson.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Comparing a bond's coupon rate to its YTM tells you immediately whether it trades at a discount, at par, or at a premium to face value.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>The price-yield relationship curves rather than running straight — that curvature (convexity) is exactly what the next lesson quantifies.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Price any plain fixed-coupon bond from its coupon, face value, yield, and maturity. Read "yield up, price down" instantly off any headline, without re-running a model. Classify a bond as trading at a discount, at par, or at a premium just by comparing its coupon rate to its YTM. And recognize why a "YTM" field on any terminal is running an iterative solver under the hood, not a table lookup.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Duration &amp; Convexity</h3>
+        <p>How fast — not just which direction — a bond's price moves per unit of yield: quantifying the slope and the bend of the exact curve drawn in Section 5.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="duration-convexity-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="bond-pricing-ytm.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Price-yield curve + yield slider — same pricing formula as the worked
+  // example: a 5-year, 4% annual-coupon, $1,000 face bond.
+  (function(){
+    var slider = document.getElementById('pyc-slider');
+    if (!slider) return;
+    var yVal = document.getElementById('pyc-yval');
+    var pVal = document.getElementById('pyc-pval');
+    var pathEl = document.getElementById('pyc-path');
+    var marker = document.getElementById('pyc-marker');
+    var dot = document.getElementById('pyc-dot');
+    var noteEl = document.getElementById('pyc-note');
+
+    var C = 40, F = 1000, N = 5;
+    function price(y){
+      var p = 0;
+      for (var t = 1; t <= N; t++) p += C / Math.pow(1 + y, t);
+      p += F / Math.pow(1 + y, N);
+      return p;
+    }
+
+    var X0 = 60, X1 = 600, YMIN = 0.001, YMAX = 0.18;
+    var PY0 = 210, PY1 = 20, PMIN = 500, PMAX = 1250;
+
+    function xForY(y){ return X0 + (y - YMIN) / (YMAX - YMIN) * (X1 - X0); }
+    function yForP(p){ return PY0 + (p - PMIN) / (PMAX - PMIN) * (PY1 - PY0); }
+
+    function buildCurve(){
+      var d = '';
+      var steps = 120;
+      for (var i = 0; i <= steps; i++) {
+        var y = YMIN + (YMAX - YMIN) * i / steps;
+        var p = price(y);
+        var x = xForY(y);
+        var py = yForP(p);
+        d += (i === 0 ? 'M' : 'L') + x.toFixed(2) + ',' + py.toFixed(2) + ' ';
+      }
+      pathEl.setAttribute('d', d);
+    }
+
+    function fmtMoney(n){
+      return '$' + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function update(){
+      var y = parseInt(slider.value, 10) / 10000; // slider units of 0.01%
+      var p = price(y);
+      yVal.textContent = 'y = ' + (y * 100).toFixed(2) + '%';
+      pVal.textContent = fmtMoney(p);
+      var x = xForY(y), py = yForP(p);
+      marker.setAttribute('x1', x); marker.setAttribute('x2', x);
+      dot.setAttribute('cx', x); dot.setAttribute('cy', py);
+
+      var couponRate = C / F;
+      var rel;
+      if (Math.abs(y - couponRate) < 0.0006) rel = 'trading at par';
+      else if (y > couponRate) rel = 'trading at a discount to its $1,000 face value';
+      else rel = 'trading at a premium to its $1,000 face value';
+      noteEl.textContent = rel + '.';
+    }
+
+    buildCurve();
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Live bond-price calculator — same formula, user-supplied inputs, with
+  // guards against blank, non-finite, or otherwise invalid input.
+  (function(){
+    var face = document.getElementById('bc-face');
+    if (!face) return;
+    var coupon = document.getElementById('bc-coupon');
+    var yieldIn = document.getElementById('bc-yield');
+    var years = document.getElementById('bc-years');
+    var result = document.getElementById('bc-result');
+    var couponAmt = document.getElementById('bc-coupon-amt');
+    var verdict = document.getElementById('bc-verdict');
+    var resetBtn = document.getElementById('bc-reset');
+    var DEFAULTS = { face: 1000, coupon: 4, yieldPct: 5, years: 5 };
+
+    function fmtMoney(n){
+      return '$' + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function recompute(){
+      var F = parseFloat(face.value);
+      var cPct = parseFloat(coupon.value);
+      var yPct = parseFloat(yieldIn.value);
+      var nRaw = parseFloat(years.value);
+
+      var valid = isFinite(F) && F >= 0 &&
+                  isFinite(cPct) && cPct >= 0 &&
+                  isFinite(yPct) &&
+                  isFinite(nRaw) && nRaw >= 1;
+
+      if (!valid) {
+        result.textContent = '—';
+        couponAmt.textContent = '—';
+        verdict.textContent = '—';
+        return;
+      }
+
+      var n = Math.round(nRaw);
+      var y = yPct / 100;
+      if (1 + y <= 0) {
+        result.textContent = '—';
+        couponAmt.textContent = '—';
+        verdict.textContent = '—';
+        return;
+      }
+
+      var C = (cPct / 100) * F;
+      var p = 0;
+      for (var t = 1; t <= n; t++) p += C / Math.pow(1 + y, t);
+      p += F / Math.pow(1 + y, n);
+
+      if (!isFinite(p)) {
+        result.textContent = '—';
+        couponAmt.textContent = '—';
+        verdict.textContent = '—';
+        return;
+      }
+
+      result.textContent = fmtMoney(p);
+      couponAmt.textContent = C.toFixed(2);
+      if (Math.abs(p - F) < 0.005) verdict.textContent = 'par';
+      else if (p < F) verdict.textContent = 'discount';
+      else verdict.textContent = 'premium';
+    }
+
+    [face, coupon, yieldIn, years].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      face.value = DEFAULTS.face;
+      coupon.value = DEFAULTS.coupon;
+      yieldIn.value = DEFAULTS.yieldPct;
+      years.value = DEFAULTS.years;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

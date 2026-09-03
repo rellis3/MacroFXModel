@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Merton's Portfolio Problem — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Merton's Portfolio Problem — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full HJB derivation, a live scenario, and a 6-question self-test?<a href="merton-portfolio-problem.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Lesson 34 · Advanced Portfolio &amp; Market Structure</div>
+      <h1 class="sl-h1">Merton's Portfolio Problem, or <em>Kelly With a Volume Knob</em></h1>
+      <p class="sl-lede">The Kelly Criterion lesson handed you one clean formula, f* = μ/σ², for the fraction of a bankroll that grows it fastest. Robert Merton asked a bigger question: not "what maximizes growth," but "what should <em>any</em> investor hold, given how much risk they personally can stand." The answer turns out to contain Kelly's formula exactly inside it — as the special case of an investor who happens not to care about risk at all beyond what growth-maximizing requires.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Kelly asked one question. Merton asks a bigger one.</h2>
+      <p class="sl-sub">The <a href="kelly-criterion.html" style="color:var(--blue)">Kelly Criterion lesson</a> derived f* = μ/σ² by maximizing expected log-growth of a repeated bet — a specific, narrow objective. Merton generalizes it.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>Kelly's question</h4><p>What fraction of bankroll maximizes long-run compounded growth? One derivative, set to zero, on g(f) = p·ln(1+f) + q·ln(1−f).</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📐</div><div><h4>Merton's question</h4><p>What should any investor — not just a growth-maximizer — hold in a risky asset at every instant, given their own personal appetite for risk? Consumption and allocation are chosen continuously, forever.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧰</div><div><h4>A different tool is needed</h4><p>Optimizing a running choice through time, against uncertainty, where today's decision shapes tomorrow's state, needs dynamic programming's continuous-time form: the Hamilton-Jacobi-Bellman (HJB) equation.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔁</div><div><h4>The payoff</h4><p>Merton's classic result, f* = μ/(γσ²), collapses exactly to Kelly's f* = μ/σ² the moment risk aversion γ is set to 1 — not an approximation, an identity.</p></div></div>
+      </div>
+      <div class="sl-quote">Kelly's growth-optimal criterion isn't a separate, competing idea from utility-based portfolio theory — it's the exact point on Merton's dial where an investor's risk aversion happens to equal one.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">The control problem: wealth as a moving target</h2>
+      <p class="sl-sub">Wealth splits between a riskless asset (rate r) and a risky one (excess return μ, variance σ²). Two choices get remade every instant.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The wealth process</div>
+        <div class="sl-row">
+          <div class="sl-box">dWₜ</div>
+          <div class="sl-arrow">=</div>
+          <div class="sl-box amber">[(r+fₜμ)Wₜ − Cₜ] dt</div>
+          <div class="sl-arrow">+</div>
+          <div class="sl-box green">fₜσWₜ dZₜ</div>
+        </div>
+        <div class="sl-verdict">The <strong>amber</strong> term is deterministic drift — riskless return plus risky excess return, minus whatever is consumed. The <strong>green</strong> term is the random shock from holding the risky asset, scaled by how much of wealth is exposed to it right now.</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🎛</div><div><h4>Two controls, chosen fresh every instant</h4><p>Consumption Cₜ and allocation fraction fₜ aren't picked once — this investor re-chooses both continuously, forever, unlike Kelly's single fixed bet size.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔗</div><div><h4>Same engine as Kelly, more levers</h4><p>This is the identical geometric-Brownian wealth process from Kelly's continuous form — just with f and C now allowed to move at every instant instead of being fixed once.</p></div></div>
+      </div>
+      <p class="sl-p">The objective is to choose the <em>entire future path</em> of {Cₜ, fₜ} to maximize expected discounted lifetime utility of consumption, plus (in the finite-horizon case) utility of whatever wealth remains at the end. That "entire future path" framing is exactly why this needs more than ordinary calculus.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">The value function — a GPS for wealth</h2>
+      <p class="sl-sub">Define J(W,t): the best-achievable expected utility obtainable starting from wealth W at time t, if every future decision is made optimally.</p>
+      <div class="sl-quote">Picture a GPS navigating real-time traffic. It doesn't plan the whole trip in advance — for every location and time, it just knows one number: the best possible remaining travel time from here, driving optimally onward. J(W,t) is that same number, applied to wealth instead of location. Given J one instant ahead, picking today's best move becomes a trivial comparison — no need to re-plan the entire future.</div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📦</div><div><h4>One number, infinite futures packaged inside</h4><p>J(W,t) compresses every possible future consumption path, allocation path, and random wealth outcome into a single value per (wealth, time) pair.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧩</div><div><h4>Bellman's principle of optimality</h4><p>Whatever earlier decisions were, the remaining decisions must still be optimal given the state they left behind — the entire logic dynamic programming is built on.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🌊</div><div><h4>Itô's Lemma, not ordinary calculus</h4><p>Wealth itself jitters randomly, so an ordinary Taylor expansion of J isn't valid — Itô's Lemma is the tool that correctly tracks J through an infinitesimal, noisy instant.</p></div></div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>J(W,t) alone is just a symbol until a specific utility function is chosen — that's the step that turns "an expression involving J's derivatives" into an actual, computable number. The next two slides make that concrete.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">The HJB equation — solving for a function, not a number</h2>
+      <p class="sl-sub">Applying Itô's Lemma to J(W,t) and taking the dynamic-programming recursion to its continuous-time limit produces one equation.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The equation itself</div>
+        <div class="sl-row">
+          <div class="sl-box" style="font-size:12.5px;line-height:1.6;max-width:660px;font-weight:600">0 = max{C,f} [ U(C) − ρJ + Jₜ + J_W·((r+fμ)W−C) + ½·J_WW·f²σ²W² ]</div>
+        </div>
+        <div class="sl-verdict">Read it as one sentence: "the best move right now equals what you get from that move immediately, plus how valuable your situation becomes right after." That's the GPS logic from the last slide, written as a differential equation instead of a turn-by-turn comparison.</div>
+      </div>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Kelly's calculus</span>
+          <ul>
+            <li>Maximize a single fixed function of one variable</li>
+            <li>Set one derivative to zero, solve algebraically</li>
+            <li>Works because the objective doesn't depend on any unknown future value</li>
+          </ul>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Merton's HJB equation</span>
+          <ul>
+            <li>Maximize something that itself depends on J and its derivatives</li>
+            <li>The "maximize" step and "value the future" step must be solved together</li>
+            <li>A nonlinear PDE for a whole function J(W,t), not one number</li>
+          </ul>
+        </div>
+      </div>
+      <p class="sl-p">Taking the first-order condition on f inside the braces gives f* = −(J_W / W·J_WW) · (μ/σ²) — the investor's implied relative risk tolerance, times the exact μ/σ² edge term from Kelly. A specific utility function is what turns that risk-tolerance term into an actual number.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Solving it for CRRA utility: the Merton fraction</h2>
+      <p class="sl-sub">Plug in constant relative risk aversion (CRRA) utility, U(c) = c^(1−γ)/(1−γ), and guess that J takes a matching power form. The risk-tolerance term collapses to exactly 1/γ.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Merton's headline result</div>
+        <div class="sl-row"><div class="sl-box green" style="font-size:20px">f* = μ / (γ · σ²)</div></div>
+        <div class="sl-verdict">A <strong>constant</strong> fraction of wealth in the risky asset — it does not depend on current wealth or on how much time remains until the horizon. A CRRA investor holds the same risky-asset weight whether wealthy or poor, young or old.</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">μ</div><div><h4>The edge</h4><p>Expected excess return of the risky asset over the riskless rate — the same numerator Kelly uses.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">γ</div><div><h4>The risk-aversion dial</h4><p>Constant relative risk aversion. Bigger γ means a more cautious investor and a smaller optimal allocation.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">σ²</div><div><h4>The risk</h4><p>Variance of the risky asset's return — the identical denominator role it plays in Kelly's formula.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">f*</div><div><h4>The Merton fraction</h4><p>The constant, wealth- and horizon-independent optimal risky-asset weight everything above resolves to.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Set γ = 1 and Kelly falls straight out</h2>
+      <p class="sl-sub">Log utility, U(c) = ln c, is the exact γ→1 limit of the CRRA family. Substitute it directly into Merton's formula.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — the substitution</div>
+        <div class="sl-row">
+          <div class="sl-box">f*|<sub>γ=1</sub></div>
+          <div class="sl-arrow">=</div>
+          <div class="sl-box amber">μ / (1 · σ²)</div>
+          <div class="sl-arrow">=</div>
+          <div class="sl-box green">μ / σ²</div>
+        </div>
+        <div class="sl-note">That last box is exactly the Kelly Criterion's continuous-time formula, f* = μ/σ² — the same result the <a href="kelly-criterion.html" style="color:var(--blue)">Kelly Criterion lesson</a> derived from a completely different starting point (a Taylor expansion of expected log-wealth, not an HJB equation).</div>
+      </div>
+      <p class="sl-p">There's a clean reason it has to come out this way, not a coincidence of notation: maximizing expected log-wealth — Kelly's entire objective, E[ln Wₜ] — is <em>identical</em>, as an optimization problem, to expected-utility maximization under U(·) = ln(·). Kelly's growth-rate criterion and Merton's expected-utility framework were never two theories that happen to agree at one point. They are the same theory, and γ=1 is simply the name Merton's framework gives to the specific investor Kelly's derivation was describing all along.</p>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">The key insight</div>
+        <p>"Kelly sizing" is Merton's framework evaluated at the single risk-aversion value γ = 1 — not a rival theory, a special case.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Drag the risk-aversion dial</h2>
+      <p class="sl-sub">Fixed edge, fixed volatility (μ, σ chosen so μ/σ² = 0.96 — matching the calculator two slides ahead). Only γ moves.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart of the optimal allocation fraction f-star against the risk-aversion parameter gamma. The curve declines smoothly from a high value at low gamma toward zero as gamma increases. Markers sit at gamma equals 1 (full Kelly), gamma equals 2 (half Kelly) and gamma equals 4 (quarter Kelly). A slider selects gamma and a dot moves along the fixed curve.">
+            <line x1="70" y1="30" x2="70" y2="270" style="stroke:var(--border2)"/>
+            <line x1="70" y1="270" x2="610" y2="270" style="stroke:var(--border2)"/>
+            <text x="34" y="274" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">0</text>
+
+            <line x1="130" y1="30" x2="130" y2="270" style="stroke:var(--amber);stroke-dasharray:3,3"/>
+            <text x="130" y="20" text-anchor="middle" fill="var(--amber)" font-size="10.5" font-family="'DM Mono',monospace">γ=1 full</text>
+            <line x1="250" y1="30" x2="250" y2="270" style="stroke:var(--text3);stroke-dasharray:3,3"/>
+            <text x="250" y="20" text-anchor="middle" fill="var(--text3)" font-size="10.5" font-family="'DM Mono',monospace">γ=2 half</text>
+            <line x1="490" y1="30" x2="490" y2="270" style="stroke:var(--text3);stroke-dasharray:3,3"/>
+            <text x="490" y="20" text-anchor="middle" fill="var(--text3)" font-size="10.5" font-family="'DM Mono',monospace">γ=4 quarter</text>
+
+            <path id="mp-curve-path" d="M70,270 L610,270" style="fill:none;stroke:var(--blue);stroke-width:2.5;stroke-linecap:round"/>
+            <circle id="mp-gamma-dot" cx="130" cy="154.8" r="5" fill="var(--blue)" stroke="var(--bg)" stroke-width="1.5"/>
+
+            <text x="340" y="296" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">risk aversion γ</text>
+            <text x="20" y="150" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace" transform="rotate(-90 20 150)">f*</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Risk-aversion parameter γ</span><span class="sl-live" id="mp-gamma-val">γ = 1.00</span></div>
+        <input type="range" class="sl-slider" id="mp-gamma-slider" min="50" max="500" step="10" value="100">
+        <div class="sl-verdict" id="mp-relation-verdict">f*(γ) = 0.96 (exactly full Kelly — this is the γ=1, log-utility point).</div>
+      </div>
+      <p class="sl-p">The curve itself never moves — only which point on it you occupy does. Everything right of γ=1 is fractional Kelly, and it isn't a discount off "the" true answer; it's Merton's exact optimum for that investor's own honestly-stated risk aversion.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Same edge, same volatility, three allocations</h2>
+      <p class="sl-sub">Three simulated wealth paths, identical random shocks (μ=8%, σ=20%, r=2%, ~5 years). Only the allocation fraction f differs.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="mp-wtabs">
+          <button class="sl-tab active" data-panel="mp-w1">γ=1 · f=1.0 (full Kelly)</button>
+          <button class="sl-tab" data-panel="mp-w2">γ=2 · f=0.5 (half-Kelly)</button>
+          <button class="sl-tab" data-panel="mp-w3">γ=4 · f=0.25 (quarter-Kelly)</button>
+        </div>
+        <div class="sl-panel active" id="mp-w1">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Simulated wealth path at full allocation, showing large swings including a dip well below the starting level before ending at the highest of the three paths">
+            <line x1="20" y1="167.8" x2="620" y2="167.8" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"/>
+            <text x="624" y="171" font-size="9.5" fill="var(--text3)" font-family="'DM Mono',monospace">start</text>
+            <path d="M20.0,167.8 L47.7,174.3 L75.4,160.8 L103.1,153.1 L130.8,155.6 L158.5,145.2 L186.2,172.9 L213.8,177.5 L241.5,151.5 L269.2,142.3 L296.9,126.8 L324.6,131.6 L352.3,101.5 L380.0,105.4 L407.7,126.1 L435.4,111.8 L463.1,89.7 L490.8,52.9 L518.5,41.0 L546.2,54.5 L573.8,45.1 L601.5,50.8 L620.0,29.1" style="fill:none;stroke:var(--blue);stroke-width:2.5;stroke-linecap:round"/>
+            <circle cx="620" cy="29.1" r="4" fill="var(--blue)"/>
+          </svg></div>
+          <div class="sl-verdict"><strong>Full allocation.</strong> The fastest-growing of the three paths — ending roughly +109% — but also the wildest: it dips to about −6% below the starting level partway through, the deepest drawdown of the three, before recovering.</div>
+        </div>
+        <div class="sl-panel" id="mp-w2">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Simulated wealth path at half allocation, showing a smoother climb with a much smaller dip below the starting level">
+            <line x1="20" y1="167.8" x2="620" y2="167.8" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"/>
+            <text x="624" y="171" font-size="9.5" fill="var(--text3)" font-family="'DM Mono',monospace">start</text>
+            <path d="M20.0,167.8 L47.7,170.4 L75.4,163.0 L103.1,158.5 L130.8,159.1 L158.5,153.3 L186.2,166.5 L213.8,168.1 L241.5,154.4 L269.2,149.2 L296.9,140.8 L324.6,142.5 L352.3,126.8 L380.0,128.1 L407.7,137.8 L435.4,130.0 L463.1,118.3 L490.8,99.2 L518.5,92.7 L546.2,98.7 L573.8,93.4 L601.5,95.6 L620.0,84.3" style="fill:none;stroke:var(--green);stroke-width:2.5;stroke-linecap:round"/>
+            <circle cx="620" cy="84.3" r="4" fill="var(--green)"/>
+          </svg></div>
+          <div class="sl-verdict"><strong>Half allocation.</strong> Ends around +56% — roughly half the growth — but the deepest dip is only about −1.4% below start, less than a quarter as deep as the full-allocation path's dip.</div>
+        </div>
+        <div class="sl-panel" id="mp-w3">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Simulated wealth path at quarter allocation, staying close to the starting level throughout with almost no dip below it, ending with the smallest gain of the three">
+            <line x1="20" y1="167.8" x2="620" y2="167.8" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"/>
+            <text x="624" y="171" font-size="9.5" fill="var(--text3)" font-family="'DM Mono',monospace">start</text>
+            <path d="M20.0,167.8 L47.7,168.6 L75.4,164.4 L103.1,161.7 L130.8,161.5 L158.5,158.1 L186.2,164.2 L213.8,164.5 L241.5,157.2 L269.2,154.1 L296.9,149.4 L324.6,149.8 L352.3,141.4 L380.0,141.6 L407.7,146.0 L435.4,141.6 L463.1,135.2 L490.8,125.2 L518.5,121.4 L546.2,124.0 L573.8,120.8 L601.5,121.4 L620.0,115.4" style="fill:none;stroke:var(--amber);stroke-width:2.5;stroke-linecap:round"/>
+            <circle cx="620" cy="115.4" r="4" fill="var(--amber)"/>
+          </svg></div>
+          <div class="sl-verdict"><strong>Quarter allocation.</strong> Barely dips below the starting level at any point (about −0.4% at its worst) and ends with the smallest gain of the three, roughly +32% — the steadiest, least dramatic ride.</div>
+        </div>
+        <div class="sl-note">All three paths share the exact same sequence of random shocks — the only thing that changes between panels is the allocation fraction f. That isolates what "risk aversion" actually buys you: not a different edge, the same edge held less aggressively.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Your own numbers: compute f*</h2>
+      <p class="sl-sub">f* = (μ − r) / (σ² · γ). Enter the risky asset's raw expected return μ, the risk-free rate r, its volatility σ, and your own γ.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — Merton fraction calculator</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Expected return μ (%)</label><input type="number" class="sl-input" id="mp-mu" value="8" step="0.5"></div>
+          <div class="sl-calc-field"><label>Risk-free rate r (%)</label><input type="number" class="sl-input" id="mp-r" value="2" step="0.5"></div>
+          <div class="sl-calc-field"><label>Volatility σ (%)</label><input type="number" class="sl-input" id="mp-sigma" value="25" step="1" min="0"></div>
+          <div class="sl-calc-field"><label>Risk aversion γ</label><input type="number" class="sl-input" id="mp-gamma" value="2" step="0.5" min="0"></div>
+          <div class="sl-calc-op">→</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Optimal fraction f*</div>
+            <div class="sl-calc-result-val" id="mp-fstar-out">48.00%</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Excess return: μ − r = <b id="mp-step-excess">6.00%</b></div>
+          <div>Variance: σ² = <b id="mp-step-var">6.25%</b></div>
+          <div>Denominator: γ · σ² = <b id="mp-step-denom">12.50%</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="mp-reset">Reset to μ=8%, r=2%, σ=25%, γ=2</button>
+        <div class="sl-note" id="mp-warn">Blank, non-numeric, or non-positive σ / γ shows "—" instead of a broken number.</div>
+      </div>
+      <p class="sl-p">At the defaults, this is Trader B from the full lesson's scenario: γ=2, exactly half of the γ=1 (full-Kelly-equivalent) allocation. Set γ back to 1 to see the full-Kelly-equivalent number the formula collapses to — a literal doubling, not a rounding coincidence.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Where half-Kelly actually comes from</h2>
+      <p class="sl-sub">The Kelly lesson introduced fractional Kelly as a practical hedge against estimation error. Merton's framework says there's a second, deeper reason.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">The exact-optimum reading</span>
+          <ul>
+            <li>An investor with γ=2 betting half-Kelly isn't discounting "the" right answer</li>
+            <li>Half-Kelly <em>is</em> their own personal, exact utility optimum</li>
+            <li>Most empirical estimates of revealed risk aversion sit meaningfully above γ=1</li>
+            <li>So most real investors' correct bet size was never full Kelly to begin with</li>
+          </ul>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">The estimation-uncertainty reading</span>
+          <ul>
+            <li>μ and σ² are themselves noisy, backtested estimates — not known exactly</li>
+            <li>γ is elicited (surveys, revealed behavior, risk-premia calibration), not observed either</li>
+            <li>Full Kelly (γ=1) is the size most exposed to an overestimated edge</li>
+            <li>Sizing down like a γ=2 investor also hedges that separate, practical problem</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-quote">Both readings point the same direction, for different reasons: one says "half-Kelly is correct for who you honestly are," the other says "half-Kelly is safer given what you don't actually know." A practitioner using half-Kelly is usually leaning on both at once.</div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Factual check against this repo's actual code</div>
+        <p><strong>What the full lesson says:</strong> "Nothing here is built or validated in this repo" regarding risk-aversion-scaled or Kelly-based sizing — a sizing layer only gets applied on top of a signal that has already proven itself out-of-sample.</p>
+        <p><strong>Verified directly against the current source</strong> (grepped <code>bot/</code>, <code>portfolioBacktest/</code>, and <code>js/positionSizerEngine.js</code> for "kelly", "gamma", "riskAversion"): that claim still holds. The one live sizer, <code>position-sizer.html</code> / <code>js/positionSizerEngine.js</code>, risks a fixed, hand-picked percentage of equity per trade scaled by forecast volatility — it takes no edge estimate (p, μ, or γ) as an input at all. There is no Kelly-fraction or Merton-fraction column anywhere in this repo's backtests, and no γ-scaled allocation logic in the bot code. Nothing is stale here; both the original lesson's claim and this fresh check agree.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Where the clean formula quietly breaks down</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">❓</div><div><h4>γ is elicited, not observed</h4><p>Just like a backtested μ, an investor's risk aversion must be inferred indirectly — surveys, revealed behavior, risk-premia calibration — and these methods routinely disagree with each other.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧱</div><div><h4>Real frictions kill the constant fraction</h4><p>Add transaction costs and the optimal policy becomes a "no-trade region" around a target weight — rebalance only when drift is worth the cost — not a single constant fraction held continuously.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🌊</div><div><h4>μ and σ aren't actually constant</h4><p>Real markets have regime shifts, volatility clustering, and jumps. A regime change moves f* immediately in theory; in practice, "the optimal constant" is only as stable as μ, σ actually are.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🛠</div><div><h4>CRRA is chosen for tractability, not realism</h4><p>CRRA utility produces the clean, closed-form constant-fraction answer largely because it's mathematically convenient — other, arguably more realistic utility families don't produce a constant f* at all.</p></div></div>
+      </div>
+      <div class="sl-quote">None of this is an argument against the math — it's the same discipline the Kelly lesson applied one level down: feed the formula honest, uncertain inputs, and treat its output as a ceiling to size down from, not a target to hit exactly.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Why does f* = μ/(γσ²) reduce to Kelly's f* = μ/σ² when γ=1, rather than just approximately?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Because γ=1 corresponds to log utility, and maximizing E[ln W] is identical, as an optimization problem, to maximizing expected utility under U(c)=ln c</button>
+        <button class="sl-quiz-opt">Because γ=1 is close enough to 1 that the difference rounds away</button>
+        <button class="sl-quiz-opt">It doesn't reduce exactly — Kelly is only an approximation of Merton's formula</button>
+        <div class="sl-quiz-explain">Direct algebraic substitution: μ/(1·σ²) = μ/σ². It's exact because log-wealth maximization and expected-log-utility maximization are the same objective, not two formulas that happen to look similar.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>What does the value function J(W,t) actually represent?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The best-achievable expected utility obtainable from wealth W at time t, assuming every future decision is optimal</button>
+        <button class="sl-quiz-opt">The investor's exact wealth at every future date</button>
+        <button class="sl-quiz-opt">The investor's risk-aversion coefficient γ</button>
+        <div class="sl-quiz-explain">J(W,t) is the "GPS number" — it packages every possible future consumption path, allocation path, and random outcome into one value per (wealth, time) pair, so today's decision can be made without re-solving the whole future.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Two investors share the same μ and σ. One has γ=1, the other γ=2. Is the γ=2 investor being irrationally cautious?</h4>
+        <button class="sl-quiz-opt" data-correct="true">No — each is exactly utility-optimal for their own honestly-stated risk aversion; the γ=2 investor's f* is precisely half the γ=1 investor's</button>
+        <button class="sl-quiz-opt">Yes — only γ=1 is the mathematically correct allocation</button>
+        <button class="sl-quiz-opt">Only if their volatility estimate σ is also wrong</button>
+        <div class="sl-quiz-explain">f*(γ) = (1/γ)·f*_Kelly. Both investors are optimizing correctly — just different utility functions, because they are, honestly, different people.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>An investor with γ=4 has an optimal allocation equal to what fraction of the γ=1 (Kelly) allocation?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Exactly 1/4</button>
+        <button class="sl-quiz-opt">Exactly 1/2</button>
+        <button class="sl-quiz-opt">The same — γ doesn't change f* under CRRA utility</button>
+        <div class="sl-quiz-explain">f*(γ) = (1/γ)·f*_Kelly, so γ=4 gives exactly a quarter of the γ=1 fraction — "quarter-Kelly," precisely, not approximately.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Besides matching a specific γ, why do many practitioners still size below full (γ=1) Kelly?</h4>
+        <button class="sl-quiz-opt" data-correct="true">μ and σ² are themselves uncertain, backtested estimates — full Kelly is the size most exposed to an overestimated edge</button>
+        <button class="sl-quiz-opt">Half-Kelly always produces faster long-run growth than full Kelly</button>
+        <button class="sl-quiz-opt">Regulations require position sizes below the Kelly-optimal level</button>
+        <div class="sl-quiz-explain">Full Kelly assumes μ, σ² (and, one level up, γ) are known exactly. Since they're estimated, not known, sizing below the point estimate hedges estimation error — a separate, practical reason from the "different honest γ" argument.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Merton's problem generalizes Kelly's: choose consumption and allocation continuously to maximize expected lifetime utility, not just long-run compounded growth — via the Hamilton-Jacobi-Bellman equation.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>The HJB equation solves for the value function J(W,t) — the "GPS" that packages every possible future outcome into one number per wealth-and-time pair.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>For CRRA utility, the optimal risky-asset fraction is the constant f* = μ/(γσ²) — independent of current wealth or time remaining.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>γ=1 (log utility) reproduces Kelly's f* = μ/σ² exactly, term for term — Kelly is one specific setting of Merton's risk-aversion dial, not a rival theory.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>γ=2 gives exact half-Kelly, γ=4 gives exact quarter-Kelly — each investor's own precise optimum, and also a practical hedge against uncertain μ, σ², and γ itself.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Nothing about Kelly- or risk-aversion-scaled sizing exists yet in this repo's actual code — the live sizer is a fixed, vol-scaled percentage with no edge or γ input, verified directly against the source.</p></div>
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">What this now lets you do</div>
+        <p>Read any "bet less than full Kelly" decision as a real, computable point on the μ/(γσ²) dial rather than a vague safety instinct — and separate the two honest reasons for landing there: a genuinely more risk-averse investor's own exact optimum, versus a hedge against μ, σ², and γ all being estimates rather than known quantities. Either reason is legitimate; conflating them with each other, or with "playing scared," is the mistake this lesson closes off.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Bond Pricing &amp; Yield to Maturity</h3>
+        <p>A whole new category — Fixed Income Mathematics — starting with discounting coupons and solving for yield.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="bond-pricing-ytm-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="merton-portfolio-problem.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Risk-aversion slider -> optimal allocation curve, f*(gamma) = K/gamma.
+  // K = 0.96, matching the calculator's default numbers: (mu-r)/sigma^2 =
+  // (0.08-0.02)/0.25^2 = 0.06/0.0625 = 0.96, so gamma=1/2/4 line up exactly
+  // with the full/half/quarter markers used throughout this deck.
+  (function(){
+    var slider = document.getElementById('mp-gamma-slider');
+    if (!slider) return;
+    var gammaVal = document.getElementById('mp-gamma-val');
+    var verdict = document.getElementById('mp-relation-verdict');
+    var dot = document.getElementById('mp-gamma-dot');
+    var curvePath = document.getElementById('mp-curve-path');
+
+    var K = 0.96;
+    var GAMMA_MIN = 0.5, GAMMA_MAX = 5.0, GAMMA_SPAN = GAMMA_MAX - GAMMA_MIN;
+    var X0 = 70, X_RANGE = 540;
+    var Y0 = 270, F_MAX = 2.0, Y_RANGE = 240;
+    var STEPS = 48;
+
+    function xAt(gamma){ return X0 + (gamma - GAMMA_MIN) / GAMMA_SPAN * X_RANGE; }
+    function yAt(f){
+      var clamped = Math.max(0, Math.min(F_MAX, f));
+      return Y0 - (clamped / F_MAX) * Y_RANGE;
+    }
+
+    function redrawCurve(){
+      var pts = [];
+      for (var i = 0; i <= STEPS; i++){
+        var gamma = GAMMA_MIN + (GAMMA_SPAN * i / STEPS);
+        var f = K / gamma;
+        pts.push(xAt(gamma).toFixed(1) + ',' + yAt(f).toFixed(1));
+      }
+      curvePath.setAttribute('d', 'M' + pts.join(' L'));
+    }
+
+    function update(){
+      var gamma = parseInt(slider.value, 10) / 100;
+      var f = K / gamma;
+      var ratio = 1 / gamma;
+
+      gammaVal.textContent = 'γ = ' + gamma.toFixed(2);
+      dot.setAttribute('cx', xAt(gamma));
+      dot.setAttribute('cy', yAt(f));
+
+      var relation;
+      if (Math.abs(gamma - 1) < 0.02) {
+        relation = 'exactly full Kelly (log utility, γ=1)';
+      } else if (Math.abs(gamma - 2) < 0.02) {
+        relation = 'exactly half-Kelly (γ=2)';
+      } else if (Math.abs(gamma - 4) < 0.02) {
+        relation = 'exactly quarter-Kelly (γ=4)';
+      } else if (gamma < 1) {
+        relation = 'more aggressive than full Kelly (γ<1, rarely realistic)';
+      } else {
+        relation = 'fractional Kelly, exactly ' + ratio.toFixed(2) + '× the γ=1 fraction';
+      }
+      verdict.textContent = 'f*(γ) = ' + f.toFixed(2) + ' (' + relation + ').';
+    }
+
+    redrawCurve();
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Merton fraction calculator: f* = (mu - r) / (sigma^2 * gamma), all as
+  // percentages except gamma. Defensive against blank / non-finite / <=0
+  // sigma or gamma inputs -- shows "--" rather than NaN or Infinity.
+  (function(){
+    var muInput = document.getElementById('mp-mu');
+    if (!muInput) return;
+    var rInput = document.getElementById('mp-r');
+    var sigmaInput = document.getElementById('mp-sigma');
+    var gammaInput = document.getElementById('mp-gamma');
+    var fstarOut = document.getElementById('mp-fstar-out');
+    var excessOut = document.getElementById('mp-step-excess');
+    var varOut = document.getElementById('mp-step-var');
+    var denomOut = document.getElementById('mp-step-denom');
+    var warn = document.getElementById('mp-warn');
+    var resetBtn = document.getElementById('mp-reset');
+    var DEFAULTS = { mu: 8, r: 2, sigma: 25, gamma: 2 };
+    var DEFAULT_WARN = 'Blank, non-numeric, or non-positive σ / γ shows "—" instead of a broken number.';
+
+    function recompute(){
+      var muPct = parseFloat(muInput.value);
+      var rPct = parseFloat(rInput.value);
+      var sigmaPct = parseFloat(sigmaInput.value);
+      var gamma = parseFloat(gammaInput.value);
+
+      var valid = isFinite(muPct) && isFinite(rPct) && isFinite(sigmaPct) && isFinite(gamma) && sigmaPct > 0 && gamma > 0;
+
+      if (!valid) {
+        fstarOut.textContent = '—';
+        excessOut.textContent = '—';
+        varOut.textContent = '—';
+        denomOut.textContent = '—';
+        if (!isFinite(muPct) || !isFinite(rPct) || !isFinite(sigmaPct) || !isFinite(gamma)) {
+          warn.textContent = 'Enter a number in every field.';
+        } else if (sigmaPct <= 0) {
+          warn.textContent = 'σ must be positive — zero or negative volatility is undefined here.';
+        } else {
+          warn.textContent = 'γ must be positive — risk aversion of zero or less is undefined here.';
+        }
+        return;
+      }
+
+      var mu = muPct / 100, r = rPct / 100, sigma = sigmaPct / 100;
+      var excess = mu - r;
+      var variance = sigma * sigma;
+      var denom = gamma * variance;
+      var fstar = excess / denom;
+
+      excessOut.textContent = (excess * 100).toFixed(2) + '%';
+      varOut.textContent = (variance * 100).toFixed(2) + '%';
+      denomOut.textContent = (denom * 100).toFixed(2) + '%';
+      fstarOut.textContent = (fstar * 100).toFixed(2) + '%';
+      warn.textContent = DEFAULT_WARN;
+    }
+
+    [muInput, rInput, sigmaInput, gammaInput].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      muInput.value = DEFAULTS.mu;
+      rInput.value = DEFAULTS.r;
+      sigmaInput.value = DEFAULTS.sigma;
+      gammaInput.value = DEFAULTS.gamma;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARIMA &amp; VAR — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">ARIMA &amp; VAR — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivations, worked Box-Jenkins case study, and a 6-question self-test?<a href="arima-var.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Lesson 21 · Applied Statistics &amp; Validation</div>
+      <h1 class="sl-h1">ARIMA &amp; VAR, <em>Beyond One Lag, One Series</em></h1>
+      <p class="sl-lede">AR(1) told you a series pulls back toward one mean, remembering only yesterday. Real data rarely cooperates that cleanly — a shock can keep echoing forward after the level has already reverted, a raw price level needs to be tamed before "mean reversion" even applies, and in FX and macro almost nothing moves in isolation. ARIMA and VAR are the two directions that single-series mean reversion generalizes in: more memory inside one series, or more series feeding back on each other.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">AR(1) grows a longer memory: AR(p)</h2>
+      <p class="sl-sub">AR(1) only looks back one step: Xₜ = c + φXₜ₋₁ + εₜ. The natural next move is to let today depend on several past values at once, each with its own weight.</p>
+      <div class="sl-row">
+        <div class="sl-box">Xₜ = c + φ₁Xₜ₋₁ + φ₂Xₜ₋₂ + ⋯ + φₚXₜ₋ₚ + εₜ</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">Xₜ</div><div><h4>Today's value</h4><p>The thing being modeled — a price, a rate, a spread, once it's already stationary.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">φᵢ</div><div><h4>Weight on lag i</h4><p>How much of the value from i periods ago still explains today, <strong>after</strong> accounting for every lag in between — not a raw correlation.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">p</div><div><h4>How far back to look</h4><p>The order of the model — how many past lags actually enter the equation.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">εₜ</div><div><h4>This period's shock</h4><p>The white-noise surprise the model can't explain — same role as dWₜ in the OU lesson, in discrete time.</p></div></div>
+      </div>
+      <p class="sl-p">You don't choose p by eyeballing raw autocorrelations — you use the <strong>partial</strong> autocorrelation function (PACF) instead, because it strips out what the intervening lags already explain. The AR(1) signature you already know — one PACF spike at lag 1, then a sharp drop, alongside an ACF that decays smoothly — generalizes directly: for AR(p), the PACF shows significant spikes at lags 1 through p and then cuts off, while the ACF keeps decaying gradually well past lag p.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Why the PACF, not the ACF</div>
+        <p>A raw autocorrelation at lag 3 mixes together "lag 3 truly matters" and "lag 3 correlates with lag 2, which correlates with lag 1, which correlates with today." The PACF answers the sharper question — does lag 3 add anything once lags 1 and 2 are already in the model — which is exactly what deciding p requires.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">A different kind of memory: MA(q)</h2>
+      <p class="sl-sub">AR(p) only ever uses past <em>levels</em> of X. Some series carry a second, different memory — for past <em>shocks</em>, not past positions.</p>
+      <div class="sl-row">
+        <div class="sl-box amber">Xₜ = εₜ + θ₁εₜ₋₁ + ⋯ + θqεₜ₋q</div>
+      </div>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">AR term — memory of levels</span>
+          <p>"Today depends on where X <em>was</em> i days ago" — the rubber-band-to-a-post mechanism from the OU lesson. A price that sits persistently away from fair value and slowly closes that gap over many days is AR-like behavior.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag red">MA term — memory of shocks</span>
+          <p>"Today depends on how large the <em>surprise</em> was j days ago" — an echo that can persist even after the level itself has already fully reverted. A news shock that fully passes through price by the next bar, but whose noisy aftereffects (a bid/ask imbalance, a liquidity gap slowly refilling) nudge returns for one or two more bars, is MA-like behavior.</p>
+        </div>
+      </div>
+      <p class="sl-p">The identification signature flips relative to AR: an MA(q) process has an <strong>ACF</strong> that cuts off sharply after lag q (spikes at 1 through q, then ~zero), while its <strong>PACF</strong> decays gradually instead. Real series can carry both mechanisms at once — which is exactly the motivation for combining them rather than picking only one.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Same one-time shock, three different aftermaths</h2>
+      <p class="sl-sub">Hit each model with a single shock at time t and watch its effect over the following periods. Switch tabs.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="shock-tabs">
+          <button class="sl-tab active" data-panel="shock-ar">AR(1) — φ = 0.7</button>
+          <button class="sl-tab" data-panel="shock-ma">MA(1) — θ = 0.6</button>
+          <button class="sl-tab" data-panel="shock-arima">ARIMA — effect on the level</button>
+        </div>
+        <div class="sl-panel active" id="shock-ar">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 170" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart of an AR(1) impulse response: a tall bar at period 0 decaying geometrically toward zero over eight periods, never fully reaching zero.">
+            <line x1="10" y1="140" x2="630" y2="140" style="stroke:var(--border2);stroke-width:1"/>
+            <rect x="24" y="55" width="46" height="85" rx="3" style="fill:var(--blue-bg);stroke:var(--blue);stroke-width:1.5"/>
+            <rect x="99" y="80" width="46" height="60" rx="3" style="fill:var(--blue-bg);stroke:var(--blue);stroke-width:1.5"/>
+            <rect x="174" y="98" width="46" height="42" rx="3" style="fill:var(--blue-bg);stroke:var(--blue);stroke-width:1.5"/>
+            <rect x="249" y="111" width="46" height="29" rx="3" style="fill:var(--blue-bg);stroke:var(--blue);stroke-width:1.5"/>
+            <rect x="324" y="120" width="46" height="20" rx="3" style="fill:var(--blue-bg);stroke:var(--blue);stroke-width:1.5"/>
+            <rect x="399" y="126" width="46" height="14" rx="3" style="fill:var(--blue-bg);stroke:var(--blue);stroke-width:1.5"/>
+            <rect x="474" y="130" width="46" height="10" rx="3" style="fill:var(--blue-bg);stroke:var(--blue);stroke-width:1.5"/>
+            <rect x="549" y="133" width="46" height="7" rx="3" style="fill:var(--blue-bg);stroke:var(--blue);stroke-width:1.5"/>
+            <text x="47" y="153" text-anchor="middle" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--text3)">t</text>
+            <text x="572" y="153" text-anchor="middle" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--text3)">t+7</text>
+          </svg></div>
+          <div class="sl-verdict">The effect fades slowly and <strong>geometrically</strong> — smaller every period, but never exactly zero. This is what "a persistently mispriced series slowly closing the gap" looks like from the inside.</div>
+        </div>
+        <div class="sl-panel" id="shock-ma">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 170" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart of an MA(1) impulse response: a tall bar at period 0, a shorter bar at period 1, then exactly zero for every period after that.">
+            <line x1="10" y1="140" x2="630" y2="140" style="stroke:var(--border2);stroke-width:1"/>
+            <rect x="24" y="55" width="46" height="85" rx="3" style="fill:var(--red-bg);stroke:var(--red);stroke-width:1.5"/>
+            <rect x="99" y="89" width="46" height="51" rx="3" style="fill:var(--red-bg);stroke:var(--red);stroke-width:1.5"/>
+            <line x1="174" y1="140" x2="220" y2="140" style="stroke:var(--text3);stroke-width:2"/>
+            <line x1="249" y1="140" x2="295" y2="140" style="stroke:var(--text3);stroke-width:2"/>
+            <line x1="324" y1="140" x2="370" y2="140" style="stroke:var(--text3);stroke-width:2"/>
+            <line x1="399" y1="140" x2="445" y2="140" style="stroke:var(--text3);stroke-width:2"/>
+            <line x1="474" y1="140" x2="520" y2="140" style="stroke:var(--text3);stroke-width:2"/>
+            <line x1="549" y1="140" x2="595" y2="140" style="stroke:var(--text3);stroke-width:2"/>
+            <text x="47" y="153" text-anchor="middle" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--text3)">t</text>
+            <text x="572" y="153" text-anchor="middle" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--text3)">t+7</text>
+          </svg></div>
+          <div class="sl-verdict">The effect vanishes <strong>completely</strong> after q = 1 period — MA(1) has no memory beyond one lag, unlike AR's slowly fading tail above.</div>
+        </div>
+        <div class="sl-panel" id="shock-arima">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 170" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart showing the effect on the price level of a one-time shock to the differenced series, rising and then flattening at a permanently higher plateau rather than decaying back to zero.">
+            <line x1="10" y1="140" x2="630" y2="140" style="stroke:var(--border2);stroke-width:1"/>
+            <rect x="24" y="106" width="46" height="34" rx="3" style="fill:var(--purple-bg);stroke:var(--purple);stroke-width:1.5"/>
+            <rect x="99" y="85" width="46" height="55" rx="3" style="fill:var(--purple-bg);stroke:var(--purple);stroke-width:1.5"/>
+            <rect x="174" y="72" width="46" height="68" rx="3" style="fill:var(--purple-bg);stroke:var(--purple);stroke-width:1.5"/>
+            <rect x="249" y="63" width="46" height="77" rx="3" style="fill:var(--purple-bg);stroke:var(--purple);stroke-width:1.5"/>
+            <rect x="324" y="59" width="46" height="81" rx="3" style="fill:var(--purple-bg);stroke:var(--purple);stroke-width:1.5"/>
+            <rect x="399" y="57" width="46" height="83" rx="3" style="fill:var(--purple-bg);stroke:var(--purple);stroke-width:1.5"/>
+            <rect x="474" y="55" width="46" height="85" rx="3" style="fill:var(--purple-bg);stroke:var(--purple);stroke-width:1.5"/>
+            <rect x="549" y="55" width="46" height="85" rx="3" style="fill:var(--purple-bg);stroke:var(--purple);stroke-width:1.5"/>
+            <text x="47" y="153" text-anchor="middle" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--text3)">t</text>
+            <text x="572" y="153" text-anchor="middle" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--text3)">t+7</text>
+          </svg></div>
+          <div class="sl-verdict">ARIMA fits AR/MA on the <strong>differenced</strong> series — so a shock to the change fades like the panels above, but once you integrate back to the price <em>level</em>, that fading change has already been permanently added in. The shock rises, then plateaus — it never reverts. That's the price of differencing: temporary changes, permanent levels.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Blending both memories: ARMA(p,q)</h2>
+      <div class="sl-row">
+        <div class="sl-box">Xₜ = c + Σ φᵢXₜ₋ᵢ + εₜ + Σ θⱼεₜ₋ⱼ</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">AR</div><div><h4>Σ φᵢXₜ₋ᵢ</h4><p>The autoregressive piece — memory of past levels.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">MA</div><div><h4>Σ θⱼεₜ₋ⱼ</h4><p>The moving-average piece — memory of past shocks.</p></div></div>
+      </div>
+      <p class="sl-p">ARMA blends both in one equation. The practical reason to allow mixed models at all, rather than always fitting a pure AR or a pure MA, is <strong>parsimony</strong>: a series that would need a high-order pure AR(10) or MA(10) to fit well is often described just as accurately by a low-order ARMA(1,1) — fewer parameters estimated from the same amount of data, and fewer free parameters is directly less overfitting risk.</p>
+      <div class="sl-quote">Four canonical shapes cover the identification step: PACF cutoff with ACF decay is pure AR(p). ACF cutoff with PACF decay is pure MA(q). Both decaying gradually is a mixed ARMA(p,q). Neither cutting off at all almost always means the series still isn't stationary — differencing hasn't happened yet.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Why raw price levels need differencing first — the "I"</h2>
+      <p class="sl-sub">Everything so far assumes X is already stationary. Most raw financial levels fail that outright — no fixed mean to revert to, exactly the φ ≥ 1 boundary the OU lesson flags as "the model doesn't apply here."</p>
+      <div class="sl-row">
+        <div class="sl-box green">ΔXₜ = Xₜ − Xₜ₋₁</div>
+        <div class="sl-arrow">repeat</div>
+        <div class="sl-box green">d times, until stationary</div>
+      </div>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <p class="sl-p" style="margin:0 0 14px">Red is a raw, undifferenced series — no fixed level, drifting wherever the noise pushes it. Blue is an <strong>already-differenced</strong> series with an AR(1) coefficient φ you control. Drag the slider — only the blue path's φ changes; the noise sequence is fixed.</p>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two simulated paths: a red drifting raw price level with no fixed mean, and a blue AR(1) path on the differenced series that reverts toward a baseline at a speed controlled by a slider.">
+            <line x1="10" y1="150" x2="630" y2="150" style="stroke:var(--text3);stroke-dasharray:4,3"/>
+            <text x="633" y="154" font-size="12" font-family="'DM Mono',monospace" fill="var(--text3)">0</text>
+            <polyline points="50,140 90,115 130,133 170,119 210,91 250,101 290,83 330,107 370,93 410,75 450,103 490,93 530,71 570,85 610,67" style="stroke:var(--red);stroke-width:2" fill="none"/>
+            <text x="500" y="60" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="var(--red)">raw level — no fixed mean</text>
+            <polyline id="arphi-path" points="50,150 90,175 130,159 170,178 210,168 250,175 290,166 330,178 370,171 410,177 450,168 490,177 530,171 570,178 610,172" style="stroke:var(--blue);stroke-width:2.5" fill="none"/>
+            <circle cx="50" cy="150" r="3.5" fill="var(--text2)"/>
+            <text x="500" y="240" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="var(--blue)" id="arphi-label">differenced series — AR(1), φ = 0.35</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>AR(1) coefficient φ (on the differenced series)</span><span class="sl-live" id="arphi-val">φ = 0.35</span></div>
+        <input type="range" class="sl-slider" id="arphi-slider" min="0" max="95" step="5" value="35">
+        <div class="sl-verdict" style="margin-top:12px">Half-life ≈ <b id="arphi-halflife">0.66</b> periods (ln 0.5 ÷ ln φ) — how long a shock to the change takes to shrink by half.</div>
+        <div class="sl-note">Push φ toward 1 and the blue path stops snapping back toward zero — it starts to look like the undifferenced red line above. That's not a coincidence: φ = 1 on a series is exactly the "no fixed mean" case, which is precisely why differencing has to happen before this AR(1) machinery is even valid.</div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">The trap</div>
+        <p>Reading ACF/PACF shapes off a raw, non-stationary price level — before checking stationarity or differencing — produces a meaningless, slowly-decaying ACF at <em>every</em> lag, not a real cutoff pattern. Always difference (or run a unit-root test like Augmented Dickey-Fuller) first. Most daily financial series need only d = 1; d = 2 is uncommon and usually a sign something's off in the transformation, not a genuine property of the data.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">ARIMA(p,d,q) and the Box-Jenkins loop</h2>
+      <p class="sl-sub">Once the differenced series passes its stationarity check, an ordinary ARMA(p,q) gets fit to <em>that</em> series. Put together, that's ARIMA.</p>
+      <div class="sl-row">
+        <div class="sl-box">ΔᵈXₜ = c + Σ φᵢΔᵈXₜ₋ᵢ + εₜ + Σ θⱼεₜ₋ⱼ</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">p</div><div><h4>AR order</h4><p>How many past levels enter — read off the PACF cutoff.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">d</div><div><h4>Differencing order</h4><p>How many times to difference until stationary — from a unit-root check.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">q</div><div><h4>MA order</h4><p>How many past shocks enter — read off the ACF cutoff.</p></div></div>
+      </div>
+      <p class="sl-p">This is the <strong>Box-Jenkins methodology</strong> — an iterative recipe, not a single fit. <strong>Identify:</strong> difference until stationary, pattern-match ACF/PACF to propose p and q. <strong>Estimate:</strong> fit the candidate model's coefficients. <strong>Check:</strong> the residuals should look like white noise — a Ljung-Box test checks this formally. If structure remains, go back to step one and revise. For example: a series needing one difference whose PACF shows spikes at both lag 1 and lag 2 before cutting off suggests ARIMA(2,1,0) — but if diagnostic checking then flags leftover autocorrelation at lag 3, that's the model telling you it isn't done, and you extend or add an MA term rather than accepting the first candidate.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Turning the AR term into tomorrow's forecast</h2>
+      <p class="sl-sub">Drop the unknown shock εₜ (its expectation is zero) and the AR(1) piece alone gives a point forecast for the next change.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Constant c (pips)</label><input type="number" class="sl-input" id="ar-c" value="0" step="0.1"></div>
+          <div class="sl-calc-op">+</div>
+          <div class="sl-calc-field"><label>AR coefficient φ</label><input type="number" class="sl-input" id="ar-phi" value="0.35" step="0.05"></div>
+          <div class="sl-calc-op">×</div>
+          <div class="sl-calc-field"><label>Last change ΔXₜ (pips)</label><input type="number" class="sl-input" id="ar-lastchange" value="12" step="1"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Forecast next change</div>
+            <div class="sl-calc-result-val" id="ar-result">4.2 pips</div>
+          </div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="ar-reset">Reset to worked-example numbers</button>
+        <div class="sl-note">This is the AR(1) half of an ARIMA(1,1,1) fit on the differenced series: ΔX̂ₜ₊₁ = c + φ·ΔXₜ. A full ARIMA(1,1,1) forecast also adds θ times the last residual — left out here so the AR mechanism stands on its own — and requires |φ| &lt; 1 to be a stationary, mean-reverting fit at all.</div>
+      </div>
+      <p class="sl-p">With the worked-example numbers: 0 + 0.35 × 12 = <strong>4.2 pips</strong>. If yesterday's change was larger, today's forecast change scales with it, damped by φ — exactly the "fading echo" behavior from the impulse-response tabs earlier, expressed as a single next-step number instead of a whole decay curve.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">VAR: when series feed back on each other</h2>
+      <p class="sl-sub">Everything above still describes one series' own history. VAR widens the question: does each series' own past, <em>and every other series' past</em>, help forecast it?</p>
+      <div class="sl-svgwrap">
+        <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagram of a two-variable VAR(1) system: box X (yield spread) and box Y (EUR/USD), with a blue arrow from X to Y labeled a21 and a red arrow from Y to X labeled a12.">
+          <defs>
+            <marker id="arrXY" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" style="fill:var(--blue)"/></marker>
+            <marker id="arrYX" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" style="fill:var(--red)"/></marker>
+          </defs>
+          <rect x="40" y="90" width="170" height="80" rx="10" style="fill:var(--panel);stroke:var(--blue);stroke-width:1.5"/>
+          <rect x="430" y="90" width="170" height="80" rx="10" style="fill:var(--panel);stroke:var(--red);stroke-width:1.5"/>
+          <text x="125" y="128" text-anchor="middle" font-size="20" font-weight="700" font-family="'DM Mono',monospace" style="fill:var(--blue)">X</text>
+          <text x="125" y="150" text-anchor="middle" font-size="10.5" style="fill:var(--text3)">e.g. yield spread</text>
+          <text x="515" y="128" text-anchor="middle" font-size="20" font-weight="700" font-family="'DM Mono',monospace" style="fill:var(--red)">Y</text>
+          <text x="515" y="150" text-anchor="middle" font-size="10.5" style="fill:var(--text3)">e.g. EUR/USD</text>
+          <path d="M210,105 C300,75 340,75 429,105" style="fill:none;stroke:var(--blue);stroke-width:2" marker-end="url(#arrXY)"/>
+          <text x="318" y="62" text-anchor="middle" font-size="12.5" font-family="'DM Mono',monospace" style="fill:var(--blue)">a₂₁ — X's past → Y</text>
+          <path d="M429,155 C340,190 300,190 210,155" style="fill:none;stroke:var(--red);stroke-width:2" marker-end="url(#arrYX)"/>
+          <text x="318" y="215" text-anchor="middle" font-size="12.5" font-family="'DM Mono',monospace" style="fill:var(--red)">a₁₂ — Y's past → X</text>
+        </svg>
+      </div>
+      <div class="sl-row">
+        <div class="sl-box">Xₜ = a₁₁Xₜ₋₁ + a₁₂Yₜ₋₁ + ε₁ₜ</div>
+      </div>
+      <div class="sl-row">
+        <div class="sl-box">Yₜ = a₂₁Xₜ₋₁ + a₂₂Yₜ₋₁ + ε₂ₜ</div>
+      </div>
+      <p class="sl-p">a₁₁ and a₂₂ are each series' own AR(1) coefficient. a₁₂ is the cross-effect of Y's past on X; a₂₁ is the cross-effect of X's past on Y. All four are estimated <strong>jointly</strong> from the same system — which is exactly what lets a VAR reveal bidirectional feedback that a single "Y on lagged X" regression, by construction, can never see. It was only ever set up to look for one arrow.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Granger causality — narrower than the name suggests</h2>
+      <p class="sl-sub">The classic diagnostic built on a fitted VAR: does X's history significantly improve forecasting Y, beyond Y's own past?</p>
+      <p class="sl-p">Concretely: compare a regression of Y on only its own lags against one that also adds X's lags, and run an F-test on whether adding X improves the fit by a statistically significant amount. If it does, X "Granger-causes" Y. That is a strictly <strong>statistical, predictive</strong> claim — <em>not</em> a claim of true, structural, mechanistic causation.</p>
+      <div class="sl-quote">Roosters crowing right before sunrise "Granger-cause" the sunrise by this narrow definition, even though everyone knows the rooster isn't actually causing the sun to rise — the Earth's rotation drives both on its own schedule.</div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>A third, unobserved common driver — a shared macro-regime shock hitting both series with slightly different timing — can produce a clean "X Granger-causes Y" result with no direct causal link between them at all. Treat a Granger result as "X's history has genuine forecasting content for Y," never as "X makes Y happen."</p>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Where this lesson is now stale — what's actually running in this repo</div>
+        <p>The full lesson tags itself "CONCEPT — not yet built in this repo" and says none of this has actually been fitted here. That's still true for VAR and Granger causality: no yield-spread ↔ EUR/USD fit exists in this codebase. But it's <strong>no longer accurate for ARIMA</strong> — <code>js/arima-price.js</code> fits a real ARIMA(1,1,1) on daily closes for every pair, feeding a residual-stability score into <code>bot/modules/regime_confidence_module.py</code> and into the Telegram alert text via <code>js/alerts.js</code>. Single-series ARIMA is live; multi-series VAR is still a research candidate.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Where this family of models goes wrong in practice</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>Spurious regression</h4><p>Fitting AR/VAR-family models to raw, trending levels can produce impressively high R² and significant-looking coefficients that are pure statistical mirage. The "I" step exists precisely to prevent this — skipping it is the most common way this family of models breaks before estimation even starts.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">k²</div><div><h4>VAR's parameter count grows fast</h4><p>A VAR's coefficients grow roughly as k² × p (k series, p lags) — a VAR(4) across 5 series already needs on the order of 100 coefficients. Adding a series "just in case" squares the parameter growth, not adds to it linearly — a fast route to overfitting on a few thousand daily bars.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">≈</div><div><h4>Cointegrated series need a VECM</h4><p>Two series that are each non-stationary individually but move together long-run lose that relationship if you naively difference both before fitting a plain VAR. A Vector Error-Correction Model keeps the long-run equilibrium as an explicit term instead of differencing it away.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">↻</div><div><h4>Regime dependence</h4><p>A lead-lag relationship estimated over one regime isn't guaranteed to hold in the next. A single full-sample coefficient or Granger result can hide a regime-dependent reversal a pooled test would never surface.</p></div></div>
+      </div>
+      <p class="sl-p">ARIMA is the standard classical baseline for single-series forecasting — the model to beat before crediting a fancier approach with adding anything. VAR's home turf is macroeconomics, where it displaced older simultaneous-equation models built on hard-to-defend structural assumptions; Christopher Sims's 1980 case for letting an unrestricted VAR reveal dynamic relationships from the data directly is part of the work behind his 2011 Nobel Memorial Prize.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Quick check</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What's the practical difference between an AR term and an MA term?</h4>
+        <button class="sl-quiz-opt" data-correct="true">AR ties today to past levels of X; MA ties today to past shocks (ε)</button>
+        <button class="sl-quiz-opt">They're two names for the same thing</button>
+        <button class="sl-quiz-opt">AR only works on stationary series; MA only works on non-stationary series</button>
+        <div class="sl-quiz-explain">AR is a memory of where X has been. MA is a memory of how large recent surprises were — an echo that can persist even after the level itself has already reverted. Real series can carry both, which is why ARMA combines them.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Why does ARIMA need a differencing step ("I") that plain ARMA doesn't?</h4>
+        <button class="sl-quiz-opt" data-correct="true">AR/MA/ARMA all assume stationarity, and most raw price levels aren't stationary</button>
+        <button class="sl-quiz-opt">Differencing makes the model faster to compute</button>
+        <button class="sl-quiz-opt">It's only needed when q &gt; p</button>
+        <div class="sl-quiz-explain">A raw price level has no fixed mean to revert to — the φ ≥ 1 boundary case. Differencing removes that trend so the ARMA machinery becomes valid on what's left. You check stationarity (ACF decay, or a unit-root test) rather than guessing d.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>A differenced series' PACF shows spikes at lags 1 and 2, then cuts off; its ACF decays smoothly. What order does that suggest?</h4>
+        <button class="sl-quiz-opt" data-correct="true">ARIMA(2,1,0)</button>
+        <button class="sl-quiz-opt">ARIMA(0,1,2)</button>
+        <button class="sl-quiz-opt">ARIMA(1,1,1)</button>
+        <div class="sl-quiz-explain">PACF-cutoff-at-p / ACF-decays is the AR(p) signature — here p=2. One difference was already applied (d=1), and there's no ACF-cuts-off-sharply evidence for an MA term, so q=0.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>In a two-variable VAR(1), a₁₂ (Y's past → X) comes back near zero while a₂₁ (X's past → Y) is large and significant. What does that mean?</h4>
+        <button class="sl-quiz-opt" data-correct="true">X leads Y, with no meaningful feedback running the other way</button>
+        <button class="sl-quiz-opt">X and Y move independently of each other</button>
+        <button class="sl-quiz-opt">Y leads X, with strong feedback both ways</button>
+        <div class="sl-quiz-explain">a₂₁ large means X's past meaningfully improves forecasting Y. a₁₂ near zero means Y's past adds nothing for forecasting X. Together that's a one-directional lead-lag relationship, not a two-way feedback loop.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Why isn't "X Granger-causes Y" the same claim as "X causes Y"?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It's a statistical/predictive claim — an unobserved common driver can produce the same result with no real causal link</button>
+        <button class="sl-quiz-opt">Granger causality is only ever true when both claims agree</button>
+        <button class="sl-quiz-opt">Granger causality requires a controlled experiment, unlike true causation</button>
+        <div class="sl-quiz-explain">Granger causality only means lagged X significantly improves forecasting Y beyond Y's own history. A shared, unobserved shock hitting both series with slightly different timing can produce exactly that signature with no direct causal link at all.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>ARIMA generalizes AR(1)/OU two ways — more lags of the level (AR(p)), a second memory for past shocks (MA(q)), and differencing (the "I") to make a non-stationary series stationary first.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>The order (p,d,q) is read off the data, never guessed — the Box-Jenkins loop of identify, estimate, and diagnostic-check (Ljung-Box) revises the model until the residuals look like white noise.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>VAR is the orthogonal generalization — instead of widening one series' own lags, it widens how many series are modeled jointly, so each variable's forecast can depend on every variable's lags, itself included.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>A single-equation regression can only see one arrow — a VAR estimates both cross-effects jointly, revealing bidirectional feedback a "Y on lagged X" regression never could.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Granger causality is a statistical claim, not a structural one — "X's lags improve forecasting Y," never "X makes Y happen."</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Single-series ARIMA is already live in this repo's alert pipeline; a multi-series VAR/Granger fit on the yield-spread/FX question is still a research candidate, not a shipped result.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Read an ACF/PACF pair and identify whether a series looks AR, MA, mixed, or still non-stationary. Explain why a raw price level needs differencing before AR(1)-style reasoning applies at all. Recognize when a research question — like whether the yield spread leads FX — actually needs a VAR with Granger causality testing, rather than a single-equation regression that can only look one direction.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Copulas &amp; Joint Tail Dependence</h3>
+        <p>Correlation describes how two series move together on an average day. Copulas describe what happens between them on the worst day — when it matters most.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="copulas.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="arima-var.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // AR(1) one-step-ahead forecast calculator: ΔX̂ₜ₊₁ = c + φ·ΔXₜ
+  (function(){
+    var c = document.getElementById('ar-c');
+    if (!c) return;
+    var phi = document.getElementById('ar-phi'), lastChange = document.getElementById('ar-lastchange');
+    var result = document.getElementById('ar-result');
+    var resetBtn = document.getElementById('ar-reset');
+    var DEFAULTS = { c: 0, phi: 0.35, lastChange: 12 };
+
+    function fmt(n){ return (Math.round(n * 10) / 10).toFixed(1); }
+
+    function recompute(){
+      var cv = parseFloat(c.value), pv = parseFloat(phi.value), lv = parseFloat(lastChange.value);
+      if (!isFinite(cv) || !isFinite(pv) || !isFinite(lv)) {
+        result.textContent = '—';
+        return;
+      }
+      result.textContent = fmt(cv + pv * lv) + ' pips';
+    }
+
+    [c, phi, lastChange].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      c.value = DEFAULTS.c; phi.value = DEFAULTS.phi; lastChange.value = DEFAULTS.lastChange;
+      recompute();
+    });
+    recompute();
+  })();
+
+  // Slider on the AR(1) coefficient φ of an already-differenced series, live-redrawn path.
+  (function(){
+    var slider = document.getElementById('arphi-slider');
+    if (!slider) return;
+    var phiVal = document.getElementById('arphi-val');
+    var halflifeVal = document.getElementById('arphi-halflife');
+    var path = document.getElementById('arphi-path');
+    var label = document.getElementById('arphi-label');
+
+    var BASELINE_Y = 150;
+    var START_X = 50;
+    var STEP_X = 40;
+    var CLAMP = 120;
+    // Fixed noise shocks (px) — never change with φ, so the same shocks hit
+    // the path at every slider setting and only the pull-back strength differs.
+    var NOISE = [-25, 18, -14, -28, 10, -18, 24, -14, -18, 28, -10, -22, 14, -18];
+
+    function update(){
+      var phi = parseInt(slider.value, 10) / 100;
+      phiVal.textContent = 'φ = ' + phi.toFixed(2);
+
+      var v = 0;
+      var pts = [START_X + ',' + BASELINE_Y];
+      for (var i = 0; i < NOISE.length; i++) {
+        v = phi * v + NOISE[i];
+        if (v > CLAMP) v = CLAMP;
+        if (v < -CLAMP) v = -CLAMP;
+        var x = START_X + STEP_X * (i + 1);
+        var y = BASELINE_Y - v;
+        pts.push(x + ',' + y);
+      }
+      path.setAttribute('points', pts.join(' '));
+
+      var halflife = phi > 0 ? (Math.log(0.5) / Math.log(phi)) : 0;
+      halflifeVal.textContent = halflife.toFixed(2);
+      label.textContent = phi === 0
+        ? 'differenced series — φ = 0 (pure noise, no memory)'
+        : 'differenced series — AR(1), φ = ' + phi.toFixed(2);
+    }
+    slider.addEventListener('input', update);
+    update();
+  })();
+})();
+</script>
+</body>
+</html>

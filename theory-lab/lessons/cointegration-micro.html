@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cointegration — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Cointegration — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivation, the worked AUD/USD example, and a 6-question self-test?<a href="cointegration.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Lesson 9 · Cross-Asset &amp; Structure</div>
+      <h1 class="sl-h1">Cointegration: <em>the Leash Between Two Prices</em></h1>
+      <p class="sl-lede">Two series can be 95% correlated for years and still have no stable relationship at all. Cointegration is the specific, testable condition that tells you whether a spread has a home to come back to — or is just two wandering price series that happened to lean the same way for a while. This is the statistical backbone underneath every pairs trade.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Correlated in the changes, unanchored in the levels</h2>
+      <p class="sl-sub">"EUR/USD tracks the yield spread." "AUD/USD tracks copper." Most of that reasoning is checked with a correlation coefficient — which answers the wrong question.</p>
+      <p class="sl-p">Correlation measures whether two series' <strong>changes</strong> tend to move in the same direction. It says nothing about whether their <strong>levels</strong> are anchored to each other — whether, if the gap between them stretches too wide, some force actually pulls it back. Two series can be highly correlated in returns while their spread wanders off to new extremes forever, never returning. Trading that spread as if it were mean-reverting is not a subtle mistake — it's betting real money on a coin flip mislabeled as a law of physics.</p>
+      <div class="sl-quote">A well-known teaching analogy: a drunk wandering randomly is a random walk — unpredictable, no destination, could end up arbitrarily far from where she started. Now give her a dog on a leash. The dog also wanders unpredictably on its own. But the <strong>distance between them</strong> is bounded by the leash — it can stretch and slacken, but it can't grow without limit, because something mechanical keeps pulling it back. Neither position alone is predictable. The <em>gap</em> is what cointegration is about.</div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">The crucial distinction</div>
+        <p>Cointegration is a statement about the <strong>levels</strong>, not the returns. Two series can have highly correlated returns for years while their levels drift apart without limit — only a levels-based test tells you whether a spread has an equilibrium to actually revert to.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Stationary: does this series have a home?</h2>
+      <p class="sl-sub">A series is (weakly) <strong>stationary</strong> if its mean, variance, and autocovariance don't depend on the calendar date — only on how far apart two observations are.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">μ</div><div><h4>One fixed long-run mean</h4><p>E[X<sub>t</sub>] = μ, the same at every t — a "normal level" the series fluctuates around.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">σ²</div><div><h4>One fixed variance</h4><p>Var(X<sub>t</sub>) = σ², the same at every t — how far it typically strays from μ never changes.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">γ</div><div><h4>Lag-only autocovariance</h4><p>Cov(X<sub>t</sub>, X<sub>t+k</sub>) = γ(k) depends only on the lag k, never on which date t is.</p></div></div>
+      </div>
+      <div class="sl-svgwrap">
+        <svg viewBox="0 0 640 190" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Top line drifts upward with no fixed level, growing spread over time. Bottom line oscillates around a fixed dashed mean, never drifting away.">
+          <text x="10" y="16" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">Non-stationary — a kite string being let out</text>
+          <polyline points="20,60 70,58 120,50 170,52 220,42 270,44 320,32 370,35 420,24 470,27 520,15 570,18 620,8" style="stroke:var(--red);stroke-width:2.5" fill="none"/>
+          <line x1="20" y1="140" x2="620" y2="140" style="stroke:var(--text3);stroke-dasharray:3,3"/>
+          <text x="10" y="126" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">Stationary — a rubber band with a resting length</text>
+          <polyline points="20,140 45,125 70,150 95,135 120,118 145,148 170,130 195,155 220,122 245,142 270,112 295,145 320,128 345,158 370,120 395,140 420,110 445,150 470,132 495,145 520,118 545,138 570,128 595,145 620,132" style="stroke:var(--green);stroke-width:2.5" fill="none"/>
+        </svg>
+      </div>
+      <p class="sl-p">A random walk, X<sub>t</sub> = X<sub>t−1</sub> + ε<sub>t</sub>, is the simplest non-stationary model: each step adds an independent shock, so Var(X<sub>t</sub>) = t·σ² — it grows without bound. There's no fixed level to return to. Written as X<sub>t</sub> = φX<sub>t−1</sub> + ε<sub>t</sub>, a series is stationary — <strong>I(0)</strong> — when |φ| &lt; 1; it's a random walk with a <strong>unit root</strong> when φ = 1, and needs one round of differencing to become stationary — written <strong>I(1)</strong>. Most raw FX levels are treated as I(1); their returns are typically I(0).</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Why two random walks can fool a regression</h2>
+      <p class="sl-sub">Granger &amp; Newbold (1974): regress one unrelated random walk on another, in levels, and you often get a high R² and a "significant"-looking t-stat — despite zero real connection.</p>
+      <p class="sl-p">The distribution theory behind R² and t-statistics assumes stationary inputs. Feed it two random walks and the t-statistics don't converge to the familiar bell curve at all — they <strong>diverge</strong> as the sample grows, so a "significant" result gets <em>more</em> likely with more data, the opposite of real evidence. Any two series that each drift for stretches will tend to look related over a shared window purely by chance.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — two ways a spread can behave</div>
+        <div class="sl-tabs" id="spread-tabs">
+          <button class="sl-tab active" data-panel="spread-a">Correlated, NOT cointegrated</button>
+          <button class="sl-tab" data-panel="spread-b">Cointegrated</button>
+        </div>
+        <div class="sl-panel active" id="spread-a">
+          <div class="sl-svgwrap">
+            <svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two price series both drift upward together. The residual spread between them also drifts steadily away, never returning to its starting level.">
+              <text x="10" y="14" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">Series A &amp; B (both non-stationary, trending together)</text>
+              <polyline points="40,95 100,88 160,80 220,68 280,60 340,50 400,42 460,32 520,25 580,18" style="stroke:var(--blue);stroke-width:2" fill="none"/>
+              <polyline points="40,100 100,94 160,88 220,76 280,68 340,58 400,50 460,40 520,33 580,26" style="stroke:var(--purple);stroke-width:2" fill="none"/>
+              <line x1="40" y1="170" x2="580" y2="170" style="stroke:var(--text3);stroke-dasharray:3,3"/>
+              <text x="10" y="128" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">Residual spread — drifts away, never comes home</text>
+              <polyline points="40,168 100,172 160,178 220,183 280,190 340,195 400,201 460,206 520,211 580,214" style="stroke:var(--red);stroke-width:2.5" fill="none"/>
+            </svg>
+          </div>
+          <div class="sl-verdict">ADF test on this residual: γ comes out near zero, statistically indistinguishable from a unit root. Both series trended against a common third factor over this window — the high correlation was real, the equilibrium wasn't.</div>
+        </div>
+        <div class="sl-panel" id="spread-b">
+          <div class="sl-svgwrap">
+            <svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two price series both drift upward together, similar to the spurious case. The residual spread instead oscillates in a bounded band around a fixed mean, repeatedly reverting.">
+              <text x="10" y="14" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">Series A &amp; B (both non-stationary, trending together)</text>
+              <polyline points="40,95 100,88 160,80 220,68 280,60 340,50 400,42 460,32 520,25 580,18" style="stroke:var(--blue);stroke-width:2" fill="none"/>
+              <polyline points="40,100 100,94 160,88 220,76 280,68 340,58 400,50 460,40 520,33 580,26" style="stroke:var(--purple);stroke-width:2" fill="none"/>
+              <line x1="40" y1="170" x2="580" y2="170" style="stroke:var(--text3);stroke-dasharray:3,3"/>
+              <text x="10" y="128" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">Residual spread — stretches, then snaps back</text>
+              <polyline points="40,168 100,150 160,185 220,160 280,140 340,178 400,155 460,190 520,150 580,168" style="stroke:var(--green);stroke-width:2.5" fill="none"/>
+            </svg>
+          </div>
+          <div class="sl-verdict">ADF test on this residual: γ is reliably negative, clearing the stricter cointegration critical value. This is a legitimate stationary, mean-reverting spread — the OU-style toolkit (z-scores, bands) now applies to it.</div>
+        </div>
+      </div>
+      <div class="sl-note">Both tabs show near-identical Series A and B — a high correlation, a plausible-looking Step-1 chart. Only the residual spread's own behavior tells the two worlds apart.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Engle-Granger, Step 1 — regress the levels</h2>
+      <p class="sl-sub">Robert Engle and Clive Granger (1987) turned "is this real?" into a concrete two-step test. Step 1 fits a hedge ratio; it does not, by itself, prove anything.</p>
+      <div class="sl-row">
+        <div class="sl-box">Y<sub>t</sub></div><div class="sl-arrow">=</div>
+        <div class="sl-box amber">α</div><div class="sl-arrow">+</div>
+        <div class="sl-box amber">β·X<sub>t</sub></div><div class="sl-arrow">+</div>
+        <div class="sl-box green">ε<sub>t</sub></div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">α</div><div><h4>Intercept</h4><p>The constant offset between the two series.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">β</div><div><h4>The hedge ratio</h4><p>Units of X that offset one unit of Y in the long-run equilibrium — this is what sizes a pairs trade's two legs.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">ε</div><div><h4>The spread</h4><p>The leftover residual. If X and Y are truly cointegrated, this is the tradeable, stationary "leash."</p></div></div>
+      </div>
+      <p class="sl-p">This is exactly the setup Granger &amp; Newbold warned about — its R² alone is just as vulnerable to being spurious. Engle and Granger's real insight is narrower: <em>if</em> X and Y genuinely are cointegrated, this OLS regression is <strong>super-consistent</strong> — β̂ converges to the true hedge ratio unusually fast, even though its standard errors aren't reliable. Translation: good enough for the hedge ratio, not yet evidence a relationship exists.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Engle-Granger, Step 2 — test the residual itself</h2>
+      <p class="sl-sub">Take the fitted residual, ε̂<sub>t</sub> = Y<sub>t</sub> − α̂ − β̂X<sub>t</sub>, and ask: does today's change in the spread depend on yesterday's level?</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The Augmented Dickey-Fuller regression</div>
+        <div class="sl-row">
+          <div class="sl-box">Δε̂<sub>t</sub></div><div class="sl-arrow">=</div>
+          <div class="sl-box green">γ·ε̂<sub>t−1</sub></div><div class="sl-arrow">+</div>
+          <div class="sl-box">Σδᵢ·Δε̂<sub>t−i</sub></div><div class="sl-arrow">+</div>
+          <div class="sl-box">u<sub>t</sub></div>
+        </div>
+        <div class="sl-verdict">If the spread mean-reverts, being far above average should predict a negative next change — γ comes out reliably <strong>negative</strong>. If it's just a random walk with no memory of a "correct" level, γ is statistically indistinguishable from zero.</div>
+      </div>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">H₀ — unit root</span>
+          <p>γ = 0. The spread has no memory of a level — not cointegrated. Fail to reject this and you have no statistical basis for trading the spread as mean-reverting.</p>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">H₁ — stationary</span>
+          <p>γ &lt; 0, negative enough to clear a critical value. The spread reverts — cointegrated. Now it behaves like the OU mean-reverting object from the previous lesson.</p>
+        </div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Why the critical value has to be stricter</div>
+        <p>ε̂<sub>t</sub> isn't independently observed — β̂ was already chosen by OLS to make this exact residual look as small and well-behaved as possible. Plain Dickey-Fuller critical values would reject H₀ too easily. Engle-Granger derived stricter critical values for this two-step situation (refined by MacKinnon), and correct implementations — including Python's <code>statsmodels.tsa.stattools.coint</code> — use those, not plain ADF values.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Try it — the spread and its z-score, live</h2>
+      <p class="sl-sub">The Step 2 mechanics, parameterized: ε̂<sub>t</sub> = Y<sub>t</sub> − β̂X<sub>t</sub> (α already netted out — OLS residuals average to zero), turned into a z-score against the spread's own history.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>AUD/USD spot Yₜ</label><input type="number" class="sl-input" id="cz-y" value="0.6650" step="0.0010"></div>
+          <div class="sl-calc-op">−</div>
+          <div class="sl-calc-field"><label>Hedge ratio β̂</label><input type="number" class="sl-input" id="cz-beta" value="1.10" step="0.01"></div>
+          <div class="sl-calc-op">×</div>
+          <div class="sl-calc-field"><label>NZD/USD spot Xₜ</label><input type="number" class="sl-input" id="cz-x" value="0.6000" step="0.0010"></div>
+        </div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Spread std. dev. σ_ε</label><input type="number" class="sl-input" id="cz-sigma" value="0.0080" step="0.0005" min="0"></div>
+          <div class="sl-calc-op">→</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Spread ε̂ₜ</div>
+            <div class="sl-calc-result-val" id="cz-eps">0.0050</div>
+          </div>
+          <div class="sl-calc-op">→</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">z-score</div>
+            <div class="sl-calc-result-val" id="cz-z">0.63</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div id="cz-note"></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="cz-reset">Reset to illustrative numbers</button>
+        <div class="sl-note">These are illustrative round numbers in the spirit of the AUD/USD-vs-NZD/USD example (β̂ near the middle of a plausible 1.05–1.15 range) — not a reported historical fit. |z| ≥ 2 is a typical illustrative entry-signal threshold for a pairs trade.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Worked example — AUD/USD vs. NZD/USD</h2>
+      <p class="sl-sub">Two commodity-bloc currencies, routinely highly correlated (China demand, risk sentiment, commodity revenue, similar central-bank cycles). Regress AUD/USD on NZD/USD in levels over two years of daily closes.</p>
+      <p class="sl-p"><strong>Step 1</strong> plausibly returns β̂ ≈ 1.05–1.15 and a striking R² north of 0.85–0.90. Per Granger &amp; Newbold, that R² alone means nothing yet — it's exactly the number two correlated-but-maybe-not-cointegrated series would tend to produce. <strong>Step 2</strong> — the ADF test on the residual — is what actually tells you which world you're in.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">World A — not cointegrated</span>
+          <p>The residual drifts to a new high in year one, sits there, drifts to a new low in year two — never really returning. ADF's γ ≈ 0; fail to reject the unit-root null. The high R² was driven by both currencies trending against a common third factor (say, broad USD strength), not a link tying their ratio together.</p>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">World B — cointegrated</span>
+          <p>The residual oscillates in a visibly bounded band throughout both years, repeatedly reverting. ADF's γ is negative enough to clear the stricter critical value — a legitimate stationary spread. Now a z-score, bands, and an OU-style trade all make statistical sense.</p>
+        </div>
+      </div>
+      <div class="sl-note">You cannot tell which world you're in from Step 1's R² or a correlated-looking chart — that's the trap this lesson opened with. This example illustrates the procedure; it isn't a reported result.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Beyond two series — Johansen's test</h2>
+      <p class="sl-sub">Engle-Granger has two structural limits once you move past a single pair. Søren Johansen (1988, 1991) built the proper generalization.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Engle-Granger's limits</span>
+          <ul>
+            <li>Forces an arbitrary choice of which series is "Y" — regressing Y on X isn't the same as X on Y in a finite sample</li>
+            <li>Can only ever test for one cointegrating relationship at a time</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Johansen's fix</span>
+          <ul>
+            <li>Fits a Vector Autoregression (VAR) jointly across the whole basket — symmetric, no Y-vs-X choice</li>
+            <li>The rank of its long-run matrix Π (via "trace" and "max eigenvalue" tests) tells you how many independent equilibria exist at once</li>
+          </ul>
+        </div>
+      </div>
+      <p class="sl-p">A basket of three or more series — commodity-bloc currencies, a term structure of yields — can hold more than one genuine equilibrium relationship simultaneously. You don't need the eigenvalue algebra to use the result: Johansen answers "how many real long-run relationships are hiding in this group, and what are they," across all series at once, instead of Engle-Granger's asymmetric, one-pair-at-a-time answer.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">How practitioners actually use this</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🔀</div><div><h4>Pairs trading</h4><p>The flagship application. Find an economically linked pair, test for cointegration rather than assuming it from correlation, and — if it passes — trade the z-scored spread market-neutral: long the cheap leg, short the expensive one, sized by β̂.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📦</div><div><h4>Index / ETF arbitrage</h4><p>The cointegrating relationship is close to mechanically guaranteed by contract (ETF price vs. basket NAV) — the interesting question becomes execution speed and cost, not whether the link is real.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🌍</div><div><h4>Macro / cross-asset relative value</h4><p>Non-obvious pairs — a currency against a commodity, a corporate spread against equity vol — where the economic link is a hypothesis. The test does real work separating structure from coincidence.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🛠️</div><div><h4>Error-correction models</h4><p>Once cointegration is established, model each series' next change partly on how far last period's spread sat from equilibrium — a forecasting equation, not just a trading rule.</p></div></div>
+      </div>
+      <p class="sl-p">Gatev, Goetzmann &amp; Rouwenhorst's widely cited 1998/2006 study documented pairs trading's historical performance in US equities; the cointegration-based version of pair selection (rather than their original simpler distance method) became standard on quant desks through the 2000s.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Where cointegration testing quietly goes wrong</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">⏮</div><div><h4>Re-estimating β with data you wouldn't have had</h4><p>β̂ must come only from data available at trade time — fitting it on the full history is lookahead, and makes every historical spread look tighter than it would have looked live.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧱</div><div><h4>Structural breaks kill relationships silently</h4><p>A currency peg removed, a company delisted, an export mix shifting — a pair can be genuinely cointegrated for years and then permanently stop being so.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎣</div><div><h4>Data-mining a large universe of pairs</h4><p>Testing every pair in a big basket and keeping only the 5%-significant survivors is a textbook multiple-comparisons problem — roughly 1 in 20 unrelated pairs passes by chance alone.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">↔</div><div><h4>Engle-Granger's asymmetry</h4><p>Regressing Y on X vs. X on Y isn't guaranteed to give the same β̂ or even the same conclusion in a finite sample — OLS only minimizes error in one direction.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>Stationary ≠ tradeable</h4><p>A genuinely cointegrated spread can revert so slowly (a long half-life) that costs and slippage eat the edge before reversion completes. Passing the test only clears the first bar.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Reality check — what this repo actually does</h2>
+      <p class="sl-sub">The full lesson tags this topic "CONCEPT — not yet tested in this repo" and says the project's pair-ranking tooling works from return correlation, not a levels cointegration test. Checking the actual code shows that's now out of date.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">The full lesson's framing</span>
+          <p>"CONCEPT — not yet tested in this repo." "This project's existing pair-ranking and lead-lag tooling all currently work from return correlation or lead-lag, not a levels cointegration test — a named, not-yet-built extension."</p>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">What's actually in the codebase</span>
+          <p><code>portfolioBacktest/portfolio_backtest.py</code> already runs a full Engle-Granger-screened pairs backtester — <code>statsmodels.tsa.stattools.coint</code>, a p &lt; 0.05 threshold, an OLS hedge ratio, and z-score entries/exits. <code>forge/residual.py</code> independently runs ADF stationarity tests and half-life estimates on a currency-network residual.</p>
+        </div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Both things are true, in different places</div>
+        <p>The stale "not yet tested" line describes the full lesson's own framing, not this codebase as it stands today. Real Engle-Granger cointegration screening exists and runs in <code>portfolioBacktest/portfolio_backtest.py</code> — and it's built carefully: the screen trains only on a leading in-sample window (<code>coint_train_bars</code>) before any trading starts, exactly the "no lookahead" discipline this lesson's own pitfalls section calls for. <code>forge/residual.py</code>'s ADF/half-life tools work on a different, basket-based residual rather than a classic two-series spread, but they're the same statistical machinery taught here, already in use.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">Quick check</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Two FX pairs have 90% correlated daily returns for five years. Does that alone tell you the spread is a good pairs trade?</h4>
+        <button class="sl-quiz-opt" data-correct="true">No — return correlation says nothing about whether the levels have a stable equilibrium</button>
+        <button class="sl-quiz-opt">Yes — high correlation always implies cointegration</button>
+        <button class="sl-quiz-opt">Only if the correlation is negative</button>
+        <div class="sl-quiz-explain">Correlation measures whether changes move together. Cointegration is a separate, stronger condition about whether the levels combine into a stationary spread — the two can and do disagree.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>In the Engle-Granger method, what is Step 2 actually testing?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Whether the residual spread from Step 1 is stationary</button>
+        <button class="sl-quiz-opt">Whether Step 1's R² is above 0.90</button>
+        <button class="sl-quiz-opt">Whether the sample size is large enough</button>
+        <div class="sl-quiz-explain">Step 2 runs an ADF test on ε̂ₜ = Yₜ − α̂ − β̂Xₜ, checking whether γ in Δε̂ₜ = γ·ε̂ₜ₋₁ + ... is reliably negative — the residual's own stationarity, not Step 1's fit quality.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Why does Step 2 use stricter Engle-Granger/MacKinnon critical values instead of plain Dickey-Fuller ones?</h4>
+        <button class="sl-quiz-opt" data-correct="true">β̂ was already chosen by OLS to make this exact residual look as well-behaved as possible, biasing plain critical values toward false positives</button>
+        <button class="sl-quiz-opt">Because the sample is always too small to use plain values</button>
+        <button class="sl-quiz-opt">Because α is unknown until Step 2 is run</button>
+        <div class="sl-quiz-explain">The residual isn't independently observed — Step 1's OLS fit already minimized it. Plain Dickey-Fuller critical values would reject the unit-root null too easily; Engle-Granger/MacKinnon values correct for that.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>In the AUD/USD-vs-NZD/USD example, what actually distinguishes World A (spurious) from World B (cointegrated)?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The Step 2 ADF test result on the residual spread</button>
+        <button class="sl-quiz-opt">The Step 1 R² value</button>
+        <button class="sl-quiz-opt">Which currency is chosen as the dependent variable</button>
+        <div class="sl-quiz-explain">Both worlds can produce a near-identical, high Step-1 R². Only testing whether the residual itself reverts (Step 2) tells them apart.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>What extra capability does Johansen's test give over Engle-Granger for a basket of three or more series?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It avoids the arbitrary Y-vs-X choice and can find multiple simultaneous cointegrating relationships</button>
+        <button class="sl-quiz-opt">It removes the need for any stationarity testing at all</button>
+        <button class="sl-quiz-opt">It only works for exactly two series, like Engle-Granger</button>
+        <div class="sl-quiz-explain">Johansen fits a VAR/VECM jointly across the whole basket, symmetric across all series, and its Π matrix's rank reveals how many independent cointegrating relationships exist at once.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Correlation measures whether changes move together; cointegration asks whether the levels have a stable, bounded spread — a stronger, rarer condition.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>A random walk (unit root, φ=1) has variance growing with time and no fixed level to return to — regressing one against another in levels can still fake a high R² (Granger &amp; Newbold).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Engle-Granger's two-step test is concrete: Step 1 regresses the levels for a hedge ratio β; Step 2 runs an ADF test — with stricter EG/MacKinnon critical values — on the residual spread.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Johansen generalizes to baskets of three or more series, avoiding the arbitrary Y-vs-X choice and finding how many equilibria exist at once.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Passing a cointegration test only clears the first bar — lookahead bias, structural breaks, data-mining across candidate pairs, and slow half-lives can all still sink a live pairs trade.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>This repo already runs Engle-Granger-screened pairs trading (<code>portfolioBacktest</code>) and ADF/half-life diagnostics (<code>forge/residual.py</code>) — the "concept only" framing is now out of date.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Tell apart a correlated-looking chart from a genuinely tradeable spread before risking capital on it. Run the Engle-Granger two-step yourself — or read the code already doing it in this repo — and know what should convince you an ADF statistic actually cleared the stricter bar. Recognise that a pairs trade needs more than a plausible story: it needs a leash, not just two things that happened to lean the same way.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Principal Component Analysis &amp; Factor Regimes</h3>
+        <p>How a whole basket of cross-asset series decomposes into a handful of dominant factors — and how the market's regime shows up as which factor is doing the driving.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="pca-factors-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="cointegration.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Spread + z-score calculator — AUD/USD vs NZD/USD, live.
+  (function(){
+    var y = document.getElementById('cz-y');
+    if (!y) return;
+    var x = document.getElementById('cz-x'), beta = document.getElementById('cz-beta'), sigma = document.getElementById('cz-sigma');
+    var epsOut = document.getElementById('cz-eps'), zOut = document.getElementById('cz-z');
+    var noteOut = document.getElementById('cz-note');
+    var resetBtn = document.getElementById('cz-reset');
+    var DEFAULTS = { y: 0.6650, x: 0.6000, beta: 1.10, sigma: 0.0080 };
+
+    function recompute(){
+      var yv = parseFloat(y.value), xv = parseFloat(x.value), bv = parseFloat(beta.value), sv = parseFloat(sigma.value);
+      if (!isFinite(yv) || !isFinite(xv) || !isFinite(bv) || !isFinite(sv) || sv < 0) {
+        epsOut.textContent = '—';
+        zOut.textContent = '—';
+        noteOut.textContent = 'Enter numeric spots/hedge ratio and a non-negative spread std. dev.';
+        return;
+      }
+      var eps = yv - bv * xv;
+      epsOut.textContent = eps.toFixed(4);
+      if (sv === 0) {
+        zOut.textContent = '—';
+        noteOut.textContent = 'σ_ε = 0: z-score is undefined with zero historical spread variance.';
+      } else {
+        var z = eps / sv;
+        zOut.textContent = z.toFixed(2);
+        noteOut.textContent = Math.abs(z) >= 2 ? '|z| ≥ 2 — a typical illustrative entry-signal threshold.' : '';
+      }
+    }
+
+    [y, x, beta, sigma].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      y.value = DEFAULTS.y; x.value = DEFAULTS.x; beta.value = DEFAULTS.beta; sigma.value = DEFAULTS.sigma;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

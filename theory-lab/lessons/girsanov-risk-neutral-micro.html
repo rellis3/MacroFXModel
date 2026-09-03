@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Girsanov's Theorem &amp; the Risk-Neutral Measure — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Girsanov's Theorem &amp; the Risk-Neutral Measure — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivation, the Radon-Nikodym derivative, and a 6-question self-test?<a href="girsanov-risk-neutral.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Lesson 27 · Advanced Stochastic Calculus &amp; Derivatives</div>
+      <h1 class="sl-h1">Girsanov's Theorem, <em>or How to Legally Ignore μ</em></h1>
+      <p class="sl-lede">The Black-Scholes lesson priced an option using the risk-free rate r instead of the underlying's real expected return μ, and called the result a "risk-neutral probability" without fully explaining what that meant. This is the lesson that explains it: what a probability measure actually is, how Girsanov's 1960 theorem lets you legally re-weight one into another, and why that specific re-weighting — not a convenient shortcut — is what makes option pricing possible without ever having to forecast the market.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Same coin, a different odds sheet</h2>
+      <p class="sl-sub">A probability measure is nothing mystical — it's just a specific weighting of how likely each possible future outcome is.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">ℙ</div><div><h4>The real-world measure</h4><p>The weighting that reflects what investors actually expect. A genuinely risky stock earns a drift μ above the risk-free rate r, because investors demand compensation — a risk premium — for bearing uncertainty they can't diversify away.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">ℚ</div><div><h4>The risk-neutral measure</h4><p>The same stock, same volatility, same set of possible future paths — described under a different weighting, engineered so its expected return comes out to exactly r instead of μ.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">≡</div><div><h4>"Equivalent," precisely</h4><p>ℙ and ℚ agree on which outcomes are possible at all — nothing ℙ rules out becomes possible under ℚ, and nothing ℚ rules out was possible under ℙ. They only disagree on how likely the possible outcomes are.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎲</div><div><h4>Not a different stock</h4><p>ℚ isn't a fantasy or an approximation of the real stock. It's the same randomness, relabeled — like a bookmaker's odds sheet redrawn on the same race, same horses, so the "average return" comes out to exactly r.</p></div></div>
+      </div>
+      <div class="sl-quote">Nobody thinks ℚ is what will actually happen. It's a deliberately constructed accounting device — and the rest of this deck is about exactly why that specific device, and no other, is the one a no-arbitrage price needs.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">One stock, written two ways</h2>
+      <p class="sl-sub">Same σ, same source of randomness, same possible paths — only the drift term changes between measures.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="pq-tabs">
+          <button class="sl-tab active" data-panel="pq-p">Under ℙ (real-world)</button>
+          <button class="sl-tab" data-panel="pq-q">Under ℚ (risk-neutral)</button>
+        </div>
+        <div class="sl-panel active" id="pq-p">
+          <div class="sl-row"><div class="sl-box">dS = μS·dt + σS·dW<sup>ℙ</sup></div></div>
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two overlapping bell curves of the underlying's price at horizon T. The real-world curve, in blue, is emphasized and centered further right, reflecting a risk premium; the risk-neutral curve, in red, is dimmed and centered further left.">
+            <line x1="40" y1="220" x2="620" y2="220" style="stroke:var(--text3);stroke-width:1"/>
+            <text x="620" y="238" text-anchor="end" font-size="10.5" font-family="'DM Sans',sans-serif" fill="var(--text3)">Underlying price at horizon T →</text>
+            <line x1="280" y1="16" x2="280" y2="220" style="stroke:var(--red);stroke-width:1;stroke-dasharray:3,3;opacity:.4"/>
+            <text x="280" y="12" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--red)" opacity=".5">S₀·e^(rT)</text>
+            <line x1="400" y1="16" x2="400" y2="220" style="stroke:var(--blue);stroke-width:1;stroke-dasharray:3,3"/>
+            <text x="400" y="12" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--blue)">S₀·e^(μT)</text>
+            <polyline points="40,219.5 72,217.6 104,211.7 136,196.5 168,165.8 200,115.1 232,58.4 264,20.0 296,20.0 328,58.4 360,115.1 392,165.8 424,196.5 456,211.7 488,217.6 520,219.5 552,219.9 584,220.0 600,220.0" style="stroke:var(--red);stroke-width:2" fill="none" opacity=".3"/>
+            <polyline points="40,220.0 72,220.0 104,219.9 136,219.5 168,217.6 200,211.7 232,196.5 264,165.8 296,115.1 328,58.4 360,20.0 392,20.0 424,58.4 456,115.1 488,165.8 520,196.5 552,211.7 584,217.6 600,219.5" style="stroke:var(--blue);stroke-width:3" fill="none"/>
+          </svg></div>
+          <div class="sl-verdict"><strong>Drift = μ.</strong> This is the measure under which μ is a real, arguable-over forecast about the economy — and the one nobody knows for certain.</div>
+        </div>
+        <div class="sl-panel" id="pq-q">
+          <div class="sl-row"><div class="sl-box green">dS = rS·dt + σS·dW<sup>ℚ</sup></div></div>
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The same two bell curves, now with the risk-neutral curve in red emphasized and centered further left, and the real-world curve in blue dimmed.">
+            <line x1="40" y1="220" x2="620" y2="220" style="stroke:var(--text3);stroke-width:1"/>
+            <text x="620" y="238" text-anchor="end" font-size="10.5" font-family="'DM Sans',sans-serif" fill="var(--text3)">Underlying price at horizon T →</text>
+            <line x1="280" y1="16" x2="280" y2="220" style="stroke:var(--red);stroke-width:1;stroke-dasharray:3,3"/>
+            <text x="280" y="12" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--red)">S₀·e^(rT)</text>
+            <line x1="400" y1="16" x2="400" y2="220" style="stroke:var(--blue);stroke-width:1;stroke-dasharray:3,3;opacity:.4"/>
+            <text x="400" y="12" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--blue)" opacity=".5">S₀·e^(μT)</text>
+            <polyline points="40,219.5 72,217.6 104,211.7 136,196.5 168,165.8 200,115.1 232,58.4 264,20.0 296,20.0 328,58.4 360,115.1 392,165.8 424,196.5 456,211.7 488,217.6 520,219.5 552,219.9 584,220.0 600,220.0" style="stroke:var(--red);stroke-width:3" fill="none"/>
+            <polyline points="40,220.0 72,220.0 104,219.9 136,219.5 168,217.6 200,211.7 232,196.5 264,165.8 296,115.1 328,58.4 360,20.0 392,20.0 424,58.4 456,115.1 488,165.8 520,196.5 552,211.7 584,217.6 600,219.5" style="stroke:var(--blue);stroke-width:2" fill="none" opacity=".3"/>
+          </svg></div>
+          <div class="sl-verdict"><strong>Drift = r.</strong> Same σ, same shape, same width, same set of possible paths — only the center of the probability mass shifted left, toward the risk-free forward price.</div>
+        </div>
+        <div class="sl-note">Notice what never moves between panels: σ, and the curve's shape. Girsanov's theorem is precisely the license to relabel one curve's probabilities as the other's, without touching either.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Drag the real-world drift</h2>
+      <p class="sl-sub">r and σ stay fixed. As μ moves, watch the gap between the two measures' means — that gap, in units of σ, is θ.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 160" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A horizontal axis with a fixed marker for the risk-neutral mean and a draggable marker for the real-world mean, whose distance from the fixed marker is controlled by a slider">
+            <line x1="40" y1="110" x2="600" y2="110" style="stroke:var(--border2);stroke-width:1"/>
+            <line id="drift-line-q" x1="280" y1="30" x2="280" y2="110" style="stroke:var(--red);stroke-width:2.5"/>
+            <circle cx="280" cy="110" r="5" style="fill:var(--red)"/>
+            <text x="280" y="20" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="var(--red)">r — fixed</text>
+            <line id="drift-line-p" x1="360" y1="30" x2="360" y2="110" style="stroke:var(--blue);stroke-width:2.5"/>
+            <circle id="drift-dot-p" cx="360" cy="110" r="5" style="fill:var(--blue)"/>
+            <text id="drift-label-p" x="360" y="20" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="var(--blue)">μ</text>
+            <line id="drift-brace" x1="280" y1="130" x2="360" y2="130" style="stroke:var(--text3);stroke-width:1.5"/>
+            <text id="drift-gap-label" x="320" y="148" text-anchor="middle" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--text3)">μ − r</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Real-world drift μ</span><span class="sl-live" id="drift-mval">μ = 9.0%</span></div>
+        <input type="range" class="sl-slider" id="drift-slider" min="0" max="20" step="0.5" value="9">
+        <div class="sl-calc-steps">
+          <div>Fixed: r = <b>5.0%</b>, σ = <b>20.0%</b></div>
+          <div>Market price of risk: θ = (μ − r) / σ = <b id="drift-theta">0.20</b></div>
+        </div>
+      </div>
+      <p class="sl-p">θ is the exact size of the shift Girsanov's theorem applies to the Brownian motion to move from ℙ to ℚ: W<sup>ℚ</sup> = W<sup>ℙ</sup> + θt. Drag μ down to r and the gap — and θ — collapses to zero: if investors truly were risk-neutral, ℙ and ℚ would already be the same measure, and there'd be nothing to shift.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Girsanov's theorem — the license to reweight</h2>
+      <p class="sl-sub">Shifting a Brownian motion by a deterministic drift doesn't just look like a new random process — it provably still <em>is</em> one, once you're willing to reweight the underlying probabilities.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The theorem, in one shift</div>
+        <div class="sl-row">
+          <div class="sl-box">W<sup>ℙ</sup><sub>t</sub></div>
+          <div class="sl-arrow">+ θt →</div>
+          <div class="sl-box green">W<sup>ℚ</sup><sub>t</sub></div>
+        </div>
+        <div class="sl-verdict">Girsanov (1960): the shifted process W<sup>ℚ</sup> is <strong>itself a standard Brownian motion</strong> — mean-zero increments, variance t, independent increments, all preserved — just under the new measure ℚ rather than ℙ.</div>
+        <div class="sl-row" style="margin-top:14px">
+          <div class="sl-box amber">dℚ/dℙ = exp(−θ·W<sup>ℙ</sup><sub>T</sub> − ½θ²T)</div>
+        </div>
+        <div class="sl-verdict">The <strong>Radon-Nikodym derivative</strong> — the precise multiplicative factor that converts a ℙ-probability of any given path into its ℚ-probability. This is what actually does the reweighting; Girsanov's theorem is the guarantee that it exists and behaves (never inventing a possibility, never destroying one).</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">1</div><div><h4>Any well-behaved θ works</h4><p>The theorem itself doesn't say which θ to pick for pricing — only that shifting by any reasonably well-behaved θ produces some valid equivalent measure.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">2</div><div><h4>Only the drift moves</h4><p>σ — the diffusion term — is untouched by the change of measure. The model's view of how much the price jiggles around is not up for renegotiation, only where it's centered.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">3</div><div><h4>It's infrastructure</h4><p>No desk derives the Radon-Nikodym derivative before pricing a swap. It's the theorem that makes "price as if drift were r" legitimate, not a daily calculation.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">The market price of risk, live</h2>
+      <p class="sl-sub">θ = (μ − r) / σ — excess return per unit of volatility. It's the asset's Sharpe ratio in these units, and exactly the size of the ℙ→ℚ shift.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Real-world return μ (%)</label><input type="number" class="sl-input" id="mpr-mu" value="8" step="0.5"></div>
+          <div class="sl-calc-op">−</div>
+          <div class="sl-calc-field"><label>Risk-free rate r (%)</label><input type="number" class="sl-input" id="mpr-r" value="4" step="0.5"></div>
+          <div class="sl-calc-op">÷</div>
+          <div class="sl-calc-field"><label>Volatility σ (%)</label><input type="number" class="sl-input" id="mpr-sigma" value="20" step="0.5"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Market price of risk θ</div>
+            <div class="sl-calc-result-val" id="mpr-result">0.20</div>
+          </div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="mpr-reset">Reset to worked-example numbers</button>
+        <div class="sl-note">σ can't be zero or negative — volatility is a yardstick you divide by, and a yardstick of length zero breaks the ratio. Blank or non-numeric inputs show "—" instead of guessing.</div>
+      </div>
+      <p class="sl-p">This single number is the whole shift: multiply θ by t and add it to W<sup>ℙ</sup><sub>t</sub>, and Girsanov's theorem hands back a valid Brownian motion under a new measure ℚ. Push θ to zero (set μ = r) and there's no shift left to make — ℙ and ℚ already coincide.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Why this shift, specifically</h2>
+      <p class="sl-sub">Girsanov's theorem says a shift produces <em>some</em> valid measure. Only one choice of θ makes the discounted price a martingale — and that's the one pricing needs.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Discount the price</span>
+          <p>Define S̃<sub>t</sub> = e<sup>−rt</sup>S<sub>t</sub> — today's dollars, stripping out the risk-free growth every asset earns for free. Differentiating the discount factor alone contributes a drift term of −r·S̃<sub>t</sub>·dt.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Add the ℚ-dynamics</span>
+          <p>Under ℚ, S<sub>t</sub> itself drifts at exactly r: dS<sub>t</sub> = rS<sub>t</sub>·dt + σS<sub>t</sub>·dW<sup>ℚ</sup>. Plugging that in contributes a second drift term of +r·S̃<sub>t</sub>·dt.</p>
+        </div>
+      </div>
+      <div class="sl-row" style="margin-top:4px">
+        <div class="sl-box">−r·S̃<sub>t</sub>dt</div>
+        <div class="sl-arrow">+</div>
+        <div class="sl-box">+r·S̃<sub>t</sub>dt</div>
+        <div class="sl-arrow">=</div>
+        <div class="sl-box green">0</div>
+      </div>
+      <div class="sl-verdict" style="margin-bottom:14px"><strong>The two drift terms cancel exactly.</strong> What's left is dS̃<sub>t</sub> = σS̃<sub>t</sub>·dW<sup>ℚ</sup> — pure noise, zero expected drift. A process with zero drift is, by definition, a martingale: 𝔼<sup>ℚ</sup>[S̃<sub>T</sub> | ℱ<sub>t</sub>] = S̃<sub>t</sub>.</div>
+      <div class="sl-quote">This is the exact martingale property from the Efficient Market Hypothesis lesson — 𝔼[P<sub>t</sub>|ℱ<sub>t−1</sub>] = P<sub>t−1</sub>, a "fair game." There, it was an empirical, testable claim about real markets under ℙ. Here, under ℚ, it holds <strong>by construction</strong> — the entire reason ℚ was built the way it was.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Pricing without ever knowing μ</h2>
+      <p class="sl-sub">A one-period, two-outcome market. Notice: there's no field below for μ — risk-neutral pricing genuinely never asks for it.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Spot S₀</label><input type="number" class="sl-input" id="rn-s0" value="100" step="1" min="0"></div>
+          <div class="sl-calc-field"><label>Strike K</label><input type="number" class="sl-input" id="rn-k" value="100" step="1" min="0"></div>
+          <div class="sl-calc-field"><label>Risk-free r (%)</label><input type="number" class="sl-input" id="rn-r" value="5" step="0.5"></div>
+          <div class="sl-calc-field"><label>Horizon T (yrs)</label><input type="number" class="sl-input" id="rn-t" value="1" step="0.25" min="0"></div>
+          <div class="sl-calc-field"><label>Up factor u</label><input type="number" class="sl-input" id="rn-u" value="1.2" step="0.05"></div>
+          <div class="sl-calc-field"><label>Down factor d</label><input type="number" class="sl-input" id="rn-d" value="0.9" step="0.05"></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Risk-neutral probability of the up-move: q = (e<sup>rT</sup> − d) / (u − d) = <b id="rn-q">0.5042</b></div>
+          <div>Call payoff if up: max(u·S₀ − K, 0) = <b id="rn-payoffup">20.00</b></div>
+          <div>Call payoff if down: max(d·S₀ − K, 0) = <b id="rn-payoffdown">0.00</b></div>
+          <div>Expected payoff under ℚ: q·(up) + (1−q)·(down) = <b id="rn-expected">10.08</b></div>
+        </div>
+        <div class="sl-calc-row" style="margin-top:12px">
+          <div class="sl-calc-result" style="flex:1 1 100%">
+            <div class="sl-calc-result-label">Option price today: e⁻ʳᵀ · 𝔼<sup>ℚ</sup>[payoff]</div>
+            <div class="sl-calc-result-val" id="rn-result">$9.59</div>
+          </div>
+        </div>
+        <div class="sl-note" id="rn-note">q must land strictly between 0 and 1 (equivalently, d &lt; e<sup>rT</sup> &lt; u) or the market has an arbitrage and there's no valid risk-neutral price. Blank, non-numeric, or arbitrage-violating inputs show "—".</div>
+        <button type="button" class="sl-reset-btn" id="rn-reset">Reset to worked-example numbers</button>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">N(d₂) is real. The measure is the fiction.</h2>
+      <p class="sl-sub">Under ℚ, ln S<sub>T</sub> is normal with mean ln S₀ + (r − σ²/2)T — same lognormal shape as under ℙ, centered on r instead of μ.</p>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">What N(d₂) actually is</div>
+        <p>N(d₂) is literally ℚ(S<sub>T</sub> &gt; K) — the genuine, well-defined probability, under the genuine, well-defined measure ℚ, that the option finishes in the money. There is nothing fictitious about the <em>number</em>. What's a deliberate device is the <em>measure</em> it's computed under: since μ ≥ r for a typical risky asset, the real-world probability of finishing in the money is usually higher than N(d₂) — the two coincide only when μ = r, i.e. θ = 0.</p>
+      </div>
+      <div class="sl-row">
+        <div class="sl-box">V₀ = e<sup>−rT</sup> · 𝔼<sup>ℚ</sup>[V<sub>T</sub>]</div>
+      </div>
+      <div class="sl-verdict" style="margin-bottom:14px">Nowhere does μ appear. Not because it's approximated away, but because r is precisely the drift that makes the discounted price a martingale — the one property a no-arbitrage price actually needs.</div>
+      <div class="sl-quote"><strong>A bullish view is a separate bet, never a pricing input.</strong> A trader convinced EUR/USD will outrun the rate differential still prices and hedges the option under ℚ. Their view gets expressed by buying spot, or by an intentionally un-hedged option — not by quietly swapping μ in for r inside the pricing formula. Doing that produces a price too high and a hedge ratio that's systematically wrong.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">How a derivatives desk actually uses this</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">💰</div><div><h4>Risk-neutral valuation is the default</h4><p>Every derivatives pricing model — plain Black-Scholes through local-vol and stochastic-vol — computes a discounted expectation under some ℚ, never under ℙ.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎲</div><div><h4>Monte Carlo engines simulate under ℚ</h4><p>Pricing a path-dependent exotic by averaging a discounted payoff over simulated paths uses drift r (or the FX rate differential) in every path — never ℙ's μ.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔄</div><div><h4>Calibration works backwards through ℚ</h4><p>Backing out implied volatility from a traded price infers a parameter of ℚ, not ℙ — why implied and realized volatility are related but distinct.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📉</div><div><h4>Risk management switches back to ℙ</h4><p>VaR, stress tests, and real-world scenario probabilities are computed under the actual estimated measure — "how bad could this get" is a ℙ-question.</p></div></div>
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">Verified in this codebase</div>
+        <p>This repo's own dealer-positioning greeks (<code>js/gammaGreeks.js</code>) compute Black-Scholes d₁/d₂, vanna, and charm using the risk-free rate r as the drift term in the formula — never an estimated real-world μ. It's a small, concrete instance of the exact same ℚ-pricing convention this lesson derives, already sitting in production code rather than only in the theory.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Where "risk-neutral" gets misread</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Common misreading</span>
+          <ul>
+            <li>"Risk-neutral" means real investors don't care about risk</li>
+            <li>A rising N(d₂) means "the market thinks this is more likely"</li>
+            <li>Any drift can be shifted away for free, no conditions attached</li>
+            <li>A house view can justify a different price for the derivative itself</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">What's actually true</span>
+          <ul>
+            <li>"Risk-neutral" describes the measure's math, not investor psychology — real investors are risk-averse, which is exactly why μ &gt; r under ℙ</li>
+            <li>N(d₂) is a ℚ-probability, a pricing device — directionally suggestive, not the same claim as a ℙ-forecast</li>
+            <li>Girsanov requires a technical integrability condition (Novikov's condition) on θ<sub>t</sub> — automatic for constant θ, a real constraint in exotic models</li>
+            <li>A view belongs in a separate position — spot, forwards, an un-hedged option — never inside the pricing model</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Why the name is confusing</div>
+        <p>"Risk-neutral" sounds like a claim about people. It isn't — it's a label for a measure under which every asset happens to drift at r. If investors genuinely were risk-neutral, μ would already equal r, θ would be zero, and ℙ and ℚ would be the same measure — there'd be no shift to name in the first place.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What replaces μ in an option's no-arbitrage price?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The risk-free rate r</button>
+        <button class="sl-quiz-opt">The trader's own forecast</button>
+        <button class="sl-quiz-opt">The historical average return</button>
+        <div class="sl-quiz-explain">Under the risk-neutral measure ℚ, every asset's drift is engineered to be exactly r — that's the whole point of the measure change.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Girsanov's theorem says shifting a Brownian motion's drift by θ produces what?</h4>
+        <button class="sl-quiz-opt" data-correct="true">A valid Brownian motion, under a new equivalent measure ℚ</button>
+        <button class="sl-quiz-opt">A completely different random process with new possible paths</button>
+        <button class="sl-quiz-opt">The same process under the same measure ℙ</button>
+        <div class="sl-quiz-explain">The shifted process W^ℚ = W^ℙ + θt keeps every defining property of Brownian motion — just weighted under ℚ instead of ℙ.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>θ = (μ − r) / σ is called the...</h4>
+        <button class="sl-quiz-opt" data-correct="true">Market price of risk</button>
+        <button class="sl-quiz-opt">Radon-Nikodym derivative</button>
+        <button class="sl-quiz-opt">Risk-free rate</button>
+        <div class="sl-quiz-explain">θ is the excess return per unit of volatility — the exact size of the ℙ→ℚ shift. The Radon-Nikodym derivative is the reweighting factor built from θ, a different object.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>The discounted price S̃_t = e⁻ʳᵗS_t is a martingale under ℚ...</h4>
+        <button class="sl-quiz-opt" data-correct="true">By construction — it's the entire reason ℚ was built that way</button>
+        <button class="sl-quiz-opt">As an empirical fact that needs testing on real price data</button>
+        <button class="sl-quiz-opt">Only approximately, and only for very liquid underlyings</button>
+        <div class="sl-quiz-explain">θ = (μ−r)/σ is chosen specifically because it's the unique shift that cancels the drift after discounting — no testing required, it's true by design.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Is N(d₂) the real-world probability the option finishes in the money?</h4>
+        <button class="sl-quiz-opt" data-correct="true">No — it's ℚ(S_T &gt; K), a probability under the pricing measure</button>
+        <button class="sl-quiz-opt">Yes, it's exactly the real-world forecast probability</button>
+        <button class="sl-quiz-opt">No — it isn't a real probability of anything</button>
+        <div class="sl-quiz-explain">N(d₂) is a genuine probability, just computed under ℚ (drift r), not ℙ (drift μ). The two coincide only when μ = r.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>A probability measure is just a weighting of possible future paths — ℙ is the real-world weighting (includes a risk premium), ℚ is an equivalent but different weighting built for pricing.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Girsanov's theorem licenses shifting a Brownian motion's drift by θ and still having a valid Brownian motion — just under a new, equivalent measure.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>The specific shift θ = (μ−r)/σ lands the underlying's ℚ-drift exactly on r — and that's what makes the discounted price e⁻ʳᵗS_t a martingale under ℚ.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Because that martingale property is what no-arbitrage pricing requires, V₀ = e⁻ʳᵀ·𝔼^ℚ[V_T] never needs μ — only r and σ.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>N(d₂) is a genuine probability — ℚ(S_T &gt; K) — computed correctly. What's a deliberate device is only the measure, never the number.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>A real-world view is a separate directional bet — spot, forwards, an un-hedged option — never a silent adjustment to the drift inside a pricing model.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Price and hedge a derivative without ever forecasting the underlying's real expected return — replace an unknowable μ with the observable risk-free rate r, confident the substitution is licensed by a theorem rather than a convenient shortcut. Read N(d₂)-style outputs as real probabilities under a deliberately built measure, not market forecasts. Know exactly where a directional view belongs — a separate position — and exactly where it never belongs — inside the pricing model.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Stochastic Volatility &amp; the Heston Model</h3>
+        <p>Black-Scholes and this entire measure-change machinery assume σ is constant. What happens to pricing, hedging, and the volatility smile once volatility itself becomes a second random process?</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="heston-model-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="girsanov-risk-neutral.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  function fmt(n, d){
+    d = d === undefined ? 2 : d;
+    if (!isFinite(n)) return '—';
+    return n.toFixed(d);
+  }
+
+  // Drag-the-drift slider — visualizes θ = (μ - r) / σ.
+  (function(){
+    var slider = document.getElementById('drift-slider');
+    if (!slider) return;
+    var mval = document.getElementById('drift-mval');
+    var lineP = document.getElementById('drift-line-p');
+    var dotP = document.getElementById('drift-dot-p');
+    var labelP = document.getElementById('drift-label-p');
+    var brace = document.getElementById('drift-brace');
+    var gapLabel = document.getElementById('drift-gap-label');
+    var thetaOut = document.getElementById('drift-theta');
+    var R = 5, SIGMA = 20; // fixed, percent
+    var X0 = 280, PX_PER_PCT = 16; // r sits at x=280; 1% of drift = 16px
+
+    function update(){
+      var mu = parseFloat(slider.value);
+      mval.textContent = 'μ = ' + mu.toFixed(1) + '%';
+      var x = X0 + (mu - R) * PX_PER_PCT;
+      lineP.setAttribute('x1', x); lineP.setAttribute('x2', x);
+      dotP.setAttribute('cx', x);
+      labelP.setAttribute('x', x);
+      labelP.textContent = 'μ = ' + mu.toFixed(1) + '%';
+      var lo = Math.min(X0, x), hi = Math.max(X0, x);
+      brace.setAttribute('x1', lo); brace.setAttribute('x2', hi);
+      gapLabel.setAttribute('x', (lo + hi) / 2);
+      gapLabel.textContent = 'μ − r = ' + (mu - R).toFixed(1) + 'pp';
+      var theta = (mu - R) / SIGMA;
+      thetaOut.textContent = fmt(theta, 2);
+    }
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Market price of risk calculator — θ = (μ - r) / σ.
+  (function(){
+    var mu = document.getElementById('mpr-mu');
+    if (!mu) return;
+    var r = document.getElementById('mpr-r'), sigma = document.getElementById('mpr-sigma');
+    var result = document.getElementById('mpr-result');
+    var resetBtn = document.getElementById('mpr-reset');
+    var DEFAULTS = { mu: 8, r: 4, sigma: 20 };
+
+    function recompute(){
+      var mv = parseFloat(mu.value), rv = parseFloat(r.value), sv = parseFloat(sigma.value);
+      if (!isFinite(mv) || !isFinite(rv) || !isFinite(sv) || sv <= 0) {
+        result.textContent = '—';
+        return;
+      }
+      result.textContent = fmt((mv - rv) / sv, 2);
+    }
+    [mu, r, sigma].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      mu.value = DEFAULTS.mu; r.value = DEFAULTS.r; sigma.value = DEFAULTS.sigma;
+      recompute();
+    });
+    recompute();
+  })();
+
+  // Risk-neutral binomial pricing calculator — never asks for μ.
+  (function(){
+    var s0 = document.getElementById('rn-s0');
+    if (!s0) return;
+    var k = document.getElementById('rn-k'), r = document.getElementById('rn-r'),
+        t = document.getElementById('rn-t'), u = document.getElementById('rn-u'),
+        d = document.getElementById('rn-d');
+    var qOut = document.getElementById('rn-q'), upOut = document.getElementById('rn-payoffup'),
+        downOut = document.getElementById('rn-payoffdown'), expOut = document.getElementById('rn-expected'),
+        resultOut = document.getElementById('rn-result'), note = document.getElementById('rn-note');
+    var resetBtn = document.getElementById('rn-reset');
+    var DEFAULT_NOTE = note ? note.textContent : '';
+    var DEFAULTS = { s0: 100, k: 100, r: 5, t: 1, u: 1.2, d: 0.9 };
+
+    function blank(){
+      qOut.textContent = '—'; upOut.textContent = '—'; downOut.textContent = '—';
+      expOut.textContent = '—'; resultOut.textContent = '—';
+    }
+
+    function recompute(){
+      var S0 = parseFloat(s0.value), K = parseFloat(k.value), R = parseFloat(r.value),
+          T = parseFloat(t.value), U = parseFloat(u.value), D = parseFloat(d.value);
+      if (![S0, K, R, T, U, D].every(isFinite) || S0 <= 0 || T <= 0 || U <= D) {
+        blank();
+        note.textContent = 'Needs S0 > 0, T > 0, and u > d — check for blank or reversed inputs.';
+        return;
+      }
+      var rDec = R / 100;
+      var growth = Math.exp(rDec * T);
+      var q = (growth - D) / (U - D);
+      if (!isFinite(q) || q <= 0 || q >= 1) {
+        blank();
+        note.textContent = 'Arbitrage: q must be strictly between 0 and 1 (need d < e^(rT) < u). No valid risk-neutral price exists for these inputs.';
+        return;
+      }
+      note.textContent = DEFAULT_NOTE;
+      var payoffUp = Math.max(U * S0 - K, 0);
+      var payoffDown = Math.max(D * S0 - K, 0);
+      var expected = q * payoffUp + (1 - q) * payoffDown;
+      var v0 = Math.exp(-rDec * T) * expected;
+      qOut.textContent = fmt(q, 4);
+      upOut.textContent = fmt(payoffUp, 2);
+      downOut.textContent = fmt(payoffDown, 2);
+      expOut.textContent = fmt(expected, 2);
+      resultOut.textContent = isFinite(v0) ? ('$' + v0.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })) : '—';
+    }
+
+    [s0, k, r, t, u, d].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      s0.value = DEFAULTS.s0; k.value = DEFAULTS.k; r.value = DEFAULTS.r;
+      t.value = DEFAULTS.t; u.value = DEFAULTS.u; d.value = DEFAULTS.d;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

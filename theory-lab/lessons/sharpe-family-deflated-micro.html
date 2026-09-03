@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sharpe, Sortino &amp; the Deflated Sharpe Ratio — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Sharpe, Sortino &amp; the Deflated Sharpe Ratio — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivations, the extreme-value-theory proof, and every worked example?<a href="sharpe-family-deflated.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Lesson 23 · Applied Statistics &amp; Validation</div>
+      <h1 class="sl-h1">The Sharpe Ratio Doesn't Know <em>How Many Times You Tried</em></h1>
+      <p class="sl-lede">Sharpe, Sortino and Calmar are three honest ways to divide return by risk — built from the same mean-and-standard-deviation arithmetic every earlier lesson in this series already covers. But all three share one blind spot: a reported ratio looks identical whether it's the only strategy you ever tested, or the single lucky survivor of fifty variations you quietly discarded. The Deflated Sharpe Ratio is the formal fix for that blind spot, and it's the direct Sharpe-ratio cousin of the Multiple Testing lesson already in this curriculum.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Reward divided by risk — but which risk?</h2>
+      <p class="sl-sub">Sharpe, Sortino and Calmar all answer "how much return per unit of risk." They disagree on what counts as risk.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">σ</div><div><h4>Sharpe — total wobble</h4><p>Divides by the full standard deviation of excess returns. Every up-swing and down-swing widens the denominator by exactly the same amount.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">↓</div><div><h4>Sortino — downside wobble only</h4><p>Divides by downside deviation — a standard deviation computed only over the periods that lost money. Good surprises stop counting against the strategy.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">▽</div><div><h4>Calmar — the single worst stretch</h4><p>Not a dispersion statistic at all: annualized return divided by the single worst peak-to-trough drawdown the equity curve actually lived through.</p></div></div>
+      </div>
+      <div class="sl-quote">None of the three is "the" right metric. The honest move is naming which question is being asked before quoting a number — the same "name the benchmark before claiming improvement" discipline this repo already asks for everywhere else.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">The Sharpe ratio, piece by piece</h2>
+      <p class="sl-sub">For per-period returns with risk-free rate r_f, the excess return is X = R − r_f. Step through where the annualized number comes from.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="sr-tabs">
+          <button class="sl-tab active" data-panel="sr-1">Per-period SR</button>
+          <button class="sl-tab" data-panel="sr-2">Why √k, not k</button>
+          <button class="sl-tab" data-panel="sr-3">Annualized SR</button>
+        </div>
+        <div class="sl-panel active" id="sr-1">
+          <div class="sl-row"><div class="sl-box">X̄</div><div class="sl-arrow">÷</div><div class="sl-box">σₓ</div><div class="sl-arrow">=</div><div class="sl-box">SR</div></div>
+          <div class="sl-verdict">Mean excess return over its own standard deviation. With a mean of 4bp/day and a std. dev. of 60bp/day: SR = 0.0004 / 0.006 ≈ <strong>0.0667</strong> per day — small because it's a per-day figure.</div>
+        </div>
+        <div class="sl-panel" id="sr-2">
+          <div class="sl-row"><div class="sl-box amber">mean scales by k</div><div class="sl-arrow">÷</div><div class="sl-box amber">std dev scales by √k</div></div>
+          <div class="sl-verdict">Variance — not standard deviation — is the quantity that adds linearly across roughly independent periods. Summing k periods multiplies the mean by k but the variance by k too, so the standard deviation only grows by √k. A k-scaled numerator over a √k-scaled denominator leaves a net √k behind.</div>
+        </div>
+        <div class="sl-panel" id="sr-3">
+          <div class="sl-row"><div class="sl-box green">SR</div><div class="sl-arrow">×</div><div class="sl-box green">√k</div><div class="sl-arrow">=</div><div class="sl-box green">SR_annual</div></div>
+          <div class="sl-verdict">0.0667 × √252 (≈15.87) ≈ <strong>1.06</strong> — the number that lets strategies sampled at different frequencies (daily, weekly, per-trade) be compared on common footing.</div>
+        </div>
+        <div class="sl-note">This is the exact same square-root-of-time scaling this repo's own volatility math depends on throughout — applied here to a ratio instead of to σ alone.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Where Sharpe quietly breaks</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">≈</div><div><h4>Assumes roughly independent returns</h4><p>The √k derivation needs periods that don't strongly predict each other. It says nothing about what happens when they do.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">=</div><div><h4>Charges wins and losses equally</h4><p>A squared deviation from the mean doesn't know which side of the mean it came from — a big up-swing widens σₓ exactly as much as a big down-swing.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⤴</div><div><h4>Autocorrelation inflates the annualized number</h4><p>Trend-following strategies and overlapping-window backtests have genuine serial correlation. Naively annualizing by √k then overstates the true Sharpe — a point Lo (2002) makes formally.</p></div></div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>FX and macro P&amp;L is reliably both skewed and fat-tailed — the "roughly independent, roughly normal" assumption behind a clean √k annualization is a convenience, not a guarantee. That's exactly why the correction later in this deck folds in a track record's own skew and kurtosis instead of assuming Gaussian returns.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Sortino: only counting the drops that hurt</h2>
+      <p class="sl-sub">Downside deviation is a standard deviation computed only over periods that fell below a minimum acceptable return (MAR, zero here).</p>
+      <div class="sl-row"><div class="sl-box">X̄ − MAR</div><div class="sl-arrow">÷</div><div class="sl-box">DD</div><div class="sl-arrow">×</div><div class="sl-box">√k</div><div class="sl-arrow">=</div><div class="sl-box green">Sortino</div></div>
+      <div class="sl-compare" style="margin-top:18px">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Sharpe</span>
+          <ul>
+            <li>Denominator: full σ of excess returns</li>
+            <li>Every deviation from the mean counts, either direction</li>
+            <li>Punishes a trend-follower for its good months</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Sortino</span>
+          <ul>
+            <li>Denominator: downside deviation only (returns below MAR)</li>
+            <li>Divides by the count of below-MAR periods, n_d</li>
+            <li>Rewards a strategy whose variance is upside-heavy</li>
+          </ul>
+        </div>
+      </div>
+      <p class="sl-p">Same underlying daily numbers as before (mean 4bp, std 60bp), but suppose the losing days were small and orderly, giving a downside deviation of 45bp — smaller than the full 60bp because most of the total wobble actually comes from the size of the wins. Sortino_annual = (0.0004 / 0.0045) × √252 ≈ <strong>1.41</strong>, noticeably above the Sharpe of 1.06 for the exact same strategy.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Calmar: the single worst stretch, not the average day</h2>
+      <div class="sl-row"><div class="sl-box">CAGR</div><div class="sl-arrow">÷</div><div class="sl-box">|MaxDD|</div><div class="sl-arrow">=</div><div class="sl-box green">Calmar</div></div>
+      <p class="sl-p">MaxDD isn't an average of anything — it's one specific realized event, the worst peak-to-trough decline the equity curve actually experienced. Picture two strategies with the same annualized return: Strategy A wobbles moderately most days but has never had a genuinely deep drawdown (a shallow 6%). Strategy B is quieter on typical days — a higher Sharpe — but is exposed to an occasional violent move, producing a brutal 45% drawdown once in the sample. Sharpe barely notices Strategy B's one catastrophic stretch, buried inside a much longer calm average; Calmar flips the ranking completely, because it's built entirely around that one worst outcome.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📊</div><div><h4>Reach for Sharpe</h4><p>The default, general-purpose comparison, when there's no known asymmetry to account for.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📈</div><div><h4>Reach for Sortino</h4><p>When the payoff is known or suspected asymmetric — options-selling, trend-following, convex or concave shapes.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🩹</div><div><h4>Reach for Calmar</h4><p>When the audience — an allocator, a trader who has to live through the drawdown — cares most about the worst realized outcome.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Try it — recompute all three, live</h2>
+      <p class="sl-sub">Starts on the worked-example numbers above. Change any field — annualized by k = 252 trading days/year throughout.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Mean daily return (bp)</label><input type="number" class="sl-input" id="rr-mean" value="4" step="0.5"></div>
+          <div class="sl-calc-field"><label>Daily std σ (bp)</label><input type="number" class="sl-input" id="rr-std" value="60" step="1" min="0"></div>
+          <div class="sl-calc-field"><label>Downside deviation (bp)</label><input type="number" class="sl-input" id="rr-dd" value="45" step="1" min="0"></div>
+          <div class="sl-calc-field"><label>CAGR (%)</label><input type="number" class="sl-input" id="rr-cagr" value="9.5" step="0.5"></div>
+          <div class="sl-calc-field"><label>Max drawdown (%)</label><input type="number" class="sl-input" id="rr-maxdd" value="12" step="0.5" min="0"></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Sharpe_annual = <b id="rr-sharpe">1.06</b></div>
+          <div>Sortino_annual = <b id="rr-sortino">1.41</b></div>
+          <div>Calmar = <b id="rr-calmar">0.79</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="rr-reset">Reset to worked-example numbers</button>
+        <div class="sl-note" id="rr-note">Three numbers, three different stories about the same underlying strategy — a solid Sharpe, a noticeably better Sortino (the variance here is upside-heavy), and a Calmar below 1 (the worst drawdown ate a meaningful slice of a year's gains).</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">The best of 50 random strategies looks great by pure luck</h2>
+      <div class="sl-quote">A Sharpe of 1.8 looks identical whether it's the only thing you ever tried, or the single winner you kept after testing 50 variations and discarding the other 49. Those are not the same claim.</div>
+      <p class="sl-p">If you flip 50 coins, one of them lands heads 8 times in a row purely from volume — that coin isn't secretly a better coin. A backtested Sharpe ratio works the same way: test 50 variations of a signal (different lookbacks, thresholds, exit rules), and the best of the 50 is going to look good even if none of them have any real edge, purely because the search gave luck 50 chances to show up somewhere.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">The trap</div>
+        <p>A Sharpe ratio carries no visible record of how many variations were tried to produce it. A 1.8 that's the only thing ever backtested, and a 1.8 that's the surviving best-of-50, look identical on the page — but they are not the same claim.</p>
+      </div>
+      <p class="sl-p">This is the exact same shape of problem the Multiple Testing lesson covers for p-values across 70 pair/regime slices — more trials means more chances for one to look significant, or for one Sharpe to look inflated, purely from noise in a finite sample, with zero real edge required anywhere in the search.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Drag it up. Watch the "luck ceiling" climb with N.</h2>
+      <p class="sl-sub">Fixed dispersion across trials (σ_SR = 0.66, this deck's worked-example value). The curve is the expected best-of-N Sharpe under zero true skill anywhere.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Curve of the expected best-of-N Sharpe ratio under zero true skill rising from near zero toward two as the number of trials increases, with a marker dot showing the current slider position">
+            <line x1="55" y1="20" x2="55" y2="180" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="55" y1="180" x2="615" y2="180" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="55" y1="112" x2="615" y2="112" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"/>
+            <text x="620" y="116" style="fill:var(--text3);font-size:10px">1.0</text>
+            <line x1="55" y1="44" x2="615" y2="44" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"/>
+            <text x="620" y="48" style="fill:var(--text3);font-size:10px">2.0</text>
+            <path id="srn-curve" d="" style="fill:none;stroke:var(--purple);stroke-width:2.5"/>
+            <circle id="srn-dot" cx="55" cy="180" r="6" style="fill:var(--amber);stroke:var(--bg);stroke-width:2"/>
+            <text x="55" y="196" style="fill:var(--text3);font-size:10px">N=2</text>
+            <text x="615" y="196" text-anchor="end" style="fill:var(--text3);font-size:10px">N=500</text>
+            <text x="52" y="184" text-anchor="end" style="fill:var(--text3);font-size:10px">0.0</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Strategy variations tested (N)</span><span class="sl-live" id="srn-nval">N = 50</span></div>
+        <input type="range" class="sl-slider" id="srn-slider" min="2" max="500" step="1" value="50">
+        <div class="sl-note" id="srn-readout">At N = 50 variations with this much dispersion across them, a purely lucky, zero-skill search is expected to produce a best-of-50 Sharpe around <strong>1.50</strong> — that's the bar a real result has to clear, not zero.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">The Deflated Sharpe Ratio: benchmark against chance, not zero</h2>
+      <p class="sl-sub">Two steps: first build SR₀, the chance-expected ceiling; then ask how far above it the reported Sharpe sits.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">N</div><div><h4>Trials run</h4><p>How many variations were actually backtested before the best one was reported.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">σ_SR</div><div><h4>Spread across trials</h4><p>How dispersed the N trials' own Sharpe ratios were — more spread means more room for one to land far above the pack by chance.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">T, γ</div><div><h4>Track length &amp; shape</h4><p>The reported record's own length, skewness and kurtosis — widen the standard error for a lopsided, fat-tailed track record instead of assuming Gaussian.</p></div></div>
+      </div>
+      <div class="sl-row"><div class="sl-box">SR₀ ≈ σ_SR·[(1−γ_E)Φ⁻¹(1−1/N) + γ_E·Φ⁻¹(1−1/(Ne))]</div></div>
+      <div class="sl-row" style="margin-top:10px"><div class="sl-box">DSR = Φ( (ŜR − SR₀)√(T−1) ÷ √(1 − γ₃ŜR + (γ₄−1)/4·ŜR²) )</div></div>
+      <p class="sl-p">Both bars below are Sharpe ratios on the same axis — the gap between them isn't a modeling error, it's the price of running 50 variations and keeping only the winner.</p>
+      <div class="sl-svgwrap">
+        <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart with two bars on the same Sharpe-ratio axis. The left bar, raw reported Sharpe from the best of 50 trials, reaches 1.80. The right bar, the chance-expected ceiling under zero true skill, reaches 1.50, visibly shorter, with the gap between them annotated as explained by the 50 variations tried.">
+          <line x1="60" y1="210" x2="600" y2="210" style="stroke:var(--border)"/>
+          <line x1="60" y1="30" x2="60" y2="210" style="stroke:var(--border)"/>
+          <line x1="60" y1="165" x2="600" y2="165" style="stroke:var(--border);stroke-dasharray:2,3"/>
+          <text x="50" y="169" text-anchor="end" fill="var(--text3)" font-size="10.5" font-family="'DM Mono',monospace">0.5</text>
+          <line x1="60" y1="120" x2="600" y2="120" style="stroke:var(--border);stroke-dasharray:2,3"/>
+          <text x="50" y="124" text-anchor="end" fill="var(--text3)" font-size="10.5" font-family="'DM Mono',monospace">1.0</text>
+          <line x1="60" y1="75" x2="600" y2="75" style="stroke:var(--border);stroke-dasharray:2,3"/>
+          <text x="50" y="79" text-anchor="end" fill="var(--text3)" font-size="10.5" font-family="'DM Mono',monospace">1.5</text>
+          <rect x="175" y="48" width="120" height="162" rx="3" style="fill:var(--blue)"/>
+          <text x="235" y="38" text-anchor="middle" fill="var(--text)" font-size="14" font-weight="700" font-family="'DM Mono',monospace">1.80</text>
+          <text x="235" y="230" text-anchor="middle" fill="var(--text2)" font-size="11.5" font-family="'DM Sans',sans-serif">Raw reported Sharpe</text>
+          <text x="235" y="245" text-anchor="middle" fill="var(--text3)" font-size="10.5" font-family="'DM Sans',sans-serif">(best of 50 trials)</text>
+          <rect x="365" y="75" width="120" height="135" rx="3" style="fill:var(--amber)"/>
+          <text x="425" y="65" text-anchor="middle" fill="var(--text)" font-size="14" font-weight="700" font-family="'DM Mono',monospace">1.50</text>
+          <text x="425" y="230" text-anchor="middle" fill="var(--text2)" font-size="11.5" font-family="'DM Sans',sans-serif">Chance-expected ceiling</text>
+          <text x="425" y="245" text-anchor="middle" fill="var(--text3)" font-size="10.5" font-family="'DM Sans',sans-serif">SR₀, zero true skill, N=50</text>
+          <path d="M235,33 L235,20 L425,20 L425,60" style="stroke:var(--text3);fill:none;stroke-dasharray:3,3"/>
+          <text x="330" y="14" text-anchor="middle" fill="var(--text2)" font-size="11" font-family="'DM Mono',monospace">gap ≈ 0.30 — explained by N=50 trials</text>
+        </svg>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Try it — 50 variations, one reported Sharpe of 1.8</h2>
+      <p class="sl-sub">Starts on this deck's real-world scenario: 50 trials, moderately fat-tailed and left-skewed returns, 60 closed trades.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Reported Sharpe ŜR</label><input type="number" class="sl-input" id="dsr-sr" value="1.8" step="0.05"></div>
+          <div class="sl-calc-field"><label>Trials run (N)</label><input type="number" class="sl-input" id="dsr-n" value="50" step="1" min="2"></div>
+          <div class="sl-calc-field"><label>Spread of trial SRs (σ_SR)</label><input type="number" class="sl-input" id="dsr-sigma" value="0.66" step="0.01" min="0.0001"></div>
+          <div class="sl-calc-field"><label>Track length T (trades)</label><input type="number" class="sl-input" id="dsr-t" value="60" step="1" min="3"></div>
+          <div class="sl-calc-field"><label>Skew γ₃</label><input type="number" class="sl-input" id="dsr-skew" value="-0.4" step="0.1"></div>
+          <div class="sl-calc-field"><label>Kurtosis γ₄</label><input type="number" class="sl-input" id="dsr-kurt" value="7" step="0.5"></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>SR₀ (chance-expected ceiling) = <b id="dsr-sr0">1.50</b></div>
+          <div>Gap cleared above SR₀ = <b id="dsr-gap">0.30</b></div>
+          <div>DSR = P(true SR &gt; 0) = <b id="dsr-out">0.81</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="dsr-reset">Reset to the worked scenario</button>
+        <div class="sl-note" id="dsr-note">Contrast: judged naively against zero (ignoring that 50 variations were tried), this same track record's standard error gives a probability effectively indistinguishable from 100% — near-certainty on a naive read, 81% once the search itself is priced in. That gap <em>is</em> the multiple-testing correction, made concrete for a single Sharpe ratio.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">This repo's own discipline — and a claim worth double-checking</h2>
+      <p class="sl-p">This repo's own validation rule already covers half of this problem: a strategy only "wins" if it beats the incumbent on out-of-sample Sharpe with a non-trivial trade count. The full lesson this deck summarizes states that nothing yet tracks how many variations produced a reported Sharpe, and that a Deflated Sharpe Ratio "isn't built" in this project's own metrics stack.</p>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">What checking the actual code found</div>
+        <p>That claim is stale. <code>js/backtestStats.js</code> already exports a working <code>deflatedSharpe(daily, trialSRs)</code> function implementing exactly the SR₀/DSR machinery on this slide — and it isn't sitting unused. It's imported by <code>strategyLabEngine.js</code>, <code>trendFollowEngine.js</code>, <code>forecastAnalyserStore.js</code> and <code>mve/validateInstrument.js</code>, which filters which instruments count as "tradeable" using a minimum-DSR bar. A dated project note (2026-08-29) records a real finding from it: a headline vote-margin config's own Sharpe did <strong>not</strong> clear its chance-expected ceiling across a 104-trial grid — <code>dsr: 0</code> — exactly the honest, unflattering answer this correction exists to give.</p>
+      </div>
+      <p class="sl-p">What's still true from the lesson: undercounting N remains the real risk. That same 2026-08-29 note flags that the vote rule's original search was larger and partly unlogged — 104 trials is only the grid that could be reconstructed, not necessarily the full search that ever ran. DSR being built and wired in doesn't mean every reported Sharpe in this repo has actually been run through it yet.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">Quick check</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Why does annualizing a Sharpe ratio use √k rather than k?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Variance adds linearly across independent periods, so annualized std. dev. scales only by √k</button>
+        <button class="sl-quiz-opt">It's an arbitrary industry convention with no derivation</button>
+        <button class="sl-quiz-opt">Because returns are always measured as percentages</button>
+        <div class="sl-quiz-explain">Annualized mean scales by a full factor of k; annualized variance also scales by k, so annualized standard deviation scales only by √k. Dividing the k-scaled numerator by the √k-scaled denominator leaves a net √k.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>What specifically does Sortino change relative to Sharpe?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It divides by downside deviation instead of full standard deviation</button>
+        <button class="sl-quiz-opt">It ignores the risk-free rate entirely</button>
+        <button class="sl-quiz-opt">It annualizes by k instead of √k</button>
+        <div class="sl-quiz-explain">Sortino keeps the same numerator but replaces σₓ with downside deviation — a standard deviation computed only over periods below the minimum acceptable return — so upside surprises stop counting against the strategy.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>A strategy has a strong Sharpe but a poor Calmar. What does that most likely mean?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It probably had one rare, severe drawdown that an average-dispersion statistic barely registers</button>
+        <button class="sl-quiz-opt">The Sharpe was calculated incorrectly</button>
+        <button class="sl-quiz-opt">The strategy has no risk-free rate assumption</button>
+        <div class="sl-quiz-explain">Sharpe is built from average dispersion over the whole series; Calmar is built from one specific realized event. A quiet-most-days strategy can still carry a rare, brutal drawdown that variance barely notices but Calmar is built entirely around.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>In the DSR formula, what happens to SR₀ as the number of trials N increases?</h4>
+        <button class="sl-quiz-opt" data-correct="true">SR₀ rises — more trials give pure luck more room to produce an extreme best-of-N result</button>
+        <button class="sl-quiz-opt">SR₀ falls toward zero</button>
+        <button class="sl-quiz-opt">SR₀ is unaffected by N</button>
+        <div class="sl-quiz-explain">Both terms in the SR₀ approximation increase with N. More variations tried means more chances for one to land far above the pack purely by chance, so the bar a reported Sharpe must clear keeps rising.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Does this repo currently have a working Deflated Sharpe Ratio function wired into real strategy validation?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Yes — deflatedSharpe() in js/backtestStats.js, used by several engines and a "tradeable" filter</button>
+        <button class="sl-quiz-opt">No — it's a planned feature not yet started</button>
+        <button class="sl-quiz-opt">Only as an external MathJax-rendered formula, not runnable code</button>
+        <div class="sl-quiz-explain">deflatedSharpe(daily, trialSRs) already exists in js/backtestStats.js and is imported by strategyLabEngine.js, trendFollowEngine.js, forecastAnalyserStore.js and mve/validateInstrument.js — the full lesson's "not built yet" framing is stale.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Sharpe, Sortino and Calmar divide return by three different kinds of risk — total wobble, downside-only wobble, and the single worst realized drawdown. None subsumes the others.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Annualize Sharpe by √k, not k — variance adds linearly across independent periods, standard deviation doesn't, and autocorrelated returns break the assumption behind that scaling.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>A reported Sharpe carries no visible record of how many variations produced it — a 1.8 that's the only thing ever tested and a 1.8 that's the best of 50 look identical on the page.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The Deflated Sharpe Ratio benchmarks a reported Sharpe against SR₀ — the chance-expected ceiling for a best-of-N search — instead of against zero.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Undercounting N silently inflates DSR — informal reruns and "nudge it by feel" iterations count as trials too, the same failure mode the Multiple Testing lesson flags for unlogged slice-testing.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>This repo's deflatedSharpe() is real, wired in, and has already produced an honest negative finding — checking a repo claim against the actual code is worth doing before repeating it.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Read a headline Sharpe correctly by asking how many variations were tried before it was reported, not just whether it's above zero. Choose Sharpe, Sortino or Calmar deliberately based on what the audience actually cares about. Recognize the "best of many" trap the moment a backtest report shows one standout result with no mention of the search behind it.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Walk-Forward &amp; Purged Cross-Validation</h3>
+        <p>The theory behind "true out-of-sample split" — and the subtler leak a plain chronological split still misses.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="walk-forward-purged-cv-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="sharpe-family-deflated.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Shared math for the Deflated Sharpe Ratio widgets (Bailey & Lopez de Prado 2014).
+  var EM = 0.5772156649015329; // Euler-Mascheroni constant
+
+  function normCdf(x){
+    var t = 1 / (1 + 0.2316419 * Math.abs(x));
+    var d = 0.3989423 * Math.exp(-x * x / 2);
+    var p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+    return x > 0 ? 1 - p : p;
+  }
+
+  function invNormCdf(p){
+    if (p <= 0) return -Infinity;
+    if (p >= 1) return Infinity;
+    var a = [-3.969683028665376e+1, 2.209460984245205e+2, -2.759285104469687e+2, 1.383577518672690e+2, -3.066479806614716e+1, 2.506628277459239e+0];
+    var b = [-5.447609879822406e+1, 1.615858368580409e+2, -1.556989798598866e+2, 6.680131188771972e+1, -1.328068155288572e+1];
+    var c = [-7.784894002430293e-3, -3.223964580411365e-1, -2.400758277161838e+0, -2.549732539343734e+0, 4.374664141464968e+0, 2.938163982698783e+0];
+    var d = [7.784695709041462e-3, 3.224671290700398e-1, 2.445134137142996e+0, 3.754408661907416e+0];
+    var pl = 0.02425, ph = 1 - pl, q, r;
+    if (p < pl) {
+      q = Math.sqrt(-2 * Math.log(p));
+      return (((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) / ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);
+    }
+    if (p <= ph) {
+      q = p - 0.5; r = q * q;
+      return (((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5])*q / (((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1);
+    }
+    q = Math.sqrt(-2 * Math.log(1 - p));
+    return -(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) / ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);
+  }
+
+  function sr0For(N, sigmaSR){
+    if (!(N > 1) || !(sigmaSR > 0)) return 0;
+    var t1 = invNormCdf(1 - 1 / N);
+    var t2 = invNormCdf(1 - 1 / (N * Math.E));
+    return sigmaSR * ((1 - EM) * t1 + EM * t2);
+  }
+
+  // Slide 7 — Sharpe / Sortino / Calmar calculator, live.
+  (function(){
+    var meanI = document.getElementById('rr-mean');
+    if (!meanI) return;
+    var stdI = document.getElementById('rr-std'), ddI = document.getElementById('rr-dd');
+    var cagrI = document.getElementById('rr-cagr'), maxddI = document.getElementById('rr-maxdd');
+    var sharpeOut = document.getElementById('rr-sharpe'), sortinoOut = document.getElementById('rr-sortino'), calmarOut = document.getElementById('rr-calmar');
+    var note = document.getElementById('rr-note');
+    var resetBtn = document.getElementById('rr-reset');
+    var K = 252;
+    var DEFAULTS = { mean: 4, std: 60, dd: 45, cagr: 9.5, maxdd: 12 };
+    var DEFAULT_NOTE = note.textContent;
+
+    function recompute(){
+      var mean = parseFloat(meanI.value), std = parseFloat(stdI.value), dd = parseFloat(ddI.value);
+      var cagr = parseFloat(cagrI.value), maxdd = parseFloat(maxddI.value);
+      if (!isFinite(mean) || !isFinite(std) || !isFinite(dd) || !isFinite(cagr) || !isFinite(maxdd)) {
+        sharpeOut.textContent = sortinoOut.textContent = calmarOut.textContent = '—';
+        note.textContent = '(enter numeric values in every field)';
+        return;
+      }
+      var msgs = [];
+      if (std <= 0) { msgs.push('σ must be > 0'); sharpeOut.textContent = '—'; }
+      else sharpeOut.textContent = ((mean / std) * Math.sqrt(K)).toFixed(2);
+      if (dd <= 0) { msgs.push('downside deviation must be > 0'); sortinoOut.textContent = '—'; }
+      else sortinoOut.textContent = ((mean / dd) * Math.sqrt(K)).toFixed(2);
+      if (maxdd <= 0) { msgs.push('max drawdown must be > 0'); calmarOut.textContent = '—'; }
+      else calmarOut.textContent = (cagr / maxdd).toFixed(2);
+      note.textContent = msgs.length ? '(' + msgs.join('; ') + ')' : DEFAULT_NOTE;
+    }
+
+    [meanI, stdI, ddI, cagrI, maxddI].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      meanI.value = DEFAULTS.mean; stdI.value = DEFAULTS.std; ddI.value = DEFAULTS.dd;
+      cagrI.value = DEFAULTS.cagr; maxddI.value = DEFAULTS.maxdd;
+      recompute();
+    });
+    recompute();
+  })();
+
+  // Slide 9 — SR0-vs-N slider + curve, fixed sigma_SR = 0.66.
+  (function(){
+    var slider = document.getElementById('srn-slider');
+    if (!slider) return;
+    var nVal = document.getElementById('srn-nval');
+    var curve = document.getElementById('srn-curve');
+    var dot = document.getElementById('srn-dot');
+    var readout = document.getElementById('srn-readout');
+    var SIGMA_SR = 0.66, N_MIN = 2, N_MAX = 500, SR0_MAX = 2.2;
+    var X0 = 55, X1 = 615, Y0 = 180, Y1 = 20;
+
+    function xFor(n){ return X0 + ((n - N_MIN) / (N_MAX - N_MIN)) * (X1 - X0); }
+    function yFor(v){ return Y0 - Math.min(v, SR0_MAX) / SR0_MAX * (Y0 - Y1); }
+
+    var pts = [];
+    for (var n = N_MIN; n <= N_MAX; n += 2) {
+      pts.push(xFor(n).toFixed(2) + ',' + yFor(sr0For(n, SIGMA_SR)).toFixed(2));
+    }
+    curve.setAttribute('d', 'M ' + pts.join(' L '));
+
+    function update(){
+      var n = parseInt(slider.value, 10);
+      var sr0 = sr0For(n, SIGMA_SR);
+      nVal.textContent = 'N = ' + n;
+      dot.setAttribute('cx', xFor(n));
+      dot.setAttribute('cy', yFor(sr0));
+      readout.innerHTML = 'At N = ' + n + ' variations with this much dispersion across them, a purely lucky, zero-skill search is expected to produce a best-of-' + n + ' Sharpe around <strong>' + sr0.toFixed(2) + '</strong> — that\'s the bar a real result has to clear, not zero.';
+    }
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Slide 11 — Deflated Sharpe Ratio calculator, live.
+  (function(){
+    var srI = document.getElementById('dsr-sr');
+    if (!srI) return;
+    var nI = document.getElementById('dsr-n'), sigmaI = document.getElementById('dsr-sigma');
+    var tI = document.getElementById('dsr-t'), skewI = document.getElementById('dsr-skew'), kurtI = document.getElementById('dsr-kurt');
+    var sr0Out = document.getElementById('dsr-sr0'), gapOut = document.getElementById('dsr-gap'), dsrOut = document.getElementById('dsr-out');
+    var note = document.getElementById('dsr-note');
+    var resetBtn = document.getElementById('dsr-reset');
+    var DEFAULT_NOTE = note.textContent;
+    var DEFAULTS = { sr: 1.8, n: 50, sigma: 0.66, t: 60, skew: -0.4, kurt: 7 };
+
+    function recompute(){
+      var sr = parseFloat(srI.value), n = parseFloat(nI.value), sigma = parseFloat(sigmaI.value);
+      var t = parseFloat(tI.value), skew = parseFloat(skewI.value), kurt = parseFloat(kurtI.value);
+      if (![sr, n, sigma, t, skew, kurt].every(isFinite) || n < 2 || sigma <= 0 || t < 3) {
+        sr0Out.textContent = gapOut.textContent = dsrOut.textContent = '—';
+        note.textContent = '(N must be ≥ 2, σ_SR > 0, T ≥ 3, and every field numeric)';
+        return;
+      }
+      var sr0 = sr0For(n, sigma);
+      var gap = sr - sr0;
+      var denomSq = 1 - skew * sr + ((kurt - 1) / 4) * sr * sr;
+      var dsr;
+      if (denomSq <= 0) {
+        dsr = gap > 0 ? 1 : 0;
+      } else {
+        dsr = normCdf(gap * Math.sqrt(t - 1) / Math.sqrt(denomSq));
+      }
+      sr0Out.textContent = sr0.toFixed(2);
+      gapOut.textContent = (gap >= 0 ? '+' : '') + gap.toFixed(2);
+      dsrOut.textContent = dsr.toFixed(2);
+      note.textContent = DEFAULT_NOTE;
+    }
+
+    [srI, nI, sigmaI, tI, skewI, kurtI].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      srI.value = DEFAULTS.sr; nI.value = DEFAULTS.n; sigmaI.value = DEFAULTS.sigma;
+      tI.value = DEFAULTS.t; skewI.value = DEFAULTS.skew; kurtI.value = DEFAULTS.kurt;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

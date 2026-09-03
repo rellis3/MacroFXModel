@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Purchasing Power Parity — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Purchasing Power Parity — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivation, the real-exchange-rate chart, and a 6-question self-test?<a href="purchasing-power-parity.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Lesson 16 · Macro &amp; FX Theory</div>
+      <h1 class="sl-h1">Purchasing Power Parity, <em>or Why a Big Mac Should Cost the Same Everywhere</em></h1>
+      <p class="sl-lede">Interest rate parity pins the forward FX rate down almost mechanically, enforced by riskless arbitrage that closes gaps in seconds. Purchasing Power Parity is the other half of classical international finance, and it could not behave more differently: it's a real, well-documented anchor for where a currency "should" sit over years — and a famously bad clock for when it actually gets there. Holding both of those facts at once, without collapsing one into the other, is the entire point of this lesson.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">If a coffee costs $3 in New York and £3 in London, something has to give</h2>
+      <p class="sl-sub">Same coffee, same beans, same size. GBP/USD = 1.50.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The setup</div>
+        <div class="sl-row"><div class="sl-box">London coffee: £3</div><div class="sl-arrow">×1.50</div><div class="sl-box amber">= $4.50</div></div>
+        <div class="sl-verdict">$4.50 versus New York's $3.00 — <strong>50% more</strong>, for a genuinely identical good.</div>
+      </div>
+      <p class="sl-p">That's the <strong>Law of One Price</strong>: once you strip out transport costs, tariffs, and taxes, an identical, freely tradeable good should cost the same everywhere once priced in a common currency. If it doesn't, someone can buy it where it's cheap and sell it where it's dear until the gap closes. <strong>Purchasing Power Parity (PPP)</strong> is just this idea scaled up from one coffee to an entire economy's basket of goods — compare the general price level (something like a CPI basket) in each country instead of one product.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Why this is harder at economy scale</div>
+        <p>You can't physically arbitrage a haircut or a hospital visit across a border the way you can a tradeable commodity. Scaling the Law of One Price from a coffee to a whole economy is the same logic — but it takes a lot longer to actually play out.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Absolute PPP: the strict, "in theory" version</h2>
+      <p class="sl-sub">The exchange rate should exactly equal the ratio of the two countries' price levels.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The formula</div>
+        <div class="sl-row"><div class="sl-box">S</div><div class="sl-arrow">=</div><div class="sl-box">P_domestic ÷ P_foreign</div></div>
+        <div class="sl-verdict">Read it plainly: S is whatever number makes the same basket cost the same amount in either currency.</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">S</div><div><h4>Nominal spot rate</h4><p>The exchange rate you'd actually see quoted, expressed consistently as one currency per unit of the other.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">P<sub>d</sub></div><div><h4>Domestic price level</h4><p>Cost, in domestic currency, of a representative basket of goods and services — conceptually, a CPI index level.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">P<sub>f</sub></div><div><h4>Foreign price level</h4><p>Cost, in foreign currency, of the same representative basket.</p></div></div>
+      </div>
+      <p class="sl-p">This is the "one price for one basket" idea taken completely literally. It's also, empirically, close to never exactly true.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Why absolute PPP almost never holds exactly</h2>
+      <p class="sl-sub">Three well-understood, not-particularly-mysterious reasons.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🧺</div><div><h4>Baskets differ</h4><p>A Japanese basket and an Argentine basket don't contain the same goods in the same proportions — there's no single "basket" to compare.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🏠</div><div><h4>Non-tradeable goods</h4><p>A haircut, rent, a restaurant meal, most healthcare and construction — a large share of any real economy simply cannot be shipped across a border to arbitrage a price gap.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🛃</div><div><h4>Friction</h4><p>Tariffs, transport costs, and taxes drive a further wedge between "priced the same" and "priced the same once you account for friction."</p></div></div>
+      </div>
+      <div class="sl-quote">Absolute PPP is the clean textbook statement, but it's best treated as a limiting case — a useful reference point, not something you'd expect to hold to the decimal in real data.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Relative PPP: the version that's actually useful</h2>
+      <p class="sl-sub">Take absolute PPP, convert levels into rates of change.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The formula</div>
+        <div class="sl-row"><div class="sl-box amber">%ΔS</div><div class="sl-arrow">≈</div><div class="sl-box amber">π_domestic − π_foreign</div></div>
+        <div class="sl-verdict">The currency of the higher-inflation country should <strong>depreciate</strong> by roughly the size of the inflation gap.</div>
+      </div>
+      <p class="sl-p">If domestic prices rise 8% a year and foreign prices rise 2%, and the exchange rate doesn't move, domestic goods get steadily, mechanically more expensive relative to foreign goods every year — a widening Law-of-One-Price violation. Relative PPP says the currency should depreciate by roughly the 6-point gap to keep relative competitiveness unchanged. This is weaker than absolute PPP — it says nothing about whether S currently <em>equals</em> P_domestic/P_foreign, only about the direction and rough size of future changes — which is exactly why it survives contact with real data better.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Try it — the relative-PPP-implied exchange rate</h2>
+      <p class="sl-sub">Set today's spot rate and each country's inflation rate. Watch the implied path N years out.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Spot rate today (S₀)</label><input type="number" class="sl-input" id="ppp-spot" value="1.3000" step="0.01" min="0"></div>
+          <div class="sl-calc-op">·</div>
+          <div class="sl-calc-field"><label>Domestic inflation π_d (%/yr)</label><input type="number" class="sl-input" id="ppp-pid" value="8" step="0.5"></div>
+          <div class="sl-calc-op">−</div>
+          <div class="sl-calc-field"><label>Foreign inflation π_f (%/yr)</label><input type="number" class="sl-input" id="ppp-pif" value="2" step="0.5"></div>
+        </div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Years forward (N)</label><input type="number" class="sl-input" id="ppp-years" value="5" step="1" min="0" max="30"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Relative-PPP-implied rate at year N</div>
+            <div class="sl-calc-result-val" id="ppp-result">$0.8850</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Annual inflation gap: π_d − π_f = <b id="ppp-step1">6.00</b>%</div>
+          <div>Implied annual depreciation of the domestic currency ≈ <b id="ppp-step2">6.00</b>%/yr</div>
+          <div>Compounded over N years: S₀ × (1 + π_f)ᴺ ÷ (1 + π_d)ᴺ = <b id="ppp-step3">0.8850</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="ppp-reset">Reset to 8% vs 2%, 5 years</button>
+        <div class="sl-note">This is a mechanical projection of the relative-PPP relationship, not a forecast — real currencies wander for years before (if ever) tracking it.</div>
+      </div>
+      <p class="sl-p">The domestic currency (the higher-inflation one) is quoted here as foreign-currency-per-domestic-unit, so a rising inflation gap pushes S <em>down</em> over time — the domestic currency buys less foreign currency as its own prices run hotter.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">The real exchange rate — a "cheap-o-meter"</h2>
+      <p class="sl-sub">If PPP held exactly at every moment, this number would never move.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The formula</div>
+        <div class="sl-row"><div class="sl-box">Real FX</div><div class="sl-arrow">=</div><div class="sl-box">S × P_foreign ÷ P_domestic</div></div>
+        <div class="sl-verdict">Constant if PPP held exactly. In practice, it wanders — sometimes for years — above or below its own average.</div>
+      </div>
+      <div class="sl-svgwrap">
+        <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Stylized real exchange rate over 24 years, wandering slowly above and below a dashed PPP fair-value line in long multi-year swings rather than fast oscillations">
+          <line x1="45" y1="130" x2="610" y2="130" style="stroke:var(--border2);stroke-dasharray:3,3" stroke-width="1.5"/>
+          <text x="480" y="122" font-size="11" fill="var(--border2)">PPP fair value</text>
+          <polyline points="45,130 68,126 91,118 114,108 137,98 160,92 183,88 206,92 229,102 252,116 275,132 298,148 321,160 344,166 367,162 390,150 413,132 436,112 459,94 482,80 505,72 528,76 551,90 574,108 597,124" style="fill:none;stroke:var(--blue);stroke-width:2.4;opacity:.95"/>
+          <text x="50" y="70" fill="var(--green)" font-size="11">"undervalued" leg — ~8 yrs</text>
+          <text x="330" y="205" fill="var(--red)" font-size="11">"overvalued" leg — ~7 yrs</text>
+          <text x="45" y="248" fill="var(--border2)" font-size="10">yr 0</text>
+          <text x="290" y="248" fill="var(--border2)" font-size="10">yr 12</text>
+          <text x="580" y="248" fill="var(--border2)" font-size="10">yr 24</text>
+        </svg>
+      </div>
+      <p class="sl-p"><strong>Overvalued</strong> means the real rate is unusually high relative to its own history (domestic goods look expensive to foreigners on a PPP basis); <strong>undervalued</strong> means the opposite. Notice the shape: a handful of long, slow cycles across 24 years — not fast, jittery oscillation.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Short-run clock vs. long-run pull</h2>
+      <p class="sl-sub">The exact same PPP relationship, viewed on two different horizons.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="horizon-tabs">
+          <button class="sl-tab active" data-panel="hz-1">Short run (days–months)</button>
+          <button class="sl-tab" data-panel="hz-2">Long run (years)</button>
+        </div>
+        <div class="sl-panel active" id="hz-1">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 160" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Choppy, directionless short-run price path with no pull toward fair value">
+            <line x1="30" y1="80" x2="610" y2="80" style="stroke:var(--border2);stroke-dasharray:3,3" stroke-width="1.5"/>
+            <text x="500" y="72" font-size="11" fill="var(--border2)">PPP fair value</text>
+            <polyline points="30,95 60,70 90,105 120,60 150,90 180,55 210,100 240,65 270,110 300,75 330,50 360,95 390,60 420,105 450,70 480,90 510,55 540,100 570,65 600,90" style="fill:none;stroke:var(--red);stroke-width:2.2"/>
+          </svg></div>
+          <div class="sl-verdict">No mechanism forces a quick close — the deviation can widen just as easily as narrow, on any given day. <strong>PPP says almost nothing about this window.</strong></div>
+        </div>
+        <div class="sl-panel" id="hz-2">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 160" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Smooth long-run price path slowly reverting toward fair value over years">
+            <line x1="30" y1="80" x2="610" y2="80" style="stroke:var(--border2);stroke-dasharray:3,3" stroke-width="1.5"/>
+            <text x="500" y="72" font-size="11" fill="var(--border2)">PPP fair value</text>
+            <path d="M30,130 C150,128 200,60 320,58 C440,56 500,95 610,80" style="fill:none;stroke:var(--green);stroke-width:2.6"/>
+          </svg></div>
+          <div class="sl-verdict">Over a multi-year sample, the wandering does show a slow pull back toward fair value — the reversion Rogoff documented. <strong>Real, but glacial.</strong></div>
+        </div>
+      </div>
+      <p class="sl-p">This is the single hardest thing about PPP to hold in your head at once: "the theory is basically right over the long run" and "the theory is nearly useless for timing a trade" are both true, simultaneously, about the exact same relationship.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">The Big Mac Index</h2>
+      <p class="sl-sub">The most famous informal illustration of absolute PPP, published by The Economist since 1986.</p>
+      <p class="sl-p">A Big Mac is a near-identical, standardized product assembled from broadly similar inputs (beef, bread, cheese, labor, rent) in dozens of countries — comparing its price, converted to a common currency, gives a rough, easy-to-communicate absolute-PPP check. If a Big Mac costs $5.50 in the US and the equivalent of $3.20 elsewhere at the current exchange rate, that currency looks "cheap" by roughly 42% on a Big Mac basis.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🍔</div><div><h4>One good, not a basket</h4><p>A single standardized product isn't a representative sample of an entire economy's consumption.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🏠</div><div><h4>Non-tradeable inputs</h4><p>Rent and labor are baked into the price and have nothing to do with currency valuation.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⏱️</div><div><h4>Says nothing about timing</h4><p>Even a genuine reading gives no clock for when — or whether — the gap actually closes.</p></div></div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>Richer countries tend to have pricier haircuts and Big Macs for a structural reason too — the Balassa-Samuelson effect: higher wages in the productive tradeable sector pull up wages, and therefore prices, in the non-tradeable sector as well. A currency that looks "PPP-rich" may partly just reflect this, not a bubble waiting to pop.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">The PPP puzzle — why it holds so slowly</h2>
+      <p class="sl-sub">Kenneth Rogoff's widely-cited 1996 review named this problem outright.</p>
+      <p class="sl-p">Real exchange rates do appear to mean-revert over long enough samples — but the estimated half-life of a PPP deviation is typically found to be roughly <strong>three to five years</strong>. That's remarkably slow compared to how fast standard macro models suggest prices and nominal exchange rates ought to adjust. The puzzle isn't "does PPP hold" — the reversion shows up reasonably robustly given a long enough sample — it's "why does it take so absurdly long."</p>
+      <div class="sl-callout" style="background:var(--red-bg,#fdecea);border-color:var(--red-bd,#f3b4ac)">
+        <div class="sl-callout-label" style="color:var(--red)">The trap</div>
+        <p>PPP deviations can <strong>widen before they narrow</strong>. Nothing in the literature says a currently-undervalued currency is at or near its turning point — a "20% undervalued" reading has historically stretched wider, for years, before ever closing.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">"This currency looks 20% undervalued" — what does that license you to do?</h2>
+      <p class="sl-sub">The same reading, judged against two very different decision horizons.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Trading horizon — days to months</span>
+          <ul>
+            <li>Almost nothing — a 20-30% deviation has historically persisted for years</li>
+            <li>No mechanism stops it from widening further next month or next quarter</li>
+            <li>Being "right" on a 3-5 year half-life is cold comfort to a book sized for a multi-week trade</li>
+            <li>Mark-to-market drawdown along the way can exceed what most books can absorb</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Strategic horizon — years</span>
+          <ul>
+            <li>A corporate treasurer hedging a five-year FX liability: the slow reversion is real information</li>
+            <li>A pension or sovereign fund setting a strategic (not tactical) hedge ratio</li>
+            <li>A long-horizon allocator deciding how much currency risk to run passively</li>
+            <li>Same reading, same math — just matched to a horizon PPP's clock can plausibly serve</li>
+          </ul>
+        </div>
+      </div>
+      <p class="sl-p">The lesson isn't "PPP is useless" — it's that <strong>PPP's usefulness is horizon-conditional</strong>. Confusing a multi-year anchor for a trading signal is a well-known way to lose money while being directionally correct.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Where this stands in MacroFXModel today</div>
+        <p>This repo has no PPP-based fair-value signal, no real-exchange-rate computation, and no CPI/price-level data pipeline built anywhere — checked directly against the codebase, not just asserted. The only "CPI" reference found is an event-risk multiplier tag in a volatility forecaster (weighting expected vol around CPI print days), which is unrelated to actually computing PPP or a real exchange rate. This is a stated gap, not a built brick.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Quick check</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Why is relative PPP more useful in practice than absolute PPP?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It only requires inflation rates and the FX move to track together, not identical baskets to ever have matched in levels</button>
+        <button class="sl-quiz-opt">It's a stricter, more precise version of the same claim</button>
+        <button class="sl-quiz-opt">It ignores inflation entirely and only looks at interest rates</button>
+        <div class="sl-quiz-explain">Relative PPP is a claim about rates of change — a weaker, differenced statement that survives contact with real, imperfectly comparable data far better than a levels-based claim about matching absolute price levels across two different consumption baskets.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Domestic inflation is 8%/yr, foreign inflation is 2%/yr. What does relative PPP say the exchange rate should do?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The domestic currency should depreciate by roughly the 6-point gap</button>
+        <button class="sl-quiz-opt">Nothing — inflation differentials don't affect exchange rates under PPP</button>
+        <button class="sl-quiz-opt">The domestic currency should appreciate by 8%</button>
+        <div class="sl-quiz-explain">%ΔS ≈ π_domestic − π_foreign = 8% − 2% = 6%. The higher-inflation currency should depreciate roughly by the inflation gap to keep relative competitiveness unchanged.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>What does Rogoff's "PPP puzzle" actually find?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Real exchange rates do mean-revert, but with half-lives of roughly 3-5 years</button>
+        <button class="sl-quiz-opt">PPP never holds in any sample, at any horizon</button>
+        <button class="sl-quiz-opt">Real exchange rates revert within days once a deviation appears</button>
+        <div class="sl-quiz-explain">The puzzle isn't whether PPP holds — reversion does show up given a long enough sample — it's why the half-life is so absurdly slow (3-5 years) compared to what standard price-stickiness arguments predict.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Is the Big Mac Index a rigorous test of PPP?</h4>
+        <button class="sl-quiz-opt" data-correct="true">No — it's a famous illustration using one good with heavy non-tradeable input costs, not a representative basket</button>
+        <button class="sl-quiz-opt">Yes — it's the standard academic method for measuring absolute PPP</button>
+        <button class="sl-quiz-opt">Yes, but only for relative PPP, never absolute PPP</button>
+        <div class="sl-quiz-explain">It's genuinely useful as popular education and a transparent cross-check on the Law of One Price — not for precisely quantifying misvaluation. Its price embeds non-tradeable local costs like rent and labor that have little to do with currency valuation.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>A short-term trader shorts a currency purely because it looks "20% PPP-rich." What's the realistic risk?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The deviation can widen for years before narrowing — being eventually right doesn't mean being profitably positioned on a short horizon</button>
+        <button class="sl-quiz-opt">None — PPP deviations always close within a few weeks</button>
+        <button class="sl-quiz-opt">The trade is riskless because PPP is enforced by arbitrage like covered interest parity</button>
+        <div class="sl-quiz-explain">Unlike covered interest parity, nothing forces a PPP gap to close quickly. A trader sized for a multi-week horizon can face drawdowns larger than the book can absorb long before — if ever — the multi-year reversion shows up.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>PPP is the Law of One Price, scaled up — an identical basket should cost the same in every currency, or the exchange rate should move until it does.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Absolute PPP (S = P_domestic/P_foreign) is the strict, rarely-true version; non-tradeable goods, differing baskets, and trade friction all keep it from holding exactly.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Relative PPP (%ΔS ≈ π_domestic − π_foreign) is the weaker, more empirically useful version — it only needs inflation rates and the FX move to track each other.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The real exchange rate is the practical "cheap or expensive" gauge — constant if PPP held exactly, but in practice it wanders for years above or below its own average.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>PPP closes glacially — Rogoff's "PPP puzzle" finds half-lives of three to five years, and a deviation can widen before it narrows.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>PPP's usefulness is horizon-conditional — nearly useless for a trading-horizon decision, a genuinely relevant input for a multi-year hedge or strategic-allocation decision.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Read a "currency X% undervalued on PPP" headline correctly — as a multi-year fair-value observation, not a trading signal. Tell absolute PPP apart from relative PPP, and know which one any given claim is actually making. Recognise the real exchange rate as the number that would be constant if PPP held exactly, and judge a currency's "cheapness" against its own history rather than an absolute standard.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>The Taylor Rule</h3>
+        <p>How a central bank's own reaction function turns inflation and output gaps into a policy-rate prescription — and why FX markets watch it as closely as the rate decision itself.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="taylor-rule-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="purchasing-power-parity.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Relative-PPP-implied exchange rate calculator, live.
+  (function(){
+    var spot = document.getElementById('ppp-spot');
+    if (!spot) return;
+    var pid = document.getElementById('ppp-pid'), pif = document.getElementById('ppp-pif'), years = document.getElementById('ppp-years');
+    var step1 = document.getElementById('ppp-step1'), step2 = document.getElementById('ppp-step2'), step3 = document.getElementById('ppp-step3');
+    var result = document.getElementById('ppp-result');
+    var resetBtn = document.getElementById('ppp-reset');
+    var DEFAULTS = { spot: 1.3000, pid: 8, pif: 2, years: 5 };
+
+    function recompute(){
+      var s0 = parseFloat(spot.value), di = parseFloat(pid.value), fi = parseFloat(pif.value), n = parseFloat(years.value);
+      if (!isFinite(s0) || !isFinite(di) || !isFinite(fi) || !isFinite(n) || s0 <= 0 || n < 0) {
+        step1.textContent = '—'; step2.textContent = '—'; step3.textContent = '—'; result.textContent = '—';
+        return;
+      }
+      var gap = di - fi;
+      var sN = s0 * Math.pow(1 + fi / 100, n) / Math.pow(1 + di / 100, n);
+      step1.textContent = gap.toFixed(2);
+      step2.textContent = gap.toFixed(2);
+      step3.textContent = sN.toFixed(4);
+      result.textContent = '$' + sN.toFixed(4);
+    }
+
+    [spot, pid, pif, years].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      spot.value = DEFAULTS.spot; pid.value = DEFAULTS.pid; pif.value = DEFAULTS.pif; years.value = DEFAULTS.years;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

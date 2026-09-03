@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fractional Brownian Motion &amp; Long Memory — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Fractional Brownian Motion &amp; Long Memory — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full covariance derivation, the ARFIMA worked example, and a 6-question self-test?<a href="fractional-brownian-motion.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Lesson 31 · Advanced Portfolio &amp; Market Structure</div>
+      <h1 class="sl-h1">Fractional Brownian Motion, <em>Long Memory Made Precise</em></h1>
+      <p class="sl-lede">The Hurst-exponent lesson measured "persistence" with a slope fit to rescaled ranges — useful, but model-free: a bare number with nothing behind it. This deck gives H a real generating process, fractional Brownian motion, plus its discrete-time cousin ARFIMA, and uses both to turn "long memory" from a loose adjective into a formally checkable property that no ordinary AR/ARMA model — however many lags it's given — can ever possess.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">A measurement in search of a machine</h2>
+      <p class="sl-sub">The <a href="hurst-variance-ratio-micro.html" style="color:var(--blue);font-weight:600;text-decoration:none">Hurst exponent &amp; variance-ratio lesson</a> estimated H straight from historical data, with no commitment to what process produced it. Fractional Brownian motion is that missing process.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">R/S &amp; variance ratio — model-free</span>
+          <p>Estimate a single number, H, purely from how a real path has wandered. A genuine strength — no belief in a specific model required — but it leaves basic questions unanswered: does the correlation between today and 50 days out ever truly vanish, or just get small? Is "persistent" the same thing as "long memory"? No crisp answer without a model.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Fractional Brownian motion — a generating process</span>
+          <p>A continuous-time Gaussian process built so H isn't fit after the fact — it's a parameter of the process's exact covariance structure. Every question above gets a precise, derivable answer, and the R/S statistic turns out to be exactly the empirical test for this process's existence.</p>
+        </div>
+      </div>
+      <div class="sl-quote">Ordinary Brownian motion is amnesiac — every increment is a fresh coin flip, indifferent to the past. fBm keeps the same jagged, continuous look but bakes in a controllable amount of memory: a single dial, H, between 0 and 1, built directly into the covariance formula this whole lesson is a consequence of.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">One formula defines the whole process</h2>
+      <p class="sl-sub">Fractional Brownian motion B<sub>H</sub>(t) is the centered Gaussian process with B<sub>H</sub>(0)=0 and this covariance, for s,t ≥ 0 and H ∈ (0,1).</p>
+      <div class="sl-row">
+        <div class="sl-box">Cov(B<sub>H</sub>(s), B<sub>H</sub>(t))</div>
+        <div class="sl-arrow">=</div>
+        <div class="sl-box green">½·( |s|<sup>2H</sup> + |t|<sup>2H</sup> − |t−s|<sup>2H</sup> )</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">Σ</div><div><h4>The whole process</h4><p>Everything about fBm — its variance, its increment correlations, whether it counts as "long memory" — is a consequence of this one covariance formula. Nothing else is assumed.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">H</div><div><h4>The Hurst index</h4><p>A parameter of the process itself, not a slope estimated after the fact — the same H the previous lesson's R/S regression was always implicitly trying to recover.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">Δ</div><div><h4>The memory term</h4><p>|t−s|<sup>2H</sup> cancels exactly at H = 0.5. Everywhere else it survives and encodes real, non-zero correlation between the process's values.</p></div></div>
+      </div>
+      <p class="sl-p">Set H = 0.5, so 2H = 1, and take 0 ≤ s ≤ t: the formula becomes ½(s + t − (t−s)) = ½(2s) = s = min(s,t) — exactly ordinary Brownian motion's covariance. That cancellation is exact, algebraic, and the defining check any candidate fBm formula must pass: at H = 0.5 the general case reduces, term for term, to the special case everyone already knows. A second consequence of the same formula: Var(B<sub>H</sub>(t) − B<sub>H</sub>(s)) = |t−s|<sup>2H</sup>, so an increment's standard deviation over a span of length n scales as n<sup>H</sup> — precisely the power law R/S analysis was built to detect.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Recompute it yourself</h2>
+      <p class="sl-sub">Starts on the worked-example numbers, s=2, t=5, H=0.5 — exactly where the general formula collapses to min(s,t)=2. Change any field.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>s</label><input type="number" class="sl-input" id="fbm-s" value="2" step="0.5" min="0"></div>
+          <div class="sl-calc-field"><label>t</label><input type="number" class="sl-input" id="fbm-t" value="5" step="0.5" min="0"></div>
+          <div class="sl-calc-field"><label>Hurst H (0–1)</label><input type="number" class="sl-input" id="fbm-H" value="0.5" step="0.05" min="0" max="1"></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Cov(B<sub>H</sub>(s), B<sub>H</sub>(t)) = <b id="fbm-cov">2.0000</b></div>
+          <div>Var[B<sub>H</sub>(t)] = t<sup>2H</sup> = <b id="fbm-var">5.0000</b></div>
+          <div>Variance-scaling exponent 2H = <b id="fbm-2h">1.0000</b></div>
+          <div>Equivalent ARFIMA order d = H − 0.5 = <b id="fbm-d">0.0000</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="fbm-reset">Reset to worked-example numbers</button>
+        <div class="sl-note">H must be strictly between 0 and 1, and s, t can't be negative — outside that, every field shows a dash instead of NaN or Infinity.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">How H reshapes the walk</h2>
+      <p class="sl-sub">Same starting point, three values of H. Only the middle one is a true, memoryless random walk.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="regime-tabs">
+          <button class="sl-tab" data-panel="regime-1">H = 0.3 — anti-persistent</button>
+          <button class="sl-tab active" data-panel="regime-2">H = 0.5 — ordinary BM</button>
+          <button class="sl-tab" data-panel="regime-3">H = 0.8 — persistent</button>
+        </div>
+        <div class="sl-panel" id="regime-1">
+          <div class="sl-svgwrap"><svg viewBox="0 0 600 180" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A tight, jittery path that reverses direction after nearly every step and never strays far from its starting level">
+            <line x1="20" y1="90" x2="580" y2="90" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:4,4"/>
+            <polyline points="20,90 45,72 70,102 95,76 120,106 145,70 170,100 195,74 220,104 245,72 270,98 295,80 320,102 345,74 370,96 395,82 420,100 445,84 470,96 495,86 520,94 545,88 570,90" fill="none" style="stroke:var(--green);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round"/>
+          </svg></div>
+          <div class="sl-verdict"><strong>H = 0.3.</strong> Increments are negatively correlated — an up-move makes a down-move more likely next. Var(increment) scales as n<sup>0.3</sup>, slower than √n, so the path is confined near its starting level. Real, useful mean-reversion structure — but, as Section 6 shows, technically <em>short</em> memory.</div>
+        </div>
+        <div class="sl-panel active" id="regime-2">
+          <div class="sl-svgwrap"><svg viewBox="0 0 600 180" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A wandering path with no consistent tendency to reverse or extend, drifting freely with no reference to its own past">
+            <line x1="20" y1="90" x2="580" y2="90" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:4,4"/>
+            <polyline points="20,92 45,78 70,100 95,84 120,110 145,90 170,116 195,94 220,72 245,100 270,78 295,96 320,68 345,88 370,58 395,80 420,54 445,72 470,48 495,64 520,42 545,58 570,38" fill="none" style="stroke:var(--text2);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round"/>
+          </svg></div>
+          <div class="sl-verdict"><strong>H = 0.5.</strong> Non-overlapping increments are exactly independent — the covariance formula's cross-terms cancel completely. No persistence, no anti-persistence, nothing to model: this is ordinary Brownian motion, Var(increment) ∝ n<sup>1</sup>, the baseline every other H is measured against.</div>
+        </div>
+        <div class="sl-panel" id="regime-3">
+          <div class="sl-svgwrap"><svg viewBox="0 0 600 180" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A smooth path with few, long, directional swings that persist for a while before eventually reversing">
+            <line x1="20" y1="90" x2="580" y2="90" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:4,4"/>
+            <polyline points="20,140 60,132 100,118 140,108 180,98 220,84 260,74 300,66 340,54 380,46 420,36 460,28 500,20 540,14 570,8" fill="none" style="stroke:var(--red);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round"/>
+          </svg></div>
+          <div class="sl-verdict"><strong>H = 0.8.</strong> Increments are positively correlated and, critically, that correlation decays as a <em>power law</em> in the lag — not exponentially. Var(increment) scales as n<sup>1.6</sup>, faster than √n: fewer, longer, smoother directional runs, with real correlation surviving to far longer lags than any AR(1)-style process could produce.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Watch H reshape the path, live</h2>
+      <p class="sl-sub">Same fixed random seed under the hood at every setting — only H changes. Drag the slider between anti-persistent and persistent.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A path that redraws as the Hurst slider moves, tightening into small reversing jitters at low H and stretching into long smooth directional runs at high H">
+            <rect x="20" y="15" width="600" height="170" fill="none" style="stroke:var(--border2);stroke-width:1"/>
+            <polyline id="fbm-walk-path" points="" fill="none" style="stroke:var(--blue);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round"/>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Hurst exponent</span><span class="sl-live" id="fbm-h-label">H = 0.50</span></div>
+        <input type="range" class="sl-slider" id="fbm-h-slider" min="5" max="95" step="1" value="50">
+        <div class="sl-verdict" id="fbm-h-verdict" style="margin-top:10px">Increment correlation ≈ 0.00 — no persistence, no anti-persistence: an ordinary random walk.</div>
+        <div class="sl-note">This is a fast visual stand-in, not a literal fBm simulator (real ones use spectral synthesis or a Cholesky decomposition of the covariance matrix above). It builds each increment as α·(previous increment) + noise, with α = 2H−1 — an honest approximation of the fade/follow behavior H controls, not a claim that this recursion itself has fBm's power-law memory.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">"Long memory" has an exact definition</h2>
+      <p class="sl-sub">Not "somewhat persistent." A stationary process has long memory exactly when its autocovariance γ(k) is not absolutely summable: Σ|γ(k)| = ∞. For fractional Gaussian noise (fBm's increments), γ(k) behaves like H(2H−1)·k<sup>2H−2</sup> for large k.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">∞</div><div><h4>H &gt; 0.5 — the sum diverges</h4><p>Exponent 2H−2 &gt; −1, so Σ k<sup>2H−2</sup> diverges. This is genuine long memory in the strict, formal sense — not a matter of degree.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">Σ</div><div><h4>H &lt; 0.5 — the sum converges</h4><p>Exponent 2H−2 &lt; −1: the sum converges absolutely, even though the correlations are real and negative. Genuine mean-reverting structure — but technically <em>short</em> memory, not long memory with a minus sign.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">0</div><div><h4>H = 0.5 — trivial</h4><p>γ(k) = 0 for every k ≠ 0. The sum is trivially finite because there's nothing there to sum.</p></div></div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">The mistake worth avoiding</div>
+        <p>Calling H &lt; 0.5 "long memory" is a common looseness. It's real, useful, negatively-correlated structure — but by the strict Σ|γ(k)| definition it's short memory, formally the same category as an AR(1) process, just with a different sign on the correlation.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">The crux: no ARMA model ever gets there</h2>
+      <p class="sl-sub">Exponential decay vs. power-law decay isn't a matter of degree — it's a different category of object.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Any finite-order ARMA — short memory</span>
+          <ul>
+            <li>Autocorrelation decays geometrically, ρ(k) = φ<sup>k</sup></li>
+            <li>Σ|φ|<sup>k</sup> = 1/(1−|φ|), finite for any |φ| &lt; 1</li>
+            <li>More lags change the <em>rate</em> of decay, never its summable character</li>
+            <li>By lag 10–15, correlation is numerically indistinguishable from zero</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">fBm / fractional Gaussian noise — long memory (H&gt;0.5)</span>
+          <ul>
+            <li>Autocorrelation decays as a power law, ρ(k) ∝ k<sup>2H−2</sup></li>
+            <li>Σ k<sup>2H−2</sup> = ∞ whenever H ≥ 0.5</li>
+            <li>Needs a structurally different process, not a bigger version of ARMA</li>
+            <li>Can still show real correlation at lag 50–60 and beyond</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-svgwrap">
+        <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart comparing two autocorrelation decay curves against lag. A grey curve for a short-memory AR(1)-style process falls from 1 to near zero by around lag 10 and stays near zero. A red curve for a long-memory process starts at 1, decays much more slowly, and is still around 0.3 at lag 50 and beyond.">
+          <line x1="60" y1="20" x2="60" y2="215" style="stroke:var(--border2)"/>
+          <line x1="60" y1="215" x2="610" y2="215" style="stroke:var(--border2)"/>
+          <line x1="151.7" y1="20" x2="151.7" y2="215" style="stroke:var(--border);stroke-dasharray:2,4"/>
+          <text x="151.7" y="16" font-size="11" text-anchor="middle" fill="var(--text3)">lag 10</text>
+          <polyline points="60,40 105.8,171.4 151.7,199.4 197.5,204.1 243.3,204.8 289.2,205 335,205 380.8,205 426.7,205 472.5,205 518.3,205 564.2,205 610,205" fill="none" style="stroke:var(--text2);stroke-width:2.5"/>
+          <polyline points="60,40 105.8,88.2 151.7,107.6 197.5,117.9 243.3,124.8 289.2,129.7 335,133.6 380.8,136.7 426.7,139.3 472.5,141.6 518.3,143.5 564.2,145.2 610,146.7" fill="none" style="stroke:var(--red);stroke-width:2.5"/>
+          <text x="118" y="188" font-size="12" fill="var(--text2)">short memory — exponential decay</text>
+          <text x="330" y="103" font-size="12" fill="var(--red)">long memory (H ≈ 0.85) — power-law decay</text>
+          <text x="560" y="238" font-size="12" fill="var(--text3)">lag k</text>
+          <text x="20" y="120" font-size="12" fill="var(--text3)" transform="rotate(-90 20 120)">ρ(k)</text>
+        </svg>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">ARFIMA — fBm's spreadsheet-friendly cousin</h2>
+      <p class="sl-sub">fBm is continuous-time, awkward to fit to daily bars directly. ARFIMA generalizes ordinary ARIMA's integer differencing d to any real number, via d = H − 0.5.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">+</div><div><h4>d ∈ (0, 0.5) ⇔ H ∈ (0.5, 1)</h4><p>Genuine long memory. A fractional differencing pass — less than one whole integer difference — is enough to induce stationarity.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">0</div><div><h4>d = 0 ⇔ H = 0.5</h4><p>No fractional differencing needed at all — collapses to an ordinary stationary ARMA model, the econometric mirror of fBm's own reduction to Brownian motion.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">−</div><div><h4>d ∈ (−0.5, 0) ⇔ H ∈ (0, 0.5)</h4><p>The anti-persistent, short-memory-but-negatively-correlated case — a legitimate, if less commonly discussed, negative fractional order.</p></div></div>
+      </div>
+      <p class="sl-p">The payoff: ARFIMA fits the slow, power-law-decaying autocorrelation from Section 6–7 using ordinary discrete-time estimation (maximum likelihood, or the Geweke–Porter-Hudak semiparametric estimator) — an econometrician's tool for a physicist's process, with no continuous-time machinery required.</p>
+      <div class="sl-quote">A researcher who estimates H ≈ 0.85 on a volatility series is, via d = H − 0.5, looking at d ≈ 0.35 in ARFIMA terms — comfortably inside the stationary-and-invertible range d ∈ (−0.5, 0.5). Run the other direction just as easily: an ARFIMA fit reporting <strong>d̂ = 0.4</strong> is reporting <strong>H ≈ 0.9</strong>, very strong persistence, in exactly the language the Hurst lesson's R/S regression would have used.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Where this lives — and doesn't — in this repo</h2>
+      <p class="sl-p"><code>js/rangeBiasCore.js</code> has a real, working <code>computeHurst</code> (R/S on closes) and a <code>featureHurst</code> wrapper — the same log-log regression Section 2's power law describes, gated at H &lt; 0.45 (fade) / H &gt; 0.55 (follow), exactly as the Hurst lesson covers. That part of this lesson's foundation is real, tested code, not a hypothetical.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Verified against the current source, 2026-09-03</div>
+        <p><strong>featureHurst is not currently wired into the live conviction score.</strong> The repo's own code comments (rangeBiasCore.js) record that it was dropped from <code>computeRangeBiasServer</code> on 2026-07-25: benchmarked out-of-sample across 10 instruments it showed no usable predictive relationship, and it read H ≈ 0.88 (trending) on every instrument in the trending bucket with zero exceptions — an unconditional conflict vote, not noise. The function itself is kept, still runs, and still backs <code>hurstBench.js</code>'s research benchmark — it just no longer votes on a live entry. Separately, and unlike computeHurst, <strong>fractional Brownian motion and ARFIMA/FIGARCH are not implemented anywhere in this codebase</strong> — a repo-wide search finds no fBm, ARFIMA, or FIGARCH code at all. Both facts are consistent with the full lesson's own framing: this is background theory, not a live forecaster.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Where this reasoning goes wrong</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">⏳</div><div><h4>fBm itself isn't stationary</h4><p>Var[B<sub>H</sub>(t)] = t<sup>2H</sup> grows with t. Only its increments — fractional Gaussian noise — have a well-defined ACF worth discussing. Running memory diagnostics on levels instead of increments is the same mistake the stationarity lesson warns about with raw price levels.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚡</div><div><h4>Structural breaks can fake long memory</h4><p>Several genuinely short-memory regimes stitched together (calm-market AR(1) alternating with crisis-period AR(1) at a different level) can show an aggregate ACF that decays visually just as slowly as true long memory — a well-documented confound to rule out before reaching for ARFIMA.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">±</div><div><h4>d̂ carries real estimation uncertainty</h4><p>Maximum likelihood, GPH log-periodogram regression, and other estimators can disagree meaningfully on the same finite sample — a single reported d̂ deserves the same skepticism as a single point estimate of H from R/S analysis.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">✓</div><div><h4>A good in-sample fit isn't edge</h4><p>ARFIMA/FIGARCH out-fitting a misspecified GARCH is a real methodological upgrade — a better-specified model of volatility's dependence structure. It is not, by itself, evidence that trading its longer-horizon forecast makes money without a costed, out-of-sample test.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>At H = 0.5, the general fBm covariance formula algebraically reduces to what?</h4>
+        <button class="sl-quiz-opt" data-correct="true">min(s, t) — ordinary Brownian motion's covariance</button>
+        <button class="sl-quiz-opt">s + t</button>
+        <button class="sl-quiz-opt">|t − s|</button>
+        <div class="sl-quiz-explain">½(s+t−(t−s)) = ½(2s) = s = min(s,t) for 0≤s≤t — the exact, algebraic check any candidate fBm formula must pass.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>What is the precise formal definition of "long memory"?</h4>
+        <button class="sl-quiz-opt">Any autocorrelation that stays above zero past lag 20</button>
+        <button class="sl-quiz-opt" data-correct="true">The autocovariance sum Σ|γ(k)| diverges to infinity</button>
+        <button class="sl-quiz-opt">A Hurst exponent greater than 0.7</button>
+        <div class="sl-quiz-explain">Long memory is categorical, not a matter of degree: a stationary process has it exactly when Σ|γ(k)| = ∞. Every finite-order ARMA process's geometric decay always sums to a finite value, so none of them can ever qualify.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Is H &lt; 0.5 (anti-persistent) formally "long memory"?</h4>
+        <button class="sl-quiz-opt">Yes — it's long memory with a negative sign</button>
+        <button class="sl-quiz-opt" data-correct="true">No — its autocovariance sum converges, so it's short memory</button>
+        <button class="sl-quiz-opt">Only when H is below 0.25</button>
+        <div class="sl-quiz-explain">For H&lt;0.5 the exponent 2H−2 &lt; −1, so Σk^(2H−2) converges absolutely. Real, negatively-correlated, mean-reverting structure — but a formally different, short-memory category from H&gt;0.5.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>ARFIMA reports d̂ = 0. What does that correspond to in H terms, and what model does it collapse to?</h4>
+        <button class="sl-quiz-opt">H = 1 — a perfectly straight trending line</button>
+        <button class="sl-quiz-opt" data-correct="true">H = 0.5 — an ordinary, stationary ARMA model</button>
+        <button class="sl-quiz-opt">H = 0 — white noise with no structure at all</button>
+        <div class="sl-quiz-explain">d = H − 0.5, so d=0 means H=0.5: no fractional differencing needed, and the model is just an ordinary stationary ARMA process — the discrete-time mirror of fBm's own reduction to Brownian motion.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>In this repo today, does featureHurst (built on computeHurst's R/S analysis) vote on live trade entries?</h4>
+        <button class="sl-quiz-opt">Yes — it's one of the core features in the conviction score</button>
+        <button class="sl-quiz-opt" data-correct="true">No — it was dropped from the live score on 2026-07-25, though the function is kept for research</button>
+        <button class="sl-quiz-opt">No — it was never actually implemented</button>
+        <div class="sl-quiz-explain">js/rangeBiasCore.js's own comments record the drop: out-of-sample across 10 instruments it showed no usable predictive relationship and voted an unconditional conflict on every trending-bucket instrument. computeHurst/featureHurst still exist and still back hurstBench.js — they just don't vote live anymore.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>fBm gives H a real generating process — a Gaussian process defined entirely by Cov(B<sub>H</sub>(s),B<sub>H</sub>(t)) = ½(|s|^2H+|t|^2H−|t−s|^2H), which reduces exactly to ordinary Brownian motion, min(s,t), at H=0.5.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>H controls path character continuously — H=0.5 amnesiac random walk, H&gt;0.5 persistent/trending increments, H&lt;0.5 anti-persistent/mean-reverting increments — the same fade/follow split the Hurst lesson introduced empirically, now with a formal source.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>"Long memory" is a precise, checkable property — Σ|γ(k)|=∞ — not a vague "somewhat persistent." It holds for fractional Gaussian noise exactly when H≥0.5; H&lt;0.5 is real correlation but technically short memory.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>No finite-order ARMA model can ever have true long memory — exponential decay is always absolutely summable, however many lags are added. Only a power-law-decaying process like fBm/fGn crosses that line.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>ARFIMA is the discrete-time tool practitioners actually fit — fractional differencing order d=H−0.5, so d∈(0,0.5) is genuine long memory, fit with ordinary econometric tools (MLE, GPH) and no continuous-time machinery required.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>In this repo today, computeHurst/featureHurst exist and still run for research/benchmarking, but were dropped from the live conviction score on 2026-07-25; fBm and ARFIMA remain background theory, not implemented in any live forecaster.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Read H as a parameter of an actual generating process instead of a bare regression slope. Tell genuine long memory apart from a bigger, more-heavily-lagged AR/ARMA model dressed up to look persistent. Recognize when a residual ACF that refuses to decay past lag 40–60 is the empirical signature calling for ARFIMA or FIGARCH — while remembering, per this repo's own history with featureHurst, that a mathematically sound diagnostic still has to earn its place with real out-of-sample evidence.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Markowitz &amp; Black-Litterman</h3>
+        <p>Why a convex mean-variance objective's local optimum is always its global one, and how Black-Litterman blends market equilibrium with an investor's own views.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="markowitz-black-litterman-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="fractional-brownian-motion.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // fBm covariance / variance / 2H / ARFIMA-d calculator — live.
+  (function(){
+    var sEl = document.getElementById('fbm-s');
+    if (!sEl) return;
+    var tEl = document.getElementById('fbm-t'), hEl = document.getElementById('fbm-H');
+    var covOut = document.getElementById('fbm-cov'), varOut = document.getElementById('fbm-var');
+    var twoHOut = document.getElementById('fbm-2h'), dOut = document.getElementById('fbm-d');
+    var resetBtn = document.getElementById('fbm-reset');
+    var DEFAULTS = { s: 2, t: 5, H: 0.5 };
+
+    function cov(s, t, H){
+      return 0.5 * (Math.pow(s, 2 * H) + Math.pow(t, 2 * H) - Math.pow(Math.abs(t - s), 2 * H));
+    }
+
+    function recompute(){
+      var s = parseFloat(sEl.value), t = parseFloat(tEl.value), H = parseFloat(hEl.value);
+      var valid = isFinite(s) && isFinite(t) && isFinite(H) && s >= 0 && t >= 0 && H > 0 && H < 1;
+      if (!valid) {
+        covOut.textContent = '—'; varOut.textContent = '—';
+        twoHOut.textContent = '—'; dOut.textContent = '—';
+        return;
+      }
+      covOut.textContent = cov(s, t, H).toFixed(4);
+      varOut.textContent = Math.pow(t, 2 * H).toFixed(4);
+      twoHOut.textContent = (2 * H).toFixed(4);
+      dOut.textContent = (H - 0.5).toFixed(4);
+    }
+
+    [sEl, tEl, hEl].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      sEl.value = DEFAULTS.s; tEl.value = DEFAULTS.t; hEl.value = DEFAULTS.H;
+      recompute();
+    });
+    recompute();
+  })();
+
+  // Live H-slider redraw — mulberry32-seeded deterministic noise, blended
+  // via an AR(1)-style persistence recursion (alpha = 2H-1) as a fast,
+  // honestly-labeled visual stand-in for fBm's roughness. Same seed every
+  // time, so only H changes what's drawn.
+  (function(){
+    var slider = document.getElementById('fbm-h-slider');
+    if (!slider) return;
+    var pathEl = document.getElementById('fbm-walk-path');
+    var labelEl = document.getElementById('fbm-h-label');
+    var verdictEl = document.getElementById('fbm-h-verdict');
+
+    function mulberry32(seed){
+      return function(){
+        seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+        var x = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+        x = (x + Math.imul(x ^ (x >>> 7), 61 | x)) ^ x;
+        return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+
+    var N = 70;
+    var rng = mulberry32(20260903);
+    var NOISE = [];
+    for (var i = 0; i < N; i++) {
+      // Irwin-Hall(4) sum, recentered — cheap, deterministic, roughly normal-shaped.
+      NOISE.push(rng() + rng() + rng() + rng() - 2);
+    }
+
+    function buildPoints(H){
+      var alpha = Math.max(-0.97, Math.min(0.97, 2 * H - 1));
+      var beta = Math.sqrt(1 - alpha * alpha);
+      var e = new Array(N);
+      e[0] = NOISE[0];
+      for (var i = 1; i < N; i++) e[i] = alpha * e[i - 1] + beta * NOISE[i];
+      var Y = new Array(N);
+      Y[0] = 0;
+      for (var i = 1; i < N; i++) Y[i] = Y[i - 1] + e[i];
+      var yMin = Math.min.apply(null, Y), yMax = Math.max.apply(null, Y);
+      var range = (yMax - yMin) || 1;
+      var pts = [];
+      for (var i = 0; i < N; i++) {
+        var x = 20 + i * (600 / (N - 1));
+        var y = 185 - ((Y[i] - yMin) / range) * 170;
+        pts.push(x.toFixed(1) + ',' + y.toFixed(1));
+      }
+      return { points: pts.join(' '), alpha: alpha };
+    }
+
+    function update(){
+      var H = parseInt(slider.value, 10) / 100;
+      var built = buildPoints(H);
+      pathEl.setAttribute('points', built.points);
+      labelEl.textContent = 'H = ' + H.toFixed(2);
+      var msg;
+      if (H < 0.45) {
+        msg = 'Increment correlation ≈ ' + built.alpha.toFixed(2) + ' — anti-persistent: an up-move tends to get reversed soon after.';
+      } else if (H > 0.55) {
+        msg = 'Increment correlation ≈ ' + built.alpha.toFixed(2) + ' — persistent: an up-move tends to be followed by another one.';
+      } else {
+        msg = 'Increment correlation ≈ ' + built.alpha.toFixed(2) + ' — close to zero: near an ordinary random walk.';
+      }
+      verdictEl.textContent = msg;
+    }
+
+    slider.addEventListener('input', update);
+    update();
+  })();
+})();
+</script>
+</body>
+</html>

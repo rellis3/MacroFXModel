@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Random Matrix Theory &amp; the Marchenko-Pastur Law — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Random Matrix Theory — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivation, the Laloux et al. case study, and a 6-question self-test?<a href="random-matrix-theory.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Lesson 30 · Advanced Portfolio &amp; Market Structure</div>
+      <h1 class="sl-h1">Random Matrix Theory, <em>or How to Tell a Factor From a Fluke</em></h1>
+      <p class="sl-lede">The PCA lesson showed that sorting a correlation matrix's eigenvalues surfaces genuine shared factors — a dollar factor, a risk-on/risk-off axis. What it left unanswered: with only a finite, noisy sample of returns, how many of those eigenvalues are real, and how many are exactly what pure chance produces when you don't have enough data? Random Matrix Theory answers that with a precise, computable line in the sand.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Even zero correlation doesn't look like zero</h2>
+      <p class="sl-sub">A correlation matrix built from finite history always spreads its eigenvalues away from 1 — even when the true, underlying correlations are exactly zero.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">∞</div><div><h4>Zero correlation is a limit, not a reading</h4><p>A correlation matrix converges to the identity — every eigenvalue exactly 1 — only as history goes to infinity. You never have infinite history.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📅</div><div><h4>250 days is not infinity</h4><p>One calendar year of daily returns is a perfectly ordinary lookback window, and also a small, finite sample that lets sample correlations drift from their true value purely by chance.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📊</div><div><h4>The drift shows up as eigenvalue spread</h4><p>Build a matrix out of these coincidentally-nonzero sample correlations and its eigenvalues scatter above and below 1 — even with zero real structure anywhere.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">?</div><div><h4>No cutoff, no way to tell</h4><p>Without knowing what pure-noise spread looks like in advance, there's no principled way to separate a real second factor from an unlucky sample window.</p></div></div>
+      </div>
+      <div class="sl-quote">Flip a fair coin 20 times and you'll almost never land exactly 10 heads, 10 tails — 12-8, 8-12, sometimes 15-5. None of that means the coin is rigged; it's what "no real pattern, finite sample" looks like. Random Matrix Theory hands correlation-matrix eigenvalues the exact equivalent of that "how much wobble is normal" band.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">The thought experiment: correlate pure noise with itself</h2>
+      <p class="sl-sub">Take it literally, not abstractly.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>What happens</div>
+        <div class="sl-row"><div class="sl-box">N = 30 independent series</div><div class="sl-arrow">→</div><div class="sl-box">T = 250 draws each</div></div>
+        <div class="sl-row"><div class="sl-box amber">sample correlations ≠ 0</div><div class="sl-arrow">→</div><div class="sl-box amber">eigenvalues spread away from 1</div></div>
+        <div class="sl-verdict">Zero <strong>true</strong> correlation was built into the data by construction. The spread is entirely finite-sample noise — the specific, characteristic footprint noise leaves on a correlation matrix's eigenvalues.</div>
+      </div>
+      <p class="sl-p">Generate 30 completely independent random return series with no shared driver of any kind, draw 250 observations of each — exactly the shape of one year of daily returns across a 30-pair FX basket. The true correlation between any two of them is exactly 0. But the <em>sample</em> correlation over those 250 draws won't land at exactly 0.00 — some pairs will show 0.06, others −0.11, others 0.03, purely from the same finite-draw drift that keeps 20 coin flips off 10-10. Build a 30×30 matrix out of those coincidences and its eigenvalues will not all equal 1.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Plain-English version</div>
+        <p>Ask 30 strangers "did you happen to wear the same shirt color more often than not this month?" With only a month of data, some pairs will look coincidentally matched purely by luck. A "who matches whom" grid built from those coincidences won't look flat and random either — it'll show fake clusters, purely from too few days to average the coincidences away.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">The Marchenko-Pastur law names the exact noise band</h2>
+      <p class="sl-sub">Marchenko &amp; Pastur (1967) proved the spread from Section 2 isn't just "some spread" — it converges to a specific, computable distribution with a hard edge.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">N/T</div><div><h4>q — the shape parameter</h4><p>q = N/T: instruments relative to independent observations. The single ratio the entire noise band depends on — not N alone, not T alone.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">↓</div><div><h4>λ_min — the floor</h4><p>λ_min = (1 − √q)². The lowest eigenvalue a pure-noise correlation matrix is expected to produce at this N/T.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">↑</div><div><h4>λ_max — the ceiling</h4><p>λ_max = (1 + √q)². The highest eigenvalue pure noise alone could plausibly produce. Clear this and you likely have a real factor.</p></div></div>
+      </div>
+      <div class="sl-quote">Only the <strong>ratio</strong> q = N/T matters, not N or T individually. A basket of 100 instruments over 100,000 days and a basket of 3 instruments over 3,000 days can share the same q — and therefore the exact same noise band — even though their N and T look nothing alike.</div>
+      <p class="sl-p">A smaller q — more history per instrument — pushes √q toward 0, so both edges converge on 1: the band tightens because sample correlations converge more tightly to their true (zero) value. A larger q pushes the band wide open: λ_min falls toward 0, λ_max climbs well above 1, and a much bigger eigenvalue is needed before it's distinguishable from chance.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Drag q and watch the noise band move</h2>
+      <p class="sl-sub">q = N/T. Every eigenvalue a pure-noise correlation matrix could produce falls inside the shaded band below.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Number line from 0 to 4 with a shaded Marchenko-Pastur noise band whose width changes as q changes">
+            <line x1="180" y1="20" x2="180" y2="122" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:3,3"/>
+            <text x="180" y="14" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">λ = 1</text>
+            <rect id="mp-band" x="150" y="40" width="60" height="70" style="fill:var(--blue-bg);stroke:var(--blue-bd);stroke-width:1.5"/>
+            <text id="mp-min-label" x="150" y="128" text-anchor="middle" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:11px;font-weight:700">0.43</text>
+            <text id="mp-max-label" x="210" y="128" text-anchor="middle" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:11px;font-weight:700">1.81</text>
+            <line x1="40" y1="110" x2="600" y2="110" style="stroke:var(--border2);stroke-width:1"/>
+            <text x="40" y="145" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">0</text>
+            <text x="180" y="145" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">1</text>
+            <text x="320" y="145" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">2</text>
+            <text x="460" y="145" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">3</text>
+            <text x="600" y="145" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">4</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>N / T ratio (q)</span><span class="sl-live" id="mp-q-val">q = 0.12</span></div>
+        <input type="range" class="sl-slider" id="mp-q-slider" min="2" max="100" step="2" value="12">
+        <div class="sl-row" style="margin-top:14px">
+          <div class="sl-box" id="mp-min-box">λ_min ≈ 0.43</div>
+          <div class="sl-arrow">…noise band…</div>
+          <div class="sl-box" id="mp-max-box">λ_max ≈ 1.81</div>
+        </div>
+        <div class="sl-note" id="mp-warn" style="display:none;color:var(--amber);border-top:none;padding-top:0;margin-top:8px"></div>
+        <div class="sl-note">Drag toward q = 1 (N approaching T) and watch λ_min collapse toward 0 — a wide basket over a short window doesn't just get a wide noise band, it gets structurally unrecoverable directions.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Structured market, or pure noise?</h2>
+      <p class="sl-sub">Same style of histogram, two very different baskets. Compare where the bars fall relative to the band.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="mp-tabs">
+          <button class="sl-tab active" data-panel="mp-t1">A few eigenvalues above the edge</button>
+          <button class="sl-tab" data-panel="mp-t2">Nothing above the edge</button>
+        </div>
+        <div class="sl-panel active" id="mp-t1">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 190" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Histogram with most bars clustered inside a shaded noise band and one isolated bar far to the right beyond the band">
+            <rect x="70" y="30" width="90" height="140" style="fill:var(--border2);opacity:.45"/>
+            <line x1="40" y1="170" x2="600" y2="170" style="stroke:var(--border)"/>
+            <rect x="44" y="118" width="18" height="52" style="fill:var(--blue);opacity:.85"/>
+            <rect x="66" y="80" width="18" height="90" style="fill:var(--blue);opacity:.85"/>
+            <rect x="88" y="55" width="18" height="115" style="fill:var(--blue);opacity:.85"/>
+            <rect x="110" y="72" width="18" height="98" style="fill:var(--blue);opacity:.85"/>
+            <rect x="132" y="100" width="18" height="70" style="fill:var(--blue);opacity:.85"/>
+            <rect x="154" y="140" width="18" height="30" style="fill:var(--blue);opacity:.85"/>
+            <rect x="530" y="45" width="20" height="125" style="fill:var(--red)"/>
+            <text x="540" y="34" text-anchor="middle" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:11px;font-weight:700">λ₁ ≈ 8.2</text>
+            <text x="115" y="20" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">noise band</text>
+            <text x="320" y="185" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.05em">EIGENVALUE (λ)</text>
+          </svg></div>
+          <div class="sl-verdict"><strong>Structured market.</strong> λ₁ ≈ 8.2 clears λ_max ≈ 1.81 by more than 4×. This basket carries at least one genuine common factor — safe to treat PC1 as real. λ₂–λ₄ still sit inside the band and stay suspect.</div>
+        </div>
+        <div class="sl-panel" id="mp-t2">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 190" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Histogram with every bar clustered inside the shaded noise band and nothing beyond it">
+            <rect x="70" y="30" width="90" height="140" style="fill:var(--border2);opacity:.45"/>
+            <line x1="40" y1="170" x2="600" y2="170" style="stroke:var(--border)"/>
+            <rect x="44" y="128" width="18" height="42" style="fill:var(--blue);opacity:.85"/>
+            <rect x="66" y="95" width="18" height="75" style="fill:var(--blue);opacity:.85"/>
+            <rect x="88" y="75" width="18" height="95" style="fill:var(--blue);opacity:.85"/>
+            <rect x="110" y="85" width="18" height="85" style="fill:var(--blue);opacity:.85"/>
+            <rect x="132" y="110" width="18" height="60" style="fill:var(--blue);opacity:.85"/>
+            <rect x="154" y="150" width="18" height="20" style="fill:var(--blue);opacity:.85"/>
+            <text x="115" y="20" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">noise band</text>
+            <text x="320" y="185" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.05em">EIGENVALUE (λ)</text>
+          </svg></div>
+          <div class="sl-verdict"><strong>Pure noise.</strong> Every eigenvalue falls inside [λ_min, λ_max] — statistically indistinguishable from a basket built out of instruments with zero true correlation. Nothing here has earned the label "factor" yet, at this N and T.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Compute your own noise band</h2>
+      <p class="sl-sub">Enter a basket size, a lookback window, and an average variance. σ² = 1 matches a correlation matrix; raise it for a covariance matrix's eigenvalue bounds.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>N — instruments</label><input type="number" class="sl-input" id="mpc-n" value="30" step="1" min="0"></div>
+          <div class="sl-calc-op">/</div>
+          <div class="sl-calc-field"><label>T — observations</label><input type="number" class="sl-input" id="mpc-t" value="250" step="10" min="0"></div>
+          <div class="sl-calc-field"><label>Avg variance σ²</label><input type="number" class="sl-input" id="mpc-var" value="1" step="0.1" min="0"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Upper edge λ_max</div>
+            <div class="sl-calc-result-val" id="mpc-lmax">1.81</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>q = N / T = <b id="mpc-q">0.12</b></div>
+          <div>λ_min = σ²(1 − √q)² = <b id="mpc-lmin">0.43</b></div>
+        </div>
+        <div class="sl-note" id="mpc-warn" style="display:none;color:var(--amber);border-top:none;padding-top:0"></div>
+        <button type="button" class="sl-reset-btn" id="mpc-reset">Reset to 30 pairs, 250 days</button>
+        <div class="sl-note">Blank, zero, or negative N/T/σ² show "—" instead of a broken number — a real desk tool should never hand back NaN.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Thirty FX pairs, one year of daily returns</h2>
+      <p class="sl-sub">q = 30/250 = 0.12 → noise band ≈ [0.43, 1.81]. Now check the real eigenvalues against it.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">λ₁ = 8.2</span>
+          <ul>
+            <li>Sits enormously far above 1.81 — more than 4× the upper edge</li>
+            <li>An overwhelming, easy call: this is a real, genuine common factor</li>
+            <li>In practice, almost certainly the same dollar/risk-on factor the PCA lesson calls PC1</li>
+          </ul>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">λ₂, λ₃, λ₄ ≈ 0.5 – 1.7</span>
+          <ul>
+            <li>Squarely inside the 0.43–1.81 noise band</li>
+            <li>At N=30, T=250, this basket doesn't carry enough information to tell PC2/PC3 from pure randomness</li>
+            <li>Treating them as "the euro-specific factor" or "the commodity-bloc factor" would be fitting noise, not signal</li>
+          </ul>
+        </div>
+      </div>
+      <p class="sl-p">That doesn't mean PC2 is definitely meaningless in reality — it means this sample, at this size, cannot tell the difference. Building on top of it as if it could is overfitting to noise while believing it's structure.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">A binary screen, or a full cleanup</h2>
+      <p class="sl-sub">Practitioners use this idea two ways — one this lesson covers, one it only names.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Binary screen — covered here</span>
+          <p>Decide how many of a basket's eigenvalues are worth treating as real factors at all, before doing anything more sophisticated — running a factor model, sizing a diversification metric, deciding how many independent bets a book really has.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Eigenvalue cleaning — named, not built</span>
+          <p>Replace every eigenvalue inside the noise band with a single common value (often their average), leave eigenvalues above λ_max untouched, and reconstruct a "cleaned" correlation matrix — a more honest input to a covariance-based optimizer.</p>
+        </div>
+      </div>
+      <div class="sl-quote">The landmark real-world application: Laloux, Cizeau, Bouchaud &amp; Potters (1999) found that the great majority of eigenvalues in a real stock-market correlation matrix, built across several hundred U.S. stocks, fell inside the Marchenko-Pastur band computed from their actual N and T — while a small handful, led by one dominant market factor, sat far outside it. That paper is generally credited with launching "RMT filtering" as a standard risk-management technique.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Where this plugs into the rest of the curriculum</h2>
+      <p class="sl-p">This lesson builds directly on <a href="pca-factors-micro.html" style="color:var(--blue)">PCA &amp; Factor Models</a>: same N instruments, same T observations, same correlation matrix, same ranked eigenvalues λ₁ ≥ λ₂ ≥ … ≥ λ_N. PCA tells you how to rank them and read off a candidate factor; the Marchenko-Pastur band is the missing step that tells you which of those candidates have actually earned the name "factor," versus which ones are exactly what an unlucky sample window would produce anyway.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Verified against this repo's current code</div>
+        <p><code>js/diversificationCore.js</code> already computes a correlation matrix's eigenvalues (<code>symmetricEigenvalues</code>) and feeds them into three effective-number-of-bets metrics — <code>effectiveBetsPCA</code>, <code>effectiveBetsEntropy</code>, <code>effectiveBetsWeighted</code>. As of this lesson, none of them compares a single eigenvalue against a Marchenko-Pastur λ_min/λ_max band — there is no noise-band check anywhere in that file, or elsewhere in the codebase, against the spectrum it already produces. The full lesson's claim that this check "is not currently run in this repo" still holds; nothing here is stale.</p>
+      </div>
+      <p class="sl-p">Practically: a basket's effective-bets score can look reassuringly close to N while partly resting on eigenvalues that are noise-band artifacts, not real diversification. Flagging which eigenvalues clear the band would add an honest caveat to that number without changing the formula itself — a concrete, unbuilt guardrail, not a claim about what the repo currently does.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Where the rule gets misapplied</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🚫</div><div><h4>"Inside the band" ≠ proof of nothing</h4><p>It's a statistical-power limit, not a certainty — a real, modest factor can still hide there at small T.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">♾️</div><div><h4>It's an asymptotic result</h4><p>Finite N, T means edge effects (Tracy-Widom fluctuations) — treat values right at λ_max as ambiguous, not a clean pass/fail.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📉</div><div><h4>Real returns aren't i.i.d.</h4><p>Time-varying volatility and fat tails aren't in the textbook derivation, but the band still holds up as a strong practical benchmark.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔢</div><div><h4>Use the true independent T</h4><p>Overlapping windows inflate the effective T you'd plug in, making the band look narrower — and any factor look more significant — than the data supports.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧹</div><div><h4>Binary screen ≠ denoised matrix</h4><p>Flagging in/out of band is not the same as building a cleaned, shrinkage-adjusted correlation matrix ready for an optimizer.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Why does a correlation matrix built from truly independent series still produce a spread of nonzero eigenvalues, instead of a flat spectrum at exactly 1?</h4>
+        <button class="sl-quiz-opt" data-correct="true">A flat spectrum at 1 only holds with infinite data — any finite T lets sample correlations drift from their true value by chance</button>
+        <button class="sl-quiz-opt">Independent series always produce correlated eigenvalues</button>
+        <button class="sl-quiz-opt">Eigenvalues are only ever exactly 1 for correlated data</button>
+        <div class="sl-quiz-explain">The spread is finite-sample noise — the same way 20 fair coin flips rarely land exactly 10-10 even though the coin is unbiased.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>What is q, the Marchenko-Pastur shape parameter?</h4>
+        <button class="sl-quiz-opt" data-correct="true">q = N / T — instruments relative to independent observations</button>
+        <button class="sl-quiz-opt">q = T / N — observations relative to instruments</button>
+        <button class="sl-quiz-opt">q = N × T — total data points</button>
+        <div class="sl-quiz-explain">q = N/T is the single ratio the entire noise band's width depends on — not N or T individually.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>More history relative to instruments (a smaller q) does what to the noise band?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Narrows it — both edges converge toward 1</button>
+        <button class="sl-quiz-opt">Widens it — both edges move away from 1</button>
+        <button class="sl-quiz-opt">Has no effect on the band</button>
+        <div class="sl-quiz-explain">λ_min=(1−√q)² and λ_max=(1+√q)² both move toward 1 as √q→0 — more data per relationship means sample correlations converge more tightly to their true value.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>N=30, T=250. λ₂ = 1.1 falls inside the ≈[0.43, 1.81] noise band. What does that prove?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Nothing definitive — this sample can't currently distinguish λ₂ from pure noise at this N and T</button>
+        <button class="sl-quiz-opt">There is definitely no real second factor</button>
+        <button class="sl-quiz-opt">λ₂ is definitely a genuine factor</button>
+        <div class="sl-quiz-explain">"Inside the band" is a statistical-power statement, not a certainty. A real but modest factor can hide there at small T — more history is the remedy, not a reinterpretation of the same sample.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Why is an eigenvalue several multiples above λ_max a stronger signal than one sitting just barely above it?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The bound is asymptotic — finite-N,T noise has its own Tracy-Widom fluctuations right around the edge, so a value just above λ_max could still plausibly be noise</button>
+        <button class="sl-quiz-opt">λ_max is only ever approximate to within a factor of 10</button>
+        <button class="sl-quiz-opt">There is no meaningful difference between the two cases</button>
+        <div class="sl-quiz-explain">λ₁=8.2 against λ_max≈1.81 is far outside any plausible noise fluctuation at that edge; a value of, say, 2.0 against the same 1.81 bound would not be.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Finite samples always spread eigenvalues away from 1, even for truly independent series — that's pure sampling noise, not evidence of structure.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>The Marchenko-Pastur law gives the exact noise band: [λ_min, λ_max] = [(1−√q)², (1+√q)²], where q = N/T.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Only the ratio q matters, not N or T alone — more history per instrument narrows the band; more instruments relative to history widens it.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The decision rule: an eigenvalue inside the band is suspect; one sitting several multiples above λ_max is a strong factor candidate.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>"Inside the band" is a power limit, not proof of zero structure — and edge effects mean a value just above λ_max is a weaker signal than one far above it.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>This repo's diversificationCore.js already has the eigenvalues this check would need — running it is a concrete, unbuilt guardrail on the effective-bets metric, not something it currently does.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Before trusting PC2, PC3, or any component beyond a basket's dominant factor, compute q = N/T for your actual window, derive λ_min and λ_max, and check each real eigenvalue against that band instead of assuming every principal component past PC1 is meaningful. It turns "how diversified is this book, really?" from a guess into a testable claim.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Fractional Brownian Motion</h3>
+        <p>Why real return series show long memory that plain Brownian motion can't produce — and how the Hurst exponent measures exactly how much.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="fractional-brownian-motion-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="random-matrix-theory.html">Read the full RMT lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Marchenko-Pastur noise-band slider — q drives λ_min/λ_max live.
+  (function(){
+    var slider = document.getElementById('mp-q-slider');
+    if (!slider) return;
+    var qVal = document.getElementById('mp-q-val');
+    var band = document.getElementById('mp-band');
+    var minLabel = document.getElementById('mp-min-label');
+    var maxLabel = document.getElementById('mp-max-label');
+    var minBox = document.getElementById('mp-min-box');
+    var maxBox = document.getElementById('mp-max-box');
+    var warn = document.getElementById('mp-warn');
+    var X0 = 40, PX_PER_UNIT = 140; // domain 0..4 mapped onto x=40..600
+
+    function update(){
+      var q = parseInt(slider.value, 10) / 100;
+      var sqrtQ = Math.sqrt(q);
+      var lmin = Math.pow(1 - sqrtQ, 2);
+      var lmax = Math.pow(1 + sqrtQ, 2);
+      var xmin = X0 + lmin * PX_PER_UNIT;
+      var xmax = X0 + lmax * PX_PER_UNIT;
+
+      qVal.textContent = 'q = ' + q.toFixed(2);
+      band.setAttribute('x', xmin);
+      band.setAttribute('width', Math.max(xmax - xmin, 1));
+      minLabel.setAttribute('x', xmin);
+      maxLabel.setAttribute('x', xmax);
+      minLabel.textContent = lmin.toFixed(2);
+      maxLabel.textContent = lmax.toFixed(2);
+      minBox.textContent = 'λ_min ≈ ' + lmin.toFixed(2);
+      maxBox.textContent = 'λ_max ≈ ' + lmax.toFixed(2);
+
+      if (q >= 0.98) {
+        warn.style.display = 'block';
+        warn.textContent = 'At q ≈ 1, N approaches T — λ_min collapses toward 0 and the matrix approaches singular.';
+      } else {
+        warn.style.display = 'none';
+      }
+    }
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Noise-band calculator — N, T, avg variance → q, λ_min, λ_max, with guards.
+  (function(){
+    var n = document.getElementById('mpc-n');
+    if (!n) return;
+    var t = document.getElementById('mpc-t'), v = document.getElementById('mpc-var');
+    var qOut = document.getElementById('mpc-q'), lminOut = document.getElementById('mpc-lmin'), lmaxOut = document.getElementById('mpc-lmax');
+    var warn = document.getElementById('mpc-warn');
+    var resetBtn = document.getElementById('mpc-reset');
+    var DEFAULTS = { n: 30, t: 250, v: 1 };
+
+    function fmt(x){ return isFinite(x) ? x.toFixed(2) : '—'; }
+
+    function recompute(){
+      var nv = parseFloat(n.value), tv = parseFloat(t.value), vv = parseFloat(v.value);
+      var bad = !isFinite(nv) || !isFinite(tv) || !isFinite(vv) || nv <= 0 || tv <= 0 || vv < 0;
+      if (bad) {
+        qOut.textContent = '—'; lminOut.textContent = '—'; lmaxOut.textContent = '—';
+        warn.style.display = 'none';
+        return;
+      }
+      var q = nv / tv;
+      var sqrtQ = Math.sqrt(q);
+      var lmin = vv * Math.pow(1 - sqrtQ, 2);
+      var lmax = vv * Math.pow(1 + sqrtQ, 2);
+      qOut.textContent = fmt(q);
+      lminOut.textContent = fmt(lmin);
+      lmaxOut.textContent = fmt(lmax);
+      if (q >= 1) {
+        warn.style.display = 'block';
+        warn.textContent = 'N ≥ T: the sample correlation matrix is rank-deficient — a fraction (1 − 1/q) of its eigenvalues sit at exactly 0.';
+      } else {
+        warn.style.display = 'none';
+      }
+    }
+
+    [n, t, v].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      n.value = DEFAULTS.n; t.value = DEFAULTS.t; v.value = DEFAULTS.v;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>
