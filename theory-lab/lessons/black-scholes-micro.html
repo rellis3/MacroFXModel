@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Black-Scholes — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Black-Scholes — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivation, the PDE, and a 6-question self-test?<a href="black-scholes.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Lesson 11 · Options &amp; Derivatives</div>
+      <h1 class="sl-h1">Black-Scholes, <em>Priced Without Guessing Direction</em></h1>
+      <p class="sl-lede">An option's price sounds like it should depend on where you think the underlying is headed. Black-Scholes shows it doesn't — a stock-and-cash portfolio can be built to copy the option's payoff exactly, and two things with identical payoffs must cost the same. That single replication trick is where the formula, and the Greeks built on top of it, all come from.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">What you're actually pricing</h2>
+      <p class="sl-sub">A call gives the right to buy at strike K; a put gives the right to sell at K. Both only pay off in one direction.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="payoff-tabs">
+          <button class="sl-tab active" data-panel="payoff-call">Call option</button>
+          <button class="sl-tab" data-panel="payoff-put">Put option</button>
+        </div>
+        <div class="sl-panel active" id="payoff-call">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Call payoff diagram: flat at zero below strike K, rising dollar for dollar above it, forming a hockey stick">
+            <line x1="40" y1="180" x2="600" y2="180" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="40" y1="180" x2="40" y2="20" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="320" y1="20" x2="320" y2="180" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"/>
+            <text x="320" y="198" text-anchor="middle" style="fill:var(--text3);font-size:11px;font-family:'DM Mono',monospace">K</text>
+            <text x="600" y="198" text-anchor="end" style="fill:var(--text3);font-size:11px">Price at expiry →</text>
+            <polyline points="40,180 320,180 600,20" style="stroke:var(--green);stroke-width:3" fill="none"/>
+            <text x="440" y="70" text-anchor="middle" style="fill:var(--green);font-size:12px;font-weight:700">payoff = max(S − K, 0)</text>
+          </svg></div>
+          <div class="sl-verdict">Below K, worthless — nobody exercises the right to buy above market price. Above K, the payoff climbs one-for-one with the underlying, uncapped.</div>
+        </div>
+        <div class="sl-panel" id="payoff-put">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Put payoff diagram: falling one for one below strike K, flat at zero above it">
+            <line x1="40" y1="180" x2="600" y2="180" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="40" y1="180" x2="40" y2="20" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="320" y1="20" x2="320" y2="180" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"/>
+            <text x="320" y="198" text-anchor="middle" style="fill:var(--text3);font-size:11px;font-family:'DM Mono',monospace">K</text>
+            <text x="600" y="198" text-anchor="end" style="fill:var(--text3);font-size:11px">Price at expiry →</text>
+            <polyline points="40,20 320,180 600,180" style="stroke:var(--amber);stroke-width:3" fill="none"/>
+            <text x="180" y="70" text-anchor="middle" style="fill:var(--amber);font-size:12px;font-weight:700">payoff = max(K − S, 0)</text>
+          </svg></div>
+          <div class="sl-verdict">Above K, worthless — nobody exercises the right to sell below market price. Below K, the payoff climbs as the underlying falls, capped at K (the underlying can't go below zero).</div>
+        </div>
+      </div>
+      <p class="sl-p">Both shapes are simple to draw <em>at</em> expiry. The hard question — the one Black-Scholes answers — is what that lopsided, capped-on-one-side payoff is worth <strong>today</strong>, with time still left for the underlying to move.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">The trick: clone the option out of stock and cash</h2>
+      <p class="sl-p">Imagine you sold the call above. That looks like open-ended risk — if the stock rockets, you owe the buyer the difference. Black-Scholes' insight: you don't have to forecast where the stock goes. You can build your own copy of the option's payoff using nothing but the stock itself and a risk-free bond, continuously adjusted as price moves.</p>
+      <div class="sl-row">
+        <div class="sl-box amber">Sold 1 call</div>
+        <div class="sl-arrow">+</div>
+        <div class="sl-box blue">Δ shares of stock</div>
+        <div class="sl-arrow">+</div>
+        <div class="sl-box green">cash at rate r</div>
+        <div class="sl-arrow">=</div>
+        <div class="sl-box">riskless, instant by instant</div>
+      </div>
+      <p class="sl-p">Hold more stock (Δ closer to 1) when the option is deep in-the-money, behaving almost like owning the stock outright. Hold less (Δ closer to 0) when it's deep out-of-the-money, behaving like it's worthless. Rebalance that mix constantly and correctly, and at expiry your homemade stock-plus-cash portfolio matches the option's payoff in <em>every</em> possible future.</p>
+      <div class="sl-quote">Two things that pay off identically in every scenario must cost the same today — otherwise anyone could buy the cheap one, sell the expensive one, and pocket free money. That "replicating portfolio" argument is what pins down a single fair price, and building it only ever required knowing how <strong>volatile</strong> the stock is — never which direction it's expected to go.</div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">The single most important fact</div>
+        <p>Work through the hedging math and the underlying's expected return, μ, cancels out completely. It never survives to the pricing formula. Your opinion about whether EUR/USD is going up or down next year has, formally, zero effect on the fair price of an option on it — only how much it moves around matters.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">What the argument assumes about the world</h2>
+      <p class="sl-sub">The replication trick only works cleanly if the underlying behaves in a specific, simplified way.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📈</div><div><h4>Prices are lognormal</h4><p>The underlying follows geometric Brownian motion — a steady drift plus random wobbles sized as a <em>percentage</em> of the current price. Prices can never go negative, and returns compound multiplicatively.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📏</div><div><h4>Volatility is constant</h4><p>σ is assumed flat — the same today, next month, and at every strike. This is the model's single biggest simplification, and it's false in every real options market.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚡</div><div><h4>No jumps</h4><p>Prices move continuously, never gapping. Real markets gap on earnings, central bank surprises, and flash crashes — exactly what the next lesson's jump-diffusion model adds back in.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔄</div><div><h4>Frictionless, continuous rebalancing</h4><p>The hedge can be adjusted infinitely often, instantly, with no transaction costs and no position limits. Real dealers rehedge in discrete steps and pay spread on every trade.</p></div></div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>None of these four assumptions survive contact with a real market untouched. That's not a reason to discard the model — it's the reason practitioners quote a different σ per strike (the "volatility smile"), and the reason a whole family of extensions exists to relax exactly these assumptions one at a time.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">The formula, piece by piece</h2>
+      <p class="sl-sub">Solving the replication argument through gives a closed-form price for a European call.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The call price</div>
+        <div class="sl-row">
+          <div class="sl-box blue">S · N(d₁)</div>
+          <div class="sl-arrow">−</div>
+          <div class="sl-box amber">K · e⁻ʳᵀ · N(d₂)</div>
+          <div class="sl-arrow">=</div>
+          <div class="sl-box green">C</div>
+        </div>
+        <div class="sl-verdict"><strong>S·N(d₁):</strong> what you'd expect to receive if it finishes in the money. <strong>K·e⁻ʳᵀ·N(d₂):</strong> the strike, discounted to today, weighted by the odds you'll actually have to pay it. The call is the difference.</div>
+        <div class="sl-row" style="margin-top:14px">
+          <div class="sl-box">ln(S/K) + (r + σ²/2)T</div>
+          <div class="sl-arrow">÷</div>
+          <div class="sl-box">σ√T</div>
+          <div class="sl-arrow">=</div>
+          <div class="sl-box blue">d₁</div>
+        </div>
+        <div class="sl-row">
+          <div class="sl-box blue">d₁</div>
+          <div class="sl-arrow">−</div>
+          <div class="sl-box">σ√T</div>
+          <div class="sl-arrow">=</div>
+          <div class="sl-box amber">d₂</div>
+        </div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">S</div><div><h4>Spot price</h4><p>The underlying's price right now — e.g. today's EUR/USD rate.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">K</div><div><h4>Strike price</h4><p>The fixed price the option lets you buy (call) or sell (put) at.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">r</div><div><h4>Risk-free rate</h4><p>The continuously-compounded rate over the option's life. For FX options this is really a domestic/foreign rate <em>differential</em>, not a single rate.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">σ</div><div><h4>Volatility</h4><p>Annualized standard deviation of returns — the one input nobody directly observes, and the hardest to know in advance.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">T</div><div><h4>Time to expiry</h4><p>In years — 30 days is T≈0.082. Together with σ, controls how much the underlying could plausibly move before expiry.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">N(·)</div><div><h4>Standard normal CDF</h4><p>For any input x, N(x) is the probability a standard normal variable falls at or below x — always between 0 and 1.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">What N(d₁) and N(d₂) actually mean</h2>
+      <p class="sl-sub">Two lookups into the same bell curve, playing two related but distinct roles.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">N(d₂) — a probability</span>
+          <p>The odds, under a specific pricing convention, that the option finishes in the money — that S ends up above K at expiry. It weights "what you'd expect to pay" by how likely you are to actually pay it.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">N(d₁) — a value weighting</span>
+          <p>A closely related quantity that weights "what you'd expect to receive," conditional on finishing in the money. It also happens to equal the option's delta — met again shortly.</p>
+        </div>
+      </div>
+      <div class="sl-quote">Read the whole formula as one sentence: <strong>the call's value is what you'd expect to receive if it finishes in the money, minus what you'd expect to pay to exercise it</strong>, each probability-weighted and discounted back to today.</div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>N(d₂) is <em>not</em> the market's real-world belief about the odds of finishing in the money. It's computed under a "risk-neutral" convention that prices everything as if it drifted at the risk-free rate r rather than its true expected return — a substitution that falls directly out of the replication argument, not out of anyone's actual forecast. Real-world odds differ, usually higher for a risky asset, since investors demand a risk premium above r.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Worked example: a one-year at-the-money call</h2>
+      <p class="sl-sub">Spot S=100, strike K=100, rate r=2%, volatility σ=20%, one year to expiry. Step through it.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="wk-tabs">
+          <button class="sl-tab active" data-panel="wk-1">Step 1 — d₁</button>
+          <button class="sl-tab" data-panel="wk-2">Step 2 — d₂</button>
+          <button class="sl-tab" data-panel="wk-3">Step 3 — N(d₁), N(d₂)</button>
+          <button class="sl-tab" data-panel="wk-4">Step 4 — price</button>
+        </div>
+        <div class="sl-panel active" id="wk-1">
+          <div class="sl-row"><div class="sl-box">ln(100/100) + (0.02+0.02)(1)</div><div class="sl-arrow">÷</div><div class="sl-box">0.20</div><div class="sl-arrow">=</div><div class="sl-box blue">0.20</div></div>
+          <div class="sl-verdict">ln(1)=0 since spot exactly equals strike. σ²/2 = 0.02, plus r = 0.02, gives 0.04 in the numerator. Divide by σ√T = 0.20.</div>
+        </div>
+        <div class="sl-panel" id="wk-2">
+          <div class="sl-row"><div class="sl-box blue">0.20</div><div class="sl-arrow">−</div><div class="sl-box">0.20</div><div class="sl-arrow">=</div><div class="sl-box amber">0.00</div></div>
+          <div class="sl-verdict">d₂ = d₁ − σ√T = 0.20 − 0.20 = 0.00. (A coincidence of these particular round numbers, not a general result.)</div>
+        </div>
+        <div class="sl-panel" id="wk-3">
+          <div class="sl-row"><div class="sl-box blue">N(0.20) ≈ 0.5793</div><div class="sl-arrow"> </div><div class="sl-box amber">N(0.00) = 0.5000</div></div>
+          <div class="sl-verdict">N(0.00)=0.5 exactly, since the standard normal is symmetric around zero. N(0.20) is a standard table-lookup value just above 0.5.</div>
+        </div>
+        <div class="sl-panel" id="wk-4">
+          <div class="sl-row"><div class="sl-box blue">100 × 0.5793 = 57.93</div><div class="sl-arrow">−</div><div class="sl-box amber">100 × 0.9802 × 0.5000 ≈ 49.01</div><div class="sl-arrow">=</div><div class="sl-box green">$8.92</div></div>
+          <div class="sl-verdict">e⁻⁰·⁰² ≈ 0.9802 is the one-year discount factor at 2%. All $8.92 is time value — intrinsic value is zero since S=K exactly.</div>
+        </div>
+      </div>
+      <p class="sl-p">A one-year, at-the-money call on a $100 underlying with 20% volatility and a 2% rate is worth roughly <strong>$8.92</strong> — about 8.9% of spot, purely because of the chance the stock ends up meaningfully above 100 while the downside is capped at zero loss.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Try it yourself — a live call-price calculator</h2>
+      <p class="sl-sub">Starts on the worked example's numbers. Change any input and the price recalculates instantly.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Spot S</label><input type="number" class="sl-input" id="bsc-S" value="100" step="1" min="0"></div>
+          <div class="sl-calc-field"><label>Strike K</label><input type="number" class="sl-input" id="bsc-K" value="100" step="1" min="0"></div>
+          <div class="sl-calc-field"><label>Rate r (%)</label><input type="number" class="sl-input" id="bsc-r" value="2" step="0.25"></div>
+          <div class="sl-calc-field"><label>Vol σ (%)</label><input type="number" class="sl-input" id="bsc-sigma" value="20" step="1" min="0"></div>
+          <div class="sl-calc-field"><label>Time T (yrs)</label><input type="number" class="sl-input" id="bsc-T" value="1" step="0.25" min="0"></div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Call price</div>
+            <div class="sl-calc-result-val" id="bsc-price">$8.92</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>d₁ = <b id="bsc-d1">0.2000</b> &emsp; d₂ = <b id="bsc-d2">0.0000</b></div>
+          <div>N(d₁) = <b id="bsc-nd1">0.5793</b> &emsp; N(d₂) = <b id="bsc-nd2">0.5000</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="bsc-reset">Reset to worked-example numbers</button>
+        <div class="sl-note" id="bsc-note"></div>
+      </div>
+      <p class="sl-p">Try pushing σ up while holding everything else fixed — the price rises even though, as the next slide shows, N(d₂) can actually fall. The call's value depends on the whole probability-weighted payoff, not the bare odds of finishing above the strike.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Today's value vs. the payoff at expiry</h2>
+      <p class="sl-sub">Drag the sliders. The grey hockey stick never moves — it's fixed by the payoff rule. The blue curve is what the option is worth <em>today</em>, with time still on the clock.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Call option payoff at expiry versus current value curve, with sliders for volatility and time to expiry">
+            <line x1="40" y1="220" x2="600" y2="220" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="40" y1="220" x2="40" y2="20" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="320" y1="20" x2="320" y2="220" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"/>
+            <text x="320" y="238" text-anchor="middle" style="fill:var(--text3);font-size:11px;font-family:'DM Mono',monospace">K</text>
+            <text x="600" y="16" text-anchor="end" style="fill:var(--text3);font-size:11px">Underlying price →</text>
+            <polyline points="40,220 320,220 600,40" style="stroke:var(--text3);stroke-width:2" fill="none"/>
+            <polyline id="curve-current" points="40,220 600,40" style="stroke:var(--blue);stroke-width:3" fill="none"/>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Volatility σ</span><span class="sl-live" id="curve-sigma-val">20%</span></div>
+        <input type="range" class="sl-slider" id="curve-sigma-slider" min="5" max="60" step="1" value="20">
+        <div class="sl-sliderhead" style="margin-top:12px"><span>Time to expiry T</span><span class="sl-live" id="curve-T-val">1.00y</span></div>
+        <input type="range" class="sl-slider" id="curve-T-slider" min="1" max="100" step="1" value="100">
+        <div class="sl-note">Higher volatility and more time both push the blue curve further above the hockey stick — more time for the underlying to move means more time value, everywhere, but especially right around the strike where the outcome is least certain.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">The Greeks are just this formula's sensitivities</h2>
+      <p class="sl-sub">A "Greek" is a partial derivative of the price with respect to one input — how much the price moves, everything else held fixed.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">Δ</div><div><h4>Delta = N(d₁)</h4><p>Price change per $1 move in the underlying. It's exactly the hedge ratio from the replication argument — a dealer who sold a call buys Δ shares to stay hedged.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">Γ</div><div><h4>Gamma = ∂Δ/∂S</h4><p>How fast delta itself changes. Highest for at-the-money options close to expiry — meaning the hedge goes stale fastest exactly when time is shortest.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">Θ</div><div><h4>Theta = ∂C/∂t</h4><p>Time decay — value lost simply because a day passed. A long-options trader bleeds theta; a short-options trader collects it, in exchange for carrying gamma risk.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">ν</div><div><h4>Vega = ∂C/∂σ</h4><p>Sensitivity to volatility itself. Since σ is the one input nobody observes directly, vega exposure is a bet on volatility rising or falling, independent of direction.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">ρ</div><div><h4>Rho = ∂C/∂r</h4><p>Sensitivity to the rate. Usually minor for short-dated equity options, but a first-order input for FX options, where "r" is really a rate differential between two currencies.</p></div></div>
+      </div>
+      <div class="sl-quote">A dealer isn't exposed to "the option price" in the abstract — they're exposed to how it moves as the world moves. The Greeks are the precise, formula-derived answer to that.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Implied volatility: the formula, run backwards</h2>
+      <p class="sl-p">Every input to Black-Scholes is observable except one: σ. Nobody can look up "the volatility" the way they look up spot, strike, or rate — so the market does the opposite of pricing. It takes an option's actual traded price and asks: what σ, fed into this formula, would have produced that price?</p>
+      <div class="sl-row">
+        <div class="sl-box">Traded price</div>
+        <div class="sl-arrow">→</div>
+        <div class="sl-box blue">Black-Scholes, inverted</div>
+        <div class="sl-arrow">→</div>
+        <div class="sl-box green">implied σ</div>
+      </div>
+      <div class="sl-quote">This is an inverse function, in exactly the sense of "running a formula backwards" — the same move as solving a formula for a different variable than the one it was written to output. Implied volatility isn't measured from history; it's <strong>recovered</strong>, by inverting the pricing formula against an observed market price.</div>
+      <p class="sl-p">Because the model assumes one flat σ but the market quotes a different implied σ for every strike and expiry — the <strong>volatility smile/skew</strong> — that pattern is itself visible evidence that the constant-volatility assumption from Section 3 is wrong. The market isn't pretending the assumption holds; it's quietly patching around it, one strike at a time.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Where the model breaks</h2>
+      <p class="sl-sub">The assumptions from Section 3, checked against what markets actually do.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Model assumption</span>
+          <ul>
+            <li>Volatility is one flat number, σ</li>
+            <li>Prices move continuously, no jumps</li>
+            <li>Hedging is continuous and free of cost</li>
+            <li>Options are European — exercise only at expiry</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Market reality</span>
+          <ul>
+            <li>Implied vol varies by strike and expiry — the smile/skew</li>
+            <li>Earnings, central-bank surprises, and flash crashes gap prices</li>
+            <li>Dealers rehedge in discrete steps and pay spread each time</li>
+            <li>Most retail equity/index options are American — exercisable early</li>
+          </ul>
+        </div>
+      </div>
+      <p class="sl-p">The gap between idealized continuous hedging and real discrete rehedging isn't a footnote — it's a source of visible market structure. A dealer who is short gamma must buy as price rises and sell as it falls just to stay hedged, mechanically, regardless of their own view; that flow is exactly what makes high-open-interest strikes behave like magnets and walls near expiry.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Why the model still matters despite all this</div>
+        <p>None of these gaps make Black-Scholes wrong to learn — they make it the baseline every more sophisticated model (local vol, jump-diffusion, stochastic vol) is built as a <em>correction to</em>, not a replacement of its underlying logic. The next lesson's jump-diffusion extension exists precisely to add the missing jumps back in.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">How this actually gets used on a desk</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🏷️</div><div><h4>Quoting convention</h4><p>Market makers quote and think in implied volatility, not dollar premiums, because it's comparable across strikes, expiries, and underlyings.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚙️</div><div><h4>Hedging engine</h4><p>The Greeks tell a market maker exactly how much underlying to buy or sell to stay delta-neutral, and how fast that hedge will need revisiting.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📚</div><div><h4>Common language</h4><p>Every more sophisticated model is built as a correction to Black-Scholes' logic, which is why its vocabulary — delta, gamma, vega — never goes away.</p></div></div>
+      </div>
+      <p class="sl-p">This repo's own theory-lab lessons on <strong>open-interest walls &amp; max pain</strong> and <strong>gamma exposure &amp; dealer hedging</strong> build directly on the delta and gamma introduced here — they aren't independent trading folklore, they're literally this formula's first and second derivatives with respect to price. And the stress-testing tooling elsewhere in this repo asks whether a portfolio's claimed diversification survives a liquidity contraction — a question that, for any book holding options, is inseparable from how those options' hedge ratios shift as markets move.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
+      <h2 class="sl-h2">Quick check</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Why doesn't μ, the underlying's expected return, appear anywhere in the Black-Scholes formula?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It cancels out during the replication/hedging derivation</button>
+        <button class="sl-quiz-opt">It's assumed to always equal zero</button>
+        <button class="sl-quiz-opt">It's folded into the strike price K</button>
+        <div class="sl-quiz-explain">The hedged replicating portfolio's random shocks cancel instant by instant, leaving a riskless position that must earn exactly the risk-free rate r — μ never enters that condition.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>What does N(d₂) represent in the call formula?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The risk-neutral probability the option finishes in the money</button>
+        <button class="sl-quiz-opt">The real-world probability the stock goes up</button>
+        <button class="sl-quiz-opt">The option's delta</button>
+        <div class="sl-quiz-explain">It's a probability computed as if every asset drifted at the risk-free rate — not a forecast of what will actually happen. N(d₁), not N(d₂), equals delta.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>S=K=100, r=2%, σ=20%, T=1 year — what does Black-Scholes price the call at, roughly?</h4>
+        <button class="sl-quiz-opt" data-correct="true">$8.92</button>
+        <button class="sl-quiz-opt">$0.00, since S equals K exactly</button>
+        <button class="sl-quiz-opt">$20.00, equal to the volatility</button>
+        <div class="sl-quiz-explain">All $8.92 is time value — intrinsic value is zero at S=K, but a year of 20% volatility still makes the asymmetric payoff worth something today.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>The "volatility smile" — implied vol differing by strike — is evidence against which model assumption?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Constant volatility (one flat σ for every strike and expiry)</button>
+        <button class="sl-quiz-opt">The risk-free rate being positive</button>
+        <button class="sl-quiz-opt">Options having a strike price at all</button>
+        <div class="sl-quiz-explain">Plain Black-Scholes assumes one flat σ. The market quoting a different implied σ per strike is direct, visible evidence that assumption doesn't hold.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Delta tells you the hedge you need right now. What does gamma tell you?</h4>
+        <button class="sl-quiz-opt" data-correct="true">How fast that hedge requirement itself is changing</button>
+        <button class="sl-quiz-opt">How much time value the option has left</button>
+        <button class="sl-quiz-opt">The exact expiry date of the option</button>
+        <div class="sl-quiz-explain">Gamma is delta's own sensitivity to price — how urgently and how often the hedge needs revisiting. It's highest for at-the-money options close to expiry.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="15">
+      <div class="sl-kicker">Section 14</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Replication, not forecasting — a continuously rebalanced stock-and-bond portfolio that clones the option's payoff pins down its price using no-arbitrage logic alone.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Only volatility σ enters the price — the underlying's expected return μ cancels out of the replication argument entirely.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>The Greeks are this formula's own partial derivatives — delta is the hedge ratio, gamma is how fast that hedge goes stale, theta is time decay, vega is sensitivity to σ.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>N(d₂) is a risk-neutral probability, not a real-world one — don't read a Black-Scholes price as a directional forecast.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Constant volatility is the model's biggest simplification — the smile/skew is the market visibly correcting for it, and it's exactly what the next lesson's jump-diffusion extension formalizes.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Price a vanilla European call from scratch given only S, K, r, σ, and T. Read "gamma wall" or "dealer hedging" language and know it's literally the second derivative of this formula with respect to price. Tell a risk-neutral probability apart from a real-world one whenever someone reads a Black-Scholes number as "what the market thinks will happen."</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Merton Jump-Diffusion</h3>
+        <p>What happens to the pricing formula once the underlying is allowed to gap — and why that's the fix for exactly the "no jumps" assumption flagged back in Section 3.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="merton-jump-diffusion-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="black-scholes.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Standard normal CDF via the Abramowitz & Stegun erf approximation
+  // (max error ~1.5e-7 — plenty for this deck's calculator and chart).
+  function erf(x){
+    var sign = x < 0 ? -1 : 1;
+    x = Math.abs(x);
+    var a1=0.254829592, a2=-0.284496736, a3=1.421413741, a4=-1.453152027, a5=1.061405429, p=0.3275911;
+    var t = 1/(1+p*x);
+    var y = 1 - (((((a5*t+a4)*t)+a3)*t+a2)*t+a1)*t*Math.exp(-x*x);
+    return sign*y;
+  }
+  function normCDF(x){ return 0.5*(1+erf(x/Math.SQRT2)); }
+
+  // Black-Scholes European call: C = S*N(d1) - K*e^(-rT)*N(d2)
+  function bsCall(S,K,r,sigma,T){
+    if (T<=0) return Math.max(S-K,0);
+    if (sigma<=0) return Math.max(S-K*Math.exp(-r*T),0);
+    var d1 = (Math.log(S/K) + (r+sigma*sigma/2)*T) / (sigma*Math.sqrt(T));
+    var d2 = d1 - sigma*Math.sqrt(T);
+    return { price: S*normCDF(d1) - K*Math.exp(-r*T)*normCDF(d2), d1: d1, d2: d2, Nd1: normCDF(d1), Nd2: normCDF(d2) };
+  }
+
+  // Live Black-Scholes calculator.
+  (function(){
+    var Sin = document.getElementById('bsc-S');
+    if (!Sin) return;
+    var Kin = document.getElementById('bsc-K'), rin = document.getElementById('bsc-r'),
+        sigmaIn = document.getElementById('bsc-sigma'), Tin = document.getElementById('bsc-T');
+    var priceOut = document.getElementById('bsc-price'), d1Out = document.getElementById('bsc-d1'),
+        d2Out = document.getElementById('bsc-d2'), nd1Out = document.getElementById('bsc-nd1'),
+        nd2Out = document.getElementById('bsc-nd2'), noteOut = document.getElementById('bsc-note');
+    var resetBtn = document.getElementById('bsc-reset');
+    var DEFAULTS = { S: 100, K: 100, r: 2, sigma: 20, T: 1 };
+
+    function recompute(){
+      var S = parseFloat(Sin.value), K = parseFloat(Kin.value), r = parseFloat(rin.value)/100,
+          sigma = parseFloat(sigmaIn.value)/100, T = parseFloat(Tin.value);
+
+      if (!isFinite(S) || !isFinite(K) || !isFinite(r) || !isFinite(sigma) || !isFinite(T) || S<=0 || K<=0 || sigma<0 || T<0) {
+        priceOut.textContent = '—';
+        d1Out.textContent = d2Out.textContent = nd1Out.textContent = nd2Out.textContent = '—';
+        noteOut.textContent = 'Enter positive S₀ and K, and non-negative σ, T.';
+        return;
+      }
+
+      if (T === 0) {
+        priceOut.textContent = '$' + Math.max(S-K,0).toFixed(2);
+        d1Out.textContent = d2Out.textContent = nd1Out.textContent = nd2Out.textContent = '—';
+        noteOut.textContent = 'T=0: price is just the intrinsic value, S−K floored at zero.';
+        return;
+      }
+      if (sigma === 0) {
+        priceOut.textContent = '$' + Math.max(S-K*Math.exp(-r*T),0).toFixed(2);
+        d1Out.textContent = d2Out.textContent = nd1Out.textContent = nd2Out.textContent = '—';
+        noteOut.textContent = 'σ=0: no uncertainty left to price — this collapses to discounted intrinsic value.';
+        return;
+      }
+
+      var r_ = bsCall(S,K,r,sigma,T);
+      d1Out.textContent = r_.d1.toFixed(4);
+      d2Out.textContent = r_.d2.toFixed(4);
+      nd1Out.textContent = r_.Nd1.toFixed(4);
+      nd2Out.textContent = r_.Nd2.toFixed(4);
+      priceOut.textContent = '$' + r_.price.toFixed(2);
+      noteOut.textContent = '';
+    }
+
+    [Sin, Kin, rin, sigmaIn, Tin].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      Sin.value = DEFAULTS.S; Kin.value = DEFAULTS.K; rin.value = DEFAULTS.r;
+      sigmaIn.value = DEFAULTS.sigma; Tin.value = DEFAULTS.T;
+      recompute();
+    });
+    recompute();
+  })();
+
+  // Value-curve chart: current value vs. hockey-stick payoff, driven by sliders.
+  (function(){
+    var sigmaSlider = document.getElementById('curve-sigma-slider');
+    if (!sigmaSlider) return;
+    var tSlider = document.getElementById('curve-T-slider');
+    var sigmaVal = document.getElementById('curve-sigma-val'), tVal = document.getElementById('curve-T-val');
+    var curve = document.getElementById('curve-current');
+
+    var K = 100, r = 0.02;
+    // Coordinate scale read off the static axes/hockey-stick drawn in the SVG
+    // above: x=40..600 spans underlying S=40..160 (K sits at x=320), y=220 is
+    // option value 0, and the hockey stick's K->600 leg (320,220)->(600,40)
+    // spans a $60 payoff over 180px, i.e. 180/60 px per dollar.
+    var S_LEFT = 40, S_RIGHT = 160, X_LEFT = 40, X_RIGHT = 600;
+    var Y_ZERO = 220, PX_PER_DOLLAR = 180/60;
+    function sToX(S){ return X_LEFT + (S-S_LEFT)/(S_RIGHT-S_LEFT)*(X_RIGHT-X_LEFT); }
+    function valToY(v){ return Y_ZERO - v*PX_PER_DOLLAR; }
+
+    function update(){
+      var sigma = parseFloat(sigmaSlider.value)/100;
+      var T = parseFloat(tSlider.value)/100;
+      sigmaVal.textContent = sigmaSlider.value + '%';
+      tVal.textContent = T.toFixed(2) + 'y';
+
+      var N = 24, pts = [];
+      for (var i=0; i<N; i++){
+        var S = S_LEFT + (i/(N-1))*(S_RIGHT-S_LEFT);
+        var v = bsCall(S, K, r, sigma, T).price;
+        pts.push(sToX(S).toFixed(2) + ',' + valToY(v).toFixed(2));
+      }
+      curve.setAttribute('points', pts.join(' '));
+    }
+
+    sigmaSlider.addEventListener('input', update);
+    tSlider.addEventListener('input', update);
+    update();
+  })();
+})();
+</script>
+</body>
+</html>

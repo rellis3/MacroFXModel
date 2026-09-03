@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Regression Diagnostics — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Regression Diagnostics — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer full derivations, a live calculator, and a 6-question self-test?<a href="regression-diagnostics.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Lesson 19 · Applied Statistics &amp; Validation</div>
+      <h1 class="sl-h1">Regression Diagnostics, <em>the Fine Print Behind a P-Value</em></h1>
+      <p class="sl-lede">A regression's p-value is not a fact about the world — it's a fact about a model of the world, and that model comes with fine print. This guide walks through the three checks that verify the fine print actually holds before you trust the headline number: is the error serially correlated (Durbin-Watson), does its variance change across the sample (Breusch-Pagan), and does it look enough like a bell curve for small-sample inference to be valid (Jarque-Bera).</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Two different things live inside one regression</h2>
+      <p class="sl-sub">It's easy to conflate them, and the whole lesson hinges on keeping them apart.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Point estimate — β̂</span>
+          <p>"For a one-unit move in X, Y tends to move this much." Derived purely by minimizing the sum of squared residuals — β̂ = Cov(X,Y)/Var(X), with no assumption about the residuals' distribution required anywhere in that derivation. It doesn't know or care whether its own residuals are well-behaved.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Inference claim — SE, t, p</span>
+          <p>"And here's how sure we should be that this isn't zero." Built on top of β̂ using a formula that assumes the residuals are homoskedastic, non-autocorrelated, and — in small samples — roughly normal. Break one of those assumptions and this number, not β̂, is what goes wrong.</p>
+        </div>
+      </div>
+      <p class="sl-p">When any of the three assumptions is badly violated, the standard error a stats package prints is simply the wrong number for the true sampling uncertainty in β̂ — most often too small, which makes a t-statistic look bigger and a p-value look smaller than the evidence actually supports.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">The distinction that matters most</div>
+        <p>A diagnostic failure means the classical standard error is wrong — it does not mean β̂ itself is meaningless. The point estimate can still be a perfectly reasonable guess at the slope while the significance claim built on top of it is fiction.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Three checks, one underlying question</h2>
+      <p class="sl-sub">A regression's residuals — eᵢ = yᵢ − ŷᵢ, the part of Y the fitted line doesn't explain — are supposed to look like structureless noise.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📈</div><div><h4>Durbin-Watson</h4><p>Does today's residual predict tomorrow's? Catches serial correlation — "sticky" errors that wave through time instead of bouncing around independently.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔀</div><div><h4>Breusch-Pagan</h4><p>Does the size of the typical residual depend on where you are in the data? Catches a fanning variance — tight for some X, wide and scattered for others.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📊</div><div><h4>Jarque-Bera</h4><p>Does the residual distribution's overall shape look normal? A lopsided or fat-tailed shape matters most when the sample is small.</p></div></div>
+      </div>
+      <div class="sl-quote">All three are really the same diagnostic act performed on three different axes of the same object — the residual series — because all three are checking the same underlying promise: that what's left over after fitting the line really is noise, and not a second signal the inference machinery is silently mistaking for confidence.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Durbin-Watson: does today's residual predict tomorrow's?</h2>
+      <p class="sl-sub">Line the residuals up in time order. Flip between three regimes and watch the shape.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="dw-tabs">
+          <button class="sl-tab active" data-panel="dw-1">DW ≈ 2 — independent</button>
+          <button class="sl-tab" data-panel="dw-2">DW → 0 — positive autocorr</button>
+          <button class="sl-tab" data-panel="dw-3">DW → 4 — negative autocorr</button>
+        </div>
+        <div class="sl-panel active" id="dw-1">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 160" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Residuals versus time bouncing randomly around zero with no visible pattern">
+            <line x1="20" y1="80" x2="620" y2="80" style="stroke:var(--border2);stroke-width:1"/>
+            <path d="M20,72 L50,95 L80,60 L110,102 L140,68 L170,90 L200,55 L230,100 L260,66 L290,92 L320,60 L350,98 L380,70 L410,88 L440,58 L470,96 L500,64 L530,90 L560,62 L590,94 L620,72" fill="none" style="stroke:var(--green);stroke-width:2"/>
+            <text x="320" y="20" text-anchor="middle" style="fill:var(--green);font-size:11px;font-weight:700">no pattern — each residual independent of the last</text>
+          </svg></div>
+          <div class="sl-verdict"><strong>DW ≈ 2.</strong> Consecutive residuals share no systematic sign — the "no autocorrelation" benchmark the classical standard error assumes.</div>
+        </div>
+        <div class="sl-panel" id="dw-2">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 160" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Residuals versus time forming a slow wave, positive for a stretch then negative for a stretch">
+            <line x1="20" y1="80" x2="620" y2="80" style="stroke:var(--border2);stroke-width:1"/>
+            <path d="M20,80 Q100,30 180,35 T340,90 Q420,135 500,130 T620,80" fill="none" style="stroke:var(--red);stroke-width:2"/>
+            <text x="320" y="20" text-anchor="middle" style="fill:var(--red);font-size:11px;font-weight:700">slow wave — a miss today is still a miss tomorrow</text>
+          </svg></div>
+          <div class="sl-verdict"><strong>DW → 0.</strong> Positive residuals cluster together, then negative ones do — "sticky" errors. Whatever caused today's miss is still partly causing tomorrow's.</div>
+        </div>
+        <div class="sl-panel" id="dw-3">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 160" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Residuals versus time zig-zagging sharply from positive to negative every single step">
+            <line x1="20" y1="80" x2="620" y2="80" style="stroke:var(--border2);stroke-width:1"/>
+            <path d="M20,30 L50,130 L80,25 L110,135 L140,28 L170,132 L200,26 L230,134 L260,30 L290,130 L320,25 L350,135 L380,28 L410,132 L440,26 L470,134 L500,30 L530,130 L560,25 L590,135 L620,30" fill="none" style="stroke:var(--purple);stroke-width:2"/>
+            <text x="320" y="20" text-anchor="middle" style="fill:var(--purple);font-size:11px;font-weight:700">alternating — overcorrecting every single period</text>
+          </svg></div>
+          <div class="sl-verdict"><strong>DW → 4.</strong> Residuals flip sign almost every period — the mirror-image failure, much rarer in practice than positive autocorrelation.</div>
+        </div>
+      </div>
+      <div class="sl-row"><div class="sl-box">DW = Σ(eₜ−eₜ₋₁)² / Σeₜ²</div></div>
+      <p class="sl-p">If consecutive residuals are independent, the cross term in that numerator averages to roughly zero and DW ≈ 2. Positive autocorrelation shrinks the gap between consecutive residuals, pushing DW toward 0; negative autocorrelation inflates it, pushing DW toward 4. A cleaner approximation makes the whole scale readable at a glance: <strong>DW ≈ 2(1 − ρ̂)</strong>, where ρ̂ is the estimated lag-1 autocorrelation of the residuals.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Why a "sticky" residual inflates significance</h2>
+      <p class="sl-sub">The classical standard error assumes n observations means n independent pieces of evidence. Change DW and n below and watch the honest count shrink.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — from DW to effective sample size</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Durbin-Watson (DW)</label><input type="number" class="sl-input" id="dwc-dw" value="0.6" step="0.1" min="0" max="4"></div>
+          <div class="sl-calc-op">,</div>
+          <div class="sl-calc-field"><label>Observations (n)</label><input type="number" class="sl-input" id="dwc-n" value="500" step="10" min="1"></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Estimated autocorrelation: ρ̂ = 1 − DW/2 = <b id="dwc-rho">0.70</b></div>
+          <div>Effective sample size: n_eff ≈ n · (1−ρ̂)/(1+ρ̂) = <b id="dwc-neff">88</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="dwc-reset">Reset to worked-example numbers (DW=0.6, n=500)</button>
+        <div class="sl-note">The classical formula still divides by the raw n, calibrating the standard error to more independent information than the sample actually contains — that gap is exactly what a robust (HAC/Newey-West) standard error corrects for.</div>
+      </div>
+      <p class="sl-p">At DW = 0.6 and ρ̂ ≈ 0.7, roughly 500 daily observations behave like only about 88 genuinely independent ones. A standard error computed as though it had 500 independent rows behind it is too small for what the data actually supports — which is exactly why a "significant" p-value on sticky residuals deserves a second look before anyone trusts it.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Breusch-Pagan: does the typical error size depend on X?</h2>
+      <p class="sl-sub">A deliberately simple trick: if the true residual variance depends on X, the squared residuals themselves should show it.</p>
+      <ol>
+        <li>Fit the original regression and keep the residuals eᵢ.</li>
+        <li>Run a second, "auxiliary" regression: eᵢ² as the dependent variable, on the same predictor(s) X used originally.</li>
+        <li>Form LM = n · R²_aux and compare it to a χ² distribution — large means heteroskedastic.</li>
+      </ol>
+      <div class="sl-row"><div class="sl-box">eᵢ² = γ₀ + γ₁Xᵢ + vᵢ</div><div class="sl-arrow">→</div><div class="sl-box">LM = n · R²_aux</div></div>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="bp-tabs">
+          <button class="sl-tab active" data-panel="bp-1">Homoskedastic — passes</button>
+          <button class="sl-tab" data-panel="bp-2">Heteroskedastic — fails</button>
+        </div>
+        <div class="sl-panel active" id="bp-1">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Residuals versus fitted values scattered in a uniform band with no widening">
+            <line x1="20" y1="100" x2="620" y2="100" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:2,3"/>
+            <line x1="20" y1="180" x2="620" y2="180" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="20" y1="20" x2="20" y2="180" style="stroke:var(--border2);stroke-width:1"/>
+            <circle cx="60" cy="92" r="4" style="fill:var(--green)"/><circle cx="100" cy="108" r="4" style="fill:var(--green)"/><circle cx="140" cy="95" r="4" style="fill:var(--green)"/><circle cx="180" cy="112" r="4" style="fill:var(--green)"/><circle cx="220" cy="88" r="4" style="fill:var(--green)"/><circle cx="260" cy="104" r="4" style="fill:var(--green)"/><circle cx="300" cy="96" r="4" style="fill:var(--green)"/><circle cx="340" cy="110" r="4" style="fill:var(--green)"/><circle cx="380" cy="90" r="4" style="fill:var(--green)"/><circle cx="420" cy="106" r="4" style="fill:var(--green)"/><circle cx="460" cy="94" r="4" style="fill:var(--green)"/><circle cx="500" cy="108" r="4" style="fill:var(--green)"/><circle cx="540" cy="92" r="4" style="fill:var(--green)"/><circle cx="580" cy="105" r="4" style="fill:var(--green)"/>
+            <text x="320" y="196" text-anchor="middle" style="fill:var(--text3);font-size:11px">fitted value →</text>
+          </svg></div>
+          <div class="sl-verdict"><strong>Constant band.</strong> The spread of residuals stays roughly the same width across the whole range of fitted values — nothing for X to predict about eᵢ².</div>
+        </div>
+        <div class="sl-panel" id="bp-2">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Residuals versus fitted values fanning out, tight on the left and widely scattered on the right">
+            <line x1="20" y1="100" x2="620" y2="100" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:2,3"/>
+            <line x1="20" y1="180" x2="620" y2="180" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="20" y1="20" x2="20" y2="180" style="stroke:var(--border2);stroke-width:1"/>
+            <circle cx="50" cy="98" r="4" style="fill:var(--amber)"/><circle cx="80" cy="102" r="4" style="fill:var(--amber)"/><circle cx="110" cy="99" r="4" style="fill:var(--amber)"/><circle cx="150" cy="94" r="4" style="fill:var(--amber)"/><circle cx="190" cy="106" r="4" style="fill:var(--amber)"/><circle cx="230" cy="85" r="4" style="fill:var(--amber)"/><circle cx="260" cy="118" r="4" style="fill:var(--amber)"/><circle cx="300" cy="70" r="4" style="fill:var(--amber)"/><circle cx="330" cy="132" r="4" style="fill:var(--amber)"/><circle cx="370" cy="55" r="4" style="fill:var(--amber)"/><circle cx="400" cy="148" r="4" style="fill:var(--amber)"/><circle cx="440" cy="40" r="4" style="fill:var(--amber)"/><circle cx="470" cy="162" r="4" style="fill:var(--amber)"/><circle cx="510" cy="28" r="4" style="fill:var(--amber)"/><circle cx="540" cy="172" r="4" style="fill:var(--amber)"/><circle cx="580" cy="22" r="4" style="fill:var(--amber)"/><circle cx="600" cy="178" r="4" style="fill:var(--amber)"/>
+            <text x="320" y="196" text-anchor="middle" style="fill:var(--text3);font-size:11px">fitted value →</text>
+          </svg></div>
+          <div class="sl-verdict"><strong>Fanning out.</strong> Residuals stay tight for small fitted values and scatter wildly for large ones — the classic pattern common in return series where volatility itself varies with the level of some driver.</div>
+        </div>
+      </div>
+      <p class="sl-p">A significant Breusch-Pagan result means the single "one standard error fits all observations" number is wrong in the same direction as autocorrelation — it understates the true uncertainty exactly where variance is largest, making the coefficient look more precisely estimated than it should.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Jarque-Bera: does the shape look normal?</h2>
+      <p class="sl-sub">Not spread, not stickiness — the overall shape of the residual distribution, combined into one number.</p>
+      <div class="sl-row"><div class="sl-box">JB = (n/6)·(S² + K²/4)</div></div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">S</div><div><h4>Skewness</h4><p>Lopsidedness — a long tail stretching one direction while the bulk of the mass sits on the other. Zero for a perfectly symmetric distribution.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">K</div><div><h4>Excess kurtosis</h4><p>How much fatter the tails are than a normal distribution's, with normal itself defined as 0. Positive means more extreme outliers than a bell curve predicts.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">χ²</div><div><h4>The verdict</h4><p>JB is compared against a χ² distribution with 2 degrees of freedom — large S or K, or both, pushes JB up and rejects "these residuals look normal."</p></div></div>
+      </div>
+      <p class="sl-p">The classical t-test is exact when residuals are normal, and otherwise justified only asymptotically — by the Central Limit Theorem, which says the sampling distribution of β̂ approaches normality as sample size grows, regardless of the residuals' own shape. With enough data, non-normal residuals stop mattering much. With a small sample, that averaging hasn't had enough terms to do its smoothing work yet — precisely when a low p-value is most tempting to over-trust and least backed by the assumptions it needs.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">A p-value of 0.01 that isn't what it looks like</h2>
+      <p class="sl-sub">A researcher regresses next-day FX returns on a yield-spread signal. Two years of daily data. p = 0.01.</p>
+      <div class="sl-quote">Before trusting it, the researcher checks residual diagnostics, as the house rule requires. Durbin-Watson comes back at DW = 0.6 — squarely in strongly-positive-autocorrelation territory, because a yield-spread signal changes slowly day to day, so a persistent pricing error against it is exactly the kind of slow-moving mis-specification this test is built to catch.</div>
+      <p class="sl-p">Using the calculator from Section 4: DW = 0.6 implies ρ̂ ≈ 0.7, and with roughly 500 trading days that shrinks the effective sample size to n_eff ≈ 88. The regression's classical standard error was computed as though it had 500 independent observations backing it; the honest number is closer to what 88 would support. Recomputing with Newey-West (HAC) standard errors — which correct for exactly this — the p-value is nowhere near 0.01 once corrected; it's plausibly back in "not distinguishable from noise" territory.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">What did NOT happen here</div>
+        <p>The original 0.01 p-value wasn't a miscalculation — it's an honest answer to the wrong question. The classical formula answers "how significant would this be if the residuals were independent," and here they simply weren't. β̂ itself might still be a reasonable read on the relationship's direction and rough size; the confidence the raw p-value implied was manufactured by the autocorrelation, not earned by the data.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Where these three get misread</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Common misreadings</span>
+          <ul>
+            <li>Treating a failure as proof the relationship is fake — it's the standard error that's wrong, not necessarily β̂</li>
+            <li>Assuming DW ≈ 2 means the model is fully "cleared" — it only rules out lag-1 autocorrelation, not longer lags, heteroskedasticity, or normality</li>
+            <li>Reading a fan-shaped Breusch-Pagan failure as pure noise when it's really a wrong functional form forced through a curve</li>
+            <li>Over-weighting a "significant" Jarque-Bera on 10,000 rows — JB scales with n, and non-normality matters least exactly where samples are large</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">The correct read</span>
+          <ul>
+            <li>A failure means: recompute inference with a robust method, don't discard the coefficient</li>
+            <li>Each test checks a separate axis — passing one says nothing about the other two</li>
+            <li>Always look at the actual residuals-vs-fitted scatter, not just the test's p-value</li>
+            <li>Read the actual skewness/kurtosis numbers, weighted by how small the sample really is</li>
+          </ul>
+        </div>
+      </div>
+      <p class="sl-p">A regression can pass all three diagnostics in-sample and still fail completely out-of-sample — the checks verify the inference procedure was honestly computed, not that the relationship is durable. Both checks matter, and they check different things.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">A pre-trust gate, not a post-mortem</h2>
+      <p class="sl-sub">Fit the regression, then before quoting the p-value to anyone — including yourself — run all three checks.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🩹</div><div><h4>Autocorrelation → Newey-West / HAC</h4><p>Corrects for both autocorrelation and heteroskedasticity without respecifying the model, or add lagged terms to soak up the serial structure directly.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🩹</div><div><h4>Heteroskedasticity → White / robust SE</h4><p>Or model the variance directly — a GARCH-type approach is the time-series analogue of exactly this problem.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🩹</div><div><h4>Non-normality → more data or bootstrap</h4><p>Collect more independent observations to let the CLT do its job, or use bootstrap standard errors, which resample the data instead of assuming a shape.</p></div></div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">A screening step before, not a substitute for, out-of-sample validation</div>
+        <p>Passing all three diagnostics only means the in-sample significance claim is honestly computed — it says nothing about whether the relationship holds up on data the model hasn't seen. An in-sample number, however carefully diagnosed, is not evidence on its own.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Where this stands in this repo, right now</h2>
+      <p class="sl-sub">The rule this lesson derives isn't hypothetical — it's already written down as house discipline.</p>
+      <div class="sl-quote">"Add residual diagnostics to any regression-based signal: Durbin-Watson (autocorrelation), Jarque-Bera (residual normality), Breusch-Pagan (heteroskedasticity) before trusting its p-value/coefficient. A statistically 'significant' coefficient on a heteroskedastic fit has optimistic standard errors — check before leaning on it." — this project's own backtest-build-discipline notes</div>
+      <p class="sl-p">The two ingredient statistics Jarque-Bera needs are already built and in production for a different purpose: a Fisher-Pearson sample-skewness function and an excess-kurtosis function (normal = 0) already compute a strategy's raw return-distribution shape for its Probabilistic Sharpe Ratio. Jarque-Bera would repurpose those same building blocks on a regression's residuals instead of a strategy's P&amp;L — the rule is written down and the ingredients exist, though Durbin-Watson and Breusch-Pagan themselves aren't yet wired up as a reusable checked-in function.</p>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">Checked against the codebase</div>
+        <p>Both claims above were verified directly against the repo rather than assumed: the discipline quote still appears verbatim in the project's build-rules notes, and the skewness/excess-kurtosis functions exist and are actively used elsewhere — the ingredients this lesson describes are real, present-tense facts about this codebase, not aspirational ones.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>A regression has DW ≈ 2. What does that tell you?</h4>
+        <button class="sl-quiz-opt" data-correct="true">No meaningful lag-1 autocorrelation in the residuals</button>
+        <button class="sl-quiz-opt">The residuals are definitely homoskedastic and normal too</button>
+        <button class="sl-quiz-opt">The relationship will hold up out of sample</button>
+        <div class="sl-quiz-explain">DW ≈ 2 only clears lag-1 autocorrelation. It says nothing about longer-lag structure, heteroskedasticity, normality, or out-of-sample durability — those are separate checks.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Why does positive residual autocorrelation make a p-value look more significant than it should?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It shrinks the effective sample size below n, but the classical formula still divides by the raw n</button>
+        <button class="sl-quiz-opt">It changes the value of β̂ itself to look larger</button>
+        <button class="sl-quiz-opt">It has no effect on the p-value, only on R²</button>
+        <div class="sl-quiz-explain">Consecutive autocorrelated residuals restate the same information instead of each adding something new, so the true independent-evidence count (n_eff) is smaller than n — but the classical SE formula still assumes n independent draws, understating uncertainty.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>What does the Breusch-Pagan test actually regress on what?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Squared residuals (eᵢ²) on the original predictor(s) X</button>
+        <button class="sl-quiz-opt">Y on the lagged residuals</button>
+        <button class="sl-quiz-opt">The fitted values on the raw residuals</button>
+        <div class="sl-quiz-explain">It fits an auxiliary regression of eᵢ² on X. If X has real power to predict the squared residuals, the residual variance isn't constant — heteroskedasticity.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>A regression fails Durbin-Watson but its point estimate looks economically sensible. What's the right response?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Recompute inference with Newey-West/HAC standard errors — don't throw away β̂</button>
+        <button class="sl-quiz-opt">Discard the coefficient entirely — the relationship is proven fake</button>
+        <button class="sl-quiz-opt">Ignore it — DW failures never matter in practice</button>
+        <div class="sl-quiz-explain">β̂ is derived from minimizing squared residuals and doesn't assume anything about serial structure — it can still be a reasonable estimate. What's broken is specifically the classical standard error, fixed with a robust method.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Why does Jarque-Bera matter more in a small sample than a large one?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The Central Limit Theorem hasn't had enough observations yet to smooth over non-normal residuals</button>
+        <button class="sl-quiz-opt">The JB formula itself is only defined for n &lt; 100</button>
+        <button class="sl-quiz-opt">Large samples always have more skew than small ones</button>
+        <div class="sl-quiz-explain">The classical t-test is exact under normal errors and otherwise justified asymptotically by the CLT. With enough data, that averaging smooths over non-normal shape regardless. With few observations, it hasn't — so a skewed or fat-tailed residual distribution distorts the t-statistic directly.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>A point estimate and an inference claim are two different things — β̂ is robust to residual misbehavior, its standard error, t-statistic, and p-value are not.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Durbin-Watson checks autocorrelation: DW ≈ 2 means independent residuals, toward 0 means positive (p-values look too good), toward 4 means negative.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Breusch-Pagan checks heteroskedasticity by regressing squared residuals on X — if X predicts them, one "standard error fits all" is wrong.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Jarque-Bera checks the residuals' shape via skewness and kurtosis, and matters most exactly when the sample is small enough that the CLT hasn't kicked in.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>A diagnostic failure means fix the inference (HAC/Newey-West, robust SE, bootstrap) — it doesn't mean the coefficient is fake.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Passing all three is not out-of-sample evidence — it only certifies the in-sample significance claim was honestly computed.</p></div>
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">What this now lets you do</div>
+        <p>Read a regression's p-value with appropriate suspicion, run all three residual checks before trusting it, recognize which specific fix a given failure calls for, and tell a genuine variance problem apart from a misspecified functional form wearing the same fan-shaped disguise.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Model Selection: AIC &amp; BIC</h3>
+        <p>Why a model that fits better in-sample can still be the wrong one to pick, and the penalty terms that punish complexity for its own sake.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="model-selection-aic-bic-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="regression-diagnostics.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Durbin-Watson → rho-hat → effective sample size, live.
+  (function(){
+    var dw = document.getElementById('dwc-dw');
+    if (!dw) return;
+    var n = document.getElementById('dwc-n');
+    var rhoOut = document.getElementById('dwc-rho');
+    var neffOut = document.getElementById('dwc-neff');
+    var resetBtn = document.getElementById('dwc-reset');
+    var DEFAULTS = { dw: 0.6, n: 500 };
+
+    function fmt(x, d){ return isFinite(x) ? x.toFixed(d) : '—'; }
+
+    function recompute(){
+      var dwv = parseFloat(dw.value), nv = parseFloat(n.value);
+      if (!isFinite(dwv) || !isFinite(nv) || dwv < 0 || dwv > 4 || nv <= 0) {
+        rhoOut.textContent = '—';
+        neffOut.textContent = '—';
+        return;
+      }
+      var rho = 1 - dwv / 2;
+      rhoOut.textContent = fmt(rho, 2);
+      var denom = 1 + rho;
+      if (denom <= 1e-9) {
+        neffOut.textContent = 'undefined (ρ̂ → −1)';
+        return;
+      }
+      var neff = nv * (1 - rho) / denom;
+      neffOut.textContent = Math.max(0, Math.round(neff)).toString();
+    }
+
+    [dw, n].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      dw.value = DEFAULTS.dw; n.value = DEFAULTS.n;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

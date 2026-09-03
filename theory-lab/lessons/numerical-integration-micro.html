@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Numerical Integration — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Numerical Integration — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer full derivations, a live calculator, and a 5-question self-test?<a href="numerical-integration.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Numerical Methods 4 · Numerical Methods</div>
+      <h1 class="sl-h1">Numerical Integration, <em>When the Area Under the Curve Has No Formula</em></h1>
+      <p class="sl-lede">A price is very often, underneath the vocabulary, just an area under a curve — an integral. When that curve is a textbook shape, calculus hands back a clean formula. The moment it isn't — an exotic payoff, a nonstandard distribution — there's no algebraic shortcut left, and the area has to be estimated numerically instead. This deck covers the two families of tool that do that, and the one fact that decides which one to reach for.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">When calculus runs out of formula</h2>
+      <p class="sl-sub">Every price, probability, and expectation below reduces to the same calculus object.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">∫</div><div><h4>A price is often just an area under a curve</h4><p>"What's this option worth" is, in the risk-neutral framework, an expectation — the payoff integrated against a probability density. "What's the probability X lands here" is the area under its density curve.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⊘</div><div><h4>Some curves have no antiderivative</h4><p>A lognormal density paired with a vanilla payoff gives Black-Scholes, a clean formula. An exotic payoff or a nonstandard distribution breaks that — the integral simply has no algebraic answer to solve for.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧮</div><div><h4>Two families of tool, same target</h4><p>Deterministic quadrature lays down a fixed grid and adds up the pieces. Monte Carlo samples randomly instead. Both estimate the exact same integral — the rest of this deck is when to use which.</p></div></div>
+      </div>
+      <div class="sl-quote">Black-Scholes being a clean algebraic expression is the exception, not the rule — it only happens because the lognormal density and a vanilla payoff are an unusually cooperative pairing. Change either piece and the formula disappears, but the underlying question — "what's the area under this curve" — doesn't.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">The trapezoidal rule — straight edges under a curve</h2>
+      <p class="sl-sub">Chop the interval into thin strips, replace the curved top of each strip with a straight line, and add up the trapezoids.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Concept</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A curve with four shaded trapezoids drawn underneath it, approximating the area under the curve">
+            <line x1="30" y1="180" x2="610" y2="180" style="stroke:var(--border2);stroke-width:1"/>
+            <polygon points="49,180 49,154 221,85 221,180" style="fill:var(--blue);opacity:.18;stroke:var(--blue);stroke-width:1"/>
+            <polygon points="221,180 221,85 369,62 369,180" style="fill:var(--blue);opacity:.18;stroke:var(--blue);stroke-width:1"/>
+            <polygon points="369,180 369,62 492,85 492,180" style="fill:var(--blue);opacity:.18;stroke:var(--blue);stroke-width:1"/>
+            <polygon points="492,180 492,85 591,138 591,180" style="fill:var(--blue);opacity:.18;stroke:var(--blue);stroke-width:1"/>
+            <path d="M49,154 Q320,15 591,138" style="fill:none;stroke:var(--border2);stroke-width:1.5;stroke-dasharray:3,3"/>
+            <polyline points="49,154 221,85 369,62 492,85 591,138" style="fill:none;stroke:var(--blue);stroke-width:2.5"/>
+            <circle cx="49" cy="154" r="4" style="fill:var(--blue)"/>
+            <circle cx="221" cy="85" r="4" style="fill:var(--blue)"/>
+            <circle cx="369" cy="62" r="4" style="fill:var(--blue)"/>
+            <circle cx="492" cy="85" r="4" style="fill:var(--blue)"/>
+            <circle cx="591" cy="138" r="4" style="fill:var(--blue)"/>
+            <text x="320" y="30" text-anchor="middle" style="fill:var(--text3);font-size:11px">dashed = true curve</text>
+          </svg>
+        </div>
+        <div class="sl-row">
+          <div class="sl-box">h/2</div>
+          <div class="sl-arrow">×</div>
+          <div class="sl-box">[ f(x₀) + 2f(x₁) + 2f(x₂) + ⋯ + 2f(xₙ₋₁) + f(xₙ) ]</div>
+        </div>
+        <div class="sl-verdict">The two endpoints are counted once each. Every interior point is shared by two neighboring trapezoids — so it's counted <strong>twice</strong>.</div>
+      </div>
+      <p class="sl-p">Split [a,b] into n equal strips of width h = (b−a)/n. Within each strip, a straight line connecting the two sample points stands in for the true curve — the strip's area is then exactly a trapezoid's area, average height times width. The trapezoidal rule's error shrinks proportionally to h² (equivalently 1/n²): <strong>doubling the strip count roughly quarters the error.</strong></p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 2, continued</div>
+      <h2 class="sl-h2">Simpson's rule — fitting parabolas instead of lines</h2>
+      <p class="sl-sub">One extra point per piece buys a parabola instead of a straight line — and a much better error rate, for free.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Trapezoidal rule</span>
+          <div class="sl-svgwrap">
+            <svg viewBox="0 0 260 130" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A curve with straight line segments connecting sample points">
+              <path d="M20,100 Q130,10 240,90" style="fill:none;stroke:var(--border2);stroke-width:1.5;stroke-dasharray:3,3"/>
+              <polyline points="20,100 90,55 150,40 200,55 240,90" style="fill:none;stroke:var(--blue);stroke-width:2.5"/>
+              <circle cx="20" cy="100" r="3" style="fill:var(--blue)"/><circle cx="90" cy="55" r="3" style="fill:var(--blue)"/>
+              <circle cx="150" cy="40" r="3" style="fill:var(--blue)"/><circle cx="200" cy="55" r="3" style="fill:var(--blue)"/>
+              <circle cx="240" cy="90" r="3" style="fill:var(--blue)"/>
+            </svg>
+          </div>
+          <p>Straight lines between consecutive points. Error shrinks with h² as strips narrow.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag green">Simpson's rule</span>
+          <div class="sl-svgwrap">
+            <svg viewBox="0 0 260 130" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A curve with a smooth parabolic fit tracking closely along the true curve">
+              <path d="M20,100 Q130,10 240,90" style="fill:none;stroke:var(--border2);stroke-width:1.5;stroke-dasharray:3,3"/>
+              <path d="M20,100 Q90,48 150,40 Q200,35 240,90" style="fill:none;stroke:var(--green);stroke-width:2.5"/>
+              <circle cx="20" cy="100" r="3" style="fill:var(--green)"/><circle cx="90" cy="55" r="3" style="fill:var(--green)"/>
+              <circle cx="150" cy="40" r="3" style="fill:var(--green)"/><circle cx="200" cy="55" r="3" style="fill:var(--green)"/>
+              <circle cx="240" cy="90" r="3" style="fill:var(--green)"/>
+            </svg>
+          </div>
+          <p>Parabolas fitted through each triple of points hug the true curve far more closely. Error shrinks with h⁴.</p>
+        </div>
+      </div>
+      <div class="sl-row">
+        <div class="sl-box green">h/3</div>
+        <div class="sl-arrow">×</div>
+        <div class="sl-box green">[ f(x₀) + 4f(x₁) + 2f(x₂) + 4f(x₃) + ⋯ + f(xₙ) ]</div>
+      </div>
+      <p class="sl-p">The alternating 4-2-4-2…-4 weighting (endpoints weighted 1) falls straight out of fitting and integrating a parabola through each successive triple of points — it isn't an arbitrary convention. Halving the step size cuts Simpson's error to roughly a <strong>sixteenth</strong> of what it was, versus a quarter for the trapezoidal rule.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Where this breaks down</div>
+        <p>Both rules assume the curve is smooth enough for a local straight-line or parabolic fit to be accurate. A payoff with a kink inside one panel — a digital or barrier feature — breaks that assumption, and Simpson's impressive h⁴ rate can silently collapse back toward, or worse than, the plain trapezoidal rate. Splitting the range at any known kink is the standard fix.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Watch the approximation converge</h2>
+      <p class="sl-sub">Trapezoidal rule estimating ∫₀¹ φ(z) dz — the standard normal density between 0 and 1. Drag the slider.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The standard normal density curve between 0 and 1 with shaded trapezoids underneath, updating as the number of strips changes">
+            <line x1="30" y1="230" x2="610" y2="230" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="151.3" y1="20" x2="151.3" y2="240" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"/>
+            <line x1="488.8" y1="20" x2="488.8" y2="240" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"/>
+            <text x="151.3" y="254" text-anchor="middle" style="fill:var(--text3);font-size:11px">z=0</text>
+            <text x="488.8" y="254" text-anchor="middle" style="fill:var(--text3);font-size:11px">z=1</text>
+            <g id="ni-trapgroup"></g>
+            <path style="fill:none;stroke:var(--blue);stroke-width:2.5" d="M50.0,39.3 66.9,36.7 83.8,34.5 100.6,32.8 117.5,31.5 134.4,30.8 151.3,30.5 168.1,30.8 185.0,31.5 201.9,32.8 218.8,34.5 235.6,36.7 252.5,39.3 269.4,42.4 286.3,45.9 303.1,49.7 320.0,54.0 336.9,58.5 353.7,63.4 370.6,68.5 387.5,73.9 404.4,79.4 421.3,85.2 438.1,91.0 455.0,97.0 471.9,103.0 488.8,109.0 505.6,115.1 522.5,121.1 539.4,127.0 556.3,132.9 573.1,138.7 590.0,144.3"/>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Number of strips (n)</span><span class="sl-live" id="ni-nval">n = 4</span></div>
+        <input type="range" class="sl-slider" id="ni-slider" min="1" max="20" step="1" value="4">
+        <div class="sl-verdict" id="ni-readout" style="margin-top:12px">Trapezoidal estimate (n=4): 0.34008 — True Φ(1)−Φ(0): 0.34134 — error: −0.00126</div>
+        <div class="sl-note">The curve is only mildly concave over [0,1], so even a handful of strips gets within a fraction of a percent of the true area — per the h² error rate, doubling n from 4 to 8 should cut the error to roughly a quarter of its current size.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 3, continued</div>
+      <h2 class="sl-h2">Build your own trapezoidal estimate</h2>
+      <p class="sl-sub">Same φ(z) curve. Change the bounds or the strip count — everything recomputes live.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Lower bound a</label><input type="number" class="sl-input" id="ni2-a" value="0" step="0.25"></div>
+          <div class="sl-calc-op">to</div>
+          <div class="sl-calc-field"><label>Upper bound b</label><input type="number" class="sl-input" id="ni2-b" value="1" step="0.25"></div>
+          <div class="sl-calc-op">in</div>
+          <div class="sl-calc-field"><label>Strips n</label><input type="number" class="sl-input" id="ni2-n" value="4" step="1" min="1"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Trapezoidal estimate</div>
+            <div class="sl-calc-result-val" id="ni2-result">0.34008</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Step size h = (b−a)/n = <b id="ni2-h">0.2500</b></div>
+          <div>True value Φ(b)−Φ(a) = <b id="ni2-true">0.34134</b></div>
+          <div>Error = <b id="ni2-error">−0.00126</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="ni2-reset">Reset to worked-example numbers</button>
+        <div class="sl-note">n must be a whole number of 1 or more — a blank, non-numeric, or zero strip count shows "—" instead of dividing by zero.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Same budget, three answers</h2>
+      <p class="sl-sub">Same integral, ∫₀¹ φ(z) dz = 0.34134. Same budget: 5 function evaluations. Compare the methods.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="method-tabs">
+          <button class="sl-tab active" data-panel="method-1">Trapezoidal (n=4)</button>
+          <button class="sl-tab" data-panel="method-2">Simpson's (n=4)</button>
+          <button class="sl-tab" data-panel="method-3">Monte Carlo (N=5)</button>
+        </div>
+        <div class="sl-panel active" id="method-1">
+          <div class="sl-row"><div class="sl-box">0.34008</div><div class="sl-arrow">vs</div><div class="sl-box green">0.34134</div></div>
+          <div class="sl-verdict">Error <strong>−0.00126</strong> — a relative error under 0.4%, from 5 evenly-spaced evaluations and straight lines between them.</div>
+        </div>
+        <div class="sl-panel" id="method-2">
+          <div class="sl-row"><div class="sl-box">0.34136</div><div class="sl-arrow">vs</div><div class="sl-box green">0.34134</div></div>
+          <div class="sl-verdict">Error <strong>+0.00002</strong> — over 50× closer than the trapezoidal rule, from the exact same 5 points, just fitted with parabolas instead of lines.</div>
+        </div>
+        <div class="sl-panel" id="method-3">
+          <div class="sl-row"><div class="sl-box amber">0.33629</div><div class="sl-arrow">vs</div><div class="sl-box green">0.34134</div></div>
+          <div class="sl-verdict">Error <strong>−0.00505</strong> — one illustrative run of 5 random draws (a different run would give a different error; that's the sampling noise Monte Carlo trades for dimension-independence).</div>
+        </div>
+      </div>
+      <p class="sl-p">At this low budget and this low dimension (1D), the ranking is clear: Simpson's rule &gt; trapezoidal rule &gt; Monte Carlo, all evaluated the exact same number of times. That ranking is about to flip completely — the next two slides show why.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Grids don't scale — the curse of dimensionality</h2>
+      <p class="sl-sub">A d-dimensional grid needs roughly n points along every dimension — nᵈ evaluations in total.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">10¹</div><div><h4>1 dimension — 10 grid points</h4><p>Trivial. A single underlying's terminal distribution, gridded at 10 points, is nothing.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">10²</div><div><h4>2 dimensions — 100 grid points</h4><p>Still easy. Two correlated underlyings, same 10-per-axis density.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">10³</div><div><h4>3 dimensions — 1,000 grid points</h4><p>Getting heavier, but still computable on ordinary hardware.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">10¹⁰</div><div><h4>10 dimensions — 10,000,000,000 grid points</h4><p>A basket of just 10 underlyings. Ten billion evaluations — already infeasible.</p></div></div>
+      </div>
+      <p class="sl-p">A structuring desk pricing a 7-underlying basket option with even a modest 15-point-per-dimension grid needs 15⁷ ≈ 170 billion evaluations — not slow, <strong>outright impossible</strong> on any available hardware in a workable timeframe. Every monitoring date on a path-dependent payoff effectively adds another dimension to this same problem.</p>
+      <div class="sl-quote">A grid method that works comfortably in 1 or 2 dimensions can look like it should "just scale up" to 3 or 4 — the exponential cost only becomes obvious once someone actually tries to run it, by which point real development time may already be sunk into an approach that has to be thrown out.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Monte Carlo — sampling instead of gridding</h2>
+      <p class="sl-p">An expectation E[g(X)] of a function g of a random variable X with density p is itself an integral: E[g(X)] = ∫g(x)p(x)dx. The law of large numbers says averaging many independent draws of g(X) converges to that same expectation — draw N samples from p, evaluate g at each, and average:</p>
+      <div class="sl-row">
+        <div class="sl-box">∫g(x)p(x)dx</div>
+        <div class="sl-arrow">≈</div>
+        <div class="sl-box green">(1/N) Σ g(xᵢ)</div>
+      </div>
+      <div class="sl-verdict">xᵢ are N independent random draws — not an evenly-spaced grid. By the Central Limit Theorem, the error of this estimate shrinks proportionally to <strong>1/√N, regardless of the dimension of x</strong>.</div>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Deterministic quadrature</span>
+          <ul>
+            <li>Far more accurate per evaluation point, in 1-2 dimensions</li>
+            <li>Error rate (h², h⁴) doesn't depend on randomness</li>
+            <li>Cost is nᵈ — explodes exponentially with dimension d</li>
+            <li>Infeasible past roughly 2-3 dimensions</li>
+          </ul>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Monte Carlo integration</span>
+          <ul>
+            <li>Slower to converge than quadrature at low dimension</li>
+            <li>Error shrinks at a fixed 1/√N rate — no exponential term</li>
+            <li>Drawing N points in 10 dimensions costs the same N evaluations as 1 dimension</li>
+            <li>The only tractable option once dimensionality is genuinely high</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Where practitioners actually reach for each</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📐</div><div><h4>Characteristic-function option pricing</h4><p>Heston- and SABR-style models price via a 1D Fourier integral of a characteristic function — routinely evaluated with Simpson's rule or Gauss-Legendre quadrature, never simulation.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎲</div><div><h4>Path-dependent &amp; basket derivatives</h4><p>Every monitoring date or additional underlying adds a dimension — Monte Carlo's dimension-independent cost is what makes these tractable at all.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧭</div><div><h4>Quasi-Monte Carlo — the middle ground</h4><p>Low-discrepancy sequences (Sobol, Halton) replace true randomness with structured points, often converging faster in practice for moderately high-dimensional, smooth problems.</p></div></div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Real-world scenario</div>
+        <p>A 7-underlying basket call is a genuinely 7-dimensional pricing integral. A grid at 15 points per dimension needs 15⁷ ≈ 170 billion evaluations — impossible. Drawing 1 million joint samples of the 7 underlyings and averaging the payoff costs exactly 1 million evaluations, dimension irrelevant — the standard reason this desk reaches for simulation, not a grid. Halving that Monte Carlo error needs 4 million draws instead of 1 million: a real, but polynomial, cost — nothing like the grid's exponential wall.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Where this goes wrong in practice</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>A kink inside a Simpson's panel</h4><p>A digital or barrier payoff's kink breaks the smooth-curvature assumption a parabola fit relies on — the h⁴ advantage can silently degrade back toward, or past, the trapezoidal rate.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>Underestimating the curse until it's too late</h4><p>A grid that works at 1-2 dimensions looks like it should scale — the exponential wall only becomes obvious once someone tries to actually run it at 5 or 7.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>Treating one Monte Carlo run as the whole story</h4><p>1/√N is an average-case statement about repeated sampling. A single run at finite N still carries real sampling noise — reporting a point estimate without its standard error overstates precision.</p></div></div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying — checked against this repo's actual code</div>
+        <p>The full lesson flags numerical integration as a concept not built or tested in this repo — that check still holds: no trapezoidal-rule, Simpson's-rule, or general quadrature code exists anywhere in this codebase today. This repo's <code>js/backtestStats.js</code> does have real, live Monte Carlo tooling, but it's a different application of the idea: it shuffles trade order (and bootstraps trades with replacement) to estimate path-dependent drawdown risk, not to evaluate an arbitrary integral. That's consistent with how this deck frames it — the same random-sampling machinery, one layer more fundamental here than in that resampling use case.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Doubling the number of strips in the trapezoidal rule (halving h) is expected to cut the error to roughly:</h4>
+        <button class="sl-quiz-opt" data-correct="true">A quarter of its previous size</button>
+        <button class="sl-quiz-opt">Half its previous size</button>
+        <button class="sl-quiz-opt">A sixteenth of its previous size</button>
+        <div class="sl-quiz-explain">The trapezoidal rule's error is O(h²) — halving h roughly quarters the error. A sixteenth is Simpson's O(h⁴) rate, not the trapezoidal rule's.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>What's the key structural difference between Simpson's rule and the trapezoidal rule?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Simpson's fits a parabola through each three consecutive points, instead of a straight line between two</button>
+        <button class="sl-quiz-opt">Simpson's uses random sampling instead of a fixed grid</button>
+        <button class="sl-quiz-opt">Simpson's rule only works in more than one dimension</button>
+        <div class="sl-quiz-explain">Both are deterministic 1D grid methods. Simpson's uses one extra point per panel to fit a parabola instead of a line — the source of its much better h⁴ error rate on smooth functions.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>A grid with 10 points per dimension needs 10ᵈ evaluations. For d = 10 dimensions, that's:</h4>
+        <button class="sl-quiz-opt" data-correct="true">10 billion (10¹⁰)</button>
+        <button class="sl-quiz-opt">100</button>
+        <button class="sl-quiz-opt">10,000</button>
+        <div class="sl-quiz-explain">10¹⁰ = 10,000,000,000 — the exponential blow-up that makes a grid infeasible past a couple of dimensions, exactly what makes a 10-underlying basket untouchable by quadrature.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Why doesn't Monte Carlo's error rate depend on the number of dimensions?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Drawing an N-point random sample costs the same N evaluations regardless of how many coordinates each point has</button>
+        <button class="sl-quiz-opt">Because Monte Carlo secretly uses a grid too, just a finer one</button>
+        <button class="sl-quiz-opt">Because higher dimensions make random sampling more accurate</button>
+        <div class="sl-quiz-explain">A 10-dimensional random point has more coordinates, but generating and evaluating it isn't intrinsically harder than a 1-dimensional one — the cost is exactly N evaluations either way, with no nᵈ term hiding anywhere.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>To cut a Monte Carlo estimate's error in half, roughly how many times more samples are needed?</h4>
+        <button class="sl-quiz-opt" data-correct="true">4× (since error shrinks as 1/√N)</button>
+        <button class="sl-quiz-opt">2×</button>
+        <button class="sl-quiz-opt">16×</button>
+        <div class="sl-quiz-explain">Error ∝ 1/√N, so halving it needs N to grow by a factor of 4 (√4 = 2). A real cost, but a fixed, polynomial one — unlike a grid's dimension-dependent exponential cost.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Some integrals — many pricing expectations, especially with exotic payoffs or nonstandard densities — have no closed-form antiderivative and must be estimated numerically.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>The trapezoidal rule sums trapezoid-shaped strips under straight-line fits — its error shrinks with h², so doubling the strip count roughly quarters the error.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Simpson's rule fits a parabola through each three consecutive points instead — a much better h⁴ error rate for smooth functions, at essentially no extra conceptual cost.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Both are grids, and grids don't scale — a d-dimensional grid needs roughly nᵈ points, the curse of dimensionality that makes them infeasible past 2-3 dimensions.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Monte Carlo replaces the grid with random sampling — its error shrinks at a fixed 1/√N rate, regardless of how many dimensions the problem has.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>The trade-off is real: quadrature is faster and far more accurate per point in 1-2 dimensions; Monte Carlo is the only tractable option once dimensionality is genuinely high.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Recognize when a price or an expectation has no closed-form answer and needs numerical estimation instead. Reach for the trapezoidal or Simpson's rule for a genuinely low-dimensional, smooth problem — and switch to Monte Carlo the instant a payoff depends on several correlated underlyings or monitoring dates, understanding exactly why that switch happens and roughly what accuracy-per-cost to expect from each.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>FFT Option Pricing (Carr-Madan)</h3>
+        <p>A different way to sidestep a hard integral entirely for a huge class of models: turn the pricing integral into a Fourier transform, computed at blazing speed across an entire strike range via the FFT.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="fft-option-pricing-carr-madan-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="numerical-integration.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Shared standard-normal PDF and erf-based CDF, used by both the slider
+  // chart and the calculator below.
+  function phi(z){ return Math.exp(-z * z / 2) / Math.sqrt(2 * Math.PI); }
+  function erf(x){
+    var sign = x >= 0 ? 1 : -1;
+    x = Math.abs(x);
+    var a1=0.254829592, a2=-0.284496736, a3=1.421413741, a4=-1.453152027, a5=1.061405429, p=0.3275911;
+    var t = 1 / (1 + p * x);
+    var y = 1 - (((((a5*t+a4)*t)+a3)*t+a2)*t+a1)*t*Math.exp(-x*x);
+    return sign * y;
+  }
+  function Phi(z){ return 0.5 * (1 + erf(z / Math.SQRT2)); }
+
+  // Slide 5 — interactive slider, trapezoids drawn live under the phi curve.
+  (function(){
+    var slider = document.getElementById('ni-slider');
+    if (!slider) return;
+    var nVal = document.getElementById('ni-nval');
+    var trapGroup = document.getElementById('ni-trapgroup');
+    var readout = document.getElementById('ni-readout');
+    var TRUE_VALUE = Phi(1) - Phi(0);
+
+    // Chart pixel mapping: z in [-0.3, 1.3] -> px [50,590]; phi in [0,0.42] -> px [230(bottom),20(top)].
+    function mapX(z){ return 50 + (z + 0.3) * (540 / 1.6); }
+    function mapY(y){ return 230 - y * (210 / 0.42); }
+
+    function update(){
+      var n = parseInt(slider.value, 10);
+      nVal.textContent = 'n = ' + n;
+      var h = 1 / n;
+
+      var sum = 0;
+      var svg = '';
+      for (var i = 0; i < n; i++){
+        var z0 = i * h, z1 = (i + 1) * h;
+        var y0 = phi(z0), y1 = phi(z1);
+        sum += (y0 + y1) / 2 * h;
+        var x0 = mapX(z0), x1 = mapX(z1);
+        var py0 = mapY(y0), py1 = mapY(y1);
+        var base = mapY(0);
+        svg += '<polygon points="' + x0.toFixed(1) + ',' + base.toFixed(1) + ' ' + x0.toFixed(1) + ',' + py0.toFixed(1) + ' ' + x1.toFixed(1) + ',' + py1.toFixed(1) + ' ' + x1.toFixed(1) + ',' + base.toFixed(1) + '" style="fill:var(--blue);opacity:.22;stroke:var(--blue);stroke-width:1"></polygon>';
+      }
+      trapGroup.innerHTML = svg;
+
+      var error = sum - TRUE_VALUE;
+      readout.textContent = 'Trapezoidal estimate (n=' + n + '): ' + sum.toFixed(5) + ' — True Φ(1)−Φ(0): ' + TRUE_VALUE.toFixed(5) + ' — error: ' + (error >= 0 ? '+' : '') + error.toFixed(5);
+    }
+
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Slide 6 — live trapezoidal calculator, with guards against bad input.
+  (function(){
+    var aInput = document.getElementById('ni2-a');
+    if (!aInput) return;
+    var bInput = document.getElementById('ni2-b'), nInput = document.getElementById('ni2-n');
+    var resultOut = document.getElementById('ni2-result'), hOut = document.getElementById('ni2-h');
+    var trueOut = document.getElementById('ni2-true'), errOut = document.getElementById('ni2-error');
+    var resetBtn = document.getElementById('ni2-reset');
+    var DEFAULTS = { a: 0, b: 1, n: 4 };
+
+    function recompute(){
+      var a = parseFloat(aInput.value);
+      var b = parseFloat(bInput.value);
+      var n = Math.round(parseFloat(nInput.value));
+
+      if (!isFinite(a) || !isFinite(b) || !isFinite(n) || n < 1) {
+        resultOut.textContent = '—'; hOut.textContent = '—'; trueOut.textContent = '—'; errOut.textContent = '—';
+        return;
+      }
+
+      var h = (b - a) / n;
+      var sum = (phi(a) + phi(b)) / 2;
+      for (var i = 1; i < n; i++){
+        sum += phi(a + i * h);
+      }
+      sum *= h;
+
+      var trueVal = Phi(b) - Phi(a);
+      var error = sum - trueVal;
+
+      resultOut.textContent = sum.toFixed(5);
+      hOut.textContent = h.toFixed(4);
+      trueOut.textContent = trueVal.toFixed(5);
+      errOut.textContent = (error >= 0 ? '+' : '') + error.toFixed(5);
+    }
+
+    [aInput, bInput, nInput].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      aInput.value = DEFAULTS.a; bInput.value = DEFAULTS.b; nInput.value = DEFAULTS.n;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Extreme Value Theory &amp; Tail Risk — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Extreme Value Theory — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer full derivations, the live GPD tail-fit chart, and a 6-question self-test?<a href="extreme-value-theory.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Lesson 14 · Risk &amp; Sizing</div>
+      <h1 class="sl-h1">Extreme Value Theory, or <em>How Bad It Gets, Given That It's Already Bad</em></h1>
+      <p class="sl-lede">Markets crash harder — and more often — than a normal distribution predicts. Your worst historical day is not your worst possible day, and the plain historical way of estimating VaR and CVaR quietly runs out of road exactly where it matters most: the 1-in-500-day event, the 1-in-2,000-day event, the day a leveraged strategy actually blows up. Extreme Value Theory doesn't try to model the whole distribution of returns — it asks a narrower question: once you're already looking at an extreme observation, what shape does the tail beyond it take, and can that shape say something honest about outcomes you haven't seen yet?</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Why 500 days of data can't answer the question that matters most</h2>
+      <p class="sl-sub">A sample of ordinary trading days is great at describing an ordinary trading day — and almost useless at describing the extraordinary one.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📊</div><div><h4>The middle is easy</h4><p>500 daily returns give you hundreds of observations clustered around the typical case — plenty to average over, plenty of statistical stability.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🕳</div><div><h4>The tail is starved of data</h4><p>A 1-in-2,000-day event needs roughly eight years of daily data just to expect to see <em>one</em> — and one occurrence tells you almost nothing about the shape of what's beyond it.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">💥</div><div><h4>But the tail is what kills you</h4><p>The flash crash, the surprise policy shock, the liquidity air-pocket — the event that decides whether a leveraged strategy survives is exactly the one your sample barely contains.</p></div></div>
+      </div>
+      <div class="sl-quote">Seismologists face the identical problem with catastrophic earthquakes: the events that matter most for planning are rare enough that no single region's recorded history contains many — sometimes none at all. The fix isn't modeling every tremor ever recorded. It's throwing away everything below a high threshold and studying only what happens once things clear it.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">VaR draws a line. CVaR asks what happens past it.</h2>
+      <p class="sl-sub">Fix a confidence level p, like 0.99. Both of the next two numbers describe the loss tail — but they answer different questions.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">VaR — Value at Risk</span>
+          <p>The loss level you expect to exceed only (1−p) of the time — the 99th percentile of the loss distribution, when p = 0.99. VaR marks <strong>where</strong> the bad-outcome cutoff sits. It says nothing about how bad things get once you're past it.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">CVaR — Conditional VaR / Expected Shortfall</span>
+          <p>The <em>average</em> loss, given that you're already beyond VaR. Two distributions can share an identical VaR while one barely crosses it on bad days and the other runs ten times past it — only CVaR tells them apart.</p>
+        </div>
+      </div>
+      <p class="sl-p">This isn't a stylistic preference. VaR can fail <strong>subadditivity</strong> — combining two individually-fine positions can, in constructed examples, make VaR look worse, which is the opposite of what diversification should do. CVaR, being an average over the whole tail rather than one point on it, doesn't have this failure mode. It's part of why post-2008 banking regulation shifted its standard tail-risk measure toward Expected Shortfall.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Reading the tail straight off your data stops working — see for yourself</h2>
+      <p class="sl-sub">With n observations, the (1−p) quantile is built from roughly n×(1−p) data points sitting at or beyond it. Change n or p below.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Sample size n (days)</label><input type="number" class="sl-input" id="exc-n" value="500" step="50" min="1"></div>
+          <div class="sl-calc-field"><label>Confidence p</label><input type="number" class="sl-input" id="exc-p" value="0.99" step="0.001" min="0" max="0.999"></div>
+          <div class="sl-calc-op">→</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Observations backing this estimate</div>
+            <div class="sl-calc-result-val" id="exc-result">5.00</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>≈ one such observation every <b id="exc-oneinN">100</b> days at this confidence level.</div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="exc-reset">Reset to n=500, p=0.99</button>
+        <div class="sl-note">Push p to 0.995 (a "1-in-200-day" event) and you're down to 2.5 observations — the estimate is interpolated between your single worst and second-worst day. Push to 0.9995 and you're at a quarter of an observation: the quantile formula is asking for a data point past the edge of what you have.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Peaks-over-threshold: don't model everything — model the overshoot</h2>
+      <p class="sl-sub">Fix a high threshold u. Look only at the observations that clear it, and how far past it they land.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📏</div><div><h4>Pick a high bar u</h4><p>Something like "the 90th percentile of historical losses" — high enough to isolate genuinely tail behavior.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">✂️</div><div><h4>Throw the rest away</h4><p>Everything below u is discarded. Only the <em>exceedances</em> — how far past u an observation lands — get modeled.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔺</div><div><h4>The overshoot settles into one shape</h4><p>Almost regardless of what the original data looked like, the pattern of "how much do things overshoot, given that they clear the bar at all" converges to one distribution family.</p></div></div>
+      </div>
+      <div class="sl-quote">This is the tail-behavior analogue of the Central Limit Theorem. The CLT says <strong>averages</strong> of almost anything converge to a bell curve, regardless of the underlying distribution. The Balkema-de Haan-Pickands theorem says <strong>exceedances beyond a high threshold</strong> converge to one family of shapes — the Generalized Pareto Distribution — almost regardless of the underlying distribution too. That's the theorem that licenses everything on the next slide.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">One number does the heavy lifting: the shape parameter ξ</h2>
+      <p class="sl-sub">For exceedance Y = X − u beyond threshold u, the Generalized Pareto Distribution says: P(Y &gt; y | X &gt; u) = (1 + ξ·y/β)^(−1/ξ). β is the scale — like a standard deviation for the tail. ξ ("xi") is the payload.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📉</div><div><h4>ξ &gt; 0 — heavy, Pareto-type tail</h4><p>Exceedance probability decays only <em>polynomially</em>, not exponentially — the fat-tail regime of real financial returns. No finite variance once ξ ≥ 0.5, no finite mean once ξ ≥ 1.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">➖</div><div><h4>ξ = 0 — exponential (boundary)</h4><p>The formula reduces to a plain exponential decay — a "medium" tail with no special heaviness. This is the boundary between the two other regimes.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧱</div><div><h4>ξ &lt; 0 — bounded tail</h4><p>A hard finite ceiling on how large an exceedance can ever get, no matter how much data you collect. The least common case for financial losses.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Drag the shape parameter — watch the tail</h2>
+      <p class="sl-sub">Blue dashed = a fixed, thin reference tail (like a normal distribution's). Red = the GPD fit at whatever ξ you set. The vertical axis is probability on a log scale — equal vertical gaps are 10× drops, so a curve that stays higher for longer is holding onto dramatically more probability mass out in the tail.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Log-scale chart comparing a fixed thin reference tail to a Generalized Pareto Distribution tail whose shape parameter is controlled by a slider">
+            <line x1="70" y1="20" x2="70" y2="220" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="70" y1="20" x2="610" y2="20" style="stroke:var(--border2);stroke-width:1;opacity:.4"/>
+            <line x1="70" y1="86.7" x2="610" y2="86.7" style="stroke:var(--border2);stroke-width:1;opacity:.4"/>
+            <line x1="70" y1="153.3" x2="610" y2="153.3" style="stroke:var(--border2);stroke-width:1;opacity:.4"/>
+            <line x1="70" y1="220" x2="610" y2="220" style="stroke:var(--border2);stroke-width:1.5"/>
+            <text x="62" y="24" text-anchor="end" style="fill:var(--text3);font-size:10px">1</text>
+            <text x="62" y="90.7" text-anchor="end" style="fill:var(--text3);font-size:10px">0.1</text>
+            <text x="62" y="157.3" text-anchor="end" style="fill:var(--text3);font-size:10px">0.01</text>
+            <text x="62" y="224" text-anchor="end" style="fill:var(--text3);font-size:10px">0.001</text>
+            <text x="70" y="238" style="fill:var(--text3);font-size:10px">threshold u</text>
+            <text x="610" y="238" text-anchor="end" style="fill:var(--text3);font-size:10px">u + 6β (loss magnitude →)</text>
+            <path d="M70,20 L115,53 L160,87 L205,120 L250,153 L295,187 L340,220 L610,220" style="fill:none;stroke:var(--blue);stroke-width:2;stroke-dasharray:5,4"/>
+            <path id="evt-gpd-path" d="" style="fill:none;stroke:var(--red);stroke-width:2.5"/>
+            <line id="evt-ceiling-line" x1="0" y1="20" x2="0" y2="220" style="stroke:var(--amber);stroke-width:1.5;stroke-dasharray:3,3;display:none"/>
+            <text id="evt-ceiling-label" x="0" y="30" style="fill:var(--amber);font-size:10px;display:none">hard ceiling</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Shape parameter ξ</span><span class="sl-live" id="evt-xi-val">ξ = 0.25</span></div>
+        <input type="range" class="sl-slider" id="evt-xi-slider" min="-0.4" max="0.7" step="0.05" value="0.25">
+        <div class="sl-note" id="evt-xi-desc">heavy, Pareto-type tail — decays slowly, no finite variance once ξ ≥ 0.5</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">From a fitted tail to a number — at any confidence you like</h2>
+      <p class="sl-sub">Once ξ and β are fitted, there's a closed-form way to get VaR at any p — including levels beyond what your raw sample could ever support directly. That's the entire point.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Threshold u (% loss)</label><input type="number" class="sl-input" id="gpd-u" value="2.10" step="0.1"></div>
+          <div class="sl-calc-field"><label>Scale β</label><input type="number" class="sl-input" id="gpd-beta" value="0.85" step="0.05" min="0.01"></div>
+          <div class="sl-calc-field"><label>Shape ξ</label><input type="number" class="sl-input" id="gpd-xi" value="0.25" step="0.05"></div>
+          <div class="sl-calc-field"><label>Sample n</label><input type="number" class="sl-input" id="gpd-n" value="500" step="10" min="1"></div>
+          <div class="sl-calc-field"><label>Exceedances n_u</label><input type="number" class="sl-input" id="gpd-nu" value="50" step="1" min="1"></div>
+          <div class="sl-calc-field"><label>Confidence p</label><input type="number" class="sl-input" id="gpd-p" value="0.995" step="0.001" min="0.5" max="0.9999"></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Exceedance probability q = (n / n_u) × (1 − p) = <b id="gpd-q">0.0500</b></div>
+          <div>VaR_p = u + (β/ξ) × [q^(−ξ) − 1] = <b id="gpd-var">5.89</b>% loss</div>
+          <div>CVaR_p = VaR_p /(1−ξ) + (β − ξu)/(1−ξ) = <b id="gpd-cvar">8.29</b>% loss</div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="gpd-reset">Reset to worked-example numbers</button>
+        <div class="sl-note" id="gpd-warn">This works at any p, even beyond your raw sample — that's the extrapolation this lesson keeps returning to.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Worked example: a 1-in-2,000-day loss from two years of data</h2>
+      <p class="sl-sub">n = 500 daily P&amp;L observations. You want the 99.5% VaR — and you're curious what a 1-in-2,000-day loss (p = 0.9995) might look like, ten times rarer still.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Plain historical method</span>
+          <ul>
+            <li>99.5% VaR sits at the 500 × 0.005 = 2.5th-worst day — interpolated between your single worst and second-worst observation</li>
+            <li>Re-run on a slightly different two-year window and this number can swing enormously</li>
+            <li>The 1-in-2,000-day quantile is entirely out of reach — you'd need roughly 4 separate two-year samples just to expect to see one such event</li>
+            <li>Not really "estimating" anything at that depth — it's naming your worst day and calling it a statistic</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">EVT / peaks-over-threshold method</span>
+          <ul>
+            <li>Set u at the 90th percentile of losses — with n=500 that's ~50 exceedances, a far more workable sample than "2.5 observations"</li>
+            <li>Fit a GPD to those 50 exceedances, obtaining ξ and β (checked against a mean-excess plot and threshold sensitivity, not accepted blindly from one fit)</li>
+            <li>Plug the fit into the VaR formula at p=0.995 or even p=0.9995 — it produces an answer either way, extrapolating a smooth curve rather than reading a specific data point</li>
+            <li>Smoother and more stable than the single-worst-observation number</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">The honesty check</div>
+        <p>The EVT estimate is smoother — but it is <strong>not more "true."</strong> It assumes the GPD shape fitted from the 90th–99th percentile region continues to describe the distribution all the way to a 1-in-2,000-day level you've never actually observed. If reality has a structural break out there, the fitted tail has no way of knowing. Both numbers are worth having, reported together — the gap between them is itself information about how much you're relying on the model.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">How practitioners actually use this</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🏦</div><div><h4>Regulatory tail-capital</h4><p>Insurers and banks use POT/GPD fits to set reserves against extreme losses, because regulators require an answer at confidence levels (99.5%+, sometimes 99.9%+) raw historical data can't support directly.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚖️</div><div><h4>Threshold choice is a live judgment call</h4><p>Too low and the theorem's premise is violated; too high and there's not enough data to fit reliably. Practitioners look for a "plateau" where ξ and β stay stable across a range of thresholds.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧪</div><div><h4>Complements — never replaces — history</h4><p>EVT-fitted tails generate "1-in-N-year" scenarios that are triangulated against actual historical stress events (2008, 2020), not swapped in for them.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>Never a single point estimate</h4><p>Serious use reports confidence intervals around ξ and the resulting VaR/CVaR, and checks sensitivity to threshold and estimation window — not one clean-looking number.</p></div></div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>The classical fit assumes exceedances behave like independent draws. Financial returns violate this routinely — volatility clusters, so extreme days tend to arrive in clumps around the same macro event rather than scattering independently through time. A naive fit on raw daily data quietly assumes away exactly that clustering.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Reality check: what's actually built in this repo</h2>
+      <p class="sl-sub">The full lesson makes a specific claim about this codebase. It's worth checking against the code itself rather than taking it on faith — same as any other number in this curriculum.</p>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">The lesson's claim</div>
+        <p>"This project's own empirical risk statistics already ship the honest half...; the GPD/POT layer is deliberately not built here because most strategies' trade counts are far too small to fit ξ reliably."</p>
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">What's actually in the codebase today</div>
+        <p>That's stale. <code>js/extremesCore.js</code> and <code>js/evtTail.js</code> both implement a full peaks-over-threshold / GPD fit (Hosking–Wallis probability-weighted moments) — and it's wired into real pages, not left as unused math. <code>level-atlas-vote-portfolio.html</code> reports an "EVT VaR 99.5% / CVaR 99.5%" per portfolio straight from a strategy's own daily-return tail; <code>analytics-desk.html</code> and <code>forecast-coverage.html</code> use the same fit to diagnose how fat-tailed price-band breaks are.</p>
+      </div>
+      <p class="sl-p">The trade-count caution in the lesson is still fair, narrowly read: the built fit needs roughly 30+ tail-crossing <em>days</em> of daily returns — gated at that minimum right in the code — not 1,000+ individual trades, because it's fit on a strategy's daily P&amp;L series, not its trade log. The GPD layer exists; it's just built on a different unit of data than "trade count" implies.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Quick check</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Why can't you reliably read a 1-in-2,000-day VaR straight off 500 days of historical data?</h4>
+        <button class="sl-quiz-opt" data-correct="true">You'd need roughly 8 years of data just to expect one such event — the estimate would really just be naming your worst day</button>
+        <button class="sl-quiz-opt">The formula for empirical VaR only works below the 95th percentile</button>
+        <button class="sl-quiz-opt">Historical data is always normally distributed, so extreme quantiles don't apply</button>
+        <div class="sl-quiz-explain">A 1-in-2,000-day event happens on average once every ~8 years. In a 500-day sample the empirical quantile is being read off an interpolation between your single worst and second-worst day — a number driven by one or two data points, not a stable pattern.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>What does a Generalized Pareto shape parameter of ξ &gt; 0 tell you, compared to ξ &lt; 0?</h4>
+        <button class="sl-quiz-opt" data-correct="true">ξ &gt; 0 is a heavy, slowly-decaying tail; ξ &lt; 0 has a hard, finite ceiling on how large an exceedance can get</button>
+        <button class="sl-quiz-opt">They describe the same tail shape, just with the sign convention flipped</button>
+        <button class="sl-quiz-opt">ξ &gt; 0 means the data is normally distributed; ξ &lt; 0 means it isn't</button>
+        <div class="sl-quiz-explain">ξ &gt; 0 means exceedance probability decays only polynomially — genuinely fat-tailed, no finite variance once ξ ≥ 0.5. ξ &lt; 0 means the opposite: a bounded tail with a hard upper limit, regardless of how much data you collect.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Why is CVaR considered "coherent" in a way plain VaR is not?</h4>
+        <button class="sl-quiz-opt" data-correct="true">VaR can fail subadditivity — combining positions can make it look worse — while CVaR, averaging the whole tail, doesn't</button>
+        <button class="sl-quiz-opt">CVaR is always a smaller number than VaR, which makes it more conservative by definition</button>
+        <button class="sl-quiz-opt">VaR requires more data to compute than CVaR does</button>
+        <div class="sl-quiz-explain">A coherent risk measure must satisfy subadditivity — diversification should never look like it makes things worse. VaR, caring only about a single quantile cutoff, can fail this in constructed examples. CVaR is an average over the entire tail, so it doesn't have this failure mode.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>What does peaks-over-threshold actually do, conceptually?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Discards everything below a high threshold u and fits a distribution only to how far the rest overshoot it</button>
+        <button class="sl-quiz-opt">Averages every historical observation to get a smoother estimate of the mean</button>
+        <button class="sl-quiz-opt">Replaces missing data points with the sample average</button>
+        <div class="sl-quiz-explain">Peaks-over-threshold picks a high bar u, throws away everything below it, and models only the exceedances — how far past u the remaining observations land. The Balkema-de Haan-Pickands theorem is what justifies fitting a single GPD family to that overshoot.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>In the worked example, why is the EVT estimate "smoother but not more true" than the empirical one?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It's a model-based extrapolation past anything actually observed, not a measurement of it</button>
+        <button class="sl-quiz-opt">It uses more decimal places, which only looks more precise</button>
+        <button class="sl-quiz-opt">It was fit with more historical days than the empirical method used</button>
+        <div class="sl-quiz-explain">The EVT number is smoother because it's built from a pattern fitted across many tail exceedances rather than one or two extreme points. But it assumes that pattern keeps holding all the way out to a quantile you've never observed — an assumption you cannot verify at exactly the level you're extrapolating to.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Historical VaR/CVaR are honest but run out of road far in the tail — beyond roughly the 99.5th percentile they're really just naming your worst day or two.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Peaks-over-threshold keeps only what clears a high bar u — the Balkema-de Haan-Pickands theorem says those overshoots converge to a Generalized Pareto Distribution almost regardless of the underlying data.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>The shape parameter ξ is the entire payload: heavy/Pareto (ξ&gt;0), exponential (ξ=0), or hard-ceiling bounded (ξ&lt;0).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>A fitted GPD gives you VaR/CVaR at any confidence level, even past your sample — but that's an extrapolation assumption, not a measurement, and it's unverifiable at the exact quantile you're extrapolating to.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Report the empirical and EVT-extrapolated numbers together — the gap between them is itself information about how much you're relying on the model.</p></div>
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">What this now lets you do</div>
+        <p>Read a VaR or CVaR figure and immediately ask whether it's empirical or extrapolated, and how many tail observations sit behind it. Set up a peaks-over-threshold fit yourself — pick a threshold, count exceedances, read what ξ says about the tail's shape. Recognise when a "worst case" number is quietly just one bad historical day dressed up as a statistic.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Interest Rate Parity — Covered vs. Uncovered</h3>
+        <p>Category 6 begins: one FX-forward theory is an accounting identity enforced by riskless arbitrage; the other is a genuine economic hypothesis that has failed, on average, in almost every dataset tested for forty years — and that failure is the empirical basis of the entire carry trade.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="interest-rate-parity-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="extreme-value-theory.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Exceedance-count calculator — n × (1-p), live.
+  (function(){
+    var n = document.getElementById('exc-n');
+    if (!n) return;
+    var p = document.getElementById('exc-p');
+    var result = document.getElementById('exc-result');
+    var oneInN = document.getElementById('exc-oneinN');
+    var resetBtn = document.getElementById('exc-reset');
+    var DEFAULTS = { n: 500, p: 0.99 };
+
+    function recompute(){
+      var nv = parseFloat(n.value), pv = parseFloat(p.value);
+      if (!isFinite(nv) || !isFinite(pv) || nv <= 0 || pv < 0 || pv >= 1) {
+        result.textContent = '—';
+        oneInN.textContent = '—';
+        return;
+      }
+      var exceed = nv * (1 - pv);
+      result.textContent = exceed.toFixed(2);
+      oneInN.textContent = Math.round(1 / (1 - pv)).toLocaleString();
+    }
+
+    [n, p].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      n.value = DEFAULTS.n; p.value = DEFAULTS.p;
+      recompute();
+    });
+    recompute();
+  })();
+
+  // GPD VaR/CVaR extrapolation calculator, live.
+  (function(){
+    var uEl = document.getElementById('gpd-u');
+    if (!uEl) return;
+    var betaEl = document.getElementById('gpd-beta'), xiEl = document.getElementById('gpd-xi');
+    var nEl = document.getElementById('gpd-n'), nuEl = document.getElementById('gpd-nu'), pEl = document.getElementById('gpd-p');
+    var qOut = document.getElementById('gpd-q'), varOut = document.getElementById('gpd-var'), cvarOut = document.getElementById('gpd-cvar');
+    var warnEl = document.getElementById('gpd-warn');
+    var resetBtn = document.getElementById('gpd-reset');
+    var DEFAULT_NOTE = 'This works at any p, even beyond your raw sample — that’s the extrapolation this lesson keeps returning to.';
+    var DEFAULTS = { u: 2.10, beta: 0.85, xi: 0.25, n: 500, nu: 50, p: 0.995 };
+
+    function fail(msg){
+      qOut.textContent = '—'; varOut.textContent = '—'; cvarOut.textContent = '—';
+      warnEl.textContent = msg;
+    }
+
+    function recompute(){
+      var u = parseFloat(uEl.value), beta = parseFloat(betaEl.value), xi = parseFloat(xiEl.value);
+      var n = parseFloat(nEl.value), nu = parseFloat(nuEl.value), p = parseFloat(pEl.value);
+      if (![u, beta, xi, n, nu, p].every(isFinite)) { fail('All fields need a number.'); return; }
+      if (!(beta > 0)) { fail('Scale β must be positive.'); return; }
+      if (!(n > 0) || !(nu > 0)) { fail('Sample size n and exceedances n_u must be positive.'); return; }
+      if (nu > n) { fail('n_u can’t exceed n — you can’t have more exceedances than observations.'); return; }
+      if (!(p > 0 && p < 1)) { fail('Confidence p must be strictly between 0 and 1.'); return; }
+
+      var q = (n / nu) * (1 - p);
+      var varP;
+      if (Math.abs(xi) < 1e-6) {
+        varP = u + beta * Math.log(1 / q);
+      } else {
+        varP = u + (beta / xi) * (Math.pow(q, -xi) - 1);
+      }
+
+      qOut.textContent = q.toFixed(4);
+      varOut.textContent = varP.toFixed(2);
+
+      if (xi >= 1) {
+        cvarOut.textContent = '—';
+        warnEl.textContent = 'ξ ≥ 1 here — CVaR is undefined (no finite mean) at this shape parameter, though VaR still computes.';
+      } else {
+        var cvarP = varP / (1 - xi) + (beta - xi * u) / (1 - xi);
+        cvarOut.textContent = cvarP.toFixed(2);
+        warnEl.textContent = DEFAULT_NOTE;
+      }
+    }
+
+    [uEl, betaEl, xiEl, nEl, nuEl, pEl].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      uEl.value = DEFAULTS.u; betaEl.value = DEFAULTS.beta; xiEl.value = DEFAULTS.xi;
+      nEl.value = DEFAULTS.n; nuEl.value = DEFAULTS.nu; pEl.value = DEFAULTS.p;
+      recompute();
+    });
+    recompute();
+  })();
+
+  // ξ slider — redraws the GPD tail curve against a fixed thin reference tail.
+  (function(){
+    var slider = document.getElementById('evt-xi-slider');
+    if (!slider) return;
+    var xiVal = document.getElementById('evt-xi-val');
+    var xiDesc = document.getElementById('evt-xi-desc');
+    var gpdPath = document.getElementById('evt-gpd-path');
+    var ceilingLine = document.getElementById('evt-ceiling-line');
+    var ceilingLabel = document.getElementById('evt-ceiling-label');
+
+    var PLOT_LEFT = 70, PLOT_RIGHT = 610, PLOT_TOP = 20, PLOT_BOTTOM = 220, X_MAX = 6;
+    var FLOOR_PROB = 0.00085; // just under the 0.001 gridline, so a decaying curve visibly bottoms out
+
+    function xPix(y){ return PLOT_LEFT + (y / X_MAX) * (PLOT_RIGHT - PLOT_LEFT); }
+    function yPixForProb(p){
+      var pc = Math.max(FLOOR_PROB, Math.min(1, p));
+      return PLOT_TOP + (-Math.log10(pc) / 3) * (PLOT_BOTTOM - PLOT_TOP);
+    }
+    function gpdSurvival(y, xi){
+      if (Math.abs(xi) < 1e-6) return Math.exp(-y);
+      var base = 1 + xi * y;
+      if (base <= 0) return 0;
+      return Math.pow(base, -1 / xi);
+    }
+    function buildPath(xi){
+      var pts = [];
+      var steps = 80;
+      for (var i = 0; i <= steps; i++) {
+        var y = X_MAX * (i / steps);
+        var prob = gpdSurvival(y, xi);
+        if (prob <= 0) break; // hard ceiling reached (xi < 0) — stop the line here, don't fake a floor
+        var yp = yPixForProb(prob);
+        pts.push((i === 0 ? 'M' : 'L') + xPix(y).toFixed(1) + ',' + yp.toFixed(2));
+      }
+      return pts.join(' ');
+    }
+
+    function update(){
+      var xi = parseFloat(slider.value);
+      xiVal.textContent = 'ξ = ' + xi.toFixed(2);
+
+      var desc;
+      if (xi > 0.02) desc = 'heavy, Pareto-type tail — decays slowly, no finite variance once ξ ≥ 0.5, no finite mean once ξ ≥ 1';
+      else if (xi < -0.02) desc = 'bounded tail — a hard ceiling on how large an exceedance can ever get';
+      else desc = 'exponential tail (the ξ = 0 boundary case) — a "medium" tail with no special heaviness';
+      xiDesc.textContent = desc;
+
+      gpdPath.setAttribute('d', buildPath(xi));
+
+      if (xi < -0.02) {
+        var yCeil = -1 / xi;
+        if (yCeil <= X_MAX) {
+          var cx = xPix(yCeil);
+          ceilingLine.setAttribute('x1', cx); ceilingLine.setAttribute('x2', cx);
+          ceilingLine.style.display = '';
+          ceilingLabel.setAttribute('x', cx + 4);
+          ceilingLabel.style.display = '';
+        } else {
+          ceilingLine.style.display = 'none';
+          ceilingLabel.style.display = 'none';
+        }
+      } else {
+        ceilingLine.style.display = 'none';
+        ceilingLabel.style.display = 'none';
+      }
+    }
+
+    slider.addEventListener('input', update);
+    update();
+  })();
+})();
+</script>
+</body>
+</html>

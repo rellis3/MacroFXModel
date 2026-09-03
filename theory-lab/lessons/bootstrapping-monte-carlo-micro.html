@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bootstrapping &amp; Monte Carlo — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Bootstrapping &amp; Monte Carlo — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivation, the hand-worked five-trade example, and the six-question self-test?<a href="bootstrapping-monte-carlo.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Lesson 25 · Applied Statistics &amp; Validation</div>
+      <h1 class="sl-h1">One Sample, <em>Many Plausible Stories</em></h1>
+      <p class="sl-lede">A backtest hands you exactly one Sharpe ratio, computed from exactly one run of history. Bootstrapping and Monte Carlo simulation are the two standard tools for asking how much that one number would have wobbled if history had unfolded even slightly differently — without needing a second, independent dataset. Both are genuinely useful. Neither one, on its own, tells you whether the signal that produced that number will work on data it has never seen.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">One number, no formula for its own uncertainty</h2>
+      <p class="sl-sub">A Sharpe ratio or a max drawdown has no clean, off-the-shelf formula for how much it would vary across different samples.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📉</div><div><h4>One backtest, one number</h4><p>The reported Sharpe ratio, mean return, or max drawdown is a single point estimate — computed from the one historical sample that actually happened.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">❓</div><div><h4>The honest question</h4><p>If a few trades had landed differently, or the same market moves had arrived in a different order, how much would that number have moved?</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧮</div><div><h4>The classical answer breaks down</h4><p>A CLT-based standard error usually assumes normality — and there's rarely a clean closed-form formula for the sampling distribution of a Sharpe ratio or a max drawdown on a short, lumpy, non-normal trade sequence.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎲</div><div><h4>No second dataset exists</h4><p>You can't collect a second, independent history of the same strategy to see how the number varies. Whatever answers this has to be built from the one sample you already have.</p></div></div>
+      </div>
+      <div class="sl-quote">This is the exact gap bootstrapping and Monte Carlo simulation each fill, in two different ways — one resamples the real data you have, the other simulates from a model fitted to it. Both manufacture "many possible outcomes" out of a single dataset.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">The bootstrap: reach into your own bag of trades, over and over</h2>
+      <p class="sl-sub">Efron's 1979 idea — treat your one sample as a stand-in for the true, unknown distribution it came from.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="boot-tabs">
+          <button class="sl-tab active" data-panel="boot-1">Step 1 — the empirical distribution</button>
+          <button class="sl-tab" data-panel="boot-2">Step 2 — resample with replacement</button>
+          <button class="sl-tab" data-panel="boot-3">Step 3 — repeat B times</button>
+        </div>
+        <div class="sl-panel active" id="boot-1">
+          <div class="sl-row"><div class="sl-box">F̂ₙ</div><div class="sl-arrow">=</div><div class="sl-box">put 1/n on each of your n observed values</div></div>
+          <div class="sl-verdict">You don't know the true distribution F your data came from. The bootstrap's move is to stop trying — treat the empirical distribution of the sample you already have as its stand-in.</div>
+        </div>
+        <div class="sl-panel" id="boot-2">
+          <div class="sl-row"><div class="sl-box amber">x₁*, x₂*, …, xₙ*</div><div class="sl-arrow">=</div><div class="sl-box amber">n draws WITH replacement from your n originals</div></div>
+          <div class="sl-verdict">Each new resample is the same size as the original, but drawn with replacement — so some original values show up twice or more, and others get left out entirely. That's what makes it a genuinely different sample, not a reshuffled copy.</div>
+        </div>
+        <div class="sl-panel" id="boot-3">
+          <div class="sl-row"><div class="sl-box green">T*₁, T*₂, …, T*_B</div><div class="sl-arrow">=</div><div class="sl-box green">the statistic recomputed on each resample</div></div>
+          <div class="sl-verdict">Compute your statistic T (mean, Sharpe, max drawdown) on each resample, and repeat the whole draw-and-compute step B times — typically 1,000 to 10,000+. Those B numbers are the bootstrap's answer: an approximate sampling distribution for T, built entirely from data you already had.</div>
+        </div>
+        <div class="sl-note">From that collection of replicates you get two standard outputs: the bootstrap standard error (the plain standard deviation of the replicates), and a 95% percentile confidence interval (the 2.5th and 97.5th percentile of the sorted replicates) — read straight off, no formula needed.</div>
+      </div>
+      <p class="sl-p">Notice what this does and doesn't require: only the original n observations and a rule for computing T. It works identically whether T is a simple mean with a known formula, or a Sharpe ratio and a max drawdown with no clean closed-form sampling distribution at all — which is the entire reason the bootstrap became one of the most widely used tools in applied statistics after 1979.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Five trades, three resamples, by hand</h2>
+      <p class="sl-sub">Edit any trade return below. The three resamples reuse a fixed draw pattern from the same five values — nothing new ever enters.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any trade return, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>x₁</label><input type="number" class="sl-input" id="bt-x1" value="2" step="0.5"></div>
+          <div class="sl-calc-field"><label>x₂</label><input type="number" class="sl-input" id="bt-x2" value="-1" step="0.5"></div>
+          <div class="sl-calc-field"><label>x₃</label><input type="number" class="sl-input" id="bt-x3" value="3" step="0.5"></div>
+          <div class="sl-calc-field"><label>x₄</label><input type="number" class="sl-input" id="bt-x4" value="-2" step="0.5"></div>
+          <div class="sl-calc-field"><label>x₅</label><input type="number" class="sl-input" id="bt-x5" value="1" step="0.5"></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Sample mean x̄ = <b id="bt-mean">0.60</b>%</div>
+          <div>Resample 1 (draws 1,1,2,5,3): x̄*⁽¹⁾ = <b id="bt-r1">1.40</b>%</div>
+          <div>Resample 2 (draws 4,4,5,2,4): x̄*⁽²⁾ = <b id="bt-r2">-1.20</b>%</div>
+          <div>Resample 3 (draws 3,5,3,1,2): x̄*⁽³⁾ = <b id="bt-r3">1.60</b>%</div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="bt-reset">Reset to worked-example numbers</button>
+        <div class="sl-note">Each resample reuses the exact same five original values — nothing new has entered — yet the resample means already swing well past the original 0.6% mean, purely from which values happened to repeat and which got left out. In practice you wouldn't stop at three: you'd draw B = 10,000 resamples and read SEboot and a 95% CI off the whole collection.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">More resamples narrow the picture — they don't create new data</h2>
+      <p class="sl-sub">Drag B. Watch the histogram of bootstrapped Sharpe ratios fill in and the 95% interval steady — around a spread the five original trades already fixed.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Histogram of bootstrapped Sharpe ratio replicates, with a shaded 95 percent confidence interval band and a marker at the original sample statistic">
+            <line x1="30" y1="185" x2="610" y2="185" style="stroke:var(--border2);stroke-width:1"/>
+            <rect id="mc-ci-band" x="230" y="15" width="180" height="170" style="fill:var(--purple);opacity:.10"/>
+            <g id="mc-bars"></g>
+            <line id="mc-obs-line" x1="320" y1="15" x2="320" y2="185" style="stroke:var(--blue);stroke-width:2;stroke-dasharray:4,3"/>
+            <text id="mc-obs-label" x="320" y="10" text-anchor="middle" style="fill:var(--blue);font-size:10px;font-weight:700">observed T</text>
+            <text x="230" y="200" text-anchor="middle" style="fill:var(--purple);font-size:10px" id="mc-lo-label">2.5%</text>
+            <text x="410" y="200" text-anchor="middle" style="fill:var(--purple);font-size:10px" id="mc-hi-label">97.5%</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Number of bootstrap resamples (B)</span><span class="sl-live" id="mc-bval">B = 30</span></div>
+        <input type="range" class="sl-slider" id="mc-slider" min="5" max="2000" step="5" value="30">
+        <div class="sl-note" id="mc-readout">At B = 30, the histogram is coarse and the 95% interval still jumps around from resample to resample.</div>
+      </div>
+      <p class="sl-p">Turning B up smooths the histogram and stabilizes the interval's edges — but it never narrows the interval below what the underlying five trades can actually support. More resamples reduce noise <em>in the estimate of the spread</em>; they cannot shrink the spread itself, because every resample is still built from the same original observations.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Time series break the "independent draws" assumption</h2>
+      <p class="sl-sub">The plain bootstrap above assumes each observation is independent. Financial returns routinely aren't.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Why the plain bootstrap fails here</div>
+        <p>Picking x₇* has no effect on the chance of picking x₁₂* next — that's the plain bootstrap's built-in assumption. Volatility clustering, trending runs, and mean-reverting bounces mean adjacent real observations carry genuine serial correlation. Shuffling a return series into independent single-day draws erases that structure, understating how much a real, contiguous run of bad days can compound — the resulting confidence interval looks tighter and more confident than it should.</p>
+      </div>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Plain (i.i.d.) bootstrap</span>
+          <ul>
+            <li>Resamples single observations, independently</li>
+            <li>Shuffles away volatility clustering and serial correlation</li>
+            <li>Confidence interval ends up falsely narrow — quietly overconfident</li>
+            <li>Fine for genuinely independent data; wrong for most raw return series</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Block bootstrap (Künsch, 1989)</span>
+          <ul>
+            <li>Resamples contiguous blocks of l consecutive observations</li>
+            <li>Whatever short-term dependence exists inside a block survives intact</li>
+            <li>A related refinement (Politis &amp; Romano, 1994) draws block lengths at random instead of fixing one l</li>
+            <li>Block length has to be chosen: too short leaks correlation at boundaries, too long leaves too few distinct blocks</li>
+          </ul>
+        </div>
+      </div>
+      <p class="sl-p">Concretely: fix a block length l (say, 10 trading days), form every overlapping block of that length from the series, draw enough of those blocks with replacement to cover n observations, and concatenate them into one resampled series. Because each block is a real, intact, consecutive run lifted straight out of history, the day-to-day correlation the plain bootstrap would have shuffled away survives inside the resample.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Monte Carlo: don't resample the data, simulate from a model of it</h2>
+      <p class="sl-sub">A different move entirely — fit a process, then generate brand-new synthetic paths from it.</p>
+      <div class="sl-row"><div class="sl-box">rₜ⁽ˢⁱᵐ⁾</div><div class="sl-arrow">=</div><div class="sl-box">μ̂ + σ̂ₜ · zₜ,&nbsp;&nbsp;zₜ ~ N(0,1)</div></div>
+      <p class="sl-p" style="margin-top:14px">Instead of reaching into a bag of real observations, fit a parametric model to the data — a GARCH(1,1) process for volatility, geometric Brownian motion for a price path — with parameters μ̂ and σ̂ estimated from your sample. Then run that model forward, drawing a fresh random innovation zₜ at every step, to generate an entirely synthetic path. Do this independently many times and you get M synthetic paths, S⁽¹⁾, S⁽²⁾, …, S⁽ᴹ⁾ — each one plausible <em>under the assumed model</em>.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🎴</div><div><h4>Bootstrap: resamples real cards</h4><p>Every value in a bootstrap resample is a genuine observation that actually happened, just reshuffled and re-drawn with replacement.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎲</div><div><h4>Monte Carlo: rolls a designed die</h4><p>Every value in a Monte Carlo path is synthetic — generated by a model built to resemble the data's mean and typical swings, not lifted from real history at all.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚙️</div><div><h4>Only as good as the model</h4><p>More simulated paths reduce simulation noise around the model's own implied distribution — they do not correct a model that's wrong to begin with (understated tail risk, ignored jumps, a calm-period volatility estimate).</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">A historical curve fanning into simulated forward paths</h2>
+      <p class="sl-sub">The realized curve is one real sample. Every faint path in the fan is built from that same sample, or a model fitted to it.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A solid blue historical equity curve running into a cone of many faint amber simulated forward paths spreading out to the right, like a Monte Carlo fan chart">
+            <line x1="10" y1="250" x2="630" y2="250" style="stroke:var(--border2);stroke-width:1.5"/>
+            <line x1="260" y1="15" x2="260" y2="245" style="stroke:var(--border2);stroke-width:1.5;stroke-dasharray:4,4"/>
+            <polyline points="260,130 350,95 440,68 530,48 620,32" style="fill:none;stroke:var(--amber);stroke-width:1.3;opacity:.30"/>
+            <polyline points="260,130 350,100 440,78 530,60 620,46" style="fill:none;stroke:var(--amber);stroke-width:1.3;opacity:.30"/>
+            <polyline points="260,130 350,108 440,90 530,74 620,60" style="fill:none;stroke:var(--amber);stroke-width:1.3;opacity:.35"/>
+            <polyline points="260,130 350,115 440,102 530,90 620,78" style="fill:none;stroke:var(--amber);stroke-width:1.3;opacity:.35"/>
+            <polyline points="260,130 350,120 440,112 530,102 620,92" style="fill:none;stroke:var(--amber);stroke-width:1.3;opacity:.4"/>
+            <polyline points="260,130 350,124 440,120 530,114 620,106" style="fill:none;stroke:var(--amber);stroke-width:1.3;opacity:.4"/>
+            <polyline points="260,130 350,126 440,124 530,120 620,118" style="fill:none;stroke:var(--amber);stroke-width:2;opacity:.8"/>
+            <polyline points="260,130 350,132 440,136 530,138 620,140" style="fill:none;stroke:var(--amber);stroke-width:1.3;opacity:.4"/>
+            <polyline points="260,130 350,138 440,148 530,158 620,168" style="fill:none;stroke:var(--amber);stroke-width:1.3;opacity:.35"/>
+            <polyline points="260,130 350,145 440,162 530,180 620,196" style="fill:none;stroke:var(--amber);stroke-width:1.3;opacity:.35"/>
+            <polyline points="260,130 350,152 440,178 530,204 620,222" style="fill:none;stroke:var(--amber);stroke-width:1.3;opacity:.30"/>
+            <polyline points="260,130 350,160 440,195 530,222 620,238" style="fill:none;stroke:var(--amber);stroke-width:1.3;opacity:.30"/>
+            <polyline points="20,200 60,190 100,175 140,182 180,155 220,145 260,130" style="fill:none;stroke:var(--blue);stroke-width:3" stroke-linejoin="round"/>
+            <circle cx="260" cy="130" r="4" style="fill:var(--blue)"/>
+            <text x="120" y="228" text-anchor="middle" font-size="11" fill="var(--text2)">historical (realized)</text>
+            <text x="440" y="20" text-anchor="middle" font-size="11" fill="var(--text2)">thousands of simulated forward paths</text>
+            <text x="260" y="12" text-anchor="middle" font-size="10" fill="var(--text3)">today / simulation start</text>
+          </svg>
+        </div>
+        <div class="sl-verdict">Every path in the amber cone is generated from the same historical sample (or a model fitted to it) that produced the blue line. The cone's width genuinely measures variability <em>within</em> that sample's own statistical character — its realized mean, volatility, serial correlation — not variability under a market regime that sample never contained.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Read this one twice: neither tool can leave the sample it started from</h2>
+      <p class="sl-p">Both techniques answer some version of the same question: "given what I already have — one historical sample, or one fitted model built from that sample — what range of outcomes is consistent with it?" That's a real, useful, well-posed statistical question, and both tools answer it validly. It is <strong>not</strong> the same question as "will this signal work on a market, or a time period, it has never seen?"</p>
+      <div class="sl-quote">Every bootstrap resample is built from the same n original observations, generated by the same signal, over the same historical period — reshuffling and re-drawing from that fixed pool cannot create information about a regime that pool never contained. Every Monte Carlo path is generated from a model whose parameters were themselves estimated from that same historical sample — if the fitted parameters are wrong for tomorrow's regime, every synthetic path inherits that same mis-specification, no matter how many thousands of paths you generate.</div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">The trap</div>
+        <p>A narrow bootstrap or Monte Carlo interval proves the sample (or the fitted model) is internally consistent — it proves nothing about whether the signal that generated it will work on data it has never seen. A tight interval and a genuinely tradeable edge are two different questions with two different answers; conflating "the resample is stable" with "the strategy is robust" is a documented, easy way backtests mislead their own authors.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Already built into this repo's own tearsheet — more than the full lesson lets on</h2>
+      <p class="sl-sub">A stale claim caught while building this deck — corrected below with what the code actually does.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">What the full lesson says</div>
+        <p>The full version of this lesson marks itself status <strong>CONCEPT</strong> and says it "formalizes a rule the repo already follows in prose … rather than describing a new brick or module" — implying bootstrap/Monte Carlo analysis exists here only as a written house rule, not as running code.</p>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What's actually in the repo today</div>
+        <p><code>js/backtestStats.js</code> already computes a live bootstrap confidence interval on total return and Sharpe (resample-with-replacement, seeded PRNG) plus a Monte Carlo drawdown distribution (shuffle trade order), and <code>js/statsCore.js</code> ships a full stationary Politis–Romano <strong>block bootstrap</strong> — both an i.i.d. and a block-resampled max-drawdown percentile are reported side by side. It's wired live into <code>qmr-tearsheet.html</code>'s "Monte Carlo — trade-order bootstrap" panel. This is materially more than "a rule stated in prose": it's shipped, tested, running code.</p>
+      </div>
+      <p class="sl-p">The underlying validation point still holds exactly as this lesson argues it: those numbers describe sample and model consistency, not generalization. What's out of date is only the status claim about whether the technique is implemented here — it is, and has been used to report the very i.i.d.-vs-block distinction this lesson teaches.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Quick check</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What does a bootstrap resample actually consist of?</h4>
+        <button class="sl-quiz-opt" data-correct="true">n values drawn with replacement from your own original n observations</button>
+        <button class="sl-quiz-opt">n brand-new values simulated from a fitted statistical model</button>
+        <button class="sl-quiz-opt">The original sample, sorted from smallest to largest</button>
+        <div class="sl-quiz-explain">The bootstrap treats the empirical distribution of your sample as a stand-in for the true one, then draws n new values with replacement from it — some originals repeat, some get left out.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Why does a plain (i.i.d.) bootstrap understate uncertainty on a volatility-clustered return series?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It resamples single independent points, which shuffles away real serial correlation the data actually had</button>
+        <button class="sl-quiz-opt">It only works when B is set too low</button>
+        <button class="sl-quiz-opt">It requires normally distributed returns to run at all</button>
+        <div class="sl-quiz-explain">Picking one observation independently of the next assumes no serial dependence. Financial returns often have volatility clustering — plain resampling erases that structure, making the resulting confidence interval falsely narrow.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>What does the block bootstrap change about the resampling step?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It resamples contiguous blocks of consecutive observations instead of single independent points</button>
+        <button class="sl-quiz-opt">It fits a GARCH model before resampling</button>
+        <button class="sl-quiz-opt">It only resamples the most recent observations</button>
+        <div class="sl-quiz-explain">Because each block is a real, intact, consecutive run, whatever short-term dependence existed inside it survives in the resample — fixing the plain bootstrap's understated uncertainty on dependent data.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>How does Monte Carlo simulation differ from bootstrapping in what it actually generates?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It generates entirely synthetic paths from a fitted model, rather than resampling real observed values</button>
+        <button class="sl-quiz-opt">It's the exact same procedure, just with a different name</button>
+        <button class="sl-quiz-opt">It requires collecting new, real market data first</button>
+        <div class="sl-quiz-explain">The bootstrap reshuffles real observations. Monte Carlo fits a model (GARCH, GBM) to the data and then rolls that model forward with fresh random innovations, producing brand-new synthetic paths.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>A backtest reports a tight, reassuring 95% bootstrap Sharpe interval. What has that actually shown?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The sample is internally consistent — not that the signal will generalize to unseen data</button>
+        <button class="sl-quiz-opt">The strategy is proven to have real, tradeable out-of-sample edge</button>
+        <button class="sl-quiz-opt">No further validation is needed before trading it</button>
+        <div class="sl-quiz-explain">Every resample is drawn from the exact same historical trades, generated by the same signal over the same period. A tight interval means those trades don't include a wild outlier — a fact about sample quality, not about generalization.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>The bootstrap resamples your one dataset with replacement, thousands of times, to approximate a statistic's sampling distribution — a mean, a Sharpe ratio, a max drawdown — with no assumption about its shape.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>More resamples (larger B) stabilize the estimate of the spread — they never shrink the spread below what the original observations can actually support.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Use the block bootstrap for time series — a plain bootstrap shuffles away volatility clustering and serial correlation, understating true uncertainty.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Monte Carlo simulates from a fitted model (GARCH, GBM), not real observations — every synthetic path inherits any mis-specification baked into that model.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Neither tool can leave the sample it started from — both describe what's plausible given what you already have, never what would happen under conditions that sample never contained.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Walk-forward validation, not resampling, is the tool that actually tests generalization — it evaluates a signal on real, later data it never touched during fitting.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Read a bootstrap confidence interval or a Monte Carlo fan chart for exactly what it is — a measure of variability within one sample, not evidence of generalization. Recognize when a plain bootstrap needs to be a block bootstrap instead, the moment the data has real serial correlation. Tell apart "the sample is internally consistent" from "the signal has out-of-sample edge," and never let a tight resampled interval quietly stand in for a real out-of-sample test.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Itô's Lemma</h3>
+        <p>The chain rule for random processes — why a function of a stochastic process picks up an extra second-derivative term that ordinary calculus never has.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="ito-lemma.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="bootstrapping-monte-carlo.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Slide 4 — five trade returns, three fixed-pattern resamples, live.
+  (function(){
+    var DEFAULTS = { x1: 2, x2: -1, x3: 3, x4: -2, x5: 1 };
+    var fields = ['x1', 'x2', 'x3', 'x4', 'x5'];
+    var inputs = {};
+    fields.forEach(function(f){ inputs[f] = document.getElementById('bt-' + f); });
+    if (!inputs.x1) return;
+
+    // Fixed draw patterns (1-indexed into x1..x5), matching the full lesson's
+    // hand-worked example, independent of the current x values.
+    var DRAWS = [
+      [1, 1, 2, 5, 3],
+      [4, 4, 5, 2, 4],
+      [3, 5, 3, 1, 2]
+    ];
+
+    var meanOut = document.getElementById('bt-mean');
+    var rOuts = [document.getElementById('bt-r1'), document.getElementById('bt-r2'), document.getElementById('bt-r3')];
+    var resetBtn = document.getElementById('bt-reset');
+
+    function mean(arr){
+      var s = 0;
+      for (var i = 0; i < arr.length; i++) s += arr[i];
+      return s / arr.length;
+    }
+
+    function recompute(){
+      var x = fields.map(function(f){ return parseFloat(inputs[f].value); });
+      if (x.some(function(v){ return !isFinite(v); })) {
+        meanOut.textContent = '—';
+        rOuts.forEach(function(o){ o.textContent = '—'; });
+        return;
+      }
+      meanOut.textContent = mean(x).toFixed(2);
+      DRAWS.forEach(function(draw, i){
+        var resample = draw.map(function(idx){ return x[idx - 1]; });
+        rOuts[i].textContent = mean(resample).toFixed(2);
+      });
+    }
+
+    fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+      recompute();
+    });
+    recompute();
+  })();
+
+  // Slide 5 — bootstrap replicate histogram, B slider, seeded PRNG so it's
+  // deterministic and reproducible on every load.
+  (function(){
+    var slider = document.getElementById('mc-slider');
+    if (!slider) return;
+    var bVal = document.getElementById('mc-bval');
+    var barsG = document.getElementById('mc-bars');
+    var ciBand = document.getElementById('mc-ci-band');
+    var obsLine = document.getElementById('mc-obs-line');
+    var readout = document.getElementById('mc-readout');
+
+    // Seeded PRNG (mulberry32) — deterministic, same behaviour on every load.
+    function mulberry32(seed){
+      var a = seed >>> 0;
+      return function(){
+        a |= 0; a = (a + 0x6D2B79F5) | 0;
+        var t = Math.imul(a ^ (a >>> 15), 1 | a);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+
+    // Underlying "true" trade-return population these bootstrap replicates
+    // are drawn from — a small, lumpy, non-normal set of percent returns,
+    // in the spirit of the worked example, so the Sharpe-ratio replicate
+    // distribution has genuine visible spread.
+    var POP = [2.1, -1.4, 3.2, -2.0, 1.1, 0.4, -0.8, 2.6, -1.9, 1.7, 0.2, -0.6];
+    var OBS_T = sharpe(POP);
+
+    function mean(a){ var s = 0; for (var i = 0; i < a.length; i++) s += a[i]; return s / a.length; }
+    function stdev(a){ var m = mean(a), s = 0; for (var i = 0; i < a.length; i++) s += (a[i] - m) * (a[i] - m); return Math.sqrt(s / Math.max(1, a.length - 1)); }
+    function sharpe(a){ var sd = stdev(a); return sd > 1e-9 ? mean(a) / sd : 0; }
+
+    var X0 = 30, X1 = 610, Y0 = 185, Y1 = 15;
+    var T_MIN = -1.6, T_MAX = 1.6; // fixed axis range so the histogram doesn't jump as B changes
+
+    function xFor(t){ return X0 + ((t - T_MIN) / (T_MAX - T_MIN)) * (X1 - X0); }
+
+    function render(B){
+      var rng = mulberry32(20260903);
+      var n = POP.length;
+      var reps = new Array(B);
+      for (var b = 0; b < B; b++) {
+        var resample = new Array(n);
+        for (var i = 0; i < n; i++) resample[i] = POP[(rng() * n) | 0];
+        reps[b] = sharpe(resample);
+      }
+      reps.sort(function(a, c){ return a - c; });
+
+      var lo = reps[Math.max(0, Math.floor(0.025 * B))];
+      var hi = reps[Math.min(B - 1, Math.ceil(0.975 * B) - 1)];
+
+      // Bin into a fixed number of bars across the fixed T range.
+      var NBARS = 24;
+      var binW = (T_MAX - T_MIN) / NBARS;
+      var counts = new Array(NBARS).fill(0);
+      reps.forEach(function(t){
+        var idx = Math.min(NBARS - 1, Math.max(0, Math.floor((t - T_MIN) / binW)));
+        counts[idx]++;
+      });
+      var maxCount = Math.max.apply(null, counts) || 1;
+
+      var barW = (X1 - X0) / NBARS;
+      var html = '';
+      for (var k = 0; k < NBARS; k++) {
+        var h = (counts[k] / maxCount) * (Y0 - Y1 - 6);
+        var x = X0 + k * barW;
+        var y = Y0 - h;
+        html += '<rect x="' + (x + 1).toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + Math.max(0, barW - 2).toFixed(1) + '" height="' + h.toFixed(1) + '" style="fill:var(--purple);opacity:.55"></rect>';
+      }
+      barsG.innerHTML = html;
+
+      var loX = xFor(lo), hiX = xFor(hi);
+      ciBand.setAttribute('x', Math.min(loX, hiX).toFixed(1));
+      ciBand.setAttribute('width', Math.max(2, Math.abs(hiX - loX)).toFixed(1));
+
+      var obsX = xFor(OBS_T);
+      obsLine.setAttribute('x1', obsX); obsLine.setAttribute('x2', obsX);
+      document.getElementById('mc-obs-label').setAttribute('x', obsX);
+
+      document.getElementById('mc-lo-label').textContent = lo.toFixed(2);
+      document.getElementById('mc-hi-label').textContent = hi.toFixed(2);
+      document.getElementById('mc-lo-label').setAttribute('x', loX.toFixed(1));
+      document.getElementById('mc-hi-label').setAttribute('x', hiX.toFixed(1));
+
+      bVal.textContent = 'B = ' + B;
+      readout.innerHTML = B < 100
+        ? 'At B = ' + B + ', the histogram is coarse and the 95% interval [' + lo.toFixed(2) + ', ' + hi.toFixed(2) + '] still jumps around from resample to resample.'
+        : 'At B = ' + B + ', the histogram has filled in and the 95% interval [' + lo.toFixed(2) + ', ' + hi.toFixed(2) + '] has settled — further increases in B barely move it, because it is bounded by the original 12 trades, not by B.';
+    }
+
+    slider.addEventListener('input', function(){ render(parseInt(slider.value, 10)); });
+    render(parseInt(slider.value, 10));
+  })();
+})();
+</script>
+</body>
+</html>

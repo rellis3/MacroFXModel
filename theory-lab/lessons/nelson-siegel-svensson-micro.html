@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nelson-Siegel &amp; Svensson — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Nelson-Siegel &amp; Svensson — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivation, the interactive chart, and a 5-question self-test?<a href="nelson-siegel-svensson.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Fixed Income 4 · Fixed Income Mathematics</div>
+      <h1 class="sl-h1">Four Numbers, <em>One Whole Yield Curve</em></h1>
+      <p class="sl-lede">Bootstrapping strips an exact zero rate out of every bond you feed it — and knows nothing at all about the maturities in between. Nelson-Siegel and Svensson throw that exactness away on purpose: pick a smooth mathematical shape flexible enough to describe how real yield curves actually look, and fit a handful of parameters to it instead. Four numbers (or six) replace a jagged connect-the-dots line with one curve that a central bank can publish, extrapolate, and forecast — every single trading day.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Exact isn't the same as well-behaved</h2>
+      <p class="sl-sub">Bootstrapping reprices every input bond perfectly. That's exactly the problem in between them.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Same bonds, two ways of connecting them</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 190" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A jagged bootstrapped curve versus a smooth parametric curve through the same handful of bond points">
+            <line x1="30" y1="165" x2="620" y2="165" style="stroke:var(--border2);stroke-width:1"/>
+            <path style="fill:none;stroke:var(--red);stroke-width:2.5" d="M50,130 L140,110 L200,150 L260,60 L340,95 L420,40 L500,80 L590,55"/>
+            <path style="fill:none;stroke:var(--green);stroke-width:2.5" d="M50,130 C160,105 220,95 300,80 C380,68 460,60 590,55"/>
+            <circle cx="50" cy="130" r="4.5" style="fill:var(--text)"/>
+            <circle cx="140" cy="110" r="4.5" style="fill:var(--text)"/>
+            <circle cx="260" cy="60" r="4.5" style="fill:var(--text)"/>
+            <circle cx="420" cy="40" r="4.5" style="fill:var(--text)"/>
+            <circle cx="590" cy="55" r="4.5" style="fill:var(--text)"/>
+            <text x="560" y="30" text-anchor="end" style="fill:var(--red);font-size:11px;font-weight:700">bootstrap — kinks between sparse bonds</text>
+            <text x="560" y="175" text-anchor="end" style="fill:var(--green);font-size:11px;font-weight:700">Nelson-Siegel — smooth by construction</text>
+          </svg>
+        </div>
+        <div class="sl-verdict">The black dots are the same five observed bonds in both curves. The red path connects them exactly, one segment at a time — and overshoots, dips, and reverses direction where two input bonds happen to be far apart or one quote is noisy. The green path never can — it's one continuous function, not a sequence of straight-line hops.</div>
+      </div>
+      <p class="sl-p">This is a direct continuation of the prior lesson's bootstrapping method: strip a zero rate out of each bond, one maturity at a time, and connect the results. It's exact everywhere it has data, and it knows <em>nothing</em> beyond that data — the shape between two input maturities is only as sensible as whatever interpolation rule glues them together, and the shape past the last input bond is close to a guess.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Why bootstrapping still gets taught first</div>
+        <p>Bootstrapping is the right tool when you need an exact price for a specific bond right now — it reprices its own inputs by construction, which a parametric fit does not. Parametric curves solve a different problem: a stable, storable, forecastable <em>description</em> of the whole curve's shape, at the cost of a small, expected residual against every individual bond.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">One smooth shape, four knobs</h2>
+      <p class="sl-sub">Nelson-Siegel (1987): describe an entire curve's level, slope and hump with four parameters instead of one rate per maturity.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📏</div><div><h4>β₀ — Level</h4><p>The long-run yield the curve settles toward as maturity → ∞. Should be an economically sensible rate on its own.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📉</div><div><h4>β₁ — Slope</h4><p>Short end minus the long-run level. Its sign alone flips the curve between upward-sloping and inverted.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🐫</div><div><h4>β₂ — Curvature</h4><p>The size and direction of one hump (or dip) in the belly of the curve — zero at both ends, not in between.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⏳</div><div><h4>λ — Decay</h4><p>Sets where along the maturity axis that hump sits, and how fast the short end fades into the long-run level.</p></div></div>
+      </div>
+      <div class="sl-quote">Nearly every real yield curve, on nearly every day, is one of a small number of shapes: flat, tilted up, tilted down, or one of those with a bump or dip somewhere in the belly. Four dials is enough to draw all of them — and turning those dials can never accidentally produce a jagged kink, because the underlying function is smooth everywhere by construction.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Inside the formula — three pieces stacked together</h2>
+      <p class="sl-sub">Let x = τ/λ. The whole curve is a baseline, plus a short-end piece that fades out, plus a hump piece that's zero at both ends.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>y(τ) = β₀ + β₁·L(τ) + β₂·(L(τ) − e⁻ˣ)</div>
+        <div class="sl-row">
+          <div class="sl-box">β₀</div>
+          <div class="sl-arrow">+</div>
+          <div class="sl-box">β₁ · L(τ)</div>
+          <div class="sl-arrow">+</div>
+          <div class="sl-box amber">β₂ · (L(τ) − e⁻ˣ)</div>
+        </div>
+        <div class="sl-verdict"><strong>Baseline</strong> — never moves with τ. <strong>Slope term</strong> — starts at 1 (τ=0), decays smoothly to 0 as τ grows. <strong>Curvature term</strong> — exactly 0 at both τ=0 and τ→∞, but bulges away from zero in between. Where L(τ) = (1 − e⁻ˣ) / x.</div>
+      </div>
+      <p class="sl-p">Nothing here is piecewise — every one of these three pieces is a single smooth exponential expression evaluated at whatever τ you ask for. That's the entire mechanism behind "cannot kink": there is no seam anywhere along the maturity axis for a kink to live at.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Read β₀ and β₁ straight off the two extremes</h2>
+      <p class="sl-sub">Evaluate y(τ) at τ→0 and τ→∞ — the loadings collapse to plain numbers.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">τ → 0 — the instantaneous short rate</span>
+          <p>As x→0, L(τ)→1 and the curvature loading L(τ)−e⁻ˣ→1−1=0. The formula collapses to <strong>y(0) = β₀ + β₁</strong>. This is exactly why β₁ is called the slope: a negative β₁ pulls the short end below β₀ (normal, upward-sloping); a positive β₁ pushes it above (inverted).</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">τ → ∞ — the long-run level</span>
+          <p>As x→∞, both L(τ)→0 and the curvature loading →0−0=0. Every term but the baseline vanishes: <strong>y(∞) = β₀</strong>. β₀ is exactly the level the curve is converging toward — and it should look like a plausible long-run rate on its own, or the fit has gone wrong somewhere.</p>
+        </div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>Real curves don't extend to infinite maturity — "τ→∞" is a mathematical limit, not a tradable point. In practice β₀ is best read as "the rate the curve is heading toward well beyond the longest bonds actually observed," which is exactly why a plausible β₀ matters: nothing in the data directly pins it down past the last input maturity.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Turn one knob at a time</h2>
+      <p class="sl-sub">Every other parameter held fixed — what does changing just this one do to the curve's shape?</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="knob-tabs">
+          <button class="sl-tab active" data-panel="knob-b0">β₀ alone</button>
+          <button class="sl-tab" data-panel="knob-b1">β₁ alone</button>
+          <button class="sl-tab" data-panel="knob-b2">β₂ alone</button>
+          <button class="sl-tab" data-panel="knob-lam">λ alone</button>
+        </div>
+        <div class="sl-panel active" id="knob-b0">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two curves with the same shape shifted to different long-run levels">
+            <path style="fill:none;stroke:var(--blue);stroke-width:2.5" d="M40,120 C160,100 260,95 620,90"/>
+            <path style="fill:none;stroke:var(--purple);stroke-width:2.5" d="M40,120 C160,75 260,55 620,40"/>
+            <text x="600" y="82" text-anchor="end" style="fill:var(--blue);font-size:11px;font-weight:700">β₀ = 3%</text>
+            <text x="600" y="32" text-anchor="end" style="fill:var(--purple);font-size:11px;font-weight:700">β₀ = 5%</text>
+          </svg></div>
+          <div class="sl-verdict">Raising β₀ lifts the whole far end of the curve — the entire curve rides up or down toward wherever β₀ says it should eventually settle. It barely touches the very short end, which is governed by β₀+β₁, not β₀ alone.</div>
+        </div>
+        <div class="sl-panel" id="knob-b1">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="An upward-sloping curve versus an inverted curve depending on the sign of beta one">
+            <path style="fill:none;stroke:var(--green);stroke-width:2.5" d="M40,130 C180,100 320,90 620,88"/>
+            <path style="fill:none;stroke:var(--red);stroke-width:2.5" d="M40,40 C180,65 320,82 620,88"/>
+            <text x="60" y="122" style="fill:var(--green);font-size:11px;font-weight:700">β₁ &lt; 0 — normal</text>
+            <text x="60" y="55" style="fill:var(--red);font-size:11px;font-weight:700">β₁ &gt; 0 — inverted</text>
+          </svg></div>
+          <div class="sl-verdict">Both curves share the exact same β₀ and end up at the exact same long-run level — only the sign of β₁ decides whether the short end starts below it (green, the historically normal case) or above it (red, an inversion, often read as a recession signal).</div>
+        </div>
+        <div class="sl-panel" id="knob-b2">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A flat-belly curve versus a curve with a hump added in the middle">
+            <path style="fill:none;stroke:var(--text3);stroke-width:2" stroke-dasharray="4,4" d="M40,120 L620,55"/>
+            <path style="fill:none;stroke:var(--amber);stroke-width:2.5" d="M40,120 C220,25 400,25 620,55"/>
+            <text x="360" y="20" text-anchor="middle" style="fill:var(--amber);font-size:11px;font-weight:700">β₂ &gt; 0 — hump added in the belly</text>
+            <text x="500" y="105" text-anchor="middle" style="fill:var(--text3);font-size:11px">β₂ = 0 — no hump</text>
+          </svg></div>
+          <div class="sl-verdict">With β₂ at zero, the curve is just the β₀/β₁ blend between the two ends — no bulge. A nonzero β₂ bows the belly away from that straight blend: positive lifts it into a hump, negative pulls it into a dip. The two endpoints, y(0) and y(∞), don't move at all — the curvature loading is exactly zero there.</div>
+        </div>
+        <div class="sl-panel" id="knob-lam">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A hump positioned near the short end versus the same hump pushed toward the long end">
+            <path style="fill:none;stroke:var(--blue);stroke-width:2.5" d="M40,120 C120,35 200,35 620,90"/>
+            <path style="fill:none;stroke:var(--purple);stroke-width:2.5" d="M40,120 C300,105 420,20 620,90"/>
+            <text x="150" y="25" text-anchor="middle" style="fill:var(--blue);font-size:11px;font-weight:700">small λ</text>
+            <text x="440" y="14" text-anchor="middle" style="fill:var(--purple);font-size:11px;font-weight:700">large λ</text>
+          </svg></div>
+          <div class="sl-verdict">λ doesn't change the hump's size (β₂ does that) — it slides the hump's peak along the maturity axis. A small λ pulls the hump toward short maturities; a large λ pushes it out toward long ones. The same λ also sets how fast the β₁ slope term fades away.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Watch the curve reshape, live</h2>
+      <p class="sl-sub">Every slider recomputes y(τ) = β₀ + β₁L(τ) + β₂(L(τ) − e⁻ˣ) at 151 points from the real formula — no lookup table.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Nelson-Siegel yield curve from 0 to 30 years, redrawn live as the beta and lambda sliders move">
+            <line x1="55" y1="20" x2="55" y2="210" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="55" y1="210" x2="610" y2="210" style="stroke:var(--border2);stroke-width:1"/>
+            <text x="55" y="228" text-anchor="middle" style="fill:var(--text3);font-size:10px">0</text>
+            <text x="147.8" y="228" text-anchor="middle" style="fill:var(--text3);font-size:10px">5</text>
+            <text x="240.6" y="228" text-anchor="middle" style="fill:var(--text3);font-size:10px">10</text>
+            <text x="333.3" y="228" text-anchor="middle" style="fill:var(--text3);font-size:10px">15</text>
+            <text x="426.1" y="228" text-anchor="middle" style="fill:var(--text3);font-size:10px">20</text>
+            <text x="518.9" y="228" text-anchor="middle" style="fill:var(--text3);font-size:10px">25</text>
+            <text x="610" y="228" text-anchor="middle" style="fill:var(--text3);font-size:10px">30</text>
+            <text x="332" y="246" text-anchor="middle" style="fill:var(--text3);font-size:10.5px">Maturity τ (years)</text>
+            <line id="ns2-yline-0" x1="55" x2="610" style="stroke:var(--border);stroke-width:1;stroke-dasharray:3,3"/>
+            <line id="ns2-yline-1" x1="55" x2="610" style="stroke:var(--border);stroke-width:1;stroke-dasharray:3,3"/>
+            <line id="ns2-yline-2" x1="55" x2="610" style="stroke:var(--border);stroke-width:1;stroke-dasharray:3,3"/>
+            <line id="ns2-yline-3" x1="55" x2="610" style="stroke:var(--border);stroke-width:1;stroke-dasharray:3,3"/>
+            <line id="ns2-yline-4" x1="55" x2="610" style="stroke:var(--border);stroke-width:1;stroke-dasharray:3,3"/>
+            <text id="ns2-ylabel-0" x="48" text-anchor="end" style="fill:var(--text3);font-size:9.5px"></text>
+            <text id="ns2-ylabel-1" x="48" text-anchor="end" style="fill:var(--text3);font-size:9.5px"></text>
+            <text id="ns2-ylabel-2" x="48" text-anchor="end" style="fill:var(--text3);font-size:9.5px"></text>
+            <text id="ns2-ylabel-3" x="48" text-anchor="end" style="fill:var(--text3);font-size:9.5px"></text>
+            <text id="ns2-ylabel-4" x="48" text-anchor="end" style="fill:var(--text3);font-size:9.5px"></text>
+            <path id="ns2-curve-path" style="fill:none;stroke:var(--blue);stroke-width:2.5" d=""/>
+            <circle id="ns2-dot-1" r="4" style="fill:var(--purple);stroke:var(--bg);stroke-width:1.5"/>
+            <circle id="ns2-dot-2" r="4" style="fill:var(--purple);stroke:var(--bg);stroke-width:1.5"/>
+            <circle id="ns2-dot-5" r="4" style="fill:var(--purple);stroke:var(--bg);stroke-width:1.5"/>
+            <circle id="ns2-dot-10" r="4" style="fill:var(--purple);stroke:var(--bg);stroke-width:1.5"/>
+            <circle id="ns2-dot-30" r="4" style="fill:var(--purple);stroke:var(--bg);stroke-width:1.5"/>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>β₀ — level</span><span class="sl-live" id="ns2-b0-val">β₀ = 4.5%</span></div>
+        <input type="range" class="sl-slider" id="ns2-b0-slider" min="0" max="6" step="0.1" value="4.5">
+        <div class="sl-sliderhead" style="margin-top:12px"><span>β₁ — slope</span><span class="sl-live" id="ns2-b1-val">β₁ = -2.0%</span></div>
+        <input type="range" class="sl-slider" id="ns2-b1-slider" min="-4" max="4" step="0.1" value="-2.0">
+        <div class="sl-sliderhead" style="margin-top:12px"><span>β₂ — curvature</span><span class="sl-live" id="ns2-b2-val">β₂ = 1.0%</span></div>
+        <input type="range" class="sl-slider" id="ns2-b2-slider" min="-6" max="6" step="0.1" value="1.0">
+        <div class="sl-sliderhead" style="margin-top:12px"><span>λ — decay</span><span class="sl-live" id="ns2-lam-val">λ = 2.0</span></div>
+        <input type="range" class="sl-slider" id="ns2-lam-slider" min="0.3" max="8" step="0.1" value="2.0">
+        <div class="sl-note" id="ns2-readout">1Y — · 2Y — · 5Y — · 10Y — · 30Y —</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Worked by hand — the same numbers the chart starts on</h2>
+      <p class="sl-sub">β₀ = 4.5%, β₁ = −2.0%, β₂ = 1.0%, λ = 2.0. Plugging τ into y(τ) = β₀ + β₁L(τ) + β₂(L(τ) − e⁻ˣ):</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">1Y</div><div><h4>x = 0.500, L(x) = 0.7870</h4><p>y(1) = 4.5 − 2.0(0.7870) + 1.0(0.7870 − 0.6065) = <strong>3.1065%</strong></p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">2Y</div><div><h4>x = 1.000, L(x) = 0.6321</h4><p>y(2) = 4.5 − 2.0(0.6321) + 1.0(0.6321 − 0.3679) = <strong>3.5000%</strong></p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">5Y</div><div><h4>x = 2.500, L(x) = 0.3672</h4><p>y(5) = 4.5 − 2.0(0.3672) + 1.0(0.3672 − 0.0821) = <strong>4.0507%</strong></p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">10Y</div><div><h4>x = 5.000, L(x) = 0.1987</h4><p>y(10) = 4.5 − 2.0(0.1987) + 1.0(0.1987 − 0.0067) = <strong>4.2946%</strong></p></div></div>
+      </div>
+      <p class="sl-p">By 10 years the curve is already closing in on β₀ = 4.5% — it would sit at 4.4333% at 30 years, consistent with the τ→∞ limit from Section 4. Every one of these four numbers comes from the same three-term formula, just evaluated at a different τ.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Now put in your own numbers</h2>
+      <p class="sl-sub">Starts on the worked-example parameters. Change any field — the result recomputes on every keystroke.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — evaluate y(τ) for any parameters</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>β₀ — level (%)</label><input type="number" class="sl-input" id="nsc-b0" value="4.5" step="0.25"></div>
+          <div class="sl-calc-field"><label>β₁ — slope (%)</label><input type="number" class="sl-input" id="nsc-b1" value="-2.0" step="0.25"></div>
+          <div class="sl-calc-field"><label>β₂ — curvature (%)</label><input type="number" class="sl-input" id="nsc-b2" value="1.0" step="0.25"></div>
+        </div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>λ — decay</label><input type="number" class="sl-input" id="nsc-lam" value="2.0" step="0.1"></div>
+          <div class="sl-calc-field"><label>τ — maturity (years)</label><input type="number" class="sl-input" id="nsc-tau" value="5" step="1" min="0"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">y(τ)</div>
+            <div class="sl-calc-result-val" id="nsc-result">4.0507%</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>x = τ/λ = <b id="nsc-x">2.5000</b></div>
+          <div>L(x) = (1 − e⁻ˣ)/x = <b id="nsc-L">0.3672</b></div>
+        </div>
+        <div class="sl-note" id="nsc-note"></div>
+        <button type="button" class="sl-reset-btn" id="nsc-reset">Reset to worked-example numbers</button>
+      </div>
+      <p class="sl-p">Try λ = 0 or leave a field blank — the calculator shows "—" instead of a broken number. λ sitting in a denominator means λ = 0 is undefined, not just an edge case to skip past.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">When one hump isn't enough</h2>
+      <p class="sl-sub">Plain Nelson-Siegel's curvature term can only ever produce exactly one hump — or one dip. No amount of tuning β₂ or λ changes that.</p>
+      <div class="sl-svgwrap">
+        <svg viewBox="0 0 640 160" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A curve with two humps that plain Nelson Siegel cannot represent, fit well only by adding Svensson's second term">
+          <path style="fill:none;stroke:var(--red);stroke-width:2" stroke-dasharray="5,4" d="M40,130 C160,80 280,90 350,75 C420,60 480,90 620,55"/>
+          <path style="fill:none;stroke:var(--green);stroke-width:2.5" d="M40,130 C140,55 220,55 300,90 C380,120 460,35 550,35 L620,55"/>
+          <text x="600" y="26" text-anchor="end" style="fill:var(--green);font-size:11px;font-weight:700">Svensson — two independent humps</text>
+          <text x="600" y="150" text-anchor="end" style="fill:var(--red);font-size:11px;font-weight:700">plain Nelson-Siegel — one hump, forced to compromise</text>
+        </svg>
+      </div>
+      <p class="sl-p">Svensson (1994) fixes this with one more term, structurally identical to Nelson-Siegel's curvature term but built on its own separate decay parameter λ₂:</p>
+      <div class="sl-row">
+        <div class="sl-box">β₀ + β₁L₁(τ) + β₂(L₁(τ) − e⁻ˣ¹)</div>
+        <div class="sl-arrow">+</div>
+        <div class="sl-box amber">β₃(L₂(τ) − e⁻ˣ²)</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">β₃</div><div><h4>A second, independent hump</h4><p>Size and direction of a curvature term separate from β₂ — its own bump, its own maturity.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">λ₂</div><div><h4>Where the second hump sits</h4><p>A second decay parameter, independent of λ₁ — the two humps can sit at genuinely different maturities.</p></div></div>
+      </div>
+      <p class="sl-p">Six parameters (β₀, β₁, β₂, β₃, λ₁, λ₂) instead of four — best read as "Nelson-Siegel, twice, sharing one level and one slope." This is the extra flexibility central banks like the ECB and the U.S. Federal Reserve actually use in the curves they publish daily.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Fitting is optimization, not algebra</h2>
+      <p class="sl-sub">λ sits inside an exponential and a division — that rules out ordinary linear regression.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Fixed λ — linear</span>
+          <p>For a known, fixed λ, y(τ) is just a weighted sum of fixed loading functions in β₀, β₁, β₂ (and β₃) — ordinary linear regression solves that instantly, with a closed-form answer.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">λ also unknown — nonlinear</span>
+          <p>λ has to be estimated from the data too, and it sits inside e⁻ᵗ/λ and τ/λ — nonlinear in λ, no closed form. Solved iteratively: minimize Σ(y_obs − y(τ; β,λ))² until it stops improving.</p>
+        </div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">The genuinely hard part</div>
+        <p>Because the objective is nonlinear in λ (doubly so for Svensson's λ₁,λ₂ pair), the optimizer can converge to different local optima depending on where it starts. When λ₁ and λ₂ end up close together, the two curvature terms become nearly collinear — the fit can no longer tell the two humps apart reliably. Practitioners bound or separate the two decay parameters, or grid-search several starting values and keep the best-converged fit — a single optimizer run from one arbitrary guess isn't enough to trust.</p>
+      </div>
+      <p class="sl-p">A second trap sits right next to this one: bolting on more curvature terms to chase every last wiggle defeats the entire point of a parametric fit. A six-parameter Svensson fit to eight bonds is barely different from an unconstrained interpolation — it loses exactly the stability that was the whole reason to fit a smooth shape in the first place.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">How practitioners actually use this</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🏛</div><div><h4>Daily curve publication</h4><p>Central banks and Treasury departments refit fresh each trading day from that day's observed bond prices — the ECB and the Fed both publish a Svensson-family curve, not a raw bootstrap.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📐</div><div><h4>Pricing an odd maturity</h4><p>A desk pricing a bond at 17 years — between the usual 15Y and 20Y quotes — reads the rate straight off the fitted curve, which behaves sensibly everywhere, not just at the input bonds' own maturities.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎛</div><div><h4>A compact risk decomposition</h4><p>β₀, β₁, β₂ map directly onto level, slope and curvature risk — a compact summary of how the whole curve moved, used for hedging without tracking every point separately.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📈</div><div><h4>Forecasting the curve itself</h4><p>Diebold &amp; Li (2006): treat fitted β₀(t), β₁(t), β₂(t) as three time series, forecast each one, then reassemble a forecast curve for a future date — forecasting a whole shape, not one point.</p></div></div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>A fitted Svensson curve generally does <em>not</em> reprice its own input bonds exactly. A small residual between the curve and any one bond's actual yield is normal and expected — treating it as a mispriced bond to trade against is trading fitting noise, not a real market inefficiency, unless confirmed by something independent of the fit itself.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>A fitted curve has β₀ = 4% and β₁ = −1.5%. Is the curve upward-sloping or inverted?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Upward-sloping — the short end (β₀+β₁ = 2.5%) sits below the long-run level</button>
+        <button class="sl-quiz-opt">Inverted — the short end sits above the long-run level</button>
+        <button class="sl-quiz-opt">Flat — β₁ only affects curvature, not slope</button>
+        <div class="sl-quiz-explain">y(0) = β₀ + β₁ = 4% − 1.5% = 2.5%, below β₀ = 4%. A negative β₁ always means the short end sits below the long-run level — a normal, upward-sloping curve.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>What does the curvature loading L(τ) − e⁻ˣ equal at τ = 0 and at τ → ∞?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Zero at both ends — the hump only shows up in between</button>
+        <button class="sl-quiz-opt">β₂ at both ends</button>
+        <button class="sl-quiz-opt">It grows without bound as τ → ∞</button>
+        <div class="sl-quiz-explain">At τ=0, L→1 and e⁻ˣ→1, so the loading is 1−1=0. As τ→∞, both L and e⁻ˣ→0, so it's 0−0=0. β₂'s hump lives strictly in between, never at the endpoints.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Plain Nelson-Siegel (four parameters) is fit to a curve with two genuine, separate humps. What happens?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It under-fits — the curvature term can only produce one hump, no matter how β₂ and λ are tuned</button>
+        <button class="sl-quiz-opt">It fits perfectly — β₂ can represent any number of humps</button>
+        <button class="sl-quiz-opt">It fails to converge entirely</button>
+        <div class="sl-quiz-explain">The curvature loading has exactly one interior extremum. A genuinely two-humped curve needs Svensson's second, independent curvature term (β₃, λ₂) to represent both bumps at once.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Why can't Nelson-Siegel be fit with ordinary linear regression?</h4>
+        <button class="sl-quiz-opt" data-correct="true">λ sits inside an exponential and a division, and it's also being estimated from the data</button>
+        <button class="sl-quiz-opt">β₀, β₁ and β₂ are nonlinear in the data</button>
+        <button class="sl-quiz-opt">Yield curves never have a linear component</button>
+        <div class="sl-quiz-explain">For a fixed λ, the model is linear in the betas. But λ is unknown too, and it appears inside e⁻ᵗ/λ — nonlinear least squares, solved iteratively, is required once λ is also being estimated.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>A Svensson fit leaves a small residual against one input bond's actual yield. Is that a mispricing to trade against?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Generally no — a small residual is the normal, expected cost of a smooth parametric fit, not a bootstrap</button>
+        <button class="sl-quiz-opt">Yes — any nonzero residual is a real arbitrage</button>
+        <button class="sl-quiz-opt">It means the optimizer failed to converge</button>
+        <div class="sl-quiz-explain">Unlike a bootstrap, a parametric fit was never built to reprice every input bond exactly — that's the whole trade-off it makes for smoothness and stability. Trading the residual is trading fitting noise unless confirmed by something independent of the fit.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Bootstrapping is exact at its input bonds and unconstrained everywhere else — sparse or noisy inputs can kink the curve between them, or make extrapolation past the last bond close to a guess.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Nelson-Siegel replaces that with one smooth function of four parameters: β₀ (long-run level), β₁ (slope), β₂ (curvature), λ (where the hump sits) — smooth everywhere by construction.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>The two limits pin down the endpoints directly: y(0) = β₀+β₁ is the short rate, y(∞) = β₀ is the long-run level. Everything in between is the curvature term's hump.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The curvature loading is zero at both ends and nonzero in the middle — β₂ sets the hump's size and direction, λ slides where along the maturity axis it sits.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Svensson adds one more term (β₃, λ₂) for a second, independent hump — six parameters instead of four, and the form central banks like the ECB and the Fed actually publish.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Fitting is nonlinear least squares, not algebra — λ has no closed-form solution and the optimizer can land on different local optima depending on where it starts.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Read a published central-bank curve's β₀/β₁/β₂/λ values and know exactly what shape they imply, without plotting a single point. Price a bond or swap at an odd maturity straight off four or six numbers instead of inventing an ad-hoc interpolation rule. Use level, slope and curvature themselves as a compact, three-number summary of how an entire curve moved — for hedging and scenario analysis, not just one maturity at a time.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Swap Curves &amp; OIS Discounting</h3>
+        <p>Why a single Treasury curve can no longer discount every cash flow, and what OIS gives you that LIBOR-era curves didn't.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="swap-curves-ois-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="nelson-siegel-svensson.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Nelson-Siegel yield function shared by both live widgets on this page.
+  function nsLevel(x){
+    // lim_{x->0} (1-e^-x)/x = 1 — treat x=0 as a removable singularity.
+    if (Math.abs(x) < 1e-9) return 1;
+    return (1 - Math.exp(-x)) / x;
+  }
+  function nsYield(tau, b0, b1, b2, lam){
+    var x = tau / lam;
+    var L = nsLevel(x);
+    return b0 + b1 * L + b2 * (L - Math.exp(-x));
+  }
+
+  // Live chart — four sliders redraw the curve and the five marked maturities.
+  (function(){
+    var b0Slider = document.getElementById('ns2-b0-slider');
+    if (!b0Slider) return;
+    var b1Slider = document.getElementById('ns2-b1-slider');
+    var b2Slider = document.getElementById('ns2-b2-slider');
+    var lamSlider = document.getElementById('ns2-lam-slider');
+
+    var b0Val = document.getElementById('ns2-b0-val');
+    var b1Val = document.getElementById('ns2-b1-val');
+    var b2Val = document.getElementById('ns2-b2-val');
+    var lamVal = document.getElementById('ns2-lam-val');
+
+    var path = document.getElementById('ns2-curve-path');
+    var ylines = [0,1,2,3,4].map(function(i){ return document.getElementById('ns2-yline-'+i); });
+    var ylabels = [0,1,2,3,4].map(function(i){ return document.getElementById('ns2-ylabel-'+i); });
+    var dotMats = [1,2,5,10,30];
+    var dots = {};
+    dotMats.forEach(function(m){ dots[m] = document.getElementById('ns2-dot-'+m); });
+    var readout = document.getElementById('ns2-readout');
+
+    var X_LEFT = 55, X_RIGHT = 610, Y_TOP = 20, Y_BOTTOM = 210, TAU_MAX = 30;
+    function xPix(tau){ return X_LEFT + (tau / TAU_MAX) * (X_RIGHT - X_LEFT); }
+
+    function update(){
+      var b0 = parseFloat(b0Slider.value);
+      var b1 = parseFloat(b1Slider.value);
+      var b2 = parseFloat(b2Slider.value);
+      var lam = parseFloat(lamSlider.value);
+
+      b0Val.textContent = 'β₀ = ' + b0.toFixed(1) + '%';
+      b1Val.textContent = 'β₁ = ' + b1.toFixed(1) + '%';
+      b2Val.textContent = 'β₂ = ' + b2.toFixed(1) + '%';
+      lamVal.textContent = 'λ = ' + lam.toFixed(1);
+
+      var n = 151, taus = [], ys = [];
+      for (var i = 0; i < n; i++){
+        var tau = TAU_MAX * i / (n - 1);
+        taus.push(tau);
+        ys.push(nsYield(tau, b0, b1, b2, lam));
+      }
+      var yMin = Math.min.apply(null, ys), yMax = Math.max.apply(null, ys);
+      if (yMax - yMin < 0.5){
+        var mid = (yMax + yMin) / 2;
+        yMin = mid - 0.25; yMax = mid + 0.25;
+      }
+      var pad = (yMax - yMin) * 0.12;
+      yMin -= pad; yMax += pad;
+
+      function yPix(y){ return Y_BOTTOM - (y - yMin) / (yMax - yMin) * (Y_BOTTOM - Y_TOP); }
+
+      var d = '';
+      for (var j = 0; j < n; j++){
+        d += (j === 0 ? 'M' : 'L') + xPix(taus[j]).toFixed(1) + ',' + yPix(ys[j]).toFixed(1) + ' ';
+      }
+      path.setAttribute('d', d);
+
+      for (var k = 0; k < 5; k++){
+        var val = yMin + (yMax - yMin) * k / 4;
+        var py = yPix(val);
+        ylines[k].setAttribute('y1', py);
+        ylines[k].setAttribute('y2', py);
+        ylabels[k].setAttribute('y', py + 3);
+        ylabels[k].textContent = val.toFixed(2) + '%';
+      }
+
+      var matVals = {};
+      dotMats.forEach(function(m){
+        var y = nsYield(m, b0, b1, b2, lam);
+        matVals[m] = y;
+        dots[m].setAttribute('cx', xPix(m).toFixed(1));
+        dots[m].setAttribute('cy', yPix(y).toFixed(1));
+      });
+
+      readout.textContent = '1Y ' + matVals[1].toFixed(2) + '% · 2Y ' + matVals[2].toFixed(2) + '% · 5Y ' + matVals[5].toFixed(2) + '% · 10Y ' + matVals[10].toFixed(2) + '% · 30Y ' + matVals[30].toFixed(2) + '%';
+    }
+
+    [b0Slider, b1Slider, b2Slider, lamSlider].forEach(function(s){ s.addEventListener('input', update); });
+    update();
+  })();
+
+  // Live calculator — evaluate y(tau) for any beta/lambda/tau, with guards.
+  (function(){
+    var b0 = document.getElementById('nsc-b0');
+    if (!b0) return;
+    var b1 = document.getElementById('nsc-b1'), b2 = document.getElementById('nsc-b2');
+    var lam = document.getElementById('nsc-lam'), tau = document.getElementById('nsc-tau');
+    var xOut = document.getElementById('nsc-x'), lOut = document.getElementById('nsc-L');
+    var result = document.getElementById('nsc-result'), note = document.getElementById('nsc-note');
+    var resetBtn = document.getElementById('nsc-reset');
+    var DEFAULTS = { b0: 4.5, b1: -2.0, b2: 1.0, lam: 2.0, tau: 5 };
+
+    function recompute(){
+      var b0v = parseFloat(b0.value), b1v = parseFloat(b1.value), b2v = parseFloat(b2.value);
+      var lamv = parseFloat(lam.value), tauv = parseFloat(tau.value);
+
+      if (!isFinite(b0v) || !isFinite(b1v) || !isFinite(b2v) || !isFinite(lamv) || !isFinite(tauv) || tauv < 0) {
+        xOut.textContent = '—'; lOut.textContent = '—'; result.textContent = '—';
+        note.textContent = 'Enter numeric β parameters and a non-negative maturity.';
+        return;
+      }
+      if (lamv === 0) {
+        xOut.textContent = '—'; lOut.textContent = '—'; result.textContent = '—';
+        note.textContent = 'λ can\'t be zero — it sits in a denominator (x = τ/λ).';
+        return;
+      }
+      note.textContent = '';
+      var x = tauv / lamv;
+      var L = nsLevel(x);
+      var y = b0v + b1v * L + b2v * (L - Math.exp(-x));
+      xOut.textContent = x.toFixed(4);
+      lOut.textContent = L.toFixed(4);
+      result.textContent = y.toFixed(4) + '%';
+    }
+
+    [b0, b1, b2, lam, tau].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      b0.value = DEFAULTS.b0; b1.value = DEFAULTS.b1; b2.value = DEFAULTS.b2;
+      lam.value = DEFAULTS.lam; tau.value = DEFAULTS.tau;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

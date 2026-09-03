@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PCA &amp; Factor Models — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">PCA &amp; Factor Models — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivation, a live loadings example, and a 6-question self-test?<a href="pca-factors.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Lesson 10 · Cross-Asset &amp; Structure</div>
+      <h1 class="sl-h1">PCA &amp; Factor Models, <em>Finding the One Trade Hiding in Many</em></h1>
+      <p class="sl-lede">A basket of currency pairs looks like several separate bets. Most days it's really one bet — "risk-on" or "risk-off" — wearing several costumes. Principal Component Analysis (PCA) is the tool that measures exactly how true that is: how many genuinely independent risks a basket actually contains, versus how many instruments it happens to be split across.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">One basket, one bet in disguise</h2>
+      <p class="sl-p">Open any multi-pair FX dashboard on a day the market moves and a familiar pattern shows up: EURUSD up, GBPUSD up, AUDUSD up, USDJPY down, USDCHF down — six or seven "different" pairs that all just told you the same thing, dollar weakness or strength, at the same time.</p>
+      <div class="sl-quote">If you hold positions in all of them thinking you have seven independent views, you don't. You have one large, leveraged bet on a single shared factor, plus some small residual noise around it.</div>
+      <p class="sl-p">The opposite can also be true: most days the basket looks coordinated, and then one pair — with its own domestic story, a central-bank surprise, a commodity shock — decouples and moves on its own reasons. Knowing which situation you're actually in, quantitatively rather than by eyeballing a heatmap, is the entire point of this lesson.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Finding the camera angle that shows the most motion</h2>
+      <p class="sl-sub">The plain-English version, before any notation.</p>
+      <div class="sl-quote">Imagine filming a swarm of fireflies at night from many possible camera angles. Most angles show a confusing tangle of dots moving every which way. But there's usually one angle — one line of sight — from which the swarm's motion looks biggest and clearest: maybe the fireflies are mostly drifting left-to-right together, and pointing the camera straight down that axis captures almost all of the apparent motion in a single dimension.</div>
+      <p class="sl-p">PCA is the procedure for finding that best camera angle automatically — except instead of fireflies, it works on a cloud of daily returns across several instruments. It finds the direction through that cloud where the data is most spread out (the <strong>first principal component</strong>, PC1), then the next-best direction perpendicular to the first (PC2), and so on. "Spread out" here is just a stand-in for <strong>variance</strong>: a direction the cloud is spread wide along explains a lot of day-to-day movement; a direction it's thin along barely matters.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">The upshot</div>
+        <p>If most of a basket's spread lives along one single direction, most of what's "moving" is really one underlying thing, viewed from several currency pairs — several angles — at once.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Step 1 — how two series really move together</h2>
+      <p class="sl-sub">Covariance is a running check: was each series above or below its own normal, on the same day?</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="cov-tabs">
+          <button class="sl-tab active" data-panel="cov-1">Co-move (positive)</button>
+          <button class="sl-tab" data-panel="cov-2">Move opposite (negative)</button>
+          <button class="sl-tab" data-panel="cov-3">Unrelated (≈0)</button>
+        </div>
+        <div class="sl-panel active" id="cov-1">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 130" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Scatter of points sloping upward, showing two series that tend to rise and fall together">
+            <line x1="30" y1="105" x2="610" y2="105" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="30" y1="105" x2="30" y2="15" style="stroke:var(--border2);stroke-width:1"/>
+            <circle cx="80" cy="90" r="4" style="fill:var(--blue)"/><circle cx="130" cy="80" r="4" style="fill:var(--blue)"/><circle cx="160" cy="88" r="4" style="fill:var(--blue)"/><circle cx="210" cy="65" r="4" style="fill:var(--blue)"/><circle cx="250" cy="72" r="4" style="fill:var(--blue)"/><circle cx="290" cy="55" r="4" style="fill:var(--blue)"/><circle cx="330" cy="58" r="4" style="fill:var(--blue)"/><circle cx="380" cy="42" r="4" style="fill:var(--blue)"/><circle cx="420" cy="48" r="4" style="fill:var(--blue)"/><circle cx="460" cy="30" r="4" style="fill:var(--blue)"/><circle cx="510" cy="35" r="4" style="fill:var(--blue)"/><circle cx="560" cy="20" r="4" style="fill:var(--blue)"/>
+          </svg></div>
+          <div class="sl-verdict">Above-normal on pair A tends to land on the same day as above-normal on pair B. Most products of deviations are positive, so covariance comes out <strong>positive</strong> — they move as a team.</div>
+        </div>
+        <div class="sl-panel" id="cov-2">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 130" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Scatter of points sloping downward, showing two series that move opposite each other">
+            <line x1="30" y1="105" x2="610" y2="105" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="30" y1="105" x2="30" y2="15" style="stroke:var(--border2);stroke-width:1"/>
+            <circle cx="80" cy="25" r="4" style="fill:var(--red)"/><circle cx="130" cy="35" r="4" style="fill:var(--red)"/><circle cx="160" cy="28" r="4" style="fill:var(--red)"/><circle cx="210" cy="48" r="4" style="fill:var(--red)"/><circle cx="250" cy="42" r="4" style="fill:var(--red)"/><circle cx="290" cy="60" r="4" style="fill:var(--red)"/><circle cx="330" cy="55" r="4" style="fill:var(--red)"/><circle cx="380" cy="72" r="4" style="fill:var(--red)"/><circle cx="420" cy="68" r="4" style="fill:var(--red)"/><circle cx="460" cy="85" r="4" style="fill:var(--red)"/><circle cx="510" cy="80" r="4" style="fill:var(--red)"/><circle cx="560" cy="95" r="4" style="fill:var(--red)"/>
+          </svg></div>
+          <div class="sl-verdict">Above-normal on one tends to land on days the other is below-normal. Products of deviations are mostly negative, so covariance comes out <strong>negative</strong> — they pull in opposite directions.</div>
+        </div>
+        <div class="sl-panel" id="cov-3">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 130" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Scatter of points with no visible slope, showing two unrelated series">
+            <line x1="30" y1="105" x2="610" y2="105" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="30" y1="105" x2="30" y2="15" style="stroke:var(--border2);stroke-width:1"/>
+            <circle cx="80" cy="55" r="4" style="fill:var(--text3)"/><circle cx="130" cy="80" r="4" style="fill:var(--text3)"/><circle cx="160" cy="35" r="4" style="fill:var(--text3)"/><circle cx="210" cy="70" r="4" style="fill:var(--text3)"/><circle cx="250" cy="45" r="4" style="fill:var(--text3)"/><circle cx="290" cy="90" r="4" style="fill:var(--text3)"/><circle cx="330" cy="30" r="4" style="fill:var(--text3)"/><circle cx="380" cy="60" r="4" style="fill:var(--text3)"/><circle cx="420" cy="85" r="4" style="fill:var(--text3)"/><circle cx="460" cy="40" r="4" style="fill:var(--text3)"/><circle cx="510" cy="65" r="4" style="fill:var(--text3)"/><circle cx="560" cy="50" r="4" style="fill:var(--text3)"/>
+          </svg></div>
+          <div class="sl-verdict">No consistent pattern — positive and negative products roughly cancel out, so covariance lands <strong>near zero</strong>. Neither predicts the other.</div>
+        </div>
+        <div class="sl-note">Cov(x,y) = average of (xₜ − x̄)(yₜ − ȳ) across every day t. Its units are messy — return-of-x times return-of-y — which is why correlation (covariance rescaled into [−1, 1]) is usually what gets quoted instead.</div>
+      </div>
+      <p class="sl-p">For a basket of N instruments, computing this pairwise number for every combination and arranging the results in an N×N grid gives the <strong>covariance matrix Σ</strong> — its diagonal holds each instrument's own variance, its off-diagonal entries the pairwise covariances. This is the exact same object this project's own correlation heatmap already renders for you. PCA is the next step after you have that grid, not a replacement for it.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Step 2 — the one piece of linear algebra you need</h2>
+      <p class="sl-sub">A matrix like Σ is a machine: feed it a direction, it stretches, squishes, or rotates that direction. Almost every direction comes out pointing somewhere new.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Illustration</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two panels: an eigenvector that only gets stretched along its own line, and a non-eigenvector that gets rotated onto a different line">
+            <defs>
+              <marker id="pca-mk-grey" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--text3)"/></marker>
+              <marker id="pca-mk-purple" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--purple)"/></marker>
+              <marker id="pca-mk-red" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--red)"/></marker>
+            </defs>
+            <line x1="320" y1="15" x2="320" y2="195" style="stroke:var(--border);stroke-width:1;stroke-dasharray:4 4"/>
+            <line x1="150" y1="150" x2="212" y2="112" style="stroke:var(--text3);stroke-width:2;marker-end:url(#pca-mk-grey)"/>
+            <text x="200" y="100" style="fill:var(--text3);font-size:12px">v</text>
+            <line x1="150" y1="150" x2="264" y2="79" style="stroke:var(--purple);stroke-width:3;marker-end:url(#pca-mk-purple)"/>
+            <text x="272" y="72" style="fill:var(--purple);font-size:12px;font-weight:700">Σv = λv</text>
+            <text x="150" y="185" style="fill:var(--text2);font-size:12px;font-weight:600">Eigenvector — stretched, not rotated</text>
+            <line x1="470" y1="150" x2="532" y2="112" style="stroke:var(--text3);stroke-width:2;marker-end:url(#pca-mk-grey)"/>
+            <text x="520" y="100" style="fill:var(--text3);font-size:12px">u</text>
+            <line x1="470" y1="150" x2="500" y2="185" style="stroke:var(--red);stroke-width:3;marker-end:url(#pca-mk-red)"/>
+            <text x="475" y="205" style="fill:var(--red);font-size:12px;font-weight:700">Σu — knocked off its own line</text>
+            <text x="470" y="185" style="fill:var(--text2);font-size:12px;font-weight:600" transform="translate(0,-2)"></text>
+          </svg>
+        </div>
+        <div class="sl-verdict">Left: v is special — Σ only lengthens it, it never leaves v's own line. Right: u is ordinary — Σ rotates it onto a completely different line.</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">v</div><div><h4>Eigenvector</h4><p>A direction Σ only stretches or shrinks — it never rotates it off its own line. For a covariance matrix, these directions are the principal components.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">λ</div><div><h4>Eigenvalue</h4><p>The amount of stretching along that direction — how much variance lies there. Bigger λ, more important direction. Formally: Σv = λv.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⊥</div><div><h4>Mutually perpendicular</h4><p>An N×N covariance matrix always has exactly N eigenvectors, and they are guaranteed mutually orthogonal — a complete, non-overlapping set of directions.</p></div></div>
+      </div>
+      <div class="sl-quote">That perpendicularity is what makes eigenvectors useful as "factors": directions at 90° to each other can't share variance by definition. Principal components are uncorrelated because of the geometry, not because you found something in the data.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Watch the cloud rotate into its own axes</h2>
+      <p class="sl-sub">Each blue dot is one day's return pair for two instruments. Drag the slider to change how tightly they co-move.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Scatter plot of a correlated two-instrument return cloud with a red PC1 arrow along its long axis and an amber PC2 arrow perpendicular to it, both updating as correlation changes">
+            <defs>
+              <marker id="pca-arrow-1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--red)"/></marker>
+              <marker id="pca-arrow-2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--amber)"/></marker>
+            </defs>
+            <line x1="30" y1="170" x2="610" y2="170" style="stroke:var(--border)"/>
+            <line x1="320" y1="20" x2="320" y2="280" style="stroke:var(--border)"/>
+            <g id="pca2-points"></g>
+            <line id="pca2-pc1" x1="193" y1="229" x2="447" y2="111" style="stroke:var(--red);stroke-width:2.5;marker-end:url(#pca-arrow-1)"/>
+            <text x="452" y="105" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:13px;font-weight:700">PC1</text>
+            <line id="pca2-pc2" x1="280" y1="86" x2="359" y2="254" style="stroke:var(--amber);stroke-width:2;marker-end:url(#pca-arrow-2)"/>
+            <text x="365" y="260" style="fill:var(--amber);font-family:'DM Mono',monospace;font-size:13px;font-weight:700">PC2</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Correlation strength</span><span class="sl-live" id="pca2-rlabel">r = 0.75</span></div>
+        <input type="range" class="sl-slider" id="pca2-slider" min="0" max="95" step="5" value="75">
+        <div class="sl-verdict" style="margin-top:10px">PC1 explains ≈ <strong id="pca2-evr">87.5%</strong> of total variance.</div>
+        <div class="sl-note">Illustrative two-instrument case only, not the general N-instrument formula. For two equally-volatile series with correlation r, the exact share is (1 + |r|) / 2 — this is what's computed live above. Drag the slider to r = 0 and watch the cloud round out into a circle with no dominant direction — PC1 and PC2 become equally important.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Step 3 &amp; 4 — ranking components, then scoring them</h2>
+      <p class="sl-p">Sort the N eigenvectors by their eigenvalue, largest to smallest: λ₁ ≥ λ₂ ≥ … ≥ λ_N. The eigenvector with the largest eigenvalue is <strong>PC1</strong> — the single direction along which the basket's daily returns vary the most. PC2 is next-largest, perpendicular to PC1, capturing most of whatever PC1 didn't. And so on, down to PC_N, which by the time you get there is usually mopping up scraps of noise.</p>
+      <p class="sl-p">The eigenvalues themselves tell you exactly how much variance each component owns, because the sum of all N eigenvalues equals the basket's total variance. The <strong>explained variance ratio</strong> of component i is simply its share of that total:</p>
+      <div class="sl-row"><div class="sl-box">EVRᵢ</div><div class="sl-arrow">=</div><div class="sl-box amber">λᵢ</div><div class="sl-arrow">÷</div><div class="sl-box amber">Σⱼ λⱼ</div></div>
+      <div class="sl-quote">If EVR₁ = 0.72, that means 72% of the total variance across every instrument in the basket, every day, is captured by a single direction — PC1. This one number is the headline output of a PCA-on-a-basket exercise: it directly answers "how much of what moves in this basket is really one thing."</div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Try it — eigenvalues of a 2×2 covariance matrix, live</h2>
+      <p class="sl-sub">For two instruments X and Y, Σ = [[a, b], [b, d]] where a = Var(X), d = Var(Y), b = Cov(X,Y). The eigenvalues have a clean closed form — no matrix library needed.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any entry, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>a — Var(X)</label><input type="number" class="sl-input" id="eig-a" value="1" step="0.05" min="0"></div>
+          <div class="sl-calc-op">,</div>
+          <div class="sl-calc-field"><label>b — Cov(X,Y)</label><input type="number" class="sl-input" id="eig-b" value="0.75" step="0.05"></div>
+          <div class="sl-calc-op">,</div>
+          <div class="sl-calc-field"><label>d — Var(Y)</label><input type="number" class="sl-input" id="eig-d" value="1" step="0.05" min="0"></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Trace (total variance) = a + d = <b id="eig-trace">2.00</b></div>
+          <div>λ₁,₂ = (a+d)/2 ± √( ((a−d)/2)² + b² ) → λ₁ = <b id="eig-l1">1.75</b>, λ₂ = <b id="eig-l2">0.25</b></div>
+          <div>EVR₁ = λ₁ ÷ trace = <b id="eig-evr1">87.5%</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="eig-reset">Reset to worked-example numbers</button>
+        <div class="sl-note" id="eig-note">Sanity check: try a = 2, b = 0, d = 1 — with no covariance, the eigenvalues are just the variances themselves, 2 and 1.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Worked example — three FX pairs, one shared driver and one holdout</h2>
+      <p class="sl-p">EURUSD, GBPUSD, and AUDJPY, with a correlation matrix showing EURUSD/GBPUSD strongly linked (0.75) and AUDJPY only weakly tied to either (0.20, 0.15). Running PCA on this gives eigenvalues summing to 3 (the trace of a 3×3 correlation matrix): λ₁ ≈ 1.85, λ₂ ≈ 0.95, λ₃ ≈ 0.20, so EVR₁ ≈ 62%.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Shared factor present</span>
+          <p>PC1's loadings come out roughly (0.63, 0.61, 0.48) — EURUSD and GBPUSD load almost equally and strongly, since they drive the shared factor. AUDJPY loads in the same direction but noticeably smaller — some, not all, of its variance is shared with the other two.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">If AUDJPY were fully idiosyncratic</span>
+          <p>With correlations of 0.02 and −0.03 instead, PC1 would load almost entirely on EURUSD/GBPUSD alone — roughly (0.71, 0.70, 0.05) — with EVR₁ closer to 50%, and a separate component would load almost entirely on AUDJPY by itself: a fully idiosyncratic instrument needs its own dimension.</p>
+        </div>
+      </div>
+      <div class="sl-quote">That contrast is the whole diagnostic in miniature: a high loading on PC1 for every instrument, with a high EVR₁, says "this basket is really one trade in several costumes." A pair sitting near-zero on PC1 and picking up its own later component says "this one is actually doing something different."</div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">How practitioners actually use this</h2>
+      <p class="sl-p">Running PCA across the G10 majors very reliably produces a PC1 readable as a broad "dollar factor" or "risk-sentiment factor" — most major pairs load onto it with the same sign relative to USD strength or weakness. On interest-rate curves, an even older, extremely well-documented result: the first three principal components of a yield curve's covariance matrix map almost exactly onto <strong>level</strong> (parallel shifts), <strong>slope</strong> (steepening/flattening), and <strong>curvature</strong> (butterfly) — stable enough that many desks quote curve risk directly in those units rather than tenor-by-tenor exposure.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag green">Risk aggregation</span>
+          <p>Total portfolio risk decomposes into "how much exposure to PC1 (the common factor) versus PC2, PC3, …" — a cleaner view of concentration than a pairwise correlation grid, which can't tell you whether medium-to-high numbers mean one dominant factor or several moderate ones. This is exactly the motivation behind an "effective number of bets" metric.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag green">Regime detection</span>
+          <p>Watching each day's PC1 score, and how much of that day's variance PC1 alone explained, flags unusual days — an instrument that normally loads heavily on PC1 suddenly decoupling, or a normally-idiosyncratic instrument suddenly co-moving tightly with the pack.</p>
+        </div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">The caveat</div>
+        <p>PCA is descriptive, not a forecast — it tells you what the historical covariance structure looked like over the window you fed it, not what tomorrow's structure will be. Correlations, and EVR₁, famously spike toward 1 in a crisis — the well-known "correlations go to 1 in a crash" effect.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">What's actually built in this repo, right now</h2>
+      <p class="sl-p">This project already computes the <strong>eigenvalues</strong> of a correlation matrix — via a cyclic Jacobi rotation — to build an "effective number of bets" metric used in this project's own diversification research. That part is real and already shipped.</p>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">What's still missing</div>
+        <p>The current implementation deliberately returns only the eigenvalues, not the eigenvectors — so it can tell you "your book is concentrated" (a single summary number) but not "concentrated in EURUSD and GBPUSD specifically." The loadings this lesson covers — which instruments actually make up the dominant factor — are a documented, unbuilt extension, not something to assume already exists on a live dashboard.</p>
+      </div>
+      <p class="sl-p">The eigenvectors fall out of the same Jacobi-rotation algorithm as its accumulated rotation matrix, so extracting them would be an extension of existing code rather than a new algorithm — but until that's built, "effective number of bets" answers <em>how concentrated</em>, not <em>concentrated around what</em>.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Where PCA on a market basket goes wrong</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>Treating loadings as fixed</h4><p>Σ is estimated over whatever history window you feed it, and correlation structure genuinely shifts across regimes. A PCA on the last two years can describe a materially different factor structure than one on the last two months.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>Raw covariance, mixed volatility</h4><p>An instrument with much larger absolute daily moves mechanically dominates a raw-covariance PCA regardless of how correlated it actually is. Running PCA on the correlation matrix — standardizing every series first — is the standard fix, and the one used throughout this lesson.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>"Uncorrelated" ≠ "economically independent"</h4><p>PC2, PC3, … are uncorrelated with PC1 by geometry, over the exact sample fitted. That's not evidence of a clean economic story — later components increasingly mix real idiosyncratic signal with plain estimation noise.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>Small N, unstable eigenvectors</h4><p>With only 3-5 instruments and a modest sample, eigenvector directions — especially the smaller, later ones — can be noisy. Eigenvalues are comparatively more stable than eigenvectors under sampling noise.</p></div></div>
+      </div>
+      <div class="sl-quote">And the broadest caveat: PCA is not causal. A high loading tells you an instrument co-moves strongly with the dominant statistical direction — it does not tell you why, and any trading rule built on top still needs its own honest out-of-sample validation.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">Quick check</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>PC1 explains 70% of variance across a 6-pair basket. What does that imply about the "effective number of bets" in that basket?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It's much closer to 1-2 than to 6</button>
+        <button class="sl-quiz-opt">It's still close to 6, since there are 6 positions</button>
+        <button class="sl-quiz-opt">It can't be estimated from EVR₁ alone</button>
+        <div class="sl-quiz-explain">70% of what moves the combined book on any given day is one common factor moving through all 6 positions at once — not 6 independent sources of risk. A shock to that factor hits most of the book in the same direction simultaneously.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Why are principal components always uncorrelated with each other, by construction rather than by empirical luck?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Distinct eigenvectors of a symmetric matrix are mathematically guaranteed to be mutually perpendicular</button>
+        <button class="sl-quiz-opt">Because the underlying instruments were chosen to be unrelated</button>
+        <button class="sl-quiz-opt">Because covariance is always rescaled to correlation first</button>
+        <div class="sl-quiz-explain">Perpendicular directions in a data cloud can't share variance with each other by geometric definition — a structural consequence of how the components were built, not a pattern discovered in the data.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>For Σ = [[2, 0], [0, 1]] (a = 2, b = 0, d = 1), what are the two eigenvalues?</h4>
+        <button class="sl-quiz-opt" data-correct="true">2 and 1</button>
+        <button class="sl-quiz-opt">1.5 and 1.5</button>
+        <button class="sl-quiz-opt">3 and 0</button>
+        <div class="sl-quiz-explain">λ = (a+d)/2 ± √(((a-d)/2)² + b²) = 1.5 ± √(0.25 + 0) = 1.5 ± 0.5 = 2 and 1. With zero covariance the eigenvalues are just the two variances themselves.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>What's the difference between an eigenvalue and a loading?</h4>
+        <button class="sl-quiz-opt" data-correct="true">An eigenvalue is one number per component (total variance it captures); a loading is one number per instrument within a component</button>
+        <button class="sl-quiz-opt">They're two names for the same thing</button>
+        <button class="sl-quiz-opt">A loading is always larger than an eigenvalue</button>
+        <div class="sl-quiz-explain">λᵢ answers "how much total variance does this component capture." A loading — one entry of the eigenvector vᵢ — answers "how much does this specific instrument contribute to this specific component." A component can have a large eigenvalue while one instrument still loads near-zero on it.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Why run PCA on the correlation matrix rather than raw covariance, across a mixed basket of a stable G10 pair and a volatile EM cross?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Raw covariance is scale-dependent, so the noisier instrument would mechanically dominate PC1 regardless of actual co-movement</button>
+        <button class="sl-quiz-opt">Correlation matrices are always easier to invert</button>
+        <button class="sl-quiz-opt">It makes no difference either way</button>
+        <div class="sl-quiz-explain">An instrument with larger absolute daily moves has a mechanically bigger variance term. PCA on raw covariance lets that instrument dominate simply because it's loudest, not because it shares the most structure. Standardizing to correlation first removes that scale effect.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>A correlated basket often has far fewer "real" independent risks than it has instruments — PCA measures exactly how many, and how much of today's move is the shared one.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>An eigenvector of Σ is a direction only stretched, never rotated (Σv = λv); the eigenvalue λ is how much variance lies along it. Principal components are eigenvectors ranked by eigenvalue, largest first.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Explained variance ratio, EVRᵢ = λᵢ / Σⱼλⱼ, turns eigenvalues into a headline percentage — "PC1 explains 72% of the basket's variance."</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Loadings (the eigenvector's entries) tell you which instruments actually make up a factor — the diagnostic eigenvalues alone can't give you.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>This repo computes eigenvalues today (feeding "effective number of bets") but not eigenvectors/loadings yet — know which claim you can actually back with a live number here versus which one needs the full lesson's math done by hand.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>PCA is descriptive, not causal or predictive — correlation structure shifts across regimes, spiking toward 1 in a crisis, so anything built on top still needs its own out-of-sample validation.</p></div>
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">What this now lets you do</div>
+        <p>Read a correlation heatmap and ask the sharper question underneath it: not just "how correlated," but "how many genuinely independent bets is this basket actually," and estimate a 2×2 case's eigenvalues and explained variance by hand. Recognize level/slope/curvature and "risk-on/risk-off" factors the moment they reappear later, under different names.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Black-Scholes-Merton Option Pricing</h3>
+        <p>A single replication argument turns "what should this option cost?" into an equation that needs no forecast of where price is going.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="black-scholes-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="pca-factors.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Correlation slider -> rotating point cloud + PC1/PC2 arrows (Section 5).
+  (function(){
+    var slider = document.getElementById('pca2-slider');
+    if (!slider) return;
+    var rLabel = document.getElementById('pca2-rlabel');
+    var evrLabel = document.getElementById('pca2-evr');
+    var pc1Line = document.getElementById('pca2-pc1');
+    var pc2Line = document.getElementById('pca2-pc2');
+    var pointsGroup = document.getElementById('pca2-points');
+
+    var p1x1 = parseFloat(pc1Line.getAttribute('x1'));
+    var p1y1 = parseFloat(pc1Line.getAttribute('y1'));
+    var p1x2 = parseFloat(pc1Line.getAttribute('x2'));
+    var p1y2 = parseFloat(pc1Line.getAttribute('y2'));
+    var cx0 = (p1x1 + p1x2) / 2;
+    var cy0 = (p1y1 + p1y2) / 2;
+    var dx1 = p1x2 - p1x1, dy1 = p1y2 - p1y1;
+    var len1 = Math.sqrt(dx1 * dx1 + dy1 * dy1);
+    var uMajorX = dx1 / len1, uMajorY = dy1 / len1;
+    // PC2 is perpendicular to PC1 by construction (eigenvectors of a
+    // symmetric matrix are orthogonal) — rotate PC1's unit vector 90 degrees.
+    var uMinorX = -uMajorY, uMinorY = uMajorX;
+    var A_PX = len1 / 2;
+
+    // Fixed, deterministic jitter (no Math.random — same cloud shape every
+    // time so the illustration is stable and testable) along/across the
+    // major axis, roughly evenly spread with a little scatter.
+    var TJ = [-0.98, -0.87, -0.78, -0.67, -0.58, -0.47, -0.38, -0.27, -0.18, -0.07,
+               0.02,  0.13,  0.22,  0.33,  0.42,  0.53,  0.62,  0.73,  0.82,  0.93,
+              -0.90, -0.50,  0.50,  0.90];
+    var SJ = [ 0.30, -0.60,  0.50, -0.20,  0.70, -0.40,  0.60, -0.70,  0.30, -0.50,
+               0.80, -0.30,  0.40, -0.80,  0.20, -0.60,  0.50, -0.40,  0.70, -0.20,
+               0.10, -0.90,  0.90, -0.10];
+
+    function regeneratePoints(r){
+      var b = A_PX * Math.sqrt(1 - r * r);
+      var html = '';
+      for (var i = 0; i < TJ.length; i++){
+        var t = TJ[i], s = SJ[i];
+        var px = cx0 + t * A_PX * uMajorX + s * b * uMinorX;
+        var py = cy0 + t * A_PX * uMajorY + s * b * uMinorY;
+        html += '<circle cx="' + px.toFixed(1) + '" cy="' + py.toFixed(1) +
+                '" r="4" style="fill:var(--blue);opacity:.7"/>';
+      }
+      pointsGroup.innerHTML = html;
+    }
+
+    function updatePC2(r){
+      var len2 = len1 * Math.sqrt(1 - r * r);
+      if (len2 < 16) len2 = 16; // keep a visible stub + arrowhead near r_max
+      var half = len2 / 2;
+      pc2Line.setAttribute('x1', (cx0 - uMinorX * half).toFixed(1));
+      pc2Line.setAttribute('y1', (cy0 - uMinorY * half).toFixed(1));
+      pc2Line.setAttribute('x2', (cx0 + uMinorX * half).toFixed(1));
+      pc2Line.setAttribute('y2', (cy0 + uMinorY * half).toFixed(1));
+    }
+
+    function update(){
+      var r = parseInt(slider.value, 10) / 100;
+      rLabel.textContent = 'r = ' + r.toFixed(2);
+      var evr1 = (1 + Math.abs(r)) / 2; // exact 2-variable formula
+      evrLabel.textContent = (evr1 * 100).toFixed(1) + '%';
+      regeneratePoints(r);
+      updatePC2(r);
+    }
+
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // 2x2 covariance matrix -> eigenvalues + explained variance ratio, live.
+  (function(){
+    var a = document.getElementById('eig-a');
+    if (!a) return;
+    var b = document.getElementById('eig-b'), d = document.getElementById('eig-d');
+    var traceOut = document.getElementById('eig-trace');
+    var l1Out = document.getElementById('eig-l1'), l2Out = document.getElementById('eig-l2');
+    var evr1Out = document.getElementById('eig-evr1');
+    var note = document.getElementById('eig-note');
+    var resetBtn = document.getElementById('eig-reset');
+    var DEFAULTS = { a: 1, b: 0.75, d: 1 };
+    var DEFAULT_NOTE = note.textContent;
+
+    function fmt(n){ return n.toFixed(2); }
+
+    function recompute(){
+      var av = parseFloat(a.value), bv = parseFloat(b.value), dv = parseFloat(d.value);
+      if (!isFinite(av) || !isFinite(bv) || !isFinite(dv)) {
+        traceOut.textContent = l1Out.textContent = l2Out.textContent = evr1Out.textContent = '—';
+        note.textContent = 'Enter numbers for a, b, and d.';
+        return;
+      }
+      if (av < 0 || dv < 0) {
+        traceOut.textContent = l1Out.textContent = l2Out.textContent = evr1Out.textContent = '—';
+        note.textContent = "Variances can't be negative — a and d must be ≥ 0.";
+        return;
+      }
+      var trace = av + dv;
+      var half = (av + dv) / 2;
+      var diffHalf = (av - dv) / 2;
+      var disc = diffHalf * diffHalf + bv * bv;
+      var sq = Math.sqrt(disc);
+      var l1 = half + sq, l2 = half - sq;
+
+      traceOut.textContent = fmt(trace);
+      l1Out.textContent = fmt(l1);
+      l2Out.textContent = fmt(l2);
+
+      if (trace <= 0) {
+        evr1Out.textContent = '—';
+        note.textContent = 'Eigenvalues sum to zero — no variance to explain.';
+        return;
+      }
+      evr1Out.textContent = (100 * l1 / trace).toFixed(1) + '%';
+
+      if (bv * bv > av * dv + 1e-9) {
+        note.textContent = "Note: b² > a·d — this isn't a matrix that could arise from real covariance data (Cauchy-Schwarz is violated), but the eigenvalue formula above is still computed correctly for whatever numbers are entered.";
+      } else {
+        note.textContent = DEFAULT_NOTE;
+      }
+    }
+
+    [a, b, d].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      a.value = DEFAULTS.a; b.value = DEFAULTS.b; d.value = DEFAULTS.d;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>
