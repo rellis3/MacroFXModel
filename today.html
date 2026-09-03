@@ -184,6 +184,9 @@
   .pcard.hot{border-color:rgba(210,153,34,.55)}
   .pcard.hot.dir-up,.pcard.hot.dir-dn{border-left-color:rgba(210,153,34,.55)}
   .pc-top{display:flex;align-items:baseline;gap:9px;margin-bottom:7px;flex-wrap:wrap}
+  .pc-fav{cursor:pointer;font-size:14px;color:var(--text3);line-height:1;user-select:none}
+  .pc-fav:hover{color:#f59e0b}
+  .pc-fav.on{color:#f59e0b}
   .pc-name{font-size:13.5px;font-weight:700;color:var(--text2);letter-spacing:.01em}
   .pc-price{font-size:19px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--text)}
   .pc-top .push{margin-left:auto;display:flex;gap:5px}
@@ -1247,6 +1250,18 @@ function setOutlookHorizon(key) {
   outlookHorizon = key;
   try { localStorage.setItem('outlookHorizon', key); } catch (e) {}
   document.querySelectorAll('#outlookHzBar .fchip').forEach(b => b.classList.toggle('on', b.id === `outlookHzBtn-${key}`));
+  render();
+}
+// Per-pair favorites (★) — pinned instruments always sort first, in every
+// view (card/table/scorecard all funnel through sortRows()), ahead of
+// whichever sort mode is selected. Distinct from js/commandHub.js's own
+// "★ Favs" dropdown (bookmarked PAGES, a different feature/data domain) —
+// same star convention, unrelated storage key.
+let favPairs = (() => { try { return new Set(JSON.parse(localStorage.getItem('favPairs') || '[]')); } catch (e) { return new Set(); } })();
+function toggleFav(name, ev) {
+  ev.stopPropagation();   // the card itself opens the drawer on click
+  if (favPairs.has(name)) favPairs.delete(name); else favPairs.add(name);
+  try { localStorage.setItem('favPairs', JSON.stringify([...favPairs])); } catch (e) {}
   render();
 }
 let rateStatTab = (() => { try { return localStorage.getItem('rateStatTab') || 'us10y'; } catch (e) { return 'us10y'; } })();
@@ -3470,7 +3485,11 @@ function sortRows(rs) {
     trend:     (a, b) => (b.trending - a.trending) || (b.d.regime?.trend_prob ?? 0) - (a.d.regime?.trend_prob ?? 0),
     name:      (a, b) => a.name.localeCompare(b.name),
   }[m];
-  return rs.sort(by);
+  // Favorites always sort first, ahead of whichever mode is selected above —
+  // each group (favorited / not) is still ordered by that same comparator,
+  // so starring a pair reorders it to the top of the board without changing
+  // how the rest of the board is sorted.
+  return rs.sort((a, b) => (favPairs.has(b.name) - favPairs.has(a.name)) || by(a, b));
 }
 
 // ── Header & summary ──────────────────────────────────────────────────────────
@@ -3957,6 +3976,7 @@ function cardHtml(r) {
   const dirCls = _dt?.direction === 'up' ? 'dir-up' : _dt?.direction === 'down' ? 'dir-dn' : '';
   return `<div class="pcard ${dirCls} ${(r.used ?? 0) >= 0.8 || d.news_flag ? 'hot' : ''} ${r.isProx ? 'prox' : ''}" onclick="openDrawer('${r.name}')">
     <div class="pc-top">
+      <span class="pc-fav ${favPairs.has(r.name) ? 'on' : ''}" onclick="toggleFav('${r.name}', event)" title="${favPairs.has(r.name) ? 'Remove from favorites' : 'Add to favorites — pins it to the top of the board'}">${favPairs.has(r.name) ? '★' : '☆'}</span>
       <span class="pc-name">${dispName(r.name)}</span>
       ${d.stale ? `<span class="chip warn" title="The live data fetch failed when this forecast was computed (e.g. an Oanda outage) — showing the last good forecast${d.carried_from ? `, from the ${d.carried_from} session` : ''}. It refreshes automatically once the data source recovers.">⟳ ${d.carried_from ?? 'carried'}</span>` : ''}
       <span class="pc-price">${d.current_price != null ? fmtN(d.current_price, d.dp) : ''}</span>
