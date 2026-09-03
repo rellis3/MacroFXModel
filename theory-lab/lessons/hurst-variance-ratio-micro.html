@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hurst Exponent &amp; Variance Ratio Test — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Hurst Exponent &amp; Variance Ratio Test — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivations, the R/S walkthrough, and a 6-question self-test?<a href="hurst-variance-ratio.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Lesson 5 · Time Series &amp; Regimes</div>
+      <h1 class="sl-h1">Reading a Price Series' <em>Memory</em></h1>
+      <p class="sl-lede">Almost every trading decision reduces to one binary question: at this level, right now, should the system fade the move or follow it? This lesson is one way to answer that — not by predicting direction, but by measuring how "persistent" the recent path has been, independent of any price model. Two tools do this: the Hurst exponent, and the variance ratio test that a rigor-obsessed pair of economists built to do the same job properly.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Three drunks leaving the same bar</h2>
+      <p class="sl-sub">Same starting point, three different kinds of "randomness." Only one of them is a true coin flip.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🎲</div><div><h4>The random walker</h4><p>Each stumble is an independent coin flip — no memory of the last step. Distance from the door grows with the <em>square root</em> of time. That's the whole story. No edge to be found in the shape of the path.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">↗</div><div><h4>The self-reinforcing drunk</h4><p>Stumble left, and the next stumble is more likely to also go left — momentum, overcorrection into overcorrection. Distance from the door grows <em>faster</em> than the square root of time. This is a trending series.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔗</div><div><h4>The one on a leash</h4><p>Stumble left, and the leash tension makes the next stumble more likely to go right, back toward center. Distance grows <em>slower</em> than the square root of time. This is a mean-reverting series.</p></div></div>
+      </div>
+      <div class="sl-quote">Nobody hands you a label saying which drunk you're watching. What you get is a price series and a question: does it have memory that <strong>reinforces</strong> past moves, memory that <strong>undoes</strong> them, or no memory at all? That property is exactly what decides whether a fade strategy or a follow strategy has any right to work right now.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">H — a single number that names the drunk</h2>
+      <p class="sl-sub">The Hurst exponent is extracted purely from how a series has wandered historically — no model of "why," just a measurement. Pick a regime.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="hv-path-tabs">
+          <button class="sl-tab" data-panel="hv-path-1">H ≈ 0.3 — mean-reverting</button>
+          <button class="sl-tab active" data-panel="hv-path-2">H ≈ 0.5 — random walk</button>
+          <button class="sl-tab" data-panel="hv-path-3">H ≈ 0.7 — trending</button>
+        </div>
+        <div class="sl-panel" id="hv-path-1">
+          <div class="sl-svgwrap"><svg viewBox="0 0 600 180" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Price path that oscillates tightly around a flat level, snapping back after every move">
+            <line x1="20" y1="90" x2="580" y2="90" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:4,4"/>
+            <polyline points="20,90 45,68 70,108 95,78 120,112 145,72 170,104 195,80 220,110 245,74 270,102 295,82 320,106 345,76 370,100 395,84 420,104 445,78 470,100 495,86 520,98 545,88 570,92" fill="none" style="stroke:var(--blue);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round"/>
+          </svg></div>
+          <div class="sl-verdict"><strong>H ≈ 0.3.</strong> Every push is met with a pull back the other way — small, frequent reversals that never let the path stray far from the dashed centerline. Range grows slower than √n.</div>
+        </div>
+        <div class="sl-panel active" id="hv-path-2">
+          <div class="sl-svgwrap"><svg viewBox="0 0 600 180" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Price path that wanders with no consistent tendency to reverse or extend">
+            <line x1="20" y1="90" x2="580" y2="90" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:4,4"/>
+            <polyline points="20,95 45,80 70,105 95,90 120,115 145,95 170,120 195,100 220,75 245,105 270,80 295,100 320,70 345,90 370,60 395,85 420,55 445,75 470,50 495,68 520,45 545,60 570,40" fill="none" style="stroke:var(--text2);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round"/>
+          </svg></div>
+          <div class="sl-verdict"><strong>H ≈ 0.5.</strong> No memory at all — pure coin-flip wandering, drifting up here only by chance. Range grows exactly as √n. This is the "no edge in the path shape" baseline every trending or mean-reverting claim gets measured against.</div>
+        </div>
+        <div class="sl-panel" id="hv-path-3">
+          <div class="sl-svgwrap"><svg viewBox="0 0 600 180" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Price path with fewer, longer, smoother swings that persist in one direction before reversing">
+            <line x1="20" y1="90" x2="580" y2="90" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:4,4"/>
+            <polyline points="20,130 60,124 100,110 140,95 180,100 220,85 260,68 300,72 340,50 380,55 420,32 460,20 500,26 540,10 570,6" fill="none" style="stroke:var(--red);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round"/>
+          </svg></div>
+          <div class="sl-verdict"><strong>H ≈ 0.7.</strong> Up days beget more up days — momentum compounding rather than getting undone. Fewer, longer, smoother swings that persist before eventually reversing. Range grows faster than √n.</div>
+        </div>
+      </div>
+      <p class="sl-p">Formally: <strong>H &lt; 0.5</strong> is anti-persistent / mean-reverting, <strong>H = 0.5</strong> is a random walk, <strong>H &gt; 0.5</strong> is persistent / trending. H near 0 is strongly mean-reverting; H near 1 is strongly trending, in the limit a near-straight line.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">How H actually gets measured: rescaled range</h2>
+      <p class="sl-sub">Take a chunk of n returns. Walk a dot up or down by each day's deviation from the chunk's own mean, starting at zero.</p>
+      <div class="sl-svgwrap">
+        <svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A cumulative deviation walk Yt rising to a maximum then falling to a minimum, with dashed lines marking the range R of n used in the rescaled-range statistic">
+          <line x1="30" y1="110" x2="620" y2="110" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"/>
+          <line x1="30" y1="38" x2="620" y2="38" style="stroke:var(--red);stroke-width:1;stroke-dasharray:4,4"/>
+          <line x1="30" y1="142" x2="620" y2="142" style="stroke:var(--red);stroke-width:1;stroke-dasharray:4,4"/>
+          <polyline points="40,110 90,86 140,70 190,94 240,62 290,38 340,54 390,78 440,102 490,126 540,142 590,118" fill="none" style="stroke:var(--blue);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round"/>
+          <circle cx="290" cy="38" r="4.5" style="fill:var(--red)"/>
+          <circle cx="540" cy="142" r="4.5" style="fill:var(--red)"/>
+          <text x="605" y="34" text-anchor="end" font-size="11" fill="var(--red)">max Yₜ</text>
+          <text x="605" y="156" text-anchor="end" font-size="11" fill="var(--red)">min Yₜ</text>
+          <line x1="600" y1="38" x2="600" y2="142" style="stroke:var(--amber);stroke-width:1.5"/>
+          <text x="612" y="94" font-size="12" font-weight="700" fill="var(--amber)">R(n)</text>
+          <text x="34" y="26" font-size="11" fill="var(--text3)">Yₜ = cumulative sum of (Xᵢ − mean)</text>
+        </svg>
+      </div>
+      <div class="sl-row">
+        <div class="sl-box">R(n)</div>
+        <div class="sl-arrow">=</div>
+        <div class="sl-box">max Yₜ − min Yₜ</div>
+      </div>
+      <div class="sl-row">
+        <div class="sl-box">S(n)</div>
+        <div class="sl-arrow">=</div>
+        <div class="sl-box">std. deviation of the chunk</div>
+      </div>
+      <p class="sl-p">R(n) is that walk's total swing — highest point minus lowest point. S(n) is the chunk's own volatility, used to put the swing on a scale-free footing: a chunk of 1% daily moves and a chunk of 0.1% daily moves should give comparable (R/S) values once you divide out their own volatility. Hurst's empirical finding — first made on Nile river flood records, not markets — is that (R/S)ₙ scales as a power law: <strong>(R/S)ₙ ≈ c · n<sup>H</sup></strong>.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Why logs</div>
+        <p>Taking logs of both sides turns that power law into a straight line: log(R/S)ₙ = log c + H·log n. Split the series into windows of several lengths (say 8, 16, 32, 64 bars), plot log(R/S)ₙ against log n for each length, and fit a line. <strong>The slope of that line IS the Hurst exponent</strong> — the entire point of taking logs, and exactly the OLS step this project's own live Hurst estimator runs.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">A hydrologist, then a fractal geometer</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">1951 — Harold Edwin Hurst</span>
+          <p>A British hydrologist studying the Nile's flood records for the Aswan reservoir. He needed to know how large a reservoir had to be to smooth out runs of wet and dry years, and found the Nile's annual floods had H ≈ 0.9 — strong long-run persistence, wet years clustering with wet years. Very much not a random walk, with real engineering consequences for how much storage a dam needed.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Decades later — Benoit Mandelbrot</span>
+          <p>Picked up Hurst's rescaled-range method and applied it to financial time series, arguing that market returns show long-range dependence and "wild" statistical behavior that a pure random-walk model of finance understates. A straight line from a Nile River engineering problem to a line of code in a forex entry-bias feature.</p>
+        </div>
+      </div>
+      <p class="sl-p">This is worth pausing on because H is the same fade/follow question Ornstein-Uhlenbeck mean reversion and trend-day classification ask from other angles — but a <strong>third, model-free lens</strong> on it. It assumes no particular generative process, no OU equation, no drift/diffusion decomposition. It just measures how the empirical range has scaled historically.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">The cleaner alternative: variance ratio</h2>
+      <p class="sl-sub">R/S has real statistical weaknesses (small-sample bias, ahead). Lo &amp; MacKinlay (1988) formalized a sharper, testable version of the identical question.</p>
+      <p class="sl-p">A true random walk has one precisely falsifiable property: variance is additive across independent increments. If one-day returns have variance σ², then a <em>k</em>-day return — the sum of <em>k</em> independent one-day returns — must have variance <em>exactly</em> kσ². No assumption beyond "increments are uncorrelated" is required.</p>
+      <div class="sl-row">
+        <div class="sl-box">Var(r<sub>t</sub><sup>(k)</sup>)</div>
+        <div class="sl-arrow">÷</div>
+        <div class="sl-box">k × Var(r<sub>t</sub><sup>(1)</sup>)</div>
+        <div class="sl-arrow">=</div>
+        <div class="sl-box green">VR(k)</div>
+      </div>
+      <p class="sl-p">where r<sub>t</sub><sup>(k)</sup> is the <em>k</em>-period return (e.g. 5-day) and r<sub>t</sub><sup>(1)</sup> is the 1-period (daily) return. Under the random-walk null, <strong>VR(k) = 1 for every k</strong>, exactly. Deviations are directly interpretable — no eyeballed regression slope required.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">VR(k) &gt; 1 — trending</span>
+          <p>k-day variance is larger than the random-walk prediction. Returns are positively autocorrelated — days are teaming up to wobble more than independence would predict. Same story as H &gt; 0.5.</p>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">VR(k) &lt; 1 — mean-reverting</span>
+          <p>k-day variance is smaller than the random-walk prediction. Returns are negatively autocorrelated — days are canceling each other out more than independence would predict. Same story as H &lt; 0.5.</p>
+        </div>
+      </div>
+      <div class="sl-note">Lo &amp; MacKinlay also derived the statistic's asymptotic distribution under the null — an actual standard error and z-statistic, not just "does this slope look off." That's what makes VR the more rigorous of the two tools.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">A tiny variance-ratio calculation by hand</h2>
+      <p class="sl-sub">10 daily log returns, in percent: 0.4, −0.2, 0.6, 0.1, −0.5, 0.3, −0.1, 0.5, −0.4, 0.2.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Worked example</div>
+        <div class="sl-calc-steps" style="border-top:none;padding-top:0;margin-top:0">
+          <div><strong>Step 1 — 1-day variance.</strong> Sample variance of the 10 raw values ≈ <b>0.1289 %²</b>.</div>
+          <div><strong>Step 2 — build 5-day returns.</strong> Two non-overlapping blocks: block 1 = 0.4 &minus; 0.2 + 0.6 + 0.1 &minus; 0.5 = <b>0.4</b>; block 2 = 0.3 &minus; 0.1 + 0.5 &minus; 0.4 + 0.2 = <b>0.5</b>. (A real test needs dozens of blocks — this is illustrating the arithmetic, not a real test.)</div>
+          <div><strong>Step 3 — random-walk-implied 5-day variance.</strong> 5 × 0.1289 = <b>0.6445 %²</b>.</div>
+          <div><strong>Step 4 — suppose the actual 5-day sample variance, from a longer dataset, is 0.45.</strong> VR(5) = 0.45 ÷ 0.6445 ≈ <b>0.70</b>.</div>
+        </div>
+        <div class="sl-note">0.70 is meaningfully below 1: 5-day variance is smaller than 5× the 1-day variance — the series damps itself over a week more than independence predicts. That's mean reversion. If the actual 5-day variance had instead come out to 0.95, VR(5) = 0.95 ÷ 0.6445 ≈ <strong>1.47</strong> — the opposite verdict, trending. Whether either hypothetical is <em>statistically</em> different from 1 rather than sampling noise is exactly what Lo &amp; MacKinlay's standard error answers — ten raw observations is nowhere near enough data to make that call for real.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Recompute VR(k), live</h2>
+      <p class="sl-sub">Starts on the worked example's exact numbers. Change any field and the ratio — and the verdict — recalculate instantly.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Var(1-period) (%²)</label><input type="number" class="sl-input" id="hv-var1" value="0.1289" step="0.01" min="0"></div>
+          <div class="sl-calc-field"><label>k (periods)</label><input type="number" class="sl-input" id="hv-k" value="5" step="1" min="1"></div>
+        </div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Actual Var(k-period) (%²)</label><input type="number" class="sl-input" id="hv-vark" value="0.45" step="0.01" min="0"></div>
+          <div class="sl-calc-op">÷ k×Var(1) =</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">VR(k)</div>
+            <div class="sl-calc-result-val" id="hv-vr-result">0.70</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Random-walk-implied Var(k) = k × Var(1) = <b id="hv-expected">0.6445</b> %²</div>
+          <div id="hv-vr-verdict">VR(k) = 0.70 — below 1: the series is damping itself relative to independence. <strong>Mean-reverting.</strong></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="hv-reset">Reset to worked-example numbers</button>
+        <div class="sl-note">Variance can't be negative and k can't be zero — bad inputs show a dash instead of a nonsense ratio.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Where this lives in this repo</h2>
+      <p class="sl-p">This isn't just theory here. <code>js/rangeBiasCore.js</code> has a <code>featureHurst</code> function that runs live R/S analysis — lags of 2, 4, 8, and 16 bars on the last ~80 daily closes, the identical log-log regression from Section 3 — as one of the entry-bias features scored alongside ADX, swing structure, TWAP slope, and EMA/RSI. Its call is the same regime-gate logic from Section 2: <strong>H &lt; 0.45 confirms a fade</strong>, <strong>H &gt; 0.55 confirms a follow</strong>, and anything in between abstains.</p>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">A postscript worth knowing</div>
+        <p>The math checks out — but that feature was later dropped from the live conviction score, and the repo's own code comments say exactly why. Benchmarked out-of-sample across 10 instruments, its incumbent R/S read had no usable predictive relationship (well under the project's own edge bar) — and worse, it read H ≈ 0.88 (trending) on every single instrument in the trending bucket, with zero exceptions. That's not noise; it's an unconditional vote against whatever direction was being tested, silently dragging down the conviction score on setups that were otherwise well-confirmed. The function is kept — it still runs, and still backs a research benchmark — but it no longer votes on a live entry.</p>
+      </div>
+      <p class="sl-p">The lesson underneath the lesson: a diagnostic can be mathematically sound and still fail to earn its place in a live decision. Persistence measured correctly is not automatically an edge — that has to be shown with real out-of-sample evidence, not assumed from the formula alone.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">How this actually gets used on a desk</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🚦</div><div><h4>A regime gate, not a signal</h4><p>Compute H or VR(k) on a rolling window and use the reading to decide which strategy <em>family</em> is even allowed to trade — mean-reversion switched on when anti-persistent, trend/breakout switched on when persistent, standing aside near H≈0.5 / VR≈1 where neither has a demonstrated edge.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧩</div><div><h4>The same selector pattern, different math</h4><p>This is precisely the "score → choice" pattern this repo's own dayTypeScore → selectStrategy logic implements elsewhere — a different lens on the identical fade-or-follow decision.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⏳</div><div><h4>A decaying prior, not a fact</h4><p>Both statistics are estimated from a short, noisy, non-stationary sample — they describe the recent past, with no guarantee it holds going forward. A window reading H=0.35 last month can read H=0.55 this month with no structural change at all.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>Neither predicts direction</h4><p>A high H says moves have recently reinforced each other, not "the market is going up." It licenses a trend-following approach to whatever direction is already in motion — it does not forecast one.</p></div></div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">The pitfall that matters most here</div>
+        <p>R/S is systematically biased toward finding H &gt; 0.5 on true random-walk data when the sample is short — and a feature computed on lags of 2–16 bars over 20–80 daily bars sits squarely in that small-sample regime. A single H = 0.55 reading from a short window is much weaker evidence than the same number from thousands of observations.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What Hurst exponent corresponds to a pure random walk?</h4>
+        <button class="sl-quiz-opt">H = 0</button>
+        <button class="sl-quiz-opt" data-correct="true">H = 0.5</button>
+        <button class="sl-quiz-opt">H = 1</button>
+        <div class="sl-quiz-explain">A random walk's range grows exactly as √n, matching the R/S power law (R/S)ₙ ≈ c·n^H at H = 0.5 — no memory, no edge in the path shape.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>A 5-day return series gives VR(5) ≈ 1.47. What does that indicate?</h4>
+        <button class="sl-quiz-opt">Mean reversion — down days offset up days</button>
+        <button class="sl-quiz-opt" data-correct="true">Trending — daily moves are reinforcing each other</button>
+        <button class="sl-quiz-opt">Nothing — VR only works below 1</button>
+        <div class="sl-quiz-explain">VR(k) &gt; 1 means k-day variance exceeds the random-walk prediction of k×Var(1) — returns are positively autocorrelated, the same story as H &gt; 0.5.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Why does variance scale exactly as k·σ² under the random-walk null?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Variance is additive across independent increments</button>
+        <button class="sl-quiz-opt">Because returns are always normally distributed</button>
+        <button class="sl-quiz-opt">It's an empirical average, not a mathematical fact</button>
+        <div class="sl-quiz-explain">If k one-period returns are independent, the covariance cross-terms in Var(sum) vanish, leaving Var(r⁽ᵏ⁾) = Σ Var(r⁽¹⁾) = kσ². Any measured deviation of VR(k) from 1 is direct evidence against that independence assumption.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Why is R/S analysis known to be biased on short windows?</h4>
+        <button class="sl-quiz-opt">It isn't — bias only affects the variance ratio test</button>
+        <button class="sl-quiz-opt" data-correct="true">The max-minus-min range statistic has heavy-tailed small-sample behavior, skewing H upward</button>
+        <button class="sl-quiz-opt">Short windows always produce H below 0.5</button>
+        <div class="sl-quiz-explain">Simulation studies (including Lo's own 1991 work) show classical R/S systematically overestimates H — finds spurious persistence — even on true random-walk data, when the window is short. A live feature on 2–16 bar lags sits right in that regime.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>The Hurst exponent H is the slope of log(R/S)ₙ regressed on log n — H &lt; 0.5 mean-reverting, H = 0.5 random walk, H &gt; 0.5 trending.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>The variance ratio test asks the identical question more rigorously: VR(k) = Var(r⁽ᵏ⁾) ÷ (k×Var(r⁽¹⁾)) equals exactly 1 under a random walk, with an actual standard error attached to any deviation.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Neither statistic predicts direction — both only license which strategy family, fade or follow, has a right to work in the current regime.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>R/S is biased toward finding H &gt; 0.5 in small samples — exactly the regime a feature computed on a few dozen daily bars sits in.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>A single H or VR reading is a noisy, decaying prior about the current regime, not a fact about the market's permanent nature — and even a mathematically sound feature still has to earn its place with real out-of-sample evidence, as this repo's own history with featureHurst shows.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Read a rolling H or VR(k) reading and know immediately which strategy family — fade or follow — the current window is licensing, and which regime is too close to 0.5 / 1 to license either. Build a variance-ratio calculation by hand from raw returns. Recognize a regime-gate pattern (score → strategy choice) the next time it shows up under a different name.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>GARCH &amp; Volatility Clustering</h3>
+        <p>Why volatility itself has memory — big moves cluster with big moves — and how that reshapes every variance assumption this lesson leaned on.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="garch-volatility-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="hurst-variance-ratio.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // "Recompute VR(k), live" — the variance-ratio calculator.
+  (function(){
+    var var1 = document.getElementById('hv-var1');
+    if (!var1) return;
+    var kEl = document.getElementById('hv-k'), varkEl = document.getElementById('hv-vark');
+    var expectedOut = document.getElementById('hv-expected');
+    var vrOut = document.getElementById('hv-vr-result');
+    var verdict = document.getElementById('hv-vr-verdict');
+    var resetBtn = document.getElementById('hv-reset');
+    var DEFAULTS = { var1: 0.1289, k: 5, vark: 0.45 };
+
+    function recompute(){
+      var v1 = parseFloat(var1.value), k = parseFloat(kEl.value), vk = parseFloat(varkEl.value);
+      if (!isFinite(v1) || !isFinite(k) || !isFinite(vk) || v1 <= 0 || k <= 0 || vk < 0) {
+        expectedOut.textContent = '—';
+        vrOut.textContent = '—';
+        verdict.innerHTML = 'Enter a positive Var(1), a positive k, and a non-negative Var(k) to see a result.';
+        return;
+      }
+      var expected = k * v1;
+      var vr = vk / expected;
+      expectedOut.textContent = expected.toFixed(4);
+      vrOut.textContent = vr.toFixed(2);
+      var msg;
+      if (vr > 1.05) {
+        msg = 'VR(k) = ' + vr.toFixed(2) + ' — above 1: days are reinforcing each other more than independence predicts. <strong>Trending.</strong>';
+      } else if (vr < 0.95) {
+        msg = 'VR(k) = ' + vr.toFixed(2) + ' — below 1: the series is damping itself relative to independence. <strong>Mean-reverting.</strong>';
+      } else {
+        msg = 'VR(k) = ' + vr.toFixed(2) + ' — close to 1: <strong>statistically close to a random walk</strong> (a real test would still need Lo &amp; MacKinlay\'s standard error to confirm this isn\'t just sampling noise).';
+      }
+      verdict.innerHTML = msg;
+    }
+
+    [var1, kEl, varkEl].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      var1.value = DEFAULTS.var1; kEl.value = DEFAULTS.k; varkEl.value = DEFAULTS.vark;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>
