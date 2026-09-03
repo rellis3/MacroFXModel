@@ -6026,3 +6026,37 @@ grepped for any other `outlookTallyHtml` caller before deleting (none) and
 for any leftover "Bullish"/"Bearish" panel reference (only the unrelated
 `currencyDetail` sign-reading helper matched, not this panel). No live
 Railway path in this sandbox to see the panel render without the chips.
+
+**v12 addendum (2026-09-03)** — v11 misread the owner's ask: "can we not
+list which are bullish/bearish?" meant "can we [go ahead and] list which
+[pairs] are bullish/bearish" (an ADD, not a remove) — confirmed directly:
+"I asked for all bullish and bearish pairs to be listed in the 5day and
+20day sections so it makes sense." v11's chip removal stands (that part was
+still correct — counts alone were the complaint), but the panel needed an
+actual per-pair list added back, not just prose.
+
+**New `outlookBiasListHtml(rs, key)`** (`today.html`) — lists every pair's
+name under a "Bullish (N):"/"Bearish (N):" header per horizon (neutral
+pairs excluded — not asked for), sorted by conviction (`|biasScore|`
+descending within each side) so the most-convicted pair leads, each name
+clickable straight into that pair's own drawer via `openDrawer(name)` — same
+interaction as Market Read's own "Hottest" line (`hotHtml`). Its CSS reuses
+that line's visual language (dotted-underline clickable text) but inlined
+rather than via the `.pl` class, since `.pl`'s rules are scoped to specific
+parent selectors (`.mread-verdict .pl`, `.mread-watch .pl`, `.qstrip .pl`)
+this panel isn't inside — adding a fourth scoped rule for one panel would've
+been more surface than inlining the two properties directly. Wired into
+`renderOutlookPanel`'s `col()` between the label and `outlookBoardNarrative`,
+so each horizon column now reads: label → who's bullish/bearish by name →
+the board-wide theme prose.
+
+New/changed: `today.html` only (`outlookBiasListHtml` added, `col()`
+updated). No `js/outlookEngine.js` or `server.js` changes — reuses
+`pairOutlook`'s already-computed `bias`/`biasScore` per row, no new data.
+
+Validated: `node --check` on every extracted `today.html` inline script;
+confirmed `openDrawer(name)`/`dispName(n)` signatures match the exact call
+shape `hotHtml` already uses. No live Railway path in this sandbox to see
+the list render or confirm it doesn't get too long/wide on a board where
+most pairs share a bias (e.g. a strong-dollar day putting 15+ names under
+one header) — worth a live look once deployed.
