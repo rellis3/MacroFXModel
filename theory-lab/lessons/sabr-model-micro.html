@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The SABR Model — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">The SABR Model — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full Hagan-formula derivation context, the worked calibration example, and a 6-question self-test?<a href="sabr-model.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Lesson 29 · Advanced Stochastic Calculus &amp; Derivatives</div>
+      <h1 class="sl-h1">The SABR Model, <em>Built for Speed</em></h1>
+      <p class="sl-lede">Heston gave volatility an honest, mean-reverting random life — and paid for it with a Fourier inversion every time it needs recalibrating. SABR asks a narrower question: what's the simplest stochastic-volatility model whose implied-vol smile can be written down almost in closed form? Four parameters and one algebraic formula, fit fast enough to run continuously against a live, moving market — that single fact is the entire reason SABR, not the arguably richer Heston model, is what an FX or rates options desk actually recalibrates all day.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">The problem SABR was built to solve</h2>
+      <p class="sl-sub">Heston prices an option honestly. It just isn't fast enough to recalibrate all session long.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🐌</div><div><h4>Heston's chain</h4><p>Characteristic function → numerical Fourier inversion → invert Black-Scholes for implied vol. Repeat that whole chain for every trial parameter set an optimizer proposes.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚡</div><div><h4>SABR's shortcut</h4><p>Hagan, Kumar, Lesniewski &amp; Woodward (2002) derived an algebraic approximation straight from the four SABR parameters to an implied vol — no integral, no inversion, ever.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚖</div><div><h4>The actual trade</h4><p>SABR's own dynamics are, if anything, simpler than Heston's — no mean reversion in volatility at all. The win is calibration speed, not superior realism.</p></div></div>
+      </div>
+      <div class="sl-quote">A trader can type four numbers into a formula and read off an entire smile in the time it takes to hit enter. That speed, not superior realism, is SABR's whole reason for existing in daily practice.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Two coupled equations — the "S", "A", "B", "R"</h2>
+      <p class="sl-sub">A forward price and its own volatility, wiggling together.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The specification</div>
+        <div class="sl-row">
+          <div class="sl-box">dFₜ</div><div class="sl-arrow">=</div><div class="sl-box">αₜ Fₜ^β dW¹ₜ</div>
+        </div>
+        <div class="sl-row">
+          <div class="sl-box amber">dαₜ</div><div class="sl-arrow">=</div><div class="sl-box amber">ν αₜ dW²ₜ</div>
+        </div>
+        <div class="sl-row">
+          <div class="sl-box green">E[dW¹ₜ dW²ₜ]</div><div class="sl-arrow">=</div><div class="sl-box green">ρ dt</div>
+        </div>
+        <div class="sl-note">Fₜ is deliberately driftless — under the appropriate forward or swap measure, a forward price is already a martingale by no-arbitrage construction. αₜ follows plain driftless geometric Brownian motion — the same lognormal SDE as the underlying in Black-Scholes, just applied to the volatility parameter instead of price, and with no mean-reversion term at all.</div>
+      </div>
+      <p class="sl-p">"SABR" names three of these four objects directly: <strong>S</strong>tochastic <strong>A</strong>lpha (the random vol level αₜ), <strong>B</strong>eta (the backbone exponent), <strong>R</strong>ho (the correlation). Vol-of-vol ν is the fourth parameter — present in the dynamics, just not in the acronym's letters.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Four parameters, four separate jobs</h2>
+      <p class="sl-sub">Not four interchangeable dials on the same knob — each governs a geometrically distinct feature of the smile.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📏</div><div><h4>α — level</h4><p>Sets the smile's overall height, roughly the at-the-money implied vol. Raise α and the whole smile shifts up in parallel — the same job σ plays in Black-Scholes.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🦴</div><div><h4>β — backbone</h4><p>Controls how volatility scales with the forward's own level — not today's smile shape, but how the whole ATM level would shift if the forward moved. Usually fixed by convention.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📐</div><div><h4>ρ — skew</h4><p>Sets the sign and strength of the smile's asymmetry. Negative ρ tilts low strikes (puts) richer than high strikes (calls) — the shape common in FX risk-off and equity markets.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🌊</div><div><h4>ν — curvature</h4><p>Controls how U-shaped the smile is around the money. Low ν stays nearly flat; high ν fattens both wings symmetrically, largely independent of skew.</p></div></div>
+      </div>
+      <p class="sl-p">The next two slides isolate exactly two of these effects: drag through what β alone does to the <em>backbone</em>, then drag ρ and ν together and watch the <em>smile itself</em> tilt and curve live.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">β — percentage moves, or absolute moves?</h2>
+      <p class="sl-sub">Hold α fixed at 10% and ask: as the forward itself moves to a different level, how does ATM vol move with it? That curve is the "backbone."</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="beta-tabs">
+          <button class="sl-tab active" data-panel="beta-1">β = 1 (lognormal-like)</button>
+          <button class="sl-tab" data-panel="beta-05">β = 0.5 (CIR-like)</button>
+          <button class="sl-tab" data-panel="beta-0">β = 0 (normal-like)</button>
+        </div>
+        <div class="sl-panel active" id="beta-1">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 190" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Backbone chart for beta equals 1: ATM implied vol stays flat at 10 percent as the forward moves from half to double today's level">
+            <line x1="30" y1="170" x2="610" y2="170" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="30" y1="170" x2="30" y2="20" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="223.3" y1="20" x2="223.3" y2="170" style="stroke:var(--border2);stroke-dasharray:3,3"/>
+            <text x="223.3" y="184" text-anchor="middle" style="fill:var(--text3);font-size:10.5px;font-family:'DM Mono',monospace">F₀ (today)</text>
+            <text x="610" y="14" text-anchor="end" style="fill:var(--text3);font-size:10.5px">ATM vol vs. forward level →</text>
+            <polyline points="30.0,101.8 126.7,101.8 223.3,101.8 320.0,101.8 416.7,101.8 513.3,101.8 610.0,101.8" style="fill:none;stroke:var(--blue);stroke-width:2.5"/>
+          </svg></div>
+          <div class="sl-verdict"><strong>Fₜ^β = Fₜ</strong> — percentage moves are what matter, exactly like geometric Brownian motion in Black-Scholes. The backbone is <strong>flat</strong>: ATM vol barely moves even as the forward moves a long way. FX desks commonly run β at or near 1.</div>
+        </div>
+        <div class="sl-panel" id="beta-05">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 190" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Backbone chart for beta equals 0.5: ATM implied vol slopes gently downward as the forward rises">
+            <line x1="30" y1="170" x2="610" y2="170" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="30" y1="170" x2="30" y2="20" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="223.3" y1="20" x2="223.3" y2="170" style="stroke:var(--border2);stroke-dasharray:3,3"/>
+            <text x="223.3" y="184" text-anchor="middle" style="fill:var(--text3);font-size:10.5px;font-family:'DM Mono',monospace">F₀ (today)</text>
+            <text x="610" y="14" text-anchor="end" style="fill:var(--text3);font-size:10.5px">ATM vol vs. forward level →</text>
+            <polyline points="30.0,73.6 126.7,91.3 223.3,101.8 320.0,109.0 416.7,114.3 513.3,118.5 610.0,121.8" style="fill:none;stroke:var(--purple);stroke-width:2.5"/>
+          </svg></div>
+          <div class="sl-verdict">A CIR/square-root-style scaling — vol moves opposite the forward, but gently. An interpolation between the two extremes, occasionally used as a middle-ground convention.</div>
+        </div>
+        <div class="sl-panel" id="beta-0">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 190" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Backbone chart for beta equals 0: ATM implied vol slopes steeply downward as the forward rises">
+            <line x1="30" y1="170" x2="610" y2="170" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="30" y1="170" x2="30" y2="20" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="223.3" y1="20" x2="223.3" y2="170" style="stroke:var(--border2);stroke-dasharray:3,3"/>
+            <text x="223.3" y="184" text-anchor="middle" style="fill:var(--text3);font-size:10.5px;font-family:'DM Mono',monospace">F₀ (today)</text>
+            <text x="610" y="14" text-anchor="end" style="fill:var(--text3);font-size:10.5px">ATM vol vs. forward level →</text>
+            <polyline points="30.0,33.6 126.7,79.1 223.3,101.8 320.0,115.5 416.7,124.5 513.3,131.0 610.0,135.9" style="fill:none;stroke:var(--amber);stroke-width:2.5"/>
+          </svg></div>
+          <div class="sl-verdict"><strong>Fₜ^β = 1</strong> — arithmetic Brownian motion; vol is an absolute quantity, unaffected by the forward's level. The backbone slopes down steeply. The "normal model" convention parts of the rates market lean on when yields sit near or below zero, where a fractional power of a negative rate isn't even defined.</div>
+        </div>
+        <div class="sl-note">All three curves hold α = 10% at today's forward and ignore the small T-scaled correction terms — this isolates β's effect on its own.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">ρ and ν — drag them and watch the smile move</h2>
+      <p class="sl-sub">β is fixed at 1 (the common FX convention) and α is re-solved after every move so the at-the-money point always reads 10% — isolating exactly what ρ and ν do to the wings.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Implied volatility smile curve that redraws live as the rho and nu sliders move, pinned to a fixed 10 percent at-the-money point">
+            <line x1="40" y1="250" x2="620" y2="250" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="40" y1="250" x2="40" y2="30" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="330" y1="30" x2="330" y2="250" style="stroke:var(--border2);stroke-dasharray:3,3"/>
+            <text x="330" y="266" text-anchor="middle" style="fill:var(--text3);font-size:10.5px;font-family:'DM Mono',monospace">K = F (ATM)</text>
+            <text x="620" y="20" text-anchor="end" style="fill:var(--text3);font-size:10.5px">Strike / forward (K/F) →</text>
+            <text x="46" y="42" text-anchor="start" style="fill:var(--text3);font-size:10px">↑ higher vol</text>
+            <polyline id="smile-poly" points="" style="fill:none;stroke:var(--blue);stroke-width:2.5"/>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>ρ — skew tilt</span><span class="sl-live" id="smile-rho-val">ρ = −0.25</span></div>
+        <input type="range" class="sl-slider" id="smile-rho-slider" min="-90" max="90" step="5" value="-25">
+        <div class="sl-sliderhead" style="margin-top:16px"><span>ν — curvature</span><span class="sl-live" id="smile-nu-val">ν = 0.40</span></div>
+        <input type="range" class="sl-slider" id="smile-nu-slider" min="5" max="100" step="5" value="40">
+        <div class="sl-verdict" id="smile-verdict" style="margin-top:14px"></div>
+        <div class="sl-note">Push ρ negative and the low-strike wing lifts — a put skew. Push ν up with ρ near zero and both wings lift symmetrically — pure curvature, no tilt. That's the same distinction the chart in the full lesson makes, live instead of static.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">The Hagan formula: pure algebra, not a Fourier integral</h2>
+      <p class="sl-sub">Dense-looking, but every piece is an exponent, a logarithm, or one square root.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Three factors, multiplied together</div>
+        <div class="sl-row">
+          <div class="sl-box">α ÷ (FK)^((1−β)/2)</div>
+          <div class="sl-arrow">×</div>
+          <div class="sl-box green">z ÷ x(z)</div>
+          <div class="sl-arrow">×</div>
+          <div class="sl-box amber">[1 + (…) T]</div>
+        </div>
+        <div class="sl-verdict">The moneyness-adjusted level, the term carrying the smile's characteristic shape, and a small time-scaled correction. <strong>No integral, no numerical inversion, anywhere.</strong></div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">1</div><div><h4>(FK)^((1−β)/2)</h4><p>A moneyness scaling factor that collapses to exactly 1 when β = 1 — one reason β = 1 is a convenient simplifying convention.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">z</div><div><h4>z = (ν/α)·(FK)^((1−β)/2)·ln(F/K)</h4><p>Carries ν's effect into the formula. Vanishes exactly at K = F, where log-moneyness ln(F/K) is zero.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">x</div><div><h4>x(z), built from ρ</h4><p>z ⁄ x(z) → 1 exactly at the money, and is the ratio primarily responsible for the smile's shape away from it.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">T</div><div><h4>[1 + (…) T]</h4><p>The ρ/ν-dependent correction, scaled by time to expiry — flatter for short-dated options, more pronounced for long-dated ones.</p></div></div>
+      </div>
+      <p class="sl-p">Set K = F and the general formula collapses to an at-the-money case: <strong>σ<sub>ATM</sub> ≈ (α ÷ F^(1−β)) × [1 + (…) T]</strong>. With β fixed by convention, that leaves exactly three unknowns — α, ρ, ν — matched against the three quotes an FX desk already watches: the ATM vol, the 25-delta risk reversal (skew), and the 25-delta butterfly (curvature). Three unknowns, three constraints, one fast, well-posed fit.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Try it — solve for the smile, live</h2>
+      <p class="sl-sub">Starts on the full lesson's worked EUR/USD example. Change any input and every output recomputes from the exact Hagan formula above.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>α (%)</label><input type="number" class="sl-input" id="sabr-alpha" value="9.976" step="0.01"></div>
+          <div class="sl-calc-field"><label>β</label><input type="number" class="sl-input" id="sabr-beta" value="1" step="0.05" min="0" max="1"></div>
+          <div class="sl-calc-field"><label>ρ</label><input type="number" class="sl-input" id="sabr-rho" value="-0.25" step="0.05" min="-0.99" max="0.99"></div>
+          <div class="sl-calc-field"><label>ν</label><input type="number" class="sl-input" id="sabr-nu" value="0.40" step="0.05" min="0"></div>
+        </div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Forward F</label><input type="number" class="sl-input" id="sabr-F" value="1.2000" step="0.001" min="0"></div>
+          <div class="sl-calc-field"><label>T (years)</label><input type="number" class="sl-input" id="sabr-T" value="0.25" step="0.05" min="0"></div>
+          <div class="sl-calc-field"><label>OTM offset (%)</label><input type="number" class="sl-input" id="sabr-offset" value="1.667" step="0.1" min="0" max="99"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">ATM implied vol</div>
+            <div class="sl-calc-result-val" id="sabr-atm-out">10.00%</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Call side, K = F×(1+offset): <b id="sabr-call-out">9.92%</b></div>
+          <div>Put side, K = F×(1−offset): <b id="sabr-put-out">10.09%</b></div>
+          <div>Skew (put − call): <b id="sabr-skew-out">0.17</b> vol points</div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="sabr-reset">Reset to worked-example numbers</button>
+        <div class="sl-note">Guards against nonsense input: blank fields, α ≤ 0, |ρ| ≥ 1, ν &lt; 0, F ≤ 0, or an offset ≥ 100% all show "—" instead of NaN or Infinity.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">SABR vs. Heston — different questions, not a rematch</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">SABR</span>
+          <ul>
+            <li>Closed-form Hagan approximation — pure algebra, essentially free to evaluate</li>
+            <li>α, ρ, ν fit in a small, fast root-find (β fixed by convention)</li>
+            <li>No mean reversion in its own volatility process — a deliberate simplification</li>
+            <li>Industry-standard tool for quoting and interpolating FX and rates smiles, refit continuously</li>
+          </ul>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Heston</span>
+          <ul>
+            <li>Genuine mean-reverting (CIR) variance process, with its own vol-of-vol and correlation</li>
+            <li>Needs a characteristic function evaluated and numerically Fourier-inverted for one price</li>
+            <li>Calibration repeats that numerical chain for every trial parameter set — slow</li>
+            <li>More dynamically complete; matters more where the path, not just today's snapshot, is priced</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-quote">Neither wins in the abstract. Heston gets the risk-neutral dynamics right at the cost of a slow, numerical calibration. SABR trades away some of that dynamical rigor for a formula fast enough to refit continuously against a live, moving market.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">How a desk actually uses this, every session</h2>
+      <p class="sl-sub">Quoting a full USD/JPY smile from three streaming numbers.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The daily loop</div>
+        <div class="sl-row">
+          <div class="sl-box">3 live quotes:<br>ATM · 25Δ RR · 25Δ BF</div>
+          <div class="sl-arrow">→</div>
+          <div class="sl-box green">solve α, ρ, ν<br>(Hagan formula, fast root-find)</div>
+          <div class="sl-arrow">→</div>
+          <div class="sl-box amber">read off any strike —<br>even ones nobody quotes</div>
+        </div>
+        <div class="sl-note">Re-solved again, and again, every time spot ticks — because each evaluation is pure algebra, not a Fourier inversion. That's the entire practical difference this lesson is about.</div>
+      </div>
+      <p class="sl-p">FX and rates options markets don't trade a continuous strike ladder — only a handful of standard, liquid points (the at-the-money straddle, the 25-delta risk reversal, the 25-delta butterfly). Everything else a client asks for has to be interpolated or extrapolated in a way that doesn't introduce arbitrage. SABR, fit to those liquid points, is the industry's default tool for producing that full curve — precisely because refitting it is cheap enough to run continuously rather than once a day.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Where the formula — and the model — can mislead you</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">The formula is an approximation, not exact</div>
+        <p>Hagan's formula is a singular-perturbation asymptotic expansion — excellent for typical, liquid strikes and moderate maturities, but known to degrade, and in some regimes to imply outright arbitrage (a non-monotonic or locally negative implied density), at very low strikes, very long maturities, or unusually high ν. "Arbitrage-Free SABR" (2014) patches this numerically, via a PDE approach, for exactly the corners where the closed form breaks down.</p>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>A good same-day fit isn't the same as a correct model of smile <em>dynamics</em> over time — SABR refit fresh each day can reproduce today's shape well without its backbone (β) correctly predicting how the whole smile should shift as the forward moves, a documented critique in the literature. And F is a forward: the right forward or swap measure, and the discounting layered on top to turn σ_B into an actual price, are instrument-specific — genuinely outside what this formula covers on its own.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Why does an FX or rates desk reach for SABR instead of Heston to re-quote a smile every time spot ticks?</h4>
+        <button class="sl-quiz-opt" data-correct="true">SABR's closed-form algebraic approximation needs no Fourier inversion, so it recalibrates fast enough to run continuously</button>
+        <button class="sl-quiz-opt">SABR is a more accurate model of how volatility truly evolves</button>
+        <button class="sl-quiz-opt">Heston can't produce a skewed smile at all</button>
+        <div class="sl-quiz-explain">Heston is arguably the more complete dynamical model — SABR wins on calibration speed, not superior realism. Hagan's formula turns four parameters straight into an implied vol, skipping the characteristic-function/Fourier-inversion chain Heston needs for every trial parameter set an optimizer proposes.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Worked example: α≈9.98%, ρ=−0.25, ν=0.40, F=1.2000. Which strike carries the higher implied vol — 1.1800 or 1.2200?</h4>
+        <button class="sl-quiz-opt" data-correct="true">1.1800 — the put side, ~10.09% vs. ~9.92%</button>
+        <button class="sl-quiz-opt">1.2200 — the call side</button>
+        <button class="sl-quiz-opt">They're identical — SABR smiles are always symmetric</button>
+        <div class="sl-quiz-explain">Negative ρ means the forward falling and volatility rising tend to move together, which tilts the smile so low strikes (puts) price richer than high strikes (calls) — a downward-sloping skew.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>What does β actually control, separately from ρ and ν?</h4>
+        <button class="sl-quiz-opt" data-correct="true">How ATM volatility itself scales as the forward's level moves — the "backbone"</button>
+        <button class="sl-quiz-opt">The overall height of today's smile</button>
+        <button class="sl-quiz-opt">How U-shaped today's smile is around the money</button>
+        <div class="sl-quiz-explain">α sets the level and ν sets the curvature of today's snapshot smile; ρ sets its skew. β is a different axis entirely — how the whole ATM vol level would shift if the forward itself moved, e.g. flat (β=1) versus steeply sloped (β=0).</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Why is β usually fixed by convention rather than calibrated freely alongside ρ?</h4>
+        <button class="sl-quiz-opt" data-correct="true">β and ρ both drive skew and are close to redundant with each other, so leaving both free makes the fit poorly identified</button>
+        <button class="sl-quiz-opt">β has no real effect on the smile, so it doesn't matter what value it takes</button>
+        <button class="sl-quiz-opt">Regulators require β to be fixed at 1</button>
+        <div class="sl-quiz-explain">Different (β, ρ) combinations can reproduce nearly the same fitted smile from the same handful of market quotes. Fixing β by asset-class convention removes that ambiguity and lets ρ alone, unambiguously, carry the skew.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>SABR trades away some of Heston's dynamical rigor for a closed-form implied-vol formula fast enough to refit continuously against a live market — speed, not superior realism, is the whole point.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Four parameters, four separate jobs — α is the level, β is the backbone (vol-vs-forward scaling), ρ is the skew, ν is the curvature.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>β is almost always fixed by convention (near 1 for FX, often 0 for rates) because it's close to redundant with ρ on skew — fixing it leaves a small, well-identified three-parameter fit against three standard market quotes.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The worked example: α≈9.98% reproduces a 10% ATM quote, then one algebraic evaluation each reads off ~9.92% and ~10.09% at strikes 1.667% either side of the forward — no repricing loop.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The Hagan formula is an asymptotic approximation, not exact — it can misbehave, even implying arbitrage, at extreme strikes/maturities or high ν, which "Arbitrage-Free SABR" (2014) patches numerically.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>This repo carries SABR (and Heston) as theory only — no SABR fit, no Heston fit, and no options-pricing engine is wired into a live strategy here today. Verified against the current codebase while building this deck, not carried over unchecked.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Read a live FX or rates vol quote sheet (ATM / risk reversal / butterfly) and know exactly which SABR parameter each one pins down. Recognise instantly whether a smile move is a level shift (α), a skew tilt (ρ), a curvature change (ν), or a backbone effect (β). Understand why a SABR calibration finishes almost instantly while a Heston calibration doesn't. And sanity-check a vendor's SABR fit by checking the arbitrage-prone corners — deep out-of-the-money, long-dated, high ν — rather than trusting the closed form blindly everywhere.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>More from Theory Lab</h3>
+        <p>The next lesson in this sequence hasn't been published yet — head back to the hub to see everything currently live.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="../hub.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="sabr-model.html">Read the full SABR lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // ρ/ν smile slider — redraws the implied-vol smile SVG live using the
+  // exact Hagan approximation (β fixed at 1), re-solving α each move so the
+  // at-the-money point always reads back at the fixed 10% target — the same
+  // technique the full lesson's static nu-comparison chart uses.
+  (function(){
+    var rhoSlider = document.getElementById('smile-rho-slider');
+    if (!rhoSlider) return;
+    var nuSlider = document.getElementById('smile-nu-slider');
+    var rhoVal = document.getElementById('smile-rho-val');
+    var nuVal = document.getElementById('smile-nu-val');
+    var poly = document.getElementById('smile-poly');
+    var verdict = document.getElementById('smile-verdict');
+    var F = 1.20, T = 0.25, TARGET_ATM = 0.10;
+    var RATIOS = [0.85, 0.8875, 0.925, 0.9625, 1.0, 1.0375, 1.075, 1.1125, 1.15];
+    var X0 = 40, X1 = 620, Y0 = 250, Y1 = 30;
+    var VMIN = 0.05, VMAX = 0.20;
+
+    function solveAlpha(rho, nu){
+      var alpha = TARGET_ATM;
+      for (var i = 0; i < 10; i++){
+        var bracket = 1 + (0.25 * rho * nu * alpha + (2 - 3 * rho * rho) / 24 * nu * nu) * T;
+        if (!isFinite(bracket) || bracket <= 0) return NaN;
+        alpha = TARGET_ATM / bracket;
+        if (!isFinite(alpha) || alpha <= 0) return NaN;
+      }
+      return alpha;
+    }
+
+    function sigmaB(alpha, rho, nu, K){
+      var bracket = 1 + (0.25 * rho * nu * alpha + (2 - 3 * rho * rho) / 24 * nu * nu) * T;
+      if (Math.abs(F - K) < 1e-12) return alpha * bracket;
+      var lnFK = Math.log(F / K); // beta = 1, so (FK)^0 = 1
+      var z = (nu / alpha) * lnFK;
+      if (Math.abs(z) < 1e-10) return alpha * bracket;
+      var xz = Math.log((Math.sqrt(1 - 2 * rho * z + z * z) + z - rho) / (1 - rho));
+      return alpha * (z / xz) * bracket;
+    }
+
+    function xForRatio(r){ return X0 + (r - 0.85) / (1.15 - 0.85) * (X1 - X0); }
+    function yForVol(v){
+      var vc = Math.max(VMIN, Math.min(VMAX, v));
+      return Y0 - (vc - VMIN) / (VMAX - VMIN) * (Y0 - Y1);
+    }
+
+    function update(){
+      var rho = parseInt(rhoSlider.value, 10) / 100;
+      var nu = parseInt(nuSlider.value, 10) / 100;
+      rhoVal.textContent = 'ρ = ' + rho.toFixed(2);
+      nuVal.textContent = 'ν = ' + nu.toFixed(2);
+
+      var alpha = solveAlpha(rho, nu);
+      if (!isFinite(alpha) || alpha <= 0) {
+        verdict.innerHTML = '<strong>—</strong> that combination pushes the approximation past where it behaves — ease a slider back.';
+        return;
+      }
+
+      var pts = [];
+      var ok = true;
+      for (var i = 0; i < RATIOS.length; i++){
+        var K = F * RATIOS[i];
+        var v = sigmaB(alpha, rho, nu, K);
+        if (!isFinite(v)) { ok = false; break; }
+        pts.push(xForRatio(RATIOS[i]).toFixed(1) + ',' + yForVol(v).toFixed(1));
+      }
+      if (!ok) {
+        verdict.innerHTML = '<strong>—</strong> that combination pushes the approximation past where it behaves — ease a slider back.';
+        return;
+      }
+      poly.setAttribute('points', pts.join(' '));
+
+      var vLow = sigmaB(alpha, rho, nu, F * 0.85) * 100;
+      var vHigh = sigmaB(alpha, rho, nu, F * 1.15) * 100;
+      var atm = sigmaB(alpha, rho, nu, F) * 100;
+      var diff = vLow - vHigh;
+      var skewNote = diff > 0.05 ? 'downside strikes richer — a put skew'
+        : (diff < -0.05 ? 'upside strikes richer — a call skew' : 'roughly symmetric — no meaningful skew');
+      verdict.innerHTML = 'ATM ≈ <strong>' + atm.toFixed(2) + '%</strong> · K=0.85F ≈ <strong>' + vLow.toFixed(2) + '%</strong> · K=1.15F ≈ <strong>' + vHigh.toFixed(2) + '%</strong> — ' + skewNote + '.';
+    }
+
+    rhoSlider.addEventListener('input', update);
+    nuSlider.addEventListener('input', update);
+    update();
+  })();
+
+  // "Solve for the smile" calculator — full Hagan closed-form approximation
+  // for general beta, alpha, rho, nu, forward and expiry, plus an OTM offset
+  // read off symmetrically either side of the forward.
+  (function(){
+    var alphaEl = document.getElementById('sabr-alpha');
+    if (!alphaEl) return;
+    var betaEl = document.getElementById('sabr-beta');
+    var rhoEl = document.getElementById('sabr-rho');
+    var nuEl = document.getElementById('sabr-nu');
+    var FEl = document.getElementById('sabr-F');
+    var TEl = document.getElementById('sabr-T');
+    var offsetEl = document.getElementById('sabr-offset');
+    var atmOut = document.getElementById('sabr-atm-out');
+    var callOut = document.getElementById('sabr-call-out');
+    var putOut = document.getElementById('sabr-put-out');
+    var skewOut = document.getElementById('sabr-skew-out');
+    var resetBtn = document.getElementById('sabr-reset');
+
+    var DEFAULTS = { alpha: 9.976, beta: 1, rho: -0.25, nu: 0.40, F: 1.2000, T: 0.25, offset: 1.667 };
+
+    function sigmaB(alpha, beta, rho, nu, F, K, T){
+      var oneMinusBeta = 1 - beta;
+      if (Math.abs(F - K) < 1e-12) {
+        var FKbAtm = Math.pow(F, oneMinusBeta);
+        var bracketAtm = 1 + ((oneMinusBeta * oneMinusBeta / 24) * (alpha * alpha) / (FKbAtm * FKbAtm)
+          + 0.25 * rho * beta * nu * alpha / FKbAtm
+          + (2 - 3 * rho * rho) / 24 * nu * nu) * T;
+        return alpha / FKbAtm * bracketAtm;
+      }
+      var FK = F * K;
+      var FKbeta = Math.pow(FK, oneMinusBeta / 2);
+      var lnFK = Math.log(F / K);
+      var term1 = 1 + Math.pow(oneMinusBeta, 2) / 24 * lnFK * lnFK + Math.pow(oneMinusBeta, 4) / 1920 * Math.pow(lnFK, 4);
+      var z = (nu / alpha) * FKbeta * lnFK;
+      var bracket = 1 + ((oneMinusBeta * oneMinusBeta / 24) * (alpha * alpha) / Math.pow(FK, oneMinusBeta)
+        + 0.25 * rho * beta * nu * alpha / FKbeta
+        + (2 - 3 * rho * rho) / 24 * nu * nu) * T;
+      if (Math.abs(z) < 1e-10) return alpha / (FKbeta * term1) * bracket;
+      var xz = Math.log((Math.sqrt(1 - 2 * rho * z + z * z) + z - rho) / (1 - rho));
+      return alpha / (FKbeta * term1) * (z / xz) * bracket;
+    }
+
+    function fmtPct(v){
+      return (v !== null && isFinite(v)) ? (v * 100).toFixed(2) + '%' : '—';
+    }
+
+    function recompute(){
+      var alpha = parseFloat(alphaEl.value) / 100;
+      var beta = parseFloat(betaEl.value);
+      var rho = parseFloat(rhoEl.value);
+      var nu = parseFloat(nuEl.value);
+      var F = parseFloat(FEl.value);
+      var T = parseFloat(TEl.value);
+      var offset = parseFloat(offsetEl.value);
+
+      var validInputs = isFinite(alpha) && isFinite(beta) && isFinite(rho) && isFinite(nu) &&
+        isFinite(F) && isFinite(T) && isFinite(offset) &&
+        alpha > 0 && F > 0 && T >= 0 && nu >= 0 && rho > -1 && rho < 1 && offset >= 0 && offset < 100;
+
+      if (!validInputs) {
+        atmOut.textContent = '—'; callOut.textContent = '—'; putOut.textContent = '—'; skewOut.textContent = '—';
+        return;
+      }
+
+      var Kcall = F * (1 + offset / 100);
+      var Kput = F * (1 - offset / 100);
+      if (!(Kput > 0)) {
+        atmOut.textContent = '—'; callOut.textContent = '—'; putOut.textContent = '—'; skewOut.textContent = '—';
+        return;
+      }
+
+      var atm = sigmaB(alpha, beta, rho, nu, F, F, T);
+      var call = sigmaB(alpha, beta, rho, nu, F, Kcall, T);
+      var put = sigmaB(alpha, beta, rho, nu, F, Kput, T);
+
+      atmOut.textContent = fmtPct(atm);
+      callOut.textContent = fmtPct(call);
+      putOut.textContent = fmtPct(put);
+      skewOut.textContent = (isFinite(put) && isFinite(call)) ? ((put - call) * 100).toFixed(2) : '—';
+    }
+
+    [alphaEl, betaEl, rhoEl, nuEl, FEl, TEl, offsetEl].forEach(function(el){
+      el.addEventListener('input', recompute);
+    });
+    resetBtn.addEventListener('click', function(){
+      alphaEl.value = DEFAULTS.alpha; betaEl.value = DEFAULTS.beta; rhoEl.value = DEFAULTS.rho;
+      nuEl.value = DEFAULTS.nu; FEl.value = DEFAULTS.F; TEl.value = DEFAULTS.T; offsetEl.value = DEFAULTS.offset;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>
