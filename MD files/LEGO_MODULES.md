@@ -5829,3 +5829,96 @@ live Railway path in this sandbox to read the actual generated prose for
 real market data — same standing caveat as every prior revision of this
 feature; the exact WORDING quality (does it actually read well, not just
 compile) needs a live check.
+
+**v10 addendum (2026-09-03)** — owner, after seeing v9's prose live: "we
+essentially lost top 1 and bottom 1 pair and duplicate the content in the per
+pair" (the global panel's strongest/weakest-currency narrative just pointed at
+one pair's own biggest driver, so opening that pair's drawer showed the same
+text again — no board-wide value added) and gave an explicit example of the
+teaching shape actually wanted: *"the yield is consistently dropping day on
+day, if it continues this way then X will occur, paired with high volatility
+this means we may see X in the coming days."* Two changes, both still zero new
+data/claims (Lego Principle 1 — same drivers, same scores, only the prose
+generation changed):
+
+**1. Every scored driver in `js/outlookEngine.js` now carries a `teach` field**
+alongside its existing `detail` (`compositeDriver`, `yieldSpreadDriver`,
+`cotDriver`, `dxyMomentumDriver`, `realYieldMomentumDriver`,
+`goldEtfFlowDriver`, `riskMomentumDriver`, `priceTrendDriver`) — a sentence in
+the trend + "if this continues" + mechanism shape the owner asked for (e.g.
+dxyMomentum: *"The dollar index has been climbing over this window (+0.7). A
+firmer dollar squeezes anything priced or funded in it — if that trend keeps
+going, it tends to pull this pair higher; if the dollar turns instead, that
+pull reverses too."*), instead of the old hedge-heavy "DXY +0.7... a
+rate-of-change reading, not a tested signal" repeated after every clause.
+`volRegimeDriver` additionally now exposes a plain `state` field
+(`'BUILDING'|'COOLING'|'STABLE'`) instead of only encoding it inside `detail`
+text, so callers can branch on it directly rather than regexing a string.
+`detail` is UNCHANGED (still used verbatim by the face-card chip's tooltip via
+`outlookChip()` in `today.html`) — `teach` is additive, not a replacement.
+
+**2. `describeOutlookNarrative(o)` rewritten** to use each driver's `teach`
+(falling back to `detail` if absent) for the "pointing up"/"pointing down"
+groups instead of `detail`, and — new — combines the SINGLE strongest
+directional driver with the volatility-regime read into one closing
+conditional sentence: *"Paired with volatility that's building here, if the
+{dominant driver} keeps moving the same way, the next move could arrive
+faster and sharper than usual over the coming days."* (COOLING/STABLE get
+their own phrasing). This is the actual "trend + if-this-continues +
+paired-with-volatility" shape requested, at the per-pair level. The
+CONTEXT-not-validated hedge ("not a tested signal") is now stated exactly
+ONCE, in the closing disclaimer sentence, instead of once per driver inside
+every up/down clause — the old version repeated it 3-4 times in a single
+paragraph, which read as boilerplate rather than teaching. New
+`NARRATIVE_LABEL` map gives each driver a friendly mid-sentence phrase (e.g.
+"yield-spread read" instead of "Yield-spread z-score") for the combo
+sentence. +10 test assertions (65 total): the combo sentence for
+BUILDING/COOLING/STABLE regimes each, naming the dominant driver, and a check
+that "not a tested signal" is never repeated per-driver while the single
+closing disclaimer still fires.
+
+**3. Global panel rebuilt from currency-level to driver-level aggregation**
+(`today.html`) — `outlookCurrencyStrength`, `outlookTopDriverFor` and
+`outlookGlobalNarrative` (all top1/bottom1-currency logic) DELETED as dead
+code; replaced by new `outlookBoardNarrative(rs, key)`. Instead of picking one
+standout currency and quoting its one biggest pair's one driver (the exact
+duplication complained about), this aggregates EVERY pair's EVERY driver by
+NAME across the whole board at that horizon: for each driver type, what
+fraction of the pairs that carry it are pulled the same way (`skew =
+max(up,down)/total`, driver must have ≥3 pairs and skew **strictly** >0.5 to
+count — a few pairs skewing 2-of-3 by chance, or an exact 50/50 split,
+shouldn't read as a "board theme"). The most lopsided driver becomes the
+board's stated dominant theme (*"Dollar-index momentum is pulling 6 of 8
+pairs higher right now — if that keeps moving the same way, expect it to keep
+showing up pair after pair, not just one..."*), a second one gets a shorter
+"agrees too" sentence, and how many pairs have `volRegime.state===
+'BUILDING'`/`'COOLING'` is folded into a "paired with volatility across the
+board" closing sentence — the same trend+conditional+paired-with-volatility
+shape as the per-pair narrative, but genuinely board-wide instead of a pointer
+into one pair's own drawer. Falls back to "no single factor dominates" when
+nothing clears the skew bar. New `OUTLOOK_NARRATIVE_LABEL` map (today.html's
+own copy of the same friendly-phrase table, since this file doesn't import
+outlookEngine.js's internal const — keep both in sync if a driver name
+changes). The bull/neutral/bear tally chips (`outlookTallyHtml`) are
+UNCHANGED — the owner's own read on those was neutral/positive, only the
+currency-strength narrative underneath was the complaint.
+
+New/changed: `js/outlookEngine.js` (`teach` field on 8 drivers, `state` field
+on `volRegimeDriver`, `describeOutlookNarrative` rewritten, `NARRATIVE_LABEL`
+map), `js/outlookEngine.test.mjs` (+10 assertions, 65 total), `today.html`
+(`outlookCurrencyStrength`/`outlookTopDriverFor`/`outlookGlobalNarrative`
+deleted, `outlookBoardNarrative` + `OUTLOOK_NARRATIVE_LABEL` added,
+`renderOutlookPanel`'s `col()` updated, panel footer text updated). No
+`server.js` changes.
+
+Validated: `node --check` on `js/outlookEngine.js` and every extracted
+`today.html` inline script; `node js/outlookEngine.test.mjs` — 65/65 passing.
+Hand-ran `outlookBoardNarrative`'s aggregation logic against synthetic
+pair-outlook arrays in a throwaway script (dollar-dominant board with vol
+building, a no-dominant-theme board, and a too-few-pairs board) to confirm the
+skew-ranking and fallback text behave before wiring it into the live DOM path
+— caught and fixed one real edge case this way (an exact 3-of-6/50-50 split
+was incorrectly passing the `skew>=0.5` filter as "dominant" before tightening
+it to strict `>0.5`). No live Railway path in this sandbox to read the actual
+generated prose against real market data or to eyeball the visual layout —
+same standing caveat as every prior revision of this feature.
