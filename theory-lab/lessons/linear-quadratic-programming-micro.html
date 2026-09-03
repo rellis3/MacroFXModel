@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Linear &amp; Quadratic Programming — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Linear &amp; Quadratic Programming — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivations, worked LP/QP examples, and a 5-question self-test?<a href="linear-quadratic-programming.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Numerical Methods 3 · Numerical Methods</div>
+      <h1 class="sl-h1">Linear &amp; Quadratic Programming, <em>When the Closed Form Breaks</em></h1>
+      <p class="sl-lede">Markowitz's textbook portfolio formula is pure linear algebra — invert a matrix, done. The instant you add a rule a real portfolio actually needs — no shorting, a position cap, a sector limit — that guarantee vanishes, because you no longer know in advance which rule will end up binding. Linear and quadratic programming are the two well-studied problem families that pick up exactly where the matrix formula gives out, and this deck is the geometry of why.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">One matrix inversion, until it isn't</h2>
+      <p class="sl-sub">The classical minimum-variance Markowitz problem — budget constraint plus a target-return constraint, nothing else — has a clean closed-form answer: write the stationarity condition as a linear system and invert a matrix. No search, no iteration.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">⊘</div><div><h4>No short-selling — wᵢ ≥ 0</h4><p>You don't know in advance whether the unconstrained optimum actually wants a negative weight on any given asset — that depends on the specific μ and Σ, and is only known after solving.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">▢</div><div><h4>Position caps — wᵢ ≤ 0.1</h4><p>A single-name limit turns one more equality-or-not question into an unknown: does this asset want more than 10% badly enough to hit the ceiling?</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🏷</div><div><h4>Sector limits</h4><p>A cap on the summed weight of a whole group of assets is still a linear inequality — and still one more constraint whose binding status isn't known ahead of time.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">↔</div><div><h4>Turnover limits</h4><p>Capping how far new weights may move from last period's holdings is a linear constraint on the <em>change</em> in w — same problem, one layer removed.</p></div></div>
+      </div>
+      <div class="sl-quote">Every one of these is an ordinary linear inequality. What breaks isn't the math being harder — it's that the correct system of equations to solve now depends on information (which constraints bind) that's only available <strong>after</strong> the problem is already solved. There is no longer one fixed matrix to invert.</div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">The intuition, compressed</div>
+        <p>With no shorting or caps, "solve for the minimum-risk portfolio" is a one-shot formula. Add "no shorting" and you don't know in advance which assets actually want to go negative and get stopped — so there's no single formula left to plug into. Something has to try, check, and adjust its way to the answer instead. That something is a QP solver.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">A linear program: flat walls, and the optimum is always a corner</h2>
+      <p class="sl-sub">Minimize (or maximize) a linear objective, cᵀx, subject to linear inequalities, Ax ≤ b. Every constraint is a straight line — in higher dimensions, a flat plane — so the region of points satisfying all of them at once is a <strong>polytope</strong>: a many-sided, flat-walled shape, the higher-dimensional cousin of a polygon.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>A tiny 2-variable LP's feasible region</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A pentagon-shaped feasible region on x-y axes, with vertices marked and the optimum highlighted at (2,6)">
+            <line x1="60" y1="20" x2="60" y2="320" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="60" y1="286.7" x2="580" y2="286.7" style="stroke:var(--border2);stroke-width:1"/>
+            <polygon points="134.3,286.7 431.4,286.7 431.4,186.7 282.9,86.7 134.3,86.7" style="fill:var(--blue);opacity:.16;stroke:var(--blue);stroke-width:2.5"/>
+            <circle cx="134.3" cy="286.7" r="4" style="fill:var(--text2)"/>
+            <circle cx="431.4" cy="286.7" r="4" style="fill:var(--text2)"/>
+            <circle cx="431.4" cy="186.7" r="4" style="fill:var(--text2)"/>
+            <circle cx="134.3" cy="86.7" r="4" style="fill:var(--text2)"/>
+            <circle cx="282.9" cy="86.7" r="7" style="fill:var(--green);stroke:var(--bg);stroke-width:2"/>
+            <text x="134.3" y="304" text-anchor="middle" style="fill:var(--text2);font-size:11px">(0,0)</text>
+            <text x="431.4" y="304" text-anchor="middle" style="fill:var(--text2);font-size:11px">(4,0)</text>
+            <text x="450" y="182" text-anchor="start" style="fill:var(--text2);font-size:11px">(4,3)</text>
+            <text x="285" y="70" text-anchor="middle" style="fill:var(--green);font-size:12px;font-weight:700">(2,6) — optimum, Z=36</text>
+            <text x="118" y="82" text-anchor="end" style="fill:var(--text2);font-size:11px">(0,6)</text>
+            <text x="320" y="180" text-anchor="middle" style="fill:var(--blue);font-size:11px">feasible region</text>
+          </svg>
+        </div>
+        <div class="sl-verdict">Maximize 3x + 5y over x≤4, y≤6, 3x+2y≤18, x,y≥0. Checking all five corners — (0,0), (4,0), (4,3), (2,6), (0,6) — the best is <strong>(2,6), Z=36</strong>. No point in the open interior beats it.</div>
+      </div>
+      <p class="sl-p">Because a straight line never curves, moving along <em>any</em> line inside the region changes the objective at a constant rate — so any interior point can always be improved by continuing to walk in whatever direction is helping, right up until a wall stops you. Repeat that argument and you can only ever get pushed all the way to a <strong>vertex</strong>, where two or more walls meet. The simplex method (Dantzig, 1947) turns this into an algorithm: hop from vertex to adjacent vertex, always improving, until no neighbor is better — never once checking the empty space in between.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">x</div><div><h4>Decision variables</h4><p>What's being solved for — here, allocations x and y.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">c</div><div><h4>Objective coefficients</h4><p>cᵀx is the linear quantity being optimized — here, 3x+5y.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">Ab</div><div><h4>Constraint matrix &amp; bounds</h4><p>Ax≤b packs every straight-line limit into one inequality.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">◆</div><div><h4>Polytope / vertex</h4><p>The flat-walled feasible shape, and its corners — the only places an LP's optimum can ever sit.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">A quadratic program: same flat room, a bowl instead of a ramp</h2>
+      <p class="sl-sub">A QP keeps the exact same linear-constraint structure, Ax ≤ b, but swaps the linear objective for a quadratic one: minimize ½xᵀHx + cᵀx, with H positive semi-definite (so the bowl genuinely curves upward, never a saddle).</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">LP — linear objective</span>
+          <p>The objective changes at a constant rate everywhere. There's never a reason to stop in the open middle of the room — the optimum is always forced all the way to a vertex.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">QP — quadratic objective</span>
+          <p>The objective curves — a bowl has a genuine bottom. That bottom can sit comfortably in the open interior of the feasible region, only getting pushed to a wall if the bowl's true minimum happens to fall outside it.</p>
+        </div>
+      </div>
+      <p class="sl-p">Constrained Markowitz mean-variance is exactly this template: minimize wᵀΣw (so H = 2Σ, the covariance matrix scaled by two, guaranteed PSD), subject to the budget constraint Σwᵢ=1, a target-return constraint wᵀμ = R*, and — the part that pushes it out of closed-form territory — box constraints like 0 ≤ wᵢ ≤ 0.4 on every weight. Same linear constraints an LP would have; a bowl-shaped objective instead of a ramp.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Why a QP needs a different algorithm than "check the corners"</div>
+        <p>Simplex only works because a linear objective is <em>always</em> improved by walking further, so the search never has to look anywhere but the boundary. A QP's bowl can bottom out mid-room — so a QP solver (active-set methods, or interior-point methods) has to be able to search the interior too, which is a structurally different kind of algorithm, not a faster version of the same one.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Same two assets, three different feasible regions, three different answers</h2>
+      <p class="sl-sub">Two assets, sum-to-one always required. Var(1)=2%², Var(2)=5%², Cov=3%² — correlated enough that minimizing variance alone wants to short Asset 2 hard. Same objective every tab; only the feasible region changes.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="geo-tabs">
+          <button class="sl-tab active" data-panel="geo-1">No constraints</button>
+          <button class="sl-tab" data-panel="geo-2">No shorting</button>
+          <button class="sl-tab" data-panel="geo-3">No shorting + 60% cap</button>
+        </div>
+        <div class="sl-panel active" id="geo-1">
+          <div class="sl-row"><div class="sl-box amber">w₁ = 200%</div><div class="sl-arrow">+</div><div class="sl-box amber">w₂ = −100%</div></div>
+          <div class="sl-verdict">The raw closed-form minimum-variance answer, sum-to-one only: go 200% long Asset 1, fund it by shorting Asset 2 at −100%. Lowest possible variance on paper — a position no real book can actually hold.</div>
+        </div>
+        <div class="sl-panel" id="geo-2">
+          <div class="sl-row"><div class="sl-box green">w₁ = 100%</div><div class="sl-arrow">+</div><div class="sl-box green">w₂ = 0%</div></div>
+          <div class="sl-verdict">The unconstrained optimum, (200%, −100%), sits miles outside this box. The constrained search pulls it all the way to the nearest corner the box allows: everything in Asset 1, nothing in Asset 2.</div>
+        </div>
+        <div class="sl-panel" id="geo-3">
+          <div class="sl-row"><div class="sl-box green">w₁ = 60%</div><div class="sl-arrow">+</div><div class="sl-box green">w₂ = 40%</div></div>
+          <div class="sl-verdict">Adding a 60% cap removes that first corner too. The optimum snaps to the new nearest corner the box still permits: 60% / 40%.</div>
+        </div>
+        <div class="sl-note">Nothing about the objective changed across these three tabs — only the shape of the room it's being optimized inside. That's the entire geometric content of "constraints change the answer."</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Watch the optimum snap to the wall</h2>
+      <p class="sl-sub">A generic 2D picture (abstract units, not percentages): a bowl-shaped objective centered at (5, 5), inside a box 0 ≤ w₂ ≤ 6 (fixed) and 0 ≤ w₁ ≤ cap. Drag the cap and watch the constrained optimum move.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A box representing the feasible region, contour rings around a bowl-shaped objective centered outside the box, a movable cap line, and the constrained optimum marked where it meets the cap">
+            <line x1="70" y1="20" x2="70" y2="300" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="70" y1="280" x2="600" y2="280" style="stroke:var(--border2);stroke-width:1"/>
+            <text x="600" y="298" text-anchor="end" style="fill:var(--text3);font-size:10px">w₁ →</text>
+            <text x="55" y="30" text-anchor="end" style="fill:var(--text3);font-size:10px">w₂</text>
+            <text x="70" y="298" text-anchor="middle" style="fill:var(--text3);font-size:10px">0</text>
+            <text x="200" y="298" text-anchor="middle" style="fill:var(--text3);font-size:10px">2</text>
+            <text x="330" y="298" text-anchor="middle" style="fill:var(--text3);font-size:10px">4</text>
+            <text x="460" y="298" text-anchor="middle" style="fill:var(--text3);font-size:10px">6</text>
+            <text x="590" y="298" text-anchor="middle" style="fill:var(--text3);font-size:10px">8</text>
+
+            <ellipse cx="395" cy="117.5" rx="65" ry="32.5" style="fill:none;stroke:var(--purple);stroke-width:1;opacity:.45"/>
+            <ellipse cx="395" cy="117.5" rx="130" ry="65" style="fill:none;stroke:var(--purple);stroke-width:1;opacity:.3"/>
+            <ellipse cx="395" cy="117.5" rx="195" ry="97.5" style="fill:none;stroke:var(--purple);stroke-width:1;opacity:.18"/>
+            <circle cx="395" cy="117.5" r="3.5" style="fill:var(--text3)"/>
+            <text x="405" y="113" text-anchor="start" style="fill:var(--text3);font-size:10.5px">unconstrained min (5,5)</text>
+
+            <rect id="qp-box" x="70" y="85" width="195" height="195" style="fill:var(--blue);opacity:.14;stroke:var(--blue);stroke-width:2"/>
+            <line id="qp-cap-line" x1="265" y1="20" x2="265" y2="300" style="stroke:var(--blue);stroke-width:2;stroke-dasharray:5,4"/>
+            <circle id="qp-opt-dot" cx="265" cy="117.5" r="7" style="fill:var(--green);stroke:var(--bg);stroke-width:2"/>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Max weight cap on w₁</span><span class="sl-live" id="qp-cap-val">cap = 3.0</span></div>
+        <input type="range" class="sl-slider" id="qp-cap-slider" min="1" max="8" step="0.5" value="3">
+        <div class="sl-note" id="qp-cap-readout">Capping w₁ at 3.0 cuts the box off before it reaches the bowl's natural minimum at w₁=5 — the constrained optimum is pulled to the boundary at (3.0, 5.0).</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Clipping isn't the same as solving the QP</h2>
+      <p class="sl-sub">A common shortcut: take the unconstrained weight, clip it to the cap, then renormalize so the two weights still sum to 100%. Try it — and watch what happens when renormalizing pushes a weight right back over the cap.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change either input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Unconstrained weight, Asset 1 (%)</label><input type="number" class="sl-input" id="qp-calc-w1" value="65" step="1"></div>
+          <div class="sl-calc-op">cap</div>
+          <div class="sl-calc-field"><label>Max weight, each asset (%)</label><input type="number" class="sl-input" id="qp-calc-cap" value="50" step="1" min="0" max="100"></div>
+          <div class="sl-calc-op">→</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Asset 1, after clip &amp; renormalize</div>
+            <div class="sl-calc-result-val" id="qp-calc-result">58.82%</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Clip to [0%, cap]: Asset 1 → <b id="qp-calc-step1">50.00%</b>, Asset 2 → <b id="qp-calc-step2">35.00%</b></div>
+          <div>Renormalize to sum to 100%: Asset 1 → <b id="qp-calc-step3">58.82%</b>, Asset 2 → <b id="qp-calc-step4">41.18%</b></div>
+        </div>
+        <div class="sl-note" id="qp-calc-note">Renormalizing pushed Asset 1 back above the 50% cap — the naive clip-and-renormalize fix doesn't actually satisfy the constraint. This is exactly why real portfolio construction hands the problem to a QP solver instead of a spreadsheet trick.</div>
+        <button type="button" class="sl-reset-btn" id="qp-calc-reset">Reset to worked-example numbers</button>
+      </div>
+      <p class="sl-p">A real QP solver doesn't clip after the fact — it searches only among points that satisfy every constraint simultaneously from the start (an active-set method repeatedly guesses which constraints bind, solves the resulting equality system, and checks the guess was self-consistent). The heuristic above is a useful gut-check, not a substitute.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Vertex-hopping vs. cutting through the middle</h2>
+      <p class="sl-sub">Two different algorithms, because LPs and QPs need to search different places.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Simplex — for LPs</span>
+          <ul>
+            <li>Starts at any vertex of the polytope</li>
+            <li>Moves to whichever adjacent vertex improves the objective most</li>
+            <li>Never inspects a single non-vertex point</li>
+            <li>Finitely many vertices ⇒ guaranteed to terminate at the true optimum</li>
+          </ul>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Interior-point / active-set — for QPs</span>
+          <ul>
+            <li>Can move through the open interior, not just the boundary</li>
+            <li>A barrier function discourages getting too close to a wall</li>
+            <li>Converges along a smooth path rather than discrete hops</li>
+            <li>Also the dominant modern method for very large, sparse LPs</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-quote">Simplex remains highly competitive and is often preferred when a "warm start" from a nearby previous solution is available — resuming close to the new optimal vertex beats restarting an interior-point search from scratch. That's exactly the situation a fund re-solving a similar portfolio problem every night finds itself in.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Nobody hand-rolls simplex on a trading desk</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📦</div><div><h4>Off-the-shelf solvers</h4><p>OSQP, CVXOPT, and the GLPK/CLP family for open-source LP/QP work; Gurobi and CPLEX for large-scale or mixed-integer problems. The job is formulating H, c, A and b correctly — not implementing the algorithm.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🏦</div><div><h4>Daily portfolio rebalancing</h4><p>Any systematic multi-asset fund with position caps, sector limits, or no-shorting rules re-solves a fresh QP on a real schedule — commonly every single evening.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📉</div><div><h4>Index &amp; basis-trade replication</h4><p>Minimizing tracking error to a benchmark, or finding the cheapest basket matching cash-flow targets, are routine LP/QP formulations well away from portfolio variance specifically.</p></div></div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Real-world scenario — a risk-parity fund's overnight rebalance</div>
+        <p>New forecasts and a refreshed covariance matrix land every evening; the fund needs new target weights that minimize risk for a return target, subject to fixed rules — no instrument over 15%, no asset class net short, prime-broker margin caps that shift day to day. Which rules actually bind changes night to night, so there's no fixed formula worth hard-coding — the solver runs fresh every time, and a stale position cap doesn't throw an error. It just silently hands back a solution that's optimal with respect to the wrong constraints.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Where this actually goes wrong</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Silent failure modes</span>
+          <ul>
+            <li><strong>Infeasible problem</strong> — constraints contradict each other (return target too high for a box-constrained universe). The fix is relaxing a constraint, not tuning the solver.</li>
+            <li><strong>Unbounded objective</strong> — a missing upper-limit constraint can make a maximization LP "optimal" at infinity. A modeling bug, not a numerical one.</li>
+          </ul>
+        </div>
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Numerical / interpretive traps</span>
+          <ul>
+            <li><strong>Degenerate vertices</strong> — extra constraints coincidentally binding at once leave the multipliers non-unique, even though x itself is well defined.</li>
+            <li><strong>Near-singular Hessian</strong> — highly correlated assets make Σ technically PSD but numerically unstable. Shrinkage or a small ridge term is the standard fix.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-quote">Every one of these produces an answer that <em>looks</em> fine — a number comes back, constraints are satisfied — right up until someone checks whether the inputs handed to the solver were actually the correct ones for that day.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Where this repo actually stands</h2>
+      <p class="sl-sub">The full lesson's status line reads "CONCEPT — not built or tested in this repo." Checked against the current code, not just repeated.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Original lesson claim, verified against the code</div>
+        <p><strong>What the full lesson says:</strong> nothing in this repo runs a QP or LP solver, and constrained Markowitz mean-variance is theory a future portfolio-construction layer would sit on, not something already running.</p>
+        <p style="margin-top:10px"><strong>Checked just now:</strong> a repo-wide search for scipy.optimize, linprog, quadprog, CVXOPT, OSQP, and Markowitz-style optimization turns up nothing outside the Theory Lab lesson pages themselves. <code>portfolioBacktest/portfolio_backtest.py</code> — the one module that sounds closest — sizes a pairs trade beta-neutral off an OLS hedge ratio; it never estimates a covariance matrix or solves for optimal weights subject to constraints. <strong>The claim still holds:</strong> no LP/QP solver, and no constrained-Markowitz optimizer, exists anywhere in this codebase today.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Why does adding a no-shorting constraint (wᵢ ≥ 0) eliminate Markowitz's closed-form solution?</h4>
+        <button class="sl-quiz-opt" data-correct="true">You don't know in advance which assets' constraints will actually bind, so there's no single fixed matrix left to invert</button>
+        <button class="sl-quiz-opt">The covariance matrix stops being positive semi-definite</button>
+        <button class="sl-quiz-opt">Non-negativity constraints can't be expressed as linear inequalities</button>
+        <div class="sl-quiz-explain">The closed-form answer comes from inverting a fixed system of equality conditions. Which inequality constraints bind is only known after solving — so the correct system to invert isn't known in advance.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>A linear program's optimal solution is always found:</h4>
+        <button class="sl-quiz-opt" data-correct="true">At a vertex (corner) of the feasible polytope</button>
+        <button class="sl-quiz-opt">At the centroid of the feasible region</button>
+        <button class="sl-quiz-opt">Wherever the unconstrained objective is minimized, regardless of the constraints</button>
+        <div class="sl-quiz-explain">A linear objective changes at a constant rate along any line, so any interior point can always be improved by continuing to walk — the walk only stops at a vertex, where no improving direction remains inside the region.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>What turns constrained Markowitz into a QP rather than a plain matrix-inversion problem?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Adding inequality constraints like no-shorting or position caps on top of the quadratic variance objective</button>
+        <button class="sl-quiz-opt">Using more than two assets</button>
+        <button class="sl-quiz-opt">Targeting a specific expected return instead of the global minimum-variance portfolio</button>
+        <div class="sl-quiz-explain">Pure equality constraints (budget, target return) keep the closed-form matrix solve intact regardless of asset count. It's the box/inequality constraints whose binding status is unknown in advance that require a QP solver.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>In the box-and-bowl picture, what happens to the constrained optimum when the box's cap shrinks below the bowl's natural minimum?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It gets pulled to the boundary of the box, at the point closest to the bowl's true minimum</button>
+        <button class="sl-quiz-opt">It stays exactly at the bowl's unconstrained minimum regardless of the box</button>
+        <button class="sl-quiz-opt">The problem becomes infeasible</button>
+        <div class="sl-quiz-explain">Shrinking the box past the bowl's center doesn't remove a solution — it moves the closest reachable point to the boundary. The optimum snaps to that edge rather than vanishing.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>A QP solver returns a solution where every KKT condition holds. Does that guarantee the portfolio is right for that day?</h4>
+        <button class="sl-quiz-opt" data-correct="true">No — only that it's optimal with respect to whatever objective and constraints were actually fed into the solver</button>
+        <button class="sl-quiz-opt">Yes — KKT conditions holding is a full correctness guarantee, inputs included</button>
+        <button class="sl-quiz-opt">No — KKT conditions only apply to LPs, never to QPs</button>
+        <div class="sl-quiz-explain">KKT conditions confirm the math was solved correctly for the given inputs. They say nothing about whether a position cap, margin limit, or return target was the right one for that day — a separate, non-mathematical check.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Markowitz's closed-form formula is matrix inversion — it only works with equality constraints. Add wᵢ≥0, a cap, or a sector limit, and the single fixed matrix to invert disappears.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>A linear program (LP) minimizes a linear objective over linear constraints — the feasible region is a flat-walled polytope, and the optimum is always at a vertex.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>A quadratic program (QP) keeps the same linear constraints but swaps in a bowl-shaped objective — its unconstrained minimum can sit anywhere, including deep in the interior.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Constrained Markowitz — minimize wᵀΣw subject to budget, return target, and box constraints — is exactly a QP, which is why real portfolios run on a QP solver, not the textbook formula.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>When the unconstrained optimum falls outside the feasible region, the true constrained optimum gets pulled to the nearest boundary or corner — not to some compromise point in between.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Naive clip-and-renormalize heuristics can silently re-violate the very constraint they were trying to satisfy — exactly why a real solver, not a spreadsheet trick, does this properly.</p></div>
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">What this now lets you do</div>
+        <p>Recognize the moment a portfolio problem needs a QP solver rather than a formula — the instant a real-world limit like no-shorting or a position cap enters the picture. Correctly identify the pieces (H, c, A, b) a solver actually needs. Read a solver's boundary-snapping behavior as ordinary geometry, not a black box — and know that a "mathematically optimal" output is only as good as the constraints someone actually fed it.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Numerical Integration</h3>
+        <p>How a computer estimates an integral it can't solve in closed form — and why that shows up constantly in option pricing and risk aggregation.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="numerical-integration-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="linear-quadratic-programming.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Box-and-bowl QP picture — cap slider moves the box edge, optimum snaps.
+  (function(){
+    var slider = document.getElementById('qp-cap-slider');
+    if (!slider) return;
+    var capVal = document.getElementById('qp-cap-val');
+    var box = document.getElementById('qp-box');
+    var capLine = document.getElementById('qp-cap-line');
+    var dot = document.getElementById('qp-opt-dot');
+    var readout = document.getElementById('qp-cap-readout');
+
+    var X0 = 70, SX = 65;   // pixel x at w1=0, px per unit w1
+    var Y0 = 280, SY = 32.5; // pixel y at w2=0, px per unit w2 (inverted)
+    var BOWL_CX = 5, BOWL_CY = 5;
+    var W2_UPPER = 6; // fixed upper bound on w2 — always ≥ bowl center, so w2 never binds
+
+    function wxToPx(w){ return X0 + w * SX; }
+    function wyToPx(w){ return Y0 - w * SY; }
+
+    function update(){
+      var cap = parseFloat(slider.value);
+      if (!isFinite(cap) || cap <= 0) cap = 1;
+      capVal.textContent = 'cap = ' + cap.toFixed(1);
+
+      box.setAttribute('width', (cap * SX).toFixed(1));
+      var capPx = wxToPx(cap);
+      capLine.setAttribute('x1', capPx.toFixed(1));
+      capLine.setAttribute('x2', capPx.toFixed(1));
+
+      var optW1 = Math.min(cap, BOWL_CX);
+      var optW2 = Math.min(W2_UPPER, BOWL_CY); // = 5 always, given W2_UPPER=6
+      dot.setAttribute('cx', wxToPx(optW1).toFixed(1));
+      dot.setAttribute('cy', wyToPx(optW2).toFixed(1));
+
+      if (cap >= BOWL_CX) {
+        readout.textContent = 'Capping w₁ at ' + cap.toFixed(1) + ' still leaves room past the bowl’s natural minimum at w₁=5 — the cap doesn’t bind. Optimum sits at the interior point (5.0, 5.0).';
+      } else {
+        readout.textContent = 'Capping w₁ at ' + cap.toFixed(1) + ' cuts the box off before it reaches the bowl’s natural minimum at w₁=5 — the constrained optimum is pulled to the boundary at (' + cap.toFixed(1) + ', 5.0).';
+      }
+    }
+
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Clip-and-renormalize calculator, with defensive guards.
+  (function(){
+    var w1Input = document.getElementById('qp-calc-w1');
+    if (!w1Input) return;
+    var capInput = document.getElementById('qp-calc-cap');
+    var result = document.getElementById('qp-calc-result');
+    var step1 = document.getElementById('qp-calc-step1');
+    var step2 = document.getElementById('qp-calc-step2');
+    var step3 = document.getElementById('qp-calc-step3');
+    var step4 = document.getElementById('qp-calc-step4');
+    var note = document.getElementById('qp-calc-note');
+    var resetBtn = document.getElementById('qp-calc-reset');
+    var DEFAULTS = { w1: 65, cap: 50 };
+    var EPS = 0.01;
+
+    function pct(n){ return n.toFixed(2) + '%'; }
+
+    function blank(msg){
+      result.textContent = '—';
+      step1.textContent = '—'; step2.textContent = '—';
+      step3.textContent = '—'; step4.textContent = '—';
+      note.textContent = msg;
+    }
+
+    function recompute(){
+      var w1u = parseFloat(w1Input.value);
+      var cap = parseFloat(capInput.value);
+
+      if (!isFinite(w1u) || !isFinite(cap)) {
+        blank('Enter finite numbers for both fields.');
+        return;
+      }
+      if (cap <= 0 || cap > 100) {
+        blank('Cap must be strictly between 0% and 100%.');
+        return;
+      }
+
+      var w2u = 100 - w1u;
+      var w1c = Math.min(Math.max(w1u, 0), cap);
+      var w2c = Math.min(Math.max(w2u, 0), cap);
+      var sum = w1c + w2c;
+
+      if (!(sum > 0) || !isFinite(sum)) {
+        blank('No feasible split at this cap.');
+        return;
+      }
+
+      var w1f = (w1c / sum) * 100;
+      var w2f = (w2c / sum) * 100;
+
+      result.textContent = pct(w1f);
+      step1.textContent = pct(w1c);
+      step2.textContent = pct(w2c);
+      step3.textContent = pct(w1f);
+      step4.textContent = pct(w2f);
+
+      if (w1f > cap + EPS || w2f > cap + EPS) {
+        note.textContent = 'Renormalizing pushed a weight back above the ' + cap.toFixed(0) + '% cap — the naive clip-and-renormalize fix doesn’t actually satisfy the constraint. This is exactly why real portfolio construction hands the problem to a QP solver instead of a spreadsheet trick.';
+      } else {
+        note.textContent = 'Both weights respect the ' + cap.toFixed(0) + '% cap after renormalizing — not guaranteed in general, just true for these particular numbers.';
+      }
+    }
+
+    [w1Input, capInput].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      w1Input.value = DEFAULTS.w1; capInput.value = DEFAULTS.cap;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>
