@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Change-Point Detection — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Change-Point Detection — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivations, worked example, and 6-question self-test?<a href="change-point-detection.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">State Space Extensions 4 (final) · State Space Models Extensions</div>
+      <h1 class="sl-h1">Change-Point Detection: <em>Did Something Just Change?</em></h1>
+      <p class="sl-lede">The two lessons before this one build a full model of every regime and every transition between them. This one asks a much narrower, more operational question: has something changed recently, and roughly when — answered live, as new data arrives, without ever modeling the full regime structure. Two classical tools answer it: CUSUM, a running tally that trips an alarm once evidence crosses a line, and Bayesian Online Changepoint Detection (BOCPD), which keeps a full probability distribution over how long it's been since the last change instead of a single yes/no.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">A narrower question than "model every regime"</h2>
+      <p class="sl-sub">The Hidden Markov Model and regime-switching lessons both build a generative model of the whole regime picture. This lesson deliberately doesn't.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">The full regime picture</span>
+          <p>Infer a complete transition matrix between N discrete regimes, and produce a filtered or smoothed regime probability at <em>every</em> point in history. Rich, but heavy — exactly what the two prior lessons build.</p>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Change-point detection</span>
+          <p>Just answer: has something changed recently, and roughly when? No transition matrix, no full regime characterization — a lighter, real-time tripwire a desk can run continuously and explain in one sentence.</p>
+        </div>
+      </div>
+      <div class="sl-quote">A trading desk watching a strategy's rolling P&amp;L, a risk system watching a spread's realized volatility, an execution algorithm watching fill quality — none of these usually need the full regime machinery. They need a tripwire, not a weather model. <strong>Because the question is narrower, the tools can be far lighter than a full HMM or a Kim's-filter fusion.</strong></div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">CUSUM: a running tally that forgives noise</h2>
+      <p class="sl-sub">Page (1954) — a one-sided accumulator. Step through what each piece of the recursion actually does.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="cusum-tabs">
+          <button class="sl-tab active" data-panel="cusum-t1">Full recursion</button>
+          <button class="sl-tab" data-panel="cusum-t2">This step's evidence</button>
+          <button class="sl-tab" data-panel="cusum-t3">Accumulate it</button>
+          <button class="sl-tab" data-panel="cusum-t4">The floor</button>
+        </div>
+        <div class="sl-panel active" id="cusum-t1">
+          <div class="sl-row"><div class="sl-box">S_{t−1} + (x_t − μ₀ − k)</div><div class="sl-arrow">→</div><div class="sl-box green">S_t = max(0, ·)</div></div>
+          <div class="sl-verdict">One running number, updated every step: add this step's evidence to everything accumulated so far, then floor the result at zero. A change is flagged the first time S_t exceeds a threshold h.</div>
+        </div>
+        <div class="sl-panel" id="cusum-t2">
+          <div class="sl-row"><div class="sl-box amber">x_t − μ₀ − k</div></div>
+          <div class="sl-verdict">How far above the allowance k the newest observation sits. Negative for a typical in-control point; positive only once the mean has genuinely moved.</div>
+        </div>
+        <div class="sl-panel" id="cusum-t3">
+          <div class="sl-row"><div class="sl-box amber">S_{t−1}</div><div class="sl-arrow">+</div><div class="sl-box amber">evidence</div><div class="sl-arrow">=</div><div class="sl-box amber">running total</div></div>
+          <div class="sl-verdict">Sustained small deviations build up even when no single point is extreme enough to trip anything on its own — this is what lets CUSUM catch a slow drift, not just a sudden jump.</div>
+        </div>
+        <div class="sl-panel" id="cusum-t4">
+          <div class="sl-row"><div class="sl-box">would-be-negative total</div><div class="sl-arrow">→</div><div class="sl-box green">reset to 0</div></div>
+          <div class="sl-verdict">An ordinary in-control run can never bank a "credit" toward a false alarm. Only a genuine, sustained run of surprising values can climb high enough to cross the threshold.</div>
+        </div>
+      </div>
+      <p class="sl-p">μ₀ is the in-control (pre-shift) mean the process is expected to sit at; k is the allowance — how much deviation from μ₀ is forgiven each step before it starts accumulating; h is the decision threshold. Two knobs, and — as the next few slides show — they trade off directly against each other.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Watching S_t cross the line</h2>
+      <p class="sl-sub">The same synthetic series as the full lesson's worked example: mean shifts from 0 to ~3.1 at t = 8. μ₀ = 0, k = 1.0, h = 3.5.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Read it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two stacked panels. Top: a synthetic series hovering near zero for seven points, then jumping to hover near three from t=8 onward, with a dashed red line marking the true changepoint at t=8. Bottom: the CUSUM statistic S_t staying at zero through t=7, then climbing steadily from t=8, crossing the dashed amber threshold line h=3.5 at t=9, one step after the true change.">
+            <text x="320" y="14" text-anchor="middle" font-size="12" fill="var(--text2)">Raw series x_t (mean shifts from 0 to ~3.1 at t = 8)</text>
+            <line x1="396" y1="20" x2="396" y2="300" style="stroke:var(--red);stroke-width:1.5;stroke-dasharray:4 3"/>
+            <text x="400" y="24" font-size="10" fill="var(--red)">true changepoint (t=8)</text>
+            <line x1="55" y1="108" x2="595" y2="108" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:3 3"/>
+            <text x="58" y="121" font-size="10" fill="var(--text3)">μ₀ = 0</text>
+            <polyline points="60,103.6 108,114.6 156,97 204,110.2 252,101.4 300,112.4 348,105.8" style="fill:none;stroke:var(--blue);stroke-width:2"/>
+            <polyline points="348,105.8 396,37.6" style="fill:none;stroke:var(--blue);stroke-width:2;stroke-dasharray:2 2"/>
+            <polyline points="396,37.6 444,46.4 492,31 540,39.8 588,44.2" style="fill:none;stroke:var(--red);stroke-width:2"/>
+            <circle cx="60" cy="103.6" r="3.5" style="fill:var(--blue)"/>
+            <circle cx="108" cy="114.6" r="3.5" style="fill:var(--blue)"/>
+            <circle cx="156" cy="97" r="3.5" style="fill:var(--blue)"/>
+            <circle cx="204" cy="110.2" r="3.5" style="fill:var(--blue)"/>
+            <circle cx="252" cy="101.4" r="3.5" style="fill:var(--blue)"/>
+            <circle cx="300" cy="112.4" r="3.5" style="fill:var(--blue)"/>
+            <circle cx="348" cy="105.8" r="3.5" style="fill:var(--blue)"/>
+            <circle cx="396" cy="37.6" r="3.5" style="fill:var(--red)"/>
+            <circle cx="444" cy="46.4" r="3.5" style="fill:var(--red)"/>
+            <circle cx="492" cy="31" r="3.5" style="fill:var(--red)"/>
+            <circle cx="540" cy="39.8" r="3.5" style="fill:var(--red)"/>
+            <circle cx="588" cy="44.2" r="3.5" style="fill:var(--red)"/>
+
+            <text x="320" y="154" text-anchor="middle" font-size="12" fill="var(--text2)">CUSUM statistic S_t (allowance k = 1.0)</text>
+            <line x1="396" y1="160" x2="396" y2="300" style="stroke:var(--red);stroke-width:1.5;stroke-dasharray:4 3"/>
+            <line x1="55" y1="261.8" x2="595" y2="261.8" style="stroke:var(--amber);stroke-width:1.5;stroke-dasharray:4 3"/>
+            <text x="58" y="257" font-size="10" fill="var(--amber)">h = 3.5 (threshold)</text>
+            <polyline points="60,300 108,300 156,300 204,300 252,300 300,300 348,300 396,276 444,256.4 492,229.1 540,206.2 588,185.5" style="fill:none;stroke:var(--purple);stroke-width:2"/>
+            <circle cx="60" cy="300" r="3.5" style="fill:var(--purple)"/>
+            <circle cx="108" cy="300" r="3.5" style="fill:var(--purple)"/>
+            <circle cx="156" cy="300" r="3.5" style="fill:var(--purple)"/>
+            <circle cx="204" cy="300" r="3.5" style="fill:var(--purple)"/>
+            <circle cx="252" cy="300" r="3.5" style="fill:var(--purple)"/>
+            <circle cx="300" cy="300" r="3.5" style="fill:var(--purple)"/>
+            <circle cx="348" cy="300" r="3.5" style="fill:var(--purple)"/>
+            <circle cx="396" cy="276" r="3.5" style="fill:var(--purple)"/>
+            <circle cx="444" cy="256.4" r="5.5" style="fill:var(--red);stroke:var(--red)"/>
+            <text x="450" y="252" font-size="10" fill="var(--red)">flagged at t=9</text>
+            <circle cx="492" cy="229.1" r="3.5" style="fill:var(--purple)"/>
+            <circle cx="540" cy="206.2" r="3.5" style="fill:var(--purple)"/>
+            <circle cx="588" cy="185.5" r="3.5" style="fill:var(--purple)"/>
+
+            <text x="60" y="317" text-anchor="middle" font-size="9" fill="var(--text3)">t=1</text>
+            <text x="204" y="317" text-anchor="middle" font-size="9" fill="var(--text3)">t=4</text>
+            <text x="396" y="317" text-anchor="middle" font-size="9" fill="var(--text3)">t=8</text>
+            <text x="444" y="317" text-anchor="middle" font-size="9" fill="var(--text3)">t=9</text>
+            <text x="588" y="317" text-anchor="middle" font-size="9" fill="var(--text3)">t=12</text>
+          </svg>
+        </div>
+        <div class="sl-verdict">Through t = 7, every deviation is negative once k = 1.0 is subtracted, so S_t floors back to zero every step — CUSUM correctly ignoring ordinary pre-shift noise. At t = 8 the mean genuinely moves; S_8 = 2.2 starts accumulating but isn't yet enough. S_9 = 4.0 is the first value to exceed h = 3.5 — the change is flagged <strong>one step after</strong> it actually happened. That lag isn't a bug; it's the honest cost of not tripping on noise.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Recompute one CUSUM step, live</h2>
+      <p class="sl-sub">Starts on the worked example's t = 9 step exactly: S_{t−1} = 2.2 going into x_t = 2.8. Change any field.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>S_{t−1}</label><input type="number" class="sl-input" id="cusum-sprev" value="2.2" step="0.1" min="0"></div>
+          <div class="sl-calc-field"><label>x_t</label><input type="number" class="sl-input" id="cusum-x" value="2.8" step="0.1"></div>
+          <div class="sl-calc-field"><label>μ₀</label><input type="number" class="sl-input" id="cusum-mu0" value="0" step="0.1"></div>
+          <div class="sl-calc-field"><label>k (allowance)</label><input type="number" class="sl-input" id="cusum-k" value="1.0" step="0.1"></div>
+          <div class="sl-calc-field"><label>h (threshold)</label><input type="number" class="sl-input" id="cusum-h" value="3.5" step="0.1"></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Deviation: x_t − μ₀ − k = <b id="cusum-dev">1.8000</b></div>
+          <div>New statistic: S_t = max(0, S_{t−1} + deviation) = <b id="cusum-st">4.0000</b></div>
+          <div>Verdict: <b id="cusum-verdict">flagged — S_t &gt; h</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="cusum-reset">Reset to worked-example numbers</button>
+        <div class="sl-note">S_{t−1} can't be negative — CUSUM's own floor guarantees that on every real step. Leave any field blank or enter something non-numeric and every readout shows "—" instead of guessing.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Twitchy vs. conservative — the same two knobs</h2>
+      <p class="sl-sub">k and h always move together on the same trade-off curve. There's no setting that avoids it.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard blue">
+          <span class="sl-ctag blue">Small k, small h</span>
+          <p>Less allowance is forgiven per step and less evidence is needed to trip the alarm — genuine shifts, even small ones, are caught faster. The cost: ordinary noise accumulates more easily too, so false alarms happen more often. "Twitchy."</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Large k, large h</span>
+          <p>More deviation is tolerated per step and more accumulated evidence is required — false alarms on ordinary noise are rare. The cost: a genuine shift takes longer to build enough evidence to cross the threshold. "Conservative."</p>
+        </div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">No free lunch</div>
+        <p>Every choice of k and h sits somewhere on the same false-alarm-rate-versus-detection-delay curve. Picking a point on it is a real, unavoidable decision — not an implementation flaw waiting to be tuned away.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Drag the threshold, watch the alarm move</h2>
+      <p class="sl-sub">Fixed noisy series, k = 1.0, true mean shift at t = 13. The curve below is S_t — only the threshold h changes.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The CUSUM statistic climbing from zero, with a small noise bump before the true change at t=13 and a steep climb after it. A draggable threshold line and an alarm marker move as the threshold slider changes.">
+            <line x1="40" y1="195" x2="620" y2="195" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="404" y1="15" x2="404" y2="195" style="stroke:var(--red);stroke-width:1.5;stroke-dasharray:4 3"/>
+            <text x="408" y="24" font-size="10" fill="var(--red)">true change (t=13)</text>
+            <polyline points="50,195 80,195 109,195 139,195 168,191.2 198,190.3 227,195 257,195 286,195 316,195 345,195 375,195 404,174.2 434,156.3 463,133.6 493,114.7 522,93.0 552,76.0 581,56.2 611,32.6" style="fill:none;stroke:var(--purple);stroke-width:2.2"/>
+            <line id="cs-thr-line" x1="40" y1="190.3" x2="620" y2="190.3" style="stroke:var(--amber);stroke-width:1.5;stroke-dasharray:4 3"/>
+            <text id="cs-thr-label" x="44" y="186" font-size="10" fill="var(--amber)">h = 3.5</text>
+            <line id="cs-alarm-vline" x1="404" y1="15" x2="404" y2="195" style="stroke:var(--red);stroke-width:1.5" visibility="hidden"/>
+            <circle id="cs-alarm-dot" cx="404" cy="174.2" r="6" style="fill:var(--red)" visibility="hidden"/>
+            <text id="cs-alarm-text" x="404" y="12" text-anchor="middle" font-size="10" fill="var(--red)" visibility="hidden">alarm</text>
+            <text x="50" y="210" text-anchor="middle" font-size="9" fill="var(--text3)">t=1</text>
+            <text x="404" y="210" text-anchor="middle" font-size="9" fill="var(--text3)">t=13</text>
+            <text x="611" y="210" text-anchor="middle" font-size="9" fill="var(--text3)">t=20</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Threshold h</span><span class="sl-live" id="cs-hval">h = 3.50</span></div>
+        <input type="range" class="sl-slider" id="cs-slider" min="0.2" max="18" step="0.1" value="3.5">
+        <div class="sl-verdict" id="cs-status" style="margin-top:12px">Correctly flagged at t=14 — 1 step after the true change at t=13.</div>
+      </div>
+      <p class="sl-p">Drag h below about 0.5 and a small pre-shift noise bump (t = 5–6) crosses it first — a false alarm before anything actually changed. Drag h high and the real alarm keeps arriving later after t = 13. There is no setting of this one slider that is both fast and quiet.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">BOCPD: a distribution, not a verdict</h2>
+      <p class="sl-sub">Adams &amp; MacKay (2007) — instead of one running number, keep a full posterior over the run length r_t.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">⏱</div><div><h4>Run length r_t</h4><p>How many steps it has been since the most recent changepoint. Not observed directly — BOCPD maintains a probability for every possible value of r_t at once.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎲</div><div><h4>Hazard rate H</h4><p>The prior probability, at any single step, that a change happens right now: P(r_t=0)=H, P(r_t=r_{t-1}+1)=1−H. Held constant, it implies an exponential (geometric) — memoryless — prior on the gap between changepoints.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📈</div><div><h4>Predictive likelihood</h4><p>How well the new observation fits what's been seen since each hypothesized run began. Combined with the hazard, it reweights every run-length hypothesis after each new point.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🌫</div><div><h4>Output: a full posterior</h4><p>P(r_t | x_{1:t}) — the complete distribution over "when did the last change most likely happen," including its own uncertainty about that estimate.</p></div></div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">A constant H is an assumption, not a law</div>
+        <p>Memorylessness means BOCPD assumes a change is exactly as likely tomorrow whether the current calm stretch has lasted 3 steps or 300 — no sense of "it's been quiet a while, so a change feels overdue." If real changes actually cluster, a constant-hazard BOCPD is quietly mis-specified.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Hard alarm vs. probability cloud</h2>
+      <p class="sl-sub">Same underlying idea — a sustained shift in the data — read two completely different ways.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="cv-tabs">
+          <button class="sl-tab active" data-panel="cv-1">CUSUM — hard alarm</button>
+          <button class="sl-tab" data-panel="cv-2">BOCPD — probability cloud</button>
+        </div>
+        <div class="sl-panel active" id="cv-1">
+          <div class="sl-row"><div class="sl-box">S_t = 12.6</div><div class="sl-arrow">&gt; h →</div><div class="sl-box amber">ALARM</div></div>
+          <div class="sl-verdict">Either past the line or not. A threshold crossing is binary — it says the accumulated evidence exceeded a chosen bar, not "there is an X% chance a change occurred here."</div>
+        </div>
+        <div class="sl-panel" id="cv-2">
+          <div style="display:flex;gap:22px;align-items:flex-end;justify-content:center;height:104px;margin:6px 0 4px">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+              <div style="display:flex;align-items:flex-end;gap:3px;height:78px">
+                <div style="width:11px;height:15%;background:var(--border2);border-radius:2px 2px 0 0"></div>
+                <div style="width:11px;height:32%;background:var(--border2);border-radius:2px 2px 0 0"></div>
+                <div style="width:11px;height:82%;background:var(--purple);border-radius:2px 2px 0 0"></div>
+                <div style="width:11px;height:42%;background:var(--border2);border-radius:2px 2px 0 0"></div>
+                <div style="width:11px;height:14%;background:var(--border2);border-radius:2px 2px 0 0"></div>
+              </div>
+              <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace">mid-run (r ≈ 10–14)</span>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+              <div style="display:flex;align-items:flex-end;gap:3px;height:78px">
+                <div style="width:11px;height:88%;background:var(--green);border-radius:2px 2px 0 0"></div>
+                <div style="width:11px;height:46%;background:var(--border2);border-radius:2px 2px 0 0"></div>
+                <div style="width:11px;height:21%;background:var(--border2);border-radius:2px 2px 0 0"></div>
+                <div style="width:11px;height:9%;background:var(--border2);border-radius:2px 2px 0 0"></div>
+              </div>
+              <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace">just after change (r = 0,1,2,3)</span>
+            </div>
+          </div>
+          <div style="text-align:center;font-size:10.5px;color:var(--text3);margin-bottom:10px">Illustrative — relative probability mass by run length, not a literal computed posterior</div>
+          <div class="sl-verdict">No hard alarm — instead a live distribution over "how long since the last change." Mass concentrates on a large run length while things look stable, then collapses toward small r once a real change makes the old run length implausible.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Neither tool tells you why — or what's next</h2>
+      <div class="sl-quote">A CUSUM crossing h says the accumulated evidence exceeded a chosen bar — not that there's a 99% chance a change occurred. BOCPD is more honest by construction, since it reports a posterior rather than a flag, but that posterior is still conditioned on an assumed hazard rate and predictive model that can both be wrong.</div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>Detects, doesn't explain</h4><p>Neither tool says why a shift happened or what the new regime looks like — that gap is exactly what the Hidden Markov Model and regime-switching lessons' fuller machinery exists to fill, once a monitor flags it's worth looking.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>A monitor, not a diagnosis</h4><p>A CUSUM on a strategy's daily P&amp;L (or P&amp;L over a rolling volatility estimate) is cheap, continuous, and immune to a single bad day by construction — but it can't say whether the market's regime genuinely changed or a run of correlated days was unlucky.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📐</div><div><h4>Both stop short on purpose</h4><p>Neither CUSUM nor BOCPD tries to build "the full model of every regime with a transition matrix between all of them" — that richer, heavier question belongs to the two lessons before this one.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">What's actually running in this repo</h2>
+      <p class="sl-sub">The full lesson tags itself "CONCEPT — not built or tested anywhere in this repo." Checked against the current codebase, that's only half true.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Original lesson claim vs. current repo reality</div>
+        <p><strong>Original claim (change-point-detection.html):</strong> neither CUSUM nor BOCPD is "built, tested, or validated anywhere in this repo" — presented purely as illustration of what the tools are for.</p>
+        <p style="margin-top:10px"><strong>Current reality — BOCPD is stale:</strong> <code>RegimeV2/bocpd.py</code> implements a real Gaussian BOCPD detector (conjugate Normal-Normal update, hazard = 1/expected_run_length). It's live in <code>regime_bot_v2.py</code>: a <code>BOCPRegistry</code> updates one detector per pair every poll, and its <code>change_prob</code> feeds exit code <strong>X6</strong> — a position closes once change_prob stays above <code>bocpd_thresh</code> (70%) for <code>bocpd_exit_bars</code> (2) consecutive polls. This confirms and extends the same finding already surfaced in this curriculum's Bayesian Conjugate Priors lesson.</p>
+        <p style="margin-top:10px"><strong>CUSUM checks out as accurate:</strong> a repo-wide search finds no CUSUM implementation anywhere in the trading code — it only appears in lesson and course text. For CUSUM specifically, "concept only" is still correct.</p>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">✓</div><div><h4>BOCPD — LIVE</h4><p><code>RegimeV2/bocpd.py</code>, wired into <code>regime_bot_v2.py</code>'s X6 exit gate. Not a concept-only illustration anymore.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">○</div><div><h4>CUSUM — concept only</h4><p>No implementation found anywhere in this repo's trading code, exactly as the full lesson says.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What does CUSUM's max(0, ·) floor actually do?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Resets the running total to zero whenever it would otherwise go negative</button>
+        <button class="sl-quiz-opt">Caps the running total at a maximum value</button>
+        <button class="sl-quiz-opt">Rounds every observation to the nearest whole number</button>
+        <div class="sl-quiz-explain">The floor prevents an ordinary in-control run from banking a "credit" toward a false alarm — only a sustained run of surprising values can climb high enough to cross the threshold.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>In the worked example (mean shifts at t=8, k=1.0, h=3.5), when is the change flagged?</h4>
+        <button class="sl-quiz-opt" data-correct="true">t = 9 — one step after the true change</button>
+        <button class="sl-quiz-opt">t = 8 — exactly when the mean shifts</button>
+        <button class="sl-quiz-opt">t = 12 — the last point in the series</button>
+        <div class="sl-quiz-explain">S_8 = 2.2 starts accumulating but doesn't yet exceed h. S_9 = 4.0 is the first value past 3.5 — the honest one-step detection delay this (k,h) pair buys.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>How does BOCPD's output differ fundamentally from CUSUM's?</h4>
+        <button class="sl-quiz-opt" data-correct="true">BOCPD reports a full posterior over run length; CUSUM reports one number compared to one threshold</button>
+        <button class="sl-quiz-opt">They report the same thing, just with different variable names</button>
+        <button class="sl-quiz-opt">CUSUM is Bayesian and BOCPD is frequentist</button>
+        <div class="sl-quiz-explain">CUSUM is a binary crossed/not-crossed test on a single accumulated number. BOCPD maintains P(r_t | data) — a genuine probability distribution over every possible run length, updated after each observation.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>What does a constant hazard rate H imply about the time between changepoints?</h4>
+        <button class="sl-quiz-opt" data-correct="true">An exponential (geometric, discrete-time) — memoryless — prior</button>
+        <button class="sl-quiz-opt">Changes become more likely the longer it's been since the last one</button>
+        <button class="sl-quiz-opt">Changes can never happen more than once</button>
+        <div class="sl-quiz-explain">A constant H means the chance of a change at any step doesn't depend on how long the current run has lasted — the same memorylessness that gives a constant-rate Poisson process exponential waiting times.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Is BOCPD used anywhere in this repo's live trading code today?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Yes — RegimeV2/bocpd.py, wired into regime_bot_v2.py's X6 exit gate</button>
+        <button class="sl-quiz-opt">No, it's purely illustrative, exactly like CUSUM</button>
+        <button class="sl-quiz-opt">Yes, but only inside the backtest engine, never live</button>
+        <div class="sl-quiz-explain">A Gaussian BOCPD detector runs per pair every poll; its change_prob closes a position once it stays above bocpd_thresh (70%) for 2 consecutive polls (exit code X6). CUSUM, by contrast, has no implementation anywhere in the repo's trading code.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Change-point detection asks a narrower, operational question than the two prior lessons: has something changed, and roughly when — not "characterize every regime and every transition probability."</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>CUSUM is one accumulator and one threshold: S_t = max(0, S_{t−1} + (x_t − μ₀ − k)), flagged the moment S_t exceeds h.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>k and h trade off directly — smaller values catch shifts faster but raise false alarms; larger values are calmer but slower. There is no parameter-free way out of that curve.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>BOCPD replaces the single number with a full posterior over the run length r_t, updated via a hazard rate H and a predictive likelihood — richer, but only as honest as those assumptions.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>A constant hazard rate implies a memoryless, exponential prior on the gap between changes — a real modeling assumption, not a law of how change actually arrives.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>In this repo specifically: BOCPD (RegimeV2/bocpd.py) is live in regime_bot_v2.py's X6 exit gate; CUSUM remains conceptual only — verified while building this lesson.</p></div>
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">What this now lets you do</div>
+        <p>Stand up a cheap, continuous tripwire on any single series — a strategy's P&amp;L, a spread's realized volatility, a fill-quality metric — without building a full regime model first. Choose deliberately where you sit on the detection-speed-versus-false-alarm curve instead of treating it as a bug to eliminate. And read a BOCPD run-length posterior, or a CUSUM alarm, as a model output conditioned on real assumptions — not as a certainty about the world.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Entropy, KL Divergence &amp; Mutual Information</h3>
+        <p>A new category — Information Theory — measuring dependence in bits instead of correlation coefficients.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="entropy-kl-mutual-information-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="change-point-detection.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // One-step CUSUM recompute, live — matches the worked example's
+  // S_t = max(0, S_{t-1} + (x_t - mu0 - k)) update exactly.
+  (function(){
+    var sprevEl = document.getElementById('cusum-sprev');
+    if (!sprevEl) return;
+    var xEl = document.getElementById('cusum-x');
+    var mu0El = document.getElementById('cusum-mu0');
+    var kEl = document.getElementById('cusum-k');
+    var hEl = document.getElementById('cusum-h');
+    var devOut = document.getElementById('cusum-dev');
+    var stOut = document.getElementById('cusum-st');
+    var verdictOut = document.getElementById('cusum-verdict');
+    var resetBtn = document.getElementById('cusum-reset');
+    var DEFAULTS = { sprev: 2.2, x: 2.8, mu0: 0, k: 1.0, h: 3.5 };
+
+    function recompute(){
+      var sprev = parseFloat(sprevEl.value);
+      var x = parseFloat(xEl.value);
+      var mu0 = parseFloat(mu0El.value);
+      var k = parseFloat(kEl.value);
+      var h = parseFloat(hEl.value);
+
+      if (!isFinite(sprev) || !isFinite(x) || !isFinite(mu0) || !isFinite(k) || !isFinite(h) || sprev < 0) {
+        devOut.textContent = '—';
+        stOut.textContent = '—';
+        verdictOut.textContent = '—';
+        return;
+      }
+
+      var dev = x - mu0 - k;
+      var st = Math.max(0, sprev + dev);
+      devOut.textContent = dev.toFixed(4);
+      stOut.textContent = st.toFixed(4);
+      verdictOut.textContent = st > h ? 'flagged — S_t > h' : 'not flagged — S_t ≤ h';
+    }
+
+    [sprevEl, xEl, mu0El, kEl, hEl].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      sprevEl.value = DEFAULTS.sprev; xEl.value = DEFAULTS.x; mu0El.value = DEFAULTS.mu0;
+      kEl.value = DEFAULTS.k; hEl.value = DEFAULTS.h;
+      recompute();
+    });
+    recompute();
+  })();
+
+  // Threshold slider — fixed CUSUM series (k=1.0, mu0=0, true shift at t=13),
+  // redraws the threshold line and the first-crossing alarm marker live.
+  (function(){
+    var slider = document.getElementById('cs-slider');
+    if (!slider) return;
+    var hVal = document.getElementById('cs-hval');
+    var thrLine = document.getElementById('cs-thr-line');
+    var thrLabel = document.getElementById('cs-thr-label');
+    var alarmVline = document.getElementById('cs-alarm-vline');
+    var alarmDot = document.getElementById('cs-alarm-dot');
+    var alarmText = document.getElementById('cs-alarm-text');
+    var statusOut = document.getElementById('cs-status');
+
+    // S_t for t=1..20 — precomputed from the fixed series with k=1.0, mu0=0.
+    var S = [0,0,0,0,0.4,0.5,0,0,0,0,0,0,2.2,4.1,6.5,8.5,10.8,12.6,14.7,17.2];
+    var X = [50,80,109,139,168,198,227,257,286,316,345,375,404,434,463,493,522,552,581,611];
+    var TRUE_CHANGE_T = 13; // 1-indexed
+    var Y0 = 195, S_MAX_PLOT = 18, PX_PER_UNIT = (195 - 25) / S_MAX_PLOT;
+
+    function yFor(s){ return Y0 - s * PX_PER_UNIT; }
+
+    function update(){
+      var h = parseFloat(slider.value);
+      if (!isFinite(h)) return;
+      hVal.textContent = 'h = ' + h.toFixed(2);
+
+      var y = yFor(h);
+      thrLine.setAttribute('y1', y);
+      thrLine.setAttribute('y2', y);
+      thrLabel.setAttribute('y', y - 4);
+      thrLabel.textContent = 'h = ' + h.toFixed(2);
+
+      var firstIdx = -1; // 0-indexed into S[]
+      for (var i = 0; i < S.length; i++) {
+        if (S[i] > h) { firstIdx = i; break; }
+      }
+
+      if (firstIdx === -1) {
+        alarmVline.setAttribute('visibility', 'hidden');
+        alarmDot.setAttribute('visibility', 'hidden');
+        alarmText.setAttribute('visibility', 'hidden');
+        statusOut.textContent = 'No alarm within this window — S_t never exceeds h = ' + h.toFixed(2) + ' (it tops out around 17.2).';
+        return;
+      }
+
+      var t = firstIdx + 1; // 1-indexed
+      var ax = X[firstIdx], ay = yFor(S[firstIdx]);
+      alarmVline.setAttribute('visibility', 'visible');
+      alarmVline.setAttribute('x1', ax); alarmVline.setAttribute('x2', ax);
+      alarmDot.setAttribute('visibility', 'visible');
+      alarmDot.setAttribute('cx', ax); alarmDot.setAttribute('cy', ay);
+      alarmText.setAttribute('visibility', 'visible');
+      alarmText.setAttribute('x', ax);
+      alarmText.textContent = 'alarm t=' + t;
+
+      if (t < TRUE_CHANGE_T) {
+        statusOut.textContent = 'False alarm at t=' + t + ' — h is low enough that ordinary pre-shift noise crosses it before anything actually changed.';
+      } else {
+        var delay = t - TRUE_CHANGE_T;
+        statusOut.textContent = delay === 0
+          ? 'Correctly flagged at t=' + t + ' — no detection delay at this threshold.'
+          : 'Correctly flagged at t=' + t + ' — ' + delay + ' step' + (delay === 1 ? '' : 's') + ' after the true change at t=' + TRUE_CHANGE_T + '.';
+      }
+    }
+
+    slider.addEventListener('input', update);
+    update();
+  })();
+})();
+</script>
+</body>
+</html>
