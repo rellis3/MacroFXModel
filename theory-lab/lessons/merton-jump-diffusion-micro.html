@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Merton Jump-Diffusion — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Merton Jump-Diffusion — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivation, the symbol-by-symbol table, and a 6-question self-test?<a href="merton-jump-diffusion.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Lesson 12 · Options &amp; Derivatives</div>
+      <h1 class="sl-h1">Prices Don't Always Drift — <em>Sometimes They Tear</em></h1>
+      <p class="sl-lede">Black-Scholes assumes an underlying's path is continuous — it can wiggle wildly, but it can never skip a level. Real FX doesn't obey that around a scheduled release: NFP, CPI, and central bank surprises make price gap, not drift, through dozens of pips in a heartbeat. Robert Merton's 1976 fix bolts a random-jump process onto ordinary diffusion so a model can finally admit that gap exists — and, along the way, explains a shape in real option prices that pure Black-Scholes never could.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Black-Scholes has no way to represent a gap</h2>
+      <p class="sl-sub">"Continuous" means price must pass through every level between two points — no teleporting.</p>
+      <div class="sl-svgwrap">
+        <svg viewBox="0 0 640 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A smooth continuous zig-zagging price line with no breaks, labeled as what Black-Scholes assumes.">
+          <line x1="20" y1="170" x2="620" y2="170" style="stroke:var(--border2);stroke-width:1"/>
+          <polyline points="40,110 80,95 120,120 160,90 200,105 240,130 280,100 320,115 360,95 400,120 440,90 480,112 520,88 560,105 600,92" style="stroke:var(--blue);stroke-width:2.5" fill="none"/>
+          <circle cx="40" cy="110" r="4" style="fill:var(--blue)"/>
+          <text x="320" y="40" text-anchor="middle" style="fill:var(--blue);font-size:12px;font-weight:700">Every intermediate level is visited — no breaks, at any zoom level</text>
+        </svg>
+      </div>
+      <p class="sl-p">Under Black-Scholes, the underlying follows <strong>geometric Brownian motion</strong>: a constant drift plus continuous random noise. Zoom in as far as you like on that path and it never has a literal break — no instantaneous double-digit-pip vertical line. That assumption assigns <em>vanishingly small probability</em> to a large move happening in an infinitesimally short window of time.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Where this breaks in real FX</div>
+        <p>Scheduled macro releases are calendar events, known in advance down to the second, after which price can move 50, 100, even 200+ pips in a handful of seconds with no meaningful trading in between. That's not "fast diffusion" — it's a genuine discontinuity, and a pure Black-Scholes world has no mechanism to represent it at all.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">A calm river with the occasional flash flood</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">〜</div><div><h4>Most of the time: diffusion</h4><p>A river's water level drifts up and down a little with rainfall and evaporation — small, smooth, continuous changes. That's ordinary Brownian motion, the same noise term Black-Scholes already uses.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚡</div><div><h4>Rarely: a jump</h4><p>Every so often a dam upstream releases water without warning. The level doesn't drift up over an hour — it jumps there in seconds. FX around a scheduled release is exactly this river.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">+</div><div><h4>Merton's move: add, don't replace</h4><p>Keep the continuous diffusion for normal trading, and <em>add</em> a separate, independent process whose only job is to occasionally inject a sudden discrete jump.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">✓</div><div><h4>Both regimes, one model</h4><p>The result tells two true stories about the same underlying at once: "most of the time this diffuses quietly" and "once in a while, without warning, it jumps."</p></div></div>
+      </div>
+      <div class="sl-quote">At 8:30am ET on NFP Friday, the "dam" opens: a number hits the wire, algos and humans reprice in an instant, and the pair can gap through several pips of quoted spread and dozens of pips of "normal" range before the next real two-sided market forms.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">See it: two paths, one calendar shock</h2>
+      <p class="sl-sub">Same starting point, same ordinary wiggling — one of them also has a jump term.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two price paths starting together: a blue pure-diffusion path that wiggles smoothly with no breaks, and a red jump-diffusion path that tracks it until a marked release, then jumps.">
+            <line id="mj-marker" x1="340" y1="20" x2="340" y2="215" style="stroke:var(--amber);stroke-dasharray:3,3"/>
+            <text id="mj-marker-label" x="346" y="32" font-size="11" font-family="'DM Mono',monospace" fill="var(--amber)">release</text>
+            <polyline points="40,120 80,110 120,125 160,105 200,115 240,130 280,110 320,120 360,108 400,122 440,102 480,118 520,98 560,112 600,95" style="stroke:var(--blue);stroke-width:2" fill="none"/>
+            <polyline id="mj-jump-path" points="40,120 80,112 120,123 160,107 200,117 240,128 280,112 320,118 340,118 340,190 360,195 400,180 440,200 480,185 520,205 560,190 600,200" style="stroke:var(--red);stroke-width:2.5" fill="none"/>
+            <circle cx="40" cy="120" r="3.5" fill="var(--text2)"/>
+          </svg>
+        </div>
+        <div class="sl-row" style="justify-content:center;gap:24px">
+          <button type="button" class="sl-reset-btn" id="mj-trigger">⚡ Trigger a jump</button>
+        </div>
+        <div class="sl-verdict" id="mj-verdict">Both paths wiggle almost identically at first. Click to resimulate — a fresh jump time, direction, and size lands each time.</div>
+      </div>
+      <p class="sl-p">The blue path is what Black-Scholes assumes — continuous by construction, wiggling endlessly but never breaking. The red path adds Merton's jump term: it tracks the blue one exactly until a random moment, then steps sharply — a real gap a continuous model treats as effectively impossible.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">The formula: one new term bolted on</h2>
+      <p class="sl-sub">Black-Scholes' SDE, then Merton's addition.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Plain Black-Scholes</span>
+          <p style="font-family:'DM Mono',monospace">dS/S = μ dt + σ dW</p>
+          <p>Ordinary continuous drift (μ dt) plus continuous Brownian noise (σ dW). Smooth, never a break, whatever the zoom level.</p>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Merton jump-diffusion</span>
+          <p style="font-family:'DM Mono',monospace">dS/S = μ dt + σ dW + dJ</p>
+          <p>The exact same two terms, <strong>plus dJ</strong> — zero almost all the time, and a sudden multiplicative jolt on the rare instant a jump actually lands.</p>
+        </div>
+      </div>
+      <p class="sl-p">Everything new lives inside dJ, and it's built from two independent ingredients stacked together: a process deciding <em>when</em> jumps happen, and a distribution deciding <em>how big</em> each one is once it happens.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">λ</div><div><h4>Jump intensity</h4><p>The average rate of jump arrivals per unit time. Over a short interval dt, the chance of exactly one jump is λ·dt. Bigger λ = more frequent jumps.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">μⱼ</div><div><h4>Mean jump size</h4><p>Controls direction and rough magnitude once a jump occurs. μⱼ = 0 means jumps are unbiased — as likely up as down.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">σⱼ</div><div><h4>Jump size spread</h4><p>How variable jump sizes are, jump to jump. Small σⱼ = jumps are all about the same size; large σⱼ = some barely move price, others are violent.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Try it — expected jumps over a horizon</h2>
+      <p class="sl-sub">A Poisson process with rate λ: over time T, this is the live math behind "how many jumps should I expect, and what's the chance of at least one?"</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change λ or T, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>λ (jumps / year)</label><input type="number" class="sl-input" id="mj-lambda" value="2" step="0.1" min="0"></div>
+          <div class="sl-calc-op">×</div>
+          <div class="sl-calc-field"><label>T (years)</label><input type="number" class="sl-input" id="mj-T" value="0.5" step="0.05" min="0"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Expected number of jumps (λT)</div>
+            <div class="sl-calc-result-val" id="mj-expjumps">1.00</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Expected jumps: λ × T = <b id="mj-step1">1.00</b></div>
+          <div>P(at least one jump) = 1 − e^(−λT) = <b id="mj-step2">63.2%</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="mj-reset">Reset to λ=2, T=0.5</button>
+        <div class="sl-note">λ or T below zero isn't a smaller jump risk — it's a nonsense input. Below zero, or non-numeric, both figures show "—" instead of a false answer.</div>
+      </div>
+      <p class="sl-p">This is the same Poisson process behind the coin-flip intuition: over a short interval, the chance of a jump is λ·dt, and stacking those tiny chances up over a full horizon T gives an expected count of λT jumps, with probability 1 − e^(−λT) of seeing at least one. A near-zero λ collapses this back to plain Black-Scholes — jumps essentially never happen.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Why this produces fat tails, not just a wider bell curve</h2>
+      <p class="sl-sub">Mixing "usually calm" with "occasionally violent" is not the same as one wider normal distribution.</p>
+      <div class="sl-svgwrap">
+        <svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two overlaid return-distribution curves centered at zero: a dashed normal bell curve with thin tails, and a solid red jump-diffusion curve with a taller narrower peak and small elevated bumps in both tails.">
+          <line x1="40" y1="195" x2="600" y2="195" style="stroke:var(--border2)"/>
+          <line x1="320" y1="15" x2="320" y2="195" style="stroke:var(--border2);stroke-dasharray:2,3"/>
+          <text x="320" y="211" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">0 (mean return)</text>
+          <polyline points="40,195 100,194.5 160,192 220,183 280,163 320,153 360,163 420,183 480,192 540,194.5 600,195" style="stroke:var(--text3);stroke-width:2;stroke-dasharray:4,3" fill="none"/>
+          <polyline points="40,190 100,183 160,170 220,158 280,120 320,105 360,120 420,158 480,170 540,183 600,190" style="stroke:var(--red);stroke-width:2.5" fill="none"/>
+        </svg>
+      </div>
+      <div class="sl-legend" style="display:flex;gap:20px;font-size:13px;margin-top:6px">
+        <span><i style="display:inline-block;width:12px;height:12px;background:var(--text3);border-radius:2px;margin-right:6px"></i>Pure diffusion (GBM) — thin tails</span>
+        <span><i style="display:inline-block;width:12px;height:12px;background:var(--red);border-radius:2px;margin-right:6px"></i>Jump-diffusion — peaked center + fat tails</span>
+      </div>
+      <p class="sl-p">With probability roughly (1 − λΔt), no jump occurred and the return looks like ordinary diffusion — narrow, clustered near zero. With the remaining small probability, a jump landed on top of that diffusion, pushing the outcome further out. A mixture of "mostly narrow" and "occasionally wider" is <strong>not itself a single normal distribution</strong> — it has extra mass out in the tails relative to a normal with the same overall variance. That's <strong>excess kurtosis</strong> (leptokurtosis): a taller, narrower center plus fatter tails than Gaussian.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">The puzzle: why does the market charge more for far-out-of-the-money options?</h2>
+      <p class="sl-sub">Plug one flat σ into Black-Scholes and every strike should price consistently. Real markets don't behave that way.</p>
+      <div class="sl-quote">If you back out the σ that would have produced each observed market price (the "implied volatility"), you don't get a flat line across strikes — you get a curve, usually higher at the wings than at the money. That's the <strong>volatility smile</strong> (or, when asymmetric, the volatility skew).</div>
+      <p class="sl-p">Deep out-of-the-money options only pay off on a large, sudden move before expiry — exactly the kind of move a pure diffusion process treats as nearly impossible over typical horizons, but that jump risk explicitly assigns real probability to. Price that option with plain Black-Scholes at one flat σ, and you systematically <strong>underprice</strong> it relative to a market that correctly prices in the chance of a jump.</p>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">The resolution</div>
+        <p>The market corrects for jump risk the flat-sigma formula can't represent by demanding a higher implied volatility at the wings — the only lever the Black-Scholes formula has to spit out the "correct," jump-aware price. The smile is, in this reading, the options market's fingerprint of jump-diffusion reality being forced through a Black-Scholes-shaped pricing formula. (Jump risk is one of two classical explanations — the other is stochastic volatility, not covered here.)</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">NFP Friday versus an average Tuesday</h2>
+      <p class="sl-sub">The same currency pair, two very different honest values of λ.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Quiet Tuesday</span>
+          <p>No major scheduled release. Price moves are dominated by ordinary order flow and cross-market spillover — the diffusion term. A jump-diffusion fit on this kind of day alone would want λ close to zero: jumps essentially don't happen, and the diffusion-only assumption is a reasonably honest description.</p>
+        </div>
+        <div class="sl-ccard amber">
+          <span class="sl-ctag amber">8:30am ET, NFP Friday</span>
+          <p>The timing is certain — everyone knows <em>when</em> — but the number's value, and the market's reaction, is unknown until it prints. A large share of the day's total realized variance can concentrate into that one window, often with a real tradeable-liquidity gap rather than smooth ticks.</p>
+        </div>
+      </div>
+      <p class="sl-p">An honest jump-diffusion model wouldn't treat λ as one flat constant for the whole day — it would want λ to spike sharply for the few minutes around the release and sit near zero the rest of the time. That's exactly why option desks quote separate <strong>"event vol"</strong> for the days around a known release, distinct from the base term structure — and why "vol crush" hits right after the print, once the jump has either happened or the window has passed without one.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">This model versus what practitioners actually run</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Merton's original formula</span>
+          <ul>
+            <li>Closed-form, but leans on a diversifiability assumption that doesn't obviously hold for FX event risk (the same NFP print jolts other pairs, rates, and equities too)</li>
+            <li>λ, μⱼ, σⱼ are genuinely hard to separate from σ using only a historical return series — notoriously ill-conditioned estimation</li>
+            <li>Treats a jump as one clean instantaneous step, when real post-release action is often a fast, wide burst over a few seconds</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">What desks use day to day</span>
+          <ul>
+            <li>Local/stochastic-vol and Lévy-process models calibrated directly to the observed smile, rather than assumed from theory</li>
+            <li>Quoting "event vol" directly — separate implied vols around known releases, without ever fitting λ, μⱼ, σⱼ explicitly</li>
+            <li>Kou's (2002) double-exponential model — separate, independently tunable up-jump and down-jump parameters for markets that gap harder one way than the other</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Fat tails alone aren't proof a jump model would help</div>
+        <p>Seeing high excess kurtosis or a large historical CVaR in a trade-return series confirms the empirical symptom jump risk predicts. It is not, by itself, evidence that building a parametric jump model and layering it into a strategy would improve anything out-of-sample — that would need to be tested, not assumed from the theory being a good story.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What does λ (lambda) control in the Merton jump-diffusion model?</h4>
+        <button class="sl-quiz-opt" data-correct="true">How often jumps arrive, on average</button>
+        <button class="sl-quiz-opt">How big each jump is once it happens</button>
+        <button class="sl-quiz-opt">The ordinary diffusion volatility</button>
+        <div class="sl-quiz-explain">λ is the jump intensity — the average rate of jump arrivals per unit time. Jump size is governed separately by μⱼ and σⱼ.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Why can't plain Black-Scholes represent an NFP-style gap?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Its paths are continuous by construction — no mechanism for a discontinuous jump</button>
+        <button class="sl-quiz-opt">Its volatility parameter is always too small</button>
+        <button class="sl-quiz-opt">It only works for equities, not FX</button>
+        <div class="sl-quiz-explain">Geometric Brownian motion must pass through every intermediate price level — it has no term that can produce a genuine skip.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Mixing rare jumps into ordinary diffusion produces a return distribution that is:</h4>
+        <button class="sl-quiz-opt" data-correct="true">Taller and narrower in the center, with fatter tails than a normal curve</button>
+        <button class="sl-quiz-opt">A wider normal distribution with the same shape, just more spread out</button>
+        <button class="sl-quiz-opt">Identical to the normal distribution, just shifted</button>
+        <div class="sl-quiz-explain">A mixture of "mostly narrow, no-jump" outcomes with "rare, wider, jump" outcomes is not a single normal distribution — it has excess kurtosis (leptokurtosis).</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Why does a pure Black-Scholes model systematically underprice deep out-of-the-money options?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It assigns near-zero probability to the large sudden move those options need to pay off</button>
+        <button class="sl-quiz-opt">Deep out-of-the-money options are always mispriced by exchanges</button>
+        <button class="sl-quiz-opt">Black-Scholes only prices at-the-money options correctly</button>
+        <div class="sl-quiz-explain">Those options only pay off on a genuine jump; a diffusion-only model treats that scenario as nearly impossible, so its price comes out too low relative to a market that prices real jump risk — which is exactly what shows up as the volatility smile.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>With λ = 2 jumps/year and T = 0.5 years, what's the expected number of jumps and P(at least one)?</h4>
+        <button class="sl-quiz-opt" data-correct="true">1.0 expected jumps, ≈63.2% chance of at least one</button>
+        <button class="sl-quiz-opt">2.0 expected jumps, 100% chance of at least one</button>
+        <button class="sl-quiz-opt">0.5 expected jumps, 50% chance of at least one</button>
+        <div class="sl-quiz-explain">Expected jumps = λT = 2 × 0.5 = 1.0. P(≥1 jump) = 1 − e^(−λT) = 1 − e^(−1) ≈ 0.632, or 63.2%.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Black-Scholes paths are continuous by construction — no mechanism exists for a genuine gap, so it assigns near-zero probability to a large move in a short window.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Merton adds a jump term dJ on top of ordinary diffusion — zero almost always, a sudden multiplicative jolt on the rare instant a Poisson-governed jump lands.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Three new parameters drive it: λ (how often), μⱼ (average direction/size), σⱼ (how variable each jump is).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Mixing rare jumps into diffusion produces excess kurtosis — a taller, narrower center plus fatter tails than a normal curve, not just a wider bell.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Jump risk is one of the two classical explanations for the volatility smile — the market prices in jumps a flat-σ Black-Scholes model can't represent by charging more at the wings.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>In practice, desks calibrate smile-matching models or quote "event vol" directly, far more often than fitting λ, μⱼ, σⱼ from Merton's original formula.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Recognise why a continuous-path model can't represent a genuine market gap, and name the mechanism (a Poisson jump term) that fixes it. Read the volatility smile as a symptom, not a market inefficiency — and connect fat left tails and elevated excess kurtosis in a real return series to the same underlying jump-risk story, whether or not a parametric jump model is ever fit.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Kelly Criterion &amp; Position Sizing</h3>
+        <p>How much of your account should actually be on a single trade — and why the mathematically "optimal" answer is usually far more aggressive than what any sane desk would run.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="kelly-criterion.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="merton-jump-diffusion.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Jump-path resimulation — mirrors the full lesson's "Trigger a jump" widget.
+  (function(){
+    var btn = document.getElementById('mj-trigger');
+    if (!btn) return;
+    var line = document.getElementById('mj-jump-path');
+    var markerLine = document.getElementById('mj-marker');
+    var markerLabel = document.getElementById('mj-marker-label');
+    var verdict = document.getElementById('mj-verdict');
+
+    var X_POINTS = [40, 80, 120, 160, 200, 240, 280, 320, 360, 400, 440, 480, 520, 560, 600];
+    var BASE_Y   = [120, 110, 125, 105, 115, 130, 110, 120, 108, 122, 102, 118, 98, 112, 95];
+    var OFFSETS  = [0, 2, -2, 2, 2, -2, 2, -2, -2, 2, -2, 2, 2, -2, 2];
+
+    function smoothPoints(){
+      var pts = [];
+      for (var i = 0; i < X_POINTS.length; i++) pts.push(X_POINTS[i] + ',' + (BASE_Y[i] + OFFSETS[i]));
+      return pts.join(' ');
+    }
+    function jumpPoints(jumpIdx, dir, mag){
+      var pts = [];
+      for (var i = 0; i < X_POINTS.length; i++) {
+        var x = X_POINTS[i];
+        if (i < jumpIdx) {
+          pts.push(x + ',' + (BASE_Y[i] + OFFSETS[i]));
+        } else if (i === jumpIdx) {
+          var preY = BASE_Y[i] + OFFSETS[i];
+          var postY = Math.max(25, Math.min(215, preY + dir * mag));
+          pts.push(x + ',' + preY.toFixed(1));
+          pts.push(x + ',' + postY.toFixed(1));
+        } else {
+          var y = Math.max(25, Math.min(215, BASE_Y[i] + OFFSETS[i] + dir * mag));
+          pts.push(x + ',' + y.toFixed(1));
+        }
+      }
+      return pts.join(' ');
+    }
+
+    function triggerJump(){
+      btn.disabled = true;
+      line.setAttribute('points', smoothPoints());
+      verdict.textContent = 'Tracking the diffusion path with no gap — a jump is about to land…';
+      setTimeout(function(){
+        var jumpIdx = 2 + Math.floor(Math.random() * 10); // index 2..11
+        var dir = Math.random() < 0.5 ? 1 : -1; // +1 gaps down, -1 gaps up
+        var mag = 45 + Math.random() * 45;      // 45..90px
+        var x = X_POINTS[jumpIdx];
+        line.setAttribute('points', jumpPoints(jumpIdx, dir, mag));
+        markerLine.setAttribute('x1', x); markerLine.setAttribute('x2', x);
+        markerLabel.setAttribute('x', x + 6);
+        verdict.innerHTML = 'Jump landed: price ' + (dir === -1 ? 'gapped up' : 'gapped down') + ' at a new random instant — exactly the "when" (λ) and "how big" (Y) randomness the model describes.';
+        btn.disabled = false;
+      }, 550);
+    }
+    btn.addEventListener('click', triggerJump);
+  })();
+
+  // Expected jumps calculator: λT and 1 - e^(-λT), live.
+  (function(){
+    var lambdaEl = document.getElementById('mj-lambda');
+    if (!lambdaEl) return;
+    var tEl = document.getElementById('mj-T');
+    var expEl = document.getElementById('mj-expjumps');
+    var step1 = document.getElementById('mj-step1');
+    var step2 = document.getElementById('mj-step2');
+    var resetBtn = document.getElementById('mj-reset');
+    var DEFAULTS = { lambda: 2, T: 0.5 };
+
+    function fmt(n){ return n.toFixed(2); }
+
+    function recompute(){
+      var lam = parseFloat(lambdaEl.value), T = parseFloat(tEl.value);
+      if (!isFinite(lam) || !isFinite(T) || lam < 0 || T < 0) {
+        expEl.textContent = '—'; step1.textContent = '—'; step2.textContent = '—';
+        return;
+      }
+      var expJumps = lam * T;
+      var pAtLeastOne = 1 - Math.exp(-expJumps);
+      expEl.textContent = fmt(expJumps);
+      step1.textContent = fmt(expJumps);
+      step2.textContent = (pAtLeastOne * 100).toFixed(1) + '%';
+    }
+
+    [lambdaEl, tEl].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      lambdaEl.value = DEFAULTS.lambda; tEl.value = DEFAULTS.T;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>
