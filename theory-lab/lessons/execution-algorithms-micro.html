@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Execution Algorithms — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Execution Algorithms — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivations, the four-part dollar-cost worked example, and a 6-question self-test?<a href="execution-algorithms.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Market Microstructure 5 (final) · Market Microstructure</div>
+      <h1 class="sl-h1">Execution Algorithms, <em>Or How You Actually Place The Order</em></h1>
+      <p class="sl-lede">"Buy 40,000 shares" is a decision, not an order ticket. Dump it all in at once and you push the price against yourself, paying a large, avoidable impact cost. Spread it out, and you're exposed to a new risk — the price simply drifting away while you're still working the order. TWAP, VWAP, and Implementation Shortfall are three named, concrete answers to exactly that pacing problem, plus the honest scorecard for judging, after the fact, whichever one you picked.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">A decision isn't an order ticket</h2>
+      <p class="sl-sub">The previous lesson, Market Impact Models &amp; Almgren-Chriss, proves a large order should be sliced over time. This lesson is what a desk actually types into the order-management system to make that happen.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📉</div><div><h4>Builds directly on Almgren-Chriss</h4><p>Every schedule below is a practical answer to the same impact-vs-time tradeoff that lesson solves for theoretically: Δp = λQ says size against liquidity moves price, so pacing matters.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🕰️</div><div><h4>A volume clock, not a wall clock</h4><p>Real trading volume is heaviest at the open and close, thinnest at midday. A schedule that ignores this shape mis-times its own liquidity.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>The arrival price is the real benchmark</h4><p>The price at the exact moment the decision was made pins the "true" cost — everything after that is drift, footprint, or the cost of never finishing.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧭</div><div><h4>The right choice depends on the goal</h4><p>Minimizing benchmark-tracking error, minimizing total cost, and minimizing timing risk are three different goals that pull toward three different schedules.</p></div></div>
+      </div>
+      <div class="sl-quote">Three names get typed into an order-management system constantly: TWAP, VWAP, and Implementation Shortfall (often just called "arrival price"). The first two are <strong>schedules</strong> — rules for pacing the same order over time. The third is not a schedule at all — it's the <strong>scorecard</strong> used to judge any of them, including itself, after the fact.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">TWAP — split it evenly, by the clock</h2>
+      <p class="sl-sub">Time-Weighted Average Price: divide the order into K equal time intervals and trade an identical fraction in each.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The rule</div>
+        <div class="sl-row"><div class="sl-box">X (total order)</div><div class="sl-arrow">÷ K slices</div><div class="sl-box green">x_k — identical every interval</div></div>
+        <div class="sl-verdict">Simple, fully predictable, and easy for a compliance reviewer to verify with nothing more than a calculator. Its flaw is exactly what it ignores: trading volume itself is never spread evenly through the day, so TWAP over-trades the thin midday lull and under-trades the heaviest, most liquid windows.</div>
+      </div>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — TWAP slice size</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Total order size (units)</label><input type="number" class="sl-input" id="twap-size" value="40000" step="1000" min="0"></div>
+          <div class="sl-calc-op">÷</div>
+          <div class="sl-calc-field"><label>Number of slices K</label><input type="number" class="sl-input" id="twap-slices" value="8" step="1" min="0"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Units per slice</div>
+            <div class="sl-calc-result-val" id="twap-result">5,000</div>
+          </div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="twap-reset">Reset to 40,000 units over 8 slices</button>
+        <div class="sl-note">A blank field, a non-numeric entry, or zero slices shows "—" instead of a broken result — dividing by zero slices has no sensible answer.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">VWAP — matching the market's own shape</h2>
+      <p class="sl-sub">Volume-Weighted Average Price fixes TWAP's blind spot: x_k = X · w_k, where w_k is the historical share of a typical day's volume that trades in interval k, and all the w_k sum to exactly 1 — the whole order.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>A typical U-shaped intraday volume curve</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart with four buckets: Open, Midday 1, Midday 2, Close. Bars show a U shape — 35%, 15%, 15%, 35% — representing both the historical volume curve and a VWAP schedule that matches it exactly. A dashed flat line at 25% shows what a TWAP schedule would trade in every bucket regardless of this shape.">
+            <line x1="55" y1="190" x2="615" y2="190" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="55" y1="190" x2="55" y2="30" style="stroke:var(--border2);stroke-width:1"/>
+            <text x="48" y="193" text-anchor="end" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">0%</text>
+            <text x="48" y="142" text-anchor="end" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">20%</text>
+            <text x="48" y="94" text-anchor="end" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">40%</text>
+            <line x1="55" y1="142" x2="615" y2="142" style="stroke:var(--border);stroke-width:1;stroke-dasharray:2,3"/>
+
+            <rect x="80" y="78" width="80" height="112" rx="3" style="fill:var(--blue);opacity:.7"/>
+            <rect x="220" y="142" width="80" height="48" rx="3" style="fill:var(--blue);opacity:.7"/>
+            <rect x="360" y="142" width="80" height="48" rx="3" style="fill:var(--blue);opacity:.7"/>
+            <rect x="500" y="78" width="80" height="112" rx="3" style="fill:var(--blue);opacity:.7"/>
+
+            <text x="120" y="70" text-anchor="middle" font-size="12" font-weight="700" font-family="'DM Mono',monospace" fill="var(--blue)">35%</text>
+            <text x="260" y="134" text-anchor="middle" font-size="12" font-weight="700" font-family="'DM Mono',monospace" fill="var(--blue)">15%</text>
+            <text x="400" y="134" text-anchor="middle" font-size="12" font-weight="700" font-family="'DM Mono',monospace" fill="var(--blue)">15%</text>
+            <text x="540" y="70" text-anchor="middle" font-size="12" font-weight="700" font-family="'DM Mono',monospace" fill="var(--blue)">35%</text>
+
+            <line x1="55" y1="110" x2="615" y2="110" style="stroke:var(--amber);stroke-width:2.5;stroke-dasharray:7,5"/>
+            <text x="600" y="103" text-anchor="end" font-size="11" font-weight="700" font-family="'DM Mono',monospace" fill="var(--amber)">TWAP — flat 25%</text>
+
+            <text x="120" y="208" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text2)">Open</text>
+            <text x="260" y="208" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text2)">Midday 1</text>
+            <text x="400" y="208" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text2)">Midday 2</text>
+            <text x="540" y="208" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text2)">Close</text>
+          </svg>
+        </div>
+        <div class="sl-verdict">Blue bars are the historical volume curve — and, since VWAP trades in direct proportion to it, they're also the VWAP order schedule. The dashed amber line is where TWAP sits regardless: a flat 25% in every bucket, ignoring the shape entirely.</div>
+      </div>
+      <p class="sl-p">Trading in proportion to w_k means the order participates at roughly the same <em>rate</em> as the rest of the market all day — heavier when the market is naturally heavier, lighter when it's naturally lighter. By the same impact-scales-with-size logic as before, that tends to produce less impact per share than TWAP's flat schedule, because the order is never forced to represent an outsized fraction of a thin period's volume.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Build your own VWAP schedule</h2>
+      <p class="sl-sub">Using the same historical weights from the chart — Open 35%, Midday 1 15%, Midday 2 15%, Close 35% — enter a total order size and watch every slice update live.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Total order size (units)</label><input type="number" class="sl-input" id="vwap-total" value="40000" step="1000" min="0"></div>
+          <div class="sl-calc-op">×</div>
+          <div class="sl-calc-field"><label>w_k (fixed U-shape)</label><input type="text" class="sl-input" value="35 / 15 / 15 / 35" disabled></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Open (35%): <b id="vwap-out1">14,000</b></div>
+          <div>Midday 1 (15%): <b id="vwap-out2">6,000</b></div>
+          <div>Midday 2 (15%): <b id="vwap-out3">6,000</b></div>
+          <div>Close (35%): <b id="vwap-out4">14,000</b></div>
+          <div>Check — slices sum to: <b id="vwap-check">40,000</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="vwap-reset">Reset to 40,000 units</button>
+        <div class="sl-note">A blank, non-numeric, or zero/negative order size shows "—" for every slice rather than a broken number.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Same order, three different schedules</h2>
+      <p class="sl-sub">40,000 shares, split across the same four buckets three different ways. Tap through.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="sched-tabs">
+          <button class="sl-tab active" data-panel="sched-twap">TWAP</button>
+          <button class="sl-tab" data-panel="sched-vwap">VWAP</button>
+          <button class="sl-tab" data-panel="sched-is">Implementation Shortfall</button>
+        </div>
+        <div class="sl-panel active" id="sched-twap">
+          <div class="sl-svgwrap"><svg viewBox="0 0 480 190" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four equal bars at 25 percent each across Open, Midday 1, Midday 2, Close">
+            <line x1="30" y1="155" x2="460" y2="155" style="stroke:var(--border2);stroke-width:1"/>
+            <rect x="45" y="90" width="70" height="65" rx="3" style="fill:var(--blue);opacity:.7"/>
+            <rect x="165" y="90" width="70" height="65" rx="3" style="fill:var(--blue);opacity:.7"/>
+            <rect x="285" y="90" width="70" height="65" rx="3" style="fill:var(--blue);opacity:.7"/>
+            <rect x="405" y="90" width="70" height="65" rx="3" style="fill:var(--blue);opacity:.7"/>
+            <text x="80" y="82" text-anchor="middle" font-size="12" font-weight="700" fill="var(--blue)" font-family="'DM Mono',monospace">25%</text>
+            <text x="200" y="82" text-anchor="middle" font-size="12" font-weight="700" fill="var(--blue)" font-family="'DM Mono',monospace">25%</text>
+            <text x="320" y="82" text-anchor="middle" font-size="12" font-weight="700" fill="var(--blue)" font-family="'DM Mono',monospace">25%</text>
+            <text x="440" y="82" text-anchor="middle" font-size="12" font-weight="700" fill="var(--blue)" font-family="'DM Mono',monospace">25%</text>
+            <text x="80" y="172" text-anchor="middle" font-size="10" fill="var(--text2)" font-family="'DM Sans',sans-serif">Open</text>
+            <text x="200" y="172" text-anchor="middle" font-size="10" fill="var(--text2)" font-family="'DM Sans',sans-serif">Midday 1</text>
+            <text x="320" y="172" text-anchor="middle" font-size="10" fill="var(--text2)" font-family="'DM Sans',sans-serif">Midday 2</text>
+            <text x="440" y="172" text-anchor="middle" font-size="10" fill="var(--text2)" font-family="'DM Sans',sans-serif">Close</text>
+          </svg></div>
+          <div class="sl-verdict">10,000 / 10,000 / 10,000 / 10,000 shares. Flat regardless of where the day's liquidity actually is.</div>
+        </div>
+        <div class="sl-panel" id="sched-vwap">
+          <div class="sl-svgwrap"><svg viewBox="0 0 480 190" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="U shaped bars, 35 percent, 15 percent, 15 percent, 35 percent across the same four buckets">
+            <line x1="30" y1="155" x2="460" y2="155" style="stroke:var(--border2);stroke-width:1"/>
+            <rect x="45" y="65" width="70" height="90" rx="3" style="fill:var(--blue);opacity:.7"/>
+            <rect x="165" y="117" width="70" height="38" rx="3" style="fill:var(--blue);opacity:.7"/>
+            <rect x="285" y="117" width="70" height="38" rx="3" style="fill:var(--blue);opacity:.7"/>
+            <rect x="405" y="65" width="70" height="90" rx="3" style="fill:var(--blue);opacity:.7"/>
+            <text x="80" y="57" text-anchor="middle" font-size="12" font-weight="700" fill="var(--blue)" font-family="'DM Mono',monospace">35%</text>
+            <text x="200" y="109" text-anchor="middle" font-size="12" font-weight="700" fill="var(--blue)" font-family="'DM Mono',monospace">15%</text>
+            <text x="320" y="109" text-anchor="middle" font-size="12" font-weight="700" fill="var(--blue)" font-family="'DM Mono',monospace">15%</text>
+            <text x="440" y="57" text-anchor="middle" font-size="12" font-weight="700" fill="var(--blue)" font-family="'DM Mono',monospace">35%</text>
+            <text x="80" y="172" text-anchor="middle" font-size="10" fill="var(--text2)" font-family="'DM Sans',sans-serif">Open</text>
+            <text x="200" y="172" text-anchor="middle" font-size="10" fill="var(--text2)" font-family="'DM Sans',sans-serif">Midday 1</text>
+            <text x="320" y="172" text-anchor="middle" font-size="10" fill="var(--text2)" font-family="'DM Sans',sans-serif">Midday 2</text>
+            <text x="440" y="172" text-anchor="middle" font-size="10" fill="var(--text2)" font-family="'DM Sans',sans-serif">Close</text>
+          </svg></div>
+          <div class="sl-verdict">14,000 / 6,000 / 6,000 / 14,000 shares. Tracks the historical U-shaped volume curve — heavier where the market is naturally heavier.</div>
+        </div>
+        <div class="sl-panel" id="sched-is">
+          <div class="sl-svgwrap"><svg viewBox="0 0 480 190" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Steeply front-loaded bars, 55 percent, 25 percent, 13 percent, 7 percent, decreasing across the day">
+            <line x1="30" y1="155" x2="460" y2="155" style="stroke:var(--border2);stroke-width:1"/>
+            <rect x="45" y="12" width="70" height="143" rx="3" style="fill:var(--purple);opacity:.7"/>
+            <rect x="165" y="90" width="70" height="65" rx="3" style="fill:var(--purple);opacity:.7"/>
+            <rect x="285" y="121" width="70" height="34" rx="3" style="fill:var(--purple);opacity:.7"/>
+            <rect x="405" y="137" width="70" height="18" rx="3" style="fill:var(--purple);opacity:.7"/>
+            <text x="80" y="4" text-anchor="middle" font-size="0" fill="var(--purple)"></text>
+            <text x="80" y="26" text-anchor="middle" font-size="12" font-weight="700" fill="var(--purple)" font-family="'DM Mono',monospace" dy="12">55%</text>
+            <text x="200" y="82" text-anchor="middle" font-size="12" font-weight="700" fill="var(--purple)" font-family="'DM Mono',monospace">25%</text>
+            <text x="320" y="113" text-anchor="middle" font-size="12" font-weight="700" fill="var(--purple)" font-family="'DM Mono',monospace">13%</text>
+            <text x="440" y="129" text-anchor="middle" font-size="12" font-weight="700" fill="var(--purple)" font-family="'DM Mono',monospace">7%</text>
+            <text x="80" y="172" text-anchor="middle" font-size="10" fill="var(--text2)" font-family="'DM Sans',sans-serif">Open</text>
+            <text x="200" y="172" text-anchor="middle" font-size="10" fill="var(--text2)" font-family="'DM Sans',sans-serif">Midday 1</text>
+            <text x="320" y="172" text-anchor="middle" font-size="10" fill="var(--text2)" font-family="'DM Sans',sans-serif">Midday 2</text>
+            <text x="440" y="172" text-anchor="middle" font-size="10" fill="var(--text2)" font-family="'DM Sans',sans-serif">Close</text>
+          </svg></div>
+          <div class="sl-verdict">22,000 / 10,000 / 5,200 / 2,800 shares. Trades most heavily right away to minimize exposure to price drift before the arrival-price benchmark can move — the same front-loading Almgren-Chriss produces under high risk-aversion.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Implementation Shortfall — the arrival-price scorecard</h2>
+      <p class="sl-sub">Perold's framework (1988) is the gap between a "paper" world — the whole order fills instantly, free, at the decision-moment price — and the real world, where execution takes time, moves the price, and sometimes doesn't finish at all.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>How it adds up</div>
+        <div class="sl-row">
+          <div class="sl-box amber">Delay</div><div class="sl-arrow">+</div>
+          <div class="sl-box">Impact</div><div class="sl-arrow">+</div>
+          <div class="sl-box amber">Opportunity</div><div class="sl-arrow">=</div>
+          <div class="sl-box green">Total Implementation Shortfall</div>
+        </div>
+        <div class="sl-verdict">Nothing is double-counted: delay and impact are measured only on the shares that actually filled; opportunity cost is measured only on the shares that didn't, valued at the original decision price.</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">⏳</div><div><h4>Delay — the cost of hesitation</h4><p>(price when trading started − decision price) × shares filled. Drift before your own trading even began, for reasons that have nothing to do with you.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🌊</div><div><h4>Impact — the cost of your own footprint</h4><p>(average execution price − price when trading started) × shares filled. This literally is the Almgren-Chriss cost, now measured after the fact.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🕳️</div><div><h4>Opportunity — the cost of giving up</h4><p>(cancel/close price − decision price) × shares unfilled. What the unfinished part of the decision "should have" cost.</p></div></div>
+      </div>
+      <p class="sl-p">Trading more aggressively up front — exactly what the earlier Almgren-Chriss lesson's optimal trajectory does under higher risk-aversion — exists specifically to shrink the gap between the arrival price and the realized execution price: less delay and opportunity exposure, at the cost of more market impact.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">How aggressive should the front-load be?</h2>
+      <p class="sl-sub">Drag the slider. At 0% the schedule is flat — TWAP-like. At 100% it front-loads hard, chasing the arrival price before it can drift.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 480 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four bars reshaping from flat to front-loaded as an aggressiveness slider moves">
+            <line x1="30" y1="170" x2="460" y2="170" style="stroke:var(--border2);stroke-width:1"/>
+            <rect id="ag-bar1" x="45" y="105" width="70" height="65" rx="3" style="fill:var(--purple);opacity:.75"/>
+            <rect id="ag-bar2" x="165" y="105" width="70" height="65" rx="3" style="fill:var(--purple);opacity:.75"/>
+            <rect id="ag-bar3" x="285" y="105" width="70" height="65" rx="3" style="fill:var(--purple);opacity:.75"/>
+            <rect id="ag-bar4" x="405" y="105" width="70" height="65" rx="3" style="fill:var(--purple);opacity:.75"/>
+            <text id="ag-lab1" x="80" y="98" text-anchor="middle" font-size="12" font-weight="700" fill="var(--purple)" font-family="'DM Mono',monospace">25%</text>
+            <text id="ag-lab2" x="200" y="98" text-anchor="middle" font-size="12" font-weight="700" fill="var(--purple)" font-family="'DM Mono',monospace">25%</text>
+            <text id="ag-lab3" x="320" y="98" text-anchor="middle" font-size="12" font-weight="700" fill="var(--purple)" font-family="'DM Mono',monospace">25%</text>
+            <text id="ag-lab4" x="440" y="98" text-anchor="middle" font-size="12" font-weight="700" fill="var(--purple)" font-family="'DM Mono',monospace">25%</text>
+            <text x="80" y="187" text-anchor="middle" font-size="10" fill="var(--text2)" font-family="'DM Sans',sans-serif">Open</text>
+            <text x="200" y="187" text-anchor="middle" font-size="10" fill="var(--text2)" font-family="'DM Sans',sans-serif">Midday 1</text>
+            <text x="320" y="187" text-anchor="middle" font-size="10" fill="var(--text2)" font-family="'DM Sans',sans-serif">Midday 2</text>
+            <text x="440" y="187" text-anchor="middle" font-size="10" fill="var(--text2)" font-family="'DM Sans',sans-serif">Close</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Front-loading aggressiveness</span><span class="sl-live" id="ag-val">0%</span></div>
+        <input type="range" class="sl-slider" id="ag-slider" min="0" max="100" step="5" value="0">
+        <div class="sl-calc-steps">
+          <div>Open-bucket share: <b id="ag-first">25%</b></div>
+          <div>Schedule shape: <b id="ag-shape">Flat — TWAP-like</b></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Which one you pick depends on what you're optimizing</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📏</div><div><h4>Minimize benchmark-tracking error</h4><p>If you'll be judged against VWAP, trade VWAP. Matching a specific benchmark's own schedule is the only reliable way to land close to it — an aggressive front-loaded schedule can badly miss a VWAP benchmark even with a great average price.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">💰</div><div><h4>Minimize total expected cost</h4><p>A large order in a thin name favors patient, VWAP-style pacing to avoid a self-inflicted impact cost. A small order in a deep, liquid name may cost almost nothing to finish immediately.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⏱️</div><div><h4>Minimize timing risk</h4><p>High conviction, or information that could go stale, favors finishing fast — the high-risk-aversion end of the Almgren-Chriss trajectory, in practice a front-loaded, Implementation-Shortfall-style schedule.</p></div></div>
+      </div>
+      <div class="sl-compare">
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Patient — VWAP style</span>
+          <ul>
+            <li>Pre-committed to the historical volume shape</li>
+            <li>Lower footprint per unit of time</li>
+            <li>More exposure to the price simply drifting away</li>
+          </ul>
+        </div>
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Aggressive — Implementation Shortfall style</span>
+          <ul>
+            <li>Front-loaded, trades most of the order early</li>
+            <li>Higher footprint per unit of time (more impact)</li>
+            <li>Less exposure to drift before the arrival price can move</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Where this reasoning goes wrong — and what actually runs here</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">⚠️</div><div><h4>"VWAP" isn't a synonym for "good execution"</h4><p>Matching the VWAP benchmark only means you traded in proportion to how the whole market traded. If the price trended against you all session, a perfectly-paced VWAP order still pays that trend in full.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📜</div><div><h4>History isn't a guarantee</h4><p>VWAP's weights come from historical volume, not today's. An unscheduled news event can concentrate real volume somewhere the historical profile never expected.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔒</div><div><h4>The decision price can't move after the fact</h4><p>Implementation Shortfall's honesty depends on fixing the decision price before anything about the execution's outcome is known. Redefining it afterward turns an honest scorecard into flattery.</p></div></div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Grounding check — verified against this repo</div>
+        <p>The full lesson tags itself "CONCEPT — not built or tested in this repo." Checked against the current code for this pass: <code>bot/position_manager.py</code> sends single MetaTrader5 <code>order_send</code> market orders, and no TWAP/VWAP/POV order-slicing or Implementation Shortfall accounting logic exists anywhere in <code>bot/</code>, <code>RegimeV2/</code>, <code>TradingBot/</code>, or <code>volatility_bot/</code>. That status tag is still accurate. This repo runs a retail-style FX/macro account executing single orders, not an institutional desk slicing block orders — everything on this page is general execution theory, not a description of code that runs here.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>TWAP splits an order into equal-sized clips across equal time intervals. What is its main blind spot?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It ignores that trading volume isn't spread evenly through the day</button>
+        <button class="sl-quiz-opt">It requires real-time volume data it can't get</button>
+        <button class="sl-quiz-opt">It always trades faster than the market wants</button>
+        <div class="sl-quiz-explain">Real intraday volume is U-shaped — heavy at the open and close, thin at midday. TWAP's flat schedule over-trades the thin periods and under-trades the heavy ones relative to natural liquidity.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>In x_k = X · w_k, what must the weights w_k sum to across all K intervals?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Exactly 1 — the whole order</button>
+        <button class="sl-quiz-opt">Exactly K</button>
+        <button class="sl-quiz-opt">The day's total dollar volume</button>
+        <div class="sl-quiz-explain">Each w_k is the historical fraction of a day's volume in interval k. Summed across all intervals they must total 1, so x_k = X·w_k allocates the entire order with nothing left over and nothing double-counted.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>A 20,000-share order has decision price $100.00, starts trading at $100.02, and fills completely at an average $100.10 (nothing unfilled). What is the total Implementation Shortfall?</h4>
+        <button class="sl-quiz-opt" data-correct="true">$2,000</button>
+        <button class="sl-quiz-opt">$1,600</button>
+        <button class="sl-quiz-opt">$400</button>
+        <div class="sl-quiz-explain">Delay = (100.02 − 100.00) × 20,000 = $400. Impact = (100.10 − 100.02) × 20,000 = $1,600. Opportunity = $0 (fully filled). Total = $2,000 — matching the direct check (100.10 − 100.00) × 20,000 = $2,000.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Front-loading a schedule (trading more early) is the practical analogue of which end of the Almgren-Chriss risk-aversion spectrum?</h4>
+        <button class="sl-quiz-opt" data-correct="true">High risk-aversion — minimize exposure to price drift, accept more impact</button>
+        <button class="sl-quiz-opt">Low risk-aversion — minimize impact, accept more drift risk</button>
+        <button class="sl-quiz-opt">Risk-neutral — the schedule shape doesn't matter</button>
+        <div class="sl-quiz-explain">Higher risk-aversion in Almgren-Chriss means finishing faster to reduce exposure to price uncertainty over time, accepting a higher expected impact cost in exchange — exactly what a front-loaded, Implementation-Shortfall-style schedule does in practice.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>TWAP splits an order evenly across time — simple, predictable, and blind to where the market's own liquidity actually is.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>VWAP schedules proportional to the historical U-shaped intraday volume curve, so the order participates in proportion to how much everyone else is trading.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Implementation Shortfall benchmarks against the arrival price — the moment the decision was made — and splits the gap into delay, impact, and opportunity cost.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Front-loading a schedule is the practical, named version of Almgren-Chriss's high-risk-aversion optimal trajectory: trade more upfront to shrink exposure to price drift, at the cost of more impact.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Algorithm choice depends on the goal — tracking a benchmark, minimizing total cost, and minimizing timing risk each point toward a different schedule.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Matching a benchmark isn't the same as a good price — a perfectly-paced VWAP order still pays in full for a trend that ran through the whole session.</p></div>
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">What this now lets you do</div>
+        <p>Read an order-management ticket's algorithm choice — TWAP, VWAP, or an arrival-price/Implementation-Shortfall style — as a real, named tradeoff instead of an arbitrary setting. Connect a front-loaded schedule straight back to the Almgren-Chriss risk-aversion parameter from the previous lesson. Decompose any execution's real cost into delay, impact, and opportunity instead of trusting one blended average-price number.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Up next</div>
+        <h3>Gamma Exposure &amp; Dealer Hedging Flows</h3>
+        <p>A new category — The Greeks — taking delta and gamma further into aggregate dealer positioning and hedging flows.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="gamma-exposure-dealer-hedging-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="execution-algorithms.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // TWAP slice-size calculator.
+  (function(){
+    var size = document.getElementById('twap-size');
+    if (!size) return;
+    var slices = document.getElementById('twap-slices');
+    var result = document.getElementById('twap-result');
+    var resetBtn = document.getElementById('twap-reset');
+    var DEFAULTS = { size: 40000, slices: 8 };
+
+    function fmt(n){
+      return n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    }
+
+    function recompute(){
+      var s = parseFloat(size.value), k = parseFloat(slices.value);
+      if (!isFinite(s) || !isFinite(k) || k <= 0 || s < 0) {
+        result.textContent = '—';
+        return;
+      }
+      result.textContent = fmt(s / k) + ' units';
+    }
+
+    [size, slices].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      size.value = DEFAULTS.size; slices.value = DEFAULTS.slices;
+      recompute();
+    });
+    recompute();
+  })();
+
+  // VWAP schedule calculator — fixed U-shaped weights.
+  (function(){
+    var total = document.getElementById('vwap-total');
+    if (!total) return;
+    var outs = [
+      document.getElementById('vwap-out1'),
+      document.getElementById('vwap-out2'),
+      document.getElementById('vwap-out3'),
+      document.getElementById('vwap-out4')
+    ];
+    var check = document.getElementById('vwap-check');
+    var resetBtn = document.getElementById('vwap-reset');
+    var WEIGHTS = [0.35, 0.15, 0.15, 0.35];
+    var DEFAULT_TOTAL = 40000;
+
+    function addCommas(n){
+      return Math.round(n).toLocaleString();
+    }
+
+    function recompute(){
+      var x = parseFloat(total.value);
+      if (!isFinite(x) || x <= 0) {
+        outs.forEach(function(o){ o.textContent = '—'; });
+        check.textContent = '—';
+        return;
+      }
+      var sum = 0;
+      outs.forEach(function(o, i){
+        var v = Math.round(x * WEIGHTS[i]);
+        sum += v;
+        o.textContent = addCommas(v);
+      });
+      check.textContent = addCommas(sum);
+    }
+
+    total.addEventListener('input', recompute);
+    resetBtn.addEventListener('click', function(){
+      total.value = DEFAULT_TOTAL;
+      recompute();
+    });
+    recompute();
+  })();
+
+  // Front-loading aggressiveness slider — reshapes a 4-bucket schedule
+  // continuously between TWAP-flat (25/25/25/25) and a front-loaded
+  // Implementation-Shortfall-style schedule (55/25/13/7).
+  (function(){
+    var slider = document.getElementById('ag-slider');
+    if (!slider) return;
+    var val = document.getElementById('ag-val');
+    var firstOut = document.getElementById('ag-first');
+    var shapeOut = document.getElementById('ag-shape');
+    var bars = [
+      document.getElementById('ag-bar1'),
+      document.getElementById('ag-bar2'),
+      document.getElementById('ag-bar3'),
+      document.getElementById('ag-bar4')
+    ];
+    var labels = [
+      document.getElementById('ag-lab1'),
+      document.getElementById('ag-lab2'),
+      document.getElementById('ag-lab3'),
+      document.getElementById('ag-lab4')
+    ];
+    var BASE = [25, 25, 25, 25];
+    var DELTA = [30, 0, -12, -18]; // BASE + DELTA at a=1 -> 55, 25, 13, 7 (sums to 100 at every a)
+    var BASELINE_Y = 170;
+    var SCALE = 2.6; // px per percent
+
+    function update(){
+      var a = parseInt(slider.value, 10) / 100;
+      val.textContent = Math.round(a * 100) + '%';
+      var w = BASE.map(function(b, i){ return b + a * DELTA[i]; });
+      w.forEach(function(pct, i){
+        var h = pct * SCALE;
+        var y = BASELINE_Y - h;
+        bars[i].setAttribute('y', y);
+        bars[i].setAttribute('height', h);
+        labels[i].setAttribute('y', Math.max(y - 8, 14));
+        labels[i].textContent = Math.round(pct) + '%';
+      });
+      firstOut.textContent = Math.round(w[0]) + '%';
+      shapeOut.textContent = a < 0.15 ? 'Flat — TWAP-like' : (a > 0.7 ? 'Steeply front-loaded — arrival-price style' : 'Partially front-loaded');
+    }
+
+    slider.addEventListener('input', update);
+    update();
+  })();
+})();
+</script>
+</body>
+</html>
