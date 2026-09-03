@@ -5769,3 +5769,63 @@ Validated: `node --check` on every extracted `today.html` inline script;
 sanity re-run only). No live Railway path in this sandbox to actually see the
 new panel's bars render or confirm the visual polish reads as intended —
 same standing caveat as every prior revision of this feature.
+
+**v9 addendum (2026-09-03)** — owner, after seeing both the global panel and
+the per-pair drawer's Outlook section live: "great that we have the data but
+I want to learn from it in a useful way — this isn't helpful either." Wanted:
+"more of a prediction... education based... of what may happen in the future
+from what we know," but explicitly **not** a real backtested forecast when
+that was offered ("feels a waste" — correctly read as: teach me what today's
+data suggests and why, in plain language, not tag me a pile of labelled
+facts, and definitely don't dress up an unvalidated composite as a real
+prediction).
+
+**New: `describeOutlookNarrative(o)`** (`js/outlookEngine.js`) — turns
+`computeOutlook`'s structured result into a connected, teaching-style
+paragraph instead of a `CONTEXT`-tagged bullet list. Pure string formatting,
+zero new data/claims: every sentence traces back to a driver's own
+already-written `detail` text or to `agree`/`total`/`confidence`/`eventRisk`
+— groups drivers into "pointing up" vs "pointing down" (so a NEUTRAL read
+visibly shows ITS OWN internal tension, not just a flat label), states
+conviction in words (high/moderate/low/very low) next to the number, folds
+event risk into a sentence instead of a stat, and closes with the same
+CONTEXT-not-validated posture as `disclaimer`, just written as a sentence a
+reader actually reads rather than a footer they skip. 5 new tests (55 total):
+no-data fallback, bullish-all-agree prose, conflicting-legs producing BOTH an
+up and a down section, no-event reassurance wording, and volRegime's detail
+text still present without being counted as directional.
+
+**Per-pair drawer** (`renderDrawerOutlook`, `today.html`) — replaced the
+`CONTEXT`-tag bullet list entirely with `describeOutlookNarrative`'s prose
+under each horizon's bias badge. Central-bank tone block and the section's
+own "context composite" header chip are unchanged (already correctly
+separated/labelled); only the driver dump inside each column changed shape.
+
+**Global panel** (`today.html`) — replaced the currency-strength BAR CHART
+(the owner's own verdict on it: "is that chart actually useful for me? I
+would say not") with prose: new `outlookTopDriverFor(rs, ccy, key,
+wantPositive)` finds which ONE pair is actually driving a currency's
+aggregate score and that pair's own single strongest driver, and new
+`outlookGlobalNarrative(rs, key)` names the strongest/weakest currency at
+each horizon and explains why using that pair+driver — e.g. "US dollar (+16,
+across 5 pairs) — mainly from USD/JPY: DXY +0.7 over this window...". Same
+"quote the existing detail text, don't re-derive a new claim" discipline as
+the per-pair narrative. The bull/neutral/bear tally chips stayed (a
+legitimate glance-stat, not what was criticized); `outlookBarsHtml` (the bar-
+rendering function) is now dead code and was deleted rather than left in.
+
+New/changed: `js/outlookEngine.js` (`describeOutlookNarrative`, +5 tests, 55
+total), `js/outlookEngine.test.mjs`, `today.html` (`renderDrawerOutlook`
+rewritten, `outlookBarsHtml` removed, `outlookTopDriverFor` +
+`outlookGlobalNarrative` added, `renderOutlookPanel`'s `col()` updated). No
+`server.js` changes.
+
+Validated: `node --check` on `js/outlookEngine.js` and every extracted
+`today.html` inline script; `node js/outlookEngine.test.mjs` — 55/55 passing.
+Manually traced `outlookTopDriverFor`'s currency-reorientation logic against
+`outlookCurrencyStrength`'s own base/quote sign convention to confirm they
+agree (same `cc[0]===ccy ? score : -score` reorientation both places). No
+live Railway path in this sandbox to read the actual generated prose for
+real market data — same standing caveat as every prior revision of this
+feature; the exact WORDING quality (does it actually read well, not just
+compile) needs a live check.

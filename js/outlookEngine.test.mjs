@@ -1,6 +1,6 @@
 // Synthetic tests for outlookEngine.js. No network.
 //   node js/outlookEngine.test.mjs
-import { computeOutlook, computeOutlookAllHorizons, HORIZONS, CCY_RISK_LEAN, pairRiskLean, describeCbTrend } from './outlookEngine.js';
+import { computeOutlook, computeOutlookAllHorizons, HORIZONS, CCY_RISK_LEAN, pairRiskLean, describeCbTrend, describeOutlookNarrative } from './outlookEngine.js';
 
 let failures = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) failures++; };
@@ -328,6 +328,57 @@ console.log('[computeOutlook — CB sentiment is NOT a recognized input at all]'
   // (CB_SENTIMENT_PRICE_TEST.md) — the engine must not accept or score it.
   const r = computeOutlook({ cbSentiment: { z: 3 }, composite: { score: 0.1, agree: 1, total: 1 } }, 'weekly');
   ok('no cbSentiment/hawkish driver exists anywhere', !r.drivers.find(x => /hawk|cbSentiment|fomc/i.test(x.name)));
+}
+
+console.log('[describeOutlookNarrative — no read yet -> a short "not enough data" line, not a crash]');
+{
+  const r = computeOutlook({}, 'weekly');
+  const n = describeOutlookNarrative(r);
+  ok('mentions no data / this read', /not enough data/i.test(n), n);
+  ok('mentions the horizon word', /weekly/i.test(n), n);
+}
+
+console.log('[describeOutlookNarrative — bullish read: prose covers conviction, up-side drivers, events, disclaimer]');
+{
+  const r = computeOutlook({
+    composite: { score: 0.6, agree: 3, total: 4 },
+    yieldSpread: { z: 2.4, inverted: false },
+    cot: { dir: 'long', bias: 0.5, level: 'ELEVATED', derived: false },
+    events: [{ ms: Date.now() + 2 * 24 * 3600e3, impact: 'high' }],
+  }, 'weekly');
+  const n = describeOutlookNarrative(r);
+  ok('states bullish lean', /leans bullish/i.test(n), n);
+  ok('states confidence number', n.includes(`${r.confidence}%`), n);
+  ok('has a "pointing up" section (all legs agree bullish here)', /pointing up/i.test(n), n);
+  ok('no "pointing down" section when nothing disagrees', !/pointing down/i.test(n), n);
+  ok('mentions the scheduled high-impact event', /1 scheduled release/i.test(n) && /1 high-impact/i.test(n), n);
+  ok('closes with the CONTEXT/not-a-tested-forecast disclaimer', /not a tested forecast/i.test(n), n);
+  ok('carries at least one driver\'s own detail text verbatim (yield-spread leg)', n.includes(r.drivers.find(d => d.name === 'yieldSpread').detail));
+}
+
+console.log('[describeOutlookNarrative — conflicting legs produce BOTH an up and a down section]');
+{
+  const r = computeOutlook({
+    composite: { score: 0.6, agree: 3, total: 4 },
+    yieldSpread: { z: -2.4, inverted: false },
+  }, 'weekly');
+  const n = describeOutlookNarrative(r);
+  ok('has a "pointing up" section', /pointing up/i.test(n), n);
+  ok('has a "pointing down" section', /pointing down/i.test(n), n);
+}
+
+console.log('[describeOutlookNarrative — no scheduled events reads as reassurance, not silence]');
+{
+  const r = computeOutlook({ composite: { score: 0.5, agree: 2, total: 2 } }, 'weekly');
+  const n = describeOutlookNarrative(r);
+  ok('says no high-impact events sit inside the window', /no scheduled high-impact events/i.test(n), n);
+}
+
+console.log('[describeOutlookNarrative — volRegime driver is included in prose but never counted as up/down]');
+{
+  const r = computeOutlook({ composite: { score: 0.5, agree: 2, total: 2 }, volRegime: { volPct: 50, cone5d: 80 } }, 'weekly');
+  const n = describeOutlookNarrative(r);
+  ok('mentions the vol-regime detail text', n.includes(r.drivers.find(d => d.name === 'volRegime').detail), n);
 }
 
 if (failures) { console.error(`\n${failures} FAILURE(S)`); process.exit(1); }

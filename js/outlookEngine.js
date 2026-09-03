@@ -392,6 +392,41 @@ export function computeOutlook(inputs = {}, horizonKey = 'weekly') {
   };
 }
 
+// ── Narrative (education style) ─────────────────────────────────────────────
+// Turns computeOutlook's structured result into a connected, teaching-style
+// paragraph instead of a bare tagged bullet list — same underlying numbers,
+// written so a reader learns WHY each factor matters and how they weigh
+// against each other, not just THAT they exist. Pure string formatting: no
+// new data, no new claims — every sentence traces back to a driver's own
+// `detail` (already-written, hedged text) or to computeOutlook's own
+// agree/total/confidence/eventRisk fields. The CONTEXT-not-validated posture
+// is stated plainly in the closing sentence, same substance as `disclaimer`
+// above, just prose instead of a footer.
+export function describeOutlookNarrative(o) {
+  if (!o) return '';
+  if (!o.bias) return `Not enough data for a ${(o.horizonLabel ?? 'this').toLowerCase()} read yet.`;
+
+  const directional = o.drivers.filter(d => d.name !== 'volRegime');
+  const volDriver = o.drivers.find(d => d.name === 'volRegime');
+  const up = directional.filter(d => d.score > 0);
+  const down = directional.filter(d => d.score < 0);
+
+  const convictionWord = o.confidence >= 70 ? 'high' : o.confidence >= 50 ? 'moderate' : o.confidence >= 30 ? 'low' : 'very low';
+  const biasPhrase = o.bias === 'BULLISH' ? 'leans bullish' : o.bias === 'BEARISH' ? 'leans bearish' : 'reads neutral — no real lean either way';
+
+  const parts = [];
+  parts.push(`The ${(o.horizonLabel ?? '').toLowerCase()} read ${biasPhrase}, with ${convictionWord} conviction (${o.confidence}% confidence, ${o.agree} of ${o.total} signals actually pointing the same way).`);
+  if (up.length) parts.push(`Pointing up: ${up.map(d => d.detail).join(' ')}`);
+  if (down.length) parts.push(`Pointing down: ${down.map(d => d.detail).join(' ')}`);
+  if (volDriver) parts.push(volDriver.detail);
+  parts.push(o.eventRisk.count
+    ? `${o.eventRisk.count} scheduled release${o.eventRisk.count === 1 ? '' : 's'} fall${o.eventRisk.count === 1 ? 's' : ''} inside this window${o.eventRisk.highCount ? ` (${o.eventRisk.highCount} high-impact)` : ''} — a surprise there could overturn this read before it plays out.`
+    : `No scheduled high-impact events sit inside this window, so a data surprise is less likely to flip this read.`);
+  parts.push(`Worth remembering: this is a summary of what's already known today, not a tested forecast — the yield-spread leg (when it shows up above) is the one piece here with real backtested evidence behind it; everything else is several already-built reads agreeing or disagreeing.`);
+
+  return parts.join(' ');
+}
+
 // Convenience: both trading horizons in one call, for a side-by-side view.
 export function computeOutlookAllHorizons(inputs = {}, horizonKeys = ['weekly', 'monthly']) {
   const out = {};
