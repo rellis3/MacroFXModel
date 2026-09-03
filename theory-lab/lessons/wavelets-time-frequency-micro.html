@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wavelets &amp; Time-Frequency Analysis — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Wavelets &amp; Time-Frequency Analysis — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivations, the hand-worked Haar example, and a 5-question self-test?<a href="wavelets-time-frequency.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Signal Processing 2 · Signal Processing</div>
+      <h1 class="sl-h1">Wavelets: Seeing <em>When</em>, Not Just Which</h1>
+      <p class="sl-lede">The previous lesson in this series, <em>Fourier Analysis &amp; the Frequency Domain</em>, built a tool that answers "which cycles does this series contain" — but only as one average taken over the entire sample. This lesson picks up exactly where that one left off: swapping the endless sine wave at the heart of Fourier analysis for a small, localized "wavelet" that gets shifted and stretched across the series, trading away some of Fourier's precision to get back something it threw away entirely — a picture of <em>when</em> each frequency actually shows up.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">One spectrum, computed once, for the whole series</h2>
+      <p class="sl-sub">A periodogram averages frequency content over every time point before it ever reports a number.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">Σ</div><div><h4>One number per frequency</h4><p>A periodogram reports total energy at each frequency, computed once across the entire sample — there's no second reading, no "how did this change."</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">∞</div><div><h4>No timestamp attached</h4><p>The sine and cosine waves underneath a Fourier transform never turn off — they're defined for all time, so nothing about the result is anchored to a particular moment.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⇄</div><div><h4>Two very different stories, one spectrum</h4><p>A short cycle and a long cycle running side by side the whole time, versus a short cycle for the first half and a long cycle for the second — a periodogram can barely tell these apart.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>Non-stationary markets get blurred</h4><p>A market that's calm for months and then suddenly choppy is exactly the case a single global spectrum handles worst — the calm and the chaos get averaged into one number per frequency.</p></div></div>
+      </div>
+      <div class="sl-quote">This isn't a bug in any particular implementation — it's what "averaging over the whole sample" necessarily means. A trader who mistook "this cycle ran the entire session" for "this cycle appeared only in the last twenty minutes" would be reading the same periodogram two very different, and very consequential, ways.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Same series, two tools that disagree on what it shows</h2>
+      <p class="sl-sub">A market that's calm in the first half and choppy in the second. Toggle between how each tool reports it.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="fw-tabs">
+          <button class="sl-tab active" data-panel="fw-1">Fourier's global spectrum</button>
+          <button class="sl-tab" data-panel="fw-2">Wavelet's time-frequency view</button>
+        </div>
+        <div class="sl-panel active" id="fw-1">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 170" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A single periodogram spectrum with two bumps, giving no indication of when either cycle was active">
+            <line x1="20" y1="130" x2="620" y2="130" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="20" y1="20" x2="20" y2="130" style="stroke:var(--border2);stroke-width:1"/>
+            <path d="M20,125 Q80,125 105,55 Q130,125 220,125 Q280,125 305,90 Q330,125 620,125" fill="none" style="stroke:var(--blue);stroke-width:2.5"/>
+            <text x="105" y="45" text-anchor="middle" font-size="10" fill="var(--blue)">high-frequency energy</text>
+            <text x="305" y="80" text-anchor="middle" font-size="10" fill="var(--blue)">low-frequency energy</text>
+            <text x="320" y="152" text-anchor="middle" font-size="10.5" fill="var(--text3)">frequency →</text>
+          </svg></div>
+          <div class="sl-verdict">Both bumps are reported as simply <strong>present</strong> — evenly, as if each held true for the whole session. A market that was choppy the entire time and one that turned choppy only in the second half can print an almost identical spectrum.</div>
+        </div>
+        <div class="sl-panel" id="fw-2">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 170" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A time-frequency heatmap showing low frequency energy in the first half and high frequency energy in the second half">
+            <line x1="20" y1="130" x2="620" y2="130" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="20" y1="20" x2="20" y2="130" style="stroke:var(--border2);stroke-width:1"/>
+            <rect x="20"  y="90"  width="300" height="40" style="fill:var(--blue);opacity:.85"/>
+            <rect x="320" y="30"  width="300" height="40" style="fill:var(--red);opacity:.85"/>
+            <rect x="20"  y="30"  width="300" height="55" style="fill:var(--text3);opacity:.10"/>
+            <rect x="320" y="75"  width="300" height="55" style="fill:var(--text3);opacity:.10"/>
+            <line x1="320" y1="20" x2="320" y2="130" style="stroke:var(--border2);stroke-dasharray:4,3"/>
+            <text x="170" y="115" text-anchor="middle" font-size="10" fill="var(--text)">calm — low frequency</text>
+            <text x="470" y="55" text-anchor="middle" font-size="10" fill="var(--text)">choppy — high frequency</text>
+            <text x="320" y="152" text-anchor="middle" font-size="10.5" fill="var(--text3)">time →</text>
+          </svg></div>
+          <div class="sl-verdict"><strong>Exactly where</strong> each pattern sits along the time axis is now directly visible — the shift from calm to choppy shows up as a shift in which band lights up, not as two bumps with no address.</div>
+        </div>
+      </div>
+      <p class="sl-p">Nothing about the underlying data changed between these two panels — only the question each tool is built to answer. Fourier asks "which frequencies, averaged over everything." A time-frequency view asks "which frequencies, and roughly when," which is a genuinely different, two-dimensional question.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">A wavelet is a wave that turns itself off</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">∿</div><div><h4>Fourier's basis never stops</h4><p>The sine and cosine waves underneath a Fourier transform are defined for all time — they never turn on or off, never localize to any particular stretch of the series.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">◗</div><div><h4>A wavelet is a short, localized ripple</h4><p>It's built the opposite way: a small oscillating waveform that's concentrated in a short span and decays to near-zero outside it — "wave" because it oscillates, "-let" because it's small.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">↔</div><div><h4>Shifted in time (parameter b)</h4><p>The same "mother wavelet" shape gets slid along the series — b marks where it's currently centered, a genuinely new parameter Fourier's f never needed.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⇕</div><div><h4>Stretched or squeezed (parameter a)</h4><p>Scale a stretches the wavelet to catch slow, low-frequency patterns, or compresses it to catch fast, high-frequency ones — a is the wavelet world's stand-in for frequency.</p></div></div>
+      </div>
+      <div class="sl-row">
+        <div class="sl-box">x(t)</div><div class="sl-arrow">×</div><div class="sl-box amber">ψ((t−b)/a)</div><div class="sl-arrow">→</div><div class="sl-box green">W(a,b)</div>
+      </div>
+      <p class="sl-p">Slide the shifted, scaled wavelet <strong>ψ((t−b)/a)</strong> across the series, multiply pointwise, and sum — exactly how the Fourier transform was computed in the previous lesson, except the answer now depends on <em>two</em> things, scale and location, instead of frequency alone. That's <strong>W(a,b)</strong>: how strongly that particular size-and-place pattern matches the series.</p>
+      <div class="sl-quote">Handed two descriptions of the same song, a Fourier-style one lists every note that appears anywhere and how loud it is on average; a wavelet-style one is closer to sheet music — the same notes, placed in time, showing exactly when each one plays. The tool trades away some of Fourier's very precise frequency resolution to get that timing back — there's no version of this that gives you both for free.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Scale decides what size of pattern a wavelet can catch</h2>
+      <p class="sl-sub">Drag the slider. The shape redraws live — watch it stretch and compress.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 190" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A wavelet shape that stretches into slow oscillation or compresses into fast oscillation as scale changes">
+            <line x1="20" y1="95" x2="620" y2="95" style="stroke:var(--border2);stroke-width:1"/>
+            <path id="wav-shape" d="" style="fill:none;stroke:var(--blue);stroke-width:2.5"/>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Wavelet scale (a)</span><span class="sl-live" id="wav-scale-val">a = 100</span></div>
+        <input type="range" class="sl-slider" id="wav-scale-slider" min="20" max="220" step="5" value="100">
+        <div class="sl-note" id="wav-scale-note">Moderate scale — neither especially stretched nor especially compressed.</div>
+      </div>
+      <p class="sl-p">A small scale squeezes the same basic shape into a tight, fast ripple — a good match for a sudden spike or a burst of high-frequency noise. A large scale stretches it into a slow, broad hump — a good match for a gradual trend. Every scale in between checks the series for a pattern of that particular size, at every position b along it.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Turning a scale into a period you can actually read</h2>
+      <p class="sl-sub">Scale isn't itself a frequency — it's an inverse-ish stand-in for one. Given a wavelet's base frequency, scale converts to an approximate frequency and period.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change either input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Base frequency f₀ (cycles/bar)</label><input type="number" class="sl-input" id="wc-f0" value="0.20" step="0.01" min="0"></div>
+          <div class="sl-calc-op">÷</div>
+          <div class="sl-calc-field"><label>Scale (a)</label><input type="number" class="sl-input" id="wc-a" value="4" step="0.5" min="0"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Approx. frequency</div>
+            <div class="sl-calc-result-val" id="wc-freq">0.0500</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Approx. period = 1 ÷ frequency = <b id="wc-period">20.00</b> bars</div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="wc-reset">Reset to worked-example numbers</button>
+        <div class="sl-note">Blank, non-numeric, or zero-and-negative scale all show "—" rather than a broken number — a is a stretch factor, and a wavelet can't be stretched by nothing.</div>
+      </div>
+      <p class="sl-p">This is deliberately the simplest possible version of the relationship — real wavelet software (Morlet in particular) uses a somewhat more careful formula tying a wavelet's own center frequency to scale — but the shape of the idea is exactly this: <strong>larger scale → lower approximate frequency → longer approximate period</strong>, and vice versa.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">The output is a picture, not a spectrum</h2>
+      <p class="sl-sub">Time along one axis, scale (inverse frequency) along the other — each cell shows how strongly that size-of-pattern matched the series at that moment.</p>
+      <div class="sl-svgwrap">
+        <svg viewBox="0 0 640 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A time-frequency heatmap showing a strong slow trend band during the first half of a series and a strong high-frequency noise band during the second half">
+          <line x1="55" y1="190" x2="620" y2="190" style="stroke:var(--border2);stroke-width:1"/>
+          <line x1="55" y1="20" x2="55" y2="190" style="stroke:var(--border2);stroke-width:1"/>
+          <rect x="55"  y="20"  width="280" height="50" style="fill:var(--text3);opacity:.10"/>
+          <rect x="335" y="20"  width="280" height="50" style="fill:var(--red);opacity:.85"/>
+          <rect x="55"  y="75"  width="280" height="50" style="fill:var(--text3);opacity:.10"/>
+          <rect x="335" y="75"  width="280" height="50" style="fill:var(--text3);opacity:.10"/>
+          <rect x="55"  y="130" width="280" height="50" style="fill:var(--blue);opacity:.85"/>
+          <rect x="335" y="130" width="280" height="50" style="fill:var(--text3);opacity:.10"/>
+          <line x1="335" y1="20" x2="335" y2="190" style="stroke:var(--border2);stroke-dasharray:4,3"/>
+          <text x="10" y="48" font-size="9" fill="var(--text3)" text-anchor="start">high</text>
+          <text x="10" y="158" font-size="9" fill="var(--text3)" text-anchor="start">low</text>
+          <text x="16" y="105" font-size="10" fill="var(--text3)" transform="rotate(-90 16 105)">scale / freq</text>
+          <text x="330" y="210" font-size="10.5" fill="var(--text3)" text-anchor="middle">time →</text>
+          <text x="195" y="160" font-size="10" fill="var(--text)" text-anchor="middle">slow trend (large scale) — strong early</text>
+          <text x="475" y="50" font-size="10" fill="var(--text)" text-anchor="middle">high-frequency noise (small scale) — strong late</text>
+        </svg>
+      </div>
+      <p class="sl-p">This <strong>scalogram</strong> is the direct visual analogue of the previous lesson's periodogram — except it plots \(|W(a,b)|^2\) as a 2-D image, scale against time, instead of collapsing everything into one static curve. Reading it top-to-bottom answers "which size of pattern"; reading it left-to-right answers "when." A single periodogram of this exact series would report both the slow trend and the high-frequency noise as simply present — with no way to say the trend faded out right as the noise took over.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Worked example: pinpointing a single shock exactly</h2>
+      <p class="sl-sub">Eight toy daily returns (%), mostly small, with one large shock in the middle: <span style="font-family:'DM Mono',monospace;color:var(--text)">[0.10, −0.10, 0.05, −0.05, 3.00, −0.05, 0.05, −0.10]</span></p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>One-level Haar detail coefficients</div>
+        <p class="sl-p" style="margin:0 0 14px">A one-level Haar transform pairs up consecutive points and, per pair, computes a half-difference — how much the pair disagrees with its own average.</p>
+        <div class="sl-row">
+          <div class="sl-box">d₁ = 0.100</div>
+          <div class="sl-box">d₂ = 0.050</div>
+          <div class="sl-box amber" style="font-size:17px">d₃ = 1.525</div>
+          <div class="sl-box">d₄ = 0.075</div>
+        </div>
+        <div class="sl-verdict"><strong>d₃</strong> is roughly 15–30× the size of every other detail coefficient — and its position in the list identifies exactly which pair of time steps (4 and 5) the shock sits in.</div>
+        <div class="sl-note">A Fourier transform of the same 8 points would still register the shock — a sudden jump is broadband, touching every frequency a little — but it would spread that energy across every frequency bin with no way to say which of the 8 time steps it came from.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Where this actually earns its keep on a desk</h2>
+      <p class="sl-sub">A researcher wants to know whether EURUSD's intraday cycle character shortens right after a scheduled ECB announcement, and for how long.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Fourier's answer</span>
+          <p>A single periodogram over the whole session reports whichever cycle lengths were present <em>somewhere</em> that day — with no way to tell whether the shorter cycle ran the entire session or was concentrated in the twenty minutes right after the release.</p>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Wavelet's answer</span>
+          <p>A scalogram of the same return series shows scale (cycle length) against time-of-day directly — the shortening, if it's real, shows up as a visible narrow band right at the announcement, fading back to the pre-event pattern afterward.</p>
+        </div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>A scalogram showing an interesting pattern around a known event is a genuinely useful <em>descriptive</em> picture of market behavior — it is not, by itself, a validated trading signal. Turning "the scalogram shows a pattern around news events" into an actual rule still needs the same honest out-of-sample bar as anything else in this curriculum.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Where a scalogram misleads</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">⇌</div><div><h4>Time and frequency resolution always trade off</h4><p>A wavelet narrow enough to pinpoint exactly when something happened is necessarily spread across many frequencies, and vice versa — no wavelet choice escapes this, closely related to the Heisenberg uncertainty principle.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">◧</div><div><h4>The cone of influence</h4><p>Near the very start and end of a finite sample, a wavelet is partly hanging off the edge of the available data — readings there should be trusted far less than ones safely in the middle.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚖</div><div><h4>Mother wavelet choice is a real decision</h4><p>Haar (flat steps) localizes sharp jumps precisely but resolves nearby frequencies poorly; Morlet (a tapered oscillation) resolves frequencies cleanly but blurs an abrupt event's exact timing. Neither is "the" correct default.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔍</div><div><h4>Hot spots can be look-elsewhere noise</h4><p>A scalogram has many time-scale cells — scanning all of them for a bright patch is the same multiple-comparisons problem as scanning many lags or many strategies for a "significant" result.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What does a periodogram fail to tell you that a scalogram shows?</h4>
+        <button class="sl-quiz-opt" data-correct="true">When each frequency component was actually present in time</button>
+        <button class="sl-quiz-opt">Which frequencies are present at all</button>
+        <button class="sl-quiz-opt">The total variance of the series</button>
+        <div class="sl-quiz-explain">A periodogram already answers "which frequencies." What it can't answer is "when" — it collapses every time point together before ever looking at frequency content.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>In W(a,b), what does a large scale (a) roughly correspond to?</h4>
+        <button class="sl-quiz-opt" data-correct="true">A slow oscillation — roughly low frequency</button>
+        <button class="sl-quiz-opt">A fast oscillation — roughly high frequency</button>
+        <button class="sl-quiz-opt">A specific point in time</button>
+        <div class="sl-quiz-explain">Stretching the mother wavelet (large a) makes it oscillate slowly, matching long, low-frequency patterns. b, not a, is the time-location parameter.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>In the worked Haar example, why was d₃ so much larger than d₁, d₂, and d₄?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Its pair (3.00, −0.05) contained the shock, so the two values disagreed sharply</button>
+        <button class="sl-quiz-opt">The Haar transform always makes the third coefficient largest</button>
+        <button class="sl-quiz-opt">It was a rounding artifact</button>
+        <div class="sl-quiz-explain">A detail coefficient is a half-difference within a pair. Every other pair holds two similarly small values; the shock pair's huge internal disagreement is exactly what makes d₃ stand out — and its position identifies the shock's timing.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Why is choosing between a Haar and a Morlet mother wavelet a real, consequential decision?</h4>
+        <button class="sl-quiz-opt" data-correct="true">They sit at different points on the same time-vs-frequency resolution trade-off, suited to different features</button>
+        <button class="sl-quiz-opt">Morlet is strictly better in every case</button>
+        <button class="sl-quiz-opt">The choice only affects computation speed, not the result</button>
+        <div class="sl-quiz-explain">Haar is well matched to sharp, instantaneous jumps; Morlet is well matched to smoothly evolving cycles. The right choice depends on the feature being hunted for — it's a modeling decision, not a neutral default.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>A periodogram gives one averaged spectrum for the whole series — no timing, and no way to distinguish "always present" from "present somewhere."</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>A wavelet is a small, localized ripple — shifted (b) and scaled (a) across the series — in place of an endless sine wave.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Scale is the wavelet world's stand-in for frequency: large a stretches it (slow, low-frequency match), small a compresses it (fast, high-frequency match).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The output, a scalogram, is a 2-D time-frequency map, not a 1-D spectrum — time on one axis, scale/frequency on the other.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Nothing escapes the resolution trade-off: sharper timing always costs some frequency precision, and vice versa.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>A scalogram is a descriptive lens on how cyclical behavior evolves — a real-looking pattern still needs an honest out-of-sample test before it's a signal.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Recognise when a series' frequency content is genuinely changing over time rather than trusting one flat, averaged spectrum. Read a scalogram's two axes correctly — time and scale — instead of mistaking it for a fancier periodogram. Know that a mother wavelet's shape (Haar vs. Morlet) is itself a choice, matched to whether you're hunting for a sharp jump or a smoothly evolving cycle.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Trend/Cycle Filters</h3>
+        <p>Hodrick-Prescott, Butterworth, and Baxter-King — decomposing a series into trend and cycle a different way, including HP's documented end-point-bias flaw.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="trend-cycle-filters-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="wavelets-time-frequency.html">Read the full wavelets lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Wavelet scale slider — redraws the wavelet shape live.
+  (function(){
+    var slider = document.getElementById('wav-scale-slider');
+    if (!slider) return;
+    var valEl = document.getElementById('wav-scale-val');
+    var noteEl = document.getElementById('wav-scale-note');
+    var path = document.getElementById('wav-shape');
+    var X0 = 320, Y0 = 95, AMP = 65, HALF_WIDTH = 300;
+
+    function update(){
+      var a = parseFloat(slider.value);
+      valEl.textContent = 'a = ' + a;
+      var sigma = a * 0.8;
+      var pts = [];
+      for (var t = -HALF_WIDTH; t <= HALF_WIDTH; t += 4) {
+        var envelope = Math.exp(-(t * t) / (2 * sigma * sigma));
+        var y = Math.cos((2 * Math.PI * t) / a) * envelope;
+        pts.push((X0 + t).toFixed(1) + ',' + (Y0 - y * AMP).toFixed(1));
+      }
+      path.setAttribute('d', 'M' + pts.join(' L'));
+
+      if (a < 70) {
+        noteEl.textContent = 'Compressed — oscillates quickly. Good at matching a sudden spike or a burst of high-frequency noise.';
+      } else if (a > 150) {
+        noteEl.textContent = 'Stretched — oscillates slowly. Good at matching a gradual, slow-moving trend.';
+      } else {
+        noteEl.textContent = 'Moderate scale — neither especially stretched nor especially compressed.';
+      }
+    }
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Scale → approximate frequency / period calculator, live.
+  (function(){
+    var f0 = document.getElementById('wc-f0');
+    if (!f0) return;
+    var aEl = document.getElementById('wc-a');
+    var freqOut = document.getElementById('wc-freq');
+    var periodOut = document.getElementById('wc-period');
+    var resetBtn = document.getElementById('wc-reset');
+    var DEFAULTS = { f0: 0.20, a: 4 };
+
+    function recompute(){
+      var f0v = parseFloat(f0.value);
+      var av = parseFloat(aEl.value);
+      if (!isFinite(f0v) || !isFinite(av) || av <= 0 || f0v < 0) {
+        freqOut.textContent = '—';
+        periodOut.textContent = '—';
+        return;
+      }
+      var freq = f0v / av;
+      freqOut.textContent = freq.toFixed(4);
+      if (freq <= 0) {
+        periodOut.textContent = '—';
+      } else {
+        periodOut.textContent = (1 / freq).toFixed(2);
+      }
+    }
+
+    [f0, aEl].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      f0.value = DEFAULTS.f0; aEl.value = DEFAULTS.a;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

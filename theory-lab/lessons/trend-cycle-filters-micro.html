@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trend/Cycle Filters — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Trend/Cycle Filters — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer full derivations, the real-time bias worked example, and a 6-question self-test?<a href="trend-cycle-filters.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Signal Processing 3 (final) · Signal Processing</div>
+      <h1 class="sl-h1">Trend &amp; Cycle Filters: <em>Splitting the Wiggle from the Trend</em></h1>
+      <p class="sl-lede">Every "is the economy overheating" judgment rests on one deceptively simple move: splitting an observed series into a slow-moving trend and a faster cycle riding on top of it. The Hodrick-Prescott filter has been the default tool for that split for decades — and it carries a well-documented, load-bearing flaw that hits hardest exactly where policymakers and traders need it least. Two frequency-domain alternatives, Butterworth and Baxter-King, exist specifically because of it.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">One number in, two invisible pieces out</h2>
+      <p class="sl-sub">Only the sum is ever observed. Every filter in this lesson is a different rule for guessing the split.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The decomposition</div>
+        <div class="sl-row">
+          <div class="sl-box">y_t</div><div class="sl-arrow">=</div>
+          <div class="sl-box amber">τ_t</div><div class="sl-arrow">+</div>
+          <div class="sl-box green">c_t</div><div class="sl-arrow">+</div>
+          <div class="sl-box">ε_t</div>
+        </div>
+        <div class="sl-verdict"><strong>y_t</strong> is the observed series (GDP, industrial production…). <strong>τ_t</strong> is the unobserved trend — slow-moving, "potential." <strong>c_t</strong> is the unobserved cycle — the faster gap riding on top. <strong>ε_t</strong> is irreducible noise belonging to neither.</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🌊</div><div><h4>The tide and the waves</h4><p>Watch sea level at a pier: a slow twelve-hour tide with choppy waves riding on top. Squint and mentally draw a smooth line through the chop — that's a trend/cycle filter, done by eye.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⊘</div><div><h4>No ground truth to check against</h4><p>Nobody observes "just the tide" or "just the waves" to grade an answer. Every filter here is a modeling choice about how to split one number back into two — never a measurement of a true split.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">The Hodrick-Prescott objective, piece by piece</h2>
+      <p class="sl-sub">HP defines the trend as whatever series minimizes this penalized objective. Step through what each piece does.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="hp-obj-tabs">
+          <button class="sl-tab active" data-panel="hp-obj-1">Full objective</button>
+          <button class="sl-tab" data-panel="hp-obj-2">Fidelity term</button>
+          <button class="sl-tab" data-panel="hp-obj-3">Curvature term</button>
+          <button class="sl-tab" data-panel="hp-obj-4">λ, the dial</button>
+        </div>
+        <div class="sl-panel active" id="hp-obj-1">
+          <div class="sl-row"><div class="sl-box">Σ(y_t−τ_t)²</div><div class="sl-arrow">+</div><div class="sl-box amber">λ · Σ[2nd diff of τ]²</div></div>
+          <div class="sl-verdict">Minimize this over every possible τ_t path. Two competing goals in one expression: track the data closely, but keep the trend smooth.</div>
+        </div>
+        <div class="sl-panel" id="hp-obj-2">
+          <div class="sl-row"><div class="sl-box green">Σ(y_t − τ_t)²</div></div>
+          <div class="sl-verdict">An ordinary least-squares fidelity term. On its own it's minimized by τ_t = y_t exactly — the "trend" would just be the raw, wiggly data.</div>
+        </div>
+        <div class="sl-panel" id="hp-obj-3">
+          <div class="sl-row"><div class="sl-box amber">(τ_t+1 − τ_t) − (τ_t − τ_t−1)</div></div>
+          <div class="sl-verdict">The trend's second difference — how much its own slope changes step to step. Zero exactly on a straight line; grows whenever the trend bends.</div>
+        </div>
+        <div class="sl-panel" id="hp-obj-4">
+          <div class="sl-row"><div class="sl-box">λ→0</div><div class="sl-box amber">λ=1600</div><div class="sl-box">λ→∞</div></div>
+          <div class="sl-verdict">λ→0: no smoothing, τ_t=y_t. λ=1600: the standard quarterly convention. λ→∞: any curvature becomes infinitely costly, forcing τ_t toward a single straight line.</div>
+        </div>
+      </div>
+      <p class="sl-p">λ=1600 is calibrated for <strong>quarterly</strong> data specifically. Ravn &amp; Uhlig (2002) showed it should be rescaled by the <em>fourth power</em> of the frequency ratio at any other spacing — reusing 1600 unscaled on monthly data under-smooths by roughly 81×, the single most common HP-filter mistake.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Drag λ, watch the real objective get solved live</h2>
+      <p class="sl-sub">A synthetic 24-quarter series. The amber trend is computed by actually solving the HP penalized least-squares system — not a cosmetic animation.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A 24-quarter synthetic series shown as blue dots and a thin line, with an amber Hodrick-Prescott trend line recomputed live as the lambda slider moves — hugging the data closely at low lambda and smoothing toward a straight line at high lambda. The last several quarters are shaded to mark the end-point bias zone.">
+            <rect id="hp2-endzone" x="544" y="20" width="76" height="200" fill="var(--red)" opacity="0.10"/>
+            <line x1="544" y1="20" x2="544" y2="220" style="stroke:var(--red);stroke-width:1;stroke-dasharray:4 3;opacity:.6"/>
+            <text x="582" y="14" text-anchor="middle" font-size="9.5" fill="var(--red)">end-point bias zone</text>
+            <line x1="40" y1="220" x2="620" y2="220" style="stroke:var(--text3)"/>
+            <line x1="40" y1="20" x2="40" y2="220" style="stroke:var(--text3)"/>
+            <text x="620" y="236" font-size="10" text-anchor="end" fill="var(--text3)">quarter →</text>
+            <text x="20" y="20" font-size="10" fill="var(--text3)" transform="rotate(-90 20 20)">level</text>
+            <polyline id="hp2-raw-line" points="" fill="none" style="stroke:var(--blue);stroke-width:1.5;opacity:0.55"/>
+            <g id="hp2-raw-dots" fill="var(--blue)"></g>
+            <polyline id="hp2-trend-line" points="" fill="none" style="stroke:var(--amber);stroke-width:2.5"/>
+            <text x="46" y="34" font-size="10" fill="var(--blue)">● raw series (trend + cycle + noise)</text>
+            <text x="46" y="48" font-size="10" fill="var(--amber)">— HP-filtered trend τ (recomputed live)</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Smoothness penalty λ</span><span class="sl-live" id="hp2-lambda-val">λ = 1600</span></div>
+        <input type="range" class="sl-slider" id="hp2-lambda-slider" min="0" max="500" step="1" value="320">
+        <div class="sl-note">Left = λ→0, trend hugs the data exactly. Right = λ→∞, trend collapses toward a straight line. The shaded region on the right is flagged as unreliable regardless of λ — see the next slide for why.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">The flaw: unreliable exactly where it matters most</h2>
+      <p class="sl-sub">Hamilton (2018), "Why You Should Never Use the Hodrick-Prescott Filter" — a real, load-bearing critique, not a footnote.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">End-of-sample (end-point) bias</div>
+        <p>HP is two-sided: the trend estimate at time t depends on data both <em>before and after</em> t. Near the very end of a real, finite sample there is no "after" data yet, so the filter's effective behavior there becomes far more one-sided than mid-sample — producing a trend estimate that can swing noticeably once new data arrives and gets appended.</p>
+      </div>
+      <div class="sl-quote">A central bank estimates the 2019 Q4 output gap from quarterly GDP through 2019 Q4, concluding the economy is near potential — a judgment that feeds that quarter's policy discussion. Two years later, with 2020's collapse and 2021's rebound added to the same dataset, the desk re-runs the identical filter and finds the trend estimate <strong>at 2019 Q4 itself</strong> has shifted meaningfully — not because the 2019 data changed, but because the two-sided filter's 2019 Q4 estimate was, at the time, computed without any of the "future" data it would eventually have. The reading a decision-maker actually had in hand was the least reliable part of the whole series.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">The second flaw: cycles that were never there</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🎲</div><div><h4>Spurious cyclical dynamics</h4><p>Hamilton (2018) shows the HP filter can manufacture cycle-looking dynamics in the extracted c_t even when applied to data that is, by construction, a pure random walk with no genuine cyclical structure at all.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📄</div><div><h4>Not a new finding</h4><p>Cogley &amp; Nason (1995) documented a related spurious-cyclicality result more than two decades earlier — Hamilton's 2018 paper made it impossible to keep ignoring.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>The mechanism, not the economy</h4><p>Some of what gets read as "the business cycle" in an HP-filtered series can be a mechanical artifact of the smoothing procedure itself — not a feature of the underlying economy.</p></div></div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">The load-bearing caveat</div>
+        <p>Treat HP output — and especially its most recent few observations — as a debatable modeling choice with two known, documented flaws, never as ground truth about "the" output gap.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">A different idea: state the cutoff explicitly</h2>
+      <p class="sl-sub">Instead of an implicit smoothness tradeoff, a band-pass filter names exactly which cycle lengths count as "the cycle."</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Read it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A schematic gain curve against frequency, near zero at very low and very high frequencies, rising to a flat plateau near one across a middle passband corresponding to the 6 to 32 quarter business cycle band, with smooth roll-off shoulders on either side.">
+            <line x1="40" y1="170" x2="600" y2="170" style="stroke:var(--text3)"/>
+            <line x1="40" y1="15" x2="40" y2="170" style="stroke:var(--text3)"/>
+            <path d="M40,165 C120,165 150,165 190,90 C220,35 260,25 340,25 C420,25 460,35 490,90 C530,165 560,165 600,165" fill="none" style="stroke:var(--green);stroke-width:2.5"/>
+            <line x1="190" y1="15" x2="190" y2="170" style="stroke:var(--border);stroke-dasharray:4,3"/>
+            <line x1="490" y1="15" x2="490" y2="170" style="stroke:var(--border);stroke-dasharray:4,3"/>
+            <text x="190" y="185" font-size="9" text-anchor="middle" fill="var(--text3)">32-quarter cutoff</text>
+            <text x="490" y="185" font-size="9" text-anchor="middle" fill="var(--text3)">6-quarter cutoff</text>
+            <text x="340" y="19" font-size="10" text-anchor="middle" fill="var(--green)">passband ≈ 1 (kept)</text>
+            <text x="90" y="155" font-size="9" text-anchor="middle" fill="var(--red)">damped (too slow / trend)</text>
+            <text x="560" y="155" font-size="9" text-anchor="middle" fill="var(--red)">damped (too fast / noise)</text>
+            <text x="20" y="15" font-size="9" fill="var(--text3)" transform="rotate(-90 20 15)">gain</text>
+          </svg>
+        </div>
+        <div class="sl-verdict">Frequencies corresponding to cycles longer than 32 quarters (trend) and shorter than 6 quarters (noise) are damped toward zero; the classic "business cycle" band in between passes through close to unchanged. Schematic and conceptual — not a fitted filter design.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">The Butterworth filter — borrowed from electrical engineering</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🔌</div><div><h4>Origin: analog circuit design</h4><p>Originally designed for analog electrical filters, later adopted in macro and finance to implement a band-pass idea computationally.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📶</div><div><h4>Order</h4><p>Controls how sharply the filter transitions from passing to blocking frequencies. A higher order gives a steeper roll-off at the cost of more complexity.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">✂</div><div><h4>Cutoff frequency</h4><p>The frequency (or pair, for a band-pass version) marking where that pass-to-block transition happens — stated explicitly, unlike HP's implicit smoothness dial.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📏</div><div><h4>Maximally flat passband</h4><p>Its defining engineering property: it doesn't ripple or distort frequencies it's supposed to let through, while still rolling off cleanly outside the band.</p></div></div>
+      </div>
+      <p class="sl-p">Choosing a Butterworth filter still means choosing an order and a cutoff up front — a real modeling decision, just a different one than HP's λ.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">The Baxter-King filter — an explicit, finite band-pass</h2>
+      <p class="sl-sub">Baxter &amp; King (1999) — a finite moving average using K leads and K lags, approximating an ideal 6-to-32-quarter band-pass.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The tradeoff</div>
+        <div class="sl-row">
+          <div class="sl-box">lost: K obs</div><div class="sl-arrow">|</div>
+          <div class="sl-box green">band-pass output (6–32Q cycle)</div><div class="sl-arrow">|</div>
+          <div class="sl-box">lost: K obs</div>
+        </div>
+        <div class="sl-verdict">Because it's a <strong>truncated</strong> moving average, it necessarily has no filtered value for the K most recent and K oldest observations in the sample — a straightforward, fully anticipated data-loss tradeoff, not a bias.</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>An explicit band, not an implicit one</h4><p>States the target cycle-length range up front, classically 6–32 quarters — "the business cycle" band in Baxter &amp; King's and much subsequent literature.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📅</div><div><h4>The 6–32Q band is a convention</h4><p>Chosen from prior research on typical U.S. cycle lengths — a reasonable default, not a universal constant true of every economy or series.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Same noisy series, three filters, three tradeoffs</h2>
+      <p class="sl-sub">Same synthetic quarterly data throughout. Only the trend line — and what it costs to draw it — differs.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="cmp-tabs">
+          <button class="sl-tab active" data-panel="cmp-hp">Hodrick-Prescott</button>
+          <button class="sl-tab" data-panel="cmp-bw">Butterworth</button>
+          <button class="sl-tab" data-panel="cmp-bk">Baxter-King</button>
+        </div>
+
+        <div class="sl-panel active" id="cmp-hp">
+          <div class="sl-svgwrap">
+            <svg viewBox="0 0 640 155" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Raw noisy series with an HP trend that tracks well through the middle of the sample but becomes dashed and uncertain over the last several quarters.">
+              <rect x="519" y="10" width="101" height="130" fill="var(--red)" opacity="0.10"/>
+              <g fill="var(--blue)" opacity="0.55">
+                <circle cx="40" cy="124" r="2.3"/><circle cx="65" cy="106" r="2.3"/><circle cx="90" cy="97" r="2.3"/><circle cx="116" cy="98" r="2.3"/><circle cx="141" cy="108" r="2.3"/><circle cx="166" cy="118" r="2.3"/><circle cx="191" cy="120" r="2.3"/><circle cx="217" cy="110" r="2.3"/><circle cx="242" cy="93" r="2.3"/><circle cx="267" cy="75" r="2.3"/><circle cx="292" cy="65" r="2.3"/><circle cx="317" cy="67" r="2.3"/><circle cx="343" cy="77" r="2.3"/><circle cx="368" cy="87" r="2.3"/><circle cx="393" cy="89" r="2.3"/><circle cx="418" cy="79" r="2.3"/><circle cx="443" cy="62" r="2.3"/><circle cx="469" cy="44" r="2.3"/><circle cx="494" cy="34" r="2.3"/><circle cx="519" cy="36" r="2.3"/><circle cx="544" cy="46" r="2.3"/><circle cx="570" cy="56" r="2.3"/><circle cx="595" cy="58" r="2.3"/><circle cx="620" cy="48" r="2.3"/>
+              </g>
+              <polyline points="40,109 65,106 90,107 116,105 141,108 166,111 191,110 217,103 242,93 267,82 292,75 317,74 343,77 368,80 393,79 418,72 443,62 469,51 494,44 519,43" fill="none" style="stroke:var(--amber);stroke-width:2.5"/>
+              <polyline points="519,43 544,46 570,49 595,52 620,54" fill="none" style="stroke:var(--amber);stroke-width:2.5;stroke-dasharray:4 3"/>
+              <text x="619" y="20" text-anchor="end" font-size="9.5" fill="var(--red)">revises as new data arrives</text>
+            </svg>
+          </div>
+          <div class="sl-verdict"><strong>Excels:</strong> simple, no cycle-length assumption needed, smooth intuitive trend. <strong>Struggles:</strong> the dashed segment is the end-point bias zone — least reliable exactly at the most recent, most decision-relevant quarters.</div>
+        </div>
+
+        <div class="sl-panel" id="cmp-bw">
+          <div class="sl-svgwrap">
+            <svg viewBox="0 0 640 155" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Raw noisy series with a Butterworth-style trend drawn as one consistent smooth solid curve across the entire sample, no dashed or shaded region.">
+              <g fill="var(--blue)" opacity="0.55">
+                <circle cx="40" cy="124" r="2.3"/><circle cx="65" cy="106" r="2.3"/><circle cx="90" cy="97" r="2.3"/><circle cx="116" cy="98" r="2.3"/><circle cx="141" cy="108" r="2.3"/><circle cx="166" cy="118" r="2.3"/><circle cx="191" cy="120" r="2.3"/><circle cx="217" cy="110" r="2.3"/><circle cx="242" cy="93" r="2.3"/><circle cx="267" cy="75" r="2.3"/><circle cx="292" cy="65" r="2.3"/><circle cx="317" cy="67" r="2.3"/><circle cx="343" cy="77" r="2.3"/><circle cx="368" cy="87" r="2.3"/><circle cx="393" cy="89" r="2.3"/><circle cx="418" cy="79" r="2.3"/><circle cx="443" cy="62" r="2.3"/><circle cx="469" cy="44" r="2.3"/><circle cx="494" cy="34" r="2.3"/><circle cx="519" cy="36" r="2.3"/><circle cx="544" cy="46" r="2.3"/><circle cx="570" cy="56" r="2.3"/><circle cx="595" cy="58" r="2.3"/><circle cx="620" cy="48" r="2.3"/>
+              </g>
+              <polyline points="40,109 65,106 90,107 116,105 141,108 166,111 191,110 217,103 242,93 267,82 292,75 317,74 343,77 368,80 393,79 418,72 443,62 469,51 494,44 519,43 544,46 570,49 595,52 620,54" fill="none" style="stroke:var(--green);stroke-width:2.5"/>
+              <text x="619" y="20" text-anchor="end" font-size="9.5" fill="var(--green)">one consistent rule, whole sample</text>
+            </svg>
+          </div>
+          <div class="sl-verdict"><strong>Excels:</strong> no special end-of-sample flag the way HP has one documented; maximally flat passband avoids distorting what it lets through. <strong>Struggles:</strong> order and cutoff frequency both have to be chosen up front, and a badly chosen order can still misrepresent the true cycle boundary.</div>
+        </div>
+
+        <div class="sl-panel" id="cmp-bk">
+          <div class="sl-svgwrap">
+            <svg viewBox="0 0 640 155" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Raw noisy series with a Baxter-King trend drawn only across the middle of the sample; the first and last few quarters show only raw dots with no trend line, marked as lost observations.">
+              <g fill="var(--blue)" opacity="0.30">
+                <circle cx="40" cy="124" r="2.3"/><circle cx="65" cy="106" r="2.3"/><circle cx="90" cy="97" r="2.3"/><circle cx="116" cy="98" r="2.3"/>
+                <circle cx="544" cy="46" r="2.3"/><circle cx="570" cy="56" r="2.3"/><circle cx="595" cy="58" r="2.3"/><circle cx="620" cy="48" r="2.3"/>
+              </g>
+              <g fill="var(--blue)" opacity="0.55">
+                <circle cx="141" cy="108" r="2.3"/><circle cx="166" cy="118" r="2.3"/><circle cx="191" cy="120" r="2.3"/><circle cx="217" cy="110" r="2.3"/><circle cx="242" cy="93" r="2.3"/><circle cx="267" cy="75" r="2.3"/><circle cx="292" cy="65" r="2.3"/><circle cx="317" cy="67" r="2.3"/><circle cx="343" cy="77" r="2.3"/><circle cx="368" cy="87" r="2.3"/><circle cx="393" cy="89" r="2.3"/><circle cx="418" cy="79" r="2.3"/><circle cx="443" cy="62" r="2.3"/><circle cx="469" cy="44" r="2.3"/><circle cx="494" cy="34" r="2.3"/><circle cx="519" cy="36" r="2.3"/>
+              </g>
+              <polyline points="141,108 166,111 191,110 217,103 242,93 267,82 292,75 317,74 343,77 368,80 393,79 418,72 443,62 469,51 494,44 519,43" fill="none" style="stroke:var(--purple);stroke-width:2.5"/>
+              <line x1="90.5" y1="10" x2="90.5" y2="140" style="stroke:var(--red);stroke-width:1;stroke-dasharray:3 3"/>
+              <line x1="569.5" y1="10" x2="569.5" y2="140" style="stroke:var(--red);stroke-width:1;stroke-dasharray:3 3"/>
+              <text x="45" y="18" font-size="9" fill="var(--red)">K obs lost</text>
+              <text x="618" y="18" text-anchor="end" font-size="9" fill="var(--red)">K obs lost</text>
+            </svg>
+          </div>
+          <div class="sl-verdict"><strong>Excels:</strong> the cost is a stated, fully anticipated data loss — no hidden bias like HP's, and no order/cutoff calibration like Butterworth's. <strong>Struggles:</strong> literally has no answer at all for the K quarters nearest today, which is exactly where a live decision usually needs one most.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Rescale λ for any frequency, live</h2>
+      <p class="sl-sub">Ravn &amp; Uhlig (2002): scale by the fourth power of the frequency ratio. Starts on the standard quarterly→monthly case.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any field</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Baseline λ</label><input type="number" class="sl-input" id="lam-base" value="1600" step="100" min="0"></div>
+          <div class="sl-calc-field"><label>Base periods/yr</label><input type="number" class="sl-input" id="lam-baseperiods" value="4" step="1" min="1"></div>
+          <div class="sl-calc-field"><label>Target periods/yr</label><input type="number" class="sl-input" id="lam-targetperiods" value="12" step="1" min="1"></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Ratio = target ÷ base = <b id="lam-ratio">3.00</b></div>
+          <div>Ratio⁴ = <b id="lam-ratio4">81.00</b></div>
+          <div>λ_target = λ_base × ratio⁴ = <b id="lam-result">129,600</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="lam-reset">Reset to λ=1600, quarterly→monthly</button>
+        <div class="sl-note">Leave a field blank, enter 0 or a negative period count, or anything non-numeric, and every readout shows "—" instead of guessing. Try 1 period/year as the target to reproduce the annual case (λ ≈ 6.25).</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Which one, when</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Hodrick-Prescott</span>
+          <ul>
+            <li>Simple, no cycle-length assumption required</li>
+            <li>Still the default for output-gap and potential-GDP work at many central banks</li>
+            <li>Documented end-point bias and spurious-cycle risk — treat recent output as provisional</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Butterworth / Baxter-King</span>
+          <ul>
+            <li>State the target cycle-length band explicitly instead of an implicit smoothness tradeoff</li>
+            <li>Baxter-King trades HP's bias for a stated, cleaner data-loss cost (K obs at each end)</li>
+            <li>The 6–32 quarter "business cycle" band is a convention to justify, not a law to assume</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-quote">In practice, many researchers report HP results alongside a band-pass robustness check rather than relying on HP alone — the two families are complements, not rivals, for exactly this reason.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>In y_t = τ_t + c_t + ε_t, what is actually observed?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Only y_t — the sum</button>
+        <button class="sl-quiz-opt">τ_t and c_t separately, with ε_t hidden</button>
+        <button class="sl-quiz-opt">All three components, individually</button>
+        <div class="sl-quiz-explain">None of τ_t, c_t, or ε_t is directly observed — only their sum, y_t. Every filter is a rule for estimating the split, not a measurement of a true one.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>What happens to the HP trend as λ → ∞?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It collapses toward a single straight line</button>
+        <button class="sl-quiz-opt">It becomes exactly equal to the raw data</button>
+        <button class="sl-quiz-opt">It becomes mathematically undefined</button>
+        <div class="sl-quiz-explain">Any nonzero curvature becomes infinitely costly, so the optimal trend is forced toward the one shape with zero curvature everywhere: a straight line.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Why does Hamilton's end-of-sample bias hit hardest at the most recent data?</h4>
+        <button class="sl-quiz-opt" data-correct="true">HP is two-sided, and there's no "future" data yet for the newest points</button>
+        <button class="sl-quiz-opt">The filter can't process more than 24 observations</button>
+        <button class="sl-quiz-opt">Recent GDP data is always measured less precisely</button>
+        <div class="sl-quiz-explain">The trend estimate at time t normally uses data on both sides of t. Near the end of a real sample there's no "after" data, so the estimate there is far more one-sided — and far more likely to revise.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>What does the Baxter-King filter's K leads/lags cost, specifically?</h4>
+        <button class="sl-quiz-opt" data-correct="true">No filtered value at all for the K most recent and K oldest observations</button>
+        <button class="sl-quiz-opt">It requires re-collecting the underlying GDP data</button>
+        <button class="sl-quiz-opt">It doubles the number of observations needed</button>
+        <div class="sl-quiz-explain">As a truncated moving average using K leads and K lags, Baxter-King simply has no answer for the K points nearest each edge of the sample — a stated data loss, not a hidden bias.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Rescaling λ=1600 from quarterly to monthly data (ratio = 3), Ravn-Uhlig's rule multiplies λ by:</h4>
+        <button class="sl-quiz-opt" data-correct="true">3⁴ = 81</button>
+        <button class="sl-quiz-opt">3</button>
+        <button class="sl-quiz-opt">3² = 9</button>
+        <div class="sl-quiz-explain">The fourth-power rule gives λ_monthly = 1600 × 3⁴ = 1600 × 81 = 129,600. Using 1600 directly under-smooths monthly data by roughly that same 81× factor.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>y_t = τ_t + c_t + ε_t — the trend/cycle decomposition. None of the three pieces is directly observed, only their sum; every filter is a modeling choice, not a measurement.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>The HP filter minimizes fit-vs-curvature, dialed by λ. λ=1600 is the quarterly convention; rescale by the fourth power of the frequency ratio elsewhere (Ravn-Uhlig).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Hamilton (2018): HP has two real, documented flaws — end-of-sample bias hitting the newest, most decision-relevant data hardest, and spurious cyclicality manufactured even from a pure random walk.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Butterworth borrows an explicit order + frequency cutoff from electrical engineering, trading HP's implicit smoothness dial for a stated frequency boundary.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Baxter-King is a finite band-pass moving average targeting the classic 6–32 quarter cycle band, at the cost of losing K observations at each end of the sample.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>None of these three filters is built or tested anywhere in this repo's trading code today — verified while building this lesson; all three remain concept-only tools explained here as modeling background, not a claim of edge.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Read an HP-filtered output-gap chart correctly, including distrusting its last few observations on sight. Recognize instantly when a paper or dashboard reuses λ=1600 at the wrong data frequency. And know when Butterworth's explicit cutoff, or Baxter-King's stated band-pass window, is the more honest tool for the question actually being asked — rather than reaching for HP by default because it's the one everyone already uses.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Graph Theory Fundamentals &amp; Centrality Measures</h3>
+        <p>A new category — Graph Theory &amp; Networks. Turning a web of relationships (correlated assets, counterparties, order-book participants) into a graph, and asking which nodes actually matter.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="graph-theory-centrality-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="trend-cycle-filters.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Live HP-filter slider chart — solves the actual penalized least-squares
+  // objective by dense Gaussian elimination, same method as the full lesson.
+  (function(){
+    var slider = document.getElementById('hp2-lambda-slider');
+    if (!slider) return;
+    var readout = document.getElementById('hp2-lambda-val');
+    var rawLine = document.getElementById('hp2-raw-line');
+    var rawDots = document.getElementById('hp2-raw-dots');
+    var trendLine = document.getElementById('hp2-trend-line');
+
+    var y = [100,105.44,108.4,107.84,104.8,101.76,101.2,104.16,109.6,115.04,118,117.44,114.4,111.36,110.8,113.76,119.2,124.64,127.6,127.04,124,120.96,120.4,123.36];
+    var N = y.length;
+
+    var chartLeft = 40, chartRight = 620, chartTop = 20, chartBottom = 220;
+    var minV = 95, maxV = 132;
+
+    function xAt(t) { return chartLeft + (t / (N - 1)) * (chartRight - chartLeft); }
+    function yAt(v) { return chartBottom - ((v - minV) / (maxV - minV)) * (chartBottom - chartTop); }
+
+    function hpFilter(yArr, lambda) {
+      var n = yArr.length;
+      var M = [];
+      for (var i = 0; i < n; i++) { M.push(new Array(n).fill(0)); }
+      for (var k = 0; k < n - 2; k++) {
+        var idx = [k, k + 1, k + 2];
+        var coef = [1, -2, 1];
+        for (var a = 0; a < 3; a++) {
+          for (var b = 0; b < 3; b++) { M[idx[a]][idx[b]] += coef[a] * coef[b]; }
+        }
+      }
+      var A = [];
+      for (var i2 = 0; i2 < n; i2++) {
+        A.push(new Array(n));
+        for (var j = 0; j < n; j++) { A[i2][j] = (i2 === j ? 1 : 0) + lambda * M[i2][j]; }
+      }
+      var b = yArr.slice();
+      for (var col = 0; col < n; col++) {
+        var piv = col;
+        for (var r = col + 1; r < n; r++) { if (Math.abs(A[r][col]) > Math.abs(A[piv][col])) piv = r; }
+        if (piv !== col) {
+          var tmpRow = A[col]; A[col] = A[piv]; A[piv] = tmpRow;
+          var tmpB = b[col]; b[col] = b[piv]; b[piv] = tmpB;
+        }
+        var pivotVal = A[col][col];
+        for (var r2 = 0; r2 < n; r2++) {
+          if (r2 === col) continue;
+          var factor = A[r2][col] / pivotVal;
+          if (factor === 0) continue;
+          for (var c = col; c < n; c++) { A[r2][c] -= factor * A[col][c]; }
+          b[r2] -= factor * b[col];
+        }
+      }
+      var tau = new Array(n);
+      for (var i3 = 0; i3 < n; i3++) { tau[i3] = b[i3] / A[i3][i3]; }
+      return tau;
+    }
+
+    var rawPts = [];
+    var dotsHtml = '';
+    for (var t = 0; t < N; t++) {
+      var px = xAt(t), py = yAt(y[t]);
+      rawPts.push(px + ',' + py);
+      dotsHtml += '<circle cx="' + px + '" cy="' + py + '" r="2.5"></circle>';
+    }
+    rawLine.setAttribute('points', rawPts.join(' '));
+    rawDots.innerHTML = dotsHtml;
+
+    function regimeWord(lambda) {
+      if (lambda < 20) return 'tracks the noisy data closely';
+      if (lambda < 5000) return 'near the λ≈1600 quarterly convention';
+      return '≈ straight line (heavily smoothed)';
+    }
+
+    function update() {
+      var sliderVal = parseInt(slider.value, 10);
+      var lambda = Math.pow(10, sliderVal / 100);
+      var tau = hpFilter(y, lambda);
+      var pts = [];
+      for (var t2 = 0; t2 < N; t2++) { pts.push(xAt(t2) + ',' + yAt(tau[t2])); }
+      trendLine.setAttribute('points', pts.join(' '));
+      var lambdaDisp = lambda >= 1000 ? Math.round(lambda).toLocaleString() : lambda.toFixed(lambda < 10 ? 1 : 0);
+      readout.textContent = 'λ = ' + lambdaDisp + ' (' + regimeWord(lambda) + ')';
+    }
+
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // λ rescaling calculator (Ravn-Uhlig fourth-power rule), live.
+  (function(){
+    var baseEl = document.getElementById('lam-base');
+    if (!baseEl) return;
+    var basePeriodsEl = document.getElementById('lam-baseperiods');
+    var targetPeriodsEl = document.getElementById('lam-targetperiods');
+    var ratioOut = document.getElementById('lam-ratio');
+    var ratio4Out = document.getElementById('lam-ratio4');
+    var resultOut = document.getElementById('lam-result');
+    var resetBtn = document.getElementById('lam-reset');
+    var DEFAULTS = { base: 1600, basePeriods: 4, targetPeriods: 12 };
+
+    function fmt(n) {
+      return n.toLocaleString('en-US', { maximumFractionDigits: 2 });
+    }
+
+    function recompute() {
+      var lambda0 = parseFloat(baseEl.value);
+      var bp = parseFloat(basePeriodsEl.value);
+      var tp = parseFloat(targetPeriodsEl.value);
+
+      if (!isFinite(lambda0) || !isFinite(bp) || !isFinite(tp) || lambda0 < 0 || bp <= 0 || tp <= 0) {
+        ratioOut.textContent = '—';
+        ratio4Out.textContent = '—';
+        resultOut.textContent = '—';
+        return;
+      }
+
+      var ratio = tp / bp;
+      var ratio4 = Math.pow(ratio, 4);
+      var lambdaTarget = lambda0 * ratio4;
+
+      ratioOut.textContent = ratio.toFixed(2);
+      ratio4Out.textContent = ratio4.toFixed(2);
+      resultOut.textContent = fmt(lambdaTarget);
+    }
+
+    [baseEl, basePeriodsEl, targetPeriodsEl].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      baseEl.value = DEFAULTS.base;
+      basePeriodsEl.value = DEFAULTS.basePeriods;
+      targetPeriodsEl.value = DEFAULTS.targetPeriods;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

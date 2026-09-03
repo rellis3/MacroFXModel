@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fourier Analysis &amp; the Frequency Domain — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Fourier Analysis &amp; the Frequency Domain — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivation, a hand-worked period-5 example, and a 5-question self-test?<a href="fourier-analysis-frequency-domain.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Signal Processing 1 · Signal Processing</div>
+      <h1 class="sl-h1">Fourier Analysis, <em>One Frequency at a Time</em></h1>
+      <p class="sl-lede">Every time series so far in this curriculum has been read one way: value after value, in calendar order. Fourier analysis asks a completely different question of the exact same numbers — forget when each value happened, and ask instead which repeating cycles, added together at different speeds and strengths, would reconstruct this series. That shift, from the time domain to the frequency domain, is the whole idea. The periodogram is the practical tool built on top of it, and it comes with one honest, easy-to-miss caveat that this deck spends real time on.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Two lenses on the same series</h2>
+      <p class="sl-sub">No information is lost moving from one view to the other — it's a rewrite, not a summary.</p>
+      <div class="sl-row">
+        <div class="sl-box">x_t — time domain</div>
+        <div class="sl-arrow">Fourier transform ⇄</div>
+        <div class="sl-box green">X(f) — frequency domain</div>
+      </div>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Time domain</span>
+          <p>The series as you're used to seeing it: one value per timestamp, plotted left to right against the calendar. A rolling average and an autocorrelation function both live here — they answer "how does today relate to a few days ago."</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Frequency domain</span>
+          <p>The exact same series, rewritten as a list of cycles: for every candidate speed of oscillation, how strongly (and with what timing offset) is that cycle present. A periodogram lives here — it answers "which repeating rhythm, if any, dominates."</p>
+        </div>
+      </div>
+      <div class="sl-quote">Any reasonably well-behaved series — a stretch of daily returns, an hour of trading volume, a chord played on a piano — can be decomposed the same way: as a sum of pure sine waves, each at its own frequency, each with its own strength and timing offset. A line chart that looks like unstructured noise can still have one or two frequencies quietly doing most of the work underneath.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">A chord is several notes at once</h2>
+      <p class="sl-sub">The discrete Fourier transform is the mathematical version of an ear that separates them back out.</p>
+      <div class="sl-quote">Play a chord and a microphone records one messy-looking waveform — no obvious structure to the eye. But your ear (and a spectrum analyzer) can tell you exactly which individual notes are sounding together, because each note is a pure tone at its own frequency and the chord is nothing more than those tones added up. <strong>X(f) = Σ x_t · e^(−i2πft)</strong> does this for any series: multiply by a candidate frequency's wave and sum. A frequency genuinely present reinforces itself into a large X(f); one that isn't there cancels toward zero.</div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">〜</div><div><h4>Every candidate frequency gets checked</h4><p>For N observations, the transform is evaluated at N discrete frequencies f_k = k/N — every "speed" the sample could possibly resolve.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">✓</div><div><h4>Present → constructive</h4><p>If the series truly wiggles at frequency f, multiplying by that frequency's wave lines the terms up in the same direction and they add to something large.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">✗</div><div><h4>Absent → cancellation</h4><p>If the series has nothing at frequency f, the terms point in essentially random directions around the complex plane and mostly cancel to near zero.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">½</div><div><h4>Only half the frequencies are new</h4><p>Because the input is real-valued, X(f_k) and X(f_{N−k}) mirror each other — only frequencies up to the Nyquist bin, k = N/2, carry independent information.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">See it: three signals, three spectra</h2>
+      <p class="sl-sub">Same 32-sample window each time. Left: the time-domain wave. Right: its periodogram, k = 0 (flat) to k = 16 (Nyquist).</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="sig-tabs">
+          <button class="sl-tab active" data-panel="sig-1">Single clean sine</button>
+          <button class="sl-tab" data-panel="sig-2">Two sines combined</button>
+          <button class="sl-tab" data-panel="sig-3">Pure noise</button>
+        </div>
+        <div class="sl-panel active" id="sig-1">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 175" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A single clean sine wave, period 8 samples, and its periodogram showing one sharp spike at k equals 4">
+            <text x="20" y="16" font-size="11" fill="var(--text3)">x_t = sin(2π·t/8) — one pure cycle</text>
+            <line x1="20" y1="70" x2="300" y2="70" style="stroke:var(--border2);stroke-width:1"/>
+            <polyline points="20.0,70.0 29.0,48.8 38.1,40.0 47.1,48.8 56.1,70.0 65.2,91.2 74.2,100.0 83.2,91.2 92.3,70.0 101.3,48.8 110.3,40.0 119.4,48.8 128.4,70.0 137.4,91.2 146.5,100.0 155.5,91.2 164.5,70.0 173.5,48.8 182.6,40.0 191.6,48.8 200.6,70.0 209.7,91.2 218.7,100.0 227.7,91.2 236.8,70.0 245.8,48.8 254.8,40.0 263.9,48.8 272.9,70.0 281.9,91.2 291.0,100.0 300.0,91.2" fill="none" style="stroke:var(--blue);stroke-width:2"/>
+            <text x="20" y="128" font-size="10" fill="var(--text3)">t=0</text>
+            <text x="285" y="128" font-size="10" fill="var(--text3)">t=31</text>
+            <text x="380" y="16" font-size="11" fill="var(--text3)">Periodogram I(k)</text>
+            <line x1="350" y1="155" x2="620" y2="155" style="stroke:var(--text3)"/>
+            <line x1="350" y1="25" x2="350" y2="155" style="stroke:var(--text3)"/>
+            <rect x="351.9" y="154" width="12" height="1" rx="1.5" style="fill:var(--red)"/>
+            <rect x="367.8" y="154" width="12" height="1" rx="1.5" style="fill:var(--red)"/>
+            <rect x="383.7" y="154" width="12" height="1" rx="1.5" style="fill:var(--red)"/>
+            <rect x="399.6" y="154" width="12" height="1" rx="1.5" style="fill:var(--red)"/>
+            <rect x="415.5" y="29.7" width="12" height="125.3" rx="1.5" style="fill:var(--red)"/>
+            <rect x="431.4" y="154" width="12" height="1" rx="1.5" style="fill:var(--red)"/>
+            <rect x="447.2" y="154" width="12" height="1" rx="1.5" style="fill:var(--red)"/>
+            <rect x="463.1" y="154" width="12" height="1" rx="1.5" style="fill:var(--red)"/>
+            <rect x="479" y="154" width="12" height="1" rx="1.5" style="fill:var(--red)"/>
+            <rect x="494.9" y="154" width="12" height="1" rx="1.5" style="fill:var(--red)"/>
+            <rect x="510.8" y="154" width="12" height="1" rx="1.5" style="fill:var(--red)"/>
+            <rect x="526.6" y="154" width="12" height="1" rx="1.5" style="fill:var(--red)"/>
+            <rect x="542.5" y="154" width="12" height="1" rx="1.5" style="fill:var(--red)"/>
+            <rect x="558.4" y="154" width="12" height="1" rx="1.5" style="fill:var(--red)"/>
+            <rect x="574.3" y="154" width="12" height="1" rx="1.5" style="fill:var(--red)"/>
+            <rect x="590.2" y="154" width="12" height="1" rx="1.5" style="fill:var(--red)"/>
+            <rect x="606.1" y="154" width="12" height="1" rx="1.5" style="fill:var(--red)"/>
+            <text x="415.5" y="24" font-size="10" text-anchor="middle" fill="var(--red)">k=4</text>
+            <text x="352" y="168" font-size="9" text-anchor="middle" fill="var(--text3)">0</text>
+            <text x="479" y="168" font-size="9" text-anchor="middle" fill="var(--text3)">8</text>
+            <text x="606" y="168" font-size="9" text-anchor="middle" fill="var(--text3)">16</text>
+          </svg></div>
+          <div class="sl-verdict"><strong>One frequency in, one spike out.</strong> All the series' energy concentrates at k=4 (period 8 samples) — everywhere else is exactly zero, because there is nothing else in the signal to find.</div>
+        </div>
+        <div class="sl-panel" id="sig-2">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 175" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two sine waves added together, and a periodogram with two spikes at k equals 4 and k equals 9">
+            <text x="20" y="16" font-size="11" fill="var(--text3)">x_t = sin(2π·4t/32) + 0.6·sin(2π·9t/32)</text>
+            <line x1="20" y1="70" x2="300" y2="70" style="stroke:var(--border2);stroke-width:1"/>
+            <polyline points="20.0,70.0 29.0,41.5 38.1,53.1 47.1,65.4 56.1,60.7 65.2,78.2 74.2,104.2 83.2,88.1 92.3,56.8 101.3,57.0 110.3,60.2 119.4,47.1 128.4,60.7 137.4,96.5 146.5,97.1 155.5,72.6 164.5,70.0 173.5,67.4 182.6,42.9 191.6,43.5 200.6,79.3 209.7,92.9 218.7,79.8 227.7,83.0 236.8,83.2 245.8,51.9 254.8,35.8 263.9,61.8 272.9,79.3 281.9,74.6 291.0,86.9 300.0,98.5" fill="none" style="stroke:var(--blue);stroke-width:2"/>
+            <text x="20" y="128" font-size="10" fill="var(--text3)">t=0</text>
+            <text x="285" y="128" font-size="10" fill="var(--text3)">t=31</text>
+            <text x="380" y="16" font-size="11" fill="var(--text3)">Periodogram I(k)</text>
+            <line x1="350" y1="155" x2="620" y2="155" style="stroke:var(--text3)"/>
+            <line x1="350" y1="25" x2="350" y2="155" style="stroke:var(--text3)"/>
+            <rect x="351.9" y="154" width="12" height="1" rx="1.5" style="fill:var(--red)"/>
+            <rect x="367.8" y="154" width="12" height="1" rx="1.5" style="fill:var(--red)"/>
+            <rect x="383.7" y="154" width="12" height="1" rx="1.5" style="fill:var(--red)"/>
+            <rect x="399.6" y="154" width="12" height="1" rx="1.5" style="fill:var(--red)"/>
+            <rect x="415.5" y="29.7" width="12" height="125.3" rx="1.5" style="fill:var(--red)"/>
+            <rect x="431.4" y="154" width="12" height="1" rx="1.5" style="fill:var(--red)"/>
+            <rect x="447.2" y="154" width="12" height="1" rx="1.5" style="fill:var(--red)"/>
+            <rect x="463.1" y="154" width="12" height="1" rx="1.5" style="fill:var(--red)"/>
+            <rect x="479" y="154" width="12" height="1" rx="1.5" style="fill:var(--red)"/>
+            <rect x="494.9" y="109.9" width="12" height="45.1" rx="1.5" style="fill:var(--amber)"/>
+            <rect x="510.8" y="154" width="12" height="1" rx="1.5" style="fill:var(--red)"/>
+            <rect x="526.6" y="154" width="12" height="1" rx="1.5" style="fill:var(--red)"/>
+            <rect x="542.5" y="154" width="12" height="1" rx="1.5" style="fill:var(--red)"/>
+            <rect x="558.4" y="154" width="12" height="1" rx="1.5" style="fill:var(--red)"/>
+            <rect x="574.3" y="154" width="12" height="1" rx="1.5" style="fill:var(--red)"/>
+            <rect x="590.2" y="154" width="12" height="1" rx="1.5" style="fill:var(--red)"/>
+            <rect x="606.1" y="154" width="12" height="1" rx="1.5" style="fill:var(--red)"/>
+            <text x="415.5" y="24" font-size="10" text-anchor="middle" fill="var(--red)">k=4</text>
+            <text x="494.9" y="104" font-size="10" text-anchor="middle" fill="var(--amber)">k=9</text>
+            <text x="352" y="168" font-size="9" text-anchor="middle" fill="var(--text3)">0</text>
+            <text x="479" y="168" font-size="9" text-anchor="middle" fill="var(--text3)">8</text>
+            <text x="606" y="168" font-size="9" text-anchor="middle" fill="var(--text3)">16</text>
+          </svg></div>
+          <div class="sl-verdict"><strong>Two frequencies in, two spikes out.</strong> The messier-looking waveform on the left is nothing more than the k=4 wave and a smaller k=9 wave added together — the periodogram separates them back out cleanly, in proportion to each one's strength.</div>
+        </div>
+        <div class="sl-panel" id="sig-3">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 175" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A jagged random noise series, and a periodogram with small bars scattered across every frequency with no dominant spike">
+            <text x="20" y="16" font-size="11" fill="var(--text3)">x_t = random noise, no built-in cycle</text>
+            <line x1="20" y1="70" x2="300" y2="70" style="stroke:var(--border2);stroke-width:1"/>
+            <polyline points="20.0,63.9 29.0,73.1 38.1,48.9 47.1,59.8 56.1,89.5 65.2,68.4 74.2,83.6 83.2,62.5 92.3,48.1 101.3,71.7 110.3,85.0 119.4,47.1 128.4,55.3 137.4,81.6 146.5,88.2 155.5,70.0 164.5,58.8 173.5,63.4 182.6,99.8 191.6,71.8 200.6,49.8 209.7,96.9 218.7,64.5 227.7,98.1 236.8,84.0 245.8,96.3 254.8,88.9 263.9,53.0 272.9,68.2 281.9,98.4 291.0,89.6 300.0,49.4" fill="none" style="stroke:var(--purple);stroke-width:2"/>
+            <text x="20" y="128" font-size="10" fill="var(--text3)">t=0</text>
+            <text x="285" y="128" font-size="10" fill="var(--text3)">t=31</text>
+            <text x="380" y="16" font-size="11" fill="var(--text3)">Periodogram I(k)</text>
+            <line x1="350" y1="155" x2="620" y2="155" style="stroke:var(--text3)"/>
+            <line x1="350" y1="25" x2="350" y2="155" style="stroke:var(--text3)"/>
+            <rect x="351.9" y="150.9" width="12" height="4.1" rx="1.5" style="fill:var(--purple)"/>
+            <rect x="367.8" y="147" width="12" height="8" rx="1.5" style="fill:var(--purple)"/>
+            <rect x="383.7" y="153.3" width="12" height="1.7" rx="1.5" style="fill:var(--purple)"/>
+            <rect x="399.6" y="152.8" width="12" height="2.2" rx="1.5" style="fill:var(--purple)"/>
+            <rect x="415.5" y="152.6" width="12" height="2.4" rx="1.5" style="fill:var(--purple)"/>
+            <rect x="431.4" y="150.5" width="12" height="4.5" rx="1.5" style="fill:var(--purple)"/>
+            <rect x="447.2" y="149.8" width="12" height="5.2" rx="1.5" style="fill:var(--purple)"/>
+            <rect x="463.1" y="150.8" width="12" height="4.2" rx="1.5" style="fill:var(--purple)"/>
+            <rect x="479" y="135.3" width="12" height="19.7" rx="1.5" style="fill:var(--purple)"/>
+            <rect x="494.9" y="149.7" width="12" height="5.3" rx="1.5" style="fill:var(--purple)"/>
+            <rect x="510.8" y="151.4" width="12" height="3.6" rx="1.5" style="fill:var(--purple)"/>
+            <rect x="526.6" y="145.4" width="12" height="9.6" rx="1.5" style="fill:var(--purple)"/>
+            <rect x="542.5" y="153" width="12" height="2" rx="1.5" style="fill:var(--purple)"/>
+            <rect x="558.4" y="150" width="12" height="5" rx="1.5" style="fill:var(--purple)"/>
+            <rect x="574.3" y="153" width="12" height="2" rx="1.5" style="fill:var(--purple)"/>
+            <rect x="590.2" y="151.6" width="12" height="3.4" rx="1.5" style="fill:var(--purple)"/>
+            <rect x="606.1" y="154" width="12" height="1" rx="1.5" style="fill:var(--purple)"/>
+            <text x="352" y="168" font-size="9" text-anchor="middle" fill="var(--text3)">0</text>
+            <text x="479" y="168" font-size="9" text-anchor="middle" fill="var(--text3)">8</text>
+            <text x="606" y="168" font-size="9" text-anchor="middle" fill="var(--text3)">16</text>
+          </svg></div>
+          <div class="sl-verdict"><strong>No structure in, no spike out.</strong> Every bar is small and roughly the same order of magnitude (drawn on the identical vertical scale as the two panels above) — the signature of white noise. Nothing is being hidden; there is simply no repeating cycle to find.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Turn up the frequency</h2>
+      <p class="sl-sub">Drag the slider. Same window, same amplitude — only the number of cycles that fit inside it changes.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A sine wave over a fixed window, redrawn as frequency increases to show more oscillations packed into the same space">
+            <line x1="20" y1="100" x2="620" y2="100" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="20" y1="20" x2="20" y2="180" style="stroke:var(--border2);stroke-width:1"/>
+            <path id="freq-path" fill="none" style="stroke:var(--blue);stroke-width:2.5" d=""/>
+            <text x="20" y="196" font-size="10" fill="var(--text3)">start of window</text>
+            <text x="545" y="196" font-size="10" fill="var(--text3)">end of window</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Frequency (cycles across this window)</span><span class="sl-live" id="freq-fval">f = 1 cycle</span></div>
+        <input type="range" class="sl-slider" id="freq-slider" min="1" max="10" step="1" value="1">
+        <div class="sl-calc-steps">
+          <div>Frequency: f = <b id="freq-fdisp">1</b> cycle per 10-day window</div>
+          <div>Period: T = window ÷ f = <b id="freq-tdisp">10.00</b> days per cycle</div>
+        </div>
+      </div>
+      <p class="sl-p">Higher frequency packs more complete up-and-down cycles into the same stretch of time — nothing about the wave's height (amplitude) changes, only how fast it repeats. Frequency and period are simply reciprocals of each other, which is exactly what the next slide's calculator makes precise.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Frequency and period are reciprocals</h2>
+      <p class="sl-sub">f = 1 / T. Change either field — the other updates from it, live.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Period T (days per cycle)</label><input type="number" class="sl-input" id="ft-period" value="5" step="0.5" min="0"></div>
+          <div class="sl-calc-op">→ f = 1/T →</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Frequency f</div>
+            <div class="sl-calc-result-val" id="ft-freq-out">0.2000</div>
+          </div>
+        </div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Frequency f (cycles per day)</label><input type="number" class="sl-input" id="ft-freq" value="0.2" step="0.05" min="0"></div>
+          <div class="sl-calc-op">→ T = 1/f →</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Period T</div>
+            <div class="sl-calc-result-val" id="ft-period-out">5.00</div>
+          </div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="ft-reset">Reset to a 5-day cycle</button>
+        <div class="sl-note">Blank, zero, or negative inputs show "—" rather than a division error — a period or frequency of exactly zero isn't a real cycle to begin with.</div>
+      </div>
+      <p class="sl-p">A weekly seasonal pattern in trading volume has a period of about 5 business days, so its frequency is 1/5 = 0.2 cycles per day. A periodogram doesn't hand you the period directly — it hands you the frequency where the energy concentrates, and this one-line relationship is how that gets translated back into "a cycle repeating every N days," the number that's actually intuitive to a human reader.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">The periodogram, precisely</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">X</div><div><h4>X(f) — the transform</h4><p>A complex number per candidate frequency: how strongly, and with what timing offset, that frequency is present in the series.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">²</div><div><h4>|X(f)|² — power spectral density</h4><p>Drop the timing offset, keep only the strength: the squared magnitude is how much of the series' total variance sits at frequency f.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">I</div><div><h4>I(f_k) = (1/N)|X(f_k)|² — the periodogram</h4><p>The one-sample estimate you can actually compute: normalize the power by sample length N, so series of different lengths are comparable.</p></div></div>
+      </div>
+      <p class="sl-sub" style="margin-top:18px">A 10-point synthetic series, x_t = cos(2π·2t/10) — a clean period-5 cycle disguised as a list of numbers.</p>
+      <div class="sl-svgwrap">
+        <svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: a 10-point time series with a visible repeating wiggle every 5 steps. Right: its periodogram, showing a single tall spike at k equals 2 out of the k equals 0 to 5 Nyquist range.">
+          <text x="20" y="18" font-size="11" fill="var(--text3)">Time domain: x_t</text>
+          <line x1="20" y1="130" x2="300" y2="130" style="stroke:var(--border);stroke-dasharray:3,3"/>
+          <polyline points="20,50 48,97 76,180 104,180 132,97 160,50 188,97 216,180 244,180 272,97 300,50" fill="none" style="stroke:var(--blue);stroke-width:2"/>
+          <g fill="var(--blue)">
+            <circle cx="20" cy="50" r="3"/><circle cx="48" cy="97" r="3"/><circle cx="76" cy="180" r="3"/>
+            <circle cx="104" cy="180" r="3"/><circle cx="132" cy="97" r="3"/><circle cx="160" cy="50" r="3"/>
+            <circle cx="188" cy="97" r="3"/><circle cx="216" cy="180" r="3"/><circle cx="244" cy="180" r="3"/>
+            <circle cx="272" cy="97" r="3"/><circle cx="300" cy="50" r="3"/>
+          </g>
+          <text x="20" y="200" font-size="10" fill="var(--text3)">t=0</text>
+          <text x="285" y="200" font-size="10" fill="var(--text3)">t=9</text>
+          <text x="55" y="212" font-size="10" fill="var(--green)">◀ week 1 (5 steps) ▶</text>
+          <text x="195" y="212" font-size="10" fill="var(--green)">◀ week 2 (5 steps) ▶</text>
+          <text x="380" y="18" font-size="11" fill="var(--text3)">Frequency domain: I(k), k=0..5 (Nyquist)</text>
+          <line x1="380" y1="180" x2="620" y2="180" style="stroke:var(--text3)"/>
+          <line x1="380" y1="20" x2="380" y2="180" style="stroke:var(--text3)"/>
+          <rect x="390" y="176" width="24" height="4" style="fill:var(--border)"/>
+          <rect x="430" y="176" width="24" height="4" style="fill:var(--border)"/>
+          <rect x="470" y="30" width="24" height="150" style="fill:var(--red)"/>
+          <rect x="510" y="176" width="24" height="4" style="fill:var(--border)"/>
+          <rect x="550" y="176" width="24" height="4" style="fill:var(--border)"/>
+          <rect x="590" y="176" width="24" height="4" style="fill:var(--border)"/>
+          <text x="402" y="194" font-size="10" text-anchor="middle" fill="var(--text3)">0</text>
+          <text x="442" y="194" font-size="10" text-anchor="middle" fill="var(--text3)">1</text>
+          <text x="482" y="194" font-size="10" text-anchor="middle" fill="var(--red)">2</text>
+          <text x="522" y="194" font-size="10" text-anchor="middle" fill="var(--text3)">3</text>
+          <text x="562" y="194" font-size="10" text-anchor="middle" fill="var(--text3)">4</text>
+          <text x="602" y="194" font-size="10" text-anchor="middle" fill="var(--text3)">5</text>
+          <text x="482" y="24" font-size="10" text-anchor="middle" fill="var(--red)">I(2)=2.5</text>
+        </svg>
+      </div>
+      <p class="sl-p">Every drop of the series' variance lands in a single spike at k=2 — a cycle repeating every 10/2 = <strong>5 steps</strong>, exactly the period built into the synthetic data, recovered without ever being told the answer in advance. A real series would add noise on top and the spike would be less than perfectly clean — which is exactly the honest caveat two slides from now.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">What a periodogram reveals in practice</h2>
+      <p class="sl-sub">Dominant cycles show up as peaks, standing above a flat noise floor.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📊</div><div><h4>A tall spike = a dominant cycle</h4><p>Trading volume with a real weekly rhythm, or a macro series with real seasonality, shows up as an outsized bar at the matching frequency — far easier to spot there than by eyeballing a line chart.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🕐</div><div><h4>An intraday liquidity cycle</h4><p>Hourly FX volume with an Asia-session lull and a London/New York pickup repeats on a strict 24-hour clock — exactly the kind of calendar-driven structure a periodogram is built to surface.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📉</div><div><h4>Flat ≠ broken</h4><p>A close-to-flat periodogram across most frequencies isn't a failed analysis — for raw FX or equity returns, it's the expected, near-random-walk result, echoing what the ACF/PACF and Hurst/variance-ratio lessons already find from other angles.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>Better suited to volume than to returns</h4><p>This tool earns its keep on volume, realized volatility, and seasonality series far more reliably than on raw price returns, where there's usually very little periodic structure to find in the first place.</p></div></div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying — verified against this repo's code</div>
+        <p>The full lesson flags this as classical background knowledge, not a feature this repo runs: no periodogram, FFT, or spectral-analysis code exists anywhere in this codebase outside the lesson pages' own illustrative widgets — confirmed by a fresh search of the repository while building this deck. That framing checked out as still accurate; nothing here is a claim of a built tool or a trading edge, only the concept needed to read a periodogram correctly.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">How finely can you actually resolve frequencies?</h2>
+      <p class="sl-sub">Frequency resolution: Δf = sampling rate ÷ N. More samples, at the same rate, means finer bins.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Sampling rate f_s (samples/day)</label><input type="number" class="sl-input" id="res-fs" value="1" step="1" min="0"></div>
+          <div class="sl-calc-op">÷</div>
+          <div class="sl-calc-field"><label>Number of points N</label><input type="number" class="sl-input" id="res-n" value="100" step="10" min="0"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Frequency resolution Δf</div>
+            <div class="sl-calc-result-val" id="res-out">0.0100</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Nyquist frequency: f_s / 2 = <b id="res-nyq">0.5000</b> cycles/day</div>
+          <div>Independent frequency bins: N/2 = <b id="res-bins">50</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="res-reset">Reset to 1/day, N=100</button>
+        <div class="sl-note">Blank, zero, or non-finite inputs show "—" everywhere rather than a division error.</div>
+      </div>
+      <p class="sl-p">This is the one number more data actually improves: with N=100 daily points, adjacent frequency bins sit 0.01 cycles/day apart (periods of roughly 100 and 111 days can be told apart); quadruple N to 400 and that gap shrinks to 0.0025. What more data does <em>not</em> do is shrink the noise on any single bin's estimate — that's the caveat on the next slide.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">The honest caveat: it isn't a consistent estimator</h2>
+      <p class="sl-sub">This is the single most important thing to know before trusting a periodogram plot.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">The caveat to remember</div>
+        <p>Away from f=0 and the Nyquist frequency, each periodogram ordinate I(f_k) is approximately (true PSD/2) times a chi-squared random variable with <strong>2 degrees of freedom</strong> — and that spread does <strong>not shrink as N grows</strong>. Adding more data buys more, finer-spaced frequencies to look at (the previous slide's Δf); it does not make any single bin's estimate more precise. A periodogram from 10,000 points is exactly as noisy, bin for bin, as one from 100.</p>
+      </div>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">One raw, unsmoothed spike</span>
+          <ul>
+            <li>Statistically noisy regardless of sample size</li>
+            <li>A tall bar is a hint, not a confirmed cycle</li>
+            <li>Easy to overstate — "I found a 17-day cycle" from one short sample carries very little weight alone</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Smoothed or averaged</span>
+          <ul>
+            <li>Bartlett's or Welch's method: average periodograms from several segments</li>
+            <li>Or smooth neighboring frequency bins together</li>
+            <li>Trades away some frequency resolution for real statistical precision</li>
+          </ul>
+        </div>
+      </div>
+      <p class="sl-p">This trade is exactly analogous to how a rolling average trades timing precision for less noise. A single sharp spike surviving after averaging across several independent segments is real evidence; the same spike appearing only once, unsmoothed, is much weaker evidence of a genuine cycle.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What does moving from the time domain to the frequency domain actually change?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Nothing is lost — the same information is reorganized by which cycles are present rather than by when each value occurred</button>
+        <button class="sl-quiz-opt">It discards the exact values and keeps only a rough summary</button>
+        <button class="sl-quiz-opt">It only works on data that was already periodic to begin with</button>
+        <div class="sl-quiz-explain">The Fourier transform is a rewrite, not a summary — X(f) encodes exactly as much information as x_t, just organized by frequency instead of by time.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>A periodogram shows one tall spike at the frequency corresponding to a 7-day cycle. What does that spike mean?</h4>
+        <button class="sl-quiz-opt" data-correct="true">An outsized share of the series' variance is concentrated at that 7-day cycle relative to a flat baseline</button>
+        <button class="sl-quiz-opt">The series has been proven to repeat exactly every 7 days, with no further checking needed</button>
+        <button class="sl-quiz-opt">The series' average value is 7</button>
+        <div class="sl-quiz-explain">A spike is evidence of concentrated energy at that frequency — strong evidence once smoothed or replicated, but on its own just a hint, per the honest-caveat slide.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Why is the raw periodogram called "not a consistent estimator" of the true power spectrum?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Each ordinate's sampling variance stays roughly the same size no matter how much data is added — only frequency resolution improves</button>
+        <button class="sl-quiz-opt">Because it can only be computed for series shorter than 100 points</button>
+        <button class="sl-quiz-opt">Because it requires the series to be measured in dollars, not returns</button>
+        <div class="sl-quiz-explain">A consistent estimator's variance shrinks toward zero as N grows. A periodogram ordinate is roughly chi-squared-with-2-df distributed regardless of N — more data buys finer bins, not a sharper answer at any one of them.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Sampling once per day (f_s = 1/day) for N = 200 days, what's the periodogram's frequency resolution Δf?</h4>
+        <button class="sl-quiz-opt" data-correct="true">0.005 cycles/day (Δf = f_s / N = 1/200)</button>
+        <button class="sl-quiz-opt">0.5 cycles/day</button>
+        <button class="sl-quiz-opt">200 cycles/day</button>
+        <div class="sl-quiz-explain">Δf = f_s / N = 1 / 200 = 0.005 cycles per day — the spacing between adjacent frequency bins the periodogram can distinguish.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>A colleague computes one unsmoothed periodogram on 90 days of raw FX returns and reports "a strong 17-day cycle." How much should that be trusted on its own?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Very little — raw FX returns tend toward a flat spectrum, and a single unsmoothed ordinate is statistically noisy regardless of sample size</button>
+        <button class="sl-quiz-opt">Completely — a periodogram spike is definitive proof of a cycle</button>
+        <button class="sl-quiz-opt">It should be trusted more because 90 days is a large sample</button>
+        <div class="sl-quiz-explain">Two independent reasons for skepticism stack here: raw FX/equity returns typically produce a close-to-flat spectrum, and any single unsmoothed ordinate carries a wide sampling distribution no matter the sample size.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Any series can be rewritten as a sum of sine waves — the frequency domain is a lossless rewrite of the time domain, not a summary.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>The periodogram I(f_k) = (1/N)|X(f_k)|² is the practical, computable estimate of how much energy sits at each frequency.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>A tall spike above a flat baseline is how a dominant cycle — a weekly pattern, a seasonal rhythm, an intraday session cycle — actually shows up.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Frequency and period are reciprocals (f = 1/T), and frequency resolution is Δf = sampling rate ÷ N — more data sharpens which cycles you can tell apart.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The raw periodogram is not a consistent estimator — its variance doesn't shrink with N, so a single unsmoothed spike is weak evidence on its own.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Smoothing or averaging across segments (Bartlett's, Welch's) trades frequency resolution for the statistical precision the raw version lacks.</p></div>
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">What this now lets you do</div>
+        <p>Read a periodogram plot correctly: spot a genuine dominant cycle, translate its frequency back into an intuitive period, and know exactly how much to trust — or distrust — a single spike before treating it as a real finding. That's the exact background needed for the next lesson, where wavelets fix the one thing a plain Fourier transform can't tell you: <em>when</em> a cycle was present, not just whether one exists somewhere in the sample.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Wavelets &amp; Time-Frequency Analysis</h3>
+        <p>A plain Fourier transform can tell you a cycle exists somewhere in the sample — it can't tell you when. Wavelets fix exactly that.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="wavelets-time-frequency-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="fourier-analysis-frequency-domain.html">Read the full Fourier lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Frequency slider — redraw a sine wave across a fixed window as frequency changes.
+  (function(){
+    var slider = document.getElementById('freq-slider');
+    if (!slider) return;
+    var fval = document.getElementById('freq-fval');
+    var fdisp = document.getElementById('freq-fdisp');
+    var tdisp = document.getElementById('freq-tdisp');
+    var path = document.getElementById('freq-path');
+    var X0 = 20, X1 = 620, Y0 = 100, AMP = 65, WINDOW_DAYS = 10;
+    var SAMPLES = 200;
+
+    function update(){
+      var f = parseInt(slider.value, 10);
+      fval.textContent = 'f = ' + f + (f === 1 ? ' cycle' : ' cycles');
+      fdisp.textContent = f;
+      tdisp.textContent = (WINDOW_DAYS / f).toFixed(2);
+      var d = '';
+      for (var i = 0; i <= SAMPLES; i++) {
+        var frac = i / SAMPLES;
+        var x = X0 + frac * (X1 - X0);
+        var y = Y0 - AMP * Math.sin(2 * Math.PI * f * frac);
+        d += (i === 0 ? 'M' : 'L') + x.toFixed(1) + ',' + y.toFixed(1) + ' ';
+      }
+      path.setAttribute('d', d);
+    }
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // f = 1/T and T = 1/f — two linked live calculators, each guarded against
+  // blank, zero, negative, or non-finite input.
+  (function(){
+    var periodIn = document.getElementById('ft-period');
+    if (!periodIn) return;
+    var freqIn = document.getElementById('ft-freq');
+    var freqOut = document.getElementById('ft-freq-out');
+    var periodOut = document.getElementById('ft-period-out');
+    var resetBtn = document.getElementById('ft-reset');
+    var DEFAULTS = { period: 5, freq: 0.2 };
+
+    function fromPeriod(){
+      var T = parseFloat(periodIn.value);
+      freqOut.textContent = (!isFinite(T) || T <= 0) ? '—' : (1 / T).toFixed(4);
+    }
+    function fromFreq(){
+      var f = parseFloat(freqIn.value);
+      periodOut.textContent = (!isFinite(f) || f <= 0) ? '—' : (1 / f).toFixed(2);
+    }
+    periodIn.addEventListener('input', fromPeriod);
+    freqIn.addEventListener('input', fromFreq);
+    resetBtn.addEventListener('click', function(){
+      periodIn.value = DEFAULTS.period;
+      freqIn.value = DEFAULTS.freq;
+      fromPeriod();
+      fromFreq();
+    });
+    fromPeriod();
+    fromFreq();
+  })();
+
+  // Frequency resolution: Δf = f_s / N, Nyquist = f_s/2, bins = N/2.
+  (function(){
+    var fsIn = document.getElementById('res-fs');
+    if (!fsIn) return;
+    var nIn = document.getElementById('res-n');
+    var out = document.getElementById('res-out');
+    var nyq = document.getElementById('res-nyq');
+    var bins = document.getElementById('res-bins');
+    var resetBtn = document.getElementById('res-reset');
+    var DEFAULTS = { fs: 1, n: 100 };
+
+    function recompute(){
+      var fs = parseFloat(fsIn.value), n = parseFloat(nIn.value);
+      if (!isFinite(fs) || !isFinite(n) || fs <= 0 || n <= 0) {
+        out.textContent = '—'; nyq.textContent = '—'; bins.textContent = '—';
+        return;
+      }
+      out.textContent = (fs / n).toFixed(4);
+      nyq.textContent = (fs / 2).toFixed(4);
+      bins.textContent = (n / 2).toFixed(0);
+    }
+    fsIn.addEventListener('input', recompute);
+    nIn.addEventListener('input', recompute);
+    resetBtn.addEventListener('click', function(){
+      fsIn.value = DEFAULTS.fs; nIn.value = DEFAULTS.n;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>
