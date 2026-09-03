@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stationarity, ACF &amp; PACF — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Stationarity, ACF &amp; PACF — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivations, a worked trading scenario, and a 6-question self-test?<a href="stationarity-acf-pacf.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Deeper Foundations 3</div>
+      <h1 class="sl-h1">Stationarity, ACF &amp; PACF — <em>Read Before You Trust Any Time-Series Model</em></h1>
+      <p class="sl-lede">Every rolling-window feature, every AR/ARIMA fit, every GARCH forecast, and the Cointegration lesson's residual test quietly assumes something about how a series behaves through time — that its statistical personality doesn't itself drift as the calendar moves forward. This lesson makes that assumption explicit, calls it by its name, and hands you the two diagnostic plots that check whether it actually holds: the autocorrelation function (ACF) and the partial autocorrelation function (PACF).</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">A series that behaves the same way, no matter when you look</h2>
+      <p class="sl-sub">A time series is (weakly) <strong>stationary</strong> if three things hold constant through time — depending only on how far apart two observations are, never on the calendar date itself.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">μ</div><div><h4>A fixed mean</h4><p>E[X<sub>t</sub>] = μ — the series fluctuates around one long-run level, not a level that keeps sliding to somewhere new.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">σ²</div><div><h4>A fixed variance</h4><p>Var(X<sub>t</sub>) = σ² — how far the series typically strays from its mean doesn't grow or shrink as time passes.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">γ</div><div><h4>Autocovariance depends only on lag</h4><p>Cov(X<sub>t</sub>, X<sub>t+k</sub>) = γ(k) — how related two points are depends only on how many steps apart they are (k), never on which date you happen to check.</p></div></div>
+      </div>
+      <div class="sl-quote">Picture a bouncy ball dropped in the same spot every day — it always settles around the same height, bounces about the same amount, and how today's bounce relates to yesterday's is always roughly the same story, whether you check on a Monday or a Friday. A series that keeps drifting to new heights, or gets wilder and calmer at random over the years, is the opposite — the rules of the game are quietly changing underneath you.</div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Why this gets skipped over</div>
+        <p>Almost nothing states this assumption out loud before using it. A "20-day rolling average" is, whether anyone says so or not, an implicit claim that the last 20 days behave like any other 20-day stretch. If that's false, the average is quietly blending together several different regimes as if they were one.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">A leash, versus no leash at all</h2>
+      <p class="sl-sub">Two processes already seen elsewhere in this Theory Lab sit at opposite ends of this idea.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Ornstein-Uhlenbeck — stationary</span>
+          <p>dX<sub>t</sub> = θ(μ − X<sub>t</sub>)dt + σ dW<sub>t</sub> has a pull-back-to-μ term built directly into its drift — the further it strays, the harder it gets pulled back. That gives it a fixed mean and a variance that settles to a constant σ²/2θ. Like a dog on a leash tied to a post: it can roam, but it always gets pulled back toward home.</p>
+        </div>
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Pure random walk — non-stationary</span>
+          <p>X<sub>t</sub> = X<sub>t−1</sub> + ε<sub>t</sub> has no pull-back term at all. Its variance grows linearly with time — Var(X<sub>t</sub>) = tσ² — so there is no fixed "normal level" to revert to. Like a dog that's wandered off with no leash: it just keeps drifting farther away, with nowhere it's likely to circle back to.</p>
+        </div>
+      </div>
+      <p class="sl-p">Every raw FX rate, equity index, or bond-yield <em>level</em> behaves like the random-walk case. Most well-specified spreads, and most return series, behave much closer to the mean-reverting case.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">The single most important trading consequence</div>
+        <p>Regress one non-stationary price level on another and you can get a high R² and "significant"-looking coefficients that are pure statistical illusion — a <strong>spurious regression</strong>, not a real relationship. That's precisely why the Cointegration lesson checks its residual for stationarity before trusting anything else about the fit.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Same underlying story, three views</h2>
+      <p class="sl-sub">Toggle between a raw price level, its day-over-day change, and a mean-reverting spread.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="sty-tabs">
+          <button class="sl-tab active" data-panel="sty-1">Price level</button>
+          <button class="sl-tab" data-panel="sty-2">Its returns</button>
+          <button class="sl-tab" data-panel="sty-3">Mean-reverting spread</button>
+        </div>
+        <div class="sl-panel active" id="sty-1">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A price series wandering steadily upward with no fixed level, gaining distance from its starting point over time">
+            <line x1="20" y1="180" x2="620" y2="180" style="stroke:var(--border2);stroke-width:1"/>
+            <path style="fill:none;stroke:var(--red);stroke-width:2.5" d="M20,170 L60,160 L100,168 L140,150 L180,155 L220,130 L260,140 L300,110 L340,120 L380,95 L420,105 L460,80 L500,88 L540,60 L580,70 L620,45"/>
+            <text x="30" y="30" text-anchor="start" style="fill:var(--red);font-size:11px;font-weight:700">no fixed level — keeps drifting</text>
+          </svg></div>
+          <div class="sl-verdict"><strong>Non-stationary.</strong> There's no fixed level to measure distance from — the series wanders further from where it started the longer you watch. This is the random-walk signature: variance grows with time.</div>
+        </div>
+        <div class="sl-panel" id="sty-2">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The day-over-day change of the price series, bouncing around a flat zero line with no trend">
+            <line x1="20" y1="100" x2="620" y2="100" style="stroke:var(--border2);stroke-width:1.5;stroke-dasharray:4,4"/>
+            <path style="fill:none;stroke:var(--green);stroke-width:2.5" d="M20,100 L60,80 L100,115 L140,90 L180,105 L220,70 L260,120 L300,85 L340,110 L380,75 L420,100 L460,130 L500,90 L540,105 L580,80 L620,100"/>
+            <text x="30" y="30" text-anchor="start" style="fill:var(--green);font-size:11px;font-weight:700">bounded around a fixed zero mean</text>
+          </svg></div>
+          <div class="sl-verdict"><strong>Much closer to stationary.</strong> Differencing the level into day-over-day change removes the trend — what's left oscillates around a fixed zero mean with roughly constant spread. This is why most modeling in this repo works on returns, not raw price levels.</div>
+        </div>
+        <div class="sl-panel" id="sty-3">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A spread oscillating around a fixed mean line, always pulled back whenever it strays">
+            <line x1="20" y1="100" x2="620" y2="100" style="stroke:var(--border2);stroke-width:1.5;stroke-dasharray:4,4"/>
+            <text x="595" y="95" text-anchor="end" style="fill:var(--text3);font-size:10px">μ</text>
+            <path style="fill:none;stroke:var(--purple);stroke-width:2.5" d="M20,100 L60,130 L100,145 L140,120 L180,90 L220,65 L260,85 L300,115 L340,135 L380,110 L420,80 L460,60 L500,85 L540,115 L580,130 L620,105"/>
+            <text x="30" y="30" text-anchor="start" style="fill:var(--purple);font-size:11px;font-weight:700">pulled back toward μ whenever it strays</text>
+          </svg></div>
+          <div class="sl-verdict"><strong>Stationary by construction.</strong> A well-specified spread should look like this too — bounded and pulled back toward a fixed mean, which is exactly the property a mean-reversion signal needs in order to be tradeable at all.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">How correlated is a series with its own past self?</h2>
+      <p class="sl-sub">For a stationary series, the ACF at lag k is the correlation between the series and a copy of itself shifted back k steps.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The formula</div>
+        <div class="sl-row"><div class="sl-box">γ(k)</div><div class="sl-arrow">÷</div><div class="sl-box">γ(0)</div><div class="sl-arrow">=</div><div class="sl-box green">ACF(k)</div></div>
+        <div class="sl-verdict">γ(k) is the <strong>autocovariance</strong> — how related X<sub>t</sub> is to X<sub>t−k</sub>, in raw units. γ(0) is just the series' own <strong>variance</strong> — autocovariance at lag zero — used to normalize. The result is a pure correlation between −1 and 1.</div>
+      </div>
+      <p class="sl-p">ACF(0) is always exactly 1 — any series is perfectly correlated with itself at zero lag. Plotting ACF(k) against k for a range of lags (typically the first 10-40) produces what's called a <strong>correlogram</strong>, and its shape is genuinely diagnostic, not decorative.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Three shapes, three stories</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">≈0</div><div><h4>White noise — no memory</h4><p>Each value is an independent draw. The correlogram sits near zero at every lag beyond zero, scattered randomly inside a thin significance band, with no discernible pattern.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">↘</div><div><h4>AR(1)-like — decays gradually</h4><p>High at lag 1, smaller at lag 2, smaller still at lag 3 — shrinking roughly geometrically toward zero, eventually disappearing into the noise band at higher lags.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>Trending / non-stationary — decays very slowly</h4><p>Still meaningfully elevated even 20-30 lags out. This is the classic visual tell-tale of a unit root — today's value literally contains the sum of every shock since the series began.</p></div></div>
+      </div>
+      <div class="sl-svgwrap">
+        <svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A bar chart of ten decaying autocorrelation bars, each roughly seventy percent the height of the last, fading into a dashed significance band by around lag seven">
+          <line x1="20" y1="110" x2="620" y2="110" style="stroke:var(--text3);stroke-width:1"/>
+          <line x1="20" y1="92" x2="620" y2="92" style="stroke:var(--border2);stroke-dasharray:3,3"/>
+          <line x1="20" y1="128" x2="620" y2="128" style="stroke:var(--border2);stroke-dasharray:3,3"/>
+          <rect x="46"  y="26.0"   width="28" height="84.0" style="fill:var(--blue)"/>
+          <rect x="102" y="51.2"   width="28" height="58.8" style="fill:var(--blue)"/>
+          <rect x="158" y="68.8"   width="28" height="41.2" style="fill:var(--blue)"/>
+          <rect x="214" y="81.2"   width="28" height="28.8" style="fill:var(--blue)"/>
+          <rect x="270" y="89.8"   width="28" height="20.2" style="fill:var(--blue)"/>
+          <rect x="326" y="95.9"   width="28" height="14.1" style="fill:var(--blue)"/>
+          <rect x="382" y="100.1"  width="28" height="9.9"  style="fill:var(--blue)"/>
+          <rect x="438" y="103.1"  width="28" height="6.9"  style="fill:var(--blue)"/>
+          <rect x="494" y="105.2"  width="28" height="4.8"  style="fill:var(--blue)"/>
+          <rect x="550" y="106.6"  width="28" height="3.4"  style="fill:var(--blue)"/>
+          <text x="60"  y="205" text-anchor="middle" style="fill:var(--text3);font-size:10px">1</text>
+          <text x="116" y="205" text-anchor="middle" style="fill:var(--text3);font-size:10px">2</text>
+          <text x="172" y="205" text-anchor="middle" style="fill:var(--text3);font-size:10px">3</text>
+          <text x="228" y="205" text-anchor="middle" style="fill:var(--text3);font-size:10px">4</text>
+          <text x="284" y="205" text-anchor="middle" style="fill:var(--text3);font-size:10px">5</text>
+          <text x="340" y="205" text-anchor="middle" style="fill:var(--text3);font-size:10px">6</text>
+          <text x="396" y="205" text-anchor="middle" style="fill:var(--text3);font-size:10px">7</text>
+          <text x="452" y="205" text-anchor="middle" style="fill:var(--text3);font-size:10px">8</text>
+          <text x="508" y="205" text-anchor="middle" style="fill:var(--text3);font-size:10px">9</text>
+          <text x="564" y="205" text-anchor="middle" style="fill:var(--text3);font-size:10px">10</text>
+          <text x="30" y="18" style="fill:var(--text3);font-size:10px">A stationary AR(1)-like correlogram — decays gradually toward the significance band</text>
+        </svg>
+      </div>
+      <div class="sl-note">Practitioners often eyeball a correlogram before ever running a formal test like ADF — a slowly-decaying ACF is the cheap first-pass signal that a proper stationarity test is worth running.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">What lag k adds, once you already know what's in between</h2>
+      <p class="sl-p">The ACF at lag k mixes together the <em>direct</em> relationship between X<sub>t</sub> and X<sub>t−k</sub> with everything carried indirectly through the intervening lags 1, …, k−1. The <strong>PACF</strong> at lag k is that same relationship <em>after removing (partialling out)</em> the linear effect of every lag in between — conceptually, the coefficient on X<sub>t−k</sub> in a regression of X<sub>t</sub> on X<sub>t−1</sub>, X<sub>t−2</sub>, …, X<sub>t−k</sub> all at once.</p>
+      <div class="sl-quote">Picture dropping a pebble in a pond. The ripple — the ACF — keeps spreading outward, fainter and fainter, but never really stops all at once. But if you ask "did the pebble itself splash again a moment ago" — the PACF — the answer is a clean yes right after the drop, and a flat no forever after. The single splash is the whole cause, even though its ripple keeps echoing outward for a while.</div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>In practice the PACF is computed efficiently via the Durbin-Levinson recursion, not one large regression per lag — but the regression framing above is the right way to understand what the number actually means: whatever X<sub>t−k</sub> still explains about X<sub>t</sub> once every closer lag has already had its say.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Watch the decay change shape as φ moves</h2>
+      <p class="sl-sub">Drag the slider. For a stationary AR(1) process, each bar is ACF(k) = φ<sup>k</sup>, for k = 1 through 10.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A live bar chart of the theoretical ACF for an AR one process, updating as the slider changes phi">
+            <line x1="20" y1="110" x2="620" y2="110" style="stroke:var(--text3);stroke-width:1"/>
+            <rect id="acfk-bar-1"  x="46"  y="0" width="28" height="0" style="fill:var(--blue)"/>
+            <rect id="acfk-bar-2"  x="102" y="0" width="28" height="0" style="fill:var(--blue)"/>
+            <rect id="acfk-bar-3"  x="158" y="0" width="28" height="0" style="fill:var(--blue)"/>
+            <rect id="acfk-bar-4"  x="214" y="0" width="28" height="0" style="fill:var(--blue)"/>
+            <rect id="acfk-bar-5"  x="270" y="0" width="28" height="0" style="fill:var(--blue)"/>
+            <rect id="acfk-bar-6"  x="326" y="0" width="28" height="0" style="fill:var(--blue)"/>
+            <rect id="acfk-bar-7"  x="382" y="0" width="28" height="0" style="fill:var(--blue)"/>
+            <rect id="acfk-bar-8"  x="438" y="0" width="28" height="0" style="fill:var(--blue)"/>
+            <rect id="acfk-bar-9"  x="494" y="0" width="28" height="0" style="fill:var(--blue)"/>
+            <rect id="acfk-bar-10" x="550" y="0" width="28" height="0" style="fill:var(--blue)"/>
+            <text x="60"  y="205" text-anchor="middle" style="fill:var(--text3);font-size:10px">1</text>
+            <text x="116" y="205" text-anchor="middle" style="fill:var(--text3);font-size:10px">2</text>
+            <text x="172" y="205" text-anchor="middle" style="fill:var(--text3);font-size:10px">3</text>
+            <text x="228" y="205" text-anchor="middle" style="fill:var(--text3);font-size:10px">4</text>
+            <text x="284" y="205" text-anchor="middle" style="fill:var(--text3);font-size:10px">5</text>
+            <text x="340" y="205" text-anchor="middle" style="fill:var(--text3);font-size:10px">6</text>
+            <text x="396" y="205" text-anchor="middle" style="fill:var(--text3);font-size:10px">7</text>
+            <text x="452" y="205" text-anchor="middle" style="fill:var(--text3);font-size:10px">8</text>
+            <text x="508" y="205" text-anchor="middle" style="fill:var(--text3);font-size:10px">9</text>
+            <text x="564" y="205" text-anchor="middle" style="fill:var(--text3);font-size:10px">10</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>AR(1) coefficient</span><span class="sl-live" id="acfk-phi-label">φ = 0.70</span></div>
+        <input type="range" class="sl-slider" id="acfk-slider" min="-95" max="95" step="5" value="70">
+        <div class="sl-note">Near φ = 0, the bars vanish almost immediately — barely more memory than white noise. Near ±0.95, the decay slows dramatically, starting to resemble the non-stationary case. Negative φ makes the bars alternate sign — a series that overshoots its mean every other step.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Put a number on "how much has it decayed by lag k"</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — compute the theoretical ACF</div>
+        <p class="sl-p" style="margin:0 0 14px">For a stationary AR(1) process, ACF(k) = φ<sup>k</sup>. Set φ and the lag k below.</p>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>φ</label><input type="number" class="sl-input" id="acf-phi" value="0.7" step="0.05"></div>
+          <div class="sl-calc-op">^</div>
+          <div class="sl-calc-field"><label>k (lag)</label><input type="number" class="sl-input" id="acf-k" value="3" step="1" min="0"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">ACF(k)</div>
+            <div class="sl-calc-result-val" id="acf-result">0.343</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>φ<sup>k</sup> = <b id="acf-step1">0.343</b></div>
+          <div id="acf-warn-line" style="display:none;color:var(--red)">|φ| ≥ 1 — this process isn't stationary. ACF(k) won't decay to zero as k grows; the formula above no longer describes a well-behaved autocorrelation.</div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="acf-reset">Reset to φ = 0.7, k = 3</button>
+      </div>
+      <p class="sl-p">This is the exact formula behind the decay you just dragged through above. On a real series, φ is estimated from the data — usually by fitting an AR(1) model or reading it straight off the lag-1 autocorrelation — but the shape it produces is exactly this one.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">ACF decays, PACF cuts off — the AR(p) signature</h2>
+      <p class="sl-sub">This is the payoff of defining both functions rather than just one.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">ACF — decays gradually</span>
+          <p>It never cleanly stops, because the direct dependence at lag p still echoes forward through every later lag via the chained-correlation mechanism. An AR(1) process, for instance, has ACF(k) = φ<sup>k</sup> — technically nonzero at every lag, however small.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">PACF — cuts off sharply after lag p</span>
+          <p>Once lags 1 through p are partialled out, there's genuinely nothing left for lag p+1 to explain. For AR(1) specifically: large at lag 1, then dropping abruptly to near-zero from lag 2 onward — even though the ACF at lag 2, 3, 4… is still visibly nonzero.</p>
+        </div>
+      </div>
+      <div class="sl-quote">That contrast is the classic Box-Jenkins signature of an autoregressive process — reading where the PACF cuts off is the standard way to identify p, the order of an AR model, directly from data instead of guessing a lookback window.</div>
+      <div class="sl-note">The mirror-image rule holds for a moving-average MA(q) process — ACF cuts off after lag q, PACF decays gradually — which is why the two plots together, not either alone, are the classical starting point for choosing an ARIMA model's (p,q).</div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">The desk-relevant payoff</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🔢</div><div><h4>Model order identification</h4><p>Box-Jenkins: a PACF cutoff plus a decaying ACF picks the AR order p directly off the plots, before ever running a fit.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">✅</div><div><h4>Pre-model sanity check</h4><p>GARCH, VAR, and the Cointegration residual test all assume stationarity — a correlogram is the cheapest check before trusting any of them.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📏</div><div><h4>ADF lag length</h4><p>The PACF of a differenced residual is a principled way to choose how many lagged-difference terms a Dickey-Fuller regression needs.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🪟</div><div><h4>Lookback-window design</h4><p>Any "last N periods" feature is an implicit autocorrelation claim — ACF/PACF is the checkable version of that assumption.</p></div></div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where reading a correlogram quietly goes wrong</div>
+        <p>Compute an ACF/PACF on a raw, trending price level instead of a return or a properly-tested spread, and the slow decay mostly just reflects the trend/unit-root behavior — not genuine short-memory structure. Difference or detrend first, then check the transformed series' correlogram.</p>
+        <p>Checking 20 or 40 lags at once and treating every bar that pokes outside the ±1.96/√N significance band as "real" ignores that testing many lags simultaneously is a multiple-comparisons problem — roughly 1 in 20 lags clears a 5% band by chance alone, even for genuine white noise. A single isolated spike is far weaker evidence than a clean, sustained decay or cutoff across several lags.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Quick check</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Why does a random walk's ACF decay so much more slowly than a stationary AR(1) process's ACF?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Its current value is the accumulated sum of every past shock, with no pull-back term to make that influence fade</button>
+        <button class="sl-quiz-opt">It has a larger σ than the AR(1) process</button>
+        <button class="sl-quiz-opt">A random walk always has a negative φ</button>
+        <div class="sl-quiz-explain">A random walk's value is X₀ plus the sum of every shock so far — it never truly "forgets." An AR(1) process's shocks fade geometrically (ACF(k) = φᵏ) precisely because |φ| &lt; 1 pulls it back toward its mean.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>For a stationary AR(1) process with φ = 0.6, what is ACF(2)?</h4>
+        <button class="sl-quiz-opt" data-correct="true">0.36</button>
+        <button class="sl-quiz-opt">1.2</button>
+        <button class="sl-quiz-opt">0.6</button>
+        <div class="sl-quiz-explain">ACF(k) = φᵏ, so ACF(2) = 0.6² = 0.36 — the same formula from the calculator above.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>A PACF that's large at lags 1 and 2, then drops into the noise band from lag 3 onward, most likely signals:</h4>
+        <button class="sl-quiz-opt" data-correct="true">An AR(2) process</button>
+        <button class="sl-quiz-opt">An MA(2) process</button>
+        <button class="sl-quiz-opt">White noise</button>
+        <div class="sl-quiz-explain">A PACF that cuts off after lag p is the AR(p) signature — here p = 2. An MA(2) process would show the opposite pattern: ACF cuts off, PACF decays gradually.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>What does "partial" mean in "partial autocorrelation"?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It removes (partials out) the effect of the intervening lags before measuring lag k</button>
+        <button class="sl-quiz-opt">It only uses part of the sample</button>
+        <button class="sl-quiz-opt">It measures correlation over a partial range of values</button>
+        <div class="sl-quiz-explain">PACF at lag k measures the relationship between X_t and X_{t−k} after removing the linear effect of every lag in between — what lag k adds beyond what the closer lags already told you.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Why is regressing one non-stationary price series on another dangerous?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It can produce a high R² and "significant" coefficients purely by chance — a spurious regression</button>
+        <button class="sl-quiz-opt">It always understates volatility</button>
+        <button class="sl-quiz-opt">It's fine as long as the sample is large enough</button>
+        <div class="sl-quiz-explain">Two independently trending non-stationary series can look strongly related in a regression with no real relationship at all. This is exactly why the Cointegration lesson checks the residual for stationarity before trusting the fit.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Stationarity means constant mean, variance, and autocovariance — all three depend only on lag k, never on the calendar date.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Raw price levels are usually non-stationary and random-walk-like; returns and well-specified spreads are usually much closer to stationary.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>The ACF measures the total relationship at each lag — direct dependence plus everything carried through the chain of intervening lags.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The PACF strips that chain out, measuring only what lag k adds beyond what the closer lags already explain.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>ACF decays gradually, PACF cuts off sharply after lag p — the Box-Jenkins signature that lets you read an AR model's order straight off the two plots.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Never trust a regression, an ARIMA fit, or a Cointegration test on a series you haven't checked for stationarity first — the spurious-regression risk is real, not theoretical.</p></div>
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">What this now lets you do</div>
+        <p>Read a correlogram and tell, at a glance, whether a series looks stationary or is dragging a unit root behind it. Pick an AR model's order — or size a lookback window — from evidence instead of a guessed round number. Recognise when a regression's strong-looking relationship might be a statistical mirage rather than a real one, before trusting it with capital.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Time Value of Money</h3>
+        <p>Discounting, compounding, and why a dollar today isn't worth a dollar next year — the foundation underneath every present-value calculation in this curriculum.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="time-value-of-money-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="stationarity-acf-pacf.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Slider: drag φ, live-redraw the ten ACF(k) = φ^k bars.
+  (function(){
+    var slider = document.getElementById('acfk-slider');
+    if (!slider) return;
+    var phiLabel = document.getElementById('acfk-phi-label');
+    var Y0 = 110, SCALE = 85;
+    function update(){
+      var phi = parseInt(slider.value, 10) / 100;
+      phiLabel.textContent = 'φ = ' + phi.toFixed(2);
+      for (var k = 1; k <= 10; k++) {
+        var bar = document.getElementById('acfk-bar-' + k);
+        if (!bar) continue;
+        var val = Math.pow(phi, k);
+        var h = Math.abs(val) * SCALE;
+        bar.setAttribute('height', h.toFixed(2));
+        bar.setAttribute('y', (val >= 0 ? Y0 - h : Y0).toFixed(2));
+        bar.setAttribute('style', 'fill:' + (val >= 0 ? 'var(--blue)' : 'var(--red)'));
+      }
+    }
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Calculator: theoretical ACF(k) = φ^k, with a guard for |φ| >= 1.
+  (function(){
+    var phiEl = document.getElementById('acf-phi');
+    if (!phiEl) return;
+    var kEl = document.getElementById('acf-k');
+    var result = document.getElementById('acf-result');
+    var step1 = document.getElementById('acf-step1');
+    var warnLine = document.getElementById('acf-warn-line');
+    var resetBtn = document.getElementById('acf-reset');
+    var DEFAULTS = { phi: 0.7, k: 3 };
+
+    function fmt(n){ return Math.abs(n) < 1e-9 ? '0' : n.toFixed(3); }
+
+    function recompute(){
+      var phi = parseFloat(phiEl.value);
+      var kRaw = parseFloat(kEl.value);
+      if (!isFinite(phi) || !isFinite(kRaw) || kRaw < 0) {
+        result.textContent = '—';
+        step1.textContent = '—';
+        warnLine.style.display = 'none';
+        result.style.color = '';
+        return;
+      }
+      var k = Math.round(kRaw);
+      var val = Math.pow(phi, k);
+      var text = fmt(val);
+      result.textContent = text;
+      step1.textContent = text;
+      if (Math.abs(phi) >= 1) {
+        warnLine.style.display = '';
+        result.style.color = 'var(--red)';
+      } else {
+        warnLine.style.display = 'none';
+        result.style.color = '';
+      }
+    }
+
+    [phiEl, kEl].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      phiEl.value = DEFAULTS.phi; kEl.value = DEFAULTS.k;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

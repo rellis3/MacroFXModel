@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculus for Finance — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Calculus for Finance — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">11</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer full derivations, MathJax notation, and a 6-question self-test?<a href="calculus-for-finance.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Deeper Foundations 2</div>
+      <h1 class="sl-h1">Calculus, or <em>the Math of Change and Accumulation</em></h1>
+      <p class="sl-lede">Three lessons already in this Theory Lab quietly lean on calculus without teaching it: Ornstein-Uhlenbeck writes a "rate of change," Black-Scholes builds a whole equation out of how price reacts to the underlying, and Kelly Criterion pulls a σ²/2 correction out of nowhere. This deck builds the three ideas underneath all of that — the derivative, the integral, and the Taylor series — from nothing, so none of it has to be taken on faith later.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Average speed vs. the speedometer, right now</h2>
+      <p class="sl-sub">Drag the slider. As the second point slides toward the first, the secant line rotates into the tangent line.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A curve with a secant line through two points that collapses into a tangent line as the gap between the points shrinks">
+            <line x1="40" y1="20" x2="40" y2="230" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="40" y1="230" x2="610" y2="230" style="stroke:var(--border2);stroke-width:1"/>
+            <path style="fill:none;stroke:var(--blue);stroke-width:2.5" d="M60,210 C 160,210 200,40 340,40 C 460,40 500,120 600,60"/>
+            <line id="cf-secant" x1="220" y1="0" x2="220" y2="0" style="stroke:var(--amber);stroke-width:2.5"/>
+            <circle id="cf-p1" cx="220" cy="0" r="5.5" style="fill:var(--red)"/>
+            <circle id="cf-p2" cx="220" cy="0" r="5.5" style="fill:var(--purple)"/>
+            <text x="580" y="248" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)" text-anchor="middle">x</text>
+            <text id="cf-hlabel" x="330" y="252" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)" text-anchor="middle">h = 2.20</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Gap size, h</span><span class="sl-live" id="cf-hval">h = 2.20</span></div>
+        <input type="range" class="sl-slider" id="cf-slider" min="2" max="220" step="1" value="220">
+        <div class="sl-verdict" id="cf-verdict"><strong>Secant line</strong> — the red and purple points are far apart, so this line's slope is only an <em>average</em> rate of change over the whole gap.</div>
+      </div>
+      <p class="sl-p">Slide h all the way down and the two points merge into one: the line stops being a secant connecting two points and becomes the <strong>tangent</strong> — the single line that just grazes the curve at that instant. Formally, average rate of change is rise over run, [f(x+h) − f(x)] / h. The derivative is what that ratio approaches as h shrinks all the way to zero: f′(x) = lim(h→0) [f(x+h) − f(x)] / h. A fixed, non-zero h always gives an approximation; only the limit gives the exact instantaneous value.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">One derivative, worked in full: d/dx(x²) = 2x</h2>
+      <p class="sl-sub">Every step of the algebra, so nothing is taken on faith.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="wx-tabs">
+          <button class="sl-tab active" data-panel="wx-1">Step 1 — expand</button>
+          <button class="sl-tab" data-panel="wx-2">Step 2 — subtract</button>
+          <button class="sl-tab" data-panel="wx-3">Step 3 — divide</button>
+          <button class="sl-tab" data-panel="wx-4">Step 4 — take the limit</button>
+        </div>
+        <div class="sl-panel active" id="wx-1">
+          <div class="sl-row"><div class="sl-box">f(x+h)</div><div class="sl-arrow">=</div><div class="sl-box">(x+h)²</div><div class="sl-arrow">=</div><div class="sl-box amber">x² + 2xh + h²</div></div>
+          <div class="sl-verdict">Expanding the square produces one term linear in h (2xh) and one quadratic in h (h²) — the h² term is what carries this curve's "curviness."</div>
+        </div>
+        <div class="sl-panel" id="wx-2">
+          <div class="sl-row"><div class="sl-box">(x² + 2xh + h²) − x²</div><div class="sl-arrow">=</div><div class="sl-box amber">2xh + h²</div></div>
+          <div class="sl-verdict">The x² term cancels exactly against −f(x), leaving only the two terms that involve h.</div>
+        </div>
+        <div class="sl-panel" id="wx-3">
+          <div class="sl-row"><div class="sl-box">(2xh + h²) / h</div><div class="sl-arrow">=</div><div class="sl-box green">2x + h</div></div>
+          <div class="sl-verdict">Both remaining terms share a factor of h, so it cancels cleanly — valid because this division happens <em>before</em> h reaches zero, not after.</div>
+        </div>
+        <div class="sl-panel" id="wx-4">
+          <div class="sl-row"><div class="sl-box">lim(h→0) (2x + h)</div><div class="sl-arrow">=</div><div class="sl-box green">2x</div></div>
+          <div class="sl-verdict">The leftover h term shrinks to exactly zero. What survives, 2x, is the derivative — <strong>exactly</strong>, not approximately.</div>
+        </div>
+        <div class="sl-note">A straight line f(x) = x has no surviving h term at all — f(x+h) − f(x) = h, giving a derivative of exactly 1 everywhere. The h² term is precisely what a curve has that a line doesn't.</div>
+      </div>
+      <p class="sl-p">This same limit machinery generalizes into rules you'd otherwise memorize by rote: for f(x) = xⁿ, the derivative is always nxⁿ⁻¹ (here, n=2 gives 2x¹ = 2x). A constant added anywhere contributes nothing, because it cancels in the subtraction step exactly like x² did above. Every "differentiation rule" is this same four-step limit, done once in general instead of by hand each time.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">The integral: area you don't have to add up by hand</h2>
+      <p class="sl-sub">A different question: not "how fast is f changing," but "how much area sits under the curve?"</p>
+      <div class="sl-svgwrap">
+        <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A smooth upward curve with the area beneath it between two points shaded, illustrating a definite integral as accumulated area">
+          <line x1="50" y1="20" x2="50" y2="232" style="stroke:var(--text3)"/>
+          <line x1="50" y1="232" x2="610" y2="232" style="stroke:var(--text3)"/>
+          <text x="615" y="236" font-size="12" font-family="'DM Mono',monospace" fill="var(--text3)">x</text>
+          <text x="30" y="120" font-size="12" font-family="'DM Mono',monospace" fill="var(--text3)" text-anchor="middle" transform="rotate(-90 30 120)">f(x)</text>
+          <polygon points="150,232 150,150 220,110 290,80 290,232" style="fill:var(--green);fill-opacity:0.22;stroke:var(--green);stroke-width:1"/>
+          <line x1="150" y1="232" x2="150" y2="150" style="stroke:var(--green);stroke-width:1;stroke-dasharray:3,3"/>
+          <line x1="220" y1="232" x2="220" y2="110" style="stroke:var(--green);stroke-width:1;stroke-dasharray:3,3"/>
+          <line x1="290" y1="232" x2="290" y2="80" style="stroke:var(--green);stroke-width:1;stroke-dasharray:3,3"/>
+          <path style="fill:none;stroke:var(--blue);stroke-width:2.5" d="M70,220 C 150,220 150,150 220,110 C 290,80 350,55 420,42 C 480,32 540,30 590,32"/>
+          <text x="220" y="205" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--green)" text-anchor="middle">area = ∫ f(x) dx</text>
+          <text x="150" y="248" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)" text-anchor="middle">a</text>
+          <text x="290" y="248" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)" text-anchor="middle">b</text>
+        </svg>
+      </div>
+      <p class="sl-p">Chop the interval from a to b into many thin rectangles of width Δx, each with height roughly f(x) at that slice, add up the rectangle areas, then let the slices get infinitesimally thin. The jagged sum becomes the exact, smooth area: ∫ₐᵇ f(x) dx = lim(Δx→0) Σ f(xᵢ) Δx.</p>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">The shortcut nobody skips</div>
+        <p>Summing infinite slices by hand is tedious, so nobody does it. The Fundamental Theorem of Calculus — next slide — turns that entire sum into a two-step subtraction.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">The speedometer and the odometer are mirror images</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Derivative — the speedometer</span>
+          <p>Tells you your speed <em>right now</em>. Given a distance-traveled function, the derivative reads off the instantaneous rate at any instant — the tangent-line slope from Section 1.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Integral — the odometer</span>
+          <p>Tells you total distance <em>so far</em>. Given a speed function, the integral accumulates every instant of speed into a running total — the shaded area from Section 3.</p>
+        </div>
+      </div>
+      <p class="sl-p">The mirror relationship isn't a coincidence — it's a theorem. The <strong>Fundamental Theorem of Calculus</strong> says differentiation and integration are exact inverses: if F is any antiderivative of f (meaning F′(x) = f(x)), the definite integral collapses to plain subtraction.</p>
+      <div class="sl-row"><div class="sl-box">∫ₐᵇ f(x) dx</div><div class="sl-arrow">=</div><div class="sl-box green">F(b) − F(a)</div></div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Read plainly</div>
+        <p>Find a function whose derivative is your curve, evaluate it at the two endpoints, subtract. The odometer reading at the end minus the odometer reading at the start gives total distance — you never had to add up infinitely many instants of speed.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Taylor series: guessing a function from one point alone</h2>
+      <p class="sl-sub">If all you know is a function's value and its rate(s) of change at one point x, how good a guess can you make nearby?</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">0</div><div><h4>Zeroth order — f(x)</h4><p>The flat guess: assume nothing changes at all. f(x+h) ≈ f(x). Fine only if the function barely moves.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">1</div><div><h4>First order — f(x) + f′(x)h</h4><p>Add the tangent-line rise: today's value, plus slope times step size. This is exactly the tangent line from Section 1, extended a finite distance h.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">2</div><div><h4>Second order — + ½f″(x)h²</h4><p>Correct for the curve bending away from that straight tangent line. f″(x), the derivative of the derivative, measures exactly how fast the slope itself is changing.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">…</div><div><h4>Higher orders exist too</h4><p>A full Taylor series keeps adding terms (f‴(x)h³/6, and on) for an ever-closer match. Finance almost always stops at second order — accurate enough for small moves, far simpler than carrying more.</p></div></div>
+      </div>
+      <div class="sl-quote">f(x+h) ≈ f(x) + f′(x)h + ½f″(x)h² — each added term is a correction for exactly what the previous term missed. This second-order version is the workhorse used throughout the rest of this curriculum.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Where the σ²/2 shape actually comes from</h2>
+      <p class="sl-sub">Expand f(x) = ln(1+x) around x = 0 using the second-order Taylor formula. Three numbers are needed.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Three ingredients</div>
+        <div class="sl-row"><div class="sl-box">f(0) = ln(1)</div><div class="sl-arrow">=</div><div class="sl-box">0</div></div>
+        <div class="sl-row"><div class="sl-box">f′(x) = 1/(1+x)</div><div class="sl-arrow">→</div><div class="sl-box">f′(0) = 1</div></div>
+        <div class="sl-row"><div class="sl-box">f″(x) = −1/(1+x)²</div><div class="sl-arrow">→</div><div class="sl-box amber">f″(0) = −1</div></div>
+        <div class="sl-note">Plug all three into f(0+h) ≈ f(0) + f′(0)h + [f″(0)/2]h² :</div>
+        <div class="sl-row"><div class="sl-box">0 + (1)h + (−1/2)h²</div><div class="sl-arrow">=</div><div class="sl-box green">h − h²/2</div></div>
+      </div>
+      <p class="sl-p">Relabel the step h as a per-period return R, and this is exactly the shortcut used — without derivation — back in the Returns primer: <strong>ln(1+R) ≈ R − R²/2</strong>. It isn't a separate finance approximation someone invented; it's the general-purpose Taylor formula with three specific numbers dropped in. The minus-one-half is not a design choice — it falls straight out of f″(0) = −1 for this particular function.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Same shape, twice: volatility drag and Kelly</h2>
+      <p class="sl-sub">Average the identity ln(1+R) ≈ R − R²/2 across many periods and the σ²/2 term in the Kelly lesson falls out directly.</p>
+      <div class="sl-row"><div class="sl-box">avg[ln(1+R)]</div><div class="sl-arrow">=</div><div class="sl-box">g</div><div class="sl-arrow">≈</div><div class="sl-box">avg[R] − avg[R²]/2</div></div>
+      <p class="sl-p">The left side, averaged, is the compounded growth rate g (because log returns add across time). On the right, avg[R] is the arithmetic mean return μ; for a return series whose mean is small relative to its spread, avg[R²] is well approximated by the variance σ². Put the averaged sides back together: <strong>g ≈ μ − σ²/2</strong> — the exact volatility-drag formula the Kelly Criterion lesson uses. Same h − h²/2 shape, relabeled once per period and once again after averaging.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — recompute the Taylor error live</div>
+        <p class="sl-p" style="margin:0 0 14px">Starts on the small-step case, h = 0.05. Try h = 0.30 to see the approximation degrade as the step grows.</p>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Step, h</label><input type="number" class="sl-input" id="tay-h" value="0.05" step="0.01"></div>
+          <div class="sl-calc-op">→</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">True ln(1+h)</div>
+            <div class="sl-calc-result-val" id="tay-true">0.04879</div>
+          </div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Approx h − h²/2</div>
+            <div class="sl-calc-result-val" id="tay-approx">0.04875</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Error (true − approx): <b id="tay-err">0.00004</b></div>
+          <div id="tay-note" style="color:var(--text3)"></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="tay-reset">Reset to h = 0.05</button>
+        <div class="sl-note">A vol input of 20% gives σ²/2 = (0.20)² / 2 = 0.02 — the familiar desk shorthand "20% vol costs about 2% a year" is this exact number, not a memorized rule of thumb.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Derivatives you're already trading with</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📐</div><div><h4>Delta is dC/dS</h4><p>An option's delta is literally the first-order Taylor term of its price function with respect to the underlying — read off a risk screen instead of derived from a limit by hand.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">∿</div><div><h4>Gamma is the curvature correction</h4><p>ΔC ≈ δΔS is a first-order (tangent-line) estimate, good only for small moves. Gamma is d²C/dS² — the second-order term that corrects it for a larger move, exactly ½γ(ΔS)².</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>Optimizing = setting a derivative to zero</h4><p>Kelly's growth-optimal fraction and a regression's least-squares coefficients are both found the same way: differentiate the objective, solve where it's flat.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">∫</div><div><h4>Integrals as probability and P&amp;L</h4><p>A CDF is the integral of a density. An equity curve is the integral of a P&amp;L rate over time — the odometer-from-speedometer idea, applied to trading.</p></div></div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>Real price series only exist at discrete points, so there's no literal h→0 to take. Practitioners approximate a derivative with a finite difference — Δf/Δx over the smallest available step, or a rolling-window regression slope — and accept the extra noise that comes with picking a window. And every Taylor approximation is local: delta alone, without the gamma correction, is the single most common way this local-ness bites in practice.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Quick check</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Why is the derivative defined with a limit, h→0, instead of just picking a small fixed h?</h4>
+        <button class="sl-quiz-opt">Because fixed values of h are too hard to compute by hand</button>
+        <button class="sl-quiz-opt" data-correct="true">Because any fixed h only gives a secant-line average that depends on the choice of h; the limit gives the one, unambiguous tangent slope</button>
+        <button class="sl-quiz-opt">Because h must always equal zero for the formula to be valid</button>
+        <div class="sl-quiz-explain">A fixed, non-zero h always describes the average rate of change over that gap. Only shrinking h all the way to zero removes the dependence on gap size and leaves the single instantaneous slope.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>In expanding (x+h)², what does the h² term represent, and why does it vanish in the final derivative?</h4>
+        <button class="sl-quiz-opt">It's an error term that should be ignored from the start</button>
+        <button class="sl-quiz-opt" data-correct="true">It carries the curve's curvature; after dividing by h it becomes a leftover h, which genuinely shrinks to zero in the limit</button>
+        <button class="sl-quiz-opt">It vanishes because h is assumed to equal 1</button>
+        <div class="sl-quiz-explain">A straight line has no h² term at all — that's exactly the difference between a line and a curve. Dividing by h leaves a single h behind, and that term correctly goes to zero as h→0.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>What does the Fundamental Theorem of Calculus actually say?</h4>
+        <button class="sl-quiz-opt">Every function has exactly one integral and one derivative</button>
+        <button class="sl-quiz-opt" data-correct="true">Differentiation and integration are exact inverse operations — a definite integral equals an antiderivative evaluated at the endpoints and subtracted</button>
+        <button class="sl-quiz-opt">Integrals can only be computed by summing infinitely many rectangles</button>
+        <div class="sl-quiz-explain">∫ₐᵇ f(x)dx = F(b) − F(a) for any antiderivative F of f. This is exactly why nobody sums infinite slices by hand.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Where does the σ²/2 in g ≈ μ − σ²/2 come from?</h4>
+        <button class="sl-quiz-opt">It's an empirical constant fitted to historical market data</button>
+        <button class="sl-quiz-opt" data-correct="true">It's the second-order Taylor term of ln(1+x) around x=0, since f″(0) = −1 for that function, averaged across many periods</button>
+        <button class="sl-quiz-opt">It comes from the first derivative of the price function</button>
+        <div class="sl-quiz-explain">f(x)=ln(1+x) has f(0)=0, f′(0)=1, f″(0)=−1. Plugging into f(0+h) ≈ f(0)+f′(0)h+f″(0)h²/2 gives h − h²/2; averaging over periods turns that into μ − σ²/2.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Why is delta alone insufficient for a large move in the underlying?</h4>
+        <button class="sl-quiz-opt">Delta only applies to put options, not calls</button>
+        <button class="sl-quiz-opt" data-correct="true">Delta is a first-order (tangent-line) estimate that assumes the slope stays constant; gamma, the second-order term, corrects for delta itself changing as the underlying moves</button>
+        <button class="sl-quiz-opt">Delta is always exactly 1.0 for any option</button>
+        <div class="sl-quiz-explain">ΔC ≈ δΔS ignores curvature. Adding ½γ(ΔS)² — the second-order Taylor term — captures the part of the move delta alone misses.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>A derivative is the tangent-line slope — the limit of a secant line's average rate of change as the gap between two points shrinks to zero.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>An integral is accumulated area under a curve, and the Fundamental Theorem of Calculus proves it's the exact inverse of a derivative — find an antiderivative, evaluate at two endpoints, subtract.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>A Taylor series builds an estimate one correction at a time: zeroth order is flat, first order adds the tangent line, second order corrects for curvature.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>ln(1+R) ≈ R − R²/2 and g ≈ μ − σ²/2 are the identical second-order Taylor expansion of ln(1+x), applied once per period and once again after averaging — not two separate finance shortcuts.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Delta and gamma are literally Taylor terms — delta is the first-order derivative of an option's price with respect to the underlying, gamma is the second-order curvature correction.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Every Taylor approximation is local — accurate near the expansion point, and increasingly wrong the larger the step, exactly as the worked example's error growth showed.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Read dX_t = θ(μ−X_t)dt + σdW_t in the Ornstein-Uhlenbeck lesson as exactly what it is — a rate of change. Recognise delta and gamma on a risk screen as first- and second-order Taylor terms rather than options-specific magic. Rederive "20% vol costs about 2% a year" from scratch instead of memorizing it, and know exactly why the minus-one-half is there.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Stationarity, ACF &amp; PACF</h3>
+        <p>Deeper Foundations 3 — why a mean-reverting series behaves so differently from a random walk, and how to read the autocorrelation plots that tell the two apart.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="stationarity-acf-pacf-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="calculus-for-finance.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Secant-to-tangent slider — the two points collapse together as h shrinks.
+  (function(){
+    var slider = document.getElementById('cf-slider');
+    if (!slider) return;
+    var hVal = document.getElementById('cf-hval');
+    var hLabel = document.getElementById('cf-hlabel');
+    var secant = document.getElementById('cf-secant');
+    var p1 = document.getElementById('cf-p1'), p2 = document.getElementById('cf-p2');
+    var verdict = document.getElementById('cf-verdict');
+
+    // Cubic Bezier path M60,210 C160,210 200,40 340,40 C460,40 500,120 600,60
+    // approximated with a piecewise function for the demo's own x-position math.
+    function curveY(x){
+      // Two joined cubic segments over x in [60,340] and [340,600], matched
+      // approximately to the drawn path above, purely for slider geometry.
+      if (x <= 340) {
+        var t = (x - 60) / (340 - 60);
+        return 210 + (40 - 210) * (3*t*t - 2*t*t*t);
+      } else {
+        var t2 = (x - 340) / (600 - 340);
+        return 40 + (60 - 40) * (3*t2*t2 - 2*t2*t2*t2);
+      }
+    }
+
+    var CENTER = 340; // point of tangency, x0
+
+    function update(){
+      var h = parseInt(slider.value, 10) / 10; // 2..220 -> 0.2..22.0 px-scaled
+      var hReal = h.toFixed(2); // display as a small "unit" gap
+      hVal.textContent = 'h = ' + hReal;
+      hLabel.textContent = 'h = ' + hReal;
+
+      var x1 = CENTER - h, x2 = CENTER + h;
+      x1 = Math.max(65, x1); x2 = Math.min(595, x2);
+      var y1 = curveY(x1), y2 = curveY(x2);
+
+      p1.setAttribute('cx', x1); p1.setAttribute('cy', y1);
+      p2.setAttribute('cx', x2); p2.setAttribute('cy', y2);
+
+      // Extend the secant line well past both points so it reads as a line.
+      var dx = x2 - x1, dy = y2 - y1;
+      var len = Math.sqrt(dx*dx + dy*dy) || 1;
+      var ext = 90;
+      var ux = dx / len, uy = dy / len;
+      secant.setAttribute('x1', x1 - ux * ext);
+      secant.setAttribute('y1', y1 - uy * ext);
+      secant.setAttribute('x2', x2 + ux * ext);
+      secant.setAttribute('y2', y2 + uy * ext);
+      hLabel.setAttribute('x', (x1 + x2) / 2);
+
+      var gapUnits = parseFloat(hReal);
+      if (gapUnits < 0.3) {
+        verdict.innerHTML = '<strong>Tangent line</strong> — the gap has shrunk to almost nothing. The red and purple points have merged; this line now shows the instantaneous slope f′(x₀) at a single point.';
+      } else if (gapUnits < 2) {
+        verdict.innerHTML = '<strong>Getting close</strong> — the secant line is rotating toward the tangent as h shrinks, exactly the limit process the derivative is built from.';
+      } else {
+        verdict.innerHTML = '<strong>Secant line</strong> — the red and purple points are far apart, so this line’s slope is only an <em>average</em> rate of change over the whole gap.';
+      }
+    }
+
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Live Taylor-approximation calculator: true ln(1+h) vs. h - h^2/2.
+  (function(){
+    var hInput = document.getElementById('tay-h');
+    if (!hInput) return;
+    var trueOut = document.getElementById('tay-true');
+    var approxOut = document.getElementById('tay-approx');
+    var errOut = document.getElementById('tay-err');
+    var note = document.getElementById('tay-note');
+    var resetBtn = document.getElementById('tay-reset');
+    var DEFAULT_H = 0.05;
+
+    function recompute(){
+      var h = parseFloat(hInput.value);
+      if (!isFinite(h) || h <= -1) {
+        trueOut.textContent = '—';
+        approxOut.textContent = '—';
+        errOut.textContent = '—';
+        note.textContent = 'Enter h > -1 so that 1 + h stays positive.';
+        return;
+      }
+      var trueVal = Math.log(1 + h);
+      var approx = h - (h * h) / 2;
+      var err = trueVal - approx;
+      trueOut.textContent = trueVal.toFixed(5);
+      approxOut.textContent = approx.toFixed(5);
+      errOut.textContent = err.toFixed(5);
+      note.textContent = Math.abs(h) > 0.15 ? 'Larger step — notice the error growing faster than h itself.' : 'Small step — the approximation is very close.';
+    }
+
+    hInput.addEventListener('input', recompute);
+    resetBtn.addEventListener('click', function(){
+      hInput.value = DEFAULT_H;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>
