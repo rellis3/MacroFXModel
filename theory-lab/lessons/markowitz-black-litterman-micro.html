@@ -429,7 +429,6 @@
       valEl.textContent = 'ρ = ' + rho.toFixed(2);
 
       var d = 'M';
-      var best = null;
       for (var i = 0; i <= 50; i++) {
         var w1 = i / 50;
         var w2 = 1 - w1;
@@ -438,9 +437,18 @@
         var sigma = Math.sqrt(Math.max(varP, 0));
         var px = toPx(sigma, mu);
         d += (i === 0 ? '' : ' L') + px[0].toFixed(1) + ',' + px[1].toFixed(1);
-        if (!best || sigma < best.sigma) best = { w1: w1, w2: w2, sigma: sigma, mu: mu };
       }
       path.setAttribute('d', d);
+
+      // Exact closed-form minimum-variance point (not the 50-step curve grid)
+      // so this matches the calculator slide's numbers exactly at the same rho.
+      var mvNum = S2*S2 - rho*S1*S2;
+      var mvDen = S1*S1 + S2*S2 - 2*rho*S1*S2;
+      var mvW1 = Math.min(1, Math.max(0, mvNum / mvDen));
+      var mvW2 = 1 - mvW1;
+      var mvMu = mvW1 * MU1 + mvW2 * MU2;
+      var mvVar = mvW1*mvW1*S1*S1 + mvW2*mvW2*S2*S2 + 2*mvW1*mvW2*rho*S1*S2;
+      var best = { w1: mvW1, w2: mvW2, sigma: Math.sqrt(Math.max(mvVar, 0)), mu: mvMu };
 
       var bestPx = toPx(best.sigma, best.mu);
       dot.setAttribute('cx', bestPx[0].toFixed(1));
