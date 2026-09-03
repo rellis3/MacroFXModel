@@ -423,6 +423,56 @@ export function basisImplausible(basis, spot) {
     Math.abs(basis) > spot * MAX_BASIS_FRAC;
 }
 
+// A strike far from spot carrying OI that dwarfs every wall actually near spot is not
+// a position — it's the deep-OTM-tail cousin of the row-cap bug above (MAX_STRIKE_ROWS):
+// a well-formed-looking number that quietly corrupts every downstream total once it
+// lands. 2026-09-03: gold's 83-DTE column reported 38,019 contracts at a strike 4.5x
+// spot — absent the day before, and carrying a recorded day-over-day CHANGE of exactly
+// zero, which a position that size cannot have if it is genuinely new. It single-
+// handedly doubled that day's total OI and pushed every real near-money wall off the
+// top-8 ranking.
+//
+// `nearFrac` sets the trusted reference: the largest call OR put OI among strikes
+// within nearFrac of spot (near-money legitimately gets large, so this is a ceiling on
+// TRUST, not a cap on size). `farFrac` sets which strikes are even CANDIDATES for
+// scrubbing — inside it, a wall is left alone no matter how big (a genuine strong wall
+// close to spot is exactly what this file exists to find). Only a strike beyond
+// farFrac AND carrying more than oiMult × the trusted reference gets scrubbed — gold's
+// real strike at 13000 (~1000 OI, ~3x spot, stable two days running per the row-cap
+// comment above) stays exactly where it belongs.
+//
+// Returns `keep` (a boolean mask, same order/length as the input) so a caller can
+// apply the SAME exclusion to every array indexed alongside strikes/calls/puts (chg,
+// persistence, …) in one pass — filtering only strikes/calls/puts here and leaving a
+// caller's parallel array to drift out of alignment is exactly the two-copies-that-
+// silently-disagree bug this file exists to avoid. `anomalies` is the human-legible
+// record of what got excluded and why — REPORTED, not silently dropped, same as
+// `truncated`.
+export function oiScrubImplausibleStrikes(strikes, calls, puts, spot, { nearFrac = 0.08, farFrac = 2.0, oiMult = 2 } = {}) {
+  const n = Array.isArray(strikes) ? strikes.length : 0;
+  const keep = new Array(n).fill(true);
+  const anomalies = [];
+  if (!n || !(spot > 0)) return { keep, anomalies };
+  const nearBand = spot * nearFrac;
+  let nearRef = 0;
+  for (let i = 0; i < n; i++) {
+    if (Math.abs(strikes[i] - spot) <= nearBand)
+      nearRef = Math.max(nearRef, Math.abs(calls[i] || 0), Math.abs(puts[i] || 0));
+  }
+  if (!nearRef) return { keep, anomalies };   // nothing near spot to trust as a reference — don't guess at one
+  const farLo = spot / farFrac, farHi = spot * farFrac;
+  for (let i = 0; i < n; i++) {
+    const s = strikes[i], c = Math.abs(calls[i] || 0), p = Math.abs(puts[i] || 0);
+    if (s >= farLo && s <= farHi) continue;                  // near enough to trust regardless of size
+    const worst = Math.max(c, p);
+    if (worst <= nearRef * oiMult) continue;                  // big, but not implausibly so
+    keep[i] = false;
+    anomalies.push({ strike: s, callOI: c, putOI: p,
+      reason: `${worst} OI at a strike ${(s / spot).toFixed(1)}x spot is ${(worst / nearRef).toFixed(1)}x the largest near-money wall (${nearRef} OI)` });
+  }
+  return { keep, anomalies };
+}
+
 // ── Spot / futures price estimation from OI data ─────────────────────────────
 // For CME FX options the strikes are in futures price terms, not spot.
 // We estimate the current futures price from the OI distribution by finding
@@ -1514,6 +1564,19 @@ export function oiCalcExposures(strikes, calls, puts, spot, pair, T = OI_GREEK_T
 // level set that sits alongside the far, liquid primary expiry).
 export function computeExpiryLevels(strikes, calls, puts, spot, pair, { dte = null, minOI = 20, numLevels = 8, sigmaFn = null } = {}) {
   if (!Array.isArray(strikes) || strikes.length < 2 || !(spot > 0)) return null;
+  // Scrub deep-OTM implausible-OI strikes before ANYTHING below reads this book — see
+  // oiScrubImplausibleStrikes. This is the DAY-expiry path (what the bot actually
+  // trades), so it gets the same protection as buildOIEntry's top-level/primary book
+  // even though the 2026-09-03 incident happened to land in the far book — the failure
+  // mode is universal to any expiry column, not specific to which one gets picked.
+  const _oiScrub = oiScrubImplausibleStrikes(strikes, calls, puts, spot);
+  if (_oiScrub.anomalies.length) {
+    const _k = _oiScrub.keep;
+    strikes = strikes.filter((_, i) => _k[i]);
+    calls = calls.filter((_, i) => _k[i]);
+    puts = puts.filter((_, i) => _k[i]);
+    if (strikes.length < 2) return null;
+  }
   const T = Math.min(365, Math.max(1, Number.isFinite(dte) && dte > 0 ? dte : 14)) / 365;
   const cs = oiContractSize(pair);
   // 3× strength tiers: each wall's OI vs its 2-either-side neighbours (identical to the
@@ -1558,6 +1621,7 @@ export function computeExpiryLevels(strikes, calls, puts, spot, pair, { dte = nu
       ? flips.reduce((m, f) => (Math.abs(f.price - spot) < Math.abs(m.price - spot) ? f : m)).price
       : null,
     regime: exposures.gex > 0 ? 'PIN' : exposures.gex < 0 ? 'BREAKOUT' : null,   // sign of net dealer GEX
+    oiAnomalies: _oiScrub.anomalies,   // strikes scrubbed as implausible OI — [] on every normal day
   };
 }
 
@@ -1854,7 +1918,7 @@ export async function buildOIEntry({
   // the FULL matrix, keyed by ORIGINAL (pre-shift) strikes. persArr aligns to the
   // parsed (near-dated) strikes so it can be attached to each wall by index.
   const _persMap = oiMatrixPersistence(rawOI, minOI);
-  const _persArr = parsed.strikes.map(s => _persMap?.get(s) ?? 0);
+  let _persArr = parsed.strikes.map(s => _persMap?.get(s) ?? 0);
   const termStructure = oiMatrixTermStructure(rawOI, minOI);   // null for the simple format
 
   // Per-expiry SPOT-terms breakdown — the same max-pain / call-wall / put-wall that the
@@ -1882,6 +1946,23 @@ export async function buildOIEntry({
     parsed.strikes = futuresIsInverted(pair)
       ? parsed.strikes.map(s => (1 / s) - basis)
       : parsed.strikes.map(s => s - basis);
+  }
+
+  // Scrub deep-OTM implausible-OI strikes — see oiScrubImplausibleStrikes. Right here,
+  // right after the basis-shift and before ANYTHING below (withOI, callWalls, putWalls,
+  // totals, max pain, GEX) reads `parsed`, so every consumer inherits the same clean
+  // list from one choke point instead of each needing its own guard. `_persArr` was
+  // built just above from the SAME pre-shift strikes order/length, so it gets the
+  // identical mask to stay index-aligned with the walls it is attached to.
+  const _oiScrub = oiScrubImplausibleStrikes(parsed.strikes, parsed.calls, parsed.puts, spot);
+  if (_oiScrub.anomalies.length) {
+    const _k = _oiScrub.keep;
+    parsed.strikes = parsed.strikes.filter((_, i) => _k[i]);
+    parsed.calls   = parsed.calls.filter((_, i) => _k[i]);
+    parsed.puts    = parsed.puts.filter((_, i) => _k[i]);
+    if (Array.isArray(parsed.callChg)) parsed.callChg = parsed.callChg.filter((_, i) => _k[i]);
+    if (Array.isArray(parsed.putChg))  parsed.putChg  = parsed.putChg.filter((_, i) => _k[i]);
+    _persArr = _persArr.filter((_, i) => _k[i]);
   }
 
   // ── INVERTED-PAIR CALL/PUT SWAP (default ON for 6J/6C/6S) ──────────────────
@@ -2251,6 +2332,12 @@ export async function buildOIEntry({
   // looked green. These extra checks are SEMANTIC — they test whether the numbers
   // mean what they claim, not just whether they're the right size.
   const _warnings = [];
+  // Implausible-OI scrub FIRST, same reasoning as truncation below: it silently
+  // removed strikes before anything downstream computed on them, so say what and why.
+  if (_oiScrub.anomalies.length)
+    _warnings.push(`${_oiScrub.anomalies.length} strike(s) excluded as implausible OI: `
+      + _oiScrub.anomalies.map(a => `${oiFmtStrike(a.strike, pair)} (${Math.max(a.callOI, a.putOI)} OI)`).join(', ')
+      + ` — ${_oiScrub.anomalies[0].reason}`);
   if (volumeRejected) {
     // Name the actual numbers. The first version of this said the strikes "fall outside
     // the option ladder", which is jargon for "column 1 isn't a strike" and told the
@@ -2341,6 +2428,7 @@ export async function buildOIEntry({
     greekVolMode, greekVolSource,   // v1 'flat' vs v2 'smile'/'atm-iv' — which vol the gamma/GEX/flip used
     fullBook,   // v3 full-book GEX across ALL expiries (analysis-only; bot uses single-expiry exposures)
     dataWarning,   // ⚠ set when spot is far outside the strike range (stale/mis-scaled paste) — flag, don't silently analyse
+    oiAnomalies: _oiScrub.anomalies,   // strikes scrubbed as implausible OI — [] on every normal day; also folded into dataWarning above
     greeksFlow,   // charm/vanna exposure from a pasted IV surface (null unless the IV box is filled)
     expectedMove: expMove,   // ATM straddle → option-implied ± range to expiry
     // One distance scale, computed once, shared by wall relevance / reachability /

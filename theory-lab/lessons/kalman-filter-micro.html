@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kalman Filter &amp; Adaptive Relationships — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Kalman Filter &amp; Adaptive Relationships — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivation, the Bayesian-updating link, and a 6-question self-test?<a href="kalman-filter.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Lesson 8 · Time Series &amp; Regimes</div>
+      <h1 class="sl-h1">A Hedge Ratio Isn't a Constant — <em>It's a Moving Target</em></h1>
+      <p class="sl-lede">Run OLS over the last 60 days and you get one number for how much asset A moves with asset B — treated as fixed until tomorrow's regression, on a new window, quietly gives you a different one. The Kalman filter replaces that constant with a running belief: a best estimate, plus how sure you are of it, updated one new observation at a time. Same recursion NASA used to land on the moon, repurposed for a hedge ratio that drifts instead of jumps.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Why a "fixed" relationship is quietly wrong</h2>
+      <p class="sl-sub">A rolling-window regression has a built-in artifact that has nothing to do with the market.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">▭</div><div><h4>Equal weight in, zero weight out</h4><p>Every point inside a 60-day window counts identically; every point outside it counts exactly zero. Day 61 matters as much as yesterday — until it rolls off the back and vanishes completely.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⤺</div><div><h4>Jumps that aren't real</h4><p>β can lurch the moment an old, unremarkable data point falls out of the window — a discontinuity caused by your choice of window length, not by anything that happened in the market.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">〰</div><div><h4>Relationships actually drift</h4><p>Correlations widen and narrow with the macro regime; a sector sensitivity shifts as a business mix shifts; a lead-lag relationship strengthens or weakens with volatility. A hedge ratio is rarely a true constant.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚖</div><div><h4>Neither extreme works</h4><p>Frozen for 60 days is too slow to react. Re-fit from scratch on a new window is too jumpy and throws away everything already learned. You want neither.</p></div></div>
+      </div>
+      <div class="sl-quote">The Kalman filter reframes the problem entirely: stop assuming the ratio is a constant to be estimated, and instead treat it as a hidden, slowly-drifting quantity you can never observe directly — updated by every new noisy reading, with no window to choose and nothing to re-fit from scratch.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Track a belief, not just a number</h2>
+      <p class="sl-sub">A GPS for a quantity you can't see directly.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The intuition</div>
+        <p class="sl-p" style="margin-top:0">Imagine tracking a boat at night with only a noisy radar ping once a minute. You never see the boat directly — only blips with error in them. But you're not starting from zero each minute: boats don't teleport, so your position from a minute ago is still a good guess of where it probably is <em>now</em> — just a little less certain, since time has passed. Then the new ping arrives. You don't trust it alone (radar is noisy) and you don't ignore it either (it's the only new information you have) — you blend the two, weighted by how confident you were in the prediction versus how noisy the sensor is known to be.</p>
+        <div class="sl-note">A hedge ratio that drifts is exactly the same tracking problem, with the boat's position replaced by an unobservable number.</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">x̂</div><div><h4>A running estimate</h4><p>Your current best guess of the hidden value — the hedge ratio you'd actually use today.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">P</div><div><h4>A running uncertainty</h4><p>How much you trust that estimate right now. This is the piece a plain moving average has no equivalent of at all.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Predict: carry the estimate forward, admit it's gone stale</h2>
+      <p class="sl-sub">Before looking at today's data at all, project yesterday's belief forward.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The predict step</div>
+        <div class="sl-row"><div class="sl-box">x̂ₜ|ₜ₋₁ = x̂ₜ₋₁|ₜ₋₁</div><div class="sl-arrow">and</div><div class="sl-box amber">Pₜ|ₜ₋₁ = Pₜ₋₁|ₜ₋₁ + Q</div></div>
+        <div class="sl-verdict">The estimate itself doesn't move — a pure random-walk state assumes no predictable direction, just a small nudge each step. But the <strong>uncertainty always grows</strong>, inflated by the process variance Q: the longer you go without checking, or the more the relationship is believed to drift, the less confident the prediction gets.</div>
+      </div>
+      <p class="sl-p">This growth in P is what keeps the filter honest. Without it, an old estimate would stay permanently over-confident and would barely budge no matter what new data showed up — Q is the dial that says "I believe this relationship can genuinely change," and a larger Q means a filter that's more willing to move.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">A modeling choice, not a law of nature</div>
+        <p>"Today equals yesterday plus noise" is called a random-walk state equation — it assumes no trend and no tendency to revert toward any particular value. If the true quantity is plausibly mean-reverting instead, this is the wrong assumption, and a different state equation would be more honest.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Update: blend the prediction with what you just saw</h2>
+      <p class="sl-sub">The new observation arrives. First measure the surprise.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The update step</div>
+        <div class="sl-row"><div class="sl-box">eₜ = yₜ − x̂ₜ|ₜ₋₁</div><div class="sl-arrow">→</div><div class="sl-box">Kₜ (the gain)</div><div class="sl-arrow">→</div><div class="sl-box green">x̂ₜ|ₜ = x̂ₜ|ₜ₋₁ + Kₜeₜ</div></div>
+        <div class="sl-verdict">eₜ is the <strong>innovation</strong> — observed minus predicted, literally "the surprise." The updated estimate is the old prediction plus that surprise, scaled by the gain Kₜ. Uncertainty shrinks afterward: Pₜ|ₜ = (1 − Kₜ)Pₜ|ₜ₋₁ (H = 1 here, a direct read on the ratio).</div>
+      </div>
+      <p class="sl-p">Notice what's doing the work: the update never throws away the prediction and never ignores the new reading either. It pulls the estimate <em>part of the way</em> from where it was toward what the new data implies — and exactly how far that pull goes is the single most important number in the whole method.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">The Kalman gain: how much to trust the new reading</h2>
+      <p class="sl-sub">Kₜ = Pₜ|ₜ₋₁ / (Pₜ|ₜ₋₁ + R) — a ratio between 0 and 1. Pick a regime.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="gain-tabs">
+          <button class="sl-tab active" data-panel="gain-1">Noisy sensor (R ≫ Q)</button>
+          <button class="sl-tab" data-panel="gain-2">Fast-moving state (Q ≫ R)</button>
+          <button class="sl-tab" data-panel="gain-3">Balanced (Q ≈ R)</button>
+        </div>
+        <div class="sl-panel active" id="gain-1">
+          <div class="sl-row"><div class="sl-box">prediction uncertainty small</div><div class="sl-arrow">vs</div><div class="sl-box amber">R huge</div></div>
+          <div class="sl-verdict"><strong>Kₜ → 0.</strong> A single day's reading is mostly noise. The filter barely moves the estimate — it mostly keeps carrying forward what it already believed.</div>
+        </div>
+        <div class="sl-panel" id="gain-2">
+          <div class="sl-row"><div class="sl-box green">Q huge</div><div class="sl-arrow">vs</div><div class="sl-box">R small</div></div>
+          <div class="sl-verdict"><strong>Kₜ → 1.</strong> The true state is believed to move fast, so any prior estimate goes stale quickly, and each new reading is trustworthy. The updated estimate jumps almost all the way to the new observation.</div>
+        </div>
+        <div class="sl-panel" id="gain-3">
+          <div class="sl-row"><div class="sl-box">P ≈ R</div><div class="sl-arrow">→</div><div class="sl-box">K ≈ 0.5</div></div>
+          <div class="sl-verdict">Prediction uncertainty and observation noise are comparable, so the filter splits the difference — roughly half old belief, half new evidence.</div>
+        </div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Not the same thing as an EMA</div>
+        <p>An exponential moving average uses one fixed smoothing constant, chosen in advance and never revisited. The Kalman gain is <strong>derived</strong>, and re-adapts on its own every single step — because Pₜ|ₜ₋₁ itself keeps changing (it grows during predict, shrinks during update).</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Worked example: tracking a hedge ratio through two days</h2>
+      <p class="sl-sub">Start: x̂ = 1.20, P = 0.0400, Q = 0.0009, R = 0.0100, H = 1.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="worked-tabs">
+          <button class="sl-tab active" data-panel="worked-1">Day 1 — y = 1.35</button>
+          <button class="sl-tab" data-panel="worked-2">Day 2 — y = 1.30</button>
+        </div>
+        <div class="sl-panel active" id="worked-1">
+          <div class="sl-row"><div class="sl-box">predict: x̂=1.20, P=0.0409</div><div class="sl-arrow">→</div><div class="sl-box amber">K₁ = 0.0409/0.0509 ≈ 0.804</div><div class="sl-arrow">→</div><div class="sl-box green">x̂=1.321, P=0.0080</div></div>
+          <div class="sl-verdict">e₁ = 1.35 − 1.20 = 0.15. The gain is <strong>large</strong> because prior uncertainty (0.0409) still exceeds R (0.0100) — this early, the filter isn't confident yet, so it leans heavily on the new reading. The estimate moves 80% of the way from 1.20 toward 1.35.</div>
+        </div>
+        <div class="sl-panel" id="worked-2">
+          <div class="sl-row"><div class="sl-box">predict: x̂=1.321, P=0.0089</div><div class="sl-arrow">→</div><div class="sl-box amber">K₂ = 0.0089/0.0189 ≈ 0.471</div><div class="sl-arrow">→</div><div class="sl-box green">x̂=1.311, P=0.0047</div></div>
+          <div class="sl-verdict">e₂ = 1.30 − 1.321 = −0.021. The gain <strong>dropped</strong> from 0.804 to 0.471 with no parameter touched — purely because P shrank after Day 1's update, so the prior is now more trustworthy relative to a single noisy reading.</div>
+        </div>
+      </div>
+      <p class="sl-p">Keep this recursion running and the gain keeps settling toward a <strong>steady-state value</strong> set entirely by the ratio Q/R (here 0.09 — small, so the steady-state gain settles low). Nobody set an N-day lookback anywhere; the filter's effective memory fell straight out of two variance inputs.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Run the gain yourself</h2>
+      <p class="sl-sub">Kₜ = prior variance ÷ (prior variance + measurement variance). Change any field — starts on Day 1 above.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Prior estimate x̂</label><input type="number" class="sl-input" id="kg-xhat" value="1.20" step="0.01"></div>
+          <div class="sl-calc-field"><label>Prior variance P</label><input type="number" class="sl-input" id="kg-p" value="0.0409" step="0.001" min="0"></div>
+          <div class="sl-calc-field"><label>Measurement variance R</label><input type="number" class="sl-input" id="kg-r" value="0.0100" step="0.001" min="0"></div>
+          <div class="sl-calc-field"><label>New observation y</label><input type="number" class="sl-input" id="kg-y" value="1.35" step="0.01"></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Kalman gain: K = <b id="kg-gain">0.804</b></div>
+          <div>Blended estimate: x̂new = <b id="kg-est">1.321</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="kg-reset">Reset to Day 1 numbers</button>
+        <div class="sl-note" id="kg-note"></div>
+      </div>
+      <p class="sl-p">Push R up and watch the gain fall toward zero — a shakier sensor gets discounted. Push P up (a less confident prior) and watch the gain climb toward one. This is the entire method, in one formula and four numbers.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">The trade-off, live: smooth vs. reactive</h2>
+      <p class="sl-sub">Grey dots are noisy daily observations of a hedge ratio. Drag the slider to shift how much the filtered line trusts each new one.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Scatter of noisy hedge-ratio observations with a filtered estimate line threading through them and a shaded uncertainty band">
+            <line x1="60" y1="20" x2="60" y2="220" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="60" y1="220" x2="610" y2="220" style="stroke:var(--border2);stroke-width:1"/>
+            <polygon id="mn-band" points="70,105 114,106 158,105 203,105 247,103 291,104 335,104 379,103 423,103 468,101 512,100 556,99 600,98 600,110 556,115 512,120 468,125 423,131 379,137 335,144 291,150 247,157 203,167 158,175 114,186 70,195" style="fill:var(--blue);opacity:.15"/>
+            <circle cx="70" cy="126" r="3.5" style="fill:var(--text3);opacity:.6"/>
+            <circle cx="70" cy="169" r="3.5" style="fill:var(--text3);opacity:.6"/>
+            <circle cx="114" cy="166" r="3.5" style="fill:var(--text3);opacity:.6"/>
+            <circle cx="114" cy="131" r="3.5" style="fill:var(--text3);opacity:.6"/>
+            <circle cx="158" cy="124" r="3.5" style="fill:var(--text3);opacity:.6"/>
+            <circle cx="158" cy="161" r="3.5" style="fill:var(--text3);opacity:.6"/>
+            <circle cx="203" cy="158" r="3.5" style="fill:var(--text3);opacity:.6"/>
+            <circle cx="203" cy="118" r="3.5" style="fill:var(--text3);opacity:.6"/>
+            <circle cx="247" cy="111" r="3.5" style="fill:var(--text3);opacity:.6"/>
+            <circle cx="247" cy="144" r="3.5" style="fill:var(--text3);opacity:.6"/>
+            <circle cx="291" cy="142" r="3.5" style="fill:var(--text3);opacity:.6"/>
+            <circle cx="291" cy="105" r="3.5" style="fill:var(--text3);opacity:.6"/>
+            <circle cx="335" cy="101" r="3.5" style="fill:var(--text3);opacity:.6"/>
+            <circle cx="335" cy="140" r="3.5" style="fill:var(--text3);opacity:.6"/>
+            <circle cx="379" cy="138" r="3.5" style="fill:var(--text3);opacity:.6"/>
+            <circle cx="379" cy="107" r="3.5" style="fill:var(--text3);opacity:.6"/>
+            <circle cx="423" cy="103" r="3.5" style="fill:var(--text3);opacity:.6"/>
+            <circle cx="423" cy="137" r="3.5" style="fill:var(--text3);opacity:.6"/>
+            <circle cx="468" cy="134" r="3.5" style="fill:var(--text3);opacity:.6"/>
+            <circle cx="468" cy="97" r="3.5" style="fill:var(--text3);opacity:.6"/>
+            <circle cx="512" cy="93" r="3.5" style="fill:var(--text3);opacity:.6"/>
+            <circle cx="512" cy="122" r="3.5" style="fill:var(--text3);opacity:.6"/>
+            <circle cx="556" cy="126" r="3.5" style="fill:var(--text3);opacity:.6"/>
+            <circle cx="556" cy="87" r="3.5" style="fill:var(--text3);opacity:.6"/>
+            <circle cx="600" cy="82" r="3.5" style="fill:var(--text3);opacity:.6"/>
+            <circle cx="600" cy="119" r="3.5" style="fill:var(--text3);opacity:.6"/>
+            <polyline id="mn-line" points="70,150 114,146 158,140 203,136 247,130 291,127 335,124 379,120 423,117 468,113 512,110 556,107 600,104" style="fill:none;stroke:var(--blue);stroke-width:2.5"/>
+            <text x="335" y="245" text-anchor="middle" font-size="11" fill="var(--text3)">time</text>
+            <text x="18" y="120" text-anchor="middle" font-size="11" fill="var(--text3)" transform="rotate(-90 18 120)">hedge ratio</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Trust in new data (relative to R)</span><span class="sl-live" id="mn-kval">K ≈ 0.50</span></div>
+        <input type="range" class="sl-slider" id="mn-slider" min="1" max="99" step="1" value="50">
+        <div class="sl-note">Low = smoother, but slower to react to a genuine shift. High = reacts fast, but starts tracking noise instead of signal. Illustrative single-parameter blend, not the full P/Q/R recursion — the point is the shape of the trade-off.</div>
+      </div>
+      <p class="sl-p">Watch the shaded band as you drag: it narrows toward the low end (a confident, well-averaged estimate) and widens toward the high end (a jagged line that's really just re-drawing the noise). This is the same trade-off Q and R control directly in the real filter — a modeling choice, not something the data decides for you.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">The trading case: drift smoothly, don't refit and jump</h2>
+      <p class="sl-sub">Same underlying data, two ways of tracking the relationship between two correlated instruments.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Rolling-window OLS</span>
+          <ul>
+            <li>Every point in the window weighted identically, every point outside it weighted zero</li>
+            <li>β can jump the moment an old point rolls off the back — a window-length artifact, not a market event</li>
+            <li>"Effective memory" is the window length N, chosen directly and fixed</li>
+            <li>Re-fitting from scratch discards everything already learned</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Kalman-tracked ratio</span>
+          <ul>
+            <li>Old information discounted gradually through predict/update, never dropped off a cliff</li>
+            <li>No window to choose — memory emerges from the Q/R ratio</li>
+            <li>Uncertainty is tracked explicitly (P), not just the point estimate</li>
+            <li>Reacts to genuine drift without whipsawing on every noisy print, when Q and R are set sensibly</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-quote">This is the standard alternative to rolling-window OLS in statistical arbitrage and pairs trading: track the hedge ratio between two cointegrated instruments with a Kalman filter instead of a rolling regression, so it reacts smoothly to genuine drift instead of exhibiting the equal-weight-in, zero-weight-out discontinuity a fixed window always has. The same idea extends to a time-varying market beta or factor loading — any coefficient conventionally estimated by static OLS.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Where this is used, and where "adaptive" stops meaning "principled"</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🚀</div><div><h4>Born tracking a spacecraft</h4><p>Kálmán published the recursion in 1960; its first famous use was fusing noisy inertial-sensor readings for the Apollo guidance computer. GPS, robotics, and self-driving localization all use the same core idea.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📐</div><div><h4>Only optimal if linear-Gaussian</h4><p>The clean closed form here is exactly optimal when the state truly follows a linear equation and both noise sources are genuinely Gaussian. Nonlinear cases reach for the Extended or Unscented Kalman Filter (EKF/UKF) instead.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>Q and R are still chosen inputs</h4><p>Grid-searching them against backtest performance doesn't remove the overfitting risk a fixed window has — it relocates it into a less legible, more sophisticated-looking parameterization.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>Reactive isn't the same as adaptive</h4><p>Set Q too large relative to R and the steady-state gain approaches 1 — the filter starts tracking every noisy print almost exactly, which defeats the point of estimating a stable relationship at all.</p></div></div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>Real return series routinely show fat left tails. A standard Kalman filter run on such data is still a reasonable linear estimator, but it's no longer provably optimal, and its uncertainty estimate P can understate real tail risk. And nothing here is built, prototyped, or validated in this repo — any real use needs to beat the incumbent on true out-of-sample performance first.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Quick check</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>In the predict step, if the state is a pure random walk, what actually happens?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The estimate stays the same; the uncertainty P grows by Q</button>
+        <button class="sl-quiz-opt">The estimate moves toward the last observation; P shrinks</button>
+        <button class="sl-quiz-opt">Both the estimate and P stay exactly the same</button>
+        <div class="sl-quiz-explain">x̂ₜ|ₜ₋₁ = x̂ₜ₋₁|ₜ₋₁ (no new data used yet), but Pₜ|ₜ₋₁ = Pₜ₋₁|ₜ₋₁ + Q — uncertainty always inflates during predict, because time passing means the state may have wandered.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>If observation noise R is huge relative to process variance Q, what happens to the Kalman gain?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It approaches 0 — new readings are mostly ignored</button>
+        <button class="sl-quiz-opt">It approaches 1 — new readings are trusted almost fully</button>
+        <button class="sl-quiz-opt">It becomes negative</button>
+        <div class="sl-quiz-explain">K = P/(P+R). A huge R relative to P swamps the denominator, so K → 0 and the update barely moves the estimate.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>In the worked example, the gain fell from 0.804 (Day 1) to 0.471 (Day 2) with no input changed. Why?</h4>
+        <button class="sl-quiz-opt" data-correct="true">P shrank after Day 1's update, making the prior more trustworthy relative to R</button>
+        <button class="sl-quiz-opt">Q was lowered between the two days</button>
+        <button class="sl-quiz-opt">Day 2's observation happened to be less noisy</button>
+        <div class="sl-quiz-explain">P went from 0.0409 (Day 1's prediction) to 0.0089 (Day 2's prediction, after shrinking to 0.0080 post-update and regrowing by Q). A smaller P relative to the fixed R = 0.0100 means a smaller gain — purely a consequence of the recursion, no parameter touched.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Why is a Kalman-tracked hedge ratio not the same object as a rolling-window OLS beta, even though both get called "adaptive"?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Rolling OLS has a hard N-day cutoff; the Kalman filter discounts old data gradually via Q/R, with no chosen window</button>
+        <button class="sl-quiz-opt">They're actually the same calculation with different names</button>
+        <button class="sl-quiz-opt">Rolling OLS is always more accurate</button>
+        <div class="sl-quiz-explain">A rolling window weights every point inside it identically and every point outside it zero — a discontinuity chosen directly as N. The Kalman filter's effective memory emerges from Q/R and can even change step to step, as the worked example showed.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>What's the single biggest pitfall in choosing Q and R?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Grid-searching them against backtest performance — it relocates the overfitting risk, it doesn't remove it</button>
+        <button class="sl-quiz-opt">Setting them both to exactly 1</button>
+        <button class="sl-quiz-opt">There is no risk once you've replaced a window length with variances</button>
+        <div class="sl-quiz-explain">A window length of 60 days is at least an honest, auditable knob. A (Q, R) pair optimized post hoc against in-sample performance is the same overfitting risk wearing a more sophisticated disguise.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>A relationship estimated once — like a hedge ratio from a rolling regression — is rarely a true constant, and a fixed window has a built-in jump artifact that has nothing to do with the market.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>The filter tracks a belief, not a number: a running estimate x̂ plus a running uncertainty P, updated one observation at a time.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Predict carries the estimate forward and inflates P by the process variance Q — accounting for time passing, before any new data is used.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Update blends in the new observation by the Kalman gain K = P/(P+R), then shrinks P — the gain is derived, not a fixed smoothing constant like an EMA's.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The gain settles toward a steady state set by Q/R — the filter's own, self-chosen "effective window length," with no N to pick.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Q and R are still chosen inputs — grid-searching them against a backtest is the same overfitting risk as tuning a window length, just harder to spot.</p></div>
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">What this now lets you do</div>
+        <p>Read K = P/(P+R) on sight and know exactly which direction it moves as either variance changes. Explain, precisely, why a Kalman-tracked hedge ratio is not the same object as a rolling-window beta. Recognise when "adaptive" language is masking an under-damped, over-reactive filter — and know that Q/R needs validating out of sample, not tuning to look good in it.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Cointegration &amp; Statistical Arbitrage</h3>
+        <p>Category 3 begins: what it actually means for two series to share a long-run equilibrium, and why that's a stronger foundation for pairs trading than correlation alone.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="cointegration.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="kalman-filter.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // "Run the gain yourself" — K = P/(P+R), blended estimate, live.
+  (function(){
+    var xhat = document.getElementById('kg-xhat');
+    if (!xhat) return;
+    var p = document.getElementById('kg-p'), r = document.getElementById('kg-r'), y = document.getElementById('kg-y');
+    var gainOut = document.getElementById('kg-gain'), estOut = document.getElementById('kg-est');
+    var note = document.getElementById('kg-note');
+    var resetBtn = document.getElementById('kg-reset');
+    var DEFAULTS = { xhat: 1.20, p: 0.0409, r: 0.0100, y: 1.35 };
+
+    function recompute(){
+      var xv = parseFloat(xhat.value), pv = parseFloat(p.value), rv = parseFloat(r.value), yv = parseFloat(y.value);
+      if (!isFinite(xv) || !isFinite(pv) || !isFinite(rv) || !isFinite(yv) || pv < 0 || rv < 0) {
+        gainOut.textContent = '—';
+        estOut.textContent = '—';
+        note.textContent = (pv < 0 || rv < 0) ? 'Variances can\'t be negative.' : '';
+        return;
+      }
+      if (pv + rv <= 0) {
+        gainOut.textContent = '—';
+        estOut.textContent = '—';
+        note.textContent = 'P and R can\'t both be zero — the gain is undefined with no uncertainty at all.';
+        return;
+      }
+      note.textContent = '';
+      var K = pv / (pv + rv);
+      var est = xv + K * (yv - xv);
+      gainOut.textContent = K.toFixed(3);
+      estOut.textContent = est.toFixed(3);
+    }
+
+    [xhat, p, r, y].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      xhat.value = DEFAULTS.xhat; p.value = DEFAULTS.p; r.value = DEFAULTS.r; y.value = DEFAULTS.y;
+      recompute();
+    });
+    recompute();
+  })();
+
+  // "The trade-off, live" — single-parameter blend slider redrawing the SVG.
+  (function(){
+    var slider = document.getElementById('mn-slider');
+    if (!slider) return;
+    var kVal = document.getElementById('mn-kval');
+    var line = document.getElementById('mn-line');
+    var band = document.getElementById('mn-band');
+
+    var OBS = [
+      {x:70,  y:126}, {x:70,  y:169},
+      {x:114, y:166}, {x:114, y:131},
+      {x:158, y:124}, {x:158, y:161},
+      {x:203, y:158}, {x:203, y:118},
+      {x:247, y:111}, {x:247, y:144},
+      {x:291, y:142}, {x:291, y:105},
+      {x:335, y:101}, {x:335, y:140},
+      {x:379, y:138}, {x:379, y:107},
+      {x:423, y:103}, {x:423, y:137},
+      {x:468, y:134}, {x:468, y:97},
+      {x:512, y:93},  {x:512, y:122},
+      {x:556, y:126}, {x:556, y:87},
+      {x:600, y:82},  {x:600, y:119}
+    ];
+    var TICK_X = [70,114,158,203,247,291,335,379,423,468,512,556,600];
+    var BASE_HALF_WIDTH = [45,40,35,31,27,23,20,17,14,12,10,8,6];
+
+    function update(){
+      var pct = parseFloat(slider.value);
+      var K = pct / 100;
+      kVal.textContent = 'K ≈ ' + K.toFixed(2);
+
+      var estimates = new Array(OBS.length);
+      estimates[0] = OBS[0].y;
+      for (var i = 1; i < OBS.length; i++){
+        estimates[i] = (1 - K) * estimates[i - 1] + K * OBS[i].y;
+      }
+      var linePts = [];
+      for (var i = 0; i < OBS.length; i++){
+        linePts.push(OBS[i].x + ',' + estimates[i].toFixed(1));
+      }
+      line.setAttribute('points', linePts.join(' '));
+
+      var scale = 0.5 + K;
+      var top = [], bottom = [];
+      for (var t = 0; t < TICK_X.length; t++){
+        var center = estimates[2 * t + 1];
+        var hw = BASE_HALF_WIDTH[t] * scale;
+        top.push(TICK_X[t] + ',' + (center - hw).toFixed(1));
+        bottom.push(TICK_X[t] + ',' + (center + hw).toFixed(1));
+      }
+      bottom.reverse();
+      band.setAttribute('points', top.concat(bottom).join(' '));
+    }
+
+    slider.addEventListener('input', update);
+    update();
+  })();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Probability &amp; Random Variables — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Probability &amp; Random Variables — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer full derivations, a live calculator, and a 5-question self-test?<a href="primer-probability.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Primer 2 · Math Primer</div>
+      <h1 class="sl-h1">Random Variables, <em>and Why Sums Turn Bell-Shaped</em></h1>
+      <p class="sl-lede">A return, a P&amp;L outcome, a volatility estimate — all of them are numbers you don't know in advance, but whose long-run behavior can still be described precisely. This deck builds the vocabulary underneath that idea: expectation as a probability-weighted average, independence as the assumption almost everything else quietly relies on, and the Central Limit Theorem — the strange, useful fact that adding up enough independent pieces tends to produce something bell-shaped, almost no matter what the pieces looked like on their own.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">A random variable is a number you don't know yet, attached to rules you do</h2>
+      <p class="sl-sub">Before you roll a die, you can't say what comes up — but you already know a great deal about it.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🎲</div><div><h4>Outcome vs. number</h4><p>A die roll is an outcome. The random variable X is the rule that turns that outcome into a number — for a plain die, X just returns the face value itself.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">▦</div><div><h4>Discrete</h4><p>A countable list of possible values — a die face, a win/loss outcome, "1 if the roll is even, 0 otherwise." This deck works mostly with this case.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">∿</div><div><h4>Continuous</h4><p>Any value in a range — tomorrow's percentage return of EUR/USD. Same ideas apply; sums become integrals instead of the sums used here.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">→</div><div><h4>Not always the "obvious" number</h4><p>X doesn't have to be direct. It can be a derived quantity — a day-type flag, a payoff, a classifier's signal — as long as it's a rule assigning a number to every outcome.</p></div></div>
+      </div>
+      <div class="sl-quote">This is the layer underneath almost everything else in this curriculum. A Bayesian-inference lesson can talk about "the probability that today is a trend day" and update it as evidence arrives — but it never has to define what a probability formally is, because this is where that vocabulary gets supplied.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Expectation: the probability-weighted average</h2>
+      <p class="sl-sub">E[X] = Σᵢ xᵢ · P(X = xᵢ) — multiply each possible value by how likely it is, then add. If every outcome is equally likely, this collapses to the plain average you already know.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — a simple two-outcome bet</div>
+        <p class="sl-p" style="margin:0 0 14px">A trade either wins with probability p (paying out the win amount) or loses with probability 1−p (costing the loss amount). Change any input.</p>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>P(win)</label><input type="number" class="sl-input" id="ev-p" value="0.55" step="0.01" min="0" max="1"></div>
+          <div class="sl-calc-op">×</div>
+          <div class="sl-calc-field"><label>Win ($)</label><input type="number" class="sl-input" id="ev-win" value="120" step="5"></div>
+          <div class="sl-calc-op">−</div>
+          <div class="sl-calc-field"><label>Loss ($)</label><input type="number" class="sl-input" id="ev-loss" value="100" step="5" min="0"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">E[X] per bet</div>
+            <div class="sl-calc-result-val" id="ev-result">$21.00</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>P(win) × win = <b id="ev-step1">$66.00</b></div>
+          <div>P(loss) × loss = <b id="ev-step2">$45.00</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="ev-reset">Reset to worked-example numbers</button>
+      </div>
+      <p class="sl-p">A fair six-sided die is the same formula with six equal weights of 1/6: E[X] = (1+2+3+4+5+6)/6 = <strong>3.5</strong>. Notice that's not itself a value the die can ever show — expectation means long-run average, not "most likely single result."</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Independence: when knowing one event tells you nothing about another</h2>
+      <p class="sl-sub">Formally: P(A ∩ B) = P(A) · P(B) — the probability of both happening is just the product of the two individual probabilities.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Independent — coin flips</span>
+          <ul>
+            <li>The first flip has zero bearing on the second</li>
+            <li>P(two heads in a row) = P(H) × P(H) = 0.25</li>
+            <li>Observing the first outcome leaves your belief about the second completely unchanged</li>
+          </ul>
+        </div>
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Not independent — market volatility</span>
+          <ul>
+            <li>A large move today makes a large move tomorrow more likely</li>
+            <li>Known as <strong>volatility clustering</strong> — calm periods and turbulent periods each tend to persist</li>
+            <li>Simply multiplying probabilities together silently assumes this away</li>
+          </ul>
+        </div>
+      </div>
+      <p class="sl-p">This distinction matters because the two big results coming up next — the Law of Large Numbers and the Central Limit Theorem — both quietly assume independence between the pieces being combined. When that assumption fails, the machinery doesn't become wrong in the abstract; the <em>application</em> of it does.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Variance: the same idea as spread, made formal</h2>
+      <p class="sl-sub">Var(X) = E[(X − E[X])²] — the expected squared distance from the mean. The faster shortcut, from expanding that square: Var(X) = E[X²] − (E[X])².</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Worked example — a fair die</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart showing each face of a fair die is equally likely, one sixth each">
+            <line x1="20" y1="200" x2="620" y2="200" style="stroke:var(--border2);stroke-width:1.5"/>
+            <rect x="30"  y="100" width="60" height="100" style="fill:var(--blue)"/>
+            <rect x="130" y="98"  width="60" height="102" style="fill:var(--blue)"/>
+            <rect x="230" y="102" width="60" height="98"  style="fill:var(--blue)"/>
+            <rect x="330" y="100" width="60" height="100" style="fill:var(--blue)"/>
+            <rect x="430" y="96"  width="60" height="104" style="fill:var(--blue)"/>
+            <rect x="530" y="101" width="60" height="99"  style="fill:var(--blue)"/>
+            <text x="60"  y="215" text-anchor="middle" font-size="12" fill="var(--text2)">1</text>
+            <text x="160" y="215" text-anchor="middle" font-size="12" fill="var(--text2)">2</text>
+            <text x="260" y="215" text-anchor="middle" font-size="12" fill="var(--text2)">3</text>
+            <text x="360" y="215" text-anchor="middle" font-size="12" fill="var(--text2)">4</text>
+            <text x="460" y="215" text-anchor="middle" font-size="12" fill="var(--text2)">5</text>
+            <text x="560" y="215" text-anchor="middle" font-size="12" fill="var(--text2)">6</text>
+            <text x="320" y="235" text-anchor="middle" font-size="12" fill="var(--text3)">each face: P(X = x) = 1/6 ≈ 16.7%</text>
+          </svg>
+        </div>
+        <div class="sl-verdict">E[X²] = (1+4+9+16+25+36)/6 = 91/6 ≈ 15.1667. Subtract (E[X])² = 3.5² = 12.25: <strong>Var(X) ≈ 2.9167</strong>. Taking the square root: <strong>σ ≈ 1.71</strong> — a single roll typically lands about 1.71 away from 3.5.</div>
+      </div>
+      <p class="sl-p">Variance alone is in "die-face-squared" units, which is why it's awkward to interpret directly — the standard deviation σ = √Var(X) brings it back into the original units, exactly the way it did for the sample data in the Descriptive Statistics primer.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Combine independent copies, and the spread behaves predictably</h2>
+      <p class="sl-sub">This is the piece that makes the next slide's bell curve possible.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Two directions, one formula</div>
+        <div class="sl-row"><div class="sl-box">Var(X)</div><div class="sl-arrow">× N</div><div class="sl-box amber">Var(sum of N)</div></div>
+        <div class="sl-verdict">Add N independent copies of X together and their variances simply add: Var(X₁+…+X_N) = N·Var(X). The spread of the <em>total</em> grows with N — but because σ = √Var, the standard deviation only grows as √N, not N.</div>
+        <div class="sl-row"><div class="sl-box">Var(X)</div><div class="sl-arrow">÷ N</div><div class="sl-box green">Var(average of N)</div></div>
+        <div class="sl-verdict">Average N independent copies instead and the variance shrinks: Var(X̄_N) = Var(X)/N, so σ(X̄_N) = σ/√N. This is exactly why the Law of Large Numbers works — more independent draws means a tighter, more reliable average.</div>
+      </div>
+      <p class="sl-p">For the fair die (Var(X) ≈ 2.9167), averaging 5 independent rolls shrinks the variance to about 0.583; averaging 30 shrinks it to about 0.097. Same center, 3.5 — much tighter spread. That narrowing is one half of what's coming next; the other half is the <em>shape</em> it narrows into.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">The Central Limit Theorem: add up enough pieces, and it goes bell-shaped</h2>
+      <p class="sl-sub">A single die roll is flat — every face equally likely. Watch what happens to the average as more independent rolls get folded in.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="clt-tabs">
+          <button class="sl-tab active" data-panel="clt-1">n = 1</button>
+          <button class="sl-tab" data-panel="clt-2">n = 5</button>
+          <button class="sl-tab" data-panel="clt-3">n = 30</button>
+        </div>
+        <div class="sl-panel active" id="clt-1">
+          <div class="sl-svgwrap">
+            <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Flat histogram of a single die roll">
+              <line x1="20" y1="200" x2="620" y2="200" style="stroke:var(--border2);stroke-width:1.5"/>
+              <rect x="30"  y="100" width="60" height="100" style="fill:var(--blue)"/>
+              <rect x="130" y="98"  width="60" height="102" style="fill:var(--blue)"/>
+              <rect x="230" y="102" width="60" height="98"  style="fill:var(--blue)"/>
+              <rect x="330" y="100" width="60" height="100" style="fill:var(--blue)"/>
+              <rect x="430" y="96"  width="60" height="104" style="fill:var(--blue)"/>
+              <rect x="530" y="101" width="60" height="99"  style="fill:var(--blue)"/>
+              <text x="320" y="222" text-anchor="middle" font-size="12" fill="var(--text3)">n = 1 — one die roll</text>
+              <text x="320" y="238" text-anchor="middle" font-size="11" fill="var(--text3)">flat — every face equally likely</text>
+            </svg>
+          </div>
+          <div class="sl-verdict"><strong>Var ≈ 2.92.</strong> A single die roll: flat, nothing like a bell curve.</div>
+        </div>
+        <div class="sl-panel" id="clt-2">
+          <div class="sl-svgwrap">
+            <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="More bell-shaped histogram of the average of five die rolls">
+              <line x1="20" y1="200" x2="620" y2="200" style="stroke:var(--border2);stroke-width:1.5"/>
+              <rect x="25"  y="185" width="55" height="15"  style="fill:var(--blue)"/>
+              <rect x="93"  y="160" width="55" height="40"  style="fill:var(--blue)"/>
+              <rect x="161" y="120" width="55" height="80"  style="fill:var(--blue)"/>
+              <rect x="229" y="85"  width="55" height="115" style="fill:var(--blue)"/>
+              <rect x="297" y="70"  width="55" height="130" style="fill:var(--blue)"/>
+              <rect x="365" y="85"  width="55" height="115" style="fill:var(--blue)"/>
+              <rect x="433" y="120" width="55" height="80"  style="fill:var(--blue)"/>
+              <rect x="501" y="160" width="55" height="40"  style="fill:var(--blue)"/>
+              <rect x="569" y="185" width="55" height="15"  style="fill:var(--blue)"/>
+              <text x="320" y="222" text-anchor="middle" font-size="12" fill="var(--text3)">n = 5 — average of 5 rolls</text>
+              <text x="320" y="238" text-anchor="middle" font-size="11" fill="var(--text3)">visibly more bell-shaped</text>
+            </svg>
+          </div>
+          <div class="sl-verdict"><strong>Var ≈ 2.92 / 5 ≈ 0.58.</strong> Already tightening around 3.5, and taking a visibly bell-like shape.</div>
+        </div>
+        <div class="sl-panel" id="clt-3">
+          <div class="sl-svgwrap">
+            <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Tall narrow bell-shaped histogram of the average of thirty die rolls">
+              <line x1="20" y1="200" x2="620" y2="200" style="stroke:var(--border2);stroke-width:1.5"/>
+              <rect x="20"  y="196" width="40" height="4"   style="fill:var(--blue)"/>
+              <rect x="66"  y="188" width="40" height="12"  style="fill:var(--blue)"/>
+              <rect x="112" y="170" width="40" height="30"  style="fill:var(--blue)"/>
+              <rect x="158" y="138" width="40" height="62"  style="fill:var(--blue)"/>
+              <rect x="204" y="100" width="40" height="100" style="fill:var(--blue)"/>
+              <rect x="250" y="66"  width="40" height="134" style="fill:var(--blue)"/>
+              <rect x="296" y="46"  width="40" height="154" style="fill:var(--blue)"/>
+              <rect x="342" y="66"  width="40" height="134" style="fill:var(--blue)"/>
+              <rect x="388" y="100" width="40" height="100" style="fill:var(--blue)"/>
+              <rect x="434" y="138" width="40" height="62"  style="fill:var(--blue)"/>
+              <rect x="480" y="170" width="40" height="30"  style="fill:var(--blue)"/>
+              <rect x="526" y="188" width="40" height="12"  style="fill:var(--blue)"/>
+              <rect x="572" y="196" width="40" height="4"   style="fill:var(--blue)"/>
+              <text x="320" y="222" text-anchor="middle" font-size="12" fill="var(--text3)">n = 30 — average of 30 rolls</text>
+              <text x="320" y="238" text-anchor="middle" font-size="11" fill="var(--text3)">tall, narrow, clearly bell-shaped</text>
+            </svg>
+          </div>
+          <div class="sl-verdict"><strong>Var ≈ 2.92 / 30 ≈ 0.097.</strong> Tall, narrow, unmistakably bell-shaped — exactly as the CLT predicts for any distribution with finite mean and variance, not just ones that already look normal.</div>
+        </div>
+      </div>
+      <p class="sl-p">This is the surprising part: the individual die roll is flat, skewed, bounded, discrete — shaped nothing like a bell curve. The <em>average</em> of many independent copies of it converges toward one anyway. That's the Central Limit Theorem: N independent copies of almost any random variable, averaged, approach a normal distribution centered at E[X] with variance Var(X)/N as N grows.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Why so much in finance ends up looking roughly normal</h2>
+      <div class="sl-quote">Not because every underlying process is secretly normal — because so many observed financial quantities are themselves sums of many smaller, mostly-independent pieces. A day's return is built from many intraday ticks and trades; a portfolio's return is built from many positions. The CLT is the reason the sum tends to look bell-shaped even when no single ingredient does.</div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Why "assume normal, then correct" is the honest framing</div>
+        <p>The CLT gives real justification for treating an aggregated return as approximately normal as a <em>starting</em> assumption — it isn't an arbitrary convention. But the justification is conditional on its assumptions holding, chiefly that the pieces being summed are roughly independent with finite variance.</p>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>Daily and intraday financial returns exhibit volatility clustering — a direct violation of the independence the CLT requires. Applying CLT-based normality to a return series that violates independence doesn't make the math wrong in the abstract; it makes the application wrong, and it breaks down worst exactly during volatility spikes, which is when getting the tails right matters most. GARCH-family models exist specifically to correct for this.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Daily P&amp;L as a sum of many independent trades</h2>
+      <p class="sl-sub">Treat a day's total P&amp;L as N roughly independent trades added together. Variance scales with N; standard deviation scales with √N.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change either input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Per-trade σ ($)</label><input type="number" class="sl-input" id="pnl-sigma" value="50" step="5" min="0"></div>
+          <div class="sl-calc-op">×</div>
+          <div class="sl-calc-field"><label>Independent trades (N)</label><input type="number" class="sl-input" id="pnl-n" value="25" step="1" min="1"></div>
+          <div class="sl-calc-op">→</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">σ of the day's total P&amp;L</div>
+            <div class="sl-calc-result-val" id="pnl-result">$250.00</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Var(day) = N × σ² = <b id="pnl-var">62,500.00</b></div>
+          <div>σ(day) = √Var(day) = σ × √N = <b id="pnl-step2">$250.00</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="pnl-reset">Reset to worked-example numbers</button>
+        <div class="sl-note">Notice σ(day) doesn't grow proportionally with N — quadrupling the trade count only doubles the day's standard deviation, because √N grows far slower than N. That's the same square-root scaling behind the "average" side of this formula, just applied to a sum instead.</div>
+      </div>
+      <p class="sl-p">This is a direct application of the variance-of-a-sum rule from Section 5: with per-trade σ = $50 and 25 independent trades, Var(day) = 25 × 50² = 62,500, so σ(day) = √62,500 = 25 × ... more precisely 50 × √25 = 50 × 5 = <strong>$250</strong>. The independence assumption is doing real work here — it's exactly what licenses adding the variances in the first place.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Where this shows up outside a textbook</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🏦</div><div><h4>Insurance &amp; actuarial pricing</h4><p>Prices a policy near the expected payout plus a margin, relying on the Law of Large Numbers across thousands of independent policyholders to make the average payout predictable in aggregate.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🏭</div><div><h4>Quality control &amp; manufacturing</h4><p>Uses the CLT directly: a sample of n parts is measured, and the sample average is assumed approximately normal regardless of any single part's error distribution.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🗳</div><div><h4>Polling &amp; survey statistics</h4><p>A poll's margin of error is a CLT-derived confidence interval around a sample proportion — itself an average of many independent 0/1 random variables.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📈</div><div><h4>Quantitative finance</h4><p>Expectation and variance are the literal inputs to mean-variance optimization; the CLT justifies treating an aggregated return as approximately normal before GARCH-style corrections.</p></div></div>
+      </div>
+      <p class="sl-p">Four different fields, each leaning on a different piece of the same machinery — none of it trading-specific. It's the same mathematics used for polling margins of error and factory control charts as it is for a portfolio's expected return and variance.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Assuming independence vs. actually checking it</h2>
+      <p class="sl-sub">The same CLT-flavored reasoning, applied two different ways.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Assuming it because you want the CLT</span>
+          <ul>
+            <li>"Returns are roughly normal" taken as a settled fact, not a starting point</li>
+            <li>Ignores volatility clustering — big moves following big moves</li>
+            <li>Breaks worst exactly during volatility spikes, when tail risk is actually being priced</li>
+            <li>Treats a small backtest average as if it already equaled the true expectation</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Checking it first</span>
+          <ul>
+            <li>Tests for volatility clustering before leaning on CLT-based normality</li>
+            <li>Uses GARCH-style corrections once clustering is confirmed, rather than ignoring it</li>
+            <li>Requires a non-trivial sample (this repo's ≥30 OOS trades floor) before trusting an average</li>
+            <li>Treats "assume normal" as a defensible starting point that gets corrected, not a finished answer</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-quote">The Law of Large Numbers promises convergence eventually, not at any specific small n you happen to have. A 20-trade backtest's average can sit meaningfully far from the true expected return — the difference between the two columns above isn't sophistication, it's whether the independence assumption actually gets tested before it gets relied on.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What is E[X] for one roll of a fair six-sided die?</h4>
+        <button class="sl-quiz-opt" data-correct="true">3.5</button>
+        <button class="sl-quiz-opt">3.0</button>
+        <button class="sl-quiz-opt">21</button>
+        <div class="sl-quiz-explain">E[X] = (1+2+3+4+5+6)/6 = 21/6 = 3.5 — the probability-weighted average, not a value the die can ever actually show.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Which pair is generally NOT independent?</h4>
+        <button class="sl-quiz-opt">Two consecutive fair coin flips</button>
+        <button class="sl-quiz-opt" data-correct="true">Two consecutive days of market volatility</button>
+        <button class="sl-quiz-opt">Two rolls of two separate dice</button>
+        <div class="sl-quiz-explain">Volatility clustering: a large move today makes a large move tomorrow more likely, which directly violates P(A∩B) = P(A)P(B).</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>As N grows, the average of N independent copies of almost any random variable (finite mean and variance) approaches what shape?</h4>
+        <button class="sl-quiz-opt">Whatever shape the original variable had</button>
+        <button class="sl-quiz-opt" data-correct="true">A normal (bell-shaped) distribution</button>
+        <button class="sl-quiz-opt">A uniform (flat) distribution</button>
+        <div class="sl-quiz-explain">This is the Central Limit Theorem — a single die roll is flat, but the average of many independent rolls converges toward a bell curve regardless.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Per-trade σ = $50, 25 independent trades make up the day. What's σ of the day's total P&amp;L?</h4>
+        <button class="sl-quiz-opt" data-correct="true">$250</button>
+        <button class="sl-quiz-opt">$1,250</button>
+        <button class="sl-quiz-opt">$50</button>
+        <div class="sl-quiz-explain">σ(day) = σ × √N = 50 × √25 = 50 × 5 = $250. Variance adds (N × σ² = 62,500); standard deviation only scales by √N.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>The Law of Large Numbers promises a sample average converges to E[X]. What does it NOT promise?</h4>
+        <button class="sl-quiz-opt" data-correct="true">How close the average is at any small, fixed n</button>
+        <button class="sl-quiz-opt">That convergence happens eventually</button>
+        <button class="sl-quiz-opt">That E[X] is a fixed, well-defined number</button>
+        <div class="sl-quiz-explain">The LLN is a statement about the limit as n → ∞. It says nothing about how close a 5-trade or 20-trade average is to the true expectation right now — which is exactly why this repo requires a non-trivial OOS trade count before trusting an average.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>A random variable maps outcomes to numbers — a return, a P&amp;L, a day-type flag are all random variables in this precise sense.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Expectation is a probability-weighted average, E[X] = Σᵢ xᵢP(X=xᵢ); variance is the expected squared distance from that average, Var(X) = E[X²] − (E[X])².</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Independence means P(A∩B) = P(A)P(B) — coin flips qualify, consecutive days of market volatility generally do not.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Combine N independent copies and variances add — Var(sum) = N·Var(X), so σ(sum) scales by √N, not N; averaging instead shrinks variance to Var(X)/N.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The Central Limit Theorem: the average of many independent copies of almost any random variable approaches a normal distribution as N grows — which is why so many summed financial quantities look roughly bell-shaped.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>That guarantee depends on independence — volatility clustering violates it, which is why "assume normal, then correct" (GARCH) is the honest framing, not "assume normal, done."</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Read "expected return" and "variance" as the precise, weighted quantities they are, not vague synonyms for average and spread. Recognize when an independence assumption is being made silently, and ask whether it actually holds. Understand why so many aggregated financial quantities end up looking roughly normal — and why that's a starting assumption to correct, not a settled fact to lean on.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Correlation &amp; Linear Regression</h3>
+        <p>How two random variables move together, what a correlation coefficient actually measures, and where a fitted line starts to lie to you.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="primer-correlation-regression-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="primer-probability.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Expectation of a two-outcome bet, live.
+  (function(){
+    var p = document.getElementById('ev-p');
+    if (!p) return;
+    var win = document.getElementById('ev-win'), loss = document.getElementById('ev-loss');
+    var step1 = document.getElementById('ev-step1'), step2 = document.getElementById('ev-step2');
+    var result = document.getElementById('ev-result');
+    var resetBtn = document.getElementById('ev-reset');
+    var DEFAULTS = { p: 0.55, win: 120, loss: 100 };
+
+    function fmtMoney(n){ return '$' + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+    function recompute(){
+      var pv = parseFloat(p.value), wv = parseFloat(win.value), lv = parseFloat(loss.value);
+      if (!isFinite(pv) || !isFinite(wv) || !isFinite(lv) || pv < 0 || pv > 1) {
+        step1.textContent = '—'; step2.textContent = '—'; result.textContent = '—';
+        return;
+      }
+      var winContribution = pv * wv;
+      var lossContribution = (1 - pv) * lv;
+      var ev = winContribution - lossContribution;
+      step1.textContent = fmtMoney(winContribution);
+      step2.textContent = fmtMoney(lossContribution);
+      result.textContent = fmtMoney(ev);
+    }
+
+    [p, win, loss].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      p.value = DEFAULTS.p; win.value = DEFAULTS.win; loss.value = DEFAULTS.loss;
+      recompute();
+    });
+    recompute();
+  })();
+
+  // Daily P&L std-dev scaling with N independent trades, live.
+  (function(){
+    var sigma = document.getElementById('pnl-sigma');
+    if (!sigma) return;
+    var n = document.getElementById('pnl-n');
+    var varOut = document.getElementById('pnl-var'), sdOut = document.getElementById('pnl-step2');
+    var result = document.getElementById('pnl-result');
+    var resetBtn = document.getElementById('pnl-reset');
+    var DEFAULTS = { sigma: 50, n: 25 };
+
+    function fmtMoney(n){ return '$' + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+    function fmtNum(n){ return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+    function recompute(){
+      var s = parseFloat(sigma.value), nv = parseFloat(n.value);
+      if (!isFinite(s) || !isFinite(nv) || s < 0 || nv <= 0 || Math.round(nv) !== nv) {
+        varOut.textContent = '—'; sdOut.textContent = '—'; result.textContent = '—';
+        return;
+      }
+      var variance = nv * s * s;
+      var sd = s * Math.sqrt(nv);
+      varOut.textContent = fmtNum(variance);
+      sdOut.textContent = fmtMoney(sd);
+      result.textContent = fmtMoney(sd);
+    }
+
+    [sigma, n].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      sigma.value = DEFAULTS.sigma; n.value = DEFAULTS.n;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

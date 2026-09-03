@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Limits, Integrals &amp; Annuity Factors — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Limits, Integrals &amp; Annuity Factors — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer full derivations, a live calculator, and a 6-question self-test?<a href="limits-integrals-annuity-factors.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Deeper Foundations 5</div>
+      <h1 class="sl-h1">Limits, Integrals &amp; the <em>Annuity Factor</em></h1>
+      <p class="sl-lede">Every fixed-income formula in this curriculum — duration, DV01, the annuity factor, forward rates off a yield curve — is a limit, a derivative, or an integral wearing a trading-desk name. This deck formalizes the one idea underneath a derivative and an integral, then uses it to derive the annuity factor from scratch and to show, algebraically, why duration and DV01 aren't separate formulas to memorize but this exact same calculus, applied.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Getting arbitrarily close, without ever needing to arrive</h2>
+      <p class="sl-sub">A limit is a genuinely honest idea, even stated in plain English.</p>
+      <div class="sl-quote">A limit describes what a quantity <strong>approaches</strong> as some input is pushed arbitrarily close to a target — without that input ever needing to actually reach the target itself. Written formally: lim<sub>x→a</sub> f(x) = L.</div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">→</div><div><h4>x → a</h4><p>The input is being pushed toward a target value a — it can get closer than any distance you name, without necessarily ever landing on a exactly.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">L</div><div><h4>The value being approached</h4><p>L is the single number f(x) settles arbitrarily close to as x closes in on a. The fully rigorous "epsilon-delta" version makes "arbitrarily close" precise; the plain-English reading is enough for everything below.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">✓</div><div><h4>Why bother formalizing it</h4><p>Because the derivative and the integral — the two tools duration, DV01, and the annuity factor are all built from — are both just this same idea, applied to a ratio in one case and a sum in the other.</p></div></div>
+      </div>
+      <p class="sl-p">Two fixed-income pictures use exactly this idea, and both recur for the rest of this deck. <strong>Duration</strong> is "how fast a bond's price wiggles for a tiny wiggle in yield" — the value that gets approached as that wiggle shrinks to nothing. The <strong>annuity factor</strong> is "what a stream of $1-per-period payments is worth today" — a sum that, in the perpetuity case, gets pushed to literally infinitely many terms. Same idea, two different directions.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">The derivative, revisited: a limit in disguise</h2>
+      <p class="sl-sub">Calculus for Finance already built this. Here it is again, because everything else in this deck leans on it.</p>
+      <div class="sl-row">
+        <div class="sl-box">f(x+h) − f(x)</div>
+        <div class="sl-arrow">÷ h, then h → 0</div>
+        <div class="sl-box green">f '(x)</div>
+      </div>
+      <p class="sl-p" style="text-align:center;font-family:'DM Mono',monospace;color:var(--text2)">f '(x) = lim<sub>h→0</sub> [f(x+h) − f(x)] / h</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">h</div><div><h4>A shrinking gap</h4><p>h is the input being pushed toward the target — here the target is 0, not some other number. h never needs to actually equal zero.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">÷</div><div><h4>The ratio being tracked</h4><p>[f(x+h) − f(x)] / h is the average rate of change of f over the gap h — an honest number at every h, but not yet the derivative.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">L</div><div><h4>What the ratio approaches</h4><p>As h shrinks toward zero, that average rate of change settles on a single value — the instantaneous rate of change, f '(x), at exactly the point x.</p></div></div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Where this is headed</div>
+        <p>Swap the generic f(x) for a bond's price as a function of yield, P(y), and this exact ratio-shrinking-toward-an-instant pattern becomes duration two sections from now — not a new idea, the same one, aimed at a formula this curriculum already uses.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">The integral: a Riemann sum, thinned to a limit</h2>
+      <p class="sl-sub">Chop the area under a curve into rectangles, add them up, then let the rectangles get infinitely thin. Drag the slider.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Rectangles approximating the area under a decaying discount curve, converging to the true area as the number of rectangles increases">
+            <line x1="60" y1="220" x2="600" y2="220" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="60" y1="220" x2="60" y2="30" style="stroke:var(--border2);stroke-width:1"/>
+            <text x="330" y="245" text-anchor="middle" style="fill:var(--text3);font-size:11px">time t (years)</text>
+            <text x="20" y="130" text-anchor="middle" style="fill:var(--text3);font-size:11px" transform="rotate(-90 20 130)">e^(−0.05t)</text>
+            <text x="60" y="234" text-anchor="middle" style="fill:var(--text3);font-size:10px">0</text>
+            <text x="600" y="234" text-anchor="middle" style="fill:var(--text3);font-size:10px">20</text>
+            <g id="riemann-bars"></g>
+            <path id="riemann-curve" style="fill:none;stroke:var(--purple);stroke-width:2.5" d=""/>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Number of rectangles</span><span class="sl-live" id="riemann-nval">N = 8</span></div>
+        <input type="range" class="sl-slider" id="riemann-slider" min="2" max="120" step="1" value="8">
+        <div class="sl-calc-steps">
+          <div>Riemann sum (N rectangles): <b id="riemann-sum">—</b></div>
+          <div>Exact integral (the limit as N → ∞): <b id="riemann-exact">12.6424</b></div>
+          <div>Gap between them: <b id="riemann-err">—</b></div>
+        </div>
+      </div>
+      <p class="sl-p">Formally: ∫<sub>a</sub><sup>b</sup> f(t) dt = lim<sub>Δt→0</sub> Σ f(t<sub>i</sub>) Δt — chop the interval into slices of width Δt, evaluate f at each slice, add them up, then shrink Δt to zero. The curve here isn't arbitrary — it's e<sup>−0.05t</sup>, a continuous discount factor. Drag the slider far enough and the rectangles are secretly previewing next slide's exact idea.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">From discrete coupons to a continuous trickle of cash</h2>
+      <p class="sl-sub">The ordinary present-value sum is already a sum of discrete slices — one cash flow per coupon date.</p>
+      <div class="sl-svgwrap">
+        <svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Discrete cash flows at five coupon dates on top, transitioning via a downward arrow into a smooth continuous cash-flow curve on the bottom">
+          <line x1="40" y1="90" x2="600" y2="90" style="stroke:var(--border2);stroke-width:1"/>
+          <text x="40" y="35" style="fill:var(--blue);font-size:11px;font-weight:700">Discrete — a cash flow on each coupon date</text>
+          <line x1="140" y1="90" x2="140" y2="55" style="stroke:var(--blue);stroke-width:3"/>
+          <circle cx="140" cy="55" r="4.5" style="fill:var(--blue)"/>
+          <line x1="240" y1="90" x2="240" y2="55" style="stroke:var(--blue);stroke-width:3"/>
+          <circle cx="240" cy="55" r="4.5" style="fill:var(--blue)"/>
+          <line x1="340" y1="90" x2="340" y2="55" style="stroke:var(--blue);stroke-width:3"/>
+          <circle cx="340" cy="55" r="4.5" style="fill:var(--blue)"/>
+          <line x1="440" y1="90" x2="440" y2="55" style="stroke:var(--blue);stroke-width:3"/>
+          <circle cx="440" cy="55" r="4.5" style="fill:var(--blue)"/>
+          <line x1="540" y1="90" x2="540" y2="55" style="stroke:var(--blue);stroke-width:3"/>
+          <circle cx="540" cy="55" r="4.5" style="fill:var(--blue)"/>
+          <text x="140" y="105" text-anchor="middle" style="fill:var(--text3);font-size:10px">CF₁</text>
+          <text x="540" y="105" text-anchor="middle" style="fill:var(--text3);font-size:10px">CFₙ</text>
+          <text x="320" y="140" text-anchor="middle" style="fill:var(--text3);font-size:11px">↓ shrink the gap between dates toward zero ↓</text>
+          <line x1="40" y1="195" x2="600" y2="195" style="stroke:var(--border2);stroke-width:1"/>
+          <path d="M40,195 C140,150 240,160 340,150 C440,145 540,160 600,155 L600,195 Z" style="fill:var(--green);opacity:.28;stroke:var(--green);stroke-width:2"/>
+          <text x="40" y="235" style="fill:var(--green);font-size:11px;font-weight:700">Continuous — a cash-flow rate CF(t) at every instant</text>
+        </svg>
+      </div>
+      <p class="sl-p">Imagine a continuum of infinitesimal cash flows CF(t) dt arriving at every instant rather than on discrete coupon dates, each discounted continuously at rate r. Letting the gap between payment dates shrink to zero turns the discrete sum into exactly the integral from the previous slide:</p>
+      <div class="sl-row">
+        <div class="sl-box">P = Σₜ CFₜ / (1+r)ᵗ</div>
+        <div class="sl-arrow">gap → 0</div>
+        <div class="sl-box green">PV = ∫₀ᵀ CF(t) e⁻ʳᵗ dt</div>
+      </div>
+      <p class="sl-p">Nothing about that integral is exotic once the discrete sum is already familiar — it's the identical accumulation idea, applied to a continuum of cash flows instead of a handful of discrete ones. This exact parallel gets reused two sections from now, when the annuity factor's own continuous-compounding limit turns out to be a special case of this same integral.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Summing a geometric series of discounted cash flows</h2>
+      <p class="sl-sub">An annuity factor is the present value of a $1-per-period stream. Step through how its formula is actually derived — not asserted.</p>
+      <p class="sl-p">Define it as a finite geometric series with n terms and common ratio x = (1+y)⁻¹:</p>
+      <p class="sl-p" style="text-align:center;font-family:'DM Mono',monospace;color:var(--text2)">A(n,y) = Σ<sub>t=1</sub><sup>n</sup> (1+y)⁻ᵗ = x + x² + ⋯ + xⁿ</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="geo-tabs">
+          <button class="sl-tab active" data-panel="geo-1">Step 1 — multiply by (1+y)</button>
+          <button class="sl-tab" data-panel="geo-2">Step 2 — subtract</button>
+          <button class="sl-tab" data-panel="geo-3">Step 3 — solve for A</button>
+        </div>
+        <div class="sl-panel active" id="geo-1">
+          <div class="sl-row"><div class="sl-box">(1+y)·A</div><div class="sl-arrow">=</div><div class="sl-box">1 + x + x² + ⋯ + xⁿ⁻¹</div></div>
+          <div class="sl-verdict">Multiplying every term of A by (1+y) shifts each power of x down by one: (1+y)·xᵗ = xᵗ⁻¹.</div>
+        </div>
+        <div class="sl-panel" id="geo-2">
+          <div class="sl-row"><div class="sl-box amber">(1+y)A − A</div><div class="sl-arrow">=</div><div class="sl-box amber">1 − xⁿ</div></div>
+          <div class="sl-verdict">Line the two series up. Every middle term (x through xⁿ⁻¹) appears in both and cancels exactly — only the leading 1 and the trailing xⁿ survive.</div>
+        </div>
+        <div class="sl-panel" id="geo-3">
+          <div class="sl-row"><div class="sl-box green">yA = 1 − (1+y)⁻ⁿ</div><div class="sl-arrow">÷y</div><div class="sl-box green">A(n,y) = [1 − (1+y)⁻ⁿ] / y</div></div>
+          <div class="sl-verdict">The left side simplifies to yA, since (1+y)A − A = A[(1+y) − 1] = yA. Substitute x = (1+y)⁻¹ back in, divide by y, and the closed form falls out.</div>
+        </div>
+        <div class="sl-note">Same "multiply, subtract, solve" trick used to sum any finite geometric series — like weighing a pile of ever-smaller chocolate bars by comparing the pile to a slightly shifted copy of itself instead of stacking every bar on a scale.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">The annuity factor falls out — try it yourself</h2>
+      <p class="sl-sub">A 5-year, $1-per-year stream at 4% yield: the coupon-only building block inside every coupon-bearing bond's price.</p>
+      <p class="sl-p">Summing the five discount factors directly (0.96154 + 0.92456 + 0.88900 + 0.85480 + 0.82193) gives 4.45182 — and the closed form agrees: A(5, 0.04) = [1 − (1.04)⁻⁵] / 0.04 = 0.17807 / 0.04 ≈ 4.4518. Two routes, same number, exactly as they must agree.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change n or y, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Periods n</label><input type="number" class="sl-input" id="ann-n" value="5" step="1" min="1"></div>
+          <div class="sl-calc-op">yield</div>
+          <div class="sl-calc-field"><label>Yield y (%)</label><input type="number" class="sl-input" id="ann-y" value="4" step="0.25"></div>
+          <div class="sl-calc-op">→</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Annuity factor A(n,y)</div>
+            <div class="sl-calc-result-val" id="ann-A">4.4518</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Modified duration D<sub>mod</sub> = <b id="ann-dmod">2.8092</b> years</div>
+          <div>Macaulay duration D<sub>Mac</sub> = <b id="ann-dmac">2.9216</b> years</div>
+          <div id="ann-note" class="sl-note" style="display:none;border-top:none;padding-top:0;margin-top:0"></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="ann-reset">Reset to n=5, y=4%</button>
+      </div>
+      <p class="sl-p">Differentiating A(n,y) itself (via the quotient rule) gives D<sub>mod</sub> = 1/y − n / [(1+y)((1+y)ⁿ−1)] — the same differentiation move used on a bond's price, aimed at the annuity factor directly. Duration isn't a separately memorized formula; it's this closed form, differentiated.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Two limits hiding inside one formula</h2>
+      <p class="sl-sub">A(n,y) = [1 − (1+y)⁻ⁿ] / y has exactly two limits worth taking — two different things pushed toward infinity.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">n → ∞ — the perpetuity limit</span>
+          <p>For y &gt; 0, (1+y)⁻ⁿ → 0 as n → ∞ — raising a number greater than 1 to an ever-larger power sends its reciprocal to zero. So A(n,y) → 1/y. A stream of $1 payments running forever is worth exactly 1/y today.</p>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">m → ∞ within a period — continuous compounding</span>
+          <p>Compounding m times within a period sends each discrete discount factor (1+y)⁻ᵗ to e⁻ʸᵗ. The annuity sum becomes the continuous-time integral ∫₀ⁿ e⁻ʸᵗ dt = [1 − e⁻ʸⁿ] / y — the same shape, (1+y)⁻ⁿ simply replaced by e⁻ʸⁿ.</p>
+        </div>
+      </div>
+      <div class="sl-svgwrap">
+        <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart of the annuity factor at a 5 percent yield for n equal to 5, 10, 20 and 40 periods, climbing toward but never reaching a dashed line at 20, the perpetuity value 1 over y">
+          <line x1="60" y1="220" x2="600" y2="220" style="stroke:var(--border2);stroke-width:1"/>
+          <line x1="60" y1="220" x2="60" y2="30" style="stroke:var(--border2);stroke-width:1"/>
+          <line x1="60" y1="47.3" x2="600" y2="47.3" style="stroke:var(--purple);stroke-width:1.5;stroke-dasharray:4,3"/>
+          <text x="605" y="51" style="fill:var(--purple);font-size:11px">1/y = 20 (n→∞)</text>
+          <rect x="100" y="182.6" width="70" height="37.4" style="fill:var(--blue);opacity:.85"/>
+          <text x="135" y="176" text-anchor="middle" style="fill:var(--text);font-size:10px">4.33</text>
+          <text x="135" y="236" text-anchor="middle" style="fill:var(--text3);font-size:11px">n=5</text>
+          <rect x="220" y="153.3" width="70" height="66.7" style="fill:var(--blue);opacity:.85"/>
+          <text x="255" y="147" text-anchor="middle" style="fill:var(--text);font-size:10px">7.72</text>
+          <text x="255" y="236" text-anchor="middle" style="fill:var(--text3);font-size:11px">n=10</text>
+          <rect x="340" y="112.3" width="70" height="107.7" style="fill:var(--blue);opacity:.85"/>
+          <text x="375" y="106" text-anchor="middle" style="fill:var(--text);font-size:10px">12.46</text>
+          <text x="375" y="236" text-anchor="middle" style="fill:var(--text3);font-size:11px">n=20</text>
+          <rect x="460" y="71.8" width="70" height="148.2" style="fill:var(--green);opacity:.9"/>
+          <text x="495" y="65" text-anchor="middle" style="fill:var(--text);font-size:10px">17.16</text>
+          <text x="495" y="236" text-anchor="middle" style="fill:var(--text3);font-size:11px">n=40</text>
+        </svg>
+      </div>
+      <div class="sl-quote">Notice the structural echo: the continuous annuity integral above is just the general continuous-time PV integral from Section 4, PV = ∫₀ᵀ CF(t) e⁻ʳᵗ dt, with the constant cash-flow rate CF(t) = 1 plugged in. The derivative behind duration and the integral behind continuous discounting aren't separate ideas colliding by coincidence here — the annuity factor's continuous limit <strong>is</strong> a special case of that same integral.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Duration: literally a derivative</h2>
+      <p class="sl-sub">Differentiate the bond-pricing formula with respect to yield, and duration falls out with nothing new added.</p>
+      <div class="sl-row">
+        <div class="sl-box">P(y) = Σₜ CFₜ/(1+y)ᵗ</div>
+        <div class="sl-arrow">d/dy</div>
+        <div class="sl-box amber">dP/dy = −Σₜ t·CFₜ/(1+y)ᵗ⁺¹</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">dP/dy</div><div><h4>The raw derivative</h4><p>Always negative for a plain bond — every term is a positive number with a minus sign in front, the algebraic reason price and yield move in opposite directions.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">−1/P</div><div><h4>Flip the sign, normalize by price</h4><p>Turns "dollars per unit yield" into a positive, price-independent sensitivity that practitioners can quote and compare across bonds.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">D<sub>mod</sub></div><div><h4>Modified duration</h4><p>D<sub>mod</sub> = −(1/P)(dP/dy) — the quoted number, positive, in years, directly a derivative.</p></div></div>
+      </div>
+      <p class="sl-p">Worked example: a 2-year, $1,000 face bond with a 5% annual coupon, priced at a 5% yield (a par bond, P = $1,000 exactly). dP/dy = −[(1×50)/(1.05)² + (2×1,050)/(1.05)³] = −[45.35 + 1,814.06] = −1,859.41. So D<sub>mod</sub> = −(1/1,000)×(−1,859.41) = <strong>1.8594 years</strong> — every input already sat inside the pricing formula; nothing new was invented.</p>
+      <div class="sl-quote">Duration answers one question: if the yield wiggled by a tiny amount, how much would the bond's price wiggle in response? It's a speedometer reading — the "road" is yield, the "distance traveled" is price. Differentiating the pricing formula is reading that speedometer directly off the math instead of guessing.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">DV01: duration, scaled into dollars</h2>
+      <p class="sl-sub">DV01 = P × D<sub>mod</sub> × 0.0001 — the dollar price change for a 1 basis-point yield move. Change the inputs, live.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Price ($)</label><input type="number" class="sl-input" id="dv-price" value="10000000" step="100000" min="0"></div>
+          <div class="sl-calc-op">×</div>
+          <div class="sl-calc-field"><label>Modified duration (yrs)</label><input type="number" class="sl-input" id="dv-dur" value="8.50" step="0.01" min="0"></div>
+          <div class="sl-calc-op">×</div>
+          <div class="sl-calc-field"><label>Yield change (bp)</label><input type="number" class="sl-input" id="dv-dy" value="1" step="1"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Approx. price change</div>
+            <div class="sl-calc-result-val" id="dv-result">−$8,500.00</div>
+          </div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="dv-reset">Reset to the desk's 10-year note</button>
+        <div class="sl-note">Price change ≈ −Price × D<sub>mod</sub> × Δy. A positive yield change produces a negative price change for a long position — the minus sign is duration's, not a typo.</div>
+      </div>
+      <p class="sl-p">A rates desk has sold (gone short) $10,000,000 face of a 10-year note priced near par, D<sub>mod</sub> = 8.50 years. DV01<sub>position</sub> = 10,000,000 × 8.50 × 0.0001 = <strong>$8,500 per basis point</strong>. If the 10-year futures contract carries a DV01 of roughly $85, the hedge ratio is 8,500 ÷ 85 = <strong>100 contracts</strong> long — a specific number derived from the exact derivative above, not a guess.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Every fixed-income formula, wearing a trading-desk name</h2>
+      <div class="sl-quote">Duration, convexity, DV01, the annuity factor itself, and forward-rate extraction from a yield curve — every one of them is a limit, a derivative, or an integral, just dressed up in trading-desk vocabulary. Even the instantaneous forward rate, f(t) = d/dt[t·r(t)] = r(t) + t·r'(t), is nothing but the derivative of a fitted yield curve's cumulative yield.</div>
+      <p class="sl-p"><strong>Duration and DV01 are almost never hand-differentiated in production.</strong> Most real instruments — callable bonds, mortgage-backed securities, structured notes — have no clean closed-form price to differentiate. Practitioners instead compute <strong>effective duration</strong> numerically: bump the yield curve up, reprice; bump it down, reprice; take the finite difference — literally the same central-difference check used earlier on the annuity factor, applied where no closed form exists to check it against.</p>
+      <p class="sl-p" style="text-align:center;font-family:'DM Mono',monospace;color:var(--text2)">D<sub>eff</sub> ≈ −(1/P) × [P(y+ε) − P(y−ε)] / (2ε)</p>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>Duration is a local, first-order approximation — it degrades for large yield moves without a convexity (second-derivative) correction. Day-count and compounding conventions silently change an annuity factor's exact value for what colloquially gets called "the same bond." And Macaulay duration (a weighted-average time, in years) isn't modified duration (a price sensitivity) — they relate by D<sub>mod</sub> = D<sub>Mac</sub> / (1+y/m), never exactly 1, so swapping one for the other is never exactly correct.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Quick check</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>In plain English, what does lim<sub>x→a</sub> f(x) = L assert?</h4>
+        <button class="sl-quiz-opt" data-correct="true">As x gets arbitrarily close to a, f(x) gets arbitrarily close to L — x need not ever equal a</button>
+        <button class="sl-quiz-opt">x must equal a exactly for f(x) to equal L</button>
+        <button class="sl-quiz-opt">L is the average value of f(x) across every possible x</button>
+        <div class="sl-quiz-explain">A limit describes what a quantity approaches, not a value it's required to reach — the whole point of the "arbitrarily close" language.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Modified duration D<sub>mod</sub> is defined as:</h4>
+        <button class="sl-quiz-opt" data-correct="true">−(1/P) × dP/dy</button>
+        <button class="sl-quiz-opt">P × dP/dy</button>
+        <button class="sl-quiz-opt">dy/dP</button>
+        <div class="sl-quiz-explain">Differentiate bond price with respect to yield, flip the sign (dP/dy is always negative for a plain bond), then normalize by price so the quoted number is a positive, price-independent sensitivity.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>For A(n,y) = [1−(1+y)⁻ⁿ]/y with y &gt; 0 fixed, what happens as n → ∞?</h4>
+        <button class="sl-quiz-opt" data-correct="true">A converges to 1/y — the perpetuity value</button>
+        <button class="sl-quiz-opt">A diverges to infinity</button>
+        <button class="sl-quiz-opt">A converges to 0</button>
+        <div class="sl-quiz-explain">(1+y)⁻ⁿ → 0 as n grows, since raising a number greater than 1 to an ever-larger power sends its reciprocal to zero, leaving A → (1−0)/y = 1/y.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>A $10,000,000 position with modified duration 8.50 years has a DV01 of approximately:</h4>
+        <button class="sl-quiz-opt" data-correct="true">$8,500 per basis point</button>
+        <button class="sl-quiz-opt">$850,000 per basis point</button>
+        <button class="sl-quiz-opt">$85 per basis point</button>
+        <div class="sl-quiz-explain">DV01 = P × D_mod × 0.0001 = 10,000,000 × 8.50 × 0.0001 = $8,500.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>For annual compounding (m=1), how do Macaulay duration (D_Mac) and modified duration (D_mod) relate?</h4>
+        <button class="sl-quiz-opt" data-correct="true">D_mod = D_Mac / (1+y)</button>
+        <button class="sl-quiz-opt">D_mod = D_Mac × (1+y)</button>
+        <button class="sl-quiz-opt">They are always exactly equal</button>
+        <div class="sl-quiz-explain">D_mod = D_Mac / (1+y/m); with m=1 that's D_Mac / (1+y). Treating them as interchangeable silently misstates the sensitivity by that factor.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>A limit formalizes "arbitrarily close, without needing to arrive" — every derivative and integral in this curriculum, duration and continuous discounting included, is built from exactly that one idea.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Duration is a derivative — D_mod = −(1/P)(dP/dy), the bond-pricing formula differentiated with respect to yield, sign-flipped and normalized by price.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>The annuity factor is a geometric series, derived not asserted — A(n,y) = [1−(1+y)⁻ⁿ]/y falls out of the standard multiply-subtract-solve trick.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Two limits sit inside that one formula — n→∞ gives the perpetuity value 1/y; compounding frequency m→∞ recovers continuous compounding and connects directly to e⁻ʳᵗ.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>DV01 turns duration into a dollar figure a desk can hedge with — P × D_mod × 0.0001, the exact number behind sizing a futures hedge.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Duration is a local, first-order approximation — it degrades for large yield moves without convexity, and gets silently distorted by day-count mismatches or confusing Macaulay with modified duration.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Differentiate any pricing formula to get its sensitivity directly instead of quoting duration from memory. Derive an annuity factor — and its perpetuity and continuous-compounding limits — from the geometric series instead of taking it on faith. Size a DV01 hedge from first principles. And recognize forward rates, convexity, and every other fixed-income "Greek" as the same handful of limit ideas, wearing different trading-desk names.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>The Efficient Market Hypothesis</h3>
+        <p>Prices already reflect what's knowable — so before you believe you've found an edge, you should first ask why the market left it there.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="emh-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="limits-integrals-annuity-factors.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Riemann sum → integral, live: rectangles under e^(-0.05t) on [0,20].
+  (function(){
+    var slider = document.getElementById('riemann-slider');
+    if (!slider) return;
+    var nVal = document.getElementById('riemann-nval');
+    var barsGroup = document.getElementById('riemann-bars');
+    var curvePath = document.getElementById('riemann-curve');
+    var sumOut = document.getElementById('riemann-sum');
+    var errOut = document.getElementById('riemann-err');
+
+    var X0 = 60, X1 = 600, Y0 = 220, Y1 = 30, TMAX = 20, PMAX = 1.05;
+    function f(t){ return Math.exp(-0.05 * t); }
+    function xForT(t){ return X0 + (t / TMAX) * (X1 - X0); }
+    function yForV(v){ return Y0 - (v / PMAX) * (Y0 - Y1); }
+    var EXACT = TMAX * (1 - Math.exp(-1));
+
+    function buildCurve(){
+      var d = '';
+      var steps = 100;
+      for (var i = 0; i <= steps; i++) {
+        var t = TMAX * i / steps;
+        var x = xForT(t), y = yForV(f(t));
+        d += (i === 0 ? 'M' : 'L') + x.toFixed(2) + ',' + y.toFixed(2) + ' ';
+      }
+      curvePath.setAttribute('d', d);
+    }
+
+    function render(){
+      var N = parseInt(slider.value, 10);
+      var dt = TMAX / N;
+      var sum = 0;
+      var html = '';
+      for (var i = 0; i < N; i++) {
+        var tLeft = i * dt;
+        var h = f(tLeft);
+        sum += h * dt;
+        var x = xForT(tLeft);
+        var w = xForT(tLeft + dt) - x;
+        var y = yForV(h);
+        var rectH = Y0 - y;
+        html += '<rect x="' + x.toFixed(2) + '" y="' + y.toFixed(2) + '" width="' +
+          Math.max(w - 0.6, 0.2).toFixed(2) + '" height="' + rectH.toFixed(2) +
+          '" style="fill:var(--blue);opacity:.35;stroke:var(--blue);stroke-width:0.6"></rect>';
+      }
+      barsGroup.innerHTML = html;
+      nVal.textContent = 'N = ' + N;
+      sumOut.textContent = sum.toFixed(4);
+      errOut.textContent = (Math.abs(EXACT - sum) / EXACT * 100).toFixed(2) + '%';
+    }
+
+    buildCurve();
+    slider.addEventListener('input', render);
+    render();
+  })();
+
+  // Annuity factor + duration, live: n, y -> A(n,y), D_mod, D_Mac.
+  (function(){
+    var nInput = document.getElementById('ann-n');
+    if (!nInput) return;
+    var yInput = document.getElementById('ann-y');
+    var aOut = document.getElementById('ann-A');
+    var dmodOut = document.getElementById('ann-dmod');
+    var dmacOut = document.getElementById('ann-dmac');
+    var note = document.getElementById('ann-note');
+    var resetBtn = document.getElementById('ann-reset');
+    var DEFAULTS = { n: 5, y: 4 };
+
+    function Aval(n, y){ return (1 - Math.pow(1 + y, -n)) / y; }
+    function Dmod(n, y){
+      var denom = (1 + y) * (Math.pow(1 + y, n) - 1);
+      if (denom === 0) return NaN;
+      return 1 / y - n / denom;
+    }
+
+    function recompute(){
+      var n = parseFloat(nInput.value);
+      var yPct = parseFloat(yInput.value);
+      var y = yPct / 100;
+
+      if (!isFinite(n) || n <= 0 || !isFinite(y) || y <= 0) {
+        aOut.textContent = '—'; dmodOut.textContent = '—'; dmacOut.textContent = '—';
+        note.style.display = 'block';
+        note.textContent = 'Enter a positive number of periods and a positive yield.';
+        return;
+      }
+      note.style.display = 'none';
+      note.textContent = '';
+
+      var a = Aval(n, y);
+      var dm = Dmod(n, y);
+      var dmac = dm * (1 + y);
+
+      aOut.textContent = a.toFixed(4);
+      dmodOut.textContent = dm.toFixed(4);
+      dmacOut.textContent = dmac.toFixed(4);
+    }
+
+    [nInput, yInput].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      nInput.value = DEFAULTS.n; yInput.value = DEFAULTS.y;
+      recompute();
+    });
+    recompute();
+  })();
+
+  // DV01 calculator, live: price, duration, yield change (bp) -> $ price change.
+  (function(){
+    var priceInput = document.getElementById('dv-price');
+    if (!priceInput) return;
+    var durInput = document.getElementById('dv-dur');
+    var dyInput = document.getElementById('dv-dy');
+    var result = document.getElementById('dv-result');
+    var resetBtn = document.getElementById('dv-reset');
+    var DEFAULTS = { price: 10000000, dur: 8.50, dy: 1 };
+
+    function fmtMoney(n){
+      var sign = n < 0 ? '−' : '';
+      return sign + '$' + Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function recompute(){
+      var p = parseFloat(priceInput.value), d = parseFloat(durInput.value), dy = parseFloat(dyInput.value);
+      if (!isFinite(p) || !isFinite(d) || !isFinite(dy) || p < 0 || d < 0) {
+        result.textContent = '—';
+        return;
+      }
+      var change = -(p * d * (dy / 10000));
+      result.textContent = fmtMoney(change);
+    }
+
+    [priceInput, durInput, dyInput].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      priceInput.value = DEFAULTS.price; durInput.value = DEFAULTS.dur; dyInput.value = DEFAULTS.dy;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trigonometry, Logarithms &amp; Exponentials — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Trigonometry, Logs &amp; Exponentials — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer full derivations, two live calculators, and a 5-question self-test?<a href="foundation-trig-logs-exponentials.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Lesson 02 · Foundation Mathematics</div>
+      <h1 class="sl-h1">Trigonometry, Logs &amp; Exponentials, <em>Cycles and Continuous Growth</em></h1>
+      <p class="sl-lede">Two unrelated-looking topics share this lesson because they show up everywhere later for the same reason: both describe things that behave with mathematical precision — one repeats, one compounds. Sine and cosine describe anything that cycles, from seasons to intraday rhythms. e^x and ln x describe anything that grows continuously, and nearly every pricing model and returns calculation later in this curriculum is built on exactly those two functions. Get comfortable with both here, in plain form, before the notation gets dressed up in Greek letters and finance jargon.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">A point walking around a circle</h2>
+      <p class="sl-sub">Draw a circle of radius 1 around the origin. Pick an angle θ, swept counterclockwise from 3 o'clock. Sine is the height of the point you land on; cosine is how far sideways it is.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — pick an angle</div>
+        <div class="sl-tabs" id="uc-tabs">
+          <button class="sl-tab active" data-panel="uc-1">θ = 0°</button>
+          <button class="sl-tab" data-panel="uc-2">θ = 45°</button>
+          <button class="sl-tab" data-panel="uc-3">θ = 90°</button>
+          <button class="sl-tab" data-panel="uc-4">θ = 180°</button>
+          <button class="sl-tab" data-panel="uc-5">θ = 270°</button>
+        </div>
+        <div class="sl-panel active" id="uc-1">
+          <div class="sl-svgwrap"><svg viewBox="0 0 240 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Unit circle with the point at angle zero degrees, at the 3 o'clock position">
+            <circle cx="120" cy="100" r="80" style="fill:none;stroke:var(--border2);stroke-width:1.5"/>
+            <line x1="20" y1="100" x2="220" y2="100" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="120" y1="10" x2="120" y2="190" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="120" y1="100" x2="200" y2="100" style="stroke:var(--blue);stroke-width:2"/>
+            <circle cx="200" cy="100" r="6" style="fill:var(--blue)"/>
+            <text x="205" y="90" text-anchor="start" style="fill:var(--blue);font-size:11px;font-weight:700">(1, 0)</text>
+          </svg></div>
+          <div class="sl-verdict"><strong>θ = 0 radians.</strong> Point (1, 0). cos θ = 1, sin θ = 0 — the starting position, before any walking has happened.</div>
+        </div>
+        <div class="sl-panel" id="uc-2">
+          <div class="sl-svgwrap"><svg viewBox="0 0 240 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Unit circle with the point at 45 degrees, halfway between the horizontal and vertical axes">
+            <circle cx="120" cy="100" r="80" style="fill:none;stroke:var(--border2);stroke-width:1.5"/>
+            <line x1="20" y1="100" x2="220" y2="100" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="120" y1="10" x2="120" y2="190" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="120" y1="100" x2="176.6" y2="43.4" style="stroke:var(--blue);stroke-width:2"/>
+            <circle cx="176.6" cy="43.4" r="6" style="fill:var(--blue)"/>
+            <text x="181" y="35" text-anchor="start" style="fill:var(--blue);font-size:11px;font-weight:700">(0.707, 0.707)</text>
+          </svg></div>
+          <div class="sl-verdict"><strong>θ = π/4 radians ≈ 0.785.</strong> Point (0.707, 0.707). cos θ = sin θ = √2/2 ≈ 0.7071 — an ordinary angle, not lined up with either axis.</div>
+        </div>
+        <div class="sl-panel" id="uc-3">
+          <div class="sl-svgwrap"><svg viewBox="0 0 240 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Unit circle with the point at 90 degrees, straight up from the center">
+            <circle cx="120" cy="100" r="80" style="fill:none;stroke:var(--border2);stroke-width:1.5"/>
+            <line x1="20" y1="100" x2="220" y2="100" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="120" y1="10" x2="120" y2="190" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="120" y1="100" x2="120" y2="20" style="stroke:var(--blue);stroke-width:2"/>
+            <circle cx="120" cy="20" r="6" style="fill:var(--blue)"/>
+            <text x="128" y="18" text-anchor="start" style="fill:var(--blue);font-size:11px;font-weight:700">(0, 1)</text>
+          </svg></div>
+          <div class="sl-verdict"><strong>θ = π/2 radians ≈ 1.571.</strong> Point (0, 1). cos θ = 0, sin θ = 1 — a quarter of the way around, straight up.</div>
+        </div>
+        <div class="sl-panel" id="uc-4">
+          <div class="sl-svgwrap"><svg viewBox="0 0 240 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Unit circle with the point at 180 degrees, directly opposite the start">
+            <circle cx="120" cy="100" r="80" style="fill:none;stroke:var(--border2);stroke-width:1.5"/>
+            <line x1="20" y1="100" x2="220" y2="100" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="120" y1="10" x2="120" y2="190" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="120" y1="100" x2="40" y2="100" style="stroke:var(--blue);stroke-width:2"/>
+            <circle cx="40" cy="100" r="6" style="fill:var(--blue)"/>
+            <text x="35" y="90" text-anchor="end" style="fill:var(--blue);font-size:11px;font-weight:700">(−1, 0)</text>
+          </svg></div>
+          <div class="sl-verdict"><strong>θ = π radians ≈ 3.142.</strong> Point (−1, 0). cos θ = −1, sin θ = 0 — halfway around, directly opposite where it started.</div>
+        </div>
+        <div class="sl-panel" id="uc-5">
+          <div class="sl-svgwrap"><svg viewBox="0 0 240 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Unit circle with the point at 270 degrees, straight down from the center">
+            <circle cx="120" cy="100" r="80" style="fill:none;stroke:var(--border2);stroke-width:1.5"/>
+            <line x1="20" y1="100" x2="220" y2="100" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="120" y1="10" x2="120" y2="190" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="120" y1="100" x2="120" y2="180" style="stroke:var(--blue);stroke-width:2"/>
+            <circle cx="120" cy="180" r="6" style="fill:var(--blue)"/>
+            <text x="128" y="188" text-anchor="start" style="fill:var(--blue);font-size:11px;font-weight:700">(0, −1)</text>
+          </svg></div>
+          <div class="sl-verdict"><strong>θ = 3π/2 radians ≈ 4.712.</strong> Point (0, −1). cos θ = 0, sin θ = −1 — three-quarters of the way around.</div>
+        </div>
+        <div class="sl-note">tan θ = sin θ / cos θ — the slope of the line from the center to the point. It's undefined wherever cos θ = 0, exactly at 90° and 270°, where that line goes straight vertical.</div>
+      </div>
+      <p class="sl-p">This is the whole definition — sine and cosine aren't ratios memorized from a right triangle, they're just the coordinates of a point walking around a circle of radius 1. Every trig identity used later in this curriculum ultimately traces back to this picture.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Radians measure the walk, not the wedge</h2>
+      <p class="sl-sub">Degrees split a circle into 360 arbitrary pieces — a leftover convention from ancient Babylonian astronomy. Radians measure the actual arc length walked.</p>
+      <div class="sl-row">
+        <div class="sl-box">2π radians</div>
+        <div class="sl-arrow">=</div>
+        <div class="sl-box green">360°</div>
+      </div>
+      <p class="sl-p">One radian sweeps out an arc exactly 1 unit long on a unit-radius circle. Since the full circumference of that circle is 2π (from C = 2πr with r = 1), one full lap is exactly 2π radians. To convert: <strong>radians = degrees × π/180</strong>.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">°</div><div><h4>Degrees</h4><p>360 equal slices of a circle. Familiar, but arbitrary — nothing in the geometry demands exactly 360.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">↻</div><div><h4>Radians</h4><p>Distance actually walked around a unit circle. One full lap is always 2π radians, whatever the circle's real-world size.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">∫</div><div><h4>Why calculus insists on radians</h4><p>Every calculus-based trig formula — derivatives of sin and cos, the identity behind the next lesson's complex numbers — is only clean and correct when the angle is in radians.</p></div></div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Where this breaks in practice</div>
+        <p>Most programming languages' built-in sin/cos functions assume radians. Feed in a raw degree value — "90" meaning 90 degrees — and it silently computes sin(90 radians) instead, a completely different, essentially arbitrary number. No error is raised. Convert first, every time.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Walk one full lap, and the wave repeats exactly</h2>
+      <p class="sl-sub">Because θ + 2π lands on the same point as θ, sine and cosine repeat their values identically every 2π radians — that's periodicity.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>One full period, θ from 0 to 2π</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Sine and cosine waves plotted over one full period from zero to two pi radians">
+            <line x1="20" y1="100" x2="620" y2="100" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="20" y1="20" x2="20" y2="180" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="320" y1="20" x2="320" y2="180" style="stroke:var(--border);stroke-width:1;stroke-dasharray:3,3"/>
+            <path style="fill:none;stroke:var(--purple);stroke-width:2" d="M20,30 L57.5,35.3 L95,50.5 L132.5,73.2 L170,100 L207.5,126.8 L245,149.5 L282.5,164.7 L320,170 L357.5,164.7 L395,149.5 L432.5,126.8 L470,100 L507.5,73.2 L545,50.5 L582.5,35.3 L620,30"/>
+            <path style="fill:none;stroke:var(--blue);stroke-width:2.5" d="M20,100 L57.5,73.2 L95,50.5 L132.5,35.3 L170,30 L207.5,35.3 L245,50.5 L282.5,73.2 L320,100 L357.5,126.8 L395,149.5 L432.5,164.7 L470,170 L507.5,164.7 L545,149.5 L582.5,126.8 L620,100"/>
+            <text x="20" y="15" text-anchor="start" style="fill:var(--text3);font-size:10px">θ=0</text>
+            <text x="170" y="15" text-anchor="middle" style="fill:var(--text3);font-size:10px">π/2</text>
+            <text x="320" y="15" text-anchor="middle" style="fill:var(--text3);font-size:10px">π</text>
+            <text x="470" y="15" text-anchor="middle" style="fill:var(--text3);font-size:10px">3π/2</text>
+            <text x="620" y="15" text-anchor="end" style="fill:var(--text3);font-size:10px">2π</text>
+            <text x="330" y="196" style="fill:var(--text3);font-size:10px">one full period — after this, both curves repeat identically</text>
+            <text x="500" y="60" text-anchor="middle" style="fill:var(--blue);font-size:11px">sin θ</text>
+            <text x="500" y="185" text-anchor="middle" style="fill:var(--purple);font-size:11px">cos θ</text>
+          </svg>
+        </div>
+        <div class="sl-verdict">sin(θ + 2π) = sin θ and cos(θ + 2π) = cos θ, always — the wave doesn't approximately repeat, it repeats exactly.</div>
+      </div>
+      <div class="sl-quote">This exact repeating property is the whole reason cyclical data — a seasonal effect, an intraday rhythm, a mean-reverting oscillation — is modeled using sine and cosine waves of different frequencies, added together. Decomposing a messy series into a sum of such waves, across many frequencies at once, is what a Fourier transform does — covered properly in a later Signal Processing lesson, built directly on this vocabulary.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">e — the number growth settles on</h2>
+      <p class="sl-sub">Compound 100% growth over more and more sub-periods within one unit of time, and the result doesn't run away to infinity — it settles on a specific number.</p>
+      <div class="sl-row">
+        <div class="sl-box">lim (1 + 1/n)ⁿ, as n → ∞</div>
+        <div class="sl-arrow">=</div>
+        <div class="sl-box green">e ≈ 2.71828</div>
+      </div>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The natural exponential, e^x</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Exponential growth curve, rising slowly at first then accelerating sharply">
+            <line x1="20" y1="200" x2="620" y2="200" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="20" y1="10" x2="20" y2="200" style="stroke:var(--border2);stroke-width:1"/>
+            <path style="fill:none;stroke:var(--green);stroke-width:2.5" d="M20,200 L120,193.9 L220,183.8 L320,167.2 L420,139.7 L520,94.5 L620,20"/>
+            <text x="624" y="24" text-anchor="end" style="fill:var(--green);font-size:11px;font-weight:700">e^x</text>
+            <text x="620" y="214" text-anchor="end" style="fill:var(--text3);font-size:11px">x →</text>
+            <text x="24" y="24" text-anchor="start" style="fill:var(--text3);font-size:11px">value</text>
+          </svg>
+        </div>
+        <div class="sl-verdict">Never touches zero, never turns downward, and gets steeper the further right it goes — the slope keeps increasing.</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">+</div><div><h4>Always positive</h4><p>e raised to any real power — however negative — never reaches zero or goes below it.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">↗</div><div><h4>Always increasing</h4><p>There's no flat spot, no dip. Bigger x always means a bigger e^x.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">=</div><div><h4>Its own rate of change</h4><p>e^x's slope at any point equals its own value at that point — a calculus fact, not needed to use the function, but the reason it keeps appearing in growth models rather than an arbitrary base.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">ln x runs growth backward</h2>
+      <p class="sl-sub">The natural logarithm is defined as the exact inverse of e^x — "what power must e be raised to, to get x?"</p>
+      <div class="sl-row">
+        <div class="sl-box">ln(e^x)</div>
+        <div class="sl-arrow">=</div>
+        <div class="sl-box green">x</div>
+      </div>
+      <p class="sl-p" style="margin-top:0">And running the other way: e^(ln x) = x, defined only for x &gt; 0 — e raised to any power is never zero or negative, so there's no power that produces one.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">×→+</div><div><h4>Product rule</h4><p>ln(ab) = ln a + ln b — multiplying two numbers becomes adding their logs.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">÷→−</div><div><h4>Quotient rule</h4><p>ln(a/b) = ln a − ln b — dividing becomes subtracting.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">ⁿ→×</div><div><h4>Power rule</h4><p>ln(aⁿ) = n·ln a — an exponent inside the log becomes a plain multiplier outside it.</p></div></div>
+      </div>
+      <div class="sl-quote">These aren't arbitrary rules to memorize — they fall straight out of the exponent rule e^a·e^b = e^(a+b). Let a = ln x and b = ln y, so x = e^a and y = e^b: then xy = e^a·e^b = e^(a+b), and taking ln of both sides gives ln(xy) = a + b = ln x + ln y. That's the whole derivation of the product rule.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">e^(rt) is compounding pushed to infinity</h2>
+      <p class="sl-sub">Compounding a rate r, m times per year, for t years, gives (1 + r/m)^(mt). Push m — the compounding frequency — toward infinity, and the formula settles onto e^(rt). $100 at 8%/year for 10 years, at increasing frequency:</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — same 8%/year, different compounding frequency</div>
+        <div class="sl-tabs" id="cf-tabs">
+          <button class="sl-tab active" data-panel="cf-1">Annual</button>
+          <button class="sl-tab" data-panel="cf-2">Quarterly</button>
+          <button class="sl-tab" data-panel="cf-3">Monthly</button>
+          <button class="sl-tab" data-panel="cf-4">Daily</button>
+          <button class="sl-tab" data-panel="cf-5">Continuous</button>
+        </div>
+        <div class="sl-panel active" id="cf-1">
+          <div class="sl-row"><div class="sl-box">$100</div><div class="sl-arrow">→</div><div class="sl-box">$215.89</div></div>
+          <div class="sl-verdict">m = 1: (1 + 0.08/1)^(1×10) = 1.08¹⁰ ≈ 2.1589.</div>
+        </div>
+        <div class="sl-panel" id="cf-2">
+          <div class="sl-row"><div class="sl-box">$100</div><div class="sl-arrow">→</div><div class="sl-box">$220.80</div></div>
+          <div class="sl-verdict">m = 4: (1 + 0.08/4)^(4×10) = 1.02⁴⁰ ≈ 2.2080.</div>
+        </div>
+        <div class="sl-panel" id="cf-3">
+          <div class="sl-row"><div class="sl-box">$100</div><div class="sl-arrow">→</div><div class="sl-box">$221.97</div></div>
+          <div class="sl-verdict">m = 12: (1 + 0.08/12)^(12×10) ≈ 2.2197.</div>
+        </div>
+        <div class="sl-panel" id="cf-4">
+          <div class="sl-row"><div class="sl-box">$100</div><div class="sl-arrow">→</div><div class="sl-box">$222.53</div></div>
+          <div class="sl-verdict">m = 252: (1 + 0.08/252)^(252×10) ≈ 2.2253 — already within a few cents of the continuous limit.</div>
+        </div>
+        <div class="sl-panel" id="cf-5">
+          <div class="sl-row"><div class="sl-box">$100</div><div class="sl-arrow">→</div><div class="sl-box green">$222.55</div></div>
+          <div class="sl-verdict">m → ∞: 100 × e^(0.08×10) = 100 × e^0.8 ≈ $222.55 — the limit every finite frequency above is converging toward.</div>
+        </div>
+        <div class="sl-note">Substitute n = m/r into (1 + r/m)^(mt): the exponent becomes nrt, and [(1 + 1/n)ⁿ]^(rt) is exactly e^(rt) as n → ∞ — the same limit that defines e itself, one slide back.</div>
+      </div>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — continuous compounding, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Principal ($)</label><input type="number" class="sl-input" id="cc-p" value="100" step="10" min="0"></div>
+          <div class="sl-calc-op">×</div>
+          <div class="sl-calc-field"><label>Rate r (%/yr)</label><input type="number" class="sl-input" id="cc-r" value="8" step="0.25"></div>
+          <div class="sl-calc-op">×</div>
+          <div class="sl-calc-field"><label>Time t (yrs)</label><input type="number" class="sl-input" id="cc-t" value="10" step="1" min="0"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">FV = P·e^(rt)</div>
+            <div class="sl-calc-result-val" id="cc-result">$222.55</div>
+          </div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="cc-reset">Reset to $100 at 8% for 10 years</button>
+        <div class="sl-note">This is the same e^(rt) derived above, not a separate formula. Try t = 0 (nothing has grown yet), or a negative rate (continuous decay).</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Log-returns add up. Simple returns don't.</h2>
+      <p class="sl-sub">A simple return is R = (P₁ − P₀)/P₀. A log-return is instead r = ln(P₁/P₀). Chain two periods together and the difference shows up immediately.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Simple returns</span>
+          <p>Two periods compound as (1+R₁)(1+R₂) − 1. That's <em>not</em> R₁ + R₂ — adding simple returns is only a rough approximation, and a worse one the more volatile the period.</p>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Log-returns</span>
+          <p>ln(P₂/P₀) = ln(P₂/P₁ · P₁/P₀) = ln(P₂/P₁) + ln(P₁/P₀) = r₂ + r₁ — the product rule turns the price ratio's multiplication straight into addition, exactly.</p>
+        </div>
+      </div>
+      <p class="sl-p">That's the whole reason log-returns are additive across time: total price ratio P₂/P₀ is the <em>product</em> of the two step ratios — that's just algebra — and the log product rule converts that product directly into a sum of log-returns. No approximation, no compounding correction needed.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — check the identity yourself</div>
+        <p class="sl-p" style="margin:0 0 14px">Enter any three prices. ln(P₂/P₁) + ln(P₁/P₀) always exactly equals ln(P₂/P₀) — it's an identity, not a coincidence of these particular numbers.</p>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>P₀</label><input type="number" class="sl-input" id="lr-p0" value="100" step="1" min="0"></div>
+          <div class="sl-calc-op">→</div>
+          <div class="sl-calc-field"><label>P₁</label><input type="number" class="sl-input" id="lr-p1" value="102" step="1" min="0"></div>
+          <div class="sl-calc-op">→</div>
+          <div class="sl-calc-field"><label>P₂</label><input type="number" class="sl-input" id="lr-p2" value="101" step="1" min="0"></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Step 1 log-return: ln(P₁/P₀) = <b id="lr-r1">0.019803</b></div>
+          <div>Step 2 log-return: ln(P₂/P₁) = <b id="lr-r2">-0.009852</b></div>
+          <div>Sum of the two steps: <b id="lr-sum">0.009951</b></div>
+          <div>Direct total: ln(P₂/P₀) = <b id="lr-direct">0.009951</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="lr-reset">Reset to the example prices</button>
+        <div class="sl-note">ln is undefined for a zero or negative price — set any field to 0 or less and the outputs go blank instead of silently returning garbage.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Two colleagues, one month, two different numbers</h2>
+      <p class="sl-sub">A trader wants a month's performance from 21 daily returns. Two colleagues compute it two different ways.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Colleague A</span>
+          <ul>
+            <li>Sums the 21 simple daily percentage returns directly</li>
+            <li>Reports that total as "the month's return"</li>
+            <li>Wrong — and increasingly wrong the more volatile the month was</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Colleague B</span>
+          <ul>
+            <li>Converts each day to a log-return, sums those 21 numbers</li>
+            <li>Converts the sum back to a percentage with e^(sum) − 1</li>
+            <li>Exact — because log-returns really do sum across time</li>
+          </ul>
+        </div>
+      </div>
+      <p class="sl-p">Colleague A's mistake is silently ignoring that gains and losses compound multiplicatively, not additively — the same "+50% then −50% is a real loss, not a wash" trap from the returns primer elsewhere in this curriculum. Colleague B's extra step, converting back at the very end with e^(·) − 1, is just the inverse of how log-returns were defined in the first place.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Why desks actually work this way</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">%</div><div><h4>Log-returns are the default for statistics</h4><p>Volatility, correlation, regression on a return series — quant desks default to log-returns specifically because they add across time with no compounding correction.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">±</div><div><h4>They're symmetric, too</h4><p>A log-return of +x and −x are exact opposites in a way that +x% and −x% simple returns aren't, once you check what price each actually implies.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">e</div><div><h4>Continuous compounding is the pricing default</h4><p>A bond's discount factor, an option's risk-free growth term — most "grows at rate r" assumptions in a continuous-time model use e^(rt), because continuous-time calculus is far cleaner than a formula tied to a specific compounding frequency.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">〰️</div><div><h4>Sine/cosine build every cycle model</h4><p>A seasonal effect, an intraday pattern — fit a wave of the matching period (or several, of different periods) and check how much variation it explains. Doing that systematically across many frequencies at once is the Fourier transform.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">The mistakes worth knowing before you make them</h2>
+      <p class="sl-sub">Same underlying math, two very different outcomes depending on whether the habit is in place.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Skips the habit</span>
+          <ul>
+            <li>Feeds degrees straight into a formula or function expecting radians</li>
+            <li>Sums simple returns across multiple periods</li>
+            <li>Takes ln of whatever value a feed hands it, price or not</li>
+            <li>Quotes a continuous rate and a simple rate as if interchangeable</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Builds the habit</span>
+          <ul>
+            <li>Converts to radians first — always, before anything calculus-based</li>
+            <li>Sums log-returns, converts back to a percentage only at the end</li>
+            <li>Checks a price is strictly positive before taking its log</li>
+            <li>Converts explicitly: 5% simple ≈ 4.879% continuous, not the same number</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>None of these mistakes throw an error — that's what makes them dangerous. A degree fed where a radian was expected, or a summed simple return, produces a number that looks perfectly plausible and is simply wrong. The habit is the only real guard.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Convert 90° to radians.</h4>
+        <button class="sl-quiz-opt" data-correct="true">π/2</button>
+        <button class="sl-quiz-opt">π/4</button>
+        <button class="sl-quiz-opt">π</button>
+        <div class="sl-quiz-explain">90 × π/180 = π/2 ≈ 1.571 radians — the point at that angle is (0, 1), straight up from the center.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Which log rule turns an exponent inside a log into a plain multiplier outside it?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The power rule: ln(aⁿ) = n·ln a</button>
+        <button class="sl-quiz-opt">The product rule: ln(ab) = ln a + ln b</button>
+        <button class="sl-quiz-opt">The quotient rule: ln(a/b) = ln a − ln b</button>
+        <div class="sl-quiz-explain">The power rule is the one that pulls an exponent out of the log entirely, turning it into a multiplier — the other two handle multiplication and division of the log's argument.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>$500 compounded continuously at 6% for 2 years — ending value?</h4>
+        <button class="sl-quiz-opt" data-correct="true">≈ $563.75</button>
+        <button class="sl-quiz-opt">≈ $560.00</button>
+        <button class="sl-quiz-opt">≈ $530.00</button>
+        <div class="sl-quiz-explain">FV = 500 × e^(0.06×2) = 500 × e^0.12 ≈ 500 × 1.1275 ≈ $563.75.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>A price moves 50 → 55, then 55 → 55 (no change). Do the two daily log-returns sum to the direct 2-period log-return?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Yes — both equal ln(1.10) ≈ 0.0953</button>
+        <button class="sl-quiz-opt">No — the second period breaks the identity since nothing changed</button>
+        <button class="sl-quiz-opt">Yes, but only because both periods happen to be positive</button>
+        <div class="sl-quiz-explain">ln(55/50) + ln(55/55) = 0.09531 + 0 = 0.09531, matching ln(55/50) directly — additivity holds exactly, even with a zero-return period.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Why is passing a degree value straight into a programming language's sin() function dangerous?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It silently computes a wrong number — no error is raised</button>
+        <button class="sl-quiz-opt">It throws a runtime error immediately</button>
+        <button class="sl-quiz-opt">It works correctly, since sin() auto-detects the unit</button>
+        <div class="sl-quiz-explain">Most built-in sin/cos functions assume radians. "90" meaning 90° gets read as 90 radians — many full laps past 90° — producing an arbitrary, plausible-looking wrong answer with no warning.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Sine and cosine are coordinates on a unit circle — (cos θ, sin θ) is the point at angle θ, periodic every 2π radians, which is exactly why cyclical data gets modeled with them.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Radians, not degrees, are what calculus-based formulas expect — convert with radians = degrees × π/180 before plugging an angle into anything beyond basic geometry.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>e^x and ln x are exact inverses — the log rules (product → sum, quotient → difference, power → multiply) turn multiplicative problems into additive ones.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>e^(rt) is compounding pushed to infinite frequency — it falls straight out of the limit that defines e itself, not a separate formula to memorize.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Log-returns add exactly across time; simple returns only approximate that, worse the more volatile the series.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>A continuously-compounded rate is always a touch smaller than the equivalent simple rate — 5% simple ≈ 4.879% continuous over one year, not interchangeable numbers.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Convert confidently between degrees and radians before any calculus-based formula. Recognize e^(rt) on sight as continuous growth, not an arbitrary formula to memorize. Explain why a desk sums log-returns instead of simple returns, and convert correctly between a simple rate and its continuous equivalent.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Complex Numbers</h3>
+        <p>Euler's formula fuses e^x and the sine/cosine functions from this lesson into one identity — the very next lesson picks up exactly where this one leaves off.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="foundation-complex-numbers-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="foundation-trig-logs-exponentials.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Continuous compounding calculator — FV = P·e^(rt), live.
+  (function(){
+    var p = document.getElementById('cc-p');
+    if (!p) return;
+    var r = document.getElementById('cc-r'), t = document.getElementById('cc-t');
+    var result = document.getElementById('cc-result');
+    var resetBtn = document.getElementById('cc-reset');
+    var DEFAULTS = { p: 100, r: 8, t: 10 };
+
+    function recompute(){
+      var pv = parseFloat(p.value), rv = parseFloat(r.value), tv = parseFloat(t.value);
+      if (!isFinite(pv) || !isFinite(rv) || !isFinite(tv) || pv < 0 || tv < 0) {
+        result.textContent = '—';
+        return;
+      }
+      var fv = pv * Math.exp((rv / 100) * tv);
+      result.textContent = '$' + fv.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    [p, r, t].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      p.value = DEFAULTS.p; r.value = DEFAULTS.r; t.value = DEFAULTS.t;
+      recompute();
+    });
+    recompute();
+  })();
+
+  // Log-return additivity checker — ln(P2/P1) + ln(P1/P0) vs ln(P2/P0), live.
+  (function(){
+    var p0 = document.getElementById('lr-p0');
+    if (!p0) return;
+    var p1 = document.getElementById('lr-p1'), p2 = document.getElementById('lr-p2');
+    var r1out = document.getElementById('lr-r1'), r2out = document.getElementById('lr-r2');
+    var sumOut = document.getElementById('lr-sum'), directOut = document.getElementById('lr-direct');
+    var resetBtn = document.getElementById('lr-reset');
+    var DEFAULTS = { p0: 100, p1: 102, p2: 101 };
+
+    function fmt(n){ return n.toFixed(6); }
+
+    function recompute(){
+      var a = parseFloat(p0.value), b = parseFloat(p1.value), c = parseFloat(p2.value);
+      if (!isFinite(a) || !isFinite(b) || !isFinite(c) || a <= 0 || b <= 0 || c <= 0) {
+        r1out.textContent = '—'; r2out.textContent = '—'; sumOut.textContent = '—'; directOut.textContent = '—';
+        return;
+      }
+      var r1 = Math.log(b / a), r2 = Math.log(c / b);
+      var sum = r1 + r2;
+      var direct = Math.log(c / a);
+      r1out.textContent = fmt(r1);
+      r2out.textContent = fmt(r2);
+      sumOut.textContent = fmt(sum);
+      directOut.textContent = fmt(direct);
+    }
+
+    [p0, p1, p2].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      p0.value = DEFAULTS.p0; p1.value = DEFAULTS.p1; p2.value = DEFAULTS.p2;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

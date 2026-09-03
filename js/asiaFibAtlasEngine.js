@@ -150,7 +150,13 @@ export const REARM_FRACS = [0.15, 0.30, 0.50];
 const CONFLUENCE_PIPS_DEFAULT = {
   fx: 2, gold: 20, nas100: 100, spx500: 25, de30: 80, uk100: 40, us30: 60, us2000: 15,
 };
-function confluenceThresholdPips(instrument) {
+// Exported (2026-09-01) so mondayFibAtlasEngine.js can compute a REAL
+// per-rung Monday-vs-previous-Monday confluence grade the same way this file
+// already does for Asia (see that file's own `mondayConfluenceGrade` doc for
+// the full story: `mondayWeekTightestPips`/`mondayWeekZone` below is a
+// DIFFERENT, much weaker week-wide-minimum context field, not a per-rung
+// confluence gate — Monday never had one until now).
+export function confluenceThresholdPips(instrument) {
   const s = String(instrument).toUpperCase();
   if (s.includes('XAU') || s.includes('GOLD')) return CONFLUENCE_PIPS_DEFAULT.gold;
   if (s.includes('NAS100') || s.includes('USTEC') || s.includes('NDX')) return CONFLUENCE_PIPS_DEFAULT.nas100;

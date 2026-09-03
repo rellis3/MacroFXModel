@@ -5046,6 +5046,92 @@ range-extension) that can both be open on the same pair at once.
   run on Railway if desired, same one-line addition either of those two
   bots would need).
 
+#### Monday confluence bug fix + hard-filter test — a real build gap, and a genuine null at 26-pair scale (2026-09-01/02)
+
+Direct owner correction after `fib_atlas_bot` went live and fired a real
+Monday trade (AUDUSD, above/1.25) with zero visible confluence to the
+previous week's ladder: the owner pasted the actual Pine Script source
+for "Asia Session Fib Retracement" and pointed out that confluence there
+is a **fixed-pip-threshold, per-rung gate on which lines even count as a
+level for the day** ("Strong"/"Strongest" display modes hide non-confluent
+lines entirely) — not merely descriptive context to log.
+
+**Two real gaps found, one fixed here:**
+1. **Monday never had a per-rung confluence check at all.** The only
+   Monday-vs-previous-Monday field that existed
+   (`mondayWeekTightestPips`/`mondayWeekZone`) was a single WEEK-WIDE
+   minimum distance across the whole grid pair — constant for every touch
+   in a reference week, never threshold-gated. Fixed in
+   `js/mondayFibAtlasEngine.js`: a real `mondayConfluenceGrade` per rung
+   (`'0·none'`/`'1·match'`/`'2·tight'`), built the SAME way Asia's already-
+   correct `confluenceGrade` is (`detectConfluencesCore`, same
+   `confluenceThresholdPips` per-instrument pip table, now exported from
+   `asiaFibAtlasEngine.js`). Verified against real EURUSD M1 data (618
+   tight / 3319 match / 16412 none across 20,349 touches — genuine
+   variety, not degenerate) and a fixture-noise-independent positive
+   control (byte-identical consecutive Monday ranges must tighten every
+   rung). 18 Monday + 38 Asia tests pass.
+2. **Even where confluence IS computed correctly (Asia), it was never
+   used to GATE the vote.** `VOTE_DIMS` in `asiaFibAtlasVoteReview.js`
+   only ever included `prevOutcomeSameDay`/`sessionHandoff` — the two
+   26/26-same-sign cross-instrument laws from the §1aq real-data run.
+   Confluence is tracked per-touch but a `'0·none'` rung votes and trades
+   identically to a `'2·tight'` one today, in production. That's by
+   design, not an oversight — see §1aq's own real-data check below on
+   why confluence never became a third universal law — but it's the
+   opposite of what the owner's read of the Pine source implied, so it
+   needed verifying, not defending.
+
+**The owner's ask: "build into the backtest first and let's verify if
+its all wrong."** Built `analysis/fib_atlas_confluence_filter_backtest.mjs`
+— filters touches to confluence-required BEFORE rebuilding the vote book
+(same book-rebuild discipline as every other lever in this file), reruns
+the identical validated vote-margin backtest (margin≥2, real cost, true
+OOS split), three variants matching the Pine indicator's own display
+modes exactly (All Levels / Strong = match+tight / Strongest = tight
+only). Run at full 26-pair scale (widened from an initial 4-pair check
+at the owner's explicit request, same discipline as every other
+pair-selection sweep here).
+
+**Verdict — mixed, not a clean law either direction:**
+- **Asia "Strong":** a modest positive lean — PF improves in 19/26 pairs,
+  degrades in 7/26 — but trade count drops 30-70% and annualized Sharpe
+  drops everywhere (mechanical: cutting frequency lowers `sharpe*
+  sqrt(tradesPerYr)` even when per-trade edge is flat, don't conflate the
+  two). "Strongest" (tight-only) is too sparse in FX to trust (n often
+  <30 trades, results swing 37%-95% win rate pair to pair).
+- **Monday "Strong": PF actually gets WORSE in 16/24 pairs** that retain
+  any trades at all (e.g. USDCHF 5.872→2.706, EURNZD 4.024→2.180, GOLD
+  3.991→3.659), improves in only 8/24 (EURGBP 3.719→7.020, AUDCAD
+  3.886→5.643 the cleanest). Win rate direction is closer to even (14/24
+  up). Two pairs (GBPJPY, EURAUD) lose 100% of Monday trades under
+  "Strong". "Strongest" (tight-only) is essentially unusable on Monday —
+  **zero trades in 21/26 pairs** — because a weekly range almost never
+  repeats within a small fixed pip window from one week to the next, a
+  structurally different problem from Asia's daily session repeating
+  tightly session-to-session.
+
+This is the same shape of result §1aq's own real-data check already
+found for confluence as a vote dimension (`asiaConfPips` gating made
+Sharpe worse on every pair tested there) — now confirmed at 26-pair scale
+and as a hard PRE-TRADE filter rather than a vote input: confluence is
+real, level-specific context worth keeping in the analysis (exactly as
+the owner asked), but it does not generalize as a universal
+require-it-to-trade rule the way `prevOutcomeSameDay`/`sessionHandoff`
+do. **Not wired into the live vote/plan producer or `fib_atlas_bot` —
+the code fix (gap 1) shipped, the filter hypothesis (gap 2) did not.**
+PR #1381.
+
+Separately flagged, not yet tested: the owner also raised that Monday
+(weekly) rungs currently have no cap on trade frequency — every rung on
+the ladder arms/fires independently within a reference week (confirmed
+in `mondayFibAtlasWalk`'s per-rung loop, no `mondayDate`-scoped exposure
+limit exists), so today's backtest and live plan can and do take several
+Monday trades in one week, each individually running over into following
+days via `concurrencyResolveTime`. Whether capping to ~one trade/week
+(entry-priority ordering across rungs, not a hard block, since a trade
+can span days) changes the edge is a separate, not-yet-built test.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted

@@ -58,7 +58,11 @@ function compoundedMaxDD(returnsPct) {
   return maxDD * 100;
 }
 function resample(arr, rng) { const n = arr.length, out = new Array(n); for (let i = 0; i < n; i++) out[i] = arr[(rng() * n) | 0]; return out; }
-function shuffle(arr, rng) { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = (rng() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; }
+// Exported (2026-09-03) so a caller can build a full simulated PATH per
+// reshuffle (e.g. a Monte Carlo equity-curve fan chart), not just consume
+// this module's own scalar drawdown-percentile summaries — same Fisher-Yates
+// used internally by portfolioStats/backtestStats, one definition.
+export function shuffle(arr, rng) { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = (rng() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; }
 // blockResample (stationary Politis–Romano block bootstrap — preserves serial
 // correlation/regime clustering, unlike the IID shuffle above) now lives in
 // statsCore.js as a shared brick; imported above.

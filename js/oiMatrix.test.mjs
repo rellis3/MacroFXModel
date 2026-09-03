@@ -2,7 +2,7 @@
 // mis-read: strikes × expiries, tab-separated with empty cells).
 //   node js/oiMatrix.test.mjs
 import { parseOIMatrix, oiParseTable, oiParseChangeTable, oiParseVolume, oiCalcMaxPain,
-  oiMatrixPersistence, oiMatrixTermStructure, pickPrimaryExpiry } from './oi.js';
+  oiMatrixPersistence, oiMatrixTermStructure, pickPrimaryExpiry, oiScrubImplausibleStrikes } from './oi.js';
 
 let fails = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) fails++; };
@@ -137,6 +137,50 @@ console.log('[pickPrimaryExpiry — near-money beats total when a far tail domin
   ok('picks exp0 by near-money despite exp1 having far more TOTAL OI', pe.index === 0 && pe.dte === 0,
     JSON.stringify(pe));
   ok('single-expiry matrix → index 0', pickPrimaryExpiry([{ strike: 1.1, cp: [[5, 5]] }], [7]).index === 0);
+}
+
+console.log('[oiScrubImplausibleStrikes — the 2026-09-03 gold incident]');
+{
+  // Real numbers from that day's capture: spot 4423.1, the genuine ATM wall (11107 OI at
+  // 4449.99) is the trust reference. 14949.99 (3.4x spot, 36577 OI) and 19949.99 (4.5x
+  // spot, 38019 OI) are the two strikes that were absent the day before and single-
+  // handedly doubled that day's total OI. 13000-ish real deep-OTM hedges (small OI,
+  // stable across days per the row-cap comment elsewhere in oi.js) must NOT be touched.
+  const strikes = [4449.99, 4549.99, 5449.99, 5949.99, 7949.99, 9949.99, 13000, 14949.99, 19949.99];
+  const calls =   [11107,    4930,    13325,   18714,   17760,   11368,   688,   36577,    38019];
+  const puts  =   new Array(strikes.length).fill(0);
+  const r = oiScrubImplausibleStrikes(strikes, calls, puts, 4423.1);
+  ok('flags exactly the two clearest outliers', r.anomalies.length === 2,
+    JSON.stringify(r.anomalies.map(a => a.strike)));
+  ok('flags 14949.99 (36577 OI, 3.4x spot)', r.anomalies.some(a => a.strike === 14949.99));
+  ok('flags 19949.99 (38019 OI, 4.5x spot)', r.anomalies.some(a => a.strike === 19949.99));
+  ok('a real deep-OTM hedge (13000, small OI) is left alone', r.keep[strikes.indexOf(13000)] === true);
+  ok('the genuine ATM wall (4449.99) is left alone', r.keep[0] === true);
+  ok('the ambiguous middle strikes (5449-9949) are left alone — not confidently distinguishable from real',
+    r.keep[2] && r.keep[3] && r.keep[4] && r.keep[5]);
+  ok('keep mask is the same length/order as the input (safe to apply to a parallel array)',
+    r.keep.length === strikes.length);
+  ok('reason names the strike, the OI, the distance and the reference wall',
+    /3\.4x spot/.test(r.anomalies[0].reason) && /largest near-money wall \(11107 OI\)/.test(r.anomalies[0].reason),
+    r.anomalies[0].reason);
+}
+
+console.log('[oiScrubImplausibleStrikes — guard rails]');
+{
+  ok('no spot → returns everything kept, no crash', oiScrubImplausibleStrikes([100, 50000], [10, 99999], [0, 0], null).anomalies.length === 0);
+  ok('empty input → no crash', oiScrubImplausibleStrikes([], [], [], 100).anomalies.length === 0);
+  ok('nothing within nearFrac of spot → no reference to trust, nothing flagged (never guess a scale)',
+    oiScrubImplausibleStrikes([100000], [999999], [0], 100).anomalies.length === 0);
+  // A far strike UNDER farFrac × spot is trusted regardless of size — a genuine strong
+  // wall close to spot is exactly what this file exists to find, not to gate.
+  const near = oiScrubImplausibleStrikes([100, 150], [500, 50000], [0, 0], 100, { farFrac: 2.0 });
+  ok('a strike inside farFrac is never flagged, however large', near.anomalies.length === 0);
+  // A far strike whose OI does NOT dwarf the near reference is left alone (big, not implausible).
+  const modest = oiScrubImplausibleStrikes([100, 300], [1000, 1500], [0, 0], 100, { farFrac: 2.0, oiMult: 2 });
+  ok('a far strike under oiMult× the reference is left alone', modest.anomalies.length === 0);
+  // A far strike that DOES dwarf it gets flagged.
+  const bad = oiScrubImplausibleStrikes([100, 300], [1000, 5000], [0, 0], 100, { farFrac: 2.0, oiMult: 2 });
+  ok('a far strike over oiMult× the reference is flagged', bad.anomalies.length === 1 && bad.anomalies[0].strike === 300);
 }
 
 console.log('[backward compat — the simple 3-column format still parses]');

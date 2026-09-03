@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Partial Derivatives &amp; Multivariable Calculus — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Partial Derivatives &amp; Multivariable Calculus — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer full derivations, worked examples, and a 5-question self-test?<a href="foundation-multivariable-calculus.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Lesson 04 · Foundation Mathematics</div>
+      <h1 class="sl-h1">Multivariable Calculus, and <em>What an Option Greek Actually Is</em></h1>
+      <p class="sl-lede">Delta, Gamma, Theta, Vega — four numbers on a risk screen that look like four unrelated facts about an option. They aren't. They're one function, an option's value, differentiated four different ways with respect to four different inputs, everything else held still each time. This is the lesson where "the derivative of a function of several variables" stops being a vague phrase and starts being something you can compute on your own numbers.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">A function that depends on more than one thing at once</h2>
+      <p class="sl-sub">Every function so far in this curriculum took one input, f(x). Almost nothing in real finance is that simple.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">◈</div><div><h4>An option's value depends on four things at once</h4><p>V(S, t, σ, r) — the underlying price, time to expiry, volatility, and the interest rate, all simultaneously. Not four separate models; one function of four inputs.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">Σ</div><div><h4>A portfolio depends on every position at once</h4><p>Its value is a function of however many holdings it contains, all moving together, not one position's price at a time.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⟋</div><div><h4>A bond depends on yield and maturity together</h4><p>Its price is a function of two variables at once — asking for "the" sensitivity without saying to which one is already an incomplete question.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">▦</div><div><h4>The picture changes from a curve to a surface</h4><p>A one-variable function draws a curve on a flat page. A two-variable function draws a landscape — height is the function's value, and the ground is every (x, y) pair you could feed it.</p></div></div>
+      </div>
+      <div class="sl-quote">Picture a room where the temperature isn't the same everywhere — warmer near the radiator, cooler by the window — and it also drifts over the course of the day. Ask "how fast is it changing?" and the honest answer is: it depends which direction you mean. That question, made precise, is the entire subject of this lesson.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">A partial derivative: differentiate one, freeze the rest</h2>
+      <p class="sl-sub">∂f/∂x means exactly this: apply the ordinary derivative rules to x, and treat every other variable as if it were a plain number. Step through the simplest possible case.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="pd-tabs">
+          <button class="sl-tab active" data-panel="pd-1">Start</button>
+          <button class="sl-tab" data-panel="pd-2">∂V/∂S₁ — freeze S₂</button>
+          <button class="sl-tab" data-panel="pd-3">∂V/∂S₂ — freeze S₁</button>
+        </div>
+        <div class="sl-panel active" id="pd-1">
+          <div class="sl-row"><div class="sl-box">V = 0.6·S₁ + 0.4·S₂</div></div>
+          <div class="sl-verdict">A two-asset portfolio, weighted 60/40. Two variables tangled in one sum — "the derivative of V" doesn't mean anything yet. Derivative <strong>with respect to which one</strong>?</div>
+        </div>
+        <div class="sl-panel" id="pd-2">
+          <div class="sl-row"><div class="sl-box amber">∂V/∂S₁</div><div class="sl-arrow">=</div><div class="sl-box amber">0.6</div></div>
+          <div class="sl-verdict">Freeze S₂ completely — treat it as a fixed number, not a variable. The 0.4·S₂ term doesn't involve S₁ at all, so it contributes exactly zero, leaving just the weight, 0.6.</div>
+        </div>
+        <div class="sl-panel" id="pd-3">
+          <div class="sl-row"><div class="sl-box green">∂V/∂S₂</div><div class="sl-arrow">=</div><div class="sl-box green">0.4</div></div>
+          <div class="sl-verdict">Freeze S₁ instead. Symmetric: the 0.6·S₁ term now vanishes, leaving the other weight, 0.4. A $1 move in S₁ alone moves V by exactly $0.60, regardless of what S₂ is doing.</div>
+        </div>
+        <div class="sl-note">Nothing new about differentiation itself is happening here. The entire new idea is "pick one variable, freeze every other one, then differentiate exactly like the single-variable calculus lesson already taught."</div>
+      </div>
+      <p class="sl-p">This example is deliberately the easiest possible case — because V is a plain sum, the "other" term simply disappears when you differentiate. The next slide keeps the two variables genuinely tangled together, so freezing one actually changes the arithmetic, not just removes a term.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">A richer example — a value that actually curves</h2>
+      <p class="sl-sub">V(S, t) = S·e^(−δt): the forward value of an asset worth S today, paying a continuous dividend yield δ, t years out. This time S and t interact.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">∂S</div><div><h4>Differentiate with respect to S, freeze t</h4><p>∂V/∂S = e^(−δt). Since e^(−δt) doesn't involve S at all, it's just a fixed multiplying constant from S's point of view — this is exactly Delta's structure.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">∂t</div><div><h4>Differentiate with respect to t, freeze S</h4><p>∂V/∂t = −δ·S·e^(−δt). Now S is the fixed constant multiplying a function of t, and the ordinary chain rule handles the exponential — negative, because more elapsed time means more foregone dividends eroding the forward value.</p></div></div>
+      </div>
+      <p class="sl-p">At S = $100, δ = 3%, t = 2 years: ∂V/∂S = e^(−0.06) ≈ <strong>0.9418</strong> and ∂V/∂t = −0.03 × 100 × 0.9418 ≈ <strong>−2.825</strong>. Two completely different numbers, from differentiating the exact same function twice — the entire mechanical content of this lesson, worked with real numbers.</p>
+      <div class="sl-svgwrap">
+        <svg viewBox="0 0 640 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two slice charts of the forward value function: a nearly-straight rising line showing value against spot price at a fixed time, and a decaying curve showing value against time at a fixed spot price">
+          <text x="150" y="20" text-anchor="middle" style="fill:var(--amber);font-size:12px;font-weight:700">Slice at fixed t = 2y: V vs S</text>
+          <line x1="30" y1="190" x2="290" y2="190" style="stroke:var(--border2);stroke-width:1"/>
+          <line x1="30" y1="190" x2="30" y2="30" style="stroke:var(--border2);stroke-width:1"/>
+          <path d="M30,190 L270,45" style="fill:none;stroke:var(--amber);stroke-width:3"/>
+          <circle cx="150" cy="117" r="5" style="fill:var(--amber)"/>
+          <text x="158" y="112" style="fill:var(--text2);font-size:10px">S=$100, V≈$94</text>
+          <text x="10" y="35" style="fill:var(--text3);font-size:10px">V</text>
+          <text x="278" y="205" style="fill:var(--text3);font-size:10px">S</text>
+          <text x="150" y="207" text-anchor="middle" style="fill:var(--text2);font-size:10.5px">slope everywhere = ∂V/∂S ≈ 0.94</text>
+
+          <text x="490" y="20" text-anchor="middle" style="fill:var(--green);font-size:12px;font-weight:700">Slice at fixed S = $100: V vs t</text>
+          <line x1="370" y1="190" x2="630" y2="190" style="stroke:var(--border2);stroke-width:1"/>
+          <line x1="370" y1="190" x2="370" y2="30" style="stroke:var(--border2);stroke-width:1"/>
+          <path d="M370,45 Q470,80 500,105 T630,165" style="fill:none;stroke:var(--green);stroke-width:3"/>
+          <circle cx="500" cy="105" r="5" style="fill:var(--green)"/>
+          <text x="508" y="100" style="fill:var(--text2);font-size:10px">t=2, V≈$94</text>
+          <text x="350" y="35" style="fill:var(--text3);font-size:10px">V</text>
+          <text x="618" y="205" style="fill:var(--text3);font-size:10px">t</text>
+          <text x="500" y="207" text-anchor="middle" style="fill:var(--text2);font-size:10.5px">slope at t=2 = ∂V/∂t ≈ −2.83</text>
+        </svg>
+      </div>
+      <p class="sl-note" style="border-top:none;padding-top:0">Each partial derivative is nothing more exotic than an ordinary single-variable slope, read off one slice of the full V(S,t) surface — freeze one axis, walk along the other, measure the slope.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Watch a slice move as the frozen variable changes</h2>
+      <p class="sl-sub">The line is V plotted against S, at whatever t the slider is set to. Its slope is exactly ∂V/∂S = e^(−δt), with δ fixed at 3%.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A line showing V against S, with a slider controlling t; the line flattens as t increases">
+            <line x1="20" y1="205" x2="620" y2="205" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="70" y1="205" x2="70" y2="15" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="70" y1="205" x2="570" y2="15" style="stroke:var(--border2);stroke-width:1.5;stroke-dasharray:5,5;opacity:.5"/>
+            <text x="575" y="15" style="fill:var(--text3);font-size:10.5px">t = 0 (no discount yet)</text>
+            <line id="mvs-line" x1="70" y1="205" x2="570" y2="15" style="stroke:var(--blue);stroke-width:3"/>
+            <circle id="mvs-dot" cx="320" cy="110" r="6" style="fill:var(--blue)"/>
+            <text x="15" y="20" style="fill:var(--text3);font-size:10px">V</text>
+            <text x="600" y="222" style="fill:var(--text3);font-size:10px">S</text>
+            <text x="620" y="205" text-anchor="end" style="fill:var(--text3);font-size:10px" dy="-4">S=200</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Time to forward date, t (years)</span><span class="sl-live" id="mvs-tval">t = 2.00</span></div>
+        <input type="range" class="sl-slider" id="mvs-slider" min="0" max="5" step="0.25" value="2">
+        <div class="sl-calc-steps">
+          <div>Slope of the line = ∂V/∂S = e^(−0.03×t) = <b id="mvs-slope">0.9418</b></div>
+          <div>V at S=$100 = <b id="mvs-v100">$94.18</b></div>
+        </div>
+      </div>
+      <p class="sl-p">Nothing about the "formula" for ∂V/∂S changes as you drag the slider — it's always e^(−δt). What changes is <em>where</em> that formula is being evaluated. A partial derivative is itself a function of the point you freeze the other variable at, which is exactly why Delta quoted today is a different number from Delta quoted a year from now, even on the same option.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Both partials, live — try your own numbers</h2>
+      <p class="sl-sub">Starts on the worked example: S=$100, δ=3%, t=2 years.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Spot S ($)</label><input type="number" class="sl-input" id="mvc-S" value="100" step="1" min="0"></div>
+          <div class="sl-calc-op">·e^(−</div>
+          <div class="sl-calc-field"><label>Dividend yield δ (%)</label><input type="number" class="sl-input" id="mvc-delta" value="3" step="0.25"></div>
+          <div class="sl-calc-op">×</div>
+          <div class="sl-calc-field"><label>Time t (years)</label><input type="number" class="sl-input" id="mvc-t" value="2" step="0.25" min="0"></div>
+          <div class="sl-calc-op">)</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Forward value V</div>
+            <div class="sl-calc-result-val" id="mvc-V">$94.18</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>∂V/∂S (spot sensitivity, t frozen) = <b id="mvc-dVdS">0.9418</b></div>
+          <div>∂V/∂t (time sensitivity, S frozen) = <b id="mvc-dVdt">−2.825</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="mvc-reset">Reset to worked-example numbers</button>
+        <div class="sl-note">A negative spot price or a negative time to the forward date isn't a real input, so the calculator refuses to pretend it computed anything for those cases — the same guard used everywhere else on this page.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">The gradient — every partial, stacked into one vector</h2>
+      <p class="sl-sub">Stop asking about one direction at a time. Ask: out of every direction I could walk, which one makes the function rise fastest?</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">∂</div><div><h4>∂f/∂xᵢ — one partial derivative</h4><p>Sensitivity to variable i alone, every other variable frozen — one entry.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">∇</div><div><h4>∇f — the gradient</h4><p>All the partials stacked into one vector, (∂f/∂x₁, ..., ∂f/∂xₙ). It points in the exact direction the function increases fastest, and its length tells you how fast.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">−∇</div><div><h4>−∇f — steepest descent</h4><p>The opposite direction — the exact "downhill" direction that gradient descent, a later lesson's core optimization algorithm, repeatedly steps in to hunt for a minimum.</p></div></div>
+      </div>
+      <div class="sl-quote">Back to the room with the radiator: the gradient is a compass that always points in the steepest-uphill direction of the temperature field, wherever you're standing. Walk the opposite way it points, and you're headed downhill as fast as possible instead — no single partial derivative alone can answer that, because each one only reports the rate of change along one axis, not along the diagonal in between.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">The Hessian — curvature, minus the guesswork</h2>
+      <p class="sl-sub">Just as a single-variable function's second derivative measures curvature, a multivariable function has a whole grid of second partial derivatives.</p>
+      <p class="sl-p">Stack every second partial derivative — one for every pair of variables, including differentiating with respect to the same variable twice — into a matrix, and you get the <strong>Hessian, H</strong>. Under mild smoothness conditions the two "mixed" partials are always equal (∂²f/∂x∂y = ∂²f/∂y∂x), which is why H comes out symmetric.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">All-positive eigenvalues</span>
+          <p>Every direction curves upward from this point. A genuine minimum.</p>
+        </div>
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Mixed-sign eigenvalues</span>
+          <p>Curves up in some directions, down in others. A saddle point — not a minimum, not a maximum.</p>
+        </div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">A stationary gradient alone proves nothing</div>
+        <p>∇f = 0 only means the function is momentarily flat in every direction at that point. It's equally consistent with a minimum, a maximum, or a saddle. Stopping an optimizer the moment the gradient goes small, without checking the Hessian's eigenvalues, can silently report a saddle point as if it were a solved minimum — this is precisely what convex-optimization checks in a later lesson formalize.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">The Greeks were partial derivatives all along</h2>
+      <p class="sl-sub">One option value function, V(S, t, σ, r). Every Greek is one partial derivative of it, with respect to one variable, everything else held fixed.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Delta, Δ = ∂V/∂S</span>
+          <p>Sensitivity to the underlying price alone — time, volatility, and rates frozen. Exactly ∂V/∂S from the forward-value example, just applied to an option instead.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Theta, Θ = ∂V/∂t</span>
+          <p>Sensitivity to the passage of time alone — spot, volatility, and rates frozen. The same partial-derivative mechanics as ∂V/∂t above.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Vega = ∂V/∂σ</span>
+          <p>Sensitivity to volatility alone — spot, time, and rates frozen. Not usually written with a Greek letter (vega isn't actually one), but structurally identical: one more partial derivative of the same V.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Gamma, Γ = ∂²V/∂S²</span>
+          <p>The curvature of V with respect to S — a second partial derivative, one diagonal entry of V's Hessian. Not a first partial like the other three; a step up.</p>
+        </div>
+      </div>
+      <p class="sl-p">A trader reading "Delta 0.60, Gamma 0.04, Theta −0.03, Vega 0.12" off a screen is reading four entries from one gradient-and-Hessian structure, evaluated at today's spot, time, and volatility — not four independent facts that happen to share a Greek-letter naming convention. Summing each Greek's own contribution for a joint move in spot, time, <em>and</em> volatility at once is exactly what the multivariable chain rule does: add up the effect flowing through every channel, rather than picking just one.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">How practitioners actually use this</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🇬🇷</div><div><h4>Risk decomposition via the Greeks</h4><p>A derivatives book's risk is reported as partial derivatives with respect to each market input, precisely so a desk can see which single input is driving P&amp;L without repricing the whole book.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⛰️</div><div><h4>Model fitting via gradient descent</h4><p>Fitting almost any statistical model reduces to minimizing an error function of many parameters at once — gradient descent repeatedly steps in the direction −∇f until the gradient is near zero.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔍</div><div><h4>Certifying a genuine optimum</h4><p>Once an optimizer reports a stationary point, checking the Hessian's eigenvalues there is standard practice to confirm it's actually a minimum, not a saddle a gradient-only check would miss.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📊</div><div><h4>Scenario and stress-testing grids</h4><p>"What happens if spot moves 2% AND volatility jumps 5 points" is a multivariable question by construction — answered by summing each input's own partial contribution.</p></div></div>
+      </div>
+      <p class="sl-p">The habit worth building: whenever a model has more than one input, the honest first question is "sensitivity with respect to <em>which</em> variable, holding <em>what else</em> fixed?" A bare word like "sensitivity" is ambiguous the moment more than one variable is in play.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Reading one Greek alone vs. reading the whole structure</h2>
+      <p class="sl-sub">Same risk screen, two very different habits of reading it.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Delta alone</span>
+          <ul>
+            <li>Treats spot as the only thing moving — time, volatility, rates silently frozen</li>
+            <li>A real market move rarely holds volatility and time still while spot moves</li>
+            <li>Says nothing about curvature — Gamma is a separate partial, not covered by Delta</li>
+            <li>Breaks down the moment more than one input actually moves at once</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">The full gradient + Hessian</span>
+          <ul>
+            <li>Every input gets its own partial derivative, others explicitly held fixed each time</li>
+            <li>The multivariable chain rule adds them up for a joint move — spot AND vol AND time</li>
+            <li>Gamma, a Hessian entry, catches the curvature Delta alone misses</li>
+            <li>Works identically whether one input moves or all four do at once</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>The entire meaning of a partial derivative depends on exactly which other variables are frozen. ∂V/∂S computed with volatility held constant is a genuinely different number from a "spot sensitivity" computed while letting an implied-volatility surface shift with spot too — a real, common practitioner adjustment. Quoting a partial derivative without saying what's held fixed is a common source of confusion comparing numbers across desks.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What's the key difference between an ordinary derivative f′(x) and a partial derivative ∂f/∂x?</h4>
+        <button class="sl-quiz-opt" data-correct="true">∂f/∂x additionally requires every other variable to be held fixed while differentiating</button>
+        <button class="sl-quiz-opt">∂f/∂x uses entirely different differentiation rules from f′(x)</button>
+        <button class="sl-quiz-opt">There's no real difference — just different notation for the same thing</button>
+        <div class="sl-quiz-explain">An ordinary derivative has nothing else to hold fixed, because there's nothing else. A partial derivative applies to a function of several variables, and the one new idea is freezing every variable except the one you're differentiating — the actual differentiation step uses identical rules either way.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>For V(S,t) = S·e^(−δt), why is ∂V/∂t negative while ∂V/∂S is positive?</h4>
+        <button class="sl-quiz-opt" data-correct="true">∂V/∂S is proportional to spot so it's always positive; ∂V/∂t is negative because more elapsed time means more foregone dividends eroding the forward value</button>
+        <button class="sl-quiz-opt">Both should be positive — a sign error in the formula</button>
+        <button class="sl-quiz-opt">∂V/∂t is negative because time itself is treated as a negative number</button>
+        <div class="sl-quiz-explain">∂V/∂S = e^(−δt) is always positive — the forward value rises when spot rises, time held fixed. ∂V/∂t = −δSe^(−δt) carries a minus sign because, holding S fixed, letting t grow shrinks the discount factor e^(−δt), continually eroding the forward value as more dividends are given up.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Using the worked example (S=$100, δ=3%, t=2 years), what is ∂V/∂S?</h4>
+        <button class="sl-quiz-opt" data-correct="true">≈ 0.94</button>
+        <button class="sl-quiz-opt">≈ 2.83</button>
+        <button class="sl-quiz-opt">≈ 100</button>
+        <div class="sl-quiz-explain">∂V/∂S = e^(−δt) = e^(−0.03×2) = e^(−0.06) ≈ 0.9418 — slightly less than dollar-for-dollar, because two more years of dividends are still being given up.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Why doesn't a zero gradient (∇f = 0) alone guarantee a minimum has been found?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It's equally consistent with a maximum or a saddle point — only the Hessian's eigenvalues tell them apart</button>
+        <button class="sl-quiz-opt">Because the gradient can never actually reach exactly zero in practice</button>
+        <button class="sl-quiz-opt">Because minima only exist for single-variable functions</button>
+        <div class="sl-quiz-explain">∇f = 0 just means the function is flat in every direction at that point — a minimum, a maximum, and a saddle all satisfy that. All-positive Hessian eigenvalues mean a genuine minimum; mixed signs mean a saddle.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Which of these is literally the same mathematical object as an option's Gamma?</h4>
+        <button class="sl-quiz-opt" data-correct="true">A second partial derivative of V with respect to S, ∂²V/∂S²</button>
+        <button class="sl-quiz-opt">The first partial derivative of V with respect to time</button>
+        <button class="sl-quiz-opt">The gradient vector of V</button>
+        <div class="sl-quiz-explain">Gamma measures curvature with respect to the underlying price alone, time/volatility/rates held fixed throughout — one diagonal entry of V's Hessian, a second partial derivative, not a first one.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>A partial derivative is an ordinary derivative with everything else frozen — ∂f/∂x reuses the exact single-variable rules already built, applied one variable at a time.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>The gradient ∇f stacks every partial into one vector that points where the function increases fastest — its negative is the direction gradient descent walks.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>The Hessian stacks every second partial derivative — its eigenvalues, not a zero gradient alone, are what actually distinguish a minimum from a maximum or a saddle.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Delta, Theta, and Vega are first partial derivatives of one option-value function; Gamma is a second partial derivative — four names for one differentiation exercise, repeated on different variables.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The multivariable chain rule adds up the contribution flowing through every path a change can travel — the structure behind combining several Greeks into one joint-move estimate.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Read any multi-input formula and ask "sensitivity with respect to which variable, holding what else fixed?" instead of a vague, unqualified "sensitivity." Recognise that a risk screen's Delta, Gamma, Theta, and Vega are one differentiation exercise, not four unrelated facts. Check a fitted model's stationary point with the Hessian instead of trusting a zero gradient alone.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Optimization Basics</h3>
+        <p>Now that you can build a gradient and read a Hessian, next is turning both into an actual algorithm for finding a function's minimum — the walk gradient descent takes, step by step, and how to know when it's actually done.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="foundation-optimization-basics-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="foundation-multivariable-calculus.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Slider — watch the V-vs-S line's slope flatten as t (the frozen variable) increases.
+  (function(){
+    var slider = document.getElementById('mvs-slider');
+    if (!slider) return;
+    var tVal = document.getElementById('mvs-tval');
+    var line = document.getElementById('mvs-line');
+    var dot = document.getElementById('mvs-dot');
+    var slopeOut = document.getElementById('mvs-slope');
+    var v100Out = document.getElementById('mvs-v100');
+    var DELTA = 0.03;
+    // S axis: pixel 70 (S=0) to pixel 570 (S=200). V axis: pixel 205 (V=0) up to pixel 15 (V=200).
+    var X0 = 70, X1 = 570, S_MAX = 200;
+    var Y0 = 205, Y1 = 15, V_MAX = 200;
+
+    function xForS(s){ return X0 + (s / S_MAX) * (X1 - X0); }
+    function yForV(v){ return Y0 + (v / V_MAX) * (Y1 - Y0); }
+
+    function update(){
+      var t = parseFloat(slider.value);
+      tVal.textContent = 't = ' + t.toFixed(2);
+      var discount = Math.exp(-DELTA * t);
+      var vAtMax = S_MAX * discount;
+      var v100 = 100 * discount;
+      line.setAttribute('x1', X0); line.setAttribute('y1', Y0);
+      line.setAttribute('x2', X1); line.setAttribute('y2', yForV(vAtMax));
+      dot.setAttribute('cx', xForS(100));
+      dot.setAttribute('cy', yForV(v100));
+      slopeOut.textContent = discount.toFixed(4);
+      v100Out.textContent = '$' + v100.toFixed(2);
+    }
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Live calculator — V(S,t) = S e^(-delta t), plus both partial derivatives.
+  (function(){
+    var S = document.getElementById('mvc-S');
+    if (!S) return;
+    var delta = document.getElementById('mvc-delta'), t = document.getElementById('mvc-t');
+    var VOut = document.getElementById('mvc-V'), dVdSOut = document.getElementById('mvc-dVdS'), dVdtOut = document.getElementById('mvc-dVdt');
+    var resetBtn = document.getElementById('mvc-reset');
+    var DEFAULTS = { S: 100, delta: 3, t: 2 };
+
+    function recompute(){
+      var s = parseFloat(S.value), d = parseFloat(delta.value) / 100, tt = parseFloat(t.value);
+      if (!isFinite(s) || !isFinite(d) || !isFinite(tt) || s < 0 || tt < 0) {
+        VOut.textContent = '—'; dVdSOut.textContent = '—'; dVdtOut.textContent = '—';
+        return;
+      }
+      var discount = Math.exp(-d * tt);
+      var V = s * discount;
+      var dVdS = discount;
+      var dVdt = -d * s * discount;
+      VOut.textContent = '$' + V.toFixed(2);
+      dVdSOut.textContent = dVdS.toFixed(4);
+      dVdtOut.textContent = (dVdt < 0 ? '−' : '') + Math.abs(dVdt).toFixed(3);
+    }
+
+    [S, delta, t].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      S.value = DEFAULTS.S; delta.value = DEFAULTS.delta; t.value = DEFAULTS.t;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>
