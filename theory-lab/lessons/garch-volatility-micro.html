@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GARCH &amp; Volatility Clustering — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">GARCH &amp; Volatility Clustering — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer full derivations, a live calculator, and a 6-question self-test?<a href="garch-volatility.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Lesson 6 · Time Series &amp; Regimes</div>
+      <h1 class="sl-h1">GARCH &amp; <em>Volatility Clustering</em></h1>
+      <p class="sl-lede">The direction of tomorrow's move is close to unpredictable. The <em>size</em> of tomorrow's move is not — big days follow big days, calm follows calm, and that regularity is stable enough to build a one-day-ahead forecast on. GARCH is the model that turns "volatility has memory" into a number, and it's one of three sigma estimators this project actually runs.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Big moves cluster — of either sign</h2>
+      <p class="sl-sub">Watch the return series below. Big bars sit next to other big bars; small bars sit next to other small bars.</p>
+      <div class="sl-svgwrap">
+        <svg viewBox="0 0 640 170" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Daily return bars, small in the first third, spiking into a cluster of large up and down moves in the middle third, then settling but not fully back to calm">
+          <line x1="20" y1="85" x2="620" y2="85" style="stroke:var(--border2);stroke-width:1"/>
+          <rect x="18" y="85" width="8" height="4" style="fill:var(--text3)"/>
+          <rect x="38" y="76" width="8" height="9" style="fill:var(--text3)"/>
+          <rect x="58" y="85" width="8" height="6" style="fill:var(--text3)"/>
+          <rect x="78" y="80" width="8" height="5" style="fill:var(--text3)"/>
+          <rect x="98" y="85" width="8" height="8" style="fill:var(--text3)"/>
+          <rect x="118" y="73" width="8" height="12" style="fill:var(--text3)"/>
+          <rect x="138" y="85" width="8" height="5" style="fill:var(--text3)"/>
+          <rect x="158" y="85" width="8" height="20" style="fill:var(--amber)"/>
+          <rect x="178" y="35" width="8" height="50" style="fill:var(--red)"/>
+          <rect x="198" y="85" width="8" height="60" style="fill:var(--red)"/>
+          <rect x="218" y="20" width="8" height="65" style="fill:var(--amber)"/>
+          <rect x="238" y="85" width="8" height="55" style="fill:var(--red)"/>
+          <rect x="258" y="30" width="8" height="55" style="fill:var(--amber)"/>
+          <rect x="278" y="85" width="8" height="45" style="fill:var(--amber)"/>
+          <rect x="298" y="45" width="8" height="40" style="fill:var(--red)"/>
+          <rect x="318" y="85" width="8" height="28" style="fill:var(--amber)"/>
+          <rect x="338" y="60" width="8" height="25" style="fill:var(--text3)"/>
+          <rect x="358" y="85" width="8" height="16" style="fill:var(--text3)"/>
+          <rect x="378" y="70" width="8" height="15" style="fill:var(--text3)"/>
+          <rect x="398" y="85" width="8" height="10" style="fill:var(--text3)"/>
+          <rect x="418" y="77" width="8" height="8" style="fill:var(--text3)"/>
+          <rect x="438" y="85" width="8" height="7" style="fill:var(--text3)"/>
+          <rect x="458" y="79" width="8" height="6" style="fill:var(--text3)"/>
+          <rect x="478" y="85" width="8" height="5" style="fill:var(--text3)"/>
+          <rect x="498" y="80" width="8" height="5" style="fill:var(--text3)"/>
+          <rect x="518" y="85" width="8" height="4" style="fill:var(--text3)"/>
+          <rect x="538" y="81" width="8" height="4" style="fill:var(--text3)"/>
+          <rect x="558" y="85" width="8" height="6" style="fill:var(--text3)"/>
+          <rect x="578" y="78" width="8" height="7" style="fill:var(--text3)"/>
+          <rect x="598" y="85" width="8" height="5" style="fill:var(--text3)"/>
+          <text x="220" y="14" text-anchor="middle" style="fill:var(--red);font-size:11px;font-weight:700">a cluster of large moves, up and down</text>
+          <text x="90" y="105" text-anchor="middle" style="fill:var(--text3);font-size:10px">calm</text>
+          <text x="560" y="105" text-anchor="middle" style="fill:var(--text3);font-size:10px">calmer, not instantly calm</text>
+        </svg>
+      </div>
+      <p class="sl-p">Mandelbrot noted this back in 1963: "large changes tend to be followed by large changes, of either sign, and small changes tend to be followed by small changes." Notice the phrase <strong>of either sign</strong> — a big up day and a big down day both raise the odds tomorrow is also big. That's a statement about <em>size</em>, not direction, which is exactly why it's a statement about volatility rather than about where price is headed.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Why this matters on a desk</div>
+        <p>Any strategy that expresses a level as "price ± some multiple of σ" — a forecast band, an entry-zone confidence score, a regime tag — is only as good as the σ estimate underneath it. An estimate that doesn't know volatility clusters stays too narrow right after a shock and too wide long after one has faded.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">A flat average always lags the market</h2>
+      <p class="sl-sub">Compare two ways of estimating "how big is a typical move right now."</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Flat trailing window (e.g. HV20)</span>
+          <ul>
+            <li>Every one of the last 20 days gets equal weight — day t−1 counts exactly as much as day t−20</li>
+            <li>No concept of "conditional on what just happened"</li>
+            <li>A shock barely moves the average on day one</li>
+            <li>Then the same shock vanishes off a cliff exactly 20 days later — the "ghosting" effect</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">A model that reacts + decays</span>
+          <ul>
+            <li>Reacts to a fresh shock immediately, in full, the very next day</li>
+            <li>Fades that shock's influence smoothly afterward, not abruptly</li>
+            <li>Carries a sense of "how nervous the market already was"</li>
+            <li>This is exactly the gap GARCH exists to close</li>
+          </ul>
+        </div>
+      </div>
+      <p class="sl-p">We need one number before any model can be written down: <strong>σ²ₜ</strong>, the <em>conditional</em> variance — the model's forecast of how large today's shock will be, using only information available through yesterday's close. "Conditional" is the whole point: it's not a historical average, it's allowed to change every single day as new information arrives.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Step 1 — ARCH: react to yesterday's squared shock</h2>
+      <div class="sl-row">
+        <div class="sl-box">σ²ₜ</div>
+        <div class="sl-arrow">=</div>
+        <div class="sl-box amber">ω</div>
+        <div class="sl-arrow">+</div>
+        <div class="sl-box amber">α · ε²ₜ₋₁</div>
+      </div>
+      <p class="sl-p">Robert Engle's 1982 ARCH model (AutoRegressive Conditional Heteroskedasticity) is the simplest version of "volatility reacts to what just happened": today's variance is a baseline <strong>ω</strong> plus <strong>α</strong> times yesterday's <em>squared</em> shock.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">²</div><div><h4>Why square the shock?</h4><p>A shock can be positive or negative, but "how much turbulence does this represent" doesn't care about sign. A −2% day and a +2% day should raise tomorrow's forecast by the same amount. Squaring turns "a shock of either sign" into a magnitude — the thing a variance should actually respond to.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⏚</div><div><h4>What ω does</h4><p>Sets a floor: variance never falls below what a quiet, shock-free market would produce. Requires ω &gt; 0 for the recursion to make sense.</p></div></div>
+      </div>
+      <div class="sl-quote">If shocks weren't squared, a small positive day and a small negative day could cancel out in the running average, and the model would learn nothing about the market's actual turbulence — exactly backwards from what a volatility estimate is for.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Step 2 — GARCH: give variance its own memory</h2>
+      <p class="sl-p">ARCH(1) has a gap: it only remembers <em>yesterday's shock</em>, and forgets how elevated variance itself has already been running. Tim Bollerslev's 1986 generalization — the "G" in GARCH — adds a second input: yesterday's own variance forecast.</p>
+      <div class="sl-row">
+        <div class="sl-box">σ²ₜ</div>
+        <div class="sl-arrow">=</div>
+        <div class="sl-box amber">ω</div>
+        <div class="sl-arrow">+</div>
+        <div class="sl-box amber">α · ε²ₜ₋₁</div>
+        <div class="sl-arrow">+</div>
+        <div class="sl-box purple">β · σ²ₜ₋₁</div>
+      </div>
+      <p class="sl-sub" style="margin-top:18px">This is <strong>GARCH(1,1)</strong> — one lag of the squared shock, one lag of the variance itself. It's the version this repo implements.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">⏚</div><div><h4>ω — the floor</h4><p>Baseline variance. Anchors the long-run level the forecast reverts to.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚡</div><div><h4>α — the reaction</h4><p>Weight on yesterday's fresh squared shock. Larger α means the model reacts more sharply to a single big news day. Typical fitted values: roughly 0.03–0.12.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔁</div><div><h4>β — the inertia</h4><p>Weight carried over from yesterday's variance level itself. Larger β means an elevated regime is stickier, decaying more slowly. Typical fitted values: roughly 0.85–0.95, usually much larger than α.</p></div></div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">What β adds that a flat average can't</div>
+        <p>HV20 re-derives its estimate from scratch out of a raw window every day — it has no explicit sense that the variance process itself has momentum. GARCH's β term encodes that momentum directly into the recursion.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">See α and β reshape the same shock</h2>
+      <p class="sl-sub">Same 2.5% shock day, every time. Drag either slider and watch how sharply σₜ spikes, and how slowly it decays back to the dashed long-run level.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A conditional volatility line that jumps up sharply at a shock, then decays gradually back toward its long-run level">
+            <line x1="20" y1="185" x2="620" y2="185" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:3,3"/>
+            <text x="590" y="180" text-anchor="end" style="fill:var(--text3);font-size:10px">long-run σ</text>
+            <polyline id="mg-vol-line" points="20,185 65,183 110,186 155,184 200,185 215,180 230,120 245,80 260,60 275,58 290,58 305,62 320,68 350,85 380,105 410,122 440,138 470,150 500,160 530,168 560,174 590,178 620,181" style="fill:none;stroke:var(--blue);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round"/>
+            <line x1="215" y1="20" x2="215" y2="185" style="stroke:var(--red);stroke-width:1;stroke-dasharray:2,3;opacity:.5"/>
+            <text x="220" y="16" style="fill:var(--red);font-size:10px">shock</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>α — shock reactivity</span><span class="sl-live" id="mg-alpha-val">0.08</span></div>
+        <input type="range" class="sl-slider" id="mg-alpha-slider" min="1" max="30" step="1" value="8">
+        <div class="sl-sliderhead" style="margin-top:14px"><span>β — persistence</span><span class="sl-live" id="mg-beta-val">0.90</span></div>
+        <input type="range" class="sl-slider" id="mg-beta-slider" min="50" max="97" step="1" value="90">
+        <div class="sl-note">α+β = <b id="mg-persist-val">0.98</b> · half-life ≈ <b id="mg-halflife-val">34</b> days</div>
+      </div>
+      <p class="sl-p">Push α up and the spike gets taller — the model reacts harder to the news itself. Push β up and the curve flattens out, decaying much more slowly — the elevated regime lingers. This is the entire "reaction vs. inertia" split from the formula, made visible.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Persistence: α+β must stay under 1</h2>
+      <p class="sl-p">For the recursion to describe a variance that <em>mean-reverts</em> — settling toward a stable long-run level instead of exploding or vanishing — the parameters need <strong>α + β &lt; 1</strong>. Each day, a fraction α+β of "how far variance is from its long-run average" carries forward into tomorrow. That fraction is called the <strong>persistence</strong>.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">α+β close to 1 (e.g. 0.97–0.99)</span>
+          <p>A spike decays very slowly — half-life of weeks. Volatility regimes are sticky, and one sharp news day leaves a slowly-fading fingerprint on the forecast.</p>
+        </div>
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">α+β ≥ 1</span>
+          <p>At exactly 1 (IGARCH), a shock never decays — it permanently shifts the variance level. Above 1, the recursion isn't mean-reverting at all; forecasts can grow without bound. This is not a valid model.</p>
+        </div>
+      </div>
+      <p class="sl-p">The long-run variance the model reverts to on a quiet day works out to <strong>σ̄² = ω / (1 − α − β)</strong> — which is only a sane, positive number when α+β &lt; 1. And from a decay rate of α+β per day, the half-life of a shock's excess variance falls straight out: <strong>n½ = ln(0.5) / ln(α+β)</strong>.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Sanity check worth running on any parameter set</div>
+        <p>α+β is usually the first thing worth checking when someone hands you a fitted GARCH model — it tells you at a glance how sticky the volatility regime the model describes actually is, and whether the model is even valid.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Worked example: one shock day, traced forward</h2>
+      <p class="sl-sub">α = 0.08, β = 0.90 (persistence 0.98), ω = 1.0×10⁻⁶.</p>
+      <div class="sl-row">
+        <div class="sl-box">σ̄² = ω/(1−α−β)</div>
+        <div class="sl-arrow">=</div>
+        <div class="sl-box green">5.0×10⁻⁵ → σ̄ ≈ 0.71%</div>
+      </div>
+      <p class="sl-p" style="margin-top:14px">On a quiet day with no recent shocks, this model expects roughly a 0.71% daily move. Now suppose yesterday's variance was sitting right at that long-run level, but yesterday's realized shock was a large 2.5% move: ε²ₜ₋₁ = 0.000625.</p>
+      <div class="sl-row">
+        <div class="sl-box">σ²ₜ</div>
+        <div class="sl-arrow">=</div>
+        <div class="sl-box amber">0.000001 + 0.00005 + 0.000045</div>
+        <div class="sl-arrow">=</div>
+        <div class="sl-box green">0.000096 → σₜ ≈ 0.98%</div>
+      </div>
+      <p class="sl-p">One 2.5% shock day pushed the next-day forecast from 0.71% to 0.98% — roughly 38% higher — <strong>immediately, in full, the very next day</strong>. A flat HV20 estimate would barely move: adding one 2.5% day into a 20-day equal-weighted average nudges the mean only modestly, and it keeps that fixed weight for the next twenty days before vanishing abruptly. Ten trading days later, with no further shocks, this GARCH forecast is still at roughly 0.94% — the half-life here is about 34 trading days.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Run the recursion yourself</h2>
+      <p class="sl-sub">Same formula, your numbers. Variance is in %² so the worked example's ω = 1.0×10⁻⁶ becomes ω = 0.01.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — GARCH(1,1) forecast, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>ω (%²)</label><input type="number" class="sl-input" id="gc-omega" value="0.01" step="0.001" min="0"></div>
+          <div class="sl-calc-op">+</div>
+          <div class="sl-calc-field"><label>α</label><input type="number" class="sl-input" id="gc-alpha" value="0.08" step="0.01" min="0"></div>
+          <div class="sl-calc-op">·ε²+</div>
+          <div class="sl-calc-field"><label>β</label><input type="number" class="sl-input" id="gc-beta" value="0.90" step="0.01" min="0"></div>
+          <div class="sl-calc-op">·σ²ₜ₋₁</div>
+        </div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Prior variance σ²ₜ₋₁ (%²)</label><input type="number" class="sl-input" id="gc-sigmaprev" value="0.50" step="0.01" min="0"></div>
+          <div class="sl-calc-op">+</div>
+          <div class="sl-calc-field"><label>Yesterday's shock εₜ₋₁ (%)</label><input type="number" class="sl-input" id="gc-shock" value="2.5" step="0.1"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Today's forecast σₜ² → σₜ</div>
+            <div class="sl-calc-result-val" id="gc-result">0.0960%² → 0.98%</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Persistence α+β = <b id="gc-persist">0.98</b></div>
+          <div>Long-run σ̄ ≈ <b id="gc-sigmabar">0.71</b>% · half-life ≈ <b id="gc-halflife">34.3</b> days</div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="gc-reset">Reset to worked-example numbers</button>
+        <div class="sl-note" id="gc-warning" style="display:none;color:var(--red)"></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Where this connects to MacroFXModel</h2>
+      <p class="sl-p">This project runs GARCH(1,1) in production — <code>js/volBacktestEngine.js</code> implements exactly this recursion as <code>garchSigmas()</code>, initialized at the unconditional variance ω/(1−α−β) so the very first forecasts aren't biased by starting at zero.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📊</div><div><h4>One of three estimators</h4><p>GARCH(1,1) is used for the <strong>index</strong> asset class. Commodity uses HV20; FX uses Yang-Zhang(30) — a range-based OHLC estimator. Same walk-forward harness, three different sigma series.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎛</div><div><h4>Its actual fitted parameters</h4><p>α = 0.06, β = 0.91 — persistence 0.97, half-life ≈ 23 days. Close to, but a bit less sticky than, this lesson's illustrative 0.08 / 0.90 example.</p></div></div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>This is not a claim that GARCH beats the alternatives out-of-sample — it's one of three estimators compared under the same harness, and which one wins is an empirical question the source lesson leaves open, not something assumed from the math.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Why a forecaster cares — and where it breaks</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📏</div><div><h4>Vol targeting</h4><p>Scale position size inversely to expected volatility, so a fixed-dollar-risk position shrinks automatically when the market gets choppier.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🛑</div><div><h4>Stops &amp; option fair value</h4><p>Set stop distances and compare against option-implied volatility using the same forecast.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📐</div><div><h4>Probabilistic price bands</h4><p>Set the width of a forecast band around a level — the use case most directly relevant to this repo.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>Basic GARCH(1,1) is symmetric</h4><p>It responds identically to a same-sized up shock and down shock, missing the empirical "leverage effect" (bad news spooks markets more). EGARCH/GJR-GARCH exist to fix this — this repo uses plain GARCH(1,1).</p></div></div>
+      </div>
+      <div class="sl-quote">A single large σₜ jump after a shock is the model doing exactly what it's supposed to — it doesn't mean the market permanently repriced. Check the persistence to see how fast the spike is expected to fade before treating it as a structural shift.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Why does ARCH use ε²ₜ₋₁ (squared) instead of εₜ₋₁ directly?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Because variance measures magnitude, not direction, and must stay non-negative</button>
+        <button class="sl-quiz-opt">Because squaring makes the math easier to program</button>
+        <button class="sl-quiz-opt">Because only positive shocks matter for volatility</button>
+        <div class="sl-quiz-explain">An unsquared shock could let a big up-day and a big down-day cancel out — exactly backwards. Squaring converts a sign-carrying shock into a magnitude the variance can sensibly respond to.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>What does α+β close to 1 (say, 0.97–0.99) imply?</h4>
+        <button class="sl-quiz-opt" data-correct="true">A volatility spike decays very slowly — a long half-life, weeks or more</button>
+        <button class="sl-quiz-opt">Volatility resets to zero the next day</button>
+        <button class="sl-quiz-opt">The model is guaranteed invalid</button>
+        <div class="sl-quiz-explain">α+β is the day-over-day decay rate of a shock's excess over the long-run level. Close to 1 means a sticky regime with a long half-life — still valid as long as it stays under 1.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>ω = 0.01, α = 0.08, β = 0.90, prior variance = 0.50, shock = 2.5. What's today's forecast σₜ² (in %²)?</h4>
+        <button class="sl-quiz-opt" data-correct="true">0.96</button>
+        <button class="sl-quiz-opt">0.50</button>
+        <button class="sl-quiz-opt">1.40</button>
+        <div class="sl-quiz-explain">0.01 + 0.08×(2.5²) + 0.90×0.50 = 0.01 + 0.50 + 0.45 = 0.96%² — matching the worked example rescaled into %².</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Why does GARCH react to a shock faster than a flat HV20 average?</h4>
+        <button class="sl-quiz-opt" data-correct="true">GARCH injects the full new squared shock into the very next forecast; HV20 gives it only 1/20th weight</button>
+        <button class="sl-quiz-opt">GARCH uses more historical data than HV20</button>
+        <button class="sl-quiz-opt">HV20 doesn't use squared returns at all</button>
+        <div class="sl-quiz-explain">The α·ε²ₜ₋₁ term puts the entire new shock into tomorrow's forecast immediately. HV20 spreads it thin across 20 equally-weighted days, then drops it off a cliff 20 days later.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Which asset class does this repo's actual GARCH(1,1) estimator apply to, per the source lesson?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Index</button>
+        <button class="sl-quiz-opt">FX</button>
+        <button class="sl-quiz-opt">Commodity</button>
+        <div class="sl-quiz-explain">Index uses GARCH(1,1) (α=0.06, β=0.91); commodity uses HV20; FX uses Yang-Zhang(30) — three estimators run under the same harness.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Volatility clusters — big moves of either sign follow big moves, calm follows calm — even though the direction of the next move stays close to unpredictable.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>GARCH(1,1) has three additive pieces: a floor ω, a reaction to yesterday's squared shock α·ε²ₜ₋₁, and inertia from yesterday's own variance β·σ²ₜ₋₁.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>α+β is the persistence — the day-over-day decay rate of a shock's excess over normal — and it must stay under 1 or the model isn't valid.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The long-run variance is ω/(1−α−β); the half-life of a shock is ln(0.5)/ln(α+β).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>This project already runs GARCH(1,1) in production — α=0.06, β=0.91 — as one of three sigma estimators, applied to the index asset class alongside HV20 (commodity) and Yang-Zhang (FX).</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Read a GARCH(1,1) recursion symbol by symbol, forecast tomorrow's variance from today's shock and yesterday's variance by hand, and sanity-check any fitted or hand-set parameters by checking α+β &lt; 1 before trusting them.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Hidden Markov Models &amp; Regime Detection</h3>
+        <p>Volatility clustering is one way markets have memory — HMMs formalize the idea that the market is quietly switching between a small number of hidden "regimes," each with its own statistical behavior.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="hidden-markov-models-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="garch-volatility.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Slider demo — α/β reshape a simulated post-shock decay curve.
+  (function(){
+    var alphaSlider = document.getElementById('mg-alpha-slider');
+    if (!alphaSlider) return;
+    var betaSlider = document.getElementById('mg-beta-slider');
+    var alphaVal = document.getElementById('mg-alpha-val');
+    var betaVal = document.getElementById('mg-beta-val');
+    var persistVal = document.getElementById('mg-persist-val');
+    var halflifeVal = document.getElementById('mg-halflife-val');
+    var volLine = document.getElementById('mg-vol-line');
+
+    var VBAR = 5.0e-5;
+    var SIGMA_BAR = Math.sqrt(VBAR);
+    var SHOCK_SQ = 0.000625;
+    var Y_BASE = 185, Y_MIN = 25;
+    var X_START = 20, X_END = 620;
+    var PRE_SHOCK_STEPS = 5;
+    var DECAY_STEPS = 20;
+    var K = 46500;
+
+    function update(){
+      var alpha = parseInt(alphaSlider.value, 10) / 100;
+      var beta = parseInt(betaSlider.value, 10) / 100;
+      var persistence = alpha + beta;
+
+      alphaVal.textContent = alpha.toFixed(2);
+      betaVal.textContent = beta.toFixed(2);
+      persistVal.textContent = persistence.toFixed(2);
+      halflifeVal.textContent = persistence >= 1 ? '∞' : String(Math.round(Math.log(0.5) / Math.log(persistence)));
+
+      var decayRate = Math.min(persistence, 0.995);
+      var variances = [alpha * (SHOCK_SQ - VBAR) + VBAR];
+      for (var r = 1; r < DECAY_STEPS; r++) {
+        variances.push(VBAR + decayRate * (variances[r - 1] - VBAR));
+      }
+
+      var totalPoints = PRE_SHOCK_STEPS + DECAY_STEPS;
+      var dx = (X_END - X_START) / (totalPoints - 1);
+      var pts = [];
+      var i;
+      for (i = 0; i < PRE_SHOCK_STEPS; i++) {
+        pts.push((X_START + i * dx).toFixed(1) + ',' + Y_BASE);
+      }
+      for (r = 0; r < DECAY_STEPS; r++) {
+        var sigma = Math.sqrt(Math.max(variances[r], 0));
+        var y = Y_BASE - K * (sigma - SIGMA_BAR);
+        y = Math.max(Y_MIN, Math.min(Y_BASE, y));
+        var x = X_START + (PRE_SHOCK_STEPS + r) * dx;
+        pts.push(x.toFixed(1) + ',' + y.toFixed(1));
+      }
+      volLine.setAttribute('points', pts.join(' '));
+    }
+
+    alphaSlider.addEventListener('input', update);
+    betaSlider.addEventListener('input', update);
+    update();
+  })();
+
+  // Live GARCH(1,1) calculator.
+  (function(){
+    var omega = document.getElementById('gc-omega');
+    if (!omega) return;
+    var alpha = document.getElementById('gc-alpha'), beta = document.getElementById('gc-beta');
+    var sigmaPrev = document.getElementById('gc-sigmaprev'), shock = document.getElementById('gc-shock');
+    var result = document.getElementById('gc-result');
+    var persistOut = document.getElementById('gc-persist'), sigmabarOut = document.getElementById('gc-sigmabar'), halflifeOut = document.getElementById('gc-halflife');
+    var warning = document.getElementById('gc-warning');
+    var resetBtn = document.getElementById('gc-reset');
+    var DEFAULTS = { omega: 0.01, alpha: 0.08, beta: 0.90, sigmaprev: 0.50, shock: 2.5 };
+
+    function recompute(){
+      var o = parseFloat(omega.value), a = parseFloat(alpha.value), b = parseFloat(beta.value);
+      var sp = parseFloat(sigmaPrev.value), s = parseFloat(shock.value);
+
+      if (!isFinite(o) || !isFinite(a) || !isFinite(b) || !isFinite(sp) || !isFinite(s) || o <= 0 || a < 0 || b < 0 || sp < 0) {
+        result.textContent = '—';
+        persistOut.textContent = '—'; sigmabarOut.textContent = '—'; halflifeOut.textContent = '—';
+        warning.style.display = 'block';
+        warning.textContent = 'Enter ω > 0, α ≥ 0, β ≥ 0, and a non-negative prior variance.';
+        return;
+      }
+
+      var sigmaT2 = o + a * s * s + b * sp;
+      var sigmaT = Math.sqrt(sigmaT2);
+      var persistence = a + b;
+      persistOut.textContent = persistence.toFixed(4);
+      result.textContent = sigmaT2.toFixed(4) + '%² → ' + sigmaT.toFixed(2) + '%';
+
+      if (persistence >= 1) {
+        sigmabarOut.textContent = '—';
+        halflifeOut.textContent = '—';
+        warning.style.display = 'block';
+        warning.textContent = 'α+β ≥ 1: not a valid stationary GARCH model — half-life and long-run σ̄ are undefined, the recursion never mean-reverts.';
+        return;
+      }
+
+      warning.style.display = 'none';
+      warning.textContent = '';
+      var halflife = Math.log(0.5) / Math.log(persistence);
+      var sigmaBar2 = o / (1 - persistence);
+      sigmabarOut.textContent = Math.sqrt(sigmaBar2).toFixed(2);
+      halflifeOut.textContent = halflife.toFixed(1);
+    }
+
+    [omega, alpha, beta, sigmaPrev, shock].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      omega.value = DEFAULTS.omega; alpha.value = DEFAULTS.alpha; beta.value = DEFAULTS.beta;
+      sigmaPrev.value = DEFAULTS.sigmaprev; shock.value = DEFAULTS.shock;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

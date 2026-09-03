@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Correlation &amp; Linear Regression — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Correlation &amp; Linear Regression — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer full derivations, a live calculator, and a 5-question self-test?<a href="primer-correlation-regression.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Primer 3 · Math Primer</div>
+      <h1 class="sl-h1">Correlation &amp; Regression, <em>Without Fooling Yourself</em></h1>
+      <p class="sl-lede">Every later lesson that asks "do these two things move together" or "what's the best straight line through this data" is quietly leaning on two tools: correlation and ordinary least squares regression. Cointegration's first step is a regression. The Kalman Filter tracks a hedge ratio that <em>is</em> a regression slope, just one allowed to drift. PCA decomposes a correlation matrix built from exactly the formulas below. This guide builds both tools from nothing — and spends just as much time on how convincingly they lie.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">"Moving together" is the whole question</h2>
+      <p class="sl-sub">Picture a stock's daily return plotted against the broad market's daily return, day after day.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">↕</div><div><h4>Above average together, below average together</h4><p>On a day the market is up, is the stock usually also up? On a day it's down, is the stock usually also down? "Usually yes" is what correlation is built to detect.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">?</div><div><h4>It asks one question, and only one</h4><p>Do these two series tend to move the same direction, opposite directions, or neither? It does not ask, and cannot answer, <em>why</em>.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔢</div><div><h4>One number, sounding like a fact</h4><p>"r = 0.87" reads like a verdict about the world. It's actually a summary of one dataset, over one window, assuming the relationship is a straight line.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⛓</div><div><h4>Three lessons downstream depend on this one</h4><p>Cointegration, the Kalman Filter, and PCA all import this machinery by reference rather than re-deriving it — this is where it gets built, once.</p></div></div>
+      </div>
+      <div class="sl-quote">A correlation coefficient silently assumes the relationship it's summarizing is linear, and says nothing whatsoever about which variable, if either, is causing the other. Keep both caveats in view — the rest of this guide is largely about what happens when they get forgotten.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Covariance: the raw, unscaled version</h2>
+      <p class="sl-sub">For each day, multiply how far the stock was from its own average by how far the market was from its own average — then average that product across every day.</p>
+      <div class="sl-row"><div class="sl-box">Cov(X,Y) = avg[ (X − x̄)(Y − ȳ) ]</div></div>
+      <div class="sl-compare">
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Same side of average → positive</span>
+          <ul>
+            <li>Both above average, or both below: the product of two positives or two negatives is positive</li>
+            <li>Most day-pairs land here → the average product comes out positive</li>
+            <li>Positive covariance = tend to move the same direction</li>
+          </ul>
+        </div>
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Opposite sides → negative</span>
+          <ul>
+            <li>One above its average while the other is below: one positive deviation times one negative gives a negative product</li>
+            <li>Most day-pairs land here → the average product comes out negative</li>
+            <li>Negative covariance = tend to move opposite directions</li>
+          </ul>
+        </div>
+      </div>
+      <p class="sl-p">Notice this is the exact same machinery as variance, just applied to two variables instead of one — variance is nothing but the covariance of a variable with itself: Var(X) = Cov(X,X). The one problem covariance has as a report card: its <strong>size depends on units</strong>. The same relationship measured in basis points versus percent produces two completely different-looking numbers, even though nothing about the underlying relationship changed.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Why this needs fixing before it's useful</div>
+        <p>A covariance of 4.0 in one unit and 0.0004 in a rescaled unit can describe the identical relationship. Covariance's sign is meaningful on its own; its magnitude, by itself, is not comparable across two different pairs of variables. That's precisely the gap correlation exists to close.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">r: covariance, squeezed onto a ruler from −1 to +1</h2>
+      <p class="sl-sub">Divide covariance by the product of each variable's own standard deviation — that single division cancels the units out entirely.</p>
+      <div class="sl-row"><div class="sl-box">r = Cov(X,Y) / (σX · σY)</div></div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">∅</div><div><h4>Unitless, by construction</h4><p>σX and σY carry the same units as X and Y, so dividing by both cancels units out of the result completely — r is a pure number.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">↔</div><div><h4>Provably bounded, −1 to 1</h4><p>This isn't an empirical observation — it falls directly out of the Cauchy-Schwarz inequality. r = 1 and r = −1 are the mathematical ceiling and floor, not rare extremes.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🏷</div><div><h4>The Pearson correlation coefficient</h4><p>This exact formalization — covariance rescaled by both standard deviations — is Karl Pearson's, from the 1890s, which is why it carries his name.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>r = 0 means no LINEAR tendency — not "unrelated"</h4><p>Let y = x² with x ranging symmetrically around zero. y is completely, deterministically fixed by x — yet r comes out near zero, because the positive and negative deviation-products cancel almost exactly.</p></div></div>
+      </div>
+      <p class="sl-p">That last point is the single most common misreading of a correlation coefficient, and it's worth sitting with before moving on: a low r never proves "no relationship." It only proves "no <em>straight-line</em> relationship" — always look at a scatter plot, not just the number.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">What different values of r actually look like</h2>
+      <p class="sl-sub">Same kind of scatterplot, three different strengths of relationship. Flip between them.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="r-tabs">
+          <button class="sl-tab active" data-panel="r-90">r ≈ 0.9</button>
+          <button class="sl-tab" data-panel="r-30">r ≈ 0.3</button>
+          <button class="sl-tab" data-panel="r-neg70">r ≈ −0.7</button>
+        </div>
+        <div class="sl-panel active" id="r-90">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Scatterplot with points hugging a tight upward-sloping band, strong positive correlation">
+            <line x1="60" y1="20" x2="60" y2="240" style="stroke:var(--border)"/>
+            <line x1="60" y1="240" x2="610" y2="240" style="stroke:var(--border)"/>
+            <line x1="118" y1="235" x2="566" y2="55" style="stroke:var(--amber);stroke-width:2"/>
+            <circle cx="118" cy="241" r="4" style="fill:var(--blue)"/>
+            <circle cx="150" cy="218" r="4" style="fill:var(--blue)"/>
+            <circle cx="182" cy="212" r="4" style="fill:var(--blue)"/>
+            <circle cx="214" cy="190" r="4" style="fill:var(--blue)"/>
+            <circle cx="246" cy="188" r="4" style="fill:var(--blue)"/>
+            <circle cx="278" cy="168" r="4" style="fill:var(--blue)"/>
+            <circle cx="310" cy="163" r="4" style="fill:var(--blue)"/>
+            <circle cx="342" cy="140" r="4" style="fill:var(--blue)"/>
+            <circle cx="374" cy="134" r="4" style="fill:var(--blue)"/>
+            <circle cx="406" cy="115" r="4" style="fill:var(--blue)"/>
+            <circle cx="438" cy="112" r="4" style="fill:var(--blue)"/>
+            <circle cx="470" cy="91" r="4" style="fill:var(--blue)"/>
+            <circle cx="502" cy="85" r="4" style="fill:var(--blue)"/>
+            <circle cx="534" cy="63" r="4" style="fill:var(--blue)"/>
+            <circle cx="566" cy="58" r="4" style="fill:var(--blue)"/>
+          </svg></div>
+          <div class="sl-verdict"><strong>Strong positive.</strong> The cloud is a tight band hugging the fitted line — knowing X pins down Y almost exactly. This is the kind of relationship a hedge ratio is worth trusting.</div>
+        </div>
+        <div class="sl-panel" id="r-30">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Scatterplot with widely scattered points and only a faint upward drift, weak positive correlation">
+            <line x1="60" y1="20" x2="60" y2="240" style="stroke:var(--border)"/>
+            <line x1="60" y1="240" x2="610" y2="240" style="stroke:var(--border)"/>
+            <line x1="118" y1="200" x2="566" y2="150" style="stroke:var(--amber);stroke-width:2"/>
+            <circle cx="118" cy="255" r="4" style="fill:var(--blue)"/>
+            <circle cx="150" cy="126" r="4" style="fill:var(--blue)"/>
+            <circle cx="182" cy="233" r="4" style="fill:var(--blue)"/>
+            <circle cx="214" cy="159" r="4" style="fill:var(--blue)"/>
+            <circle cx="246" cy="251" r="4" style="fill:var(--blue)"/>
+            <circle cx="278" cy="132" r="4" style="fill:var(--blue)"/>
+            <circle cx="310" cy="199" r="4" style="fill:var(--blue)"/>
+            <circle cx="342" cy="115" r="4" style="fill:var(--blue)"/>
+            <circle cx="374" cy="216" r="4" style="fill:var(--blue)"/>
+            <circle cx="406" cy="143" r="4" style="fill:var(--blue)"/>
+            <circle cx="438" cy="234" r="4" style="fill:var(--blue)"/>
+            <circle cx="470" cy="121" r="4" style="fill:var(--blue)"/>
+            <circle cx="502" cy="187" r="4" style="fill:var(--blue)"/>
+            <circle cx="534" cy="99" r="4" style="fill:var(--blue)"/>
+            <circle cx="566" cy="165" r="4" style="fill:var(--blue)"/>
+          </svg></div>
+          <div class="sl-verdict"><strong>Weak positive.</strong> There's a faint upward drift in the fitted line, but any single point tells you almost nothing about Y. This is roughly what "two currencies loosely correlated" looks like up close — real, but not tradeable on its own.</div>
+        </div>
+        <div class="sl-panel" id="r-neg70">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Scatterplot sloping downward with moderate scatter, moderate negative correlation">
+            <line x1="60" y1="20" x2="60" y2="240" style="stroke:var(--border)"/>
+            <line x1="60" y1="240" x2="610" y2="240" style="stroke:var(--border)"/>
+            <line x1="118" y1="60" x2="566" y2="230" style="stroke:var(--amber);stroke-width:2"/>
+            <circle cx="118" cy="85" r="4" style="fill:var(--blue)"/>
+            <circle cx="150" cy="42" r="4" style="fill:var(--blue)"/>
+            <circle cx="182" cy="104" r="4" style="fill:var(--blue)"/>
+            <circle cx="214" cy="81" r="4" style="fill:var(--blue)"/>
+            <circle cx="246" cy="144" r="4" style="fill:var(--blue)"/>
+            <circle cx="278" cy="101" r="4" style="fill:var(--blue)"/>
+            <circle cx="310" cy="143" r="4" style="fill:var(--blue)"/>
+            <circle cx="342" cy="120" r="4" style="fill:var(--blue)"/>
+            <circle cx="374" cy="187" r="4" style="fill:var(--blue)"/>
+            <circle cx="406" cy="154" r="4" style="fill:var(--blue)"/>
+            <circle cx="438" cy="201" r="4" style="fill:var(--blue)"/>
+            <circle cx="470" cy="164" r="4" style="fill:var(--blue)"/>
+            <circle cx="502" cy="221" r="4" style="fill:var(--blue)"/>
+            <circle cx="534" cy="198" r="4" style="fill:var(--blue)"/>
+            <circle cx="566" cy="240" r="4" style="fill:var(--blue)"/>
+          </svg></div>
+          <div class="sl-verdict"><strong>Moderate negative.</strong> As X rises, Y tends to fall, with visible but not extreme scatter around the trend. This is the shape a workable hedge relationship often has — negative, clear, but never perfectly clean.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Regression: the one line that fits best</h2>
+      <p class="sl-sub">Correlation says how strongly two things move together. Regression goes further — it hands you a specific, usable line.</p>
+      <div class="sl-row"><div class="sl-box">Y = α + βX + ε</div></div>
+      <p class="sl-p">α is the intercept — the predicted Y when X = 0. β is the slope — the predicted change in Y per one-unit change in X. ε is everything about Y this straight line doesn't capture. For each observation, the <strong>residual</strong> is the vertical gap between the actual point and the line's prediction: eᵢ = yᵢ − ŷᵢ.</p>
+      <div class="sl-svgwrap"><svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Scatterplot with a fitted line and dashed vertical residual segments from a few points to the line">
+        <line x1="60" y1="20" x2="60" y2="240" style="stroke:var(--border)"/>
+        <line x1="60" y1="240" x2="610" y2="240" style="stroke:var(--border)"/>
+        <text x="335" y="256" fill="var(--text3)" font-size="12" text-anchor="middle">X</text>
+        <text x="30" y="130" fill="var(--text3)" font-size="12" text-anchor="middle" transform="rotate(-90 30 130)">Y</text>
+        <line x1="118" y1="235" x2="566" y2="55" style="stroke:var(--amber);stroke-width:2"/>
+        <line x1="118" y1="241" x2="118" y2="235" style="stroke:var(--red);stroke-width:1;stroke-dasharray:3,3"/>
+        <line x1="214" y1="190" x2="214" y2="200" style="stroke:var(--red);stroke-width:1;stroke-dasharray:3,3"/>
+        <line x1="310" y1="163" x2="310" y2="158" style="stroke:var(--red);stroke-width:1;stroke-dasharray:3,3"/>
+        <line x1="406" y1="115" x2="406" y2="122" style="stroke:var(--red);stroke-width:1;stroke-dasharray:3,3"/>
+        <line x1="502" y1="85" x2="502" y2="80" style="stroke:var(--red);stroke-width:1;stroke-dasharray:3,3"/>
+        <circle cx="118" cy="241" r="4" style="fill:var(--blue)"/>
+        <circle cx="150" cy="218" r="4" style="fill:var(--blue)"/>
+        <circle cx="182" cy="212" r="4" style="fill:var(--blue)"/>
+        <circle cx="214" cy="190" r="4" style="fill:var(--blue)"/>
+        <circle cx="246" cy="188" r="4" style="fill:var(--blue)"/>
+        <circle cx="278" cy="168" r="4" style="fill:var(--blue)"/>
+        <circle cx="310" cy="163" r="4" style="fill:var(--blue)"/>
+        <circle cx="342" cy="140" r="4" style="fill:var(--blue)"/>
+        <circle cx="374" cy="134" r="4" style="fill:var(--blue)"/>
+        <circle cx="406" cy="115" r="4" style="fill:var(--blue)"/>
+        <circle cx="438" cy="112" r="4" style="fill:var(--blue)"/>
+        <circle cx="470" cy="91" r="4" style="fill:var(--blue)"/>
+        <circle cx="502" cy="85" r="4" style="fill:var(--blue)"/>
+        <circle cx="534" cy="63" r="4" style="fill:var(--blue)"/>
+        <circle cx="566" cy="58" r="4" style="fill:var(--blue)"/>
+      </svg></div>
+      <p class="sl-p">"Ordinary least squares" is the name of the rule for picking α̂ and β̂: choose whichever values make the <strong>sum of the squared residuals</strong> as small as possible. Why squared, instead of just adding up the raw gaps? Raw gaps let a huge positive miss cancel a huge negative one, scoring a terrible line as "perfect." Squaring fixes that — and it also punishes big misses disproportionately: a residual twice as large contributes four times the penalty, which is exactly why an OLS line is more sensitive to outliers than an absolute-error fit would be.</p>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">What minimizing actually gives you</div>
+        <p>Setting the calculus to zero produces two conditions: the residuals must sum to exactly zero (the line runs through the data's "center of mass"), and — after substituting that in — the slope collapses to a strikingly clean result: β̂ = Cov(X,Y) / Var(X). The next slide puts that formula to work.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Try it — the slope IS covariance, just normalized by X alone</h2>
+      <p class="sl-sub">x stays fixed at 1, 2, 3, 4, 5 — the same five points as the worked example in the full lesson. Edit any y and the line, r, β̂, α̂ and R² all recompute instantly.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — live regression</div>
+        <div class="sl-svgwrap"><svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Five editable points with a live-redrawn fitted regression line and residuals">
+          <line x1="60" y1="20" x2="60" y2="240" style="stroke:var(--border)"/>
+          <line x1="60" y1="240" x2="610" y2="240" style="stroke:var(--border)"/>
+          <text x="335" y="256" fill="var(--text3)" font-size="12" text-anchor="middle">X</text>
+          <text x="30" y="130" fill="var(--text3)" font-size="12" text-anchor="middle" transform="rotate(-90 30 130)">Y</text>
+          <line id="crr-fit-line" x1="70" y1="202.5" x2="590" y2="60.4" style="stroke:var(--amber);stroke-width:2"/>
+          <g id="crr-residuals-group">
+            <line x1="70" y1="201.4" x2="70" y2="202.5" style="stroke:var(--red);stroke-width:1;stroke-dasharray:3,3"/>
+            <line x1="200" y1="169.3" x2="200" y2="167.0" style="stroke:var(--red);stroke-width:1;stroke-dasharray:3,3"/>
+            <line x1="330" y1="128.2" x2="330" y2="131.4" style="stroke:var(--red);stroke-width:1;stroke-dasharray:3,3"/>
+            <line x1="460" y1="99.6" x2="460" y2="95.9" style="stroke:var(--red);stroke-width:1;stroke-dasharray:3,3"/>
+            <line x1="590" y1="58.6" x2="590" y2="60.4" style="stroke:var(--red);stroke-width:1;stroke-dasharray:3,3"/>
+          </g>
+          <g id="crr-points-group">
+            <circle cx="70" cy="201.4" r="5" style="fill:var(--blue)"/>
+            <circle cx="200" cy="169.3" r="5" style="fill:var(--blue)"/>
+            <circle cx="330" cy="128.2" r="5" style="fill:var(--blue)"/>
+            <circle cx="460" cy="99.6" r="5" style="fill:var(--blue)"/>
+            <circle cx="590" cy="58.6" r="5" style="fill:var(--blue)"/>
+          </g>
+        </svg></div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>y at x=1</label><input type="number" class="sl-input" id="crr-y1" value="2.1" step="0.1"></div>
+          <div class="sl-calc-field"><label>y at x=2</label><input type="number" class="sl-input" id="crr-y2" value="3.9" step="0.1"></div>
+          <div class="sl-calc-field"><label>y at x=3</label><input type="number" class="sl-input" id="crr-y3" value="6.2" step="0.1"></div>
+          <div class="sl-calc-field"><label>y at x=4</label><input type="number" class="sl-input" id="crr-y4" value="7.8" step="0.1"></div>
+          <div class="sl-calc-field"><label>y at x=5</label><input type="number" class="sl-input" id="crr-y5" value="10.1" step="0.1"></div>
+        </div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Correlation r</div><div class="sl-calc-result-val" id="crr-r">0.999</div></div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">R²</div><div class="sl-calc-result-val" id="crr-r2">0.9973</div></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Slope: β̂ = Cov(x,y) / Var(x) = <b id="crr-beta">1.9900</b></div>
+          <div>Intercept: α̂ = ȳ − β̂·x̄ = <b id="crr-alpha">0.0500</b></div>
+          <div id="crr-note"></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="crr-reset">Reset to worked-example numbers</button>
+      </div>
+      <p class="sl-p">Try dragging y at x=1 sharply upward, or making two y-values equal — watch r fall and the residuals (the dashed red segments) stretch as the line stops explaining the points as well. This is the exact same mechanism a rolling correlation window uses to flag that a hedge relationship is drifting.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">R²: how much of the story the line actually explains</h2>
+      <p class="sl-sub">Split Y's total variation around its own mean into two pieces: what the line explains, and what's left over in the residuals.</p>
+      <div class="sl-row"><div class="sl-box">R² = 1 − SSR / SST</div></div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">1</div><div><h4>R² = 1</h4><p>The line passes through every point exactly — zero leftover residual variance.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">0</div><div><h4>R² = 0</h4><p>The line explains nothing beyond just always guessing ȳ — X isn't helping.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">=</div><div><h4>R² = r², for one predictor only</h4><p>For simple regression this isn't a coincidence — it falls straight out of substituting the OLS formulas back into the SSR/SST split.</p></div></div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">The trap hiding inside that identity</div>
+        <p>R² can never fall when another predictor is added to a regression — OLS is always free to set a useless predictor's coefficient to exactly zero, reproducing the old fit, so the fit can only stay flat or improve. A regression stuffed with twenty near-random predictors will report a deceptively high in-sample R² for reasons that have nothing to do with any of them actually explaining Y. A suspiciously high R² with many predictors should raise scrutiny, not confidence — prefer adjusted R² or genuine out-of-sample performance.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">A great-looking correlation can still be lying to you</h2>
+      <p class="sl-sub">Two currencies correlated at 0.9 in a backtest could be causally linked, driven by a shared factor, or just coincidentally aligned over that one window — r alone cannot tell you which.</p>
+      <div class="sl-quote">The classic case: across cities and months, ice cream sales and drowning deaths are strongly positively correlated. Ice cream doesn't cause drowning. Both are driven by a third, unmeasured variable — warm weather sends more people swimming and more people to buy ice cream at the same time. This is called <strong>confounding</strong>, and it's the default explanation to rule out, not a rare edge case.</div>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">What a high r does NOT prove</span>
+          <ul>
+            <li>That one series causes the other to move</li>
+            <li>That a shared factor (broad USD strength, risk sentiment) isn't secretly driving both</li>
+            <li>That the relationship survives into the next window, out of sample</li>
+            <li>That the relationship is even linear — r ≈ 0 can still hide a strong nonlinear one</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">What to actually check first</span>
+          <ul>
+            <li>Look at the scatter plot itself, not just the coefficient</li>
+            <li>Ask whether there's a clear economic or mechanical reason one should drive the other</li>
+            <li>Test the relationship on data the fit never saw</li>
+            <li>Treat "correlated in returns" as a cheap first filter, not a conclusion</li>
+          </ul>
+        </div>
+      </div>
+      <p class="sl-p">A rolling correlation matrix across a universe of instruments is the standard, cheap first pass for finding relationships worth investigating — and precisely because it's cheap and fast, it's also easy to over-trust. "Correlated in returns" is a necessary but far from sufficient condition for a tradeable relationship.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Where this shows up on a desk</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">⚖️</div><div><h4>Hedge ratios — pairs trading's core input</h4><p>Regress the instrument you're hedging on the hedge instrument. β̂ tells you exactly how many units of the second offset one unit of the first, on average, over the fitted window. This is Step 1 of Engle-Granger cointegration.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📈</div><div><h4>Beta and factor exposure</h4><p>Regress an asset's returns on a benchmark's returns and β̂ is the asset's sensitivity to that factor — literally CAPM beta, the same identity applied to a different X.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧮</div><div><h4>Risk/return decomposition</h4><p>Regressing performance on known factors splits it into an explained part and a residual — sometimes optimistically labeled "alpha."</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔎</div><div><h4>Screening and pair discovery</h4><p>A rolling correlation matrix is the standard cheap first pass for finding candidate pairs — before the pitfalls on the previous slide get applied to them.</p></div></div>
+      </div>
+      <div class="sl-quote">A pairs trade only works because a hedge ratio — a regression slope — is assumed stable enough that hedging one leg against the other cancels out most of the shared risk. When that slope drifts, the "hedge" quietly stops hedging, which is exactly why the Kalman Filter lesson tracks a <strong>time-varying</strong> version of this same β̂ instead of trusting one fixed-window estimate forever.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What does a covariance of exactly 0 tell you?</h4>
+        <button class="sl-quiz-opt" data-correct="true">No linear tendency for the two variables to move together</button>
+        <button class="sl-quiz-opt">The two variables are completely unrelated</button>
+        <button class="sl-quiz-opt">The two variables always move in opposite directions</button>
+        <div class="sl-quiz-explain">Zero covariance means no linear co-movement in either direction — it says nothing about a nonlinear relationship, which could still be strong.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Correlation is covariance rescaled by...</h4>
+        <button class="sl-quiz-opt" data-correct="true">The product of each variable's own standard deviation</button>
+        <button class="sl-quiz-opt">The number of observations, n</button>
+        <button class="sl-quiz-opt">The mean of X and the mean of Y</button>
+        <div class="sl-quiz-explain">r = Cov(X,Y) / (σX·σY). Dividing by both standard deviations cancels the units out and bounds the result between −1 and 1.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>For y = x², with x ranging symmetrically around zero, the correlation r is close to...</h4>
+        <button class="sl-quiz-opt" data-correct="true">0 — even though x completely determines y</button>
+        <button class="sl-quiz-opt">1 — since y is completely determined by x</button>
+        <button class="sl-quiz-opt">−1 — since larger x always gives a larger y</button>
+        <div class="sl-quiz-explain">y is identical for x and −x, so the positive and negative deviation-products in the covariance cancel almost exactly, driving r near zero despite a perfect (nonlinear) relationship.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>OLS chooses α̂ and β̂ to minimize...</h4>
+        <button class="sl-quiz-opt" data-correct="true">The sum of the squared residuals</button>
+        <button class="sl-quiz-opt">The sum of the raw (signed) residuals</button>
+        <button class="sl-quiz-opt">The single largest residual</button>
+        <div class="sl-quiz-explain">Summing raw residuals lets huge positive and negative misses cancel out and score a bad line as "perfect." Squaring fixes that, at the cost of punishing outliers more heavily.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>A regression's R² rose from 0.40 to 0.55 after adding ten more predictors, most of which look like noise. What should you conclude?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Not much on its own — R² can only rise or stay flat as predictors are added, even useless ones</button>
+        <button class="sl-quiz-opt">The new predictors are clearly meaningful drivers of Y</button>
+        <button class="sl-quiz-opt">The relationship is now proven to be causal</button>
+        <div class="sl-quiz-explain">OLS can always set a useless predictor's coefficient to zero and reproduce the old fit exactly, so R² is mechanically incapable of falling when predictors are added. A rise alone proves nothing — check adjusted R² or out-of-sample performance.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Covariance measures co-movement in raw units — its sign tells you direction, but its magnitude alone isn't comparable across different series.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Correlation r rescales covariance by both variables' spread into a unitless number bounded [−1, 1] — but r = 0 only rules out a <em>linear</em> relationship, never a relationship altogether.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>The OLS regression slope, β̂ = Cov(X,Y) / Var(X), isn't a separate idea from correlation — it's the same covariance, normalized by X's own variance instead of by both variables' spreads.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>R² = 1 − SSR/SST measures the fraction of Y's variance the line explains, and equals r² only for one predictor — adding more predictors can only push R² up, never down, whether or not they're real.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>A high correlation proves only that two things moved together over one sample window — never that one caused the other, that a hidden factor didn't drive both, or that it survives into the next window.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>A hedge ratio and a CAPM beta are both, literally, a regression slope — this is the exact machinery the Cointegration and Kalman Filter lessons build on next.</p></div>
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">What this now lets you do</div>
+        <p>Read a correlation matrix without over-trusting a single number, compute a hedge ratio by hand from raw price pairs, and spot R²-inflation and spurious backtest correlation before they cost real money.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Returns, Log-Returns &amp; Compounding</h3>
+        <p>Why simple returns don't add up across time, why log-returns do, and the compounding math every backtest quietly depends on getting right.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="primer-returns-compounding-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="primer-correlation-regression.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Live regression scratchpad — x fixed at [1,2,3,4,5], y editable.
+  // Redraws the scatter, fitted line, and residuals, and recomputes
+  // r, beta-hat, alpha-hat, and R^2 from the same formulas derived above.
+  (function(){
+    var y1 = document.getElementById('crr-y1');
+    if (!y1) return;
+    var yIds = ['crr-y1','crr-y2','crr-y3','crr-y4','crr-y5'];
+    var inputs = yIds.map(function(id){ return document.getElementById(id); });
+    var DEFAULTS = [2.1, 3.9, 6.2, 7.8, 10.1];
+
+    var rOut = document.getElementById('crr-r');
+    var r2Out = document.getElementById('crr-r2');
+    var betaOut = document.getElementById('crr-beta');
+    var alphaOut = document.getElementById('crr-alpha');
+    var noteOut = document.getElementById('crr-note');
+    var resetBtn = document.getElementById('crr-reset');
+    var fitLine = document.getElementById('crr-fit-line');
+    var pointsGroup = document.getElementById('crr-points-group');
+    var residualsGroup = document.getElementById('crr-residuals-group');
+
+    var X = [1, 2, 3, 4, 5];
+    var PX = [70, 200, 330, 460, 590];
+    var TOP = 30, BOTTOM = 230, HEIGHT = BOTTOM - TOP;
+
+    function recompute(){
+      var y = inputs.map(function(el){ return parseFloat(el.value); });
+      if (y.some(function(v){ return !isFinite(v); })) {
+        noteOut.textContent = 'Enter a number for every y value.';
+        return;
+      }
+      noteOut.textContent = '';
+
+      var n = X.length;
+      var mx = 3; // fixed mean of [1,2,3,4,5]
+      var my = y.reduce(function(a,b){ return a+b; }, 0) / n;
+
+      var cov = 0, varX = 0, varY = 0;
+      for (var i = 0; i < n; i++){
+        var dx = X[i] - mx, dy = y[i] - my;
+        cov += dx * dy;
+        varX += dx * dx;
+        varY += dy * dy;
+      }
+      cov /= n; varX /= n; varY /= n; // varX is always exactly 2 here
+      var sx = Math.sqrt(varX), sy = Math.sqrt(varY);
+
+      var beta = cov / varX;
+      var alpha = my - beta * mx;
+      betaOut.textContent = beta.toFixed(4);
+      alphaOut.textContent = alpha.toFixed(4);
+
+      if (sy === 0) {
+        rOut.textContent = '—';
+        r2Out.textContent = '—';
+        noteOut.textContent = 'All y values are identical — no variation to correlate, so r and R² are undefined.';
+      } else {
+        var r = cov / (sx * sy);
+        var ssr = 0;
+        for (var j = 0; j < n; j++){
+          var yhat = alpha + beta * X[j];
+          var e = y[j] - yhat;
+          ssr += e * e;
+        }
+        var sst = n * varY;
+        var r2 = 1 - ssr / sst;
+        rOut.textContent = r.toFixed(3);
+        r2Out.textContent = r2.toFixed(4);
+      }
+
+      // Redraw the chart: scale y-values to pixel space with headroom.
+      var rawMin = Math.min.apply(null, y), rawMax = Math.max.apply(null, y);
+      var range = rawMax - rawMin;
+      var pad = range > 0 ? range * 0.2 : 1;
+      var yMin = rawMin - pad, yMax = rawMax + pad;
+      var span = yMax - yMin;
+
+      function scaleY(v){ return BOTTOM - ((v - yMin) / span) * HEIGHT; }
+
+      var pys = y.map(scaleY);
+      var pointsHTML = '';
+      for (var k = 0; k < n; k++){
+        pointsHTML += '<circle cx="' + PX[k] + '" cy="' + pys[k].toFixed(1) + '" r="5" style="fill:var(--blue)"></circle>';
+      }
+      pointsGroup.innerHTML = pointsHTML;
+
+      var lineY1 = scaleY(alpha + beta * X[0]);
+      var lineY5 = scaleY(alpha + beta * X[n - 1]);
+      fitLine.setAttribute('y1', lineY1.toFixed(1));
+      fitLine.setAttribute('y2', lineY5.toFixed(1));
+
+      var residualsHTML = '';
+      for (var m = 0; m < n; m++){
+        var lineYm = scaleY(alpha + beta * X[m]);
+        residualsHTML += '<line x1="' + PX[m] + '" y1="' + pys[m].toFixed(1) + '" x2="' + PX[m] + '" y2="' + lineYm.toFixed(1) + '" style="stroke:var(--red);stroke-width:1;stroke-dasharray:3,3"></line>';
+      }
+      residualsGroup.innerHTML = residualsHTML;
+    }
+
+    inputs.forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      inputs.forEach(function(el, i){ el.value = DEFAULTS[i]; });
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

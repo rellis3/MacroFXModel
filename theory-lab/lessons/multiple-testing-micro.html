@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Multiple Testing &amp; the Look-Elsewhere Effect — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Multiple Testing &amp; the Look-Elsewhere Effect — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivations, the Benjamini-Hochberg self-test, and the "explain like I'm 5" mode?<a href="multiple-testing.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Lesson 3 · Foundations &amp; Epistemics</div>
+      <h1 class="sl-h1">Run Enough Tests, and <em>Noise Starts Looking Like Skill</em></h1>
+      <p class="sl-lede">Slice your FX data by pair, by regime, by session, by holding period, by day-of-week, and you're not running one test anymore — you're running dozens. Each one still has only a 5% chance of a false alarm. But the chance that at least one of them fires by pure luck compounds fast, and by the time you've checked seventy slices, finding a "significant" one is no longer a discovery. It's close to guaranteed, whether or not anything real is there.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">One test's promise is narrower than it sounds</h2>
+      <p class="sl-sub">A single, well-designed hypothesis test at α = 0.05 is a reasonable, disciplined thing to run. The question is what that 5% actually covers.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">H₀</div><div><h4>The null hypothesis</h4><p>"Nothing interesting is happening" — e.g. this slice's mean return is zero, or this strategy has no edge. Every test starts by assuming this is true.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">p</div><div><h4>The p-value</h4><p>If H₀ were really true, the probability of seeing a result at least this extreme, from sampling noise alone. Small p, unlikely under "nothing's there."</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">α</div><div><h4>The significance threshold</h4><p>Commonly 0.05. If p &lt; α you call the result significant. α is <em>defined</em> as the false-positive rate of one test — exactly 5% of the time, a true H₀ still gets rejected.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">1</div><div><h4>Per test, not per project</h4><p>That 5% guarantee is scoped to a single test. It says nothing yet about what happens once you run many of them side by side.</p></div></div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Why this matters here</div>
+        <p>The natural way to explore an FX/macro idea is exactly the shape that breaks a naive reading of α: slice by pair, slice by regime, slice by session, slice by holding period. Each slice is a separate look at the data — a separate roll of the dice — and nothing about α = 0.05 changes just because you're now taking dozens of those rolls.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">What "at least one false alarm" does as tests pile up</h2>
+      <p class="sl-sub">Step through the derivation — three moves, no calculus required.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="fwer-tabs">
+          <button class="sl-tab active" data-panel="fwer-1">One test</button>
+          <button class="sl-tab" data-panel="fwer-2">All m tests, independent</button>
+          <button class="sl-tab" data-panel="fwer-3">At least one (FWER)</button>
+        </div>
+        <div class="sl-panel active" id="fwer-1">
+          <div class="sl-row"><div class="sl-box">P(no false positive)</div><div class="sl-arrow">=</div><div class="sl-box">1 − α</div></div>
+          <div class="sl-verdict">At α = 0.05, a single test correctly stays below the significance bar <strong>95%</strong> of the time, when H₀ is genuinely true.</div>
+        </div>
+        <div class="sl-panel" id="fwer-2">
+          <div class="sl-row"><div class="sl-box amber">P(no FP in any of m tests)</div><div class="sl-arrow">=</div><div class="sl-box amber">(1 − α)^m</div></div>
+          <div class="sl-verdict">If the m tests are independent, "all of them avoid a false positive" is the product of each one avoiding it — multiply 0.95 by itself m times.</div>
+        </div>
+        <div class="sl-panel" id="fwer-3">
+          <div class="sl-row"><div class="sl-box green">FWER</div><div class="sl-arrow">=</div><div class="sl-box green">1 − (1 − α)^m</div></div>
+          <div class="sl-verdict">The family-wise error rate is just the complement: <strong>at least one</strong> false positive is "not zero false positives." α per test never changed — you just gave chance more chances.</div>
+        </div>
+        <div class="sl-note">This is the mathematical core of the "look-elsewhere effect" — the same correction particle physicists cite when they check a histogram for a bump across many bins before calling it a discovery.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Drag it up. Watch "almost certain" arrive fast.</h2>
+      <p class="sl-sub">Fixed at α = 0.05 per test. The curve is 1 − (1 − 0.05)^N — the chance at least one of N tests is a false alarm.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Curve of the probability of at least one false positive rising from near zero toward one as the number of tests increases, with a marker dot showing the current slider position">
+            <line x1="55" y1="20" x2="55" y2="180" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="55" y1="180" x2="615" y2="180" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="55" y1="152" x2="615" y2="152" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"/>
+            <text x="620" y="156" style="fill:var(--text3);font-size:10px">5%</text>
+            <path id="fwer-curve" d="" style="fill:none;stroke:var(--purple);stroke-width:2.5"/>
+            <circle id="fwer-dot" cx="55" cy="180" r="6" style="fill:var(--amber);stroke:var(--bg);stroke-width:2"/>
+            <text x="55" y="196" style="fill:var(--text3);font-size:10px">N=1</text>
+            <text x="615" y="196" text-anchor="end" style="fill:var(--text3);font-size:10px" id="fwer-nmax-label">N=150</text>
+            <text x="52" y="184" text-anchor="end" style="fill:var(--text3);font-size:10px">0%</text>
+            <text x="52" y="24" text-anchor="end" style="fill:var(--text3);font-size:10px">100%</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Number of tests (N)</span><span class="sl-live" id="fwer-nval">N = 70</span></div>
+        <input type="range" class="sl-slider" id="fwer-slider" min="1" max="150" step="1" value="70">
+        <div class="sl-note" id="fwer-readout">At N = 70 independent tests, the chance at least one comes back "significant" purely by chance is <strong>97.2%</strong>.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Seventy slices isn't a hypothetical — it's how this repo's backtests are built</h2>
+      <p class="sl-sub">7 pairs × 5 regimes × 2 holding periods is 70 tests before anyone runs a single day-of-week or session cut.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">💱</div><div><h4>One test per pair</h4><p>EURUSD, GBPUSD, AUDUSD, USDJPY — each currency pair checked separately is one more roll of the dice.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🌡</div><div><h4>One test per regime</h4><p>Splitting by volatility regime or risk-on/risk-off multiplies every pair's test count by however many regimes you defined.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⏱</div><div><h4>One test per holding period</h4><p>Checking both a 1-day and a 5-day hold on the same pair/regime slice doubles the count again.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📅</div><div><h4>Session and day-of-week cuts</h4><p>Slice by London vs. NY session, or by day-of-week, and the count of "looks at the data" keeps climbing — with no new data collected.</p></div></div>
+      </div>
+      <p class="sl-p">Assume, for the calculation, that <strong>none</strong> of the 70 slices has any real edge — every one is pure noise around zero. Using the formula from the last slide with m = 70:</p>
+      <div class="sl-row"><div class="sl-box">1 − (0.95)^70</div><div class="sl-arrow">≈</div><div class="sl-box">1 − 0.0275</div></div>
+      <div class="sl-row" style="margin-top:8px"><div class="sl-box green">FWER</div><div class="sl-arrow">≈</div><div class="sl-box green">97.2%</div></div>
+      <p class="sl-p">A <strong>97.2% chance</strong> at least one of the 70 slices "clears" the 5% bar from noise alone. The expected count is 70 × 0.05 = <strong>3.5</strong> false positives. So "3 out of 70 slices look significant" isn't a finding — it's almost exactly what you'd see with zero edge anywhere in the data.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">The blunt fix: shrink the bar per test</h2>
+      <p class="sl-sub">Bonferroni holds the family-wise rate at α by dividing the threshold by how many tests you ran.</p>
+      <div class="sl-row"><div class="sl-box amber">α_Bonf</div><div class="sl-arrow">=</div><div class="sl-box amber">α / m</div></div>
+      <p class="sl-p" style="margin-top:14px">At m = 70, α_Bonf = 0.05 / 70 ≈ 0.000714 — a raw p-value would need to land below roughly 0.07% (about 70× stricter than the uncorrected 5%) to count. This is derived from the union bound (Boole's inequality): FWER ≤ m · α_Bonf = α, a guarantee that holds <strong>no matter how correlated the tests are</strong> — which is Bonferroni's real virtue, and also the seed of its main flaw.</p>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>Bonferroni's worst-case guarantee assumes m fully independent tests. Seventy pair/regime slices are not that: EURUSD, GBPUSD and AUDUSD all move partly off a shared USD factor, so a single macro surprise can light up several "independent-looking" slices together. That shared variation means 70 correlated slices carry less independent information than m implies — dividing by the full m ends up needlessly punishing real, shared effects, not just noise.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">A more forgiving bar: control the rate, not the ban</h2>
+      <p class="sl-sub">The False Discovery Rate (Benjamini-Hochberg) accepts a known, bounded fraction of false "winners" instead of trying to ban them outright.</p>
+      <div class="sl-row"><div class="sl-box">p₍k₎</div><div class="sl-arrow">≤</div><div class="sl-box">(k / m) · q</div></div>
+      <p class="sl-p" style="margin:14px 0">Sort all m p-values smallest to largest. Rank k's p-value only has to beat (k/m)·q — a staircase that gets more lenient the higher the rank. Find the largest k where this holds, and everything ranked 1..k counts as a discovery.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Bonferroni</span>
+          <ul>
+            <li>Flat bar for every rank: α/m</li>
+            <li>Controls P(any false positive at all)</li>
+            <li>Safe regardless of correlation — but blunt</li>
+            <li>At m=70: every slice needs p &lt; 0.000714</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Benjamini-Hochberg (FDR)</span>
+          <ul>
+            <li>Staircase bar: rank k needs p &lt; (k/70)·q</li>
+            <li>Controls the expected <em>proportion</em> of false discoveries</li>
+            <li>More forgiving to correlated, exploratory slicing</li>
+            <li>At q=0.10, m=70: rank 1 needs ≈0.00143, rank 10 needs ≈0.0143</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-note">Flagging 10 slices at a 10% target FDR means: on average, roughly 1 of those 10 is expected to be a false positive — not that any specific one is safe, and not that zero false positives exist anywhere in the wider search.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Same arithmetic, your numbers</h2>
+      <p class="sl-sub">Starts on the worked example — N = 70, α = 0.05. Change either field.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Number of tests (N)</label><input type="number" class="sl-input" id="mt-n" value="70" step="1" min="1"></div>
+          <div class="sl-calc-op">at α =</div>
+          <div class="sl-calc-field"><label>Per-test α</label><input type="number" class="sl-input" id="mt-alpha" value="0.05" step="0.01" min="0" max="1"></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Family-wise error rate = 1 − (1 − α)^N = <b id="mt-fwer">97.2%</b></div>
+          <div>Expected false positives = N × α = <b id="mt-exp">3.5</b></div>
+          <div>Bonferroni per-test threshold = α / N = <b id="mt-bonf">0.000714</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="mt-reset">Reset to worked-example numbers (N=70, α=0.05)</button>
+        <div class="sl-note" id="mt-note"></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">This is why the repo has a house rule about it</h2>
+      <div class="sl-quote">"Finding a few 'winners' among 70 slices is what noise does." That line, already written into this repo's own project memory, isn't a cautious-sounding guess — it's a direct restatement of the FWER math: at m = 70, roughly 3.5 false positives are <em>expected</em> from pure noise. A survivor has to clear that bar and hold up out-of-sample before it counts as anything.</div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📊</div><div><h4>Beat the chance-baseline</h4><p>A slice's p-value has to be judged against how many slices were checked, not read alone as if it were the only test run.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔁</div><div><h4>Be IS-consistent</h4><p>A real edge doesn't depend on one lucky sub-period inside the in-sample window carrying the whole result.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧩</div><div><h4>Lego Principle 5</h4><p>This is the mechanical basis for the repo's validation discipline — statistical survival plus IS consistency plus genuine OOS confirmation, not any one of those alone.</p></div></div>
+      </div>
+      <p class="sl-p">The correction doesn't manufacture evidence a real effect would produce on fresh data — it manages the false-positive rate of the search you already ran. That's necessary before trusting a slice, not sufficient on its own.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">How practitioners actually handle this</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📋</div><div><h4>Log every test you run</h4><p>Including the ones that failed — a record of "here are the 70 slices I checked" is what lets you compute m honestly later.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📝</div><div><h4>Pre-register the discovery rule</h4><p>Decide what counts as a discovery before looking at results, so "significant" can't quietly get redefined after seeing the winner.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🥇</div><div><h4>Distrust the single best slice</h4><p>Rank #1 of 70 tells you almost nothing alone — the best of many noise draws is expected to look good by construction.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔬</div><div><h4>Prefer real out-of-sample confirmation</h4><p>Corrections manage false-positive risk in a search you already ran — they don't substitute for fresh-data evidence.</p></div></div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">The trap</div>
+        <p>Being #1 out of 70 slices is not, by itself, evidence of anything — the best of many pure-noise draws is <em>expected</em> to look good. In quant finance this has its own name: backtest overfitting, formalized by López de Prado's Probability of Backtest Overfitting and Deflated Sharpe Ratio — the same Bonferroni/BH logic, aimed at Sharpe ratios instead of p-values.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Quick check</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>You run 70 independent tests at α = 0.05 each. What does α = 0.05 still guarantee?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Each individual test has a 5% false-positive rate — unchanged</button>
+        <button class="sl-quiz-opt">The whole batch of 70 has only a 5% chance of any false positive</button>
+        <button class="sl-quiz-opt">At most 5% of the 70 slices can ever look significant</button>
+        <div class="sl-quiz-explain">α is a per-test guarantee. It never changes — what changes is the family-wise error rate across all 70 tests, which is 1−(1−α)^70 ≈ 97.2%, not 5%.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>At m = 70 and α = 0.05, roughly how many false positives are expected from pure noise?</h4>
+        <button class="sl-quiz-opt" data-correct="true">3.5</button>
+        <button class="sl-quiz-opt">0.05</button>
+        <button class="sl-quiz-opt">70</button>
+        <div class="sl-quiz-explain">Expected false positives = m × α = 70 × 0.05 = 3.5. Finding "3 out of 70" significant is close to exactly what noise alone produces.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Why can Bonferroni be too strict for 70 FX pair/regime slices?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The slices are correlated (shared USD factor), so they carry less independent information than m implies</button>
+        <button class="sl-quiz-opt">Bonferroni only works when α is larger than 0.05</button>
+        <button class="sl-quiz-opt">Bonferroni requires knowing the true effect size in advance</button>
+        <div class="sl-quiz-explain">Bonferroni's α/m threshold is derived for the worst case — full independence. Correlated slices (EURUSD, GBPUSD, AUDUSD sharing USD exposure) mean the true amount of independent information is less than m, so the flat α/m bar over-punishes real, shared effects.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Your best slice out of 70 has a strikingly low p-value. What does that alone tell you?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Almost nothing — someone has to be the minimum of 70 draws, even under pure noise</button>
+        <button class="sl-quiz-opt">It's very likely a real, tradeable edge</button>
+        <button class="sl-quiz-opt">It proves the strategy will hold out-of-sample</button>
+        <div class="sl-quiz-explain">The minimum p-value among 70 pure-noise draws is expected to look small by construction — that's order statistics, not evidence. It needs to be judged against m, not read in isolation.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>A slice survives Benjamini-Hochberg at q = 0.10. What is still missing before calling it a tradeable edge?</h4>
+        <button class="sl-quiz-opt" data-correct="true">In-sample consistency and a genuine out-of-sample check with real costs</button>
+        <button class="sl-quiz-opt">Nothing — FDR survival is sufficient on its own</button>
+        <button class="sl-quiz-opt">A larger α threshold</button>
+        <div class="sl-quiz-explain">Surviving a multiple-testing correction only means the result is unlikely to be pure search noise. It says nothing about whether the effect is IS-consistent, survives realistic costs, or holds up on fresh data — Lego Principle 5's own bar.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>A single test's α = 0.05 is a per-test guarantee, not a per-project one — it never changes, no matter how many tests you run alongside it.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>The family-wise error rate FWER = 1−(1−α)^m climbs toward 1 fast — at m = 70 it's already ≈97.2%, purely from noise.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Bonferroni (α/m) is the safe, correlation-agnostic fix — and often too strict for correlated FX slices sharing a USD factor.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Benjamini-Hochberg (FDR) controls the expected proportion of false discoveries with a rank-dependent staircase, p₍k₎ ≤ (k/m)q — usually the more practical tool for exploratory FX slicing.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The best of many is expected to look good, by construction — rank #1 of 70 alone is close to uninformative.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Surviving a correction is necessary, not sufficient — IS consistency and genuine OOS confirmation still decide whether it's tradeable.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Read "3 out of 70 slices are significant" correctly — as a number that needs m attached to mean anything, not a headline. Choose Bonferroni or FDR deliberately, knowing which one fits correlated FX slices better. Recognize the "best of many" trap the moment a backtest report shows a single standout slice with no mention of how many were checked.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Ornstein-Uhlenbeck &amp; Mean Reversion</h3>
+        <p>The math behind "this spread always comes back" — half-life, mean-reversion speed, and why some series revert and others just wander.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="ou-mean-reversion-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="multiple-testing.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Slide 4 — FWER curve + slider, N tests at fixed alpha = 0.05.
+  (function(){
+    var slider = document.getElementById('fwer-slider');
+    if (!slider) return;
+    var nVal = document.getElementById('fwer-nval');
+    var curve = document.getElementById('fwer-curve');
+    var dot = document.getElementById('fwer-dot');
+    var readout = document.getElementById('fwer-readout');
+    var ALPHA = 0.05;
+    var N_MAX = 150;
+    var X0 = 55, X1 = 615, Y0 = 180, Y1 = 20;
+
+    function fwer(n){ return 1 - Math.pow(1 - ALPHA, n); }
+    function xFor(n){ return X0 + (n / N_MAX) * (X1 - X0); }
+    function yFor(p){ return Y0 - p * (Y0 - Y1); }
+
+    // Build the curve once — 1 - (1-0.05)^n for n = 1..N_MAX.
+    var pts = [];
+    for (var n = 1; n <= N_MAX; n++) {
+      pts.push(xFor(n).toFixed(2) + ',' + yFor(fwer(n)).toFixed(2));
+    }
+    curve.setAttribute('d', 'M ' + pts.join(' L '));
+
+    function update(){
+      var n = parseInt(slider.value, 10);
+      var p = fwer(n);
+      nVal.textContent = 'N = ' + n;
+      dot.setAttribute('cx', xFor(n));
+      dot.setAttribute('cy', yFor(p));
+      readout.innerHTML = 'At N = ' + n + ' independent tests, the chance at least one comes back "significant" purely by chance is <strong>' + (p * 100).toFixed(1) + '%</strong>.';
+    }
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Slide 8 — FWER / expected false positives / Bonferroni threshold, live.
+  (function(){
+    var nInput = document.getElementById('mt-n');
+    if (!nInput) return;
+    var alphaInput = document.getElementById('mt-alpha');
+    var fwerOut = document.getElementById('mt-fwer');
+    var expOut = document.getElementById('mt-exp');
+    var bonfOut = document.getElementById('mt-bonf');
+    var noteOut = document.getElementById('mt-note');
+    var resetBtn = document.getElementById('mt-reset');
+    var DEFAULTS = { n: 70, alpha: 0.05 };
+
+    function recompute(){
+      var n = parseFloat(nInput.value);
+      var alpha = parseFloat(alphaInput.value);
+      if (!isFinite(n) || !isFinite(alpha) || n < 1 || alpha < 0 || alpha > 1) {
+        fwerOut.textContent = '—';
+        expOut.textContent = '—';
+        bonfOut.textContent = '—';
+        noteOut.textContent = '(enter N ≥ 1 and 0 ≤ α ≤ 1)';
+        return;
+      }
+      n = Math.round(n);
+      var fwer = 1 - Math.pow(1 - alpha, n);
+      var expected = n * alpha;
+      var bonf = alpha / n;
+      fwerOut.textContent = (fwer * 100).toFixed(1) + '%';
+      expOut.textContent = expected.toFixed(2);
+      bonfOut.textContent = bonf < 0.0001 ? bonf.toExponential(2) : bonf.toFixed(6);
+      noteOut.textContent = '';
+    }
+
+    [nInput, alphaInput].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      nInput.value = DEFAULTS.n;
+      alphaInput.value = DEFAULTS.alpha;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Time Value of Money — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Time Value of Money — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivations, the Fisher equation, and a 6-question self-test?<a href="time-value-of-money.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Deeper Foundations 4</div>
+      <h1 class="sl-h1">Why a Dollar Today Beats <em>a Dollar Tomorrow</em></h1>
+      <p class="sl-lede">Every discount factor, every present-value calculation, and the mysterious r sitting inside Black-Scholes's Ke^(−rT) term all trace back to one four-hundred-year-old idea: money has a price, and moving it across time changes its value in a way you can compute exactly. This is where that idea gets built from nothing — compounding forward, discounting backward, and the two places a risk-free rate quietly reappears everywhere else in this curriculum.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">A dollar today can go to work. A dollar next year can't — yet</h2>
+      <p class="sl-sub">Someone offers you $100 now, or a guaranteed $100 exactly one year from today. Take the $100 now.</p>
+      <p class="sl-p">Not out of impatience — because of what you can <strong>do</strong> with it in the meantime. Deposit it at 5% and in a year it's become $105. Whoever waited for their $100 is now $5 poorer than you, for making an economically identical promise a year earlier. "A dollar today is worth more than a dollar tomorrow" is just this: today's dollar can be lent, invested, or deposited, and interest is the price the world pays you for the use of it while you wait.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">⏱</div><div><h4>Opportunity cost, not psychology</h4><p>The gap isn't "a bird in hand" folk wisdom — it's a specific, computable amount: whatever the money could have earned elsewhere while you waited.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">r</div><div><h4>A risk-free rate must exist</h4><p>The moment "wait or invest" is a real choice, there has to be some rate r that prices the waiting. Every later formula's r is this same rate, wearing different clothes.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">↺</div><div><h4>Run it backward, get discounting</h4><p>If $100 today grows to $105 in a year, then $105 arriving in a year must be worth exactly $100 today. That flip is the entire rest of this lesson.</p></div></div>
+      </div>
+      <div class="sl-quote">This isn't a saying — it's an arithmetic fact with a precise formula. That formula is where the risk-free rate in Black-Scholes comes from, and it's the entire foundation forward FX rates are built on.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Future value: interest earning interest</h2>
+      <p class="sl-sub">Watch what happens to a balance of PV over two periods at rate r.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The compounding chain</div>
+        <div class="sl-row"><div class="sl-box">PV</div><div class="sl-arrow">× (1+r)</div><div class="sl-box amber">PV(1+r)</div></div>
+        <div class="sl-verdict">Period 1: the balance grows by r — the original PV, plus its interest.</div>
+        <div class="sl-row"><div class="sl-box amber">PV(1+r)</div><div class="sl-arrow">× (1+r)</div><div class="sl-box green">PV(1+r)²</div></div>
+        <div class="sl-verdict">Period 2: the <strong>whole</strong> balance from period 1 gets multiplied again — including the interest period 1 already added. That's the entire meaning of "compounding": interest earns interest.</div>
+        <div class="sl-note">Repeat this t times and each period multiplies the running balance by another factor of (1+r): FV = PV(1+r)ᵗ. Exponential in t, not linear — that's what separates compound interest from simple interest PV(1+rt).</div>
+      </div>
+      <div class="sl-svgwrap"><svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="An upward-curving growth line showing $1,000 compounding at 6 percent per year from year 0 to year 30, rising from 1,000 to roughly 5,744 dollars">
+        <line x1="40" y1="200" x2="620" y2="200" style="stroke:var(--border2);stroke-width:1"/>
+        <line x1="40" y1="200" x2="40" y2="20" style="stroke:var(--border2);stroke-width:1"/>
+        <text x="34" y="204" text-anchor="end" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">$1,000</text>
+        <text x="34" y="24" text-anchor="end" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">$5,744</text>
+        <text x="40" y="215" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">0</text>
+        <text x="330" y="215" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">15</text>
+        <text x="620" y="215" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">30 yrs</text>
+        <polyline points="40,200 136.7,187.2 233.3,170.0 330,147.1 426.7,116.4 523.3,75.2 620,20.3" style="stroke:var(--green);stroke-width:2.5" fill="none"/>
+        <circle cx="620" cy="20.3" r="4" style="fill:var(--green)"/>
+      </svg></div>
+      <p class="sl-p">$1,000 growing at a fixed 6% a year doesn't just add $60 every year — it curves upward, because each year's interest is bigger than the last. That curve, not a straight line, is the visual signature of compounding.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Present value: running the same formula backward</h2>
+      <p class="sl-sub">Divide both sides of FV = PV(1+r)ᵗ by (1+r)ᵗ and PV falls out — discounting is nothing new.</p>
+      <div class="sl-row"><div class="sl-box">FV</div><div class="sl-arrow">÷ (1+r)ᵗ</div><div class="sl-box green">PV</div></div>
+      <p class="sl-p">The multiplier FV gets multiplied by here, DF(r,t) = 1/(1+r)ᵗ, is the <strong>discount factor</strong> — the answer to "what is one dollar, arriving t periods from now, worth today?" Multiply any future cash flow by the discount factor for its arrival date and you get its present value. That's the entire operation underneath every bond price and every Black-Scholes Ke^(−rT) term.</p>
+      <div class="sl-svgwrap"><svg viewBox="0 0 640 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two downward-curving lines showing the discount factor declining from 1.0 at year zero toward zero as years increase; the 10 percent curve falls much faster than the 3 percent curve">
+        <line x1="40" y1="220" x2="620" y2="220" style="stroke:var(--border2);stroke-width:1"/>
+        <line x1="40" y1="220" x2="40" y2="20" style="stroke:var(--border2);stroke-width:1"/>
+        <text x="34" y="24" text-anchor="end" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">1.0</text>
+        <text x="34" y="224" text-anchor="end" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">0</text>
+        <text x="40" y="235" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">0</text>
+        <text x="330" y="235" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">15</text>
+        <text x="620" y="235" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">30 yrs</text>
+        <polyline points="40,20 136.7,47.9 233.3,71.8 330,92.5 426.7,110.2 523.3,125.5 620,138.7" style="stroke:var(--blue);stroke-width:2.5" fill="none"/>
+        <polyline points="40,20 136.7,98.7 233.3,146.4 330,175.4 426.7,192.9 523.3,203.6 620,210.0" style="stroke:var(--amber);stroke-width:2.5" fill="none"/>
+      </svg></div>
+      <div class="sl-legend" style="display:flex;gap:18px;font-size:12px;color:var(--text2);margin:-6px 0 14px">
+        <span><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--blue);margin-right:6px;vertical-align:middle"></i>Low rate (r = 3%)</span>
+        <span><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--amber);margin-right:6px;vertical-align:middle"></i>High rate (r = 10%)</span>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Always strictly between 0 and 1</div>
+        <p>If r&gt;0, then (1+r)&gt;1, and raising a number bigger than 1 to a positive power keeps it bigger than 1 — so dividing 1 by it always lands strictly between 0 and 1. As t→0, DF→1 (a dollar due right now needs no discounting). As t→∞, DF→0 (a dollar arbitrarily far away is worth arbitrarily little today, however large it nominally is) — the higher r is, the faster that decay happens.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Compounding more often, at the same stated rate</h2>
+      <p class="sl-sub">$1,000 at a nominal 6% for one year. Nothing forces interest to compound only once a year — flip through frequencies.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="cc-tabs">
+          <button class="sl-tab active" data-panel="cc-1">Annual</button>
+          <button class="sl-tab" data-panel="cc-2">Quarterly</button>
+          <button class="sl-tab" data-panel="cc-3">Monthly</button>
+          <button class="sl-tab" data-panel="cc-4">Daily</button>
+          <button class="sl-tab" data-panel="cc-5">Continuous</button>
+        </div>
+        <div class="sl-panel active" id="cc-1">
+          <div class="sl-row"><div class="sl-box">n = 1</div><div class="sl-arrow">(1.06)¹ = 1.06000</div><div class="sl-box green">$1,060.00</div></div>
+          <div class="sl-verdict">Interest posts once, at year-end. This is the baseline every other frequency edges above.</div>
+        </div>
+        <div class="sl-panel" id="cc-2">
+          <div class="sl-row"><div class="sl-box">n = 4</div><div class="sl-arrow">(1.015)⁴ ≈ 1.06136</div><div class="sl-box green">$1,061.36</div></div>
+          <div class="sl-verdict">Each quarter earns 6%/4 = 1.5%, and that gain starts compounding three periods earlier than the annual case.</div>
+        </div>
+        <div class="sl-panel" id="cc-3">
+          <div class="sl-row"><div class="sl-box">n = 12</div><div class="sl-arrow">(1.005)¹² ≈ 1.06168</div><div class="sl-box green">$1,061.68</div></div>
+          <div class="sl-verdict">Already within three cents of the theoretical maximum for a 6% nominal rate.</div>
+        </div>
+        <div class="sl-panel" id="cc-4">
+          <div class="sl-row"><div class="sl-box">n = 365</div><div class="sl-arrow">(1+0.06/365)³⁶⁵ ≈ 1.06183</div><div class="sl-box green">$1,061.83</div></div>
+          <div class="sl-verdict">Within a thousandth of continuous. Past daily, more frequent compounding is practically invisible.</div>
+        </div>
+        <div class="sl-panel" id="cc-5">
+          <div class="sl-row"><div class="sl-box purple">n → ∞</div><div class="sl-arrow">e^0.06 ≈ 1.06184</div><div class="sl-box green">$1,061.84</div></div>
+          <div class="sl-verdict">The limit every row above is creeping toward. This is why textbook formulas — Black-Scholes included — default to continuous compounding: it's the clean, closed-form case that real-world compounding already approximates closely at any ordinary frequency.</div>
+        </div>
+      </div>
+      <p class="sl-p">Taking the compounding frequency n to infinity invokes the same limit that defines the constant e itself: lim(1+r/n)ⁿ = e^r as n→∞, so FV = PV·e^(rt).</p>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">A continuously-compounded rate is a log return in disguise</h2>
+      <p class="sl-sub">Take logs of both sides of FV = PV·e^(rt).</p>
+      <div class="sl-row"><div class="sl-box">FV = PV·e^(rt)</div><div class="sl-arrow">take ln( )</div><div class="sl-box green">ln(FV/PV) = rt</div></div>
+      <p class="sl-p">A log return over any horizon is defined as ln(P_end / P_start). The left side above, ln(FV/PV), <strong>is</strong> exactly that, applied to a risk-free deposit growing from PV to FV. The right side, rt, says that log return accrues at a constant rate r per unit time.</p>
+      <div class="sl-quote">This is not an analogy — a continuously-compounded interest rate <strong>is</strong> a log return per unit time, the identical mathematical object. That's also why continuously-compounded rates are additive across time with no cross term: two years at a continuous 5% gives exactly the same growth as year one at 5% plus year two at 5%, the same log-additivity that comes from ln(ab) = ln a + ln b.</div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Worked check</div>
+        <p>$1,000 at 6% for 5 years: annually compounded, FV = 1000×(1.06)⁵ ≈ $1,338.23. Continuously compounded, FV = 1000×e^(0.06×5) = 1000×e^0.3 ≈ $1,349.86. An $11.63 gap from the identical stated rate — purely because continuous compounding lets interest start earning interest immediately, with no full-year wait between compounding dates.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Discounting a future cash flow, live</h2>
+      <p class="sl-sub">PV = FV × e^(−rt). Change any input — this is the exact machinery hiding inside Ke^(−rT).</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Future cash flow FV ($)</label><input type="number" class="sl-input" id="pv-fv" value="1000" step="50" min="0"></div>
+          <div class="sl-calc-field"><label>Rate r (%)</label><input type="number" class="sl-input" id="pv-r" value="6" step="0.25"></div>
+          <div class="sl-calc-field"><label>Time t (yrs)</label><input type="number" class="sl-input" id="pv-t" value="5" step="0.5" min="0"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Present value</div>
+            <div class="sl-calc-result-val" id="pv-result">$740.82</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Discount factor DF(r,t) = e^(−rt) = <b id="pv-df">0.7408</b></div>
+          <div>PV = FV × DF = <b id="pv-check">$740.82</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="pv-reset">Reset to worked-example numbers</button>
+        <div class="sl-note">This is literally Ke^(−rT) with FV renamed K and t renamed T — a strike price, discounted back to today at the risk-free rate. Section 8 makes that connection explicit.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Where r comes from inside Black-Scholes</h2>
+      <p class="sl-sub">The Black-Scholes formula contains a term Ke^(−rT). This lesson is the entire reason it's there.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">What the term computes</span>
+          <p>Ke^(−rT) is the present value of the strike price K, potentially payable T years from now, discounted using the continuous-compounding discount factor at the risk-free rate r. Same PV = FV × DF(r,t) from Section 6, with FV = K and t = T.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Why some version of it must appear</span>
+          <p>Comparing a dollar amount due in the future to a price quoted today, without first converting them to the same point in time, is comparing two different kinds of quantities as if they were equal — the exact "$100 now vs. $100 in a year" mistake from Section 1, embedded inside a longer formula.</p>
+        </div>
+      </div>
+      <div class="sl-quote">None of this requires forecasting where markets are going. Like the rest of risk-neutral pricing, discounting is a mechanical, no-forecast operation on a known future amount and a quoted rate. r shows up in Black-Scholes because you cannot price a future payoff correctly without first moving it to today's terms — not because the model has an opinion about direction.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Where r comes from inside an FX forward</h2>
+      <p class="sl-sub">Two currencies, two interest rates — the forward rate has to reflect the gap, or a riskless trade prints free money.</p>
+      <p class="sl-p">USD/JPY spot is 150.00. USD deposits pay 5%, JPY deposits pay 0.1%. A trader with zero directional view still needs a fair 3-month forward. It isn't 150.00: borrow JPY (cheap), convert to USD at spot, invest at 5%, convert back at a forward equal to spot, and you'd pocket riskless profit funded purely by the rate gap. The market closes that gap by pricing the forward <strong>below</strong> spot instead — covered interest rate parity.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — the no-arbitrage forward, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Spot S₀ (¥ per $)</label><input type="number" class="sl-input" id="fx-spot" value="150" step="0.5" min="0"></div>
+          <div class="sl-calc-field"><label>USD rate (%)</label><input type="number" class="sl-input" id="fx-rusd" value="5" step="0.1"></div>
+          <div class="sl-calc-field"><label>JPY rate (%)</label><input type="number" class="sl-input" id="fx-rjpy" value="0.1" step="0.1"></div>
+          <div class="sl-calc-field"><label>Time t (yrs)</label><input type="number" class="sl-input" id="fx-t" value="0.25" step="0.05" min="0"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Forward rate</div>
+            <div class="sl-calc-result-val" id="fx-result">148.19</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>F = S₀ × (1 + r_JPY·t) / (1 + r_USD·t)</div>
+          <div>Forward points ≈ <b id="fx-points">−181</b> (0.01¥ pips)</div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="fx-reset">Reset to worked-example numbers</button>
+        <div class="sl-note">The higher-rate currency (USD here) always trades forward at a discount — otherwise borrowing the low-rate currency to fund the high-rate one would be free money.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Not a forecast — and not optional either</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">💵</div><div><h4>Bond pricing</h4><p>Sum of coupon and principal cash flows, each individually discounted back to today by the discount factor for its payment date.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🏗</div><div><h4>Capital project NPV</h4><p>Projected future cash flows discounted the same way, minus the upfront cost.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📈</div><div><h4>The yield curve</h4><p>Nothing more than a table of discount factors — or the rates that produce them — at different maturities, extracted from observed bond prices.</p></div></div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">The trap</div>
+        <p>A forward trading below spot is not a market call that a currency will weaken. It's the mechanical PV/FV adjustment that keeps borrowing the low-rate currency to fund the high-rate one from being free money — nothing more, nothing less.</p>
+      </div>
+      <p class="sl-p">Small rate gaps compound into large gaps over long horizons: at 3 years, 3% and 10% discount curves are still fairly close (0.914 vs. 0.741); by 20 years they've diverged to 0.549 vs. 0.135 — a 4x gap that started as 7 percentage points. Long-dated cash flows — a 30-year bond, a pension liability, a long-dated FX forward — are far more sensitive to the discount rate than short-dated ones, purely because (1+r)ᵗ is exponential in t.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Quick check</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Why is FV = PV(1+r)ᵗ, rather than the straight-line PV(1+rt)?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Interest compounds — each period's gain itself starts earning interest, making growth exponential in t</button>
+        <button class="sl-quiz-opt">It's just a notational convention — both formulas give identical numbers</button>
+        <button class="sl-quiz-opt">It only applies when r is negative</button>
+        <div class="sl-quiz-explain">PV(1+r)ᵗ lets each period's interest join the balance and earn interest itself. PV(1+rt) — simple interest — only ever pays r on the original PV, so it grows linearly and understates true growth for t &gt; 1 period.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>A discount factor DF(r,t) = 1/(1+r)ᵗ, with r &gt; 0 and t &gt; 0, must be:</h4>
+        <button class="sl-quiz-opt" data-correct="true">Strictly between 0 and 1</button>
+        <button class="sl-quiz-opt">Always exactly 1</button>
+        <button class="sl-quiz-opt">Greater than 1 whenever t is large</button>
+        <div class="sl-quiz-explain">r&gt;0 makes (1+r)&gt;1, and raising it to a positive power keeps it &gt;1 — so its reciprocal must lie strictly between 0 and 1.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>ln(FV/PV) = rt, from FV = PV·e^(rt). What does this say about a continuously-compounded rate r?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It IS a log return per unit time — the identical object from the returns &amp; compounding primer</button>
+        <button class="sl-quiz-opt">It's only an approximation to a log return, not the same thing</button>
+        <button class="sl-quiz-opt">It only holds when r is negative</button>
+        <div class="sl-quiz-explain">Taking logs of FV=PV·e^(rt) gives ln(FV/PV)=rt exactly. A log return is defined as ln(end/start), so rt is precisely that log return — meaning r is a log return per unit time, not merely similar to one.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>In Black-Scholes, the term Ke^(−rT) computes:</h4>
+        <button class="sl-quiz-opt" data-correct="true">The present value of the strike price K, discounted back T years at the risk-free rate</button>
+        <button class="sl-quiz-opt">The expected stock price at expiry</button>
+        <button class="sl-quiz-opt">The option's implied volatility</button>
+        <div class="sl-quiz-explain">Ke^(−rT) is PV = FV × DF(r,t) with FV=K and t=T — the exact discounting machinery from Section 6, applied to a strike price.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>USD pays 5%, JPY pays 0.1%, spot is 150.00. Why does the 3-month forward trade below 150.00?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The higher-rate currency (USD) must trade forward at a discount, or a riskless borrow-JPY/invest-USD trade opens up</button>
+        <button class="sl-quiz-opt">The market expects USD to weaken over the next 3 months</button>
+        <button class="sl-quiz-opt">JPY interest rates are expected to rise</button>
+        <div class="sl-quiz-explain">Covered interest rate parity, not a forecast: pricing the forward equal to spot would let a trader borrow cheap JPY, invest in USD at 5%, and convert back for a riskless profit. The forward moves below spot exactly far enough to close that gap.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>FV = PV(1+r)ᵗ is compounding — interest earning interest — which is why growth is exponential in t, not the linear PV(1+rt) of simple interest.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Present value just runs future value backward. The discount factor DF(r,t) = 1/(1+r)ᵗ is always strictly between 0 and 1 whenever r,t &gt; 0.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Continuous compounding, FV = PV·e^(rt), is the clean limit as compounding frequency goes to infinity — and daily compounding already sits within a thousandth of it.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Taking logs shows ln(FV/PV) = rt — a continuously-compounded rate is a log return per unit time, not an analogy to one.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The risk-free rate shows up in Black-Scholes (Ke^(−rT), discounting a strike) and in FX forward points (covered interest rate parity, discounting two currencies against each other) for the exact same reason: a future amount and a today amount can't be compared until one is moved to the other's point in time.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Compute a present or future value by hand, at any compounding frequency. Recognise Ke^(−rT) on sight as "discount the strike," not a mysterious model term. Read a forward discount or premium as mechanical no-arbitrage pricing, never as a directional market view.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Limits, Integrals &amp; Annuity Factors</h3>
+        <p>Where the continuous-compounding limit came from, generalized: how integrals extend today's single-cash-flow discounting to a whole stream of them — annuities, bond coupons, and amortizing loans.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="limits-integrals-annuity-factors-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="time-value-of-money.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Present value calculator — PV = FV × e^(−rt), live.
+  (function(){
+    var fv = document.getElementById('pv-fv');
+    if (!fv) return;
+    var r = document.getElementById('pv-r'), t = document.getElementById('pv-t');
+    var result = document.getElementById('pv-result'), dfOut = document.getElementById('pv-df'), checkOut = document.getElementById('pv-check');
+    var resetBtn = document.getElementById('pv-reset');
+    var DEFAULTS = { fv: 1000, r: 6, t: 5 };
+
+    function fmtUSD(x){
+      var sign = x < 0 ? '-' : '';
+      var parts = Math.abs(x).toFixed(2).split('.');
+      parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+      return sign + '$' + parts.join('.');
+    }
+
+    function recompute(){
+      var fvv = parseFloat(fv.value), rv = parseFloat(r.value), tv = parseFloat(t.value);
+      if (!isFinite(fvv) || !isFinite(rv) || !isFinite(tv) || tv < 0 || fvv < 0) {
+        result.textContent = '—'; dfOut.textContent = '—'; checkOut.textContent = '—';
+        return;
+      }
+      var df = Math.exp(-(rv / 100) * tv);
+      var pv = fvv * df;
+      dfOut.textContent = df.toFixed(4);
+      result.textContent = fmtUSD(pv);
+      checkOut.textContent = fmtUSD(pv);
+    }
+
+    [fv, r, t].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      fv.value = DEFAULTS.fv; r.value = DEFAULTS.r; t.value = DEFAULTS.t;
+      recompute();
+    });
+    recompute();
+  })();
+
+  // FX forward calculator — covered interest rate parity, live.
+  (function(){
+    var spot = document.getElementById('fx-spot');
+    if (!spot) return;
+    var rUsd = document.getElementById('fx-rusd'), rJpy = document.getElementById('fx-rjpy'), t = document.getElementById('fx-t');
+    var result = document.getElementById('fx-result'), pointsOut = document.getElementById('fx-points');
+    var resetBtn = document.getElementById('fx-reset');
+    var DEFAULTS = { spot: 150, rUsd: 5, rJpy: 0.1, t: 0.25 };
+
+    function recompute(){
+      var s = parseFloat(spot.value), ru = parseFloat(rUsd.value), rj = parseFloat(rJpy.value), tv = parseFloat(t.value);
+      if (!isFinite(s) || !isFinite(ru) || !isFinite(rj) || !isFinite(tv) || s <= 0 || tv <= 0) {
+        result.textContent = '—'; pointsOut.textContent = '—';
+        return;
+      }
+      var f = s * (1 + (rj / 100) * tv) / (1 + (ru / 100) * tv);
+      var points = (f - s) / 0.01;
+      result.textContent = f.toFixed(2);
+      pointsOut.textContent = (points >= 0 ? '+' : '−') + Math.round(Math.abs(points));
+    }
+
+    [spot, rUsd, rJpy, t].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      spot.value = DEFAULTS.spot; rUsd.value = DEFAULTS.rUsd; rJpy.value = DEFAULTS.rJpy; t.value = DEFAULTS.t;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

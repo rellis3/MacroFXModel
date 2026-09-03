@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Linear Algebra &amp; Matrices — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Linear Algebra &amp; Matrices — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer full derivations, a live calculator, and a 6-question self-test?<a href="linear-algebra-matrices.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Deeper Foundations 1</div>
+      <h1 class="sl-h1">Vectors &amp; Matrices, <em>the Machines Behind PCA and Kalman</em></h1>
+      <p class="sl-lede">Three lessons later in this Theory Lab — PCA, the Kalman Filter, Hidden Markov Models — all quietly assume you already know what an "eigenvector" is and why a matrix gets "multiplied through" a state. None of them stop to explain it. This deck does: what a vector and a matrix actually are, what an eigenvector and eigenvalue mean geometrically, and why every one of those three lessons turns out to be this same small idea, wearing a different name.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">A vector is an arrow — or a list of numbers</h2>
+      <p class="sl-sub">Two ways to picture the exact same thing: v = (3, 1).</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Picture it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="An arrow from the origin to the point 3,1, with dashed guide lines showing 3 units right and 1 unit up">
+            <line x1="40" y1="200" x2="600" y2="200" style="stroke:var(--border2);stroke-width:1.5"/>
+            <line x1="320" y1="20" x2="320" y2="220" style="stroke:var(--border2);stroke-width:1.5"/>
+            <text x="595" y="215" text-anchor="end" style="fill:var(--text3);font-size:11px">x</text>
+            <text x="332" y="30" style="fill:var(--text3);font-size:11px">y</text>
+            <line x1="500" y1="140" x2="500" y2="200" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:3,3" opacity=".6"/>
+            <line x1="320" y1="140" x2="500" y2="140" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:3,3" opacity=".6"/>
+            <text x="500" y="216" text-anchor="middle" style="fill:var(--text2);font-size:11px">3</text>
+            <text x="308" y="144" text-anchor="end" style="fill:var(--text2);font-size:11px">1</text>
+            <line x1="320" y1="200" x2="497" y2="143" style="stroke:var(--blue);stroke-width:2.5"/>
+            <polygon points="500,140 486,148 490,133" style="fill:var(--blue)"/>
+            <circle cx="320" cy="200" r="3.5" style="fill:var(--text)"/>
+            <text x="510" y="130" style="fill:var(--blue);font-size:13px;font-family:'DM Mono',monospace;font-weight:600">v = (3, 1)</text>
+          </svg>
+        </div>
+        <div class="sl-verdict">As a <strong>point</strong>: walk 3 right, 1 up, put a dot. As an <strong>arrow</strong>: same destination, but now it carries a direction and a length too. Same numbers, two pictures — you'll want both.</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">▲</div><div><h4>Just an ordered list</h4><p>v = (v₁, v₂) in 2-D. Nothing more exotic than two numbers written in a fixed order — order matters, (3,1) and (1,3) are different vectors.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">↗</div><div><h4>Direction and length</h4><p>Read as an arrow, a vector carries both — which way it points, and how far. Two different arrows can point the same way but have different lengths.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">💹</div><div><h4>What it means here</h4><p>In this repo, a vector might be two FX pairs' daily returns on one day, a 2-D hidden-state estimate in a Kalman filter, or a row of factor loadings — different meanings, identical arithmetic.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Adding and scaling, geometrically</h2>
+      <p class="sl-sub">The two operations everything else in this lesson is built from.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="vec-tabs">
+          <button class="sl-tab active" data-panel="vec-1">Add two vectors</button>
+          <button class="sl-tab" data-panel="vec-2">Scale a vector</button>
+        </div>
+        <div class="sl-panel active" id="vec-1">
+          <div class="sl-svgwrap"><svg viewBox="0 0 500 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Vector a from the origin, vector b placed tip to tail from a, and their sum drawn directly from the origin to the same final point">
+            <circle cx="150" cy="180" r="3.5" style="fill:var(--text)"/>
+            <line x1="150" y1="180" x2="248" y2="132" style="stroke:var(--blue);stroke-width:2.5"/>
+            <polygon points="250,130 236,133 242,120" style="fill:var(--blue)"/>
+            <text x="215" y="118" style="fill:var(--blue);font-size:12px;font-family:'DM Mono',monospace;font-weight:600">a = (2, 1)</text>
+            <line x1="250" y1="130" x2="298" y2="177" style="stroke:var(--purple);stroke-width:2.5;stroke-dasharray:5,3"/>
+            <polygon points="300,180 291,169 285,181" style="fill:var(--purple)"/>
+            <text x="308" y="165" style="fill:var(--purple);font-size:12px;font-family:'DM Mono',monospace;font-weight:600">b = (1, −1)</text>
+            <line x1="150" y1="180" x2="296" y2="180" style="stroke:var(--green);stroke-width:3"/>
+            <polygon points="300,180 286,186 286,174" style="fill:var(--green)"/>
+            <text x="230" y="200" style="fill:var(--green);font-size:12px;font-family:'DM Mono',monospace;font-weight:700">a + b = (3, 0)</text>
+          </svg></div>
+          <div class="sl-verdict">Walk vector <strong>a</strong> from the origin, then walk vector <strong>b</strong> starting exactly where a ended (tip-to-tail). Where you land is a+b — the green arrow, drawn straight from the origin, ends at the same spot.</div>
+        </div>
+        <div class="sl-panel" id="vec-2">
+          <div class="sl-svgwrap"><svg viewBox="0 0 500 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A vector v, a longer copy 2v pointing the same way, and a flipped copy negative v pointing the opposite way">
+            <circle cx="250" cy="120" r="3.5" style="fill:var(--text)"/>
+            <line x1="250" y1="120" x2="298" y2="72" style="stroke:var(--blue);stroke-width:2.5"/>
+            <polygon points="300,70 286,73 292,60" style="fill:var(--blue)"/>
+            <text x="308" y="60" style="fill:var(--blue);font-size:12px;font-family:'DM Mono',monospace;font-weight:600">v = (1, 1)</text>
+            <line x1="250" y1="120" x2="346" y2="24" style="stroke:var(--purple);stroke-width:2.5;stroke-dasharray:5,3"/>
+            <polygon points="348,22 334,26 339,12" style="fill:var(--purple)"/>
+            <text x="352" y="30" style="fill:var(--purple);font-size:12px;font-family:'DM Mono',monospace;font-weight:600">2v = (2, 2)</text>
+            <line x1="250" y1="120" x2="202" y2="168" style="stroke:var(--red);stroke-width:2.5"/>
+            <polygon points="200,170 205,157 214,166" style="fill:var(--red)"/>
+            <text x="130" y="190" style="fill:var(--red);font-size:12px;font-family:'DM Mono',monospace;font-weight:600">−v = (−1, −1)</text>
+          </svg></div>
+          <div class="sl-verdict">Multiplying a vector by a plain number ("scaling") stretches it (2v — twice as long, same direction) or flips it end to end (−v — same line, opposite way). It never rotates the vector off its own line. Hold onto that fact — it's the entire definition of an eigenvector, two sections from now.</div>
+        </div>
+      </div>
+      <p class="sl-p">Combining two trades' P&amp;L, or two return series, is vector addition. Sizing a position up or down without changing its direction — long is still long, just bigger or smaller — is scaling. Both are the whole toolkit a matrix will use next.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">A matrix is a machine that moves every vector</h2>
+      <p class="sl-sub">Not "a table of numbers" — a fixed rule that takes any vector in and hands a new one back.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">↻</div><div><h4>Rotate</h4><p>Swing every vector around the origin by some angle, lengths unchanged.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">↕</div><div><h4>Stretch or shrink</h4><p>Lengthen or shorten vectors along one or more directions.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">▱</div><div><h4>Shear</h4><p>Tilt the plane so squares become parallelograms, one axis dragged sideways.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">•</div><div><h4>The origin never moves</h4><p>Whatever the mix of the above, straight lines stay straight and (0,0) always maps to (0,0) — that's what "linear" means here.</p></div></div>
+      </div>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Worked by hand</div>
+        <div class="sl-row"><div class="sl-box">v = (5, 1)</div><div class="sl-arrow">A</div><div class="sl-box green">Av = (13, 9)</div></div>
+        <div class="sl-verdict">With A = [[2, 3], [1, 4]]: first output entry = 2(5) + 3(1) = 13; second entry = 1(5) + 4(1) = 9. Each row of A gets "dotted" with v — multiply matching entries, add the results.</div>
+        <div class="sl-note">Two multiplications and one addition per output row, always. That's the entire operation, however large the matrix.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Chaining two machines — and order matters</h2>
+      <p class="sl-sub">MN means "apply N first, then apply M to the result." Compare it with NM.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">MN — N first, then M</span>
+          <p>M = [[1,2],[0,1]], N = [[1,0],[1,1]].<br>MN = [[1(1)+2(1), 1(0)+2(1)], [0(1)+1(1), 0(0)+1(1)]] = <strong>[[3, 2], [1, 1]]</strong></p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">NM — M first, then N</span>
+          <p>Same two matrices, order flipped.<br>NM = [[1(1)+0(0), 1(2)+0(1)], [1(1)+1(0), 1(2)+1(1)]] = <strong>[[1, 2], [1, 3]]</strong></p>
+        </div>
+      </div>
+      <div class="sl-quote">MN ≠ NM — unlike ordinary numbers, where 3×5 always equals 5×3. "Squish then twist" is a genuinely different motion than "twist then squish," even with the exact same two machines. This is why, in the Kalman Filter lesson, the order a state vector gets multiplied through a transition matrix and an observation matrix is written with care, not treated as interchangeable arithmetic — swapping it is a real bug, not a harmless simplification.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">One direction never rotates. Watch it.</h2>
+      <p class="sl-sub">A = [[2, k], [0, 1]]. Drag k and watch the square, and the grey spokes, swing around — while the red arrow never does.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A unit square and eight sample vectors transformed by a shear matrix, with a red arrow along the x-axis that never rotates and a blue line through the origin that rotates as the shear amount changes">
+            <defs>
+              <marker id="la-arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+                <path d="M0,0 L8,4 L0,8 z" style="fill:var(--red)"/>
+              </marker>
+              <marker id="la-arrow-blue" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+                <path d="M0,0 L8,4 L0,8 z" style="fill:var(--blue)"/>
+              </marker>
+            </defs>
+            <line x1="40" y1="200" x2="600" y2="200" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="230" y1="20" x2="230" y2="320" style="stroke:var(--border2);stroke-width:1"/>
+            <polygon points="230,200 360,200 360,135 230,135" style="fill:none;stroke:var(--text3);stroke-width:1.25;stroke-dasharray:4,3" opacity=".6"/>
+            <polygon id="la-sq" points="230,200 360,200 360,135 230,135" style="fill:var(--purple);fill-opacity:.14;stroke:var(--purple);stroke-width:2"/>
+            <g id="la-spokes" style="stroke:var(--text3);stroke-width:1.25" opacity=".65"></g>
+            <line x1="140" y1="200" x2="420" y2="200" style="stroke:var(--red);stroke-width:1;stroke-dasharray:3,3" opacity=".5"/>
+            <line x1="230" y1="200" x2="352" y2="200" style="stroke:var(--red);stroke-width:2.5" marker-end="url(#la-arrow)"/>
+            <text x="360" y="192" style="fill:var(--red);font-size:12px;font-family:'DM Mono',monospace;font-weight:600">v₁=(1,0), λ=2 — fixed</text>
+            <line id="la-blue" x1="126" y1="304" x2="334" y2="96" style="stroke:var(--blue);stroke-width:2.5" marker-end="url(#la-arrow-blue)"/>
+            <text id="la-blue-label" x="338" y="92" style="fill:var(--blue);font-size:12px;font-family:'DM Mono',monospace;font-weight:600">v₂=(0,1), λ=1</text>
+            <circle cx="230" cy="200" r="3.5" style="fill:var(--text)"/>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Shear amount</span><span class="sl-live" id="la-shear-val">k = 0.00</span></div>
+        <input type="range" class="sl-slider" id="la-shear-slider" min="-1" max="2" step="0.1" value="0">
+        <div class="sl-note">Grey spokes are eight ordinary vectors — every one of them changes direction as k moves. The <strong>red</strong> arrow, along the x-axis, is stretched exactly 2× and never rotates, whatever k is: that's an eigenvector, λ=2. The <strong>blue</strong> line is also an eigenvector (λ=1, length unchanged) — but which direction it sits in depends on k. Eigenvalues here are fixed at 2 and 1 for every k; only one eigenvector's direction is guaranteed not to move.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">An eigenvector is a direction the matrix respects</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">➡</div><div><h4>Same line, different length</h4><p>Feed the matrix a vector lying exactly along an eigenvector's direction, and the output is a scaled copy of the same vector — longer, shorter, or flipped, but never off that line through the origin.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">Av=λv</div><div><h4>The defining equation</h4><p>The matrix's full action (rotate-and-scale, in general) and plain multiplication by a number produce an identical result — that coincidence is what makes v an eigenvector.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">▢</div><div><h4>Only square matrices qualify</h4><p>Av and v must live in the same space to be compared at all — a non-square matrix maps between spaces of different size and simply has no eigenvectors in this sense.</p></div></div>
+      </div>
+      <div class="sl-quote">A generic 2×2 matrix has at most two such directions. Most matrices that actually arise from real data — in particular, the symmetric matrices that covariance and correlation matrices always are — are guaranteed to have them, with a bonus: those eigenvectors come out mutually perpendicular.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">The eigenvalue is the stretch factor — and there's a formula for it</h2>
+      <p class="sl-sub">Av = λv rearranges into a plain quadratic in λ.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The characteristic equation</div>
+        <div class="sl-row"><div class="sl-box">λ² − trace(A)·λ + det(A)</div><div class="sl-arrow">=</div><div class="sl-box green">0</div></div>
+        <div class="sl-verdict">trace(A) = a + d (sum of the diagonal). det(A) = ad − bc. Solve this ordinary quadratic for λ and you have every eigenvalue A has — up to two of them, for a 2×2 matrix.</div>
+        <div class="sl-note">Once a specific λ is known, plug it back into (A − λI)v = 0 and solve that ordinary linear system for v, the matching eigenvector.</div>
+      </div>
+      <p class="sl-p">Larger λ means that direction is stretched more — and, in a covariance matrix, accounts for more of the total variance. Section 5's demo had trace = 2+1 = 3 and det = 2(1) − k(0) = 2, giving λ² − 3λ + 2 = 0, which factors to (λ−2)(λ−1) = 0 — exactly the 2 and 1 the slider never moved.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Solve any 2×2 matrix's eigenvalues, live</h2>
+      <p class="sl-sub">Starts on the worked symmetric example from the full lesson. Edit any entry.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — edit the matrix</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>A₁₁</label><input type="number" class="sl-input" id="mat-a" value="3" step="1"></div>
+          <div class="sl-calc-field"><label>A₁₂</label><input type="number" class="sl-input" id="mat-b" value="1" step="1"></div>
+          <div class="sl-calc-field"><label>A₂₁</label><input type="number" class="sl-input" id="mat-c" value="1" step="1"></div>
+          <div class="sl-calc-field"><label>A₂₂</label><input type="number" class="sl-input" id="mat-d" value="3" step="1"></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>trace(A) = <b id="mat-trace">6</b> &emsp; det(A) = <b id="mat-det">8</b></div>
+          <div id="mat-result">λ₁ = 4.00, v₁ ≈ (1, 1.00) &emsp; λ₂ = 2.00, v₂ ≈ (1, −1.00)</div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="mat-reset">Reset to worked-example numbers</button>
+        <div class="sl-note">Try A₁₂ = −1, A₂₁ = 1, with A₁₁ = A₂₂ = 0 (a rotation matrix) — the discriminant goes negative and the eigenvalues turn complex, because a pure rotation never leaves any real direction unrotated.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Why PCA leans on exactly this</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📊</div><div><h4>Principal components ARE eigenvectors</h4><p>Of a covariance matrix, ranked by their eigenvalues. Largest eigenvalue first means "the direction that explains the most variance, listed first."</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">✓</div><div><h4>Covariance matrices are always symmetric</h4><p>A = Aᵀ, guaranteed by construction — which guarantees real eigenvalues and mutually perpendicular eigenvectors, no extra assumption required.</p></div></div>
+      </div>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The same matrix, as two FX pairs' covariance</div>
+        <p class="sl-p" style="margin-top:0">A = [[3,1],[1,3]] as EUR/USD &amp; GBP/USD daily return covariance: diagonal = each pair's own variance (3 and 3), off-diagonal = their covariance (1) — a correlation of 1/√(3×3) ≈ 0.33. Total variance = trace(A) = 6. The eigen-split: λ₁=4 along (1,1) — both pairs moving <em>together</em> — is 4/6 ≈ <strong>66.7%</strong> of variance; λ₂=2 along (1,−1) — the pairs <em>diverging</em> — is the remaining <strong>33.3%</strong>.</p>
+        <div class="sl-verdict">Effective independent bets = (Σλ)² / Σλ² = 6² / (4²+2²) = 36/20 = <strong>1.8</strong>. Two nominal positions, but only about 1.8 truly independent ones — not "really just one bet," but measurably less diversified than two uncorrelated trades.</div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>A correlation matrix estimated from a rolling window is a sample statistic, not a permanent structural fact — it shifts as the window rolls, and when two eigenvalues sit close together, small data changes can noticeably rotate the corresponding eigenvectors even while the eigenvalues themselves barely move.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">The same machinery, two more names</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🧭</div><div><h4>Kalman Filter</h4><p>A state vector is repeatedly multiplied through a transition matrix and an observation matrix, and a covariance matrix is propagated through matrix multiplication at every update step — nothing but Av and AB, chained, in a load-bearing order.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔀</div><div><h4>Hidden Markov Models</h4><p>Every row of a transition matrix is a probability distribution that sums to 1 — which guarantees the matrix always has an eigenvalue of exactly 1. Its eigenvector, normalized, is the "stationary distribution": Av = 1·v, nothing more exotic.</p></div></div>
+      </div>
+      <div class="sl-quote">Nobody on a desk solves a characteristic equation by hand day to day — software does the arithmetic. The intuition that survives is: an eigenvector of a covariance matrix is a portfolio, and its eigenvalue is how much of the book's total variance that portfolio accounts for. Rank them by eigenvalue, and you've answered "in the fewest independent moves, what is this basket's risk actually made of?"</div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>A = [[2,3],[1,4]], v = (5,1). What is Av?</h4>
+        <button class="sl-quiz-opt" data-correct="true">(13, 9)</button>
+        <button class="sl-quiz-opt">(10, 5)</button>
+        <button class="sl-quiz-opt">(8, 6)</button>
+        <div class="sl-quiz-explain">First entry: 2(5)+3(1)=13. Second entry: 1(5)+4(1)=9 — each row of A dotted with v.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Is matrix multiplication commutative — does AB always equal BA?</h4>
+        <button class="sl-quiz-opt" data-correct="true">No — order generally changes the result</button>
+        <button class="sl-quiz-opt">Yes, always, just like ordinary numbers</button>
+        <button class="sl-quiz-opt">Only for matrices with all-positive entries</button>
+        <div class="sl-quiz-explain">MN = [[3,2],[1,1]] but NM = [[1,2],[1,3]] for the same two matrices — "apply N then M" is a genuinely different motion from "apply M then N."</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>What makes a vector v an eigenvector of matrix A?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Av = λv — the matrix only scales v, never rotates it off its own line</button>
+        <button class="sl-quiz-opt">Av is longer than v</button>
+        <button class="sl-quiz-opt">v is one of the matrix's rows</button>
+        <div class="sl-quiz-explain">Av = λv means the matrix's full action and plain multiplication by the number λ produce an identical result for that specific v.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Why are a covariance matrix's eigenvectors always guaranteed to be perpendicular?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Because covariance matrices are always symmetric (A = Aᵀ)</button>
+        <button class="sl-quiz-opt">Because covariance is always positive</button>
+        <button class="sl-quiz-opt">Perpendicularity isn't actually guaranteed — it depends on the data</button>
+        <div class="sl-quiz-explain">Any symmetric matrix has mutually perpendicular eigenvectors and real eigenvalues, as a general theorem — and A = Aᵀ is exactly what a covariance or correlation matrix is by construction.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>A Hidden Markov Model's "stationary distribution" is the eigenvector of the transition matrix with eigenvalue equal to what?</h4>
+        <button class="sl-quiz-opt" data-correct="true">1</button>
+        <button class="sl-quiz-opt">0</button>
+        <button class="sl-quiz-opt">Whichever eigenvalue is largest</button>
+        <div class="sl-quiz-explain">Every row of a transition matrix sums to 1, which guarantees an eigenvalue of exactly 1 — its eigenvector, normalized, is the long-run stationary distribution.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>A vector is an arrow (or an ordered list of numbers) — a point in space, or a direction and a length, same thing viewed two ways.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>A matrix is a machine, not a table — Av rotates, stretches, shrinks, or shears every vector by one fixed rule, and the origin never moves.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Matrix multiplication composes two machines, and order matters — AB and BA are generally different composite motions.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>An eigenvector is a direction the matrix only scales, never rotates off — Av = λv — and λ, the eigenvalue, is the amount of stretch. Solve λ² − trace(A)λ + det(A) = 0 to find every eigenvalue a matrix has.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Symmetric matrices — which covariance and correlation matrices always are — are guaranteed real eigenvalues and perpendicular eigenvectors, no extra assumption required.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>This vocabulary is the direct prerequisite for PCA (eigenvectors of a correlation matrix), the Kalman Filter (chained matrix multiplication), and Hidden Markov Models (the stationary distribution is the eigenvector for eigenvalue 1).</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Read "eigenvector of the correlation matrix," "propagate the covariance matrix," and "stationary distribution of the transition matrix" as three instances of the same small idea, not three separate walls of jargon. Compute a 2×2 matrix's eigenvalues and eigenvectors by hand, and recognise when a discriminant going negative means the matrix simply rotates, with no real eigenvector to find.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Calculus for Finance</h3>
+        <p>Deeper Foundations 2 — the derivative as a rate of change, and why it's the vocabulary underneath duration, gamma, and every "Greek" in this curriculum.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="calculus-for-finance-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="linear-algebra-matrices.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Section 5 — shear transformation demo: drag k, redraw the transformed
+  // square, eight sample spokes, and the rotating (λ=1) eigenvector line.
+  // The λ=2 eigenvector along the x-axis never moves, so it's drawn static.
+  (function(){
+    var slider = document.getElementById('la-shear-slider');
+    if (!slider) return;
+    var valEl = document.getElementById('la-shear-val');
+    var sq = document.getElementById('la-sq');
+    var spokesGroup = document.getElementById('la-spokes');
+    var blueLine = document.getElementById('la-blue');
+    var blueLabel = document.getElementById('la-blue-label');
+    var ORIGIN_X = 230, ORIGIN_Y = 200, SCALE = 65;
+    var ANGLES = [0, 45, 90, 135, 180, 225, 270, 315];
+
+    function toScreen(x, y){ return [ORIGIN_X + x * SCALE, ORIGIN_Y - y * SCALE]; }
+
+    // Build the 8 spoke <line> + <circle> elements once.
+    var spokeEls = ANGLES.map(function(){
+      var line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      var dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      dot.setAttribute('r', '3');
+      dot.setAttribute('style', 'fill:var(--text3)');
+      spokesGroup.appendChild(line);
+      spokesGroup.appendChild(dot);
+      return { line: line, dot: dot };
+    });
+
+    function update(){
+      var k = parseFloat(slider.value);
+      if (!isFinite(k)) k = 0;
+      valEl.textContent = 'k = ' + k.toFixed(2);
+
+      // Transformed unit square: (0,0)->(0,0), (1,0)->(2,0), (1,1)->(2+k,1), (0,1)->(k,1)
+      var p0 = toScreen(0, 0), p1 = toScreen(2, 0), p2 = toScreen(2 + k, 1), p3 = toScreen(k, 1);
+      sq.setAttribute('points', p0.join(',') + ' ' + p1.join(',') + ' ' + p2.join(',') + ' ' + p3.join(','));
+
+      // Spokes: A * (cos θ, sin θ) = (2cosθ + k sinθ, sinθ)
+      ANGLES.forEach(function(deg, i){
+        var rad = deg * Math.PI / 180;
+        var cx = Math.cos(rad), cy = Math.sin(rad);
+        var x = 2 * cx + k * cy, y = cy;
+        var pt = toScreen(x, y);
+        var el = spokeEls[i];
+        el.line.setAttribute('x1', ORIGIN_X); el.line.setAttribute('y1', ORIGIN_Y);
+        el.line.setAttribute('x2', pt[0]); el.line.setAttribute('y2', pt[1]);
+        el.dot.setAttribute('cx', pt[0]); el.dot.setAttribute('cy', pt[1]);
+      });
+
+      // Eigenvector for λ=1 lies along (−k, 1); draw the whole line through
+      // the origin (both directions) so it reads as a direction, not an arrow.
+      var far = toScreen(-1.6 * k, 1.6);
+      var near = toScreen(1.6 * k, -1.6);
+      blueLine.setAttribute('x1', near[0]); blueLine.setAttribute('y1', near[1]);
+      blueLine.setAttribute('x2', far[0]); blueLine.setAttribute('y2', far[1]);
+      var vx = (Math.abs(k) < 1e-9) ? '0' : (-k).toFixed(2);
+      blueLabel.setAttribute('x', far[0] + 6);
+      blueLabel.setAttribute('y', far[1] - 4);
+      blueLabel.textContent = 'v₂=(' + vx + ',1), λ=1';
+    }
+
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Section 8 — general 2x2 matrix -> trace, det, eigenvalues (quadratic
+  // formula), eigenvectors, with a defensive path for a negative
+  // discriminant (complex eigenvalues, e.g. a pure rotation matrix).
+  (function(){
+    var aEl = document.getElementById('mat-a');
+    if (!aEl) return;
+    var bEl = document.getElementById('mat-b'), cEl = document.getElementById('mat-c'), dEl = document.getElementById('mat-d');
+    var traceEl = document.getElementById('mat-trace'), detEl = document.getElementById('mat-det');
+    var resultEl = document.getElementById('mat-result');
+    var resetBtn = document.getElementById('mat-reset');
+    var DEFAULTS = { a: 3, b: 1, c: 1, d: 3 };
+
+    function fmt(n){ return Math.abs(n - Math.round(n)) < 1e-9 ? Math.round(n).toString() : n.toFixed(2); }
+
+    function eigenvectorFor(l, a, b, c, d){
+      if (Math.abs(b) > 1e-9) return '(1, ' + fmt((l - a) / b) + ')';
+      if (Math.abs(c) > 1e-9) return '(' + fmt((l - d) / c) + ', 1)';
+      // Diagonal matrix: eigenvectors are the axes themselves.
+      return (Math.abs(l - a) < 1e-9) ? '(1, 0)' : '(0, 1)';
+    }
+
+    function recompute(){
+      var a = parseFloat(aEl.value), b = parseFloat(bEl.value), c = parseFloat(cEl.value), d = parseFloat(dEl.value);
+      if (![a, b, c, d].every(isFinite)) {
+        traceEl.textContent = '—'; detEl.textContent = '—';
+        resultEl.textContent = 'Enter numeric matrix entries.';
+        return;
+      }
+      var trace = a + d, det = a * d - b * c;
+      traceEl.textContent = fmt(trace);
+      detEl.textContent = fmt(det);
+
+      var disc = trace * trace - 4 * det;
+      if (disc < -1e-9) {
+        var realPart = trace / 2, imagPart = Math.sqrt(-disc) / 2;
+        resultEl.textContent = 'Complex eigenvalues: λ = ' + fmt(realPart) + ' ± ' + fmt(imagPart) + 'i — this matrix rotates the plane, so no real eigenvector exists.';
+        return;
+      }
+      disc = Math.max(disc, 0);
+      var s = Math.sqrt(disc);
+      var l1 = (trace + s) / 2, l2 = (trace - s) / 2;
+      if (Math.abs(l1 - l2) < 1e-9) {
+        resultEl.textContent = 'λ₁ = λ₂ = ' + fmt(l1) + ' — every direction is stretched equally (any nonzero vector is an eigenvector).';
+        return;
+      }
+      var v1 = eigenvectorFor(l1, a, b, c, d), v2 = eigenvectorFor(l2, a, b, c, d);
+      resultEl.textContent = 'λ₁ = ' + fmt(l1) + ', v₁ ≈ ' + v1 + '   λ₂ = ' + fmt(l2) + ', v₂ ≈ ' + v2;
+    }
+
+    [aEl, bEl, cEl, dEl].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      aEl.value = DEFAULTS.a; bEl.value = DEFAULTS.b; cEl.value = DEFAULTS.c; dEl.value = DEFAULTS.d;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>
