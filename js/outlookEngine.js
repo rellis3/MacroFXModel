@@ -124,6 +124,7 @@ function compositeDriver(composite) {
     name: 'composite', label: 'Signal composite (technical/COT/macro/carry)',
     status: 'CONTEXT', score: clip(composite.score, -1, 1),
     detail: `${composite.agree}/${composite.total} of this dashboard's own signals agree — arithmetic agreement, not a backtested rule.`,
+    teach: `${composite.agree} of this dashboard's own ${composite.total} signals already point the same way. The more of them that agree, the more likely price keeps drifting that direction near-term — if they start splitting apart instead, that's usually the first sign the move is running out of room.`,
   };
 }
 
@@ -138,10 +139,12 @@ function yieldSpreadDriver(yieldSpread) {
   // 3σ ≈ full-scale, same saturation convention cotPairBias uses at 4σ for a
   // Z that runs a little hotter.
   const dirScore = clip(yieldSpread.z / 3, -1, 1);
+  const stretch = Math.abs(yieldSpread.z) >= 2 ? 'stretched far from' : Math.abs(yieldSpread.z) >= 1 ? 'stretched from' : 'sitting close to';
   return {
     name: 'yieldSpread', label: 'Yield-spread z-score',
     status: 'VALIDATED', score: dirScore,
     detail: `z=${round1(yieldSpread.z)} (US-vs-local short-rate spread, 90d rolling). The one component here with a real OOS result — PF 2.19, Sharpe ~1.14, positive every year 2022-2026 (YIELD_SPREAD_STRATEGY.md). Direction is engine-auto-oriented; only confirmed live for USDJPY.`,
+    teach: `The US-vs-local short-rate spread is ${stretch} its own 90-day average (z=${round1(yieldSpread.z)}). Spreads like this tend to pull the exchange rate back toward fair value over the coming weeks, not days — the further it's stretched, the stronger that pull usually gets, and it tends to fade as the spread normalizes. This is the one leg here with real historical evidence behind it: it made money every year tested since 2022.`,
   };
 }
 
@@ -157,7 +160,7 @@ function volRegimeDriver(volRegime) {
   const state = gap >= 15 ? 'BUILDING' : gap <= -15 ? 'COOLING' : 'STABLE';
   return {
     name: 'volRegime', label: 'Volatility regime', status: 'CONTEXT',
-    score: 0, confidenceAdj: state === 'STABLE' ? 0.05 : -0.05,
+    score: 0, confidenceAdj: state === 'STABLE' ? 0.05 : -0.05, state,
     detail: `σ is ${state.toLowerCase()} — 5-day window ranks P${volRegime.cone5d} vs P${volRegime.volPct} over the last year.`,
   };
 }
@@ -171,6 +174,9 @@ function cotDriver(cotRead) {
     detail: cotRead.level
       ? `${cotRead.level} crowding, ${cotRead.dir}${cotRead.derived ? ' (derived cross)' : ''} — crowded one-way bets can snap back.`
       : `${cotRead.dir} positioning.`,
+    teach: cotRead.level
+      ? `Positioning is already ${cotRead.level.toLowerCase()} and one-sided (${cotRead.dir}${cotRead.derived ? ', via a derived cross' : ''}). The more crowded a trade gets, the less it takes to send everyone rushing for the exit at once — that's what a snapback looks like, and it can happen even while the underlying trend is otherwise intact.`
+      : `Positioning leans ${cotRead.dir} but isn't crowded enough yet to flag snapback risk on its own.`,
   };
 }
 
@@ -185,10 +191,14 @@ function cotDriver(cotRead) {
 function dxyMomentumDriver(input) {
   if (!input || input.delta == null || !input.usdSide) return null;
   const sideSign = input.usdSide === 'base' ? 1 : -1;
+  const score = clip((input.delta / 2) * sideSign, -1, 1);
+  const dirWord = score > 0 ? 'higher' : score < 0 ? 'lower' : 'sideways';
+  const trendWord = input.delta > 0 ? 'climbing' : input.delta < 0 ? 'easing' : 'flat';
   return {
     name: 'dxyMomentum', label: 'Dollar-index momentum (DXY)', status: 'CONTEXT',
-    score: clip((input.delta / 2) * sideSign, -1, 1),
+    score,
     detail: `DXY ${input.delta > 0 ? '+' : ''}${round1(input.delta)} over this window, read via USD's side of this pair — a rate-of-change reading, not a tested signal.`,
+    teach: `The dollar index has been ${trendWord} over this window (${input.delta > 0 ? '+' : ''}${round1(input.delta)}). A firmer dollar squeezes anything priced or funded in it — if that trend keeps going, it tends to pull this pair ${dirWord}; if the dollar turns instead, that pull reverses too.`,
   };
 }
 
@@ -208,10 +218,14 @@ function dxyMomentumDriver(input) {
 // UNTESTED hypothesis, same CONTEXT caveat as dxyMomentum/riskMomentum.
 function realYieldMomentumDriver(input) {
   if (!input || input.delta == null || !input.lean) return null;
+  const score = clip((input.delta / 30) * input.lean, -1, 1);
+  const dirWord = score > 0 ? 'higher' : score < 0 ? 'lower' : 'sideways';
+  const trendWord = input.delta > 0 ? 'climbing' : input.delta < 0 ? 'easing' : 'flat';
   return {
     name: 'realYieldMomentum', label: 'Real-yield momentum (US 10Y TIPS)', status: 'CONTEXT',
-    score: clip((input.delta / 30) * input.lean, -1, 1),
+    score,
     detail: `US real 10Y ${input.delta > 0 ? '+' : ''}${round1(input.delta)}bps over this window — a rate-of-change reading (rising real yields = headwind for a non-yielding/long-duration asset, tailwind for a USD-base-like one), not a tested signal.`,
+    teach: `US real (inflation-adjusted) 10-year yields have been ${trendWord} over this window (${input.delta > 0 ? '+' : ''}${round1(input.delta)}bps). Climbing real yields raise the reward for holding cash instead of a non-yielding asset — if that keeps going, it tends to pull this one ${dirWord}; a reversal in yields would flip that.`,
   };
 }
 
@@ -226,10 +240,12 @@ function realYieldMomentumDriver(input) {
 // full-scale) is a small round, non-fitted constant, not swept.
 function goldEtfFlowDriver(input) {
   if (!input || input.delta == null) return null;
+  const trendWord = input.delta > 0 ? 'growing' : input.delta < 0 ? 'shrinking' : 'flat';
   return {
     name: 'goldEtfFlow', label: 'Gold ETF flow (GLD+IAU AUM)', status: 'CONTEXT',
     score: clip(input.delta / 8, -1, 1),
     detail: `Combined GLD+IAU AUM ${input.delta > 0 ? '+' : ''}${round1(input.delta)}% over this window — inflow/outflow read as demand, not a tested signal.`,
+    teach: `Combined GLD+IAU holdings have been ${trendWord} over this window (${input.delta > 0 ? '+' : ''}${round1(input.delta)}%). Growing holdings mean real dollars are flowing into gold — if that keeps up, it's usually supportive; shrinking holdings read the opposite way.`,
   };
 }
 
@@ -247,10 +263,16 @@ function riskMomentumDriver(input) {
   const terms = [vixN, hyN].filter(x => x != null);
   if (!terms.length) return null;
   const riskOffMomentum = terms.reduce((a, b) => a + b, 0) / terms.length;
+  const score = clip(input.netLean * riskOffMomentum, -1, 1);
+  const dirWord = score > 0 ? 'higher' : score < 0 ? 'lower' : 'sideways';
+  const moodWord = riskOffMomentum > 0.05 ? 'deteriorating (more fear)' : riskOffMomentum < -0.05 ? 'improving (less fear)' : 'little-changed';
+  const vixTxt = input.vixDelta != null ? (input.vixDelta > 0 ? '+' : '') + round1(input.vixDelta) : 'n/a';
+  const hyTxt = input.hyDelta != null ? (input.hyDelta > 0 ? '+' : '') + round1(input.hyDelta) + 'bps' : 'n/a';
   return {
     name: 'riskMomentum', label: 'Risk-regime momentum (VIX/HY)', status: 'CONTEXT',
-    score: clip(input.netLean * riskOffMomentum, -1, 1),
-    detail: `VIX ${input.vixDelta != null ? (input.vixDelta > 0 ? '+' : '') + round1(input.vixDelta) : 'n/a'} · HY OAS ${input.hyDelta != null ? (input.hyDelta > 0 ? '+' : '') + round1(input.hyDelta) + 'bps' : 'n/a'} over this window, read via this pair's own risk-currency lean — a rate-of-change reading, not a tested signal.`,
+    score,
+    detail: `VIX ${vixTxt} · HY OAS ${hyTxt} over this window, read via this pair's own risk-currency lean — a rate-of-change reading, not a tested signal.`,
+    teach: `Market mood has been ${moodWord} over this window (VIX ${vixTxt}, HY spreads ${hyTxt}). When fear rises, money typically rotates into traditional havens (yen, franc, dollar) and away from growth-sensitive currencies (aussie, kiwi, loonie) — given this pair's own mix, that keeps pulling it ${dirWord} if the mood keeps moving the same way.`,
   };
 }
 
@@ -273,6 +295,7 @@ function priceTrendDriver(input) {
     name: 'priceTrend', label: 'Price trend (HTF regime)', status: 'CONTEXT',
     score: clip(dirSign * prob * reliability, -1, 1),
     detail: `HMM daily regime reads TREND ${input.trendDir} at ${input.trendProb}%${input.reliable ? '' : ' (flagged less reliable)'}. NOTE: this is the SAME regime read already folded into the "Signal composite" driver's technical leg above — shown separately for visibility into the specific evidence, not as fully independent confirmation of it.`,
+    teach: `Price itself is already in a clean ${input.trendDir} trend, at ${input.trendProb}% model confidence${input.reliable ? '' : ' (flagged less reliable)'}. Trends tend to persist until something concrete breaks them — worth knowing this is the same regime read already folded into the composite above, not a second, independent confirmation of it.`,
   };
 }
 
@@ -395,13 +418,31 @@ export function computeOutlook(inputs = {}, horizonKey = 'weekly') {
 // ── Narrative (education style) ─────────────────────────────────────────────
 // Turns computeOutlook's structured result into a connected, teaching-style
 // paragraph instead of a bare tagged bullet list — same underlying numbers,
-// written so a reader learns WHY each factor matters and how they weigh
-// against each other, not just THAT they exist. Pure string formatting: no
-// new data, no new claims — every sentence traces back to a driver's own
-// `detail` (already-written, hedged text) or to computeOutlook's own
-// agree/total/confidence/eventRisk fields. The CONTEXT-not-validated posture
-// is stated plainly in the closing sentence, same substance as `disclaimer`
-// above, just prose instead of a footer.
+// written so a reader learns WHY each factor matters, what TREND it's on, and
+// what tends to happen IF that trend keeps going, not just THAT it exists.
+// Pure string formatting: no new data, no new claims — every sentence traces
+// back to a driver's own `teach` text (trend + "if this continues" mechanism,
+// written once per driver above; falls back to `detail` if a driver has no
+// `teach`) or to computeOutlook's own agree/total/confidence/eventRisk
+// fields. Per-driver hedging ("not a tested signal") is intentionally NOT
+// repeated inside `teach` — it's stated once, plainly, in the closing
+// sentence (same substance as `disclaimer` above), so the reader isn't
+// re-warned after every clause. The single strongest driver is additionally
+// paired with the volatility-regime read into one closing "what this might
+// mean over the coming days" sentence — the trend+conditional+paired-with-
+// volatility shape the owner asked for directly (2026-09-03 feedback: the
+// tagged-detail version "isn't helpful", wanted "the yield is consistently
+// dropping day on day, if it continues this way then X will occur, paired
+// with high volatility this means we may see X in the coming days").
+// Friendlier, lowercase phrase for naming a driver mid-sentence (e.g. "if the
+// yield-spread read keeps moving the same way..."), keyed by driver.name —
+// falls back to the driver's own .label if a name isn't in this small map.
+const NARRATIVE_LABEL = {
+  composite: 'signal composite', yieldSpread: 'yield-spread read', cot: 'positioning read',
+  dxyMomentum: 'dollar-index momentum', realYieldMomentum: 'real-yield momentum',
+  goldEtfFlow: 'gold ETF flow', riskMomentum: 'risk-mood momentum', priceTrend: 'price trend',
+};
+
 export function describeOutlookNarrative(o) {
   if (!o) return '';
   if (!o.bias) return `Not enough data for a ${(o.horizonLabel ?? 'this').toLowerCase()} read yet.`;
@@ -416,9 +457,25 @@ export function describeOutlookNarrative(o) {
 
   const parts = [];
   parts.push(`The ${(o.horizonLabel ?? '').toLowerCase()} read ${biasPhrase}, with ${convictionWord} conviction (${o.confidence}% confidence, ${o.agree} of ${o.total} signals actually pointing the same way).`);
-  if (up.length) parts.push(`Pointing up: ${up.map(d => d.detail).join(' ')}`);
-  if (down.length) parts.push(`Pointing down: ${down.map(d => d.detail).join(' ')}`);
+  if (up.length) parts.push(`Pointing up: ${up.map(d => d.teach ?? d.detail).join(' ')}`);
+  if (down.length) parts.push(`Pointing down: ${down.map(d => d.teach ?? d.detail).join(' ')}`);
   if (volDriver) parts.push(volDriver.detail);
+
+  // Combine the single strongest directional driver with the volatility
+  // regime into one conditional, "what this might mean over the coming days"
+  // sentence — trend + "if this continues" + paired-with-volatility, the
+  // teaching style actually asked for, not a stat dump per factor.
+  const dominant = [...directional].sort((a, b) => Math.abs(b.score) - Math.abs(a.score))[0];
+  if (volDriver && dominant) {
+    const label = NARRATIVE_LABEL[dominant.name] ?? dominant.label.toLowerCase();
+    const combo = volDriver.state === 'BUILDING'
+      ? `Paired with volatility that's building here, if the ${label} keeps moving the same way, the next move could arrive faster and sharper than usual over the coming days.`
+      : volDriver.state === 'COOLING'
+      ? `Paired with volatility that's cooling here, even if the ${label} keeps moving the same way, expect any follow-through to be slower and more gradual over the coming days.`
+      : `Paired with a stable volatility regime here, today's ${label} read is more likely to still hold through the next few sessions if nothing new comes in.`;
+    parts.push(combo);
+  }
+
   parts.push(o.eventRisk.count
     ? `${o.eventRisk.count} scheduled release${o.eventRisk.count === 1 ? '' : 's'} fall${o.eventRisk.count === 1 ? 's' : ''} inside this window${o.eventRisk.highCount ? ` (${o.eventRisk.highCount} high-impact)` : ''} — a surprise there could overturn this read before it plays out.`
     : `No scheduled high-impact events sit inside this window, so a data surprise is less likely to flip this read.`);

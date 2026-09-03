@@ -353,7 +353,7 @@ console.log('[describeOutlookNarrative — bullish read: prose covers conviction
   ok('no "pointing down" section when nothing disagrees', !/pointing down/i.test(n), n);
   ok('mentions the scheduled high-impact event', /1 scheduled release/i.test(n) && /1 high-impact/i.test(n), n);
   ok('closes with the CONTEXT/not-a-tested-forecast disclaimer', /not a tested forecast/i.test(n), n);
-  ok('carries at least one driver\'s own detail text verbatim (yield-spread leg)', n.includes(r.drivers.find(d => d.name === 'yieldSpread').detail));
+  ok('carries at least one driver\'s own teaching text verbatim (yield-spread leg)', n.includes(r.drivers.find(d => d.name === 'yieldSpread').teach));
 }
 
 console.log('[describeOutlookNarrative — conflicting legs produce BOTH an up and a down section]');
@@ -379,6 +379,31 @@ console.log('[describeOutlookNarrative — volRegime driver is included in prose
   const r = computeOutlook({ composite: { score: 0.5, agree: 2, total: 2 }, volRegime: { volPct: 50, cone5d: 80 } }, 'weekly');
   const n = describeOutlookNarrative(r);
   ok('mentions the vol-regime detail text', n.includes(r.drivers.find(d => d.name === 'volRegime').detail), n);
+}
+
+console.log('[describeOutlookNarrative — pairs the strongest driver with the volatility regime into one conditional sentence]');
+{
+  const building = computeOutlook({ composite: { score: 0.6, agree: 2, total: 2 }, volRegime: { volPct: 50, cone5d: 80 } }, 'weekly');
+  const cooling = computeOutlook({ composite: { score: 0.6, agree: 2, total: 2 }, volRegime: { volPct: 80, cone5d: 50 } }, 'weekly');
+  const stable = computeOutlook({ composite: { score: 0.6, agree: 2, total: 2 }, volRegime: { volPct: 50, cone5d: 50 } }, 'weekly');
+  const nB = describeOutlookNarrative(building), nC = describeOutlookNarrative(cooling), nS = describeOutlookNarrative(stable);
+  ok('BUILDING regime states volatility is building, framed as coming-days conditional', /volatility that's building/i.test(nB) && /over the coming days/i.test(nB), nB);
+  ok('COOLING regime states volatility is cooling, framed as coming-days conditional', /volatility that's cooling/i.test(nC) && /over the coming days/i.test(nC), nC);
+  ok('STABLE regime states a stable volatility regime', /stable volatility regime/i.test(nS), nS);
+  ok('names the dominant driver by its plain-English label', /signal composite/i.test(nB), nB);
+}
+
+console.log('[describeOutlookNarrative — per-driver hedge is not repeated; the closing disclaimer states it once]');
+{
+  const netLean = pairRiskLean('USD', 'AUD');
+  const r = computeOutlook({
+    composite: { score: 0.6, agree: 3, total: 4 },
+    dxyMomentum: { deltas: { 5: 1.5 }, usdSide: 'base' },
+    riskMomentum: { vixDeltas: { 5: 3 }, hyDeltas: { 5: 15 }, netLean },
+  }, 'weekly');
+  const n = describeOutlookNarrative(r);
+  ok('"not a tested signal" is never repeated per-driver', !/not a tested signal/i.test(n), n);
+  ok('the single closing disclaimer still states the CONTEXT-not-validated posture', /not a tested forecast/i.test(n), n);
 }
 
 if (failures) { console.error(`\n${failures} FAILURE(S)`); process.exit(1); }

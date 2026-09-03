@@ -1979,41 +1979,6 @@ function currencyStrength(rs) {
   return out;
 }
 
-// Horizon-aware sibling of currencyStrength() above — same shape, same
-// base-favored-positive/quote-negative aggregation, but sourced from the
-// Market Outlook's computed biasScore at the given horizon instead of
-// today's tape (pairSignal). This is the piece the Daily/5-Day/20-Day
-// toggle was missing at the GLOBAL/currency level: currencyStrength() only
-// ever reads today's price action, so flipping the pill changed a per-pair
-// chip and a small sidebar tally but never touched "which currency is
-// strong" — the actual global read most of this page's summary surfaces
-// (Market Tone, Key Takeaways) are built from. Returns null entries filtered
-// out (missing legs left out, never a neutral zero — same discipline as
-// every Outlook Engine driver). Score is on a -100..100 scale (biasScore's
-// own scale), NOT the -1..1 scale currencyStrength() uses — callers must not
-// mix the two directly.
-function outlookCurrencyStrength(rs, horizonKey) {
-  const sum = {}, cnt = {}, pairsOf = {};
-  for (const r of rs) {
-    const cc = PAIR_CCY[r.name];
-    if (!cc) continue;
-    const o = pairOutlook(r, horizonKey);
-    if (o?.biasScore == null) continue;
-    const [base, quote] = cc;
-    sum[base] = (sum[base] ?? 0) + o.biasScore;  cnt[base] = (cnt[base] ?? 0) + 1;
-    sum[quote] = (sum[quote] ?? 0) - o.biasScore; cnt[quote] = (cnt[quote] ?? 0) + 1;
-    (pairsOf[base] ??= []).push(dispName(r.name));
-    (pairsOf[quote] ??= []).push(dispName(r.name));
-  }
-  const out = [];
-  for (const c of CCY_ORDER) {
-    if (!cnt[c]) continue;
-    out.push({ ccy: c, score: sum[c] / cnt[c], n: cnt[c], pairs: pairsOf[c] });
-  }
-  out.sort((a, b) => b.score - a.score);
-  return out;
-}
-
 // Growth-surprise strength per currency, from js/ismEngine.js's `activity`
 // score (already loaded via /api/ism at boot — see loadAll()). Shown paired
 // with the FX-strength bars above so you can see whether price already
@@ -2291,10 +2256,10 @@ function renderMarketRead() {
 // "the pill changes nothing I can see", the simpler fix is to stop gating
 // the global read behind a toggle at all: 5-Day and 20-Day are just always
 // both visible here, permanently. Same underlying data as before
-// (outlookCurrencyStrength, pairOutlook — js/outlookEngine.js), reuses
-// Market Read's own bar visual (.csrow/.track/.barp/.barn) instead of the
-// small inline text chips the old sidebar version used, and a collapsible
-// section header (secChev/secBody) matching Market Read's own pattern.
+// (pairOutlook — js/outlookEngine.js), a collapsible section header
+// (secChev/secBody) matching Market Read's own pattern, and board-wide
+// education-style prose (outlookBoardNarrative below) instead of a bar chart
+// or a single-currency pointer into one pair's own drawer.
 function outlookTallyHtml(rs, key) {
   let bull = 0, bear = 0, neu = 0;
   for (const r of rs) {
@@ -2308,48 +2273,78 @@ function outlookTallyHtml(rs, key) {
     <span class="chip bear">${bear} Bearish</span>
   </div>`;
 }
-// Which ONE pair is actually driving a currency's aggregate outlook score,
-// and that pair's own single strongest driver — so the currency-level read
-// comes with a reason attached, not just a number. `wantPositive` picks the
-// pair pulling this currency up vs down (the two standout currencies get
-// called with opposite values, see outlookGlobalNarrative below).
-function outlookTopDriverFor(rs, ccy, key, wantPositive) {
-  let best = null, bestAbs = -1;
+// Friendlier mid-sentence phrase for a driver name — same small map as
+// js/outlookEngine.js's own NARRATIVE_LABEL (kept local here since this file
+// never imports that internal const; both must be read together if a driver
+// name changes).
+const OUTLOOK_NARRATIVE_LABEL = {
+  composite: 'signal composite', yieldSpread: 'yield-spread read', cot: 'positioning read',
+  dxyMomentum: 'dollar-index momentum', realYieldMomentum: 'real-yield momentum',
+  goldEtfFlow: 'gold ETF flow', riskMomentum: 'risk-mood momentum', priceTrend: 'price trend',
+};
+// Board-wide education-style prose — replaces an earlier version of this
+// panel that reduced the whole board down to one standout currency's one
+// biggest-moving pair, which just duplicated that same pair's own drawer
+// text (owner's own read, 2026-09-03: "we essentially lost top 1 and bottom
+// 1 pair and duplicate the content in the per pair"). This version instead
+// aggregates BY DRIVER TYPE across every pair with a read at this horizon —
+// which factor is pulling the most pairs the same way right now, board-wide
+// — so it teaches something a single pair's drawer can't: whether today's
+// theme is one pair's own story or a real cross-board condition. Same
+// "trend + if this keeps going" teaching shape as describeOutlookNarrative
+// in js/outlookEngine.js, just aggregated instead of per-pair. Pure
+// string formatting: no new data, only driver.label/.score/.state already
+// computed by computeOutlook for every pair.
+function outlookBoardNarrative(rs, key) {
+  const byDriver = {};   // name -> { label, up, down, total }
+  let volBuild = 0, volCool = 0, volTotal = 0, nRead = 0;
   for (const r of rs) {
-    const cc = PAIR_CCY[r.name];
-    if (!cc || !cc.includes(ccy)) continue;
     const o = pairOutlook(r, key);
-    if (o?.biasScore == null) continue;
-    const ccySig = cc[0] === ccy ? o.biasScore : -o.biasScore;   // reoriented to this currency's own direction
-    if (wantPositive ? ccySig <= 0 : ccySig >= 0) continue;
-    if (Math.abs(ccySig) > bestAbs) { bestAbs = Math.abs(ccySig); best = { r, o }; }
+    if (!o?.bias) continue;
+    nRead++;
+    for (const d of o.drivers) {
+      if (d.name === 'volRegime') {
+        volTotal++;
+        if (d.state === 'BUILDING') volBuild++; else if (d.state === 'COOLING') volCool++;
+        continue;
+      }
+      const c = (byDriver[d.name] ??= { label: d.label, up: 0, down: 0, total: 0 });
+      c.total++;
+      if (d.score > 0.15) c.up++; else if (d.score < -0.15) c.down++;
+    }
   }
-  if (!best) return null;
-  const directional = best.o.drivers.filter(d => d.name !== 'volRegime' && d.score !== 0);
-  if (!directional.length) return null;
-  directional.sort((a, b) => Math.abs(b.score) - Math.abs(a.score));
-  return { pair: dispName(best.r.name), driver: directional[0] };
-}
-// Education-style prose for the global (currency-level) read — names the
-// standout currencies and explains WHY using their own single biggest-moving
-// pair and that pair's top driver (reusing driver.detail text verbatim, same
-// "no new claims, just connected prose" discipline as describeOutlookNarrative
-// in js/outlookEngine.js). Replaces an earlier version of this panel that
-// just showed a bar chart of scores with no explanation attached — the
-// owner's own read on that: "is that chart actually useful? I would say not."
-function outlookGlobalNarrative(rs, key) {
-  const cs = outlookCurrencyStrength(rs, key);
-  if (cs.length < 2) return '<div class="muted" style="font-size:11px">Not enough data for a read yet.</div>';
-  const top = cs[0], bot = cs[cs.length - 1];
-  const say = (c, wantPositive) => {
-    const label = `${ccyFull(c.ccy)} (${c.score >= 0 ? '+' : ''}${c.score.toFixed(0)}, across ${c.n} pair${c.n === 1 ? '' : 's'})`;
-    const info = outlookTopDriverFor(rs, c.ccy, key, wantPositive);
-    return info ? `${label} — mainly from ${info.pair}: ${info.driver.detail}` : label;
+  if (!nRead) return '<div class="muted" style="font-size:11px">Not enough data for a read yet.</div>';
+
+  // Rank driver types by how one-sided they are across the pairs that carry
+  // them (skew = the larger of up/down as a fraction of total) — a factor
+  // that's lopsided across many pairs at once is the board's real theme;
+  // one that's split roughly 50/50 says nothing board-wide, however big any
+  // single pair's own reading of it is.
+  const ranked = Object.entries(byDriver)
+    .map(([name, c]) => ({ name, ...c, lean: c.up >= c.down ? 'up' : 'down', skew: c.total ? Math.max(c.up, c.down) / c.total : 0 }))
+    .filter(c => c.total >= 3 && c.skew > 0.5)
+    .sort((a, b) => b.skew - a.skew || b.total - a.total);
+
+  const sentences = [];
+  const say = (c) => {
+    const label = OUTLOOK_NARRATIVE_LABEL[c.name] ?? c.label.toLowerCase();
+    const capLabel = label.charAt(0).toUpperCase() + label.slice(1);
+    const cnt = c.lean === 'up' ? c.up : c.down;
+    const dirWord = c.lean === 'up' ? 'higher' : 'lower';
+    return `${capLabel} is pulling ${cnt} of ${c.total} pairs ${dirWord} right now — if that keeps moving the same way, expect it to keep showing up pair after pair, not just one, and it's the board's dominant theme for as long as that lasts.`;
   };
-  return `<div style="font-size:12.5px;line-height:1.65;color:var(--text2)">
-    <div style="margin-bottom:6px"><b style="color:var(--bull)">Strongest:</b> ${say(top, true)}</div>
-    <div><b style="color:var(--bear)">Weakest:</b> ${say(bot, false)}</div>
-  </div>`;
+  if (ranked[0]) sentences.push(say(ranked[0]));
+  if (ranked[1]) {
+    const label = OUTLOOK_NARRATIVE_LABEL[ranked[1].name] ?? ranked[1].label.toLowerCase();
+    const cnt = ranked[1].lean === 'up' ? ranked[1].up : ranked[1].down;
+    sentences.push(`The ${label} agrees in a similar way, pulling ${cnt} of ${ranked[1].total} pairs the same direction.`);
+  }
+  if (volTotal >= 3) {
+    if (volBuild / volTotal >= 0.4) sentences.push(`Volatility is building in ${volBuild} of ${volTotal} pairs at once — paired with the theme above, that usually means bigger, faster moves are more likely across the board over the coming days, not just in one line.`);
+    else if (volCool / volTotal >= 0.4) sentences.push(`Volatility is cooling in ${volCool} of ${volTotal} pairs at once — paired with the theme above, that usually means today's reads are more likely to keep holding a while longer before something changes them.`);
+  }
+  if (!sentences.length) sentences.push(`No single factor dominates across the board right now — the ${nRead} pairs with a read are splitting on different reasons of their own, not one shared theme.`);
+  return `<div style="font-size:12.5px;line-height:1.65;color:var(--text2)">${sentences.join(' ')}</div>`;
 }
 function renderOutlookPanel() {
   const el = $('outlookPanel');
@@ -2360,7 +2355,7 @@ function renderOutlookPanel() {
   const col = (key, label) => `<div>
     <div class="mread-h">${label} outlook</div>
     ${outlookTallyHtml(rs, key)}
-    ${outlookGlobalNarrative(rs, key)}
+    ${outlookBoardNarrative(rs, key)}
   </div>`;
   el.style.display = 'block';
   el.innerHTML = `
@@ -2370,7 +2365,7 @@ function renderOutlookPanel() {
       ${col('weekly', '5-Day')}
       ${col('monthly', '20-Day')}
     </div>
-    <div class="mread-precise" style="margin-top:10px">Context composite across this board's own signals (technical/COT/macro/carry, yield-spread z-score, DXY/risk/real-yield momentum, price trend) — not a validated forecast. Currency strength = average Outlook Engine bias across each currency's own pairs. Click any card below to see that one pair's own driver breakdown, written out in full, in its drawer's 🔭 Outlook section.</div>`)}`;
+    <div class="mread-precise" style="margin-top:10px">Context composite across this board's own signals (technical/COT/macro/carry, yield-spread z-score, DXY/risk/real-yield momentum, price trend) — not a validated forecast. This board-wide read names whichever factor is lopsided across the MOST pairs at once, not any one pair's story. Click any card below to see that one pair's own driver breakdown, written out in full, in its drawer's 🔭 Outlook section.</div>`)}`;
 }
 
 const CCY_NAMES = { USD: 'USD', EUR: 'EUR', GBP: 'GBP', JPY: 'JPY', CHF: 'CHF', AUD: 'AUD', CAD: 'CAD', NZD: 'NZD' };
