@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Research Pipeline — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">The Research Pipeline — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full worked example, the practitioner section, and a 6-question self-test?<a href="research-pipeline-hypothesis-to-backtest.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Research Process 1 · Quantitative Research Process</div>
+      <h1 class="sl-h1">The Research Pipeline, <em>From Idea to Honest Evidence</em></h1>
+      <p class="sl-lede">Every strategy that ever gets traded starts as an idea, and every idea eventually has to survive the same five-stage gauntlet: state why it should work before looking at the data, test the plainest possible version, add complexity deliberately and count every attempt, validate on data it never touched, and only then — skeptically — call it a candidate. This is the first lesson in a brand-new category, and it's the connective tissue between two lessons already in this curriculum: it's the reason the <a href="multiple-testing-micro.html" style="color:var(--blue)">Multiple Testing</a> math matters, and the reason the <a href="walk-forward-purged-cv-micro.html" style="color:var(--blue)">Walk-Forward &amp; Purged Cross-Validation</a> split has to be genuine. Get the order wrong and both of those lessons quietly become the explanation for why a great-looking backtest wasn't.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">A bag of a thousand keys will always open something</h2>
+      <div class="sl-quote">Hand someone a lock and a thousand keys, and tell them to find the one that fits. Try enough keys and, on attempt 640, one turns. Have they learned that key 640 is special — cut for that lock? Not really. Given a large enough bag, <em>something</em> was always going to turn eventually, whether or not any key was ever meant for that lock. A disciplined locksmith works the other way: reason about the lock first, try a specific motivated guess, and if it fails, say so — rather than quietly reaching for key 641, 642, 643… and reporting only the one that clicked.</div>
+      <p class="sl-sub">Every stage in this lesson exists to stop a research process from quietly becoming "try enough keys."</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🔍</div><div><h4>Look first, hypothesize after</h4><p>A pattern found by scanning the data and explained afterward isn't a hypothesis — it's a description of one sample, dressed up as a prediction.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎛</div><div><h4>Tune before you baseline</h4><p>Adding parameters before measuring the plain version leaves no honest reference point for how much of the result is the idea versus the tuning.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🕳</div><div><h4>Validate a data-mined idea</h4><p>A technically flawless out-of-sample test on a hypothesis mined from the same data is still worthless — the leak happened upstream.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>Set the bar after the result</h4><p>Deciding what "worked" means only after seeing the number is indistinguishable from moving the goalposts to wherever the ball landed.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Five stages, in order</h2>
+      <p class="sl-sub">Each stage closes a specific way the earlier ones, done alone, would mislead. Step through them.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="stage-tabs">
+          <button class="sl-tab active" data-panel="stage-1">1 · Hypothesis</button>
+          <button class="sl-tab" data-panel="stage-2">2 · Minimal test</button>
+          <button class="sl-tab" data-panel="stage-3">3 · Add complexity</button>
+          <button class="sl-tab" data-panel="stage-4">4 · Out-of-sample</button>
+          <button class="sl-tab" data-panel="stage-5">5 · Verdict</button>
+        </div>
+        <div class="sl-panel active" id="stage-1">
+          <div class="sl-row"><div class="sl-box">Why should this work?</div><div class="sl-arrow">→</div><div class="sl-box green">A mechanism, written down</div></div>
+          <div class="sl-verdict"><strong>Skip this</strong> and skim the data first — whatever pattern turns up gets a mechanism invented for it afterward. That's not a hypothesis test; it's overfitting with a founding myth attached.</div>
+        </div>
+        <div class="sl-panel" id="stage-2">
+          <div class="sl-row"><div class="sl-box">A bare rule</div><div class="sl-arrow">→</div><div class="sl-box green">Zero free parameters</div></div>
+          <div class="sl-verdict"><strong>Skip this</strong> and there's no honest baseline — every later "improvement" gets measured against nothing, because nothing was ever measured first.</div>
+        </div>
+        <div class="sl-panel" id="stage-3">
+          <div class="sl-row"><div class="sl-box amber">+1 parameter</div><div class="sl-arrow">→</div><div class="sl-box amber">Logged as trial N</div></div>
+          <div class="sl-verdict"><strong>Skip logging discards</strong> and the eventual reported result understates how many variations were actually tried — the same undercounted-N failure <a href="multiple-testing-micro.html" style="color:var(--blue)">Multiple Testing</a> warns about.</div>
+        </div>
+        <div class="sl-panel" id="stage-4">
+          <div class="sl-row"><div class="sl-box">Untouched holdout</div><div class="sl-arrow">→</div><div class="sl-box green">Real costs, genuine split</div></div>
+          <div class="sl-verdict"><strong>Skip the purge/embargo discipline</strong> and a clean-looking chronological date can still leak — the entire subject of <a href="walk-forward-purged-cv-micro.html" style="color:var(--blue)">Walk-Forward &amp; Purged Cross-Validation</a>.</div>
+        </div>
+        <div class="sl-panel" id="stage-5">
+          <div class="sl-row"><div class="sl-box">Bar set</div><div class="sl-arrow">before</div><div class="sl-box green">test runs</div></div>
+          <div class="sl-verdict"><strong>Skip this</strong> and a marginal or null OOS number gets quietly re-narrated into "promising, needs more tuning" — the goalposts move to wherever the ball landed.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">One shortcut undoes all five stages</h2>
+      <p class="sl-sub">The dashed red loop is the failure mode: a disappointing result at Stage 3 or 4 quietly sends you back to try a new variant on the same data.</p>
+      <div class="sl-svgwrap">
+        <svg viewBox="0 0 640 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Flow diagram of five sequential boxes: Hypothesis, Minimal test, Add complexity, Out-of-sample, and Pre-registered verdict, connected by arrows in order. A dashed red arrow loops from Add complexity back to Hypothesis, labeled: skipping the order reintroduces curve-fitting.">
+          <defs>
+            <marker id="rp2-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" style="fill:var(--text3)"/>
+            </marker>
+            <marker id="rp2-arrow-red" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" style="fill:var(--red)"/>
+            </marker>
+          </defs>
+
+          <rect x="16" y="18" width="118" height="64" rx="6" style="fill:var(--blue);opacity:.2;stroke:var(--blue)"/>
+          <text x="75" y="42" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:11px;font-weight:700">1. Hypothesis</text>
+          <text x="75" y="58" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:9.5px">mechanism, not</text>
+          <text x="75" y="70" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:9.5px">a data pattern</text>
+
+          <line x1="134" y1="50" x2="166" y2="50" style="stroke:var(--text3)" stroke-width="1.4" marker-end="url(#rp2-arrow)"/>
+
+          <rect x="169" y="18" width="118" height="64" rx="6" style="fill:var(--purple);opacity:.2;stroke:var(--purple)"/>
+          <text x="228" y="42" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:11px;font-weight:700">2. Minimal test</text>
+          <text x="228" y="58" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:9.5px">zero free</text>
+          <text x="228" y="70" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:9.5px">parameters</text>
+
+          <line x1="287" y1="50" x2="319" y2="50" style="stroke:var(--text3)" stroke-width="1.4" marker-end="url(#rp2-arrow)"/>
+
+          <rect x="322" y="18" width="128" height="64" rx="6" style="fill:var(--amber);opacity:.2;stroke:var(--amber)"/>
+          <text x="386" y="38" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:11px;font-weight:700">3. Add</text>
+          <text x="386" y="50" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:11px;font-weight:700">complexity</text>
+          <text x="386" y="66" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:9.5px">one parameter, N tracked</text>
+
+          <line x1="450" y1="50" x2="482" y2="50" style="stroke:var(--text3)" stroke-width="1.4" marker-end="url(#rp2-arrow)"/>
+
+          <rect x="485" y="18" width="140" height="64" rx="6" style="fill:var(--green);opacity:.2;stroke:var(--green)"/>
+          <text x="555" y="38" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:11px;font-weight:700">4. Out-of-</text>
+          <text x="555" y="50" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:11px;font-weight:700">sample</text>
+          <text x="555" y="66" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:9.5px">real costs, purge/embargo</text>
+
+          <line x1="555" y1="82" x2="555" y2="114" style="stroke:var(--text3)" stroke-width="1.4" marker-end="url(#rp2-arrow)"/>
+
+          <rect x="290" y="118" width="335" height="64" rx="6" style="fill:var(--blue);opacity:.2;stroke:var(--blue)"/>
+          <text x="457" y="142" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:11px;font-weight:700">5. Pre-registered verdict</text>
+          <text x="457" y="158" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:9.5px">"worked" / "didn't work" defined before Stage 4 ran</text>
+          <text x="457" y="171" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:9.5px">— no re-narrating a null into a maybe</text>
+
+          <path d="M 322,150 C 250,220 110,220 74,148 C 56,110 60,95 72,82" style="fill:none;stroke:var(--red)" stroke-width="1.6" stroke-dasharray="4,3" marker-end="url(#rp2-arrow-red)"/>
+          <rect x="16" y="200" width="440" height="54" rx="6" style="fill:var(--red);opacity:.12;stroke:var(--red);stroke-dasharray:3,3"/>
+          <text x="236" y="220" text-anchor="middle" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:10.5px;font-weight:700">the shortcut: a disappointing Stage 3/4 result quietly sends you</text>
+          <text x="236" y="236" text-anchor="middle" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:10.5px;font-weight:700">back to try a new "hypothesis" on the same dataset —</text>
+          <text x="236" y="250" text-anchor="middle" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:10.5px;font-weight:700">that's an undisclosed search, not a second attempt</text>
+
+          <text x="320" y="296" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10.5px;font-style:italic">Each stage closes a specific way the earlier stages, done alone, would mislead.</text>
+        </svg>
+      </div>
+      <div class="sl-note">The loop isn't wrong because looking for a better idea is wrong — it's wrong because it turns a disciplined pipeline back into an undisclosed search, quietly re-opening the exact problem Stage 1 and Stage 5 exist to close.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">A mechanism is falsifiable. A pattern is just a memory.</h2>
+      <p class="sl-sub">Stage 1, done right versus done backwards.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Pattern first, story after</span>
+          <ul>
+            <li>"This 14-day crossover made money in the data I looked at"</li>
+            <li>The story is invented to fit whatever already turned up</li>
+            <li>Guaranteed to look good in-sample — that's how it was found</li>
+            <li>No independent reason to expect it continues</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Mechanism first, data after</span>
+          <ul>
+            <li>"Central banks defend a target, so a widening rate gap should pressure the currency"</li>
+            <li>Stated before any return series is pulled</li>
+            <li>Can plausibly fail to show up — that failure would be informative</li>
+            <li>A real claim about <em>why</em>, not a description of <em>what already happened</em></li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-quote">Confusing the two is the single most common way a research process turns into curve-fitting without anyone intending it — every individual step afterward can be executed correctly, and the result is still worthless, because the leak happened here, before any test began.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Taste the soup before you add the spices</h2>
+      <p class="sl-sub">Stages 2 and 3: measure the plain version, then add complexity as a tracked, deliberate purchase.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🥄</div><div><h4>Zero parameters, nothing to fit</h4><p>A bare sign or zero-crossing rule has no lookback, threshold, or smoothing constant to tune — so there's nothing available to accidentally flatter one historical sample.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📏</div><div><h4>The baseline is the reference point</h4><p>Measured and recorded honestly before anything is added, it's the number every more complex version has to beat — and its modesty is itself informative.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧂</div><div><h4>Every parameter is a purchase</h4><p>It buys the chance of a genuinely better fit, and in the same transaction, a fresh chance that fit is noise rather than signal. Neither is free.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📋</div><div><h4>Log every trial, kept or discarded</h4><p>The parameters you tried and threw out still count — leaving them out understates N for the correction the next stage needs.</p></div></div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">This isn't just theory — it's this repo's own house rule</div>
+        <p>This project's own working agreement (<code>CLAUDE.md</code>) says it almost word for word: <em>"Start with the minimal-DOF version of the signal… Get that number honestly first; only add tunable parameters after, knowing each one you add is overfit risk you're buying."</em> Stages 2–3 of this lesson are that rule, generalized.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">A correct test on the wrong data is still wrong</h2>
+      <p class="sl-sub">Stage 4 needs two things at once: real costs, and a split that doesn't quietly leak.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Looks like validation</span>
+          <ul>
+            <li>Frictionless fills, no slippage</li>
+            <li>A chronological split date — feels clean</li>
+            <li>Rolling-window features built across the boundary</li>
+            <li>Result: an optimistic number with a hidden leak</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Actually is validation</span>
+          <ul>
+            <li>Realistic transaction costs and slippage, always on</li>
+            <li>A genuine train/test boundary the tuning never touched</li>
+            <li>Purge + embargo around the boundary for overlapping windows</li>
+            <li>Result: a number that means what it claims to mean</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-quote">A plain chronological split date is necessary but not sufficient — features and labels built from rolling windows can straddle the boundary and leak test-period information backward into training even when the date itself looks clean. This is the entire subject of <a href="walk-forward-purged-cv-micro.html" style="color:var(--blue)">Walk-Forward &amp; Purged Cross-Validation</a>: read it before trusting any Stage 4 number.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">"Researching until you find something" has a name</h2>
+      <p class="sl-sub">Trying variation after variation until one backtests well is functionally the same failure the Multiple Testing lesson's math describes. Drag the slider.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Curve of the probability that at least one of many parameter variations looks good by pure chance, rising from near zero toward one as the number of variations tried increases, with a marker dot showing the current slider position">
+            <line x1="55" y1="20" x2="55" y2="180" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="55" y1="180" x2="615" y2="180" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="55" y1="152" x2="615" y2="152" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"/>
+            <text x="620" y="156" style="fill:var(--text3);font-size:10px">5%</text>
+            <path id="rp-curve" d="" style="fill:none;stroke:var(--purple);stroke-width:2.5"/>
+            <circle id="rp-dot" cx="55" cy="180" r="6" style="fill:var(--amber);stroke:var(--bg);stroke-width:2"/>
+            <text x="55" y="196" style="fill:var(--text3);font-size:10px">N=1</text>
+            <text x="615" y="196" text-anchor="end" style="fill:var(--text3);font-size:10px" id="rp-nmax-label">N=150</text>
+            <text x="52" y="184" text-anchor="end" style="fill:var(--text3);font-size:10px">0%</text>
+            <text x="52" y="24" text-anchor="end" style="fill:var(--text3);font-size:10px">100%</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Parameter variations tried</span><span class="sl-live" id="rp-nval">N = 20</span></div>
+        <input type="range" class="sl-slider" id="rp-slider" min="1" max="150" step="1" value="20">
+        <div class="sl-note" id="rp-readout">At N = 20 variations, each with a 5% chance of looking good purely by chance, the probability at least one clears that bar is <strong>64.2%</strong> — even if none of the 20 has any real edge.</div>
+      </div>
+      <p class="sl-p">This is exactly the <a href="multiple-testing-micro.html" style="color:var(--blue)">Multiple Testing</a> lesson's family-wise error rate, aimed at a research loop instead of a batch of pre-planned tests. Reporting only the variation that happened to clear the bar — without saying how many were tried — is the same failure mode as reporting only the best of 70 pre-sliced tests.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Same arithmetic, your numbers</h2>
+      <p class="sl-sub">P(at least one looks good by chance) = 1 − (1 − p)ⁿ. Change either field.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Variations tried (n)</label><input type="number" class="sl-input" id="rp-calc-n" value="20" step="1" min="1"></div>
+          <div class="sl-calc-op">at p =</div>
+          <div class="sl-calc-field"><label>Per-test false-positive rate</label><input type="number" class="sl-input" id="rp-calc-p" value="0.05" step="0.01" min="0" max="1"></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>P(no false positive on one trial) = 1 − p = <b id="rp-calc-step1">0.95</b></div>
+          <div>P(none of n look good) = (1 − p)ⁿ = <b id="rp-calc-step2">0.358</b></div>
+          <div>P(at least one looks good by chance) = <b id="rp-calc-result">64.2%</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="rp-calc-reset">Reset to worked-example numbers (n=20, p=0.05)</button>
+        <div class="sl-note" id="rp-calc-note">Enter n ≥ 1 and 0 ≤ p ≤ 1 — blank or out-of-range input shows "—" rather than a wrong number.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Write the bar down before you see the number</h2>
+      <p class="sl-sub">Pre-registration, Stage 5 — testing first and rationalizing after is a genuinely different, less honest practice.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Test first, rationalize after</span>
+          <ul>
+            <li>Run the OOS test, see Sharpe = 0.30</li>
+            <li>Decide, only now, that "0.30 is actually pretty good for this asset class"</li>
+            <li>The bar bends to fit whatever number came back</li>
+            <li>A null result can never survive this process — there's always a story</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Write the hypothesis down first</span>
+          <ul>
+            <li>Before Stage 4 runs: "OOS Sharpe above 0.30 with ≥30 trades = supported"</li>
+            <li>The bar is fixed, in writing, before the number exists</li>
+            <li>A result below the bar is allowed to just mean "no"</li>
+            <li>This project's own working agreement states the same rule: pre-register both outcomes before running a test</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">The trap</div>
+        <p>Setting "what counts as working" only after the out-of-sample number is already in hand is functionally indistinguishable from moving the goalposts. Pre-registration is the only thing standing between an honest "this didn't work" and a comfortable excuse — and it costs nothing but writing one sentence down first.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">The crossover that "worked" after the eighth tweak</h2>
+      <p class="sl-sub">Same effort, run through the pipeline — three of five stages had already broken before any out-of-sample test ran.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">✗</div><div><h4>Stage 1 — skipped entirely</h4><p>There was never a mechanism, only a pattern that "looked right" a few times, with a story invented afterward.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">✗</div><div><h4>Stage 2 — never isolated</h4><p>The first two flat attempts were treated as failures to fix, not recorded as the honest zero-edge baseline this idea actually has.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">✗</div><div><h4>Stage 3 — trial count uncounted</h4><p>Eight rounds of tuning, unlogged — the eventual "Sharpe of 1.4" understates how many variations were actually searched.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">✗</div><div><h4>Stage 5 — no bar, ever</h4><p>No pass/fail criteria were set in advance, so there was no way for the process to produce an honest null even if the idea truly had nothing.</p></div></div>
+      </div>
+      <p class="sl-p">Whatever the eventual out-of-sample test shows, this idea entered it having already broken most of the stages that keep noise from disguising itself as signal — and each individual re-run, taken alone, looked like ordinary, reasonable iteration.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Why does a hypothesis need a stated mechanism, rather than just a pattern that performed well historically?</h4>
+        <button class="sl-quiz-opt" data-correct="true">A mechanism is falsifiable independent of the sample; a pattern found by scanning is guaranteed to look good in the data it was found in</button>
+        <button class="sl-quiz-opt">A mechanism is required by regulation for any published backtest</button>
+        <button class="sl-quiz-opt">Patterns are fine as long as the sample size is large enough</button>
+        <div class="sl-quiz-explain">A pattern-first "hypothesis" has no independent test besides "did it look good in the data used to find it" — true by construction for whatever eventually got selected. A mechanism can plausibly fail to hold, which is what makes it informative.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Why measure a zero-parameter version of a rule before adding any tunable parameters?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It has nothing available to fit to noise, so its performance is the cleanest read on whether the mechanism has real content</button>
+        <button class="sl-quiz-opt">Zero-parameter rules always outperform tuned ones</button>
+        <button class="sl-quiz-opt">It's faster to code, which is the only reason</button>
+        <div class="sl-quiz-explain">Every parameter added afterward is a new way to accidentally flatter the specific sample it was tuned on. The untunable baseline is the honest reference point every later version has to beat.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Why is a technically correct out-of-sample test still worthless if the hypothesis was found by searching that same broad dataset?</h4>
+        <button class="sl-quiz-opt" data-correct="true">OOS validation only protects against overfitting during validation — it says nothing about how the hypothesis was generated</button>
+        <button class="sl-quiz-opt">It isn't worthless — a clean split always fixes a data-mined hypothesis</button>
+        <button class="sl-quiz-opt">Because OOS tests are only valid for hypotheses about interest rates</button>
+        <div class="sl-quiz-explain">If the rule was already selected because it looked good on data related to the test set, the leak happened upstream, before any split existed. No amount of correctness at the validation stage fixes a leak that occurred earlier.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>What specifically does pre-registering the verdict criteria prevent?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Deciding, only after seeing a weak result, that the bar was actually lower than it seemed — re-narrating a null into "promising"</button>
+        <button class="sl-quiz-opt">It prevents a strategy from ever losing money live</button>
+        <button class="sl-quiz-opt">It guarantees the hypothesis is true if the bar is cleared</button>
+        <div class="sl-quiz-explain">Without a bar fixed in advance, there's no way for a test to produce a genuine null verdict, even when the honest answer is that the idea has nothing — the goalposts simply move to wherever the result landed.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>20 independent parameter variations are tried, each with a 5% chance of looking good by pure chance alone. Roughly what's the probability at least one clears the bar?</h4>
+        <button class="sl-quiz-opt" data-correct="true">≈ 64%</button>
+        <button class="sl-quiz-opt">≈ 5%</button>
+        <button class="sl-quiz-opt">≈ 100%</button>
+        <div class="sl-quiz-explain">1 − (1 − 0.05)²⁰ ≈ 1 − 0.358 ≈ 64.2% — the same formula the Multiple Testing lesson applies to 70 pre-sliced tests, aimed here at 20 tried-and-tuned variations instead.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Form the hypothesis before touching the data — a pattern explained after the fact is a description of one sample, not a falsifiable prediction.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Test the minimal-degrees-of-freedom version first — a zero-parameter rule is close to impossible to overfit, and its honest performance is the baseline.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Every added parameter is overfitting risk being purchased — add deliberately, one at a time, and log every trial, including the ones discarded.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Out-of-sample validation needs real costs and a genuinely leak-free split — a clean chronological date isn't automatically enough (see Walk-Forward &amp; Purged Cross-Validation).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Pre-register what "worked" and "didn't work" mean before the test runs — otherwise a null quietly gets re-narrated into "promising."</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Trying many variations until one backtests well is the Multiple Testing lesson's math in different clothes — a survivor has to clear the chance-expected ceiling, not just beat zero.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Recognize the moment a research process quietly stops testing a hypothesis and starts searching for one — whether it's your own work or someone else's write-up. Ask the three questions that matter before trusting any backtest: was the mechanism stated before the data was searched, was the baseline measured honestly, and was the pass/fail bar written down before the result came back. Read a headline Sharpe correctly by asking how many variations it survived, using the same arithmetic as Multiple Testing, and demand the genuine holdout discipline of Walk-Forward &amp; Purged Cross-Validation before believing the out-of-sample number at all.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Feature Engineering, Leakage &amp; Reproducibility</h3>
+        <p>Three specific ways a feature quietly leaks future information, and the discipline that makes a result reproducible months later — the final lesson in Quantitative Research Process.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="feature-engineering-leakage-reproducibility-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="research-pipeline-hypothesis-to-backtest.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Slide 8 — probability-of-a-spurious-result curve + slider, N variations at fixed p = 0.05.
+  (function(){
+    var slider = document.getElementById('rp-slider');
+    if (!slider) return;
+    var nVal = document.getElementById('rp-nval');
+    var curve = document.getElementById('rp-curve');
+    var dot = document.getElementById('rp-dot');
+    var readout = document.getElementById('rp-readout');
+    var P = 0.05;
+    var N_MAX = 150;
+    var X0 = 55, X1 = 615, Y0 = 180, Y1 = 20;
+
+    function chance(n){ return 1 - Math.pow(1 - P, n); }
+    function xFor(n){ return X0 + (n / N_MAX) * (X1 - X0); }
+    function yFor(p){ return Y0 - p * (Y0 - Y1); }
+
+    var pts = [];
+    for (var n = 1; n <= N_MAX; n++) {
+      pts.push(xFor(n).toFixed(2) + ',' + yFor(chance(n)).toFixed(2));
+    }
+    curve.setAttribute('d', 'M ' + pts.join(' L '));
+
+    function update(){
+      var n = parseInt(slider.value, 10);
+      var p = chance(n);
+      nVal.textContent = 'N = ' + n;
+      dot.setAttribute('cx', xFor(n));
+      dot.setAttribute('cy', yFor(p));
+      readout.innerHTML = 'At N = ' + n + ' variations, each with a 5% chance of looking good purely by chance, the probability at least one clears that bar is <strong>' + (p * 100).toFixed(1) + '%</strong> — even if none of the ' + n + ' has any real edge.';
+    }
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Slide 9 — live calculator: P(at least one spurious "good" result) = 1 - (1-p)^n, with guards.
+  (function(){
+    var nInput = document.getElementById('rp-calc-n');
+    if (!nInput) return;
+    var pInput = document.getElementById('rp-calc-p');
+    var step1 = document.getElementById('rp-calc-step1');
+    var step2 = document.getElementById('rp-calc-step2');
+    var resultOut = document.getElementById('rp-calc-result');
+    var noteOut = document.getElementById('rp-calc-note');
+    var resetBtn = document.getElementById('rp-calc-reset');
+    var DEFAULTS = { n: 20, p: 0.05 };
+    var DEFAULT_NOTE = 'Enter n ≥ 1 and 0 ≤ p ≤ 1 — blank or out-of-range input shows "—" rather than a wrong number.';
+
+    function recompute(){
+      var n = parseFloat(nInput.value);
+      var p = parseFloat(pInput.value);
+      var valid = isFinite(n) && isFinite(p) && n >= 1 && p >= 0 && p <= 1;
+      if (!valid) {
+        step1.textContent = '—';
+        step2.textContent = '—';
+        resultOut.textContent = '—';
+        noteOut.textContent = '(enter n ≥ 1 and 0 ≤ p ≤ 1)';
+        return;
+      }
+      n = Math.round(n);
+      var noHit = 1 - p;
+      var noneOfN = Math.pow(noHit, n);
+      var atLeastOne = 1 - noneOfN;
+      step1.textContent = noHit.toFixed(3);
+      step2.textContent = noneOfN.toFixed(3);
+      resultOut.textContent = (atLeastOne * 100).toFixed(1) + '%';
+      noteOut.textContent = DEFAULT_NOTE;
+    }
+
+    [nInput, pInput].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      nInput.value = DEFAULTS.n;
+      pInput.value = DEFAULTS.p;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>
