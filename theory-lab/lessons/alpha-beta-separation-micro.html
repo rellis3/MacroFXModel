@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alpha vs. Beta Separation — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Alpha vs. Beta Separation — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivation, worked example, and a 6-question self-test?<a href="alpha-beta-separation.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Lesson 33 · Advanced Portfolio &amp; Market Structure</div>
+      <h1 class="sl-h1">Alpha vs. Beta, <em>Split Apart Honestly</em></h1>
+      <p class="sl-lede">Every return stream is secretly two things added together: a bet on the market you could have bought directly and cheaply (beta), and whatever is left over once that bet is honestly subtracted out (alpha). This deck builds the regression that separates the two, the technique — portable alpha — for hedging one away to isolate the other, and the ways that separation quietly goes wrong.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">The rising-tide test</h2>
+      <p class="sl-sub">"A rising tide lifts all boats." If the tide rises 10% and your boat rises 12%, was that your rowing — or a slightly leakier boat sitting a bit higher on the same tide?</p>
+      <div class="sl-quote">Beta is the tide's contribution — measurable, and available to literally anyone who buys the tide directly with an index future or a cheap ETF. Alpha is whatever's left after you honestly subtract the tide's effect: the actual rowing. Most of what looks like skill in a rising market is beta wearing a costume.</div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📈</div><div><h4>18% in a 16% year isn't automatically skill</h4><p>A long-only strategy that beat the market by 2 points may have simply held a slightly more aggressive version of "the market" — and the market went up.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📉</div><div><h4>A loss isn't automatically failure</h4><p>A macro book that lost money in a risk-off quarter may just have carried the same directional exposure every other risk asset was carrying that quarter.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>The one-line test</h4><p>If you could have bought this return stream directly and cheaply with an index future, it's beta, not skill. Alpha is only what survives after that's subtracted out.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">One regression, two components</h2>
+      <p class="sl-sub">Regress a strategy's excess returns (return minus the risk-free rate) on the market's excess returns. The slope is beta; the intercept is alpha.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The market-model regression</div>
+        <div class="sl-row">
+          <div class="sl-box">r<sub>i</sub> − r<sub>f</sub></div>
+          <div class="sl-arrow">=</div>
+          <div class="sl-box green">α</div>
+          <div class="sl-arrow">+</div>
+          <div class="sl-box">β · (r<sub>m</sub> − r<sub>f</sub>)</div>
+          <div class="sl-arrow">+</div>
+          <div class="sl-box amber">ε</div>
+        </div>
+        <div class="sl-verdict">This is the same linear-regression machinery as the Correlation &amp; Linear Regression primer, just applied to <strong>excess</strong> returns — both sides measure compensation for risk taken above the safe rate, not raw return.</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">β</div><div><h4>Beta — the slope</h4><p>Literally Cov(rᵢ, rₘ) / Var(rₘ) — how many units of market risk one unit of the strategy carries. Cheap to buy directly with an index future or ETF; no skill required.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">α</div><div><h4>Alpha — the intercept</h4><p>The average return left over once β × the market's move has been subtracted out, period by period. This is "Jensen's alpha" — what an allocator is actually paying a manager for.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">ε</div><div><h4>Epsilon — residual noise</h4><p>Whatever the market factor alone doesn't explain, period to period. Not skill, not exposure — just noise that averages toward zero over enough periods.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Same regression, two very different funds</h2>
+      <p class="sl-sub">Both funds looked good this year. The regression tells you which one is actually earning something an index couldn't give you.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="fund-tabs">
+          <button class="sl-tab active" data-panel="fund-1">Fund A — high β, low true α</button>
+          <button class="sl-tab" data-panel="fund-2">Fund B — low β, genuine α</button>
+        </div>
+        <div class="sl-panel active" id="fund-1">
+          <div class="sl-svgwrap"><svg viewBox="0 0 400 180" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Scatter plot for Fund A showing a steep fitted line through near-zero intercept — high beta, low alpha">
+            <line x1="40" y1="130" x2="360" y2="130" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"/>
+            <line x1="200" y1="20" x2="200" y2="170" style="stroke:var(--border2);stroke-width:1"/>
+            <circle cx="88" cy="174" r="3.5" style="fill:var(--blue);opacity:.8"/>
+            <circle cx="120" cy="162" r="3.5" style="fill:var(--blue);opacity:.8"/>
+            <circle cx="152" cy="148" r="3.5" style="fill:var(--blue);opacity:.8"/>
+            <circle cx="184" cy="136" r="3.5" style="fill:var(--blue);opacity:.8"/>
+            <circle cx="200" cy="129" r="3.5" style="fill:var(--blue);opacity:.8"/>
+            <circle cx="216" cy="122" r="3.5" style="fill:var(--blue);opacity:.8"/>
+            <circle cx="248" cy="110" r="3.5" style="fill:var(--blue);opacity:.8"/>
+            <circle cx="280" cy="98" r="3.5" style="fill:var(--blue);opacity:.8"/>
+            <circle cx="312" cy="84" r="3.5" style="fill:var(--blue);opacity:.8"/>
+            <line x1="88" y1="174" x2="312" y2="85" style="stroke:var(--red);stroke-width:2"/>
+            <circle cx="200" cy="129.5" r="4.5" style="fill:var(--red)"/>
+            <text x="12" y="24" fill="var(--blue)" font-size="12" font-weight="700">β ≈ 1.6</text>
+            <text x="12" y="40" fill="var(--green)" font-size="12" font-weight="700">α ≈ 0.3%</text>
+            <text x="330" y="24" fill="var(--text3)" font-size="10" text-anchor="end">market →</text>
+          </svg></div>
+          <div class="sl-verdict">High beta (1.6×) means most of this stream's swings are just amplified market moves. The tiny alpha (≈0.3%) sits almost exactly on the zero line — an index future replicates most of this cheaply.</div>
+        </div>
+        <div class="sl-panel" id="fund-2">
+          <div class="sl-svgwrap"><svg viewBox="0 0 400 180" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Scatter plot for Fund B showing a nearly flat fitted line well above zero — low beta, genuine alpha">
+            <line x1="40" y1="130" x2="360" y2="130" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"/>
+            <line x1="200" y1="20" x2="200" y2="170" style="stroke:var(--border2);stroke-width:1"/>
+            <circle cx="88" cy="133" r="3.5" style="fill:var(--blue);opacity:.8"/>
+            <circle cx="120" cy="124" r="3.5" style="fill:var(--blue);opacity:.8"/>
+            <circle cx="152" cy="129" r="3.5" style="fill:var(--blue);opacity:.8"/>
+            <circle cx="184" cy="120" r="3.5" style="fill:var(--blue);opacity:.8"/>
+            <circle cx="216" cy="124" r="3.5" style="fill:var(--blue);opacity:.8"/>
+            <circle cx="248" cy="114" r="3.5" style="fill:var(--blue);opacity:.8"/>
+            <circle cx="280" cy="119" r="3.5" style="fill:var(--blue);opacity:.8"/>
+            <circle cx="312" cy="110" r="3.5" style="fill:var(--blue);opacity:.8"/>
+            <line x1="88" y1="130" x2="312" y2="114" style="stroke:var(--red);stroke-width:2"/>
+            <circle cx="200" cy="122" r="4.5" style="fill:var(--red)"/>
+            <text x="12" y="24" fill="var(--blue)" font-size="12" font-weight="700">β ≈ 0.3</text>
+            <text x="12" y="40" fill="var(--green)" font-size="12" font-weight="700">α ≈ 4.0%</text>
+            <text x="330" y="24" fill="var(--text3)" font-size="10" text-anchor="end">market →</text>
+          </svg></div>
+          <div class="sl-verdict">Low beta (0.3×) means this stream barely moves with the market at all — yet it still returns a meaningful ≈4% on average, well above the zero line. That's the profile portable-alpha strategies are built to find and isolate.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Drag beta. Watch the line pivot around alpha.</h2>
+      <p class="sl-sub">Alpha (the red dot, fixed at 2%) never moves. Beta only changes how steeply the line tilts around it.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Scatter plot of strategy excess returns against market excess returns with a fitted regression line whose slope (beta) is controlled by a slider, pivoting around a fixed alpha intercept">
+            <line x1="40" y1="200" x2="600" y2="200" style="stroke:var(--border);stroke-width:1"/>
+            <line x1="330" y1="20" x2="330" y2="300" style="stroke:var(--border);stroke-width:1"/>
+            <text x="600" y="216" fill="var(--text3)" font-size="11" text-anchor="end">Market excess return</text>
+            <text x="40" y="34" fill="var(--text3)" font-size="11" text-anchor="start">Strategy</text>
+            <text x="40" y="46" fill="var(--text3)" font-size="11" text-anchor="start">excess return</text>
+            <text x="90" y="214" fill="var(--text3)" font-size="10" text-anchor="middle">−20%</text>
+            <text x="330" y="214" fill="var(--text3)" font-size="10" text-anchor="middle">0%</text>
+            <text x="570" y="214" fill="var(--text3)" font-size="10" text-anchor="middle">+20%</text>
+            <g id="bs-points">
+              <circle cx="114" cy="276" r="4" style="fill:var(--blue);opacity:.75"/>
+              <circle cx="150" cy="260" r="4" style="fill:var(--blue);opacity:.75"/>
+              <circle cx="186" cy="256" r="4" style="fill:var(--blue);opacity:.75"/>
+              <circle cx="222" cy="232" r="4" style="fill:var(--blue);opacity:.75"/>
+              <circle cx="258" cy="224" r="4" style="fill:var(--blue);opacity:.75"/>
+              <circle cx="294" cy="200" r="4" style="fill:var(--blue);opacity:.75"/>
+              <circle cx="330" cy="194" r="4" style="fill:var(--blue);opacity:.75"/>
+              <circle cx="366" cy="176" r="4" style="fill:var(--blue);opacity:.75"/>
+              <circle cx="402" cy="168" r="4" style="fill:var(--blue);opacity:.75"/>
+              <circle cx="438" cy="144" r="4" style="fill:var(--blue);opacity:.75"/>
+              <circle cx="474" cy="136" r="4" style="fill:var(--blue);opacity:.75"/>
+              <circle cx="510" cy="116" r="4" style="fill:var(--blue);opacity:.75"/>
+              <circle cx="546" cy="108" r="4" style="fill:var(--blue);opacity:.75"/>
+            </g>
+            <line id="bs-fit-line" x1="90" y1="288" x2="570" y2="96" style="stroke:var(--red);stroke-width:2.5"/>
+            <circle cx="330" cy="192" r="5.5" style="fill:var(--red)"/>
+            <text x="340" y="182" fill="var(--red)" font-size="12" font-weight="700">α = 2% (fixed intercept)</text>
+            <text id="bs-slope-label" x="460" y="130" fill="var(--red)" font-size="12" font-weight="700">slope = β</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Beta (β) — market exposure</span><span class="sl-live" id="bs-beta-val">β = 1.20</span></div>
+        <input type="range" class="sl-slider" id="bs-slider" min="0" max="25" step="1" value="12">
+        <div class="sl-verdict" id="bs-readout">At a market excess return of +10%, the beta-driven contribution alone is <strong>12.0%</strong>; add the fixed 2% alpha and total expected excess return ≈ <strong>14.0%</strong>.</div>
+      </div>
+      <p class="sl-p">Notice what never changes as you drag the slider: the red dot. That's the entire point of the decomposition — alpha is defined as whatever is left when the market's contribution (β times the market's move) is zero. Beta can be re-levered, hedged, or doubled without touching it.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Split your own numbers</h2>
+      <p class="sl-sub">Enter a fund's return, the market's return, the risk-free rate, and an estimated beta. This backs out the alpha (plus noise) implied by a single period, and the notional needed to hedge beta to zero.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Fund return R<sub>p</sub> (%)</label><input type="number" class="sl-input" id="calc-rp" value="20" step="0.5"></div>
+          <div class="sl-calc-field"><label>Market return R<sub>m</sub> (%)</label><input type="number" class="sl-input" id="calc-rm" value="15" step="0.5"></div>
+          <div class="sl-calc-field"><label>Risk-free r<sub>f</sub> (%)</label><input type="number" class="sl-input" id="calc-rf" value="4" step="0.25"></div>
+          <div class="sl-calc-field"><label>Beta β</label><input type="number" class="sl-input" id="calc-beta" value="1.2" step="0.1"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Alpha (this period)</div>
+            <div class="sl-calc-result-val" id="calc-alpha">2.8%</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Excess fund return: R<sub>p</sub> − r<sub>f</sub> = <b id="calc-step1">16.0%</b></div>
+          <div>Beta-driven excess return: β × (R<sub>m</sub> − r<sub>f</sub>) = <b id="calc-step2">13.2%</b></div>
+          <div>Short notional to hedge β to zero ≈ <b id="calc-step3">1.20×</b> position size</div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="calc-reset">Reset to worked-example numbers</button>
+        <div class="sl-note">A single period can't cleanly separate real alpha from noise (ε) — that residual above is really "alpha + noise for this one period." True OLS averages many periods so the noise cancels and only the genuine alpha survives. Blank or non-numeric fields, or leverage that makes no sense, show "—" instead of guessing.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Portable alpha: sever the alpha from its beta</h2>
+      <p class="sl-sub">Once β is known, it can be cancelled out with a short position — leaving (in expectation) just the alpha stream.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Before hedging</span>
+          <ul>
+            <li>Full β = 1.2 exposure rides every market swing, up and down</li>
+            <li>The ≈2% alpha is buried inside a much bigger, much noisier number</li>
+            <li>An allocator can't tell "skill" from "leverage on the market" just by looking at the total return</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">After hedging — beta neutralized</span>
+          <ul>
+            <li>Short 1.2 units of market notional (an index future) per unit of the strategy</li>
+            <li>The two β(r<sub>m</sub>−r<sub>f</sub>) terms cancel; ≈2% alpha (before hedging costs) is what's left</li>
+            <li>That isolated stream can now sit under any beta exposure the allocator actually wants — or none at all</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-quote">This is why it's called "portable": once alpha is hedged market-neutral, it's no longer glued to the specific market it was measured against. An allocator can keep this manager's stock-picking alpha while separately holding bond-market beta instead of equity beta — without accepting the manager's equity exposure as a package deal.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Reconciling the worked example</h2>
+      <p class="sl-sub">A manager returned 20% in a year the S&amp;P returned 15%, r<sub>f</sub>=4%, and a regression gives β̂=1.2, α̂≈2%/yr.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Where the 20% actually came from</div>
+        <div class="sl-row">
+          <div class="sl-box">r<sub>f</sub> 4%</div>
+          <div class="sl-arrow">+</div>
+          <div class="sl-box">β×(r<sub>m</sub>−r<sub>f</sub>) 13.2%</div>
+          <div class="sl-arrow">+</div>
+          <div class="sl-box green">α 2%</div>
+          <div class="sl-arrow">=</div>
+          <div class="sl-box amber">19.2%</div>
+        </div>
+        <div class="sl-verdict">Observed return was 20% — the extra 0.8 points is residual noise (ε) for that specific year, not extra alpha. <strong>The manager's genuine, hard-won contribution was the 2%, not the 20%.</strong></div>
+      </div>
+      <p class="sl-p">13.2 of those 20 points came purely from carrying 1.2× the market's own excess return — exposure anyone could buy directly and cheaply with a futures contract. That's the number a fee should never be paid for.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">What's actually live in this repo</h2>
+      <p class="sl-sub">The full lesson tags this topic "CONCEPT — not yet computed for any strategy in this repo." That claim was checked against the current code.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Verified against source — partially stale</div>
+        <p><strong>What the full lesson says:</strong> alpha-beta separation is a pure concept here, not yet computed for any strategy.</p>
+        <p style="margin-top:10px"><strong>What the code actually does now:</strong> the <strong>beta</strong> side is live. <code>bot/modules/beta_estimator.py</code> runs a rolling-window OLS regression (identical in form to the α/β regression on this slide's earlier equation) against three factor proxies every 120 seconds, then smooths it with a Kalman filter — the exact "adaptive beta" fix the full lesson describes only as a hypothetical. <code>bot/modules/portfolio_beta.py</code> aggregates that beta across every open position, and <code>bot/modules/beta_deviation.py</code> compares the book's net exposure against regime-conditional target betas (BULL/BEAR/RANGE/CHOP), wired into <code>bot/main.py</code>.</p>
+        <p style="margin-top:10px"><strong>What's still conceptual:</strong> the regression's <em>alpha</em> term is computed internally (see <code>_ols_beta()</code>) but immediately discarded — never persisted, scored, or reported anywhere. No code in this repo isolates a hedged, market-neutral alpha stream or executes a portable-alpha overlay. So: beta estimation and monitoring is real and running; alpha isolation and portable alpha remain exactly what the full lesson calls them — a concept.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Where this goes wrong</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>A noisy intercept isn't proven skill</h4><p>A positive α̂ with a wide standard error — short sample, high residual volatility — can be statistically indistinguishable from zero. Screening many strategies to find one "with alpha" makes this worse, not better.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">↕</div><div><h4>Beta drifts</h4><p>The β̂ estimated over the last two years may not be today's true exposure — markets and strategies both change regime. A hedge sized to a stale β under- or over-hedges the real current exposure.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🕳</div><div><h4>Survivorship &amp; backtest inflation</h4><p>"Alpha" measured only on the data a strategy was built on is the same in-sample-vs-out-of-sample trap that shows up everywhere else in this curriculum.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">💸</div><div><h4>Hedging isn't free</h4><p>Shorting the beta leg carries real financing/borrow costs and slippage. The deliverable "pure alpha" is the theoretical intercept minus those costs — always a little less than the regression printed.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">How allocators actually use this</h2>
+      <div class="sl-quote">Institutional allocators run exactly this regression on every manager in a portfolio before deciding how much to pay for what. A manager whose "outperformance" is mostly beta in disguise is, in effect, an expensive way to buy an index. Portable-alpha overlays let an allocator hold, say, bond-market beta while still capturing an equity manager's genuine stock-picking alpha — instead of being forced to accept the manager's equity beta as a package deal.</div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>Everything here uses a single market factor. Fama &amp; French's multi-factor extensions (size, value, and later factors) generalize the exact same regression logic to several factors at once — necessary once one market factor can't explain a strategy's exposure on its own. Not covered in depth here.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>In r<sub>i</sub> − r<sub>f</sub> = α + β(r<sub>m</sub>−r<sub>f</sub>) + ε, what does β represent?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The slope — market/systematic exposure</button>
+        <button class="sl-quiz-opt">The intercept — genuine skill</button>
+        <button class="sl-quiz-opt">The residual noise term</button>
+        <div class="sl-quiz-explain">β is the regression slope: Cov(rᵢ,rₘ)/Var(rₘ), how many units of market risk one unit of the strategy carries. The intercept, α, is the skill component.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>A strategy returns 20% when the market returns 15%, r<sub>f</sub>=4%, and β=1.2. How much of that 20% is beta-driven, explained purely by market exposure?</h4>
+        <button class="sl-quiz-opt" data-correct="true">13.2 percentage points</button>
+        <button class="sl-quiz-opt">20 percentage points</button>
+        <button class="sl-quiz-opt">2 percentage points</button>
+        <div class="sl-quiz-explain">β × (r_m − r_f) = 1.2 × (15% − 4%) = 13.2%. That's exposure anyone could buy directly and cheaply — not skill.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>To hedge a strategy's β=1.2 exposure to zero, what should you do?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Short 1.2 units of market notional per unit of the strategy</button>
+        <button class="sl-quiz-opt">Go long 1.2 units of the market on top of the strategy</button>
+        <button class="sl-quiz-opt">Nothing — β automatically nets out over time</button>
+        <div class="sl-quiz-explain">Shorting β units of the market makes the two β(r_m−r_f) terms cancel, leaving (in expectation) just α plus noise — a market-neutral version of the same strategy.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>A positive α̂ from a regression is automatically real, deliverable skill.</h4>
+        <button class="sl-quiz-opt">True — a positive intercept always means skill</button>
+        <button class="sl-quiz-opt" data-correct="true">False — check its standard error before trusting it</button>
+        <button class="sl-quiz-opt">True, as long as β is greater than 1</button>
+        <div class="sl-quiz-explain">A positive α̂ estimated over a short, noisy sample can be statistically indistinguishable from zero. Screening many strategies to find "the one with alpha" makes this worse, not better.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>What makes portable alpha "portable"?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Once hedged market-neutral, it's no longer tied to any one specific market's beta</button>
+        <button class="sl-quiz-opt">It can be moved between brokerage accounts without tax consequences</button>
+        <button class="sl-quiz-opt">It automatically increases in size the longer it's held</button>
+        <div class="sl-quiz-explain">Hedging β to zero severs the alpha stream from the specific market it was measured against — it can then sit on top of a completely different beta exposure, or none at all.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Every return stream is beta plus alpha — regress excess returns on the market's excess returns to split the two apart: r<sub>i</sub>−r<sub>f</sub> = α + β(r<sub>m</sub>−r<sub>f</sub>) + ε.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Beta is cheap — it's exposure you could buy directly with an index future or ETF, no skill required. Alpha is the residual left after that's subtracted, and the part actually worth a fee.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Beta is hedgeable — short the market sized to the estimated β and the β terms cancel, leaving (in expectation) just α plus noise: a market-neutral version of the same strategy.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>"Portable" alpha means alpha severed from any one beta — once hedged market-neutral, it can sit on top of any beta exposure you actually want, or none at all.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>This repo's beta estimation is live (rolling OLS + Kalman filter, monitored against regime targets) — but alpha isolation and portable-alpha hedging remain conceptual; the regression's alpha term is computed and thrown away, not acted on.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>It's a repackaging technique, not a source of edge — noisy intercepts, drifting betas, survivorship, and hedging costs can all quietly erase the "alpha" it claims to isolate.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Look at any return stream and honestly ask how much of it is beta in disguise before crediting it as skill. Size and price a hedge that isolates a genuine alpha stream from its market exposure. Recognize why an allocator would rather pay for 2% of hedged alpha than 20% of unhedged beta — and know exactly which pitfalls (noisy intercepts, drifting betas, survivorship, hedging costs) can make that 2% smaller, or not real, by the time it's delivered.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Merton's Continuous-Time Portfolio Problem</h3>
+        <p>What happens when portfolio choice stops being a single-period decision and becomes a continuous stream of consumption-vs-investment tradeoffs over time.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="merton-portfolio-problem-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="alpha-beta-separation.html">Read the full alpha-beta lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Beta slider — pivots the fitted regression line around a fixed alpha intercept.
+  (function(){
+    var slider = document.getElementById('bs-slider');
+    if (!slider) return;
+    var betaVal = document.getElementById('bs-beta-val');
+    var fitLine = document.getElementById('bs-fit-line');
+    var readout = document.getElementById('bs-readout');
+    var slopeLabel = document.getElementById('bs-slope-label');
+
+    var X0 = 330, Y0 = 200, PX_PER_PCT_X = 12, PX_PER_PCT_Y = 4;
+    var LEFT_X = 90, RIGHT_X = 570;
+    var ALPHA_FIXED = 2; // %, fixed intercept at r_m = 0
+
+    function yForM(m, beta){
+      var r = ALPHA_FIXED + beta * m;
+      return Y0 - r * PX_PER_PCT_Y;
+    }
+
+    function update(){
+      var beta = parseInt(slider.value, 10) / 10;
+      betaVal.textContent = 'β = ' + beta.toFixed(2);
+
+      var mLeft = (LEFT_X - X0) / PX_PER_PCT_X;
+      var mRight = (RIGHT_X - X0) / PX_PER_PCT_X;
+      fitLine.setAttribute('y1', yForM(mLeft, beta).toFixed(1));
+      fitLine.setAttribute('y2', yForM(mRight, beta).toFixed(1));
+
+      var contrib10 = beta * 10;
+      var total10 = ALPHA_FIXED + contrib10;
+      slopeLabel.textContent = 'slope = β = ' + beta.toFixed(2);
+      readout.innerHTML = 'At a market excess return of +10%, the beta-driven contribution alone is <strong>' +
+        contrib10.toFixed(1) + '%</strong>; add the fixed 2% alpha and total expected excess return ≈ <strong>' +
+        total10.toFixed(1) + '%</strong>.';
+    }
+
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Alpha/beta split calculator — single-period decomposition with defensive guards.
+  (function(){
+    var rpEl = document.getElementById('calc-rp');
+    if (!rpEl) return;
+    var rmEl = document.getElementById('calc-rm'), rfEl = document.getElementById('calc-rf'), betaEl = document.getElementById('calc-beta');
+    var alphaOut = document.getElementById('calc-alpha');
+    var step1 = document.getElementById('calc-step1'), step2 = document.getElementById('calc-step2'), step3 = document.getElementById('calc-step3');
+    var resetBtn = document.getElementById('calc-reset');
+    var DEFAULTS = { rp: 20, rm: 15, rf: 4, beta: 1.2 };
+
+    function recompute(){
+      var rp = parseFloat(rpEl.value), rm = parseFloat(rmEl.value), rf = parseFloat(rfEl.value), beta = parseFloat(betaEl.value);
+      var ok = isFinite(rp) && isFinite(rm) && isFinite(rf) && isFinite(beta);
+      if (!ok) {
+        alphaOut.textContent = '—';
+        step1.textContent = '—';
+        step2.textContent = '—';
+        step3.textContent = '—';
+        return;
+      }
+      var excessFund = rp - rf;
+      var betaDriven = beta * (rm - rf);
+      var alpha = excessFund - betaDriven;
+
+      step1.textContent = excessFund.toFixed(1) + '%';
+      step2.textContent = betaDriven.toFixed(1) + '%';
+      alphaOut.textContent = alpha.toFixed(1) + '%';
+      step3.textContent = beta.toFixed(2) + '×';
+    }
+
+    [rpEl, rmEl, rfEl, betaEl].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      rpEl.value = DEFAULTS.rp; rmEl.value = DEFAULTS.rm; rfEl.value = DEFAULTS.rf; betaEl.value = DEFAULTS.beta;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>
