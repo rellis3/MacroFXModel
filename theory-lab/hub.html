@@ -32,50 +32,42 @@
     <span class="tl-diff-count" data-diff-count></span>
   </div>
 
+  <div class="tl-mode-toggle" role="group" aria-label="Choose full lesson or visual guide">
+    <span class="tl-mode-toggle-label">Reading mode</span>
+    <button type="button" class="tl-mode-btn active" data-mode="full">📖 Full lesson</button>
+    <button type="button" class="tl-mode-btn" data-mode="micro">⚡ Visual guide</button>
+    <span class="tl-mode-toggle-hint">Applies to every card marked ⚡ — lessons without a visual guide yet always open the full lesson.</span>
+  </div>
+
   <div class="tl-cat" data-level="beginner">
     <h2>Foundation Mathematics</h2>
     <div class="tl-cat-sub">Only done GCSE-level maths? Start here, before the Math Primer below — algebra, trigonometry, logs, complex numbers, multivariable calculus, and optimization, all built from nothing. Without these, Itô's Lemma and stochastic calculus later in this curriculum are very hard going.</div>
     <div class="tl-grid">
-      <div class="tl-card-wrap">
-        <a class="tl-card" href="lessons/foundation-algebra-functions.html">
-          <div class="tl-card-toprow"><div class="tl-card-num">Foundation 1</div><span class="tl-pill green tl-diff-pill">Beginner</span></div>
-          <h3>Algebra &amp; Functions Refresher</h3>
-          <p>Manipulating equations, what a function actually is, and reading a graph's slope and curvature — the toolkit every later lesson quietly assumes.</p>
-        </a>
-        <a class="tl-micro-link" href="lessons/foundation-algebra-functions-micro.html">⚡ Visual guide — 11 slides →</a>
-      </div>
-      <div class="tl-card-wrap">
-        <a class="tl-card" href="lessons/foundation-trig-logs-exponentials.html">
-          <div class="tl-card-toprow"><div class="tl-card-num">Foundation 2</div><span class="tl-pill green tl-diff-pill">Beginner</span></div>
-          <h3>Trigonometry, Logarithms &amp; Exponentials</h3>
-          <p>Why continuous compounding uses \(e^{rt}\), and why log-returns — not simple returns — are the ones that add up across time.</p>
-        </a>
-        <a class="tl-micro-link" href="lessons/foundation-trig-logs-exponentials-micro.html">⚡ Visual guide — 13 slides →</a>
-      </div>
-      <div class="tl-card-wrap">
-        <a class="tl-card" href="lessons/foundation-complex-numbers.html">
-          <div class="tl-card-toprow"><div class="tl-card-num">Foundation 3</div><span class="tl-pill green tl-diff-pill">Beginner</span></div>
-          <h3>Complex Numbers</h3>
-          <p>The complex plane, Euler's formula, and why option-pricing characteristic functions and the Fourier Transform both need \(i=\sqrt{-1}\).</p>
-        </a>
-        <a class="tl-micro-link" href="lessons/foundation-complex-numbers-micro.html">⚡ Visual guide — 11 slides →</a>
-      </div>
-      <div class="tl-card-wrap">
-        <a class="tl-card" href="lessons/foundation-multivariable-calculus.html">
-          <div class="tl-card-toprow"><div class="tl-card-num">Foundation 4</div><span class="tl-pill green tl-diff-pill">Beginner</span></div>
-          <h3>Partial Derivatives &amp; Multivariable Calculus</h3>
-          <p>The exact vocabulary behind every option "Greek" you've ever seen quoted — gradients, Hessians, and the multivariable chain rule.</p>
-        </a>
-        <a class="tl-micro-link" href="lessons/foundation-multivariable-calculus-micro.html">⚡ Visual guide — 13 slides →</a>
-      </div>
-      <div class="tl-card-wrap">
-        <a class="tl-card" href="lessons/foundation-optimization-basics.html">
-          <div class="tl-card-toprow"><div class="tl-card-num">Foundation 5</div><span class="tl-pill green tl-diff-pill">Beginner</span></div>
-          <h3>Optimization Basics: Unconstrained &amp; Constrained</h3>
-          <p>First-order conditions and Lagrange multipliers — why minimizing portfolio variance for a target return is a Lagrangian problem in disguise.</p>
-        </a>
-        <a class="tl-micro-link" href="lessons/foundation-optimization-basics-micro.html">⚡ Visual guide — 12 slides →</a>
-      </div>
+      <a class="tl-card" href="lessons/foundation-algebra-functions.html" data-slug="foundation-algebra-functions" data-full="lessons/foundation-algebra-functions.html" data-micro="lessons/foundation-algebra-functions-micro.html">
+        <div class="tl-card-toprow"><div class="tl-card-num">Foundation 1</div><span class="tl-pill green tl-diff-pill">Beginner</span><span class="tl-card-micro-badge" title="A visual guide (slide deck) is available for this lesson">⚡</span></div>
+        <h3>Algebra &amp; Functions Refresher</h3>
+        <p>Manipulating equations, what a function actually is, and reading a graph's slope and curvature — the toolkit every later lesson quietly assumes.</p>
+      </a>
+      <a class="tl-card" href="lessons/foundation-trig-logs-exponentials.html" data-slug="foundation-trig-logs-exponentials" data-full="lessons/foundation-trig-logs-exponentials.html" data-micro="lessons/foundation-trig-logs-exponentials-micro.html">
+        <div class="tl-card-toprow"><div class="tl-card-num">Foundation 2</div><span class="tl-pill green tl-diff-pill">Beginner</span><span class="tl-card-micro-badge" title="A visual guide (slide deck) is available for this lesson">⚡</span></div>
+        <h3>Trigonometry, Logarithms &amp; Exponentials</h3>
+        <p>Why continuous compounding uses \(e^{rt}\), and why log-returns — not simple returns — are the ones that add up across time.</p>
+      </a>
+      <a class="tl-card" href="lessons/foundation-complex-numbers.html" data-slug="foundation-complex-numbers" data-full="lessons/foundation-complex-numbers.html" data-micro="lessons/foundation-complex-numbers-micro.html">
+        <div class="tl-card-toprow"><div class="tl-card-num">Foundation 3</div><span class="tl-pill green tl-diff-pill">Beginner</span><span class="tl-card-micro-badge" title="A visual guide (slide deck) is available for this lesson">⚡</span></div>
+        <h3>Complex Numbers</h3>
+        <p>The complex plane, Euler's formula, and why option-pricing characteristic functions and the Fourier Transform both need \(i=\sqrt{-1}\).</p>
+      </a>
+      <a class="tl-card" href="lessons/foundation-multivariable-calculus.html" data-slug="foundation-multivariable-calculus" data-full="lessons/foundation-multivariable-calculus.html" data-micro="lessons/foundation-multivariable-calculus-micro.html">
+        <div class="tl-card-toprow"><div class="tl-card-num">Foundation 4</div><span class="tl-pill green tl-diff-pill">Beginner</span><span class="tl-card-micro-badge" title="A visual guide (slide deck) is available for this lesson">⚡</span></div>
+        <h3>Partial Derivatives &amp; Multivariable Calculus</h3>
+        <p>The exact vocabulary behind every option "Greek" you've ever seen quoted — gradients, Hessians, and the multivariable chain rule.</p>
+      </a>
+      <a class="tl-card" href="lessons/foundation-optimization-basics.html" data-slug="foundation-optimization-basics" data-full="lessons/foundation-optimization-basics.html" data-micro="lessons/foundation-optimization-basics-micro.html">
+        <div class="tl-card-toprow"><div class="tl-card-num">Foundation 5</div><span class="tl-pill green tl-diff-pill">Beginner</span><span class="tl-card-micro-badge" title="A visual guide (slide deck) is available for this lesson">⚡</span></div>
+        <h3>Optimization Basics: Unconstrained &amp; Constrained</h3>
+        <p>First-order conditions and Lagrange multipliers — why minimizing portfolio variance for a target return is a Lagrangian problem in disguise.</p>
+      </a>
     </div>
   </div>
 
@@ -887,6 +879,33 @@
 </script>
 <script>
 (function(){
+  // Reading-mode toggle — for cards with a visual-guide sibling
+  // (data-micro), swaps which page the card opens. Persisted per-browser.
+  var KEY = 'theoryLabViewMode';
+  var mode = 'full';
+  try { mode = localStorage.getItem(KEY) || 'full'; } catch (e) {}
+
+  var cards = Array.prototype.slice.call(document.querySelectorAll('.tl-card[data-micro]'));
+  var btns = Array.prototype.slice.call(document.querySelectorAll('.tl-mode-btn'));
+
+  function apply(m){
+    mode = m;
+    try { localStorage.setItem(KEY, m); } catch (e) {}
+    btns.forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-mode') === m); });
+    cards.forEach(function(card){
+      card.setAttribute('href', m === 'micro' ? card.dataset.micro : card.dataset.full);
+    });
+  }
+
+  btns.forEach(function(btn){
+    btn.addEventListener('click', function(){ apply(btn.getAttribute('data-mode')); });
+  });
+
+  apply(mode);
+})();
+</script>
+<script>
+(function(){
   // Paints per-card progress rings from the same localStorage key
   // theory-lab/assets/progress.js writes on every lesson page. Per-browser
   // only — no account, no server, nothing sent anywhere.
@@ -899,10 +918,17 @@
   var started = 0, completed = 0;
 
   cards.forEach(function(card){
-    var href = card.getAttribute('href') || '';
-    var m = href.match(/lessons\/([a-z0-9-]+)\.html/i);
-    if (!m) return;
-    var rec = store[m[1]];
+    // A card's href can change (see the reading-mode toggle above), so a
+    // canonical data-slug — the same slug the full lesson and its visual
+    // guide both write progress under — takes priority over parsing href.
+    var slug = card.dataset.slug;
+    if (!slug) {
+      var href = card.getAttribute('href') || '';
+      var m = href.match(/lessons\/([a-z0-9-]+)\.html/i);
+      if (!m) return;
+      slug = m[1];
+    }
+    var rec = store[slug];
     if (!rec || !rec.percent) return;
 
     var toprow = card.querySelector('.tl-card-toprow');

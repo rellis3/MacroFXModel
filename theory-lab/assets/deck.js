@@ -17,6 +17,41 @@
   var viewport = document.getElementById('sl-viewport');
   var HUB_HREF = '../hub.html';
 
+  // Reading-progress tracking — same localStorage key and record shape as
+  // theory-lab/assets/progress.js's scroll-based tracker on the full,
+  // article-style lessons. A slide deck has no scroll to measure, so
+  // progress here is simply how far through the deck the reader has
+  // navigated. A trailing "-micro" is stripped from the slug so a lesson's
+  // full version and its visual-guide sibling share the SAME progress
+  // entry — hub.html's per-card ring reflects whichever one was read,
+  // and neither can regress the other (percent is a high-water mark).
+  var PROGRESS_KEY = 'theoryLabProgress';
+  var slug = (location.pathname.split('/').pop() || '').replace(/\.html?$/i, '').replace(/-micro$/, '');
+  var progressRec = null;
+  if (slug) {
+    var readStore = function(){
+      try { return JSON.parse(localStorage.getItem(PROGRESS_KEY) || '{}'); }
+      catch (e) { return {}; }
+    };
+    var saved = readStore()[slug] || {};
+    progressRec = {
+      scrollPct: Number(saved.scrollPct) || 0,
+      activeSec: Number(saved.activeSec) || 0,
+      percent: Number(saved.percent) || 0,
+      firstVisit: saved.firstVisit || Date.now(),
+      completedAt: saved.completedAt || null
+    };
+    var persistProgress = function(livePercent){
+      progressRec.percent = Math.max(progressRec.percent, livePercent);
+      progressRec.updatedAt = Date.now();
+      if (progressRec.percent >= 100 && !progressRec.completedAt) progressRec.completedAt = Date.now();
+      var store = readStore(); // re-read so another open tab's entry isn't clobbered
+      store[slug] = progressRec;
+      try { localStorage.setItem(PROGRESS_KEY, JSON.stringify(store)); } catch (e) {}
+    };
+    window.addEventListener('pagehide', function(){ persistProgress(progressRec.percent); });
+  }
+
   totalEl.textContent = total;
   for (var i = 0; i < total; i++) {
     var seg = document.createElement('div');
@@ -36,6 +71,7 @@
     prevBtn.disabled = idx === 0;
     nextBtn.textContent = idx === total - 1 ? 'Finish ✓' : 'Next →';
     viewport.scrollTop = 0;
+    if (progressRec) persistProgress(Math.round(((idx + 1) / total) * 100));
   }
 
   function go(delta){
