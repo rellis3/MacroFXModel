@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Copulas — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Copulas — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivation, a live Kendall's-tau scratchpad, and a 6-question self-test?<a href="copulas.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Lesson 22 · Applied Statistics &amp; Validation</div>
+      <h1 class="sl-h1">Copulas, or What Correlation <em>Doesn't</em> Tell You</h1>
+      <p class="sl-lede">Two currency pairs can carry the exact same correlation number in a calm year and in a crisis year. Correlation looked fine right up until everything crashed together — and a single correlation coefficient has no way to warn you it's coming. Copulas are the tool built specifically to separate each series' own distribution from how the two of them move together, and to expose the part correlation can't see: whether they tend to crash together far more often than that one number would ever suggest.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">One number, averaged over every kind of day</h2>
+      <p class="sl-sub">Pearson correlation answers one specific question honestly. It was never built to answer this one.</p>
+      <p class="sl-p">A correlation of 0.4 tells you: "on average, across calm days and stormy days alike, these two series have this much linear co-movement." That's a real, useful answer. It quietly assumes the relationship looks roughly the same everywhere in the distribution, and that surprises are symmetric — equally likely up as down. Real market dependence is routinely neither.</p>
+      <div class="sl-quote">A correlation of 0.4 is consistent with two very different worlds: one where two series move together at roughly that same strength everywhere, calm days and crisis days alike — and one where they're only weakly linked most of the time, then move almost as one on the rare days both are deep in their own worst tail. Both worlds report the identical 0.4. The difference between them is invisible to the coefficient itself.</div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">The cliché that's actually true</div>
+        <p>"Correlations go to 1 in a crisis" gets repeated so often it sounds like a throwaway line — but it's a real, repeatedly observed pattern across equity, credit, and FX markets, and a linear correlation coefficient estimated over a normal period has no mechanism for seeing it coming.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Same weather report, very different storm behavior</h2>
+      <p class="sl-sub">Two towns' temperatures — a way to see the idea before the notation.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Each town's own climate — the marginal</span>
+          <p>Town A's typical range, how often it gets very hot or very cold, its full histogram of daily temperatures — described completely on its own, ignoring Town B entirely. Same for Town B, separately.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">How the towns relate — the dependence</span>
+          <p>On the days Town A has an unusual cold snap, how likely is Town B to be having one too? Knowing both towns' individual histograms in perfect detail still doesn't answer this — they could share every cold front, or sit on opposite sides of a mountain range and barely interact even on extreme days.</p>
+        </div>
+      </div>
+      <p class="sl-p">Both scenarios can produce the exact same "how correlated are these two towns on an average day" number. They differ entirely in what happens specifically in the joint extremes. A <strong>copula</strong> is the object that captures that town-to-town relationship, isolated from each town's own weather — applied to markets instead of thermometers, it's what lets you ask "given how bad an FX crisis typically gets in currency A, how much worse does a simultaneous move in currency B get?" as a question separate from "how correlated are they on an ordinary Tuesday."</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Sklar's theorem: split the joint into two honest pieces</h2>
+      <p class="sl-sub">Any joint distribution H(x,y) can be decomposed, without losing information, into each variable's own marginal plus a copula.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The recipe</div>
+        <div class="sl-row"><div class="sl-box">H(x, y)</div><div class="sl-arrow">=</div><div class="sl-box green">C</div><div class="sl-arrow">(</div><div class="sl-box amber">F_X(x)</div><div class="sl-arrow">,</div><div class="sl-box amber">F_Y(y)</div><div class="sl-arrow">)</div></div>
+        <div class="sl-verdict">Feed each variable's own marginal probability — a number between 0 and 1 — into the copula function C. C's entire job is combining two probabilities into a joint one in a way that encodes <strong>only</strong> the dependence, nothing about what the variables themselves look like.</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">H</div><div><h4>The joint distribution</h4><p>Everything about how X and Y behave together — the full picture Sklar's theorem takes apart.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">F</div><div><h4>The marginals</h4><p>F_X and F_Y — each variable's own distribution, ignoring the other completely. Each town's own climate.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">C</div><div><h4>The copula</h4><p>Captures only the dependence — the town-to-town relationship. Sklar (1959) guarantees this split always exists and, for continuous variables, is unique.</p></div></div>
+      </div>
+      <p class="sl-p">This is why the split is useful, not just tidy: it means marginals and dependence can be modeled in two independent stages. Pick realistic, fat-tailed marginals for each series — the kind an Extreme Value Theory fit would give you — and separately pick whatever dependence structure the data actually supports, including strong asymmetric tail behavior a plain multivariate-normal assumption would miss entirely. Neither piece alone gets you a realistic joint model; combined through Sklar's theorem, they do.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Same correlation, two very different corners</h2>
+      <p class="sl-sub">Both clouds below are tuned to the same overall dependence strength. Only one has extra points where it matters.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="cop-tabs">
+          <button class="sl-tab active" data-panel="cop-1">Gaussian copula</button>
+          <button class="sl-tab" data-panel="cop-2">Clayton copula (tail-dependent)</button>
+        </div>
+        <div class="sl-panel active" id="cop-1">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Scatter plot of a symmetric elliptical point cloud with roughly equal density in all four corners, representing a Gaussian copula">
+            <rect x="20" y="20" width="600" height="260" fill="none" style="stroke:var(--border)"/>
+            <line x1="320" y1="20" x2="320" y2="280" style="stroke:var(--border);stroke-dasharray:3,3"/>
+            <line x1="20" y1="150" x2="620" y2="150" style="stroke:var(--border);stroke-dasharray:3,3"/>
+            <g id="cop1-pts"></g>
+            <text x="320" y="296" text-anchor="middle" style="fill:var(--text3);font-size:11px">ρ ≈ 0.59 (matched to τ = 0.40) — corners equally sparse</text>
+          </svg></div>
+          <div class="sl-verdict"><strong>Zero tail dependence.</strong> For any ρ below 1, knowing X is deep in its own worst tail tells you asymptotically nothing extra about Y — beyond what the overall correlation already implied. The bottom-left corner (both crashing at once) is just as sparse as the other three.</div>
+        </div>
+        <div class="sl-panel" id="cop-2">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Scatter plot with a similar overall elliptical cloud shape and correlation to the Gaussian panel, but with a visibly denser cluster of extra points specifically in the bottom-left corner, representing simultaneous crashes">
+            <rect x="20" y="20" width="600" height="260" fill="none" style="stroke:var(--border)"/>
+            <line x1="320" y1="20" x2="320" y2="280" style="stroke:var(--border);stroke-dasharray:3,3"/>
+            <line x1="20" y1="150" x2="620" y2="150" style="stroke:var(--border);stroke-dasharray:3,3"/>
+            <g id="cop2-pts"></g>
+            <ellipse cx="90" cy="245" rx="46" ry="34" fill="none" style="stroke:var(--red);stroke-width:1.5;stroke-dasharray:4,3"/>
+            <text x="90" y="288" text-anchor="middle" style="fill:var(--red);font-size:11px">simultaneous-crash cluster</text>
+            <text x="320" y="296" text-anchor="middle" style="fill:var(--text3);font-size:11px">θ ≈ 1.33 (same τ = 0.40) — extra mass, bottom-left only</text>
+          </svg></div>
+          <div class="sl-verdict"><strong>λ_L ≈ 0.60.</strong> Same overall shape and correlation as the Gaussian panel — but with a visibly denser cluster of points where <em>both</em> variables are deep in their own lower tail at once. Nothing extra piles up in the top-right: this copula is built asymmetric, "crash together, don't necessarily rally together."</div>
+        </div>
+        <div class="sl-note">A rolling Pearson correlation computed on either cloud would report a very similar number. Only looking at the joint extreme — or using a dependence model built to represent it — reveals the difference.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Tail dependence, defined precisely</h2>
+      <p class="sl-sub">The number a single correlation coefficient cannot see.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The definition</div>
+        <div class="sl-row"><div class="sl-box">λ_L</div><div class="sl-arrow">=</div><div class="sl-box amber">P( Y in its tail | X in its tail )</div><div class="sl-arrow">as the tail → 0</div></div>
+        <div class="sl-verdict">As you look further and further into the joint lower tail, what fraction of the time is Y also in its own lower tail, given X is in its? λ_U mirrors this at the top of the distribution.</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">0</div><div><h4>λ_L = 0 — asymptotic independence</h4><p>Deep in the tail, knowing X crashed tells you nothing extra about Y. The Gaussian copula's case, for any ρ strictly below 1.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">1</div><div><h4>λ_L → 1 — near-certain joint crash</h4><p>Once either one is deep in its tail, the other essentially always is too.</p></div></div>
+      </div>
+      <p class="sl-p">Two dependence structures can have identical overall correlation and completely different λ_L. That's not a subtle edge case — it's the entire reason this lesson exists. One important nuance worth holding onto: λ_L = 0 is an asymptotic statement, a limit as the tail threshold shrinks toward zero. At a practical threshold like the 5% tail, a Gaussian copula with a meaningfully positive ρ still shows some elevated joint-tail probability — it's just smaller than a genuinely tail-dependent copula's, and it keeps shrinking the deeper you look, where the tail-dependent copula's does not.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Match them on the same rank-correlation, live</h2>
+      <p class="sl-sub">Kendall's τ is a rank-based dependence measure, comparable in spirit to correlation. Fix τ, and watch how far apart the two copulas' tail dependence stays anyway.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change τ, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Kendall's τ</label><input type="number" class="sl-input" id="cop-tau" value="0.40" step="0.05" min="-0.99" max="0.99"></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Gaussian: ρ = sin(πτ/2) = <b id="cop-rho">0.588</b> → λ_L = <b id="cop-lamG">0.000</b></div>
+          <div>Clayton: θ = 2τ / (1−τ) = <b id="cop-theta">1.333</b> → λ_L = 2^(−1/θ) = <b id="cop-lamC">0.595</b></div>
+        </div>
+        <div class="sl-note" id="cop-note">Same τ = 0.40 for both — asymptotically 0% versus roughly 60% joint-crash probability, from a headline number that looks identical either way.</div>
+        <button type="button" class="sl-reset-btn" id="cop-reset">Reset to worked-example τ = 0.40</button>
+      </div>
+      <p class="sl-p">Put in plain terms: two dependence structures tuned to have the <em>identical</em> overall rank-correlation strength produce wildly different answers to "if X is in its worst 1% of outcomes, how likely is Y also in its worst 1%?" A risk model built on the Gaussian assumption would report these two series as reasonably, stably diversified in the tail. A risk model built on Clayton would report them as behaving almost as a single position exactly when things are going badly.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">The 2008 cautionary tale</h2>
+      <p class="sl-sub">This isn't a hypothetical — it's a documented, systemic-scale example of exactly this blind spot.</p>
+      <p class="sl-p">David X. Li's 2000 paper introduced the Gaussian copula as a tractable way to price CDO tranches from pairwise default correlations. It was adopted extremely widely through the 2000s — simple, fast, one clean correlation number desks could quote and trade against. It became standard well before the mortgage stress of 2007-2008 revealed its central weakness in practice.</p>
+      <div class="sl-quote">Mortgage defaults across different loans and regions turned out to be far more tail-dependent — clustering together in a systemic downturn — than a Gaussian copula, calibrated mostly on relatively calm historical data, implied. Tranches priced and rated on the assumption that defaults were "only moderately correlated, Gaussian-style" behaved, in the actual crisis, far closer to "almost all defaulting together" — the exact zero-tail-dependence blind spot from Section 5, at systemic scale and with real consequences.</div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">The real lesson, stated carefully</div>
+        <p>The failure wasn't that copulas are unsound math — it's that a specific, thin-tailed (Gaussian) dependence choice was trusted well past the calm regime it was calibrated on. Any copula's parameter, fit only on normal-market data, can make the same mistake, regardless of which family it is.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">A "diversified" book that isn't, exactly when it matters</h2>
+      <p class="sl-p">Suppose two FX pairs show a comfortable rolling correlation of about 0.4 most of the time — the kind of number that reads, on a standard diversification check, as "meaningfully related but not redundant." Now suppose their true dependence structure has strong lower-tail dependence, in the asymmetric Clayton-style pattern from Section 4: during a risk-off shock, both pairs move sharply the same direction far more often, and far more tightly, than 0.4 correlation would ever suggest.</p>
+      <div class="sl-quote">A book sized under the assumption that 0.4 correlation holds everywhere is not, in fact, carrying two 40%-linked positions during a crisis — it is carrying something much closer to one position, doubled, exactly at the moment the portfolio most needed the two legs to behave independently. The diversification benefit doesn't fail randomly; it fails specifically during the shock, which is precisely when a book relies on it most.</div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this stands in this repo, right now</div>
+        <p>Checked against the actual codebase: there is no copula implementation anywhere in this repo today — the source lesson flags this honestly as "CONCEPT — not yet built," and that remains accurate. Any correlation-based diversification check currently in use here is, by construction, a Gaussian-copula-style view whether or not anyone labeled it that way — it structurally cannot see the tail-dependence blind spot this page describes. A future copula module would need real crisis-period data and full out-of-sample validation before it informed sizing, per this repo's standard discipline.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Where copula modeling goes wrong in practice</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Common pitfalls</span>
+          <ul>
+            <li>Fitting the dependence parameter on calm data, trusting it in a crisis</li>
+            <li>Treating "same correlation" as "same risk" — silently importing the Gaussian assumption by default</li>
+            <li>Estimating tail dependence from too little tail data — extreme joint events are rare by definition</li>
+            <li>Choosing a copula family for mathematical convenience rather than evidence</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">The fix isn't "pick a fancier copula"</span>
+          <ul>
+            <li>Test candidate models specifically against crisis-period data, not just full-sample averages</li>
+            <li>Ask explicitly whether tail dependence has been checked, not just whether correlation looks reasonable</li>
+            <li>Accept a wide confidence interval on λ_L rather than overstating precision from a handful of joint crashes</li>
+            <li>Treat any copula choice as its own modeling assumption needing honest out-of-sample validation</li>
+          </ul>
+        </div>
+      </div>
+      <p class="sl-p">The Gaussian copula remains popular for the same reasons it was popular before 2008: tractable, well-understood, easy to simulate from. That's a legitimate reason to use it as a baseline — it is not evidence that it's the right description of a specific pair's tail behavior.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Quick check</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Why can two pairs share the exact same Pearson correlation but behave completely differently in a crash?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Correlation averages linear co-movement over the whole distribution and says nothing specifically about the joint tails</button>
+        <button class="sl-quiz-opt">Pearson correlation is only ever computed on crisis-period data</button>
+        <button class="sl-quiz-opt">It can't — identical correlation always means identical tail behavior</button>
+        <div class="sl-quiz-explain">Two dependence structures can be tuned to identical overall correlation while their tail dependence coefficient λ_L differs completely — one near zero, the other substantial.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>What does Sklar's theorem actually let you do?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Model each variable's marginal distribution and the dependence between them completely independently, then combine them</button>
+        <button class="sl-quiz-opt">Prove that two variables must be normally distributed</button>
+        <button class="sl-quiz-opt">Replace correlation with a single better correlation number</button>
+        <div class="sl-quiz-explain">H(x,y) = C(F_X(x), F_Y(y)) — any joint distribution splits into marginals plus a copula, without loss of information, so the two pieces can be chosen separately.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>What is the Gaussian copula's tail dependence, for any correlation ρ strictly below 1?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Zero — extreme joint moves become asymptotically independent</button>
+        <button class="sl-quiz-opt">Always equal to ρ itself</button>
+        <button class="sl-quiz-opt">Always 1, regardless of ρ</button>
+        <div class="sl-quiz-explain">λ_L = 0 for any ρ &lt; 1 under the Gaussian copula — its central, well-documented blind spot.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Why is the Clayton copula's asymmetry (lower-tail dependence but not upper) a realistic match for markets?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Risk-off shocks tend to hit many assets together far more forcefully than the mirror-image "everyone rallies together" scenario occurs</button>
+        <button class="sl-quiz-opt">Markets rally together just as often and just as tightly as they crash together</button>
+        <button class="sl-quiz-opt">Upper-tail dependence is mathematically impossible in any copula</button>
+        <div class="sl-quiz-explain">Markets crash together more reliably than they melt up together — Clayton is a simple, nameable way to represent exactly that lopsidedness.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Does this repo currently have a working copula implementation?</h4>
+        <button class="sl-quiz-opt" data-correct="true">No — it's a flagged concept gap, not a built or validated tool</button>
+        <button class="sl-quiz-opt">Yes, fully validated out-of-sample</button>
+        <button class="sl-quiz-opt">Yes, but only for equities</button>
+        <div class="sl-quiz-explain">Checked directly against the codebase: no copula module exists here today. Any future one would need crisis-period data and full validation before informing sizing.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Correlation only sees the average, roughly-linear relationship — it cannot tell you whether two series crash together far more often than that number would ever suggest.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Sklar's theorem splits any joint distribution in two: each variable's own marginal, plus a copula capturing only the dependence — model them independently, then combine.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>The Gaussian copula has zero tail dependence for any ρ &lt; 1 — extreme joint moves become asymptotically independent no matter how high the correlation runs.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The Clayton copula is built for crash clustering — nonzero lower-tail dependence, zero upper-tail dependence, "crash together, don't necessarily rally together."</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Same headline number, very different tail risk — two structures matched on identical Kendall's τ can imply roughly 0% versus roughly 60% joint-crash probability.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>The 2008 Gaussian-copula/CDO history is real: a thin-tailed model fit on calm data understated mortgage-default tail dependence at systemic scale — and this repo has no copula module built or validated yet.</p></div>
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">What this now lets you do</div>
+        <p>Read a correlation number for what it actually claims — average, roughly-linear co-movement — and know exactly what it can't claim. Recognize when "same correlation" is silently hiding a very different tail-crash probability. Explain, in plain terms, why the Gaussian copula's convenience was also its 2008 downfall, and why any dependence assumption deserves the same out-of-sample scrutiny as any other model in this curriculum.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Sharpe Ratio Family &amp; Deflated Sharpe</h3>
+        <p>Why a headline Sharpe ratio overstates skill once you account for how many strategies were tried to find it — and the deflated correction built to fix that.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="sharpe-family-deflated-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="copulas.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Hand-drawn scatter clouds — Gaussian vs Clayton, matched to τ = 0.40.
+  // Points are generated once from a small deterministic PRNG so the shape
+  // is stable across reloads without shipping a giant static point list.
+  (function(){
+    var g1 = document.getElementById('cop1-pts'), g2 = document.getElementById('cop2-pts');
+    if (!g1 || !g2) return;
+
+    var seed = 7;
+    function rnd(){ seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }
+    function gauss(){
+      var u = 0, v = 0;
+      while (u === 0) u = rnd();
+      while (v === 0) v = rnd();
+      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    }
+
+    var CX = 320, CY = 150, RX = 190, RY = 100, RHO = 0.588;
+    function point(){
+      var z1 = gauss(), z2 = gauss();
+      var x = z1;
+      var y = RHO * z1 + Math.sqrt(1 - RHO * RHO) * z2;
+      return { x: CX + x * (RX / 3), y: CY + y * (RY / 3) };
+    }
+
+    function circle(g, x, y, r, color){
+      var c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      c.setAttribute('cx', x.toFixed(1));
+      c.setAttribute('cy', y.toFixed(1));
+      c.setAttribute('r', r);
+      c.setAttribute('style', 'fill:' + color + ';opacity:.7');
+      g.appendChild(c);
+    }
+
+    var N = 70, pts1 = [], pts2 = [];
+    for (var i = 0; i < N; i++) { pts1.push(point()); pts2.push(point()); }
+    pts1.forEach(function(p){
+      p.x = Math.max(30, Math.min(610, p.x));
+      p.y = Math.max(30, Math.min(270, p.y));
+      circle(g1, p.x, p.y, 3.4, 'var(--blue)');
+    });
+    pts2.forEach(function(p){
+      p.x = Math.max(30, Math.min(610, p.x));
+      p.y = Math.max(30, Math.min(270, p.y));
+      circle(g2, p.x, p.y, 3.4, 'var(--blue)');
+    });
+    // Clayton gets an extra dense cluster in the bottom-left (joint-crash) corner only.
+    var cSeed = 3;
+    function crnd(){ cSeed = (cSeed * 9301 + 49297) % 233280; return cSeed / 233280; }
+    for (var j = 0; j < 16; j++) {
+      var cx = 70 + crnd() * 46;
+      var cy = 220 + crnd() * 42;
+      circle(g2, cx, cy, 3.6, 'var(--red)');
+    }
+  })();
+
+  // Kendall's tau scratchpad — matches Gaussian ρ and Clayton θ to the same τ,
+  // then reads off each family's lower-tail dependence coefficient live.
+  (function(){
+    var tau = document.getElementById('cop-tau');
+    if (!tau) return;
+    var rhoOut = document.getElementById('cop-rho'), thetaOut = document.getElementById('cop-theta');
+    var lamGOut = document.getElementById('cop-lamG'), lamCOut = document.getElementById('cop-lamC');
+    var note = document.getElementById('cop-note');
+    var resetBtn = document.getElementById('cop-reset');
+    var DEFAULT_TAU = 0.40;
+
+    function recompute(){
+      var t = parseFloat(tau.value);
+      if (!isFinite(t) || t <= -1 || t >= 1) {
+        rhoOut.textContent = '—'; thetaOut.textContent = '—';
+        lamGOut.textContent = '—'; lamCOut.textContent = '—';
+        note.textContent = 'τ must be strictly between −1 and 1 for both mappings to be defined.';
+        return;
+      }
+      var rho = Math.sin(Math.PI * t / 2);
+      var theta = 2 * t / (1 - t);
+      rhoOut.textContent = rho.toFixed(3);
+      thetaOut.textContent = theta.toFixed(3);
+      lamGOut.textContent = '0.000';
+      if (theta > 0) {
+        var lamC = Math.pow(2, -1 / theta);
+        lamCOut.textContent = lamC.toFixed(3);
+        note.textContent = 'Same τ = ' + t.toFixed(2) + ' for both — asymptotically 0% versus roughly ' + Math.round(lamC * 100) + '% joint-crash probability, from a headline number that looks identical either way.';
+      } else {
+        lamCOut.textContent = '—';
+        note.textContent = 'θ ≤ 0 here — Clayton’s λ_L formula only applies for θ > 0, i.e. τ > 0.';
+      }
+    }
+
+    tau.addEventListener('input', recompute);
+    resetBtn.addEventListener('click', function(){ tau.value = DEFAULT_TAU; recompute(); });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>
