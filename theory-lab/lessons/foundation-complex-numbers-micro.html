@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Complex Numbers — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Complex Numbers — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">11</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivation of Euler's formula, worked examples, and a 5-question self-test?<a href="foundation-complex-numbers.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Lesson 03 · Foundation Mathematics</div>
+      <h1 class="sl-h1">Complex Numbers, <em>Underneath the Rotation</em></h1>
+      <p class="sl-lede">i = √−1 looks like a made-up trick with no obvious use. It isn't — it's the number system that later lets you transform an option's price into a "characteristic function," and lets a Fourier Transform decompose a signal into oscillations, both using the exact same idea this page introduces: a number that spins instead of just growing.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">i isn't on the number line — it's a rule</h2>
+      <p class="sl-sub">Every real number, squared, comes out zero or positive. No exceptions. i is what you get when you refuse to accept that as the end of the story.</p>
+      <div class="sl-quote">i isn't a real number you can point to on a number line — it's defined to be an answer to a question every real number fails: "what number, squared, gives −1?" That's the whole definition: i² = −1.</div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">i²</div><div><h4>The entire definition</h4><p>i² = −1. Equivalently, i = √−1. Nothing else about i needs to be memorized — everything else follows from this one rule.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">↺</div><div><h4>Not a new kind of "amount"</h4><p>i doesn't measure a quantity the way 4 or −4 does. It behaves like a number in arithmetic, but its role turns out to be rotation, not size.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">＋</div><div><h4>The same trick, done before</h4><p>Negative numbers were invented so subtraction always has an answer (3 − 5 needed one). Fractions were invented so division always has an answer. i is that same move, applied to square roots of negatives.</p></div></div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Why "imaginary" is a misleading name</div>
+        <p>"Imaginary" is a historical label from when these numbers were treated with suspicion, not a judgment that they're less real or less useful. They're exactly as rigorously defined as ordinary numbers — and they turn out to be the natural, standard tool for describing rotation, oscillation, and waves, which is precisely why option-pricing and signal-processing tools reach for them later.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Two numbers, glued together — kept separate like apples and oranges</h2>
+      <p class="sl-sub">A complex number z = a + bi has a real part a and an imaginary part b — both are ordinary real numbers. Step through what happens when you add or multiply two of them.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="cx-tabs">
+          <button class="sl-tab active" data-panel="cx-1">The structure</button>
+          <button class="sl-tab" data-panel="cx-2">Adding</button>
+          <button class="sl-tab" data-panel="cx-3">Multiplying</button>
+        </div>
+        <div class="sl-panel active" id="cx-1">
+          <div class="sl-row"><div class="sl-box">3</div><div class="sl-arrow">+</div><div class="sl-box">4i</div><div class="sl-arrow">=</div><div class="sl-box green">3 + 4i</div></div>
+          <div class="sl-verdict">3 is the <strong>real part</strong>. 4 is the <strong>imaginary part</strong> — note it's the plain real number 4, the coefficient multiplying i, not "an imaginary number" on its own.</div>
+        </div>
+        <div class="sl-panel" id="cx-2">
+          <div class="sl-row"><div class="sl-box">2 + 3i</div><div class="sl-arrow">+</div><div class="sl-box">1 − i</div><div class="sl-arrow">=</div><div class="sl-box green">3 + 2i</div></div>
+          <div class="sl-verdict">Add real parts together, imaginary parts together, <strong>separately</strong>: (2+1) and (3−1)i. No i² ever appears in addition.</div>
+        </div>
+        <div class="sl-panel" id="cx-3">
+          <div class="sl-row"><div class="sl-box amber">2 − 2i + 3i − 3i²</div><div class="sl-arrow">i²=−1</div><div class="sl-box green">5 + i</div></div>
+          <div class="sl-verdict">Expand (2+3i)(1−i) like any two brackets, then replace every i² with −1: −3i² becomes +3. Combine: (2+3) + (−2+3)i = <strong>5 + i</strong>.</div>
+        </div>
+        <div class="sl-note">One extra rule beyond ordinary algebra: whenever i² shows up, swap it for −1. That's the entire mechanical difference.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">A picture: the complex plane</h2>
+      <p class="sl-sub">Plot z = a + bi as the point (a, b) — real part along the horizontal axis, imaginary part along the vertical. This is the complex plane (or Argand plane).</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Picture it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Complex plane with the point 3 plus 4i plotted, and dashed guide lines showing its real and imaginary components">
+            <line x1="40" y1="150" x2="600" y2="150" style="stroke:var(--border2);stroke-width:1.5"/>
+            <line x1="250" y1="15" x2="250" y2="285" style="stroke:var(--border2);stroke-width:1.5"/>
+            <text x="596" y="168" text-anchor="end" style="fill:var(--text3,#8a8a8a);font-size:12px">Real</text>
+            <text x="260" y="28" text-anchor="start" style="fill:var(--text3,#8a8a8a);font-size:12px">Imaginary</text>
+            <line x1="250" y1="150" x2="325" y2="150" style="stroke:var(--purple);stroke-width:2.5;stroke-dasharray:5,4"/>
+            <line x1="325" y1="150" x2="325" y2="50" style="stroke:var(--amber);stroke-width:2.5;stroke-dasharray:5,4"/>
+            <circle cx="325" cy="50" r="7" style="fill:var(--blue);stroke:var(--bg);stroke-width:2"/>
+            <text x="335" y="42" text-anchor="start" style="fill:var(--text);font-size:13px;font-weight:700">z = 3 + 4i</text>
+            <text x="288" y="168" text-anchor="middle" style="fill:var(--purple);font-size:11px">a = 3</text>
+            <text x="345" y="100" text-anchor="start" style="fill:var(--amber);font-size:11px">b = 4</text>
+          </svg>
+        </div>
+        <div class="sl-note">This form — a + bi, read straight off the point's coordinates — is called <strong>rectangular form</strong>. It's one of two equally valid ways to describe the same point.</div>
+      </div>
+      <p class="sl-p">Points like this aren't abstract nonsense with no representation — they plot exactly the way an ordinary ordered pair (x, y) plots on any graph. The "imaginary" axis is just as real a place on the page as the horizontal one.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">How far, and which way: modulus and argument</h2>
+      <p class="sl-sub">The same point (a, b) can also be described by its distance from the origin and its angle — that's polar form. Edit a and b and watch both update live.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Modulus — |z| = √(a² + b²)</span>
+          <p>The point's straight-line distance from the origin. Just Pythagoras' theorem, applied to the real and imaginary parts as if they were the two legs of a right triangle.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Argument — θ = arg(z)</span>
+          <p>The angle the point makes with the positive real axis, measured counterclockwise. Computed from tan⁻¹(b/a) — but the raw ratio alone can't tell a first-quadrant point from a third-quadrant one, so the actual signs of a and b have to be checked too.</p>
+        </div>
+      </div>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — convert rectangular to polar, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Real part a</label><input type="number" class="sl-input" id="cn-calc-a" value="3" step="1"></div>
+          <div class="sl-calc-op">+ i ·</div>
+          <div class="sl-calc-field"><label>Imaginary part b</label><input type="number" class="sl-input" id="cn-calc-b" value="4" step="1"></div>
+          <div class="sl-calc-op">→</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Modulus |z|</div>
+            <div class="sl-calc-result-val" id="cn-calc-mod">5.00</div>
+          </div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Argument θ</div>
+            <div class="sl-calc-result-val" id="cn-calc-theta">53.13°</div>
+          </div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="cn-calc-reset">Reset to z = 3 + 4i</button>
+        <div class="sl-note" id="cn-calc-note">Uses a two-argument arctangent (atan2) under the hood, so the correct quadrant is handled automatically — try a = −1, b = 1 and check the angle lands in the second quadrant, not the first.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Euler's formula: e^(iθ) is just a rotation</h2>
+      <p class="sl-sub">e^(iθ) = cos θ + i sin θ. Drag the slider — the point always sits exactly on the unit circle, at angle θ.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 500 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Unit circle on the complex plane with a point at angle theta, its real and imaginary projections, and an arc showing the angle">
+            <line x1="30" y1="160" x2="470" y2="160" style="stroke:var(--border2);stroke-width:1.5"/>
+            <line x1="250" y1="20" x2="250" y2="300" style="stroke:var(--border2);stroke-width:1.5"/>
+            <circle cx="250" cy="160" r="110" style="fill:none;stroke:var(--border2);stroke-width:1.5;stroke-dasharray:4,4"/>
+            <path id="eu-arc" style="fill:none;stroke:var(--green);stroke-width:2.5" d="M 285 160 A 35 35 0 0 0 285 160"/>
+            <line id="eu-real" x1="250" y1="160" x2="360" y2="160" style="stroke:var(--purple);stroke-width:2.5;stroke-dasharray:5,4"/>
+            <line id="eu-imag" x1="360" y1="160" x2="360" y2="160" style="stroke:var(--amber);stroke-width:2.5;stroke-dasharray:5,4"/>
+            <line id="eu-radius" x1="250" y1="160" x2="360" y2="160" style="stroke:var(--blue);stroke-width:2.5"/>
+            <circle id="eu-point" cx="360" cy="160" r="7" style="fill:var(--blue);stroke:var(--bg);stroke-width:2"/>
+            <text id="eu-label" x="370" y="150" text-anchor="start" style="fill:var(--text);font-size:12.5px;font-weight:700">e^(i·0.00) = 1.00 + 0.00i</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Angle θ</span><span class="sl-live" id="eu-thetaval">θ = 0.00 rad (0°)</span></div>
+        <input type="range" class="sl-slider" id="eu-slider" min="0" max="360" step="1" value="0">
+        <div class="sl-note">Blue = the radius (modulus fixed at 1, pure rotation). Purple dashed = the real part, cos θ. Amber dashed = the imaginary part, sin θ. Green arc = θ itself.</div>
+      </div>
+      <p class="sl-p">This is a genuinely surprising fusion: the left side, e^(iθ), is built from continuous exponential growth. The right side, cos θ + i sin θ, is built from rotation around a circle. Euler's formula says these are, in a precise sense, the same object — two toys that turn out to be built from the exact same gears underneath.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">One angle away from the internet's favorite equation</h2>
+      <p class="sl-sub">Set θ = π in Euler's formula. Since cos π = −1 and sin π = 0, the imaginary part vanishes completely.</p>
+      <div class="sl-row"><div class="sl-box">e^(iπ)</div><div class="sl-arrow">=</div><div class="sl-box">cos π + i sin π</div><div class="sl-arrow">=</div><div class="sl-box green">−1</div></div>
+      <p class="sl-p" style="margin-top:16px">Add 1 to both sides and you get <strong>Euler's identity</strong>: e^(iπ) + 1 = 0.</p>
+      <div class="sl-quote">Five of the most important constants in mathematics — 0, 1, e, i, and π — each arising from a completely separate area (counting, growth, imaginary numbers, circles) appear together in one short, exact equation. That's the whole reason it gets singled out: not that it's directly useful on its own, but that it's a genuine, surprising confirmation these apparently unrelated ideas are deeply connected underneath.</div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Worth noticing</div>
+        <p>e^(iπ) looks like it should be some messy complex number — it's built entirely out of i, after all. It isn't. It evaluates to exactly −1, a real number with an imaginary part of precisely zero. An expression built from i doesn't guarantee a complex-valued answer.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Where this actually shows up on a desk</h2>
+      <p class="sl-sub">In quantitative finance, complex numbers arrive almost entirely through two connected tools — both covered properly later in this curriculum, both unreadable without this page's vocabulary.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">💹</div><div><h4>Characteristic-function option pricing</h4><p>Some pricing models — especially ones whose return distribution has no simple closed-form density — transform that distribution into a complex-valued "characteristic function" using E[e^(iθX)], and price options by manipulating that function instead of the raw density.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📡</div><div><h4>The Fourier Transform</h4><p>Decomposes a signal or time series into oscillating components, with every frequency represented as e^(iθ) — because Euler's formula lets one rotating complex number stand in for a paired cosine-and-sine, far more compact than carrying both separately.</p></div></div>
+      </div>
+      <p class="sl-p">Neither tool makes sense read cold. Both make sense immediately once i, the complex plane, and e^(iθ) are already comfortable — which is the entire reason this page exists before either of them.</p>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>Seeing an imaginary part appear partway through a characteristic-function calculation is expected and correct — the final priced quantity typically ends up real once the calculation completes (often after a Fourier inversion integral). Panicking at an intermediate complex number, rather than checking whether the <em>final</em> output is real as it should be, is a common early mistake.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Reading the angle: eyeballing it vs. checking the quadrant</h2>
+      <p class="sl-sub">tan⁻¹(b/a) alone can't distinguish a first-quadrant point from a third-quadrant one — flipping both signs gives the exact same ratio.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Reading tan⁻¹(b/a) at face value</span>
+          <ul>
+            <li>z = −1 + i: b/a = 1/−1 = −1, so tan⁻¹(−1) = −45°</li>
+            <li>Looks done — but −45° puts the point in the fourth quadrant</li>
+            <li>The real point, a=−1 and b=1, sits in the <strong>second</strong> quadrant</li>
+            <li>Wrong by 180° — a rotation error, not a rounding error</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Checking the signs of a and b first</span>
+          <ul>
+            <li>a=−1 (negative), b=1 (positive) → second quadrant, always</li>
+            <li>Correct argument: θ = 135° (3π/4 radians)</li>
+            <li>Check: √2·cos(135°) = −1 and √2·sin(135°) = 1 — matches z</li>
+            <li>Or just use atan2(b, a) — it handles the quadrant automatically</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-quote">The difference isn't sophistication — a calculator's tan⁻¹ button is correct exactly as far as it goes. The extra step of checking a and b's actual signs (or letting atan2 do it) is what turns a right-looking number into an actually-right angle.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Compute (2 + 3i)(1 − i).</h4>
+        <button class="sl-quiz-opt" data-correct="true">5 + i</button>
+        <button class="sl-quiz-opt">5 − i</button>
+        <button class="sl-quiz-opt">−1 + i</button>
+        <div class="sl-quiz-explain">Expand: 2 − 2i + 3i − 3i². Since i² = −1, −3i² becomes +3. Combine: (2+3) + (−2+3)i = 5 + i.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Using Euler's formula, what does e^(iπ/2) equal?</h4>
+        <button class="sl-quiz-opt" data-correct="true">i</button>
+        <button class="sl-quiz-opt">−1</button>
+        <button class="sl-quiz-opt">1</button>
+        <div class="sl-quiz-explain">e^(iπ/2) = cos(π/2) + i sin(π/2) = 0 + i(1) = i. A quarter-turn around the unit circle from 1 lands exactly on the imaginary unit.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>The powers of i cycle every four: i, −1, −i, 1, then repeat. What is i⁵?</h4>
+        <button class="sl-quiz-opt" data-correct="true">i</button>
+        <button class="sl-quiz-opt">−1</button>
+        <button class="sl-quiz-opt">1</button>
+        <div class="sl-quiz-explain">i⁵ = i⁴·i = 1·i = i. i⁴ always resets the cycle back to 1, so i⁵ behaves exactly like i¹.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Is e^(iπ) a real number or a complex number?</h4>
+        <button class="sl-quiz-opt" data-correct="true">A real number, equal to −1</button>
+        <button class="sl-quiz-opt">A complex number with a nonzero imaginary part</button>
+        <button class="sl-quiz-opt">Undefined — you can't raise e to an imaginary power</button>
+        <div class="sl-quiz-explain">e^(iπ) = cos π + i sin π = −1 + i(0) = −1. The imaginary part is exactly zero, not merely small — the result is genuinely real.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>What is the argument of z = −1 + i?</h4>
+        <button class="sl-quiz-opt" data-correct="true">135° (3π/4 radians)</button>
+        <button class="sl-quiz-opt">45°</button>
+        <button class="sl-quiz-opt">−45°</button>
+        <div class="sl-quiz-explain">a=−1, b=1 puts the point in the second quadrant. The raw tan⁻¹(1/−1) = −45° needs a 180° quadrant correction to reach the true angle, 135°.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>i is defined by i² = −1 — a new number invented so "the square root of a negative" has an answer, the same trick already used for negative numbers and fractions.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>A complex number z = a + bi has a real part a and an imaginary part b, both ordinary real numbers, and plots as the point (a, b) on the complex plane.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Modulus |z| = √(a²+b²) is distance from the origin; argument θ is the angle from the positive real axis — always check the quadrant, or let atan2 do it.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Euler's formula, e^(iθ) = cos θ + i sin θ, fuses exponential growth with rotation — every point on the unit circle is e^(iθ) for some θ.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Setting θ = π gives Euler's identity, e^(iπ) + 1 = 0 — a direct consequence of the formula, not a separate result.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Complex numbers reach finance mainly through characteristic functions (option pricing) and the Fourier Transform — both represent oscillation as e^(iθ) instead of separate sine and cosine.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Read a + bi as a point on a plane, not abstract nonsense. Convert confidently between rectangular and polar form, handling the quadrant correctly instead of trusting a raw tan⁻¹. Recognise e^(iθ) on sight as "a rotation" the moment it reappears later — inside a characteristic function, inside a Fourier Transform — instead of being intimidated by it.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Partial Derivatives &amp; Multivariable Calculus</h3>
+        <p>How calculus works once a function depends on more than one variable at a time — the next building block behind sensitivities, surfaces, and models with many moving inputs at once.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="foundation-multivariable-calculus-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="foundation-complex-numbers.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Rectangular → polar calculator, live.
+  (function(){
+    var aEl = document.getElementById('cn-calc-a');
+    if (!aEl) return;
+    var bEl = document.getElementById('cn-calc-b');
+    var modOut = document.getElementById('cn-calc-mod');
+    var thetaOut = document.getElementById('cn-calc-theta');
+    var noteOut = document.getElementById('cn-calc-note');
+    var resetBtn = document.getElementById('cn-calc-reset');
+    var DEFAULT_NOTE = 'Uses a two-argument arctangent (atan2) under the hood, so the correct quadrant is handled automatically — try a = −1, b = 1 and check the angle lands in the second quadrant, not the first.';
+    var DEFAULTS = { a: 3, b: 4 };
+
+    function recompute(){
+      var a = parseFloat(aEl.value), b = parseFloat(bEl.value);
+      if (!isFinite(a) || !isFinite(b)) {
+        modOut.textContent = '—';
+        thetaOut.textContent = '—';
+        noteOut.textContent = 'Enter real numbers for both parts.';
+        return;
+      }
+      var mod = Math.sqrt(a * a + b * b);
+      if (mod === 0) {
+        modOut.textContent = '0.00';
+        thetaOut.textContent = '—';
+        noteOut.textContent = 'z = 0 sits exactly on the origin — the argument is undefined; there is no direction to measure.';
+        return;
+      }
+      var thetaRad = Math.atan2(b, a);
+      var thetaDeg = thetaRad * 180 / Math.PI;
+      modOut.textContent = mod.toFixed(2);
+      thetaOut.textContent = thetaDeg.toFixed(2) + '°';
+      noteOut.textContent = DEFAULT_NOTE;
+    }
+
+    [aEl, bEl].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      aEl.value = DEFAULTS.a; bEl.value = DEFAULTS.b;
+      recompute();
+    });
+    recompute();
+  })();
+
+  // Euler's formula unit-circle slider.
+  (function(){
+    var slider = document.getElementById('eu-slider');
+    if (!slider) return;
+    var thetaVal = document.getElementById('eu-thetaval');
+    var radius = document.getElementById('eu-radius');
+    var realLine = document.getElementById('eu-real');
+    var imagLine = document.getElementById('eu-imag');
+    var arc = document.getElementById('eu-arc');
+    var point = document.getElementById('eu-point');
+    var label = document.getElementById('eu-label');
+
+    var CX = 250, CY = 160, R = 110, ARC_R = 35;
+
+    function update(){
+      var thetaDeg = parseInt(slider.value, 10);
+      var theta = thetaDeg * Math.PI / 180;
+      thetaVal.textContent = 'θ = ' + theta.toFixed(2) + ' rad (' + thetaDeg + '°)';
+
+      var cosT = Math.cos(theta), sinT = Math.sin(theta);
+      var px = CX + R * cosT;
+      var py = CY - R * sinT; // screen y is inverted
+
+      radius.setAttribute('x2', px);
+      radius.setAttribute('y2', py);
+      realLine.setAttribute('x2', px);
+      realLine.setAttribute('y2', CY);
+      imagLine.setAttribute('x1', px);
+      imagLine.setAttribute('y1', CY);
+      imagLine.setAttribute('x2', px);
+      imagLine.setAttribute('y2', py);
+      point.setAttribute('cx', px);
+      point.setAttribute('cy', py);
+
+      var labelX = px + (cosT >= 0 ? 10 : -10);
+      label.setAttribute('x', labelX);
+      label.setAttribute('y', py - 10);
+      label.setAttribute('text-anchor', cosT >= 0 ? 'start' : 'end');
+      label.textContent = 'e^(i·' + theta.toFixed(2) + ') = ' + cosT.toFixed(2) + (sinT >= 0 ? ' + ' : ' − ') + Math.abs(sinT).toFixed(2) + 'i';
+
+      var arcStartX = CX + ARC_R, arcStartY = CY;
+      var arcEndX = CX + ARC_R * cosT, arcEndY = CY - ARC_R * sinT;
+      var largeArc = thetaDeg > 180 ? 1 : 0;
+      arc.setAttribute('d', 'M ' + arcStartX.toFixed(1) + ' ' + arcStartY.toFixed(1) +
+        ' A ' + ARC_R + ' ' + ARC_R + ' 0 ' + largeArc + ' 0 ' +
+        arcEndX.toFixed(1) + ' ' + arcEndY.toFixed(1));
+    }
+
+    slider.addEventListener('input', update);
+    update();
+  })();
+})();
+</script>
+</body>
+</html>
