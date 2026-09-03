@@ -443,44 +443,76 @@ const NARRATIVE_LABEL = {
   goldEtfFlow: 'gold ETF flow', riskMomentum: 'risk-mood momentum', priceTrend: 'price trend',
 };
 
-export function describeOutlookNarrative(o) {
-  if (!o) return '';
-  if (!o.bias) return `Not enough data for a ${(o.horizonLabel ?? 'this').toLowerCase()} read yet.`;
+// Structured version of the narrative — same content/wording as
+// describeOutlookNarrative (which is now a thin wrapper around this that
+// joins the sections into one paragraph, kept for callers/tests that just
+// want a string), but returned as separate labelled sections instead of one
+// blob. Built so a renderer can lay each section out as its own visual block
+// (a header + bullets, an icon, a card) instead of a wall of text — the
+// underlying wording is identical either way, this only changes how a
+// caller is ABLE to lay it out, not what it says.
+export function describeOutlookNarrativeParts(o) {
+  if (!o) return null;
+  if (!o.bias) {
+    return {
+      headline: `Not enough data for a ${(o.horizonLabel ?? 'this').toLowerCase()} read yet.`,
+      up: null, down: null, upDrivers: [], downDrivers: [],
+      volDriver: null, volCombo: null, eventRisk: null, disclaimer: null,
+    };
+  }
 
   const directional = o.drivers.filter(d => d.name !== 'volRegime');
-  const volDriver = o.drivers.find(d => d.name === 'volRegime');
+  const volDriver = o.drivers.find(d => d.name === 'volRegime') ?? null;
   const up = directional.filter(d => d.score > 0);
   const down = directional.filter(d => d.score < 0);
 
   const convictionWord = o.confidence >= 70 ? 'high' : o.confidence >= 50 ? 'moderate' : o.confidence >= 30 ? 'low' : 'very low';
   const biasPhrase = o.bias === 'BULLISH' ? 'leans bullish' : o.bias === 'BEARISH' ? 'leans bearish' : 'reads neutral — no real lean either way';
-
-  const parts = [];
-  parts.push(`The ${(o.horizonLabel ?? '').toLowerCase()} read ${biasPhrase}, with ${convictionWord} conviction (${o.confidence}% confidence, ${o.agree} of ${o.total} signals actually pointing the same way).`);
-  if (up.length) parts.push(`Pointing up: ${up.map(d => d.teach ?? d.detail).join(' ')}`);
-  if (down.length) parts.push(`Pointing down: ${down.map(d => d.teach ?? d.detail).join(' ')}`);
-  if (volDriver) parts.push(volDriver.detail);
+  const headline = `The ${(o.horizonLabel ?? '').toLowerCase()} read ${biasPhrase}, with ${convictionWord} conviction (${o.confidence}% confidence, ${o.agree} of ${o.total} signals actually pointing the same way).`;
 
   // Combine the single strongest directional driver with the volatility
   // regime into one conditional, "what this might mean over the coming days"
   // sentence — trend + "if this continues" + paired-with-volatility, the
   // teaching style actually asked for, not a stat dump per factor.
-  const dominant = [...directional].sort((a, b) => Math.abs(b.score) - Math.abs(a.score))[0];
-  if (volDriver && dominant) {
-    const label = NARRATIVE_LABEL[dominant.name] ?? dominant.label.toLowerCase();
-    const combo = volDriver.state === 'BUILDING'
-      ? `Paired with volatility that's building here, if the ${label} keeps moving the same way, the next move could arrive faster and sharper than usual over the coming days.`
-      : volDriver.state === 'COOLING'
-      ? `Paired with volatility that's cooling here, even if the ${label} keeps moving the same way, expect any follow-through to be slower and more gradual over the coming days.`
-      : `Paired with a stable volatility regime here, today's ${label} read is more likely to still hold through the next few sessions if nothing new comes in.`;
-    parts.push(combo);
+  let volCombo = null;
+  if (volDriver) {
+    const dominant = [...directional].sort((a, b) => Math.abs(b.score) - Math.abs(a.score))[0];
+    volCombo = volDriver.detail;
+    if (dominant) {
+      const label = NARRATIVE_LABEL[dominant.name] ?? dominant.label.toLowerCase();
+      const combo = volDriver.state === 'BUILDING'
+        ? `Paired with volatility that's building here, if the ${label} keeps moving the same way, the next move could arrive faster and sharper than usual over the coming days.`
+        : volDriver.state === 'COOLING'
+        ? `Paired with volatility that's cooling here, even if the ${label} keeps moving the same way, expect any follow-through to be slower and more gradual over the coming days.`
+        : `Paired with a stable volatility regime here, today's ${label} read is more likely to still hold through the next few sessions if nothing new comes in.`;
+      volCombo += ` ${combo}`;
+    }
   }
 
-  parts.push(o.eventRisk.count
+  const eventRisk = o.eventRisk.count
     ? `${o.eventRisk.count} scheduled release${o.eventRisk.count === 1 ? '' : 's'} fall${o.eventRisk.count === 1 ? 's' : ''} inside this window${o.eventRisk.highCount ? ` (${o.eventRisk.highCount} high-impact)` : ''} — a surprise there could overturn this read before it plays out.`
-    : `No scheduled high-impact events sit inside this window, so a data surprise is less likely to flip this read.`);
-  parts.push(`Worth remembering: this is a summary of what's already known today, not a tested forecast — the yield-spread leg (when it shows up above) is the one piece here with real backtested evidence behind it; everything else is several already-built reads agreeing or disagreeing.`);
+    : `No scheduled high-impact events sit inside this window, so a data surprise is less likely to flip this read.`;
 
+  const disclaimer = `Worth remembering: this is a summary of what's already known today, not a tested forecast — the yield-spread leg (when it shows up above) is the one piece here with real backtested evidence behind it; everything else is several already-built reads agreeing or disagreeing.`;
+
+  return {
+    headline,
+    up: up.length ? up.map(d => d.teach ?? d.detail).join(' ') : null,
+    down: down.length ? down.map(d => d.teach ?? d.detail).join(' ') : null,
+    upDrivers: up, downDrivers: down,
+    volDriver, volCombo, eventRisk, disclaimer,
+  };
+}
+
+export function describeOutlookNarrative(o) {
+  const p = describeOutlookNarrativeParts(o);
+  if (!p) return '';
+  const parts = [p.headline];
+  if (p.up) parts.push(`Pointing up: ${p.up}`);
+  if (p.down) parts.push(`Pointing down: ${p.down}`);
+  if (p.volCombo) parts.push(p.volCombo);
+  if (p.eventRisk) parts.push(p.eventRisk);
+  if (p.disclaimer) parts.push(p.disclaimer);
   return parts.join(' ');
 }
 

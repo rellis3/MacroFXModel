@@ -3351,23 +3351,41 @@ function pairOutlookBoth(r) {
 // each leg's VALIDATED/CONTEXT status badge (never averaged into one number
 // without saying which pieces are which — same discipline every other
 // drawer section on this page already follows).
-// Education-style prose (js/outlookEngine.js's describeOutlookNarrative)
-// instead of a tagged bullet list of drivers — same underlying numbers, same
-// CONTEXT-not-validated posture, written as a connected paragraph that
-// explains WHY each factor matters rather than just stating that it exists.
+// Education-style prose (js/outlookEngine.js's describeOutlookNarrativeParts)
+// instead of a tagged bullet list of raw drivers — same underlying numbers,
+// same CONTEXT-not-validated posture, laid out as icon-labelled sections with
+// real bullets per driver (not one flat paragraph — see col()'s own note).
 function renderDrawerOutlook(r) {
   const el = $('drOutlook');
   if (!el) return;
   const both = pairOutlookBoth(r);
   if (!both) { $('drOutlookSec').style.display = 'none'; return; }
+  // Icon-labelled sections + real <ul><li> bullets instead of one flat
+  // paragraph — same underlying words as describeOutlookNarrative (just the
+  // structured describeOutlookNarrativeParts form of them), the owner asked
+  // for this to be easier to scan than a wall of text ("make images icon
+  // something? bullets maybe?"). `sec()` renders one labelled block (or
+  // nothing if that section has no content); up/down render each driver as
+  // its own `<li>` rather than one merged sentence.
+  const sec = (icon, label, color, bodyHtml) => bodyHtml ? `<div style="margin:8px 0 0">
+      <div style="font-size:11px;font-weight:700;color:${color};letter-spacing:.3px;margin-bottom:3px">${icon} ${label}</div>
+      <div style="font-size:12.5px;line-height:1.5;color:var(--text2)">${bodyHtml}</div>
+    </div>` : '';
+  const bulletList = (drivers) => `<ul style="margin:0;padding-left:18px">${drivers.map(d => `<li style="margin-bottom:4px">${d.teach ?? d.detail}</li>`).join('')}</ul>`;
   const col = (o) => {
     if (!o?.bias) return `<div style="flex:1;min-width:260px"><h4 style="margin:0 0 6px">${o?.horizonLabel ?? ''}</h4><div class="muted">Not enough data for a read.</div></div>`;
     const cls = o.bias === 'BULLISH' ? 'bull' : o.bias === 'BEARISH' ? 'bear' : 'neu';
-    const narrative = window.outlookBrick ? window.outlookBrick.describeOutlookNarrative(o) : '';
+    const p = window.outlookBrick ? window.outlookBrick.describeOutlookNarrativeParts(o) : null;
+    if (!p) return `<div style="flex:1;min-width:260px"><h4 style="margin:0 0 6px">${o.horizonLabel}</h4><div class="muted">Not enough data for a read.</div></div>`;
     return `<div style="flex:1;min-width:260px">
       <h4 style="margin:0 0 6px">${o.horizonLabel}</h4>
       <span class="chip ${cls}" style="font-size:13px;padding:5px 10px">${o.bias} · ${o.confidence}% confidence</span>
-      <div style="margin-top:8px;font-size:12.5px;line-height:1.55;color:var(--text2)">${narrative}</div>
+      <div style="margin-top:6px;font-size:12.5px;line-height:1.5;color:var(--text2)">${p.headline}</div>
+      ${sec('▲', 'POINTING UP', 'var(--bull)', p.upDrivers.length ? bulletList(p.upDrivers) : null)}
+      ${sec('▼', 'POINTING DOWN', 'var(--bear)', p.downDrivers.length ? bulletList(p.downDrivers) : null)}
+      ${sec('⚡', 'VOLATILITY', 'var(--text3)', p.volCombo)}
+      ${sec('📅', 'EVENT RISK', 'var(--text3)', p.eventRisk)}
+      ${p.disclaimer ? `<div style="margin-top:10px;padding-top:8px;border-top:1px dashed var(--border);font-size:11px;color:var(--text3)">ℹ️ ${p.disclaimer}</div>` : ''}
     </div>`;
   };
   // Central-bank tone — deliberately rendered OUTSIDE the scored-driver
