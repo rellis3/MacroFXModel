@@ -47,7 +47,7 @@ from pylego.risk_guard import RiskGuard, log_block_transition, block_category  #
 from pylego.telegram import send_telegram                           # noqa: E402
 from pylego.drawdown_throttle import DrawdownThrottle                # noqa: E402
 from fib_atlas_bot.engine import (                                    # noqa: E402
-    RearmTracker, rearm_distance, zone_is_long, chandelier_stop,
+    RearmTracker, rearm_distance, zone_is_long, chandelier_stop, occupied_directions,
 )
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -488,6 +488,7 @@ def run(base_url: str, force_live: bool) -> None:
     rearm = RearmTracker()
     reject_until: dict[str, float] = {}
     budget_skips: dict[str, bool] = {}
+    hedge_skip_alerted: dict[str, bool] = {}   # separate from budget_skips -- own dedup, own reset point
     risk_ledger: dict[int, float] = {}
     ticket_ladder: dict[int, str] = {}     # ticket -> 'asia'/'monday', for picking the right chandelier_mult
     ticket_pair: dict[int, str] = {}       # ticket -> canonical pair key, for session_bars()
@@ -835,6 +836,13 @@ def run(base_url: str, force_live: bool) -> None:
                 open_for_pair = sum(1 for p in open_book if p.get("symbol") in pair_sym_set)
                 if open_for_pair >= cfg.get("max_concurrent_per_pair", 4):
                     continue
+                # Hedge-only concurrency (validated: analysis/fib_atlas_chandelier_
+                # exit_backtest.mjs STEP 3 "hedgeOnly" -- see engine.occupied_
+                # directions' own doc). At most 1 long AND 1 short open per
+                # (pair, ladder) -- recomputed each tick, then updated locally
+                # below as this tick's own fills land, same pattern open_for_pair
+                # already uses.
+                occupied = occupied_directions(open_book, ticket_ladder, pair_sym_set, ladder)
                 guard_key = f"{pair}_{ladder}"
                 guard_why = guard.block_reason(guard_bal, guard_key)
                 was_blocked = guard_blocks.get(guard_key)
@@ -868,6 +876,28 @@ def run(base_url: str, force_live: bool) -> None:
                         continue
 
                     is_long = zone_is_long(z)
+                    want_dir = "BUY" if is_long else "SELL"
+                    if want_dir in occupied:
+                        # Hedge-only cap: this direction is already open on
+                        # this (pair, ladder) -- same-direction pyramiding is
+                        # NOT what was validated (see engine.occupied_
+                        # directions' own doc). The touch still consumed its
+                        # RearmTracker fire/un-arm above, same precedent as
+                        # the risk-budget skip below -- it just doesn't place
+                        # an order this time.
+                        if not hedge_skip_alerted.get(rkey):
+                            hedge_skip_alerted[rkey] = True
+                            skip_reason = f"hedge_cap: {want_dir} already open on {pair}|{ladder}"
+                            log.info(f"HEDGE CAP [{pair}|{ladder}] {dedupe_tag} skipped — {skip_reason}")
+                            _record_decision(pair, ladder, "skipped", side=z.get("side"), rung=z.get("rung"),
+                                              dedupe_tag=dedupe_tag, decision=z.get("decision"),
+                                              margin=z.get("margin"), reason=skip_reason)
+                            if cfg.get("tg_enabled", True) and tg_master_on:
+                                send_telegram(cfg.get("tg_token", ""), cfg.get("tg_chat_id", ""),
+                                              _fmt_skip_alert(pair, ladder, z, skip_reason, " [PAPER]" if paper else ""))
+                        continue
+                    hedge_skip_alerted.pop(rkey, None)
+
                     direction = "LONG" if is_long else "SHORT"
                     exp_px = expected_fill(z["entry"], is_long, pair, broker)
                     # Size off `sizingSl` (the FULL, untightened stop
@@ -915,6 +945,7 @@ def run(base_url: str, force_live: bool) -> None:
                                           "open_price": exp_px, "ticket": tid})
                         open_tickets.add(tid)
                         open_for_pair += 1
+                        occupied.add(want_dir)
                         risk_ledger[tid] = cand_risk
                         _save_state()
                         log.info(f"{'[PAPER] ' if paper else ''}{pair} [{ladder}] {z['decision'].upper()} "

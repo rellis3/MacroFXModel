@@ -11,7 +11,7 @@ Routes.js`'s already-validated `voteDecision` + rung-pricing math) and
 shipped, fully priced, in the `fib_atlas_bot_plan` KV artifact. This engine
 never re-derives a vote, a level, or a stop.
 
-Two things this engine DOES own, both deliberately left to the bot by the
+Three things this engine DOES own, all deliberately left to the bot by the
 plan producer's own doc (see asiaFibAtlasRoutes.js's `asiaLivePlanZones`
 comment block):
 
@@ -36,6 +36,26 @@ comment block):
      bot's own frozen per-ladder multipliers (Asia 3.0, Monday 1.5) — see
      chandelier_stop()'s own docstring for the one real (and disclosed, not
      hidden) way this live version still differs from that backtest's math.
+
+  3. occupied_directions() — hedge-only concurrency (2026-09-03, owner
+     review of live paper results vs backtest). `js/levelAtlasVoteReview.js`'s
+     `applyConcurrencyCap({perDirection:true, maxConcurrent:1})` is what was
+     actually OOS-validated for this bot's exit stack
+     (`analysis/fib_atlas_chandelier_exit_backtest.mjs` STEP 3 — "hedgeOnly":
+     Asia OOS Sharpe 19.47->19.49, Monday 12.85->13.07, both re-tested after
+     the duplicate-counting correction, see LEGO_MODULES.md) — but that
+     function is a BATCH replay over an already-fully-resolved trade list
+     (it reads each trade's own future `resolveTime`), so it cannot run as a
+     live, tick-by-tick admission check; nothing in this repo ported it to a
+     live equivalent before this bot shipped, which is the actual reason a
+     real paper-trading review (2026-09-03) found EURGBP repeatedly stacking
+     several same-direction rungs on one trending day — never validated,
+     just never explicitly blocked either. This function is that live port:
+     "is a position of the SAME direction already open for this
+     (pair, ladder)" — at most 1 long AND 1 short at once, same-direction
+     pyramiding blocked outright. `fib_atlas_bot.py`'s own
+     `max_concurrent_per_pair` stays as a secondary flat safety cap (now
+     effectively redundant once this binds, not wrong).
 """
 from __future__ import annotations
 
@@ -212,6 +232,38 @@ def zone_is_long(zone: dict) -> bool:
     without depending on that convention holding forever.
     """
     return float(zone["tp"]) > float(zone["entry"])
+
+
+# ── hedge-only concurrency ───────────────────────────────────────────────────
+def occupied_directions(open_book: list[dict], ticket_ladder: dict[int, str],
+                         pair_sym_set: set[str], ladder: str) -> set[str]:
+    """Which direction(s) ('BUY'/'SELL') are ALREADY open for this specific
+    (pair, ladder) right now, from the broker's own `serialize_open_positions()`
+    shape (each row a dict with 'ticket'/'symbol'/'direction'). Pure: takes the
+    caller's already-computed `pair_sym_set` (the broker-symbol spellings for
+    this pair, e.g. `{eurgbp, EURGBP, ...}` — see fib_atlas_bot.py's own
+    `pair_sym_set` construction) rather than re-deriving broker symbol
+    resolution here, and the caller's own `ticket_ladder` map (a position
+    carries no ladder field at the broker level — only this bot's own
+    bookkeeping knows which ladder opened which ticket).
+
+    The caller (`run()`'s entry loop) checks the candidate zone's own
+    direction against this set BEFORE entering — if already present, that
+    direction is at its hedge-only budget of 1 and the touch is skipped, same
+    precedent as the existing risk-budget skip (the touch still consumes the
+    RearmTracker's fire/un-arm, it just doesn't place an order this time).
+    Call once per (pair, ladder) tick, then `.add()` the new direction locally
+    after each fill within that same tick — mirrors how `open_for_pair` is
+    already tracked incrementally in the same loop.
+    """
+    occ = set()
+    for p in open_book:
+        if p.get("symbol") not in pair_sym_set:
+            continue
+        if ticket_ladder.get(p.get("ticket")) != ladder:
+            continue
+        occ.add(p.get("direction"))
+    return occ
 
 
 # ── chandelier trailing stop ─────────────────────────────────────────────────
