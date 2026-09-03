@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hierarchical Risk Parity — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Hierarchical Risk Parity — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivation, MathJax notation, and a 6-question self-test?<a href="hierarchical-risk-parity.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Portfolio Construction 2 · Advanced Portfolio Construction</div>
+      <h1 class="sl-h1">Hierarchical Risk Parity, <em>Without Ever Inverting the Matrix</em></h1>
+      <p class="sl-lede">Both Markowitz optimization and the plain Equal Risk Contribution approach from the previous lesson lean on the full covariance matrix, and in most implementations that means inverting it. Inversion is a numerically dangerous operation once assets get highly correlated — small estimation noise gets amplified into wild, unstable weights. Hierarchical Risk Parity's answer is almost mischievously simple: cluster the assets by similarity first, using the same correlation-distance idea the correlation-networks/MST lesson introduced, then allocate capital by splitting the risk budget down the resulting tree — never touching a full-matrix inversion at any step.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">A second, purely mechanical fragility</h2>
+      <p class="sl-sub">The Markowitz lesson flagged fragile expected-return inputs. There's a separate problem sitting underneath, in the matrix algebra itself.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">Σ⁻¹</div><div><h4>Both approaches need the inverse</h4><p>Mean-variance optimization and traditional risk-parity/ERC solves both work with the full covariance matrix Σ, and most numerical implementations touch an inversion (or an equivalent operation) somewhere in the solve.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>Inversion gets dangerous near-singular</h4><p>As a matrix's rows become close to linear combinations of each other, inverting it amplifies small estimation errors into large, unstable results — a well-known numerical-analysis fact, not something specific to finance.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📈</div><div><h4>High correlation pushes toward that regime</h4><p>A basket of assets that mostly share one dominant factor — several FX pairs riding the same dollar or risk-on/risk-off move — produces near-duplicate rows in Σ. More assets, or more extreme correlations, both push the matrix closer to singular.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🗑</div><div><h4>Garbage in, garbage amplified out</h4><p>Covariance is always estimated from a finite, noisy sample. Feed that noisy estimate through a near-singular inversion and the noise doesn't stay small — it gets magnified into large, arbitrary-looking weight swings between re-estimation periods.</p></div></div>
+      </div>
+      <div class="sl-quote">This is a second, independent source of Markowitz-style brittleness — one that shows up even if expected returns were somehow known perfectly. It comes from the matrix algebra itself, not from the forecasting problem.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">The company-budget intuition</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Allocate by employee, all at once</span>
+          <ul>
+            <li>Account for how every person's travel co-varies with every other person's, simultaneously</li>
+            <li>Gets more fragile the more employees share the same role — near-duplicate patterns look linearly dependent to the math</li>
+            <li>One giant, all-at-once, fragile inversion</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Allocate by department, then team, then person</span>
+          <ul>
+            <li>Split the budget across departments first, then within each department across teams, then individuals</li>
+            <li>Every step is a small, well-behaved decision — "more to this half or that half"</li>
+            <li>Never one large matrix inversion — a cascade of small two-way splits</li>
+          </ul>
+        </div>
+      </div>
+      <p class="sl-p">HRP applies exactly this idea to a correlation matrix: cluster similar assets into a tree first, then allocate top-down, one well-conditioned split at a time. It never needs to solve for every asset's weight simultaneously against every other asset's — which is exactly the step that requires inverting the full matrix.</p>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Connects to an earlier lesson</div>
+        <p>The clustering half of this idea isn't new here — the correlation-networks / minimum-spanning-tree lesson already showed how to turn a correlation matrix into a graph of "distances" and group assets by similarity. HRP borrows that same distance transform, but feeds it into a hierarchical clustering tree (a dendrogram) instead of a pruned network, then uses that tree to allocate weight rather than just to visualize structure.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Three stages, none of them an inversion</h2>
+      <p class="sl-sub">Walk through the algorithm on a small 5-asset FX basket: EURUSD, GBPUSD, AUDUSD, USDJPY, USDCHF.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="hrp-tabs">
+          <button class="sl-tab active" data-panel="hrp-1">1 · Tree clustering</button>
+          <button class="sl-tab" data-panel="hrp-2">2 · Quasi-diagonalization</button>
+          <button class="sl-tab" data-panel="hrp-3">3 · Recursive bisection</button>
+        </div>
+        <div class="sl-panel active" id="hrp-1">
+          <div class="sl-row"><div class="sl-box">ρᵢⱼ correlation</div><div class="sl-arrow">→</div><div class="sl-box amber">dᵢⱼ = √(½(1−ρᵢⱼ))</div><div class="sl-arrow">→</div><div class="sl-box green">dendrogram</div></div>
+          <div class="sl-verdict">Correlation runs the wrong direction for clustering — bigger means <em>more</em> alike, not less. The distance transform flips it: identical assets (ρ=1) land at distance 0, perfectly anti-correlated ones (ρ=−1) land at distance 1. Feed those distances into standard agglomerative clustering — repeatedly merge the two closest clusters — and the result is a tree (dendrogram) whose leaves are assets and whose branches are merges.</div>
+        </div>
+        <div class="sl-panel" id="hrp-2">
+          <div class="sl-row"><div class="sl-box">arbitrary matrix order</div><div class="sl-arrow">→</div><div class="sl-box green">reordered by leaf order</div></div>
+          <div class="sl-verdict">Reorder the covariance matrix's rows and columns to match the dendrogram's leaf order (the order the assets naturally line up along the bottom of the tree). No covariance value changes — this only re-seats the assets so similar ones sit adjacent. The effect: large correlations bunch into contiguous blocks near the diagonal instead of being scattered arbitrarily. That block structure is what makes the next stage tractable.</div>
+        </div>
+        <div class="sl-panel" id="hrp-3">
+          <div class="sl-row"><div class="sl-box">parent weight</div><div class="sl-arrow">↙︎ α₁ ↘︎ α₂</div><div class="sl-box amber">child 1</div><div class="sl-box amber">child 2</div></div>
+          <div class="sl-verdict">Starting at the tree's root, split each cluster's current weight between its two immediate sub-clusters in inverse proportion to each side's own variance: α₁ = 1 − V₁/(V₁+V₂). The lower-variance side always gets the bigger share. Recurse down both branches to individual assets — every split is a small, two-number calculation, never a full-matrix inversion.</div>
+        </div>
+      </div>
+      <p class="sl-p">None of the three stages, individually, ever requires inverting the full N×N covariance matrix — only small, well-conditioned sub-problems at every step.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">The dendrogram: two blocs, revealed by distance</h2>
+      <p class="sl-sub">Same 5-pair basket, single-linkage clustering on correlation-distance. Lower merge height = higher correlation.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Hand-built SVG — no chart library</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Dendrogram of five FX pairs. EURUSD and GBPUSD merge first at low distance, USDJPY and USDCHF merge next, AUDUSD then joins the EURUSD-GBPUSD group forming a risk-on bloc, and finally that bloc merges with the USDJPY-USDCHF safe-haven bloc at the root, the highest distance.">
+            <line x1="60" y1="270" x2="60" y2="55" style="stroke:var(--border2)" stroke-width="1"/>
+            <line x1="55" y1="270" x2="60" y2="270" style="stroke:var(--border2)"/>
+            <line x1="55" y1="181.5" x2="60" y2="181.5" style="stroke:var(--border2)"/>
+            <line x1="55" y1="67.1" x2="60" y2="67.1" style="stroke:var(--border2)"/>
+            <text x="48" y="273" fill="var(--text3)" font-size="10" text-anchor="end">d=0</text>
+            <text x="48" y="184.5" fill="var(--text3)" font-size="10" text-anchor="end">d=0.32</text>
+            <text x="48" y="70" fill="var(--text3)" font-size="10" text-anchor="end">d=0.72</text>
+            <text x="20" y="160" fill="var(--text3)" font-size="11" text-anchor="middle" transform="rotate(-90 20 160)">Correlation distance</text>
+
+            <line x1="100" y1="270" x2="100" y2="181.5" style="stroke:var(--blue);stroke-width:2"/>
+            <line x1="180" y1="270" x2="180" y2="181.5" style="stroke:var(--blue);stroke-width:2"/>
+            <line x1="100" y1="181.5" x2="180" y2="181.5" style="stroke:var(--blue);stroke-width:2"/>
+
+            <line x1="260" y1="270" x2="260" y2="137.2" style="stroke:var(--blue);stroke-width:2"/>
+            <line x1="140" y1="181.5" x2="140" y2="137.2" style="stroke:var(--blue);stroke-width:2"/>
+            <line x1="140" y1="137.2" x2="260" y2="137.2" style="stroke:var(--blue);stroke-width:2"/>
+
+            <line x1="380" y1="270" x2="380" y2="152.9" style="stroke:var(--amber);stroke-width:2"/>
+            <line x1="460" y1="270" x2="460" y2="152.9" style="stroke:var(--amber);stroke-width:2"/>
+            <line x1="380" y1="152.9" x2="460" y2="152.9" style="stroke:var(--amber);stroke-width:2"/>
+
+            <line x1="200" y1="137.2" x2="200" y2="67.1" style="stroke:var(--purple);stroke-width:2.5"/>
+            <line x1="420" y1="152.9" x2="420" y2="67.1" style="stroke:var(--purple);stroke-width:2.5"/>
+            <line x1="200" y1="67.1" x2="420" y2="67.1" style="stroke:var(--purple);stroke-width:2.5"/>
+
+            <circle cx="100" cy="270" r="4" style="fill:var(--blue)"/>
+            <circle cx="180" cy="270" r="4" style="fill:var(--blue)"/>
+            <circle cx="260" cy="270" r="4" style="fill:var(--blue)"/>
+            <circle cx="380" cy="270" r="4" style="fill:var(--amber)"/>
+            <circle cx="460" cy="270" r="4" style="fill:var(--amber)"/>
+
+            <text x="100" y="290" fill="var(--text2)" font-size="11" text-anchor="middle">EURUSD</text>
+            <text x="180" y="290" fill="var(--text2)" font-size="11" text-anchor="middle">GBPUSD</text>
+            <text x="260" y="290" fill="var(--text2)" font-size="11" text-anchor="middle">AUDUSD</text>
+            <text x="380" y="290" fill="var(--text2)" font-size="11" text-anchor="middle">USDJPY</text>
+            <text x="460" y="290" fill="var(--text2)" font-size="11" text-anchor="middle">USDCHF</text>
+
+            <text x="140" y="176" fill="var(--blue)" font-size="9.5" text-anchor="middle">0.32</text>
+            <text x="420" y="147.5" fill="var(--amber)" font-size="9.5" text-anchor="middle">0.42</text>
+            <text x="200" y="132" fill="var(--blue)" font-size="9.5" text-anchor="middle">0.47</text>
+            <text x="310" y="62" fill="var(--purple)" font-size="9.5" text-anchor="middle" font-weight="700">root: 0.72</text>
+
+            <text x="140" y="230" fill="var(--text3)" font-size="10" text-anchor="middle">recursive split: α splits here first</text>
+            <text x="420" y="230" fill="var(--text3)" font-size="10" text-anchor="middle">…and here, within each bloc</text>
+          </svg>
+        </div>
+        <div class="sl-note">Quasi-diagonalizing means reading the covariance matrix's rows/columns in exactly this leaf order — EURUSD, GBPUSD, AUDUSD, USDJPY, USDCHF — so the two blocs form visible, contiguous blocks. Recursive bisection then walks the tree from the root (purple, highest distance) down to the leaves, splitting weight at every branch.</div>
+      </div>
+      <p class="sl-p">EURUSD/GBPUSD merge first (most correlated), then USDJPY/USDCHF, then AUDUSD joins the first pair to form a "risk-on" bloc; the risk-on bloc and the "safe-haven" bloc only merge at the root — the point of <em>lowest</em> cross-bloc correlation. No one had to hand-label these groups; the clustering discovered them from correlation alone, the same way the MST lesson's network revealed structure without hand-labeling.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Splitting weight down the tree, live</h2>
+      <p class="sl-sub">Drag the slider to change AUDUSD's volatility. Watch how its share of the tree's weight shifts — and how the split fractions at each level respond.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar showing root split between risk-on and safe-haven blocs, and a sub-bar showing the risk-on bloc split further between EURUSD-GBPUSD and AUDUSD">
+            <text x="10" y="24" fill="var(--text3)" font-size="11">Root split — risk-on bloc vs. safe-haven bloc</text>
+            <rect id="hrp-root-left" x="10" y="34" width="300" height="34" style="fill:var(--blue-bg);stroke:var(--blue-bd)"/>
+            <rect id="hrp-root-right" x="310" y="34" width="320" height="34" style="fill:var(--amber-bg);stroke:var(--amber-bd)"/>
+            <text id="hrp-root-left-label" x="160" y="56" text-anchor="middle" fill="var(--blue)" font-size="12" font-weight="700">α_L = 0.429</text>
+            <text id="hrp-root-right-label" x="470" y="56" text-anchor="middle" fill="var(--amber)" font-size="12" font-weight="700">α_R = 0.571</text>
+
+            <text x="10" y="100" fill="var(--text3)" font-size="11">Left bloc splits again — {EURUSD, GBPUSD} vs. AUDUSD</text>
+            <rect id="hrp-sub-left" x="10" y="110" width="230" height="30" style="fill:var(--green-bg);stroke:var(--green-bd)"/>
+            <rect id="hrp-sub-right" x="240" y="110" width="70" height="30" style="fill:var(--purple-bg);stroke:var(--purple-bd)"/>
+            <text id="hrp-sub-left-label" x="125" y="130" text-anchor="middle" fill="var(--green)" font-size="11" font-weight="700">EUR+GBP 0.331</text>
+            <text id="hrp-sub-right-label" x="275" y="130" text-anchor="middle" fill="var(--purple)" font-size="11" font-weight="700">AUD 0.098</text>
+
+            <text x="10" y="176" fill="var(--text3)" font-size="11">Final weights (product of every split along each asset's path)</text>
+            <text id="hrp-final-readout" x="10" y="198" fill="var(--text2)" font-size="12" font-family="DM Mono, monospace">EUR 18.5%  GBP 14.6%  AUD 9.8%  JPY 24.2%  CHF 32.9%</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>AUDUSD annualized volatility</span><span class="sl-live" id="hrp-vol-label">11.0%</span></div>
+        <input type="range" class="sl-slider" id="hrp-vol-slider" min="4" max="20" step="0.5" value="11">
+        <div class="sl-note">The other four pairs stay fixed at the worked-example values (EURUSD 8%, GBPUSD 9%, USDJPY 7%, USDCHF 6%). Push AUDUSD's volatility up and its own split fraction shrinks — a higher-variance asset always gets a smaller share of whatever weight reaches its branch — while every other split fraction on the page reacts too, since the tree's variances all move together.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">The split formula, live — try any two clusters</h2>
+      <p class="sl-sub">A simplified 2-cluster recursive bisection: given each side's aggregate variance, split the parent's weight by inverse variance.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change either variance</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Cluster 1 variance (V₁)</label><input type="number" class="sl-input" id="hrp-calc-v1" value="0.00276" step="0.0001" min="0"></div>
+          <div class="sl-calc-op">vs.</div>
+          <div class="sl-calc-field"><label>Cluster 2 variance (V₂)</label><input type="number" class="sl-input" id="hrp-calc-v2" value="0.00208" step="0.0001" min="0"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">α₁ (weight to cluster 1)</div>
+            <div class="sl-calc-result-val" id="hrp-calc-result">42.9%</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>α₁ = 1 − V₁/(V₁+V₂) = <b id="hrp-calc-alpha1">0.429</b></div>
+          <div>α₂ = 1 − α₁ = <b id="hrp-calc-alpha2">0.571</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="hrp-calc-reset">Reset to worked-example root split</button>
+        <div class="sl-note">Guards: blank, non-numeric, negative, or both-zero variances show "—" rather than NaN or Infinity — a divide-by-zero here means the split is genuinely undefined, not a silent wrong answer.</div>
+      </div>
+      <p class="sl-p">This is Stage 3's formula applied to just one branch. Set both to the worked example's root-level bloc variances (V₁=0.00276 for the risk-on bloc, V₂=0.00208 for the safe-haven bloc) and it reproduces the 42.9% / 57.1% root split from the dendrogram slide — the lower-variance safe-haven bloc gets the larger share, exactly as the formula's construction guarantees.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Why this tends to be more robust</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Mean-variance / plain ERC</span>
+          <ul>
+            <li>Needs Σ⁻¹ (or an equivalent full-matrix solve) at some point</li>
+            <li>Degrades catastrophically as correlation rises toward the singular regime</li>
+            <li>Small covariance-estimation noise can produce large, unstable weight swings</li>
+            <li>Weights can concentrate heavily if the optimizer exploits near-collinear assets</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Hierarchical Risk Parity</span>
+          <ul>
+            <li>Every calculation is a small sub-cluster's inverse-variance weighting, or a one-number split between two already-computed variances</li>
+            <li>Degrades gracefully as correlation rises — clustering just groups similar assets more tightly, it doesn't blow up</li>
+            <li>No full-matrix inversion anywhere in the pipeline, at any of the three stages</li>
+            <li>Weights tend to be less extreme, spread more evenly across correlated clusters</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-quote">Marcos López de Prado, HRP's originator, reports it as more robust out-of-sample than mean-variance optimization specifically <strong>because of</strong> this ill-conditioning avoidance — a real, peer-reviewed result, stated here as the source's own claim.</div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>Avoiding matrix <em>inversion</em> instability does not avoid correlation <em>estimation</em> instability — the dendrogram, the leaf ordering, and every split still depend on a correlation matrix estimated from a finite, noisy sample, and can look different on the next re-estimation window. HRP also has no mechanism for expressing a view that one asset's expected return is better than another's — like plain risk parity, it allocates purely on variance and correlation structure, all the way down the tree. And the dendrogram itself is not unique: single, complete, average, and Ward linkage can each produce a meaningfully different tree — and therefore different final weights — from the identical correlation matrix.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">A 12-pair basket where this actually matters</h2>
+      <p class="sl-sub">Consider a G10 basket with commodity-bloc crosses (AUD, NZD, CAD) that move together on risk sentiment, and a separate safe-haven bloc (JPY, CHF) that tends to move the other way — plus European crosses somewhere in between.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>Mean-variance's problem</h4><p>Several commodity-bloc pairs carry almost the same signal — near-duplicate rows in the 12×12 covariance matrix, exactly the ill-conditioned structure that makes Σ⁻¹ numerically unreliable and prone to wild weight swings from tiny estimation noise.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">✓</div><div><h4>HRP's handling</h4><p>The commodity-bloc and safe-haven clusters get discovered automatically from the correlation-distance dendrogram — no one hand-labels which pairs "belong" together.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">✂</div><div><h4>Then it's splits, all the way down</h4><p>How much to the commodity bloc as a whole vs. the safe-haven bloc, then how much to each pair within its own bloc — every decision a small, two-way split, never one fragile 12×12 inversion.</p></div></div>
+      </div>
+      <p class="sl-p">This is the practical case HRP is built for: large, highly correlated universes — broad equity universes, credit baskets, or an FX universe with several currencies sharing common blocs — where a literal matrix inversion is either numerically unreliable or produces weights that swing dramatically between re-estimation periods.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Why does mean-variance optimization become more numerically fragile as assets become more correlated — even setting expected returns aside entirely?</h4>
+        <button class="sl-quiz-opt">Because correlated assets always have negative expected returns</button>
+        <button class="sl-quiz-opt" data-correct="true">Because it pushes the covariance matrix toward singular, and inversion amplifies small estimation errors near that regime</button>
+        <button class="sl-quiz-opt">Because correlated assets can't be included in the same basket</button>
+        <div class="sl-quiz-explain">Highly correlated assets produce near-duplicate rows in the covariance matrix, pushing it toward the ill-conditioned, near-singular regime where inversion turns small noise into large, unstable weight changes.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>What does quasi-diagonalization actually change?</h4>
+        <button class="sl-quiz-opt">The underlying covariance values themselves</button>
+        <button class="sl-quiz-opt" data-correct="true">Only the order of the matrix's rows/columns, to match the dendrogram's leaf order</button>
+        <button class="sl-quiz-opt">The number of assets in the basket</button>
+        <div class="sl-quiz-explain">It's a re-seating, not a re-calculation — no covariance value changes, but similar assets end up adjacent, pushing large correlations into contiguous diagonal blocks.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>In α₁ = 1 − V₁/(V₁+V₂), which cluster gets the larger share of the parent's weight?</h4>
+        <button class="sl-quiz-opt">Whichever cluster has more assets in it</button>
+        <button class="sl-quiz-opt" data-correct="true">Whichever cluster has the lower variance</button>
+        <button class="sl-quiz-opt">Whichever cluster merged first in the dendrogram</button>
+        <div class="sl-quiz-explain">If V₁ is small relative to V₂, the ratio V₁/(V₁+V₂) is small, so α₁ = 1 − (small number) is close to 1. The lower-variance side is always favored, regardless of how many members it has.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Does HRP ever invert the full N×N covariance matrix?</h4>
+        <button class="sl-quiz-opt">Yes, once, at the very start, to build the dendrogram</button>
+        <button class="sl-quiz-opt" data-correct="true">No — every calculation is a small sub-cluster variance or a two-cluster split</button>
+        <button class="sl-quiz-opt">Yes, but only during quasi-diagonalization</button>
+        <div class="sl-quiz-explain">All three stages — clustering, reordering, recursive bisection — avoid full-matrix inversion. That's the entire point of the algorithm.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Is the dendrogram HRP produces from a given correlation matrix unique?</h4>
+        <button class="sl-quiz-opt">Yes — there's only one correct hierarchical clustering of any matrix</button>
+        <button class="sl-quiz-opt" data-correct="true">No — different linkage methods (single, complete, average, Ward) can produce meaningfully different trees from the same matrix</button>
+        <button class="sl-quiz-opt">Yes, as long as the assets are all positively correlated</button>
+        <div class="sl-quiz-explain">The choice of linkage method changes the tree, and therefore the final weights — "the" clustering is not unique, even from an identical correlation matrix.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Not built here — worth being explicit about</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Original lesson's claim, checked against current source</div>
+        <p>The full lesson states this repo has "no clustering-based allocator built or tested" — theory only. A repo-wide search for hierarchical-clustering-based portfolio allocation code (dendrograms, quasi-diagonalization, recursive bisection, scipy.cluster / AgglomerativeClustering usage tied to weight construction) turned up nothing outside this lesson and the correlation-networks/MST lesson's own text. <strong>That claim still checks out as accurate</strong> — nothing has been silently built or silently changed since the full lesson was written.</p>
+      </div>
+      <p class="sl-p">Every strategy actually running in this codebase is single-instrument. A clustering-based allocator like HRP would be genuinely new infrastructure — worth understanding conceptually now, since it addresses a real and well-documented weakness of both Markowitz and plain risk-parity approaches, but not something to assume is available today.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Inverting a large covariance matrix gets numerically fragile as assets grow more numerous or more correlated — a mechanical fragility separate from and additional to expected-return risk.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>HRP's workaround is to never invert the full matrix at all — cluster by correlation-distance first, then allocate down the resulting tree.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Three stages: tree clustering (dᵢⱼ = √(½(1−ρᵢⱼ)) feeds agglomerative clustering), quasi-diagonalization (reorder by leaf order, no values change), recursive bisection (split weight in half at each branch, inversely by variance).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The lower-variance side of every split always gets the larger share — the same risk-parity intuition from the previous lesson, applied one binary split at a time.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The dendrogram borrows its distance metric directly from the correlation-networks/MST lesson, but uses it to build an allocation tree rather than a pruned network.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Not a free lunch: linkage choice changes the tree, correlation estimates are still noisy, and expected returns still play no role — and this is unbuilt, unvalidated theory in this repo today.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Recognize why a large, highly correlated basket makes traditional mean-variance or ERC weights unstable, and explain the mechanism — near-singular Σ, amplified estimation noise — precisely. Walk through HRP's three stages on paper for a small basket, and know why "cluster first, allocate down the tree" sidesteps the inversion problem entirely rather than just papering over it.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Factor-Based Portfolio Construction</h3>
+        <p>Moving from "how much to each asset" to "how much to each underlying factor" — a different axis for the same portfolio-construction problem.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="factor-based-portfolio-construction-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="hierarchical-risk-parity.html">Read the full HRP lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Helper: inverse-variance-weighted "cluster variance" for a set of
+  // individual variances, same formula as the full lesson's worked example.
+  function ivWeightedVar(vars){
+    var s = 0;
+    for (var i = 0; i < vars.length; i++) s += 1 / vars[i];
+    return 1 / s;
+  }
+
+  function fmtPct(x){ return (x * 100).toFixed(1) + '%'; }
+
+  // Slide 6 — slider driving the recursive-bisection bar chart.
+  (function(){
+    var slider = document.getElementById('hrp-vol-slider');
+    if (!slider) return;
+    var volLabel = document.getElementById('hrp-vol-label');
+    var rootLeft = document.getElementById('hrp-root-left');
+    var rootRight = document.getElementById('hrp-root-right');
+    var rootLeftLabel = document.getElementById('hrp-root-left-label');
+    var rootRightLabel = document.getElementById('hrp-root-right-label');
+    var subLeft = document.getElementById('hrp-sub-left');
+    var subRight = document.getElementById('hrp-sub-right');
+    var subLeftLabel = document.getElementById('hrp-sub-left-label');
+    var subRightLabel = document.getElementById('hrp-sub-right-label');
+    var finalReadout = document.getElementById('hrp-final-readout');
+
+    // Fixed vols for the other four pairs (worked-example values, in %).
+    var vE = 8, vG = 9, vJ = 7, vC = 6;
+    var ROOT_X0 = 10, ROOT_TOTAL_W = 620;
+    var SUB_X0 = 10, SUB_TOTAL_W = 300;
+
+    function update(){
+      var vA = parseFloat(slider.value);
+      volLabel.textContent = vA.toFixed(1) + '%';
+
+      var varE = vE*vE, varG = vG*vG, varA = vA*vA, varJ = vJ*vJ, varC = vC*vC;
+
+      var VL = ivWeightedVar([varE, varG, varA]);   // risk-on bloc
+      var VR = ivWeightedVar([varJ, varC]);          // safe-haven bloc
+      var alphaL = 1 - VL / (VL + VR);
+      var alphaR = 1 - alphaL;
+
+      var V_EG = ivWeightedVar([varE, varG]);
+      var alphaEG = 1 - V_EG / (V_EG + varA); // share of left bloc to {EUR,GBP}
+      var alphaA = 1 - alphaEG;               // share of left bloc to AUD
+
+      var alphaE = 1 - varE / (varE + varG);
+      var alphaJ = 1 - varJ / (varJ + varC);
+
+      var pE = alphaL * alphaEG * alphaE;
+      var pG = alphaL * alphaEG * (1 - alphaE);
+      var pA = alphaL * alphaA;
+      var pJ = alphaR * alphaJ;
+      var pC = alphaR * (1 - alphaJ);
+
+      // Root bar widths
+      var wLeft = ROOT_TOTAL_W * alphaL;
+      rootLeft.setAttribute('width', wLeft.toFixed(1));
+      rootRight.setAttribute('x', (ROOT_X0 + wLeft).toFixed(1));
+      rootRight.setAttribute('width', (ROOT_TOTAL_W - wLeft).toFixed(1));
+      rootLeftLabel.setAttribute('x', (ROOT_X0 + wLeft / 2).toFixed(1));
+      rootRightLabel.setAttribute('x', (ROOT_X0 + wLeft + (ROOT_TOTAL_W - wLeft) / 2).toFixed(1));
+      rootLeftLabel.textContent = 'α_L = ' + alphaL.toFixed(3);
+      rootRightLabel.textContent = 'α_R = ' + alphaR.toFixed(3);
+
+      // Sub bar (left bloc split into {EUR,GBP} vs AUD) widths
+      var wSubLeft = SUB_TOTAL_W * alphaEG;
+      subLeft.setAttribute('width', wSubLeft.toFixed(1));
+      subRight.setAttribute('x', (SUB_X0 + wSubLeft).toFixed(1));
+      subRight.setAttribute('width', (SUB_TOTAL_W - wSubLeft).toFixed(1));
+      subLeftLabel.setAttribute('x', (SUB_X0 + wSubLeft / 2).toFixed(1));
+      subRightLabel.setAttribute('x', (SUB_X0 + wSubLeft + (SUB_TOTAL_W - wSubLeft) / 2).toFixed(1));
+      subLeftLabel.textContent = 'EUR+GBP ' + pAdd(pE, pG);
+      subRightLabel.textContent = 'AUD ' + pA.toFixed(3);
+
+      finalReadout.textContent =
+        'EUR ' + fmtPct(pE) + '  GBP ' + fmtPct(pG) + '  AUD ' + fmtPct(pA) +
+        '  JPY ' + fmtPct(pJ) + '  CHF ' + fmtPct(pC);
+    }
+
+    function pAdd(a, b){ return (a + b).toFixed(3); }
+
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Slide 7 — 2-cluster recursive-bisection calculator, with guards.
+  (function(){
+    var v1 = document.getElementById('hrp-calc-v1');
+    if (!v1) return;
+    var v2 = document.getElementById('hrp-calc-v2');
+    var resultEl = document.getElementById('hrp-calc-result');
+    var alpha1El = document.getElementById('hrp-calc-alpha1');
+    var alpha2El = document.getElementById('hrp-calc-alpha2');
+    var resetBtn = document.getElementById('hrp-calc-reset');
+    var DEFAULTS = { v1: 0.00276, v2: 0.00208 };
+
+    function recompute(){
+      var a = parseFloat(v1.value), b = parseFloat(v2.value);
+      var bad = !isFinite(a) || !isFinite(b) || a < 0 || b < 0 || (a + b) <= 0 || v1.value.trim() === '' || v2.value.trim() === '';
+      if (bad) {
+        resultEl.textContent = '—';
+        alpha1El.textContent = '—';
+        alpha2El.textContent = '—';
+        return;
+      }
+      var alpha1 = 1 - a / (a + b);
+      var alpha2 = 1 - alpha1;
+      resultEl.textContent = fmtPct(alpha1);
+      alpha1El.textContent = alpha1.toFixed(3);
+      alpha2El.textContent = alpha2.toFixed(3);
+    }
+
+    [v1, v2].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      v1.value = DEFAULTS.v1; v2.value = DEFAULTS.v2;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>
