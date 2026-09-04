@@ -214,7 +214,12 @@ import { _fetchAllH1 as _fetchH1AB, _fetchAllH1 as _fetchH1 } from './js/session
 import { runMacroEquityBacktest } from './js/macroEquityEngine.js';
 import { loadEngine as loadGliEngine } from './GlobalLiquidity/engineLoader.mjs';
 import { computeBacktest as computeGliBacktest, computeNqBacktest as computeGliNqBacktest, accumulateWeekly as gliAccumulateWeekly, weeklyReturnsFromByWeek as gliWeeklyFromByWeek, FRED_IDS as GLI_FRED_IDS, FX_FILE_ALIAS as GLI_FX_ALIAS } from './GlobalLiquidity/backtestCore.mjs';
-import { runFullZScoreBacktest, ZSCORE_PAIRS, computeZScoreStats } from './js/zscoreSpreadEngine.js';
+import { runFullZScoreBacktest, ZSCORE_PAIRS, computeZScoreStats, fetchFredObservations } from './js/zscoreSpreadEngine.js';
+import {
+  buildFastFeatures as nmlBuildFastFeatures, buildFredFeatures as nmlBuildFredFeatures,
+  walkForward as nmlWalkForward, oosStats as nmlOosStats,
+  anchoredWindowPath as nmlAnchoredWindowPath, nextBarPredPrice as nmlNextBarPredPrice,
+} from './js/nasdaqMacroLeadCore.js';
 import { runFullZScoreV2Backtest, V2_DEFAULTS as ZS_V2_DEFAULTS } from './js/zscoreSpreadV2Engine.js';
 import { splitTradesByDate as zsSplitTradesByDate } from './js/zscoreConfidenceCore.js';
 import { runFullMacroDirection, MACRO_DIR_DEFAULTS } from './js/macroDirectionEngine.js';
@@ -20381,14 +20386,103 @@ setInterval(_sessionResearchFullTick, SESSION_RESEARCH_FULL_INTERVAL_MS);
 // RESEARCH TOOL, NOT A TRADING BOT — see NasdaqMacroLead/README.md. Tests
 // (honestly, walk-forward, out-of-sample only) whether a macro composite
 // line tracks NAS100 ahead of price, the way a UST-yield-spread line is
-// sometimes shown "leading" price on FX charts. Same scheduling pattern as
-// SessionResearch just above: one Python module run periodically via
-// _execFileAsync/BT_PYTHON, writing a JSON file this process then serves —
-// no new KV plumbing, no live trading, nothing here places an order.
-// Refreshed every 4h (== one NAS100 H4 bar) since a faster cadence can't
-// produce a new bar to predict anyway; fires once on boot same as above.
+// sometimes shown "leading" price on FX charts.
+//
+// Runs entirely IN THIS PROCESS — no Python subprocess, same as
+// js/yieldSpreadCore.js + js/yieldSpreadEngine.js. The math lives in
+// js/nasdaqMacroLeadCore.js (pure, unit-testable); the fetch/orchestration
+// below reuses fetchOandaCandleRange (already hardened for NAS100/gold's
+// "403 unexplainable" instrument quirks — see its own comments) and
+// fetchFredObservations (js/zscoreSpreadEngine.js) rather than
+// reimplementing HTTP fetch. Writes the same JSON shape the dashboard page
+// already expects to NASDAQ_MACRO_LEAD_SUMMARY_PATH. Refreshed every 4h
+// (== one NAS100 H4 bar) since a faster cadence can't produce a new bar to
+// predict anyway; fires once on boot same as SessionResearch above.
 const NASDAQ_MACRO_LEAD_SUMMARY_PATH = path.join(__dirname, 'NasdaqMacroLead', 'out', 'dashboard_summary.json');
 const NASDAQ_MACRO_LEAD_INTERVAL_MS = (parseInt(process.env.NASDAQ_MACRO_LEAD_INTERVAL_SECONDS, 10) || 14400) * 1000;
+
+const NML_FAST_INSTRUMENTS = {
+  target: 'NAS100_USD', bond10: 'USB10Y_USD', bond2: 'USB02Y_USD', gold: 'XAU_USD',
+  eurusd: 'EUR_USD', gbpusd: 'GBP_USD', audusd: 'AUD_USD', nzdusd: 'NZD_USD',
+  usdjpy: 'USD_JPY', usdcad: 'USD_CAD', usdchf: 'USD_CHF',
+};
+const NML_FRED_SERIES = { y2: 'DGS2', y10: 'DGS10', real10: 'DFII10', be10: 'T10YIE' };
+const NML_WF_PARAMS = { trainBars: 500, testBars: 100, stepBars: 100, zWindow: 250 };
+const NML_FAST_COLS = ['bond10_ret', 'bond2_ret', 'usd_basket_ret', 'gold_ret'];
+const NML_FRED_COLS = ['y2_chg', 'y10_chg', 'slope_chg', 'real10_chg', 'be10_chg'];
+
+const _nmlIsoT = epochSec => new Date(epochSec * 1000).toISOString();
+const _nmlRound = (v, p) => (v == null ? null : Number(v.toFixed(p)));
+
+function _nmlRunVariant(label, times, targetClose, targetRet, featureSeries, featureCols) {
+  const available = featureCols.filter(c => c in featureSeries);
+  const missing = featureCols.filter(c => !(c in featureSeries));
+  if (!available.length) return { label, ok: false, error: 'no features available' };
+  const oos = nmlWalkForward(times, targetClose, targetRet, featureSeries, available, NML_WF_PARAMS);
+  if (!oos.length) return { label, ok: false, error: 'walk-forward produced no OOS bars' };
+  return {
+    label, ok: true, features_used: available, features_missing: missing,
+    stats: nmlOosStats(oos), oos_bars: oos.length,
+    window_path: nmlAnchoredWindowPath(oos).map(p => ({ t: _nmlIsoT(p.t), v: _nmlRound(p.v, 2) })),
+    next_bar_pred: nmlNextBarPredPrice(oos).map(p => ({ t: _nmlIsoT(p.t), v: _nmlRound(p.v, 2) })),
+  };
+}
+
+async function _computeNasdaqMacroLeadSummary() {
+  const toISO = new Date().toISOString();
+  const fromISO = new Date(Date.now() - 2.5 * 365.25 * 86_400_000).toISOString();
+
+  const bars = {};
+  for (const [name, instrument] of Object.entries(NML_FAST_INSTRUMENTS)) {
+    try {
+      const candles = await fetchOandaCandleRange(instrument, 'H4', fromISO, toISO);
+      if (candles.length) bars[name] = candles.map(c => ({ t: c.t, open: c.open, high: c.high, low: c.low, close: c.close }));
+      else console.warn(`[nasdaq-macro-lead] ${instrument}: no candles returned`);
+    } catch (e) {
+      console.warn(`[nasdaq-macro-lead] ${instrument} fetch failed: ${e.message}`);
+    }
+    await new Promise(r => setTimeout(r, 200));   // be polite — this is a research job, not latency-sensitive
+  }
+  if (!bars.target) throw new Error('NAS100_USD fetch failed — nothing to compute');
+
+  const fast = nmlBuildFastFeatures(bars);
+
+  const fredKey = process.env.FRED_KEY;
+  const fredFromDate = fromISO.slice(0, 10);
+  const fredEntries = await Promise.all(Object.entries(NML_FRED_SERIES).map(async ([name, seriesId]) => {
+    try { return [name, await fetchFredObservations(seriesId, fredFromDate, fredKey)]; }
+    catch (e) { console.warn(`[nasdaq-macro-lead] FRED ${seriesId} fetch failed: ${e.message}`); return null; }
+  }));
+  const fredSeries = Object.fromEntries(fredEntries.filter(Boolean));
+  const fredFeatures = nmlBuildFredFeatures(fast.times, fredSeries, 6);
+
+  const combined = { ...fast.features, ...fredFeatures };
+  const fastResult = _nmlRunVariant('Fast market proxies (bond CFDs + USD basket + gold)',
+    fast.times, fast.targetClose, fast.targetRet, combined, NML_FAST_COLS);
+  const fredResult = _nmlRunVariant('FRED yields (2Y/10Y/slope/real yield/breakeven), fwd-filled to H4',
+    fast.times, fast.targetClose, fast.targetRet, combined, NML_FRED_COLS);
+
+  return {
+    ok: true,
+    generated_at: new Date().toISOString(),
+    target: 'NAS100_USD',
+    granularity: 'H4',
+    walk_forward_params: {
+      train_bars: NML_WF_PARAMS.trainBars, test_bars: NML_WF_PARAMS.testBars,
+      step_bars: NML_WF_PARAMS.stepBars, z_window: NML_WF_PARAMS.zWindow,
+    },
+    candles: bars.target.map(b => ({
+      t: _nmlIsoT(b.t), o: _nmlRound(b.open, 2), h: _nmlRound(b.high, 2), l: _nmlRound(b.low, 2), c: _nmlRound(b.close, 2),
+    })),
+    variants: { fast: fastResult, fred: fredResult },
+    notes: (
+      'Research tool, not a trading signal (see NasdaqMacroLead/README.md). Every point on '
+      + 'window_path/next_bar_pred was produced by a model that never saw the bar it\'s '
+      + 'predicting — coefficients are fit on a prior rolling window and frozen before being '
+      + 'applied to the window plotted. There is no in-sample region shown on this chart by construction.'
+    ),
+  };
+}
 
 let _nasdaqMacroLeadBusy = false;
 async function _nasdaqMacroLeadTick() {
@@ -20401,9 +20495,11 @@ async function _nasdaqMacroLeadTick() {
   const startedAt = Date.now();
   console.log(`[nasdaq-macro-lead] tick starting ${new Date().toISOString()}`);
   try {
-    await _execFileAsync(BT_PYTHON, ['-m', 'NasdaqMacroLead.dashboard_export'],
-      { cwd: __dirname, timeout: 5 * 60_000, maxBuffer: 16 * 1024 * 1024 });
-    console.log(`[nasdaq-macro-lead] tick done in ${((Date.now() - startedAt) / 1000).toFixed(0)}s`);
+    const summary = await _computeNasdaqMacroLeadSummary();
+    fs.mkdirSync(path.dirname(NASDAQ_MACRO_LEAD_SUMMARY_PATH), { recursive: true });
+    fs.writeFileSync(NASDAQ_MACRO_LEAD_SUMMARY_PATH, JSON.stringify(summary));
+    console.log(`[nasdaq-macro-lead] tick done in ${((Date.now() - startedAt) / 1000).toFixed(0)}s `
+      + `(${summary.candles.length} candles, fast ok=${summary.variants.fast.ok}, fred ok=${summary.variants.fred.ok})`);
   } catch (e) {
     console.warn(`[nasdaq-macro-lead] tick failed: ${e.message}`);
   } finally {
@@ -20415,7 +20511,7 @@ setInterval(_nasdaqMacroLeadTick, NASDAQ_MACRO_LEAD_INTERVAL_MS);
 
 app.get('/api/nasdaq-macro-lead/summary', async (_req, res) => {
   const out = await _loadAnalogMLJson(NASDAQ_MACRO_LEAD_SUMMARY_PATH, 'nasdaq-macro-lead/dashboard_summary.json');
-  if (!out) return res.status(404).json({ ok: false, error: 'no dashboard_summary.json yet -- run NasdaqMacroLead/dashboard_export.py (needs OANDA_KEY + FRED_KEY)' });
+  if (!out) return res.status(404).json({ ok: false, error: 'no dashboard_summary.json yet — the native in-process job (every ~4h, needs OANDA_KEY + FRED_KEY) hasn\'t completed a run yet on this deploy' });
   return res.json(out);
 });
 
