@@ -21,6 +21,7 @@ AnalogML/data/m1/
 SessionResearch/out/*/session_table.json
 SessionResearch/out/*/day_checkpoints.json
 SessionResearch/out/*/impulse_events.json
+NasdaqMacroLead/out/*.json
 VolRangeForecaster/data/cog-threshold/
 VolRangeForecaster/data/cog-v2/
 .env
