@@ -39,6 +39,10 @@
   .sw{width:14px;height:3px;border-radius:2px;display:inline-block}
   .err{color:var(--red);font-size:13px} .note{color:var(--text3);font-size:11.5px;line-height:1.6;margin-top:10px}
   .meta{font-size:11.5px;color:var(--text3)}
+  .refresh-btn{background:var(--blue);border:none;color:#fff;border-radius:6px;padding:8px 14px;
+    font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap}
+  .refresh-btn:disabled{opacity:.55;cursor:wait}
+  .refresh-status{font-size:11.5px;color:var(--text3);margin-top:8px}
 </style>
 </head>
 <body>
@@ -57,12 +61,17 @@
 </div>
 
 <div id="loadErr" class="card err" style="display:none"></div>
+<div id="loadErrActions" class="card" style="display:none">
+  <button class="refresh-btn" id="refreshBtnErr">Run it now</button>
+  <div class="refresh-status" id="refreshStatusErr"></div>
+</div>
 
 <div id="content" style="display:none">
   <div class="card">
     <div class="row">
       <h2 style="margin:0">NAS100 H4 — actual vs projected</h2>
       <span style="flex:1"></span>
+      <button class="refresh-btn" id="refreshBtn">Refresh now</button>
       <div class="seg" id="variantSeg">
         <button data-v="fast" class="active">Fast proxies</button>
         <button data-v="fred">FRED yields</button>
@@ -78,6 +87,7 @@
       <span class="muted">Candles = realized NAS100 H4 price</span>
     </div>
     <div class="meta" id="genAt"></div>
+    <div class="refresh-status" id="refreshStatus"></div>
   </div>
 
   <div class="stats-grid">
@@ -162,7 +172,10 @@ function renderStats() {
   renderStatsCard($('#statsFred'), 'fred', summary.variants?.fred);
 }
 
+let _controlsWired = false;
 function wireControls() {
+  if (_controlsWired) return;   // load() re-runs after a manual refresh — don't stack listeners
+  _controlsWired = true;
   $('#variantSeg').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
     curVariant = b.dataset.v;
@@ -177,6 +190,27 @@ function wireControls() {
   });
 }
 
+async function refreshNow(statusEl, btnEl) {
+  btnEl.disabled = true;
+  const prevLabel = btnEl.textContent;
+  btnEl.textContent = 'Running… (~10-30s)';
+  statusEl.textContent = '';
+  statusEl.classList.remove('err');
+  try {
+    const r = await fetch('/api/nasdaq-macro-lead/refresh', { method: 'POST' });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || j.ok === false) throw new Error(j.error || `HTTP ${r.status}`);
+    statusEl.textContent = `Done — ${new Date().toLocaleTimeString()}. Reloading…`;
+    await load();
+  } catch (e) {
+    statusEl.textContent = `Refresh failed: ${e.message}`;
+    statusEl.classList.add('err');
+  } finally {
+    btnEl.disabled = false;
+    btnEl.textContent = prevLabel;
+  }
+}
+
 async function load() {
   try {
     const r = await fetch('/api/nasdaq-macro-lead/summary');
@@ -187,17 +221,23 @@ async function load() {
     summary = await r.json();
   } catch (e) {
     $('#loadErr').style.display = 'block';
-    $('#loadErr').textContent = `Not ready: ${e.message} — the periodic Railway job (NasdaqMacroLead/dashboard_export.py, every ~4h) needs to run at least once. If OANDA_KEY/FRED_KEY aren't set on this deploy, it never will.`;
+    $('#loadErr').textContent = `Not ready: ${e.message}`;
+    $('#loadErrActions').style.display = 'block';
     return;
   }
+  $('#loadErr').style.display = 'none';
+  $('#loadErrActions').style.display = 'none';
   $('#content').style.display = 'block';
   $('#genAt').textContent = `Generated ${new Date(summary.generated_at).toLocaleString()} · ${summary.target} ${summary.granularity} · ${(summary.candles||[]).length} bars · walk-forward: train ${summary.walk_forward_params?.train_bars}, test ${summary.walk_forward_params?.test_bars} bars`;
   $('#howToRead').innerHTML = `<strong>How to read this:</strong> "Window path" re-anchors the model's projected trajectory to the real close at the start of every walk-forward refit — the closer analogue to a "leading line" chart. "Next-bar (1-step)" plots, at each bar, what the model forecast for the very next bar's close — the most direct test of whether the line arrives before the candle. Both are built ONLY from coefficients fit on data strictly before the bars shown; the stats panels below (rank-IC, a circular-shift null p-value, and split-half sign stability) are the same tests <code>analysis/yield_asset_coupling.py</code> uses, which is why the daily-horizon version of this exact question — including the classic 2s10s yield spread — found essentially nothing for NDX. This page exists to check whether a faster, continuously-quoted proxy set changes that conclusion at H4, not to assume it will.`;
-  buildChart();
+  if (!chart) buildChart();
   renderChart();
   renderStats();
   wireControls();
 }
+
+$('#refreshBtn').addEventListener('click', () => refreshNow($('#refreshStatus'), $('#refreshBtn')));
+$('#refreshBtnErr').addEventListener('click', () => refreshNow($('#refreshStatusErr'), $('#refreshBtnErr')));
 load();
 </script>
 </body>
