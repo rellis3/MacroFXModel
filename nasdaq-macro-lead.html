@@ -82,6 +82,7 @@
       </div>
     </div>
     <div id="chartEl"></div>
+    <div id="chartNote" class="muted" style="display:none;font-size:12px;margin-top:6px"></div>
     <div class="legend">
       <span><i class="sw" style="background:#4f7df0"></i>Model projection (OOS only)</span>
       <span class="muted">Candles = realized NAS100 H4 price</span>
@@ -100,7 +101,7 @@
 
 <script>
 const $ = s => document.querySelector(s);
-let summary = null, chart = null, candleSeries = null, lineSeries = null;
+let summary = null, chart = null, candleSeries = null, lineSeries = null, windowSegSeries = [];
 let curVariant = 'fast', curLine = 'window_path';
 
 function toUnix(iso) { return Math.floor(new Date(iso).getTime() / 1000); }
@@ -156,13 +157,41 @@ function buildChart() {
   window.addEventListener('resize', () => { try { chart.resize(el.clientWidth, 460); } catch (e) {} });
 }
 
+function clearWindowSegSeries() {
+  for (const s of windowSegSeries) { try { chart.removeSeries(s); } catch (e) {} }
+  windowSegSeries = [];
+}
+
 function renderChart() {
   const candles = (summary.candles || []).map(c => ({ time: toUnix(c.t), open: c.o, high: c.h, low: c.l, close: c.c }));
   candleSeries.setData(candles);
 
   const v = summary.variants?.[curVariant];
-  const series = (v && v.ok) ? (v[curLine] || []) : [];
-  lineSeries.setData(series.map(p => ({ time: toUnix(p.t), value: p.v })));
+  const chartNote = $('#chartNote');
+
+  if (curLine === 'window_path') {
+    // window_path is an array of SEGMENTS (one per walk-forward window/reset)
+    // — each rendered as its OWN line series so a reset shows as a gap, not
+    // a connecting "cliff" across two very different price levels.
+    lineSeries.setData([]);
+    clearWindowSegSeries();
+    const segments = (v && v.ok) ? (v.window_path || []) : [];
+    for (const seg of segments) {
+      const s = chart.addLineSeries({ color: '#4f7df0', lineWidth: 2, priceLineVisible: false, lastValueVisible: false });
+      s.setData(seg.map(p => ({ time: toUnix(p.t), value: p.v })));
+      windowSegSeries.push(s);
+    }
+    chartNote.style.display = segments.length ? 'none' : 'block';
+    chartNote.classList.toggle('err', !!(v && !v.ok));
+    if (!segments.length) chartNote.textContent = v && !v.ok ? `${v.label || curVariant}: ${v.error || 'no data'}` : 'No window-path data for this variant.';
+  } else {
+    clearWindowSegSeries();
+    const series = (v && v.ok) ? (v.next_bar_pred || []) : [];
+    lineSeries.setData(series.map(p => ({ time: toUnix(p.t), value: p.v })));
+    chartNote.style.display = series.length ? 'none' : 'block';
+    chartNote.classList.toggle('err', !!(v && !v.ok));
+    if (!series.length) chartNote.textContent = v && !v.ok ? `${v.label || curVariant}: ${v.error || 'no data'}` : 'No next-bar data for this variant.';
+  }
 
   if (candles.length) chart.timeScale().setVisibleRange({ time: candles[0].time, to: candles[candles.length - 1].time });
 }

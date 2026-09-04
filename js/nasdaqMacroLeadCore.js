@@ -316,24 +316,34 @@ export function oosStats(oos, { nNull = 2000, seed = 7 } = {}) {
 // only from predictions made strictly BEFORE t_i (predRet shifted by one
 // before the cumsum) — without the shift, row i's own predRet (which
 // targets t_{i+1}) would leak into the value plotted at t_i.
+//
+// Returns an ARRAY OF SEGMENTS (one per window), not one flat series. Each
+// reset re-anchors to the real price, which is the whole point — if a
+// window's cumulative drift wandered far from reality by its last bar, the
+// NEXT window still starts fresh at the true close. Flattening that into one
+// line would draw a straight connecting segment across the reset — a
+// vertical "cliff" that looks like a rendering bug, not the reset it
+// actually is. Callers must render each segment as its own line so a reset
+// shows up as a gap, never a connector.
 export function anchoredWindowPath(oos) {
   const byWindow = new Map();
   for (const r of oos) {
     if (!byWindow.has(r.windowStart)) byWindow.set(r.windowStart, []);
     byWindow.get(r.windowStart).push(r);
   }
-  const out = [];
-  for (const grp of byWindow.values()) {
+  const segments = [...byWindow.values()].map(grp => {
     grp.sort((a, b) => a.idx - b.idx);
     const anchor = grp[0].targetClose;
     let cum = 0;
+    const seg = [];
     for (let i = 0; i < grp.length; i++) {
-      out.push({ t: grp[i].t, v: anchor * Math.exp(cum) });
+      seg.push({ t: grp[i].t, v: anchor * Math.exp(cum) });
       if (grp[i].predRet != null) cum += grp[i].predRet;
     }
-  }
-  out.sort((a, b) => a.t - b.t);
-  return out;
+    return seg;
+  });
+  segments.sort((a, b) => a[0].t - b[0].t);
+  return segments;
 }
 
 // Per-bar 1-step-ahead forecast, plotted AT the bar it was made from (so it

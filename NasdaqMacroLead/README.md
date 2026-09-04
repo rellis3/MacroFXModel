@@ -76,7 +76,13 @@ Two chart-ready series come out of the same walk-forward predictions:
   the real close at the start of each walk-forward window (so one bad window
   can't drag the whole line off-screen). The value plotted at bar *t* uses
   only predictions made strictly *before* bar *t* — this is the closest
-  honest analogue to "the blue line."
+  honest analogue to "the blue line." Returned (and charted) as an **array of
+  segments, one per window** rather than one flat series — a window that
+  drifted far from reality by its last bar still resets cleanly at the next
+  window's real-price anchor, and flattening that into a single line would
+  draw a straight connecting segment across the reset (a visible "cliff"
+  that looks like a rendering bug, not the reset it actually is). The
+  dashboard renders each segment as its own line so a reset shows as a gap.
 - **`next_bar_pred`** — at each bar, the model's forecast for the very next
   bar's close, plotted at the current bar. The direct test of "does the line
   arrive before the candle."
