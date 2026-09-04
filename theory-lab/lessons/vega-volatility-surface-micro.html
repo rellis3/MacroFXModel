@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vega &amp; the Volatility Surface — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Vega &amp; the Volatility Surface — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer full derivations, the put-call-parity proof, and a 6-question self-test?<a href="vega-volatility-surface.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">The Greeks 4 · The Greeks</div>
+      <h1 class="sl-h1">Vega &amp; the Volatility Surface, <em>Told As Shape and Consequence</em></h1>
+      <p class="sl-lede">Every option is also a bet on "how much," not just "which way" — vega is the dollar size of that bet. Stretch it across every strike and expiry a market trades at once and a second fact appears: the market never agrees on one volatility number, and that whole grid of disagreement is the volatility surface. One practical fact anchors everything here — the underlying itself has exactly zero vega, so this Greek can only ever be hedged with other options.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">The closed form: ν = Sφ(d₁)√T</h2>
+      <p class="sl-sub">Differentiate the Black-Scholes call price with respect to σ instead of S, and everything else held fixed, and the algebra collapses to three pieces multiplied together.</p>
+      <div class="sl-row">
+        <div class="sl-box">S</div><div class="sl-arrow">×</div>
+        <div class="sl-box green">φ(d₁)</div><div class="sl-arrow">×</div>
+        <div class="sl-box amber">√T</div><div class="sl-arrow">=</div>
+        <div class="sl-box">ν</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">S</div><div><h4>Underlying price</h4><p>Scales vega up in dollar terms — a $1,000 underlying's options carry more vega per point than a $10 underlying's.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">φ</div><div><h4>φ(d₁) — the moneyness weight</h4><p>The standard normal <em>density</em> at d₁ (not the cumulative N(d₁) used in the price formula) — largest when d₁≈0, shrinks toward zero the further away d₁ moves.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">√T</div><div><h4>Time scaling</h4><p>Grows monotonically — never decays — with time to expiry. Longer-dated options always carry more vega, all else equal.</p></div></div>
+      </div>
+      <p class="sl-p">φ(0) ≈ 0.3989 is φ's maximum value — the same constant the Gamma Exposure lesson used for its own at-the-money approximation. d₁ here is exactly the Black-Scholes d₁, reused unchanged: d₁ = [ln(S/K) + (r+σ²/2)T] / (σ√T).</p>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Why a call and a put share the exact same vega</h2>
+      <p class="sl-sub">Put-call parity — C − P = S − Ke⁻ʳᵀ — forces this, and vega's version of the argument is even cleaner than gamma's.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">Δ</div><div><h4>Delta — 1st derivative w.r.t. S, differs</h4><p>∂(S−Ke⁻ʳᵀ)/∂S = 1, a nonzero constant. So Δ<sub>call</sub> − Δ<sub>put</sub> = 1 — a genuine, permanent difference.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">Γ</div><div><h4>Gamma — 2nd derivative w.r.t. S, identical</h4><p>The right side is linear in S, so its <em>second</em> derivative is exactly zero. Γ<sub>call</sub> − Γ<sub>put</sub> = 0 — but it took two derivatives to kill the linear term.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">ν</div><div><h4>Vega — 1st derivative w.r.t. σ, identical immediately</h4><p>σ doesn't appear in S−Ke⁻ʳᵀ at all — not even once. So ∂C/∂σ − ∂P/∂σ = 0 on the very first pass. ν<sub>call</sub> = ν<sub>put</sub>, exactly, at any strike or expiry.</p></div></div>
+      </div>
+      <div class="sl-quote">This is the flip side of why delta <em>isn't</em> shared: delta is parity's first derivative w.r.t. S, and that derivative is 1, not 0. Vega skips the whole argument gamma needed, because σ simply never enters the no-arbitrage relationship that defines parity in the first place.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Vega grows with √T — and never decays</h2>
+      <p class="sl-sub">Fixed at-the-money strike (S=K=100), r=2%, σ=20%. Drag the slider — φ(d₁) barely moves near the money, so the curve's whole shape comes from √T alone.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Vega plotted against days to expiry, rising smoothly and without ever decaying, following a square-root-of-time shape">
+            <line x1="60" y1="220" x2="610" y2="220" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="60" y1="220" x2="60" y2="20" style="stroke:var(--border2);stroke-width:1"/>
+            <text x="335" y="242" text-anchor="middle" font-size="11" fill="var(--text3)">Days to expiry →</text>
+            <text x="18" y="130" text-anchor="middle" font-size="11" fill="var(--text3)" transform="rotate(-90 18 130)">Vega (per 1.00σ)</text>
+            <text x="60" y="233" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">1</text>
+            <text x="610" y="233" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">365</text>
+            <polyline id="vt-curve" points="" style="fill:none;stroke:var(--blue);stroke-width:2.5"/>
+            <line id="vt-marker" x1="60" y1="20" x2="60" y2="220" style="stroke:var(--amber);stroke-width:1.5;stroke-dasharray:2,2"/>
+            <circle id="vt-dot" cx="60" cy="220" r="5" style="fill:var(--amber);stroke:var(--bg);stroke-width:1.5"/>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Days to expiry</span><span class="sl-live" id="vt-dte-val">DTE = 30</span></div>
+        <input type="range" class="sl-slider" id="vt-slider" min="1" max="365" step="1" value="30">
+        <div class="sl-calc-steps">
+          <div>T = <b id="vt-t-val">0.0822</b>y</div>
+          <div>d₁ = <b id="vt-d1-val">0.0573</b>&emsp;φ(d₁) = <b id="vt-phi-val">0.3983</b></div>
+          <div>ν ≈ <b id="vt-nu-val">11.42</b> per 1.00σ</div>
+        </div>
+        <div class="sl-note">30 → 90 days: √T rises 1.73× and vega rises 1.73× — an almost exact match, since φ(d₁) barely moved. Out to 365 days vega has more than tripled (39.10) — growing with √T, never decaying, unlike gamma or theta.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Vega peaks at-the-money, in a bell curve</h2>
+      <p class="sl-sub">Fixed 90-day expiry, S=100, σ=20%, r=2% — now hold time fixed and walk across strikes instead.</p>
+      <div class="sl-svgwrap">
+        <svg viewBox="0 0 640 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bell-shaped curve of vega against strike, peaking at the at-the-money 100 strike and falling off toward both the 90 and 110 strikes">
+          <line x1="40" y1="170" x2="600" y2="170" style="stroke:var(--border2);stroke-width:1"/>
+          <path d="M60,160 C160,160 200,30 320,30 C440,30 480,160 580,160" style="fill:none;stroke:var(--blue);stroke-width:2.5"/>
+          <line x1="180" y1="170" x2="180" y2="90" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"/>
+          <line x1="320" y1="170" x2="320" y2="30" style="stroke:var(--amber);stroke-width:1.5;stroke-dasharray:3,3"/>
+          <line x1="460" y1="170" x2="460" y2="78" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"/>
+          <circle cx="180" cy="90" r="5" style="fill:var(--blue)"/>
+          <circle cx="320" cy="30" r="5" style="fill:var(--amber)"/>
+          <circle cx="460" cy="78" r="5" style="fill:var(--blue)"/>
+          <text x="180" y="185" text-anchor="middle" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--text3)">K=90</text>
+          <text x="320" y="185" text-anchor="middle" font-size="10.5" font-weight="700" font-family="'DM Mono',monospace" fill="var(--amber)">K=100</text>
+          <text x="460" y="185" text-anchor="middle" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--text3)">K=110</text>
+          <text x="180" y="78" text-anchor="middle" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--text2)">10.11</text>
+          <text x="320" y="18" text-anchor="middle" font-size="10.5" font-weight="700" font-family="'DM Mono',monospace" fill="var(--amber)">19.71</text>
+          <text x="460" y="66" text-anchor="middle" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--text2)">13.68</text>
+        </svg>
+      </div>
+      <p class="sl-p">Vega falls off in <strong>both</strong> directions from the 100 strike — down to 10.11 at the 90 strike (comfortably in the money) and 13.68 at the 110 strike (out of the money). Note the asymmetry: 90 and 110 are equally far from spot in dollars, but not in d₁ terms — d₁ is driven by log-moneyness, not linear distance.</p>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">The intuition</div>
+        <p>A deep in-the-money option behaves almost like owning the underlying outright — its value barely depends on the vol forecast. A deep out-of-the-money option is worth close to nothing regardless of that forecast. The at-the-money strike is the one point where the outcome is genuinely uncertain — exactly where "how much will this move" matters most.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Recompute vega live — the same formula, any inputs</h2>
+      <p class="sl-sub">Starts on the worked example's at-the-money, 30-day numbers. Edit any field.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Spot S</label><input type="number" class="sl-input" id="vc-S" value="100" step="1"></div>
+          <div class="sl-calc-field"><label>Strike K</label><input type="number" class="sl-input" id="vc-K" value="100" step="1"></div>
+          <div class="sl-calc-field"><label>Rate r (%)</label><input type="number" class="sl-input" id="vc-r" value="2" step="0.25"></div>
+          <div class="sl-calc-field"><label>Vol σ (%)</label><input type="number" class="sl-input" id="vc-sigma" value="20" step="1"></div>
+          <div class="sl-calc-field"><label>Days to expiry</label><input type="number" class="sl-input" id="vc-dte" value="30" step="1" min="0"></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>d₁ = <b id="vc-d1">0.0573</b>&emsp;φ(d₁) = <b id="vc-phi">0.3983</b></div>
+          <div>ν (per 1.00σ) = <b id="vc-nu">11.42</b></div>
+          <div>ν (per 1 vol point) = <b id="vc-nupt">0.1142</b></div>
+        </div>
+        <div class="sl-note" id="vc-note"></div>
+        <button type="button" class="sl-reset-btn" id="vc-reset">Reset to worked-example numbers</button>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Black-Scholes assumes one σ. Markets quote a grid.</h2>
+      <p class="sl-sub">A different implied volatility for essentially every (strike, expiry) pair, on the same underlying, same day — σ(K,T), the volatility surface. Two genuinely distinct axes.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Axis 1 — skew / smile</span>
+          <p>Across strikes, fixed expiry. An <strong>empirical, observed market fact</strong> — Black-Scholes' constant σ cannot produce a strike-dependent quantity at all. Has to be taken as market data, layered on top of the model.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Axis 2 — term structure</span>
+          <p>Across expiries, fixed moneyness. A <strong>variance-averaging / dilution effect</strong> around event risk — near-dated vol spikes ahead of a known event, longer-dated vol stays comparatively smooth.</p>
+        </div>
+      </div>
+      <p class="sl-p">Neither axis is reproducible from a single constant σ — a one-parameter model has one degree of freedom, and the surface needs one per strike <em>and</em> a separate one per expiry. That's exactly why stochastic-volatility models (Heston, SABR) exist.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">The skew: a scar left by October 1987</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>A stylized equity-index implied volatility smile/skew</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Implied volatility plotted against strike-to-spot moneyness. High on the far left (deep out-of-the-money puts, around 29-30% implied vol), falling steeply to a minimum near 19% right at the at-the-money strike, then rising again more gently toward the far right (deep out-of-the-money calls, around 25%) — a lopsided smirk rather than a symmetric smile.">
+            <line x1="40" y1="250" x2="620" y2="250" style="stroke:var(--text3);stroke-width:1"/>
+            <line x1="40" y1="250" x2="40" y2="20" style="stroke:var(--text3);stroke-width:1"/>
+            <line x1="330" y1="20" x2="330" y2="250" style="stroke:var(--text3);stroke-dasharray:3,3"/>
+            <text x="330" y="267" text-anchor="middle" font-size="12" font-family="'DM Mono',monospace" fill="var(--text3)">ATM (K=S)</text>
+            <text x="620" y="288" text-anchor="end" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)">Strike / Spot (moneyness) →</text>
+            <text x="14" y="135" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)" transform="rotate(-90 14 135)">Implied volatility</text>
+            <text x="40" y="266" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">0.75</text>
+            <text x="620" y="266" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">1.25</text>
+            <text x="34" y="254" text-anchor="end" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">15%</text>
+            <text x="34" y="127" text-anchor="end" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">24%</text>
+            <text x="34" y="24" text-anchor="end" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">32%</text>
+            <polyline points="40.00,53.82 98.00,80.88 156.00,114.71 214.00,141.76 272.00,168.82 330.00,195.88 388.00,187.76 446.00,175.59 504.00,158.00 562.00,137.71 620.00,114.71" style="stroke:var(--amber);stroke-width:2.5" fill="none"/>
+            <circle cx="40.00" cy="53.82" r="4" style="fill:var(--amber)"/>
+            <circle cx="330.00" cy="195.88" r="4" style="fill:var(--blue)"/>
+            <circle cx="620.00" cy="114.71" r="4" style="fill:var(--amber)"/>
+            <text x="60" y="45" font-size="10" font-family="'DM Sans',sans-serif" fill="var(--amber)">OTM put wing (rich)</text>
+            <text x="470" y="106" font-size="10" font-family="'DM Sans',sans-serif" fill="var(--amber)">OTM call wing (milder)</text>
+            <text x="335" y="212" font-size="10" font-family="'DM Sans',sans-serif" fill="var(--blue)">minimum, near ATM</text>
+          </svg>
+        </div>
+        <div class="sl-note">Before October 1987, index options traded close to a flat smile. After the crash, out-of-the-money puts have traded at a persistent implied-vol premium over out-of-the-money calls ever since, on essentially every major equity index (Rubinstein, "Implied Binomial Trees," 1994).</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📉</div><div><h4>Leverage effect</h4><p>As an equity's price falls, its financial leverage ratio mechanically rises — which itself raises volatility. A real, negative price-volatility correlation that skew pricing reflects.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">😨</div><div><h4>"Crash-o-phobia"</h4><p>The market permanently re-priced tail risk higher after 1987 taught it far-left-tail moves are more real than a lognormal model implies — protection stays structurally bid.</p></div></div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Neither story is derived from Black-Scholes</div>
+        <p>Both are color for <em>why</em> the skew persists, read off what the market actually charges — not proven from first principles.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">The term structure: an averaging effect, not a fear premium</h2>
+      <p class="sl-sub">Treat variance as roughly additive across trading days. An FOMC decision carries far more expected variance than an ordinary day.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Near-dated: 5 trading days remain</span>
+          <p>If the event day is expected to contribute variance equivalent to three ordinary days, that one day accounts for roughly <strong>60%</strong> of the whole period's expected variance. Near-dated implied vol reflects it directly.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Far-dated: 60 trading days out</span>
+          <p>The same event contributes only a <strong>small fraction</strong> of that period's total expected variance — the other ~59 ordinary days swamp it, an averaging effect that leaves it comparatively smooth.</p>
+        </div>
+      </div>
+      <p class="sl-p">That's why term-structure "humps" right around a known event date collapse quickly once the event passes and that expiry is no longer the near-dated one carrying it.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">The underlying itself has exactly zero vega</h2>
+      <p class="sl-sub">The single most important practical fact in this whole lesson.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Delta &amp; gamma</span>
+          <p>Both hedge cleanly with the underlying — buy or sell shares, futures, or spot FX to flatten the exposure. Fast, liquid, cheap.</p>
+        </div>
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Vega</span>
+          <p>The underlying has no time value and no dependence on σ at all — its vega is exactly zero, not small. No amount of trading it can ever offset a book's vega, not partially, not approximately. Only <strong>other options</strong> can.</p>
+        </div>
+      </div>
+      <div class="sl-quote">Owning a plain share is like owning a plain photograph — it has no opinion about how shaky the camera was, only about where the picture ended up. An option is a bet on how shaky the camera will be. No amount of trading plain photographs hedges a bet about shakiness.</div>
+      <p class="sl-p">This is why a vega-exposed desk reaches for a completely different toolkit than a delta-exposed one: calendar spreads, strangles, straddles — combinations designed to isolate vega — because the underlying structurally can't do the job. Vega's own second-order sensitivities (Vanna, Charm) get the full treatment next lesson.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Building the dollar VegaExposure formula, step by step</h2>
+      <p class="sl-sub">νₖ × OIₖ × 100 looks arbitrary until you build it up. Step through it.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="vgxform-tabs">
+          <button class="sl-tab active" data-panel="vgxform-1">Step 1 — per vol point</button>
+          <button class="sl-tab" data-panel="vgxform-2">Step 2 — multiplier cancels</button>
+          <button class="sl-tab" data-panel="vgxform-3">Step 3 — aggregate over OI</button>
+        </div>
+        <div class="sl-panel active" id="vgxform-1">
+          <div class="sl-row"><div class="sl-box">νₖ / 100</div></div>
+          <div class="sl-verdict">Raw vega ν = Sφ(d₁)√T is a dollar figure <strong>per 1.00 change in σ</strong> (100 percentage points). Implied vol moves in <strong>vol points</strong> (1 percentage point), so divide by 100 to rescale.</div>
+        </div>
+        <div class="sl-panel" id="vgxform-2">
+          <div class="sl-row"><div class="sl-box amber">(νₖ/100) × 100</div></div>
+          <div class="sl-verdict">Multiply by the standard 100-share contract multiplier and it exactly cancels the /100 rescale, leaving plain νₖ. Vega is already denominated in dollars — unlike gamma, which starts as a unit-less "per $1 move" number, so there's no S² rescale needed here at all.</div>
+        </div>
+        <div class="sl-panel" id="vgxform-3">
+          <div class="sl-row"><div class="sl-box green">νₖ × OIₖ × 100</div></div>
+          <div class="sl-verdict">Aggregate over the open interest sitting at that strike: the dollar P&amp;L change, for the OI at strike k, from a 1-vol-point move in implied volatility.</div>
+        </div>
+        <div class="sl-note">As with dealer GEX, this number still needs an assumed long/short sign to say whether a rising or falling vol environment helps or hurts the dealer at that strike — that assumption is layered on separately, not baked into the raw formula.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Add up a toy three-strike vega book, live</h2>
+      <p class="sl-sub">Fixed 90-day expiry vegas from the worked example (per vol point). Edit any OI or ν.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Strike 90 — ν per vol pt</label><input type="number" class="sl-input" id="vgx-nu-90" value="0.1011" step="0.0001" min="0"></div>
+          <div class="sl-calc-op">×</div>
+          <div class="sl-calc-field"><label>Combined OI</label><input type="number" class="sl-input" id="vgx-oi-90" value="3000" step="100" min="0"></div>
+          <div class="sl-calc-op">× 100 =</div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">VegaExposure @ 90</div><div class="sl-calc-result-val" id="vgx-out-90">$30,330</div></div>
+        </div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Strike 100 — ν per vol pt</label><input type="number" class="sl-input" id="vgx-nu-100" value="0.1971" step="0.0001" min="0"></div>
+          <div class="sl-calc-op">×</div>
+          <div class="sl-calc-field"><label>Combined OI</label><input type="number" class="sl-input" id="vgx-oi-100" value="8500" step="100" min="0"></div>
+          <div class="sl-calc-op">× 100 =</div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">VegaExposure @ 100</div><div class="sl-calc-result-val" id="vgx-out-100">$167,535</div></div>
+        </div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Strike 110 — ν per vol pt</label><input type="number" class="sl-input" id="vgx-nu-110" value="0.1368" step="0.0001" min="0"></div>
+          <div class="sl-calc-op">×</div>
+          <div class="sl-calc-field"><label>Combined OI</label><input type="number" class="sl-input" id="vgx-oi-110" value="5000" step="100" min="0"></div>
+          <div class="sl-calc-op">× 100 =</div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">VegaExposure @ 110</div><div class="sl-calc-result-val" id="vgx-out-110">$68,400</div></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Total VegaExposure, per 1 vol point: <b id="vgx-total">$266,265</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="vgx-reset">Reset to worked-example numbers</button>
+        <div class="sl-note">Blank or negative a field and that strike's contribution — and the total — read "—" rather than breaking. The 100 strike dominates because vega itself, not just OI, is nearly double what it is at the neighboring strikes — the same reason the at-the-money strike dominated the toy dealer-GEX table.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">Fact-checked against this repo's own code</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">The full lesson's claim, and what's actually there</div>
+        <p>The full lesson's meta badge reads <strong>"CONCEPT — not built or tested in this repo."</strong> That's <strong>mostly still true, but not entirely</strong>. <code>js/gammaGreeks.js</code> implements Black-Scholes <code>bsVanna</code> and <code>bsCharm</code> as their own closed forms — but there is no standalone vega function (∂C/∂σ = Sφ(d₁)√T) anywhere in the codebase, and no dollar-VegaExposure aggregation (νₖ×OIₖ×100) analogous to the GEX machinery in <code>gammaGreeks.js</code> / <code>fullBookGex.js</code>. On that half, the badge is accurate.</p>
+        <p style="margin-bottom:0">The <em>volatility-surface</em> half is a different story: <code>js/impliedVolCore.js</code> loads a real, static historical CME CVOL dataset — ATM level, skew, up/down variance, and convexity per FX pair (EURUSD, GBPUSD, USDJPY, AUDUSD, USDCAD, USDCHF, XAUUSD) — plus a second CBOE-sourced series (GVZ/VXN) as a cross-check. Its functions (<code>loadCvolSeries</code>, <code>computeVRPSeries</code>, <code>alignCvolToBars</code>, <code>crossCheckSeries</code>) are exercised by a passing test suite via <code>fxVolCarryEngine.test.mjs</code>, feeding a real variance-risk-premium gate in <code>js/fxVolCarryEngine.js</code>. It's a single 30-day tenor per instrument, not a full multi-expiry (K,T) grid or a per-strike smile — so "the volatility surface" in the strict sense still isn't built — but "implied vol / skew data is not built or tested in this repo" is no longer accurate.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Which piece of ν = Sφ(d₁)√T is responsible for vega growing as expiry lengthens, and never decaying?</h4>
+        <button class="sl-quiz-opt">S, the underlying price</button>
+        <button class="sl-quiz-opt" data-correct="true">√T, which grows monotonically with time</button>
+        <button class="sl-quiz-opt">φ(d₁), the moneyness weight</button>
+        <div class="sl-quiz-explain">Near the money, φ(d₁) stays close to its maximum across a wide range of T, so the entire time-dependence comes from √T — which never decays, unlike the 1/√T behind gamma or theta.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Why is vega exactly the same for a call and a put at the same strike and expiry?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Put-call parity's right side, S − Ke⁻ʳᵀ, contains no σ term at all, so its first σ-derivative is zero</button>
+        <button class="sl-quiz-opt">Because calls and puts always have identical delta too</button>
+        <button class="sl-quiz-opt">It's only approximately equal, not exact</button>
+        <div class="sl-quiz-explain">Differentiating C − P = S − Ke⁻ʳᵀ once with respect to σ gives zero on the right immediately, since none of S, K, or e⁻ʳᵀ depend on σ — an even more direct argument than gamma's, which needed a second derivative w.r.t. S.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>For a fixed expiry, which strike has the highest vega, and why?</h4>
+        <button class="sl-quiz-opt">The deepest in-the-money strike</button>
+        <button class="sl-quiz-opt" data-correct="true">The at-the-money strike — φ(d₁) is a bell curve peaked at d₁≈0</button>
+        <button class="sl-quiz-opt">The deepest out-of-the-money strike</button>
+        <div class="sl-quiz-explain">φ(·) is the standard normal density, maximized at zero and falling off in both directions — vega peaks exactly where the outcome is genuinely uncertain and fades toward both deep ITM and deep OTM.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>What's the fundamental difference between the volatility surface's skew axis and its term-structure axis?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Skew is an empirical, post-1987 market fact; term structure is a mechanical variance-averaging/dilution effect</button>
+        <button class="sl-quiz-opt">They're the same phenomenon, just plotted on different axes</button>
+        <button class="sl-quiz-opt">Skew comes from Black-Scholes directly; term structure doesn't</button>
+        <div class="sl-quiz-explain">The strike-wise smirk has to be taken as observed market data — Black-Scholes' constant σ can't produce it. The expiry-wise term structure has a cleaner mechanical story: one high-variance event day is a large share of a short expiry's total expected variance and a small share of a long expiry's.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>A dealer has unwanted vega exposure at one strike. Why can't they flatten it by trading the underlying, the way they would for delta or gamma?</h4>
+        <button class="sl-quiz-opt">They can — it just requires trading a much larger notional</button>
+        <button class="sl-quiz-opt" data-correct="true">The underlying has exactly zero vega — no amount of trading it changes a book's vega at all</button>
+        <button class="sl-quiz-opt">It only works if the underlying is a future, not a stock</button>
+        <div class="sl-quiz-explain">A share, future, or spot FX position has no time value and no dependence on σ — its vega is exactly zero, not small. The only positions with nonzero vega are other options, so vega can only be offset by trading other options, at any strike or expiry.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="15">
+      <div class="sl-kicker">Section 14</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Vega is ν = Sφ(d₁)√T — identical for a call and a put, since put-call parity's right side has no σ term at all.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Vega grows with √T and never decays, and peaks exactly at the money — both fall straight out of the closed form.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>The volatility surface has two distinct axes: strike-wise skew (an empirical, post-1987 market fact) and expiry-wise term structure (a variance-dilution effect around event risk).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The underlying has exactly zero vega — the single most important practical fact here. Vega can only be hedged with other options, never with the underlying.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Dollar VegaExposure, νₖ×OIₖ×100, concentrates the same way GEX does — heavy OI at a high-vega strike dominates a book's vega risk, but the fix is other options, not the underlying.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>This repo's own code has real implied-vol/skew data (CME CVOL, tested via fxVolCarryEngine) but no vega Greek or dollar-vega-exposure function — the badge is half-stale, not fully stale.</p></div>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Second-Order Greeks: Vanna, Charm &amp; the Cross-Greeks</h3>
+        <p>Vega has its own second-order sensitivities — how it changes as the underlying moves (Vanna) and how delta decays purely with time (Charm). The formal machinery, next.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="second-order-greeks-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="vega-volatility-surface.html">Read the full vega lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  var SQRT2PI = Math.sqrt(2 * Math.PI);
+  function normPdf(x){ return Math.exp(-0.5 * x * x) / SQRT2PI; }
+  function bsVega(S, K, T, sigma, r){
+    if (!(S > 0) || !(K > 0) || !(T > 0) || !(sigma > 0)) return null;
+    var vt = sigma * Math.sqrt(T);
+    var d1 = (Math.log(S / K) + (r + 0.5 * sigma * sigma) * T) / vt;
+    return { d1: d1, phi: normPdf(d1), vega: S * normPdf(d1) * Math.sqrt(T) };
+  }
+
+  // Slide 4 — vega-vs-DTE slider, live redraw + numeric readout.
+  (function(){
+    var slider = document.getElementById('vt-slider');
+    if (!slider) return;
+    var dteVal = document.getElementById('vt-dte-val');
+    var tVal = document.getElementById('vt-t-val');
+    var d1Val = document.getElementById('vt-d1-val');
+    var phiVal = document.getElementById('vt-phi-val');
+    var nuVal = document.getElementById('vt-nu-val');
+    var curve = document.getElementById('vt-curve');
+    var marker = document.getElementById('vt-marker');
+    var dot = document.getElementById('vt-dot');
+
+    var S = 100, K = 100, R = 0.02, SIGMA = 0.20;
+    var DTE_MIN = 1, DTE_MAX = 365;
+    var X_LEFT = 60, X_RIGHT = 610, Y_BASE = 220, Y_TOP = 20, V_MAX = 42;
+
+    function dteToX(d){ return X_LEFT + (d - DTE_MIN) / (DTE_MAX - DTE_MIN) * (X_RIGHT - X_LEFT); }
+    function vegaToY(v){ return Y_BASE - Math.min(v, V_MAX) / V_MAX * (Y_BASE - Y_TOP); }
+
+    // Static curve, drawn once — the slider only moves the marker along it.
+    var pts = [];
+    for (var d = DTE_MIN; d <= DTE_MAX; d += 4){
+      var r = bsVega(S, K, d / 365, SIGMA, R);
+      pts.push(dteToX(d).toFixed(2) + ',' + vegaToY(r.vega).toFixed(2));
+    }
+    curve.setAttribute('points', pts.join(' '));
+
+    function update(){
+      var dte = parseInt(slider.value, 10);
+      var T = dte / 365;
+      var res = bsVega(S, K, T, SIGMA, R);
+      var x = dteToX(dte), y = vegaToY(res.vega);
+      marker.setAttribute('x1', x); marker.setAttribute('x2', x);
+      dot.setAttribute('cx', x); dot.setAttribute('cy', y);
+
+      dteVal.textContent = 'DTE = ' + dte;
+      tVal.textContent = T.toFixed(4);
+      d1Val.textContent = res.d1.toFixed(4);
+      phiVal.textContent = res.phi.toFixed(4);
+      nuVal.textContent = res.vega.toFixed(2);
+    }
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Slide 6 — full live vega calculator with defensive guards.
+  (function(){
+    var Sin = document.getElementById('vc-S');
+    if (!Sin) return;
+    var Kin = document.getElementById('vc-K'), rin = document.getElementById('vc-r'),
+        sigmaIn = document.getElementById('vc-sigma'), dteIn = document.getElementById('vc-dte');
+    var d1Out = document.getElementById('vc-d1'), phiOut = document.getElementById('vc-phi'),
+        nuOut = document.getElementById('vc-nu'), nuPtOut = document.getElementById('vc-nupt'),
+        noteOut = document.getElementById('vc-note'), resetBtn = document.getElementById('vc-reset');
+    var DEFAULTS = { S: 100, K: 100, r: 2, sigma: 20, dte: 30 };
+
+    function recompute(){
+      var S = parseFloat(Sin.value), K = parseFloat(Kin.value),
+          r = parseFloat(rin.value) / 100, sigma = parseFloat(sigmaIn.value) / 100,
+          dte = parseFloat(dteIn.value);
+      noteOut.textContent = '';
+
+      if (!isFinite(S) || !isFinite(K) || !isFinite(r) || !isFinite(sigma) || !isFinite(dte) ||
+          S <= 0 || K <= 0 || sigma < 0 || dte < 0) {
+        d1Out.textContent = phiOut.textContent = nuOut.textContent = nuPtOut.textContent = '—';
+        noteOut.textContent = '(enter positive S, K, a non-negative σ, and a non-negative number of days)';
+        return;
+      }
+      var T = dte / 365;
+      if (T === 0) {
+        d1Out.textContent = phiOut.textContent = '—';
+        nuOut.textContent = nuPtOut.textContent = '0.00';
+        noteOut.textContent = '(0 days to expiry: no time value left to be sensitive to σ — vega is 0)';
+        return;
+      }
+      if (sigma === 0) {
+        d1Out.textContent = phiOut.textContent = nuOut.textContent = nuPtOut.textContent = '—';
+        noteOut.textContent = '(σ=0: d₁ is undefined at zero volatility)';
+        return;
+      }
+      var res = bsVega(S, K, T, sigma, r);
+      d1Out.textContent = res.d1.toFixed(4);
+      phiOut.textContent = res.phi.toFixed(4);
+      nuOut.textContent = res.vega.toFixed(2);
+      nuPtOut.textContent = (res.vega * 0.01).toFixed(4);
+    }
+
+    [Sin, Kin, rin, sigmaIn, dteIn].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      Sin.value = DEFAULTS.S; Kin.value = DEFAULTS.K; rin.value = DEFAULTS.r;
+      sigmaIn.value = DEFAULTS.sigma; dteIn.value = DEFAULTS.dte;
+      recompute();
+    });
+    recompute();
+  })();
+
+  // Slide 12 — toy three-strike dollar VegaExposure book, live, with guards.
+  (function(){
+    var nu90 = document.getElementById('vgx-nu-90');
+    if (!nu90) return;
+    var oi90 = document.getElementById('vgx-oi-90'), out90 = document.getElementById('vgx-out-90');
+    var nu100 = document.getElementById('vgx-nu-100'), oi100 = document.getElementById('vgx-oi-100'), out100 = document.getElementById('vgx-out-100');
+    var nu110 = document.getElementById('vgx-nu-110'), oi110 = document.getElementById('vgx-oi-110'), out110 = document.getElementById('vgx-out-110');
+    var totalEl = document.getElementById('vgx-total');
+    var resetBtn = document.getElementById('vgx-reset');
+    var DEFAULTS = { nu90: 0.1011, oi90: 3000, nu100: 0.1971, oi100: 8500, nu110: 0.1368, oi110: 5000 };
+
+    function fmtDollars(v){
+      return '$' + v.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    }
+
+    function rowValue(nuEl, oiEl, outEl){
+      var nu = parseFloat(nuEl.value), oi = parseFloat(oiEl.value);
+      if (!isFinite(nu) || !isFinite(oi) || nu < 0 || oi < 0) {
+        outEl.textContent = '—';
+        return null;
+      }
+      var v = nu * oi * 100;
+      outEl.textContent = fmtDollars(v);
+      return v;
+    }
+
+    function recompute(){
+      var v1 = rowValue(nu90, oi90, out90);
+      var v2 = rowValue(nu100, oi100, out100);
+      var v3 = rowValue(nu110, oi110, out110);
+      var vals = [v1, v2, v3].filter(function(v){ return v !== null; });
+      if (!vals.length) { totalEl.textContent = '—'; return; }
+      var total = vals.reduce(function(a, b){ return a + b; }, 0);
+      totalEl.textContent = fmtDollars(total);
+    }
+
+    [nu90, oi90, nu100, oi100, nu110, oi110].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      nu90.value = DEFAULTS.nu90; oi90.value = DEFAULTS.oi90;
+      nu100.value = DEFAULTS.nu100; oi100.value = DEFAULTS.oi100;
+      nu110.value = DEFAULTS.nu110; oi110.value = DEFAULTS.oi110;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>
