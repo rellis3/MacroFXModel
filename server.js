@@ -20377,6 +20377,48 @@ _sessionResearchFullTick();
 setInterval(_sessionResearchLiveTick, SESSION_RESEARCH_LIVE_INTERVAL_MS);
 setInterval(_sessionResearchFullTick, SESSION_RESEARCH_FULL_INTERVAL_MS);
 
+// ── Nasdaq Macro Lead: native in-process scheduling ─────────────────────────
+// RESEARCH TOOL, NOT A TRADING BOT — see NasdaqMacroLead/README.md. Tests
+// (honestly, walk-forward, out-of-sample only) whether a macro composite
+// line tracks NAS100 ahead of price, the way a UST-yield-spread line is
+// sometimes shown "leading" price on FX charts. Same scheduling pattern as
+// SessionResearch just above: one Python module run periodically via
+// _execFileAsync/BT_PYTHON, writing a JSON file this process then serves —
+// no new KV plumbing, no live trading, nothing here places an order.
+// Refreshed every 4h (== one NAS100 H4 bar) since a faster cadence can't
+// produce a new bar to predict anyway; fires once on boot same as above.
+const NASDAQ_MACRO_LEAD_SUMMARY_PATH = path.join(__dirname, 'NasdaqMacroLead', 'out', 'dashboard_summary.json');
+const NASDAQ_MACRO_LEAD_INTERVAL_MS = (parseInt(process.env.NASDAQ_MACRO_LEAD_INTERVAL_SECONDS, 10) || 14400) * 1000;
+
+let _nasdaqMacroLeadBusy = false;
+async function _nasdaqMacroLeadTick() {
+  if (_nasdaqMacroLeadBusy) { console.warn('[nasdaq-macro-lead] tick still running, skipping this interval'); return; }
+  if (!process.env.OANDA_KEY || !process.env.FRED_KEY) {
+    console.warn('[nasdaq-macro-lead] OANDA_KEY/FRED_KEY not set — skipping (nothing to fetch)');
+    return;
+  }
+  _nasdaqMacroLeadBusy = true;
+  const startedAt = Date.now();
+  console.log(`[nasdaq-macro-lead] tick starting ${new Date().toISOString()}`);
+  try {
+    await _execFileAsync(BT_PYTHON, ['-m', 'NasdaqMacroLead.dashboard_export'],
+      { cwd: __dirname, timeout: 5 * 60_000, maxBuffer: 16 * 1024 * 1024 });
+    console.log(`[nasdaq-macro-lead] tick done in ${((Date.now() - startedAt) / 1000).toFixed(0)}s`);
+  } catch (e) {
+    console.warn(`[nasdaq-macro-lead] tick failed: ${e.message}`);
+  } finally {
+    _nasdaqMacroLeadBusy = false;
+  }
+}
+_nasdaqMacroLeadTick();
+setInterval(_nasdaqMacroLeadTick, NASDAQ_MACRO_LEAD_INTERVAL_MS);
+
+app.get('/api/nasdaq-macro-lead/summary', async (_req, res) => {
+  const out = await _loadAnalogMLJson(NASDAQ_MACRO_LEAD_SUMMARY_PATH, 'nasdaq-macro-lead/dashboard_summary.json');
+  if (!out) return res.status(404).json({ ok: false, error: 'no dashboard_summary.json yet -- run NasdaqMacroLead/dashboard_export.py (needs OANDA_KEY + FRED_KEY)' });
+  return res.json(out);
+});
+
 app.get('/api/analogml/motif-trades', async (_req, res) => {
   const out = await _loadAnalogMLJson(ANALOGML_MOTIF_TRADES_PATH, 'analogml/motif_trades.json');
   if (!out) return res.status(404).json({ ok: false, error: 'no motif_trades.json yet -- run AnalogML/motif_track.py' });
