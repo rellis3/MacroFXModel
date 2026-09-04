@@ -20423,7 +20423,11 @@ function _nmlRunVariant(label, times, targetClose, targetRet, featureSeries, fea
   return {
     label, ok: true, features_used: available, features_missing: missing,
     stats: nmlOosStats(oos), oos_bars: oos.length,
-    window_path: nmlAnchoredWindowPath(oos).map(p => ({ t: _nmlIsoT(p.t), v: _nmlRound(p.v, 2) })),
+    // Array of segments — one per walk-forward window/reset, each its own
+    // {t,v} array. The chart renders each as a SEPARATE line so a reset
+    // shows as a gap, not a connecting "cliff" — see anchoredWindowPath's
+    // own comment for why a flat series would be misleading here.
+    window_path: nmlAnchoredWindowPath(oos).map(seg => seg.map(p => ({ t: _nmlIsoT(p.t), v: _nmlRound(p.v, 2) }))),
     next_bar_pred: nmlNextBarPredPrice(oos).map(p => ({ t: _nmlIsoT(p.t), v: _nmlRound(p.v, 2) })),
   };
 }
