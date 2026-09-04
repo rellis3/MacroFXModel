@@ -23,7 +23,8 @@
     font-size:12.5px;font-weight:600;cursor:pointer}
   .seg button.active{background:var(--blue);color:#fff}
   #chartEl{width:100%;height:460px;border-radius:8px;overflow:hidden}
-  .stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .stats-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  @media (max-width:1080px){.stats-grid{grid-template-columns:1fr 1fr}}
   @media (max-width:780px){.stats-grid{grid-template-columns:1fr}}
   table{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums}
   th{color:var(--text3);text-align:right;font-weight:500;padding:5px 8px;border-bottom:1px solid var(--border);font-size:10.5px;text-transform:uppercase}
@@ -75,6 +76,7 @@
       <div class="seg" id="variantSeg">
         <button data-v="fast" class="active">Fast proxies</button>
         <button data-v="fred">FRED yields</button>
+        <button data-v="fairvalue">Fair value</button>
       </div>
       <div class="seg" id="lineSeg">
         <button data-l="window_path" class="active">Window path</button>
@@ -85,6 +87,8 @@
     <div id="chartNote" class="muted" style="display:none;font-size:12px;margin-top:6px"></div>
     <div class="legend">
       <span><i class="sw" style="background:#4f7df0"></i>Model projection (OOS only)</span>
+      <span><i class="sw" style="background:#8b5cf6"></i>Fair value — backtested</span>
+      <span><i class="sw" style="background:#8b5cf6;background-image:repeating-linear-gradient(90deg,#8b5cf6 0 4px,transparent 4px 7px)"></i>Fair value — live projection (unscored)</span>
       <span class="muted">Candles = realized NAS100 H4 price</span>
     </div>
     <div class="meta" id="genAt"></div>
@@ -94,6 +98,7 @@
   <div class="stats-grid">
     <div class="card" id="statsFast"></div>
     <div class="card" id="statsFred"></div>
+    <div class="card" id="statsFairValue"></div>
   </div>
 
   <div class="card note" id="howToRead"></div>
@@ -102,6 +107,7 @@
 <script>
 const $ = s => document.querySelector(s);
 let summary = null, chart = null, candleSeries = null, lineSeries = null, windowSegSeries = [];
+let fvScoredSeries = null, fvTailSeries = null;
 let curVariant = 'fast', curLine = 'window_path';
 
 function toUnix(iso) { return Math.floor(new Date(iso).getTime() / 1000); }
@@ -128,6 +134,7 @@ function renderStatsCard(el, key, v) {
     <h2>${v.label}</h2>
     <table>
       <tr><th></th><th>value</th></tr>
+      ${v.horizon_bars != null ? `<tr><td>Horizon</td><td>${v.horizon_bars} bars (~${v.horizon_bars*4}h)</td></tr>` : ''}
       <tr><td>OOS bars</td><td>${s.n ?? '—'}</td></tr>
       <tr><td>Rank IC</td><td class="${(s.ic||0)>=0?'pos':'neg'}">${fmt(s.ic,4)}</td></tr>
       <tr><td>t-stat</td><td>${fmt(s.t,3)}</td></tr>
@@ -154,6 +161,11 @@ function buildChart() {
   });
   candleSeries = chart.addCandlestickSeries({ priceLineVisible: false });
   lineSeries = chart.addLineSeries({ color: '#4f7df0', lineWidth: 2, priceLineVisible: false, lastValueVisible: false });
+  fvScoredSeries = chart.addLineSeries({ color: '#8b5cf6', lineWidth: 2, priceLineVisible: false, lastValueVisible: false });
+  fvTailSeries = chart.addLineSeries({
+    color: '#8b5cf6', lineWidth: 2, lineStyle: LightweightCharts.LineStyle.Dashed,
+    priceLineVisible: false, lastValueVisible: false,
+  });
   window.addEventListener('resize', () => { try { chart.resize(el.clientWidth, 460); } catch (e) {} });
 }
 
@@ -169,12 +181,33 @@ function renderChart() {
   const v = summary.variants?.[curVariant];
   const chartNote = $('#chartNote');
 
-  if (curLine === 'window_path') {
+  // Clear every overlay series, then populate only the ones this mode uses —
+  // avoids leftover data from a previous variant/line bleeding through.
+  lineSeries.setData([]);
+  clearWindowSegSeries();
+  fvScoredSeries.setData([]);
+  fvTailSeries.setData([]);
+
+  if (curVariant === 'fairvalue') {
+    // Smooth LEVEL-regression line, not the walk-forward return lines —
+    // scored_path is the backtested track record (solid), tail_path is the
+    // live, unscored forward projection (dashed) — see the legend. Joined
+    // at the scored/tail boundary so there's no visual gap between them.
+    const scored = (v && v.ok) ? (v.scored_path || []) : [];
+    const tail = (v && v.ok) ? (v.tail_path || []) : [];
+    fvScoredSeries.setData(scored.map(p => ({ time: toUnix(p.t), value: p.v })));
+    const tailPoints = scored.length
+      ? [scored[scored.length - 1], ...tail]
+      : tail;
+    fvTailSeries.setData(tailPoints.map(p => ({ time: toUnix(p.t), value: p.v })));
+    const has = scored.length || tail.length;
+    chartNote.style.display = has ? 'none' : 'block';
+    chartNote.classList.toggle('err', !!(v && !v.ok));
+    if (!has) chartNote.textContent = v && !v.ok ? `${v.label || curVariant}: ${v.error || 'no data'}` : 'No fair-value data for this variant.';
+  } else if (curLine === 'window_path') {
     // window_path is an array of SEGMENTS (one per walk-forward window/reset)
     // — each rendered as its OWN line series so a reset shows as a gap, not
     // a connecting "cliff" across two very different price levels.
-    lineSeries.setData([]);
-    clearWindowSegSeries();
     const segments = (v && v.ok) ? (v.window_path || []) : [];
     for (const seg of segments) {
       const s = chart.addLineSeries({ color: '#4f7df0', lineWidth: 2, priceLineVisible: false, lastValueVisible: false });
@@ -185,7 +218,6 @@ function renderChart() {
     chartNote.classList.toggle('err', !!(v && !v.ok));
     if (!segments.length) chartNote.textContent = v && !v.ok ? `${v.label || curVariant}: ${v.error || 'no data'}` : 'No window-path data for this variant.';
   } else {
-    clearWindowSegSeries();
     const series = (v && v.ok) ? (v.next_bar_pred || []) : [];
     lineSeries.setData(series.map(p => ({ time: toUnix(p.t), value: p.v })));
     chartNote.style.display = series.length ? 'none' : 'block';
@@ -199,6 +231,7 @@ function renderChart() {
 function renderStats() {
   renderStatsCard($('#statsFast'), 'fast', summary.variants?.fast);
   renderStatsCard($('#statsFred'), 'fred', summary.variants?.fred);
+  renderStatsCard($('#statsFairValue'), 'fairvalue', summary.variants?.fairvalue);
 }
 
 let _controlsWired = false;
@@ -209,6 +242,9 @@ function wireControls() {
     const b = e.target.closest('button'); if (!b) return;
     curVariant = b.dataset.v;
     [...$('#variantSeg').children].forEach(x => x.classList.toggle('active', x === b));
+    // window_path/next_bar_pred don't apply to the fair-value mode (one
+    // continuous smooth line, not two walk-forward representations).
+    $('#lineSeg').style.display = curVariant === 'fairvalue' ? 'none' : 'inline-flex';
     renderChart();
   });
   $('#lineSeg').addEventListener('click', e => {
@@ -258,7 +294,7 @@ async function load() {
   $('#loadErrActions').style.display = 'none';
   $('#content').style.display = 'block';
   $('#genAt').textContent = `Generated ${new Date(summary.generated_at).toLocaleString()} · ${summary.target} ${summary.granularity} · ${(summary.candles||[]).length} bars · walk-forward: train ${summary.walk_forward_params?.train_bars}, test ${summary.walk_forward_params?.test_bars} bars`;
-  $('#howToRead').innerHTML = `<strong>How to read this:</strong> "Window path" re-anchors the model's projected trajectory to the real close at the start of every walk-forward refit — the closer analogue to a "leading line" chart. "Next-bar (1-step)" plots, at each bar, what the model forecast for the very next bar's close — the most direct test of whether the line arrives before the candle. Both are built ONLY from coefficients fit on data strictly before the bars shown; the stats panels below (rank-IC, a circular-shift null p-value, and split-half sign stability) are the same tests <code>analysis/yield_asset_coupling.py</code> uses, which is why the daily-horizon version of this exact question — including the classic 2s10s yield spread — found essentially nothing for NDX. This page exists to check whether a faster, continuously-quoted proxy set changes that conclusion at H4, not to assume it will.`;
+  $('#howToRead').innerHTML = `<strong>How to read this:</strong> "Fast proxies" and "FRED yields" are walk-forward RETURN regressions — "Window path" re-anchors the model's projected trajectory to the real close at the start of every walk-forward refit (the closer analogue to a classic "leading line" chart); "Next-bar (1-step)" plots, at each bar, what the model forecast for the very next bar's close. "Fair value" is structurally different — a LEVEL regression predicting NAS100's level ~${summary.variants?.fairvalue?.horizon_bars ? summary.variants.fairvalue.horizon_bars*4 : 32}h ahead from today's macro factor LEVELS (front-end/long-end rates, real yield, USD index, gold, curve slope), which is why it comes out smooth rather than jagged — a level regression on slow-moving levels doesn't compound bar-to-bar noise the way a return regression does. Its solid segment is the walk-forward backtest (judgeable, out-of-sample); its dashed tail is a live, unscored projection with no known outcome yet — the actual "rough expectation of the next day or so." All three are built ONLY from coefficients fit on data strictly before the bars shown; the stats panels below (rank-IC, a circular-shift null p-value, and split-half sign stability) are the same tests <code>analysis/yield_asset_coupling.py</code> uses, which is why the daily-horizon version of this exact question — including the classic 2s10s yield spread — found essentially nothing for NDX. This page exists to check whether faster and/or level-based macro data changes that conclusion at H4, not to assume it will.`;
   if (!chart) buildChart();
   renderChart();
   renderStats();
