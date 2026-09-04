@@ -236,6 +236,7 @@
       <div class="sm-group" data-group="equity">
         <div class="sm-group-hd" style="color:#06b6d4">NASDAQ / Equity</div>
         <a class="sm-item" href="macro-equity-backtest.html" target="_blank"><span class="sm-item-name">📊 Macro Equity BT</span><span class="sm-item-desc">Macro-regime-driven equity index strategy backtest (SPX / NAS100 / DAX)</span></a>
+        <a class="sm-item" href="nasdaq-macro-lead.html" target="_blank"><span class="sm-item-name">🧭 NQ Macro Lead</span><span class="sm-item-desc">Research: walk-forward test of whether a macro-proxy composite leads NAS100 at H4 — not a trading signal</span></a>
         <a class="sm-item" href="nasdaq-threshold-backtest.html" target="_blank"><span class="sm-item-name">🧮 NQ Threshold BT</span><span class="sm-item-desc">Backtests the NASDAQ macro threshold gate strategy; IS/OOS split with cost sensitivity</span></a>
         <a class="sm-item" href="nasdaq-liquidity-continuation.html" target="_blank"><span class="sm-item-name">📈 NQ Liq BT</span><span class="sm-item-desc">NASDAQ liquidity-continuation strategy backtest — enters on GLI-regime-confirmed breakouts</span></a>
         <a class="sm-item" href="liquidity-gate-backtest.html" target="_blank"><span class="sm-item-name">💧 Liq Gate BT</span><span class="sm-item-desc">Liquidity-gate filter backtest — only trades when the GLI macro regime permits entry</span></a>
@@ -712,6 +713,10 @@
           <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vix-vol-carry-backtest/trades</span><span class="am-desc">Returns stored VIX vol-carry backtest trades</span><span class="am-consumers">vix-vol-carry-backtest.html</span></div>
           <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/vix-vol-carry-backtest/results</span><span class="am-desc">Stores VIX vol-carry backtest results summary</span><span class="am-consumers">populated by python script</span></div>
           <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vix-vol-carry-backtest/results</span><span class="am-desc">Returns stored VIX vol-carry backtest results</span><span class="am-consumers">vix-vol-carry-backtest.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Nasdaq Macro Lead</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/nasdaq-macro-lead/summary</span><span class="am-desc">Candles + walk-forward OOS projected-line series + honesty stats, refreshed every 4h by NasdaqMacroLead/dashboard_export.py</span><span class="am-consumers">nasdaq-macro-lead.html</span></div>
         </div>
         <div class="am-feat">
           <div class="am-feat-hd">Global Liquidity backtests</div>
