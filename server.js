@@ -20419,7 +20419,19 @@ const NML_FRED_COLS = ['y2_chg', 'y10_chg', 'slope_chg', 'real10_chg', 'be10_chg
 // series per macro dimension to avoid near-duplicate/collinear pairs (e.g.
 // bond10_level and y10_level are two proxies for the same 10Y rate — using
 // both would just destabilize the OLS fit for no informational gain).
-const NML_FV_PARAMS = { trainBars: 500, testBars: 100, stepBars: 100, zWindow: 250, horizonBars: 8 };
+// testBars/stepBars=1 (not the 100 the return-regression variants use): a
+// TRUE rolling refit — one fresh OLS fit per bar, trained on the trailing
+// 500 bars, predicting only that one bar — rather than fitting once per
+// 100-bar BLOCK and predicting the whole block off frozen coefficients.
+// Confirmed empirically this matters: block-stepping produced single-step
+// jumps up to ~14% when a block boundary landed where the macro
+// relationship had shifted (visible as a vertical "cliff" mid-chart, same
+// failure class as window_path's reset — except fair value has no window
+// boundaries to gap around, so it read as a rendering bug). Continuous
+// refit cut the worst-case jump to <3% in the same test. Costs ~1s server-
+// side for 2.5 years of H4 data — trivial next to the OANDA fetch time this
+// already budgets 10-30s for.
+const NML_FV_PARAMS = { trainBars: 500, testBars: 1, stepBars: 1, zWindow: 250, horizonBars: 8 };
 const NML_FV_COLS = ['bond2_level', 'bond10_level', 'real10_level', 'usd_basket_level', 'gold_level', 'slope_level'];
 
 const _nmlIsoT = epochSec => new Date(epochSec * 1000).toISOString();
