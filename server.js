@@ -324,6 +324,34 @@ function authZoneForPath(pathName) {
     : 'main';
 }
 
+// ── Theory Lab micro-education (visual guide) visibility ───────────────────
+// The Theory Lab "visual guide" slide decks (*-micro.html) are surfaced via
+// a reading-mode toggle + ⚡ badges on hub.html and a per-lesson callout
+// banner. HIDE_MICRO_EDUCATION defaults to hidden; set it to '0' to show
+// the feature. Hiding is UI-only, done server-side (so there's no flash of
+// the option before JS could hide it): it strips the toggle, the badges,
+// the per-lesson banners, and forces hub.html's reading-mode script to
+// always resolve to 'full', ignoring any 'micro' preference a browser had
+// already saved to localStorage before the feature was hidden. A
+// *-micro.html URL, if already known, still loads normally — this does not
+// block direct access.
+const HIDE_MICRO_EDUCATION = (process.env.HIDE_MICRO_EDUCATION ?? '1') !== '0';
+const MICRO_CALLOUT_RE = /<div class="tl-callout">\s*<strong>Prefer pictures to prose\?<\/strong>[\s\S]*?<\/div>\n?/g;
+const MICRO_MODE_TOGGLE_RE = /<div class="tl-mode-toggle"[\s\S]*?<\/div>\n?/;
+const MICRO_CARD_BADGE_RE = /<span class="tl-card-micro-badge"[\s\S]*?<\/span>/g;
+const MICRO_MODE_SCRIPT_RE = /try\s*\{\s*mode\s*=\s*localStorage\.getItem\(KEY\)\s*\|\|\s*'full';\s*\}\s*catch\s*\(e\)\s*\{\}/;
+const MICRO_LESSON_PAGE_RE = /^\/theory-lab\/(?:hub\.html|lessons\/(?!.*-micro\.html$)[^/]+\.html)$/;
+
+function stripMicroEducationUI(html, isHub) {
+  html = html.replace(MICRO_CALLOUT_RE, '');
+  if (isHub) {
+    html = html.replace(MICRO_MODE_TOGGLE_RE, '');
+    html = html.replace(MICRO_CARD_BADGE_RE, '');
+    html = html.replace(MICRO_MODE_SCRIPT_RE, "mode = 'full'; // micro-education hidden");
+  }
+  return html;
+}
+
 function authSign(payload) {
   return crypto.createHmac('sha256', AUTH_SECRET).update(payload).digest('hex');
 }
@@ -27691,6 +27719,15 @@ app.post('/login', (req, res) => {
 });
 
 app.use(requireAuth);
+
+if (HIDE_MICRO_EDUCATION) {
+  app.get(MICRO_LESSON_PAGE_RE, (req, res, next) => {
+    fs.readFile(path.join(__dirname, req.path), 'utf8', (err, html) => {
+      if (err) return next();
+      res.type('html').send(stripMicroEducationUI(html, req.path === '/theory-lab/hub.html'));
+    });
+  });
+}
 
 // Dashboard static assets — served from project root.
 // journal.html and backtest.html are served as-is; index.html is the fallback.
