@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clustering for Market Structure — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Clustering for Market Structure — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivation, MathJax notation, and a 6-question self-test?<a href="clustering-market-structure.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Deep Learning &amp; Modern ML 4 · Deep Learning &amp; Modern ML for Trading</div>
+      <h1 class="sl-h1">Clustering for Market Structure, <em>Grouping What Nobody Labeled</em></h1>
+      <p class="sl-lede">Every other method in this curriculum has a target to check its answer against — a return to predict, a regime to classify. Clustering has none. It starts from a pile of things — trading days, currency pairs, factor exposures — with no labels attached at all, and asks only which of them behave alike. k-Means answers that by picking a number of groups upfront and iterating toward them; hierarchical clustering answers it by building a full tree of every possible grouping first, and only deciding "how many groups" after the fact. Both are the same tree-building idea this curriculum already used narrowly inside the earlier <strong>Hierarchical Risk Parity</strong> lesson — generalized here into a stand-alone discovery tool.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">No labels, no answer key — that's the whole point</h2>
+      <p class="sl-sub">Every regression or classifier elsewhere in this curriculum is supervised. Clustering is a different kind of question entirely.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🏷</div><div><h4>Supervised methods have a target</h4><p>A regression, a classifier, a diagnostic test — each has a known "correct" answer for every observation, and can be scored against it directly.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">❓</div><div><h4>Clustering has no target at all</h4><p>It starts from a set of things with nothing labeled in advance, and asks only: which of these look alike, and which look different?</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔍</div><div><h4>It's built for discovery</h4><p>Genuinely useful for "are there natural groups here I haven't already hypothesized?" — a question supervised methods can't even ask.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>It is never self-validating</h4><p>An algorithm will confidently produce groups from almost any input, including pure noise. A clean-looking split proves the algorithm ran — not that the groups mean anything.</p></div></div>
+      </div>
+      <div class="sl-quote">Both honest facts belong in the same sentence: clustering is a real, useful way to discover structure, and its output is never proof of anything on its own. Every result needs an independent sanity check against evidence the clustering never saw.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">The one building block underneath both methods</h2>
+      <p class="sl-sub">"How alike are two points?" is answered the same way everywhere below: ordinary Euclidean distance. Edit either point, live.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Point 1 — x₁</label><input type="number" class="sl-input" id="dist-x1" value="1" step="0.5"></div>
+          <div class="sl-calc-field"><label>Point 1 — y₁</label><input type="number" class="sl-input" id="dist-y1" value="1" step="0.5"></div>
+          <div class="sl-calc-op">↔</div>
+          <div class="sl-calc-field"><label>Point 2 — x₂</label><input type="number" class="sl-input" id="dist-x2" value="6" step="0.5"></div>
+          <div class="sl-calc-field"><label>Point 2 — y₂</label><input type="number" class="sl-input" id="dist-y2" value="6" step="0.5"></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Δx = <b id="dist-dx">5</b>, Δy = <b id="dist-dy">5</b></div>
+          <div>Δx² + Δy² = <b id="dist-sq">50</b></div>
+          <div>distance = √(Δx² + Δy²) = <b id="dist-result">7.0711</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="dist-reset">Reset to (1,1) and (6,6)</button>
+        <div class="sl-note">Blank or non-numeric input shows "—" instead of breaking — the same guard every calculator on this page uses.</div>
+      </div>
+      <p class="sl-p">This one quantity — squared distance, most of the time — is what "closest centroid" means to k-means and what "closest cluster" means to hierarchical clustering's linkage rule. Everything downstream is built on top of it, which is also exactly why unscaled features quietly wreck both methods: a feature with a bigger raw range dominates this calculation regardless of whether it's actually more informative.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">k-Means: commit to k, then loop</h2>
+      <p class="sl-sub">MacQueen (1967) named it; the iterative version almost everyone actually runs is Lloyd's algorithm (1957/1982).</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">1</div><div><h4>Choose k, then initialize</h4><p>Decide the number of clusters up front — the algorithm has no way to suggest one — and drop k starting centroids into the data.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">2</div><div><h4>Assign</h4><p>Every point joins whichever centroid it's currently closest to, by squared distance.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">3</div><div><h4>Update</h4><p>Recompute each centroid as the mean position of the points now assigned to it.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">4</div><div><h4>Repeat</h4><p>Alternate assign and update until no point switches clusters. That's convergence.</p></div></div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>Each step can only shrink the total squared distance from points to their own centroid, or leave it unchanged — so the loop is guaranteed to settle down. It is <em>not</em> guaranteed to settle on the best possible split: an unlucky starting position can converge to a genuinely worse local optimum and stay there, which is why production k-means always runs several restarts and keeps the lowest-error result.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Watch it self-correct from a bad start</h2>
+      <p class="sl-sub">Six points, two obvious groups: {A,B,C} near the origin, {D,E,F} far away. Start both centroids deliberately inside the wrong group.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="km-tabs">
+          <button class="sl-tab active" data-panel="km-1">Iteration 1 — bad start</button>
+          <button class="sl-tab" data-panel="km-2">Iteration 2 — centroids shift</button>
+          <button class="sl-tab" data-panel="km-3">Iteration 3 — converged</button>
+        </div>
+        <div class="sl-panel active" id="km-1">
+          <div class="sl-svgwrap"><svg viewBox="0 0 320 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Six points with both starting centroids placed inside the left-hand cluster, splitting the data one-versus-five">
+            <circle cx="40" cy="260" r="7" style="fill:var(--blue)"/>
+            <circle cx="40" cy="230" r="7" style="fill:var(--amber)"/>
+            <circle cx="80" cy="230" r="7" style="fill:var(--amber)"/>
+            <circle cx="240" cy="110" r="7" style="fill:var(--amber)"/>
+            <circle cx="280" cy="80" r="7" style="fill:var(--amber)"/>
+            <circle cx="240" cy="50" r="7" style="fill:var(--amber)"/>
+            <text x="40" y="278" text-anchor="middle" style="fill:var(--text3);font-size:11px">A</text>
+            <text x="40" y="216" text-anchor="middle" style="fill:var(--text3);font-size:11px">B</text>
+            <text x="80" y="216" text-anchor="middle" style="fill:var(--text3);font-size:11px">C</text>
+            <text x="240" y="126" text-anchor="middle" style="fill:var(--text3);font-size:11px">D</text>
+            <text x="280" y="66" text-anchor="middle" style="fill:var(--text3);font-size:11px">E</text>
+            <text x="240" y="36" text-anchor="middle" style="fill:var(--text3);font-size:11px">F</text>
+            <path d="M33,260 L47,260 M40,253 L40,267" style="stroke:var(--blue);stroke-width:2.5"/>
+            <path d="M33,230 L47,230 M40,223 L40,237" style="stroke:var(--amber);stroke-width:2.5"/>
+            <text x="55" y="255" style="fill:var(--blue);font-size:10px">μ₁ = A</text>
+            <text x="55" y="245" style="fill:var(--amber);font-size:10px">μ₂ = B</text>
+          </svg></div>
+          <div class="sl-verdict"><strong>Cluster 1 = {A} only. Cluster 2 = {B,C,D,E,F}.</strong> Wrong split — D, E, F are far closer to each other than to B or C, but both starting centroids happened to sit on the same side.</div>
+        </div>
+        <div class="sl-panel" id="km-2">
+          <div class="sl-svgwrap"><svg viewBox="0 0 320 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="After updating, centroid two has shifted right and pulled B and C back to centroid one">
+            <circle cx="40" cy="260" r="7" style="fill:var(--blue)"/>
+            <circle cx="40" cy="230" r="7" style="fill:var(--blue)"/>
+            <circle cx="80" cy="230" r="7" style="fill:var(--blue)"/>
+            <circle cx="240" cy="110" r="7" style="fill:var(--amber)"/>
+            <circle cx="280" cy="80" r="7" style="fill:var(--amber)"/>
+            <circle cx="240" cy="50" r="7" style="fill:var(--amber)"/>
+            <text x="40" y="278" text-anchor="middle" style="fill:var(--text3);font-size:11px">A</text>
+            <text x="40" y="216" text-anchor="middle" style="fill:var(--text3);font-size:11px">B</text>
+            <text x="80" y="216" text-anchor="middle" style="fill:var(--text3);font-size:11px">C</text>
+            <text x="240" y="126" text-anchor="middle" style="fill:var(--text3);font-size:11px">D</text>
+            <text x="280" y="66" text-anchor="middle" style="fill:var(--text3);font-size:11px">E</text>
+            <text x="240" y="36" text-anchor="middle" style="fill:var(--text3);font-size:11px">F</text>
+            <path d="M33,260 L47,260 M40,253 L40,267" style="stroke:var(--blue);stroke-width:2.5"/>
+            <path d="M169,143 L183,143 M176,136 L176,150" style="stroke:var(--amber);stroke-width:2.5"/>
+            <text x="55" y="255" style="fill:var(--blue);font-size:10px">μ₁ = (1,1)</text>
+            <text x="188" y="147" style="fill:var(--amber);font-size:10px">μ₂ = (4.4, 5.0)</text>
+          </svg></div>
+          <div class="sl-verdict"><strong>Cluster 1 = {A,B,C}. Cluster 2 = {D,E,F}.</strong> μ₂ moved to the mean of {B,C,D,E,F} = (4.4, 5.0) — pulled toward D/E/F — which now puts B and C closer to μ₁ than to μ₂. They switch.</div>
+        </div>
+        <div class="sl-panel" id="km-3">
+          <div class="sl-svgwrap"><svg viewBox="0 0 320 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Final converged state with centroids resting at the mean of each true cluster">
+            <circle cx="40" cy="260" r="7" style="fill:var(--blue)"/>
+            <circle cx="40" cy="230" r="7" style="fill:var(--blue)"/>
+            <circle cx="80" cy="230" r="7" style="fill:var(--blue)"/>
+            <circle cx="240" cy="110" r="7" style="fill:var(--amber)"/>
+            <circle cx="280" cy="80" r="7" style="fill:var(--amber)"/>
+            <circle cx="240" cy="50" r="7" style="fill:var(--amber)"/>
+            <text x="40" y="278" text-anchor="middle" style="fill:var(--text3);font-size:11px">A</text>
+            <text x="40" y="216" text-anchor="middle" style="fill:var(--text3);font-size:11px">B</text>
+            <text x="80" y="216" text-anchor="middle" style="fill:var(--text3);font-size:11px">C</text>
+            <text x="240" y="126" text-anchor="middle" style="fill:var(--text3);font-size:11px">D</text>
+            <text x="280" y="66" text-anchor="middle" style="fill:var(--text3);font-size:11px">E</text>
+            <text x="240" y="36" text-anchor="middle" style="fill:var(--text3);font-size:11px">F</text>
+            <path d="M46,240 L60,240 M53,233 L53,247" style="stroke:var(--blue);stroke-width:2.5"/>
+            <path d="M246,80 L260,80 M253,73 L253,87" style="stroke:var(--amber);stroke-width:2.5"/>
+            <text x="65" y="244" style="fill:var(--blue);font-size:10px">μ₁ = (1.33, 1.67)</text>
+            <text x="180" y="76" style="fill:var(--amber);font-size:10px">μ₂ = (6.33, 7.0)</text>
+          </svg></div>
+          <div class="sl-verdict"><strong>Converged.</strong> Reassigning every point against the new centroids changes nothing — the algorithm has found the natural two-cluster split, despite starting from centroids that were both on the wrong side.</div>
+        </div>
+        <div class="sl-note">This particular bad start still self-corrected in two iterations — that isn't guaranteed. A worse or unluckier start can settle into a genuinely wrong split and stay there.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Choose k, watch the whole map redraw</h2>
+      <p class="sl-sub">Twelve points, three visually obvious blobs. Drag k and a real assign/update loop re-runs from scratch, live.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 340 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Twelve points forming three blobs, recoloured live by k-means cluster assignment as k changes">
+            <circle class="km-pt" id="km-p0" cx="50" cy="218" r="6"/>
+            <circle class="km-pt" id="km-p1" cx="65" cy="200.4" r="6"/>
+            <circle class="km-pt" id="km-p2" cx="44" cy="191.6" r="6"/>
+            <circle class="km-pt" id="km-p3" cx="80" cy="218" r="6"/>
+            <circle class="km-pt" id="km-p4" cx="230" cy="64" r="6"/>
+            <circle class="km-pt" id="km-p5" cx="260" cy="75" r="6"/>
+            <circle class="km-pt" id="km-p6" cx="245" cy="42" r="6"/>
+            <circle class="km-pt" id="km-p7" cx="275" cy="59.6" r="6"/>
+            <circle class="km-pt" id="km-p8" cx="230" cy="207" r="6"/>
+            <circle class="km-pt" id="km-p9" cx="260" cy="218" r="6"/>
+            <circle class="km-pt" id="km-p10" cx="245" cy="191.6" r="6"/>
+            <circle class="km-pt" id="km-p11" cx="284" cy="200.4" r="6"/>
+            <g id="km-c0" class="km-cent"><line x1="0" y1="-9" x2="0" y2="9" stroke-width="2.5"/><line x1="-9" y1="0" x2="9" y2="0" stroke-width="2.5"/></g>
+            <g id="km-c1" class="km-cent"><line x1="0" y1="-9" x2="0" y2="9" stroke-width="2.5"/><line x1="-9" y1="0" x2="9" y2="0" stroke-width="2.5"/></g>
+            <g id="km-c2" class="km-cent"><line x1="0" y1="-9" x2="0" y2="9" stroke-width="2.5"/><line x1="-9" y1="0" x2="9" y2="0" stroke-width="2.5"/></g>
+            <g id="km-c3" class="km-cent"><line x1="0" y1="-9" x2="0" y2="9" stroke-width="2.5"/><line x1="-9" y1="0" x2="9" y2="0" stroke-width="2.5"/></g>
+            <g id="km-c4" class="km-cent"><line x1="0" y1="-9" x2="0" y2="9" stroke-width="2.5"/><line x1="-9" y1="0" x2="9" y2="0" stroke-width="2.5"/></g>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Number of clusters, k</span><span class="sl-live" id="km-kval">k = 3</span></div>
+        <input type="range" class="sl-slider" id="km-slider" min="2" max="5" step="1" value="3">
+        <div class="sl-verdict" id="km-readout" style="margin-top:10px"></div>
+        <div class="sl-note">Deterministic, evenly-spaced starting centroids each time — no randomness — so the same k always redraws the same result.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Picking k is a judgment call, not a calculation</h2>
+      <p class="sl-sub">Minimizing error alone would always push k toward the largest value available — at k=n, error hits exactly zero. Two heuristics try to find a defensible k instead.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Elbow method</span>
+          <p>Plot total within-cluster error against k. It always decreases, but often with a visible bend where returns sharply diminish. Pick k at the bend — except real data frequently has no obvious bend, and reasonable people can disagree on where it is.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Silhouette score</span>
+          <p>For each point, compare its distance to its own cluster against its distance to the nearest other cluster; average for a score from −1 to +1. Pick the k that maximizes it — except it can disagree with the elbow, and can be maximized at a useless k=2.</p>
+        </div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Neither is a calculator for the correct k</div>
+        <p>Both are heuristics for narrowing a judgment call, and both can point to different answers on the identical data. The defensible practice: look at both, look at the actual clusters they produce, and weigh whatever domain knowledge exists about how many groups should plausibly be there.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Hierarchical clustering: build the whole tree first</h2>
+      <p class="sl-sub">No k to guess upfront — every level of grouping gets built at once, from the bottom.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">1</div><div><h4>Start with n singleton clusters</h4><p>Every point begins as its own cluster of one.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">2</div><div><h4>Merge the two closest clusters</h4><p>"Closest" is set by a <strong>linkage rule</strong> — single (nearest pair), complete (farthest pair), or average (mean pairwise distance). Record the distance the merge happened at.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">3</div><div><h4>Repeat until one cluster remains</h4><p>Every merge is recorded, building a <strong>dendrogram</strong> — leaves are the original points, internal nodes are merges labeled by distance.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">4</div><div><h4>Choose k only at the end</h4><p>Draw a horizontal cut across the finished tree at any height; the branches it crosses are the resulting clusters. Different heights, same tree, computed once.</p></div></div>
+      </div>
+      <p class="sl-p">Nothing here has to be decided before the algorithm runs — that's the entire trade against k-means. The cost is that building the full tree is more expensive, and — same as k-means — the choice of linkage rule changes the answer.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Cut the tree wherever you like, after the fact</h2>
+      <p class="sl-sub">Six currency pairs, already merged into a dendrogram by single linkage. Drag the cut height and watch the cluster count change.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A dendrogram of six currency pairs, with a draggable horizontal cut line whose height determines how many clusters result">
+            <line x1="30" y1="230" x2="30" y2="40" style="stroke:var(--border)"/>
+            <line x1="30" y1="230" x2="610" y2="230" style="stroke:var(--border)"/>
+            <text x="30" y="243" text-anchor="middle" style="fill:var(--text3);font-size:9px">0</text>
+            <text x="30" y="36" text-anchor="middle" style="fill:var(--text3);font-size:9px">80</text>
+            <text x="18" y="135" text-anchor="middle" style="fill:var(--text3);font-size:9px" transform="rotate(-90 18 135)">merge distance</text>
+            <g style="stroke:var(--purple);stroke-width:2;fill:none">
+              <line x1="70" y1="230" x2="70" y2="195.5"/>
+              <line x1="130" y1="230" x2="130" y2="195.5"/>
+              <line x1="70" y1="195.5" x2="130" y2="195.5"/>
+              <line x1="100" y1="195.5" x2="100" y2="161"/>
+              <line x1="190" y1="230" x2="190" y2="161"/>
+              <line x1="100" y1="161" x2="190" y2="161"/>
+              <line x1="330" y1="230" x2="330" y2="188.6"/>
+              <line x1="390" y1="230" x2="390" y2="188.6"/>
+              <line x1="330" y1="188.6" x2="390" y2="188.6"/>
+              <line x1="360" y1="188.6" x2="360" y2="156.4"/>
+              <line x1="450" y1="230" x2="450" y2="156.4"/>
+              <line x1="360" y1="156.4" x2="450" y2="156.4"/>
+              <line x1="145" y1="161" x2="145" y2="69"/>
+              <line x1="405" y1="156.4" x2="405" y2="69"/>
+              <line x1="145" y1="69" x2="405" y2="69"/>
+            </g>
+            <circle id="leaf-EURUSD" cx="70" cy="230" r="5"/>
+            <circle id="leaf-GBPUSD" cx="130" cy="230" r="5"/>
+            <circle id="leaf-USDCHF" cx="190" cy="230" r="5"/>
+            <circle id="leaf-AUDUSD" cx="330" cy="230" r="5"/>
+            <circle id="leaf-NZDUSD" cx="390" cy="230" r="5"/>
+            <circle id="leaf-USDCAD" cx="450" cy="230" r="5"/>
+            <text x="70" y="248" text-anchor="middle" style="fill:var(--text2);font-size:10.5px">EURUSD</text>
+            <text x="130" y="248" text-anchor="middle" style="fill:var(--text2);font-size:10.5px">GBPUSD</text>
+            <text x="190" y="248" text-anchor="middle" style="fill:var(--text2);font-size:10.5px">USDCHF</text>
+            <text x="330" y="248" text-anchor="middle" style="fill:var(--text2);font-size:10.5px">AUDUSD</text>
+            <text x="390" y="248" text-anchor="middle" style="fill:var(--text2);font-size:10.5px">NZDUSD</text>
+            <text x="450" y="248" text-anchor="middle" style="fill:var(--text2);font-size:10.5px">USDCAD</text>
+            <line id="cut-line" x1="30" y1="161" x2="610" y2="161" style="stroke:var(--red);stroke-width:1.5;stroke-dasharray:5,4"/>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Dendrogram cut height</span><span class="sl-live" id="dendro-hval">height = 25</span></div>
+        <input type="range" class="sl-slider" id="dendro-slider" min="0" max="80" step="1" value="25">
+        <div class="sl-verdict" id="dendro-readout" style="margin-top:10px"></div>
+        <div class="sl-note">Illustrative merge heights, not fitted from real correlations — the point is what cutting <em>does</em>, not the specific numbers.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">The linkage rule changes the tree it builds</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">⊂</div><div><h4>Single linkage</h4><p>Distance between the single closest pair, one point from each cluster. Even one close pair triggers a merge — can produce long, straggly clusters.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⊃</div><div><h4>Complete linkage</h4><p>Distance between the single farthest pair. Only merges when even the most dissimilar members aren't too far apart — tends toward tighter, more compact clusters.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">≈</div><div><h4>Average linkage</h4><p>The mean distance across every cross-cluster pair — a middle ground between the other two.</p></div></div>
+      </div>
+      <div class="sl-quote">The same six points can produce a meaningfully different dendrogram depending on which rule is used. "A" dendrogram is not "the" dendrogram — the choice should be stated and justified, not left as an unexamined default.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">This is the Hierarchical Risk Parity tree, generalized</h2>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Explicit connection to an earlier lesson</div>
+        <p>The <a href="hierarchical-risk-parity.html" style="color:inherit;text-decoration:underline">Hierarchical Risk Parity</a> lesson in this curriculum already builds exactly this machinery — correlation turned into distance, then agglomerative clustering into a dendrogram — for one narrow purpose: recursively splitting portfolio weight down the branches. Nothing about the clustering step itself has anything to do with portfolios. The identical dendrogram-building procedure applies whenever the question is "which of these things behave alike" — whether the "things" being merged are assets awaiting a weight, trading days awaiting a regime label, or instruments being grouped purely to map market structure with no allocation decision attached at all.</p>
+      </div>
+      <p class="sl-p">Recognizing "this is the same clustering problem, just pointed at a different set of things" is the actual transferable skill here. The algorithm doesn't know or care whether the points it's merging are assets, days, or signals — it only ever sees numbers and distances between them.</p>
+      <div class="sl-row">
+        <div class="sl-box">HRP lesson</div>
+        <div class="sl-arrow">→ narrow use →</div>
+        <div class="sl-box amber">portfolio weight, down the tree</div>
+      </div>
+      <div class="sl-row">
+        <div class="sl-box green">this lesson</div>
+        <div class="sl-arrow">→ same tree tool →</div>
+        <div class="sl-box green">regimes, instruments, signals — anything</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Where this actually shows up on a desk</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>Regime discovery</h4><p>Build a daily feature vector — realized vol, trend strength, cross-asset correlation — with no "regime" label attached to any day, and let clustering surface which days behave alike.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">💱</div><div><h4>Instrument grouping</h4><p>Cluster a universe of currencies or assets by return-behavior similarity to build a smaller set of representative baskets — without hand-specifying what "similar" should mean.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚖</div><div><h4>Signal deduplication</h4><p>Identify which candidate signals are effectively near-duplicates of each other before feeding a pile of collinear features into a model.</p></div></div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Factual check against this repo's actual code</div>
+        <p>The full lesson's status line reads "CONCEPT — not built or tested anywhere in this repo." That's now stale for k-means specifically: <code>js/forecastFeatureScan.js</code> runs a real, deterministic, seeded k-means (<code>_cluster</code>) that groups trading days into recurring "day types" from their realized signature — exactly the regime-discovery scenario above — and it's exercised by <code>js/forecastFeatureScan.test.mjs</code> (asserting every day is clustered exactly once and that the seeded run is reproducible), consumed by <code>js/volForecastResearchEngine.js</code> and <code>js/crossPairResearch.js</code>, and surfaced live in <code>vol-research-book.html</code> and <code>cross-pair-research.html</code>. Hierarchical (dendrogram-based) clustering, by contrast, still has no general-purpose use in this repo outside the narrow Hierarchical Risk Parity allocator — consistent with that lesson's own, more precisely worded claim ("no clustering-based <em>allocator</em> built or tested"). Read literally, both statements can be true at once: k-means clustering exists and is tested; a hierarchical-clustering allocator does not.</p>
+      </div>
+      <div class="sl-quote">A regime map that survives an independent check — does the "stressed" cluster line up with dates already known to be volatile from other evidence? — is a genuine discovery. A regime map only ever checked against the clustering that produced it is not evidence of anything; it's the algorithm confirming its own output.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What must you commit to before running k-means that hierarchical clustering never requires upfront?</h4>
+        <button class="sl-quiz-opt" data-correct="true">k, the number of clusters</button>
+        <button class="sl-quiz-opt">The distance metric</button>
+        <button class="sl-quiz-opt">The number of dimensions in the data</button>
+        <div class="sl-quiz-explain">k-means needs k chosen before it starts. Hierarchical clustering builds the entire tree first and only picks a cluster count afterward, by choosing where to cut.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>In Lloyd's algorithm, what does the "update" step do?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Moves each centroid to the mean of the points currently assigned to it</button>
+        <button class="sl-quiz-opt">Merges the two closest clusters into one</button>
+        <button class="sl-quiz-opt">Reduces k by one and reassigns everything</button>
+        <div class="sl-quiz-explain">Assign and update alternate: assign every point to its nearest centroid, then recompute each centroid as the mean of its current members.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Why is k-means guaranteed to converge, but not guaranteed to find the best possible clustering?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Each step can only reduce the error or leave it unchanged, but the loop can settle into a local optimum that depends on the starting centroids</button>
+        <button class="sl-quiz-opt">It always finds the global optimum, given enough iterations</button>
+        <button class="sl-quiz-opt">It stops after a fixed number of steps regardless of whether the data has settled</button>
+        <div class="sl-quiz-explain">Assigning to the nearest centroid, and setting a centroid to the mean of its points, both provably never increase the total squared distance — but where it lands depends on where it started, which is why production use runs multiple restarts.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Cutting a dendrogram at a lower height, versus a higher height, tends to produce:</h4>
+        <button class="sl-quiz-opt" data-correct="true">More, smaller clusters</button>
+        <button class="sl-quiz-opt">Fewer, larger clusters</button>
+        <button class="sl-quiz-opt">The exact same clusters, just relabeled</button>
+        <div class="sl-quiz-explain">A lower cut happens before more merges have occurred, so more of the original singleton-to-small clusters are still separate. A higher cut has already absorbed more merges into fewer, bigger groups.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Two years of daily feature vectors cluster neatly into 3 groups that look like calm/trending/stressed regimes. What's the appropriate next step?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Check the groups against evidence the clustering never saw — known volatile dates, news flow, VIX levels — before treating it as a finding</button>
+        <button class="sl-quiz-opt">Treat it as validated, since the plot looks clean and well-separated</button>
+        <button class="sl-quiz-opt">Increase k until the silhouette score is even higher</button>
+        <div class="sl-quiz-explain">Clustering has no ground truth to check itself against — it will produce k groups from almost any input. The only real validation is checking against something independent of the clustering process itself.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Clustering is unsupervised — there's no labeled target, only the question "which of these look alike?" — and its output is never self-validating.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>k-Means loops assign-to-nearest-centroid then update-centroid-to-mean until stable. Fast and guaranteed to converge, but only to a local optimum, and only to roughly round, similarly-sized clusters.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Hierarchical clustering builds the entire tree bottom-up by repeatedly merging the closest pair, per a chosen linkage rule — no k needed upfront, only where to cut afterward.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Both methods measure distance directly, so unscaled features silently distort every decision either one makes — the same standardization discipline other methods in this curriculum require.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>This generalizes the earlier Hierarchical Risk Parity lesson's own dendrogram machinery — the same tree-building tool, pointed at regimes, instruments, or signals instead of portfolio weight.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Every clustering result needs an independent sanity check against real domain knowledge before it's trusted as a finding, not just an algorithm's own internal metric agreeing with itself.</p></div>
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">What this now lets you do</div>
+        <p>Discover regime groupings or instrument groupings directly from data — without having to hand-specify in advance what a "regime" or a "similar instrument" should look like — using either a fast, k-committed method or a slower, tree-building one that defers that choice. And know the mandatory next step either way: check the result against evidence the clustering itself never had access to, before treating it as a finding.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Anomaly Detection: Isolation Forests &amp; Autoencoders</h3>
+        <p>Flagging bad ticks, fat-finger prints, and structural breaks by how easily a point isolates from the rest of the data, or how badly a compressed reconstruction of it fails.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="anomaly-detection-isolation-autoencoders-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="clustering-market-structure.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Euclidean distance calculator — defensive against blank/non-finite input.
+  (function(){
+    var x1 = document.getElementById('dist-x1');
+    if (!x1) return;
+    var y1 = document.getElementById('dist-y1'), x2 = document.getElementById('dist-x2'), y2 = document.getElementById('dist-y2');
+    var dxOut = document.getElementById('dist-dx'), dyOut = document.getElementById('dist-dy');
+    var sqOut = document.getElementById('dist-sq'), resOut = document.getElementById('dist-result');
+    var resetBtn = document.getElementById('dist-reset');
+    var DEFAULTS = { x1: 1, y1: 1, x2: 6, y2: 6 };
+
+    function fmt(n){ return Math.abs(n - Math.round(n)) < 1e-9 ? Math.round(n).toString() : n.toFixed(2); }
+
+    function recompute(){
+      var a = parseFloat(x1.value), b = parseFloat(y1.value), c = parseFloat(x2.value), d = parseFloat(y2.value);
+      if (!isFinite(a) || !isFinite(b) || !isFinite(c) || !isFinite(d)) {
+        dxOut.textContent = '—'; dyOut.textContent = '—'; sqOut.textContent = '—'; resOut.textContent = '—';
+        return;
+      }
+      var dx = c - a, dy = d - b, sq = dx * dx + dy * dy, dist = Math.sqrt(sq);
+      dxOut.textContent = fmt(dx);
+      dyOut.textContent = fmt(dy);
+      sqOut.textContent = fmt(sq);
+      resOut.textContent = dist.toFixed(4);
+    }
+
+    [x1, y1, x2, y2].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      x1.value = DEFAULTS.x1; y1.value = DEFAULTS.y1; x2.value = DEFAULTS.x2; y2.value = DEFAULTS.y2;
+      recompute();
+    });
+    recompute();
+  })();
+
+  // Live k-means on a 12-point, 3-blob synthetic set. Deterministic evenly-
+  // spaced index initialization — no RNG — so a given k always redraws the same result.
+  (function(){
+    var slider = document.getElementById('km-slider');
+    if (!slider) return;
+    var kVal = document.getElementById('km-kval');
+    var readout = document.getElementById('km-readout');
+    var PALETTE = ['var(--blue)', 'var(--amber)', 'var(--green)', 'var(--purple)', 'var(--red)'];
+
+    // Data-space points: 4 near (1,1), 4 near (7.8,8), 4 near (7.8,1.5).
+    var DATA = [
+      [1,1], [1.5,1.8], [0.8,2.2], [2,1],
+      [7,8], [8,7.5], [7.5,9], [8.5,8.2],
+      [7,1.5], [8,1], [7.5,2.2], [8.8,1.8]
+    ];
+    var N = DATA.length;
+
+    function toPx(x, y){ return { x: 20 + x * 30, y: 240 - y * 22 }; }
+
+    function sqDist(p, q){ var dx = p[0]-q[0], dy = p[1]-q[1]; return dx*dx + dy*dy; }
+
+    function runKMeans(k){
+      // Deterministic init: evenly-spaced indices across the dataset.
+      var centroids = [];
+      for (var i = 0; i < k; i++) centroids.push(DATA[Math.floor(i * N / k)].slice());
+      var assign = new Array(N).fill(0);
+      for (var iter = 0; iter < 20; iter++) {
+        var changed = false;
+        for (var n = 0; n < N; n++) {
+          var best = 0, bd = Infinity;
+          for (var c = 0; c < k; c++) {
+            var d = sqDist(DATA[n], centroids[c]);
+            if (d < bd) { bd = d; best = c; }
+          }
+          if (assign[n] !== best) changed = true;
+          assign[n] = best;
+        }
+        var sum = [], cnt = [];
+        for (var c2 = 0; c2 < k; c2++) { sum.push([0,0]); cnt.push(0); }
+        for (var n2 = 0; n2 < N; n2++) { cnt[assign[n2]]++; sum[assign[n2]][0] += DATA[n2][0]; sum[assign[n2]][1] += DATA[n2][1]; }
+        for (var c3 = 0; c3 < k; c3++) if (cnt[c3] > 0) centroids[c3] = [sum[c3][0]/cnt[c3], sum[c3][1]/cnt[c3]];
+        if (!changed && iter > 0) break;
+      }
+      return { assign: assign, centroids: centroids, counts: cnt };
+    }
+
+    function update(){
+      var k = parseInt(slider.value, 10);
+      kVal.textContent = 'k = ' + k;
+      var res = runKMeans(k);
+
+      for (var n = 0; n < N; n++) {
+        var el = document.getElementById('km-p' + n);
+        if (el) el.style.fill = PALETTE[res.assign[n] % PALETTE.length];
+      }
+      for (var c = 0; c < 5; c++) {
+        var g = document.getElementById('km-c' + c);
+        if (!g) continue;
+        if (c < k) {
+          var px = toPx(res.centroids[c][0], res.centroids[c][1]);
+          g.setAttribute('transform', 'translate(' + px.x.toFixed(1) + ',' + px.y.toFixed(1) + ')');
+          g.querySelectorAll('line').forEach(function(ln){ ln.style.stroke = PALETTE[c % PALETTE.length]; });
+          g.style.display = '';
+        } else {
+          g.style.display = 'none';
+        }
+      }
+      var counts = {};
+      for (var n3 = 0; n3 < N; n3++) counts[res.assign[n3]] = (counts[res.assign[n3]] || 0) + 1;
+      var parts = [];
+      for (var c4 = 0; c4 < k; c4++) {
+        var ctr = res.centroids[c4];
+        parts.push('(' + ctr[0].toFixed(2) + ', ' + ctr[1].toFixed(2) + ') — ' + (counts[c4] || 0) + ' pts');
+      }
+      readout.innerHTML = '<strong>Centroids:</strong> ' + parts.join(' · ');
+    }
+
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Dendrogram cut-height slider — fixed illustrative merge tree, recolour
+  // leaves and count clusters from the cut height threshold.
+  (function(){
+    var slider = document.getElementById('dendro-slider');
+    if (!slider) return;
+    var hVal = document.getElementById('dendro-hval');
+    var readout = document.getElementById('dendro-readout');
+    var cutLine = document.getElementById('cut-line');
+    var PALETTE = ['var(--blue)', 'var(--amber)', 'var(--green)', 'var(--purple)', 'var(--red)', 'var(--text3)'];
+    var Y0 = 230, SCALE = 2.3;
+
+    function computeGroups(h){
+      var eu = h >= 30 ? [['EURUSD','GBPUSD','USDCHF']]
+             : h >= 15 ? [['EURUSD','GBPUSD'], ['USDCHF']]
+             : [['EURUSD'], ['GBPUSD'], ['USDCHF']];
+      var cad = h >= 32 ? [['AUDUSD','NZDUSD','USDCAD']]
+              : h >= 18 ? [['AUDUSD','NZDUSD'], ['USDCAD']]
+              : [['AUDUSD'], ['NZDUSD'], ['USDCAD']];
+      if (h >= 70) {
+        var all = eu.concat(cad).reduce(function(acc, g){ return acc.concat(g); }, []);
+        return [all];
+      }
+      return eu.concat(cad);
+    }
+
+    function update(){
+      var h = parseInt(slider.value, 10);
+      hVal.textContent = 'height = ' + h;
+      cutLine.setAttribute('y1', (Y0 - h * SCALE).toFixed(1));
+      cutLine.setAttribute('y2', (Y0 - h * SCALE).toFixed(1));
+
+      var groups = computeGroups(h);
+      groups.forEach(function(g, gi){
+        g.forEach(function(name){
+          var el = document.getElementById('leaf-' + name);
+          if (el) el.style.fill = PALETTE[gi % PALETTE.length];
+        });
+      });
+      readout.innerHTML = '<strong>k = ' + groups.length + ' cluster' + (groups.length === 1 ? '' : 's') + '</strong> at this height: ' +
+        groups.map(function(g){ return '{' + g.join(', ') + '}'; }).join(' · ');
+    }
+
+    slider.addEventListener('input', update);
+    update();
+  })();
+})();
+</script>
+</body>
+</html>
