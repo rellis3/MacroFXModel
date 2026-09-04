@@ -651,6 +651,31 @@ t('asiaFibAtlasLiveLadder: a rung touched-and-RESOLVED earlier today carries pre
   void date;
 });
 
+t('asiaFibAtlasLiveLadder: lastTouchTime matches the same rung\'s last-resolved touch\'s own bar time (2026-09-03 whiplash-gap filter) — null exactly when prevOutcomeSameDay is null', () => {
+  const { touches } = asiaFibAtlasLiveToday(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFrac: 0.3 });
+  const { ladder } = asiaFibAtlasLiveLadder(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFrac: 0.3 });
+  let checked = 0;
+  for (const r of ladder) {
+    // Same lookup asiaFibAtlasLiveLadder itself uses internally — the LAST
+    // (by time) resolved touch today at this exact rung.
+    const sameRungResolved = touches.filter(t2 => t2.side === r.side && t2.level === r.level && t2.outcome !== 'neither');
+    if (sameRungResolved.length) {
+      const lastResolved = sameRungResolved.reduce((a, b) => (a.time > b.time ? a : b));
+      assert.equal(r.lastTouchTime, lastResolved.time, `lastTouchTime must equal the last-resolved touch's own bar time for ${r.side}|${r.level}`);
+      checked++;
+    } else {
+      assert.equal(r.lastTouchTime, null, `no resolved touch today at ${r.side}|${r.level} -> lastTouchTime must be null, not guessed`);
+    }
+    // The two fields are ALWAYS in lockstep — same Map lookup, never one
+    // without the other (the live-plan gap filter's own null-guard relies
+    // on this: margin>=2 requires prevOutcomeSameDay, which requires
+    // lastTouchTime too).
+    assert.equal(r.prevOutcomeSameDay == null, r.lastTouchTime == null,
+      `prevOutcomeSameDay and lastTouchTime must be null/non-null together for ${r.side}|${r.level}`);
+  }
+  assert.ok(checked > 0, 'expected at least one rung with a resolved touch today to actually exercise this');
+});
+
 t('asiaFibAtlasLiveLadder: no-lookahead — bars strictly AFTER the current last bar must not change today\'s ladder', () => {
   const before = asiaFibAtlasLiveLadder(P, { instrument: 'EURUSD', assetClass: 'fx' });
   // Truncate to the last bar actually used (asiaFibAtlasLiveLadder only ever

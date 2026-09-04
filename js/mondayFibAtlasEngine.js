@@ -279,11 +279,16 @@ export function mondayFibAtlasLiveLadder(packed, opts = {}) {
   const currentSessionHandoff = sessionHandoffPhase(hourUtc);
   const pip = pipSize(instrument ?? '');
 
+  // `lastTouchByKey` — outcome (prevOutcomeSameDay, unchanged) PLUS the real
+  // M1 bar time of that touch (2026-09-03 whiplash-gap finding, see
+  // asiaFibAtlasEngine.js's own identical doc on why this belongs here, not
+  // bot-side: it's already-known history, the same category prevOutcomeSameDay
+  // already is, not a live tick-by-tick concern).
   const { touches: weekTouches, mondayDate } = mondayFibAtlasLiveToday(packed, { ...opts, rearmFrac });
-  const lastOutcomeByKey = new Map();
+  const lastTouchByKey = new Map();
   for (const t of weekTouches) {
     if (t.outcome === 'neither') continue;   // unresolved — carries no signal yet
-    lastOutcomeByKey.set(`${t.side}|${t.level}`, t.outcome);
+    lastTouchByKey.set(`${t.side}|${t.level}`, { outcome: t.outcome, time: t.time });
   }
 
   const ladder = [];
@@ -291,13 +296,15 @@ export function mondayFibAtlasLiveLadder(packed, opts = {}) {
     const rungLevels = side === 'above' ? RUNGS_ABOVE : RUNGS_BELOW;
     for (const level of rungLevels) {
       const price = mon.low + mon.range * level;   // same formula the walk itself uses — never a second derivation
-      const prevOutcomeSameDay = lastOutcomeByKey.get(`${side}|${level}`) ?? null;
+      const lastTouch = lastTouchByKey.get(`${side}|${level}`) ?? null;
+      const prevOutcomeSameDay = lastTouch?.outcome ?? null;
       const dist = Math.abs(currentPrice - price);
       ladder.push({
         instrument, side, level, price: +price.toFixed(6), pip,
         distance: +dist.toFixed(6), distancePips: pip > 0 ? +(dist / pip).toFixed(1) : null,
         touchedToday: prevOutcomeSameDay != null,
         prevOutcomeSameDay, sessionHandoff: currentSessionHandoff,
+        lastTouchTime: lastTouch?.time ?? null,
       });
     }
   }

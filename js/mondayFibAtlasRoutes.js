@@ -176,19 +176,35 @@ export async function runOne(instrument, { onLog = () => {} } = {}) {
 export const FIB_ATLAS_MONDAY_MIN_MARGIN = 2;
 export const FIB_ATLAS_MONDAY_MIN_COST_RATIO = 4;
 export const FIB_ATLAS_MONDAY_STOP_TIGHTEN_FRAC = 0.9;
+// Whiplash-gap filter (2026-09-03, owner-validated — see LEGO_MODULES.md's
+// fib_atlas_gap_filter_backtest.mjs entry) — same mechanism as Asia's own
+// (asiaFibAtlasRoutes.js's FIB_ATLAS_MAX_GAP_MIN), but Monday's optimum is
+// MUCH wider: its ladder trades far less densely (a weekly range vs a daily
+// session), so "recent" naturally means hours here, not minutes. Pooled
+// Sharpe peaks at 180m and only THERE does per-pair agreement reach 26/26 —
+// tighter cutoffs (30-150m) leave several pairs worse off, unlike Asia
+// where the tightest cutoff tested was already unanimous.
+export const FIB_ATLAS_MONDAY_MAX_GAP_MIN = 180;
 
-export async function mondayLivePlanZones(pair, { minMargin = FIB_ATLAS_MONDAY_MIN_MARGIN, minCostRatio = FIB_ATLAS_MONDAY_MIN_COST_RATIO, stopTightenFrac = FIB_ATLAS_MONDAY_STOP_TIGHTEN_FRAC } = {}) {
+export async function mondayLivePlanZones(pair, { minMargin = FIB_ATLAS_MONDAY_MIN_MARGIN, minCostRatio = FIB_ATLAS_MONDAY_MIN_COST_RATIO, stopTightenFrac = FIB_ATLAS_MONDAY_STOP_TIGHTEN_FRAC, maxGapMin = FIB_ATLAS_MONDAY_MAX_GAP_MIN } = {}) {
   const live = await getFastLive(pair);
   if (live.warming || !live.date) return { spot: null, date: live.date ?? null, boundary: null, zones: [], zoneCount: 0, warming: !!live.warming };
   const stored = await getJSON(`${PREFIX}/${pair}.json`);
   const book = stored?.book ?? null;
   if (!book) return { spot: live.currentPrice, date: live.date, boundary: live.boundary, zones: [], zoneCount: 0, warming: false, skipped: 'no stored book — POST /api/monday-fib-atlas/run first' };
   const cost = stored.cost ?? 0;
+  const nowSec = Date.now() / 1000;
 
   const zones = [];
   for (const rung of live.ladder) {
     const vd = voteDecision(book, rung);
     if (!vd || vd.margin < minMargin) continue;
+    // See asiaLivePlanZones' identical doc — lastTouchTime is always real
+    // here too, since margin>=2 structurally requires prevOutcomeSameDay.
+    if (maxGapMin != null && rung.lastTouchTime != null) {
+      const gapMin = (nowSec - rung.lastTouchTime) / 60;
+      if (gapMin > maxGapMin) continue;
+    }
     const { innerDistPips, outerDistPips } = mondayRungBarrierPips(rung.side, rung.level, live.boundary, rung.pip);
     const targetPips = vd.decision === 'fade' ? innerDistPips : outerDistPips;
     const sizingStopPips = vd.decision === 'fade' ? outerDistPips : innerDistPips;
@@ -371,6 +387,7 @@ export function mountMondayFibAtlasRoutes(app, express) {
       if (req.query.minMargin) opts.minMargin = Number(req.query.minMargin);
       if (req.query.minCostRatio) opts.minCostRatio = Number(req.query.minCostRatio);
       if (req.query.stopTightenFrac) opts.stopTightenFrac = Number(req.query.stopTightenFrac);
+      if (req.query.maxGapMin) opts.maxGapMin = Number(req.query.maxGapMin);
       const plan = await mondayLivePlanZones(pair, opts);
       res.json({ ok: true, instrument: pair.toUpperCase(), ...plan });
     } catch (e) {

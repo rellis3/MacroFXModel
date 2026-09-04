@@ -34,11 +34,18 @@ import { summarizeTrades } from '../js/metricsCore.js';
 import { assetClassFor } from '../js/forecastAnalyserStore.js';
 import { costForPair } from '../js/perLineStrategy.js';
 
+// Restricted (2026-09-03 follow-up) to the bot's ACTUAL live universe —
+// FIB_ATLAS_DEFAULT_PAIRS in server.js (all 26 minus the 10-pair exclude
+// set, which includes several fragile ones like gbpcad) — so the pooled
+// numbers reported reflect what the bot would actually see, not a figure
+// partly driven by pairs it doesn't trade. Both chosen cutoffs (30m Asia,
+// 180m Monday) were already 26/26-pair-consistent across the FULL 26-pair
+// sweep, a superset of this list, so this run doesn't change the choice —
+// it only re-derives the honest pooled headline number.
 const PAIRS = [
-  'nzdusd', 'usdjpy', 'gbpjpy', 'euraud', 'eurgbp', 'gbpusd', 'audusd', 'eurjpy',
-  'usdchf', 'eurusd', 'usdcad', 'eurnzd', 'audnzd', 'audchf', 'audcad', 'gbpcad',
-  'gbpnzd', 'cadjpy', 'gbpaud', 'audjpy', 'gbpchf', 'nzdjpy', 'eurchf', 'eurcad',
-  'chfjpy', 'gold',
+  'eurusd', 'gbpusd', 'usdjpy', 'audusd', 'nzdusd', 'usdcad', 'usdchf',
+  'eurgbp', 'euraud', 'gbpaud', 'audjpy', 'audnzd', 'audcad', 'cadjpy',
+  'nzdjpy', 'gold',
 ];
 const DEFAULT_REARM = 0.3;
 const MIN_MARGIN = 2;

@@ -892,11 +892,21 @@ export function asiaFibAtlasLiveLadder(packed, opts = {}) {
   // Today's touches-so-far — only need each rung's LAST resolved outcome
   // today (the exact `prevOutcomeSameDay` input a NEXT touch at that rung
   // would carry), reusing the same walk rather than re-deriving it.
+  // `lastTouchByKey` carries BOTH the outcome (feeds prevOutcomeSameDay,
+  // unchanged) and the real M1 bar time of that touch (2026-09-03,
+  // owner-validated whiplash-gap finding — see LEGO_MODULES.md). This is
+  // deliberately computed HERE, from the actual walk's touch timestamps,
+  // not approximated bot-side: unlike RearmTracker's arm/disarm state
+  // (genuinely a live tick-by-tick concern, left to the bot on purpose —
+  // see asiaLivePlanZones' own doc), "when did this rung last resolve" is
+  // exactly the same kind of already-known-from-history fact
+  // prevOutcomeSameDay already is, so it belongs in the same lookup, not a
+  // second bot-local approximation that would go blind on every restart.
   const { touches: todayTouches, date } = asiaFibAtlasLiveToday(packed, { ...opts, rearmFrac });
-  const lastOutcomeByKey = new Map();
+  const lastTouchByKey = new Map();
   for (const t of todayTouches) {
     if (t.outcome === 'neither') continue;   // unresolved — carries no signal yet
-    lastOutcomeByKey.set(`${t.side}|${t.level}`, t.outcome);
+    lastTouchByKey.set(`${t.side}|${t.level}`, { outcome: t.outcome, time: t.time });
   }
 
   const ladder = [];
@@ -904,13 +914,15 @@ export function asiaFibAtlasLiveLadder(packed, opts = {}) {
     const rungLevels = side === 'above' ? RUNGS_ABOVE : RUNGS_BELOW;
     for (const level of rungLevels) {
       const price = asia.low + asia.range * level;   // same formula the walk itself uses — never a second derivation
-      const prevOutcomeSameDay = lastOutcomeByKey.get(`${side}|${level}`) ?? null;
+      const lastTouch = lastTouchByKey.get(`${side}|${level}`) ?? null;
+      const prevOutcomeSameDay = lastTouch?.outcome ?? null;
       const dist = Math.abs(currentPrice - price);
       ladder.push({
         instrument, side, level, price: +price.toFixed(6), pip,
         distance: +dist.toFixed(6), distancePips: pip > 0 ? +(dist / pip).toFixed(1) : null,
         touchedToday: prevOutcomeSameDay != null,
         prevOutcomeSameDay, sessionHandoff: currentSessionHandoff,
+        lastTouchTime: lastTouch?.time ?? null,
       });
     }
   }

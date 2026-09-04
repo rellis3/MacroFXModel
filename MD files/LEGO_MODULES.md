@@ -5132,6 +5132,98 @@ days via `concurrencyResolveTime`. Whether capping to ~one trade/week
 (entry-priority ordering across rungs, not a hard block, since a trade
 can span days) changes the edge is a separate, not-yet-built test.
 
+#### Paper-trading peer review — a real live/backtest gap found, and fixed (2026-09-03)
+
+Direct owner review after `fib_atlas_bot` showed a 42% win rate over 60
+paper trades against a ~78-85% backtested baseline — a full code-vs-
+backtest audit (`fib_atlas_bot.py`, `engine.py`, `pylego/broker/paper.py`,
+the live plan producers) against the actually-validated backtest history.
+
+**Real gap found: no hedge-only concurrency.** `fib_atlas_bot.py`'s
+`max_concurrent_per_pair` was a flat, direction-blind count — but the
+config that was actually OOS-validated
+(`analysis/fib_atlas_chandelier_exit_backtest.mjs` STEP 3, "hedgeOnly":
+Asia OOS Sharpe 19.47→19.49, Monday 12.85→13.07) requires at most 1 long
+AND 1 short per (pair, ladder), never 2 same-direction. Root cause:
+`applyConcurrencyCap` (`js/levelAtlasVoteReview.js`) is a BATCH replay
+over an already-fully-resolved trade list (reads each trade's own future
+`resolveTime`) — it was never a live, tick-by-tick mechanism, and nobody
+ported a live equivalent when the bot shipped; it re-used
+`volatility_bot_v2`'s generic, direction-blind cap instead. New
+`GET /api/fib-atlas-bot/rung-diagnostic` (`server.js`, read-only,
+aggregates the existing `fib_atlas_bot_decision_log`) confirmed it with
+real data: EURGBP fired 14 times in ~4 hours across 3 DISTINCT rungs, all
+"above" (long) — the un-validated stacking case, not the validated
+same-rung re-arm case (a separate EURGBP cluster, 6 entries on 1 rung,
+was the latter — legitimate, not a bug). **Fixed**: new pure
+`occupied_directions()` (`fib_atlas_bot/engine.py`) — which direction(s)
+are already open for a (pair, ladder) — wired into `fib_atlas_bot.py`'s
+entry loop as a skip, same precedent as the existing risk-budget skip.
+Unit-tested, 6 new cases. PR #1397.
+
+**New finding, backtested and shipped: the "whiplash" gap-since-last-
+touch filter.** Owner's own follow-up question — did any backtest
+account for a rung getting hit multiple times in quick succession
+("whiplash")? It hadn't: `buildBarrierTrades`
+(`js/asiaFibAtlasVoteReview.js`) — the function behind every headline
+number this session — has no dedup or concurrency awareness of a rung's
+own repeat touches; every re-armed touch counts as a fully independent
+trade. Built as pure analysis first, per the owner's own instruction
+("analyse history to build the trade better, not just gate it") —
+`analysis/fib_atlas_whiplash_analysis.mjs` (touch-index / gap-since-last-
+touch / volatility-regime buckets, 26 pairs) found the FASTEST repeat
+touches (<30min since the rung's own prior touch) win far more than slow
+"clean" retests (>8h) — the opposite of the naive worry that started this
+thread. `fib_atlas_whiplash_gap_deepdive.mjs` confirmed it's real: 31/31
+testable pairs agree on direction, holds under 3x cost stress on Monday
+(fragile-but-still-directionally-right on Asia), and is NOT redundant
+with `churn` (flat win rate across churned/mixed/driven) or
+`prevOutcomeSameDay` (holds within both 'back' and 'out' subsets).
+
+Turned into an actual filter backtest (`fib_atlas_gap_filter_backtest.mjs`,
+same architecture as `applyCostEfficiencyFilter`/`applyFadeStopFraction` —
+filters the already-voted margin>=2 trade list off the SAME book
+production uses, does not rebuild the book) and swept the cutoff itself
+rather than guessing a threshold:
+
+- **Asia: 30 minutes.** Pooled Sharpe falls monotonically at every wider
+  cutoff tested (48.22 at 30m → 38.51 at 240m); 26/26 pairs agree at
+  every cutoff through 180m, 24/26 even at 240m. The tightest cutoff
+  tested was already the best — nothing to search further for.
+- **Monday: 180 minutes**, a genuinely different, much wider optimum —
+  its ladder trades far less densely (a weekly range vs a daily
+  session), so "recent" means hours, not minutes, there. Pooled Sharpe
+  RISES with the cutoff and peaks at 180m (30.02 vs baseline 24.99, PF
+  8.62 vs 4.01); per-pair agreement only reaches 26/26 at 180m — the
+  30m cutoff that suits Asia actually makes Monday's pooled Sharpe
+  *worse* (20.57) and only 6/24 pairs agree there.
+
+Cross-checked against the bot's real live universe
+(`FIB_ATLAS_DEFAULT_PAIRS`, `server.js` — 16 of the 26 pairs swept; the
+excluded 10 include several fragile ones like `gbpcad`) — both chosen
+cutoffs were already 26/26-pair-consistent across the full 26, a superset
+of the 16 that actually trade, so the choice doesn't change.
+
+**Shipped.** The gap is genuinely already-known history (when did this
+rung last resolve), the same category `prevOutcomeSameDay` already is —
+NOT a live tick-by-tick concern like `RearmTracker`'s arm/disarm state —
+so it's computed SERVER-SIDE from the real M1 walk, not approximated
+bot-side (which would go blind on every bot restart).
+`asiaFibAtlasLiveLadder`/`mondayFibAtlasLiveLadder`
+(`js/asiaFibAtlasEngine.js`/`js/mondayFibAtlasEngine.js`) now expose
+`lastTouchTime` per rung (the same `lastOutcomeByKey` lookup that already
+fed `prevOutcomeSameDay`, now also carrying the touch's own bar time) —
+unit-tested (null exactly when `prevOutcomeSameDay` is null, matches the
+last-resolved touch's own time). `asiaLivePlanZones`/`mondayLivePlanZones`
+(`js/asiaFibAtlasRoutes.js`/`js/mondayFibAtlasRoutes.js`) gained
+`FIB_ATLAS_MAX_GAP_MIN = 30` / `FIB_ATLAS_MONDAY_MAX_GAP_MIN = 180`
+(frozen, same pattern as `minCostRatio`/`stopTightenFrac`) — a zone whose
+`lastTouchTime` is further back than that skips, same as every other
+filter here. Query-param overridable (`?maxGapMin=`) on both `/plan`
+routes for ad-hoc inspection. No Python-side change needed — the bot
+never sees a gap-filtered zone in its plan, identical mechanism to how
+`minCostRatio` already worked with zero bot changes.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
