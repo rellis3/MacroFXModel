@@ -710,10 +710,12 @@ def run(base_url: str, force_live: bool) -> None:
 
         # ── Chandelier trailing stop — runs EVERY tick, UNCONDITIONALLY
         # (regardless of kill_switch / plan staleness / anything else that
-        # gates NEW entries) EXCEPT the spread guard above. This only ever
-        # TIGHTENS an existing position's stop, so it is a risk-reducing
-        # action, not new risk — the same discipline as a broker-native
-        # SL/TP always running regardless of plan age. ──────────────────
+        # gates NEW entries) EXCEPT the spread guard above. It only ever
+        # TIGHTENS an existing position's stop, or CLOSES the position when
+        # the trail has already gone through the market — both strictly
+        # risk-REDUCING, never new risk, which is what makes running them
+        # past the kill switch safe (the same discipline as a broker-native
+        # SL/TP always running regardless of plan age). ──────────────────
         for p in open_book:
             if spread_guard_blocked:
                 break   # positions are being flattened above, not trailed
@@ -724,22 +726,53 @@ def run(base_url: str, force_live: bool) -> None:
             pair = ticket_pair.get(tid) or sym_key.get(p.get("symbol"))
             if ladder is None or pair is None:
                 continue   # opened before this bot tracked it (or state not yet restored) — skip, don't guess
+            if chand_reject_until.get(tid, 0) > nowt:
+                continue   # broker rejected this ticket recently — cooling down, not retrying every tick
             is_long = p.get("direction") == "BUY"
             try:
                 bars = broker.session_bars(pair, int(nowt - CHANDELIER_LOOKBACK_SECS))
             except Exception as e:
                 log.warning(f"session_bars failed for {pair}: {e}")
                 bars = []
+            # The run extreme is measured from THIS position's entry, not from
+            # the whole lookback — the lookback exists to converge the ATR (see
+            # CHANDELIER_LOOKBACK_SECS), and letting it also set `best` lets a
+            # high the position never saw drive its stop. `time_open` and the
+            # bars both come from THIS broker, so they share a clock (MT5:
+            # broker-local; paper: UTC) — do not "correct" one of them.
+            entry_t = p.get("time_open")
             new_sl = chandelier_stop(bars, CHANDELIER_MULT.get(ladder, 3.0),
-                                      period=CHANDELIER_ATR_PERIOD, is_long=is_long)
+                                      period=CHANDELIER_ATR_PERIOD, is_long=is_long,
+                                      extreme_since=int(entry_t) if entry_t is not None else None)
             if new_sl is None:
+                continue
+            # Trail already THROUGH the market -> the backtest would have exited
+            # here (js/levelAtlasVoteReview.js applyTrailingContinuation breaks
+            # the moment the bar trades through trailStop), so close, don't try
+            # to rest a stop on the wrong side of price. Sending it anyway is
+            # what produced the retcode-10016 "Invalid stops" retry loop on
+            # AUDUSD 2026-09-04: Mt5Broker.modify()'s clamp only engages when the
+            # broker reports a non-zero trade_stops_level, and this one reports
+            # 0, so a wrong-side SL went straight to MT5 once a minute while the
+            # position ran on its original, far looser stop.
+            mkt = p.get("price")   # MT5 price_current / paper's exit-side mark: bid for a long, ask for a short
+            if mkt is not None and (new_sl >= float(mkt) if is_long else new_sl <= float(mkt)):
+                try:
+                    if broker.stop(tid, pair, paper, reason="chandelier_through_market"):
+                        log.info(f"CHANDELIER EXIT: {pair} ticket {tid} — trail {new_sl} already through "
+                                 f"market {mkt} (is_long={is_long}); closed instead of modified")
+                        _record_decision(pair, ladder, "closed", reason="chandelier trail through market")
+                        chand_sl.pop(tid, None)
+                    else:
+                        chand_reject_until[tid] = nowt + CHANDELIER_MODIFY_COOLDOWN_SECS
+                except Exception as e:
+                    log.warning(f"chandelier through-market close failed for ticket {tid} ({pair}): {e}")
+                    chand_reject_until[tid] = nowt + CHANDELIER_MODIFY_COOLDOWN_SECS
                 continue
             cur_sl = chand_sl.get(tid)
             improves = cur_sl is None or (new_sl > cur_sl if is_long else new_sl < cur_sl)
             if not improves:
                 continue
-            if chand_reject_until.get(tid, 0) > nowt:
-                continue   # broker rejected this ticket recently — cooling down, not retrying every tick
             try:
                 if broker.modify(tid, pair, sl=new_sl, paper_mode=paper):
                     chand_sl[tid] = new_sl
