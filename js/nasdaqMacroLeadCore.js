@@ -91,15 +91,57 @@ export function buildFastFeatures(bars) {
   return { times, targetClose, targetRet, features };
 }
 
+// Companion to buildFastFeatures: the aligned LEVELS (not returns) of the
+// same OANDA legs, for the fair-value LEVEL regression (levelFairValue
+// below) — a return regression compounds noise into a jagged walk; a level
+// regression on slow-moving macro levels is what produces a smooth line.
+// usd_basket_level is a synthetic index (start=100, compounded from the
+// same per-bar basket return buildFastFeatures computes) since "USD level"
+// isn't a single traded instrument the way bond/gold prices are.
+export function buildLevelFeatures(bars) {
+  if (!bars.target || !bars.target.length) return null;
+  const target = [...bars.target].sort((a, b) => a.t - b.t);
+  const times = target.map(b => b.t);
+
+  const features = {};
+  for (const name of ['bond10', 'bond2', 'gold']) {
+    if (bars[name] && bars[name].length) {
+      features[`${name}_level`] = alignToTarget(times, [...bars[name]].sort((a, b) => a.t - b.t));
+    }
+  }
+
+  const basketRets = [];
+  for (const leg of USD_BASE_LEGS) {
+    if (bars[leg] && bars[leg].length) {
+      const aligned = alignToTarget(times, [...bars[leg]].sort((a, b) => a.t - b.t));
+      basketRets.push(logRet(aligned).map(v => (v == null ? null : -v)));
+    }
+  }
+  for (const leg of USD_QUOTE_LEGS) {
+    if (bars[leg] && bars[leg].length) {
+      const aligned = alignToTarget(times, [...bars[leg]].sort((a, b) => a.t - b.t));
+      basketRets.push(logRet(aligned));
+    }
+  }
+  if (basketRets.length) {
+    let level = 100;
+    features.usd_basket_level = times.map((_, i) => {
+      const vals = basketRets.map(r => r[i]).filter(v => v != null);
+      if (vals.length) level *= Math.exp(vals.reduce((a, b) => a + b, 0) / vals.length);
+      return level;
+    });
+  }
+
+  return { times, features };
+}
+
 // fredSeries: { y2: Map(dateStr -> value), y10: Map, real10: Map, be10: Map }
-// (dateStr as 'YYYY-MM-DD'). Forward-fills onto H4 bars (so a value only
-// changes once a day — no interpolation) and returns the CHANGE over
-// `lookbackBars` H4 bars (default 6 ~= 1 trading day), mirroring the
-// lookback=1 cell in analysis/yield_asset_coupling.py's study_main.csv.
-export function buildFredFeatures(targetTimes, fredSeries, lookbackBars = 6) {
-  const names = Object.keys(fredSeries);
-  const dayMs = 86_400_000;
-  // Build slope from y2/y10 if both present.
+// (dateStr as 'YYYY-MM-DD'). Forward-fills each series (plus a derived
+// slope = y10 - y2, if both present) onto H4 bars — so a value only changes
+// once a day, no interpolation — and returns the raw LEVEL series. Shared by
+// buildFredFeatures (which diffs these) and buildFredLevelFeatures (which
+// uses the levels directly, for the fair-value regression).
+function ffillFredLevels(targetTimes, fredSeries) {
   const series = { ...fredSeries };
   if (series.y2 && series.y10 && !series.slope) {
     const slope = new Map();
@@ -109,7 +151,6 @@ export function buildFredFeatures(targetTimes, fredSeries, lookbackBars = 6) {
     }
     series.slope = slope;
   }
-
   const out = {};
   for (const name of Object.keys(series)) {
     const obs = [...series[name].entries()]
@@ -118,10 +159,23 @@ export function buildFredFeatures(targetTimes, fredSeries, lookbackBars = 6) {
     if (!obs.length) continue;
     const dTimes = obs.map(o => o.t);
     const dVals = obs.map(o => o.v);
-    const ffilled = targetTimes.map(t => {
+    out[name] = targetTimes.map(t => {
       const i = bisectAtOrBefore(dTimes, t);
       return i >= 0 ? dVals[i] : null;
     });
+  }
+  return out;
+}
+
+// Returns the CHANGE over `lookbackBars` H4 bars (default 6 ~= 1 trading
+// day) of each forward-filled FRED level, mirroring the lookback=1 cell in
+// analysis/yield_asset_coupling.py's study_main.csv — the feature set the
+// "fred" walk-forward (return-prediction) variant uses.
+export function buildFredFeatures(targetTimes, fredSeries, lookbackBars = 6) {
+  const levels = ffillFredLevels(targetTimes, fredSeries);
+  const out = {};
+  for (const name of Object.keys(levels)) {
+    const ffilled = levels[name];
     const chg = new Array(ffilled.length).fill(null);
     for (let i = lookbackBars; i < ffilled.length; i++) {
       if (ffilled[i] != null && ffilled[i - lookbackBars] != null) {
@@ -130,6 +184,16 @@ export function buildFredFeatures(targetTimes, fredSeries, lookbackBars = 6) {
     }
     out[`${name}_chg`] = chg;
   }
+  return out;
+}
+
+// The raw forward-filled LEVELS (not changes) — the feature set the
+// fair-value LEVEL regression uses: y2_level, y10_level, slope_level,
+// real10_level, be10_level.
+export function buildFredLevelFeatures(targetTimes, fredSeries) {
+  const levels = ffillFredLevels(targetTimes, fredSeries);
+  const out = {};
+  for (const name of Object.keys(levels)) out[`${name}_level`] = levels[name];
   return out;
 }
 
@@ -227,6 +291,74 @@ export function walkForward(times, targetClose, targetRet, featureSeries, featur
   rows.sort((a, b) => a.idx - b.idx);
   // de-dupe by idx (windows can't overlap given stepBars===testBars in our
   // defaults, but guard anyway if they're changed later).
+  const seen = new Set();
+  return rows.filter(r => (seen.has(r.idx) ? false : (seen.add(r.idx), true)));
+}
+
+// ── fair value: LEVEL regression, walk-forward, forward-projecting ────────
+
+// Predicts NAS100's LEVEL `horizonBars` ahead from TODAY's z-scored macro
+// LEVELS (front-end/long-end rate proxies, real yield, USD index, gold,
+// curve slope) — structurally different from walkForward() above: a level
+// regression on slow-moving macro levels doesn't compound bar-to-bar noise
+// into a jagged walk the way a return regression does, so this comes out
+// smooth by construction, not by any display-time smoothing on top.
+//
+// Unlike walkForward, this ALSO predicts past the end of known history: for
+// the most recent `horizonBars` bars, the target (targetClose[i+horizon])
+// doesn't exist yet — those rows still get a prediction (a synthesized
+// future timestamp), just `scored: false` since there's nothing to grade
+// them against yet. That unscored tail IS "a rough expectation of the next
+// day or so"; everything before it is the walk-forward track record that
+// CAN be judged honestly (feed the scored rows' predRet/actualNextRet into
+// oosStats exactly like walkForward's output).
+export function levelFairValue(times, targetClose, featureSeries, featureCols, {
+  trainBars = 500, testBars = 100, stepBars = 100, zWindow = 250, horizonBars = 8,
+} = {}) {
+  const n = times.length;
+  if (n < 2) return [];
+  const zCols = {};
+  for (const c of featureCols) zCols[c] = rollingZ(featureSeries[c] || new Array(n).fill(null), zWindow);
+
+  // Median bar spacing, for synthesizing timestamps past the last known bar
+  // (weekend gaps would otherwise skew a simple first-vs-second diff).
+  const gaps = [];
+  for (let i = 1; i < n; i++) gaps.push(times[i] - times[i - 1]);
+  gaps.sort((a, b) => a - b);
+  const barSeconds = gaps[Math.floor(gaps.length / 2)] || 14400;
+
+  const rows = [];
+  let start = 0;
+  while (start + trainBars <= n) {
+    const trainIdx = [];
+    for (let i = start; i < start + trainBars; i++) {
+      if (targetClose[i + horizonBars] == null) continue;   // no known outcome yet -> can't train on it
+      if (featureCols.every(c => zCols[c][i] != null)) trainIdx.push(i);
+    }
+    const testEnd = Math.min(start + trainBars + testBars, n);
+    if (trainIdx.length >= Math.max(60, Math.floor(trainBars / 4))) {
+      const X = trainIdx.map(i => [1, ...featureCols.map(c => zCols[c][i])]);
+      const y = trainIdx.map(i => targetClose[i + horizonBars]);
+      const coef = olsFit(X, y);
+
+      for (let i = start + trainBars; i < testEnd; i++) {
+        if (!featureCols.every(c => zCols[c][i] != null)) continue;
+        const xi = [1, ...featureCols.map(c => zCols[c][i])];
+        const predLevel = xi.reduce((s, v, idx) => s + v * coef[idx], 0);
+        const hasActual = (i + horizonBars) < n && targetClose[i + horizonBars] != null;
+        rows.push({
+          idx: i,
+          t: hasActual ? times[i + horizonBars] : times[i] + horizonBars * barSeconds,
+          v: predLevel,
+          scored: hasActual,
+          predRet: Math.log(predLevel / targetClose[i]),
+          actualNextRet: hasActual ? Math.log(targetClose[i + horizonBars] / targetClose[i]) : null,
+        });
+      }
+    }
+    start += stepBars;
+  }
+  rows.sort((a, b) => a.t - b.t);
   const seen = new Set();
   return rows.filter(r => (seen.has(r.idx) ? false : (seen.add(r.idx), true)));
 }

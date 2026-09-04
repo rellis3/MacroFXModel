@@ -217,7 +217,8 @@ import { computeBacktest as computeGliBacktest, computeNqBacktest as computeGliN
 import { runFullZScoreBacktest, ZSCORE_PAIRS, computeZScoreStats, fetchFredObservations } from './js/zscoreSpreadEngine.js';
 import {
   buildFastFeatures as nmlBuildFastFeatures, buildFredFeatures as nmlBuildFredFeatures,
-  walkForward as nmlWalkForward, oosStats as nmlOosStats,
+  buildLevelFeatures as nmlBuildLevelFeatures, buildFredLevelFeatures as nmlBuildFredLevelFeatures,
+  walkForward as nmlWalkForward, levelFairValue as nmlLevelFairValue, oosStats as nmlOosStats,
   anchoredWindowPath as nmlAnchoredWindowPath, nextBarPredPrice as nmlNextBarPredPrice,
 } from './js/nasdaqMacroLeadCore.js';
 import { runFullZScoreV2Backtest, V2_DEFAULTS as ZS_V2_DEFAULTS } from './js/zscoreSpreadV2Engine.js';
@@ -20410,6 +20411,16 @@ const NML_FRED_SERIES = { y2: 'DGS2', y10: 'DGS10', real10: 'DFII10', be10: 'T10
 const NML_WF_PARAMS = { trainBars: 500, testBars: 100, stepBars: 100, zWindow: 250 };
 const NML_FAST_COLS = ['bond10_ret', 'bond2_ret', 'usd_basket_ret', 'gold_ret'];
 const NML_FRED_COLS = ['y2_chg', 'y10_chg', 'slope_chg', 'real10_chg', 'be10_chg'];
+// Fair value: LEVEL regression, not return regression — see
+// levelFairValue's own comment. horizonBars=8 (~32h on H4 bars) is the
+// "rough expectation of the next day plus part of the following day" the
+// original request asked for. Feature set mixes fast (continuously-quoted)
+// and slow (daily FRED) level sources deliberately picking ONE canonical
+// series per macro dimension to avoid near-duplicate/collinear pairs (e.g.
+// bond10_level and y10_level are two proxies for the same 10Y rate — using
+// both would just destabilize the OLS fit for no informational gain).
+const NML_FV_PARAMS = { trainBars: 500, testBars: 100, stepBars: 100, zWindow: 250, horizonBars: 8 };
+const NML_FV_COLS = ['bond2_level', 'bond10_level', 'real10_level', 'usd_basket_level', 'gold_level', 'slope_level'];
 
 const _nmlIsoT = epochSec => new Date(epochSec * 1000).toISOString();
 const _nmlRound = (v, p) => (v == null ? null : Number(Number(v).toFixed(p)));
@@ -20429,6 +20440,27 @@ function _nmlRunVariant(label, times, targetClose, targetRet, featureSeries, fea
     // own comment for why a flat series would be misleading here.
     window_path: nmlAnchoredWindowPath(oos).map(seg => seg.map(p => ({ t: _nmlIsoT(p.t), v: _nmlRound(p.v, 2) }))),
     next_bar_pred: nmlNextBarPredPrice(oos).map(p => ({ t: _nmlIsoT(p.t), v: _nmlRound(p.v, 2) })),
+  };
+}
+
+// The smooth "fair value" variant (level regression, see levelFairValue's
+// own comment) — split into scored_path (backtested, walk-forward OOS,
+// judgeable against oosStats) and tail_path (the live forward-projecting
+// tail with no known outcome yet) so the chart can render them differently
+// (solid vs dashed) instead of blending "track record" with "live guess".
+function _nmlRunFairValue(label, times, targetClose, featureSeries, featureCols) {
+  const available = featureCols.filter(c => c in featureSeries);
+  const missing = featureCols.filter(c => !(c in featureSeries));
+  if (!available.length) return { label, ok: false, error: 'no features available' };
+  const fv = nmlLevelFairValue(times, targetClose, featureSeries, available, NML_FV_PARAMS);
+  if (!fv.length) return { label, ok: false, error: 'level regression produced no rows' };
+  const scored = fv.filter(r => r.scored);
+  const stats = scored.length ? nmlOosStats(scored) : null;
+  return {
+    label, ok: true, features_used: available, features_missing: missing,
+    stats, oos_bars: scored.length, horizon_bars: NML_FV_PARAMS.horizonBars,
+    scored_path: scored.map(p => ({ t: _nmlIsoT(p.t), v: _nmlRound(p.v, 2) })),
+    tail_path: fv.filter(r => !r.scored).map(p => ({ t: _nmlIsoT(p.t), v: _nmlRound(p.v, 2) })),
   };
 }
 
@@ -20459,6 +20491,7 @@ async function _computeNasdaqMacroLeadSummary() {
   if (!bars.target) throw new Error('NAS100_USD fetch failed — nothing to compute');
 
   const fast = nmlBuildFastFeatures(bars);
+  const levels = nmlBuildLevelFeatures(bars);
 
   const fredKey = process.env.FRED_KEY;
   const fredFromDate = fromISO.slice(0, 10);
@@ -20468,12 +20501,18 @@ async function _computeNasdaqMacroLeadSummary() {
   }));
   const fredSeries = Object.fromEntries(fredEntries.filter(Boolean));
   const fredFeatures = nmlBuildFredFeatures(fast.times, fredSeries, 6);
+  const fredLevelFeatures = nmlBuildFredLevelFeatures(fast.times, fredSeries);
 
   const combined = { ...fast.features, ...fredFeatures };
   const fastResult = _nmlRunVariant('Fast market proxies (bond CFDs + USD basket + gold)',
     fast.times, fast.targetClose, fast.targetRet, combined, NML_FAST_COLS);
   const fredResult = _nmlRunVariant('FRED yields (2Y/10Y/slope/real yield/breakeven), fwd-filled to H4',
     fast.times, fast.targetClose, fast.targetRet, combined, NML_FRED_COLS);
+
+  const combinedLevels = { ...(levels?.features || {}), ...fredLevelFeatures };
+  const fairValueResult = _nmlRunFairValue(
+    `Fair value (level regression, ~${(NML_FV_PARAMS.horizonBars * 4)}h ahead)`,
+    fast.times, fast.targetClose, combinedLevels, NML_FV_COLS);
 
   return {
     ok: true,
@@ -20487,12 +20526,15 @@ async function _computeNasdaqMacroLeadSummary() {
     candles: bars.target.map(b => ({
       t: _nmlIsoT(b.t), o: _nmlRound(b.open, 2), h: _nmlRound(b.high, 2), l: _nmlRound(b.low, 2), c: _nmlRound(b.close, 2),
     })),
-    variants: { fast: fastResult, fred: fredResult },
+    variants: { fast: fastResult, fred: fredResult, fairvalue: fairValueResult },
     notes: (
       'Research tool, not a trading signal (see NasdaqMacroLead/README.md). Every point on '
-      + 'window_path/next_bar_pred was produced by a model that never saw the bar it\'s '
-      + 'predicting — coefficients are fit on a prior rolling window and frozen before being '
-      + 'applied to the window plotted. There is no in-sample region shown on this chart by construction.'
+      + 'window_path/next_bar_pred/scored_path was produced by a model that never saw the bar '
+      + 'it\'s predicting — coefficients are fit on a prior rolling window and frozen before '
+      + 'being applied to the window plotted. There is no in-sample region shown on this chart '
+      + 'by construction. fairvalue.tail_path is the one exception on purpose: it is a live, '
+      + 'unscored forward projection (no known outcome exists yet to grade it against) — the '
+      + '"rough expectation of the next day or so," not a backtested track record.'
     ),
   };
 }

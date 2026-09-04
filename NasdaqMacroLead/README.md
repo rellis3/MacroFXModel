@@ -38,17 +38,21 @@ obviously move together in the same window), essentially zero *forward*
 correlation once the signal is lagged and tested out-of-sample.
 
 This package asks the same question at H4 resolution — closer to the
-4-hours-out framing of the original chart — with two changes:
+4-hours-out framing of the original chart — with three variants:
 
-1. **Faster inputs.** Daily FRED yields update once a day; a 4h horizon needs
-   something that updates every bar. The "fast" variant uses continuously
-   quoted OANDA instruments instead: UST bond CFDs (`USB10Y_USD`,
-   `USB02Y_USD` — price moves inverse to yield) as the rate proxy, a USD
-   basket built from the majors, and gold.
-2. **A "fred" variant runs alongside it**, using the same daily yield series
-   as the existing study, forward-filled onto H4 bars — included specifically
-   so a null result there (expected, given the daily-horizon finding) has
+1. **`fast`.** Daily FRED yields update once a day; a 4h horizon needs
+   something that updates every bar. This variant uses continuously quoted
+   OANDA instruments instead: UST bond CFDs (`USB10Y_USD`, `USB02Y_USD` —
+   price moves inverse to yield) as the rate proxy, a USD basket built from
+   the majors, and gold.
+2. **`fred`** runs alongside it, using the same daily yield series as the
+   existing study, forward-filled onto H4 bars — included specifically so a
+   null result there (expected, given the daily-horizon finding) has
    something to be compared against.
+3. **`fairvalue`** — a structurally different LEVEL regression rather than a
+   return regression, added after the first two produced a visually jagged
+   line that didn't resemble the smooth "fair value" style chart the request
+   was actually modeled on. See its own section below.
 
 ## Methodology — same discipline as `yield_asset_coupling.py`, adapted to walk-forward
 
@@ -102,6 +106,52 @@ requires before calling something a survivor. Expect FAIL to be the more
 likely outcome, consistent with the daily-horizon result; that's a real
 answer, not a bug.
 
+## The `fairvalue` variant — a LEVEL regression, not a return regression
+
+`fast`/`fred` above predict the **next bar's return** from the **change** in
+a macro factor — economical for honesty-testing, but a compounding sum of
+noisy return predictions produces a visibly jagged line, and a real reset
+between walk-forward windows (see `window_path` above) looks like a
+rendering glitch even once fixed. That's not what a "macro fair value" chart
+actually looks like — those are smooth, because they regress the **level**
+of the index on the **levels** of its macro drivers, and levels move slowly
+bar-to-bar compared to returns.
+
+`nasdaqMacroLeadCore.levelFairValue` does exactly that: walk-forward OLS
+fitting NAS100's **level `horizonBars` bars ahead** (default 8 ≈ 32h — "a
+rough expectation of the next day plus part of the following day") on
+**today's z-scored macro LEVELS**:
+
+| Factor | Source | Why this one, not its sibling |
+|---|---|---|
+| Front-end rate | `bond2_level` (`USB02Y_USD` price) | Continuously quoted, not daily |
+| Long-end rate | `bond10_level` (`USB10Y_USD` price) | Continuously quoted, not daily |
+| Real yield | `real10_level` (FRED `DFII10`) | Economically distinct from the nominal proxies above (the discount-rate channel growth stocks are most sensitive to) — not redundant with bond10/bond2 |
+| USD strength | `usd_basket_level` | A synthetic index (start=100, compounded from the same FX-basket return `fast` uses) — "USD level" isn't a single traded instrument |
+| Risk/inflation hedge | `gold_level` | |
+| Curve shape | `slope_level` (FRED `y10-y2`) | Captures steepening/flattening dynamics distinct from either rate level alone |
+
+Deliberately **one series per macro dimension** — e.g. not both `bond10_level`
+*and* `y10_level`, which are two proxies for the same 10Y rate and would just
+destabilize the OLS fit for no informational gain.
+
+Two properties make this different from `fast`/`fred`:
+
+- **Smooth by construction, not by display-time smoothing.** No moving
+  average is applied anywhere in this pipeline — the smoothness comes
+  entirely from regressing on slow-moving levels instead of compounding
+  noisy per-bar return predictions.
+- **It projects past the end of known history.** For the most recent
+  `horizonBars` bars, the target (NAS100's level that far ahead) doesn't
+  exist yet — those rows still get a prediction (`scored: false`, a
+  synthesized future timestamp) instead of being dropped. That unscored tail
+  *is* "the rough expectation of the next day or so"; everything before it
+  (`scored: true`) is the walk-forward track record, gradeable through
+  `oosStats` exactly like `fast`/`fred`'s output. The dashboard renders the
+  two halves as one continuous line — solid where it's backtested, dashed
+  where it's a live, ungraded projection — so it's never possible to mistake
+  the guess for the track record.
+
 ## Running it
 
 It runs automatically on Railway: `server.js`'s "Nasdaq Macro Lead: native
@@ -140,3 +190,12 @@ the server process.
   it means these specific proxies, at this specific horizon, with this
   specific walk-forward setup, didn't clear the bar. It's a negative result
   about one hypothesis, not a general claim.
+- **Level regressions are more prone to spurious fit than return regressions**
+  — two series that both trend can correlate mechanically even with no real
+  relationship. The rolling z-scoring and walk-forward refitting mitigate
+  this some (the fit can't lean on the FULL-sample trend, only the trailing
+  window's), but `fairvalue`'s honesty checks (same `oosStats` as
+  `fast`/`fred` — rank-IC, circular-shift null, split-half stability) matter
+  MORE here, not less, precisely because a smooth line is more visually
+  persuasive than a jagged one whether or not it's actually predictive.
+  Don't read smoothness as evidence of skill — read the stats panel.
