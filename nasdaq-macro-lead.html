@@ -225,7 +225,10 @@ function renderChart() {
     if (!series.length) chartNote.textContent = v && !v.ok ? `${v.label || curVariant}: ${v.error || 'no data'}` : 'No next-bar data for this variant.';
   }
 
-  if (candles.length) chart.timeScale().setVisibleRange({ time: candles[0].time, to: candles[candles.length - 1].time });
+  if (candles.length) {
+    try { chart.timeScale().setVisibleRange({ from: candles[0].time, to: candles[candles.length - 1].time }); }
+    catch (e) { console.error('[nasdaq-macro-lead] setVisibleRange failed:', e); }
+  }
 }
 
 function renderStats() {
@@ -295,9 +298,16 @@ async function load() {
   $('#content').style.display = 'block';
   $('#genAt').textContent = `Generated ${new Date(summary.generated_at).toLocaleString()} · ${summary.target} ${summary.granularity} · ${(summary.candles||[]).length} bars · walk-forward: train ${summary.walk_forward_params?.train_bars}, test ${summary.walk_forward_params?.test_bars} bars`;
   $('#howToRead').innerHTML = `<strong>How to read this:</strong> "Fast proxies" and "FRED yields" are walk-forward RETURN regressions — "Window path" re-anchors the model's projected trajectory to the real close at the start of every walk-forward refit (the closer analogue to a classic "leading line" chart); "Next-bar (1-step)" plots, at each bar, what the model forecast for the very next bar's close. "Fair value" is structurally different — a LEVEL regression predicting NAS100's level ~${summary.variants?.fairvalue?.horizon_bars ? summary.variants.fairvalue.horizon_bars*4 : 32}h ahead from today's macro factor LEVELS (front-end/long-end rates, real yield, USD index, gold, curve slope), which is why it comes out smooth rather than jagged — a level regression on slow-moving levels doesn't compound bar-to-bar noise the way a return regression does. Its solid segment is the walk-forward backtest (judgeable, out-of-sample); its dashed tail is a live, unscored projection with no known outcome yet — the actual "rough expectation of the next day or so." All three are built ONLY from coefficients fit on data strictly before the bars shown; the stats panels below (rank-IC, a circular-shift null p-value, and split-half sign stability) are the same tests <code>analysis/yield_asset_coupling.py</code> uses, which is why the daily-horizon version of this exact question — including the classic 2s10s yield spread — found essentially nothing for NDX. This page exists to check whether faster and/or level-based macro data changes that conclusion at H4, not to assume it will.`;
-  if (!chart) buildChart();
-  renderChart();
-  renderStats();
+  // Each of these is independent — a bug in the chart-rendering path (as
+  // happened once: a wrong lightweight-charts option name threw and silently
+  // stopped wireControls() from EVER running, so every button looked dead
+  // with no visible error) must not be able to take the other two down with
+  // it. wireControls() runs LAST and unconditionally so the buttons work
+  // even if the chart or stats panel is broken.
+  try { if (!chart) buildChart(); renderChart(); }
+  catch (e) { console.error('[nasdaq-macro-lead] renderChart failed:', e); }
+  try { renderStats(); }
+  catch (e) { console.error('[nasdaq-macro-lead] renderStats failed:', e); }
   wireControls();
 }
 
