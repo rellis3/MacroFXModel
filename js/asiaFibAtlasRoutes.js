@@ -408,6 +408,14 @@ async function getFastLive(pair) {
 export const FIB_ATLAS_MIN_MARGIN = 2;                 // best-config frozen value (asia-fib-atlas-vote-portfolio.html's loadBestConfigBtn)
 export const FIB_ATLAS_MIN_COST_RATIO = 3;              // Asia's own frozen ratio (fib_atlas_cost_efficiency_filter.mjs)
 export const FIB_ATLAS_STOP_TIGHTEN_FRAC = 0.9;         // frozen fraction (fib_atlas_sl_tightening_backtest.mjs)
+// Whiplash-gap filter (2026-09-03, owner-validated — see LEGO_MODULES.md's
+// fib_atlas_gap_filter_backtest.mjs entry): requires a rung's touch to fall
+// within this many minutes of that SAME rung's own prior touch this
+// session, on top of the existing margin>=2 vote. Asia's own optimum (26/26
+// pairs agree, pooled Sharpe peaks here and falls at every wider cutoff
+// tested) — Monday's is a different, much wider value (its own ladder
+// trades far less densely), see mondayFibAtlasRoutes.js.
+export const FIB_ATLAS_MAX_GAP_MIN = 30;
 
 // Pure core: given an ALREADY-COMPUTED `live` (the shape asiaFibAtlasLiveLadder/
 // getFastLive returns: {date, currentPrice, boundary, ladder}) and `book`,
@@ -417,11 +425,22 @@ export const FIB_ATLAS_STOP_TIGHTEN_FRAC = 0.9;         // frozen fraction (fib_
 // cache round-trip needed — can reuse the EXACT same scoring/pricing rules
 // `asiaLivePlanZones` (the live-cache-backed wrapper right after this) uses,
 // never a second implementation to drift out of sync.
-export function zonesFromLiveAndBook(live, book, cost, { minMargin = FIB_ATLAS_MIN_MARGIN, minCostRatio = FIB_ATLAS_MIN_COST_RATIO, stopTightenFrac = FIB_ATLAS_STOP_TIGHTEN_FRAC } = {}) {
+export function zonesFromLiveAndBook(live, book, cost, { minMargin = FIB_ATLAS_MIN_MARGIN, minCostRatio = FIB_ATLAS_MIN_COST_RATIO, stopTightenFrac = FIB_ATLAS_STOP_TIGHTEN_FRAC, maxGapMin = FIB_ATLAS_MAX_GAP_MIN } = {}) {
+  const nowSec = Date.now() / 1000;
   const zones = [];
   for (const rung of live.ladder) {
     const vd = voteDecision(book, rung);
     if (!vd || vd.margin < minMargin) continue;
+    // `lastTouchTime` is null exactly when prevOutcomeSameDay is null (same
+    // lookup, asiaFibAtlasEngine.js's own asiaFibAtlasLiveLadder) — and
+    // margin>=2 structurally requires prevOutcomeSameDay to hold (it's one
+    // of only two VOTE_DIMS), so a zone reaching this point always HAS a
+    // real lastTouchTime. Still guarded with `!= null` rather than assumed,
+    // same defensive style as every other field read off `rung` here.
+    if (maxGapMin != null && rung.lastTouchTime != null) {
+      const gapMin = (nowSec - rung.lastTouchTime) / 60;
+      if (gapMin > maxGapMin) continue;
+    }
     const { innerDistPips, outerDistPips } = asiaRungBarrierPips(rung.side, rung.level, live.boundary, rung.pip);
     const targetPips = vd.decision === 'fade' ? innerDistPips : outerDistPips;
     const sizingStopPips = vd.decision === 'fade' ? outerDistPips : innerDistPips;
@@ -617,6 +636,7 @@ export function mountAsiaFibAtlasRoutes(app, express) {
       if (req.query.minMargin) opts.minMargin = Number(req.query.minMargin);
       if (req.query.minCostRatio) opts.minCostRatio = Number(req.query.minCostRatio);
       if (req.query.stopTightenFrac) opts.stopTightenFrac = Number(req.query.stopTightenFrac);
+      if (req.query.maxGapMin) opts.maxGapMin = Number(req.query.maxGapMin);
       const plan = await asiaLivePlanZones(pair, opts);
       res.json({ ok: true, instrument: pair.toUpperCase(), ...plan });
     } catch (e) {

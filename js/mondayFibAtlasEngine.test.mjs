@@ -191,6 +191,25 @@ t('mondayFibAtlasLiveLadder: a rung already resolved earlier THIS reference week
   assert.ok(mondayDate, 'sanity: a governing week was found at all');
 });
 
+t('mondayFibAtlasLiveLadder: lastTouchTime matches the same rung\'s last-resolved touch this week\'s own bar time (2026-09-03 whiplash-gap filter) — null exactly when prevOutcomeSameDay is null', () => {
+  const live = mondayFibAtlasLiveLadder(P, { instrument: 'EURUSD', assetClass: 'fx' });
+  const { touches: weekTouches } = mondayFibAtlasLiveToday(P, { instrument: 'EURUSD', assetClass: 'fx' });
+  let checked = 0;
+  for (const r of live.ladder) {
+    const sameRungResolved = weekTouches.filter(t2 => t2.side === r.side && t2.level === r.level && t2.outcome !== 'neither');
+    if (sameRungResolved.length) {
+      const lastResolved = sameRungResolved.reduce((a, b) => (a.time > b.time ? a : b));
+      assert.equal(r.lastTouchTime, lastResolved.time, `lastTouchTime must equal the last-resolved touch's own bar time for ${r.side}|${r.level}`);
+      checked++;
+    } else {
+      assert.equal(r.lastTouchTime, null, `no resolved touch this week at ${r.side}|${r.level} -> lastTouchTime must be null, not guessed`);
+    }
+    assert.equal(r.prevOutcomeSameDay == null, r.lastTouchTime == null,
+      `prevOutcomeSameDay and lastTouchTime must be null/non-null together for ${r.side}|${r.level}`);
+  }
+  assert.ok(checked > 0, 'expected at least one rung with a resolved touch this week to actually exercise this');
+});
+
 t('mondayFibAtlasLiveLadder is a pure function of its input — same packed series in, byte-identical ladder out', () => {
   const cut = P.n - 500;
   const shrunk = { n: cut, times: P.times.slice(0, cut), opens: P.opens.slice(0, cut),
