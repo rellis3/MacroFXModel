@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Markowitz &amp; Black-Litterman — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Markowitz &amp; Black-Litterman — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivations, the master Black-Litterman formula, and a 6-question self-test?<a href="markowitz-black-litterman.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Lesson 32 · Advanced Portfolio &amp; Market Structure</div>
+      <h1 class="sl-h1">Markowitz &amp; Black-Litterman, <em>From One Position to a Whole Book</em></h1>
+      <p class="sl-lede">Harry Markowitz gave portfolio construction its first real mathematics in 1952 — and practitioners almost immediately discovered that mathematics was so sensitive to its own inputs it was barely usable as written. This is the story in two halves: why holding several positions "together" is a genuinely different problem from holding any one of them alone, why the clean textbook answer to that problem quietly breaks in practice, and the Bayesian fix — starting from what the market already believes, then nudging it — that turned it into something real desks actually run.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">A portfolio's risk is not the average of its parts</h2>
+      <p class="sl-sub">Two positions can look identical in isolation and behave completely differently once they're held together.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">⚖</div><div><h4>Same stats, different job</h4><p>Two pairs with the same expected return and the same volatility can still be very different portfolio holdings — one might amplify everything else you own, the other might quietly cancel it out.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">☔</div><div><h4>The umbrella test</h4><p>N people all packing the same umbrella carry N× the bulk of one umbrella. Half packing umbrellas and half packing sunscreen prepares the group for more, with less total stuff — because the two kinds of gear partly substitute for each other.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">±</div><div><h4>Co-movement is the missing variable</h4><p>A position's risk contribution to a portfolio isn't its own volatility — it's that volatility filtered through how it moves with everything else already held.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">↘</div><div><h4>Sometimes it subtracts</h4><p>When two positions tend to move opposite each other, combining them can make the portfolio less risky than either position held alone. That's diversification benefit, not a hedge you engineered on purpose.</p></div></div>
+      </div>
+      <div class="sl-quote">Markowitz's core insight, in one sentence: <strong>a portfolio's variance is not a weighted average of its parts' variances — it's a weighted sum that also depends on every pairwise co-movement between those parts</strong>, and that extra term is exactly where diversification benefit, or its absence, actually lives.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Two formulas: one an average, one that isn't</h2>
+      <p class="sl-sub">Expected return adds up the easy way. Variance doesn't — and the term that breaks the pattern is the whole point.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Expected return — a plain weighted average</div>
+        <div class="sl-row">
+          <div class="sl-box">w₁ × E[R₁]</div><div class="sl-arrow">+</div><div class="sl-box">w₂ × E[R₂]</div><div class="sl-arrow">=</div><div class="sl-box green">E[R_p]</div>
+        </div>
+        <div class="sl-verdict">60% long a pair returning 2%, 40% long a pair returning 5%: 0.6(2%) + 0.4(5%) = <strong>3.2%</strong>. Nothing subtle — written as a dot product, E[R_p] = wᵀμ.</div>
+      </div>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Variance — a quadratic form, with a cross term</div>
+        <div class="sl-row">
+          <div class="sl-box">w₁²σ₁²</div><div class="sl-arrow">+</div><div class="sl-box">w₂²σ₂²</div><div class="sl-arrow">+</div><div class="sl-box amber">2w₁w₂·Cov(R₁,R₂)</div><div class="sl-arrow">=</div><div class="sl-box green">Var(R_p)</div>
+        </div>
+        <div class="sl-verdict">The first two terms are exactly what you'd expect — each position's own variance, scaled by its weight squared. The amber term is the one a "risk is just an average" intuition misses: it can be positive (correlated positions compounding each other), zero (no interaction), or <strong>negative</strong> — actively subtracting from total portfolio variance.</div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Written as matrices</div>
+        <p>Both formulas above are the scalar (2-asset) expansion of one compact expression covering any number of assets: Var(R_p) = wᵀΣw, where Σ is the full covariance matrix — a grid whose diagonal holds each instrument's own variance and whose off-diagonal entries hold every pairwise covariance. First Σw scales each instrument's exposure by the weights; then wᵀ(·) folds the result into one number.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Trace every mix, and the outer edge is the frontier</h2>
+      <p class="sl-sub">Two assets: a "safe" pair (μ = 3%, σ = 8%) and a "risky" pair (μ = 4%, σ = 15%). Every weight split between them traces one point on a risk/return map — switch correlation and watch the curve bend.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="frontier-tabs">
+          <button class="sl-tab" data-panel="fr-1">ρ = 1.0</button>
+          <button class="sl-tab active" data-panel="fr-2">ρ = 0.3</button>
+          <button class="sl-tab" data-panel="fr-3">ρ = 0.0</button>
+          <button class="sl-tab" data-panel="fr-4">ρ = −1.0</button>
+        </div>
+
+        <div class="sl-panel" id="fr-1">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Efficient frontier for perfectly correlated assets is a straight line with no bow">
+            <line x1="80" y1="220" x2="600" y2="220" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="80" y1="220" x2="80" y2="40" style="stroke:var(--border2);stroke-width:1"/>
+            <text x="340" y="242" text-anchor="middle" style="fill:var(--text3);font-size:10.5px;font-family:'DM Mono',monospace">Risk σ (0% → 16%)</text>
+            <text x="30" y="130" text-anchor="middle" style="fill:var(--text3);font-size:10.5px;font-family:'DM Mono',monospace" transform="rotate(-90 30 130)">Return E[R]</text>
+            <path d="M567.5,85.0 L563.0,86.8 L558.4,88.6 L553.9,90.4 L549.3,92.2 L544.8,94.0 L540.2,95.8 L535.7,97.6 L531.1,99.4 L526.5,101.2 L522.0,103.0 L517.5,104.8 L512.9,106.6 L508.3,108.4 L503.8,110.2 L499.3,112.0 L494.7,113.8 L490.1,115.6 L485.6,117.4 L481.1,119.2 L476.5,121.0 L471.9,122.8 L467.4,124.6 L462.8,126.4 L458.3,128.2 L453.7,130.0 L449.2,131.8 L444.6,133.6 L440.1,135.4 L435.6,137.2 L431.0,139.0 L426.4,140.8 L421.9,142.6 L417.3,144.4 L412.8,146.2 L408.2,148.0 L403.7,149.8 L399.1,151.6 L394.6,153.4 L390.0,155.2 L385.5,157.0 L380.9,158.8 L376.4,160.6 L371.8,162.4 L367.3,164.2 L362.7,166.0 L358.2,167.8 L353.6,169.6 L349.1,171.4 L344.5,173.2 L340.0,175.0" style="fill:none;stroke:var(--blue);stroke-width:2.5"/>
+            <circle cx="567.5" cy="85.0" r="4" style="fill:var(--blue)"/>
+            <text x="571" y="80" style="fill:var(--blue);font-size:11px">100% risky</text>
+            <circle cx="340.0" cy="175.0" r="6" style="fill:var(--red);stroke:var(--bg);stroke-width:2"/>
+            <text x="322" y="196" text-anchor="end" style="fill:var(--red);font-size:11px;font-weight:700">min-var = 100% safe</text>
+          </svg></div>
+          <div class="sl-verdict">When two assets move in perfect lockstep (ρ = 1), there's <strong>no diversification benefit at all</strong> — the curve is a straight line, and the lowest-risk mix is simply 100% in the lower-vol asset (σ = 8.0%). Adding the riskier asset only adds risk.</div>
+        </div>
+
+        <div class="sl-panel active" id="fr-2">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Efficient frontier for the worked example, bowing left of both assets">
+            <line x1="80" y1="220" x2="600" y2="220" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="80" y1="220" x2="80" y2="40" style="stroke:var(--border2);stroke-width:1"/>
+            <text x="340" y="242" text-anchor="middle" style="fill:var(--text3);font-size:10.5px;font-family:'DM Mono',monospace">Risk σ (0% → 16%)</text>
+            <text x="30" y="130" text-anchor="middle" style="fill:var(--text3);font-size:10.5px;font-family:'DM Mono',monospace" transform="rotate(-90 30 130)">Return E[R]</text>
+            <path d="M567.5,85.0 L559.3,86.8 L551.2,88.6 L543.2,90.4 L535.2,92.2 L527.2,94.0 L519.4,95.8 L511.6,97.6 L503.8,99.4 L496.2,101.2 L488.6,103.0 L481.1,104.8 L473.7,106.6 L466.4,108.4 L459.3,110.2 L452.2,112.0 L445.2,113.8 L438.3,115.6 L431.6,117.4 L425.0,119.2 L418.6,121.0 L412.3,122.8 L406.1,124.6 L400.1,126.4 L394.4,128.2 L388.7,130.0 L383.3,131.8 L378.1,133.6 L373.2,135.4 L368.4,137.2 L363.9,139.0 L359.7,140.8 L355.7,142.6 L352.0,144.4 L348.6,146.2 L345.5,148.0 L342.7,149.8 L340.2,151.6 L338.1,153.4 L336.3,155.2 L334.8,157.0 L333.7,158.8 L333.0,160.6 L332.6,162.4 L332.6,164.2 L332.9,166.0 L333.6,167.8 L334.7,169.6 L336.1,171.4 L337.9,173.2 L340.0,175.0" style="fill:none;stroke:var(--blue);stroke-width:2.5"/>
+            <circle cx="567.5" cy="85.0" r="4" style="fill:var(--blue)"/>
+            <text x="571" y="80" style="fill:var(--blue);font-size:11px">100% risky</text>
+            <circle cx="340.0" cy="175.0" r="4" style="fill:var(--blue)"/>
+            <text x="300" y="192" text-anchor="end" style="fill:var(--blue);font-size:11px">100% safe</text>
+            <circle cx="332.6" cy="163.4" r="6" style="fill:var(--red);stroke:var(--bg);stroke-width:2"/>
+            <text x="332.6" y="150" text-anchor="middle" style="fill:var(--red);font-size:11px;font-weight:700">min-var: 87.1% / 12.9%</text>
+          </svg></div>
+          <div class="sl-verdict">With a realistic modest positive correlation (ρ = 0.3, this lesson's running example), the curve bows left of both assets. The minimum-variance mix — <strong>87.1% safe / 12.9% risky</strong> — actually has lower volatility (7.77%) than the "safe" asset held alone (8.0%).</div>
+        </div>
+
+        <div class="sl-panel" id="fr-3">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Efficient frontier for uncorrelated assets, bowing further left">
+            <line x1="80" y1="220" x2="600" y2="220" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="80" y1="220" x2="80" y2="40" style="stroke:var(--border2);stroke-width:1"/>
+            <text x="340" y="242" text-anchor="middle" style="fill:var(--text3);font-size:10.5px;font-family:'DM Mono',monospace">Risk σ (0% → 16%)</text>
+            <text x="30" y="130" text-anchor="middle" style="fill:var(--text3);font-size:10.5px;font-family:'DM Mono',monospace" transform="rotate(-90 30 130)">Return E[R]</text>
+            <path d="M567.5,85.0 L557.8,86.8 L548.1,88.6 L538.5,90.4 L529.0,92.2 L519.5,94.0 L510.1,95.8 L500.8,97.6 L491.6,99.4 L482.5,101.2 L473.5,103.0 L464.5,104.8 L455.7,106.6 L447.0,108.4 L438.5,110.2 L430.1,112.0 L421.8,113.8 L413.7,115.6 L405.7,117.4 L398.0,119.2 L390.4,121.0 L383.1,122.8 L376.0,124.6 L369.1,126.4 L362.6,128.2 L356.2,130.0 L350.2,131.8 L344.6,133.6 L339.2,135.4 L334.3,137.2 L329.7,139.0 L325.6,140.8 L321.8,142.6 L318.6,144.4 L315.8,146.2 L313.5,148.0 L311.7,149.8 L310.4,151.6 L309.6,153.4 L309.4,155.2 L309.7,157.0 L310.6,158.8 L311.9,160.6 L313.8,162.4 L316.2,164.2 L319.0,166.0 L322.4,167.8 L326.1,169.6 L330.4,171.4 L335.0,173.2 L340.0,175.0" style="fill:none;stroke:var(--blue);stroke-width:2.5"/>
+            <circle cx="567.5" cy="85.0" r="4" style="fill:var(--blue)"/>
+            <text x="571" y="80" style="fill:var(--blue);font-size:11px">100% risky</text>
+            <circle cx="340.0" cy="175.0" r="4" style="fill:var(--blue)"/>
+            <text x="300" y="192" text-anchor="end" style="fill:var(--blue);font-size:11px">100% safe</text>
+            <circle cx="309.4" cy="155.1" r="6" style="fill:var(--red);stroke:var(--bg);stroke-width:2"/>
+            <text x="309.4" y="142" text-anchor="middle" style="fill:var(--red);font-size:11px;font-weight:700">min-var: 77.9% / 22.1%</text>
+          </svg></div>
+          <div class="sl-verdict">Uncorrelated assets bow further left still — the minimum-variance mix is <strong>77.9% safe / 22.1% risky</strong>, at just 7.06% volatility, comfortably below either asset's own vol on its own.</div>
+        </div>
+
+        <div class="sl-panel" id="fr-4">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Efficient frontier for perfectly negatively correlated assets, touching near-zero risk">
+            <line x1="80" y1="220" x2="600" y2="220" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="80" y1="220" x2="80" y2="40" style="stroke:var(--border2);stroke-width:1"/>
+            <text x="340" y="242" text-anchor="middle" style="fill:var(--text3);font-size:10.5px;font-family:'DM Mono',monospace">Risk σ (0% → 16%)</text>
+            <text x="30" y="130" text-anchor="middle" style="fill:var(--text3);font-size:10.5px;font-family:'DM Mono',monospace" transform="rotate(-90 30 130)">Return E[R]</text>
+            <path d="M567.5,85.0 L552.5,86.8 L537.6,88.6 L522.7,90.4 L507.7,92.2 L492.8,94.0 L477.8,95.8 L462.8,97.6 L447.9,99.4 L433.0,101.2 L418.0,103.0 L403.1,104.8 L388.1,106.6 L373.2,108.4 L358.2,110.2 L343.3,112.0 L328.3,113.8 L313.3,115.6 L298.4,117.4 L283.4,119.2 L268.5,121.0 L253.5,122.8 L238.6,124.6 L223.6,126.4 L208.7,128.2 L193.7,130.0 L178.8,131.8 L163.8,133.6 L148.9,135.4 L133.9,137.2 L119.0,139.0 L104.0,140.8 L89.1,142.6 L85.8,144.4 L100.8,146.2 L115.8,148.0 L130.7,149.8 L145.7,151.6 L160.6,153.4 L175.6,155.2 L190.5,157.0 L205.5,158.8 L220.4,160.6 L235.4,162.4 L250.3,164.2 L265.3,166.0 L280.2,167.8 L295.2,169.6 L310.1,171.4 L325.1,173.2 L340.0,175.0" style="fill:none;stroke:var(--blue);stroke-width:2.5"/>
+            <circle cx="567.5" cy="85.0" r="4" style="fill:var(--blue)"/>
+            <text x="571" y="80" style="fill:var(--blue);font-size:11px">100% risky</text>
+            <circle cx="340.0" cy="175.0" r="4" style="fill:var(--blue)"/>
+            <text x="300" y="192" text-anchor="end" style="fill:var(--blue);font-size:11px">100% safe</text>
+            <circle cx="80.1" cy="143.7" r="6" style="fill:var(--green);stroke:var(--bg);stroke-width:2"/>
+            <text x="90" y="130" style="fill:var(--green);font-size:11px;font-weight:700">min-var ≈ 0% risk</text>
+          </svg></div>
+          <div class="sl-verdict">Perfectly negatively correlated assets can be combined into a genuinely near-riskless mix (σ ≈ 0.0%) at <strong>65.2% safe / 34.8% risky</strong> — the textbook case of a perfect hedge. Real asset pairs are never quite here, but it's the limit the earlier panels are bending toward.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Diversification benefit, live</h2>
+      <p class="sl-sub">Drag correlation from perfectly co-moving (ρ = 1) to perfectly hedging (ρ = −1). The minimum-variance point on the curve — and how much lower its risk sits than a naive weighted-average volatility — updates in real time.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Live efficient frontier chart reshaping as correlation changes">
+            <line x1="80" y1="220" x2="600" y2="220" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="80" y1="220" x2="80" y2="40" style="stroke:var(--border2);stroke-width:1"/>
+            <text x="340" y="242" text-anchor="middle" style="fill:var(--text3);font-size:10.5px;font-family:'DM Mono',monospace">Risk σ (0% → 16%)</text>
+            <text x="30" y="130" text-anchor="middle" style="fill:var(--text3);font-size:10.5px;font-family:'DM Mono',monospace" transform="rotate(-90 30 130)">Return E[R]</text>
+            <path id="corr-path" d="M567.5,85.0 L340.0,175.0" style="fill:none;stroke:var(--blue);stroke-width:2.5"/>
+            <circle cx="567.5" cy="85.0" r="4" style="fill:var(--blue)"/>
+            <text x="571" y="80" style="fill:var(--blue);font-size:11px">100% risky</text>
+            <circle cx="340.0" cy="175.0" r="4" style="fill:var(--blue)"/>
+            <text x="300" y="192" text-anchor="end" style="fill:var(--blue);font-size:11px">100% safe</text>
+            <circle id="corr-minvar-dot" cx="340.0" cy="175.0" r="6" style="fill:var(--red);stroke:var(--bg);stroke-width:2"/>
+            <text id="corr-minvar-label" x="340" y="196" text-anchor="middle" style="fill:var(--red);font-size:11px;font-weight:700">min-var</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Correlation ρ</span><span class="sl-live" id="corr-val">ρ = 0.30</span></div>
+        <input type="range" class="sl-slider" id="corr-slider" min="-100" max="100" step="5" value="30">
+        <div class="sl-calc-steps">
+          <div>Minimum-variance mix: <b id="corr-weights">87.1% safe / 12.9% risky</b></div>
+          <div>Portfolio volatility at that mix: <b id="corr-sigma">7.77%</b></div>
+          <div>Diversification benefit (naive weighted-avg vol minus actual): <b id="corr-benefit">1.13 pts</b></div>
+        </div>
+        <div class="sl-note">As ρ → 1, the benefit line shrinks to exactly zero — two assets that always move together can never hedge each other, no matter how you weight them. As ρ → −1, the benefit grows toward the full naive-average volatility, because the two positions increasingly cancel rather than compound.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Find the minimum-variance mix from your own numbers</h2>
+      <p class="sl-sub">Same closed-form solution the chart above is built on, generalized to any two volatilities and any correlation.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Safe-asset vol σ₁ (%)</label><input type="number" class="sl-input" id="mvp-s1" value="8" step="0.5" min="0.01"></div>
+          <div class="sl-calc-op">&amp;</div>
+          <div class="sl-calc-field"><label>Risky-asset vol σ₂ (%)</label><input type="number" class="sl-input" id="mvp-s2" value="15" step="0.5" min="0.01"></div>
+          <div class="sl-calc-op">ρ =</div>
+          <div class="sl-calc-field"><label>Correlation ρ</label><input type="number" class="sl-input" id="mvp-rho" value="0.3" step="0.05" min="-1" max="1"></div>
+          <div class="sl-calc-op">→</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Min-variance weight, safe asset</div>
+            <div class="sl-calc-result-val" id="mvp-w1">87.10%</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Weight in risky asset: w₂ = <b id="mvp-w2">12.90%</b></div>
+          <div>Resulting portfolio volatility: <b id="mvp-sigma">7.77%</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="mvp-reset">Reset to worked-example numbers</button>
+        <div class="sl-note">Formula: w₁* = (σ₂² − ρσ₁σ₂) / (σ₁² + σ₂² − 2ρσ₁σ₂). Push ρ toward 1 and the mix collapses toward "just hold the lower-vol asset." Push it toward −1 and the mix leans toward the hedge ratio that cancels both variances.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">The optimizer takes your guesses far too literally</h2>
+      <p class="sl-sub">Everything so far is clean, correct mathematics — and for decades it was also close to unusable in practice, for one specific reason.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>Extremely sensitive to E[R], not to Σ</h4><p>Covariances can be estimated with reasonable stability from historical data. Expected returns cannot — a return forecast is the least reliable, most opinion-laden number in the whole model, yet it's what the optimizer's output depends on most violently.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🌀</div><div><h4>It's solving a ratio</h4><p>The optimizer maximizes return-per-unit-of-risk. A ratio is acutely sensitive to small numerator changes when assets have similar risk profiles — a rounding-level nudge to a forecast can flip which asset looks "obviously" better.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📐</div><div><h4>"Error-maximization," not malfunction</h4><p>The optimizer isn't broken — it's doing exactly what was asked: squeeze the most return-per-variance out of whatever numbers it's given, taken as exact. It just concentrates the portfolio precisely where your estimation error happens to look most favorable.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📉</div><div><h4>Corner solutions</h4><p>The practical result: extreme long/short positions, often paired with an equally extreme offsetting position elsewhere just to keep the return target and budget constraint satisfied.</p></div></div>
+      </div>
+      <div class="sl-quote">This isn't a minor footnote — it's the single most cited practical criticism of mean-variance optimization, sometimes called the "error-maximization" property, and it's the reason "just run Markowitz" was, for decades, something academics recommended and desks quietly avoided doing literally.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">A half-point forecast nudge, a ten-point weight swing</h2>
+      <p class="sl-sub">Same tangency (maximum-Sharpe) portfolio as the full lesson's worked example — safe pair μ=3%/σ=8%, risky pair σ=15%, ρ=0.3, 2% risk-free rate. Only the risky pair's forecast changes.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Forecast: risky pair returns 4.0%</span>
+          <p>Tangency weights: <strong>62.45% safe / 37.55% risky.</strong> A sensible-looking, moderate allocation — nothing here screams "instability."</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag amber">Forecast: risky pair returns 4.5%</span>
+          <p>Tangency weights: <strong>52.12% safe / 47.88% risky.</strong> A 0.5-percentage-point forecast change — well inside any honest analyst's error bar — swung the risky weight by more than <strong>10 points</strong>.</p>
+        </div>
+      </div>
+      <p class="sl-p">Nothing about the real relationship between these two pairs changed. A rounding-level adjustment to one input the forecaster was never confident about produced a materially different "optimal" portfolio. Scale this to a basket of eight or ten correlated FX pairs, where forecasts differ from each other by fractions of a percent, and the instability compounds — this is exactly the mechanism behind the notorious extreme long/short corner solutions naive Markowitz optimization is known to produce.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Reverse the optimizer to get a prior, then nudge it</h2>
+      <p class="sl-sub">Black &amp; Litterman's 1992 fix doesn't touch the frontier or the covariance matrix — it changes where the expected-return vector comes from.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🌐</div><div><h4>Start from equilibrium: Π = δΣw_mkt</h4><p>If today's market weights are already roughly mean-variance-optimal, they imply a specific expected-return vector Π — recovered by literally running the optimization backwards. δ is a single risk-aversion scalar, calibrated from the market portfolio's own return and variance.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🗣</div><div><h4>Ask for views, not forecasts</h4><p>Instead of a precise expected return for every instrument, the investor states a handful of specific views — "EURUSD outperforms GBPUSD by 2%" — each with its own stated confidence.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚗</div><div><h4>Blend by precision, not by fiat</h4><p>Prior and view are combined the same way any two noisy estimates of the same quantity are combined in Bayesian updating: weighted by precision (1/variance) — the more confident side pulls harder.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎚</div><div><h4>The posterior feeds the optimizer</h4><p>The blended result, E[R]_BL — never the raw prior alone, never the raw view alone — is what gets handed to the exact same Step-3 optimizer from Section 3.</p></div></div>
+      </div>
+      <div class="sl-quote">A single strong view on one pair no longer reaches the optimizer as an exact, isolated fact — it's blended with the market's own belief about that instrument and everything correlated with it, moderated by exactly how confident the investor said they were.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Confidence decides how far you move from equilibrium</h2>
+      <p class="sl-sub">A simplified, one-view version of the blend: how far a view pulls the posterior away from the market prior, as confidence rises from 0% (ignored) to 100% (taken as exact).</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Market-equilibrium prior Π (%)</label><input type="number" class="sl-input" id="bl-pi" value="5" step="0.5"></div>
+          <div class="sl-calc-op">+</div>
+          <div class="sl-calc-field"><label>Your view (%)</label><input type="number" class="sl-input" id="bl-view" value="7" step="0.5"></div>
+          <div class="sl-calc-op">at</div>
+          <div class="sl-calc-field"><label>Confidence (0–100%)</label><input type="number" class="sl-input" id="bl-conf" value="40" step="5" min="0" max="100"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Posterior expected return</div>
+            <div class="sl-calc-result-val" id="bl-post">5.80%</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Pull toward your view: <b id="bl-pull">+0.80 pts</b> out of a possible <b id="bl-maxpull">+2.00 pts</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="bl-reset">Reset to worked-example numbers</button>
+        <div class="sl-note">At 0% confidence the posterior equals the equilibrium prior exactly — your view changes nothing. At 100% confidence the posterior equals your raw view — which is exactly what an unconstrained Markowitz optimizer effectively does with no market anchor at all. Everything in between is the moderated tilt Black-Litterman is built to produce.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Same math underneath, very different practical behavior</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Raw Markowitz</span>
+          <ul>
+            <li>Needs a precise expected return for every instrument — the input it's most sensitive to and least able to estimate reliably</li>
+            <li>A fraction-of-a-percent forecast nudge can flip weights into extreme long/short corners</li>
+            <li>No native concept of "confidence" — every number is treated as exact</li>
+            <li>Mathematically optimal given its inputs, which is exactly the problem when the inputs are noisy guesses</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Black-Litterman</span>
+          <ul>
+            <li>Starts from market-implied equilibrium returns — a stable, defensible default for everything you have no view on</li>
+            <li>Only needs a handful of specific, limited views, each with a stated confidence</li>
+            <li>A modest-confidence view produces a modest tilt; the market prior still dominates unless the view is both large and confident</li>
+            <li>Doesn't validate the view itself — a confident but wrong view still pulls the posterior the wrong way, just not to an absurd degree</li>
+          </ul>
+        </div>
+      </div>
+      <p class="sl-p">Neither model is "solved" in the sense of removing judgment — Black-Litterman moves the judgment call from "guess every instrument's return" to "state a few views and how sure you actually are of them," which is a smaller, more honest thing to be asked for.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Nobody runs the raw optimizer on real money</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🧭</div><div><h4>Black-Litterman / Bayesian shrinkage</h4><p>Moderate the expected-return inputs themselves before they ever reach the optimizer.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔒</div><div><h4>Hard position &amp; turnover constraints</h4><p>Cap any single position's weight, or how far the optimizer can move from a benchmark or last period's holdings, regardless of what the raw math wants.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚖</div><div><h4>Risk-parity / minimum-variance-only</h4><p>Skip the fragile expected-return vector entirely and optimize only on the comparatively stable covariance matrix — less "optimal," far more robust.</p></div></div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Where this repo actually stands</div>
+        <p>Checked against the current code, not just repeated from the full lesson: nothing in this repo runs either model. <code>portfolioBacktest/</code> sizes a pair trade beta-neutral off an OLS hedge ratio; the shared portfolio simulators (<code>pylego/portfolio_sim.py</code> and its motif variants) combine trades with fixed per-trade risk sizing and a concurrent-risk cap — none of it estimates a covariance matrix and solves for optimal weights, and none of it reverse-engineers an equilibrium prior. Every strategy here is still effectively single-instrument or single-pair; this remains the theory a future multi-instrument portfolio-construction layer would sit on, not a description of something already running.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Why does portfolio variance depend on more than just each position's own weight and volatility?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Because of the cross term 2w₁w₂Cov(R₁,R₂), which can be positive, negative, or zero</button>
+        <button class="sl-quiz-opt">Because volatility itself changes when positions are combined</button>
+        <button class="sl-quiz-opt">It doesn't — variance really is just a weighted average of the parts</button>
+        <div class="sl-quiz-explain">The cross-covariance term is exactly where diversification benefit (or its absence) lives — a weighted-average intuition misses it entirely.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Two assets with ρ = 1 (perfectly correlated) — what does the minimum-variance mix look like?</h4>
+        <button class="sl-quiz-opt" data-correct="true">100% in the lower-volatility asset — no diversification benefit exists</button>
+        <button class="sl-quiz-opt">A 50/50 split, since both assets contribute equally</button>
+        <button class="sl-quiz-opt">Whatever mix maximizes expected return</button>
+        <div class="sl-quiz-explain">At ρ = 1 the frontier is a straight line — mixing in the higher-vol asset can only add risk, so the lowest-risk point is holding the safer asset outright.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Why is the raw Markowitz optimizer so much more sensitive to expected-return inputs than to the covariance matrix?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Covariances estimate fairly stably from history; expected returns are inherently uncertain guesses, yet the optimizer treats them as exact</button>
+        <button class="sl-quiz-opt">The covariance matrix isn't actually used by the optimizer</button>
+        <button class="sl-quiz-opt">Expected returns are always larger numbers than covariances, so they dominate arithmetically</button>
+        <div class="sl-quiz-explain">The optimizer is solving a ratio — return per unit of risk — and a ratio is acutely sensitive to small changes in a numerator built from the least reliable input in the whole model.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>What role does the market-equilibrium prior Π play in Black-Litterman?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It's the Bayesian starting belief, reverse-engineered from current market weights, which the investor's views then update</button>
+        <button class="sl-quiz-opt">It replaces the investor's views entirely once calculated</button>
+        <button class="sl-quiz-opt">It's just a sanity-check number, never actually fed into the optimizer</button>
+        <div class="sl-quiz-explain">Π = δΣw_mkt is the prior; views are the likelihood; the two are precision-weighted together into a posterior that's what actually reaches the optimizer.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>A view stated with 100% confidence, in the simplified blending calculator on this page — what happens to the posterior?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The posterior equals the raw view exactly — the equilibrium prior is fully overridden</button>
+        <button class="sl-quiz-opt">The posterior always equals the prior, regardless of confidence</button>
+        <button class="sl-quiz-opt">The calculator returns an error, since 100% confidence isn't a valid input</button>
+        <div class="sl-quiz-explain">At confidence = 100%, the blend collapses to the view alone — which is also, structurally, what happens whenever raw Markowitz has no market anchor to compete against a forecast.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Portfolio variance is a quadratic form, wᵀΣw, not a weighted average — the cross-covariance terms are exactly where diversification benefit lives, and they can be negative.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>The efficient frontier traces the minimum-variance mix at every achievable return; its leftmost point is the minimum-variance portfolio, and correlation controls how far left it bows.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Raw Markowitz is extremely sensitive to the expected-return inputs specifically — a fraction-of-a-percent forecast nudge can flip "optimal" weights into extreme corners, the well-documented "error-maximization" flaw.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Black-Litterman fixes this by starting from a market-equilibrium prior, Π = δΣw_mkt, and Bayesian-blending it with a handful of confidence-weighted investor views.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Confidence is a genuine, separate lever — the same view, stated with low versus high confidence, produces a smaller versus larger tilt away from equilibrium.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Black-Litterman tames the optimizer's instability; it does not validate the view — a confidently wrong view still pulls the posterior in the wrong direction, just not to an absurd degree.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Read a portfolio-optimization output with the right skepticism: an extreme allocation is usually a sign the inputs were more uncertain than the model was told, not evidence of a hidden edge. Recognise why "just run mean-variance" is a red flag on a desk, and why Black-Litterman's fix — market prior plus confidence-weighted views — is the practical default instead. Build toward a real multi-instrument allocator with the right mental model already in place, before writing a line of the optimizer itself.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Alpha vs. Beta Separation</h3>
+        <p>Once you can hold several positions "together," the next question is which part of any single position's return is genuine skill versus just riding a market factor everyone was already exposed to.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="alpha-beta-separation-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="markowitz-black-litterman.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Shared 2-asset constants for the frontier slider (matches the tabs slide).
+  var MU1 = 3, MU2 = 4, S1 = 8, S2 = 15;
+  var X0 = 80, SIGMA_MAX = 16, PX_PER_SIGMA = (600 - 80) / SIGMA_MAX;
+  var MU_MIN = 2.5, MU_MAX = 4.5, Y0 = 220, PX_PER_MU = (220 - 40) / (MU_MAX - MU_MIN);
+
+  function toPx(sigma, mu){
+    return [X0 + sigma * PX_PER_SIGMA, Y0 - (mu - MU_MIN) * PX_PER_MU];
+  }
+
+  function fmtPct(n, d){ return n.toFixed(d == null ? 2 : d) + '%'; }
+
+  // Correlation slider — reshapes the efficient frontier live.
+  (function(){
+    var slider = document.getElementById('corr-slider');
+    if (!slider) return;
+    var valEl = document.getElementById('corr-val');
+    var path = document.getElementById('corr-path');
+    var dot = document.getElementById('corr-minvar-dot');
+    var label = document.getElementById('corr-minvar-label');
+    var weightsEl = document.getElementById('corr-weights');
+    var sigmaEl = document.getElementById('corr-sigma');
+    var benefitEl = document.getElementById('corr-benefit');
+
+    function update(){
+      var rho = parseInt(slider.value, 10) / 100;
+      valEl.textContent = 'ρ = ' + rho.toFixed(2);
+
+      var d = 'M';
+      for (var i = 0; i <= 50; i++) {
+        var w1 = i / 50;
+        var w2 = 1 - w1;
+        var mu = w1 * MU1 + w2 * MU2;
+        var varP = w1*w1*S1*S1 + w2*w2*S2*S2 + 2*w1*w2*rho*S1*S2;
+        var sigma = Math.sqrt(Math.max(varP, 0));
+        var px = toPx(sigma, mu);
+        d += (i === 0 ? '' : ' L') + px[0].toFixed(1) + ',' + px[1].toFixed(1);
+      }
+      path.setAttribute('d', d);
+
+      // Exact closed-form minimum-variance point (not the 50-step curve grid)
+      // so this matches the calculator slide's numbers exactly at the same rho.
+      var mvNum = S2*S2 - rho*S1*S2;
+      var mvDen = S1*S1 + S2*S2 - 2*rho*S1*S2;
+      var mvW1 = Math.min(1, Math.max(0, mvNum / mvDen));
+      var mvW2 = 1 - mvW1;
+      var mvMu = mvW1 * MU1 + mvW2 * MU2;
+      var mvVar = mvW1*mvW1*S1*S1 + mvW2*mvW2*S2*S2 + 2*mvW1*mvW2*rho*S1*S2;
+      var best = { w1: mvW1, w2: mvW2, sigma: Math.sqrt(Math.max(mvVar, 0)), mu: mvMu };
+
+      var bestPx = toPx(best.sigma, best.mu);
+      dot.setAttribute('cx', bestPx[0].toFixed(1));
+      dot.setAttribute('cy', bestPx[1].toFixed(1));
+      label.setAttribute('x', bestPx[0].toFixed(1));
+      label.setAttribute('y', (bestPx[1] + 21).toFixed(1));
+
+      weightsEl.textContent = fmtPct(best.w1 * 100, 1) + ' safe / ' + fmtPct(best.w2 * 100, 1) + ' risky';
+      sigmaEl.textContent = fmtPct(best.sigma, 2);
+      var naive = best.w1 * S1 + best.w2 * S2;
+      benefitEl.textContent = (naive - best.sigma).toFixed(2) + ' pts';
+    }
+
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Minimum-variance-portfolio calculator (2-asset, closed form).
+  (function(){
+    var s1I = document.getElementById('mvp-s1');
+    if (!s1I) return;
+    var s2I = document.getElementById('mvp-s2'), rhoI = document.getElementById('mvp-rho');
+    var w1Out = document.getElementById('mvp-w1'), w2Out = document.getElementById('mvp-w2'), sigmaOut = document.getElementById('mvp-sigma');
+    var resetBtn = document.getElementById('mvp-reset');
+    var DEFAULTS = { s1: 8, s2: 15, rho: 0.3 };
+
+    function recompute(){
+      var s1 = parseFloat(s1I.value) / 100, s2 = parseFloat(s2I.value) / 100, rho = parseFloat(rhoI.value);
+      if (!isFinite(s1) || !isFinite(s2) || !isFinite(rho) || s1 <= 0 || s2 <= 0 || rho < -1 || rho > 1) {
+        w1Out.textContent = '—'; w2Out.textContent = '—'; sigmaOut.textContent = '—';
+        return;
+      }
+      var num = s2*s2 - rho*s1*s2;
+      var den = s1*s1 + s2*s2 - 2*rho*s1*s2;
+      if (Math.abs(den) < 1e-12) {
+        w1Out.textContent = '—'; w2Out.textContent = '—'; sigmaOut.textContent = '—';
+        return;
+      }
+      var w1 = num / den, w2 = 1 - w1;
+      var varP = w1*w1*s1*s1 + w2*w2*s2*s2 + 2*w1*w2*rho*s1*s2;
+      var sigma = Math.sqrt(Math.max(varP, 0));
+      w1Out.textContent = fmtPct(w1 * 100, 2);
+      w2Out.textContent = fmtPct(w2 * 100, 2);
+      sigmaOut.textContent = fmtPct(sigma * 100, 2);
+    }
+
+    [s1I, s2I, rhoI].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      s1I.value = DEFAULTS.s1; s2I.value = DEFAULTS.s2; rhoI.value = DEFAULTS.rho;
+      recompute();
+    });
+    recompute();
+  })();
+
+  // Simplified Black-Litterman confidence-weighted blend calculator.
+  (function(){
+    var piI = document.getElementById('bl-pi');
+    if (!piI) return;
+    var viewI = document.getElementById('bl-view'), confI = document.getElementById('bl-conf');
+    var postOut = document.getElementById('bl-post'), pullOut = document.getElementById('bl-pull'), maxPullOut = document.getElementById('bl-maxpull');
+    var resetBtn = document.getElementById('bl-reset');
+    var DEFAULTS = { pi: 5, view: 7, conf: 40 };
+
+    function recompute(){
+      var pi = parseFloat(piI.value), view = parseFloat(viewI.value), conf = parseFloat(confI.value);
+      if (!isFinite(pi) || !isFinite(view) || !isFinite(conf) || conf < 0 || conf > 100) {
+        postOut.textContent = '—'; pullOut.textContent = '—'; maxPullOut.textContent = '—';
+        return;
+      }
+      var c = conf / 100;
+      var post = pi + c * (view - pi);
+      var pull = post - pi;
+      var maxPull = view - pi;
+      postOut.textContent = fmtPct(post, 2);
+      pullOut.textContent = (pull >= 0 ? '+' : '') + pull.toFixed(2) + ' pts';
+      maxPullOut.textContent = (maxPull >= 0 ? '+' : '') + maxPull.toFixed(2) + ' pts';
+    }
+
+    [piI, viewI, confI].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      piI.value = DEFAULTS.pi; viewI.value = DEFAULTS.view; confI.value = DEFAULTS.conf;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

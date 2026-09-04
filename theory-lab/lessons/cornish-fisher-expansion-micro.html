@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cornish-Fisher Expansion — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Cornish-Fisher Expansion — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivation, MathJax notation, and a 6-question self-test?<a href="cornish-fisher-expansion.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Risk Deep Dive 4 · Risk Management Deep Dive</div>
+      <h1 class="sl-h1">Cornish-Fisher Expansion — <em>Nudging the Quantile, Not the Formula</em></h1>
+      <p class="sl-lede">The previous deep dive defined VaR as a quantile of the loss distribution and showed why coherent risk measures matter — but said nothing about how VaR actually gets computed day to day. The most common answer assumes returns are normally distributed, which real returns almost never are. This lesson covers the standard fix — an adjustment to the one number the Gaussian formula gets wrong — and the well-documented way that fix can itself misbehave.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Recall: the Gaussian VaR formula</h2>
+      <p class="sl-sub">Same VaR this series already defined — just the one shortcut everyone actually uses to compute it.</p>
+      <div class="sl-row">
+        <div class="sl-box">−μ</div>
+        <div class="sl-arrow">−</div>
+        <div class="sl-box">z_α · σ</div>
+        <div class="sl-arrow">=</div>
+        <div class="sl-box green">VaR_α</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">μ</div><div><h4>Mean return</h4><p>The average return of the series — usually small and often set to zero for a clean daily VaR calculation.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">σ</div><div><h4>Standard deviation</h4><p>How much the return series wobbles day to day — the plain, familiar volatility number.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">α</div><div><h4>Tail probability</h4><p>0.05 for a 95%-confidence VaR, 0.01 for 99% — the slice of outcomes being called "the bad tail."</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">z_α</div><div><h4>Standard normal quantile</h4><p>Read straight off a normal table — z<sub>0.05</sub> ≈ −1.645. This is the one number this whole lesson is about.</p></div></div>
+      </div>
+      <div class="sl-quote">The prior lesson on <strong>Coherent Risk Measures</strong> defines VaR_p(L) as a quantile and deliberately assumes nothing about the loss distribution's shape. This formula is the popular shortcut for actually computing that quantile — and it only works exactly if returns really are normally distributed.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Real returns don't look like the bell curve</h2>
+      <p class="sl-sub">Two extra shape facts the Gaussian formula throws away entirely.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="shape-tabs">
+          <button class="sl-tab active" data-panel="shape-1">Skewness (S)</button>
+          <button class="sl-tab" data-panel="shape-2">Excess kurtosis (K)</button>
+        </div>
+        <div class="sl-panel active" id="shape-1">
+          <div class="sl-row"><div class="sl-box amber">S &lt; 0</div><div class="sl-arrow">→</div><div class="sl-box">longer left tail</div></div>
+          <div class="sl-verdict"><strong>Skewness</strong> is the third standardized moment. S = 0 is symmetric, like a normal distribution. S &lt; 0 — the common case for equity and FX returns — means a longer, fatter <em>loss</em> tail than gain tail: crashes run further than rallies do.</div>
+        </div>
+        <div class="sl-panel" id="shape-2">
+          <div class="sl-row"><div class="sl-box amber">K &gt; 0</div><div class="sl-arrow">→</div><div class="sl-box">fatter tails, both sides</div></div>
+          <div class="sl-verdict"><strong>Excess kurtosis</strong> is the fourth standardized moment minus 3 (a normal distribution's own kurtosis), so K = 0 means normal-tailed. K &gt; 0 ("leptokurtic") means more extreme observations than a bell curve predicts, in <em>both</em> directions — the textbook "fat tails" of financial returns.</div>
+        </div>
+      </div>
+      <p class="sl-p">Daily FX, equity, and rates returns are typically both: negatively skewed <em>and</em> fat-tailed. Plugging only μ and σ into the Gaussian formula assumes S = 0 and K = 0 by default — silently discarding exactly the shape information that would tell you the tail is worse than "average-shape" implies.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Why this matters, not just aesthetically</div>
+        <p>A VaR number computed as if returns were symmetric and normal-tailed understates the loss threshold precisely where it matters most — the tail, which is the whole reason VaR gets computed in the first place.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Same mean and spread, very different left tail</h2>
+      <p class="sl-sub">Both curves below share the same peak height. Only the shape differs — and only the shape is what the Gaussian formula can't see.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Hand-drawn, to scale in spirit only</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two density curves sharing the same mean and peak height. A blue symmetric bell curve versus a grey negatively-skewed, fat-tailed curve with a long, slow-decaying left tail. Two dashed vertical lines mark where a 95 percent VaR quantile sits under each assumption, with the fat-tail quantile positioned further left, and the sliver of extra tail between them is shaded amber.">
+            <line x1="40" y1="240" x2="600" y2="240" style="stroke:var(--border);stroke-width:1"/>
+            <text x="40" y="255" style="font:10px 'DM Mono',monospace;fill:var(--text3)">−4σ</text>
+            <text x="320" y="255" text-anchor="middle" style="font:10px 'DM Mono',monospace;fill:var(--text3)">0 (mean)</text>
+            <text x="600" y="255" text-anchor="end" style="font:10px 'DM Mono',monospace;fill:var(--text3)">+3σ</text>
+            <path style="fill:var(--red);opacity:0.16" d="M 40.0,239.4 L 44.0,239.3 L 48.0,239.2 L 52.0,239.1 L 56.0,239.0 L 60.0,238.8 L 64.0,238.7 L 68.0,238.5 L 72.0,238.4 L 76.0,238.2 L 80.0,238.0 L 84.0,237.8 L 88.0,237.5 L 92.0,237.2 L 96.0,236.9 L 100.0,236.6 L 104.0,236.2 L 108.0,235.8 L 112.0,235.4 L 116.0,234.9 L 120.0,234.4 L 124.0,233.8 L 128.0,233.2 L 132.0,232.6 L 136.0,231.8 L 140.0,231.1 L 144.0,230.2 L 148.0,229.3 L 152.0,228.3 L 156.0,227.3 L 160.0,226.2 L 164.0,225.0 L 168.0,223.7 L 172.0,222.3 L 176.0,220.8 L 180.0,219.2 L 184.0,217.6 L 188.0,215.8 L 192.0,213.9 L 196.0,211.9 L 200.0,209.7 L 204.0,207.5 L 208.0,205.1 L 212.0,202.6 L 216.0,200.0 L 220.0,197.2 L 222.2,195.6 L 222.2,240 L 40.0,240 Z"/>
+            <path style="fill:var(--amber);opacity:0.35" d="M 222.2,195.6 L 223.8,194.4 L 225.4,193.2 L 227.0,191.9 L 228.4,190.9 L 228.4,240 L 222.2,240 Z"/>
+            <path style="fill:none;stroke:var(--blue);stroke-width:2" d="M 40.0,238.2 L 56.0,237.0 L 72.0,235.1 L 88.0,232.3 L 104.0,228.1 L 120.0,222.2 L 136.0,214.1 L 152.0,203.4 L 168.0,189.8 L 184.0,173.4 L 200.0,154.3 L 216.0,133.1 L 232.0,110.8 L 248.0,88.8 L 264.0,68.4 L 280.0,51.4 L 296.0,39.1 L 312.0,32.6 L 328.0,32.6 L 344.0,39.1 L 360.0,51.4 L 376.0,68.4 L 392.0,88.8 L 408.0,110.8 L 424.0,133.1 L 440.0,154.3 L 456.0,173.4 L 472.0,189.8 L 488.0,203.4 L 504.0,214.1 L 520.0,222.2 L 536.0,228.1 L 552.0,232.3 L 568.0,235.1 L 584.0,237.0 L 600.0,238.2"/>
+            <text x="440" y="70" text-anchor="middle" style="font:600 11px 'DM Sans',sans-serif;fill:var(--blue)">Normal — S=0, K=0</text>
+            <path style="fill:none;stroke:var(--text2);stroke-width:2" d="M 40.0,239.4 L 56.0,239.0 L 72.0,238.4 L 88.0,237.5 L 104.0,236.2 L 120.0,234.4 L 136.0,231.8 L 152.0,228.3 L 168.0,223.7 L 184.0,217.6 L 200.0,209.7 L 216.0,200.0 L 232.0,188.0 L 248.0,173.8 L 264.0,157.2 L 280.0,138.5 L 296.0,118.1 L 312.0,96.5 L 328.0,75.1 L 344.0,55.5 L 360.0,40.0 L 376.0,31.1 L 392.0,31.5 L 408.0,42.6 L 424.0,64.1 L 440.0,93.5 L 456.0,126.8 L 472.0,159.2 L 488.0,187.0 L 504.0,208.2 L 520.0,222.6 L 536.0,231.4 L 552.0,236.1 L 568.0,238.4 L 584.0,239.4 L 600.0,239.8"/>
+            <text x="180" y="115" text-anchor="middle" style="font:600 11px 'DM Sans',sans-serif;fill:var(--text2)">Real returns — S&lt;0, K&gt;0</text>
+            <line x1="228.4" y1="190.9" x2="228.4" y2="240" style="stroke:var(--blue);stroke-width:1.5;stroke-dasharray:4,3"/>
+            <circle cx="228.4" cy="190.9" r="4" style="fill:var(--blue)"/>
+            <text x="228.4" y="160" text-anchor="middle" style="font:600 10.5px 'DM Sans',sans-serif;fill:var(--blue)">z_α (Gaussian)</text>
+            <line x1="222.2" y1="195.6" x2="222.2" y2="240" style="stroke:var(--red);stroke-width:1.5;stroke-dasharray:4,3"/>
+            <circle cx="222.2" cy="195.6" r="4" style="fill:var(--red)"/>
+            <text x="150" y="60" text-anchor="middle" style="font:600 10.5px 'DM Sans',sans-serif;fill:var(--red)">z_CF — further into the tail</text>
+            <text x="150" y="100" text-anchor="middle" style="font:10px 'DM Sans',sans-serif;fill:var(--amber)">extra tail the Gaussian quantile misses →</text>
+          </svg>
+        </div>
+      </div>
+      <p class="sl-p">The grey curve is the same mean, same spread — just reshaped to have a longer, slower-decaying left tail. A quantile drawn from the blue normal curve (the Gaussian z_α) sits noticeably short of where the grey curve's real tail actually begins. The Cornish-Fisher expansion is precisely the tool for moving that quantile mark to where the amber sliver says it belongs.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Cornish &amp; Fisher's fix: adjust z_α, not the formula</h2>
+      <p class="sl-sub">z_CF = z_α + (z_α²−1)S/6 + (z_α³−3z_α)K/24 − (2z_α³−5z_α)S²/36 — then z_CF replaces z_α, everywhere, in the exact same VaR formula.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">z_α</div><div><h4>The baseline</h4><p>What you'd use if returns really were normal. Set S = 0 and K = 0 and every term below vanishes — z_CF collapses back to plain z_α.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">S</div><div><h4>Skew correction</h4><p>(z_α²−1)S/6 minus (2z_α³−5z_α)S²/36. Pushes the quantile further into the tail when losses run more extreme than gains.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">K</div><div><h4>Kurtosis correction</h4><p>(z_α³−3z_α)K/24. Pushes the quantile further out when the distribution has fatter tails than normal.</p></div></div>
+      </div>
+      <div class="sl-quote">Think of a tailor who marks a hem 1.645 inches up from the floor because that's correct for a perfectly average, symmetric build. Cornish-Fisher is the tailor learning to nudge that mark using two measurements of <em>this specific</em> customer — how lopsided they are, and how much more extreme their proportions run — instead of assuming everyone is exactly average. Same tape measure, same formula; only the one number being fed into it moves.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">The same data, two different VaR numbers</h2>
+      <p class="sl-sub">A daily return series: μ = 0%, σ = 1.20%, skewness S = −0.5, excess kurtosis K = 3 — a realistic negative-skew, fat-tailed shape. Compute the 95%-confidence VaR (z_α = −1.645) both ways.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="gcf-tabs">
+          <button class="sl-tab active" data-panel="gcf-1">Gaussian VaR</button>
+          <button class="sl-tab" data-panel="gcf-2">Cornish-Fisher VaR</button>
+        </div>
+        <div class="sl-panel active" id="gcf-1">
+          <div class="sl-row"><div class="sl-box">z_α = −1.645</div><div class="sl-arrow">→</div><div class="sl-box green">VaR = 1.974%</div></div>
+          <div class="sl-verdict">−0% − (−1.645)(1.20%) = <strong>1.974%</strong>. This assumes S = 0 and K = 0 — an "average-shape" return series that doesn't actually match the one being measured.</div>
+        </div>
+        <div class="sl-panel" id="gcf-2">
+          <div class="sl-row"><div class="sl-box amber">z_CF ≈ −1.722</div><div class="sl-arrow">→</div><div class="sl-box green">VaR = 2.066%</div></div>
+          <div class="sl-verdict">Skew terms contribute about −0.137, the kurtosis term about +0.060, moving z_α = −1.645 to z_CF ≈ −1.722. −0% − (−1.722)(1.20%) = <strong>2.066%</strong>.</div>
+        </div>
+      </div>
+      <p class="sl-p"><strong>2.066% vs. 1.974%</strong> — the Cornish-Fisher-adjusted VaR comes out roughly <strong>4.7% larger</strong> than the plain Gaussian VaR, from the exact same μ and σ. The entire difference is the quantile shift z_α → z_CF; nothing else in the formula changed.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Try it yourself — a live Cornish-Fisher VaR calculator</h2>
+      <p class="sl-sub">Starts on the worked example's numbers. Change any field and z_α, z_CF, and both VaR figures recalculate instantly.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Mean μ (%)</label><input type="number" class="sl-input" id="cfc-mu" value="0" step="0.1"></div>
+          <div class="sl-calc-field"><label>Std. dev σ (%)</label><input type="number" class="sl-input" id="cfc-sigma" value="1.20" step="0.05" min="0"></div>
+          <div class="sl-calc-field"><label>Skewness S</label><input type="number" class="sl-input" id="cfc-S" value="-0.5" step="0.1"></div>
+          <div class="sl-calc-field"><label>Excess kurtosis K</label><input type="number" class="sl-input" id="cfc-K" value="3" step="0.5"></div>
+          <div class="sl-calc-field"><label>Confidence (%)</label><input type="number" class="sl-input" id="cfc-p" value="95" step="0.5" min="50.1" max="99.9"></div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Cornish-Fisher VaR</div>
+            <div class="sl-calc-result-val" id="cfc-cfvar">2.066%</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>z_α = <b id="cfc-z">−1.6449</b> &emsp; z_CF = <b id="cfc-zcf">−1.7217</b></div>
+          <div>Plain Gaussian VaR = <b id="cfc-gvar">1.974%</b> for comparison</div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="cfc-reset">Reset to worked-example numbers</button>
+        <div class="sl-note" id="cfc-note">Guarded against blank, non-finite, or out-of-range input — σ must be ≥ 0 and confidence strictly between 50% and 100%, or every field above shows "—".</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Drag skewness far enough, and the fix breaks</h2>
+      <p class="sl-sub">Fixed at σ = 1.20%, excess kurtosis K = 1. Drag skewness from a realistic −0.5 toward an extreme −3.5 and watch the 99% bar.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 320 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two bars comparing the Cornish-Fisher-adjusted 95 percent and 99 percent VaR for the current skewness. The 99 percent bar should always be taller than the 95 percent bar; at extreme skewness it becomes shorter instead, and both bars turn red to flag the breakdown.">
+            <line x1="20" y1="180" x2="300" y2="180" style="stroke:var(--border2);stroke-width:1"/>
+            <rect id="sk-bar95" x="75" y="140" width="50" height="40" rx="4" style="fill:var(--blue-bg);stroke:var(--blue);stroke-width:1.5"/>
+            <text x="100" y="196" text-anchor="middle" style="font:11px 'DM Mono',monospace;fill:var(--text2)">95% VaR</text>
+            <text id="sk-val95" x="100" y="130" text-anchor="middle" style="font:600 12px 'DM Mono',monospace;fill:var(--blue)">2.12%</text>
+            <rect id="sk-bar99" x="195" y="100" width="50" height="80" rx="4" style="fill:var(--green-bg);stroke:var(--green);stroke-width:1.5"/>
+            <text x="220" y="196" text-anchor="middle" style="font:11px 'DM Mono',monospace;fill:var(--text2)">99% VaR</text>
+            <text id="sk-val99" x="220" y="90" text-anchor="middle" style="font:600 12px 'DM Mono',monospace;fill:var(--green)">3.40%</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Skewness S</span><span class="sl-live" id="sk-sval">S = −0.50</span></div>
+        <input type="range" class="sl-slider" id="sk-slider" min="-3.5" max="0" step="0.1" value="-0.5">
+        <div class="sl-verdict" id="sk-verdict" style="margin-top:12px">A 99%-confidence VaR should never be smaller than a 95%-confidence one on the same distribution — a higher confidence level always means further into the tail.</div>
+      </div>
+      <p class="sl-p">Past roughly S ≈ −2.4 at this kurtosis, z_CF stops increasing monotonically with confidence — the "99% VaR" the formula reports actually falls <em>below</em> the "95% VaR" it reported a moment ago. That is not a rounding quirk; it's the polynomial correction overshooting itself.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">The irony: the fix for non-normality isn't always valid itself</h2>
+      <div class="sl-quote">The whole point of a quantile function is that it increases as the confidence level increases. For sufficiently extreme |S| and K, the Cornish-Fisher transform can violate exactly that property — producing an "adjusted VaR" that is not a valid quantile at all, just an artifact of the correction terms overshooting. This is formally characterized in the literature (Jaschke, 2002), not a hypothetical edge case.</div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">What the previous slide's slider just demonstrated</div>
+        <p>Cornish-Fisher is a useful correction within a bounded region of (S, K) inputs — not a universal fix for non-normality. Outside that region, using the output "uncritically" (its own risk: treating the number as trustworthy just because a formula produced it) can silently hand a risk desk a nonsensical number.</p>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">✓</div><div><h4>"More conservative" ≠ "more correct"</h4><p>The worked example shows CF-VaR larger than Gaussian VaR — but the direction and size of the adjustment depend entirely on the sign and magnitude of the S and K fed in, not a built-in conservative bias.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📉</div><div><h4>Higher-order moments are noisy</h4><p>Skewness and especially kurtosis converge far more slowly than the mean or variance. A short return history can produce an S and K dominated by one or two extreme observations.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">◎</div><div><h4>Still just a quantile</h4><p>Cornish-Fisher adjusts <em>where</em> the quantile sits — it does not turn VaR into an average-of-the-tail measure. Everything the prior lesson said about VaR's blind spot past the threshold still applies.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">A cheap upgrade, with a boundary you must respect</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Where it earns its keep</span>
+          <ul>
+            <li>Drop-in for an existing Gaussian VaR pipeline — only z_α → z_CF changes</li>
+            <li>No need to refit a whole new parametric distribution</li>
+            <li>Uses two sample statistics (S, K) that are already cheap to compute</li>
+            <li>A standard, documented option in commercial risk platforms</li>
+          </ul>
+        </div>
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Where it breaks down</span>
+          <ul>
+            <li>Non-monotonic past a bounded region of extreme (S, K) — see the slider above</li>
+            <li>Only as good as the sample S and K feeding it — noisy in short histories</li>
+            <li>No warning built into the formula itself when it has overshot</li>
+            <li>A local correction, not a substitute for genuine tail modeling at extremes</li>
+          </ul>
+        </div>
+      </div>
+      <p class="sl-p">The difference isn't "trustworthy vs. untrustworthy" — it's knowing which side of the boundary a given (S, K) pair falls on before reporting the number to a risk committee as if it were unconditionally valid.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Where this shows up on a desk</h2>
+      <div class="sl-quote">A short-volatility FX carry book earns small, steady gains most days, punctuated by sharp drawdowns when a funding currency spikes — the textbook negative-skew, fat-tailed shape. Reporting its VaR the plain Gaussian way is, in effect, pretending those returns look like a coin flip around a fair average — the opposite of the strategy's actual shape. Feeding the desk's own historical S and K into Cornish-Fisher gets a materially larger, more honest number for how bad a genuinely bad day could be, without building an entirely new distributional model.</div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Checked against this repo's actual code</div>
+        <p>This project's own backtest analytics already compute sample skewness and excess kurtosis (<code>js/metricsCore.js</code>) and feed them into a Probabilistic-Sharpe-style adjustment (<code>minTrackRecordLength</code>) — but the VaR/CVaR this repo actually reports (<code>histVaR</code>/<code>histCVaR</code>) is computed empirically, from the historical return quantile itself, not via the Cornish-Fisher quantile adjustment this lesson describes. The full lesson's own framing holds up: Cornish-Fisher is explained here as a technique, not a claim about what this codebase runs.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What does the Cornish-Fisher expansion actually change in the VaR formula?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Only the quantile — z_α becomes z_CF; the rest of the formula is untouched</button>
+        <button class="sl-quiz-opt">It replaces σ with a new, distribution-fitted volatility</button>
+        <button class="sl-quiz-opt">It refits the entire return distribution from scratch</button>
+        <div class="sl-quiz-explain">−μ − zσ stays exactly the same. z_CF is simply substituted for z_α inside it — that's the entire adjustment.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Why does z_CF equal z_α exactly when a return series is perfectly normal?</h4>
+        <button class="sl-quiz-opt" data-correct="true">S = 0 and K = 0 make every correction term vanish</button>
+        <button class="sl-quiz-opt">Because normal distributions don't have a valid quantile function</button>
+        <button class="sl-quiz-opt">They never are exactly equal — CF always adjusts by some amount</button>
+        <div class="sl-quiz-explain">Every correction term is multiplied by S, K, or S² — with both S and K at zero, all three vanish and z_CF reduces to z_α with nothing added.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>In the worked example (S=−0.5, K=3), why is the Cornish-Fisher VaR larger than the Gaussian VaR?</h4>
+        <button class="sl-quiz-opt" data-correct="true">z_CF is more negative than z_α, and a more negative z subtracts more, adding to VaR</button>
+        <button class="sl-quiz-opt">Because σ was recomputed to be larger</button>
+        <button class="sl-quiz-opt">Cornish-Fisher VaR is always larger than Gaussian VaR by construction</button>
+        <div class="sl-quiz-explain">z_CF ≈ −1.722 vs. z_α = −1.645. The VaR formula subtracts z times σ, so a more negative z adds more to the result — 2.066% vs. 1.974%.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>What, precisely, goes wrong with Cornish-Fisher at extreme skew/kurtosis?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The implied quantile can stop increasing with confidence — e.g. a "99% VaR" below the "95% VaR"</button>
+        <button class="sl-quiz-opt">The formula throws a division-by-zero error</button>
+        <button class="sl-quiz-opt">σ becomes negative, which is mathematically impossible</button>
+        <div class="sl-quiz-explain">A genuine quantile function must increase with confidence. Past a bounded region of (S,K), Cornish-Fisher can violate that — a documented failure mode (Jaschke, 2002), not a rounding artifact.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>A colleague says "Cornish-Fisher VaR is always more conservative, so it's always the safer number." What's wrong?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The direction of the adjustment depends entirely on the sign and size of S and K fed in — it isn't automatic</button>
+        <button class="sl-quiz-opt">Nothing — that statement is correct</button>
+        <button class="sl-quiz-opt">Cornish-Fisher never changes the VaR number at all</button>
+        <div class="sl-quiz-explain">A badly estimated or genuinely positively-skewed, thin-tailed series can push z_CF toward a SMALLER VaR than the Gaussian number. The adjustment is data-dependent, not a built-in safety margin.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Gaussian VaR assumes S=0, K=0 — an assumption real financial returns almost never satisfy, usually failing in the worst direction (negative skew, fat tails).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Cornish-Fisher adjusts one number, z_α → z_CF, using the return series's own sample skewness and kurtosis — the rest of the VaR formula is untouched.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>For a realistic S=−0.5, K=3 series, CF-adjusted 95% VaR comes out about 4.7% larger than plain Gaussian VaR — 2.066% vs. 1.974%, from identical μ and σ.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>It's a cheap, drop-in upgrade to an existing Gaussian pipeline — no distribution refit required, just two already-computable sample moments.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Past a bounded region of extreme (S, K), the expansion becomes non-monotonic — a documented failure (Jaschke, 2002), not a hypothetical edge case.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>It's only as reliable as the S and K estimated from your sample — higher-order moments are noisy, especially over short histories.</p></div>
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">What this now lets you do</div>
+        <p>Take an existing Gaussian VaR number and, for the cost of two sample statistics you likely already compute, produce a more honest tail-risk estimate that reflects the actual shape of your returns — while knowing exactly which (S, K) region to stay inside of, and recognising the non-monotonicity warning sign the moment a confidence-level ordering looks backwards.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Quantile Regression</h3>
+        <p>A fundamentally different approach to the same underlying question — modeling a conditional quantile directly from data, instead of adjusting a normal one after the fact.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="quantile-regression-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="cornish-fisher-expansion.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Self-contained inverse standard normal CDF (Acklam's algorithm), shared by
+  // both the calculator and the slider below. Accurate to ~1.15e-9 relative
+  // error, verified against z(0.05)=-1.6449, z(0.01)=-2.3263.
+  function normInv(p){
+    if (!(p > 0) || !(p < 1)) return NaN;
+    var a = [-3.969683028665376e+01, 2.209460984245205e+02, -2.759285104469687e+02, 1.383577518672690e+02, -3.066479806614716e+01, 2.506628277459239e+00];
+    var b = [-5.447609879822406e+01, 1.615858368580409e+02, -1.556989798598866e+02, 6.680131188771972e+01, -1.328068155288572e+01];
+    var c = [-7.784894002430293e-03, -3.223964580411365e-01, -2.400758277161838e+00, -2.549732539343734e+00, 4.374664141464968e+00, 2.938163982698783e+00];
+    var d = [7.784695709041462e-03, 3.224671290700398e-01, 2.445134137142996e+00, 3.754408661907416e+00];
+    var pLow = 0.02425, pHigh = 1 - pLow, q, r, x;
+    if (p < pLow) {
+      q = Math.sqrt(-2 * Math.log(p));
+      x = (((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) / ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);
+    } else if (p <= pHigh) {
+      q = p - 0.5; r = q*q;
+      x = (((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5])*q / (((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1);
+    } else {
+      q = Math.sqrt(-2 * Math.log(1-p));
+      x = -(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) / ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);
+    }
+    return x;
+  }
+
+  function zCF(z, S, K){
+    var t1 = (z*z - 1) * S / 6;
+    var t2 = (Math.pow(z,3) - 3*z) * K / 24;
+    var t3 = -(2*Math.pow(z,3) - 5*z) * S * S / 36;
+    return z + t1 + t2 + t3;
+  }
+
+  // Live Cornish-Fisher VaR calculator (Section 6).
+  (function(){
+    var mu = document.getElementById('cfc-mu');
+    if (!mu) return;
+    var sigma = document.getElementById('cfc-sigma'), S = document.getElementById('cfc-S'),
+        K = document.getElementById('cfc-K'), p = document.getElementById('cfc-p');
+    var zOut = document.getElementById('cfc-z'), zcfOut = document.getElementById('cfc-zcf'),
+        gvarOut = document.getElementById('cfc-gvar'), cfvarOut = document.getElementById('cfc-cfvar');
+    var noteOut = document.getElementById('cfc-note');
+    var resetBtn = document.getElementById('cfc-reset');
+    var DEFAULTS = { mu: 0, sigma: 1.20, S: -0.5, K: 3, p: 95 };
+    var DEFAULT_NOTE = 'Guarded against blank, non-finite, or out-of-range input — σ must be ≥ 0 and confidence strictly between 50% and 100%, or every field above shows "—".';
+
+    function showBlank(){
+      zOut.textContent = '—'; zcfOut.textContent = '—';
+      gvarOut.textContent = '—'; cfvarOut.textContent = '—';
+    }
+
+    function recompute(){
+      var muV = parseFloat(mu.value), sigmaV = parseFloat(sigma.value),
+          sV = parseFloat(S.value), kV = parseFloat(K.value), pV = parseFloat(p.value);
+
+      if (!isFinite(muV) || !isFinite(sigmaV) || !isFinite(sV) || !isFinite(kV) || !isFinite(pV) ||
+          sigmaV < 0 || pV <= 50 || pV >= 100) {
+        showBlank();
+        noteOut.textContent = 'Enter a non-negative σ and a confidence level strictly between 50% and 100%.';
+        return;
+      }
+
+      var alpha = 1 - pV / 100;
+      var z = normInv(alpha);
+      if (!isFinite(z)) { showBlank(); noteOut.textContent = DEFAULT_NOTE; return; }
+
+      var gaussVaR = -muV - z * sigmaV;
+      var zcf = zCF(z, sV, kV);
+      var cfVaR = -muV - zcf * sigmaV;
+
+      zOut.textContent = z.toFixed(4);
+      zcfOut.textContent = zcf.toFixed(4);
+      gvarOut.textContent = gaussVaR.toFixed(3) + '%';
+      cfvarOut.textContent = cfVaR.toFixed(3) + '%';
+
+      if (zcf > 0 && z < 0) {
+        noteOut.textContent = 'This S/K combination pushed z_CF past zero — the expansion has broken down here, exactly the non-monotonicity flagged in Section 8.';
+      } else {
+        noteOut.textContent = DEFAULT_NOTE;
+      }
+    }
+
+    [mu, sigma, S, K, p].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      mu.value = DEFAULTS.mu; sigma.value = DEFAULTS.sigma; S.value = DEFAULTS.S;
+      K.value = DEFAULTS.K; p.value = DEFAULTS.p;
+      recompute();
+    });
+    recompute();
+  })();
+
+  // Skewness slider — non-monotonicity demo (Section 7).
+  (function(){
+    var slider = document.getElementById('sk-slider');
+    if (!slider) return;
+    var sVal = document.getElementById('sk-sval');
+    var bar95 = document.getElementById('sk-bar95'), bar99 = document.getElementById('sk-bar99');
+    var val95 = document.getElementById('sk-val95'), val99 = document.getElementById('sk-val99');
+    var verdict = document.getElementById('sk-verdict');
+    var SIGMA = 1.20, K = 1, BASE_Y = 180, PX_PER_PCT = 40, MIN_H = 6;
+
+    var z95 = normInv(0.05), z99 = normInv(0.01);
+
+    function update(){
+      var S = parseFloat(slider.value);
+      sVal.textContent = 'S = ' + S.toFixed(2);
+
+      var var95 = -0 - zCF(z95, S, K) * SIGMA;
+      var var99 = -0 - zCF(z99, S, K) * SIGMA;
+
+      var h95 = Math.max(MIN_H, var95 * PX_PER_PCT);
+      var h99 = Math.max(MIN_H, var99 * PX_PER_PCT);
+      bar95.setAttribute('y', BASE_Y - h95);
+      bar95.setAttribute('height', h95);
+      bar99.setAttribute('y', BASE_Y - h99);
+      bar99.setAttribute('height', h99);
+      val95.setAttribute('y', BASE_Y - h95 - 10);
+      val99.setAttribute('y', BASE_Y - h99 - 10);
+      val95.textContent = var95.toFixed(2) + '%';
+      val99.textContent = var99.toFixed(2) + '%';
+
+      var broken = var99 < var95;
+      var color95 = broken ? 'var(--red)' : 'var(--blue)';
+      var color99 = broken ? 'var(--red)' : 'var(--green)';
+      bar95.style.stroke = color95; bar95.style.fill = broken ? 'var(--red-bg)' : 'var(--blue-bg)';
+      bar99.style.stroke = color99; bar99.style.fill = broken ? 'var(--red-bg)' : 'var(--green-bg)';
+      val95.style.fill = color95; val99.style.fill = color99;
+
+      verdict.innerHTML = broken
+        ? '<strong style="color:var(--red)">Broken:</strong> the 99% VaR (' + var99.toFixed(2) + '%) is now SMALLER than the 95% VaR (' + var95.toFixed(2) + '%) — the exact non-monotonicity failure this lesson warns about.'
+        : 'Still valid: 99% VaR (' + var99.toFixed(2) + '%) stays larger than 95% VaR (' + var95.toFixed(2) + '%), as any real quantile function requires.';
+    }
+
+    slider.addEventListener('input', update);
+    update();
+  })();
+})();
+</script>
+</body>
+</html>

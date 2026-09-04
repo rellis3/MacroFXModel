@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Walk-Forward &amp; Purged Cross-Validation — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Walk-Forward &amp; Purged Cross-Validation — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivations, the López de Prado formulas, and a 6-question self-test?<a href="walk-forward-purged-cv.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Lesson 24 · Applied Statistics &amp; Validation</div>
+      <h1 class="sl-h1">A Clean Split Date Isn't the Same as <em>No Lookahead</em></h1>
+      <p class="sl-lede">Random k-fold cross-validation is a dependable workhorse for most machine learning — and it is flatly wrong for time series, including every price series this repo trades. This guide works through why shuffling breaks a sequence that was never independent to begin with, what walk-forward validation fixes about it, and why a clean chronological split still isn't the whole fix — the quieter leak that purging and embargoing exist to close.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Shuffling assumes rows don't know each other</h2>
+      <p class="sl-sub">Standard k-fold cross-validation is a good, reliable procedure — for data where that assumption actually holds.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">K</div><div><h4>Random fold assignment</h4><p>k-fold splits n rows into K folds at random, trains on K−1 of them, tests on the remaining one, and rotates until every fold has served as the test set once.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">↔</div><div><h4>Serial correlation</h4><p>Today's volatility, trend, and regime look a lot like yesterday's. A randomly shuffled fold is never truly independent of the rest of the sample.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">w</div><div><h4>Rolling-window features</h4><p>Most features here — HV20, a rolling z-score, a rolling percentile — are built from many neighboring rows, not one. Shuffle the rows and you shuffle a feature that was never independent of its neighbors.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">→|</div><div><h4>Literal lookahead</h4><p>Random assignment can place day i+1 in training while day i sits in test. A model graded on day i was fit, in part, using a day that hadn't happened yet.</p></div></div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Why this matters here</div>
+        <p>This project's own checklist already states the rule for a single feature: "σ/regime/score for window i use data &lt; i only." Random k-fold CV breaks that exact rule by construction — not as a rare edge case, but on roughly half the boundary rows of every fold.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Watch the leak happen</h2>
+      <p class="sl-sub">The same ten days of data, split two different ways. Toggle between them.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="kf-tabs">
+          <button class="sl-tab active" data-panel="kf-1">Naive k-fold (shuffled)</button>
+          <button class="sl-tab" data-panel="kf-2">Walk-forward (chronological)</button>
+        </div>
+        <div class="sl-panel active" id="kf-1">
+          <div class="sl-svgwrap">
+            <svg viewBox="0 0 640 175" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Ten chronologically ordered days, randomly assigned to train or test. Day 6, assigned to train, sits after day 5, assigned to test, and a red arrow shows day 6 leaking into day 5's grade.">
+              <defs>
+                <marker id="nk-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <path d="M 0 0 L 10 5 L 0 10 z" style="fill:var(--red)"/>
+                </marker>
+              </defs>
+              <text x="320" y="16" text-anchor="middle" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:10.5px;font-weight:700">day 6 (train) leaks into day 5's (test) grade</text>
+              <path d="M 351,45 C 351,26 290,26 290,45" style="fill:none;stroke:var(--red);stroke-width:1.6;stroke-dasharray:4,3" marker-end="url(#nk-arrow)"/>
+              <rect x="20" y="45" width="52" height="40" rx="4" style="fill:var(--blue);opacity:.55"/>
+              <rect x="81" y="45" width="52" height="40" rx="4" style="fill:var(--green);opacity:.55"/>
+              <rect x="142" y="45" width="52" height="40" rx="4" style="fill:var(--blue);opacity:.55"/>
+              <rect x="203" y="45" width="52" height="40" rx="4" style="fill:var(--blue);opacity:.55"/>
+              <rect x="264" y="45" width="52" height="40" rx="4" style="fill:var(--green);opacity:.85;stroke:var(--red);stroke-width:2"/>
+              <rect x="325" y="45" width="52" height="40" rx="4" style="fill:var(--blue);opacity:.85;stroke:var(--red);stroke-width:2"/>
+              <rect x="386" y="45" width="52" height="40" rx="4" style="fill:var(--green);opacity:.55"/>
+              <rect x="447" y="45" width="52" height="40" rx="4" style="fill:var(--blue);opacity:.55"/>
+              <rect x="508" y="45" width="52" height="40" rx="4" style="fill:var(--green);opacity:.55"/>
+              <rect x="569" y="45" width="52" height="40" rx="4" style="fill:var(--blue);opacity:.55"/>
+              <text x="46" y="110" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:9.5px">D1</text>
+              <text x="107" y="110" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:9.5px">D2</text>
+              <text x="168" y="110" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:9.5px">D3</text>
+              <text x="229" y="110" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:9.5px">D4</text>
+              <text x="290" y="110" text-anchor="middle" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:9.5px;font-weight:700">D5</text>
+              <text x="351" y="110" text-anchor="middle" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:9.5px;font-weight:700">D6</text>
+              <text x="412" y="110" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:9.5px">D7</text>
+              <text x="473" y="110" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:9.5px">D8</text>
+              <text x="534" y="110" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:9.5px">D9</text>
+              <text x="595" y="110" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:9.5px">D10</text>
+              <rect x="220" y="140" width="10" height="10" style="fill:var(--blue);opacity:.6"/>
+              <text x="236" y="149" style="fill:var(--text2);font-size:11px">train</text>
+              <rect x="300" y="140" width="10" height="10" style="fill:var(--green);opacity:.6"/>
+              <text x="316" y="149" style="fill:var(--text2);font-size:11px">test</text>
+            </svg>
+          </div>
+          <div class="sl-verdict"><strong>Day 6 lands in training while day 5 — one day earlier — sits in test.</strong> Whatever day 6 contributed to the model, day 5's grade was never a clean "unseen data" test. Multiply this by every fold and roughly half the boundary rows carry the same problem.</div>
+        </div>
+        <div class="sl-panel" id="kf-2">
+          <div class="sl-svgwrap">
+            <svg viewBox="0 0 640 175" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The same ten days split chronologically: days one through six train, days seven and eight test, days nine and ten not yet used. No arrows cross the boundary.">
+              <text x="320" y="16" text-anchor="middle" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:10.5px">train only sees the past · test only sees the strict future</text>
+              <rect x="20" y="45" width="52" height="40" rx="4" style="fill:var(--blue);opacity:.6"/>
+              <rect x="81" y="45" width="52" height="40" rx="4" style="fill:var(--blue);opacity:.6"/>
+              <rect x="142" y="45" width="52" height="40" rx="4" style="fill:var(--blue);opacity:.6"/>
+              <rect x="203" y="45" width="52" height="40" rx="4" style="fill:var(--blue);opacity:.6"/>
+              <rect x="264" y="45" width="52" height="40" rx="4" style="fill:var(--blue);opacity:.6"/>
+              <rect x="325" y="45" width="52" height="40" rx="4" style="fill:var(--blue);opacity:.6"/>
+              <line x1="380" y1="35" x2="380" y2="90" style="stroke:var(--text3);stroke-width:1.3;stroke-dasharray:3,3"/>
+              <text x="380" y="28" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:9.5px">T</text>
+              <rect x="386" y="45" width="52" height="40" rx="4" style="fill:var(--green);opacity:.6"/>
+              <rect x="447" y="45" width="52" height="40" rx="4" style="fill:var(--green);opacity:.6"/>
+              <rect x="508" y="45" width="52" height="40" rx="4" style="fill:var(--border2)"/>
+              <rect x="569" y="45" width="52" height="40" rx="4" style="fill:var(--border2)"/>
+              <text x="46" y="110" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:9.5px">D1</text>
+              <text x="107" y="110" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:9.5px">D2</text>
+              <text x="168" y="110" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:9.5px">D3</text>
+              <text x="229" y="110" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:9.5px">D4</text>
+              <text x="290" y="110" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:9.5px">D5</text>
+              <text x="351" y="110" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:9.5px">D6</text>
+              <text x="412" y="110" text-anchor="middle" style="fill:var(--green);font-family:'DM Mono',monospace;font-size:9.5px;font-weight:700">D7</text>
+              <text x="473" y="110" text-anchor="middle" style="fill:var(--green);font-family:'DM Mono',monospace;font-size:9.5px;font-weight:700">D8</text>
+              <text x="534" y="110" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:9.5px">D9</text>
+              <text x="595" y="110" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:9.5px">D10</text>
+              <rect x="180" y="140" width="10" height="10" style="fill:var(--blue);opacity:.6"/>
+              <text x="196" y="149" style="fill:var(--text2);font-size:11px">train</text>
+              <rect x="260" y="140" width="10" height="10" style="fill:var(--green);opacity:.6"/>
+              <text x="276" y="149" style="fill:var(--text2);font-size:11px">test</text>
+              <rect x="340" y="140" width="10" height="10" style="fill:var(--border2)"/>
+              <text x="356" y="149" style="fill:var(--text2);font-size:11px">not yet used</text>
+            </svg>
+          </div>
+          <div class="sl-verdict"><strong>Nothing crosses the boundary backward.</strong> Train uses everything strictly before T. Test uses only the strict future right after it. Days 9-10 simply wait their turn for a later fold.</div>
+        </div>
+      </div>
+      <p class="sl-p">This is the entire fix, before any formula: stop assigning folds at random, and assign them by time instead. Everything else in this lesson is about a second, easier-to-miss version of the same leak that survives even after you make this fix.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Train on everything before the line, test on what comes right after</h2>
+      <p class="sl-sub">Define a boundary T_k for fold k, and split strictly by time on either side of it.</p>
+      <div class="sl-row"><div class="sl-box">Train_k = { i : i &lt; T_k }</div><div class="sl-arrow">→</div><div class="sl-box green">Test_k = { i : T_k ≤ i &lt; T_k+h }</div></div>
+      <div class="sl-verdict" style="margin:14px 0 20px">Fit using only Train_k, grade only on Test_k, then roll the boundary forward — T_{k+1} = T_k + h — and repeat for as many folds as the data allows.</div>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Rolling window</span>
+          <p>The training window has a fixed length and slides forward each fold — old data drops off the back as new data joins the front. Useful when older regimes are believed to stop being relevant.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Expanding window</span>
+          <p>Training simply grows to absorb each fold's test period once it has been used, never discarding history. The more common choice in practice, and the one this guide's diagrams use.</p>
+        </div>
+      </div>
+      <p class="sl-p">This is the exact discipline this project's own house rule already states for a single feature — "use data before i only" — applied to the entire train-and-evaluate cycle instead of just one calculation. The model never gets access to a boundary it hasn't crossed yet.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">A clean split date isn't sufficient</h2>
+      <p class="sl-sub">Almost every feature or label used here isn't built from one row — it's built from a window of rows around it. That window can straddle the boundary even when every row's own index respects it.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Feature window — looks backward</span>
+          <p>Feature(i) = f(bars[i−w+1, i]) — a 20-day rolling volatility, say. A training row just <em>after</em> the test period can still have a feature window reaching back into it, whenever i − w + 1 &lt; T_k + h.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Label window — looks forward</span>
+          <p>Label(i) = g(bars[i, i+H]) — "did a trade opened at i win over the next H days." A training row just <em>before</em> the boundary can still have a label reaching forward into the test set, whenever i + H ≥ T_k.</p>
+        </div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">The trap</div>
+        <p>A clean chronological split date is necessary but not sufficient. It can be respected perfectly on paper while the feature or label windows straddling it still carry test-period information into training — the leak lives in the window, not the index.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Purging removes it exactly; embargo adds a margin</h2>
+      <p class="sl-sub">Two separate fixes for two separate failure modes.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">✂</div><div><h4>Purging</h4><p>Any training row i whose combined feature-and-label window [i−w+1, i+H] overlaps the test interval [T_k, T_k+h) gets dropped. A mechanical, computable rule — not a judgment call.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⏳</div><div><h4>Embargo</h4><p>A further buffer of length e, immediately after the test window, during which no row re-enters training — even one whose window no longer technically overlaps. It exists because real serial correlation runs beyond any window length a formula fully captures.</p></div></div>
+      </div>
+      <div class="sl-svgwrap">
+        <svg viewBox="0 0 640 130" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="One fold's timeline: a blue train segment, a thin red purge gap, a green test segment, a thin amber embargo gap, then gray unused data.">
+          <rect x="20" y="35" width="600" height="36" rx="4" style="fill:var(--panel2);stroke:var(--border)"/>
+          <rect x="20" y="35" width="230" height="36" style="fill:var(--blue);opacity:.55"/>
+          <rect x="250" y="35" width="16" height="36" style="fill:var(--red);opacity:.7"/>
+          <rect x="266" y="35" width="120" height="36" style="fill:var(--green);opacity:.6"/>
+          <rect x="386" y="35" width="16" height="36" style="fill:var(--amber);opacity:.7"/>
+          <rect x="402" y="35" width="218" height="36" style="fill:var(--border2)"/>
+          <text x="135" y="88" text-anchor="middle" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:10.5px">train</text>
+          <text x="258" y="20" text-anchor="middle" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:9.5px">purge</text>
+          <text x="326" y="88" text-anchor="middle" style="fill:var(--green);font-family:'DM Mono',monospace;font-size:10.5px">test</text>
+          <text x="394" y="20" text-anchor="middle" style="fill:var(--amber);font-family:'DM Mono',monospace;font-size:9.5px">embargo</text>
+          <text x="511" y="88" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10.5px">not yet used</text>
+        </svg>
+      </div>
+      <p class="sl-p">The actually-usable training set for fold k is Train_k with the purge rows removed, and the next fold's training only resumes strictly after the embargo period ends. Purging closes the leak you can compute exactly; embargo covers the part you can't.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Counting the exact days a purge/embargo scheme removes</h2>
+      <p class="sl-sub">n = 1,000 daily bars, a 20-day rolling volatility feature (w = 20), a 5-day forward label horizon (H = 5), a boundary at day T = 500 with a 100-day test window (h = 100, so test = days 500-599).</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">←</div><div><h4>Backward purge (label leak) — 5 rows</h4><p>Training days 495-499 are purged: their 5-day-forward labels use price action through day i+5, which reaches day 500 or later — inside the test window.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">→</div><div><h4>Forward purge (feature leak) — 19 rows</h4><p>Training days 600-618 are purged: day i's 20-day HV20 window still reaches back into the test period, which only stops overlapping once i ≥ 619.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⏳</div><div><h4>Embargo — a further 10 days</h4><p>Days 619-628 are held back purely as a conservative buffer, on top of the mechanical cutoff. Training only resumes on day 629 — not day 600, and not day 619.</p></div></div>
+      </div>
+      <p class="sl-p">Out of the roughly 129 days between the test set's start and where training safely resumes, 24 of them are removed by a computable rule and a further 10 by a deliberate safety margin — none of it visible if you only look at the split date.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Try it yourself</h2>
+      <p class="sl-sub">Starts on the worked example's exact numbers. Change any field — every range recalculates instantly.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — recompute the purge/embargo windows, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Feature window w</label><input type="number" class="sl-input" id="wf-w" value="20" step="1" min="1"></div>
+          <div class="sl-calc-field"><label>Label horizon H</label><input type="number" class="sl-input" id="wf-H" value="5" step="1" min="0"></div>
+          <div class="sl-calc-field"><label>Fold boundary T</label><input type="number" class="sl-input" id="wf-T" value="500" step="1" min="1"></div>
+          <div class="sl-calc-field"><label>Test window h</label><input type="number" class="sl-input" id="wf-h" value="100" step="1" min="1"></div>
+          <div class="sl-calc-field"><label>Embargo e</label><input type="number" class="sl-input" id="wf-e" value="10" step="1" min="0"></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Backward purge (label leak): days <b id="wf-back">495–499</b> (<b id="wf-back-n">5</b> rows)</div>
+          <div>Forward purge (feature leak): days <b id="wf-fwd">600–618</b> (<b id="wf-fwd-n">19</b> rows)</div>
+          <div>Embargo buffer: days <b id="wf-emb">619–628</b> (<b id="wf-emb-n">10</b> rows)</div>
+        </div>
+        <div class="sl-calc-row" style="margin-top:14px">
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Training resumes on day</div>
+            <div class="sl-calc-result-val" id="wf-resume">629</div>
+          </div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="wf-reset">Reset to worked-example numbers</button>
+        <div class="sl-note" id="wf-note">Same formulas as the worked example — just editable. If the backward purge would start before day 1, that means H reaches further back than the training history you actually have before T.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Two traditions, one discipline</h2>
+      <p class="sl-sub">Two overlapping literatures converge on the same fix from different directions.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Trading — "walk-forward optimization"</span>
+          <p>Robert Pardo's treatment rolls the train/test boundary forward repeatedly and tracks <strong>walk-forward efficiency</strong> — roughly, OOS performance divided by IS performance on the same fold. A ratio well below 1 flags a parameter set overfit to its training window. The emphasis is on rolling many folds, not trusting any one favorable split.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">ML-in-finance — "purged k-fold CV"</span>
+          <p>Marcos López de Prado's treatment formalizes the purge/embargo mechanics as a drop-in replacement for standard k-fold CV, specifically for finance — letting you keep k-fold's statistical efficiency (using more of the data, running more folds) without reintroducing the lookahead that made random k-fold wrong in the first place.</p>
+        </div>
+      </div>
+      <div class="sl-quote">Both traditions land on the same checklist: never shuffle time-ordered data; know every feature and label window's length; compute — don't eyeball — which rows near a boundary must be purged; add an embargo rather than trust the purge formula's completeness; and judge a rule by its behavior across many rolled folds, not one good-looking split.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Does this repo actually do this?</h2>
+      <p class="sl-sub">Checked against the actual validation scripts, not just what a comment claims.</p>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">What the code shows</div>
+        <p>Most of this repo's OOS scripts (<code>oos_validate_exposure_cap.mjs</code>, <code>oos_validate_currency_loss_gate.mjs</code>, and their siblings under <code>scripts/</code>) do exactly a single chronological split: trades on or before a cutoff date are "in-sample," everything after is "out-of-sample," and a parameter is chosen from the in-sample slice and frozen before the OOS side is ever touched. That's the plain chronological-split discipline this lesson opens with — and just like the trading scenario above, there's no purge gap and no embargo at the cutoff: the OOS set begins on the very next trade date.</p>
+      </div>
+      <p class="sl-p">There is one real exception worth flagging. <code>scripts/walkforward_validate_exposure_cap.mjs</code> — added in this same codebase as a direct follow-up — replaces the single split with genuine multi-fold walk-forward validation: four sequential blocks, each fold choosing its parameter from its own in-sample slice only and testing on a fresh, untouched out-of-sample block. That's exactly the "many rolled folds, not one lucky split" discipline from the previous slide, and it's real progress over a single static split.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>Even that walk-forward script has no purge or embargo gap at any fold boundary — training stops exactly at the cutoff date and testing starts on the very next one. Some of the trade records it validates already trail rolling-window mechanics upstream (a chandelier stop trailing a rolling ATR, for one), so the boundary-window leak this lesson describes is a live, checkable question here, not a hypothetical one — a worthwhile next refinement, not evidence anything reported so far is wrong.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Quick check</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>In one sentence, why is random k-fold CV wrong for time series?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It can put chronologically later data in training while earlier data sits in test, and neighboring rows are serially correlated anyway.</button>
+        <button class="sl-quiz-opt">It runs too slowly once the dataset gets large.</button>
+        <button class="sl-quiz-opt">It only works for classification problems, not regression.</button>
+        <div class="sl-quiz-explain">Random fold assignment can literally train on a future day while grading an earlier one, and even where it doesn't, serially correlated neighbors let a model "cheat" across the fold boundary.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>In walk-forward validation, how is Test_k defined?</h4>
+        <button class="sl-quiz-opt" data-correct="true">{ i : T_k ≤ i &lt; T_k+h } — the strict future right after the boundary</button>
+        <button class="sl-quiz-opt">{ i : i &lt; T_k } — everything before the boundary</button>
+        <button class="sl-quiz-opt">A random subset chosen independently of time</button>
+        <div class="sl-quiz-explain">Train_k is everything strictly before the boundary; Test_k is the strict future window of length h that starts right at it.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>A training row's label depends on prices up to H days ahead. Which rows need purging for a test boundary at T?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Training rows i with i + H ≥ T</button>
+        <button class="sl-quiz-opt">Every row in the entire dataset</button>
+        <button class="sl-quiz-opt">Only rows that sit strictly inside the test window itself</button>
+        <div class="sl-quiz-explain">Those are exactly the training rows whose forward-looking label reaches into the test period, even though their own index sits chronologically before T.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>What does embargo solve that purging's formula doesn't already cover?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Residual serial correlation that runs beyond the exact feature/label window length</button>
+        <button class="sl-quiz-opt">Rows with missing or corrupted data</button>
+        <button class="sl-quiz-opt">Deciding how many folds to run in total</button>
+        <div class="sl-quiz-explain">Purging removes every mechanically computable overlap. Embargo is a further, deliberately conservative buffer for correlation a fixed window length doesn't fully capture.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>In the worked example (n=1,000, w=20, H=5, T=500, h=100), how many total days get purged before even adding the embargo?</h4>
+        <button class="sl-quiz-opt" data-correct="true">24 (5 backward + 19 forward)</button>
+        <button class="sl-quiz-opt">5</button>
+        <button class="sl-quiz-opt">100</button>
+        <div class="sl-quiz-explain">Days 495-499 (5 rows) purge for the label leak; days 600-618 (19 rows) purge separately for the feature leak. 5 + 19 = 24, before the embargo's further 10 days.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Random k-fold CV assumes exchangeable rows; time-ordered price data isn't — shuffling can literally train on the future and grade on the past.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Walk-forward validation fixes the obvious leak: Train_k uses only i &lt; T_k, Test_k only the strict future window right after it, and the boundary rolls forward one fold at a time.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>A clean split date is necessary but not sufficient — rolling feature windows and forward-looking labels can straddle the boundary and leak test-period information into training anyway.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Purging removes every training row whose combined feature-and-label window overlaps the test interval — a computable rule, not a judgment call.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Embargo adds a further, deliberately conservative buffer after the test window, for serial correlation no fixed window length fully captures.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Passing a purged, embargoed OOS test doesn't prove edge — it only makes the OOS number honest. This repo's own scripts still run every fold without a purge or embargo gap, which is a checkable next step, not a disqualifying flaw.</p></div>
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">What this now lets you do</div>
+        <p>Read any OOS or backtest split — in this repo or anywhere else — and ask the two questions that actually matter: is the split chronological, and do any feature or label windows straddle the boundary? Compute exactly which training rows a given w, H, and boundary date require purging, and size an embargo deliberately instead of skipping it.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Bootstrapping &amp; Monte Carlo</h3>
+        <p>Two ways to manufacture "many possible outcomes" out of a single dataset — and the one, easy-to-miss reason neither one tells you whether a signal will work on data it has never seen.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="bootstrapping-monte-carlo-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="walk-forward-purged-cv.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Purge/embargo calculator — live.
+  (function(){
+    var wEl = document.getElementById('wf-w');
+    if (!wEl) return;
+    var HEl = document.getElementById('wf-H'), TEl = document.getElementById('wf-T'),
+        hEl = document.getElementById('wf-h'), eEl = document.getElementById('wf-e');
+    var backOut = document.getElementById('wf-back'), backNOut = document.getElementById('wf-back-n');
+    var fwdOut = document.getElementById('wf-fwd'), fwdNOut = document.getElementById('wf-fwd-n');
+    var embOut = document.getElementById('wf-emb'), embNOut = document.getElementById('wf-emb-n');
+    var resumeOut = document.getElementById('wf-resume');
+    var noteOut = document.getElementById('wf-note');
+    var resetBtn = document.getElementById('wf-reset');
+    var DEFAULTS = { w: 20, H: 5, T: 500, h: 100, e: 10 };
+    var DEFAULT_NOTE = noteOut.textContent;
+
+    function fmtRange(start, count){
+      if (count <= 0) return 'none';
+      return start + '–' + (start + count - 1);
+    }
+
+    function recompute(){
+      var w = parseFloat(wEl.value), H = parseFloat(HEl.value), T = parseFloat(TEl.value),
+          h = parseFloat(hEl.value), e = parseFloat(eEl.value);
+
+      if (!isFinite(w) || !isFinite(H) || !isFinite(T) || !isFinite(h) || !isFinite(e) ||
+          w < 1 || H < 0 || T < 1 || h < 1 || e < 0) {
+        backOut.textContent = '—'; backNOut.textContent = '—';
+        fwdOut.textContent = '—'; fwdNOut.textContent = '—';
+        embOut.textContent = '—'; embNOut.textContent = '—';
+        resumeOut.textContent = '—';
+        noteOut.textContent = '(enter w ≥ 1, T ≥ 1, h ≥ 1, and H, e ≥ 0)';
+        return;
+      }
+
+      var backStart = T - H, backCount = H;
+      var fwdStart = T + h, fwdCount = w - 1;
+      var embStart = T + h + w - 1, embCount = e;
+      var resume = T + h + w - 1 + e;
+
+      backOut.textContent = fmtRange(backStart, backCount);
+      backNOut.textContent = backCount;
+      fwdOut.textContent = fmtRange(fwdStart, fwdCount);
+      fwdNOut.textContent = fwdCount;
+      embOut.textContent = fmtRange(embStart, embCount);
+      embNOut.textContent = embCount;
+      resumeOut.textContent = resume;
+
+      noteOut.textContent = (backStart < 1)
+        ? 'Backward purge would start before day 1 — H reaches further back than the training history available before T.'
+        : DEFAULT_NOTE;
+    }
+
+    [wEl, HEl, TEl, hEl, eEl].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      wEl.value = DEFAULTS.w; HEl.value = DEFAULTS.H; TEl.value = DEFAULTS.T;
+      hEl.value = DEFAULTS.h; eEl.value = DEFAULTS.e;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

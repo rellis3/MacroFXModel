@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Taylor Rule — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">The Taylor Rule — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivation, real-world scenarios, and a 6-question self-test?<a href="taylor-rule.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Lesson 17 · Macro &amp; FX Theory</div>
+      <h1 class="sl-h1">The Taylor Rule, or <em>How a Central Bank "Should" Set Rates</em></h1>
+      <p class="sl-lede">Every carry trade and every yield-spread thesis quietly assumes something: that a central bank sets its policy rate in response to inflation and the state of the economy. That's not just a vague instinct traders pick up over time — economists have an almost embarrassingly simple formula for it. This lesson opens the formula up: what each piece means, how to compute it, and why the gap between what it says and what a central bank is actually doing is one of the most closely watched signals in FX.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">A thermostat for the economy</h2>
+      <p class="sl-p">Picture a central bank running a thermostat with two sensors instead of one. The first reads "room temperature" — current inflation compared with the target the bank has publicly committed to. The second reads "how hard the system is already working" — the output gap, how far the economy is running above or below what it can sustainably handle. One lever, the policy rate, responds to both.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🌡</div><div><h4>Sensor 1 — inflation vs. target</h4><p>Room too hot (inflation above target) calls for more cooling: raise the rate. Too cold calls for less cooling, or active heating: cut it.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚙</div><div><h4>Sensor 2 — output vs. potential</h4><p>Even before the room feels hot, a system already straining above capacity is a warning sign worth leaning against pre-emptively.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎚</div><div><h4>One lever — the policy rate</h4><p>Both sensors feed the same single dial. The Taylor Rule is just that thermostat's control law, written down as an equation.</p></div></div>
+      </div>
+      <div class="sl-quote">This project's own prior research notes on the Transatlantic Yield Spread treat a central bank's rate path as an observed input — something you read off a screen and trade the lead-lag relationship of. They never ask what actually generates that rate path in the first place. The Taylor Rule is the textbook answer to that prior question — the mechanism underneath the mechanism.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">One equation, four pieces</h2>
+      <p class="sl-sub">i = r* + π + a(π − π*) + b(y − y*). Step through what each piece is doing.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="tf-tabs">
+          <button class="sl-tab active" data-panel="tf-1">Baseline</button>
+          <button class="sl-tab" data-panel="tf-2">Inflation dial</button>
+          <button class="sl-tab" data-panel="tf-3">Output-gap dial</button>
+          <button class="sl-tab" data-panel="tf-4">Prescribed rate</button>
+        </div>
+        <div class="sl-panel active" id="tf-1">
+          <div class="sl-row"><div class="sl-box">r* + π</div></div>
+          <div class="sl-verdict">The neutral real rate, expressed in today's inflation terms. It's what the policy rate would sit at if inflation were exactly on target and the economy exactly at potential.</div>
+        </div>
+        <div class="sl-panel" id="tf-2">
+          <div class="sl-row"><div class="sl-box amber">a(π − π*)</div></div>
+          <div class="sl-verdict">Positive when inflation runs above target — adds extra tightening on top of the baseline. Negative when inflation runs below target — subtracts, calling for easier policy.</div>
+        </div>
+        <div class="sl-panel" id="tf-3">
+          <div class="sl-row"><div class="sl-box amber">b(y − y*)</div></div>
+          <div class="sl-verdict">Positive when the economy runs above potential — adds tightening pre-emptively, before an overheating economy fully shows up in the inflation term itself.</div>
+        </div>
+        <div class="sl-panel" id="tf-4">
+          <div class="sl-row"><div class="sl-box green">i</div></div>
+          <div class="sl-verdict">The rule's single output — the baseline, plus whichever way the two dials are currently pushing.</div>
+        </div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">r*</div><div><h4>Neutral real rate</h4><p>Not directly observable — a slow-moving estimate of the real rate consistent with full employment and stable inflation. Taylor's own paper simply set it at 2%.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">π</div><div><h4>Inflation, current vs. target</h4><p>π is realized inflation (headline or core CPI/PCE); π* is the bank's explicit target — 2% for the Fed, ECB, and most developed-market inflation-targeters.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">y−y*</div><div><h4>The output gap</h4><p>How far actual GDP sits from an estimate of potential GDP. Positive means overheating; negative means slack.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">a,b</div><div><h4>Response coefficients</h4><p>How aggressively the rule reacts to each gap. Taylor's original paper set a = b = 0.5 — each percentage point of gap moves the rate by half a point.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">What the rule collapses to when nothing is out of line</h2>
+      <p class="sl-sub">Set inflation exactly on target and output exactly at potential. Both correction terms vanish.</p>
+      <div class="sl-row">
+        <div class="sl-box">π = π*</div>
+        <div class="sl-box">y = y*</div>
+        <div class="sl-arrow">→</div>
+        <div class="sl-box green">i = r* + π*</div>
+      </div>
+      <p class="sl-p">This is the <strong>neutral nominal rate</strong> — the rate the rule says to hold at when the economy needs neither tightening nor easing. It's a genuinely useful anchor: any live policy rate can be read as "the neutral nominal rate, plus whatever the two gaps are currently adding or subtracting."</p>
+      <div class="sl-quote">The neutral rate is the "everything's fine" setting on the thermostat — not too hot, not too cold, no correction needed. It's a useful reference point precisely because it's the baseline every other reading gets compared against.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Taylor's own coefficients, on a clean set of numbers</h2>
+      <p class="sl-sub">r* = 2%, π = 3%, π* = 2%, output gap = +1%, a = b = 0.5.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Worked example</div>
+        <div class="sl-row">
+          <div class="sl-box">r* 2</div>
+          <div class="sl-arrow">+</div>
+          <div class="sl-box">π 3</div>
+          <div class="sl-arrow">+</div>
+          <div class="sl-box amber">a(π−π*) +0.5</div>
+          <div class="sl-arrow">+</div>
+          <div class="sl-box amber">b(y−y*) +0.5</div>
+          <div class="sl-arrow">=</div>
+          <div class="sl-box green">i = 6%</div>
+        </div>
+        <div class="sl-note">The neutral nominal rate here would be only r* + π* = 2 + 2 = 4%. The rule prescribes 6% — a full two points higher — because both dials are active in the same direction: the 1pp inflation overshoot adds 0.5pp, the 1pp positive output gap adds another 0.5pp, and the baseline itself already embeds today's 3% inflation rather than the 2% target.</div>
+      </div>
+      <p class="sl-p">Either dial alone can push the rate up. Both can reinforce each other, as here — or they can partially offset, which the calculator on the next-but-one slide will let you find for yourself.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Two dials, one gauge</h2>
+      <p class="sl-sub">r* and π* are held at 2%, so neutral sits at 4%. Drag either slider and watch the implied rate move.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A vertical gauge showing the Taylor-implied policy rate as a bar, against a dashed neutral-rate reference line">
+            <line x1="60" y1="190" x2="600" y2="190" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="60" y1="20" x2="60" y2="190" style="stroke:var(--border2);stroke-width:1"/>
+            <line id="tg-neutral-line" x1="60" y1="105" x2="600" y2="105" style="stroke:var(--text3);stroke-width:1.5;stroke-dasharray:4,4"/>
+            <text x="604" y="109" style="fill:var(--text3);font-size:10px;font-family:'DM Mono',monospace">neutral 4.0%</text>
+            <text x="56" y="14" text-anchor="end" style="fill:var(--text3);font-size:10px;font-family:'DM Mono',monospace">10%</text>
+            <text x="56" y="194" text-anchor="end" style="fill:var(--text3);font-size:10px;font-family:'DM Mono',monospace">−2%</text>
+            <rect id="tg-bar" x="260" y="60" width="120" height="130" rx="6" style="fill:var(--blue-bg);stroke:var(--blue);stroke-width:2"/>
+            <text id="tg-val" x="320" y="52" text-anchor="middle" style="fill:var(--blue);font-size:16px;font-weight:700;font-family:'DM Mono',monospace">6.00%</text>
+            <text id="tg-delta" x="320" y="208" text-anchor="middle" style="fill:var(--text2);font-size:11px;font-family:'DM Mono',monospace">+2.00pp above neutral</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Inflation gap (π − π*)</span><span class="sl-live" id="tg-inf-val">+1.00pp</span></div>
+        <input type="range" class="sl-slider" id="tg-inf-slider" min="-3" max="3" step="0.25" value="1">
+        <div class="sl-sliderhead" style="margin-top:10px"><span>Output gap (y − y*)</span><span class="sl-live" id="tg-out-val">+1.00pp</span></div>
+        <input type="range" class="sl-slider" id="tg-out-slider" min="-2" max="2" step="0.25" value="1">
+        <div class="sl-note">a = b = 0.5 throughout, so each gap moves the implied rate by half of itself: i = 4 + 1.5×(inflation gap) + 0.5×(output gap).</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Build your own Taylor Rule</h2>
+      <p class="sl-sub">All six inputs are editable. Starts on the worked-example numbers.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Neutral rate r* (%)</label><input type="number" class="sl-input" id="tc-rstar" value="2" step="0.25"></div>
+          <div class="sl-calc-field"><label>Inflation π (%)</label><input type="number" class="sl-input" id="tc-pi" value="3" step="0.25"></div>
+          <div class="sl-calc-field"><label>Target π* (%)</label><input type="number" class="sl-input" id="tc-pistar" value="2" step="0.25"></div>
+          <div class="sl-calc-field"><label>Output gap y−y* (%)</label><input type="number" class="sl-input" id="tc-ygap" value="1" step="0.25"></div>
+          <div class="sl-calc-field"><label>Inflation coeff. a</label><input type="number" class="sl-input" id="tc-a" value="0.5" step="0.1" min="0"></div>
+          <div class="sl-calc-field"><label>Output coeff. b</label><input type="number" class="sl-input" id="tc-b" value="0.5" step="0.1" min="0"></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Inflation gap (π − π*) = <b id="tc-infgap">1.00</b>pp</div>
+          <div>Neutral nominal rate (r* + π*) = <b id="tc-neutral">4.00</b>%</div>
+          <div>Implied policy rate i = <b id="tc-i">6.00</b>% <span id="tc-note"></span></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="tc-reset">Reset to worked-example numbers</button>
+        <div class="sl-note">a and b are guarded to non-negative — a rule where a stronger inflation overshoot pulls the prescribed rate <em>down</em> isn't a version of this rule anyone actually publishes.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">The number that actually moves markets isn't i — it's the gap</h2>
+      <div class="sl-quote">No desk trades the Taylor Rule's level in isolation — they trade the gap between what the rule prescribes and what the central bank is actually doing. That gap is a measure of unresolved pressure on the policy rate, not a forecast of the next meeting.</div>
+      <div class="sl-svgwrap">
+        <svg viewBox="0 0 640 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A horizontal bar chart comparing the Taylor-implied rate of six percent against an actual policy rate of four point five percent and a market-priced terminal rate of four point seven five percent, with the gap between implied and priced marked at one point two five percentage points">
+          <line x1="140" y1="20" x2="140" y2="175" style="stroke:var(--border2);stroke-width:1"/>
+          <text x="140" y="14" text-anchor="middle" style="fill:var(--text3);font-size:10px;font-family:'DM Mono',monospace">0%</text>
+          <rect x="140" y="30" width="72" height="30" rx="4" style="fill:var(--amber-bg);stroke:var(--amber);stroke-width:2"/>
+          <text x="35" y="50" style="fill:var(--text2);font-size:11.5px">Actual policy rate</text>
+          <text x="220" y="50" style="fill:var(--amber);font-size:12px;font-weight:700;font-family:'DM Mono',monospace">4.50%</text>
+          <rect x="140" y="80" width="76" height="30" rx="4" style="fill:var(--panel2);stroke:var(--text3);stroke-width:2"/>
+          <text x="35" y="100" style="fill:var(--text2);font-size:11.5px">Market-priced terminal</text>
+          <text x="224" y="100" style="fill:var(--text2);font-size:12px;font-weight:700;font-family:'DM Mono',monospace">4.75%</text>
+          <rect x="140" y="130" width="96" height="30" rx="4" style="fill:var(--blue-bg);stroke:var(--blue);stroke-width:2"/>
+          <text x="35" y="150" style="fill:var(--text2);font-size:11.5px">Taylor-implied rate</text>
+          <text x="244" y="150" style="fill:var(--blue);font-size:12px;font-weight:700;font-family:'DM Mono',monospace">6.00%</text>
+          <line x1="216" y1="95" x2="216" y2="145" style="stroke:var(--red);stroke-width:1.5;stroke-dasharray:3,3"/>
+          <line x1="236" y1="95" x2="236" y2="145" style="stroke:var(--red);stroke-width:1.5;stroke-dasharray:3,3"/>
+          <text x="350" y="120" style="fill:var(--red);font-size:11px;font-weight:700">1.25pp gap — unresolved tightening</text>
+        </svg>
+      </div>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag red">Behind the curve</span>
+          <p>Actual policy sits <em>below</em> the Taylor-implied rate. Policy is looser than the data justify. Markets read this as more tightening (or a slower pace of cuts) still likely needed — hawkish-repricing risk skewed higher than what's currently priced.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Ahead of the curve</span>
+          <p>Actual policy sits <em>above</em> the Taylor-implied rate. Policy is already tighter than the gaps justify, common late in a hiking cycle. Markets read this as disinflationary/cut risk skewed higher than what's priced.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Multiple rules, one trading habit</h2>
+      <p class="sl-sub">There is no single "correct" Taylor Rule — the Fed itself publishes several side by side.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📐</div><div><h4>Classic rule</h4><p>Taylor's original 1993 specification — a = b = 0.5, the version used throughout this deck.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🐢</div><div><h4>Inertial rule</h4><p>Partially anchors on the previous policy rate to avoid abrupt jumps meeting to meeting.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚖</div><div><h4>Balanced-approach rule</h4><p>Doubles the output-gap coefficient (b = 1), leaning more heavily on labor-market slack.</p></div></div>
+      </div>
+      <p class="sl-p">On a desk, the rule's real use is comparative: computing a Taylor-implied rate for two economies at once — say the US and the euro area — turns directly into an expected relative rate-path story, the theoretical engine behind rate-differential and yield-spread trades. A widening gap between one country's implied-minus-actual rate and another's is a candidate <em>leading</em> explanation for why a yield spread might be about to move, before the spread itself has visibly shifted.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">A hot CPI print, recomputed in seconds</div>
+        <p>Starting from the worked example (implied = 6%, actual = 4.5%, market-priced terminal = 4.75%): inflation surprises higher, from 3% to 4%, output gap unchanged at +1%. New implied rate = 2 + 4 + 0.5(2) + 0.5(1) = 7.5%. The gap versus what's priced jumps from 1.25pp to 2.75pp — more than doubling — purely from recomputing the same formula with the new print. That's a signal the bank looks more behind the curve than the market currently reflects, not a certainty about the next meeting.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Where this needs qualifying</h2>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">r* and the output gap are estimates, not facts</div>
+        <p>Neither is directly measurable — both are model-based estimates. Different proxies (Laubach-Williams r*, CBO potential GDP vs. an unemployment-gap proxy) can move the implied rate by a full percentage point or more from the exact same CPI print. Never treat one desk's Taylor number as <em>the</em> number without checking which proxies it used.</p>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">A benchmark, not a binding rule</div>
+        <p>Real committees weigh dual mandates, financial stability, forward-guidance credibility, and the effective lower bound — none of which the formula knows about. Actual policy rates routinely sit away from whatever a plugged-in Taylor Rule spits out for years at a time before correcting. A wide gap says pressure is building; it isn't a dated forecast of the next decision.</p>
+      </div>
+      <p class="sl-p">A checked claim, for this repo specifically: as of this lesson, MacroFXModel has no standalone Taylor Rule calculator wired into any trading system, bot, or backtest — a search of the codebase outside Theory Lab turns up nothing. This visual guide's own calculator, like the full lesson's, is a teaching tool, not a shipped signal.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Quick check</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What does a positive output gap (y − y*) mean?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The economy is running above its estimated sustainable potential</button>
+        <button class="sl-quiz-opt">Inflation is above target</button>
+        <button class="sl-quiz-opt">The central bank has cut rates recently</button>
+        <div class="sl-quiz-explain">A positive output gap means actual GDP is running above potential — the economy is "overheating," which tends to build inflationary pressure before it fully shows up in the inflation print itself.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Using r* = 2%, π* = 2%, a = b = 0.5, output gap = +1%: what does the rule imply if inflation is 1.5%?</h4>
+        <button class="sl-quiz-opt" data-correct="true">3.75%</button>
+        <button class="sl-quiz-opt">4.25%</button>
+        <button class="sl-quiz-opt">6.00%</button>
+        <div class="sl-quiz-explain">i = 2 + 1.5 + 0.5(1.5−2) + 0.5(1) = 2 + 1.5 − 0.25 + 0.5 = 3.75%. Cooling inflation below target pulls the rate down through a negative inflation-gap term, even as the positive output gap keeps pulling it back up.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>A central bank's actual rate sits well below its own Taylor-implied rate. What is this called?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Behind the curve</button>
+        <button class="sl-quiz-opt">Ahead of the curve</button>
+        <button class="sl-quiz-opt">At neutral</button>
+        <div class="sl-quiz-explain">Behind the curve: policy is looser than the data justify. Markets read this as more tightening (or slower cuts) still likely needed — hawkish-repricing risk skewed higher.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Why do traders watch the gap between the implied and actual rate more than the implied rate's raw level?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The level alone says nothing about whether current policy already reflects the data — the deviation is the tradable information</button>
+        <button class="sl-quiz-opt">The raw level is always wrong</button>
+        <button class="sl-quiz-opt">Central banks only respond to the gap, never the level</button>
+        <div class="sl-quiz-explain">The gap measures unresolved pressure — whether the bank is caught up with the data or not. The rule's level in isolation tells you comparatively little.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Are r* and the output gap directly observable, like a market price?</h4>
+        <button class="sl-quiz-opt" data-correct="true">No — both are model-based estimates that vary by proxy</button>
+        <button class="sl-quiz-opt">Yes — both are published daily by central banks</button>
+        <button class="sl-quiz-opt">Only the output gap is observable</button>
+        <div class="sl-quiz-explain">Different proxies for r* and potential GDP can shift the implied rate by a full percentage point or more from the exact same inflation print — a key reason to treat the rule as a benchmark, not gospel.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>The rule is a baseline plus two dials: i = r* + π + a(π−π*) + b(y−y*) — a neutral rate, corrected for how far inflation and output sit from target and potential.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>When both gaps are zero, the rule collapses to the neutral nominal rate, r* + π* — the "everything's fine" anchor every other reading gets compared against.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>The two dials can reinforce each other (both push the rate the same way) or partially offset — check both, never assume.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>What moves markets is the gap — i_implied − i_actual — not the rule's raw level. Behind the curve signals unfinished tightening; ahead of the curve signals cut risk.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>r*, the output gap, and even the coefficients a and b are estimates and choices, not universal constants — state them before quoting a number.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>A wide Taylor gap is a measure of unresolved pressure, not a dated forecast of the next policy meeting — real deviations can persist for years.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Compute a rough Taylor-implied rate from a CPI print and an output-gap estimate in seconds, the way a desk does the moment data lands. Recognise "behind the curve" and "ahead of the curve" for what they actually mean, and connect a widening Taylor gap to the rate-differential logic behind yield-spread and carry trades — before the spread itself has visibly moved.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Central Bank Policy</h3>
+        <p>How real committees actually deviate from a rule like this one — mandates, forward guidance, and the effective lower bound.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="central-bank-policy-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="taylor-rule.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Section 5 — inflation-gap / output-gap sliders driving the gauge.
+  (function(){
+    var infSlider = document.getElementById('tg-inf-slider');
+    if (!infSlider) return;
+    var outSlider = document.getElementById('tg-out-slider');
+    var infVal = document.getElementById('tg-inf-val'), outVal = document.getElementById('tg-out-val');
+    var bar = document.getElementById('tg-bar'), val = document.getElementById('tg-val'), delta = document.getElementById('tg-delta');
+    var RSTAR = 2, PISTAR = 2, A = 0.5, B = 0.5;
+    var NEUTRAL = RSTAR + PISTAR;
+    // Gauge maps rate range [-2, 10] to y-pixels [190 (bottom), 20 (top)].
+    var Y_BOTTOM = 190, Y_TOP = 20, RATE_MIN = -2, RATE_MAX = 10;
+    function rateToY(r){
+      var clamped = Math.max(RATE_MIN, Math.min(RATE_MAX, r));
+      return Y_BOTTOM - (clamped - RATE_MIN) / (RATE_MAX - RATE_MIN) * (Y_BOTTOM - Y_TOP);
+    }
+    function fmt(n){ return (n >= 0 ? '+' : '') + n.toFixed(2); }
+
+    function update(){
+      var infGap = parseFloat(infSlider.value);
+      var outGap = parseFloat(outSlider.value);
+      infVal.textContent = fmt(infGap) + 'pp';
+      outVal.textContent = fmt(outGap) + 'pp';
+      var pi = PISTAR + infGap;
+      var i = RSTAR + pi + A * infGap + B * outGap;
+      var barY = rateToY(i);
+      bar.setAttribute('y', barY);
+      bar.setAttribute('height', Math.max(2, Y_BOTTOM - barY));
+      val.setAttribute('y', Math.max(16, barY - 8));
+      val.textContent = i.toFixed(2) + '%';
+      var diff = i - NEUTRAL;
+      delta.textContent = (diff >= 0 ? '+' : '') + diff.toFixed(2) + 'pp ' + (diff >= 0 ? 'above' : 'below') + ' neutral';
+      if (diff >= 0) { bar.style.fill = 'var(--blue-bg)'; bar.style.stroke = 'var(--blue)'; val.style.fill = 'var(--blue)'; }
+      else { bar.style.fill = 'var(--amber-bg)'; bar.style.stroke = 'var(--amber)'; val.style.fill = 'var(--amber)'; }
+    }
+    infSlider.addEventListener('input', update);
+    outSlider.addEventListener('input', update);
+    update();
+  })();
+
+  // Section 6 — full six-input Taylor Rule calculator.
+  (function(){
+    var rstar = document.getElementById('tc-rstar');
+    if (!rstar) return;
+    var pi = document.getElementById('tc-pi'), pistar = document.getElementById('tc-pistar');
+    var ygap = document.getElementById('tc-ygap'), a = document.getElementById('tc-a'), b = document.getElementById('tc-b');
+    var infgapOut = document.getElementById('tc-infgap'), neutralOut = document.getElementById('tc-neutral');
+    var iOut = document.getElementById('tc-i'), noteOut = document.getElementById('tc-note');
+    var resetBtn = document.getElementById('tc-reset');
+    var DEFAULTS = { rstar: 2, pi: 3, pistar: 2, ygap: 1, a: 0.5, b: 0.5 };
+    var fields = [rstar, pi, pistar, ygap, a, b];
+
+    function recompute(){
+      var rv = parseFloat(rstar.value), piv = parseFloat(pi.value), psv = parseFloat(pistar.value);
+      var yv = parseFloat(ygap.value), av = parseFloat(a.value), bv = parseFloat(b.value);
+      if (!isFinite(rv) || !isFinite(piv) || !isFinite(psv) || !isFinite(yv) || !isFinite(av) || !isFinite(bv)) {
+        infgapOut.textContent = '—'; neutralOut.textContent = '—'; iOut.textContent = '—';
+        noteOut.textContent = '(enter numeric values for every field)';
+        return;
+      }
+      if (av < 0 || bv < 0) {
+        noteOut.textContent = '(a and b are reaction coefficients — negative values aren’t part of this rule)';
+        av = Math.max(0, av); bv = Math.max(0, bv);
+      } else {
+        noteOut.textContent = '';
+      }
+      var infGap = piv - psv;
+      var neutral = rv + psv;
+      var i = rv + piv + av * infGap + bv * yv;
+      infgapOut.textContent = infGap.toFixed(2);
+      neutralOut.textContent = neutral.toFixed(2);
+      iOut.textContent = i.toFixed(2);
+      if (i < 0 && av >= 0 && bv >= 0) noteOut.textContent = '(rule prescribes a negative rate — the effective lower bound binds here)';
+    }
+
+    fields.forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      rstar.value = DEFAULTS.rstar; pi.value = DEFAULTS.pi; pistar.value = DEFAULTS.pistar;
+      ygap.value = DEFAULTS.ygap; a.value = DEFAULTS.a; b.value = DEFAULTS.b;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

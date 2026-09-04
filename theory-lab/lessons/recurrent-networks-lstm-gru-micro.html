@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recurrent Networks: LSTM &amp; GRU — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Recurrent Networks: LSTM &amp; GRU — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer full derivations, a hand-worked scalar LSTM example, and a 5-question self-test?<a href="recurrent-networks-lstm-gru.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Deep Learning &amp; Modern ML 1 · Deep Learning &amp; Modern ML for Trading</div>
+      <h1 class="sl-h1">Recurrent Networks, <em>Carrying Memory Forward</em></h1>
+      <p class="sl-lede">A plain recurrent network reads a sequence one step at a time, carrying a hidden state forward as a running summary of everything relevant it has seen — in principle, arbitrarily far back. In practice, training that network multiplies the same gradient signal by itself at every single step, and it vanishes long before "arbitrarily far back" becomes real. LSTM and GRU cells exist to fix exactly that, with an explicit, gated pathway that lets information — and gradient — survive the trip.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">A hidden state carries the past forward</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">→</div><div><h4>One step at a time</h4><p>A recurrent network reads a sequence in order — day 1, then day 2, then day 3 — rather than seeing a whole window as one flat, order-blind snapshot the way a feedforward network or a gradient-boosted tree does.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🗒</div><div><h4>The hidden state is a running note</h4><p>At every step it updates a single vector, h_t, blending what just arrived with whatever it had already summarized — a compressed record of everything relevant seen so far, carried forward.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">♻</div><div><h4>Same weights, every step</h4><p>The exact same weight matrices update the note at step 1, step 50, and step 500. This weight sharing is what makes it "recurrent" rather than one enormous, step-specific feedforward stack.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">∞</div><div><h4>In principle, arbitrarily long history</h4><p>Nothing in the recurrence caps how far back information could survive. What actually happens to information from far in the past is the entire subject of the next few slides.</p></div></div>
+      </div>
+      <div class="sl-quote">Every tree-based or classical-statistics lesson elsewhere in this curriculum treats a row of features as a single, order-independent snapshot — shuffle the rows and a random forest doesn't notice or care. A time series is the opposite kind of object: the order of the observations <em>is</em> the information, and a recurrent network is the first architecture in this category built specifically around that fact.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">The recurrence, unrolled one step at a time</h2>
+      <p class="sl-sub">At every step: take the previous note, blend in the new input, squash, done. Step through it.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="unroll-tabs">
+          <button class="sl-tab active" data-panel="unroll-1">Step 1</button>
+          <button class="sl-tab" data-panel="unroll-2">Step 2</button>
+          <button class="sl-tab" data-panel="unroll-3">Step 3</button>
+        </div>
+        <div class="sl-panel active" id="unroll-1">
+          <div class="sl-row"><div class="sl-box">h₀ (blank)</div><div class="sl-arrow">+</div><div class="sl-box amber">x₁</div><div class="sl-arrow">→ tanh(W_h·+W_x·+b) →</div><div class="sl-box green">h₁</div></div>
+          <div class="sl-verdict">Nothing to carry forward yet, so h₁ is built almost entirely from the first input.</div>
+        </div>
+        <div class="sl-panel" id="unroll-2">
+          <div class="sl-row"><div class="sl-box green">h₁</div><div class="sl-arrow">+</div><div class="sl-box amber">x₂</div><div class="sl-arrow">→ tanh(W_h·+W_x·+b) →</div><div class="sl-box green">h₂</div></div>
+          <div class="sl-verdict">The <strong>same</strong> W_h and W_x from step 1 are reused here — h₂ blends h₁'s summary with the new input x₂.</div>
+        </div>
+        <div class="sl-panel" id="unroll-3">
+          <div class="sl-row"><div class="sl-box green">h₂</div><div class="sl-arrow">+</div><div class="sl-box amber">x₃</div><div class="sl-arrow">→ tanh(W_h·+W_x·+b) →</div><div class="sl-box green">h₃</div></div>
+          <div class="sl-verdict">By h₃, information from x₁ is only present <em>indirectly</em> — already filtered twice through the same tanh + W_h combination that step 50 will apply another 47 more times.</div>
+        </div>
+        <div class="sl-note">Formally: h_t = tanh(W_h h_(t−1) + W_x x_t + b). A prediction is read off the final hidden state — or every one along the way — through one more learned layer.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Backpropagation through time: the same weight, multiplied again and again</h2>
+      <p class="sl-sub">Training unrolls the recurrence across every step and backprops the loss all the way to step 1.</p>
+      <div class="sl-row"><div class="sl-box">∂h_T ⁄ ∂h₁</div><div class="sl-arrow">=</div><div class="sl-box amber">W_h · W_h · W_h · … (T−1 copies)</div></div>
+      <p class="sl-p">Because h_t depends on h_(t−1), which depends on h_(t−2), and so on, the chain rule produces a gradient that is a <strong>product</strong> of many terms, one per time step — the same recurrent weight matrix multiplied in again at every single step. A product of many numbers each under 1 doesn't shrink gently; it shrinks exponentially in the number of steps.</p>
+      <div class="sl-quote">Picture a whispered message passed down a long line of people, and each person repeats only about 70% of the volume they heard. By the tenth person the message is nearly silent — not from any single mistake, just from quietly repeating something a little quieter, over and over. That's the vanishing gradient: the training signal about step 1 gets multiplied down a little at every later step, and after enough steps there's essentially nothing left to learn from.</div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Vanishing vs. exploding</div>
+        <p>If the dominant eigenvalue of W_h (scaled by tanh′, always ≤ 1) is below 1, the product shrinks toward zero exponentially — <strong>vanishing</strong>. Above 1, it grows exponentially instead — <strong>exploding</strong>, which shows up as wildly unstable training updates. Exploding is the easy direction to patch, with gradient clipping; vanishing is not — it's the one that actually blocks learning long-range dependencies, and the one the rest of this lesson is about fixing (Bengio, Simard &amp; Frasconi, 1994).</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Three architectures, side by side</h2>
+      <p class="sl-sub">Same job — carry information through time. Very different answers to "how does a gradient survive the trip back?"</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="arch-tabs">
+          <button class="sl-tab active" data-panel="arch-rnn">Plain RNN</button>
+          <button class="sl-tab" data-panel="arch-lstm">LSTM</button>
+          <button class="sl-tab" data-panel="arch-gru">GRU</button>
+        </div>
+        <div class="sl-panel active" id="arch-rnn">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagram of a plain RNN cell repeated across four time steps, connected in a single chain, with a fading red arrow underneath showing the backward gradient signal shrinking as it travels toward earlier steps.">
+            <defs>
+              <linearGradient id="rnnFade" x1="100%" y1="0%" x2="0%" y2="0%">
+                <stop offset="0%" stop-color="#f87171" stop-opacity="0.9"/>
+                <stop offset="100%" stop-color="#f87171" stop-opacity="0.05"/>
+              </linearGradient>
+            </defs>
+            <rect x="40" y="30" width="70" height="40" rx="8" style="fill:var(--panel2);stroke:var(--border2)"/>
+            <text x="75" y="55" text-anchor="middle" style="fill:var(--text2);font-size:12px;font-family:'DM Mono',monospace">h₁</text>
+            <text x="157" y="55" text-anchor="middle" style="fill:var(--text3);font-size:14px">→</text>
+            <rect x="210" y="30" width="70" height="40" rx="8" style="fill:var(--panel2);stroke:var(--border2)"/>
+            <text x="245" y="55" text-anchor="middle" style="fill:var(--text2);font-size:12px;font-family:'DM Mono',monospace">h₂</text>
+            <text x="327" y="55" text-anchor="middle" style="fill:var(--text3);font-size:14px">→</text>
+            <rect x="380" y="30" width="70" height="40" rx="8" style="fill:var(--panel2);stroke:var(--border2)"/>
+            <text x="415" y="55" text-anchor="middle" style="fill:var(--text2);font-size:12px;font-family:'DM Mono',monospace">h₃</text>
+            <text x="497" y="55" text-anchor="middle" style="fill:var(--text3);font-size:14px">→</text>
+            <rect x="550" y="30" width="70" height="40" rx="8" style="fill:var(--blue-bg);stroke:var(--blue-bd)"/>
+            <text x="585" y="55" text-anchor="middle" style="fill:var(--blue);font-size:12px;font-family:'DM Mono',monospace">h₄</text>
+            <line x1="600" y1="110" x2="60" y2="110" style="stroke:url(#rnnFade);stroke-width:4"/>
+            <text x="600" y="97" text-anchor="end" style="fill:var(--text3);font-size:9px">backprop starts here</text>
+            <text x="60" y="97" text-anchor="start" style="fill:var(--text3);font-size:9px">far past — nearly vanished</text>
+            <text x="330" y="132" text-anchor="middle" style="fill:var(--red);font-size:11px;font-family:'DM Mono',monospace">gradient ×W_h at every step — shrinks fast going back</text>
+          </svg></div>
+          <div class="sl-verdict">A single multiplicative path. Every step multiplies by the same W_h — nothing here is designed to protect a gradient traveling backward across many steps.</div>
+        </div>
+        <div class="sl-panel" id="arch-lstm">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagram of an LSTM cell state as a horizontal conveyor belt with a forget gate, input gate, and output gate attached below it, the output gate branching down to the hidden state.">
+            <line x1="40" y1="38" x2="600" y2="38" style="stroke:var(--amber);stroke-width:6;stroke-linecap:round"/>
+            <text x="320" y="20" text-anchor="middle" style="fill:var(--amber);font-size:11px;font-family:'DM Mono',monospace">cell state C_t — the conveyor belt</text>
+            <line x1="150" y1="38" x2="150" y2="80" style="stroke:var(--border2);stroke-width:2"/>
+            <circle cx="150" cy="95" r="15" style="fill:var(--red-bg);stroke:var(--red-bd)"/>
+            <text x="150" y="99" text-anchor="middle" style="fill:var(--red);font-size:11px;font-weight:700">f</text>
+            <text x="150" y="128" text-anchor="middle" style="fill:var(--text3);font-size:10px">forget gate</text>
+            <line x1="320" y1="38" x2="320" y2="80" style="stroke:var(--border2);stroke-width:2"/>
+            <circle cx="320" cy="95" r="15" style="fill:var(--green-bg);stroke:var(--green-bd)"/>
+            <text x="320" y="99" text-anchor="middle" style="fill:var(--green);font-size:11px;font-weight:700">i</text>
+            <text x="320" y="128" text-anchor="middle" style="fill:var(--text3);font-size:10px">input gate</text>
+            <line x1="490" y1="38" x2="490" y2="80" style="stroke:var(--border2);stroke-width:2"/>
+            <circle cx="490" cy="95" r="15" style="fill:var(--blue-bg);stroke:var(--blue-bd)"/>
+            <text x="490" y="99" text-anchor="middle" style="fill:var(--blue);font-size:11px;font-weight:700">o</text>
+            <line x1="490" y1="110" x2="490" y2="132" style="stroke:var(--border2);stroke-width:2"/>
+            <text x="490" y="146" text-anchor="middle" style="fill:var(--text2);font-size:10px;font-family:'DM Mono',monospace">h_t (readout)</text>
+          </svg></div>
+          <div class="sl-verdict">A dedicated additive path (the cell state C_t) runs alongside the hidden state. Gates decide what joins and leaves it, but the belt's own carrying mechanism is addition, not repeated multiplication — an "error highway" the plain RNN structurally lacks.</div>
+        </div>
+        <div class="sl-panel" id="arch-gru">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagram of a GRU as a single merged state line with a reset gate and an update gate attached directly to it, with no separate cell state or output gate.">
+            <line x1="40" y1="60" x2="600" y2="60" style="stroke:var(--purple);stroke-width:6;stroke-linecap:round"/>
+            <text x="320" y="30" text-anchor="middle" style="fill:var(--purple);font-size:11px;font-family:'DM Mono',monospace">single state h_t — no separate cell state</text>
+            <circle cx="220" cy="60" r="15" style="fill:var(--panel2);stroke:var(--border2);stroke-width:2"/>
+            <text x="220" y="64" text-anchor="middle" style="fill:var(--text);font-size:11px;font-weight:700">r</text>
+            <text x="220" y="100" text-anchor="middle" style="fill:var(--text3);font-size:10px">reset gate</text>
+            <circle cx="420" cy="60" r="15" style="fill:var(--panel2);stroke:var(--border2);stroke-width:2"/>
+            <text x="420" y="64" text-anchor="middle" style="fill:var(--text);font-size:11px;font-weight:700">z</text>
+            <text x="420" y="100" text-anchor="middle" style="fill:var(--text3);font-size:10px">update gate</text>
+            <text x="320" y="128" text-anchor="middle" style="fill:var(--text2);font-size:11px">2 gates blend old vs. candidate state directly — additive, fewer parameters</text>
+          </svg></div>
+          <div class="sl-verdict">Same additive principle as the LSTM's cell state, achieved with one merged state and two gates instead of three plus a separate cell state — fewer parameters, usually faster to train, similar practical performance on many tasks.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">The gap, plotted</h2>
+      <p class="sl-sub">Gradient magnitude carried backward through 15 time steps — plain RNN versus LSTM cell state.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Illustrative, not measured from a trained model</div>
+        <div class="sl-svgwrap"><svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart comparing gradient magnitude carried backward through time for a plain RNN versus an LSTM cell state, across 15 backpropagated time steps. The plain RNN's gradient decays exponentially from 1.0 toward nearly zero within about eight steps. The LSTM's cell-state gradient decays far more slowly and stays meaningfully above zero across all fifteen steps.">
+          <line x1="60" y1="20" x2="60" y2="220" style="stroke:var(--border)"/>
+          <line x1="60" y1="220" x2="610" y2="220" style="stroke:var(--border)"/>
+          <text x="335" y="246" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">steps back through time</text>
+          <text x="26" y="120" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace" transform="rotate(-90 26 120)">gradient magnitude</text>
+          <line x1="60" y1="20" x2="610" y2="20" style="stroke:var(--text3);stroke-dasharray:2,3" opacity="0.4"/>
+          <text x="614" y="24" fill="var(--text3)" font-size="9" font-family="'DM Mono',monospace">1.0</text>
+          <path d="M60,20 L96,32 L132,50 L168,74 L204,105 L240,140 L276,172 L312,196 L348,210 L384,216 L420,219 L456,220 L492,220 L528,220 L564,220 L600,220" style="stroke:var(--red);stroke-width:2.5;fill:none;stroke-linecap:round"/>
+          <text x="330" y="150" fill="var(--red)" font-size="10.5" font-family="'DM Mono',monospace">plain RNN — W_h eigenvalue 0.75</text>
+          <path d="M60,20 L96,26 L132,33 L168,41 L204,49 L240,58 L276,67 L312,76 L348,85 L384,94 L420,102 L456,110 L492,117 L528,124 L564,130 L600,136" style="stroke:var(--green);stroke-width:2.5;fill:none;stroke-linecap:round"/>
+          <text x="470" y="98" fill="var(--green)" font-size="10.5" font-family="'DM Mono',monospace">LSTM cell state — forget gate ≈ 0.95</text>
+          <circle cx="60" cy="20" r="3.5" fill="var(--text2)"/>
+        </svg></div>
+        <div class="sl-note">Both curves assume a constant per-step decay for clarity — 0.75 for the plain RNN's dominant recurrent eigenvalue, 0.95 for a forget gate that has learned to stay mostly open. A real network's decay varies by unit and by input, but the qualitative gap — multiplicative collapse versus a much gentler additive decay — is the real, structural point.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Inside the LSTM: three gates, one conveyor belt</h2>
+      <p class="sl-sub">Each gate is itself a small learned network — a sigmoid output between 0 and 1, read as "how much."</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">✕</div><div><h4>Forget gate — f_t</h4><p>f_t = σ(W_f[h_(t−1),x_t]+b_f) — a number per unit of the cell state; 0 erases it completely, 1 keeps it entirely.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">+</div><div><h4>Input gate &amp; candidate — i_t, C̃_t</h4><p>A candidate update C̃_t = tanh(...) proposes new content; the input gate i_t decides how much of that candidate actually gets written in.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">➜</div><div><h4>Cell-state update — additive</h4><p>C_t = f_t⊙C_(t−1) + i_t⊙C̃_t — the old state is scaled down, the new candidate is added. Addition, not another matrix multiplication.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">◎</div><div><h4>Output gate — o_t</h4><p>h_t = o_t⊙tanh(C_t) — the hidden state is a filtered, task-facing readout of the cell state, not the long-term memory itself.</p></div></div>
+      </div>
+      <div class="sl-quote">Differentiate the cell-state update with respect to C_(t−1) and the result is exactly f_t — a single gate value, not a matrix product accumulated across every prior step. When the forget gate learns to stay close to 1 for information that matters, gradient flows across many steps largely undiminished.</div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>"LSTM" doesn't mean "immune to vanishing gradients." The additive path substantially mitigates the problem compared to a plain RNN — it doesn't eliminate it for arbitrarily long sequences. That gap is real, and it's the honest motivation for the attention mechanism covered next, not an overstatement invented for this lesson.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">GRU: the same additive idea, fewer moving parts</h2>
+      <p class="sl-sub">Two gates instead of three, one merged state instead of two.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">LSTM</span>
+          <p>Three gates (forget, input, output) plus a separate cell state — four learned weight matrices per layer. More expressive, more parameters, generally the safer default on larger datasets or longer sequences.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">GRU</span>
+          <p>Two gates (reset r_t, update z_t), no separate cell state — three learned weight matrices per layer. h_t = (1−z_t)⊙h_(t−1) + z_t⊙h̃_t is itself a convex, additive blend of old and new — structurally the same kind of additive mechanism, with one fewer gate.</p>
+        </div>
+      </div>
+      <p class="sl-p">Neither is a strict improvement on the other. Fewer parameters typically means faster training and somewhat less overfitting risk on smaller datasets — but which one actually performs better is dataset- and task-dependent, and needs to be checked empirically, not assumed from general reputation.</p>
+      <div class="sl-quote">If the LSTM is a note-taker with a separate long-term notebook (the cell state) and a short summary card they hand off (the hidden state), the GRU is a note-taker who keeps just one notebook and decides, page by page, how much of the old page to keep versus overwrite. Simpler machinery, usually just as good, occasionally not — and cheaper to run either way.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Longer sequences make the gap worse</h2>
+      <p class="sl-sub">Drag the slider to change how far back the gradient has to travel. Watch both curves — and the two readouts below them.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart showing gradient magnitude versus steps back through time for a plain RNN and an LSTM, both curves recomputed live as the sequence-length slider moves.">
+            <line x1="70" y1="25" x2="70" y2="185" style="stroke:var(--border)"/>
+            <line x1="70" y1="185" x2="590" y2="185" style="stroke:var(--border)"/>
+            <text x="330" y="208" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">steps back through time</text>
+            <text x="30" y="105" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace" transform="rotate(-90 30 105)">gradient magnitude</text>
+            <path id="seqRnnPath" d="" style="stroke:var(--red);stroke-width:2.5;fill:none;stroke-linecap:round"/>
+            <path id="seqLstmPath" d="" style="stroke:var(--green);stroke-width:2.5;fill:none;stroke-linecap:round"/>
+            <text x="588" y="18" text-anchor="end" fill="var(--red)" font-size="10.5" font-family="'DM Mono',monospace">plain RNN (γ=0.75/step)</text>
+            <text x="588" y="34" text-anchor="end" fill="var(--green)" font-size="10.5" font-family="'DM Mono',monospace">LSTM cell state (γ=0.95/step)</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Sequence length</span><span class="sl-live" id="seq-t-val">T = 20 steps</span></div>
+        <input type="range" class="sl-slider" id="seq-slider" min="5" max="50" step="5" value="20">
+        <div class="sl-calc-steps" style="margin-top:14px">
+          <div>Plain RNN — gradient surviving at the earliest step: <b id="seq-rnn-val">0.317%</b></div>
+          <div>LSTM cell state — gradient surviving at the earliest step: <b id="seq-lstm-val">35.8%</b></div>
+        </div>
+      </div>
+      <p class="sl-p">Drag the slider longer and the gap widens: the plain RNN's curve doesn't just start lower, it collapses toward zero almost immediately, while the LSTM's stays meaningfully above zero even at 50 steps back. That gap — not the exact numbers, which are illustrative fixed decay rates, not measurements from a trained model — is the entire practical argument for gating.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Put a number on the vanishing</h2>
+      <p class="sl-sub">A plain RNN's backprop gradient shrinks by roughly the same decay factor at every step back through time.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Per-step decay γ (0–1)</label><input type="number" class="sl-input" id="grad-decay" value="0.7" step="0.05" min="0" max="1"></div>
+          <div class="sl-calc-op">^</div>
+          <div class="sl-calc-field"><label>Steps back n</label><input type="number" class="sl-input" id="grad-steps" value="10" step="1" min="0"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Surviving gradient</div>
+            <div class="sl-calc-result-val" id="grad-result">2.8248%</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>γⁿ = <b id="grad-decimal">0.0282</b> × original gradient magnitude</div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="grad-reset">Reset to γ = 0.7, n = 10</button>
+        <div class="sl-note">Try γ = 0.95 (closer to an LSTM's forget gate staying open) at the same n — the surviving fraction jumps from single digits to well over half. Try clearing γ, or setting it above 1 or below 0, to see the guard: "—", never NaN or Infinity.</div>
+      </div>
+      <p class="sl-p">This is the same mechanism as the chart two slides back, made numeric: γ is the per-step decay a plain RNN's backprop gradient effectively applies, and γⁿ is what's left of the original gradient magnitude after n steps of repeated multiplication. There is no equivalent single-number decay for an LSTM's cell-state gradient — it's governed by a learned, per-unit forget gate rather than one fixed constant, which is precisely the point.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Not obsolete — a real, current tradeoff</h2>
+      <p class="sl-p">RNNs and LSTMs were the dominant sequence architecture before 2017 — the next lesson explains why that changed for long sequences. Attention lets every output position look directly at every input position, instead of relaying information step by step through a chain that still degrades gradually even with gating.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">A real tradeoff, not an obsolete method</div>
+        <p>That's a genuine, current tradeoff — not a claim that LSTMs are obsolete. For shorter sequences, streaming or online settings that must process one step at a time as it arrives, and lower-compute environments where a transformer's data and compute appetite isn't affordable, a well-tuned LSTM or GRU remains a genuinely reasonable, still-current choice. A rolling 20-bar EUR/USD return window feeding a small LSTM forecaster, for instance, processes returns in order and can in principle learn to hold onto a large early move rather than treating it as one interchangeable column among twenty — whether that structural edge beats a well-tuned feedforward or gradient-boosted model on the same lagged features is a separate, empirical question.</p>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying — checked against this repo's actual code</div>
+        <p>The full lesson labels this topic "CONCEPT — explained here, not built or tested anywhere in this repo." That claim was checked directly against the current codebase for this visual guide: across all ~435 Python files, every JS trading bot, and every dependency manifest, there is no PyTorch, TensorFlow, or Keras usage and no real LSTM/GRU/RNN implementation anywhere. The handful of surface matches on a raw text search turn out to be false positives — variable names like <code>rnOnPips</code> and <code>_pendingRun</code>, or citations to external LSTM research in a planning document — not actual recurrent-network code. The claim still holds: this remains a concept lesson, not a description of anything running in production here.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What specifically does an RNN's hidden-state recurrence add that a feedforward network structurally lacks?</h4>
+        <button class="sl-quiz-opt" data-correct="true">A hidden state threaded through time, so the sequence's order directly shapes the computation</button>
+        <button class="sl-quiz-opt">More layers, allowing it to fit more complex functions</button>
+        <button class="sl-quiz-opt">A wider input layer that sees more features at once</button>
+        <div class="sl-quiz-explain">A feedforward network treats every input dimension independently, with no built-in notion of "this came before that." The recurrence h_t = tanh(W_h h_(t−1) + W_x x_t + b) makes each step's output depend on a running summary of every earlier step — order shapes the computation itself, not just which column a value sits in.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Why does a plain RNN's gradient with respect to an early hidden state shrink exponentially as the sequence gets longer?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Backprop through time multiplies the same recurrent weight matrix's Jacobian in at every step, and repeated multiplication by a term under 1 shrinks a product exponentially</button>
+        <button class="sl-quiz-opt">The learning rate decays automatically as training progresses</button>
+        <button class="sl-quiz-opt">Longer sequences use fewer parameters, so there is less signal to work with</button>
+        <div class="sl-quiz-explain">∂h_T/∂h₁ is a product of T−1 copies of (roughly) W_h. If the dominant eigenvalue of that repeated term is below 1, the product shrinks toward zero exponentially in the number of steps — the vanishing gradient (Bengio, Simard &amp; Frasconi, 1994).</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Why does the LSTM's cell-state update resist the vanishing-gradient mechanism the plain RNN suffers from?</h4>
+        <button class="sl-quiz-opt" data-correct="true">C_t = f_t⊙C_(t−1) + i_t⊙C̃_t adds the old state into the new one, rather than repeatedly multiplying by the same weight matrix</button>
+        <button class="sl-quiz-opt">It uses a larger learning rate for early time steps</button>
+        <button class="sl-quiz-opt">It removes the tanh nonlinearity entirely</button>
+        <div class="sl-quiz-explain">∂C_t/∂C_(t−1) = f_t — a single gate value, not a matrix product accumulated across every prior step. When the forget gate learns to stay near 1 for information that matters, gradient flows across many steps largely undiminished.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>What is the core structural difference between a GRU and an LSTM?</h4>
+        <button class="sl-quiz-opt" data-correct="true">A GRU merges the cell and hidden state into one and uses two gates (reset, update) instead of three (forget, input, output) plus a candidate</button>
+        <button class="sl-quiz-opt">A GRU has more parameters, trading speed for accuracy</button>
+        <button class="sl-quiz-opt">A GRU removes gating entirely and relies on a larger hidden state</button>
+        <div class="sl-quiz-explain">Three learned weight matrices instead of four, and one state instead of two. Fewer parameters typically means faster training and somewhat lower overfitting risk on smaller datasets — but which architecture actually performs better is dataset- and task-dependent.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Are LSTMs now obsolete, now that attention and transformers exist?</h4>
+        <button class="sl-quiz-opt" data-correct="true">No — transformers mainly supersede them for long sequences; LSTMs remain reasonable for short, streaming, or lower-compute settings</button>
+        <button class="sl-quiz-opt">Yes — transformers strictly dominate in every setting</button>
+        <button class="sl-quiz-opt">No — LSTMs are actually always faster and more accurate than transformers</button>
+        <div class="sl-quiz-explain">Attention supersedes gated RNNs specifically for long-sequence problems, because it lets every output position look directly at every input position. That doesn't erase the LSTM's genuine strengths for shorter sequences, streaming or online settings, and lower-compute environments — "superseded for long sequences" and "obsolete everywhere" are different claims.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>A plain RNN carries a hidden state forward step by step, reusing the same weights at every step — in principle giving it access to arbitrarily long history.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Training via backpropagation through time unrolls the recurrence and backprops through every step — the gradient reaching an early step is a product of many repeated terms.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>That repeated multiplication shrinks (or explodes) exponentially with sequence length — the vanishing/exploding gradient problem that cripples plain RNNs on long-range dependencies in practice.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The LSTM adds a separate cell state, updated additively and protected by forget, input, and output gates — an "error highway" that lets gradients survive far longer.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The GRU merges the cell and hidden state into one and uses just two gates instead of three — fewer parameters, often comparable performance, genuinely dataset-dependent.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Gating mitigates vanishing gradients — it doesn't eliminate them for very long sequences. That remaining gap is exactly what motivates attention, next.</p></div>
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">What this now lets you do</div>
+        <p>Recognise when a sequence model actually needs an explicit memory pathway, rather than treating twenty lagged columns as interchangeable features. Explain, mechanically, why a plain RNN forgets — and why an additive cell state fixes it. Treat "LSTM or GRU" as a genuine empirical tradeoff instead of a default pick. And see exactly why the next lesson's attention mechanism had to be invented in the first place.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Attention &amp; Transformers for Time Series</h3>
+        <p>Why letting every output position look directly at every input position — instead of relaying information step by step through a gated chain — fixes what gating only mitigates.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="attention-transformers-time-series-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="recurrent-networks-lstm-gru.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Sequence-length slider — illustrative plain-RNN vs. LSTM gradient decay curves.
+  (function(){
+    var slider = document.getElementById('seq-slider');
+    if (!slider) return;
+    var tVal = document.getElementById('seq-t-val');
+    var rnnVal = document.getElementById('seq-rnn-val');
+    var lstmVal = document.getElementById('seq-lstm-val');
+    var rnnPath = document.getElementById('seqRnnPath');
+    var lstmPath = document.getElementById('seqLstmPath');
+    var X0 = 70, X1 = 590, Y0 = 185, Y1 = 25;
+    var RNN_DECAY = 0.75, LSTM_DECAY = 0.95;
+
+    function fmtPct(x){
+      var pct = x * 100;
+      return pct.toFixed(pct < 1 ? 3 : 1) + '%';
+    }
+
+    function buildPath(decayRate, T){
+      var d = '';
+      for (var i = 0; i <= T; i++){
+        var x = X0 + (X1 - X0) * (i / T);
+        var mag = Math.pow(decayRate, i);
+        var y = Y0 - mag * (Y0 - Y1);
+        d += (i === 0 ? 'M' : 'L') + x.toFixed(1) + ',' + y.toFixed(1) + ' ';
+      }
+      return d;
+    }
+
+    function update(){
+      var T = parseInt(slider.value, 10);
+      tVal.textContent = 'T = ' + T + ' steps';
+      rnnPath.setAttribute('d', buildPath(RNN_DECAY, T));
+      lstmPath.setAttribute('d', buildPath(LSTM_DECAY, T));
+      rnnVal.textContent = fmtPct(Math.pow(RNN_DECAY, T));
+      lstmVal.textContent = fmtPct(Math.pow(LSTM_DECAY, T));
+    }
+
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Gradient-survival calculator — decay^steps, with guards against blank,
+  // non-finite, or out-of-[0,1]-range decay input.
+  (function(){
+    var decay = document.getElementById('grad-decay');
+    if (!decay) return;
+    var steps = document.getElementById('grad-steps');
+    var resultEl = document.getElementById('grad-result');
+    var decimalEl = document.getElementById('grad-decimal');
+    var resetBtn = document.getElementById('grad-reset');
+    var DEFAULTS = { decay: 0.7, steps: 10 };
+
+    function fmtDecimal(x){
+      if (!isFinite(x)) return '—';
+      if (x !== 0 && Math.abs(x) < 0.0001) return x.toExponential(2);
+      return x.toFixed(4);
+    }
+
+    function recompute(){
+      var g = parseFloat(decay.value), n = parseFloat(steps.value);
+      if (!isFinite(g) || !isFinite(n) || g < 0 || g > 1 || n < 0) {
+        resultEl.textContent = '—';
+        decimalEl.textContent = '—';
+        return;
+      }
+      var survive = Math.pow(g, n);
+      resultEl.textContent = (survive * 100).toFixed(4) + '%';
+      decimalEl.textContent = fmtDecimal(survive);
+    }
+
+    [decay, steps].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      decay.value = DEFAULTS.decay; steps.value = DEFAULTS.steps;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

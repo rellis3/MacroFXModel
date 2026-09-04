@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Newton-Raphson &amp; Gradient Descent — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Newton-Raphson &amp; Gradient Descent — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer full derivations, a live calculator, and a 5-question self-test?<a href="newton-raphson-gradient-descent.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Numerical Methods 1 · Numerical Methods</div>
+      <h1 class="sl-h1">When Algebra Runs Out, <em>Iteration Takes Over</em></h1>
+      <p class="sl-lede">Some equations simply don't rearrange — a bond's price doesn't invert into its yield, an option's price doesn't invert into its volatility. Newton-Raphson and gradient descent are the two foundational tricks that answer these questions anyway: not by solving in one clean algebraic move, but by taking a reasonable guess and repeatedly correcting it until the correction becomes too small to matter.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Some formulas simply won't invert</h2>
+      <p class="sl-sub">A bond's price is a known formula in its yield. There is no algebraic move that turns that formula around and isolates the yield.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">💵</div><div><h4>Bond yield-to-maturity</h4><p>Price is easy to compute from a yield. Going backwards — "what yield produces this quoted price?" — has no closed-form answer once there's more than one cash flow.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📈</div><div><h4>Option-implied volatility</h4><p>Black-Scholes gives a price from a volatility, never the reverse. "What σ reproduces this market price?" is the exact same shape of problem, one lesson-tier up.</p></div></div>
+      </div>
+      <div class="sl-quote">Recall from earlier in this curriculum that running a formula backwards is exactly what an <strong>inverse function</strong> does. The catch here is that these particular inverses don't exist in closed form — no rearrangement isolates the yield or the volatility the way "subtract 3, divide by 2" isolated x in a linear equation. When a clean inverse doesn't exist, the fallback is to <em>search</em> for the answer numerically instead of writing it down algebraically.</div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>Nobody actually runs a bare, unguarded search loop against live pricing. Production solvers wrap the core idea in guardrails — a sensible starting guess, a capped step size, a fallback method if things go sideways. The next several slides build up exactly why those guardrails are needed.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Follow the tangent line down to zero</h2>
+      <p class="sl-sub">Newton-Raphson's whole trick, in one sentence: look at the slope right where you're standing, and walk along that straight line — not the curve — until it hits zero.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The move</div>
+        <div class="sl-row">
+          <div class="sl-box">xₙ</div>
+          <div class="sl-arrow">→ walk the tangent line to its zero →</div>
+          <div class="sl-box green">xₙ₊₁</div>
+        </div>
+        <div class="sl-verdict">Because a smooth curve looks almost exactly like its own tangent line very close to a root, this gets you dramatically closer with each step — <strong>as long as</strong> you're already reasonably close and the curve isn't doing anything strange (like going nearly flat) near where you're standing.</div>
+      </div>
+      <p class="sl-p">Setting the tangent line's equation to zero and solving for the crossing point gives the whole method in one formula: <strong>xₙ₊₁ = xₙ − f(xₙ) / f′(xₙ)</strong>. Repeat with the new xₙ, and stop once the correction becomes negligibly small.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Three pieces, one correction</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">f(xₙ)</div><div><h4>How far off you are</h4><p>The current guess's error — how far the function is from the zero you're hunting for. Zero here means "found it."</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">f′(xₙ)</div><div><h4>The local slope</h4><p>How fast f is changing right at xₙ — this is what turns "how far off" into "how far to move," and it's also the method's single point of failure.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">xₙ₊₁</div><div><h4>The new guess</h4><p>Current guess minus the correction f(xₙ)/f′(xₙ). Feed it back in and repeat until the correction is tiny.</p></div></div>
+      </div>
+      <div class="sl-quote">Because the correction divides by the slope, a large slope means a small, careful correction, while a slope near zero means a huge, possibly wild one. Nearly everything about when this method works — and when it doesn't — traces back to that one division.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Watch it converge, geometrically</h2>
+      <p class="sl-sub">f(x) = x² − 4 has a root at x = 2. Starting from x₀ = 3, three tangent-line steps land within a hundred-thousandth of it.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Hand-verified: 3 → 2.166667 → 2.006410 → 2.000010</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A parabola x squared minus 4 with three tangent-line steps walking from a starting guess of 3 down to the root at 2">
+            <line x1="20" y1="215" x2="620" y2="215" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="320" y1="10" x2="320" y2="290" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"/>
+            <text x="320" y="298" text-anchor="middle" style="fill:var(--text3);font-size:11px">root, x = 2</text>
+            <path style="fill:none;stroke:var(--border2);stroke-width:2" d="M40,280 75,278.98 110,275.94 145,270.86 180,263.75 215,254.61 250,243.44 285,230.23 320,215 355,197.73 390,178.44 425,157.11 460,133.75 495,108.34 530,80.94 565,51.48 600,20"/>
+            <text x="470" y="118" text-anchor="middle" style="fill:var(--text3);font-size:11px">f(x) = x² − 4</text>
+            <line x1="460" y1="133.75" x2="343.33" y2="215" style="stroke:var(--blue);stroke-width:2"/>
+            <line x1="343.33" y1="215" x2="343.33" y2="203.72" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:2,2"/>
+            <line x1="343.33" y1="203.72" x2="320.90" y2="215" style="stroke:var(--amber);stroke-width:2"/>
+            <line x1="320.90" y1="215" x2="320.90" y2="214.58" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:2,2"/>
+            <line x1="320.90" y1="214.58" x2="320.02" y2="215" style="stroke:var(--green);stroke-width:2"/>
+            <circle cx="460" cy="133.75" r="6" style="fill:var(--blue)"/>
+            <text x="460" y="120" text-anchor="middle" style="fill:var(--blue);font-size:11px;font-weight:700">x₀ = 3</text>
+            <circle cx="343.33" cy="215" r="5.5" style="fill:var(--amber)"/>
+            <text x="343.33" y="232" text-anchor="middle" style="fill:var(--amber);font-size:11px;font-weight:700">x₁ ≈ 2.167</text>
+            <circle cx="320.90" cy="215" r="5" style="fill:var(--amber)"/>
+            <text x="300" y="250" text-anchor="middle" style="fill:var(--amber);font-size:10.5px;font-weight:700">x₂ ≈ 2.006</text>
+            <circle cx="320.02" cy="215" r="5" style="fill:var(--green)"/>
+            <text x="392" y="248" text-anchor="middle" style="fill:var(--green);font-size:10.5px;font-weight:700">x₃ ≈ 2.00001</text>
+          </svg>
+        </div>
+        <div class="sl-note">Each tangent line (blue, then amber, then green) is drawn straight from the curve down to the axis — exactly the geometric move the formula computes. Notice how much the error shrinks each step: 1.0 → 0.167 → 0.0064 → 0.00001. That's <strong>quadratic convergence</strong> — correct digits roughly double every iteration, once you're close enough to the root.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Same method, two very different fates</h2>
+      <p class="sl-sub">f(x) = x³ − x has three roots: −1, 0, and 1. The starting guess decides everything.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="nr-fate-tabs">
+          <button class="sl-tab active" data-panel="nr-fate-1">Good start — x₀ = 2</button>
+          <button class="sl-tab" data-panel="nr-fate-2">Bad start — x₀ = 0.447214</button>
+        </div>
+        <div class="sl-panel active" id="nr-fate-1">
+          <div class="sl-row">
+            <div class="sl-box">2.000</div><div class="sl-arrow">→</div>
+            <div class="sl-box">1.455</div><div class="sl-arrow">→</div>
+            <div class="sl-box">1.151</div><div class="sl-arrow">→</div>
+            <div class="sl-box green">1.025</div>
+          </div>
+          <div class="sl-verdict"><strong>Converging cleanly</strong> toward the root x = 1. Four iterations already land within 3% of the true answer, and the error keeps shrinking fast from here.</div>
+        </div>
+        <div class="sl-panel" id="nr-fate-2">
+          <div class="sl-row">
+            <div class="sl-box amber">0.447</div><div class="sl-arrow">→</div>
+            <div class="sl-box amber">−0.447</div><div class="sl-arrow">→</div>
+            <div class="sl-box amber">0.447</div><div class="sl-arrow">→</div>
+            <div class="sl-box amber">−0.447</div>
+          </div>
+          <div class="sl-verdict"><strong>Trapped forever.</strong> This exact starting point (1/√5) makes the tangent line at +0.447 cross zero at precisely −0.447, and vice versa — an infinite two-point cycle that never reaches any of the three real roots, no matter how many iterations it's given.</div>
+        </div>
+        <div class="sl-note">Same function, same formula, same number of steps — the only thing that changed is where the search started. This is exactly why "it converged" and "it converged to the right answer" are two different claims.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Where Newton-Raphson fails</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">⚡</div><div><h4>A near-zero derivative</h4><p>The correction f(xₙ)/f′(xₙ) explodes when f′(xₙ) is tiny — the tangent line is nearly flat, so its zero-crossing can be enormously far away.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📍</div><div><h4>A bad starting point</h4><p>Far from the root, the tangent line is a poor stand-in for the actual curve — the method can overshoot wildly or land on a completely different root than intended.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔁</div><div><h4>An infinite cycle</h4><p>As shown on the last slide, certain starting points can send the method bouncing between the same two values forever, never settling anywhere.</p></div></div>
+      </div>
+      <div class="sl-quote">Production pricing engines almost never run pure, unguarded Newton-Raphson. The standard fix: start from a problem-informed guess (the coupon rate for a bond near par; an approximation formula for implied vol), cap how large a single step is allowed to be, and fall back to a slower but guaranteed-to-converge method like bisection whenever a step leaves a known bracket around the true root.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Try it — Newton-Raphson finding a square root</h2>
+      <p class="sl-sub">Finding √a is exactly root-finding on f(x) = x² − a. Change the target a or the starting guess x₀ and watch how fast (or badly) it converges.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Target a</label><input type="number" class="sl-input" id="nr-sqrt-a" value="10" step="1"></div>
+          <div class="sl-calc-op">start x₀</div>
+          <div class="sl-calc-field"><label>Starting guess x₀</label><input type="number" class="sl-input" id="nr-sqrt-x0" value="3" step="0.5"></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>x₁ = x₀ − (x₀² − a)/(2x₀) = <b id="nr-sqrt-x1">3.16667</b></div>
+          <div>x₂ = x₁ − (x₁² − a)/(2x₁) = <b id="nr-sqrt-x2">3.16228</b></div>
+          <div>Actual √a = <b id="nr-sqrt-true">3.16228</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="nr-sqrt-reset">Reset to a = 10, x₀ = 3</button>
+        <div class="sl-note" id="nr-sqrt-note">Two iterations from a naive guess already agree with √10 to 4 decimal places. Try x₀ = 0 to see the guard: a zero starting point makes f′(x₀) = 0, and the correction is undefined — the calculator shows "—" instead of a crash.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">A different question: not "where's zero," but "where's smallest"</h2>
+      <p class="sl-sub">Gradient descent solves a related but distinct problem — minimizing a function instead of finding where it crosses zero.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">↗</div><div><h4>The gradient</h4><p>The direction (and steepness) of the fastest local <em>increase</em>. In one dimension it's just f′(x); in many, it's a vector of partial derivatives.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">↘</div><div><h4>Step the opposite way</h4><p>Since the gradient points uphill, stepping in the <em>negative</em> gradient direction moves downhill — toward smaller values of f.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">α</div><div><h4>The learning rate</h4><p>How far to step each time, chosen in advance: xₙ₊₁ = xₙ − α·∇f(xₙ). The one knob you get to turn — and the subject of the next slide.</p></div></div>
+      </div>
+      <div class="sl-quote">Picture standing on a hilly landscape, blindfolded, trying to reach the lowest point. You can feel which direction is steepest-downhill right under your feet — that's the gradient — so you take a step that way. Newton-Raphson could <em>see</em> the whole tangent line; gradient descent can only feel the slope, one step at a time.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Too small is slow, too large breaks it</h2>
+      <p class="sl-sub">Drag the learning rate. This is real arithmetic on f(x) = (x − 3)², starting from x₀ = 0, six steps of xₙ₊₁ = xₙ − α·2(xₙ − 3).</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A bowl-shaped parabola with a movable sequence of points showing gradient descent steps converging toward, oscillating around, or diverging from the minimum depending on the learning rate">
+            <line x1="20" y1="260" x2="620" y2="260" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="320" y1="10" x2="320" y2="270" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"/>
+            <text x="320" y="284" text-anchor="middle" style="fill:var(--text3);font-size:11px">x = 3 (the minimum)</text>
+            <path style="fill:none;stroke:var(--border2);stroke-width:2" d="M40.0,20.0 63.3,58.3 86.7,93.3 110.0,125.0 133.3,153.3 156.7,178.3 180.0,200.0 203.3,218.3 226.7,233.3 250.0,245.0 273.3,253.3 296.7,258.3 320.0,260.0 343.3,258.3 366.7,253.3 390.0,245.0 413.3,233.3 436.7,218.3 460.0,200.0 483.3,178.3 506.7,153.3 530.0,125.0 553.3,93.3 576.7,58.3 600.0,20.0"/>
+            <polyline id="gd2-path" points="" style="fill:none;stroke:var(--amber);stroke-width:2"/>
+            <g id="gd2-dots"></g>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Learning rate α</span><span class="sl-live" id="gd2-alpha-val">α = 0.30</span></div>
+        <input type="range" class="sl-slider" id="gd2-alpha-slider" min="5" max="115" step="1" value="30">
+        <div class="sl-verdict" id="gd2-readout" style="margin-top:12px">x₆ ≈ 2.9203, f(x₆) ≈ 0.0064 — converging monotonically</div>
+        <div class="sl-note">Each amber dot is one iterate; the last one turns green. At α = 0.30 the steps shrink steadily. At α = 0.50 the very next step lands exactly on the minimum — no overshoot at all. Past α = 0.50 the steps start flipping sides of the minimum; past α = 1.00 they grow without bound.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">What if you also knew the curvature?</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Gradient descent</span>
+          <ul>
+            <li>Uses only first-derivative (slope) information</li>
+            <li>The step size α is hand-chosen, and has to be tuned</li>
+            <li>Cheap per step — this is why it scales to millions of parameters</li>
+          </ul>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Newton's method for optimization</span>
+          <ul>
+            <li>Also uses curvature — the second derivative, or the Hessian in many dimensions</li>
+            <li>xₙ₊₁ = xₙ − H⁻¹∇f(xₙ) picks direction <em>and</em> step size automatically</li>
+            <li>Expensive per step — inverting a p×p Hessian is costly once p is large</li>
+          </ul>
+        </div>
+      </div>
+      <p class="sl-p">For f(x) = (x − 3)², the second derivative f″(x) = 2 everywhere, so Newton's step is xₙ₊₁ = xₙ − f′(xₙ)/2 — exactly the α = 0.5 case from the slider. That's not a coincidence: for a perfectly bowl-shaped function, Newton's automatically-chosen step <em>is</em> the one learning rate that reaches the minimum in a single move, because it reads the curvature directly instead of guessing it.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Why gradient descent still wins at scale</div>
+        <p>Forming and inverting a Hessian for a model with millions of parameters — a modern neural network, say — is computationally infeasible. That's exactly why large-scale machine learning still trains on gradient-descent variants (with momentum, or adaptive per-parameter rates like Adam) rather than pure Newton's method, despite Newton's faster convergence per iteration.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">How this actually gets used — and misused</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">✅</div><div><h4>Trusting the output without checking the root</h4><p>A bad starting guess or a function with multiple roots can make the method converge quickly and confidently to the <em>wrong</em> answer — fast convergence isn't the same claim as "converged to what you wanted."</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎚</div><div><h4>Picking one learning rate and never revisiting it</h4><p>A rate that works well on one calibration problem can be far too large or small for a different one — exactly why adaptive methods (AdaGrad, RMSProp, Adam) exist.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🏔</div><div><h4>Mistaking convergence for correctness</h4><p>A zero gradient only guarantees a <em>stationary</em> point — on a non-convex function that could be a local minimum far worse than the true global one. The next lesson is entirely about when that distinction stops mattering.</p></div></div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Factual grounding — verified against this repo's current code</div>
+        <p>The full lesson this deck condenses tags itself "CONCEPT — not built or tested in this repo." That's still accurate as of this check: <code>js/impliedVolCore.js</code> loads static CME CVOL / CBOE implied-vol <em>snapshots</em> rather than solving for volatility from a pricing formula, and <code>js/gammaGreeks.js</code> only computes Greeks <em>from</em> a given volatility, never inverts one. No Newton-Raphson (or any other iterative root-finder) exists anywhere in <code>js/</code> today — the yield-curve and vol modules consume observed, quoted data directly. Nothing here is stale; this lesson is, and remains, purely conceptual groundwork for numerical solvers this codebase doesn't yet implement.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Geometrically, what does one Newton-Raphson step actually compute?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Where the tangent line at the current guess crosses zero</button>
+        <button class="sl-quiz-opt">The midpoint between two guesses that bracket the root</button>
+        <button class="sl-quiz-opt">The average of the current guess and the previous one</button>
+        <div class="sl-quiz-explain">That's the entire derivation: set the tangent line's equation to zero and solve for the crossing point — that crossing point is xₙ₊₁.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Why can Newton-Raphson fail badly when f′(xₙ) is close to zero?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The correction f(xₙ)/f′(xₙ) explodes, sending the next guess very far away</button>
+        <button class="sl-quiz-opt">Dividing by a small number always returns exactly zero</button>
+        <button class="sl-quiz-opt">A flat derivative has no effect on the method at all</button>
+        <div class="sl-quiz-explain">A near-flat tangent line has a zero-crossing that can sit enormously far from where you're standing — this is the "flat derivative" failure mode, the same one behind a deep out-of-the-money option's implied-vol solve going wrong (vega near zero).</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>On f(x) = (x − 3)², what happens with a learning rate just past α = 0.5?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The iterate flips to the opposite side of the minimum each step, oscillating while still shrinking toward it</button>
+        <button class="sl-quiz-opt">Convergence is instant, exactly as at α = 0.5</button>
+        <button class="sl-quiz-opt">The iterate stops moving entirely</button>
+        <div class="sl-quiz-explain">The update simplifies to xₙ₊₁ − 3 = (1 − 2α)(xₙ − 3). Just past α = 0.5, that factor turns slightly negative — each step overshoots to the other side, but since |1 − 2α| is still under 1, the error keeps shrinking in magnitude.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>An implied-vol solver reports 412% for a deep out-of-the-money option. What's the most likely cause?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Vega is tiny there, so dividing the price gap by it produced a huge, wild correction</button>
+        <button class="sl-quiz-opt">The market's real implied volatility genuinely is 412%</button>
+        <button class="sl-quiz-opt">The solver's learning rate was set too low</button>
+        <div class="sl-quiz-explain">Deep out-of-the-money options barely react to volatility — vega, the derivative Newton-Raphson divides by here, is close to zero. That's the flat-derivative failure mode applied directly to a real pricing formula.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Gradient descent converges — the final gradient is essentially zero. Does that guarantee the global minimum was found?</h4>
+        <button class="sl-quiz-opt" data-correct="true">No — it only guarantees a stationary point, which could be a local minimum instead</button>
+        <button class="sl-quiz-opt">Yes, a zero gradient always means the global minimum</button>
+        <button class="sl-quiz-opt">Only if the learning rate was exactly 0.5</button>
+        <div class="sl-quiz-explain">A zero gradient marks a stationary point — a local minimum, a local maximum, or a saddle. Whether a local minimum is automatically the global one depends on convexity, the subject of the next lesson in this category.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Some formulas don't invert algebraically — bond yield and implied volatility are the classic examples — so an iterative numerical search takes the place of a closed-form solution.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Newton-Raphson walks the tangent line to its zero: xₙ₊₁ = xₙ − f(xₙ)/f′(xₙ), converging quadratically (digits roughly double each step) once it's close to a root.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>That speed is fragile — a bad starting guess, a near-zero derivative, or a function with multiple roots can send it into a wild jump or an endless cycle instead of the answer.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Gradient descent solves a related but different problem — minimizing, not root-finding — by stepping a fixed distance α downhill along the negative gradient: xₙ₊₁ = xₙ − α∇f(xₙ).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The learning rate α is a genuine tradeoff: too small converges reliably but slowly; too large overshoots, oscillates, or diverges outright — there's no universally "safe" default.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Newton's method for optimization bridges both ideas by also using curvature (the Hessian) to pick the step automatically — faster per iteration, but too expensive to invert at the scale of a modern machine-learning model.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Read what an iterative solver is actually doing under the hood, and recognize when its output should be distrusted — didn't converge, oscillating, or landed on an implausible root — rather than trusting a returned number by default. Understand why "learning rate" is the single most-discussed hyperparameter in machine learning: it's the same tradeoff, at massive scale, derived here on a one-line quadratic.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Convex Optimization</h3>
+        <p>When does "the gradient is zero" actually mean "this is the best possible answer" — and when is it just a local trap?</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="convex-optimization-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="newton-raphson-gradient-descent.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Newton-Raphson square-root calculator: f(x) = x^2 - a, f'(x) = 2x.
+  (function(){
+    var aInput = document.getElementById('nr-sqrt-a');
+    if (!aInput) return;
+    var x0Input = document.getElementById('nr-sqrt-x0');
+    var x1Out = document.getElementById('nr-sqrt-x1');
+    var x2Out = document.getElementById('nr-sqrt-x2');
+    var trueOut = document.getElementById('nr-sqrt-true');
+    var noteOut = document.getElementById('nr-sqrt-note');
+    var resetBtn = document.getElementById('nr-sqrt-reset');
+    var DEFAULT_NOTE = 'Two iterations from a naive guess already agree with √10 to 4 decimal places. Try x₀ = 0 to see the guard: a zero starting point makes f′(x₀) = 0, and the correction is undefined — the calculator shows “—” instead of a crash.';
+    var DEFAULTS = { a: 10, x0: 3 };
+
+    function fmt(n){
+      if (!isFinite(n)) return '—';
+      return n.toFixed(5);
+    }
+
+    function step(x, a){
+      // One Newton-Raphson step on f(x) = x^2 - a; guards a zero/near-zero
+      // derivative (2x) rather than dividing by it.
+      if (Math.abs(x) < 1e-9) return null;
+      return x - (x * x - a) / (2 * x);
+    }
+
+    function recompute(){
+      var a = parseFloat(aInput.value);
+      var x0 = parseFloat(x0Input.value);
+
+      if (!isFinite(a) || !isFinite(x0)) {
+        x1Out.textContent = '—'; x2Out.textContent = '—'; trueOut.textContent = '—';
+        noteOut.textContent = '(enter numeric values for both a and x₀)';
+        return;
+      }
+      if (a < 0) {
+        x1Out.textContent = '—'; x2Out.textContent = '—'; trueOut.textContent = '—';
+        noteOut.textContent = '(a must be ≥ 0 — no real square root exists for a negative target)';
+        return;
+      }
+
+      var x1 = step(x0, a);
+      if (x1 === null) {
+        x1Out.textContent = '—'; x2Out.textContent = '—';
+        trueOut.textContent = fmt(Math.sqrt(a));
+        noteOut.textContent = "(f′(x₀) = 2x₀ = 0 when x₀ = 0 — the Newton step is undefined here; try a different starting guess)";
+        return;
+      }
+
+      var x2 = step(x1, a);
+      x1Out.textContent = fmt(x1);
+      trueOut.textContent = fmt(Math.sqrt(a));
+      if (x2 === null) {
+        x2Out.textContent = '—';
+        noteOut.textContent = "(x₁ landed at 0, so f′(x₁) = 0 — the second step is undefined; try a different starting guess)";
+        return;
+      }
+      x2Out.textContent = fmt(x2);
+      noteOut.textContent = DEFAULT_NOTE;
+    }
+
+    [aInput, x0Input].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      aInput.value = DEFAULTS.a; x0Input.value = DEFAULTS.x0;
+      recompute();
+    });
+    recompute();
+  })();
+
+  // Gradient descent learning-rate slider: f(x) = (x-3)^2, f'(x) = 2(x-3).
+  (function(){
+    var slider = document.getElementById('gd2-alpha-slider');
+    if (!slider) return;
+    var alphaVal = document.getElementById('gd2-alpha-val');
+    var path = document.getElementById('gd2-path');
+    var dotsGroup = document.getElementById('gd2-dots');
+    var readout = document.getElementById('gd2-readout');
+
+    var X_MIN = -3, X_MAX = 9, Y_MAX = 36;
+    var PX_X0 = 40, PX_X1 = 600;
+    var PX_Y0 = 260, PX_Y1 = 20;
+
+    function mapX(x){ return PX_X0 + (x - X_MIN) * (PX_X1 - PX_X0) / (X_MAX - X_MIN); }
+    function mapY(y){ return PX_Y0 + (y - 0) * (PX_Y1 - PX_Y0) / (Y_MAX - 0); }
+    function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
+    function f(x){ return (x - 3) * (x - 3); }
+
+    function update(){
+      var alpha = parseInt(slider.value, 10) / 100;
+      alphaVal.textContent = 'α = ' + alpha.toFixed(2);
+
+      var xs = [0];
+      var x = 0;
+      for (var i = 0; i < 6; i++){
+        x = x - alpha * 2 * (x - 3);
+        xs.push(x);
+      }
+
+      var pts = [];
+      var dotsHtml = '';
+      for (var j = 0; j < xs.length; j++){
+        var xc = clamp(xs[j], X_MIN, X_MAX);
+        var yc = f(xc);
+        var px = mapX(xc), py = mapY(yc);
+        pts.push(px.toFixed(1) + ',' + py.toFixed(1));
+        var color = j === 0 ? 'var(--blue)' : (j === xs.length - 1 ? 'var(--green)' : 'var(--amber)');
+        dotsHtml += '<circle cx="' + px.toFixed(1) + '" cy="' + py.toFixed(1) + '" r="4.5" style="fill:' + color + ';stroke:var(--bg);stroke-width:1.2"></circle>';
+      }
+      path.setAttribute('points', pts.join(' '));
+      dotsGroup.innerHTML = dotsHtml;
+
+      var xFinal = xs[xs.length - 1];
+      var fFinal = f(xFinal);
+      var factor = 1 - 2 * alpha;
+      var label;
+      if (Math.abs(alpha - 0.5) < 0.005) {
+        label = 'exact in 1 step — this α equals 1/f″(x), i.e. Newton’s method for this quadratic';
+      } else if (alpha < 0.5) {
+        label = 'converging monotonically';
+      } else if (alpha < 1) {
+        label = 'oscillating, but still converging (|1−2α| = ' + Math.abs(factor).toFixed(2) + ' < 1)';
+      } else {
+        label = 'diverging — steps grow every iteration (|1−2α| = ' + Math.abs(factor).toFixed(2) + ' ≥ 1)';
+      }
+      readout.textContent = 'x₆ ≈ ' + xFinal.toFixed(4) + ', f(x₆) ≈ ' + fFinal.toFixed(4) + ' — ' + label;
+    }
+
+    slider.addEventListener('input', update);
+    update();
+  })();
+})();
+</script>
+</body>
+</html>

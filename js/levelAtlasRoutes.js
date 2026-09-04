@@ -390,7 +390,7 @@ function startRunJob({ instruments }) {
 }
 
 // Exported for js/levelAtlasRoutes.test.mjs only — not part of the route API.
-export { boundPacked, getFastLive, liveCache, liveWarming, startRunJob, loadLocalVoteTrades, packToJSON, packFromJSON };
+export { boundPacked, getFastLive, liveCache, liveWarming, startRunJob, loadLocalVoteTrades, loadLocalP90VoteTrades, packToJSON, packFromJSON };
 
 /** Mount all /api/level-atlas/* routes. */
 export function mountLevelAtlasRoutes(app, express) {
@@ -776,6 +776,13 @@ export function mountLevelAtlasRoutes(app, express) {
           kept: capped?.kept?.length ?? 0,
           skipped: capped?.skippedCount ?? 0,
           ownWinRate: capped?.keptSummary?.winRate ?? null,
+          // The fixed roundtrip cost (%) baked into every trade's own
+          // pnlPct at build time (priceBarrierTrade: pnlPct = gross - cost)
+          // -- exposed so a client-side cost-sensitivity/capacity test can
+          // exactly re-net at a different multiplier (pnlPct - cost*(mult-1))
+          // without re-deriving costForPair/assetClassFor client-side (which
+          // would need forecastAnalyserStore.js's Node-only import chain).
+          cost: stored.cost,
         };
       }
       if (!Object.keys(perPairTradesRaw).length) return res.status(404).json({ ok: false, error: `no vote-backtest data for any of: ${pairs.join(',')}`, missing });

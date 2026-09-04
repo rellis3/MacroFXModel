@@ -83,6 +83,31 @@ def test_log_block_transition_once_per_state_change():
     assert len(msgs) == 2 and "resumed" in msgs[1]
 
 
+def test_log_block_transition_ignores_the_live_countdown():
+    # Found 2026-09-01: a single 60s cooldown was producing ~9 near-identical
+    # decision-log lines because block_reason()'s own message bakes a live
+    # countdown into the string ("0.9m remaining" -> "0.8m remaining" -> ...),
+    # so the naive `reason == prev` check in log_block_transition never saw
+    # two calls with the exact same text. Must dedupe on the KIND of block,
+    # not the exact string.
+    import logging
+    from pylego.risk_guard import log_block_transition
+    msgs = []
+    h = logging.Handler(); h.emit = lambda r: msgs.append(r.getMessage())
+    lg = logging.getLogger("rg_countdown_test"); lg.addHandler(h); lg.setLevel(logging.INFO)
+    st = {}
+    log_block_transition(lg, st, "eurusd", "[eurusd] Cooldown — 0.9m remaining")
+    log_block_transition(lg, st, "eurusd", "[eurusd] Cooldown — 0.8m remaining")
+    log_block_transition(lg, st, "eurusd", "[eurusd] Cooldown — 0.1m remaining")
+    assert len(msgs) == 1, f"countdown ticking should not re-trigger the block log, got {msgs}"
+    log_block_transition(lg, st, "eurusd", None)  # cleared -> one info line
+    assert len(msgs) == 2 and "resumed" in msgs[1]
+    # A genuinely different kind of block (not just a countdown tick) must
+    # still log — e.g. cooldown clearing straight into a daily-DD lockout.
+    log_block_transition(lg, st, "eurusd", "Daily DD 3.2% >= 3.0% -- locked 3h")
+    assert len(msgs) == 3 and "blocked" in msgs[2]
+
+
 def test_sync_cfg_reads_values():
     g = RiskGuard()
     g.sync_cfg({"ddlimit": 2.5, "monthlydd": 4.0, "lockout": 6, "cooldown": 120})

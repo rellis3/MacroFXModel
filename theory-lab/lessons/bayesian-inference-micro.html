@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bayesian Inference &amp; Updating — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Bayesian Inference — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer full derivations, a live calculator, and a 6-question self-test?<a href="bayesian-inference.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Lesson 2 · Foundations &amp; Epistemics</div>
+      <h1 class="sl-h1">Bayesian Inference: Evidence Becomes <em>Belief, Not Certainty</em></h1>
+      <p class="sl-lede">A rule for turning "here is what I believed" plus "here is what I just observed" into "here is what I should believe now." Every strategy in this repo eventually asks the same question in disguise — given what just happened, how much should I believe X? — and the honest answer is never just yes or no. It's a number between 0 and 1, and that number depends on two things people routinely conflate: how rare X was before the evidence showed up, and how strong the evidence actually is.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">A belief exists before you ever look outside</h2>
+      <p class="sl-sub">Bayesian inference starts with an uncomfortable admission: you already believed something, before any evidence showed up.</p>
+      <div class="sl-quote">Say you think there's a 20% chance of rain today — your <strong>prior</strong>, what you believed before checking anything. You glance outside and see dark clouds. Dark clouds are more common on rainy days than dry ones, so seeing them should raise your belief. But it shouldn't jump straight to 100% — clouds pass without rain constantly, and in most climates it still doesn't rain on most cloudy days. Bayesian inference is the arithmetic for exactly how much to move your belief — not all the way, not by gut feel, but by a precise amount.</div>
+      <p class="sl-p">Swap "rain" for "trend day," "this level holds," or "this classifier's BUY flag is real," and the shape of the question doesn't change. A prior is usually just a base rate — how often the thing is true in general — and skipping it quietly underlies most of what goes wrong later in this series: p-hacking, an overfit classifier, a backtest's win rate taken at face value. All three are, underneath, a missing prior.</p>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">The one-line rule</div>
+        <p>A piece of evidence is not the same thing as the probability it implies. How much it should move your belief depends on how rare the thing was to begin with — that's the entire lesson; everything below is just the arithmetic for it.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Bayes' theorem isn't assumed — it falls out of one definition</h2>
+      <p class="sl-sub">Step through the algebra. Every line below uses nothing but the definition of conditional probability.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="deriv-tabs">
+          <button class="sl-tab active" data-panel="deriv-1">Definition</button>
+          <button class="sl-tab" data-panel="deriv-2">Multiply by P(E)</button>
+          <button class="sl-tab" data-panel="deriv-3">Same definition, flipped</button>
+          <button class="sl-tab" data-panel="deriv-4">Bayes' theorem</button>
+        </div>
+        <div class="sl-panel active" id="deriv-1">
+          <div class="sl-row"><div class="sl-box">P(H&#124;E)</div><div class="sl-arrow">=</div><div class="sl-box">P(H∩E) / P(E)</div></div>
+          <div class="sl-verdict">This <strong>is</strong> conditional probability — nothing assumed yet. Out of every time E happens, what fraction of those times does H also happen?</div>
+        </div>
+        <div class="sl-panel" id="deriv-2">
+          <div class="sl-row"><div class="sl-box amber">P(H∩E)</div><div class="sl-arrow">=</div><div class="sl-box amber">P(H&#124;E) · P(E)</div></div>
+          <div class="sl-verdict">Multiply both sides of the definition by P(E) — the "multiplication rule." Still nothing but algebra.</div>
+        </div>
+        <div class="sl-panel" id="deriv-3">
+          <div class="sl-row"><div class="sl-box amber">P(H∩E)</div><div class="sl-arrow">=</div><div class="sl-box amber">P(E&#124;H) · P(H)</div></div>
+          <div class="sl-verdict">"H and E" is the same event as "E and H" — apply the exact same definition again, the other way around.</div>
+        </div>
+        <div class="sl-panel" id="deriv-4">
+          <div class="sl-row"><div class="sl-box green">P(E&#124;H)·P(H)</div><div class="sl-arrow">=</div><div class="sl-box green">P(H&#124;E)·P(E)</div></div>
+          <div class="sl-row" style="margin-top:10px"><div class="sl-box green">P(H&#124;E)</div><div class="sl-arrow">=</div><div class="sl-box green">P(E&#124;H)·P(H) / P(E)</div></div>
+          <div class="sl-verdict">Both expressions equal the same P(H∩E), so they equal each other. Divide by P(E) and Bayes' theorem falls out — <strong>derived, not assumed.</strong></div>
+        </div>
+        <div class="sl-note">Every result later in this lesson is just this equation, run with real numbers.</div>
+      </div>
+      <p class="sl-p">This matters for the same reason rearranging a formula mattered in Lesson 1: knowing the theorem is a rearrangement of something more basic means it can't secretly be "wrong for this case" the way an unfamiliar formula might feel — it's conditional probability, twice, and a division.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Four terms, four jobs</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">P(H)</div><div><h4>Prior</h4><p>What you believed before seeing this evidence — usually the base rate: how often is H true in general?</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">P(E&#124;H)</div><div><h4>Likelihood</h4><p>If H were true, how probable is this exact evidence? Not "how probable is H" — a common, costly mix-up.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">P(E)</div><div><h4>Evidence</h4><p>The overall probability of seeing E at all, averaged over every way H could be true or false.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">P(H&#124;E)</div><div><h4>Posterior</h4><p>Your updated belief in H after seeing E. This is the answer everything above was built to reach.</p></div></div>
+      </div>
+      <div class="sl-quote">Every term gets computed from a different source in practice — P(H) is usually a historical base rate, P(E&#124;H) comes from a test's validation report, and P(E) has to be <em>built</em>, not read off a sheet. Which is which matters, because mixing up P(E&#124;H) with P(H&#124;E) is the single most common way this goes wrong — the entire next few slides are about that one mix-up.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">The term nobody hands you: P(E)</h2>
+      <p class="sl-sub">If H is binary, P(E) has to be built from every way E could happen — the law of total probability.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The law of total probability</div>
+        <div class="sl-row">
+          <div class="sl-box">P(E&#124;H)·P(H)</div><div class="sl-arrow">+</div><div class="sl-box">P(E&#124;¬H)·P(¬H)</div><div class="sl-arrow">=</div><div class="sl-box amber">P(E)</div>
+        </div>
+        <div class="sl-verdict">The total chance of seeing the evidence is the chance of seeing it when H is true, weighted by how often H is true, <strong>plus</strong> the chance of seeing it when H is false, weighted by how often H is false.</div>
+      </div>
+      <p class="sl-p">Most intuitive reasoning anchors on P(E&#124;H) — how good the test is — and quietly forgets P(E&#124;¬H): how often you'd see the identical evidence for the wrong reason entirely. That single omission is the whole mechanism behind the base-rate fallacy, two slides from here.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>P(¬H) = 1 − P(H), always — if 20% of days are trend days, 80% aren't. That's not an extra assumption, it's what "the complement" means. It's also exactly the number people forget to weight the false-positive rate by.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">"80% accurate" is a claim about the test, not about today</h2>
+      <p class="sl-sub">A regime classifier flags "trend day." Validation says it's 80% accurate. Only 20% of days actually are trend days. It just fired. How confident should you be?</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="wk-tabs">
+          <button class="sl-tab active" data-panel="wk-1">Setup</button>
+          <button class="sl-tab" data-panel="wk-2">Step 1 — P(E)</button>
+          <button class="sl-tab" data-panel="wk-3">Step 2 — posterior</button>
+        </div>
+        <div class="sl-panel active" id="wk-1">
+          <p class="sl-p" style="margin:0 0 10px">H = "today is a trend day" → P(H) = 0.20, P(¬H) = 0.80.<br>E = "the classifier fires the flag."<br>P(E&#124;H) = 0.80 — true positive rate.<br>P(E&#124;¬H) = 0.20 — false positive rate (accuracy is symmetric here).</p>
+          <div class="sl-verdict">The intuitive, wrong answer is "80%" — that's the number that got quoted. The correct answer needs the prior too.</div>
+        </div>
+        <div class="sl-panel" id="wk-2">
+          <div class="sl-row"><div class="sl-box">0.80×0.20 = 0.16</div><div class="sl-arrow">+</div><div class="sl-box">0.20×0.80 = 0.16</div><div class="sl-arrow">=</div><div class="sl-box amber">P(E) = 0.32</div></div>
+          <div class="sl-verdict">True positives (real trend days correctly flagged) and false positives (reversion days flagged anyway) come out <strong>exactly equal</strong> — 0.16 each.</div>
+        </div>
+        <div class="sl-panel" id="wk-3">
+          <div class="sl-row"><div class="sl-box">0.16</div><div class="sl-arrow">÷</div><div class="sl-box">0.32</div><div class="sl-arrow">=</div><div class="sl-box green">50%</div></div>
+          <div class="sl-verdict"><strong>P(trend day &#124; flagged) = 50%</strong> — a coin flip, not 80%. Half of every flagged day is a false alarm.</div>
+        </div>
+      </div>
+      <p class="sl-p">Nothing about the classifier is broken — 80% accuracy is real. What broke is the assumption that "accurate" and "trustworthy on any single flag" mean the same thing. They don't, once the thing being flagged is rare.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">The same arithmetic, as things you can count</h2>
+      <p class="sl-sub">Percentages hide this. Counting out of 1,000 days doesn't — Gigerenzer's "natural frequencies" trick.</p>
+      <div class="sl-svgwrap">
+        <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Tree diagram splitting 1,000 days into 200 trend days and 800 non-trend days, then each into flagged and not-flagged counts, showing 160 true-positive flags and 160 false-positive flags out of 320 total flags">
+          <rect x="250" y="8" width="140" height="40" rx="2" style="fill:var(--panel2);stroke:var(--border)" />
+          <text x="320" y="28" fill="var(--text)" font-size="13" font-weight="700" text-anchor="middle" dominant-baseline="middle">1,000 days</text>
+
+          <line x1="320" y1="48" x2="160" y2="78" style="stroke:var(--border)" />
+          <line x1="320" y1="48" x2="480" y2="78" style="stroke:var(--border)" />
+
+          <rect x="70" y="78" width="180" height="40" rx="2" style="fill:var(--panel2);stroke:var(--border)" />
+          <text x="160" y="98" fill="var(--text)" font-size="13" font-weight="700" text-anchor="middle" dominant-baseline="middle">200 trend days</text>
+          <rect x="390" y="78" width="180" height="40" rx="2" style="fill:var(--panel2);stroke:var(--border)" />
+          <text x="480" y="98" fill="var(--text)" font-size="13" font-weight="700" text-anchor="middle" dominant-baseline="middle">800 non-trend days</text>
+
+          <line x1="160" y1="118" x2="80" y2="168" style="stroke:var(--border)" />
+          <line x1="160" y1="118" x2="240" y2="168" style="stroke:var(--border)" />
+          <line x1="480" y1="118" x2="400" y2="168" style="stroke:var(--border)" />
+          <line x1="480" y1="118" x2="560" y2="168" style="stroke:var(--border)" />
+
+          <rect x="5" y="168" width="150" height="46" rx="2" style="fill:var(--blue-bg);stroke:var(--blue);stroke-width:2" />
+          <text x="80" y="186" fill="var(--text)" font-size="13" font-weight="700" text-anchor="middle">160 flagged</text>
+          <text x="80" y="202" fill="var(--text3)" font-size="10.5" text-anchor="middle">(true positive)</text>
+
+          <rect x="165" y="168" width="150" height="46" rx="2" style="fill:var(--panel2);stroke:var(--border)" />
+          <text x="240" y="186" fill="var(--text)" font-size="13" font-weight="700" text-anchor="middle">40 not flagged</text>
+          <text x="240" y="202" fill="var(--text3)" font-size="10.5" text-anchor="middle">(missed)</text>
+
+          <rect x="325" y="168" width="150" height="46" rx="2" style="fill:var(--blue-bg);stroke:var(--blue);stroke-width:2" />
+          <text x="400" y="186" fill="var(--text)" font-size="13" font-weight="700" text-anchor="middle">160 flagged</text>
+          <text x="400" y="202" fill="var(--text3)" font-size="10.5" text-anchor="middle">(false positive)</text>
+
+          <rect x="485" y="168" width="150" height="46" rx="2" style="fill:var(--panel2);stroke:var(--border)" />
+          <text x="560" y="186" fill="var(--text)" font-size="13" font-weight="700" text-anchor="middle">640 not flagged</text>
+          <text x="560" y="202" fill="var(--text3)" font-size="10.5" text-anchor="middle">(correct)</text>
+
+          <line x1="80" y1="214" x2="320" y2="250" style="stroke:var(--blue);stroke-dasharray:2,2" />
+          <line x1="400" y1="214" x2="320" y2="250" style="stroke:var(--blue);stroke-dasharray:2,2" />
+
+          <rect x="105" y="254" width="430" height="44" rx="2" style="fill:var(--blue-bg);stroke:var(--blue)" />
+          <text x="320" y="271" fill="var(--text)" font-size="12.5" font-weight="700" text-anchor="middle">160 of 320 flagged days are real trend days</text>
+          <text x="320" y="288" fill="var(--blue)" font-size="12.5" font-weight="700" text-anchor="middle">= 50%</text>
+        </svg>
+      </div>
+      <p class="sl-p">Out of 1,000 days, 200 really are trend days and 800 aren't. The 80%-accurate classifier correctly flags 160 of the real 200 — but it also incorrectly flags 160 of the 800 reversion days. Those two highlighted <strong>flagged</strong> boxes are the same size. Of the 320 total days that get flagged, only 160 — half — are the real thing.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Watch the posterior swing — drag the base rate</h2>
+      <p class="sl-sub">Same classifier throughout. Only the base rate — how rare the flagged thing actually is — changes. Watch what that alone does to your confidence in a single flagged day.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart comparing the prior probability of a trend day to the posterior probability after the classifier flags trend-day, controlled by two sliders">
+            <line x1="60" y1="20" x2="580" y2="20" style="stroke:var(--border);stroke-dasharray:2,2" />
+            <line x1="60" y1="65" x2="580" y2="65" style="stroke:var(--border);stroke-dasharray:2,2" />
+            <line x1="60" y1="110" x2="580" y2="110" style="stroke:var(--border);stroke-dasharray:2,2" />
+            <line x1="60" y1="155" x2="580" y2="155" style="stroke:var(--border);stroke-dasharray:2,2" />
+            <line x1="60" y1="200" x2="580" y2="200" style="stroke:var(--border);stroke-dasharray:2,2" />
+            <text x="50" y="24" fill="var(--text3)" font-size="10" text-anchor="end">100%</text>
+            <text x="50" y="69" fill="var(--text3)" font-size="10" text-anchor="end">75%</text>
+            <text x="50" y="114" fill="var(--text3)" font-size="10" text-anchor="end">50%</text>
+            <text x="50" y="159" fill="var(--text3)" font-size="10" text-anchor="end">25%</text>
+            <text x="50" y="204" fill="var(--text3)" font-size="10" text-anchor="end">0%</text>
+            <rect id="bay-bar-prior" x="160" y="164" width="120" height="36" style="fill:var(--purple)" rx="2" />
+            <text id="bay-bar-prior-label" x="220" y="150" fill="var(--text)" font-size="16" font-weight="700" text-anchor="middle">20%</text>
+            <text x="220" y="222" fill="var(--text3)" font-size="12" text-anchor="middle">Prior — base rate</text>
+            <rect id="bay-bar-post" x="360" y="110" width="120" height="90" style="fill:var(--blue)" rx="2" />
+            <text id="bay-bar-post-label" x="420" y="96" fill="var(--text)" font-size="16" font-weight="700" text-anchor="middle">50%</text>
+            <text x="420" y="222" fill="var(--text3)" font-size="12" text-anchor="middle">Posterior — flagged</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Base rate P(trend day)</span><span class="sl-live" id="bay-prior-val">20%</span></div>
+        <input type="range" class="sl-slider" id="bay-prior-slider" min="5" max="50" step="1" value="20">
+        <div class="sl-sliderhead" style="margin-top:12px"><span>Classifier accuracy</span><span class="sl-live" id="bay-acc-val">80%</span></div>
+        <input type="range" class="sl-slider" id="bay-acc-slider" min="50" max="99" step="1" value="80">
+        <div class="sl-note">Drag the base rate down toward 5% and the posterior collapses well below 50%, even though accuracy never moved. Drag it up past 50% and the posterior starts to <em>exceed</em> the accuracy figure. The classifier didn't change — your confidence in any one flag should, because it was never really about the classifier alone.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Run the real formula yourself</h2>
+      <p class="sl-sub">Same equation as Section 2, editable. Starts on the worked example's exact numbers.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — Bayes' theorem, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Prior P(H) %</label><input type="number" class="sl-input" id="bc-prior" value="20" step="1" min="0" max="100"></div>
+          <div class="sl-calc-field"><label>Sensitivity P(E&#124;H) %</label><input type="number" class="sl-input" id="bc-tpr" value="80" step="1" min="0" max="100"></div>
+          <div class="sl-calc-field"><label>False positive P(E&#124;¬H) %</label><input type="number" class="sl-input" id="bc-fpr" value="20" step="1" min="0" max="100"></div>
+          <div class="sl-calc-op">→</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Posterior P(H&#124;E)</div>
+            <div class="sl-calc-result-val" id="bc-posterior">50.0%</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Total probability: P(E) = <b id="bc-pe">0.3200</b></div>
+          <div>Bayes factor: K = P(E&#124;H) / P(E&#124;¬H) = <b id="bc-k">4.00</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="bc-reset">Reset to worked-example numbers</button>
+        <div class="sl-note">Every field is a probability, so it's bounded to 0–100%. Push the false-positive rate to 0 with a nonzero prior and P(E) can hit 0 too — the posterior is undefined when the evidence can never occur at all.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Today's posterior is tomorrow's prior</h2>
+      <p class="sl-sub">Bayes' theorem doesn't care whether P(H) came from a textbook base rate or from yesterday's posterior.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Chaining evidence</div>
+        <div class="sl-row"><div class="sl-box">P(H) = 20%</div><div class="sl-arrow">evidence E₁ →</div><div class="sl-box green">P(H&#124;E₁) = 50%</div></div>
+        <div class="sl-row" style="margin-top:10px"><div class="sl-box green">= new prior</div><div class="sl-arrow">evidence E₂ →</div><div class="sl-box purple">P(H&#124;E₁,E₂) = ?</div></div>
+        <div class="sl-verdict">That's the entire trick of doing this repeatedly: multiply the old belief by how much more, or less, likely the new data makes it. Nothing is thrown out and re-derived from zero.</div>
+      </div>
+      <p class="sl-p">This is formally what "the market updates on news" or "a classifier updates on each new bar" means. It underlies Kalman filters — rolling estimates of a drifting parameter like beta or volatility — and it's the justification for the rule "never trust a signal in isolation": weight it by how rare or common the regime it claims to detect actually is, then let the next bar update that weight again rather than resetting to a blank slate.</p>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>The simplified chaining above assumes each new piece of evidence is independent of the others, given H. Two correlated signals — say two "levels" that are both really just re-detecting the same daily pivot — get double-counted as if they were separate confirmations, inflating the posterior further than the evidence actually earns.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">"My strategy has an 80% win rate" is the same fallacy, different costume</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">The naive read</span>
+          <p>An 80% accurate classifier or an 80% win-rate strategy sounds like "4 times out of 5, trust it." That's quietly reporting P(E&#124;H) — how the system behaves when the underlying claim is true — as if it were P(H&#124;E) — how likely the claim is true given the system fired. Old enough to have a name: the <strong>prosecutor's fallacy</strong>.</p>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">The Bayesian read</span>
+          <p>How much a flagged day, or a winning-looking setup, should move your belief depends on the base rate of that setup actually working — plus the false-positive rate you never asked about. A Bayes factor of 4 (0.80/0.20 here) is real, "substantial" evidence on Jeffreys' scale — it just isn't the same claim as an 80% posterior.</p>
+        </div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🩺</div><div><h4>Medical &amp; diagnostic testing</h4><p>A rare condition plus an imperfect test almost always means a positive result is less certain than it feels — the textbook version of this lesson's worked example.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📧</div><div><h4>Spam filters &amp; fraud detection</h4><p>Built as literal Bayesian classifiers (naive Bayes): each feature is evidence that updates the posterior multiplicatively, one at a time.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧪</div><div><h4>A/B testing</h4><p>Reports "87% probability variant B is better" instead of a p-value, because that's the statement people actually want and a p-value doesn't say it.</p></div></div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>A large Bayes factor applied to a very unlikely prior can still land at a modest posterior — "30 times more likely" is not the same claim as "30 times more probable to be true." And a Bayesian confluence score is a hypothesis this project hasn't built or validated — it would have to beat the incumbent weighted score out-of-sample before replacing anything live, not just sound more principled.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Quick check</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>A test is "80% accurate" at detecting a rare condition. What does that number actually describe?</h4>
+        <button class="sl-quiz-opt" data-correct="true">P(E&#124;H) — how often the test fires correctly when the condition is real</button>
+        <button class="sl-quiz-opt">P(H&#124;E) — how likely the condition is real, given a positive result</button>
+        <button class="sl-quiz-opt">P(H) — how common the condition is in the population</button>
+        <div class="sl-quiz-explain">Accuracy figures are almost always the likelihood, P(E&#124;H) — not the posterior P(H&#124;E) you actually want. Confusing the two is the entire mechanism behind the base-rate fallacy, and it has a name: the prosecutor's fallacy.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>In the trend-day example (20% prior, 80%-accurate classifier), why did the posterior land at 50% instead of 80%?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The false-positive pool from the large reversion-day population ended up exactly as big as the true-positive pool from the small trend-day population</button>
+        <button class="sl-quiz-opt">The classifier's accuracy was actually much lower than reported</button>
+        <button class="sl-quiz-opt">Trend days and reversion days are equally common</button>
+        <div class="sl-quiz-explain">0.80×0.20 (true positives) = 0.20×0.80 (false positives) = 0.16 each. The flag alone can't tell you which pool a given alarm came from, so it splits 50/50.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>What does "sequential updating" mean in practice?</h4>
+        <button class="sl-quiz-opt">Throwing out the old belief and recomputing a fresh posterior from only the newest evidence</button>
+        <button class="sl-quiz-opt" data-correct="true">Using yesterday's posterior as today's prior, then multiplying by the new evidence's likelihood ratio</button>
+        <button class="sl-quiz-opt">Averaging every prior you've ever used</button>
+        <div class="sl-quiz-explain">Bayes' theorem doesn't care where P(H) came from — a textbook base rate or yesterday's posterior work identically. The old belief is preserved and adjusted, never discarded and re-derived from a blank slate.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>A Bayes factor of 30 means...</h4>
+        <button class="sl-quiz-opt">The posterior probability of H₁ is 30/31</button>
+        <button class="sl-quiz-opt" data-correct="true">The evidence is 30 times more probable under H₁ than under H₂ — strong, but the final posterior still needs the prior odds</button>
+        <button class="sl-quiz-opt">H₁ is 30 times more likely to be true than H₂, full stop</button>
+        <div class="sl-quiz-explain">A Bayes factor isolates what the evidence itself is worth, with the prior completely factored out. It is not a posterior probability — a large factor applied to a very unlikely prior can still land at a modest posterior.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>What's the core disagreement between Bayesian and frequentist statistics?</h4>
+        <button class="sl-quiz-opt">Bayesians use bigger sample sizes</button>
+        <button class="sl-quiz-opt" data-correct="true">They disagree on what "probability" means — a long-run frequency over repeated trials, versus a degree of belief about one specific case</button>
+        <button class="sl-quiz-opt">Frequentists don't use probability math at all</button>
+        <div class="sl-quiz-explain">A frequentist p-value answers "how surprising is this data if the null were true?" A Bayesian posterior answers "what should I now believe about the hypothesis?" — genuinely different questions, not two routes to the same number.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Bayes' theorem is derived, not assumed — it falls straight out of the definition of conditional probability, applied two ways to the same quantity.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>A piece of evidence is not the probability it implies — how much it should move your belief depends on the prior, the base rate of the thing before you saw anything.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>The base-rate fallacy is the single most common failure — an "80% accurate" test on a rare (20%) event gives only a 50% posterior, not 80%, because false alarms from the much larger opposite population catch up to true alarms.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Sequential updating is just reusing yesterday's posterior as today's prior — multiply by the new likelihood ratio; nothing gets re-derived from scratch.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>A Bayes factor isolates what the evidence itself is worth, separate from the prior — 1–3 barely worth mentioning, 3–10 "substantial," 10–30 "strong," 100+ "decisive" (Jeffreys' scale).</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Read any "X% accurate" claim — a classifier, a strategy's win rate, a screening test — and ask for the base rate before believing the headline number. Recognise when a flag has moved your belief versus resolved it. Chain evidence correctly across multiple bars or signals without silently double-counting correlated ones.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Multiple Testing &amp; the Look-Elsewhere Effect</h3>
+        <p>Why testing enough strategies eventually finds one that looks great by pure chance — and what that does to every backtest in this repo.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="multiple-testing-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="bayesian-inference.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Section 7 — base-rate slider demo: two sliders (prior, accuracy) redraw
+  // a live bar chart of P(trend day) vs. P(trend day | flagged).
+  (function(){
+    var priorSlider = document.getElementById('bay-prior-slider');
+    if (!priorSlider) return;
+    var accSlider = document.getElementById('bay-acc-slider');
+    var priorVal = document.getElementById('bay-prior-val');
+    var accVal = document.getElementById('bay-acc-val');
+    var priorBar = document.getElementById('bay-bar-prior');
+    var priorLabel = document.getElementById('bay-bar-prior-label');
+    var postBar = document.getElementById('bay-bar-post');
+    var postLabel = document.getElementById('bay-bar-post-label');
+
+    var CHART_TOP = 20, CHART_BOTTOM = 200, CHART_RANGE = CHART_BOTTOM - CHART_TOP, LABEL_OFFSET = 14;
+
+    function update(){
+      var prior = parseFloat(priorSlider.value) / 100;
+      var accuracy = parseFloat(accSlider.value) / 100;
+      // Symmetric sensitivity/specificity: P(flag|trend) = accuracy, P(flag|no trend) = 1-accuracy
+      var posterior = (accuracy * prior) / (accuracy * prior + (1 - accuracy) * (1 - prior));
+
+      priorVal.textContent = Math.round(prior * 100) + '%';
+      accVal.textContent = Math.round(accuracy * 100) + '%';
+
+      var priorH = prior * CHART_RANGE, priorY = CHART_BOTTOM - priorH;
+      priorBar.setAttribute('y', priorY);
+      priorBar.setAttribute('height', priorH);
+      priorLabel.setAttribute('y', priorY - LABEL_OFFSET);
+      priorLabel.textContent = Math.round(prior * 100) + '%';
+
+      var postH = posterior * CHART_RANGE, postY = CHART_BOTTOM - postH;
+      postBar.setAttribute('y', postY);
+      postBar.setAttribute('height', postH);
+      postLabel.setAttribute('y', postY - LABEL_OFFSET);
+      postLabel.textContent = Math.round(posterior * 100) + '%';
+    }
+
+    priorSlider.addEventListener('input', update);
+    accSlider.addEventListener('input', update);
+    update();
+  })();
+
+  // Section 8 — live Bayes' theorem calculator: prior, sensitivity, false
+  // positive rate in, P(E) / Bayes factor / posterior out. Guards against
+  // out-of-range probabilities and division by zero when P(E) = 0.
+  (function(){
+    var prior = document.getElementById('bc-prior');
+    if (!prior) return;
+    var tpr = document.getElementById('bc-tpr'), fpr = document.getElementById('bc-fpr');
+    var peOut = document.getElementById('bc-pe'), kOut = document.getElementById('bc-k'), postOut = document.getElementById('bc-posterior');
+    var resetBtn = document.getElementById('bc-reset');
+    var DEFAULTS = { prior: 20, tpr: 80, fpr: 20 };
+
+    function recompute(){
+      var H = parseFloat(prior.value) / 100;
+      var EH = parseFloat(tpr.value) / 100;
+      var EnH = parseFloat(fpr.value) / 100;
+
+      if (!isFinite(H) || !isFinite(EH) || !isFinite(EnH) || H < 0 || H > 1 || EH < 0 || EH > 1 || EnH < 0 || EnH > 1) {
+        peOut.textContent = '—';
+        kOut.textContent = '—';
+        postOut.textContent = 'enter 0–100';
+        return;
+      }
+
+      var PE = EH * H + EnH * (1 - H);
+      peOut.textContent = PE.toFixed(4);
+      kOut.textContent = EnH === 0 ? (EH === 0 ? '—' : '∞') : (EH / EnH).toFixed(2);
+
+      if (PE === 0) {
+        postOut.textContent = 'undefined';
+        return;
+      }
+      var posterior = (EH * H) / PE;
+      postOut.textContent = (posterior * 100).toFixed(1) + '%';
+    }
+
+    [prior, tpr, fpr].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      prior.value = DEFAULTS.prior; tpr.value = DEFAULTS.tpr; fpr.value = DEFAULTS.fpr;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

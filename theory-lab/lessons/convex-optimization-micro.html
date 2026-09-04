@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Convex Optimization — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Convex Optimization — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivations, the KKT worked example, and a 5-question self-test?<a href="convex-optimization.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Numerical Methods 2 · Numerical Methods</div>
+      <h1 class="sl-h1">Convex Optimization, <em>Or: How to Know You Found the Best Answer</em></h1>
+      <p class="sl-lede">Gradient descent and Newton's method are both very good at finding a point where the slope goes flat — but a flat slope only tells you the search has stopped, not that it stopped somewhere good. Convexity is the one shape-property of a problem that closes that gap completely: on a convex problem, the point where the search stops is provably the best point there is, anywhere. This is why Markowitz portfolio construction is reliably solvable, and exactly what breaks the moment a realistic trading rule gets added.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">A bowl has one bottom; an egg carton has many</h2>
+      <p class="sl-sub">"Convex" is a shape claim, not a calculus trick — and it's checkable just by looking.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🥣</div><div><h4>Bowl-shaped, informally</h4><p>Pick any two points on the curve and draw a straight line ("chord") between them. A convex function's actual curve never pokes up above that chord anywhere in between — it always sits at or below it.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📐</div><div><h4>Bowl-shaped, formally</h4><p>f(θx + (1−θ)y) ≤ θf(x) + (1−θ)f(y) for every θ ∈ [0,1]. The left side is the curve's real value between x and y; the right side is the chord's value at that same point.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🥚</div><div><h4>The alternative: an egg carton</h4><p>A non-convex function can have several separate dips — some local minima, only one of them the true global minimum. Nothing about a flat slope tells you which kind of dip you're standing in.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">△</div><div><h4>The set of allowed answers matters too</h4><p>A convex <em>set</em> is one where the straight line between any two allowed points stays entirely inside the set. A convex function minimized over a convex set is the full definition of a convex optimization problem — both halves are required.</p></div></div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>Convexity of the objective alone isn't enough. A perfectly convex function minimized over a non-convex feasible set — exactly what a "hold at most 10 names" rule produces, covered later in this deck — loses the guarantee entirely. Both the function's shape and the shape of the allowed region have to be convex.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Drop a ball in each shape and watch where it stops</h2>
+      <p class="sl-sub">Same idea, two shapes. Where a marble starts only matters in one of them.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="shape-tabs">
+          <button class="sl-tab active" data-panel="shape-1">Convex — one bowl</button>
+          <button class="sl-tab" data-panel="shape-2">Non-convex — two dips</button>
+        </div>
+        <div class="sl-panel active" id="shape-1">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A single bowl-shaped curve with two balls starting at different points both rolling to the same lowest point">
+            <path d="M50,180 Q320,30 590,180" style="fill:none;stroke:var(--blue);stroke-width:3"/>
+            <path d="M185,124 Q250,110 320,105" style="fill:none;stroke:var(--text3);stroke-width:1.5;stroke-dasharray:4,4"/>
+            <path d="M455,124 Q390,110 320,105" style="fill:none;stroke:var(--text3);stroke-width:1.5;stroke-dasharray:4,4"/>
+            <circle cx="185" cy="124" r="7" style="fill:var(--purple)"/>
+            <circle cx="455" cy="124" r="7" style="fill:var(--purple)"/>
+            <circle cx="320" cy="105" r="8" style="fill:var(--green)"/>
+            <text x="185" y="108" text-anchor="middle" style="fill:var(--text2);font-size:11px">Start A</text>
+            <text x="455" y="108" text-anchor="middle" style="fill:var(--text2);font-size:11px">Start B</text>
+            <text x="320" y="200" text-anchor="middle" style="fill:var(--green);font-size:12px;font-weight:700">same resting point, either way</text>
+          </svg></div>
+          <div class="sl-verdict">Wherever the ball starts, it rolls to the exact same bottom. There is only one place it <em>can</em> end up — so "the ball stopped rolling" and "the ball found the lowest point there is" mean the same thing.</div>
+        </div>
+        <div class="sl-panel" id="shape-2">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A wavy curve with a shallow local minimum and a deeper global minimum, with two balls starting at different points rolling into different dips">
+            <path d="M37,173 Q148,16 246,126 T468,63 Q542,110 603,181" style="fill:none;stroke:var(--red);stroke-width:3"/>
+            <path d="M145,90 L246,126" style="fill:none;stroke:var(--text3);stroke-width:1.5;stroke-dasharray:4,4"/>
+            <path d="M550,128 L468,63" style="fill:none;stroke:var(--text3);stroke-width:1.5;stroke-dasharray:4,4"/>
+            <circle cx="145" cy="90" r="7" style="fill:var(--purple)"/>
+            <circle cx="550" cy="128" r="7" style="fill:var(--purple)"/>
+            <circle cx="246" cy="126" r="7" style="fill:var(--amber)"/>
+            <circle cx="468" cy="63" r="7" style="fill:var(--green)"/>
+            <text x="145" y="75" text-anchor="middle" style="fill:var(--text2);font-size:11px">Start A</text>
+            <text x="550" y="150" text-anchor="middle" style="fill:var(--text2);font-size:11px">Start B</text>
+            <text x="246" y="150" text-anchor="middle" style="fill:var(--amber);font-size:11px">local — not global</text>
+            <text x="468" y="45" text-anchor="middle" style="fill:var(--green);font-size:11px">true global minimum</text>
+          </svg></div>
+          <div class="sl-verdict">Start A rolls into the shallow dip and stops — a flat slope, every appearance of success — and never discovers the deeper dip sitting just past the hump. Which dip you land in depends entirely on where you started.</div>
+        </div>
+      </div>
+      <p class="sl-p">This is the entire practical stakes of convexity in one picture. Gradient descent and Newton's method can only feel the <em>local</em> slope under wherever they currently stand — exactly like a marble that can't see over the next hill. In the bowl, that's all the information they need. In the egg carton, it isn't nearly enough.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Checking convexity without drawing every chord</h2>
+      <p class="sl-sub">Testing the chord inequality for every pair of points would take forever. Curvature gives a shortcut.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">′′</div><div><h4>One dimension: f''(x) ≥ 0</h4><p>The function is convex exactly when its curvature never bends downward anywhere — always curving upward like a genuine bowl, or momentarily flat, never the wrong way.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">H</div><div><h4>Many dimensions: the Hessian</h4><p>Stack every second partial derivative into a matrix H. It's the many-variable generalization of f''(x) — curvature in every direction, at once.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">PSD</div><div><h4>vᵀHv ≥ 0, every direction v</h4><p>"Positive semi-definite" (PSD) means the curvature is never negative no matter which direction you look. PSD everywhere ⇔ convex — the operational test used throughout this lesson.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚡</div><div><h4>Sylvester's shortcut</h4><p>For a small matrix by hand: it's PSD if every leading principal minor (the 1×1, then 2×2, …) is non-negative. The live calculator later in this deck runs exactly this check.</p></div></div>
+      </div>
+      <div class="sl-quote">This is not a coincidence waiting to happen later: a Hessian and a covariance matrix are both symmetric matrices being asked the exact same question — "is there any direction in which this matrix produces a negative number?" That question is about to reappear wearing Markowitz's clothing.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Watch convexity actually break</h2>
+      <p class="sl-sub">Drag the slider to add a wiggle term to a plain bowl. Watch new local minima appear — and the guarantee disappear with them.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A curve that starts as a smooth bowl and grows wiggles as a slider increases, with markers on every local minimum detected">
+            <line x1="20" y1="230" x2="620" y2="230" style="stroke:var(--border2);stroke-width:1"/>
+            <path id="wiggle-path" style="fill:none;stroke:var(--blue);stroke-width:2.5" d=""/>
+            <g id="wiggle-minima"></g>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Wiggle amplitude A — f(x) = 0.06x² + A·sin(1.3x)</span><span class="sl-live" id="wiggle-aval">A = 0.00</span></div>
+        <input type="range" class="sl-slider" id="wiggle-slider" min="0" max="30" step="1" value="0">
+        <div class="sl-verdict" id="wiggle-verdict">A = 0: a plain bowl. Exactly 1 local minimum — automatically the global minimum.</div>
+      </div>
+      <p class="sl-p">At A = 0 this is a pure quadratic bowl: convex, one minimum, no ambiguity. As A grows, the sine term adds curvature that periodically bends the wrong way — the Hessian test from the previous slide starts failing at those points — and new local minima peel off from the single bottom. Once there's more than one, "gradient descent stopped here" no longer implies "this is the best answer anywhere."</p>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">The one guarantee that makes this all worth it</h2>
+      <p class="sl-sub">Why "local minimum" and "global minimum" become the same sentence on a convex function.</p>
+      <div class="sl-row">
+        <div class="sl-box">local minimum x*</div>
+        <div class="sl-arrow">+ convexity ⇒</div>
+        <div class="sl-box green">global minimum</div>
+      </div>
+      <p class="sl-p">Suppose x* is only a <em>local</em> minimum, and some other point y elsewhere scores strictly better. Convexity forces every point on the straight line from x* toward y — including points arbitrarily close to x* — to score no worse than a straight blend of f(x*) and f(y), which is strictly better than f(x*) itself. That means a point inside x*'s own neighborhood beats x*, contradicting the assumption that x* was a local minimum in the first place. No such y can exist. <strong>Every local minimum of a convex function is automatically the global minimum</strong> — not confirmed by searching everywhere, but made logically impossible to beat, by the shape of the function alone.</p>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">The payoff</div>
+        <p>For a convex problem, gradient descent or Newton's method finding <em>a</em> point with zero gradient is enough to conclude it found <em>the</em> best point, full stop — no separate search over the rest of the space is ever needed.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Why Markowitz's variance term is always convex</h2>
+      <p class="sl-sub">The mean-variance objective from this curriculum's Markowitz &amp; Black-Litterman lesson is a convex quadratic — with no extra assumptions needed.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">wᵀΣw</div><div><h4>Portfolio variance is a quadratic form</h4><p>Variance in the weight vector w, with covariance matrix Σ sitting in the middle. Its Hessian works out to a constant, 2Σ — the same matrix, regardless of w.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">Σ</div><div><h4>A valid covariance matrix is always PSD</h4><p>Built from real variances and covariances of real random variables — and a variance can never be negative, in any direction of combination. That's structural, not assumed.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">✓</div><div><h4>PSD Hessian ⇒ convex, always</h4><p>Since 2Σ is PSD everywhere, portfolio variance is convex everywhere, for any real covariance matrix — exactly the Hessian test from two slides ago, applied directly.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⊞</div><div><h4>Linear constraints keep the set convex too</h4><p>Weights summing to 1, a target return, no-shorting box constraints — all linear, so all convexity-preserving. Objective + set: a genuine convex quadratic program.</p></div></div>
+      </div>
+      <p class="sl-p">This is exactly why mean-variance optimization is reliably, provably solvable rather than a heuristic search — the deeper mechanics of the covariance matrix, the weight constraints, and the actual worked minimum-variance portfolio are covered in this curriculum's <a href="markowitz-black-litterman-micro.html">Markowitz &amp; Black-Litterman</a> lesson.</p>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Grounded against this repo's actual code</div>
+        <p>The full lesson tags this material "CONCEPT — not built or tested in this repo," and that check still holds: <code>portfolioBacktest/</code> in this codebase implements a cointegration pairs-trading backtester, with no mean-variance solver, QP library, or covariance-based optimizer anywhere in it. The convexity argument above is correct theory this repo doesn't yet act on.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Is this matrix positive semi-definite?</h2>
+      <p class="sl-sub">Starts on a 2-asset covariance matrix: σ₁=20%, σ₂=30%, ρ=0.2. Edit any entry — trace, determinant, and both eigenvalues recompute live.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — M = [[a, b], [b, d]]</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>a (M₁₁)</label><input type="number" class="sl-input" id="psd-a" value="0.04" step="0.001"></div>
+          <div class="sl-calc-op">,</div>
+          <div class="sl-calc-field"><label>b (M₁₂ = M₂₁)</label><input type="number" class="sl-input" id="psd-b" value="0.012" step="0.001"></div>
+          <div class="sl-calc-op">,</div>
+          <div class="sl-calc-field"><label>d (M₂₂)</label><input type="number" class="sl-input" id="psd-d" value="0.09" step="0.001"></div>
+          <div class="sl-calc-op">→</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Convex quadratic form?</div>
+            <div class="sl-calc-result-val" id="psd-verdict">—</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>trace = a + d = <b id="psd-trace">—</b></div>
+          <div>det = ad − b² = <b id="psd-det">—</b></div>
+          <div>eigenvalues: λ₁ = <b id="psd-lam1">—</b>, λ₂ = <b id="psd-lam2">—</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="psd-reset">Reset to worked-example numbers</button>
+        <div class="sl-note">A symmetric matrix is PSD exactly when both eigenvalues are ≥ 0 — equivalently, a ≥ 0, d ≥ 0, and det ≥ 0. If a quadratic form vᵀMv is built from a non-PSD matrix, it is not convex: it curves upward in some directions and downward in others, an egg-carton shape, not a bowl.</div>
+      </div>
+      <p class="sl-p">Try pushing ρ (correlation) toward 1 by raising b close to √(ad) — the determinant collapses toward zero and the smaller eigenvalue follows it down, right to the boundary between strictly convex and merely flat. Push b past that point and the matrix stops being PSD entirely.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">The checklist a convex optimum must pass</h2>
+      <p class="sl-sub">The KKT conditions — necessary <em>and</em>, for a convex problem, sufficient to certify a true global optimum.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">∇L=0</div><div><h4>Stationarity</h4><p>The Lagrangian's gradient vanishes — the direct generalization of "the gradient is zero," now accounting for every constraint's pull on the solution.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">✓</div><div><h4>Primal feasibility</h4><p>The candidate point actually satisfies every original constraint. A mathematically convenient point that breaks a constraint isn't a valid answer.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">λ≥0</div><div><h4>Dual feasibility</h4><p>Every inequality-constraint multiplier is non-negative — a negative one would mean a constraint is rewarded for being violated.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">λg=0</div><div><h4>Complementary slackness</h4><p>Each constraint is either exactly binding (sitting on its boundary) or its multiplier is exactly zero. This is how a solver identifies which constraints actually shape the answer.</p></div></div>
+      </div>
+      <div class="sl-quote">For a genuinely convex problem, passing this whole checklist is enough on its own to certify the global optimum — no separate search required. That sufficiency, not just necessity, is itself a special benefit convexity provides and non-convex problems don't get.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">"Just hold at most 10 names" breaks all of it</h2>
+      <p class="sl-sub">One realistic-sounding trading rule, two very different problems underneath.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Position caps — stays convex</span>
+          <ul>
+            <li>wᵢ ≥ 0 (no shorting) or wᵢ ≤ 0.1 (position cap)</li>
+            <li>Both are linear constraints — the feasible set stays convex</li>
+            <li>Still a convex QP, solved to guaranteed optimality in well under a second</li>
+          </ul>
+        </div>
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Cardinality — destroys convexity</span>
+          <ul>
+            <li>"At most 10 nonzero weights" — a discrete choice of which 10 of N assets</li>
+            <li>The feasible set becomes a union of many separate flat pieces, not one convex region</li>
+            <li>Local optimum ≠ global optimum guarantee is gone; the problem is combinatorially hard (NP-hard)</li>
+          </ul>
+        </div>
+      </div>
+      <p class="sl-p">The straight line between a point using one subset of 10 assets and a point using a different subset of 10 assets typically passes through weight vectors with <em>more</em> than 10 nonzero entries — outside the allowed set entirely. That single fact is the whole reason cardinality constraints break convexity.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">The practical fallout</div>
+        <p>Practitioners don't abandon the convex core — they layer a heuristic on top: greedy asset selection then a convex re-solve, an ℓ₁-penalty relaxation (the same trick behind LASSO regression), or a mixed-integer solver that handles the discreteness directly but scales far worse and offers weaker optimality guarantees than a convex QP solver ever needs.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Informally, what does it mean for a function to be convex?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The straight chord between any two points on the curve never dips below the curve itself</button>
+        <button class="sl-quiz-opt">The function is always increasing</button>
+        <button class="sl-quiz-opt">The function has exactly one input value</button>
+        <div class="sl-quiz-explain">f(θx+(1−θ)y) ≤ θf(x)+(1−θ)f(y): the curve's real value between two points never exceeds the chord connecting them — bowl-shaped, not wavy.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>What is the single most important practical guarantee convexity provides?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Any local minimum found is automatically the global minimum</button>
+        <button class="sl-quiz-opt">The function can be solved by hand without a computer</button>
+        <button class="sl-quiz-opt">The optimal answer is always exactly zero</button>
+        <div class="sl-quiz-explain">A convex function's shape makes a hidden, better answer elsewhere logically impossible — so "the search stopped" and "the search found the best point" mean the same thing.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Why is Markowitz's portfolio variance, wᵀΣw, guaranteed convex for any valid covariance matrix Σ?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Its Hessian is the constant matrix 2Σ, and a valid covariance matrix is always positive semi-definite</button>
+        <button class="sl-quiz-opt">Because portfolio weights always sum to 1</button>
+        <button class="sl-quiz-opt">Because stock returns are normally distributed</button>
+        <div class="sl-quiz-explain">Variance can never be negative in any combination of assets, which is exactly what "Σ is PSD" means — so the Hessian 2Σ is PSD everywhere and the objective is convex, no extra assumptions needed.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>A symmetric 2×2 matrix has a negative determinant. What does that tell you?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It is not positive semi-definite — the quadratic form built from it is not convex</button>
+        <button class="sl-quiz-opt">It is always positive definite</button>
+        <button class="sl-quiz-opt">Nothing — the determinant is unrelated to convexity</button>
+        <div class="sl-quiz-explain">det = λ₁λ₂. A negative determinant means the eigenvalues have opposite signs, so at least one is negative — curving downward in some direction. Not PSD, not convex.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>What happens when a "hold at most 10 names" cardinality constraint is added to the Markowitz problem?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The feasible set stops being convex, so local optimum = global optimum is no longer guaranteed</button>
+        <button class="sl-quiz-opt">Nothing — it's a linear constraint like any other</button>
+        <button class="sl-quiz-opt">The objective itself becomes non-convex</button>
+        <div class="sl-quiz-explain">The objective stays convex — it's the feasible set that breaks: "at most 10 nonzero weights" is a union of separate flat pieces, not one convex region, and the problem becomes combinatorially hard rather than a smooth convex QP.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Convex means bowl-shaped — the chord between any two points on the curve never dips below the curve: f(θx+(1−θ)y) ≤ θf(x)+(1−θ)f(y).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>The Hessian test operationalizes it: a twice-differentiable function is convex exactly when its Hessian is positive semi-definite everywhere.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>The payoff: on a convex problem, any local minimum is automatically the global minimum — no hidden better answer can exist elsewhere.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Non-convex problems have no such guarantee — multiple local minima can trap a solver in a "false" optimum that looks like success.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Markowitz's variance term wᵀΣw is always convex, because a valid covariance matrix Σ is always positive semi-definite — the reason mean-variance optimization is reliably solvable.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>A realistic-sounding rule (cardinality — "at most 10 names") can destroy convexity entirely, turning a clean convex QP into a combinatorial, NP-hard search.</p></div>
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">What this now lets you do</div>
+        <p>Look at a solver's "converged" result and ask the right next question: was the underlying problem actually convex, or just comfortably stopped? Check a symmetric matrix for positive semi-definiteness by hand — trace, determinant, eigenvalues — to certify a quadratic objective is genuinely a bowl. And recognise, before promising a quick turnaround, when a seemingly small constraint (cardinality, a minimum lot size, an all-or-nothing rule) is about to trade a guaranteed millisecond solve for an overnight heuristic run.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Linear &amp; Quadratic Programming</h3>
+        <p>The specific, extremely well-studied family of convex problems this lesson makes possible — including the interior-point solvers that turn "convex" into "solved, fast, at scale."</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="linear-quadratic-programming-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="convex-optimization.html">Read the full convex optimization lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Slide 5 — wiggle slider: morph a plain bowl into a multi-minimum curve.
+  (function(){
+    var slider = document.getElementById('wiggle-slider');
+    if (!slider) return;
+    var aVal = document.getElementById('wiggle-aval');
+    var pathEl = document.getElementById('wiggle-path');
+    var minimaGroup = document.getElementById('wiggle-minima');
+    var verdict = document.getElementById('wiggle-verdict');
+
+    var X_MIN = -9, X_MAX = 9;
+    var Y_MIN = -3.5, Y_MAX = 7;
+    var PX_X0 = 20, PX_X1 = 620;
+    var PX_Y0 = 230, PX_Y1 = 20;
+    var N = 361; // step of 0.05 across [-9,9]
+
+    function f(x, A){ return 0.06 * x * x + A * Math.sin(1.3 * x); }
+    function mapX(x){ return PX_X0 + (x - X_MIN) * (PX_X1 - PX_X0) / (X_MAX - X_MIN); }
+    function mapY(y){ return PX_Y0 + (y - Y_MIN) * (PX_Y1 - PX_Y0) / (Y_MAX - Y_MIN); }
+
+    function update(){
+      var A = parseInt(slider.value, 10) / 10;
+      aVal.textContent = 'A = ' + A.toFixed(2);
+
+      var xs = [], ys = [];
+      for (var i = 0; i < N; i++) {
+        var x = X_MIN + (X_MAX - X_MIN) * i / (N - 1);
+        xs.push(x);
+        ys.push(f(x, A));
+      }
+
+      var d = '';
+      for (var j = 0; j < N; j++) {
+        d += (j === 0 ? 'M' : ' L') + mapX(xs[j]).toFixed(1) + ',' + mapY(ys[j]).toFixed(1);
+      }
+      pathEl.setAttribute('d', d);
+
+      // Detect interior local minima by simple neighbor comparison.
+      var minima = [];
+      for (var k = 1; k < N - 1; k++) {
+        if (ys[k] < ys[k - 1] && ys[k] < ys[k + 1]) minima.push(k);
+      }
+
+      minimaGroup.innerHTML = '';
+      minima.forEach(function(k){
+        var c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        c.setAttribute('cx', mapX(xs[k]).toFixed(1));
+        c.setAttribute('cy', mapY(ys[k]).toFixed(1));
+        c.setAttribute('r', '6');
+        c.setAttribute('style', 'fill:' + (minima.length > 1 ? 'var(--red)' : 'var(--green)'));
+        minimaGroup.appendChild(c);
+      });
+
+      var count = minima.length;
+      if (count <= 1) {
+        verdict.textContent = (A === 0 ? 'A = 0: a plain bowl. ' : '') + 'Exactly ' + count + ' local minimum — automatically the global minimum.';
+      } else {
+        verdict.textContent = count + ' local minima detected — convexity is gone. A solver could stop at any one of these and have no way to know a better one exists elsewhere.';
+      }
+    }
+
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Slide 8 — 2x2 symmetric matrix PSD checker.
+  (function(){
+    var aInput = document.getElementById('psd-a');
+    if (!aInput) return;
+    var bInput = document.getElementById('psd-b'), dInput = document.getElementById('psd-d');
+    var traceOut = document.getElementById('psd-trace'), detOut = document.getElementById('psd-det');
+    var lam1Out = document.getElementById('psd-lam1'), lam2Out = document.getElementById('psd-lam2');
+    var verdictOut = document.getElementById('psd-verdict');
+    var resetBtn = document.getElementById('psd-reset');
+    var DEFAULTS = { a: 0.04, b: 0.012, d: 0.09 };
+
+    function blank(){
+      traceOut.textContent = '—'; detOut.textContent = '—';
+      lam1Out.textContent = '—'; lam2Out.textContent = '—';
+      verdictOut.textContent = '—';
+      verdictOut.style.color = '';
+    }
+
+    function recompute(){
+      var a = parseFloat(aInput.value), b = parseFloat(bInput.value), d = parseFloat(dInput.value);
+      if (!isFinite(a) || !isFinite(b) || !isFinite(d)) { blank(); return; }
+
+      var trace = a + d;
+      var det = a * d - b * b;
+      var half = trace / 2;
+      var disc = half * half - det;
+      var sqrtDisc = disc > 0 ? Math.sqrt(disc) : 0;
+      var lam1 = half + sqrtDisc;
+      var lam2 = half - sqrtDisc;
+
+      traceOut.textContent = trace.toFixed(4);
+      detOut.textContent = det.toFixed(6);
+      lam1Out.textContent = lam1.toFixed(4);
+      lam2Out.textContent = lam2.toFixed(4);
+
+      var isPSD = lam1 >= -1e-9 && lam2 >= -1e-9;
+      verdictOut.textContent = isPSD ? 'Yes — PSD' : 'No — not PSD';
+      verdictOut.style.color = isPSD ? 'var(--green)' : 'var(--red)';
+    }
+
+    [aInput, bInput, dInput].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      aInput.value = DEFAULTS.a; bInput.value = DEFAULTS.b; dInput.value = DEFAULTS.d;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

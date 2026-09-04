@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Entropy, KL Divergence &amp; Mutual Information — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Entropy, KL Divergence &amp; Mutual Information — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer full derivations, live KL/MI calculators, and a 6-question self-test?<a href="entropy-kl-mutual-information.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Information Theory 1 · Information Theory</div>
+      <h1 class="sl-h1">Entropy, KL Divergence &amp; Mutual Information, <em>Measured in Bits</em></h1>
+      <p class="sl-lede">Correlation only ever answers one narrow question: is there a straight-line relationship? Two variables can be locked together by an unmistakable, perfectly predictable rule and still show a correlation of exactly zero, simply because the rule isn't linear. This deck builds the machinery — entropy, KL divergence, and mutual information — that measures how much two variables actually tell each other, in bits, whether or not that relationship is a straight line at all.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Correlation only sees straight lines</h2>
+      <p class="sl-sub">Two very different tools for the same question: "does knowing one variable tell me anything about the other?"</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Correlation</span>
+          <ul>
+            <li>Measures only linear (straight-line) association</li>
+            <li>Can be exactly zero even when two variables are perfectly, deterministically related — if the relationship curves, cycles, or is symmetric around a point</li>
+            <li>Cheap to compute, but silently blind to an entire category of real structure</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Mutual information</span>
+          <ul>
+            <li>Measures how much knowing one variable reduces uncertainty about the other — in <em>any</em> shape at all</li>
+            <li>Built directly from entropy and KL divergence, defined below</li>
+            <li>Zero exactly when the variables are truly independent — linear structure is just one special case it catches</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-quote">A regression-only view of the world reports "no relationship" in exactly the cases where the relationship is real but curved, cyclical, or threshold-based — precisely the kind of structure that shows up in volatility responding to the <strong>size</strong> of a move rather than its sign. This deck builds the tool that catches it.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Entropy: the price of not knowing yet</h2>
+      <p class="sl-sub">Shannon entropy H(X) = −Σ p(x)·log₂p(x) — a single number for "how surprised will I be, on average, before I find out?"</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">?</div><div><h4>One outcome's surprise</h4><p>−log₂p(x) — a rare outcome (p small) is very surprising; a near-certain one is barely surprising; a truly certain one (p=1) carries exactly zero surprise.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">Σ</div><div><h4>Entropy is the average</h4><p>Weight each outcome's surprise by how often it actually happens, and sum. That expected surprise, in bits, is H(X).</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">▲</div><div><h4>Maximized at "anything could happen"</h4><p>When every outcome is equally likely, you have genuinely no basis for predicting the result — entropy is as large as it can get.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">0</div><div><h4>Zero at "already knew it"</h4><p>One outcome with probability 1 and everything else impossible carries zero average surprise — there is nothing left to learn.</p></div></div>
+      </div>
+      <p class="sl-p">Using log base 2 makes the unit a <strong>bit</strong> — a fair coin flip carries exactly 1 bit of entropy, the most uncertainty a single yes/no outcome can hold. That's the benchmark the next slide's curve is built around.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">The coin-flip entropy curve</h2>
+      <p class="sl-sub">Drag the slider to change the coin's bias. Watch the marker ride the curve — and watch entropy peak exactly at p = 0.5.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Binary entropy curve H(p) for a coin with heads probability p from 0 to 1, peaking at 1 bit at p=0.5 and falling to 0 bits at the extremes, with a marker showing the currently selected p">
+            <line x1="60" y1="20" x2="60" y2="200" style="stroke:var(--border);stroke-width:1"/>
+            <line x1="60" y1="200" x2="620" y2="200" style="stroke:var(--border);stroke-width:1"/>
+            <polyline points="60.00,200.00 80.00,159.99 100.00,133.18 120.00,111.58 140.00,93.50 160.00,78.15 180.00,65.07 200.00,53.97 220.00,44.64 240.00,36.93 260.00,30.75 280.00,26.01 300.00,22.66 320.00,20.66 340.00,20.00 360.00,20.66 380.00,22.66 400.00,26.01 420.00,30.75 440.00,36.93 460.00,44.64 480.00,53.97 500.00,65.07 520.00,78.15 540.00,93.50 560.00,111.58 580.00,133.18 600.00,159.99 620.00,200.00" fill="none" style="stroke:var(--blue);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round"/>
+            <line id="hp-guide" x1="340" y1="20" x2="340" y2="200" style="stroke:var(--amber);stroke-width:1;stroke-dasharray:3,3"/>
+            <circle id="hp-dot" cx="340" cy="20" r="6" style="fill:var(--amber);stroke:var(--bg);stroke-width:1.5"/>
+            <text x="52" y="203" text-anchor="end" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">0</text>
+            <text x="52" y="24" text-anchor="end" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">1 bit</text>
+            <text x="22" y="110" text-anchor="middle" transform="rotate(-90 22 110)" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">H(p), bits</text>
+            <text x="60" y="222" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">p=0</text>
+            <text x="340" y="222" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">p=0.5</text>
+            <text x="620" y="222" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">p=1</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Coin bias — P(heads)</span><span class="sl-live" id="hp-pval">p = 0.50</span></div>
+        <input type="range" class="sl-slider" id="hp-slider" min="0" max="100" step="1" value="50">
+        <div class="sl-note" id="hp-readout">H(0.50) = 1.000 bits — maximum uncertainty. You truly cannot do better than a coin-flip guess.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Compute entropy yourself</h2>
+      <p class="sl-sub">Enter any 3-outcome distribution. The probabilities must sum to 1 — everything else is guarded.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>p₁</label><input type="number" class="sl-input" id="ent-p1" value="0.5" step="0.05" min="0" max="1"></div>
+          <div class="sl-calc-op">+</div>
+          <div class="sl-calc-field"><label>p₂</label><input type="number" class="sl-input" id="ent-p2" value="0.3" step="0.05" min="0" max="1"></div>
+          <div class="sl-calc-op">+</div>
+          <div class="sl-calc-field"><label>p₃</label><input type="number" class="sl-input" id="ent-p3" value="0.2" step="0.05" min="0" max="1"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Entropy H(P)</div>
+            <div class="sl-calc-result-val" id="ent-result">1.485 bits</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Sum check: p₁ + p₂ + p₃ = <b id="ent-sum">1.000</b> (must equal 1)</div>
+          <div>Term contributions −pᵢlog₂pᵢ (bits): <b id="ent-terms">0.500, 0.521, 0.464</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="ent-reset">Reset to example distribution</button>
+        <div class="sl-note">Guard rails: blank, negative, non-finite, or probabilities that don't sum to 1 (within a small tolerance) show "—" — never NaN or Infinity.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">KL divergence: the cost of the wrong model</h2>
+      <p class="sl-sub">D<sub>KL</sub>(P‖Q) = Σ p(x)·log₂(p(x)/q(x)) — the extra bits wasted describing data from the true distribution P using a model Q instead.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Same two coins, both directions</div>
+        <div class="sl-row">
+          <div class="sl-box">D<sub>KL</sub>(P‖Q) = 0.919 bits</div>
+          <div class="sl-arrow">≠</div>
+          <div class="sl-box amber">D<sub>KL</sub>(Q‖P) = 2.329 bits</div>
+        </div>
+        <div class="sl-verdict">P = (0.99, 0.01), a coin that lands heads 99% of the time. Q = (0.5, 0.5), a naive fair-coin model. <strong>Swapping which distribution is "truth" and which is "model" changes the answer by roughly 2.5×</strong> — with the exact same pair of coins.</div>
+      </div>
+      <p class="sl-p">D<sub>KL</sub>(P‖Q) is always <strong>≥ 0</strong>, with equality only when P = Q exactly (Gibbs' inequality, a short consequence of the concavity of log). That much behaves like a distance. But a real distance metric must also be symmetric and satisfy a triangle inequality — KL divergence satisfies neither.</p>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Why "divergence," not "distance"</div>
+        <p>A code built assuming a 99%-biased coin spends almost no bits preparing for the "wrong" outcome, because it has written that outcome off as nearly impossible. When reality is actually a fair coin and that outcome shows up half the time, the mismatch is expensive — far more expensive than the reverse mistake of mildly under-preparing for something that turns out to be common. That asymmetry is the same reason underestimating tail risk is structurally more costly than overestimating it.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">See the asymmetry yourself</h2>
+      <p class="sl-sub">Starts on the worked-example coins. Edit either probability and both directions recompute instantly.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>P(heads) — true coin</label><input type="number" class="sl-input" id="kl-p" value="0.99" step="0.01" min="0" max="1"></div>
+          <div class="sl-calc-op">vs</div>
+          <div class="sl-calc-field"><label>Q(heads) — model coin</label><input type="number" class="sl-input" id="kl-q" value="0.5" step="0.01" min="0" max="1"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">D<sub>KL</sub>(P‖Q)</div>
+            <div class="sl-calc-result-val" id="kl-pq">0.919 bits</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>D<sub>KL</sub>(Q‖P) = <b id="kl-qp">2.329</b> bits — the other direction</div>
+          <div>Larger ÷ smaller = <b id="kl-ratio">2.53×</b> — the size of the asymmetry</div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="kl-reset">Reset to worked-example coins</button>
+        <div class="sl-note">Guard rails: probabilities must be strictly between 0 and 1 — exactly 0 or 1 makes at least one log undefined — so blank or out-of-range input shows "—", never NaN or Infinity.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Mutual information: built from both</h2>
+      <p class="sl-sub">The two-variable version of the KL question: how different is the real joint distribution from what it would look like if X and Y were independent?</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The definition</div>
+        <div class="sl-row">
+          <div class="sl-box">P(X,Y) — the real joint</div>
+          <div class="sl-arrow">KL divergence between them</div>
+          <div class="sl-box green">P(X)·P(Y) — if independent</div>
+        </div>
+        <div class="sl-verdict">I(X;Y) = D<sub>KL</sub>(P(X,Y) ‖ P(X)P(Y)). If X and Y really are independent, these two distributions are identical and I(X;Y) = 0. The more the real joint diverges from that independence benchmark, the larger I(X;Y) gets.</div>
+      </div>
+      <p class="sl-p">Because it's a KL divergence, I(X;Y) ≥ 0 always. Unlike KL divergence itself, mutual information <strong>is</strong> symmetric — I(X;Y) = I(Y;X) — because swapping X and Y leaves both P(X,Y) and P(X)P(Y) unchanged. It also has an equivalent, more intuitive form: I(X;Y) = H(X) − H(X|Y), "how much your uncertainty about X shrank once you learned Y."</p>
+      <div class="sl-svgwrap">
+        <svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two concentric circles. The larger outer circle represents H(X) at 2.322 bits. The smaller circle, entirely nested inside it, represents H(Y) at 1.522 bits, equal to the mutual information between X and Y because Y is a deterministic function of X. The ring between the two circles is H(X given Y) at 0.8 bits.">
+          <circle cx="190" cy="110" r="85" style="fill:var(--blue-bg);stroke:var(--blue);stroke-width:2"/>
+          <circle cx="190" cy="110" r="68" style="fill:var(--purple-bg);stroke:var(--purple);stroke-width:2"/>
+          <text x="108" y="45" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:14px;font-weight:700">X</text>
+          <text x="190" y="115" text-anchor="middle" style="fill:var(--purple);font-family:'DM Mono',monospace;font-size:14px;font-weight:700">Y</text>
+          <text x="330" y="60" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:11px">H(X) = 2.322 bits</text>
+          <text x="330" y="80" style="fill:var(--purple);font-family:'DM Mono',monospace;font-size:11px">H(Y) = 1.522 bits</text>
+          <text x="330" y="100" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:11px">I(X;Y) = 1.522 bits</text>
+          <text x="330" y="120" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:11px">ring: H(X|Y) = 0.8 bits</text>
+        </svg>
+      </div>
+      <div class="sl-note">This is the Y=X² worked example, proved on the next two slides. Y's circle sits entirely inside X's because H(Y|X)=0 — Y is a deterministic function of X, so nothing about Y is left unexplained.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">A relationship correlation catches — and one it doesn't</h2>
+      <p class="sl-sub">Same two-variable setup, two very different underlying rules.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="mi-tabs">
+          <button class="sl-tab active" data-panel="mi-1">Linear relationship</button>
+          <button class="sl-tab" data-panel="mi-2">Y = X² (nonlinear)</button>
+        </div>
+        <div class="sl-panel active" id="mi-1">
+          <div class="sl-svgwrap">
+            <svg viewBox="0 0 300 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Scatter plot of a positive linear relationship between X and Y, points rising steadily from lower left to upper right">
+              <line x1="30" y1="180" x2="280" y2="180" style="stroke:var(--border2);stroke-width:1"/>
+              <line x1="30" y1="180" x2="30" y2="20" style="stroke:var(--border2);stroke-width:1"/>
+              <text x="282" y="192" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:11px">X</text>
+              <text x="14" y="20" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:11px">Y</text>
+              <circle cx="45" cy="168" r="4" style="fill:var(--blue)"/>
+              <circle cx="60" cy="172" r="4" style="fill:var(--blue)"/>
+              <circle cx="75" cy="152" r="4" style="fill:var(--blue)"/>
+              <circle cx="95" cy="140" r="4" style="fill:var(--blue)"/>
+              <circle cx="110" cy="128" r="4" style="fill:var(--blue)"/>
+              <circle cx="130" cy="118" r="4" style="fill:var(--blue)"/>
+              <circle cx="150" cy="100" r="4" style="fill:var(--blue)"/>
+              <circle cx="168" cy="92" r="4" style="fill:var(--blue)"/>
+              <circle cx="188" cy="76" r="4" style="fill:var(--blue)"/>
+              <circle cx="205" cy="62" r="4" style="fill:var(--blue)"/>
+              <circle cx="225" cy="50" r="4" style="fill:var(--blue)"/>
+              <circle cx="245" cy="38" r="4" style="fill:var(--blue)"/>
+              <circle cx="262" cy="28" r="4" style="fill:var(--blue)"/>
+              <line x1="42" y1="176" x2="265" y2="26" style="stroke:var(--blue);stroke-width:1;stroke-dasharray:2,2;opacity:.5"/>
+            </svg>
+          </div>
+          <div class="sl-verdict"><strong>Correlation ≈ 0.95</strong> — strong and positive. <strong>Mutual information is also high</strong>: knowing X almost completely determines Y. Correlation and mutual information agree here — a straight line is exactly what correlation is built to see.</div>
+        </div>
+        <div class="sl-panel" id="mi-2">
+          <div class="sl-svgwrap">
+            <svg viewBox="0 0 300 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Scatter plot of Y equals X squared, forming a symmetric upward-opening parabola centered at X=0">
+              <line x1="30" y1="195" x2="280" y2="195" style="stroke:var(--border2);stroke-width:1"/>
+              <line x1="150" y1="195" x2="150" y2="15" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:2,2"/>
+              <text x="282" y="207" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:11px">X</text>
+              <text x="134" y="12" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:11px">Y</text>
+              <text x="150" y="210" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:9px">X=0</text>
+              <path d="M30,45 Q150,205 270,45" style="fill:none;stroke:var(--purple);stroke-width:1;stroke-dasharray:2,2;opacity:.5"/>
+              <circle cx="30" cy="45" r="4" style="fill:var(--purple)"/>
+              <circle cx="54" cy="99" r="4" style="fill:var(--purple)"/>
+              <circle cx="78" cy="141" r="4" style="fill:var(--purple)"/>
+              <circle cx="102" cy="171" r="4" style="fill:var(--purple)"/>
+              <circle cx="126" cy="189" r="4" style="fill:var(--purple)"/>
+              <circle cx="150" cy="195" r="4" style="fill:var(--purple)"/>
+              <circle cx="174" cy="189" r="4" style="fill:var(--purple)"/>
+              <circle cx="198" cy="171" r="4" style="fill:var(--purple)"/>
+              <circle cx="222" cy="141" r="4" style="fill:var(--purple)"/>
+              <circle cx="246" cy="99" r="4" style="fill:var(--purple)"/>
+              <circle cx="270" cy="45" r="4" style="fill:var(--purple)"/>
+            </svg>
+          </div>
+          <div class="sl-verdict"><strong>Correlation = 0, exactly</strong> — proved on the next slide. Every positive-slope point on the right cancels a negative-slope point on the left, by symmetry around X=0. <strong>Mutual information I(X;Y) = 1.522 bits</strong>, clearly and provably positive — Y is a completely deterministic function of X. Correlation says "unrelated." It's wrong.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">The Y = X² proof, in numbers</h2>
+      <p class="sl-sub">X takes values {−2,−1,0,1,2}, each with probability ⅕. Y = X² exactly — deterministic, so every number below is exact and checkable by hand.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">0</div><div><h4>Correlation(X, Y) = 0</h4><p>Cov(X,Y) = E[X³] − E[X]E[Y] = E[X³] = 0 by symmetry — every odd power of X cancels around zero. Not "small." Exactly zero.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">H</div><div><h4>H(X) = log₂5 ≈ 2.322 bits</h4><p>X is uniform over 5 equally likely values — maximum possible entropy for 5 outcomes.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">H</div><div><h4>H(X|Y) = 0.8 bits</h4><p>Given Y=0, X=0 for certain (0 bits left). Given Y=1 or Y=4, X's sign is a coin flip (1 bit left). Averaged: ⅕(0)+⅖(1)+⅖(1) = 0.8.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">I</div><div><h4>I(X;Y) = 2.322 − 0.8 = 1.522 bits</h4><p>Cross-checked the other way too: I(X;Y) = H(Y) − H(Y|X) = 1.522 − 0 = 1.522 bits. Both routes agree exactly.</p></div></div>
+      </div>
+      <div class="sl-quote">This is not a subtle statistical artifact — it is the defining example of why <strong>"uncorrelated" must never be read as "unrelated."</strong> Mutual information is the tool that tells the two apart.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Where practitioners actually use this</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>Cross-entropy loss</h4><p>Training a classifier by minimizing cross-entropy is, up to a constant, exactly minimizing D<sub>KL</sub>(P<sub>data</sub>‖Q<sub>model</sub>).</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔍</div><div><h4>Mutual-information feature ranking</h4><p>Rank candidate predictors by I(Xᵢ;Y) instead of correlation, precisely to avoid discarding a genuinely predictive but nonlinear feature.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📦</div><div><h4>Shannon's source coding theorem</h4><p>Entropy is the hard floor on lossless compression — you cannot, on average, encode a source in fewer bits than its own entropy.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔗</div><div><h4>What comes next in this category</h4><p>Transfer entropy conditions mutual information on the past to build a directional, causal-flavored signal — the very next lesson.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Reality check: is this built in this repo?</h2>
+      <p class="sl-sub">The full lesson's status line was checked against the actual current codebase before this deck repeated it.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">What the full lesson says</div>
+        <p>The full lesson's status banner reads: <strong>"CONCEPT — background math, not built or tested anywhere in this repo."</strong></p>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">What's actually true right now (verified 2026-09-03)</div>
+        <p>
+        That line is stale. <code>js/entropyCore.js</code> implements exactly this deck's three concepts —
+        <code>shannonEntropy</code>, <code>klDivergence</code> (plus a symmetric, finite Jensen-Shannon
+        variant), and <code>mutualInformation</code> — all in bits, with a dedicated test suite in
+        <code>js/entropyCore.test.mjs</code>. Entropy and KL/JS divergence aren't just tested: they're
+        wired live into <code>analyticsDesk.js</code> (used by <code>analytics-desk.html</code>) via
+        <code>normalizedEntropy</code> and <code>regimeShiftSeries</code>, as a model-free "has the
+        distribution changed?" gauge. <code>mutualInformation</code> itself is implemented and tested but,
+        as of this check, not yet wired into any page's UI.
+        </p>
+      </div>
+      <p class="sl-p">Nothing here is silently corrected or silently lost — both the original claim and the current reality are shown side by side, exactly as this repo's factual-grounding standard requires.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">Where this goes wrong in practice</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>Zero probability, undefined KL divergence</h4><p>If q(x)=0 where p(x)&gt;0, D<sub>KL</sub>(P‖Q) is technically infinite. A model with a hard zero anywhere in its support needs smoothing before KL against real data is computable at all.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">↔</div><div><h4>Reporting KL without a direction</h4><p>D<sub>KL</sub>(P‖Q) and D<sub>KL</sub>(Q‖P) can differ by a large factor — quoting "the KL divergence between P and Q" without specifying direction is ambiguous.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📉</div><div><h4>Mutual information needs a lot of data</h4><p>Estimating I(X;Y) from a finite, noisy, continuous sample requires binning or kernel density estimation — both introduce bias, and a naive estimator can report spuriously large MI purely from overfitting a small sample.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🛑</div><div><h4>Dependence is not the same as edge</h4><p>A provably nonzero I(X;Y) says two variables aren't independent — nothing more. It does not say the relationship is strong, stable, or simple enough to trade on.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What is the Shannon entropy of a coin that always lands heads?</h4>
+        <button class="sl-quiz-opt" data-correct="true">0 bits</button>
+        <button class="sl-quiz-opt">1 bit</button>
+        <button class="sl-quiz-opt">Undefined</button>
+        <div class="sl-quiz-explain">One outcome has probability 1 and carries zero surprise; every other outcome has probability 0 and contributes nothing to the sum. Expected surprise collapses to exactly zero — there's nothing left to learn.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Is D<sub>KL</sub>(P‖Q) generally equal to D<sub>KL</sub>(Q‖P)?</h4>
+        <button class="sl-quiz-opt" data-correct="true">No — KL divergence is asymmetric</button>
+        <button class="sl-quiz-opt">Yes, always — that's what makes it a divergence</button>
+        <button class="sl-quiz-opt">Only when both distributions are uniform</button>
+        <div class="sl-quiz-explain">Swapping which distribution is "truth" and which is "model" changes what mistake you're paying for. The worked coin example shows a roughly 2.5× gap between the two directions, using the exact same pair of coins.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Can D<sub>KL</sub>(P‖Q) ever be negative?</h4>
+        <button class="sl-quiz-opt" data-correct="true">No — it's always ≥ 0, by Gibbs' inequality</button>
+        <button class="sl-quiz-opt">Yes, whenever Q is more spread out than P</button>
+        <button class="sl-quiz-opt">Yes, whenever P and Q are close together</button>
+        <div class="sl-quiz-explain">Gibbs' inequality (a short application of Jensen's inequality on the concavity of log) proves D_KL(P‖Q) ≥ 0 always, with equality exactly when P = Q.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Mutual information I(X;Y) is defined as which KL divergence?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Between the real joint distribution P(X,Y) and the product of marginals P(X)P(Y)</button>
+        <button class="sl-quiz-opt">Between P(X) and P(Y) directly</button>
+        <button class="sl-quiz-opt">Between H(X) and H(Y)</button>
+        <div class="sl-quiz-explain">I(X;Y) = D_KL(P(X,Y) ‖ P(X)P(Y)) — how far the actual joint distribution sits from what it would look like if X and Y were independent.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>For X symmetric around 0 and Y = X², what is the Pearson correlation between X and Y?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Exactly zero — even though Y is completely determined by X</button>
+        <button class="sl-quiz-opt">Strongly negative, since Y falls as |X| grows on one side</button>
+        <button class="sl-quiz-opt">Undefined, since the relationship isn't linear</button>
+        <div class="sl-quiz-explain">Cov(X,Y) = E[X³] = 0 by symmetry — every odd power of X cancels around zero. Correlation is exactly zero, yet mutual information comes out to 1.522 bits, clearly positive, because Y is a deterministic function of X.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="15">
+      <div class="sl-kicker">Section 14</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Entropy H(X) = −Σp(x)log₂p(x) measures expected surprise in bits — 1 bit at its peak for a fair coin, falling to 0 bits for a certain outcome.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>KL divergence D<sub>KL</sub>(P‖Q) measures the extra bits wasted describing data from P using model Q — always ≥ 0 (Gibbs' inequality), zero only when P = Q.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>KL divergence is not symmetric — D<sub>KL</sub>(P‖Q) ≠ D<sub>KL</sub>(Q‖P) in general, so it's not a true distance metric, whatever it superficially resembles.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Mutual information I(X;Y) = D<sub>KL</sub>(P(X,Y)‖P(X)P(Y)) = H(X) − H(X|Y) — built directly from entropy and KL divergence.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Unlike KL divergence, mutual information IS symmetric (I(X;Y) = I(Y;X)) and always ≥ 0, zero exactly when X and Y are independent.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Correlation only catches straight lines and can be exactly zero even for a perfectly deterministic nonlinear relationship (Y=X²) — mutual information catches this because it makes no linearity assumption at all.</p></div>
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">What this now lets you do</div>
+        <p>Screen candidate features for <em>any</em> kind of dependence on a target, not just linear ones, by computing mutual information instead of stopping at a correlation matrix. Understand why an overconfident risk model gets punished so much harder, in bits, the moment a "nearly impossible" tail event actually happens. And recognize when this repo's own <code>entropyCore.js</code> — Shannon entropy, KL/JS divergence, and mutual information, tested and already live inside the analytics desk's regime-shift detector — is the right tool to reach for.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Transfer Entropy &amp; Information-Theoretic Causality</h3>
+        <p>Mutual information is symmetric — it can't say which variable is driving which. Conditioning it on the past fixes that, building a genuinely directional signal out of the same bits.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="transfer-entropy-causality-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="entropy-kl-mutual-information.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  function log2(x){ return Math.log(x) / Math.log(2); }
+  function fmt3(n){ return isFinite(n) ? n.toFixed(3) : '—'; }
+
+  // Coin-bias slider driving the binary entropy curve, live.
+  (function(){
+    var slider = document.getElementById('hp-slider');
+    if (!slider) return;
+    var pval = document.getElementById('hp-pval');
+    var dot = document.getElementById('hp-dot');
+    var guide = document.getElementById('hp-guide');
+    var readout = document.getElementById('hp-readout');
+    var X0 = 60, XSPAN = 560, Y0 = 200, YSPAN = 180;
+
+    function Hbin(p){
+      if (p <= 0 || p >= 1) return 0;
+      return -(p * log2(p) + (1 - p) * log2(1 - p));
+    }
+
+    function update(){
+      var p = parseInt(slider.value, 10) / 100;
+      var h = Hbin(p);
+      var x = X0 + p * XSPAN;
+      var y = Y0 - h * YSPAN;
+      dot.setAttribute('cx', x);
+      dot.setAttribute('cy', y);
+      guide.setAttribute('x1', x);
+      guide.setAttribute('x2', x);
+      guide.setAttribute('y2', y);
+      pval.textContent = 'p = ' + p.toFixed(2);
+      var note;
+      if (Math.abs(p - 0.5) < 0.001) note = 'maximum uncertainty. You truly cannot do better than a coin-flip guess.';
+      else if (p <= 0.02 || p >= 0.98) note = 'the coin is almost fully predictable — almost nothing left to be surprised by.';
+      else note = 'less uncertainty than a fair coin, more than a near-certain one.';
+      readout.textContent = 'H(' + p.toFixed(2) + ') = ' + h.toFixed(3) + ' bits — ' + note;
+    }
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Compute-entropy-yourself calculator, live, with guard rails.
+  (function(){
+    var p1 = document.getElementById('ent-p1');
+    if (!p1) return;
+    var p2 = document.getElementById('ent-p2'), p3 = document.getElementById('ent-p3');
+    var sumOut = document.getElementById('ent-sum'), termsOut = document.getElementById('ent-terms');
+    var resultOut = document.getElementById('ent-result');
+    var resetBtn = document.getElementById('ent-reset');
+    var DEFAULTS = { p1: 0.5, p2: 0.3, p3: 0.2 };
+
+    function term(p){ return p > 0 ? -p * log2(p) : 0; }
+
+    function recompute(){
+      var a = parseFloat(p1.value), b = parseFloat(p2.value), c = parseFloat(p3.value);
+      var vals = [a, b, c];
+      var allFinite = vals.every(function(v){ return isFinite(v); });
+      var allNonNeg = vals.every(function(v){ return v >= 0; });
+
+      if (!allFinite || !allNonNeg) {
+        sumOut.textContent = '—';
+        termsOut.textContent = '—';
+        resultOut.textContent = '—';
+        return;
+      }
+
+      var sum = a + b + c;
+      sumOut.textContent = sum.toFixed(3);
+
+      if (Math.abs(sum - 1) > 0.01) {
+        termsOut.textContent = '—';
+        resultOut.textContent = '—';
+        return;
+      }
+
+      var terms = vals.map(term);
+      termsOut.textContent = terms.map(function(t){ return t.toFixed(3); }).join(', ');
+      var h = terms.reduce(function(s, t){ return s + t; }, 0);
+      resultOut.textContent = fmt3(h) + ' bits';
+    }
+
+    [p1, p2, p3].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      p1.value = DEFAULTS.p1; p2.value = DEFAULTS.p2; p3.value = DEFAULTS.p3;
+      recompute();
+    });
+    recompute();
+  })();
+
+  // KL-divergence-both-directions calculator, live, with guard rails.
+  (function(){
+    var pIn = document.getElementById('kl-p');
+    if (!pIn) return;
+    var qIn = document.getElementById('kl-q');
+    var pqOut = document.getElementById('kl-pq'), qpOut = document.getElementById('kl-qp'), ratioOut = document.getElementById('kl-ratio');
+    var resetBtn = document.getElementById('kl-reset');
+    var DEFAULTS = { p: 0.99, q: 0.5 };
+
+    function KL(p, q){
+      var p0 = 1 - p, q0 = 1 - q;
+      return p * log2(p / q) + p0 * log2(p0 / q0);
+    }
+
+    function recompute(){
+      var p = parseFloat(pIn.value), q = parseFloat(qIn.value);
+      var valid = isFinite(p) && isFinite(q) && p > 0 && p < 1 && q > 0 && q < 1;
+      if (!valid) {
+        pqOut.textContent = '—';
+        qpOut.textContent = '—';
+        ratioOut.textContent = '—';
+        return;
+      }
+      var klpq = KL(p, q), klqp = KL(q, p);
+      pqOut.textContent = fmt3(klpq) + ' bits';
+      qpOut.textContent = fmt3(klqp);
+      var lo = Math.min(klpq, klqp), hi = Math.max(klpq, klqp);
+      ratioOut.textContent = (lo > 0 ? (hi / lo).toFixed(2) + '×' : '—');
+    }
+
+    [pIn, qIn].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      pIn.value = DEFAULTS.p; qIn.value = DEFAULTS.q;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

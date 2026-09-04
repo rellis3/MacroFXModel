@@ -194,16 +194,27 @@ def _load_tg(cfg: dict, kv: KvClient) -> tuple[str, str]:
     return str(shared.get("token", "") or "").strip(), str(shared.get("chatId", "") or "").strip()
 
 
-def send_telegram(token: str, chat_id: str, text: str) -> bool:
+def send_telegram(token: str, chat_id: str, text: str, *, reply_to: int | None = None) -> int | None:
+    """POST one alert; return the sent message's Telegram id (None on any failure).
+
+    The id is the whole point of returning something richer than a bool: a close
+    alert threads as a REPLY to its own entry alert, so "closed, +19.50, held 2h"
+    sits under "entered, and here is why" instead of scrolling apart in a busy
+    chat. (volatility_bot_v2 keeps its own copy of this for the same reason — the
+    shared pylego.telegram brick is deliberately fire-and-forget.) Still
+    best-effort: never raises, and a failed send only costs the thread link."""
     if not token or not chat_id:
-        return False
+        return None
     try:
-        r = requests.post(f"https://api.telegram.org/bot{token}/sendMessage",
-                          json={"chat_id": chat_id, "text": text, "parse_mode": "HTML"}, timeout=10)
-        return r.status_code == 200
+        body = {"chat_id": chat_id, "text": text, "parse_mode": "HTML"}
+        if reply_to:
+            body["reply_to_message_id"] = reply_to
+        r = requests.post(f"https://api.telegram.org/bot{token}/sendMessage", json=body, timeout=10)
+        j = r.json()
+        return j.get("result", {}).get("message_id") if j.get("ok") else None
     except Exception as e:
         log.warning(f"Telegram send failed: {e}")
-        return False
+        return None
 
 
 # Per-instrument icon + a TradingView chart the name links to.
@@ -231,6 +242,75 @@ def _pips(instr: str, a, b) -> str:
     except Exception:
         return ""
     return f"{n:.0f} pips"
+
+
+def _fmt_duration(t0, t1) -> str:
+    """How long a position was open, as "3d 4h" / "2h 05m" / "43m" / "<1m".
+
+    Both stamps come off MT5 on the BROKER's clock (+3h here), but the offset is
+    the same on each, so it cancels in the subtraction — this is one of the few
+    places that needs no tz conversion (pylego/broker/clock.py bites on ABSOLUTE
+    times, not elapsed ones). Missing/backwards stamps give "—", never a lie."""
+    try:
+        secs = int(t1) - int(t0)
+    except (TypeError, ValueError):
+        return "—"
+    if secs < 0:
+        return "—"
+    mins = secs // 60
+    if mins < 1:
+        return "<1m"
+    h, m = divmod(mins, 60)
+    if h >= 24:
+        d, h = divmod(h, 24)
+        return f"{d}d {h}h"
+    return f"{h}h {m:02d}m" if h else f"{m}m"
+
+
+def close_alert_text(instr: str, row: dict, paper: bool) -> str:
+    """The close alert that threads under its entry alert: which barrier ended the
+    trade, how long it was held, and what it made or lost. Pure — unit-testable.
+
+    P&L is NET. MT5 reports the deal profit, the swap and the commission as three
+    separate fields, and on a multi-day hold the swap can eat a real slice of a
+    small win — so the headline number adds them up, and the gross/swap/commission
+    breakdown rides along whenever either of the two is non-zero. The mode comes
+    from the position's own comment tag (``OI [maxpain_buy_7701.5]``), which is the
+    only durable record of which zone opened it once the plan has rolled."""
+    key = instr.lower()
+    name = instr.upper()
+    icon = _OI_ICON.get(key, "💱")
+    tv = _OI_TV.get(key, f"OANDA:{name.replace('/', '')}")
+    link = f'<a href="https://www.tradingview.com/chart/?symbol={tv}">{name}</a>'
+    reason = str(row.get("reason") or "").lower()
+    head = ("🎯 <b>TP HIT</b>" if reason == "tp"
+            else "🛑 <b>SL HIT</b>" if reason == "sl"
+            else "⚪ <b>CLOSED</b>")
+    tag = "📄 Paper" if paper else "🔴 LIVE"
+    pid = row.get("position_id")
+    tail = f"  ·  🎟 {pid}" if pid else ""
+    mode = (position_mode(row.get("comment")) or "").upper()
+    side = str(row.get("direction") or "").upper()
+    op, cp = row.get("open_price"), row.get("close_price")
+    moved = _pips(instr, op, cp)
+    move_tail = f"  <i>({moved})</i>" if moved else ""
+    gross = float(row.get("profit") or 0.0)
+    swap = float(row.get("swap") or 0.0)
+    comm = float(row.get("commission") or 0.0)
+    net = round(gross + swap + comm, 2)
+    verdict = "🟢" if net > 0 else "🔴" if net < 0 else "⚪"
+    extras = [f"{lbl} {v:+.2f}" for lbl, v in (("swap", swap), ("comm", comm)) if v]
+    pnl_tail = f"  <i>({gross:+.2f} gross · {' · '.join(extras)})</i>" if extras else ""
+    head_line = "  ·  ".join(x for x in (side, mode) if x)
+
+    return (
+        f"{head}  ·  {tag}{tail}\n"
+        f"{icon} <b>{link}</b>{('  ·  ' + head_line) if head_line else ''}\n"
+        f"➖➖➖➖➖\n"
+        f"📍 <code>{_fmt_price(instr, op)}</code> → <code>{_fmt_price(instr, cp)}</code>{move_tail}\n"
+        f"⏱ Held   {_fmt_duration(row.get('time_open'), row.get('time_close'))}\n"
+        f"{verdict} P&L    <b>{net:+.2f}</b>{pnl_tail}"
+    )
 
 
 def entry_alert_text(instr: str, spec: dict, lots: float, tid, paper: bool) -> str:
@@ -379,7 +459,7 @@ def _instr_lines(plan, sessions):
     return out
 
 
-def build_status(cfg, broker, plan, paper, sessions):
+def build_status(cfg, broker, plan, paper, sessions, closed=None):
     bal = broker.account_balance()
     return {
         "running": True,
@@ -390,7 +470,11 @@ def build_status(cfg, broker, plan, paper, sessions):
         "generatedAt": (plan or {}).get("generatedAt"),
         "universe": list(_plan_instruments(plan).keys()),
         "mt5_positions": broker.serialize_open_positions(),
-        "today_closed_trades": broker.serialize_closed_trades(),
+        # `closed` lets the caller hand over the list its close-alert scan already
+        # pulled (one history query per cycle instead of two). None = fetch it here,
+        # which is also the fallback when that scan FAILED: a transient error must
+        # not publish an empty today_closed_trades over a real one.
+        "today_closed_trades": broker.serialize_closed_trades() if closed is None else closed,
         "lines": _instr_lines(plan, sessions or {}),
     }
 
@@ -433,6 +517,7 @@ def run(base_url: str, force_live: bool) -> None:
     reject_until: dict[str, float] = {}          # zone_id → epoch to retry after (anti-spam)
     stack_skips: dict[str, int] = {}             # zone_id → conflicting ticket (once-per-change logging)
     budget_skips: dict[str, bool] = {}           # zone_id → deferred-by-risk-budget (once-per-change logging)
+    anchor_warned: set[str] = set()              # zone_id → already warned that its stop is plan-anchored
     group_skips: dict[str, bool] = {}            # zone_id → deferred-by-group-cap (once-per-change logging)
     warned_missing: dict[str, bool] = {}         # enabled_pairs entries absent from the plan (warn once)
     runners: dict[int, dict] = {}                # scale-out runner ticket → {pair, be, partner} (BE-at-TP1 watch)
@@ -449,6 +534,9 @@ def run(base_url: str, force_live: bool) -> None:
     px_hist: dict[str, deque] = {}               # instrument → (epoch, px) samples (approach-velocity window)
     sym_class: dict[str, str] = {}               # broker-symbol spelling → asset class (correlated-group cap)
     sym_key: dict[str, str] = {}                 # broker-symbol spelling → canonical key (time exits / closes)
+    tg_entry_msgid: dict[int, int] = {}          # ticket → its entry alert's Telegram message_id (close alert replies to it)
+    tg_closed_alerted: set[int] = set()          # position_ids already closed-alerted (the scan re-sees today's closes)
+    tg_close_seeded = False                      # first scan of a run seeds silently — see the scan
     try:
         saved_state = kv.get_json("oi_bot_state") or {}
     except Exception:
@@ -470,6 +558,20 @@ def run(base_url: str, force_live: bool) -> None:
                 runners[int(k)] = v
         except (TypeError, ValueError):
             pass
+    # Telegram threading survives a restart too: without this a bot bounce between
+    # an entry and its close orphans the close alert (still sent, just not threaded),
+    # and — worse — an empty alerted-set would re-announce every trade closed so far
+    # today. The seed below is the belt to this braces.
+    for k, v in (saved_state.get("tg_entry_msgid") or {}).items():
+        try:
+            tg_entry_msgid[int(k)] = int(v)
+        except (TypeError, ValueError):
+            pass
+    for v in (saved_state.get("tg_closed_alerted") or []):
+        try:
+            tg_closed_alerted.add(int(v))
+        except (TypeError, ValueError):
+            pass
 
     def _save_state() -> None:
         try:
@@ -479,6 +581,12 @@ def run(base_url: str, force_live: bool) -> None:
                 "features": features,
                 "risk_ledger": {str(k): v for k, v in risk_ledger.items()},
                 "runners": {str(k): v for k, v in runners.items()},
+                # Bounded: ids only ever grow, so the newest N are the ones that can
+                # still match a live trade. entry_msgid is popped on close anyway —
+                # this only caps the leak from a position that closes outside the
+                # history window and never gets claimed.
+                "tg_entry_msgid": {str(k): v for k, v in sorted(tg_entry_msgid.items())[-500:]},
+                "tg_closed_alerted": sorted(tg_closed_alerted)[-500:],
             })
         except Exception as e:
             log.warning(f"one-shot state save failed: {e} (restart double-entry protection degraded)")
@@ -579,8 +687,45 @@ def run(base_url: str, force_live: bool) -> None:
             elif not sr and warned_events:
                 log.info("event gate active again — blackout windows fresh")
                 warned_events = False
+            # ── Close alerts — "closed" threaded under the entry that opened it ──
+            # serialize_closed_trades() re-returns TODAY's closes on every scan, so
+            # the alerted set is what makes this fire once per trade; it is persisted
+            # so a restart doesn't re-announce the morning. The FIRST scan of a run
+            # seeds that set silently: anything already closed when this process came
+            # up was either alerted by the previous one or predates the feature, and
+            # neither is news worth pushing to a phone at 3am after a redeploy.
             try:
-                status = build_status(cfg, broker, plan, paper, sessions)
+                closed_now = broker.serialize_closed_trades()
+            except Exception as e:
+                closed_now = None                  # scan failed — build_status re-fetches (never publish a false empty)
+                log.warning(f"closed-trade scan failed: {e} — close alerts skipped this cycle")
+            tg_dirty = False
+            for c in (closed_now or []):
+                pid = c.get("position_id")
+                if pid is None or pid in tg_closed_alerted:
+                    continue
+                tg_closed_alerted.add(pid)
+                tg_dirty = True
+                if not tg_close_seeded or not cfg.get("tg_enabled"):
+                    continue
+                ckey = sym_key.get(c.get("symbol")) or str(c.get("symbol") or "").lower()
+                # reply_to is the entry alert's id when we still have it (we opened
+                # this trade, and MT5 kept the order ticket as the position id — the
+                # usual case for a market fill). Missing → the alert still goes, just
+                # unthreaded: an orphaned close beats a silent one.
+                send_telegram(tg_creds[0], tg_creds[1], close_alert_text(ckey, c, paper),
+                              reply_to=tg_entry_msgid.pop(pid, None))
+                log.info(f"CLOSE ALERT {ckey} {c.get('comment') or ''} "
+                         f"{c.get('reason') or 'closed'} P&L "
+                         f"{round(float(c.get('profit') or 0) + float(c.get('swap') or 0) + float(c.get('commission') or 0), 2):+.2f}")
+            if not tg_close_seeded and closed_now is not None:
+                log.info(f"close-alert scan primed — {len(tg_closed_alerted)} trade(s) already closed today "
+                         f"will not be re-announced")
+                tg_close_seeded = True
+            if tg_dirty:
+                _save_state()
+            try:
+                status = build_status(cfg, broker, plan, paper, sessions, closed_now)
                 # Feature stamps ride the status so the server's trade-log rollup can
                 # join them onto resolved trades (hold-calibration inputs). Bounded.
                 if len(features) > 300:
@@ -770,6 +915,17 @@ def run(base_url: str, force_live: bool) -> None:
                     if spec["sl"] is None:
                         continue
                     zid = spec["zone_id"]
+                    # A max-pain stop is re-anchored to live price by the engine (its
+                    # planned one is derived from the OI capture's spot and goes stale
+                    # over the session). The fallback to the plan's absolute is silent by
+                    # construction — say it out loud, once per zone, so a planner that
+                    # stops shipping the ingredients shows up here instead of quietly
+                    # trading hours-old stops again.
+                    if spec["mode"] == "maxpain" and spec.get("sl_anchor") != "live" and zid not in anchor_warned:
+                        anchor_warned.add(zid)
+                        log.warning(f"{instr} {zid}: stop {spec['sl']} is PLAN-anchored (the plan shipped no "
+                                    f"slFrac/slGuardWall/slFloor) — it was computed from the OI capture's "
+                                    f"spot and may be stale against live {px}")
                     if reject_until.get(zid, 0) > nowt:
                         continue                       # in reject cooldown — don't hammer the broker
                     # Correlated-group cap: the four indices are one macro bet — cap
@@ -905,8 +1061,18 @@ def run(base_url: str, force_live: bool) -> None:
                                  f"→ ticket {tid} lots {lots} ({size_mult}×{hold_note})")
                         # Telegram entry alert — what/direction/SL/TP/why, on fill.
                         if cfg.get("tg_enabled"):
-                            send_telegram(tg_creds[0], tg_creds[1],
-                                          entry_alert_text(instr, spec, lots, tid, paper))
+                            mid = send_telegram(tg_creds[0], tg_creds[1],
+                                                entry_alert_text(instr, spec, lots, tid, paper))
+                            # Remember the message this trade announced itself in so its
+                            # close can reply to it. A scale-out's two legs share ONE entry
+                            # alert, so both tickets point at the same message and each leg's
+                            # close threads there. Persisted immediately: a restart between
+                            # the entry and the close would otherwise orphan the reply.
+                            if mid:
+                                for t in (tid, tid2):
+                                    if t not in (None, -1):
+                                        tg_entry_msgid[t] = mid
+                                _save_state()
                     else:
                         # Back off so a hard rejection (invalid volume, market closed,
                         # duplicate) doesn't re-fire every tick. Log once per cooldown.

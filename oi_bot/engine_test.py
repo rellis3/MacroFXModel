@@ -5,7 +5,8 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from oi_bot.engine import OISession, zone_id, should_fire, make_spec, _tp, stack_conflict, position_mode  # noqa: E402
+from oi_bot.engine import (OISession, zone_id, should_fire, make_spec, maxpain_stop,  # noqa: E402
+                           _tp, stack_conflict, position_mode)
 
 fails = 0
 def ok(name, cond, extra=""):
@@ -81,6 +82,43 @@ ok("price already back at the pin (10 < 30) → does NOT fire", sm3.decide(4210)
 ok("wrong side of the pin → does NOT fire (a sell must be ABOVE it)", sm3.decide(4180) == [])
 ok("fires once the extension returns", any(x["zone_id"] == "maxpain_sell_4200" for x in sm3.decide(4250)))
 ok("no minDist on the zone → old fire-immediately behaviour", any(OISession("gold", 4260, [MAXPAIN]).decide(4205)))
+
+print("[maxpain stop is RE-ANCHORED to live price — the plan's spot is a daily capture]")
+# The 2026-09-01 spx case: the plan's spot (7684.25) is the 05:17Z OI capture, the pin is
+# 7701.5, and the stamped stop 7667 is spot − 1.0 × the distance to the pin. By midday the
+# market is 7640 — the planned stop sits 27 points ABOVE it, so the BUY is rejected with
+# "Invalid stops" on every retry, and the trigger only gets stronger as price runs away.
+SPX_MP = {"mode": "maxpain", "side": "buy", "level": 7701.5, "entry": 7684.25, "sl": 7667,
+          "tp1": 7701.5, "tp2": None, "minDist": 11.060831, "sizeFactor": 1.0,
+          "slGuardWall": 7650, "slFrac": 1.0, "slFloor": 5, "slDist": 17.25,
+          "regime": "BREAKOUT", "rationale": "max-pain reversion 1DTE"}
+smp = OISession("spx", 7684.25, [SPX_MP])
+spx = smp.decide(7640.0)
+ok("the stale zone still fires (running from the pin strengthens the trigger)", len(spx) == 1)
+ok("stop is re-anchored BELOW live price, not left at the plan's 7667",
+   spx and spx[0]["sl"] < 7640.0, str(spx and spx[0]["sl"]))
+ok("entry is live price, not the capture's spot", spx and spx[0]["entry"] == 7640.0)
+ok("spec says which anchor it used", spx and spx[0]["sl_anchor"] == "live")
+ok("guard wall 7650 is behind price → ignored, cap does the work (61.5 = 1.0 × pin distance)",
+   spx and abs(spx[0]["sl"] - (7640.0 - 61.5)) < 1e-6, str(spx and spx[0]["sl"]))
+ok("reward:risk ≥ 1/slFrac against the LIVE pin distance",
+   spx and (spx[0]["tp"] - spx[0]["entry"]) / (spx[0]["entry"] - spx[0]["sl"]) >= 1.0)
+
+print("[maxpain stop — resolution mirrors the planner's own]")
+ok("a guard wall still on the protective side wins when it is nearer than the cap",
+   maxpain_stop({**SPX_MP, "slGuardWall": 7630}, 7640.0) == 7640.0 - (10 + 5))
+ok("sell side mirrors (stop ABOVE live price)",
+   maxpain_stop({**SPX_MP, "side": "sell", "level": 7600, "slGuardWall": None}, 7640.0)
+   == 7640.0 + 40)
+ok("floored at slFloor so the stop is never inside the noise band",
+   maxpain_stop({**SPX_MP, "slGuardWall": None}, 7701.0) == 7701.0 - 5)
+ok("no ingredients (older plan shape) → None, caller keeps the stamped sl",
+   maxpain_stop(MAXPAIN, 4258) is None)
+mp_legacy = make_spec("gold", MAXPAIN, 4258)
+ok("legacy maxpain spec keeps the plan's stop and SAYS so",
+   mp_legacy["sl"] == 4310 and mp_legacy["sl_anchor"] == "plan")
+ok("strike-anchored modes are untouched by a live px",
+   make_spec("gold", SELL_FADE, 4310)["sl"] == 4305 and make_spec("gold", SELL_FADE, 4310)["entry"] == 4300)
 
 print("[break dwell — a wick through the trigger is not a decisive break]")
 sd = OISession("gold", 4200, [BUY_BREAK])

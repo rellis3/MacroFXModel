@@ -93,6 +93,36 @@ console.log('[Max-pain reversion — near expiry + extended]');
   ok('no reversion when price sits at the pin', !buildOIZones(inst, 4205, cfg).some(x => x.mode === 'maxpain'));
 }
 
+console.log('[Max-pain reversion — only pulls when the traded book is long gamma (PIN)]');
+{
+  // The pull toward the pin is the long-gamma mechanism itself (dealers hedge
+  // counter-cyclically) -- a BREAKOUT book is short gamma fighting the trade, not just a
+  // reason to size it down. 2026-09-01 real case: rut, BREAKOUT, GEX 4.29x the trailing
+  // median (the strongest short-gamma reading in that day's plan), price 99 points from
+  // the pin -- extended enough to fire under the old regime-agnostic gate.
+  const breakout = { ...base, exposures: { gex: -5000 }, dte: 1 };   // −GEX → BREAKOUT
+  const drops = [];
+  const blocked = buildOIZones(breakout, 4260, { ...cfg, collectDrops: drops }).find(x => x.mode === 'maxpain');
+  ok('default (maxpainRequirePin true) — BREAKOUT does NOT fire max-pain', !blocked);
+  const drop = drops.find(d => d.mode === 'maxpain');
+  ok('the skip is LEGIBLE — collectDrops names the regime and why',
+    drop && /BREAKOUT/.test(drop.reason) && /long gamma/.test(drop.reason), JSON.stringify(drop));
+
+  const pin = { ...base, exposures: { gex: 5000 }, dte: 1 };         // +GEX → PIN
+  const allowed = buildOIZones(pin, 4260, cfg).find(x => x.mode === 'maxpain');
+  ok('PIN still fires max-pain (the mechanism is intact)', allowed && allowed.side === 'sell');
+
+  // Escape hatch: maxpainRequirePin:false restores the old regime-agnostic behaviour —
+  // ships disabled by default now, but not removed.
+  const optOut = buildOIZones(breakout, 4260, { ...cfg, maxpainRequirePin: false }).find(x => x.mode === 'maxpain');
+  ok('maxpainRequirePin:false → BREAKOUT fires again (old behaviour available)', !!optOut);
+
+  // NEUTRAL (inside the conviction band) is not confirmed long gamma either — same gate.
+  const neutral = buildOIZones({ ...base, exposures: { gex: 100 }, dte: 1 }, 4260,
+    { ...cfg, gexMedianAbs: 100000, gexNeutralBand: 0.25 }).find(x => x.mode === 'maxpain');
+  ok('NEUTRAL regime is also blocked (not confirmed long gamma)', !neutral);
+}
+
 console.log('[Max-pain reversion — the DTE gate reads the shape the store ACTUALLY has]');
 {
   // REGRESSION: `_nearDTE` only ever read `inst.expiries`, a store shape the analyser
@@ -139,6 +169,19 @@ console.log('[Max-pain reversion — stop bounded by the pin distance, not the f
   // maxpainSlFrac 0 → uncapped, i.e. the old pure-guard-wall behaviour.
   const mpOff = buildOIZones(far, 4260, { ...cfg, maxpainSlFrac: 0, minRR: 0 }).find(x => x.mode === 'maxpain');
   ok('maxpainSlFrac 0 → uncapped guard-wall stop (old behaviour available)', Math.abs(mpOff.sl - 4705) < 1e-9, `sl ${mpOff.sl}`);
+
+  // Mode C is the only mode whose stop is derived from SPOT — and spot is the daily OI
+  // capture, so `sl` is stale by mid-session (2026-09-01: a spx max-pain BUY whose stop
+  // sat 27 points ABOVE the market, rejected 10016 every 60s for hours). The executor
+  // re-anchors it to live price from these DAY-STATIC ingredients; if this build ever
+  // stops shipping them the bot silently falls back to the stale absolute, so assert
+  // them here rather than letting that go quiet.
+  ok('ships the stop ingredients for live re-anchoring',
+    mpN.slFrac === 1.0 && mpN.slGuardWall === 4290 && mpN.slFloor === 5 && Math.abs(mpN.slDist - 35) < 1e-9,
+    JSON.stringify({ slFrac: mpN.slFrac, slGuardWall: mpN.slGuardWall, slFloor: mpN.slFloor, slDist: mpN.slDist }));
+  ok('no guard wall → slGuardWall is null, never undefined',
+    buildOIZones({ ...far, callWalls: [] }, 4260, cfg).find(x => x.mode === 'maxpain').slGuardWall === null);
+  ok('rationale says the stop re-anchors at entry', /re-anchored to live price at entry/.test(mpN.rationale), mpN.rationale);
 }
 
 console.log('[Filters — liquidating veto + established requirement]');

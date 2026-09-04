@@ -20,7 +20,7 @@ import { execFile, execFileSync, spawn } from 'child_process';
 import { promisify }       from 'util';
 import * as kv           from './kv.js';
 import worker, { COT_KV } from './_worker.js';
-import { rankIC, blockBootstrapIC } from './js/statsCore.js';
+import { rankIC, blockBootstrapIC, spearman } from './js/statsCore.js';
 import { cotFactorSeries, qualifies, COT_FACTOR_UNIVERSE, COT_DATASETS, COT_WINDOW_WEEKS, MIN_WEEKS_QUALIFY } from './js/cotFactorCore.js';
 import { refreshAllPairs } from './levels.js';
 import { fitHMM, hmmSignalScore } from './hmm.js';
@@ -71,12 +71,12 @@ import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } fro
 import { mountLevelAtlasRoutes, startRunJob as _startLevelAtlasRunJob } from './js/levelAtlasRoutes.js';
 import { mountSessionPathRoutes, startRunJob as _startSessionPathRunJob } from './js/sessionPathRoutes.js';
 import { mountSessionHandoffRoutes, startRunJob as _startSessionHandoffRunJob } from './js/sessionHandoffRoutes.js';
-import { mountAsiaFibAtlasRoutes, startRunJob as _startAsiaFibAtlasRunJob, asiaLivePlanZones } from './js/asiaFibAtlasRoutes.js';
-import { mountMondayFibAtlasRoutes, startRunJob as _startMondayFibAtlasRunJob, mondayLivePlanZones } from './js/mondayFibAtlasRoutes.js';
+import { mountAsiaFibAtlasRoutes, startRunJob as _startAsiaFibAtlasRunJob, asiaLivePlanZones, asiaAllLines, liveCache as _faAsiaLiveCache, liveWarming as _faAsiaLiveWarming, saveAllLiveSnapshots as _faAsiaSaveAllLiveSnapshots } from './js/asiaFibAtlasRoutes.js';
+import { mountMondayFibAtlasRoutes, startRunJob as _startMondayFibAtlasRunJob, mondayLivePlanZones, mondayAllLines, liveCache as _faMondayLiveCache, liveWarming as _faMondayLiveWarming, saveAllLiveSnapshots as _faMondaySaveAllLiveSnapshots } from './js/mondayFibAtlasRoutes.js';
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
 import {
   getFastLive as _laGetFastLive, liveCache as _laLiveCache, liveWarming as _laLiveWarming, PREFIX as _LA_PREFIX,
-  DEFAULT_REARM as _LA_DEFAULT_REARM, loadLocalVoteTrades as _laLoadLocalVoteTrades, pickFresher as _laPickFresher,
+  DEFAULT_REARM as _LA_DEFAULT_REARM, loadLocalVoteTrades as _laLoadLocalVoteTrades, loadLocalP90VoteTrades as _laLoadLocalP90VoteTrades, pickFresher as _laPickFresher,
   saveAllLiveSnapshots as _laSaveAllLiveSnapshots,
 } from './js/levelAtlasRoutes.js';
 import { voteDecision as _laVoteDecision, priceBarrierTrade as _laPriceBarrierTrade, applyFadeStopTightening as _laApplyFadeStopTightening } from './js/levelAtlasVoteReview.js';
@@ -127,7 +127,7 @@ import { runCreditLeadLag as _runCreditLeadLag, alignByDate as _alignByDate } fr
 import { compareForecastLines as _compareForecastLines } from './js/forecastDriftCompare.js';
 import { buildEventWindows as _buildEventWindows } from './js/eventGateCore.js';
 import { fetchWeekEvents as _fetchWeekEvents } from './js/econCalendar.js';
-import { buildMacroChanges as _buildMacroChanges, MACRO_CHANGE_SPEC as _MACRO_CHANGE_SPEC } from './js/macroChange.js';
+import { buildMacroChanges as _buildMacroChanges, MACRO_CHANGE_SPEC as _MACRO_CHANGE_SPEC, seriesDeltas as _seriesDeltas } from './js/macroChange.js';
 import { macroContext as _macroContext, macroContextByDate as _macroContextByDate, MACRO_FRED_SERIES as _MACRO_FRED_SERIES, riskSensFor as _riskSensFor } from './js/macroCore.js';
 import { analyzePair as _mcondAnalyzePair, summarizeRows as _mcondSummarize, verdict as _mcondVerdict } from './js/macroConditionerEngine.js';
 import { creditGate as _creditGateBrick } from './js/creditCore.js';
@@ -214,7 +214,13 @@ import { _fetchAllH1 as _fetchH1AB, _fetchAllH1 as _fetchH1 } from './js/session
 import { runMacroEquityBacktest } from './js/macroEquityEngine.js';
 import { loadEngine as loadGliEngine } from './GlobalLiquidity/engineLoader.mjs';
 import { computeBacktest as computeGliBacktest, computeNqBacktest as computeGliNqBacktest, accumulateWeekly as gliAccumulateWeekly, weeklyReturnsFromByWeek as gliWeeklyFromByWeek, FRED_IDS as GLI_FRED_IDS, FX_FILE_ALIAS as GLI_FX_ALIAS } from './GlobalLiquidity/backtestCore.mjs';
-import { runFullZScoreBacktest, ZSCORE_PAIRS, computeZScoreStats } from './js/zscoreSpreadEngine.js';
+import { runFullZScoreBacktest, ZSCORE_PAIRS, computeZScoreStats, fetchFredObservations } from './js/zscoreSpreadEngine.js';
+import {
+  buildFastFeatures as nmlBuildFastFeatures, buildFredFeatures as nmlBuildFredFeatures,
+  buildLevelFeatures as nmlBuildLevelFeatures, buildFredLevelFeatures as nmlBuildFredLevelFeatures,
+  walkForward as nmlWalkForward, levelFairValue as nmlLevelFairValue, oosStats as nmlOosStats,
+  anchoredWindowPath as nmlAnchoredWindowPath, nextBarPredPrice as nmlNextBarPredPrice,
+} from './js/nasdaqMacroLeadCore.js';
 import { runFullZScoreV2Backtest, V2_DEFAULTS as ZS_V2_DEFAULTS } from './js/zscoreSpreadV2Engine.js';
 import { splitTradesByDate as zsSplitTradesByDate } from './js/zscoreConfidenceCore.js';
 import { runFullMacroDirection, MACRO_DIR_DEFAULTS } from './js/macroDirectionEngine.js';
@@ -2484,6 +2490,15 @@ Foreign curves: ${s.foreignCurves ?? 'N/A'}
 EXECUTION QUALITY (OANDA live spread)
 Spread right now: ${s.spreadPips ?? 'N/A'} pips  |  Typical: ${s.typicalSpreadPips ?? 'N/A'} pips  |  Classification: ${s.spreadClassification ?? 'N/A'}
 ${s.spreadClassification === 'EXTREME' ? 'WARNING: spread is extreme - do not enter, market is illiquid or pre-event' : s.spreadClassification === 'WIDE' ? 'NOTE: spread is elevated - entry cost is high, wait for normalisation or widen stop to account for it' : ''}
+${s.voteAtlas ? `
+VOTE ATLAS — LIVE BOT STATE (volatility_bot_v2, an automated fade/follow system trading this exact pair, independent of this analysis — what it's ACTUALLY doing right now, not a recommendation to agree or disagree with)
+Enabled on the live bot: ${s.voteAtlas.enabled ? 'YES' : 'no'}  |  Bot: ${s.voteAtlas.botRunning ? `running (${s.voteAtlas.botMode})` : 'not reporting'}  |  Configured spread cap: ${s.voteAtlas.spreadCapPips ?? 'N/A'} pips
+${s.voteAtlas.historical ? `What the validated backtest shows at this bot's own trading threshold (margin>=${s.voteAtlas.historical.marginTested}): ${s.voteAtlas.historical.trades} trades, ${s.voteAtlas.historical.winRatePct}% win rate, Sharpe ${s.voteAtlas.historical.sharpe}${s.voteAtlas.historical.sameDayResolvedPct != null ? `. Resolves within its own entry session ${s.voteAtlas.historical.sameDayResolvedPct}% of the time (the rest run past close, now flattened by the bot's own EOD-close rule rather than left open for days)` : ''}.` : ''}
+${s.voteAtlas.todayRegime?.dayVol || s.voteAtlas.todayRegime?.session ? `Today's live reading: day-vol regime ${(s.voteAtlas.todayRegime.dayVol || '').split('·')[1] || s.voteAtlas.todayRegime.dayVol || 'N/A'}, session ${s.voteAtlas.todayRegime.session ?? 'N/A'} (regime has NOT shown a strong win-rate split on its own historically — treat as context, not a standalone signal).` : ''}
+${s.voteAtlas.openPositions?.length ? `Open position: ${s.voteAtlas.openPositions.map(p => `${p.direction} ${p.lots} lots @ ${p.openPrice} (unrealized ${p.profit >= 0 ? '+' : ''}${p.profit})`).join('; ')}` : 'No open position from this bot.'}
+${s.voteAtlas.closedToday?.length ? `Closed today: ${s.voteAtlas.closedToday.map(t => `${t.reason ?? 'closed'} ${t.profit >= 0 ? '+' : ''}${t.profit}`).join('; ')}` : ''}
+${s.voteAtlas.decisionsToday?.length ? `Today's decisions (rung — decision/margin — outcome — reason):
+${s.voteAtlas.decisionsToday.map(d => `  ${d.side ?? ''}${d.rung ?? ''} — ${d.decision ?? 'n/a'}${d.margin != null ? ` margin ${d.margin}` : ''} — ${d.status}${d.reason ? ` (${d.reason})` : ''}`).join('\n')}` : 'No decisions logged for this pair yet today.'}` : ''}
 
 RETAIL CROWD POSITIONING (Myfxbook community)
 Retail long: ${s.retailLongPct ?? 'N/A'}%  |  Short: ${s.retailShortPct ?? 'N/A'}%  |  Crowding: ${s.retailCrowding ?? 'N/A'}
@@ -2541,6 +2556,19 @@ ${s.macroScorecard ? Object.entries(s.macroScorecard).map(([ccy, row]) => row
 COMPOSITE SIGNAL (this dashboard's own combined read — averages whichever of technical regime, COT positioning, the Macro Scorecard, and carry are covered for this pair into one direction; arithmetic agreement across already-built signals, NOT a backtested rule — weight it as one more input, not a verdict)
 ${s.pairComposite ? `${s.pairComposite.direction} — ${s.pairComposite.agree}/${s.pairComposite.total} legs agree (score ${s.pairComposite.score >= 0 ? '+' : ''}${s.pairComposite.score})
 Legs: ${(s.pairComposite.legs || []).join('  ·  ')}` : '  Not available'}
+
+MARKET OUTLOOK — 5-DAY AND 20-DAY (js/outlookEngine.js's own computed read, GIVEN TO YOU AS FACT — do not recompute or second-guess these numbers, only explain them)
+${s.outlookWeekly ? `5-Day: ${s.outlookWeekly.bias} (score ${s.outlookWeekly.biasScore}, ${s.outlookWeekly.confidence}% confidence, ${s.outlookWeekly.agree}/${s.outlookWeekly.total} drivers agree)
+  Drivers: ${s.outlookWeekly.drivers.map(d => `[${d.status}] ${d.label} — ${d.detail}`).join(' | ') || 'none'}
+  Event risk in window: ${s.outlookWeekly.eventRisk?.count ?? 0} scheduled (${s.outlookWeekly.eventRisk?.highCount ?? 0} high-impact)` : '  Not available'}
+${s.outlookMonthly ? `20-Day: ${s.outlookMonthly.bias} (score ${s.outlookMonthly.biasScore}, ${s.outlookMonthly.confidence}% confidence, ${s.outlookMonthly.agree}/${s.outlookMonthly.total} drivers agree)
+  Drivers: ${s.outlookMonthly.drivers.map(d => `[${d.status}] ${d.label} — ${d.detail}`).join(' | ') || 'none'}
+  Event risk in window: ${s.outlookMonthly.eventRisk?.count ?? 0} scheduled (${s.outlookMonthly.eventRisk?.highCount ?? 0} high-impact)` : '  Not available'}
+CRITICAL — the daily read above, this 5-day read, and the 20-day read are computed independently and are ALLOWED TO DISAGREE. Do not force them into one consistent story. If they diverge, say so plainly and explain the mechanism (e.g. "near-term technicals point up but the 20-day macro-momentum read is bearish, driven by X" is a complete and useful answer — do not soften it into false consensus).
+
+CENTRAL-BANK TONE (context only — DO NOT use as a reason for ANY directional call, at any horizon)
+${s.cbTone?.length ? s.cbTone.map(c => `${c.bank} (${c.ccy}): ${c.detail}`).join('\n') : '  Not available'}
+This platform pre-registered and ran a test of whether hawkish-score momentum predicts price — a clean banked null (see CB_SENTIMENT_PRICE_TEST.md). Mention central-bank tone only as narrative color if directly relevant ("the ECB has grown more dovish, consistent with the softer EUR macro backdrop") — never as evidence for a bias, a driver behind weeklyOutlook/monthlyOutlook, or a reason in tradeOfDay's rationale.
 
 LIQUIDITY GATE (board-wide, not pair-specific — Fed/ECB/BoJ balance-sheet momentum vs VIX; context, NOT a backtested rule)
 ${s.liquidityGate ? `${s.liquidityGate.direction} — ${s.liquidityGate.agree}/${s.liquidityGate.total} central banks agree (score ${s.liquidityGate.score >= 0 ? '+' : ''}${s.liquidityGate.score}). ${(s.liquidityGate.legs || []).join('  ·  ')}` : '  Not available'}
@@ -2653,13 +2681,14 @@ Rules for your response:
 16. NUMBER DELIVERY — speak numbers like a trader, not a spreadsheet. In the PROSE, round prices the way you'd say them aloud ("1.1430", "just under 1.1450", "around 29,500") — reserve full precision (1.14298, 1.14508) for the exact entry/stop/target in keyLevels and tradingFramework, where it's actionable. Never quote pointless precision in prose ("0.27% of typical daily range", "114.3×") — say "almost none of the day's range left" instead. A number earns its place only if it changes the decision.
 17. LEAD WITH WHAT DRIVES THE DECISION — don't stack every metric. Pick the handful of things that actually make the trade — normally the entry/stop/target level, the macro backdrop behind it, and the one evidenced positioning/technical signal — and build around them; that's three legs, not one, so don't collapse the read down to a level and a single stat. Secondary readings get a clause, not a sentence each. If two signals conflict, resolve it for the reader in plain words ("so despite the breakout flag, the near-term odds still favour the fade") — don't just list both and leave them hanging.
 18. CLOSING TASK — TRADE OF THE DAY. As your final step, using everything above, decide whether there is ONE concrete trade worth proposing right now. If yes: fill tradeOfDay with direction ("LONG" or "SHORT"), and entry/stopLoss/takeProfit as REAL levels — reuse a level you already named elsewhere in your response, or one present in the snapshot (a keyLevel, OI wall, pivot, fib, range edge, or retail cluster) — never a fabricated round number (same rule as #14, applied here too). riskReward is the resulting R multiple as a string (e.g. "1:2.1"). confidence is HIGH/MEDIUM/LOW and must be consistent with convictionScore, not more confident than the rest of your read. rationale is ONE sentence citing the 1-2 strongest pieces of evidence behind it — no new claims not already grounded above. If the evidence is thin, conflicting, or nothing here clears a reasonable bar for an actual trade, set direction to "NONE", leave entry/stopLoss/takeProfit as empty strings, and use rationale to say briefly why there's no trade today (e.g. "levels are stacked against each other and vol is too compressed to size a stop") — do not force a trade that isn't there just to fill the field.
+19. WEEKLY/MONTHLY OUTLOOK — fill weeklyOutlook and monthlyOutlook from the MARKET OUTLOOK section's given bias/confidence/drivers, one sentence each explaining WHY (cite the 1-2 strongest drivers by name) — you are narrating those numbers, not producing a new independent call, and you MUST NOT invent a bias that contradicts the given one. Unlike tradeOfDay, these are position/bias reads, not trade setups — no entry/stop/target, no risk/reward. If the given bias is NEUTRAL or confidence is low, say that plainly rather than manufacturing conviction. Central-bank tone is never valid supporting evidence here (rule above) — if you mention it, it's colour, not a reason.
 
 Respond with a single valid JSON object. No markdown. No text outside the JSON. Field string values 1-2 sentences max EXCEPT "brief" which is 3-5 short paragraphs. Max 3 items per arrays.
 convictionScore MUST be an integer from 0 to 10 only (0=no conviction, 5=moderate, 10=maximum). Do not use any other scale.
 tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newlines with \\n):
 "[PAIR] [BIAS] [SCORE]/10 | [REGIME]\\n[1-2 sentence market read]\\nWatch: [up to 3 key levels with price and type]\\nDo: [specific action]. Avoid: [what to avoid]. Risk: [main risk or event]"
 
-{"brief":"","overallBias":"LONG|SHORT|NEUTRAL","conviction":"HIGH|MEDIUM|LOW","convictionScore":5,"headline":"","regime":{"label":"TRENDING|RANGING|BREAKOUT RISK|MEAN-REVERSION|CHOPPY","detail":""},"macroRead":"","yieldCurveRead":"","oiRead":"","garchRead":"","armaRead":"","spreadSignalRead":"","cotRead":"","sessionRead":"","dollarRegimeRead":"","eventRiskRead":"","surpriseRead":"","volConeRead":"","impliedVolRead":"","riskFlagsRead":"","keyLevels":[{"price":"","type":"CALL WALL|PUT WALL|MAX PAIN|GAMMA FLIP|FIB CONFLUENCE|PIVOT|RANGE HIGH|RANGE LOW","significance":""}],"tradingFramework":"","goodToDoNow":["",""],"avoidNow":["",""],"breakoutTrigger":"","reversionTrigger":"","cleanBreakPotential":"LOW|MEDIUM|HIGH","cleanBreakRationale":"","sentimentPositioning":"","reflexivity":"","riskWarnings":["",""],"tldr":"","tradeOfDay":{"direction":"LONG|SHORT|NONE","entry":"","stopLoss":"","takeProfit":"","riskReward":"","confidence":"HIGH|MEDIUM|LOW","rationale":""}}`;
+{"brief":"","overallBias":"LONG|SHORT|NEUTRAL","conviction":"HIGH|MEDIUM|LOW","convictionScore":5,"headline":"","regime":{"label":"TRENDING|RANGING|BREAKOUT RISK|MEAN-REVERSION|CHOPPY","detail":""},"macroRead":"","yieldCurveRead":"","oiRead":"","garchRead":"","armaRead":"","spreadSignalRead":"","cotRead":"","sessionRead":"","dollarRegimeRead":"","eventRiskRead":"","surpriseRead":"","volConeRead":"","impliedVolRead":"","riskFlagsRead":"","keyLevels":[{"price":"","type":"CALL WALL|PUT WALL|MAX PAIN|GAMMA FLIP|FIB CONFLUENCE|PIVOT|RANGE HIGH|RANGE LOW","significance":""}],"tradingFramework":"","goodToDoNow":["",""],"avoidNow":["",""],"breakoutTrigger":"","reversionTrigger":"","cleanBreakPotential":"LOW|MEDIUM|HIGH","cleanBreakRationale":"","sentimentPositioning":"","reflexivity":"","riskWarnings":["",""],"tldr":"","tradeOfDay":{"direction":"LONG|SHORT|NONE","entry":"","stopLoss":"","takeProfit":"","riskReward":"","confidence":"HIGH|MEDIUM|LOW","rationale":""},"weeklyOutlook":{"bias":"BULLISH|BEARISH|NEUTRAL","confidence":"HIGH|MEDIUM|LOW","rationale":""},"monthlyOutlook":{"bias":"BULLISH|BEARISH|NEUTRAL","confidence":"HIGH|MEDIUM|LOW","rationale":""}}`;
 }
 
 // ── Express app ───────────────────────────────────────────────────────────────
@@ -11276,10 +11305,39 @@ app.get('/api/cvol', async (_req, res) => {
 // The "3+ flags → cut gross" daily risk dashboard from the quant-macro lessons
 // (education/QUANT_MACRO_LESSONS_1-6.md, Lesson 2). Each flag is a CONDITION
 // reading, not a signal: it describes the kind of day, it does not predict.
-// Stock-bond correlation (the fifth lesson flag) is deliberately absent — no
-// daily SPX series is wired server-side; add it when one is, don't proxy it.
 const _RISK_FLAGS_CACHE = { data: null, fetchedAt: 0 };
 const _RISK_FLAGS_TTL   = 30 * 60 * 1000;
+
+// Stock-bond correlation (the lesson's own "if 3+ warn, cut gross first" check
+// — previously flagged absent here because no daily SPX series was wired
+// server-side; SPY/TLT are now fetched live elsewhere in this file
+// (fetchYahooOHLC, /api/diversification/data), so this reuses that exact
+// function rather than adding a new fetch path). Rolling ~20-obs daily-return
+// correlation via js/statsCore.js's spearman() — imported, not re-implemented
+// (rank correlation is also more robust to the odd outlier day than Pearson).
+// Zero-crossing threshold (corr > 0 = "broken"): the traditional hedge is
+// negative stock-bond correlation, so a positive reading is the anomaly the
+// lesson calls out, no fitted constant needed — same discipline as vix_term's
+// own ratio ≥ 1.0 crossing point below.
+async function _stockBondCorr() {
+  const toUnix = Math.floor(Date.now() / 1000);
+  const fromUnix = toUnix - 50 * 86400;   // ~50 calendar days -> comfortably >20 trading days
+  const [spyMap, tltMap] = await Promise.all([
+    fetchYahooOHLC('SPY', fromUnix),
+    fetchYahooOHLC('TLT', fromUnix),
+  ]);
+  const dates = [...spyMap.keys()].filter(d => tltMap.has(d)).sort();
+  if (dates.length < 21) return null;
+  const win = dates.slice(-21);           // 21 closes -> 20 daily returns
+  const spyRet = [], tltRet = [];
+  for (let i = 1; i < win.length; i++) {
+    const ps = spyMap.get(win[i - 1]).close, cs = spyMap.get(win[i]).close;
+    const pt = tltMap.get(win[i - 1]).close, ct = tltMap.get(win[i]).close;
+    if (ps > 0 && pt > 0) { spyRet.push((cs - ps) / ps); tltRet.push((ct - pt) / pt); }
+  }
+  if (spyRet.length < 15) return null;
+  return { corr: spearman(spyRet, tltRet), n: spyRet.length, asOf: win[win.length - 1] };
+}
 
 async function computeRiskFlags() {
   const age = Date.now() - _RISK_FLAGS_CACHE.fetchedAt;
@@ -11301,6 +11359,8 @@ async function computeRiskFlags() {
   const [hyHist, jpyHist] = await Promise.all([hist('hy'), hist('usd_jpy')]);
   let cvol = null;
   try { cvol = await _getCvol(); } catch { /* flag reports unavailable */ }
+  let sbCorr = null;
+  try { sbCorr = await _stockBondCorr(); } catch (e) { console.warn('[risk-flags] stock-bond corr failed:', e.message); }
 
   const vix    = fred.vix?.value ?? null;
   const vix3m  = fred.vix3m?.value ?? null;
@@ -11329,6 +11389,12 @@ async function computeRiskFlags() {
     { key: 'evz_stress', label: 'FX implied vol stressed',
       on: evzPct != null ? evzPct >= 80 : null, value: evzPct,
       detail: evzPct != null ? `EVZ at ${evzPct}th percentile of 5y (flag ≥80th)` : 'EVZ unavailable' },
+    { key: 'stock_bond_corr', label: 'Stock-bond correlation broken',
+      on: sbCorr != null ? sbCorr.corr > 0 : null,
+      value: sbCorr != null ? +sbCorr.corr.toFixed(2) : null,
+      detail: sbCorr != null
+        ? `SPY/TLT 20d return correlation ${sbCorr.corr >= 0 ? '+' : ''}${sbCorr.corr.toFixed(2)} as of ${sbCorr.asOf} (flag > 0 — the usual negative hedge has flipped, an inflation-scare rather than growth-scare signature)`
+        : 'SPY/TLT history unavailable' },
   ];
 
   const known  = flags.filter(f => f.on != null);
@@ -11349,6 +11415,92 @@ async function computeRiskFlags() {
 
 app.get('/api/risk-flags', async (_req, res) => {
   try { res.json({ ok: true, ...(await computeRiskFlags()) }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// ── Gold ETF flow (GLD + IAU combined AUM) ────────────────────────────────────
+// A genuine data gap flagged by the owner's own colleague's gold brief ("+$5.5bn
+// in August, third straight month of inflows") — this repo had no ETF-flow feed
+// at all, only GLD's PRICE (fetched elsewhere for correlation datasets, a
+// different series entirely). UNVERIFIED IN SANDBOX: query1/query2.finance.yahoo.com
+// is unreachable from this dev sandbox (same OANDA/Yahoo restriction CLAUDE.md
+// already documents for fetchYahooOHLC/fetchVixYahoo) — this reuses that exact
+// domain/header pattern rather than adding SPDR's/iShares' own site (neither
+// reachable to verify either, and each has its own undocumented CSV format), on
+// the theory that the lowest-incremental-risk path is a SECOND module on an
+// ALREADY-proven-live domain, not a brand-new one. Still needs a live Railway
+// check before trusting the field parse — same standing caveat as every other
+// OANDA/Yahoo-dependent feature here.
+//
+// No vendor-hosted flow HISTORY is fetched (funds publish current holdings, not
+// a clean daily time series) — instead this fetches TODAY's combined AUM once a
+// day and keeps its OWN running history in KV, then reuses js/macroChange.js's
+// seriesDeltas (imported, not re-implemented) for the 1d/5d/20d deltas — the
+// exact "own history + seriesDeltas" pattern already proven for the CB-history
+// engines' KV persistence, just for a number instead of a hawkish score.
+const GOLD_ETF_TICKERS = ['GLD', 'IAU'];
+const GOLD_ETF_FLOW_KV = 'gold_etf_flow_history';
+const GOLD_ETF_FLOW_TTL_MS = 6 * 3600 * 1000;   // AUM doesn't move intraday; limit external calls
+const _goldEtfFlowCache = { data: null, fetchedAt: 0 };
+
+// Yahoo's quoteSummary module carries a fund's total net assets under a few
+// possible module/field names depending on ticker/module-set quirks — try each,
+// first one present wins, so a minor Yahoo schema drift degrades gracefully
+// instead of silently returning zero.
+async function _fetchYahooFundAum(ticker) {
+  const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(ticker)}`
+            + `?modules=defaultKeyStatistics,summaryDetail,price`;
+  const r = await fetch(url, {
+    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MacroFX/1.0)' },
+    signal:  AbortSignal.timeout(20_000),
+  });
+  if (!r.ok) throw new Error(`Yahoo fund AUM ${ticker} HTTP ${r.status}`);
+  const json = await r.json();
+  const result = json?.quoteSummary?.result?.[0];
+  if (!result) throw new Error(`Yahoo fund AUM ${ticker}: unexpected response`);
+  const raw = result.defaultKeyStatistics?.totalAssets?.raw
+    ?? result.summaryDetail?.totalAssets?.raw
+    ?? result.price?.marketCap?.raw               // last-resort proxy: share market cap ≈ AUM for a physically-backed trust
+    ?? null;
+  if (raw == null || !Number.isFinite(raw)) throw new Error(`Yahoo fund AUM ${ticker}: no totalAssets/marketCap field found`);
+  return raw;
+}
+
+async function _goldEtfFlowSeries() {
+  const age = Date.now() - _goldEtfFlowCache.fetchedAt;
+  if (_goldEtfFlowCache.data && age < GOLD_ETF_FLOW_TTL_MS) return _goldEtfFlowCache.data;
+
+  const raw = await kv.get(GOLD_ETF_FLOW_KV).catch(() => null);
+  let series = raw ? JSON.parse(raw) : [];         // [{date, value}] ascending, value = combined AUM USD
+  const today = new Date().toISOString().slice(0, 10);
+
+  if (series[series.length - 1]?.date !== today) {
+    try {
+      const sums = await Promise.all(GOLD_ETF_TICKERS.map(t => _fetchYahooFundAum(t)));
+      const combined = sums.reduce((a, b) => a + b, 0);
+      series = [...series, { date: today, value: combined }].slice(-120);   // ~120 obs, same trim as fredhistory
+      await kv.put(GOLD_ETF_FLOW_KV, JSON.stringify(series));
+    } catch (e) {
+      console.warn('[gold-etf-flow] fetch failed, serving prior history only:', e.message);
+      // fall through with whatever history already exists — never crash the caller
+    }
+  }
+
+  const s = _seriesDeltas(series, [1, 5, 20]);
+  // Percent basis, not raw $ — a fund's AUM grows with price + share count over
+  // years, so a fixed $ divisor would need re-tuning; % is the scale-invariant
+  // read (same reasoning macroChange.js applies via its own bps/pct convention).
+  const pctDeltas = s ? Object.fromEntries(Object.entries(s.d).map(([n, v]) =>
+    [n, (v == null || !s.last) ? null : +((v / s.last) * 100).toFixed(2)])) : null;
+  const data = { series, last: s?.last ?? null, asOf: s?.lastDate ?? null, deltas: pctDeltas };
+
+  _goldEtfFlowCache.data = data;
+  _goldEtfFlowCache.fetchedAt = Date.now();
+  return data;
+}
+
+app.get('/api/gold-etf-flow', async (_req, res) => {
+  try { res.json({ ok: true, ...(await _goldEtfFlowSeries()) }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
@@ -13569,6 +13721,9 @@ const OI_BOT_CFG_DEFAULTS = {
   maxpainSlFrac: 1.0,                // Mode C stop capped at this × the distance to the pin, so a far
                                      // guard wall can't produce a sub-1R reversion (0 = uncapped)
   fadeInPin: true, followBreaks: true, maxPainReversion: true,
+  maxpainRequirePin: true,           // Mode C only enters when the TRADED book's own regime is PIN (long
+                                     // gamma) — the reversion pull is the long-gamma mechanism itself, not
+                                     // a size input; a BREAKOUT book is short gamma fighting the trade
   levelLadderTP: false,              // TP to the next structural level (walls/flips/max-pain/magnets), not always max pain
   reactAtLevels: false,              // Mode D: ENTER at structural nodes (flips/magnets/intermediate walls), regime-treated
   reactMinTier: 'moderate',          // which walls count as react nodes (flips/magnets always do)
@@ -13909,6 +14064,16 @@ const VOLATILITY_V2_PLAN_CFG_DEFAULTS = {
   // "best config" preset.
   early_exit: true,
   early_exit_threshold: 0.4,
+  // p90 CANNOT use the standard voteDecision/margin mechanic — it's the
+  // ladder's outermost rung with no further rung to price a stop against,
+  // so voteDecision structurally never reaches margin>=3 for it (checked
+  // against real data, 2026-08-29). The only validated p90 approach
+  // (scripts/build_p90_votetrades.mjs) is a genuinely different mechanism:
+  // unconditional fade (no vote), target = distance back to p75, stop =
+  // a FIXED per-pair value fit once on in-sample data (90th pctile of that
+  // pair's own IS runPips). Defaulted OFF — no live track record yet, and
+  // "unconditional" means every armed p90 touch trades, unlike p50/p75.
+  p90_enabled: false,
 };
 
 // Daily fade-stop-tightening cache — `applyFadeStopTightening` only needs
@@ -13934,6 +14099,56 @@ async function _volatilityV2FadeStopInfo(pair, dateStr) {
   if (_volatilityV2FadeStopCache.size > 500) _volatilityV2FadeStopCache.clear();
   _volatilityV2FadeStopCache.set(cacheKey, info);
   return info;
+}
+
+// p90's fixed stop (scripts/build_p90_votetrades.mjs's `stopPipsByPair` —
+// the 90th percentile of that pair's own IS runPips, fit ONCE, never
+// recomputed live). Unlike fade-stop tightening this isn't keyed by date —
+// it's a single per-pair constant that only changes when that script is
+// rerun — but still worth caching so a live 45s tick doesn't hit R2 for it
+// on every pair, every tick. Map<pair, {stopPips, percentile}|null>.
+const _volatilityV2P90StopCache = new Map();
+async function _volatilityV2P90StopInfo(pair) {
+  if (_volatilityV2P90StopCache.has(pair)) return _volatilityV2P90StopCache.get(pair);
+  let info = null;
+  try {
+    const stored = _laPickFresher(await _r2GetJSON(`${_LA_PREFIX}/${pair}-p90votetrades.json`), _laLoadLocalP90VoteTrades(pair));
+    if (stored?.stopPipsByPair != null) info = { stopPips: stored.stopPipsByPair, percentile: stored.percentile };
+  } catch (e) { console.error(`[volatility-v2] p90-stop cache failed for ${pair}:`, e.message); }
+  _volatilityV2P90StopCache.set(pair, info);
+  return info;
+}
+
+// Prices a P90 rung using the ONE validated unconditional-fade mechanism
+// (scripts/build_p90_votetrades.mjs) — NOT the standard voteDecision/margin
+// path `_volatilityV2PriceZone` uses for p50/p75. p90 sits at the ladder's
+// outermost rung (`outer = lv[ri+2]` is always undefined for it — see
+// `_volatilityV2PriceZone` below), so it has no further rung to price a stop
+// against and `voteDecision` structurally never fires for it. It can only
+// be priced unconditionally: always fade, target = distance back to p75
+// (the "inner" rung), stop = the fixed per-pair value from
+// `_volatilityV2P90StopInfo`. `rec` is a `pending`-shaped live record
+// (side/level/pip/rung only — no innerDistPips, same as `_volatilityV2PriceZone`'s
+// input), `ladderBySide` supplies the same `[open, p50px, p75px, p90px]`
+// array that function uses.
+function _volatilityV2PriceP90Zone(rec, ladderBySide, stopPips) {
+  if (stopPips == null) return null;
+  const lv = ladderBySide[rec.side];
+  if (!lv) return null;
+  const ri = _LA_RUNGS.indexOf(rec.rung);   // 'p90' -> 2
+  if (ri < 0) return null;
+  const here = lv[ri + 1], inner = lv[ri];
+  const innerDistPips = +(Math.abs(here - inner) / rec.pip).toFixed(1);
+
+  const sgn = rec.side === 'up' ? 1 : -1;
+  const tp = rec.level - sgn * innerDistPips * rec.pip;
+  const sl = rec.level + sgn * stopPips * rec.pip;
+
+  return {
+    side: rec.side, rung: rec.rung, decision: 'fade', margin: null,
+    entry: +rec.level.toFixed(6), sl: +sl.toFixed(6), sizingSl: +sl.toFixed(6), tp: +tp.toFixed(6),
+    rationale: `p90 unconditional fade · fixed stop ${stopPips}p (p90 of this pair's own in-sample run distribution, no vote)`,
+  };
 }
 
 // Prices ONE candidate rung (a `pending`-shaped live record, OR a resolved
@@ -14002,7 +14217,7 @@ function _volatilityV2PriceZone(rec, book, ladderBySide, cost, fadeStopInfo, fad
 // below, used by vol-forecast-v2.html and today.html's per-pair Vol section)
 // can ask about ANY instrument the Level Atlas engine covers, not just the
 // bot's own `enabled_pairs` universe. Pure read: never writes `volatility_bot_v2_plan`.
-async function _volatilityV2InstrumentPreview(pair, { fadeStopTighten = false, earlyExit = false, earlyExitThreshold = 0.4 } = {}) {
+async function _volatilityV2InstrumentPreview(pair, { fadeStopTighten = false, earlyExit = false, earlyExitThreshold = 0.4, p90Enabled = false } = {}) {
   const live = await _laGetFastLive(pair);
   if (live.warming) return { skipped: 'warming (cold cache) — try again shortly' };
   if (!live.date) return { skipped: 'no live coverage yet' };
@@ -14036,6 +14251,7 @@ async function _volatilityV2InstrumentPreview(pair, { fadeStopTighten = false, e
   }
 
   const fadeStopInfo = fadeStopTighten ? await _volatilityV2FadeStopInfo(pair, live.date) : null;
+  const p90StopInfo = p90Enabled ? await _volatilityV2P90StopInfo(pair) : null;
 
   // Only PENDING (not-yet-touched, currently armed) rungs are tradeable —
   // `touches` (already touched today) are informational only (what happened
@@ -14044,8 +14260,17 @@ async function _volatilityV2InstrumentPreview(pair, { fadeStopTighten = false, e
   // exactly what `pending` represents.
   const zones = [];
   for (const p of (live.pending ?? [])) {
-    if (p.rung === 'p90') continue;   // no outer rung to price against — excluded everywhere else too
-    const zone = _volatilityV2PriceZone(p, book, ladderBySide, cost, fadeStopInfo, fadeStopTighten, earlyExit, earlyExitThreshold);
+    let zone;
+    if (p.rung === 'p90') {
+      // p90 never goes through the standard vote/margin path (see
+      // `_volatilityV2PriceP90Zone`'s doc) — only priced when the operator
+      // has explicitly opted in, and skipped entirely (same as before)
+      // when off or when this pair has no fitted stop yet.
+      if (!p90Enabled) continue;
+      zone = _volatilityV2PriceP90Zone(p, ladderBySide, p90StopInfo?.stopPips);
+    } else {
+      zone = _volatilityV2PriceZone(p, book, ladderBySide, cost, fadeStopInfo, fadeStopTighten, earlyExit, earlyExitThreshold);
+    }
     if (!zone) continue;
     // instanceNum: how many times THIS (side,rung) has already resolved
     // today — makes the zone_id stable across polls for the CURRENT armed
@@ -14055,7 +14280,7 @@ async function _volatilityV2InstrumentPreview(pair, { fadeStopTighten = false, e
     const instanceNum = 1 + (live.touches ?? []).filter(t => t.side === p.side && t.rung === p.rung).length;
     zones.push({ ...zone, zone_id: `${pair}_${live.date}_${p.side}_${p.rung}_${instanceNum}` });
   }
-  return { spot: live.pending?.[0]?.currentPrice ?? null, date: live.date, zones, zoneCount: zones.length, fadeStopInfo };
+  return { spot: live.pending?.[0]?.currentPrice ?? null, date: live.date, zones, zoneCount: zones.length, fadeStopInfo, p90StopInfo };
 }
 
 async function _refreshVolatilityV2Plan() {
@@ -14090,9 +14315,10 @@ async function _refreshVolatilityV2Plan() {
         }
         const preview = await _volatilityV2InstrumentPreview(pair, {
           fadeStopTighten: cfg.fade_stop_tighten, earlyExit: cfg.early_exit, earlyExitThreshold: cfg.early_exit_threshold ?? 0.4,
+          p90Enabled: !!cfg.p90_enabled,
         });
         if (preview.skipped) { skipped[pair] = preview.skipped; continue; }
-        instruments[pair] = { spot: preview.spot, zones: preview.zones, zoneCount: preview.zoneCount, fadeStopInfo: preview.fadeStopInfo };
+        instruments[pair] = { spot: preview.spot, zones: preview.zones, zoneCount: preview.zoneCount, fadeStopInfo: preview.fadeStopInfo, p90StopInfo: preview.p90StopInfo };
       } catch (e) {
         skipped[pair] = `error: ${e.message}`;
         console.error(`[volatility-v2] ${pair} failed:`, e.message);
@@ -14159,6 +14385,17 @@ const FIB_ATLAS_DEFAULT_PAIRS = FIB_ATLAS_ALL_PAIRS.filter(p => !FIB_ATLAS_RECOM
 
 const FIB_ATLAS_PLAN_CFG_DEFAULTS = { enabled_pairs: [] };   // [] -> FIB_ATLAS_DEFAULT_PAIRS
 
+// Reads the CURRENTLY PUBLISHED plan so a tick can MERGE onto it rather
+// than rebuilding from nothing. Never throws — a read failure degrades to
+// "no previous plan", the same as a genuinely first-ever run.
+async function _loadFibAtlasPlanRaw() {
+  try {
+    const raw = await kv.get('fib_atlas_bot_plan');
+    if (!raw) return null;
+    return (JSON.parse(raw).data ?? JSON.parse(raw)) || null;
+  } catch { return null; }
+}
+
 async function _refreshFibAtlasPlan() {
   try {
     const cfgRaw = await kv.get('fib_atlas_bot_config').catch(() => null);
@@ -14167,40 +14404,63 @@ async function _refreshFibAtlasPlan() {
       ? cfg.enabled_pairs.map(p => String(p).toLowerCase())
       : FIB_ATLAS_DEFAULT_PAIRS;
 
-    // Same cold-start throttle rationale as _refreshVolatilityV2Plan above —
-    // both ladders' own live caches (asiaFibAtlasRoutes.js's/
-    // mondayFibAtlasRoutes.js's `liveCache`/`liveWarming`) already cap
-    // concurrent cold M1 loads per-file; this producer additionally caps how
-    // many (pair, ladder) constituents it asks for on one tick so a fully-
-    // cold cache after a redeploy doesn't fan out 32 concurrent multi-year
-    // M1 loads (16 pairs × 2 ladders) on the very first tick.
+    // Cold-start throttle — check each ladder's OWN `liveWarming` size
+    // (asiaFibAtlasRoutes.js's and mondayFibAtlasRoutes.js's live caches are
+    // separate modules, so each gets its own 3-slot budget) BEFORE calling
+    // `planFn` at all — a pair over budget is skipped WITHOUT ever touching
+    // getFastLive, so it genuinely never starts a new cold load this tick.
     const MAX_CONCURRENT_COLDSTART = 3;
-    let coldstarting = 0;
+    const LIVE_STATE = {
+      asia:   { cache: _faAsiaLiveCache,   warming: _faAsiaLiveWarming },
+      monday: { cache: _faMondayLiveCache, warming: _faMondayLiveWarming },
+    };
 
-    const instruments = {};
-    const skipped = {};
+    // MERGE onto the previous plan (2026-09-01 fix) — the original version
+    // rebuilt `instruments`/`skipped` from an empty object every tick, so
+    // any pair still mid-rewarm (the normal state for MANY ticks after
+    // every restart) was silently DROPPED from the published plan entirely,
+    // even when a perfectly good entry for it — from an earlier live poll,
+    // or from the nightly rebuild's own `_seedFibAtlasPlanFromBook` below —
+    // already existed. A KV-persisted plan survives a restart; the old code
+    // just never let it. Now: start from whatever's already published, and
+    // only ever REPLACE a key once this tick has something fresher for it —
+    // a cold pair keeps showing its last-known-good entry (with the
+    // `updatedAt` it was actually computed at, so staleness is visible)
+    // instead of vanishing.
+    const previous = await _loadFibAtlasPlanRaw();
+    const instruments = { ...(previous?.instruments || {}) };
+    const skipped = { ...(previous?.skipped || {}) };
+
     for (const pair of enabledPairs) {
       for (const [ladder, planFn] of [['asia', asiaLivePlanZones], ['monday', mondayLivePlanZones]]) {
         const key = `${pair}|${ladder}`;
+        const { cache, warming } = LIVE_STATE[ladder];
+        if (!cache.has(pair) && !warming.has(pair) && warming.size >= MAX_CONCURRENT_COLDSTART) {
+          if (!instruments[key]) skipped[key] = `cold-start throttled (${warming.size} ${ladder} pairs already warming) — picked up on a later tick`;
+          continue;
+        }
         try {
           const plan = await planFn(pair);
-          if (plan.warming) {
-            coldstarting++;
-            skipped[key] = coldstarting > MAX_CONCURRENT_COLDSTART * 2
-              ? 'cold-start throttled — picked up on a later tick' : 'warming (cold cache)';
-            continue;
-          }
-          if (plan.skipped) { skipped[key] = plan.skipped; continue; }
-          instruments[key] = { pair, ladder, spot: plan.spot, date: plan.date, zones: plan.zones, zoneCount: plan.zoneCount };
+          if (plan.warming) { if (!instruments[key]) skipped[key] = 'warming (cold cache)'; continue; }
+          if (plan.skipped) { if (!instruments[key]) skipped[key] = plan.skipped; continue; }
+          instruments[key] = { pair, ladder, spot: plan.spot, date: plan.date, zones: plan.zones, zoneCount: plan.zoneCount, updatedAt: new Date().toISOString(), source: 'live' };
+          delete skipped[key];
         } catch (e) {
-          skipped[key] = `error: ${e.message}`;
+          if (!instruments[key]) skipped[key] = `error: ${e.message}`;
           console.error(`[fib-atlas-bot] ${key} failed:`, e.message);
         }
       }
     }
 
+    // A pair the operator has since UNCHECKED shouldn't linger in the
+    // published plan forever — prune keys for pairs no longer enabled.
+    const enabledSet = new Set(enabledPairs);
+    for (const key of Object.keys(instruments)) if (!enabledSet.has(key.split('|')[0])) delete instruments[key];
+    for (const key of Object.keys(skipped)) if (!enabledSet.has(key.split('|')[0])) delete skipped[key];
+
     // Never publish an empty plan over a good one — same discipline
-    // _refreshVolatilityV2Plan uses.
+    // _refreshVolatilityV2Plan uses. With the merge above this now only
+    // fires on a genuinely first-ever run with nothing warm yet.
     if (!Object.keys(instruments).length) {
       console.error(`[fib-atlas-bot] plan refresh produced 0 constituents (${Object.keys(skipped).length} skipped) — NOT publishing, keeping last good plan`);
       return 0;
@@ -14211,7 +14471,8 @@ async function _refreshFibAtlasPlan() {
       timestamp: Date.now(),
     }));
     const total = Object.values(instruments).reduce((a, v) => a + v.zoneCount, 0);
-    console.log(`[fib-atlas-bot] plan refreshed · ${Object.keys(instruments).length} constituents · ${total} zones`);
+    const fresh = Object.values(instruments).filter(v => v.source === 'live' && Date.now() - Date.parse(v.updatedAt) < 60_000).length;
+    console.log(`[fib-atlas-bot] plan refreshed · ${Object.keys(instruments).length} constituents (${fresh} freshly updated this tick) · ${total} zones`);
     return Object.keys(instruments).length;
   } catch (e) { console.error('[fib-atlas-bot] plan refresh failed:', e.message); return 0; }
 }
@@ -14363,6 +14624,139 @@ app.get('/api/level-atlas/bot-enabled', async (req, res) => {
   }
 });
 
+// Broker symbol resolution — mirrors volatility_bot_v2.py's own
+// _BROKER_OVERRIDE + config `broker_symbols` override precedence exactly
+// (Python is the source of truth; this is a read-only display mirror, never
+// used for anything that touches an actual order). Needed to match a
+// canonical pair (e.g. "de30") against the MT5 symbol the bot's own
+// mt5_positions/today_closed_trades rows are keyed by (e.g. "GER40").
+const _VB2_BROKER_DEFAULT = { de30: 'GER40', uk100: 'UK100', us2000: 'US2000',
+  spx: 'SP500', nq: 'USTECH100', dow: 'US30', gold: 'XAUUSD' };
+function _vb2BrokerSym(pair, cfg) {
+  const p = String(pair).toLowerCase();
+  const override = cfg?.broker_symbols?.[p];
+  if (override) return String(override).toUpperCase();
+  if (_VB2_BROKER_DEFAULT[p]) return _VB2_BROKER_DEFAULT[p];
+  return p.toUpperCase();
+}
+// Entry spread cap for `pair`, mirroring pylego/costs.py's `max_spread()`
+// precedence exactly (per-pair key in the pair's own units > per-asset-class
+// > scalar-as-FX-cap-scaled-by-class > default) — read-only display mirror
+// of the live sizing logic, same caveat as _vb2BrokerSym above.
+const _VB2_SPREAD_CLASS_MULT = { fx: 1.0, index: 6.0, commodity: 6.0 };
+const _VB2_DEFAULT_FX_SPREAD_CAP = 2.0;
+function _vb2AssetClass(pair) {
+  const p = String(pair).toLowerCase();
+  if (p === 'gold') return 'commodity';
+  if (['nq', 'spx', 'dow', 'us2000', 'de30', 'uk100'].includes(p)) return 'index';
+  return 'fx';
+}
+function _vb2SpreadCap(pair, cfg) {
+  const ac = _vb2AssetClass(pair);
+  const mx = cfg?.max_spread_pips;
+  if (mx && typeof mx === 'object') {
+    const key = resolveKey(pair) || String(pair).toLowerCase();
+    // Matches pylego/costs.py's max_spread() exactly: a per-pair entry is
+    // already in the pair's own units (used as-is, no class scaling); a
+    // per-class entry is ALSO already final pips (not a multiplier); only
+    // the fallback (neither present) scales the fx default by class.
+    if (key in mx) return { pips: +mx[key], source: 'per-pair' };
+    if (ac in mx) return { pips: +mx[ac], source: 'per-class' };
+    return { pips: +((mx.fx ?? _VB2_DEFAULT_FX_SPREAD_CAP) * (_VB2_SPREAD_CLASS_MULT[ac] ?? 3.0)).toFixed(2), source: 'fx-default, class-scaled' };
+  }
+  const fxCap = typeof mx === 'number' ? mx : _VB2_DEFAULT_FX_SPREAD_CAP;
+  return { pips: +(fxCap * (_VB2_SPREAD_CLASS_MULT[ac] ?? 3.0)).toFixed(2), source: 'flat scalar, class-scaled' };
+}
+
+// Same-day resolution rate per pair (margin>=3, p50/p75, OOS) — measured
+// 2026-09-01 (analysis/neither_population_live_gap_study.mjs, all 17 pairs,
+// full touch population walked, not sampled). A STATIC reference, not
+// recomputed per request: the real number needs a full multi-year M1 walk
+// per pair (js/levelAtlasEngine.js's atlasWalk), far too expensive to pay on
+// every drawer open. Refresh this table by hand if that script is re-run
+// against meaningfully more history.
+const _VB2_SAME_DAY_RATE_PCT = {
+  eurusd: 66.9, gbpusd: 66.5, usdjpy: 70.1, audusd: 64.5, usdchf: 69.7,
+  euraud: 72.8, eurchf: 66.9, audjpy: 71.4, cadjpy: 67.3, chfjpy: 67.7,
+  gold: 70.9, nq: 75.9, spx: 70.5, dow: 76.0, us2000: 67.4, de30: 64.6, uk100: 69.1,
+};
+
+// Combined per-pair Vote Atlas state for today.html's drawer "Systems" tab —
+// everything ELSE the live bot knows about this pair beyond the zones/margin
+// the Vol tab's drVoteSec already shows (deliberately not re-derived here,
+// to avoid a second implementation of voteDecision/getFastLive drifting from
+// the first): is it actually enabled on the bot, what's its spread cap,
+// what has the bot decided about it today (entered/skipped/rejected + why),
+// any open position or trade closed today. One call instead of the 3-4
+// separate KV reads this would otherwise take client-side.
+app.get('/api/level-atlas/vote-state/:instrument', async (req, res) => {
+  try {
+    const pair = String(req.params.instrument || '').toLowerCase();
+    if (!pair) return res.status(400).json({ ok: false, error: 'instrument required' });
+    const [cfgRaw, statusRaw, logRaw] = await Promise.all([
+      kv.get('volatility_bot_v2_config').catch(() => null),
+      kv.get('volatility_bot_v2_status').catch(() => null),
+      kv.get('volatility_bot_v2_decision_log').catch(() => null),
+    ]);
+    const cfg = cfgRaw ? (JSON.parse(cfgRaw).data ?? JSON.parse(cfgRaw)) : {};
+    const status = statusRaw ? (JSON.parse(statusRaw).data ?? JSON.parse(statusRaw)) : {};
+    const log = logRaw ? (JSON.parse(logRaw).data ?? JSON.parse(logRaw)) : {};
+
+    const key = resolveKey(pair) || pair;
+    const enabledPairs = Array.isArray(cfg.enabled_pairs) && cfg.enabled_pairs.length
+      ? cfg.enabled_pairs.map(p => String(p).toLowerCase())
+      : VOLATILITY_V2_DEFAULT_PAIRS;
+    const enabled = new Set(enabledPairs.map(p => resolveKey(p) || p)).has(key);
+    const brokerSym = _vb2BrokerSym(key, cfg);
+    const spreadCap = _vb2SpreadCap(key, cfg);
+
+    const events = Array.isArray(log.events) ? log.events : [];
+    const decisions = events.filter(e => (resolveKey(e.pair) || e.pair) === key)
+      .sort((a, b) => b.t - a.t).slice(0, 30);
+
+    const openPositions = (status.mt5_positions || []).filter(p => String(p.symbol || '').toUpperCase() === brokerSym);
+    const closedToday = (status.today_closed_trades || []).filter(t => String(t.symbol || '').toUpperCase() === brokerSym);
+
+    // What history actually shows for THIS pair at the bot's own trading
+    // threshold (margin>=3) — the validated backtest's own numbers, not a
+    // live recompute (the same cached file the portfolio page/tearsheet
+    // read from, R2-fresher-preferred over the local bootstrap copy, same
+    // pickFresher convention every other Level Atlas reader uses).
+    let historical = null;
+    try {
+      const stored = _laPickFresher(await _r2GetJSON(`${_LA_PREFIX}/${key}-votetrades.json`).catch(() => null), _laLoadLocalVoteTrades(key));
+      const m3 = stored?.summaryByMargin?.[3] ?? stored?.summaryByMargin?.['3'];
+      if (m3) {
+        historical = {
+          marginTested: 3, trades: m3.trades, tradesPerYr: m3.tradesPerYr,
+          winRatePct: m3.winRate, profitFactor: m3.profitFactor, sharpe: m3.sharpe,
+          maxDrawdownPct: m3.maxDD, sameDayResolvedPct: _VB2_SAME_DAY_RATE_PCT[key] ?? null,
+        };
+      }
+    } catch { /* historical is optional context, never block the live state on it */ }
+
+    // Today's actual live reading — day-vol regime + which session we're in
+    // right now, from the SAME live engine the plan producer trades off
+    // (getFastLive), not re-derived. Prefers the nearest still-pending rung
+    // (evaluated at THIS instant) over an already-touched one (frozen at
+    // whenever that touch happened).
+    let liveContext = null;
+    try {
+      const live = (await _laGetFastLive(key))?.live;
+      const ref = live?.pending?.[0]?.touch ?? live?.touches?.at(-1)?.touch ?? null;
+      if (ref) liveContext = { dayVol: ref.dayVol ?? null, session: ref.session ?? null, gapBucket: ref.gapBucket ?? null };
+    } catch { /* live context is optional too */ }
+
+    res.json({
+      ok: true, pair: key, brokerSym, enabled, spreadCap,
+      botRunning: !!status.running, botMode: status.mode || null,
+      decisions, openPositions, closedToday, historical, liveContext,
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // "Send test alert" for the bot-config.html Vote Atlas tab's Telegram fields
 // — reads whatever tg_token/tg_chat_id is CURRENTLY SAVED in
 // volatility_bot_v2_config (save the form first) and fires one test message,
@@ -14395,6 +14789,43 @@ app.post('/api/fib-atlas-bot/telegram-test', async (_req, res) => {
   }
 });
 
+// GET /api/fib-atlas-bot/all-lines?pairs=eurusd,gbpusd,... — the UNFILTERED
+// per-rung view for both ladders, direct owner ask (2026-09-01) after the
+// filtered plan's margin>=2 cutoff made it impossible to see whether the
+// engine was evaluating the FULL grid or silently skipping most of it.
+// Mirrors volatility_bot_v2's own "All Lines" table (`/api/level-atlas/
+// vote-preview`) exactly, just fanned out across both ladders per pair.
+// Reuses `asiaAllLines`/`mondayAllLines` (js/asiaFibAtlasRoutes.js, js/
+// mondayFibAtlasRoutes.js) — same `voteDecision` call the filtered plan
+// itself makes, never a second scoring path. Parallel ACROSS pairs (fixed
+// 2026-09-01 — the original sequential-per-pair version took ~7-8s for the
+// full 16-pair universe, which read as "stuck loading" client-side with no
+// progress indicator): each call is a cache READ once a pair's live cache
+// is warm (getFastLive short-circuits on a cache hit, and is itself
+// idempotent against a pair that's still cold — it never double-fires a
+// cold-start), so fanning all pairs out concurrently doesn't compete with
+// or duplicate the plan producer's own cold-starts. Each pair's own
+// try/catch means one pair's R2/KV hiccup degrades to an error row for
+// that pair only, never a 500 for the whole response.
+app.get('/api/fib-atlas-bot/all-lines', async (req, res) => {
+  try {
+    const pairs = (req.query.pairs ? String(req.query.pairs).split(',') : FIB_ATLAS_DEFAULT_PAIRS)
+      .map(p => p.trim().toLowerCase()).filter(Boolean);
+    const instruments = {};
+    await Promise.all(pairs.map(async pair => {
+      try {
+        const [asia, monday] = await Promise.all([asiaAllLines(pair), mondayAllLines(pair)]);
+        instruments[pair] = { asia, monday };
+      } catch (e) {
+        instruments[pair] = { asia: { warming: false, lines: [], error: e.message }, monday: { warming: false, lines: [], error: e.message } };
+      }
+    }));
+    res.json({ ok: true, instruments });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // Level Atlas live-cache R2 snapshotting (js/levelAtlasRoutes.js's own doc on
 // `saveAllLiveSnapshots` has the full story) — periodically mirrors every
 // currently-warm pair's bounded M1 window to R2 so a Railway restart can
@@ -14407,6 +14838,17 @@ app.post('/api/fib-atlas-bot/telegram-test', async (_req, res) => {
 // per-write quota concern the way CF KV does here).
 setInterval(_laSaveAllLiveSnapshots, 15 * 60_000);
 setTimeout(_laSaveAllLiveSnapshots, 5 * 60_000);   // let pairs actually warm up first
+
+// Fib Atlas's own copies of the snapshot job above (js/asiaFibAtlasRoutes.js
+// / js/mondayFibAtlasRoutes.js's own `saveAllLiveSnapshots`, added
+// 2026-09-01 after every push to `main` was found to restart Railway and
+// wipe this in-memory cache, forcing a full ~16-pair x 2-ladder cold-start
+// marathon repeatedly on a repo with several pushes/day). Two separate
+// module-level caches (Asia, Monday), so two separate interval calls.
+setInterval(_faAsiaSaveAllLiveSnapshots, 15 * 60_000);
+setTimeout(_faAsiaSaveAllLiveSnapshots, 5 * 60_000);
+setInterval(_faMondaySaveAllLiveSnapshots, 15 * 60_000);
+setTimeout(_faMondaySaveAllLiveSnapshots, 5 * 60_000);
 
 // ── OI hold-score AUTO-CALIBRATION ────────────────────────────────────────────
 // The hold-score component weights (per-strike GEX, OI flow, persistence, wall
@@ -19940,6 +20382,223 @@ _sessionResearchLiveTick();
 _sessionResearchFullTick();
 setInterval(_sessionResearchLiveTick, SESSION_RESEARCH_LIVE_INTERVAL_MS);
 setInterval(_sessionResearchFullTick, SESSION_RESEARCH_FULL_INTERVAL_MS);
+
+// ── Nasdaq Macro Lead: native in-process scheduling ─────────────────────────
+// RESEARCH TOOL, NOT A TRADING BOT — see NasdaqMacroLead/README.md. Tests
+// (honestly, walk-forward, out-of-sample only) whether a macro composite
+// line tracks NAS100 ahead of price, the way a UST-yield-spread line is
+// sometimes shown "leading" price on FX charts.
+//
+// Runs entirely IN THIS PROCESS — no Python subprocess, same as
+// js/yieldSpreadCore.js + js/yieldSpreadEngine.js. The math lives in
+// js/nasdaqMacroLeadCore.js (pure, unit-testable); the fetch/orchestration
+// below reuses fetchOandaCandleRange (already hardened for NAS100/gold's
+// "403 unexplainable" instrument quirks — see its own comments) and
+// fetchFredObservations (js/zscoreSpreadEngine.js) rather than
+// reimplementing HTTP fetch. Writes the same JSON shape the dashboard page
+// already expects to NASDAQ_MACRO_LEAD_SUMMARY_PATH. Refreshed every 4h
+// (== one NAS100 H4 bar) since a faster cadence can't produce a new bar to
+// predict anyway; fires once on boot same as SessionResearch above.
+const NASDAQ_MACRO_LEAD_SUMMARY_PATH = path.join(__dirname, 'NasdaqMacroLead', 'out', 'dashboard_summary.json');
+const NASDAQ_MACRO_LEAD_INTERVAL_MS = (parseInt(process.env.NASDAQ_MACRO_LEAD_INTERVAL_SECONDS, 10) || 14400) * 1000;
+
+const NML_FAST_INSTRUMENTS = {
+  target: 'NAS100_USD', bond10: 'USB10Y_USD', bond2: 'USB02Y_USD', gold: 'XAU_USD',
+  eurusd: 'EUR_USD', gbpusd: 'GBP_USD', audusd: 'AUD_USD', nzdusd: 'NZD_USD',
+  usdjpy: 'USD_JPY', usdcad: 'USD_CAD', usdchf: 'USD_CHF',
+};
+const NML_FRED_SERIES = { y2: 'DGS2', y10: 'DGS10', real10: 'DFII10', be10: 'T10YIE' };
+const NML_WF_PARAMS = { trainBars: 500, testBars: 100, stepBars: 100, zWindow: 250 };
+const NML_FAST_COLS = ['bond10_ret', 'bond2_ret', 'usd_basket_ret', 'gold_ret'];
+const NML_FRED_COLS = ['y2_chg', 'y10_chg', 'slope_chg', 'real10_chg', 'be10_chg'];
+// Fair value: LEVEL regression, not return regression — see
+// levelFairValue's own comment. horizonBars=8 (~32h on H4 bars) is the
+// "rough expectation of the next day plus part of the following day" the
+// original request asked for. Feature set mixes fast (continuously-quoted)
+// and slow (daily FRED) level sources deliberately picking ONE canonical
+// series per macro dimension to avoid near-duplicate/collinear pairs (e.g.
+// bond10_level and y10_level are two proxies for the same 10Y rate — using
+// both would just destabilize the OLS fit for no informational gain).
+const NML_FV_PARAMS = { trainBars: 500, testBars: 100, stepBars: 100, zWindow: 250, horizonBars: 8 };
+const NML_FV_COLS = ['bond2_level', 'bond10_level', 'real10_level', 'usd_basket_level', 'gold_level', 'slope_level'];
+
+const _nmlIsoT = epochSec => new Date(epochSec * 1000).toISOString();
+const _nmlRound = (v, p) => (v == null ? null : Number(Number(v).toFixed(p)));
+
+function _nmlRunVariant(label, times, targetClose, targetRet, featureSeries, featureCols) {
+  const available = featureCols.filter(c => c in featureSeries);
+  const missing = featureCols.filter(c => !(c in featureSeries));
+  if (!available.length) return { label, ok: false, error: 'no features available' };
+  const oos = nmlWalkForward(times, targetClose, targetRet, featureSeries, available, NML_WF_PARAMS);
+  if (!oos.length) return { label, ok: false, error: 'walk-forward produced no OOS bars' };
+  return {
+    label, ok: true, features_used: available, features_missing: missing,
+    stats: nmlOosStats(oos), oos_bars: oos.length,
+    // Array of segments — one per walk-forward window/reset, each its own
+    // {t,v} array. The chart renders each as a SEPARATE line so a reset
+    // shows as a gap, not a connecting "cliff" — see anchoredWindowPath's
+    // own comment for why a flat series would be misleading here.
+    window_path: nmlAnchoredWindowPath(oos).map(seg => seg.map(p => ({ t: _nmlIsoT(p.t), v: _nmlRound(p.v, 2) }))),
+    next_bar_pred: nmlNextBarPredPrice(oos).map(p => ({ t: _nmlIsoT(p.t), v: _nmlRound(p.v, 2) })),
+  };
+}
+
+// The smooth "fair value" variant (level regression, see levelFairValue's
+// own comment) — split into scored_path (backtested, walk-forward OOS,
+// judgeable against oosStats) and tail_path (the live forward-projecting
+// tail with no known outcome yet) so the chart can render them differently
+// (solid vs dashed) instead of blending "track record" with "live guess".
+function _nmlRunFairValue(label, times, targetClose, featureSeries, featureCols) {
+  const available = featureCols.filter(c => c in featureSeries);
+  const missing = featureCols.filter(c => !(c in featureSeries));
+  if (!available.length) return { label, ok: false, error: 'no features available' };
+  const fv = nmlLevelFairValue(times, targetClose, featureSeries, available, NML_FV_PARAMS);
+  if (!fv.length) return { label, ok: false, error: 'level regression produced no rows' };
+  const scored = fv.filter(r => r.scored);
+  const stats = scored.length ? nmlOosStats(scored) : null;
+  return {
+    label, ok: true, features_used: available, features_missing: missing,
+    stats, oos_bars: scored.length, horizon_bars: NML_FV_PARAMS.horizonBars,
+    scored_path: scored.map(p => ({ t: _nmlIsoT(p.t), v: _nmlRound(p.v, 2) })),
+    tail_path: fv.filter(r => !r.scored).map(p => ({ t: _nmlIsoT(p.t), v: _nmlRound(p.v, 2) })),
+  };
+}
+
+async function _computeNasdaqMacroLeadSummary() {
+  const toISO = new Date().toISOString();
+  const fromISO = new Date(Date.now() - 2.5 * 365.25 * 86_400_000).toISOString();
+
+  const bars = {};
+  for (const [name, instrument] of Object.entries(NML_FAST_INSTRUMENTS)) {
+    try {
+      const candles = await fetchOandaCandleRange(instrument, 'H4', fromISO, toISO);
+      // OANDA returns o/h/l/c as STRINGS (decimal-precise over the wire) —
+      // fetchOandaCandleRange passes them through as-is (other callers just
+      // display them). Math.log()/arithmetic below silently coerces strings
+      // to numbers, so the walk-forward math ran fine either way; it was
+      // only the final _nmlRound()'s v.toFixed(p) that surfaced this, since
+      // that's a method lookup, not a numeric coercion. Cast once here so
+      // everything downstream is a real number throughout.
+      if (candles.length) bars[name] = candles.map(c => ({
+        t: c.t, open: Number(c.open), high: Number(c.high), low: Number(c.low), close: Number(c.close),
+      }));
+      else console.warn(`[nasdaq-macro-lead] ${instrument}: no candles returned`);
+    } catch (e) {
+      console.warn(`[nasdaq-macro-lead] ${instrument} fetch failed: ${e.message}`);
+    }
+    await new Promise(r => setTimeout(r, 200));   // be polite — this is a research job, not latency-sensitive
+  }
+  if (!bars.target) throw new Error('NAS100_USD fetch failed — nothing to compute');
+
+  const fast = nmlBuildFastFeatures(bars);
+  const levels = nmlBuildLevelFeatures(bars);
+
+  const fredKey = process.env.FRED_KEY;
+  const fredFromDate = fromISO.slice(0, 10);
+  const fredEntries = await Promise.all(Object.entries(NML_FRED_SERIES).map(async ([name, seriesId]) => {
+    try { return [name, await fetchFredObservations(seriesId, fredFromDate, fredKey)]; }
+    catch (e) { console.warn(`[nasdaq-macro-lead] FRED ${seriesId} fetch failed: ${e.message}`); return null; }
+  }));
+  const fredSeries = Object.fromEntries(fredEntries.filter(Boolean));
+  const fredFeatures = nmlBuildFredFeatures(fast.times, fredSeries, 6);
+  const fredLevelFeatures = nmlBuildFredLevelFeatures(fast.times, fredSeries);
+
+  const combined = { ...fast.features, ...fredFeatures };
+  const fastResult = _nmlRunVariant('Fast market proxies (bond CFDs + USD basket + gold)',
+    fast.times, fast.targetClose, fast.targetRet, combined, NML_FAST_COLS);
+  const fredResult = _nmlRunVariant('FRED yields (2Y/10Y/slope/real yield/breakeven), fwd-filled to H4',
+    fast.times, fast.targetClose, fast.targetRet, combined, NML_FRED_COLS);
+
+  const combinedLevels = { ...(levels?.features || {}), ...fredLevelFeatures };
+  const fairValueResult = _nmlRunFairValue(
+    `Fair value (level regression, ~${(NML_FV_PARAMS.horizonBars * 4)}h ahead)`,
+    fast.times, fast.targetClose, combinedLevels, NML_FV_COLS);
+
+  return {
+    ok: true,
+    generated_at: new Date().toISOString(),
+    target: 'NAS100_USD',
+    granularity: 'H4',
+    walk_forward_params: {
+      train_bars: NML_WF_PARAMS.trainBars, test_bars: NML_WF_PARAMS.testBars,
+      step_bars: NML_WF_PARAMS.stepBars, z_window: NML_WF_PARAMS.zWindow,
+    },
+    candles: bars.target.map(b => ({
+      t: _nmlIsoT(b.t), o: _nmlRound(b.open, 2), h: _nmlRound(b.high, 2), l: _nmlRound(b.low, 2), c: _nmlRound(b.close, 2),
+    })),
+    variants: { fast: fastResult, fred: fredResult, fairvalue: fairValueResult },
+    notes: (
+      'Research tool, not a trading signal (see NasdaqMacroLead/README.md). Every point on '
+      + 'window_path/next_bar_pred/scored_path was produced by a model that never saw the bar '
+      + 'it\'s predicting — coefficients are fit on a prior rolling window and frozen before '
+      + 'being applied to the window plotted. There is no in-sample region shown on this chart '
+      + 'by construction. fairvalue.tail_path is the one exception on purpose: it is a live, '
+      + 'unscored forward projection (no known outcome exists yet to grade it against) — the '
+      + '"rough expectation of the next day or so," not a backtested track record.'
+    ),
+  };
+}
+
+let _nasdaqMacroLeadBusy = false;
+
+// Shared by the scheduled tick AND the manual /refresh route below — one
+// compute-then-write, so a manual "run it now" click reuses the exact same
+// path (and the exact same busy-guard) as the 4h timer instead of having
+// its own parallel copy that could race the scheduled one onto the file.
+async function _runNasdaqMacroLeadOnce() {
+  const startedAt = Date.now();
+  console.log(`[nasdaq-macro-lead] run starting ${new Date().toISOString()}`);
+  const summary = await _computeNasdaqMacroLeadSummary();
+  fs.mkdirSync(path.dirname(NASDAQ_MACRO_LEAD_SUMMARY_PATH), { recursive: true });
+  fs.writeFileSync(NASDAQ_MACRO_LEAD_SUMMARY_PATH, JSON.stringify(summary));
+  console.log(`[nasdaq-macro-lead] run done in ${((Date.now() - startedAt) / 1000).toFixed(0)}s `
+    + `(${summary.candles.length} candles, fast ok=${summary.variants.fast.ok}, fred ok=${summary.variants.fred.ok})`);
+  return summary;
+}
+
+async function _nasdaqMacroLeadTick() {
+  if (_nasdaqMacroLeadBusy) { console.warn('[nasdaq-macro-lead] tick still running, skipping this interval'); return; }
+  if (!process.env.OANDA_KEY || !process.env.FRED_KEY) {
+    console.warn('[nasdaq-macro-lead] OANDA_KEY/FRED_KEY not set — skipping (nothing to fetch)');
+    return;
+  }
+  _nasdaqMacroLeadBusy = true;
+  try { await _runNasdaqMacroLeadOnce(); }
+  catch (e) { console.warn(`[nasdaq-macro-lead] tick failed: ${e.message}`); }
+  finally { _nasdaqMacroLeadBusy = false; }
+}
+_nasdaqMacroLeadTick();
+setInterval(_nasdaqMacroLeadTick, NASDAQ_MACRO_LEAD_INTERVAL_MS);
+
+app.get('/api/nasdaq-macro-lead/summary', async (_req, res) => {
+  const out = await _loadAnalogMLJson(NASDAQ_MACRO_LEAD_SUMMARY_PATH, 'nasdaq-macro-lead/dashboard_summary.json');
+  if (!out) return res.status(404).json({ ok: false, error: 'no dashboard_summary.json yet — POST /api/nasdaq-macro-lead/refresh to run it now, or wait for the next scheduled tick (every ~4h)' });
+  return res.json(out);
+});
+
+// Manual trigger — run it now instead of waiting up to 4h for the next
+// scheduled tick. Synchronous (awaited): a full run is a handful of OANDA
+// H4 pulls + 4 FRED calls, seconds not minutes, so there's no job-polling
+// dance here — same shape as POST /api/yield-spread/refresh-plan above.
+// Returns the REAL error (OANDA response body, FRED HTTP status, whatever
+// actually failed) in the response body, not just a Railway log line.
+app.post('/api/nasdaq-macro-lead/refresh', async (_req, res) => {
+  if (!process.env.OANDA_KEY || !process.env.FRED_KEY) {
+    return res.status(500).json({ ok: false, error: 'OANDA_KEY/FRED_KEY not set on this deploy' });
+  }
+  if (_nasdaqMacroLeadBusy) {
+    return res.status(409).json({ ok: false, error: 'a run is already in progress — check back in a few seconds' });
+  }
+  _nasdaqMacroLeadBusy = true;
+  try {
+    const summary = await _runNasdaqMacroLeadOnce();
+    res.json(summary);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  } finally {
+    _nasdaqMacroLeadBusy = false;
+  }
+});
 
 app.get('/api/analogml/motif-trades', async (_req, res) => {
   const out = await _loadAnalogMLJson(ANALOGML_MOTIF_TRADES_PATH, 'analogml/motif_trades.json');

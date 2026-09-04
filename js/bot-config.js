@@ -3686,6 +3686,7 @@ const VB2_DEFAULTS = {
   ccy_loss_gate: true, max_daily_loss_pct: 1.0,
   fade_stop_tighten: false, max_open_risk_pct: 1.0,
   early_exit: true, early_exit_threshold: 0.4,
+  p90_enabled: false,
   throttle_enabled: true, throttle_trigger_dd: -8.0, throttle_restore_dd: -2.0, throttle_mult: 0.25,
   stack_guard: true, stack_guard_pips: 5,
   plan_max_age_hours: 1,
@@ -3735,13 +3736,29 @@ function renderVb2Form() {
   set('vb2_max_lot',             _vb2Cfg.max_lot             ?? VB2_DEFAULTS.max_lot);
   set('vb2_max_open',            _vb2Cfg.max_open            ?? VB2_DEFAULTS.max_open);
   set('vb2_max_concurrent_per_pair', _vb2Cfg.max_concurrent_per_pair ?? VB2_DEFAULTS.max_concurrent_per_pair);
-  set('vb2_max_spread_pips',     _vb2Cfg.max_spread_pips     ?? VB2_DEFAULTS.max_spread_pips);
+  // max_spread_pips can be a real per-pair dict (set outside this UI, e.g.
+  // via the API directly) — a <input type="number"> can't display or edit
+  // that, and silently coercing it to blank-then-saved-as-the-scalar-
+  // default was destroying the dict on EVERY save of this form, not just
+  // ones touching spread (found 2026-09-01, twice in one day). Leave the
+  // number field blank and say so instead of guessing at a number; see
+  // readVb2Form's matching preserve-the-dict logic below.
+  const msp = _vb2Cfg.max_spread_pips;
+  const mspNote = document.getElementById('vb2SpreadCapNote');
+  if (msp && typeof msp === 'object') {
+    const el = document.getElementById('vb2_max_spread_pips'); if (el) el.value = '';
+    if (mspNote) mspNote.textContent = `per-pair (${Object.keys(msp).length} pairs) — saving won't touch this unless you type a number here`;
+  } else {
+    set('vb2_max_spread_pips', msp ?? VB2_DEFAULTS.max_spread_pips);
+    if (mspNote) mspNote.textContent = '';
+  }
   chk('vb2_ccy_loss_gate',       _vb2Cfg.ccy_loss_gate ?? true);
   set('vb2_max_daily_loss_pct',  _vb2Cfg.max_daily_loss_pct  ?? VB2_DEFAULTS.max_daily_loss_pct);
   chk('vb2_fade_stop_tighten',   _vb2Cfg.fade_stop_tighten ?? VB2_DEFAULTS.fade_stop_tighten);
   set('vb2_max_open_risk_pct',   _vb2Cfg.max_open_risk_pct  ?? VB2_DEFAULTS.max_open_risk_pct);
   chk('vb2_early_exit',          _vb2Cfg.early_exit ?? VB2_DEFAULTS.early_exit);
   set('vb2_early_exit_threshold', _vb2Cfg.early_exit_threshold ?? VB2_DEFAULTS.early_exit_threshold);
+  chk('vb2_p90_enabled',         _vb2Cfg.p90_enabled ?? VB2_DEFAULTS.p90_enabled);
   chk('vb2_throttle_enabled',    _vb2Cfg.throttle_enabled ?? VB2_DEFAULTS.throttle_enabled);
   set('vb2_throttle_trigger_dd', _vb2Cfg.throttle_trigger_dd ?? VB2_DEFAULTS.throttle_trigger_dd);
   set('vb2_throttle_restore_dd', _vb2Cfg.throttle_restore_dd ?? VB2_DEFAULTS.throttle_restore_dd);
@@ -3770,13 +3787,27 @@ function readVb2Form() {
   _vb2Cfg.max_lot              = num('vb2_max_lot', VB2_DEFAULTS.max_lot);
   _vb2Cfg.max_open             = Math.round(num('vb2_max_open', VB2_DEFAULTS.max_open));
   _vb2Cfg.max_concurrent_per_pair = Math.round(num('vb2_max_concurrent_per_pair', VB2_DEFAULTS.max_concurrent_per_pair));
-  _vb2Cfg.max_spread_pips      = num('vb2_max_spread_pips', VB2_DEFAULTS.max_spread_pips);
+  // Preserve a per-pair dict on save UNLESS the operator actually typed a
+  // number into the field (a real, deliberate override) — the field reads
+  // blank when a dict is loaded (see renderVb2Form), and blindly reading
+  // that as "no value, use the default" is exactly what was silently
+  // destroying the dict on every save. See renderVb2Form's matching note.
+  {
+    const rawSpread = document.getElementById('vb2_max_spread_pips')?.value;
+    const loadedIsDict = _vb2Cfg.max_spread_pips && typeof _vb2Cfg.max_spread_pips === 'object';
+    if (loadedIsDict && (rawSpread === '' || rawSpread == null)) {
+      // untouched — keep the dict as-is, don't overwrite with the scalar default
+    } else {
+      _vb2Cfg.max_spread_pips = num('vb2_max_spread_pips', VB2_DEFAULTS.max_spread_pips);
+    }
+  }
   _vb2Cfg.ccy_loss_gate        = !!document.getElementById('vb2_ccy_loss_gate')?.checked;
   _vb2Cfg.max_daily_loss_pct   = num('vb2_max_daily_loss_pct', VB2_DEFAULTS.max_daily_loss_pct);
   _vb2Cfg.fade_stop_tighten    = !!document.getElementById('vb2_fade_stop_tighten')?.checked;
   _vb2Cfg.max_open_risk_pct    = num('vb2_max_open_risk_pct', VB2_DEFAULTS.max_open_risk_pct);
   _vb2Cfg.early_exit           = !!document.getElementById('vb2_early_exit')?.checked;
   _vb2Cfg.early_exit_threshold = num('vb2_early_exit_threshold', VB2_DEFAULTS.early_exit_threshold);
+  _vb2Cfg.p90_enabled          = !!document.getElementById('vb2_p90_enabled')?.checked;
   _vb2Cfg.throttle_enabled     = !!document.getElementById('vb2_throttle_enabled')?.checked;
   _vb2Cfg.throttle_trigger_dd  = num('vb2_throttle_trigger_dd', VB2_DEFAULTS.throttle_trigger_dd);
   _vb2Cfg.throttle_restore_dd  = num('vb2_throttle_restore_dd', VB2_DEFAULTS.throttle_restore_dd);
@@ -3831,6 +3862,58 @@ function resetVb2Defaults() {
 }
 async function loadVb2Creds() { try { _applyCredsToForm(await kvGet('volatility_bot_v2_credentials'), 'vb2_', 'vb2_mt5_password'); } catch (e) {} }
 async function saveVb2Creds() { await _saveCreds('volatility_bot_v2_credentials', 'vb2_', 'vb2_mt5_password', 'vb2CredsStatus'); }
+
+// "Today's Levels & Live Decisions" — click-to-sort. Cached separately from
+// the status poll so a sort click just re-renders instantly instead of
+// re-fetching (the data doesn't change between polls anyway).
+let _vb2Lines = [];
+let _vb2LinesSort = { col: null, dir: 1 };
+function vb2SortLines(col) {
+  if (_vb2LinesSort.col === col) _vb2LinesSort.dir *= -1;
+  else { _vb2LinesSort.col = col; _vb2LinesSort.dir = 1; }
+  _vb2RenderLinesTable();
+}
+function _vb2RenderLinesTable() {
+  const body = document.getElementById('vb2LinesBody');
+  if (!body) return;
+  const head = document.getElementById('vb2LinesHead');
+  if (head) {
+    head.querySelectorAll('th').forEach(th => {
+      const ind = th.querySelector('.sort-ind');
+      if (!ind) return;
+      ind.textContent = th.dataset.col === _vb2LinesSort.col ? (_vb2LinesSort.dir > 0 ? ' ▲' : ' ▼') : '';
+    });
+  }
+  let rows = _vb2Lines.slice();
+  if (!rows.length) {
+    body.innerHTML = '<tr><td colspan="10" style="padding:14px;text-align:center;color:var(--text3)">Bot running but no zones yet — waiting for the live plan</td></tr>';
+    return;
+  }
+  const NUMERIC = new Set(['margin', 'entry', 'sl', 'tp']);
+  const { col, dir } = _vb2LinesSort;
+  if (col) {
+    rows.sort((a, b) => {
+      let av = a[col], bv = b[col];
+      if (NUMERIC.has(col)) { av = av == null ? -Infinity : +av; bv = bv == null ? -Infinity : +bv; return (av - bv) * dir; }
+      av = (av ?? '').toString().toLowerCase(); bv = (bv ?? '').toString().toLowerCase();
+      return av.localeCompare(bv) * dir;
+    });
+  }
+  const d = (sym, v) => v == null ? '—' : (+v).toFixed(/jpy/i.test(sym) ? 3 : 5);
+  const STATUS_COLOR = { entered: 'var(--green)', armed: 'var(--text2)' };
+  body.innerHTML = rows.map(r => `<tr>
+      <td style="padding:5px 10px;font-weight:600;text-align:left">${(r.pair || '').toUpperCase()}</td>
+      <td style="padding:5px 10px;text-align:left">${r.side === 'up' ? '↑ up' : '↓ down'}</td>
+      <td style="padding:5px 10px;text-align:left">${r.rung || '—'}</td>
+      <td style="padding:5px 10px;text-align:left;color:${r.decision === 'fade' ? 'var(--amber)' : 'var(--blue,#60a5fa)'}">${r.decision || '—'}</td>
+      <td style="padding:5px 10px;text-align:right">${r.margin ?? '—'}</td>
+      <td style="padding:5px 10px;text-align:right">${d(r.pair, r.entry)}</td>
+      <td style="padding:5px 10px;text-align:right;color:var(--red)">${d(r.pair, r.sl)}</td>
+      <td style="padding:5px 10px;text-align:right;color:var(--green)">${d(r.pair, r.tp)}</td>
+      <td style="padding:5px 10px;text-align:left;color:${STATUS_COLOR[r.status] || 'var(--text3)'}">${r.status === 'entered' ? '▶ entered' : (r.status || '—')}</td>
+      <td style="padding:5px 10px;text-align:left;color:var(--text3)">${r.rationale || '—'}</td>
+    </tr>`).join('');
+}
 
 async function loadVb2LiveStatus() {
   const ageEl = document.getElementById('vb2LiveAge'), modeEl = document.getElementById('vb2LiveMode');
@@ -3916,28 +3999,8 @@ async function loadVb2LiveStatus() {
       }
     }
 
-    const body = document.getElementById('vb2LinesBody');
-    if (body) {
-      const rows = st.lines || [];
-      if (!rows.length) {
-        body.innerHTML = '<tr><td colspan="10" style="padding:14px;text-align:center;color:var(--text3)">Bot running but no zones yet — waiting for the live plan</td></tr>';
-      } else {
-        const d = (sym, v) => v == null ? '—' : (+v).toFixed(/jpy/i.test(sym) ? 3 : 5);
-        const STATUS_COLOR = { entered: 'var(--green)', armed: 'var(--text2)' };
-        body.innerHTML = rows.map(r => `<tr>
-            <td style="padding:5px 10px;font-weight:600;text-align:left">${(r.pair || '').toUpperCase()}</td>
-            <td style="padding:5px 10px;text-align:left">${r.side === 'up' ? '↑ up' : '↓ down'}</td>
-            <td style="padding:5px 10px;text-align:left">${r.rung || '—'}</td>
-            <td style="padding:5px 10px;text-align:left;color:${r.decision === 'fade' ? 'var(--amber)' : 'var(--blue,#60a5fa)'}">${r.decision || '—'}</td>
-            <td style="padding:5px 10px;text-align:right">${r.margin ?? '—'}</td>
-            <td style="padding:5px 10px;text-align:right">${d(r.pair, r.entry)}</td>
-            <td style="padding:5px 10px;text-align:right;color:var(--red)">${d(r.pair, r.sl)}</td>
-            <td style="padding:5px 10px;text-align:right;color:var(--green)">${d(r.pair, r.tp)}</td>
-            <td style="padding:5px 10px;text-align:left;color:${STATUS_COLOR[r.status] || 'var(--text3)'}">${r.status === 'entered' ? '▶ entered' : (r.status || '—')}</td>
-            <td style="padding:5px 10px;text-align:left;color:var(--text3)">${r.rationale || '—'}</td>
-          </tr>`).join('');
-      }
-    }
+    _vb2Lines = st.lines || [];
+    _vb2RenderLinesTable();
   } catch (e) { if (ageEl) { ageEl.textContent = e.message; } }
   loadVb2AllLines();
   loadVb2DecisionLog();
@@ -4044,6 +4107,7 @@ window.saveVb2Creds = saveVb2Creds; window.loadVb2LiveStatus = loadVb2LiveStatus
 window.loadVb2AllLines = loadVb2AllLines; window.loadVb2DecisionLog = loadVb2DecisionLog;
 window.vb2DecShiftDay = vb2DecShiftDay; window.vb2DecClearDate = vb2DecClearDate;
 window.testVb2Telegram = testVb2Telegram;
+window.vb2SortLines = vb2SortLines;
 window.vb2SelectAllPairs = vb2SelectAllPairs; window.vb2SelectRecommendedPairs = vb2SelectRecommendedPairs;
 
 // ── Forecast drift vs reference ───────────────────────────────────────────────
@@ -4507,7 +4571,65 @@ async function loadFaLiveStatus() {
         </tr>`).join('');
     }
   }
+  loadFaAllLines();
   loadFaDecisionLog();
+}
+
+// Unfiltered companion to the Today's Levels table above: EVERY rung the
+// engine currently carries across BOTH ladders for the configured pair
+// universe, regardless of vote margin — the plan already drops anything
+// under margin 2 server-side, so a real move that got a weak or tied vote,
+// or simply hasn't been evaluated yet, would otherwise be invisible here.
+// Mirrors loadVb2AllLines() exactly, fanned out over two ladders per pair.
+async function loadFaAllLines() {
+  const body = document.getElementById('faAllLinesBody');
+  if (!body) return;
+  const pairs = _faCfg.enabled_pairs?.length ? _faCfg.enabled_pairs : [...FA_DEFAULT_CHECKED];
+  const filter = (document.getElementById('faAllLinesFilter')?.value || '').trim().toLowerCase();
+  // A real network round-trip across the whole pair universe, not instant —
+  // say so explicitly so a several-second wait reads as "working", not
+  // "stuck" (found 2026-09-01: a bare "loading…" with no elapsed-time cue
+  // looked identical to broken).
+  body.innerHTML = `<tr><td colspan="8" style="padding:14px;text-align:center;color:var(--text3)">loading ${pairs.length} pair(s) × 2 ladders…</td></tr>`;
+  try {
+    const r = await fetch(`/api/fib-atlas-bot/all-lines?pairs=${encodeURIComponent(pairs.join(','))}`);
+    const j = await r.json();
+    if (!j.ok) { body.innerHTML = `<tr><td colspan="8" style="padding:14px;text-align:center;color:var(--text3)">${j.error || 'failed to load'}</td></tr>`; return; }
+    let rows = [];
+    for (const [pair, inst] of Object.entries(j.instruments || {})) {
+      for (const [ladder, res] of [['asia', inst.asia], ['monday', inst.monday]]) {
+        if (res?.warming) { rows.push({ pair, ladder, warming: true }); continue; }
+        for (const l of (res?.lines || [])) rows.push({ pair, ladder, ...l });
+      }
+    }
+    if (filter) rows = rows.filter(r => r.pair.toLowerCase().includes(filter));
+    if (!rows.length) { body.innerHTML = `<tr><td colspan="8" style="padding:14px;text-align:center;color:var(--text3)">${filter ? 'No lines for that pair yet' : 'No live coverage yet'}</td></tr>`; return; }
+    const sortBy = document.getElementById('faAllLinesSort')?.value || 'margin';
+    if (sortBy === 'pair') rows.sort((a, b) => a.pair.localeCompare(b.pair) || a.ladder.localeCompare(b.ladder) || (b.margin ?? -1) - (a.margin ?? -1));
+    else rows.sort((a, b) => (b.margin ?? -1) - (a.margin ?? -1));
+    body.innerHTML = rows.map(r => {
+      if (r.warming) {
+        return `<tr>
+          <td style="padding:5px 10px;font-weight:600;text-align:left">${r.pair.toUpperCase()}</td>
+          <td style="padding:5px 10px;text-align:left;color:${r.ladder === 'asia' ? '#38bdf8' : '#4fd1c5'}">${r.ladder === 'asia' ? 'Asia' : 'Monday'}</td>
+          <td colspan="6" style="padding:5px 10px;text-align:left;color:var(--text3)">warming (cold cache) — not evaluated yet</td>
+        </tr>`;
+      }
+      const strong = r.tradeableNow;
+      const decLabel = !r.decision ? '🪙 no decision' : (r.decision === 'follow' ? '↗ follow' : '↘ fade');
+      const decColor = !r.decision ? 'var(--text3)' : (r.decision === 'follow' ? 'var(--blue,#60a5fa)' : 'var(--amber)');
+      return `<tr>
+        <td style="padding:5px 10px;font-weight:600;text-align:left">${r.pair.toUpperCase()}</td>
+        <td style="padding:5px 10px;text-align:left;color:${r.ladder === 'asia' ? '#38bdf8' : '#4fd1c5'}">${r.ladder === 'asia' ? 'Asia' : 'Monday'}</td>
+        <td style="padding:5px 10px;text-align:left">${r.side === 'above' ? '↑ above' : '↓ below'}</td>
+        <td style="padding:5px 10px;text-align:left">${r.rung}</td>
+        <td style="padding:5px 10px;text-align:left;color:var(--text3)">${r.status}</td>
+        <td style="padding:5px 10px;text-align:left;color:${decColor}">${decLabel}</td>
+        <td style="padding:5px 10px;text-align:right">${r.margin ?? '—'}</td>
+        <td style="padding:5px 10px;text-align:center;color:${strong ? 'var(--green)' : 'var(--text3)'}">${strong ? '✓' : '—'}</td>
+      </tr>`;
+    }).join('');
+  } catch (e) { body.innerHTML = `<tr><td colspan="8" style="padding:14px;text-align:center;color:var(--text3)">${e.message}</td></tr>`; }
 }
 
 // Persistent decision audit -- reads the same KV key the bot itself writes
@@ -4562,7 +4684,7 @@ async function loadFaDecisionLog() {
 
 window.saveFaConfig = saveFaConfig; window.resetFaDefaults = resetFaDefaults;
 window.saveFaCreds = saveFaCreds; window.loadFaLiveStatus = loadFaLiveStatus;
-window.loadFaDecisionLog = loadFaDecisionLog;
+window.loadFaDecisionLog = loadFaDecisionLog; window.loadFaAllLines = loadFaAllLines;
 window.faDecShiftDay = faDecShiftDay; window.faDecClearDate = faDecClearDate;
 window.testFaTelegram = testFaTelegram;
 window.faSelectAllPairs = faSelectAllPairs; window.faSelectRecommendedPairs = faSelectRecommendedPairs;

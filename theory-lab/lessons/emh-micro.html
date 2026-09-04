@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Efficient Market Hypothesis — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Efficient Market Hypothesis — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full martingale derivation, a live significance calculator, and a 6-question self-test?<a href="emh.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Lesson 1 · Foundations &amp; Epistemics</div>
+      <h1 class="sl-h1">The Efficient Market Hypothesis, <em>the Null Every Edge Must Beat</em></h1>
+      <p class="sl-lede">Prices already reflect what's knowable — so before you believe you've found an edge, the first question is why the market left it there. Every later lesson in this curriculum describes a way to extract a pattern from price data. This lesson is the thing all of them are arguing against, and the posture this entire repo's backtest discipline is built on.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">The $20 bill on a crowded sidewalk</h2>
+      <p class="sl-sub">EMH isn't something you "believe in" — it's the default assumption every trading idea has to argue its way past.</p>
+      <div class="sl-quote">If someone really dropped a $20 bill on a busy sidewalk, it wouldn't stay there long — someone would pick it up within seconds. A market is about as crowded and well-incentivized a sidewalk as exists: thousands of professional traders, each rewarded for spotting free money, staring at the same prices you are. If a pattern in price data reliably predicted returns and cost nothing to exploit, the buying or selling pressure from people exploiting it would already have pushed the price to where the edge disappears.</div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">⊘</div><div><h4>Not a rule to accept or reject</h4><p>Nobody in quantitative finance treats EMH as literally, perfectly true. It's the null hypothesis — the thing you argue past with evidence, not a verdict on markets.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">💵</div><div><h4>Only the free lunch is forbidden</h4><p>EMH says a price already reflects available information, so there's no free, riskless way to profit from information you already have. It does not say nobody can ever earn a return.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔍</div><div><h4>The interesting question is friction</h4><p>What happens when exploiting an edge isn't free — when it needs capital, patience, leverage, or tolerance for a risk other participants won't bear? That's where persistent effects tend to live.</p></div></div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Why this is Lesson 1</div>
+        <p>Momentum effects, mean-reversion patterns, volatility risk premia, macro signals — all of it is downstream of this lesson. Before any of it is useful, you need to understand the baseline every one of those ideas is implicitly claiming to beat.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">What "efficient" actually predicts: a random walk</h2>
+      <p class="sl-sub">Five simulated paths, same starting price, same process, no shared destination.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Same start, no shared destination</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Five simulated random walk price paths starting at the same point and fanning out to different endpoints, some above and some below a dashed starting line">
+            <line x1="50" y1="130" x2="600" y2="130" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"/>
+            <polyline points="50,130 105,112 160,124 215,95 270,108 325,82 380,90 435,70 490,78 545,64 600,60" style="fill:none;stroke:var(--blue);stroke-width:2;opacity:.9"/>
+            <polyline points="50,130 105,142 160,120 215,132 270,112 325,120 380,104 435,112 490,100 545,92 600,96" style="fill:none;stroke:var(--green);stroke-width:2;opacity:.9"/>
+            <polyline points="50,130 105,122 160,138 215,130 270,146 325,134 380,150 435,138 490,130 545,138 600,134" style="fill:none;stroke:var(--amber);stroke-width:2;opacity:.9"/>
+            <polyline points="50,130 105,138 160,150 215,142 270,158 325,150 380,166 435,154 490,170 545,162 600,176" style="fill:none;stroke:var(--purple);stroke-width:2;opacity:.9"/>
+            <polyline points="50,130 105,146 160,158 215,172 270,164 325,180 380,168 435,190 490,182 545,198 600,210" style="fill:none;stroke:var(--red);stroke-width:2;opacity:.9"/>
+            <circle cx="50" cy="130" r="5" style="fill:var(--text)"/>
+            <text x="30" y="152" text-anchor="middle" style="fill:var(--text3);font-size:10px">t=0</text>
+            <text x="600" y="230" text-anchor="end" style="fill:var(--text3);font-size:10px">t=T</text>
+            <text x="325" y="24" text-anchor="middle" style="fill:var(--text3);font-size:11px;font-style:italic">identical starting information, five different outcomes</text>
+          </svg>
+        </div>
+        <div class="sl-verdict">All five paths start at the exact same price, generated by the exact same random process — yet they drift to five different levels with no systematic push either way. Nothing changed mid-path; the spread is purely the accumulation of unpredictable, zero-mean surprises, one step at a time.</div>
+      </div>
+      <p class="sl-p">The plain-English version: tomorrow's price equals today's price, plus a surprise — and the honest forecast of that surprise, given everything currently known, is zero. Not "the surprise is always exactly zero" (it isn't; that's why prices move and risk exists) but "you cannot use what you already know to predict which way it will go." A process with that property is a <strong>martingale</strong> — your best forecast of tomorrow's price, given today's information, is simply today's price.</p>
+      <div class="sl-quote">This is like a coin that's landed heads ten times in a row: the honest guess for the next flip is still 50/50, because the coin has no memory — even though the running tally keeps climbing. A market being "efficient" means prices have no memory in exactly that sense.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Three nested claims, three different strategies ruled out</h2>
+      <p class="sl-sub">Fama's 1970 taxonomy splits EMH by what information is assumed already priced in. Each form is a stronger claim than the last.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="form-tabs">
+          <button class="sl-tab active" data-panel="form-weak">Weak</button>
+          <button class="sl-tab" data-panel="form-semi">Semi-strong</button>
+          <button class="sl-tab" data-panel="form-strong">Strong</button>
+        </div>
+        <div class="sl-panel active" id="form-weak">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 90" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagram showing past prices and volume flowing into an arrow labeled already priced in">
+            <rect x="30" y="28" width="180" height="34" rx="6" style="fill:var(--blue-bg,rgba(59,130,246,.12));stroke:var(--blue);stroke-width:1.5"/>
+            <text x="120" y="49" text-anchor="middle" style="fill:var(--blue);font-size:12px;font-weight:600">Past prices &amp; volume</text>
+            <line x1="212" y1="45" x2="330" y2="45" style="stroke:var(--text3);stroke-width:2"/>
+            <polygon points="330,45 318,39 318,51" style="fill:var(--text3)"/>
+            <rect x="340" y="28" width="270" height="34" rx="6" style="fill:var(--green-bg,rgba(34,197,94,.12));stroke:var(--green);stroke-width:1.5"/>
+            <text x="475" y="49" text-anchor="middle" style="fill:var(--green);font-size:12px;font-weight:600">already reflected in today's price</text>
+          </svg></div>
+          <div class="sl-verdict"><strong>Rules out:</strong> technical analysis — chart patterns, moving-average crossovers, momentum built purely from price history. Any predictable pattern in past prices alone would already be arbitraged away. This is the form the random-walk math directly tests.</div>
+        </div>
+        <div class="sl-panel" id="form-semi">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 90" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagram showing public news and filings flowing into an arrow labeled already priced in">
+            <rect x="10" y="28" width="220" height="34" rx="6" style="fill:var(--blue-bg,rgba(59,130,246,.12));stroke:var(--blue);stroke-width:1.5"/>
+            <text x="120" y="49" text-anchor="middle" style="fill:var(--blue);font-size:12px;font-weight:600">+ public news, filings, macro data</text>
+            <line x1="232" y1="45" x2="330" y2="45" style="stroke:var(--text3);stroke-width:2"/>
+            <polygon points="330,45 318,39 318,51" style="fill:var(--text3)"/>
+            <rect x="340" y="28" width="270" height="34" rx="6" style="fill:var(--green-bg,rgba(34,197,94,.12));stroke:var(--green);stroke-width:1.5"/>
+            <text x="475" y="49" text-anchor="middle" style="fill:var(--green);font-size:12px;font-weight:600">already reflected in today's price</text>
+          </svg></div>
+          <div class="sl-verdict"><strong>Rules out:</strong> fundamental analysis on public data — everything anyone can legally read (earnings, filings, macro releases) is assumed to already be in the price. Tested via event studies: how fast and completely prices adjust after a public release.</div>
+        </div>
+        <div class="sl-panel" id="form-strong">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 90" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagram showing even private insider information flowing into an arrow labeled already priced in">
+            <rect x="10" y="28" width="220" height="34" rx="6" style="fill:var(--purple-bg,rgba(168,85,247,.12));stroke:var(--purple);stroke-width:1.5"/>
+            <text x="120" y="49" text-anchor="middle" style="fill:var(--purple);font-size:12px;font-weight:600">+ private / insider information</text>
+            <line x1="232" y1="45" x2="330" y2="45" style="stroke:var(--text3);stroke-width:2"/>
+            <polygon points="330,45 318,39 318,51" style="fill:var(--text3)"/>
+            <rect x="340" y="28" width="270" height="34" rx="6" style="fill:var(--green-bg,rgba(34,197,94,.12));stroke:var(--green);stroke-width:1.5"/>
+            <text x="475" y="49" text-anchor="middle" style="fill:var(--green);font-size:12px;font-weight:600">already reflected in today's price</text>
+          </svg></div>
+          <div class="sl-verdict"><strong>Rules out:</strong> even insider trading. Essentially never taken as literally true — well-documented profitable insider trading shows private information has value the market hasn't priced in. Included mainly as the logical extreme, and the reason insider-trading law exists at all.</div>
+        </div>
+      </div>
+      <p class="sl-p">Think of it as three levels of a game being "unbeatable." Weak form says you can't win using only the scoreboard from past games. Semi-strong says you can't win even reading every public report on the players. Strong form says you couldn't win even with secret information nobody else has — which is basically nobody's serious claim.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">You can never test EMH alone — the joint-hypothesis problem</h2>
+      <p class="sl-sub">The single most important epistemic point in this lesson.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">The joint-hypothesis problem</div>
+        <p>Testing whether "prices reflect available information" first requires a model of what the price <em>should</em> be given that information — CAPM, a multi-factor model, a discounted-cash-flow model, whatever. Every test of EMH is therefore secretly a joint test of two things bundled together: <strong>(1)</strong> is the market efficient, given the assumed pricing model, and <strong>(2)</strong> is the assumed pricing model itself correct. An anomalous result can never tell you which one failed.</p>
+      </div>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Reading 1 — market is inefficient</span>
+          <p>You found a genuine mispricing. The market left information unexploited, and your test correctly caught it.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Reading 2 — model is wrong</span>
+          <p>The market is fine; your pricing model is missing a risk factor. What looks like "alpha" is compensation for a risk your model didn't account for — exactly how size and value factors got absorbed from single-factor CAPM into multi-factor models.</p>
+        </div>
+      </div>
+      <div class="sl-quote">Imagine checking whether a bathroom scale is accurate, but the only way to test it is against a second scale that might itself be off. If the two disagree, you can't tell which one is wrong — maybe the first, maybe the second, maybe both a little. Testing "is the market efficient" has the same problem: a surprising result never proves the market messed up, it might just mean your ruler was bent.</div>
+      <p class="sl-p">This is exactly why professional researchers are reluctant to declare "EMH is false" from a single anomaly — and exactly why one profitable-looking backtest in this repo can never single-handedly prove an edge is real.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Is 0.03 a signal, or routine noise?</h2>
+      <p class="sl-sub">A worked autocorrelation check — the same question every backtest secretly asks.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">ρ̂₁ = 0.03, n = 500</span>
+          <ul>
+            <li>Standard error under the null ≈ 1/√500 ≈ 0.045</li>
+            <li>0.03 is smaller than one standard error</li>
+            <li>Nowhere near the ~2-SE threshold for "significant"</li>
+            <li>Exactly the small, noisy wobble an efficient series produces routinely</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">ρ̂₁ = 0.15, n = 500</span>
+          <ul>
+            <li>Same standard error, ≈ 0.045</li>
+            <li>0.15 is more than three standard errors from zero</li>
+            <li>A real statistical signal in this sample</li>
+            <li>Still no OOS test, no cost check, no mechanism — the start of a research question, not the end</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>Autocorrelation asks "does knowing yesterday's move help guess today's?" A statistically significant answer only tells you a pattern existed <em>in this sample</em>. It says nothing yet about whether it survives data the rule never saw, realistic transaction costs, or — per the joint-hypothesis problem — whether it's a real inefficiency or just compensation for a risk factor your simple model missed.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">The multiple-testing trap: how many "edges" would appear by luck alone?</h2>
+      <p class="sl-sub">Test enough random strategies against a significance threshold, and some will clear it by pure chance — not skill. How many, exactly?</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change the strategy count or the threshold, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Independent strategies tested (N)</label><input type="number" class="sl-input" id="mt-n" value="100" step="10" min="0"></div>
+          <div class="sl-calc-op">×</div>
+          <div class="sl-calc-field"><label>Significance threshold (α)</label><input type="number" class="sl-input" id="mt-alpha" value="0.05" step="0.01" min="0" max="1"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Expected false positives</div>
+            <div class="sl-calc-result-val" id="mt-result">5.00</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Formula: expected false positives = N × α</div>
+          <div id="mt-sentence">Testing 100 strategies at α = 0.05 means about 5 of them would look "statistically significant" by pure chance alone — even if every single one had zero real skill.</div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="mt-reset">Reset to 100 strategies, α = 0.05</button>
+        <div class="sl-note">This is the multiple-testing problem, and it's the joint-hypothesis problem's close cousin: a backtest scan across hundreds of parameter combinations is, statistically, exactly like running hundreds of independent significance tests. Some will clear the bar on chance alone — the next lesson in this series builds the correction for it.</div>
+      </div>
+      <p class="sl-p">This is why a "found in a backtest" result gets far more skepticism the more variations were tried to find it. A single pre-registered test clearing α = 0.05 is meaningful; the best of 100 tried variations clearing it is close to guaranteed, regardless of whether any of them has real skill.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Anomalies exist — and mostly get traded away</h2>
+      <p class="sl-sub">Evidence for and against strict efficiency, in the same breath.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📉</div><div><h4>Momentum &amp; value effects</h4><p>Documented, persistent-looking patterns in historical data — exactly the kind of thing that looks like a weak or semi-strong violation.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📰</div><div><h4>Post-earnings-announcement drift</h4><p>Prices keep moving for days after a public earnings release rather than adjusting instantly — a semi-strong-form violation, and one of the most robustly documented anomalies in the literature.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚡</div><div><h4>Capital chases what works</h4><p>Once an anomaly is well known and cheap to exploit, capital floods in, and the effect typically shrinks or disappears — the $20 bill gets picked up.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔄</div><div><h4>Efficiency isn't a fixed switch</h4><p>Andrew Lo's Adaptive Markets view: efficiency varies with the population of participants and how much capital is chasing an effect — inefficiencies can appear, get arbitraged away, and reappear as conditions shift.</p></div></div>
+      </div>
+      <div class="sl-quote">A weak-form violation — predicting the future from past prices alone — is a much narrower, more surprising claim than a semi-strong violation, which just means some public information takes time to fully price in. Confusing the two overstates how strong a given piece of evidence actually is.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Why an inefficiency survives at all</h2>
+      <p class="sl-sub">If profit-seeking arbitrageurs are everywhere, a durable inefficiency needs a reason it isn't instantly picked up.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">💰</div><div><h4>Funding constraints</h4><p>The trade needs leverage or capital most participants can't or won't deploy.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔐</div><div><h4>Information asymmetry</h4><p>The relevant data is genuinely hard to obtain or interpret — not secret, just costly to use.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🏦</div><div><h4>Structural / forced flows</h4><p>Rebalancing, hedging, or central-bank flows that aren't profit-motivated, and so don't get arbitraged away by pure profit-seekers.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📜</div><div><h4>Regulatory limits</h4><p>Position caps or capital rules that stop certain players from taking the other side of the trade.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>Genuine risk premium</h4><p>The "edge" is compensation for bearing tail risk, illiquidity, or career risk most participants avoid — not a free lunch at all.</p></div></div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">The bar this sets</div>
+        <p>If you can't articulate why an effect you found should exist and persist, that's a reason for skepticism, not an automatic kill — but it raises the bar for what evidence would convince you it's real.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">This lesson, turned into this repo's engineering rules</h2>
+      <p class="sl-sub">EMH isn't philosophy here — it's why this codebase's validation discipline looks the way it does.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">✂</div><div><h4>The out-of-sample split</h4><p>In-sample significance only shows a rule fits the specific sample it was tuned on — exactly what curve-fitting to noise also produces. OOS testing is the direct defense against that.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔢</div><div><h4>The ≥30-trade gate</h4><p>A handful of lucky trades looks like skill by pure sampling variance. A minimum trade count is a floor under how much you can trust a Sharpe ratio at all.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>A named no-skill benchmark</h4><p>"Beat a bad strategy" and "beat efficient-market pricing" are different bars. Every claimed edge is judged against buy-and-hold or a simple fixed exposure — the second bar is the only one that means anything.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">💸</div><div><h4>Costs-on-by-default</h4><p>EMH forbids the free lunch specifically — an edge that vanishes the moment realistic transaction costs and slippage are applied was never a free lunch to begin with.</p></div></div>
+      </div>
+      <div class="sl-quote">The question this repo trains you to ask about your own backtest results: "if the equity curve goes up, what would have to be true about market structure for this to be real, and is there evidence for that beyond the curve itself — or did I just find noise, or a joint-hypothesis artifact?"</div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Common ways people misread EMH</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">The misreading</span>
+          <ul>
+            <li>"EMH says nobody can ever make money"</li>
+            <li>"One profitable backtest disproves market efficiency"</li>
+            <li>"Efficient" means prices are always rational and correctly valued</li>
+            <li>EMH is a fixed, permanent verdict on a market</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">What it actually claims</span>
+          <ul>
+            <li>Only riskless, cost-free profit is forbidden — carry, illiquidity, and equity risk premia are entirely compatible with efficiency</li>
+            <li>One anomaly is equally consistent with "the pricing model used to judge 'abnormal' was incomplete" — the joint-hypothesis problem again</li>
+            <li>Prices can reflect information quickly and still look absurd in hindsight — a bubble doesn't require irrationality by the people setting the price at the time</li>
+            <li>Adaptive Markets: efficiency is ecological, varying with participants and competition, not a single on/off switch</li>
+          </ul>
+        </div>
+      </div>
+      <p class="sl-p">Getting paid extra to drive a truck full of fireworks isn't "beating the system" — it's fair payment for taking on real danger other drivers won't. A lot of trading profit works the same way: compensation for holding a risk most other capital doesn't want, not a secret trick that breaks efficiency.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Quick check</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Why can't a single backtest anomaly conclusively falsify EMH?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Because of the joint-hypothesis problem — you can't tell if the market is inefficient or the pricing model used to judge "abnormal" is wrong</button>
+        <button class="sl-quiz-opt">Because backtests are always run on too little data to matter</button>
+        <button class="sl-quiz-opt">Because EMH has already been proven true beyond dispute</button>
+        <div class="sl-quiz-explain">Every test of EMH secretly bundles two claims: the market is efficient, and the assumed pricing model is correct. An anomalous result can't tell you which one failed.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>A technical-analysis pattern built purely from past price history would, if genuinely reliable, violate which form of EMH?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Weak form</button>
+        <button class="sl-quiz-opt">Semi-strong form</button>
+        <button class="sl-quiz-opt">Strong form</button>
+        <div class="sl-quiz-explain">Weak form claims price/volume history alone is already fully reflected in price — a reliable pattern using only that history would violate it directly.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Does EMH forbid all profitable trading strategies?</h4>
+        <button class="sl-quiz-opt" data-correct="true">No — it forbids riskless, cost-free profit, not compensation for bearing real risk</button>
+        <button class="sl-quiz-opt">Yes — any strategy earning a positive return contradicts EMH</button>
+        <button class="sl-quiz-opt">Yes, but only for individual traders, not institutions</button>
+        <div class="sl-quiz-explain">Strategies that earn returns by bearing a genuine, priced risk — carry, illiquidity, tail risk — are entirely consistent with efficient markets. That's compensation for risk, not a free lunch.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Testing 200 independent strategies at a significance threshold of α = 0.05, roughly how many would look "significant" by pure chance alone?</h4>
+        <button class="sl-quiz-opt" data-correct="true">About 10</button>
+        <button class="sl-quiz-opt">About 1</button>
+        <button class="sl-quiz-opt">None — significance means chance is ruled out</button>
+        <div class="sl-quiz-explain">Expected false positives = N × α = 200 × 0.05 = 10. Significance at the single-test level says nothing once many tests are run — the multiple-testing problem.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>ρ̂₁ = 0.15 on n = 500 daily returns clears roughly how many standard errors from zero?</h4>
+        <button class="sl-quiz-opt" data-correct="true">About 3, using SE ≈ 1/√500 ≈ 0.045</button>
+        <button class="sl-quiz-opt">Less than 1 — well within noise</button>
+        <button class="sl-quiz-opt">It can't be computed without more information</button>
+        <div class="sl-quiz-explain">t = ρ̂ / SE = 0.15 / 0.045 ≈ 3.3 — a real statistical signal in-sample, though still not proof of a tradeable edge without OOS, cost, and mechanism checks.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>EMH is the null hypothesis, not a verdict — prices already reflect available information, and every trading idea has to argue its way past that default before it earns trust.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Efficiency's testable core is a martingale — your best forecast of tomorrow's price, given everything known today, is today's price. Returns should show no exploitable autocorrelation.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Three nested forms rule out three different strategies — weak (technical analysis), semi-strong (fundamental analysis on public data), strong (even insider trading, essentially never taken literally).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The joint-hypothesis problem is unavoidable — you can never test "the market is efficient" without also assuming a pricing model, so one anomaly never proves which one is wrong.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Multiple testing manufactures fake edges — expected false positives = N × α. The more variations tried, the more skepticism a "found" pattern deserves.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>EMH forbids the free lunch, not all profit — genuine risk premia are compatible with efficiency, and this repo's OOS split, trade-count gate, named benchmark, and costs-on-by-default are that logic turned into engineering rules.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Treat any backtested result with the correct starting skepticism: ask whether it survives out-of-sample data, realistic costs, and the joint-hypothesis question — and whether it's one carefully chosen test or the best of many, before ever calling it an edge.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Bayesian Inference &amp; Updating</h3>
+        <p>How to update a belief — including "this backtest found a real edge" — in proportion to actual evidence, instead of either dismissing a result outright or trusting it completely.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="bayesian-inference-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="emh.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Multiple-testing calculator — expected false positives = N × alpha, live.
+  (function(){
+    var n = document.getElementById('mt-n');
+    if (!n) return;
+    var alpha = document.getElementById('mt-alpha');
+    var result = document.getElementById('mt-result');
+    var sentence = document.getElementById('mt-sentence');
+    var resetBtn = document.getElementById('mt-reset');
+    var DEFAULTS = { n: 100, alpha: 0.05 };
+
+    function fmt(x){ return x.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+    function recompute(){
+      var nv = parseFloat(n.value), av = parseFloat(alpha.value);
+      if (!isFinite(nv) || !isFinite(av) || nv < 0 || av < 0 || av > 1) {
+        result.textContent = '—';
+        sentence.textContent = 'Enter a non-negative strategy count and a threshold between 0 and 1.';
+        return;
+      }
+      var expected = nv * av;
+      result.textContent = fmt(expected);
+      var nRound = Math.round(nv);
+      sentence.textContent = 'Testing ' + nRound.toLocaleString() + ' strateg' + (nRound === 1 ? 'y' : 'ies') +
+        ' at α = ' + av + ' means about ' + fmt(expected) + ' of them would look "statistically significant" by pure chance alone — even if every single one had zero real skill.';
+    }
+
+    [n, alpha].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      n.value = DEFAULTS.n; alpha.value = DEFAULTS.alpha;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

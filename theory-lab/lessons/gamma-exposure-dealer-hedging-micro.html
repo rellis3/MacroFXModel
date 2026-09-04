@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gamma Exposure &amp; Dealer Hedging — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Gamma Exposure &amp; Dealer Hedging — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivations, the put-call-parity proof, and a 6-question self-test?<a href="gamma-exposure-dealer-hedging.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">The Greeks 1 · The Greeks</div>
+      <h1 class="sl-h1">Gamma Exposure &amp; Dealer Hedging, <em>Told As Cause and Effect</em></h1>
+      <p class="sl-lede">Every option a dealer sells to the public leaves the dealer needing to rehedge continuously as price moves — and gamma is exactly the rate at which that rehedging has to happen. Sum it across an entire strike ladder and it turns into dealer gamma exposure (GEX): a real, formula-derived read on how much forced buying or selling a given move will trigger, which direction that flow pushes the market, and the price level — the gamma-flip — where the pressure can flip from calming things down to speeding them up.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Why sellers end up short gamma, buyers long</h2>
+      <p class="sl-sub">Gamma's sign follows directly from which side of the trade you're on — nothing more exotic than that.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">+Γ</div><div><h4>Long an option → positive gamma</h4><p>Buying a call or a put, either one, always carries positive gamma. That's true regardless of strike, moneyness, or which type of option it is.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">−Γ</div><div><h4>Short an option → negative gamma</h4><p>Writing (selling) an option flips the sign of every one of its Greeks, gamma included. The dealer who wrote it now holds negative gamma on that contract.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🙋</div><div><h4>Customers are typically net buyers</h4><p>The standard assumption: retail and institutional flow buys calls for upside speculation and buys puts for downside protection or speculation — net long options, in aggregate.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🏦</div><div><h4>Dealers absorb that demand</h4><p>To fill customer buy orders, dealers take the other side — writing options — which leaves dealers net <strong>short</strong> gamma across most of the book.</p></div></div>
+      </div>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The trade, drawn as a flow</div>
+        <div class="sl-row"><div class="sl-box green">Customer buys a call<br><small>long, +Γ</small></div><div class="sl-arrow">→</div><div class="sl-box amber">Dealer writes the call<br><small>short, −Γ</small></div></div>
+        <div class="sl-verdict">Same contract, opposite gamma. The customer's long position is exactly mirrored by the dealer's short one — that mirroring is where "dealers are net short gamma" comes from.</div>
+      </div>
+      <div class="sl-quote">This is a standard, usually-reasonable <strong>assumption</strong> about who's on which side of the trade — not something read directly off a strike's open interest. Slide 4 comes back to exactly how far that assumption can be trusted.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">A call and a put share the same gamma</h2>
+      <p class="sl-sub">Put-call parity — C − P = S − Ke⁻ʳᵀ — forces this, exactly, not approximately.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag red">Delta — differs</span>
+          <p>The right-hand side of parity, S − Ke⁻ʳᵀ, has a first derivative of exactly 1 with respect to S. So Δ<sub>call</sub> − Δ<sub>put</sub> = 1 — delta shifts by a constant, and a long call and a long put end up with opposite-signed delta.</p>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Gamma — identical</span>
+          <p>Differentiate parity <em>twice</em>. S − Ke⁻ʳᵀ is linear in S, so its second derivative is exactly zero: Γ<sub>call</sub> − Γ<sub>put</sub> = 0. Same strike, same expiry, same gamma — always.</p>
+        </div>
+      </div>
+      <div class="sl-row" style="margin-top:16px"><div class="sl-box">Γ<sub>call</sub></div><div class="sl-arrow">=</div><div class="sl-box">Γ<sub>put</sub></div></div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Why this matters for GEX</div>
+        <p>Because gamma is identical for a call and a put at a strike, it's never "calls behave differently from puts" that decides whether hedging flow amplifies or dampens a move — it's purely <strong>the dealer's own long/short sign</strong> at that strike. Get that sign wrong and the whole downstream read flips.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">The dealer's sign is an assumption, not an observation</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">State this plainly</div>
+        <p>Open interest tells you how many contracts are outstanding at a strike. It does <strong>not</strong> tell you who holds the long side and who holds the short side. "Dealers are net short this strike" is a standard, usually-reasonable, but genuinely unverifiable assumption layered on top of the raw OI number — not a fact read directly off the data. Different providers assuming differently will disagree on a strike's sign even while agreeing on its raw OI.</p>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Fact-check against this repo's own code</div>
+        <p>The full lesson's meta badge reads <strong>"CONCEPT — not built or tested in this repo."</strong> That's now stale. This codebase has real, tested gamma/dealer-positioning modules: <code>js/gammaGreeks.js</code> (Black-Scholes gamma, vanna, charm, and a rigorous root-found gamma-flip), <code>js/gammaFlow.js</code> (flip distance and drift), <code>js/fullBookGex.js</code> (multi-expiry aggregate GEX with a PIN/BREAKOUT regime call), and <code>js/oi.js</code> (~2,950 lines wiring all of it into the live options-chain pipeline) — each backed by a passing offline test suite (<code>gammaGreeks.test.mjs</code>, <code>gammaFlow.test.mjs</code>, <code>fullBookGex.test.mjs</code>). One nuance worth carrying forward too: the live code's actual sign convention is <code>(callOI − putOI) × Γ × mult × spot</code> — dealers modeled as effectively long the calls and short the puts at a strike — which is subtly different from the "dealer short both sides everywhere" simplification this lesson's own worked examples use for hand arithmetic.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Building the GEX formula, one step at a time</h2>
+      <p class="sl-sub">Γ × OI × 100 × S² × 0.01 looks arbitrary until you build it up piece by piece. Step through it.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="gexform-tabs">
+          <button class="sl-tab active" data-panel="gexform-1">Step 1 — shares</button>
+          <button class="sl-tab" data-panel="gexform-2">Step 2 — dollars</button>
+          <button class="sl-tab" data-panel="gexform-3">Step 3 — per 1% move</button>
+        </div>
+        <div class="sl-panel active" id="gexform-1">
+          <div class="sl-row"><div class="sl-box">Γ × OI × 100</div></div>
+          <div class="sl-verdict">How many <strong>shares</strong> the dealer's hedge changes by, per $1 move in the underlying — a share count, not a dollar figure yet. The ×100 is the standard contract multiplier (one contract covers 100 shares/units).</div>
+        </div>
+        <div class="sl-panel" id="gexform-2">
+          <div class="sl-row"><div class="sl-box amber">Γ × OI × 100 × S</div></div>
+          <div class="sl-verdict">Multiply by S, the price of one share, and it becomes "how many <strong>dollars</strong> the hedge position's value changes by, per $1 move" — sometimes called dollar gamma on its own.</div>
+        </div>
+        <div class="sl-panel" id="gexform-3">
+          <div class="sl-row"><div class="sl-box green">Γ × OI × 100 × S × (S × 0.01)</div></div>
+          <div class="sl-verdict">A $1 move means something different for a $20 stock than a $2,000 one, so GEX is quoted per <strong>1% move</strong> instead: S × 0.01 is what a 1% move is worth in dollars. Multiplying by that instead of by 1 rescales dollar gamma from "per $1" to "per 1%" — giving Γ × OI × 100 × S² × 0.01.</div>
+        </div>
+        <div class="sl-note">Nothing in this formula is a new idea — it's unit conversion, applied three times in a row, to a quantity (Γ) the Black-Scholes lesson already derived.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Aggregate it, and a flip level appears</h2>
+      <p class="sl-sub">Sum signed GEX across every strike in the chain and the result is a genuine function of price — not a fixed number. Below is an illustrative strike ladder, S = 100, using the repo's own (callOI − putOI) × Γ sign convention.</p>
+      <div class="sl-svgwrap">
+        <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart of net dealer GEX by strike from 90 to 110, negative red bars below strike 100 growing toward the flip, positive green bars above strike 100, with a dashed amber line marking the gamma-flip level at strike 100">
+          <line x1="30" y1="150" x2="610" y2="150" style="stroke:var(--border2);stroke-width:1"/>
+          <line x1="30" y1="30" x2="30" y2="220" style="stroke:var(--border2);stroke-width:1"/>
+          <text x="150" y="42" text-anchor="middle" font-size="11" font-weight="700" fill="var(--red)">Short gamma zone — destabilizing</text>
+          <text x="470" y="42" text-anchor="middle" font-size="11" font-weight="700" fill="var(--green)">Long gamma zone — stabilizing</text>
+          <line x1="310" y1="24" x2="310" y2="230" style="stroke:var(--amber);stroke-width:1.5;stroke-dasharray:3,3"/>
+          <text x="310" y="245" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--amber)">gamma-flip ≈ $100</text>
+          <rect x="43" y="150" width="34" height="34" style="fill:var(--red);opacity:.75"/>
+          <rect x="93" y="150" width="34" height="60" style="fill:var(--red);opacity:.75"/>
+          <rect x="143" y="150" width="34" height="82" style="fill:var(--red);opacity:.75"/>
+          <rect x="193" y="150" width="34" height="90" style="fill:var(--red);opacity:.75"/>
+          <rect x="243" y="150" width="34" height="72" style="fill:var(--red);opacity:.75"/>
+          <rect x="343" y="78" width="34" height="72" style="fill:var(--green);opacity:.75"/>
+          <rect x="393" y="60" width="34" height="90" style="fill:var(--green);opacity:.75"/>
+          <rect x="443" y="68" width="34" height="82" style="fill:var(--green);opacity:.75"/>
+          <rect x="493" y="90" width="34" height="60" style="fill:var(--green);opacity:.75"/>
+          <rect x="543" y="116" width="34" height="34" style="fill:var(--green);opacity:.75"/>
+          <text x="60" y="168" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">90</text>
+          <text x="110" y="168" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">92</text>
+          <text x="160" y="168" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">94</text>
+          <text x="210" y="168" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">96</text>
+          <text x="260" y="168" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">98</text>
+          <text x="310" y="168" text-anchor="middle" font-size="10" font-weight="700" font-family="'DM Mono',monospace" fill="var(--amber)">100</text>
+          <text x="360" y="168" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">102</text>
+          <text x="410" y="168" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">104</text>
+          <text x="460" y="168" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">106</text>
+          <text x="510" y="168" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">108</text>
+          <text x="560" y="168" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">110</text>
+          <text x="320" y="264" text-anchor="middle" font-size="11" fill="var(--text3)">Strike →</text>
+          <text x="14" y="125" text-anchor="middle" font-size="11" fill="var(--text3)" transform="rotate(-90 14 125)">Net dealer GEX</text>
+        </svg>
+      </div>
+      <p class="sl-p">Put-heavy strikes below spot dominate on the left (negative — dealers net short gamma there); call-heavy strikes above spot dominate on the right (positive — net long). The crossing between them is the gamma-flip. Move to the next slide for what living on either side of it actually means.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Long gamma dampens, short gamma amplifies</h2>
+      <p class="sl-sub">Same underlying move, opposite dealer response, depending purely on which side of the trade the dealer is on.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="regime-tabs">
+          <button class="sl-tab active" data-panel="regime-short">Short dealer gamma (typical)</button>
+          <button class="sl-tab" data-panel="regime-long">Long dealer gamma</button>
+        </div>
+        <div class="sl-panel active" id="regime-short">
+          <div class="sl-row"><div class="sl-box amber">Price rises</div><div class="sl-arrow">→</div><div class="sl-box red">Dealer buys</div></div>
+          <div class="sl-row"><div class="sl-box amber">Price falls</div><div class="sl-arrow">→</div><div class="sl-box red">Dealer sells</div></div>
+          <div class="sl-verdict">Hedging flow has the <strong>same sign</strong> as the move — buying into strength, selling into weakness. <strong>Market effect: amplifying / destabilizing.</strong> Moves tend to accelerate once they start.</div>
+        </div>
+        <div class="sl-panel" id="regime-long">
+          <div class="sl-row"><div class="sl-box amber">Price rises</div><div class="sl-arrow">→</div><div class="sl-box green">Dealer sells</div></div>
+          <div class="sl-row"><div class="sl-box amber">Price falls</div><div class="sl-arrow">→</div><div class="sl-box green">Dealer buys</div></div>
+          <div class="sl-verdict">Hedging flow has the <strong>opposite sign</strong> to the move — selling into strength, buying into weakness. <strong>Market effect: dampening / stabilizing.</strong> Moves tend to get faded back toward where they started.</div>
+        </div>
+      </div>
+      <p class="sl-p">This isn't a preference or a strategy — it's the mechanical consequence of the hedge-flow-rate formula, d(hedge shares)/dS = Γ × OI × 100, applied with the dealer's own signed Γ. A short option's negative gamma flips the sign of the required hedge trade relative to the move itself; a long option's positive gamma doesn't.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">The gamma-flip level — an estimate, not a fixture</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Above the flip</span>
+          <p>Aggregate dealer gamma is net positive. Stabilizing hedging flow dominates — dealers, on net, sell into rallies and buy into dips, which tends to compress realized volatility.</p>
+        </div>
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Below the flip</span>
+          <p>Aggregate dealer gamma is net negative. Destabilizing hedging flow dominates — dealers, on net, chase the move in either direction, which tends to expand realized volatility.</p>
+        </div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Two honest caveats</div>
+        <p>First, the flip is <strong>estimated from the current OI distribution</strong> and the assumed dealer signs — it shifts every time OI at any strike changes or the front-month expiry rolls, not a fixed constant painted on a chart. Second, it inherits the same unverifiable-sign problem as any single strike's GEX: if the true mix of who's long and who's short differs from the standard assumption, the true flip differs from the estimated one too.</p>
+      </div>
+      <div class="sl-quote">A "wall" isn't sellers lying in wait — it's the point where the hedging <em>demand</em> that had been fuelling a move runs out because the hedge is already complete. When a wall breaks instead, delta jumps faster than the existing hedge accounted for, and that same mechanism reverses into a squeeze.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Gamma concentrates as expiry approaches</h2>
+      <p class="sl-sub">Drag the slider. The curve is Γ(K) ≈ φ(d₁)/(Sσ√T) — the same Black-Scholes gamma the Ito's Lemma / Black-Scholes lessons derive — plotted across a strike ladder around a fixed S = 100.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Gamma versus strike curve that grows taller and narrower around the at-the-money strike as days to expiry decreases">
+            <line x1="60" y1="240" x2="610" y2="240" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="60" y1="240" x2="60" y2="20" style="stroke:var(--border2);stroke-width:1"/>
+            <text x="335" y="256" text-anchor="middle" font-size="11" fill="var(--text3)">Strike (S = 100 fixed) →</text>
+            <text x="18" y="130" text-anchor="middle" font-size="11" fill="var(--text3)" transform="rotate(-90 18 130)">Γ per $1 move</text>
+            <text x="60" y="253" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">70</text>
+            <text x="335" y="253" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--amber)" font-weight="700">100</text>
+            <text x="610" y="253" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">130</text>
+            <polyline id="gcurve-curve" points="" style="fill:none;stroke:var(--blue);stroke-width:2.5"/>
+            <line id="gcurve-marker" x1="335" y1="20" x2="335" y2="240" style="stroke:var(--amber);stroke-width:1.5;stroke-dasharray:2,2"/>
+            <circle id="gcurve-dot" cx="335" cy="20" r="5" style="fill:var(--amber);stroke:var(--bg);stroke-width:1.5"/>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Days to expiry</span><span class="sl-live" id="gcurve-dte-val">DTE = 30</span></div>
+        <input type="range" class="sl-slider" id="gcurve-slider" min="1" max="90" step="1" value="30">
+        <div class="sl-note">σ = 20% held fixed. Drag left toward 1 DTE and the peak grows tall and narrow — gamma concentrates hard right at the money. Drag right toward 90 DTE and it flattens and spreads — the same total open interest produces a much gentler hedging-flow rate.</div>
+      </div>
+      <div class="sl-calc-steps">
+        <div>T = <b id="gcurve-t-val">0.0822</b>y</div>
+        <div>Peak Γ at K = $100 ≈ <b id="gcurve-g-val">0.0696</b> per $1 move</div>
+      </div>
+      <p class="sl-p">This is why the final trading day before expiry behaves so differently from the two weeks before it: Γ ∝ 1/√T, so shrinking T matters disproportionately more once T is already small. It's also why a large near-dated ATM strike can move a book's total GEX more than a much larger but far-dated or far-OTM strike — gamma, not size alone, decides how much a strike's OI matters.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Add up a toy three-strike book, live</h2>
+      <p class="sl-sub">S = 100, assuming the standard "dealer net short everywhere" case at every strike. Edit any OI or Γ.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Strike 95 — combined OI</label><input type="number" class="sl-input" id="gx-oi-95" value="4000" step="100" min="0"></div>
+          <div class="sl-calc-op">×</div>
+          <div class="sl-calc-field"><label>Γ per contract</label><input type="number" class="sl-input" id="gx-g-95" value="0.050" step="0.001" min="0"></div>
+          <div class="sl-calc-op">× 100 × S² × 0.01 =</div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Dealer GEX @ 95</div><div class="sl-calc-result-val" id="gx-out-95">−$2.00M</div></div>
+        </div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Strike 100 — combined OI</label><input type="number" class="sl-input" id="gx-oi-100" value="9800" step="100" min="0"></div>
+          <div class="sl-calc-op">×</div>
+          <div class="sl-calc-field"><label>Γ per contract</label><input type="number" class="sl-input" id="gx-g-100" value="0.144" step="0.001" min="0"></div>
+          <div class="sl-calc-op">× 100 × S² × 0.01 =</div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Dealer GEX @ 100</div><div class="sl-calc-result-val" id="gx-out-100">−$14.11M</div></div>
+        </div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Strike 105 — combined OI</label><input type="number" class="sl-input" id="gx-oi-105" value="6000" step="100" min="0"></div>
+          <div class="sl-calc-op">×</div>
+          <div class="sl-calc-field"><label>Γ per contract</label><input type="number" class="sl-input" id="gx-g-105" value="0.040" step="0.001" min="0"></div>
+          <div class="sl-calc-op">× 100 × S² × 0.01 =</div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Dealer GEX @ 105</div><div class="sl-calc-result-val" id="gx-out-105">−$2.40M</div></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Total dealer GEX across all three strikes: <b id="gx-total">−$18.51M</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="gx-reset">Reset to worked-example numbers</button>
+        <div class="sl-note">Blank or negative a field and that strike's contribution — and the total — read "—" rather than breaking. This toy book is deliberately small so the arithmetic is checkable by hand; a real broad-index book runs into the billions once OI is in the hundreds of thousands of contracts per strike, but the formula is identical.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">How this actually gets used — and where it's over-trusted</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📊</div><div><h4>A daily positioning read</h4><p>Data services estimate aggregate dealer gamma from public OI using exactly the sign conventions above, publishing it alongside price as context, not a trade signal on its own.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧭</div><div><h4>A regime filter</h4><p>Net-short vs. net-long dealer gamma is used to set expectations for how a given order-flow size should behave — amplified or dampened — layered on an existing setup, not traded standalone.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📐</div><div><h4>The flip as a structural pivot</h4><p>Some desks track the estimated flip price precisely because price action either side of it is theorized to differ in character — while still treating the level as an estimate that moves, not a fixed line.</p></div></div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Common pitfalls</div>
+        <p><strong>Open interest is lagged</strong> — public OI typically reflects the previous session's close, so any GEX estimate built on it describes yesterday's book. <strong>Dealer positioning is assumed, not observed</strong> — every GEX number and flip estimate inherits the sign-convention uncertainty from Section 3.</p>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Genuinely unsettled</div>
+        <p>Whether apparent "pinning" toward high-OI strikes is an active-trading pattern or a pure hedging byproduct is a real, open question in academic and practitioner research — not resolved in either direction. Treat any confident claim that it's "definitely" one or the other with real skepticism.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Why do a call and a put at the same strike and expiry have exactly the same gamma?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Put-call parity makes the right-hand side linear in S, so its second derivative is zero</button>
+        <button class="sl-quiz-opt">Because calls and puts always carry the same delta too</button>
+        <button class="sl-quiz-opt">Gamma only depends on volatility, never on the option type</button>
+        <div class="sl-quiz-explain">C − P = S − Ke⁻ʳᵀ is linear in S, so differentiating both sides twice gives exactly zero on the right — Γ_call = Γ_put, always, not approximately. Delta differs by exactly 1 instead, since the first derivative of a linear function is a nonzero constant.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Does open interest, on its own, tell you whether dealers are net long or net short a strike?</h4>
+        <button class="sl-quiz-opt" data-correct="true">No — OI only counts contracts outstanding, not who holds which side</button>
+        <button class="sl-quiz-opt">Yes — the long side is always reported first in the OI figure</button>
+        <button class="sl-quiz-opt">Yes, but only for strikes above the current spot price</button>
+        <div class="sl-quiz-explain">"Dealers are net short this strike" is a standard, usually-reasonable assumption layered on top of raw OI — it isn't something the OI number itself reveals.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>In the typical case (dealer short gamma), what happens to hedging flow as price rises?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Dealers must buy — flow has the same sign as the move, which is destabilizing</button>
+        <button class="sl-quiz-opt">Dealers must sell — flow opposes the move, which is stabilizing</button>
+        <button class="sl-quiz-opt">Nothing changes until the option expires</button>
+        <div class="sl-quiz-explain">Short gamma flips the sign of the required hedge trade relative to the move itself: buying into strength, selling into weakness — adding fuel to whichever direction is already happening.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Why does ATM gamma accelerate — not just grow steadily — as expiry approaches?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Γ ∝ 1/√T, so shrinking T matters disproportionately more once T is already small</button>
+        <button class="sl-quiz-opt">Gamma scales linearly with the number of calendar days remaining</button>
+        <button class="sl-quiz-opt">It only accelerates because of a change in implied volatility, never from time alone</button>
+        <div class="sl-quiz-explain">Because gamma depends on 1/√T, the same number of remaining days matters far more when there are few of them left — the reason the final trading day carries disproportionately more hedging intensity than an equivalent one-day shift three weeks out.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>What actually happens at the gamma-flip level?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Aggregate signed dealer GEX crosses zero — hedging flow flips between net stabilizing and net destabilizing</button>
+        <button class="sl-quiz-opt">Price is mathematically guaranteed to reverse there</button>
+        <button class="sl-quiz-opt">It's a fixed level, set once per listing, that doesn't change until expiry</button>
+        <div class="sl-quiz-explain">It's the price at which the aggregate signed GEX across the whole chain sums to zero — an estimate that moves every time OI changes at any strike or an expiry rolls, not a fixed line and not a guarantee of anything about price itself.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Any option that's bought carries positive gamma; any option that's written carries negative gamma — dealers absorbing customer buying end up net short gamma across most of the book, an assumption about who's on which side, not a directly observable fact.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Calls and puts at the same strike and expiry have identical gamma, by put-call parity — it's the dealer's long/short sign, never the option type, that decides whether hedging flow amplifies or dampens a move.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>GEX rescales gamma into dollars-per-1%-move — Γ × OI × 100 × S² × 0.01 — the unit that lets strikes, underlyings, and expiries actually be compared to each other.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Short dealer gamma pushes hedging flow the same direction as price, amplifying moves; long dealer gamma pushes it the opposite direction, dampening them — buy the dip vs. sell the rip, mechanically, not by choice.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The gamma-flip level is where aggregate signed dealer GEX crosses zero — an estimate that shifts with every OI change and every expiry roll, not a fixed line on a chart.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Gamma isn't linear in time to expiry — it scales as 1/√T, so the last few days before expiry carry disproportionately more hedging intensity than the weeks before them.</p></div>
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">What this now lets you do</div>
+        <p>Read a GEX-by-strike chart and know what the bars actually represent — signed dealer exposure, not "support and resistance" in the technical-analysis sense. Explain why a level can hold on the way in and then accelerate straight through once broken, without needing a story about sellers changing their minds. Treat any specific GEX figure or flip level as a same-day estimate built on yesterday's open interest and an unverifiable sign assumption — useful context, not a certainty.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Open Interest Walls, Max Pain &amp; Squeeze Trading</h3>
+        <p>Turn the open-interest chain itself into a map — where call and put walls actually sit, how max pain gets computed, and why a wall breaking is a squeeze mechanism, not a random breakout.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="open-interest-walls-max-pain-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="gamma-exposure-dealer-hedging.html">Read the full gamma lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Gamma-vs-strike curve, redrawn live as DTE changes. Reuses the standard
+  // Black-Scholes gamma formula (r = 0, q = 0), same shape as js/gammaGreeks.js's
+  // bsGamma, evaluated across a strike ladder instead of at a single point.
+  (function(){
+    var slider = document.getElementById('gcurve-slider');
+    if (!slider) return;
+    var dteVal = document.getElementById('gcurve-dte-val');
+    var tVal = document.getElementById('gcurve-t-val');
+    var gVal = document.getElementById('gcurve-g-val');
+    var curve = document.getElementById('gcurve-curve');
+    var marker = document.getElementById('gcurve-marker');
+    var dot = document.getElementById('gcurve-dot');
+
+    var SQRT2PI = Math.sqrt(2 * Math.PI);
+    var S = 100, SIGMA = 0.20;
+    var K_MIN = 70, K_MAX = 130;
+    var X_LEFT = 60, X_RIGHT = 610, Y_BASE = 240, Y_TOP = 20, G_MAX = 0.40;
+
+    function bsGamma(K, T){
+      if (!(K > 0) || !(T > 0)) return 0;
+      var sigT = SIGMA * Math.sqrt(T);
+      var d1 = (Math.log(S / K) + 0.5 * SIGMA * SIGMA * T) / sigT;
+      return Math.exp(-d1 * d1 / 2) / SQRT2PI / (S * sigT);
+    }
+    function kToX(k){ return X_LEFT + (k - K_MIN) / (K_MAX - K_MIN) * (X_RIGHT - X_LEFT); }
+    function gToY(g){ return Y_BASE - Math.min(g, G_MAX) / G_MAX * (Y_BASE - Y_TOP); }
+
+    function update(){
+      var dte = parseInt(slider.value, 10);
+      var T = dte / 365;
+      var pts = [];
+      for (var k = K_MIN; k <= K_MAX; k += 1){
+        pts.push(kToX(k).toFixed(2) + ',' + gToY(bsGamma(k, T)).toFixed(2));
+      }
+      curve.setAttribute('points', pts.join(' '));
+
+      var gAtm = bsGamma(S, T);
+      var x = kToX(S), y = gToY(gAtm);
+      marker.setAttribute('x1', x); marker.setAttribute('x2', x);
+      dot.setAttribute('cx', x); dot.setAttribute('cy', y);
+
+      dteVal.textContent = 'DTE = ' + dte;
+      tVal.textContent = T.toFixed(4);
+      gVal.textContent = gAtm.toFixed(4);
+    }
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Three-strike toy dealer-GEX aggregation, live, with guards against
+  // blank / negative / non-finite input on every field.
+  (function(){
+    var oi95 = document.getElementById('gx-oi-95'), g95 = document.getElementById('gx-g-95'), out95 = document.getElementById('gx-out-95');
+    if (!oi95) return;
+    var oi100 = document.getElementById('gx-oi-100'), g100 = document.getElementById('gx-g-100'), out100 = document.getElementById('gx-out-100');
+    var oi105 = document.getElementById('gx-oi-105'), g105 = document.getElementById('gx-g-105'), out105 = document.getElementById('gx-out-105');
+    var totalEl = document.getElementById('gx-total');
+    var resetBtn = document.getElementById('gx-reset');
+    var S = 100;
+    var FACTOR = 100 * S * S * 0.01; // contract multiplier x S^2 x 0.01 = 10,000 at S=100
+    var DEFAULTS = { oi95: 4000, g95: 0.050, oi100: 9800, g100: 0.144, oi105: 6000, g105: 0.040 };
+
+    function fmtDollars(v){
+      var sign = v < 0 ? '−' : '';
+      var abs = Math.abs(v);
+      var str;
+      if (abs >= 1e9) str = (abs / 1e9).toFixed(2) + 'B';
+      else if (abs >= 1e6) str = (abs / 1e6).toFixed(2) + 'M';
+      else if (abs >= 1e3) str = (abs / 1e3).toFixed(2) + 'K';
+      else str = abs.toFixed(2);
+      return sign + '$' + str;
+    }
+
+    // Standard-case assumption: dealer is net short at every strike (sign = -1).
+    function rowValue(oiEl, gEl, outEl){
+      var oi = parseFloat(oiEl.value), g = parseFloat(gEl.value);
+      if (!isFinite(oi) || !isFinite(g) || oi < 0 || g < 0) {
+        outEl.textContent = '—';
+        return null;
+      }
+      var v = -(g * oi * FACTOR);
+      outEl.textContent = fmtDollars(v);
+      return v;
+    }
+
+    function recompute(){
+      var v1 = rowValue(oi95, g95, out95);
+      var v2 = rowValue(oi100, g100, out100);
+      var v3 = rowValue(oi105, g105, out105);
+      var vals = [v1, v2, v3].filter(function(v){ return v !== null; });
+      if (!vals.length) { totalEl.textContent = '—'; return; }
+      var total = vals.reduce(function(a, b){ return a + b; }, 0);
+      totalEl.textContent = fmtDollars(total);
+    }
+
+    [oi95, g95, oi100, g100, oi105, g105].forEach(function(el){
+      el.addEventListener('input', recompute);
+    });
+    resetBtn.addEventListener('click', function(){
+      oi95.value = DEFAULTS.oi95; g95.value = DEFAULTS.g95;
+      oi100.value = DEFAULTS.oi100; g100.value = DEFAULTS.g100;
+      oi105.value = DEFAULTS.oi105; g105.value = DEFAULTS.g105;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

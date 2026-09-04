@@ -175,6 +175,7 @@ export function buildOIZones(inst, price, cfg = {}) {
                                    // be silently dropped by its own minRR gate. 0 = uncapped (old
                                    // behaviour: pure guard wall).
     fadeInPin = true, followBreaks = true, maxPainReversion = true,
+    maxpainRequirePin = true,      // Mode C only enters when the TRADED book's own regime is PIN
     requireEstablished = false, avoidLiquidating = true,
     maxZonesPerSide = 4,           // TRADE only the K walls per side — for PIN fades the K
                                    // NEAREST strong walls bracketing price (the active
@@ -681,8 +682,28 @@ export function buildOIZones(inst, price, cfg = {}) {
   }
 
   // ── Mode C — max-pain reversion near expiry ─────────────────────────────────
+  // The pin only PULLS when dealers are net long gamma (PIN) -- that is the mechanism
+  // itself, not a size adjustment: long gamma means dealer hedging is COUNTER-cyclical
+  // (buy dips, sell rallies), which is what drags price back to the strike where option
+  // buyers lose the most. Short gamma (BREAKOUT) means the opposite -- dealer hedging is
+  // PRO-cyclical, amplifying whatever move is already underway -- so a reversion bet in
+  // that regime is fighting the mechanism that is supposed to cause it. Every other mode
+  // here is gated by regime already (fadeInPin only in PIN, followBreaks only in
+  // BREAKOUT); Mode C alone ran regime-agnostic, on the theory that "extended enough" was
+  // gate enough on its own -- until a 2026-09-01 rut long (BREAKOUT, GEX 4.29x the
+  // trailing median -- the strongest short-gamma reading in that day's whole plan) sat 99
+  // points from the pin fighting a market that was actively running away from it.
+  // `regime` here is the TRADED book's own (the day-expiry gex when one exists, matching
+  // what everything else on this page already reads) -- not the far/primary book, which
+  // can disagree with the near-dated one entirely (today's rut: 17DTE reads BREAKOUT too,
+  // but a different DTE's regime is still the wrong book's opinion of THIS trade).
   const dte = _nearDTE(inst);
-  if (maxPainReversion && dte != null && dte <= nearExpiryDTE && maxPain != null && Math.abs(price - maxPain) >= ext) {
+  const mcExtended = dte != null && dte <= nearExpiryDTE && maxPain != null && Math.abs(price - maxPain) >= ext;
+  if (maxPainReversion && mcExtended && maxpainRequirePin && regime !== 'PIN') {
+    _drop({ mode: 'maxpain', side: price > maxPain ? 'sell' : 'buy', level: maxPain, entry: price },
+      `${regime || 'NEUTRAL'} regime (dealers short/flat gamma — the reversion pull needs long gamma) — skipped, not sized down`);
+  }
+  if (maxPainReversion && mcExtended && (!maxpainRequirePin || regime === 'PIN')) {
     const side = price > maxPain ? 'sell' : 'buy';
     const guardWall = side === 'sell'
       ? calls.filter(c => c.strike > price).sort((a, b) => a.strike - b.strike)[0]?.strike
@@ -706,10 +727,24 @@ export function buildOIZones(inst, price, cfg = {}) {
     // check above ran at plan-build; by the time the bot loads the plan (or restarts)
     // price may already be back at the pin — the edge is spent and the zone must not
     // fire. The engine requires |px − level| ≥ minDist on the planned side.
+    // Mode C is the ONLY mode whose entry and stop come from SPOT rather than from a
+    // strike -- and `price` here is the OI capture's spot (paired to the futures for the
+    // basis once a day), not a live quote. `wall ± buf` is the same number all day;
+    // `spot ± mpSlDist` is not, and by mid-session it can sit the WRONG SIDE of the
+    // market: a max-pain buy whose stop is above the bid is rejected by MT5 (10016) on
+    // every retry, forever, because a rejection deliberately keeps the zone open. So ship
+    // the stop's INGREDIENTS -- all of them day-static (a strike, a fraction, a floor) --
+    // and let the executor re-anchor them to live price at fire time, which is the same
+    // immunity every strike-anchored mode already gets for free. `sl` stays as the
+    // plan-time absolute: the zones page renders it, and an older executor still reads it.
     add({ mode: 'maxpain', side, level: maxPain, entry: price, minDist: +ext.toFixed(6),
       sl: side === 'sell' ? price + mpSlDist : price - mpSlDist,
+      slGuardWall: guardWall != null ? +guardWall.toFixed(6) : null,   // a STRIKE (day-static), not the distance to it
+      slFrac: maxpainSlFrac,                                           // re-cap against the LIVE distance to the pin
+      slFloor: +buf.toFixed(6),                                        // noise-band floor
+      slDist: +mpSlDist.toFixed(6),                                    // plan-time resolution (last-resort fallback)
       tp1: maxPain, tp2: null, sizeFactor: mcSize,
-      rationale: `max-pain reversion · ${dte}DTE · price extended from pin ${maxPain} → fade toward it · stop ${mpSlSrc}${charmActive ? ' · charm firing → pin amplified into expiry' : ''}` });
+      rationale: `max-pain reversion · ${dte}DTE · price extended from pin ${maxPain} → fade toward it · stop ${mpSlSrc}, re-anchored to live price at entry${charmActive ? ' · charm firing → pin amplified into expiry' : ''}` });
   }
 
   // ── Mode D — react at levels (opt-in reactAtLevels): trade BETWEEN structural nodes,

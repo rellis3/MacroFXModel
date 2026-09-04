@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hierarchical Bayesian Models &amp; Partial Pooling — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Hierarchical Bayesian Models — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivation, five worked strategies, and a 5-question self-test?<a href="hierarchical-bayesian-models.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Bayesian Extensions 3 · Bayesian Statistics Extensions</div>
+      <h1 class="sl-h1">Hierarchical Bayesian Models, <em>the Principled Middle Ground</em></h1>
+      <p class="sl-lede">Five trading strategies, five trade counts, five noisy Sharpe estimates — should the one with 6 lucky-looking trades really be trusted as much as the one with 400? Partial pooling is the answer between "trust every estimate fully" and "ignore the differences entirely," and a hierarchical model is what lets the data decide how much of each to use, instead of an analyst guessing.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Several groups, all of them noisy, none of them the same size</h2>
+      <p class="sl-sub">Five currency-pair or strategy "groups." Each has its own raw estimate. Each has wildly different evidence behind it.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The setup</div>
+        <div class="sl-row">
+          <div class="sl-box amber">n = 5<br>Sharpe 2.10</div>
+          <div class="sl-box amber">n = 6<br>Sharpe 1.90</div>
+          <div class="sl-box">n = 8<br>Sharpe −0.60</div>
+        </div>
+        <div class="sl-row" style="margin-top:10px">
+          <div class="sl-box green">n = 40<br>Sharpe 0.75</div>
+          <div class="sl-box green">n = 50<br>Sharpe 0.85</div>
+        </div>
+        <div class="sl-verdict">Five strategies (call them A–E), each with a raw sample-average Sharpe ratio. Two have barely any trades behind them at all (amber). Two have real track records (green). One sits in between.</div>
+      </div>
+      <p class="sl-p">A strategy traded for two years has hundreds of trades behind its Sharpe estimate; one launched last month might have six. Treating a 6-trade estimate and a 400-trade estimate as equally trustworthy is the first mistake almost everyone makes with small samples — and it's the exact mistake this lesson is about avoiding, without throwing away real differences between groups either.</p>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Not just Sharpe ratios</div>
+        <p>Swap "strategy" for currency pair, analyst, or trading desk, and "Sharpe ratio" for win rate, forecast skill, or expected return — the same problem shows up anywhere several related groups each produce their own noisy estimate from an unequal amount of data.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Two ways to get this wrong</h2>
+      <p class="sl-sub">Both extremes are tempting. Both throw away real information.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">No pooling</span>
+          <ul>
+            <li>Estimate every group entirely on its own data</li>
+            <li>Strategy A's 6-trade 2.10 Sharpe is taken completely at face value</li>
+            <li>Ignores that the groups are probably related and roughly similar</li>
+            <li>A tiny sample gets exactly as much confidence as a huge one</li>
+          </ul>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Complete pooling</span>
+          <ul>
+            <li>Treat every group as identical, pool all data into one number</li>
+            <li>Strategy A and Strategy B both get the same grand-mean Sharpe</li>
+            <li>Ignores that a 400-trade estimate has earned the right to differ</li>
+            <li>Real, informative differences between groups are discarded entirely</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-quote">Neither extreme is "wrong" as arithmetic — both are honest answers to a question nobody actually wants asked. No pooling answers "what if the groups have nothing to do with each other?" Complete pooling answers "what if the groups are all secretly identical?" Real groups are usually <strong>somewhere in between</strong> — related, but not identical — and neither extreme has a dial for that.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Same five strategies, three different answers</h2>
+      <p class="sl-sub">Same raw data every time. Only the pooling assumption changes where each estimate lands.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="pool-tabs">
+          <button class="sl-tab" data-panel="pool-1">No pooling</button>
+          <button class="sl-tab active" data-panel="pool-2">Partial pooling</button>
+          <button class="sl-tab" data-panel="pool-3">Complete pooling</button>
+        </div>
+        <div class="sl-panel" id="pool-1">
+          <div class="sl-pool-grid">
+            <div class="sl-pool-item"><span class="sl-pool-tag">A · n=5</span><div class="sl-box">2.10</div></div>
+            <div class="sl-pool-item"><span class="sl-pool-tag">E · n=6</span><div class="sl-box">1.90</div></div>
+            <div class="sl-pool-item"><span class="sl-pool-tag">C · n=8</span><div class="sl-box">−0.60</div></div>
+            <div class="sl-pool-item"><span class="sl-pool-tag">D · n=40</span><div class="sl-box">0.75</div></div>
+            <div class="sl-pool-item"><span class="sl-pool-tag">B · n=50</span><div class="sl-box">0.85</div></div>
+          </div>
+          <div class="sl-verdict">Every group's own raw sample mean, untouched. A's 2.10 (from 5 trades) is trusted exactly as much as B's 0.85 (from 50 trades) — nothing here reflects how little evidence A actually has.</div>
+        </div>
+        <div class="sl-panel active" id="pool-2">
+          <div class="sl-pool-grid">
+            <div class="sl-pool-item"><span class="sl-pool-tag">A · n=5</span><div class="sl-box green">1.478</div></div>
+            <div class="sl-pool-item"><span class="sl-pool-tag">E · n=6</span><div class="sl-box green">1.420</div></div>
+            <div class="sl-pool-item"><span class="sl-pool-tag">C · n=8</span><div class="sl-box green">−0.167</div></div>
+            <div class="sl-pool-item"><span class="sl-pool-tag">D · n=40</span><div class="sl-box green">0.745</div></div>
+            <div class="sl-pool-item"><span class="sl-pool-tag">B · n=50</span><div class="sl-box green">0.839</div></div>
+          </div>
+          <div class="sl-verdict">A and E — the smallest samples — get pulled hardest toward the grand mean (0.70). C's ugly −0.60 gets pulled <strong>up</strong> for the same reason. D and B, with real trade histories, barely move at all.</div>
+        </div>
+        <div class="sl-panel" id="pool-3">
+          <div class="sl-pool-grid">
+            <div class="sl-pool-item"><span class="sl-pool-tag">A · n=5</span><div class="sl-box amber">0.70</div></div>
+            <div class="sl-pool-item"><span class="sl-pool-tag">E · n=6</span><div class="sl-box amber">0.70</div></div>
+            <div class="sl-pool-item"><span class="sl-pool-tag">C · n=8</span><div class="sl-box amber">0.70</div></div>
+            <div class="sl-pool-item"><span class="sl-pool-tag">D · n=40</span><div class="sl-box amber">0.70</div></div>
+            <div class="sl-pool-item"><span class="sl-pool-tag">B · n=50</span><div class="sl-box amber">0.70</div></div>
+          </div>
+          <div class="sl-verdict">Every group gets the identical grand-mean Sharpe of 0.70. D's real, hard-earned 0.75 and B's real 0.85 — each backed by dozens of trades — are thrown away exactly as completely as A's near-meaningless 2.10.</div>
+        </div>
+      </div>
+      <p class="sl-p">Partial pooling isn't a compromise reached by averaging the other two answers — it's computed directly from a shrinkage formula that uses each group's own sample size. The next few slides build that formula.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Shrink by exactly how little data you have</h2>
+      <p class="sl-sub">Partial pooling blends a group's own raw average with the grand mean, weighted by a "trust dial" Bⱼ between 0 and 1.</p>
+      <div class="sl-row">
+        <div class="sl-box">θⱼ-hat</div>
+        <div class="sl-arrow">=</div>
+        <div class="sl-box amber">Bⱼ</div>
+        <div class="sl-arrow">×</div>
+        <div class="sl-box">ȳⱼ</div>
+        <div class="sl-arrow">+</div>
+        <div class="sl-box">(1 − Bⱼ)</div>
+        <div class="sl-arrow">×</div>
+        <div class="sl-box">μ</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">ȳⱼ</div><div><h4>Group j's own raw average</h4><p>The "no pooling" number — group j's sample mean, using only its own data.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">μ</div><div><h4>The grand mean</h4><p>The "complete pooling" number — the overall average across all groups combined.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">Bⱼ</div><div><h4>The shrinkage weight</h4><p>Bⱼ = τ² / (τ² + σ²/nⱼ). More trades (bigger nⱼ) shrinks σ²/nⱼ toward zero, pushing Bⱼ toward 1 — trust the group's own data more.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">τ²</div><div><h4>Between-group variance</h4><p>How much groups genuinely differ from each other, once sampling noise is accounted for — estimated from the data, not guessed.</p></div></div>
+      </div>
+      <div class="sl-quote">Notice both extremes fall out of this one formula as limiting cases: as τ²→0 (groups don't really differ), Bⱼ→0 for everyone and θⱼ-hat→μ — <strong>complete pooling</strong>. As τ²→∞ (the groups tell you nothing about each other), Bⱼ→1 and θⱼ-hat→ȳⱼ — <strong>no pooling</strong>. Partial pooling is what happens for any finite, honestly-estimated τ² — the two "pure" strategies are just its endpoints.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Where the hyperprior fits in the stack</h2>
+      <p class="sl-sub">"Hierarchical" means two layers of randomness, stacked — and the top layer is what lets the model learn Bⱼ instead of an analyst picking it.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Two levels, top to bottom</div>
+        <div class="sl-row">
+          <div class="sl-box purple">Hyperprior<br>μ, τ²</div>
+          <div class="sl-arrow">↓ generates</div>
+          <div class="sl-box amber">θⱼ ~ N(μ, τ²)<br>group j's true value</div>
+          <div class="sl-arrow">↓ generates</div>
+          <div class="sl-box">yᵢⱼ ~ N(θⱼ, σ²)<br>observation i in group j</div>
+        </div>
+        <div class="sl-verdict">Reading top to bottom: a shared population distribution (governed by μ and τ²) is where every group's true parameter θⱼ comes from — and each group's individual observations then scatter around its own θⱼ. Reading bottom to top is exactly the estimation problem: observed data → infer θⱼ for each group → infer μ and τ² for the population they came from.</div>
+      </div>
+      <p class="sl-p">Crucially, μ and τ² are <strong>not</strong> fixed in advance by the analyst — they're estimated from the full collection of groups. That's what makes this different from just picking a pooling amount by hand: the model looks at how much the five strategies' raw Sharpes actually scatter around each other and sets τ² — and therefore every Bⱼ — accordingly.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>Estimating μ and τ² themselves adds its own layer of uncertainty, and five or ten groups is a genuinely small sample for pinning down a between-group variance. A fully Bayesian treatment puts a prior on μ and τ² too, rather than plugging in one point estimate as this lesson's numbers do for clarity.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Watching the pull toward the mean</h2>
+      <p class="sl-sub">Each strategy's raw estimate (hollow) versus its shrunk estimate (filled) — the arrow is the pull that partial pooling applies.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>All five strategies, μ = 0.70, τ² = 0.25, σ² = 1</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 335" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Number line showing five strategies' raw Sharpe estimates pulled toward the grand mean of 0.70, with the smallest-sample strategies pulled the furthest">
+            <defs>
+              <marker id="pp-arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                <path d="M0,0 L6,3 L0,6 Z" style="fill:var(--blue)" />
+              </marker>
+            </defs>
+            <line x1="328.5" y1="15" x2="328.5" y2="300" style="stroke:var(--green);stroke-width:1.5;stroke-dasharray:4,3" />
+            <text x="328.5" y="12" text-anchor="middle" style="fill:var(--green);font-size:11px;font-weight:700">μ = 0.70 (grand mean)</text>
+
+            <circle cx="560" cy="24" r="5" style="fill:none;stroke:var(--purple);stroke-width:2.5" />
+            <text x="571" y="28" style="fill:var(--text2);font-size:10px">raw</text>
+            <circle cx="560" cy="42" r="5" style="fill:var(--blue)" />
+            <text x="571" y="46" style="fill:var(--text2);font-size:10px">shrunk</text>
+
+            <text x="15" y="36" style="fill:var(--text3);font-size:11px;font-family:'DM Mono',monospace">A · n=5</text>
+            <line x1="566.1" y1="50" x2="466.5" y2="50" style="stroke:var(--blue);stroke-width:2" marker-end="url(#pp-arrow)" />
+            <circle cx="566.1" cy="50" r="6" style="fill:none;stroke:var(--purple);stroke-width:2.5" />
+            <circle cx="460.5" cy="50" r="6" style="fill:var(--blue)" />
+            <text x="513" y="66" text-anchor="middle" style="fill:var(--text2);font-size:10px;font-family:'DM Mono',monospace">2.10 → 1.478</text>
+
+            <text x="15" y="86" style="fill:var(--text3);font-size:11px;font-family:'DM Mono',monospace">E · n=6</text>
+            <line x1="532.1" y1="100" x2="456.7" y2="100" style="stroke:var(--blue);stroke-width:2" marker-end="url(#pp-arrow)" />
+            <circle cx="532.1" cy="100" r="6" style="fill:none;stroke:var(--purple);stroke-width:2.5" />
+            <circle cx="450.7" cy="100" r="6" style="fill:var(--blue)" />
+            <text x="491" y="116" text-anchor="middle" style="fill:var(--text2);font-size:10px;font-family:'DM Mono',monospace">1.90 → 1.420</text>
+
+            <text x="15" y="136" style="fill:var(--text3);font-size:11px;font-family:'DM Mono',monospace">C · n=8</text>
+            <line x1="107.9" y1="150" x2="175.4" y2="150" style="stroke:var(--blue);stroke-width:2" marker-end="url(#pp-arrow)" />
+            <circle cx="107.9" cy="150" r="6" style="fill:none;stroke:var(--purple);stroke-width:2.5" />
+            <circle cx="181.4" cy="150" r="6" style="fill:var(--blue)" />
+            <text x="145" y="166" text-anchor="middle" style="fill:var(--text2);font-size:10px;font-family:'DM Mono',monospace">−0.60 → −0.167</text>
+
+            <text x="15" y="186" style="fill:var(--text3);font-size:11px;font-family:'DM Mono',monospace">D · n=40</text>
+            <line x1="337.0" y1="200" x2="336.5" y2="200" style="stroke:var(--blue);stroke-width:2" marker-end="url(#pp-arrow)" />
+            <circle cx="337.0" cy="200" r="6" style="fill:none;stroke:var(--purple);stroke-width:2.5" />
+            <circle cx="336.1" cy="200" r="6" style="fill:var(--blue)" />
+            <text x="336" y="216" text-anchor="middle" style="fill:var(--text2);font-size:10px;font-family:'DM Mono',monospace">0.75 → 0.745</text>
+
+            <text x="15" y="236" style="fill:var(--text3);font-size:11px;font-family:'DM Mono',monospace">B · n=50</text>
+            <line x1="353.9" y1="250" x2="352.9" y2="250" style="stroke:var(--blue);stroke-width:2" marker-end="url(#pp-arrow)" />
+            <circle cx="353.9" cy="250" r="6" style="fill:none;stroke:var(--purple);stroke-width:2.5" />
+            <circle cx="352.1" cy="250" r="6" style="fill:var(--blue)" />
+            <text x="353" y="266" text-anchor="middle" style="fill:var(--text2);font-size:10px;font-family:'DM Mono',monospace">0.85 → 0.839</text>
+
+            <line x1="30" y1="290" x2="615" y2="290" style="stroke:var(--border2);stroke-width:1" />
+            <text x="40" y="305" text-anchor="middle" style="fill:var(--text3);font-size:10px">−1</text>
+            <text x="209.7" y="305" text-anchor="middle" style="fill:var(--text3);font-size:10px">0</text>
+            <text x="379.4" y="305" text-anchor="middle" style="fill:var(--text3);font-size:10px">1</text>
+            <text x="549.1" y="305" text-anchor="middle" style="fill:var(--text3);font-size:10px">2</text>
+          </svg>
+        </div>
+        <div class="sl-verdict">A and E — the tiny samples with the flashiest numbers — travel the furthest. D and B, with 40 and 50 trades behind them, barely move: their arrows are almost invisible because there's nothing left for the grand mean to correct.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">More data, less shrinkage</h2>
+      <p class="sl-sub">Same strategy, same raw Sharpe of 2.10 — drag its trade count up and watch the shrunk estimate climb back toward the raw number.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 130" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A dot sliding along a line between the grand mean and a strategy's raw estimate as trade count increases">
+            <line x1="40" y1="65" x2="600" y2="65" style="stroke:var(--border2);stroke-width:2" />
+            <line x1="124" y1="50" x2="124" y2="80" style="stroke:var(--green);stroke-width:2.5" />
+            <text x="124" y="102" text-anchor="middle" style="fill:var(--green);font-size:11px;font-weight:700">μ = 0.70</text>
+            <text x="124" y="116" text-anchor="middle" style="fill:var(--text3);font-size:9.5px">grand mean</text>
+            <line x1="516" y1="50" x2="516" y2="80" style="stroke:var(--purple);stroke-width:2.5" />
+            <text x="516" y="102" text-anchor="middle" style="fill:var(--purple);font-size:11px;font-weight:700">ȳ = 2.10</text>
+            <text x="516" y="116" text-anchor="middle" style="fill:var(--text3);font-size:9.5px">raw, no pooling</text>
+            <circle id="shr-dot" cx="254.8" cy="65" r="8" style="fill:var(--blue)" />
+            <text id="shr-label" x="254.8" y="35" text-anchor="middle" style="fill:var(--blue);font-size:13px;font-weight:700">θⱼ-hat = 1.167</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Trade count nⱼ</span><span class="sl-live" id="shr-n-val">nⱼ = 2, Bⱼ = 0.333</span></div>
+        <input type="range" class="sl-slider" id="shr-slider" min="2" max="100" step="1" value="2">
+        <div class="sl-note">At nⱼ = 2, the blue dot sits close to the grand mean — there's barely any evidence yet. Drag toward 100 and it climbs steadily toward the raw estimate, because σ²/nⱼ shrinks and Bⱼ rises toward 1.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Compute your own shrinkage estimate</h2>
+      <p class="sl-sub">Starts on Strategy A's numbers from Section 1. Change any field — the shrinkage weight and the pooled estimate recompute instantly.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Raw estimate ȳⱼ</label><input type="number" class="sl-input" id="hb-ybar" value="2.10" step="0.05"></div>
+          <div class="sl-calc-field"><label>Sample size nⱼ</label><input type="number" class="sl-input" id="hb-n" value="5" step="1" min="0"></div>
+          <div class="sl-calc-field"><label>Grand mean μ</label><input type="number" class="sl-input" id="hb-mu" value="0.70" step="0.05"></div>
+          <div class="sl-calc-field"><label>Between-group var τ²</label><input type="number" class="sl-input" id="hb-tau2" value="0.25" step="0.05" min="0"></div>
+          <div class="sl-calc-field"><label>Within-group var σ²</label><input type="number" class="sl-input" id="hb-sigma2" value="1" step="0.1" min="0"></div>
+          <div class="sl-calc-op">→</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Shrunk estimate θⱼ-hat</div>
+            <div class="sl-calc-result-val" id="hb-shrunk">1.478</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Sampling variance σ²/nⱼ = <b id="hb-se2">0.200</b></div>
+          <div>Shrinkage weight Bⱼ = τ² / (τ² + σ²/nⱼ) = <b id="hb-b">0.556</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="hb-reset">Reset to Strategy A's numbers</button>
+        <div class="sl-note">nⱼ and σ² must be positive and τ² can't be negative — blank or invalid input shows "—" rather than a broken number.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">A surprising, provable result — and where practitioners use it</h2>
+      <div class="sl-quote">James &amp; Stein (1961) proved something genuinely counterintuitive: shrinking three or more group estimates toward a common target achieves strictly lower <em>total</em> error than trusting every group's own raw average — <strong>even when the groups have nothing to do with each other in reality</strong>. It's not a claim the groups are secretly related; it's a mathematical fact about squared-error loss once three or more parameters are estimated at once, made famous by Efron &amp; Morris using baseball batting averages.</div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">⚾</div><div><h4>Sports analytics</h4><p>Shrinking early-season batting averages toward the league mean predicts end-of-season performance far better than trusting a hot start at face value.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🗺</div><div><h4>Small-area estimation</h4><p>Public-health and survey statisticians need a rate for every region, even sparsely-sampled ones — partial pooling across regions is the standard fix.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧪</div><div><h4>Many-variant A/B testing</h4><p>Testing dozens of variants means most get modest traffic — hierarchical shrinkage keeps a lucky low-traffic variant from being crowned a winner too soon.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Where partial pooling quietly goes wrong</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Common pitfalls</div>
+        <p><strong>Pooling groups that shouldn't be pooled.</strong> The benefit depends on groups genuinely sharing a common distribution — shrinking a carry-trade strategy toward a mean computed from unrelated momentum strategies can make the estimate worse, not better.</p>
+        <p style="margin-top:10px"><strong>Treating μ and τ² as free of uncertainty.</strong> They're estimated from a finite — often small — number of groups. Plugging in one point estimate, as this lesson's worked numbers do, understates the true uncertainty versus a fully Bayesian treatment.</p>
+        <p style="margin-top:10px"><strong>Confusing shrinkage with validation.</strong> A shrunk estimate is a more honest point estimate of what's already been observed — it is not evidence a strategy will keep performing that way. It still needs genuine out-of-sample proof before it earns real capital.</p>
+      </div>
+      <p class="sl-p">A systematic allocator sizing five sub-strategies by expected Sharpe would badly over-allocate to Strategy A using its raw 2.10 — precisely the small-sample noise the shrunk 1.478 corrects for. That's the logic of the approach, not a claim that this specific allocation rule is built, backtested, or running anywhere in this codebase today — see the note below.</p>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Checked against this repo's actual code</div>
+        <p>The repo does contain a real n/(n+k) shrinkage estimator in <code>forge/vol.py</code> (event-day volatility multipliers shrunk toward 1.0 by sample size) — so "shrink a noisy estimate by how little data backs it" is a real, shipped technique here. But there is no code that shrinks a per-pair or per-strategy Sharpe, win rate, or return estimate toward a cross-pair or cross-strategy grand mean the way this lesson describes — the allocation scenario above remains conceptual, exactly as the full lesson already discloses.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What does complete pooling assume, that no pooling does not?</h4>
+        <button class="sl-quiz-opt" data-correct="true">That every group shares exactly the same true parameter</button>
+        <button class="sl-quiz-opt">That every group's parameter is unrelated to the others</button>
+        <button class="sl-quiz-opt">That larger samples should be trusted less</button>
+        <div class="sl-quiz-explain">Complete pooling treats θ₁=θ₂=...=θⱼ=μ and estimates one shared number. No pooling assumes the opposite — every group is entirely unrelated to the rest.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>In θⱼ ~ N(μ, τ²), what does τ² represent?</h4>
+        <button class="sl-quiz-opt" data-correct="true">How much the groups' true parameters genuinely differ from each other</button>
+        <button class="sl-quiz-opt">The noise in a single observation within one group</button>
+        <button class="sl-quiz-opt">The number of trades in the smallest group</button>
+        <div class="sl-quiz-explain">τ² is the between-group variance — how spread out the true group means are around the grand mean μ. σ² is the separate within-group observation noise.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Why does Strategy A (n=5, raw Sharpe 2.10) shrink much harder than Strategy B (n=50, raw Sharpe 0.85)?</h4>
+        <button class="sl-quiz-opt" data-correct="true">A's small nⱼ makes σ²/nⱼ large, pushing its Bⱼ toward 0</button>
+        <button class="sl-quiz-opt">A's raw Sharpe is a bigger number, so it gets penalized more</button>
+        <button class="sl-quiz-opt">Shrinkage is applied equally to every group regardless of nⱼ</button>
+        <div class="sl-quiz-explain">Bⱼ = τ²/(τ²+σ²/nⱼ). A small nⱼ inflates σ²/nⱼ, which dominates the denominator and drags Bⱼ toward 0 — most of the weight falls on μ, not on A's own noisy 2.10.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>As τ² → ∞, what does the hierarchical model collapse to?</h4>
+        <button class="sl-quiz-opt" data-correct="true">No pooling — Bⱼ → 1 and θⱼ-hat → ȳⱼ</button>
+        <button class="sl-quiz-opt">Complete pooling — Bⱼ → 0 and θⱼ-hat → μ</button>
+        <button class="sl-quiz-opt">It becomes undefined</button>
+        <div class="sl-quiz-explain">If groups could differ arbitrarily (τ²→∞), the shared structure carries no correcting information, so Bⱼ→1 and every group is left with its own raw estimate — no pooling.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Does a partially pooled Sharpe estimate prove a strategy will keep performing that way?</h4>
+        <button class="sl-quiz-opt" data-correct="true">No — it's a more honest point estimate of past data, not a forecast</button>
+        <button class="sl-quiz-opt">Yes — shrinkage removes all estimation risk</button>
+        <button class="sl-quiz-opt">Yes, as long as nⱼ is above 30</button>
+        <div class="sl-quiz-explain">Shrinkage only corrects small-sample noise in data already collected. It adds no information about the future — the same out-of-sample discipline still applies before trusting the number going forward.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Complete pooling, no pooling, and partial pooling are one spectrum — the τ²→0, τ²→∞, and finite-τ² cases of the same hierarchical model, not three unrelated ideas.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>The shrinkage formula θⱼ-hat = Bⱼ·ȳⱼ + (1−Bⱼ)·μ blends each group's own average with the grand mean, weighted by how much data that group actually has.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Bⱼ = τ²/(τ²+σ²/nⱼ) rises toward 1 as nⱼ grows — small samples get shrunk hardest, in either direction, flashy or ugly-looking.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The hyperprior θⱼ ~ N(μ,τ²) is what lets μ and τ² — and therefore every Bⱼ — be learned from the data, instead of an analyst guessing the pooling amount.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>James-Stein's result: shrinking several estimates toward a common target lowers total error even when the groups are truly unrelated — a fact about squared-error loss, not an assumption about the world.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>A shrunk estimate is a better point estimate, not a validated forecast — and pooling groups that don't actually share structure can make things worse, not better.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Compare several related groups' noisy estimates without either over-trusting a lucky-looking small sample or throwing away a large sample's hard-earned differences. Recognize complete pooling and no pooling as the two extremes of one formula, not separate techniques. Know exactly which lever — nⱼ or τ² — is doing the work whenever an estimate gets pulled toward a group average.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Hamiltonian Monte Carlo &amp; NUTS</h3>
+        <p>Once a hierarchical model gets more complex than the simple Normal case shown here, sampling its posterior needs a smarter proposal than plain Metropolis-Hastings — this is that upgrade.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="hamiltonian-monte-carlo-nuts-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="hierarchical-bayesian-models.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<style>
+  /* Small layout-only additions, scoped to this lesson — no new sl-* component
+     vocabulary, just a flex wrapper for the tabbed "five estimates at once"
+     comparison, matching the sizing/spacing already used by .sl-row/.sl-box. */
+  .sl-pool-grid{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin-bottom:14px}
+  .sl-pool-item{display:flex;flex-direction:column;align-items:center;gap:8px}
+  .sl-pool-tag{font-family:'DM Mono',monospace;font-size:10.5px;color:var(--text3)}
+</style>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Section 7 — shrinkage-vs-sample-size slider (single strategy, raw=2.10).
+  (function(){
+    var slider = document.getElementById('shr-slider');
+    if (!slider) return;
+    var nVal = document.getElementById('shr-n-val');
+    var dot = document.getElementById('shr-dot');
+    var label = document.getElementById('shr-label');
+
+    var MU = 0.70, TAU2 = 0.25, SIGMA2 = 1, YRAW = 2.10;
+    var VMIN = 0.4, VMAX = 2.4, X0 = 40, X1 = 600;
+
+    function valueToX(v){ return X0 + ((v - VMIN) / (VMAX - VMIN)) * (X1 - X0); }
+
+    function update(){
+      var n = parseInt(slider.value, 10);
+      var se2 = SIGMA2 / n;
+      var B = TAU2 / (TAU2 + se2);
+      var shrunk = B * YRAW + (1 - B) * MU;
+      var x = valueToX(shrunk);
+      dot.setAttribute('cx', x);
+      label.setAttribute('x', x);
+      label.textContent = 'θⱼ-hat = ' + shrunk.toFixed(3);
+      nVal.textContent = 'nⱼ = ' + n + ', Bⱼ = ' + B.toFixed(3);
+    }
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Section 8 — live shrinkage calculator with defensive guards.
+  (function(){
+    var ybar = document.getElementById('hb-ybar');
+    if (!ybar) return;
+    var n = document.getElementById('hb-n'), mu = document.getElementById('hb-mu');
+    var tau2 = document.getElementById('hb-tau2'), sigma2 = document.getElementById('hb-sigma2');
+    var se2Out = document.getElementById('hb-se2'), bOut = document.getElementById('hb-b');
+    var shrunkOut = document.getElementById('hb-shrunk');
+    var resetBtn = document.getElementById('hb-reset');
+    var DEFAULTS = { ybar: 2.10, n: 5, mu: 0.70, tau2: 0.25, sigma2: 1 };
+
+    function recompute(){
+      var yb = parseFloat(ybar.value), nv = parseFloat(n.value), mv = parseFloat(mu.value);
+      var t2 = parseFloat(tau2.value), s2 = parseFloat(sigma2.value);
+
+      if (!isFinite(yb) || !isFinite(nv) || !isFinite(mv) || !isFinite(t2) || !isFinite(s2) ||
+          nv <= 0 || s2 <= 0 || t2 < 0) {
+        se2Out.textContent = '—';
+        bOut.textContent = '—';
+        shrunkOut.textContent = '—';
+        return;
+      }
+
+      var se2 = s2 / nv;
+      var denom = t2 + se2;
+      var B = denom === 0 ? 0 : t2 / denom;
+      var shrunk = B * yb + (1 - B) * mv;
+
+      se2Out.textContent = se2.toFixed(3);
+      bOut.textContent = B.toFixed(3);
+      shrunkOut.textContent = shrunk.toFixed(3);
+    }
+
+    [ybar, n, mu, tau2, sigma2].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      ybar.value = DEFAULTS.ybar; n.value = DEFAULTS.n; mu.value = DEFAULTS.mu;
+      tau2.value = DEFAULTS.tau2; sigma2.value = DEFAULTS.sigma2;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

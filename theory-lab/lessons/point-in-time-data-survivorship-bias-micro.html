@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Point-in-Time Data &amp; Survivorship Bias — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Point-in-Time Data &amp; Survivorship Bias — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full operational treatment, the 1996 study in detail, and a 5-question self-test?<a href="point-in-time-data-survivorship-bias.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Institutional Data Engineering 4 · Institutional Data Engineering</div>
+      <h1 class="sl-h1">Point-in-Time Data &amp; Survivorship Bias, <em>What the Backtest Never Saw</em></h1>
+      <p class="sl-lede">Two data problems that both make a backtest look better than the live strategy it's supposed to represent: using a number as of a date before it was actually knowable (because the "real" number arrived later, revised), and evaluating a universe that quietly excludes everything that failed along the way. Neither shows up as an error — both just make the past look calmer and the winners look more common than they really were.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">A table that forgets vs. a table that remembers everything</h2>
+      <p class="sl-sub">Same GDP figure, two ways to store it. Only one of them can ever answer "what did we know back then" honestly.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="store-tabs">
+          <button class="sl-tab active" data-panel="store-1">Mutable "current value" table</button>
+          <button class="sl-tab" data-panel="store-2">Immutable dated snapshots</button>
+        </div>
+        <div class="sl-panel active" id="store-1">
+          <div class="sl-row"><div class="sl-box">March GDP row</div><div class="sl-arrow">overwritten by →</div><div class="sl-box amber">1.4% (final)</div></div>
+          <div class="sl-verdict"><strong>The original 1.9% preliminary figure is gone.</strong> A query "as of April 28th" now silently returns 1.4% — a number that wasn't published for another two months.</div>
+        </div>
+        <div class="sl-panel" id="store-2">
+          <div class="sl-row"><div class="sl-box green">Apr 28 → 1.9%</div><div class="sl-box green">May 26 → 1.6%</div><div class="sl-box green">Jun 25 → 1.4%</div></div>
+          <div class="sl-verdict"><strong>All three vintages coexist.</strong> A query "as of April 28th" correctly returns 1.9% — the number that actually existed that day — while today's query can still ask for 1.4%.</div>
+        </div>
+        <div class="sl-note">The rule underneath both panels: a revision should always add a new dated record, never mutate the old one. The moment a store only holds "the current value," the historical vintage is unrecoverable.</div>
+      </div>
+      <div class="sl-quote">Think of a newspaper archive where every correction quietly rewrites yesterday's front page in place, with no trace of what it originally said. A properly built archive keeps the original edition <em>and</em> each dated correction as a separate layer on top — so "what did this page say on the day it was printed" and "what do we now believe was true" stay two different, honestly answerable questions.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Revisions: the number you see today isn't the number that existed then</h2>
+      <p class="sl-sub">One "March GDP" fact, published then revised twice, at three different dates with three different values.</p>
+      <div class="sl-svgwrap">
+        <svg viewBox="0 0 640 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Timeline showing March GDP: reference period ends March 31, preliminary estimate 1.9% published April 28, first revision 1.6% published May 26, final revision 1.4% published June 25. A query as of April 15 must return no value at all, since nothing had been published yet.">
+          <line x1="30" y1="120" x2="610" y2="120" style="stroke:var(--border2)" stroke-width="2"/>
+          <circle cx="90" cy="120" r="5" style="fill:var(--text3)"/>
+          <text x="90" y="102" text-anchor="middle" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:10px">Mar 31</text>
+          <text x="90" y="142" text-anchor="middle" style="fill:var(--text3);font-family:'DM Sans',sans-serif;font-size:9px">reference period ends</text>
+          <circle cx="230" cy="120" r="6" style="fill:var(--blue)"/>
+          <text x="230" y="82" text-anchor="middle" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:10px;font-weight:700">Apr 28</text>
+          <text x="230" y="95" text-anchor="middle" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:10px;font-weight:700">preliminary: 1.9%</text>
+          <line x1="230" y1="102" x2="230" y2="114" style="stroke:var(--blue)" stroke-width="1.4"/>
+          <circle cx="370" cy="120" r="6" style="fill:var(--amber)"/>
+          <text x="370" y="153" text-anchor="middle" style="fill:var(--amber);font-family:'DM Mono',monospace;font-size:10px;font-weight:700">May 26</text>
+          <text x="370" y="166" text-anchor="middle" style="fill:var(--amber);font-family:'DM Mono',monospace;font-size:10px;font-weight:700">1st revision: 1.6%</text>
+          <line x1="370" y1="126" x2="370" y2="138" style="stroke:var(--amber)" stroke-width="1.4"/>
+          <circle cx="510" cy="120" r="6" style="fill:var(--green)"/>
+          <text x="510" y="82" text-anchor="middle" style="fill:var(--green);font-family:'DM Mono',monospace;font-size:10px;font-weight:700">Jun 25</text>
+          <text x="510" y="95" text-anchor="middle" style="fill:var(--green);font-family:'DM Mono',monospace;font-size:10px;font-weight:700">final revision: 1.4%</text>
+          <line x1="510" y1="102" x2="510" y2="114" style="stroke:var(--green)" stroke-width="1.4"/>
+          <line x1="160" y1="190" x2="160" y2="126" style="stroke:var(--red)" stroke-width="1.4" stroke-dasharray="3,3"/>
+          <text x="160" y="206" text-anchor="middle" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:10px;font-weight:700">Apr 15 query "as of"</text>
+          <text x="160" y="219" text-anchor="middle" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:10px;font-weight:700">→ correct answer: nothing published yet</text>
+          <text x="320" y="240" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px;font-style:italic">1.9% → 1.6% → 1.4% all describe "March GDP." Only the vintage published on or before the query date is valid.</text>
+        </svg>
+      </div>
+      <p class="sl-p">A backtest that grabs today's fully-revised 1.4% and treats it as what a trader saw on April 28th has handed itself information from the future — relative to that date. It's an easy leak to miss precisely because the revised number doesn't look like a leak; it looks like an ordinary historical data point.</p>
+      <p class="sl-p"><a href="feature-engineering-leakage-reproducibility-micro.html">Feature Engineering, Leakage &amp; Reproducibility</a> already flags this from one level up — a feature has to be computable from only what was genuinely knowable on its date. This deck goes one level deeper: what the data store itself has to do, mechanically, for that to even be possible. One real piece of that already exists in this repo: <code>js/laborMarketEngine.js</code>'s <code>revisionScore()</code> fetches both the current, fully-revised payrolls series and BLS's original first-published vintage, and scores the gap between them — a genuine, working revision-vintage check, not a hypothetical.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Even a number that's never revised still has a publication gap</h2>
+      <p class="sl-sub">The period a number describes and the date it actually became knowable are two different dates. An "as of" query must always use the second one.</p>
+      <div class="sl-row">
+        <div class="sl-box">Event happens<br><span style="font-weight:400;font-size:12px">(the month ends)</span></div>
+        <div class="sl-arrow">embargo / publication lag →</div>
+        <div class="sl-box green">Data usable<br><span style="font-weight:400;font-size:12px">(release date)</span></div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🏷</div><div><h4>Vintage</h4><p>The specific version of a data value as it stood on a given historical date, before any later revision.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📅</div><div><h4>Reference period</h4><p>The period a data point describes — "March" — distinct from when it was actually published.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📣</div><div><h4>Publication date</h4><p>The date a value first became publicly knowable. An "as of" query keys off this, never the reference period.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⏳</div><div><h4>Embargo / lag</h4><p>The gap between when an event occurred and when data describing it became available to trade on.</p></div></div>
+      </div>
+      <p class="sl-p">A month's inflation reading describes conditions during that month, but isn't published until weeks into the next one. Dating that record to "the last day of the month" instead of its true release date makes it look tradeable for weeks before it actually existed.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Survivorship bias: the database that only remembers the winners</h2>
+      <p class="sl-sub">A different failure mode from revisions — this one is about which rows are missing, not whether a row's value is stale.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🗂</div><div><h4>Definition</h4><p>A dataset that only includes entities still active, listed, or reporting <em>today</em> — silently dropping anything that failed, delisted, defaulted, or merged away along the way.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>Why it isn't random</h4><p>Failure correlates with poor performance — the entities that disappear are disproportionately the weak ones, not a random cross-section.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">↗</div><div><h4>Direction of the bias</h4><p>Always optimistic. It looks like "the average result of everything ever tried," when it's really "the average of whatever happened to still be around later."</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🌐</div><div><h4>Not just stock-picking</h4><p>Any cross-sectional universe — funds, currencies, bonds, counterparties — is vulnerable if it's built from "what still exists today."</p></div></div>
+      </div>
+      <div class="sl-quote">Judging how good a school is by only interviewing students still enrolled — never the ones who dropped out — makes the school look great, because struggling students are exactly the ones most likely to have already left. A database built from "what's still around today" makes the identical mistake with funds, companies, or currencies.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">1996: when someone actually measured it</h2>
+      <p class="sl-sub">Survivorship bias went from a plausible-sounding worry to a quantified, documented distortion.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The classic study</div>
+        <p class="sl-p" style="margin-top:0">Edwin J. Elton, Martin J. Gruber &amp; Christopher R. Blake, <em>"Survivorship Bias and Mutual Fund Performance,"</em> Review of Financial Studies, 9(4), 1996. They compared mutual fund performance computed from a survivors-only database against a more complete one that also captured funds that had since disappeared.</p>
+        <div class="sl-row">
+          <div class="sl-box amber">Survivors-only database</div>
+          <div class="sl-arrow">vs.</div>
+          <div class="sl-box green">Complete database (failures included)</div>
+        </div>
+        <div class="sl-verdict"><strong>Result:</strong> the survivors-only version meaningfully overstated true average historical fund performance — not by an edge case, but as a systematic, measured effect.</div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Why "measured" matters</div>
+        <p>Turning survivorship bias from a plausible argument into a demonstrated, quantified distortion made it impossible to dismiss as hypothetical — which is exactly why it became the standard reference on the topic, and why point-in-time, failure-inclusive databases became standard practice in serious fund-performance research afterward.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Two ways to build a historical basket — only one tells the truth</h2>
+      <p class="sl-sub">Same 8-instrument basket, formed 10 years ago. Two of them didn't make it.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="basket-tabs">
+          <button class="sl-tab active" data-panel="basket-1">Current-universe, backfilled</button>
+          <button class="sl-tab" data-panel="basket-2">Point-in-time universe</button>
+        </div>
+        <div class="sl-panel active" id="basket-1">
+          <div class="sl-row">
+            <div class="sl-box green">A</div><div class="sl-box green">B</div><div class="sl-box green">C</div><div class="sl-box green">D</div><div class="sl-box green">E</div><div class="sl-box green">F</div>
+            <div class="sl-box" style="opacity:.25;border-style:dashed">— gone —</div><div class="sl-box" style="opacity:.25;border-style:dashed">— gone —</div>
+          </div>
+          <div class="sl-verdict"><strong>Only 6 instruments are queryable.</strong> "What's active today" never even asks about the 2 that failed — they simply aren't in the query result, with no flag that anything is missing. The average return silently drops the worst outcomes.</div>
+        </div>
+        <div class="sl-panel" id="basket-2">
+          <div class="sl-row">
+            <div class="sl-box green">A</div><div class="sl-box green">B</div><div class="sl-box green">C</div><div class="sl-box green">D</div><div class="sl-box green">E</div><div class="sl-box green">F</div>
+            <div class="sl-box amber">G — delisted, −100%</div><div class="sl-box amber">H — delisted, −100%</div>
+          </div>
+          <div class="sl-verdict"><strong>All 8 are visible</strong>, tagged with what existed and when. G and H are still counted in the historical average, at the return they actually delivered before disappearing — which is exactly what a real investor holding this basket ten years ago would have experienced.</div>
+        </div>
+      </div>
+      <p class="sl-p">A point-in-time universe is genuinely harder and more expensive to build and maintain than a "current universe, backfilled" one — it has to track membership <em>as of each historical date</em>, not just today's roster. That extra cost is the entire difference between the two panels above.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">The gap compounds the further back you look</h2>
+      <p class="sl-sub">Same basket, cumulative return over 10 years, computed two ways.</p>
+      <div class="sl-svgwrap">
+        <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart of cumulative return over 10 years. The survivors-only line rises from 0 to about 45 percent. The true point-in-time line, including the funds that failed, rises only to about 16 percent. The gap between the two lines widens every year.">
+          <line x1="60" y1="215" x2="600" y2="215" style="stroke:var(--border2)" stroke-width="1.5"/>
+          <line x1="60" y1="30" x2="60" y2="215" style="stroke:var(--border2)" stroke-width="1.5"/>
+          <text x="30" y="219" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:9px">0%</text>
+          <text x="20" y="60" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:9px">50%</text>
+          <path d="M60,215 L168,196 L276,182 L384,175 L492,166 L600,156" style="fill:none;stroke:var(--green);stroke-width:2.5"/>
+          <path d="M60,215 L168,190 L276,162 L384,135 L492,101 L600,57" style="fill:none;stroke:var(--amber);stroke-width:2.5"/>
+          <circle cx="600" cy="156" r="4" style="fill:var(--green)"/>
+          <circle cx="600" cy="57" r="4" style="fill:var(--amber)"/>
+          <text x="595" y="150" text-anchor="end" style="fill:var(--green);font-family:'DM Mono',monospace;font-size:11px;font-weight:700">true PIT: +16%</text>
+          <text x="595" y="45" text-anchor="end" style="fill:var(--amber);font-family:'DM Mono',monospace;font-size:11px;font-weight:700">survivors-only: +45%</text>
+          <text x="60" y="235" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:9px">Yr 0</text>
+          <text x="600" y="235" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:9px">Yr 10</text>
+        </svg>
+      </div>
+      <p class="sl-p">Both lines start at the same point, because at year 0 nothing has failed yet — there's nothing to exclude. Every year that passes gives another instrument the chance to fail and drop out of "what's active today," so the survivors-only line's overstatement keeps compounding. The gap isn't a rounding error — it's nearly triple.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Turn up the failure rate</h2>
+      <p class="sl-sub">Survivors always average +9%/yr. Drag the slider to see how much of the basket eventually failed, at −15%/yr before folding.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two bars: survivors-only average return, fixed, and true point-in-time average return, which falls and can go negative as the failure rate slider increases">
+            <line x1="20" y1="150" x2="620" y2="150" style="stroke:var(--border2)" stroke-width="1.5"/>
+            <rect x="180" y="114" width="90" height="36" rx="6" style="fill:var(--amber-bg);stroke:var(--amber);stroke-width:2"/>
+            <text x="225" y="97" text-anchor="middle" style="fill:var(--amber);font-family:'DM Mono',monospace;font-size:13px;font-weight:700" id="sfr-naive-label">+9.0%</text>
+            <text x="225" y="172" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:11px">survivors-only</text>
+            <rect id="sfr-true-bar" x="370" y="114" width="90" height="36" rx="6" style="fill:var(--green-bg);stroke:var(--green);stroke-width:2"/>
+            <text id="sfr-true-label" x="415" y="97" text-anchor="middle" style="fill:var(--green);font-family:'DM Mono',monospace;font-size:13px;font-weight:700">+4.2%</text>
+            <text x="415" y="172" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:11px">true, point-in-time</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Share of basket that eventually failed/delisted</span><span class="sl-live" id="sfr-fval">20%</span></div>
+        <input type="range" class="sl-slider" id="sfr-slider" min="0" max="50" step="5" value="20">
+        <div class="sl-note" id="sfr-gap">Survivorship overstatement at 20% failure: +4.8 points.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Compute it yourself: naive vs. true average</h2>
+      <p class="sl-sub">Enter a survivor count/return and a failure count/return. Blank or invalid counts show "—" instead of breaking.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label># Survivors</label><input type="number" class="sl-input" id="pit-surv-n" value="80" step="1" min="0"></div>
+          <div class="sl-calc-op">avg</div>
+          <div class="sl-calc-field"><label>Survivor return (%)</label><input type="number" class="sl-input" id="pit-surv-r" value="9" step="0.5"></div>
+          <div class="sl-calc-op">+</div>
+          <div class="sl-calc-field"><label># Failures</label><input type="number" class="sl-input" id="pit-fail-n" value="20" step="1" min="0"></div>
+          <div class="sl-calc-op">avg</div>
+          <div class="sl-calc-field"><label>Failure return (%)</label><input type="number" class="sl-input" id="pit-fail-r" value="-15" step="0.5"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">True PIT average</div>
+            <div class="sl-calc-result-val" id="pit-true-result">4.20%</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Naive, survivors-only average: <b id="pit-naive-step">9.00%</b></div>
+          <div>True, all-funds average: <b id="pit-true-step">4.20%</b></div>
+          <div>Survivorship overstatement: <b id="pit-gap-step">+4.80 points</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="pit-reset">Reset to worked example (80 @ 9%, 20 @ −15%)</button>
+        <div class="sl-note">The naive figure isn't a lying number — it's an honestly computed answer to the wrong question. It never had the chance to be pulled down by the funds that didn't survive to be counted.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">What's actually built here, checked against the current code</h2>
+      <p class="sl-sub">This deck's claims about this repo specifically — not about the industry generally — verified against the source, on this date.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">✓</div><div><h4>Revision-vintage tracking — real, exists today</h4><p><code>js/laborMarketEngine.js</code>'s <code>revisionScore()</code> compares the current, fully-revised payrolls series against BLS's original first-published vintage and scores the gap — a working piece of the "revisions" problem from Section 2.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">✗</div><div><h4>Point-in-time, survivorship-free instrument universe — not found</h4><p>No dedicated database anywhere in this repo tracks which instruments existed, or were later delisted, as of each historical date. Universe lists found (e.g. sector breadth series) reflect today's roster, not a historical membership snapshot.</p></div></div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Nothing silently lost or silently wrong</div>
+        <p>The full lesson is explicitly marked as a concept lesson — it explains real industry and academic practice, not a claim about this repo's own pipeline, and it doesn't assert either system exists here. Re-checking the source confirms both halves still hold: <code>revisionScore()</code> is real, working code, and no broader point-in-time/survivorship-bias-free universe exists in this codebase as of this check — matching what <a href="feature-engineering-leakage-reproducibility-micro.html">Feature Engineering, Leakage &amp; Reproducibility</a> already found on the data-vintage side. (A related but distinct case: <code>RegimeV2/macro_overlay.py</code> notes that three legacy FX-vol tickers were delisted from Yahoo Finance and swapped for a FRED replacement — a real instance of an instrument disappearing, but a live-feed substitution, not a historical point-in-time universe.)</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Why is a single mutable "current value" table incompatible with point-in-time correctness?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Once a revision overwrites the value in place, the original vintage is gone — an "as of" query before the revision date will silently return the wrong number</button>
+        <button class="sl-quiz-opt">It uses too much storage to keep every vintage</button>
+        <button class="sl-quiz-opt">It only matters for daily price data, not macro data</button>
+        <div class="sl-quiz-explain">A revision has to add a new dated record, not mutate the old one — otherwise the historical vintage is unrecoverable, forever.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>An "as of" query should key off which date?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The publication/release date — when the value actually became knowable</button>
+        <button class="sl-quiz-opt">The reference period the data describes</button>
+        <button class="sl-quiz-opt">Whichever date makes the backtest look best</button>
+        <div class="sl-quiz-explain">A live system only ever knows what's already been published. Keying off the reference period instead hands a backtest information from the future relative to the query date.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Why does survivorship bias produce a systematically optimistic result, not a random error?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Failure correlates with poor performance, so the entities missing from the database are disproportionately the weak ones</button>
+        <button class="sl-quiz-opt">Databases always round returns upward</button>
+        <button class="sl-quiz-opt">It only affects small sample sizes</button>
+        <div class="sl-quiz-explain">The dropped entities aren't a random cross-section — they're disproportionately the failures, so removing them pulls the reported average up.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>80 survivors averaging 9%, 20 failures averaging −15% — what's the true, all-funds average?</h4>
+        <button class="sl-quiz-opt" data-correct="true">4.2%</button>
+        <button class="sl-quiz-opt">9%</button>
+        <button class="sl-quiz-opt">−3%</button>
+        <div class="sl-quiz-explain">(80 × 9% + 20 × −15%) ÷ 100 = (720 − 300) ÷ 100 = 4.2%.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>What did Elton, Gruber &amp; Blake (1996) actually add to the survivorship-bias argument?</h4>
+        <button class="sl-quiz-opt" data-correct="true">They measured it directly, turning a plausible-sounding concern into a quantified, documented distortion</button>
+        <button class="sl-quiz-opt">They proved survivorship bias doesn't apply to mutual funds</button>
+        <button class="sl-quiz-opt">They invented the term "point-in-time data"</button>
+        <div class="sl-quiz-explain">Comparing a survivors-only mutual fund database against a more complete one, they found the survivors-only version meaningfully overstated true average performance — a measured result, not just an argument.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Point-in-time correctness is an operational property of the data store — immutable dated snapshots, never one mutable "current" table overwritten in place.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Revisions are common, not rare — using today's fully-revised figure as if it were known on the original release date is a real, easy-to-miss lookahead bug.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>An "as of" query must key off the publication date, never the reference period the data describes — those two dates are routinely far apart.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Survivorship bias silently excludes failures from a "what exists today" universe, and it's always optimistic — never a random, harmless omission.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Elton, Gruber &amp; Blake (1996) made this a measured fact, not an argument — a survivors-only mutual fund database meaningfully overstated true average performance.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>A point-in-time universe fixes it, but it's genuinely harder and costlier to build than a "current universe, backfilled" database — it has to track membership as of each historical date.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Spot the difference between "a number that's stale" and "a number that never should have been visible yet" — and treat revision history and universe completeness as data-infrastructure requirements, not backtest afterthoughts. Ask, of any historical universe: does this include what failed, or only what's still here to ask about?</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Data Architecture for Systematic Trading</h3>
+        <p>How the storage layer underneath point-in-time correctness and survivorship-free universes actually gets built — schemas, versioning, and the engineering cost of never overwriting the past.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="data-architecture-storage-versioning-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="point-in-time-data-survivorship-bias.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  function fmtPct(n, digits){
+    digits = digits === undefined ? 2 : digits;
+    var s = n.toFixed(digits);
+    if (n > 0) s = '+' + s;
+    return s + '%';
+  }
+
+  // Slide 9 — failure-rate slider driving naive vs. true average bars.
+  (function(){
+    var slider = document.getElementById('sfr-slider');
+    if (!slider) return;
+    var fval = document.getElementById('sfr-fval');
+    var trueBar = document.getElementById('sfr-true-bar');
+    var trueLabel = document.getElementById('sfr-true-label');
+    var gapNote = document.getElementById('sfr-gap');
+    var SURV_R = 9;    // survivors always average +9%/yr
+    var FAIL_R = -15;  // failures average -15%/yr before folding
+    var BASELINE_Y = 150;  // 0% baseline
+    var PX_PER_PCT = 3.4;
+
+    function update(){
+      var f = parseInt(slider.value, 10) / 100;
+      fval.textContent = Math.round(f * 100) + '%';
+      var trueAvg = (1 - f) * SURV_R + f * FAIL_R;
+      trueLabel.textContent = fmtPct(trueAvg, 1);
+      var h = Math.abs(trueAvg) * PX_PER_PCT;
+      if (trueAvg >= 0) {
+        trueBar.setAttribute('y', BASELINE_Y - h);
+        trueBar.setAttribute('height', h);
+      } else {
+        trueBar.setAttribute('y', BASELINE_Y);
+        trueBar.setAttribute('height', h);
+      }
+      trueLabel.setAttribute('y', trueAvg >= 0 ? (BASELINE_Y - h - 17) : (BASELINE_Y + h + 24));
+      var gap = SURV_R - trueAvg;
+      gapNote.textContent = 'Survivorship overstatement at ' + Math.round(f * 100) + '% failure: ' + (gap >= 0 ? '+' : '') + gap.toFixed(1) + ' points.';
+    }
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Slide 10 — naive vs. true point-in-time average calculator.
+  (function(){
+    var survN = document.getElementById('pit-surv-n');
+    if (!survN) return;
+    var survR = document.getElementById('pit-surv-r');
+    var failN = document.getElementById('pit-fail-n');
+    var failR = document.getElementById('pit-fail-r');
+    var resultEl = document.getElementById('pit-true-result');
+    var naiveStep = document.getElementById('pit-naive-step');
+    var trueStep = document.getElementById('pit-true-step');
+    var gapStep = document.getElementById('pit-gap-step');
+    var resetBtn = document.getElementById('pit-reset');
+    var DEFAULTS = { survN: 80, survR: 9, failN: 20, failR: -15 };
+
+    function blank(){
+      resultEl.textContent = '—';
+      naiveStep.textContent = '—';
+      trueStep.textContent = '—';
+      gapStep.textContent = '—';
+    }
+
+    function recompute(){
+      var sn = parseFloat(survN.value), sr = parseFloat(survR.value);
+      var fn = parseFloat(failN.value), fr = parseFloat(failR.value);
+      if (!isFinite(sn) || !isFinite(sr) || !isFinite(fn) || !isFinite(fr) || sn < 0 || fn < 0 || (sn + fn) === 0) {
+        blank();
+        return;
+      }
+      var naive = sr; // survivors-only average ignores failures entirely
+      var trueAvg = (sn * sr + fn * fr) / (sn + fn);
+      var gap = naive - trueAvg;
+      resultEl.textContent = fmtPct(trueAvg).replace('+', '');
+      naiveStep.textContent = fmtPct(naive).replace('+', '');
+      trueStep.textContent = fmtPct(trueAvg).replace('+', '');
+      gapStep.textContent = (gap >= 0 ? '+' : '') + gap.toFixed(2) + ' points';
+    }
+
+    [survN, survR, failN, failR].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      survN.value = DEFAULTS.survN; survR.value = DEFAULTS.survR;
+      failN.value = DEFAULTS.failN; failR.value = DEFAULTS.failR;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

@@ -272,7 +272,8 @@ def _true_range(high: float, low: float, prev_close: float) -> float:
 
 
 def chandelier_stop(bars: list[dict], mult: float, period: int = 60,
-                     is_long: bool = True) -> float | None:
+                     is_long: bool = True,
+                     extreme_since: int | None = None) -> float | None:
     """Chandelier trailing-stop level from a list of OHLC bars (each a dict
     with 'high'/'low'/'close', e.g. `broker.session_bars(pair, since_epoch)`
     — Mt5Broker's own M1-bar shape, oldest-first):
@@ -308,8 +309,34 @@ def chandelier_stop(bars: list[dict], mult: float, period: int = 60,
     is a live-execution compromise (a real position's own bars are often
     too short early on), not a formula error.
 
+    `extreme_since` (epoch seconds, same clock as the bars' own `time`
+    field) splits those two uses of the window apart, because they do NOT
+    want the same bars. ATR always walks EVERY bar passed in — that is the
+    convergence argument above. But `best` is the position's RUN EXTREME,
+    and the backtest this bot's constants came from
+    (`js/levelAtlasVoteReview.js`'s `applyTrailingContinuation`) seeds
+    `runExtreme` at entry and only ever ratchets it on bars AFTER the
+    position opened. Handing `best` a fixed lookback instead means a high
+    the position never actually saw can set its stop — and since the stop
+    is `best - mult*ATR`, a high far enough above spot puts the stop ABOVE
+    the market on a long, which no broker will accept (MT5 retcode 10016
+    "Invalid stops", observed live on AUDUSD 2026-09-04). Pass the
+    position's own open time here and `best` is measured from entry, as
+    the backtest measures it.
+
+    CLOCK: no conversion happens here. Compare like with like — MT5 stamps
+    both `p.time` (position) and bar `time` (`copy_rates_range`) on the
+    BROKER's clock, and `PaperBroker` stamps both in real UTC, so passing a
+    position's own `time_open` from the SAME broker is self-consistent
+    either way (see pylego/broker/clock.py on why mixing the two bases
+    silently breaks). Bars carrying no `time` key cannot be placed against
+    `extreme_since` and are excluded.
+
     Returns None when `bars` is empty (no True Range, no best price, at
-    all computable).
+    all computable), and also when `extreme_since` excludes every bar — a
+    position younger than its first bar has no run extreme yet, so the
+    honest answer is "no trail yet" rather than a stop derived from bars
+    that predate it.
     """
     if not bars:
         return None
@@ -321,8 +348,15 @@ def chandelier_stop(bars: list[dict], mult: float, period: int = 60,
         atr = k * tr + (1 - k) * atr
         prev_close = b["close"]
 
+    window = bars
+    if extreme_since is not None:
+        window = [b for b in bars
+                  if b.get("time") is not None and b["time"] >= extreme_since]
+        if not window:
+            return None
+
     if is_long:
-        best = max(b["high"] for b in bars)
+        best = max(b["high"] for b in window)
         return best - mult * atr
-    best = min(b["low"] for b in bars)
+    best = min(b["low"] for b in window)
     return best + mult * atr

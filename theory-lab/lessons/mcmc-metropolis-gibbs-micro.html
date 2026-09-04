@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MCMC: Metropolis-Hastings &amp; Gibbs Sampling — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">MCMC: Metropolis-Hastings &amp; Gibbs — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivation, worked-by-hand steps, and a 5-question self-test?<a href="mcmc-metropolis-gibbs.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Bayesian Extensions 2 · Bayesian Statistics Extensions</div>
+      <h1 class="sl-h1">MCMC: Sampling a Posterior <em>You Can't Write Down</em></h1>
+      <p class="sl-lede">The previous lesson's closed-form updating — Beta-Binomial, Normal-Normal — only works for a short list of matched prior/likelihood pairs. Almost every realistic Bayesian model has no such shortcut: the posterior's normalizing constant is an integral with no closed-form answer. Markov Chain Monte Carlo sidesteps the integral entirely, by building a random walk engineered so that, after enough steps, how often it visits each region matches how plausible that region actually is — without ever computing the constant that would have made the posterior a "proper" formula.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Conjugate updating was the easy case, not the normal one</h2>
+      <p class="sl-sub">The moment a model has more than one interacting parameter, the algebra runs out.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Conjugate case — previous lesson</span>
+          <ul>
+            <li>Beta prior + Binomial likelihood → Beta posterior, read off directly</li>
+            <li>Normal prior + Normal likelihood → Normal posterior, same story</li>
+            <li>The posterior is a known distribution family — no simulation needed</li>
+            <li>Only exists for a short, specific list of matched prior/likelihood pairs</li>
+          </ul>
+        </div>
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Everything else — this lesson</span>
+          <ul>
+            <li>Prior × likelihood is still valid math — the shape is real</li>
+            <li>But the normalizing integral has no closed-form answer</li>
+            <li>In high dimensions, you often can't even integrate it numerically</li>
+            <li>You <em>can</em> still cheaply evaluate the unnormalized density at any point</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-quote">That last line is the whole trick MCMC is built on: a ratio of two unnormalized-density evaluations, <strong>f(θ′)/f(θ)</strong>, is exactly as informative as the ratio of true posterior densities <strong>p(θ′)/p(θ)</strong> — because whatever constant normalizes p cancels out of any ratio of it against itself. You never need the constant. You only ever need to compare two points.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">A hiker who never refuses to go downhill</h2>
+      <p class="sl-sub">Picture the posterior as a landscape — hills where a parameter value is plausible, valleys where it isn't.</p>
+      <div class="sl-row">
+        <div class="sl-box">Current point θ</div><div class="sl-arrow">propose a random nearby step →</div><div class="sl-box">Candidate θ′</div>
+      </div>
+      <div class="sl-row" style="margin-top:10px">
+        <div class="sl-box">θ′ more plausible?</div><div class="sl-arrow">always move →</div><div class="sl-box green">Accept</div>
+      </div>
+      <div class="sl-row" style="margin-top:10px">
+        <div class="sl-box">θ′ less plausible?</div><div class="sl-arrow">move anyway, sometimes →</div><div class="sl-box amber">Accept with probability α</div>
+      </div>
+      <p class="sl-p">Never refusing <em>every</em> downhill move is the entire idea. Refuse them all, and the walk marches straight to the nearest hilltop and sits there forever — never exploring the rest of the landscape, never discovering a second hill somewhere else. Take enough of these compare-two-points, sometimes-go-down-anyway steps, and a histogram of everywhere the walk has stood becomes an accurate picture of the whole landscape — even though it never once computed the landscape's exact height, only ever compared two heights to each other.</p>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">What this describes</div>
+        <p>This is the mechanics of the method, not a claim that this repo has built or validated a live MCMC-fitted model anywhere. It's explained here because the next lesson (hierarchical models) and things like Hidden Markov Models lean on exactly this trick.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">The acceptance rule, term by term</h2>
+      <div class="sl-row">
+        <div class="sl-box amber" style="font-size:13px">α(θ,θ′) = min( 1, &nbsp;[ p(θ′)·q(θ∣θ′) ] / [ p(θ)·q(θ′∣θ) ] )</div>
+      </div>
+      <div class="sl-icard-grid" style="margin-top:18px">
+        <div class="sl-icard"><div class="sl-icard-badge">1</div><div><h4>Propose — θ′ ~ q(θ′∣θ)</h4><p>Draw a candidate next point from the proposal distribution — commonly a Normal centered on the current point, a "random walk" proposal.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">2</div><div><h4>Compute α = min(1, ratio)</h4><p>p(θ′)/p(θ) says how much more (or less) plausible the candidate is. The q-ratio corrects for a proposal that isn't equally easy to run in reverse.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">3</div><div><h4>Draw u ~ Uniform(0,1)</h4><p>Accept if u &lt; α, otherwise reject. A rejected step is not discarded — the chain repeats its current value as the next sample.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">4</div><div><h4>The chain — θ₁, θ₂, …</h4><p>After enough steps, its long-run visit frequencies approximate p(θ) — the target posterior — to arbitrary accuracy.</p></div></div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this simplifies</div>
+        <p>When the proposal is symmetric — a Normal random walk centered at the current point, so q(θ′∣θ) = q(θ∣θ′) — the q-terms cancel and the rule collapses to the original 1953 <strong>Metropolis</strong> algorithm: α = min(1, p(θ′)/p(θ)). Hastings' 1970 generalization keeps the q-correction, allowing asymmetric proposals. Every example in this deck uses the simpler, symmetric form.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Detailed balance: the ledger that has to zero out</h2>
+      <p class="sl-sub">Why does this particular accept/reject rule guarantee the chain settles on the posterior, and not something else?</p>
+      <div class="sl-row">
+        <div class="sl-box">p(θ)·T(θ→θ′)</div><div class="sl-arrow">=</div><div class="sl-box">p(θ′)·T(θ′→θ)</div>
+      </div>
+      <p class="sl-p" style="margin-top:14px">A Markov chain has p(θ) as its long-run <strong>stationary distribution</strong> if probability flows between any two states at exactly matched rates in both directions — that equation, called <strong>detailed balance</strong>, where T is the chain's transition probability (proposal × acceptance). The Metropolis-Hastings α formula is deliberately built so this holds automatically: plug it into both sides and the min() terms and proposal densities cancel out to leave an identity.</p>
+      <div class="sl-quote">Think of two neighbouring towns connected by one road, with people crossing every day. If the traffic in each direction is exactly balanced, both towns' populations stay steady over time — even though individual people keep moving. Detailed balance is that same two-way balance, enforced between every pair of points in parameter space, and it's why the chain's visit frequencies settle into a stable pattern matching the target distribution.</div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">The fine print</div>
+        <p>Detailed balance is a <em>sufficient</em> condition, not the only possible one — but it's the one MCMC is built around. It also isn't enough alone: the chain additionally needs to be able to eventually reach any region of positive probability (irreducibility). Together, the two guarantee convergence to p(θ) regardless of the chain's starting point.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Five steps, by hand — walk it yourself</h2>
+      <p class="sl-sub">Target (unnormalized): f(θ) = exp(−θ⁴/4 + θ²/2), a "double-well" shape with two peaks near θ = ±1 and a dip at θ = 0. Start at θ₀ = 0, f(0) = 1.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — step through the chain</div>
+        <div class="sl-tabs" id="mcmc-worked-tabs">
+          <button class="sl-tab active" data-panel="wk-1">Step 1</button>
+          <button class="sl-tab" data-panel="wk-2">Step 2</button>
+          <button class="sl-tab" data-panel="wk-3">Step 3</button>
+          <button class="sl-tab" data-panel="wk-4">Step 4</button>
+          <button class="sl-tab" data-panel="wk-5">Step 5</button>
+        </div>
+        <div class="sl-panel active" id="wk-1">
+          <div class="sl-row"><div class="sl-box">θ = 0, f = 1.0000</div><div class="sl-arrow">propose +0.8 →</div><div class="sl-box green">θ′ = 0.8, f = 1.2431</div></div>
+          <div class="sl-verdict">Ratio = 1.2431 / 1 = 1.2431 &gt; 1 → <strong>uphill, α = 1, automatic accept</strong>. No coin flip needed. New state: θ₁ = 0.8.</div>
+        </div>
+        <div class="sl-panel" id="wk-2">
+          <div class="sl-row"><div class="sl-box">θ = 0.8, f = 1.2431</div><div class="sl-arrow">propose −1.5 →</div><div class="sl-box amber">θ′ = −0.7, f = 1.2032</div></div>
+          <div class="sl-verdict">Ratio = 1.2032 / 1.2431 = 0.9679 → downhill, α = 0.9679. Draw u = 0.55: u &lt; α, so <strong>accept</strong>. New state: θ₂ = −0.7.</div>
+        </div>
+        <div class="sl-panel" id="wk-3">
+          <div class="sl-row"><div class="sl-box">θ = −0.7, f = 1.2032</div><div class="sl-arrow">propose +0.3 →</div><div class="sl-box amber">θ′ = −0.4, f = 1.0764</div></div>
+          <div class="sl-verdict">Ratio = 1.0764 / 1.2032 = 0.8946 → downhill, α = 0.8946. Draw u = 0.93: u ≥ α, so <strong>reject</strong> — the chain repeats its current value. New state: θ₃ = −0.7 (unchanged).</div>
+        </div>
+        <div class="sl-panel" id="wk-4">
+          <div class="sl-row"><div class="sl-box">θ = −0.7, f = 1.2032</div><div class="sl-arrow">propose −0.9 →</div><div class="sl-box amber">θ′ = −1.6, f = 0.6988</div></div>
+          <div class="sl-verdict">Ratio = 0.6988 / 1.2032 = 0.5808 → downhill, α = 0.5808. Draw u = 0.21: u &lt; α, so <strong>accept</strong>. New state: θ₄ = −1.6.</div>
+        </div>
+        <div class="sl-panel" id="wk-5">
+          <div class="sl-row"><div class="sl-box">θ = −1.6, f = 0.6988</div><div class="sl-arrow">propose +0.5 →</div><div class="sl-box green">θ′ = −1.1, f = 1.2699</div></div>
+          <div class="sl-verdict">Ratio = 1.2699 / 0.6988 = 1.8175 &gt; 1 → <strong>uphill, α = 1, automatic accept</strong>. New state: θ₅ = −1.1 — right next to the left mode at θ = −1.</div>
+        </div>
+        <div class="sl-note">Five steps: two automatic uphill accepts, one downhill accept, one rejection. The chain drifted from the dip at θ=0 toward the left mode — but hasn't yet shown it can reach the right mode near θ=+1. Five steps is nowhere near enough to trust; that's exactly what the diagnostics later in this deck exist to catch.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Compute the acceptance probability yourself</h2>
+      <p class="sl-sub">Enter any two unnormalized posterior-density values — current f(θ) and proposed f(θ′) — and watch α = min(1, ratio) update live. Starts on the worked example's Step 2.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Current density f(θ)</label><input type="number" class="sl-input" id="mh-cur" value="1.2431" step="0.0001" min="0"></div>
+          <div class="sl-calc-op">→</div>
+          <div class="sl-calc-field"><label>Proposed density f(θ′)</label><input type="number" class="sl-input" id="mh-prop" value="1.2032" step="0.0001" min="0"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Acceptance probability α</div>
+            <div class="sl-calc-result-val" id="mh-alpha-result">96.79%</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Ratio f(θ′) / f(θ) = <b id="mh-ratio">0.9679</b></div>
+          <div>α = min(1, ratio) = <b id="mh-alpha">0.9679</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="mh-reset">Reset to worked-example Step 2</button>
+        <div class="sl-note">Densities can't be negative and a chain can't currently be sitting at an impossible (zero-density) point, so both fields must be a finite number ≥ 0, with the current density strictly positive — anything else shows "—", not NaN or Infinity.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Drag the step size, watch the chain explore — or not</h2>
+      <p class="sl-sub">Same bimodal target as the worked example, same seeded random draws every time — only the proposal step size (σ of the random-walk jump) changes. The shaded shape on the right is the target density itself, sideways, so you can see how the trace tracks it.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 270" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Trace plot of a seeded random-walk Metropolis-Hastings chain over 200 iterations sampling a bimodal double-well target, next to the target density drawn sideways, with a slider controlling proposal step size">
+            <line x1="60" y1="20" x2="60" y2="240" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="60" y1="240" x2="500" y2="240" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="60" y1="93.3" x2="620" y2="93.3" style="stroke:var(--green);stroke-dasharray:2,2;opacity:.55"/>
+            <line x1="60" y1="166.7" x2="620" y2="166.7" style="stroke:var(--green);stroke-dasharray:2,2;opacity:.55"/>
+            <text x="624" y="97" fill="var(--green)" font-size="10">θ=+1</text>
+            <text x="624" y="171" fill="var(--green)" font-size="10">θ=−1</text>
+            <text x="50" y="24" fill="var(--text3)" font-size="10" text-anchor="end">+3</text>
+            <text x="50" y="134" fill="var(--text3)" font-size="10" text-anchor="end">0</text>
+            <text x="50" y="244" fill="var(--text3)" font-size="10" text-anchor="end">−3</text>
+            <text x="280" y="258" fill="var(--text3)" font-size="11" text-anchor="middle">Iteration (0–200)</text>
+            <text x="560" y="258" fill="var(--text3)" font-size="10.5" text-anchor="middle">target density f(θ)</text>
+            <polygon id="mcmc-density" points="510.0,240.0 510.0,238.2 510.0,236.3 510.0,234.5 510.0,232.7 510.0,230.8 510.0,229.0 510.0,227.2 510.0,225.3 510.0,223.5 510.1,221.7 510.2,219.8 510.3,218.0 510.6,216.2 511.0,214.3 511.5,212.5 512.4,210.7 513.6,208.8 515.2,207.0 517.3,205.2 520.0,203.3 523.3,201.5 527.3,199.7 531.9,197.8 537.1,196.0 542.8,194.2 548.9,192.3 555.2,190.5 561.7,188.7 568.1,186.8 574.3,185.0 580.1,183.2 585.5,181.3 590.2,179.5 594.3,177.7 597.8,175.8 600.5,174.0 602.6,172.2 604.0,170.3 604.8,168.5 605.0,166.7 604.8,164.8 604.1,163.0 603.2,161.2 602.0,159.3 600.6,157.5 599.0,155.7 597.4,153.8 595.8,152.0 594.1,150.2 592.5,148.3 591.0,146.5 589.6,144.7 588.4,142.8 587.2,141.0 586.3,139.2 585.5,137.3 584.8,135.5 584.4,133.7 584.1,131.8 584.0,130.0 584.1,128.2 584.4,126.3 584.8,124.5 585.5,122.7 586.3,120.8 587.2,119.0 588.4,117.2 589.6,115.3 591.0,113.5 592.5,111.7 594.1,109.8 595.8,108.0 597.4,106.2 599.0,104.3 600.6,102.5 602.0,100.7 603.2,98.8 604.1,97.0 604.8,95.2 605.0,93.3 604.8,91.5 604.0,89.7 602.6,87.8 600.5,86.0 597.8,84.2 594.3,82.3 590.2,80.5 585.5,78.7 580.1,76.8 574.3,75.0 568.1,73.2 561.7,71.3 555.2,69.5 548.9,67.7 542.8,65.8 537.1,64.0 531.9,62.2 527.3,60.3 523.3,58.5 520.0,56.7 517.3,54.8 515.2,53.0 513.6,51.2 512.4,49.3 511.5,47.5 511.0,45.7 510.6,43.8 510.3,42.0 510.2,40.2 510.1,38.3 510.0,36.5 510.0,34.7 510.0,32.8 510.0,31.0 510.0,29.2 510.0,27.3 510.0,25.5 510.0,23.7 510.0,21.8 510.0,20.0" style="fill:var(--purple);fill-opacity:.16;stroke:var(--purple);stroke-width:1.2"/>
+            <path id="mcmc-trace" d="" style="fill:none;stroke:var(--blue);stroke-width:1.3"/>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Proposal step size (σ of the random walk)</span><span class="sl-live" id="mcmc-step-val">0.90</span></div>
+        <input type="range" class="sl-slider" id="mcmc-step" min="10" max="300" step="5" value="90">
+        <div class="sl-note" id="mcmc-accept-readout">Acceptance rate at this step size: —</div>
+      </div>
+      <p class="sl-p">Too small a σ and the chain crawls — nearly everything gets accepted, but each step barely moves, so it rarely crosses the dip between the two modes. Too large a σ and most proposals land far downhill and get rejected, so the chain repeats its current value over and over, barely moving for the opposite reason. Somewhere in between, the trace bounces across the full range and visits both modes — the "hairy caterpillar" a healthy chain is supposed to look like.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Well-mixed vs. stuck — the same kind of trace plot</h2>
+      <p class="sl-sub">Two real, seeded 200-iteration chains on the same target. Only the proposal step size differs.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="mcmc-mix-tabs">
+          <button class="sl-tab active" data-panel="mix-good">Well-mixed chain</button>
+          <button class="sl-tab" data-panel="mix-stuck">Stuck chain</button>
+        </div>
+        <div class="sl-panel active" id="mix-good">
+          <div class="sl-svgwrap">
+            <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Trace plot of a well-mixed chain bouncing noisily across the full range and crossing both modes repeatedly, like hairy static around a stable band">
+              <line x1="60" y1="20" x2="60" y2="240" style="stroke:var(--border2)"/>
+              <line x1="60" y1="240" x2="500" y2="240" style="stroke:var(--border2)"/>
+              <line x1="60" y1="93.3" x2="500" y2="93.3" style="stroke:var(--green);stroke-dasharray:2,2;opacity:.5"/>
+              <line x1="60" y1="166.7" x2="500" y2="166.7" style="stroke:var(--green);stroke-dasharray:2,2;opacity:.5"/>
+              <text x="20" y="97" fill="var(--green)" font-size="10">+1</text>
+              <text x="20" y="171" fill="var(--green)" font-size="10">−1</text>
+              <polyline points="60.0,130.0 62.2,154.5 64.4,137.7 66.6,129.7 68.8,128.1 71.0,99.4 73.2,111.2 75.4,145.9 77.6,169.6 79.8,169.6 82.0,116.7 84.2,143.3 86.4,144.4 88.6,133.4 90.8,164.0 93.0,108.6 95.2,97.2 97.4,77.2 99.6,77.2 101.8,97.7 104.0,89.8 106.2,89.8 108.4,88.6 110.6,71.2 112.8,71.2 115.0,95.8 117.2,81.8 119.4,80.3 121.6,107.3 123.8,80.7 126.0,80.3 128.2,80.3 130.4,75.9 132.6,75.9 134.8,82.4 137.0,147.4 139.2,117.2 141.4,117.2 143.6,85.0 145.8,105.0 148.0,124.7 150.2,145.5 152.4,98.8 154.6,103.1 156.8,85.4 159.0,90.4 161.2,90.4 163.4,89.9 165.6,84.5 167.8,84.5 170.0,149.2 172.2,163.5 174.4,163.5 176.6,148.3 178.8,121.6 181.0,122.1 183.2,166.9 185.4,166.9 187.6,166.3 189.8,105.1 192.0,89.1 194.2,82.6 196.4,82.6 198.6,85.5 200.8,77.4 203.0,55.0 205.2,55.0 207.4,49.7 209.6,62.6 211.8,74.5 214.0,74.5 216.2,74.5 218.4,94.0 220.6,94.4 222.8,94.4 225.0,76.1 227.2,81.7 229.4,91.0 231.6,78.6 233.8,95.8 236.0,114.8 238.2,141.0 240.4,146.4 242.6,146.4 244.8,149.4 247.0,173.1 249.2,176.6 251.4,188.9 253.6,192.6 255.8,192.6 258.0,184.7 260.2,184.7 262.4,165.4 264.6,165.4 266.8,173.9 269.0,180.8 271.2,141.0 273.4,168.6 275.6,125.7 277.8,83.3 280.0,85.3 282.2,85.3 284.4,85.3 286.6,72.8 288.8,58.5 291.0,58.5 293.2,58.5 295.4,94.6 297.6,77.1 299.8,127.7 302.0,119.2 304.2,81.1 306.4,90.1 308.6,109.6 310.8,109.6 313.0,104.2 315.2,104.2 317.4,118.4 319.6,144.7 321.8,122.0 324.0,128.5 326.2,135.6 328.4,132.5 330.6,91.5 332.8,109.3 335.0,163.9 337.2,174.1 339.4,174.1 341.6,140.2 343.8,132.5 346.0,141.4 348.2,121.0 350.4,111.4 352.6,116.6 354.8,130.6 357.0,83.6 359.2,107.7 361.4,114.0 363.6,84.5 365.8,99.9 368.0,171.8 370.2,161.7 372.4,174.7 374.6,154.5 376.8,210.8 379.0,210.8 381.2,210.8 383.4,162.5 385.6,103.1 387.8,78.6 390.0,78.6 392.2,121.5 394.4,104.5 396.6,94.6 398.8,94.6 401.0,85.0 403.2,85.0 405.4,80.0 407.6,113.9 409.8,116.1 412.0,118.5 414.2,110.5 416.4,85.3 418.6,105.3 420.8,142.5 423.0,131.1 425.2,132.1 427.4,152.4 429.6,168.1 431.8,173.1 434.0,192.5 436.2,165.4 438.4,182.6 440.6,143.4 442.8,142.6 445.0,190.7 447.2,190.7 449.4,190.7 451.6,182.4 453.8,169.9 456.0,172.3 458.2,96.2 460.4,107.1 462.6,139.2 464.8,148.6 467.0,160.0 469.2,121.8 471.4,88.0 473.6,73.3 475.8,110.8 478.0,159.6 480.2,116.5 482.4,102.6 484.6,100.1 486.8,100.1 489.0,101.4 491.2,101.4 493.4,104.5 495.6,114.4 497.8,138.3 500.0,102.0" style="fill:none;stroke:var(--green);stroke-width:1.3"/>
+            </svg>
+          </div>
+          <div class="sl-verdict">σ = 0.90, acceptance rate ≈ 82%. The trace repeatedly crosses both dashed mode lines and never sits flat for long — a "hairy caterpillar," the shape a converged, well-mixing chain is supposed to have.</div>
+        </div>
+        <div class="sl-panel" id="mix-stuck">
+          <div class="sl-svgwrap">
+            <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Trace plot of a poorly-mixing chain with long flat plateaus punctuated by occasional large jumps, from a step size tuned too large so most proposals are rejected">
+              <line x1="60" y1="20" x2="60" y2="240" style="stroke:var(--border2)"/>
+              <line x1="60" y1="240" x2="500" y2="240" style="stroke:var(--border2)"/>
+              <line x1="60" y1="93.3" x2="500" y2="93.3" style="stroke:var(--green);stroke-dasharray:2,2;opacity:.5"/>
+              <line x1="60" y1="166.7" x2="500" y2="166.7" style="stroke:var(--green);stroke-dasharray:2,2;opacity:.5"/>
+              <text x="20" y="97" fill="var(--green)" font-size="10">+1</text>
+              <text x="20" y="171" fill="var(--green)" font-size="10">−1</text>
+              <polyline points="60.0,130.0 62.2,130.0 64.4,130.0 66.6,130.0 68.8,130.0 71.0,130.0 73.2,130.0 75.4,130.0 77.6,112.0 79.8,112.0 82.0,153.7 84.2,153.7 86.4,153.7 88.6,130.9 90.8,181.1 93.0,181.1 95.2,181.1 97.4,60.7 99.6,193.5 101.8,193.5 104.0,193.5 106.2,185.1 108.4,185.1 110.6,166.8 112.8,143.6 115.0,143.6 117.2,126.3 119.4,126.3 121.6,126.3 123.8,126.3 126.0,92.2 128.2,92.2 130.4,92.2 132.6,92.2 134.8,92.2 137.0,92.2 139.2,73.2 141.4,73.2 143.6,129.4 145.8,156.0 148.0,86.7 150.2,95.2 152.4,95.2 154.6,95.2 156.8,95.2 159.0,95.2 161.2,95.2 163.4,95.2 165.6,68.9 167.8,95.4 170.0,104.3 172.2,154.3 174.4,154.3 176.6,151.8 178.8,151.8 181.0,108.4 183.2,108.4 185.4,169.9 187.6,169.9 189.8,169.9 192.0,145.0 194.2,145.0 196.4,164.3 198.6,164.3 200.8,79.6 203.0,101.4 205.2,101.4 207.4,154.4 209.6,154.4 211.8,154.4 214.0,154.4 216.2,154.4 218.4,154.4 220.6,154.4 222.8,154.4 225.0,110.5 227.2,110.5 229.4,110.5 231.6,121.9 233.8,121.9 236.0,67.3 238.2,67.3 240.4,144.9 242.6,135.8 244.8,128.7 247.0,128.7 249.2,128.7 251.4,156.0 253.6,127.5 255.8,127.5 258.0,127.5 260.2,74.1 262.4,74.1 264.6,95.7 266.8,95.7 269.0,95.7 271.2,95.7 273.4,95.7 275.6,95.7 277.8,95.7 280.0,95.7 282.2,157.9 284.4,157.9 286.6,167.6 288.8,167.6 291.0,167.6 293.2,167.6 295.4,167.6 297.6,167.6 299.8,167.6 302.0,167.6 304.2,167.6 306.4,167.6 308.6,167.6 310.8,146.7 313.0,127.6 315.2,141.8 317.4,141.8 319.6,141.8 321.8,76.4 324.0,76.4 326.2,76.4 328.4,76.4 330.6,76.4 332.8,76.4 335.0,76.4 337.2,76.4 339.4,76.4 341.6,88.0 343.8,88.0 346.0,88.0 348.2,88.0 350.4,88.0 352.6,97.1 354.8,132.6 357.0,132.6 359.2,106.8 361.4,106.8 363.6,106.8 365.8,106.8 368.0,106.8 370.2,106.8 372.4,106.8 374.6,97.0 376.8,97.0 379.0,97.9 381.2,97.9 383.4,127.9 385.6,127.9 387.8,174.0 390.0,182.3 392.2,182.3 394.4,182.3 396.6,182.3 398.8,72.1 401.0,80.1 403.2,80.1 405.4,154.9 407.6,112.6 409.8,65.2 412.0,65.2 414.2,94.2 416.4,94.2 418.6,94.2 420.8,158.3 423.0,104.9 425.2,104.9 427.4,85.9 429.6,85.9 431.8,101.4 434.0,106.8 436.2,106.8 438.4,106.8 440.6,106.8 442.8,106.8 445.0,106.8 447.2,95.8 449.4,95.8 451.6,95.8 453.8,95.8 456.0,95.8 458.2,95.8 460.4,95.8 462.6,95.8 464.8,95.8 467.0,95.8 469.2,95.8 471.4,95.8 473.6,194.4 475.8,182.3 478.0,182.3 480.2,182.3 482.4,182.3 484.6,182.3 486.8,182.3 489.0,182.3 491.2,183.2 493.4,183.2 495.6,183.2 497.8,183.2 500.0,183.2" style="fill:none;stroke:var(--red);stroke-width:1.3"/>
+            </svg>
+          </div>
+          <div class="sl-verdict">σ = 3.00, acceptance rate ≈ 34%. Long flat plateaus (a rejected proposal repeats the current value) punctuated by occasional big jumps — high autocorrelation, poor mixing, the opposite failure mode from a step size that's too small but with the same symptom.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Gibbs sampling: the special case that never rejects</h2>
+      <p class="sl-sub">When you can sample a variable's full conditional distribution exactly — often because it's conjugate, one parameter at a time.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Metropolis-Hastings — general case</span>
+          <ul>
+            <li>Proposes an arbitrary candidate θ′ from some proposal q</li>
+            <li>Needs an accept/reject coin flip on every single step</li>
+            <li>Acceptance probability is usually &lt; 1 — the chain often repeats</li>
+            <li>Works even when the true conditional can't be sampled directly — only the unnormalized density needs to be evaluable</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Gibbs sampling — special case</span>
+          <ul>
+            <li>Proposes θⱼ directly from its own true full conditional p(θⱼ ∣ θ₋ⱼ)</li>
+            <li>Cycles through every parameter, one at a time, given the rest</li>
+            <li>Acceptance probability collapses algebraically to exactly 1 — no coin flip, ever</li>
+            <li>Requires every conditional to be sampleable in closed form — a real constraint, not a free lunch</li>
+          </ul>
+        </div>
+      </div>
+      <p class="sl-p">Substitute q(θⱼ′∣θ) = p(θⱼ′∣θ₋ⱼ) — proposing exactly from the true conditional — into the general Metropolis-Hastings ratio, and the forward and reverse move probabilities cancel the target density's own conditional structure exactly, leaving the ratio identically 1. This is why Gibbs sampling is usually taught separately even though it's mathematically just Metropolis-Hastings with one particular proposal choice — there is no tuning knob left, only the choice of which conditional to derive and sample next.</p>
+      <div class="sl-quote">Regular Metropolis-Hastings guesses where to step next and checks whether the guess was any good. Gibbs sampling skips the guessing — for each parameter in turn it draws directly from the exact right answer for "given everything else fixed, what should this one be." Nothing to double-check, so nothing ever gets rejected.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">A chain that ran is not automatically a chain that converged</h2>
+      <p class="sl-sub">Four standard diagnostics separate a genuine posterior sample from a chain that only looks like one.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📉</div><div><h4>Trace plots</h4><p>Sampled value against iteration number. A healthy chain looks like noisy static around a stable band; drifting, long flat stretches, or an obvious trend mean poor mixing or non-convergence.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">✂️</div><div><h4>Burn-in</h4><p>The first chunk of iterations, taken before the chain has settled into the target's typical region, is discarded — it reflects the arbitrary starting point more than the posterior.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔗</div><div><h4>Effective sample size (ESS)</h4><p>MCMC draws are autocorrelated — each resembles the one before it. ESS estimates how many truly independent draws the chain's correlated samples are actually "worth."</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📐</div><div><h4>Gelman-Rubin R̂</h4><p>Run several chains from deliberately different starting points. If they all converged to the same target, between-chain variance should be no larger than within-chain variance.</p></div></div>
+      </div>
+      <div class="sl-row">
+        <div class="sl-box">W — within-chain variance</div><div class="sl-arrow">vs.</div><div class="sl-box">B — between-chain variance</div><div class="sl-arrow">→</div><div class="sl-box green">R̂ = √(Var⁺ / W)</div>
+      </div>
+      <p class="sl-p" style="margin-top:14px">If every chain has converged to the same target, B is small relative to W, and R̂ → 1 (commonly, trusted below about 1.01). If chains are stuck exploring different regions — say one trapped near θ=+1 and another near θ=−1, neither having crossed — B is large, and R̂ sits noticeably above 1: a direct, quantitative flag that the chains disagree about where the posterior actually is.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Where MCMC quietly goes wrong</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🏃</div><div><h4>Mistaking "it ran" for "it converged"</h4><p>A badly-tuned step size, a multimodal target, or too few iterations happily produces ten thousand numbers that look like a posterior sample and are actually biased toward whichever region the chain wandered into first.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎚️</div><div><h4>Step size wrong in either direction</h4><p>Too small: the chain crawls, high autocorrelation, low ESS. Too large: almost every proposal rejects, also high autocorrelation, for the opposite reason. Both look like "it's running" without producing a useful sample.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">1️⃣</div><div><h4>Running only one chain</h4><p>A single chain can look perfectly well-behaved in its own trace plot while having converged to the wrong mode entirely in a multimodal posterior — nothing inside that one chain's history reveals the mistake.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">✅</div><div><h4>Treating R̂ ≈ 1 as proof, not evidence</h4><p>R̂ close to 1 means the chains agree with each other — it doesn't prove they found the true posterior if every chain shares the same blind spot. Diagnostics reduce risk; they don't eliminate it.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Why doesn't Metropolis-Hastings ever need the posterior's normalizing constant?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The acceptance rule only ever uses a ratio p(θ′)/p(θ), and any constant that divides both cancels exactly</button>
+        <button class="sl-quiz-opt">The constant is computed once, up front, and cached for every step</button>
+        <button class="sl-quiz-opt">The proposal distribution already accounts for normalization</button>
+        <div class="sl-quiz-explain">Because p only ever appears as a ratio, the algorithm only needs the unnormalized f(θ′)/f(θ) — never the true p(θ) itself.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>In the worked example, why was θ=0 → θ′=0.8 accepted with no coin flip needed?</h4>
+        <button class="sl-quiz-opt" data-correct="true">f(0.8) &gt; f(0), so the ratio exceeds 1 and α = min(1, ratio) = 1 — an uphill move is always taken</button>
+        <button class="sl-quiz-opt">The proposal happened to equal the true full conditional</button>
+        <button class="sl-quiz-opt">u was drawn as exactly 0</button>
+        <div class="sl-quiz-explain">α = 1 means the move is always taken — there's nothing for a uniform draw u ≤ 1 to compare against.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Why is Gibbs sampling's acceptance probability always exactly 1?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Its proposal is the parameter's own true full conditional, which makes the general Metropolis-Hastings ratio collapse algebraically to 1</button>
+        <button class="sl-quiz-opt">Gibbs sampling doesn't use a target distribution at all</button>
+        <button class="sl-quiz-opt">It only works on symmetric proposal distributions</button>
+        <div class="sl-quiz-explain">Substituting q = the true full conditional into the general ratio cancels every term, leaving 1 identically — no accept/reject step is needed.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>A Gelman-Rubin R̂ of 1.30 across several chains tells you what?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Between-chain variance is large relative to within-chain variance — the chains disagree about where the posterior's mass is, a strong non-convergence signal</button>
+        <button class="sl-quiz-opt">The posterior mean is 1.30</button>
+        <button class="sl-quiz-opt">The acceptance rate was 30% too high</button>
+        <div class="sl-quiz-explain">R̂ well above 1 means independently-started chains haven't agreed on the same target — e.g. each stuck near a different mode. The fix is longer runs, a better proposal, or reconsidering the model — not trusting the current samples.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Large steps sound like they'd explore more. Why can a too-large step size still produce poor mixing?</h4>
+        <button class="sl-quiz-opt" data-correct="true">A large jump usually lands somewhere with much lower density, so the ratio is small, most proposals get rejected, and the chain barely moves</button>
+        <button class="sl-quiz-opt">Large steps always violate detailed balance</button>
+        <button class="sl-quiz-opt">Large steps make the target distribution change shape</button>
+        <div class="sl-quiz-explain">The chain is technically "capable" of big jumps but accepts so few of them that it barely moves — high autocorrelation and low ESS, the same symptom as a step size that's too small, for the opposite reason.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Most real posteriors aren't conjugate — MCMC replaces the intractable normalizing integral with a random walk whose visit frequencies approximate the posterior.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Metropolis-Hastings: propose a random jump, always accept uphill moves, accept downhill moves with probability α = min(1, ratio) — never refusing every downhill move is what prevents getting stuck on the first hill found.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Detailed balance is why it works — the accept/reject rule makes probability flow between any two states balance exactly, making the target posterior the chain's stationary distribution.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Gibbs sampling is Metropolis-Hastings with the proposal set equal to the true full conditional — the ratio collapses to exactly 1, so every draw is accepted, with no tuning, but every conditional has to be sampleable.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Step size is a real tuning problem: too small crawls (high autocorrelation), too large gets rejected almost every time (also high autocorrelation) — both look like "it's running" without producing a useful sample.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>A chain that ran isn't automatically a chain that converged — trace plots, burn-in, effective sample size, and multi-chain R̂ are the standard, non-optional checks before trusting any MCMC output.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Recognise when a posterior needs simulation instead of algebra, read a Metropolis-Hastings acceptance rule term by term, and tell the difference between "Metropolis-Hastings" and "Gibbs sampling" by asking one question: can every conditional be sampled directly? Just as importantly, know which diagnostics — trace plots, ESS, R̂ across multiple chains — separate a genuine posterior sample from a chain that only looks like one.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Hierarchical Bayesian Models &amp; Partial Pooling</h3>
+        <p>What happens when the parameters MCMC samples are themselves drawn from a shared distribution — letting many related groups borrow statistical strength from each other.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="hierarchical-bayesian-models-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="mcmc-metropolis-gibbs.html">Read the full MCMC lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Section 6 — live acceptance-probability calculator from two raw
+  // (unnormalized) posterior-density values. Guards against blank,
+  // non-finite, and negative-density input; never shows NaN or Infinity.
+  (function(){
+    var cur = document.getElementById('mh-cur');
+    if (!cur) return;
+    var prop = document.getElementById('mh-prop');
+    var ratioOut = document.getElementById('mh-ratio');
+    var alphaOut = document.getElementById('mh-alpha');
+    var resultOut = document.getElementById('mh-alpha-result');
+    var resetBtn = document.getElementById('mh-reset');
+    var DEFAULTS = { cur: 1.2431, prop: 1.2032 };
+
+    function recompute(){
+      var c = parseFloat(cur.value);
+      var p = parseFloat(prop.value);
+      if (!isFinite(c) || !isFinite(p) || c <= 0 || p < 0) {
+        ratioOut.textContent = '—';
+        alphaOut.textContent = '—';
+        resultOut.textContent = '—';
+        return;
+      }
+      var ratio = p / c;
+      var alpha = Math.min(1, ratio);
+      ratioOut.textContent = ratio.toFixed(4);
+      alphaOut.textContent = alpha.toFixed(4);
+      resultOut.textContent = (alpha * 100).toFixed(2) + '%';
+    }
+
+    [cur, prop].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      cur.value = DEFAULTS.cur; prop.value = DEFAULTS.prop;
+      recompute();
+    });
+    recompute();
+  })();
+
+  // Section 7 — proposal step-size slider redrawing a live seeded
+  // random-walk Metropolis-Hastings trace over the same bimodal target
+  // used throughout this deck. Mirrors the full lesson's mulberry32 PRNG
+  // exactly, so the mechanics stay faithful to the grounded worked example.
+  (function(){
+    var stepSlider = document.getElementById('mcmc-step');
+    if (!stepSlider) return;
+    var stepVal = document.getElementById('mcmc-step-val');
+    var tracePath = document.getElementById('mcmc-trace');
+    var acceptReadout = document.getElementById('mcmc-accept-readout');
+
+    function mulberry32(a) {
+      return function() {
+        a |= 0; a = (a + 0x6D2B79F5) | 0;
+        var t = Math.imul(a ^ (a >>> 15), 1 | a);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+
+    function targetF(theta) {
+      return Math.exp(-Math.pow(theta, 4) / 4 + Math.pow(theta, 2) / 2);
+    }
+
+    var N_ITER = 200;
+    var X0 = 60, X1 = 500, Y_TOP = 20, Y_BOT = 240;
+    var THETA_MAX = 3;
+
+    function thetaToY(theta) {
+      var clamped = Math.max(-THETA_MAX, Math.min(THETA_MAX, theta));
+      return Y_TOP + (1 - (clamped + THETA_MAX) / (2 * THETA_MAX)) * (Y_BOT - Y_TOP);
+    }
+
+    function run(sd) {
+      var rand = mulberry32(20260903);
+      var theta = 0;
+      var accepts = 0;
+      var pts = [[0, theta]];
+      for (var i = 1; i <= N_ITER; i++) {
+        var u1 = Math.max(rand(), 1e-12);
+        var u2 = rand();
+        var z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+        var proposal = theta + sd * z;
+        var fCur = targetF(theta);
+        var fProp = targetF(proposal);
+        var ratio = fProp / fCur;
+        var alpha = Math.min(1, ratio);
+        var u3 = rand();
+        if (u3 < alpha) {
+          theta = proposal;
+          accepts++;
+        }
+        pts.push([i, theta]);
+      }
+      return { pts: pts, acceptRate: accepts / N_ITER };
+    }
+
+    function update() {
+      var sdRaw = parseInt(stepSlider.value, 10);
+      var sd = sdRaw / 100;
+      stepVal.textContent = sd.toFixed(2);
+
+      var result = run(sd);
+      var pts = result.pts;
+      var d = '';
+      for (var i = 0; i < pts.length; i++) {
+        var px = X0 + (pts[i][0] / N_ITER) * (X1 - X0);
+        var py = thetaToY(pts[i][1]);
+        d += (i === 0 ? 'M ' : 'L ') + px.toFixed(1) + ',' + py.toFixed(1) + ' ';
+      }
+      tracePath.setAttribute('d', d);
+      acceptReadout.textContent = 'Acceptance rate at this step size: ' + (result.acceptRate * 100).toFixed(0) + '%';
+    }
+
+    stepSlider.addEventListener('input', update);
+    update();
+  })();
+})();
+</script>
+</body>
+</html>

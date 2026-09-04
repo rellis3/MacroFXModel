@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Data Pipeline: Raw Feeds to Trading-Ready Data — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">The Data Pipeline — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full stage-by-stage writeup, worked example, and a 5-question self-test?<a href="data-pipeline-raw-to-trading-ready.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Institutional Data Engineering 1 · Institutional Data Engineering</div>
+      <h1 class="sl-h1">The Data Pipeline, <em>From Raw Feed to Trading-Ready</em></h1>
+      <p class="sl-lede">A raw vendor feed and a backtest-ready dataset are not the same object. Between them sits a chain of stages — capture, validation, cleaning, normalization, bar construction, storage — and one particular choice buried inside that chain, how raw ticks get grouped into the bars a strategy actually sees, quietly decides whether the returns a model consumes behave anything like the well-mixed, independent draws most statistics secretly assumes.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">A raw feed is groceries, not a plated meal</h2>
+      <p class="sl-sub">Nobody eats straight off the delivery truck — and no strategy trades straight off the raw tick feed.</p>
+      <div class="sl-quote">A raw market data feed is closer to a delivery of unwashed vegetables and uncut meat than to a finished meal. Between "raw ingredients arrive" and "plated dish goes to the table," a real kitchen runs a sequence of stations — and skipping one doesn't make the meal arrive faster. It makes a customer sick two stages later, usually somewhere much harder to trace back to the missed step.</div>
+      <p class="sl-p">Every lesson elsewhere in this Theory Lab that talks about a feature, a signal, or a backtest quietly assumes something upstream: that the price series feeding it is complete, correctly timestamped, free of corporate-action jumps, and dated to when the information was actually knowable. Get this layer wrong and no amount of discipline downstream rescues the result — a leak, a gap, or a stale value baked into the raw series propagates into every feature and every backtest built on top of it, silently.</p>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">What this deck is, and isn't</div>
+        <p>This is the map of the whole pipeline, condensed into slides. Cleaning, normalization, storage, and point-in-time serving are each large enough to need their own dedicated lesson later in this category — this deck gives you the shape of the whole journey and lingers longest on one specific, foundational choice: how raw ticks become bars.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Six stages between raw and trading-ready</h2>
+      <p class="sl-sub">Each stage closes a specific way the earlier ones can still leave the data unfit to build a strategy on.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📡</div><div><h4>1 · Ingestion</h4><p>Capture raw ticks, quotes, and trades exactly as transmitted. Nothing gets fixed here — fixing anything before it's captured destroys the ground truth a later step needs to be checked against.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">✓</div><div><h4>2 · Validation</h4><p>Schema checks, gap detection, sanity bounds. Validation flags what looks wrong — it never fixes anything itself.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧼</div><div><h4>3 · Cleaning</h4><p>Bad ticks, stale quotes, halts, duplicates, and missing values get fixed here, one defensible method per failure mode — never a blanket rule.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔗</div><div><h4>4 · Normalization</h4><p>Corporate actions and contract rolls each put a fake, non-tradeable jump in a raw series. Normalization turns that into one continuous, tradeable-return series.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🗄</div><div><h4>5 · Storage</h4><p>A single, versioned source of truth for the cleaned, normalized series — not five teams independently recomputing "the adjusted close" and slowly drifting apart.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🕰</div><div><h4>6 · Point-in-time serving</h4><p>Answers "as of date X" using only what was genuinely knowable on date X — no later revision, no restatement, no survivorship creeping in.</p></div></div>
+      </div>
+      <p class="sl-p">Only data that has passed all six stages is fit to build a feature on, run a backtest against, or drive a live signal from. A dataset that merely "looks clean" hasn't necessarily passed any of them.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">The pipeline, compressed into one flow</h2>
+      <p class="sl-sub">Five visual stops standing in for the six above — bar construction is the one this deck lingers on.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Diagram</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 190" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Flow diagram: Raw feed, then Clean and validate, then Normalize, then Bar construction, then Storage, connected left to right by arrows">
+            <defs>
+              <marker id="dpm-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" style="fill:var(--text3)"/>
+              </marker>
+            </defs>
+            <rect x="10" y="40" width="110" height="80" rx="8" style="fill:var(--blue);opacity:.18;stroke:var(--blue)"/>
+            <text x="65" y="72" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:11px;font-weight:700">Raw feed</text>
+            <text x="65" y="89" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:8.5px">ticks, quotes,</text>
+            <text x="65" y="101" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:8.5px">trades — as-is</text>
+
+            <line x1="120" y1="80" x2="138" y2="80" style="stroke:var(--text3)" stroke-width="1.4" marker-end="url(#dpm-arrow)"/>
+
+            <rect x="140" y="40" width="110" height="80" rx="8" style="fill:var(--purple);opacity:.18;stroke:var(--purple)"/>
+            <text x="195" y="66" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:11px;font-weight:700">Clean &amp;</text>
+            <text x="195" y="80" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:11px;font-weight:700">validate</text>
+            <text x="195" y="98" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:8.5px">flags fixed one</text>
+            <text x="195" y="110" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:8.5px">failure at a time</text>
+
+            <line x1="250" y1="80" x2="268" y2="80" style="stroke:var(--text3)" stroke-width="1.4" marker-end="url(#dpm-arrow)"/>
+
+            <rect x="270" y="40" width="110" height="80" rx="8" style="fill:var(--amber);opacity:.18;stroke:var(--amber)"/>
+            <text x="325" y="72" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:11px;font-weight:700">Normalize</text>
+            <text x="325" y="89" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:8.5px">corp. actions,</text>
+            <text x="325" y="101" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:8.5px">rolls, timestamps</text>
+
+            <line x1="380" y1="80" x2="398" y2="80" style="stroke:var(--text3)" stroke-width="1.4" marker-end="url(#dpm-arrow)"/>
+
+            <rect x="400" y="40" width="110" height="80" rx="8" style="fill:var(--green);opacity:.2;stroke:var(--green)"/>
+            <text x="455" y="66" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:11px;font-weight:700">Bar</text>
+            <text x="455" y="80" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:11px;font-weight:700">construction</text>
+            <text x="455" y="98" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:8.5px">time / volume /</text>
+            <text x="455" y="110" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:8.5px">dollar clock</text>
+
+            <line x1="510" y1="80" x2="528" y2="80" style="stroke:var(--text3)" stroke-width="1.4" marker-end="url(#dpm-arrow)"/>
+
+            <rect x="530" y="40" width="100" height="80" rx="8" style="fill:var(--blue);opacity:.18;stroke:var(--blue)"/>
+            <text x="580" y="72" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:11px;font-weight:700">Storage</text>
+            <text x="580" y="89" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:8.5px">versioned,</text>
+            <text x="580" y="101" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:8.5px">queryable</text>
+
+            <text x="320" y="155" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px;font-style:italic">Bar construction happens inside ingestion, before validation ever runs — it just gets its own box here.</text>
+            <text x="320" y="175" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px;font-style:italic">Point-in-time serving (Stage 6) isn't shown — it's a later lesson, out of scope for this diagram.</text>
+          </svg>
+        </div>
+        <div class="sl-note">This compresses the six stages from the last slide into five boxes: validation and cleaning are merged into one "clean &amp; validate" block, and point-in-time serving is left off entirely since it happens after storage, not before it.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Before any of that: how do ticks become bars?</h2>
+      <p class="sl-sub">A "bar" is one open/high/low/close snapshot. The question is what triggers the shutter to click.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🕒</div><div><h4>Time bars</h4><p>Close a bar every fixed wall-clock interval — every minute, every hour — regardless of how much trading happened inside it. The default almost everyone starts with.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔢</div><div><h4>Tick bars</h4><p>Close a bar after a fixed number of individual trade prints, however long or short that takes in wall-clock time.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📦</div><div><h4>Volume bars</h4><p>Close a bar once a fixed number of shares/contracts/units has traded, so every bar represents a constant amount of activity.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">💵</div><div><h4>Dollar bars</h4><p>Close a bar once a fixed notional value (price × volume) has traded — stays comparable even as an instrument's price level drifts over years.</p></div></div>
+      </div>
+      <p class="sl-p">These four standard sampling clocks come from Marcos López de Prado's <em>Advances in Financial Machine Learning</em> (Wiley, 2018), Chapter 2. Bar construction is a choice made inside ingestion, before validation or cleaning ever touches the data — and it's the choice this deck spends the rest of its time on.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Same 14 ticks, three different sampling clocks</h2>
+      <p class="sl-sub">A quiet 5 minutes, then a short burst of activity, then quiet again — a realistic 10-minute slice of an FX pair. Watch where each clock draws its bar boundaries.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="bar-tabs">
+          <button class="sl-tab active" data-panel="bar-time">Time bars</button>
+          <button class="sl-tab" data-panel="bar-volume">Volume bars</button>
+          <button class="sl-tab" data-panel="bar-dollar">Dollar bars</button>
+        </div>
+
+        <div class="sl-panel active" id="bar-time">
+          <div class="sl-svgwrap">
+            <svg viewBox="0 0 640 165" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Timeline of 14 ticks with a burst in the middle, divided into five equal fixed 2-minute bars; the bar covering the burst contains far more ticks than the others">
+              <rect x="40" y="30" width="112" height="90" style="fill:var(--blue);opacity:.08"/>
+              <rect x="264" y="30" width="112" height="90" style="fill:var(--red);opacity:.14"/>
+              <line x1="40" y1="100" x2="600" y2="100" style="stroke:var(--border2);stroke-width:1.5"/>
+              <line x1="152" y1="55" x2="152" y2="145" style="stroke:var(--text3);stroke-width:1.2;stroke-dasharray:3,3"/>
+              <line x1="264" y1="55" x2="264" y2="145" style="stroke:var(--text3);stroke-width:1.2;stroke-dasharray:3,3"/>
+              <line x1="376" y1="55" x2="376" y2="145" style="stroke:var(--text3);stroke-width:1.2;stroke-dasharray:3,3"/>
+              <line x1="488" y1="55" x2="488" y2="145" style="stroke:var(--text3);stroke-width:1.2;stroke-dasharray:3,3"/>
+              <circle cx="59" cy="100" r="4" style="fill:var(--blue)"/>
+              <circle cx="115" cy="100" r="4" style="fill:var(--blue)"/>
+              <circle cx="180" cy="100" r="4" style="fill:var(--blue)"/>
+              <circle cx="255" cy="100" r="4" style="fill:var(--blue)"/>
+              <circle cx="311" cy="100" r="4" style="fill:var(--blue)"/>
+              <circle cx="325" cy="100" r="7" style="fill:var(--red)"/>
+              <circle cx="334" cy="100" r="7" style="fill:var(--red)"/>
+              <circle cx="343" cy="100" r="7" style="fill:var(--red)"/>
+              <circle cx="353" cy="100" r="7" style="fill:var(--red)"/>
+              <circle cx="362" cy="100" r="7" style="fill:var(--red)"/>
+              <circle cx="371" cy="100" r="7" style="fill:var(--red)"/>
+              <circle cx="441" cy="100" r="4" style="fill:var(--blue)"/>
+              <circle cx="507" cy="100" r="4" style="fill:var(--blue)"/>
+              <circle cx="581" cy="100" r="4" style="fill:var(--blue)"/>
+              <text x="96" y="45" text-anchor="middle" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:10px">2 ticks</text>
+              <text x="208" y="140" text-anchor="middle" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:10px">2 ticks</text>
+              <text x="320" y="45" text-anchor="middle" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:11px;font-weight:700">7 ticks ⚠</text>
+              <text x="432" y="140" text-anchor="middle" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:10px">1 tick</text>
+              <text x="544" y="45" text-anchor="middle" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:10px">2 ticks</text>
+              <text x="320" y="160" text-anchor="middle" style="fill:var(--text3);font-family:'DM Sans',sans-serif;font-size:9.5px">5 bars, each exactly 2 minutes wide, regardless of what happened inside</text>
+            </svg>
+          </div>
+          <div class="sl-verdict"><strong>Fixed clock, wildly uneven load.</strong> The 2-minute bar covering the burst swallows 7 of the 14 ticks and roughly 81% of the window's total volume — the exact same bar width as four other bars holding just one or two ticks each.</div>
+        </div>
+
+        <div class="sl-panel" id="bar-volume">
+          <div class="sl-svgwrap">
+            <svg viewBox="0 0 640 165" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Same timeline of 14 ticks, now divided by a fixed volume threshold per bar; boundaries are close together during the burst and far apart during quiet stretches">
+              <line x1="40" y1="100" x2="600" y2="100" style="stroke:var(--border2);stroke-width:1.5"/>
+              <line x1="317" y1="55" x2="317" y2="145" style="stroke:var(--green);stroke-width:1.4;stroke-dasharray:3,3"/>
+              <line x1="340" y1="55" x2="340" y2="145" style="stroke:var(--green);stroke-width:1.4;stroke-dasharray:3,3"/>
+              <line x1="349" y1="55" x2="349" y2="145" style="stroke:var(--green);stroke-width:1.4;stroke-dasharray:3,3"/>
+              <line x1="368" y1="55" x2="368" y2="145" style="stroke:var(--green);stroke-width:1.4;stroke-dasharray:3,3"/>
+              <line x1="513" y1="55" x2="513" y2="145" style="stroke:var(--green);stroke-width:1.4;stroke-dasharray:3,3"/>
+              <circle cx="59" cy="100" r="4" style="fill:var(--blue)"/>
+              <circle cx="115" cy="100" r="4" style="fill:var(--blue)"/>
+              <circle cx="180" cy="100" r="4" style="fill:var(--blue)"/>
+              <circle cx="255" cy="100" r="4" style="fill:var(--blue)"/>
+              <circle cx="311" cy="100" r="4" style="fill:var(--blue)"/>
+              <circle cx="325" cy="100" r="7" style="fill:var(--green)"/>
+              <circle cx="334" cy="100" r="7" style="fill:var(--green)"/>
+              <circle cx="343" cy="100" r="7" style="fill:var(--green)"/>
+              <circle cx="353" cy="100" r="7" style="fill:var(--green)"/>
+              <circle cx="362" cy="100" r="7" style="fill:var(--green)"/>
+              <circle cx="371" cy="100" r="7" style="fill:var(--green)"/>
+              <circle cx="441" cy="100" r="4" style="fill:var(--blue)"/>
+              <circle cx="507" cy="100" r="4" style="fill:var(--blue)"/>
+              <circle cx="581" cy="100" r="4" style="fill:var(--blue)"/>
+              <text x="178" y="45" text-anchor="middle" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:10px">Bar 1 — 270s</text>
+              <path d="M310,68 Q343,54 375,68" style="fill:none;stroke:var(--green);stroke-width:1.2"/>
+              <text x="343" y="46" text-anchor="middle" style="fill:var(--green);font-family:'DM Mono',monospace;font-size:10px;font-weight:700">bars 2–4 in ~40s</text>
+              <text x="440" y="140" text-anchor="middle" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:10px">Bar 5 — 145s</text>
+              <text x="556" y="45" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:9.5px;font-style:italic">forming…</text>
+              <text x="320" y="160" text-anchor="middle" style="fill:var(--text3);font-family:'DM Sans',sans-serif;font-size:9.5px">Same fixed volume per bar throughout — the clock speeds up automatically during the burst</text>
+            </svg>
+          </div>
+          <div class="sl-verdict"><strong>Fixed activity, uneven clock — on purpose.</strong> Bar 1 needed 270 seconds of quiet trading to fill its quota. Bars 2, 3 and 4 fill the exact same quota in about 40 seconds combined, because that's how long the burst takes to move the same amount of volume. Every completed bar represents a comparable slice of real turnover.</div>
+        </div>
+
+        <div class="sl-panel" id="bar-dollar">
+          <div class="sl-svgwrap">
+            <svg viewBox="0 0 640 165" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The same tick timeline again; dollar-bar boundaries land at essentially the same points as the volume-bar boundaries within this one session">
+              <line x1="40" y1="100" x2="600" y2="100" style="stroke:var(--border2);stroke-width:1.5"/>
+              <line x1="317" y1="55" x2="317" y2="145" style="stroke:var(--amber);stroke-width:1.4;stroke-dasharray:3,3"/>
+              <line x1="340" y1="55" x2="340" y2="145" style="stroke:var(--amber);stroke-width:1.4;stroke-dasharray:3,3"/>
+              <line x1="349" y1="55" x2="349" y2="145" style="stroke:var(--amber);stroke-width:1.4;stroke-dasharray:3,3"/>
+              <line x1="368" y1="55" x2="368" y2="145" style="stroke:var(--amber);stroke-width:1.4;stroke-dasharray:3,3"/>
+              <line x1="513" y1="55" x2="513" y2="145" style="stroke:var(--amber);stroke-width:1.4;stroke-dasharray:3,3"/>
+              <circle cx="59" cy="100" r="4" style="fill:var(--blue)"/>
+              <circle cx="115" cy="100" r="4" style="fill:var(--blue)"/>
+              <circle cx="180" cy="100" r="4" style="fill:var(--blue)"/>
+              <circle cx="255" cy="100" r="4" style="fill:var(--blue)"/>
+              <circle cx="311" cy="100" r="4" style="fill:var(--blue)"/>
+              <circle cx="325" cy="100" r="7" style="fill:var(--amber)"/>
+              <circle cx="334" cy="100" r="7" style="fill:var(--amber)"/>
+              <circle cx="343" cy="100" r="7" style="fill:var(--amber)"/>
+              <circle cx="353" cy="100" r="7" style="fill:var(--amber)"/>
+              <circle cx="362" cy="100" r="7" style="fill:var(--amber)"/>
+              <circle cx="371" cy="100" r="7" style="fill:var(--amber)"/>
+              <circle cx="441" cy="100" r="4" style="fill:var(--blue)"/>
+              <circle cx="507" cy="100" r="4" style="fill:var(--blue)"/>
+              <circle cx="581" cy="100" r="4" style="fill:var(--blue)"/>
+              <text x="320" y="45" text-anchor="middle" style="fill:var(--amber);font-family:'DM Mono',monospace;font-size:10px;font-weight:700">boundaries ≈ identical to volume bars</text>
+              <text x="320" y="160" text-anchor="middle" style="fill:var(--text3);font-family:'DM Sans',sans-serif;font-size:9.5px">Price barely moved this session (1.1000 → 1.1025) — price × volume ≈ volume × constant</text>
+            </svg>
+          </div>
+          <div class="sl-verdict"><strong>Same shape here, different reason.</strong> Within one session where price hardly moves, dollar bars and volume bars land at nearly the same boundaries — dollar's advantage over volume shows up across <em>years</em>, once an instrument's price level has drifted, not within a single ten-minute window like this one.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">The default is the weak one</h2>
+      <p class="sl-p">Trading activity is not smooth across a session — it clusters around the open, the close, and news releases, and thins out in between. A fixed wall-clock interval doesn't know this: it samples the same way regardless. A time bar during a quiet stretch is built from a handful of ticks (oversampling a period with little genuine information turnover), while a time bar during a burst is built from a huge pile of ticks compressed into the same fixed window (undersampling a period where a great deal actually happened).</p>
+      <div class="sl-quote">Volume bars and dollar bars sample by activity itself rather than by the clock, so each bar represents a comparable amount of genuine information turnover — which is why returns built from volume/dollar bars sit closer to independent and identically distributed, and closer to Gaussian, than returns built from time bars sampled at a comparable average frequency (López de Prado, <em>AFML</em>, Ch. 2). Many of the parametric statistical tools used elsewhere in this Theory Lab quietly assume something close to that — feeding them time-bar returns hands them a worse-behaved input than the same underlying data would have produced sampled a different way.</div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">The trap</div>
+        <p>Time bars are not "wrong," and most of the industry still runs on them for good practical reasons — simplicity, universal tooling, human-readable intervals. But choosing them without knowing why volume/dollar bars exist means silently accepting a statistically worse-behaved return series, every single day, for every instrument sampled this way.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Turn up the intensity</h2>
+      <p class="sl-sub">Same fixed 5-minute window. Drag the slider to make trading activity inside it burstier, and watch what each clock does.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two panels: a fixed-size box representing five time bars, which gets more crowded with ticks as activity rises, and a row of equal-width volume bars whose count grows as activity rises">
+            <text x="40" y="22" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:10.5px;font-weight:700">TIME BARS — fixed count</text>
+            <rect x="40" y="30" width="560" height="45" rx="6" style="fill:var(--blue-bg);stroke:var(--blue-bd)"/>
+            <g id="act-dots"></g>
+            <text id="act-overflow" x="600" y="57" text-anchor="end" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:10px;font-weight:700"></text>
+
+            <text x="40" y="112" style="fill:var(--green);font-family:'DM Mono',monospace;font-size:10.5px;font-weight:700">VOLUME BARS — fixed size</text>
+            <rect x="40" y="120" width="560" height="45" rx="6" style="fill:var(--green-bg);stroke:var(--green-bd)"/>
+            <g id="act-bars"></g>
+
+            <text x="320" y="195" text-anchor="middle" style="fill:var(--text3);font-family:'DM Sans',sans-serif;font-size:10px" id="act-caption">At 1× (uniform activity), both clocks agree almost exactly.</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Burst multiplier</span><span class="sl-live" id="act-mval">1.0×</span></div>
+        <input type="range" class="sl-slider" id="act-slider" min="1" max="10" step="1" value="1">
+        <div class="sl-calc-steps">
+          <div>Ticks arriving in this window: <b id="act-ticks">50</b></div>
+          <div>Time bars produced: <b id="act-timebars">5</b> — always 5, however many ticks arrive</div>
+          <div>Volume bars produced: <b id="act-volbars">5</b> — speeds up automatically with real activity</div>
+        </div>
+      </div>
+      <p class="sl-p">The time-bar count never moves — it's a property of the clock, not the market. The volume-bar count tracks the slider directly, because it's a property of trading activity itself. This is the entire oversampling/undersampling effect from the last slide, made draggable.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">One hour, one news release, two very different bar counts</h2>
+      <p class="sl-sub">A liquid FX pair, one trading hour with a scheduled data release 20 minutes in: ~200 ticks in the 15 minutes before, a burst of ~4,000 ticks in the 5 minutes around it, ~300 ticks in the remaining 40 minutes.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Time bars — 1-minute clock</span>
+          <p>Exactly 60 bars for the hour, no matter what. The 5 minutes around the release get exactly 5 bars — the same count as any other 5 quiet minutes — even though those 5 minutes carried roughly 4,000 of the hour's ~4,500 total ticks: about 89% of the hour's information content, squeezed into just 8% of its bars.</p>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Volume bars — sized for ~60 bars/hour</span>
+          <p>The pre-release lull (200 ticks/15min) closes only 2–3 bars. The release burst (4,000 ticks/5min) closes roughly 40–45 bars on its own — the sampling clock speeds up exactly when genuine activity speeds up, so each bar keeps representing a comparable slice of real information turnover.</p>
+        </div>
+      </div>
+      <div class="sl-quote">The time-bar version has quietly under-represented the single most informative five minutes of the hour, and over-represented the quiet stretches either side of it — the same oversampling/undersampling pattern from Section 6, made concrete with actual tick counts.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Try it — how many bars would your data produce?</h2>
+      <p class="sl-sub">Change the numbers below. Left: a volume-bar day. Right: a fixed time-bar day, for comparison.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Total daily volume (units)</label><input type="number" class="sl-input" id="vb-total" value="2400000" step="10000" min="0"></div>
+          <div class="sl-calc-op">÷</div>
+          <div class="sl-calc-field"><label>Target volume per bar</label><input type="number" class="sl-input" id="vb-target" value="40000" step="1000" min="0"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Volume bars / day</div>
+            <div class="sl-calc-result-val" id="vb-result">60</div>
+          </div>
+        </div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Session length (minutes)</label><input type="number" class="sl-input" id="tb-session" value="1440" step="10" min="0"></div>
+          <div class="sl-calc-op">÷</div>
+          <div class="sl-calc-field"><label>Time-bar length (minutes)</label><input type="number" class="sl-input" id="tb-barlen" value="1" step="1" min="0"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Time bars / day</div>
+            <div class="sl-calc-result-val" id="tb-result">1,440</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Time bars are <b id="cmp-ratio">24.0×</b> more numerous than volume bars here — a property of the clock, not of what actually traded that day.</div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="bars-reset">Reset to worked-example numbers</button>
+        <div class="sl-note">Invalid or empty inputs (zero bar size, zero bar length, blank fields) show "—" instead of an error.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Where this quietly breaks down in practice</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📈</div><div><h4>"I have a chart" ≠ "I have trading-ready data"</h4><p>A chart renderer silently interpolates over gaps and rarely flags a stale quote — a series that looks fine on a chart can still fail every stage of this pipeline.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🚫</div><div><h4>Fixing at ingestion destroys the audit trail</h4><p>Correcting a suspicious tick before it's durably stored removes the original record needed to audit that correction later. Capture first, fix in a separate, logged stage.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚖</div><div><h4>Popularity isn't statistical soundness</h4><p>Time bars being the default doesn't mean they're statistically neutral — the oversampling/undersampling effect is documented, not a matter of opinion.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔁</div><div><h4>One bar scheme doesn't fit every study forever</h4><p>A scheme picked for a slow macro strategy may be a poor fit for a short-horizon microstructure study built later on the same infrastructure.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What is the correct order of the six pipeline stages?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Ingestion → Validation → Cleaning → Normalization → Storage → Point-in-time serving</button>
+        <button class="sl-quiz-opt">Cleaning → Ingestion → Normalization → Validation → Point-in-time serving → Storage</button>
+        <button class="sl-quiz-opt">Validation → Ingestion → Storage → Cleaning → Normalization → Point-in-time serving</button>
+        <div class="sl-quiz-explain">Each stage closes a specific gap left by the ones before it — capture first, then check, then fix, then adjust for corporate actions, then store, then serve only what was knowable as of a given date.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Why is fixing a suspicious tick during ingestion a mistake, even if the fix is correct?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It destroys the original record a later audit needs to check the fix against</button>
+        <button class="sl-quiz-opt">It's not a mistake — ingestion should fix problems as early as possible</button>
+        <button class="sl-quiz-opt">It makes the file size too large to store efficiently</button>
+        <div class="sl-quiz-explain">Ingestion's only job is durable capture. Correcting a record before that capture happens removes the ground truth a later validation or cleaning step could be audited against.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Which sampling clock closes a bar once a fixed notional value (price × volume) has traded?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Dollar bars</button>
+        <button class="sl-quiz-opt">Volume bars</button>
+        <button class="sl-quiz-opt">Tick bars</button>
+        <div class="sl-quiz-explain">Volume bars hold a fixed quantity traded fixed; dollar bars hold a fixed traded value fixed, which stays comparable even as a price level drifts over years.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Why do time bars produce statistically worse-behaved returns than volume or dollar bars?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Trading activity is uneven across a session, so a fixed clock oversamples quiet periods and undersamples bursts</button>
+        <button class="sl-quiz-opt">Because time bars round prices to fewer decimal places</button>
+        <button class="sl-quiz-opt">Because time bars can only be built from daily data, never intraday</button>
+        <div class="sl-quiz-explain">A fixed wall-clock interval samples at the same rate regardless of real activity. Volume/dollar bars speed up exactly when genuine activity speeds up, keeping each bar's information content comparable — which pushes their returns closer to IID and Gaussian.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>In the worked example, roughly what share of the hour's ticks landed inside just 5 of its 60 one-minute time bars?</h4>
+        <button class="sl-quiz-opt" data-correct="true">About 89%</button>
+        <button class="sl-quiz-opt">About 50%</button>
+        <button class="sl-quiz-opt">About 10%</button>
+        <div class="sl-quiz-explain">Roughly 4,000 of the hour's ~4,500 total ticks arrived during the 5-minute release burst — about 89% of the hour's activity, compressed into 5 of its 60 fixed bars.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Raw ≠ trading-ready — a tick passes through capture, validation, cleaning, normalization, bar construction, and storage before anything gets modeled on it.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Ingestion captures; it doesn't correct — fixing before durable capture destroys the audit trail a later fix needs to be checked against.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Bar construction is a foundational, separate choice inside ingestion — time, tick, volume, and dollar bars are the four standard sampling clocks (López de Prado, <em>AFML</em>, Ch. 2).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Time bars are the default — and the statistically weakest — because trading activity clusters unevenly across a session, and a fixed clock can't tell a quiet minute from a frantic one.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Volume and dollar bars sample by activity, not the clock, so each bar keeps representing a comparable slice of genuine turnover — pushing returns closer to IID and Gaussian.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>This is the map, not the destination — cleaning, normalization, storage, and point-in-time serving each get their own dedicated lesson next in this category.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Recognize that "I have a chart" isn't the same claim as "I have trading-ready data." Ask which sampling clock a return series was built on before trusting its statistical behavior in a model that assumes IID, roughly-normal returns. Know which of the six pipeline stages a data problem actually belongs to, instead of patching it at the wrong one.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Data Cleaning: Outliers, Bad Ticks &amp; Missing Data</h3>
+        <p>The specific, defensible method for each failure mode Section 2's "Cleaning" stage waved at — and why a blanket rule for bad ticks is usually the wrong tool.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="data-cleaning-outliers-missing-data-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="data-pipeline-raw-to-trading-ready.html">Read the full data-pipeline lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Trading-activity intensity slider — fixed 5-minute window, baseline 50
+  // ticks. Time-bar count is always 5 (one per minute, unaffected by
+  // activity). Volume-bar count scales directly with the multiplier because
+  // the bar closes once a fixed amount of volume trades, and volume trades
+  // faster when activity is higher.
+  (function(){
+    var slider = document.getElementById('act-slider');
+    if (!slider) return;
+    var mval = document.getElementById('act-mval');
+    var ticksEl = document.getElementById('act-ticks');
+    var timeBarsEl = document.getElementById('act-timebars');
+    var volBarsEl = document.getElementById('act-volbars');
+    var dotsG = document.getElementById('act-dots');
+    var barsG = document.getElementById('act-bars');
+    var overflowEl = document.getElementById('act-overflow');
+    var captionEl = document.getElementById('act-caption');
+
+    var BASELINE_TICKS = 50;
+    var BASELINE_BARS = 5;
+    var MAX_DOTS = 40;
+    var BOX_X = 46, BOX_W = 548, BOX_Y1 = 40, BOX_Y2 = 65;
+
+    // Deterministic pseudo-random jitter so dots don't reflow on every update.
+    var seedX = [], seedY = [];
+    (function(){
+      var s = 42;
+      function rnd(){ s = (s * 1103515245 + 12345) % 2147483648; return s / 2147483648; }
+      for (var i = 0; i < MAX_DOTS; i++){ seedX.push(rnd()); seedY.push(rnd()); }
+    })();
+
+    function update(){
+      var m = parseInt(slider.value, 10) || 1;
+      mval.textContent = m.toFixed(1) + '×';
+      var ticks = BASELINE_TICKS * m;
+      var volBars = BASELINE_BARS * m;
+      ticksEl.textContent = ticks;
+      timeBarsEl.textContent = BASELINE_BARS;
+      volBarsEl.textContent = volBars;
+
+      // Time-bar panel: crowd a fixed box with up to MAX_DOTS dots.
+      var shown = Math.min(ticks, MAX_DOTS);
+      var dotsHtml = '';
+      for (var i = 0; i < shown; i++){
+        var x = BOX_X + seedX[i] * BOX_W;
+        var y = BOX_Y1 + 4 + seedY[i] * (BOX_Y2 - BOX_Y1 - 8);
+        dotsHtml += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="2.6" style="fill:var(--blue);opacity:.85"/>';
+      }
+      dotsG.innerHTML = dotsHtml;
+      overflowEl.textContent = ticks > MAX_DOTS ? ('+' + (ticks - MAX_DOTS) + ' more, same fixed box') : '';
+
+      // Volume-bar panel: draw volBars equal-width rectangles across the same box.
+      var gap = 2;
+      var w = (BOX_W - gap * (volBars - 1)) / volBars;
+      var barsHtml = '';
+      for (var b = 0; b < volBars; b++){
+        var bx = BOX_X + b * (w + gap);
+        barsHtml += '<rect x="' + bx.toFixed(1) + '" y="130" width="' + Math.max(w, 0.6).toFixed(1) + '" height="25" rx="1.5" style="fill:var(--green);opacity:.8"/>';
+      }
+      barsG.innerHTML = barsHtml;
+
+      captionEl.textContent = m === 1
+        ? 'At 1× (uniform activity), both clocks agree almost exactly.'
+        : (volBars + ' volume bars vs. always ' + BASELINE_BARS + ' time bars — the activity clock keeps up, the wall clock can\'t.');
+    }
+
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Volume-bar vs. time-bar count calculator, with a defensive guard against
+  // blank, non-finite, or zero denominators.
+  (function(){
+    var vbTotal = document.getElementById('vb-total');
+    if (!vbTotal) return;
+    var vbTarget = document.getElementById('vb-target');
+    var vbResult = document.getElementById('vb-result');
+    var tbSession = document.getElementById('tb-session');
+    var tbBarlen = document.getElementById('tb-barlen');
+    var tbResult = document.getElementById('tb-result');
+    var cmpRatio = document.getElementById('cmp-ratio');
+    var resetBtn = document.getElementById('bars-reset');
+
+    var DEFAULTS = { total: 2400000, target: 40000, session: 1440, barlen: 1 };
+
+    function fmtInt(n){ return Math.round(n).toLocaleString(); }
+
+    function recompute(){
+      var total = parseFloat(vbTotal.value);
+      var target = parseFloat(vbTarget.value);
+      var session = parseFloat(tbSession.value);
+      var barlen = parseFloat(tbBarlen.value);
+
+      var volBars = null;
+      if (isFinite(total) && isFinite(target) && target > 0 && total >= 0) {
+        volBars = total / target;
+        vbResult.textContent = fmtInt(volBars);
+      } else {
+        vbResult.textContent = '—';
+      }
+
+      var timeBars = null;
+      if (isFinite(session) && isFinite(barlen) && barlen > 0 && session >= 0) {
+        timeBars = session / barlen;
+        tbResult.textContent = fmtInt(timeBars);
+      } else {
+        tbResult.textContent = '—';
+      }
+
+      if (volBars !== null && timeBars !== null && volBars > 0) {
+        cmpRatio.textContent = (timeBars / volBars).toFixed(1) + '×';
+      } else {
+        cmpRatio.textContent = '—';
+      }
+    }
+
+    [vbTotal, vbTarget, tbSession, tbBarlen].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      vbTotal.value = DEFAULTS.total; vbTarget.value = DEFAULTS.target;
+      tbSession.value = DEFAULTS.session; tbBarlen.value = DEFAULTS.barlen;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

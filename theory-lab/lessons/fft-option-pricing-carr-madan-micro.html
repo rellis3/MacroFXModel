@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FFT Option Pricing (Carr-Madan) — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">FFT Option Pricing (Carr-Madan) — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivation, the discretization trade-off, and a 5-question self-test?<a href="fft-option-pricing-carr-madan.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Numerical Methods 5 (final) · Numerical Methods</div>
+      <h1 class="sl-h1">One FFT Call, <em>an Entire Strike Curve</em></h1>
+      <p class="sl-lede">Heston-style models hand you a closed-form characteristic function but no closed-form price — pricing one strike means numerically integrating that function, which is fine once. It stops being fine the moment a calibration routine needs to reprice a whole observed strike curve, at every candidate parameter set, hundreds or thousands of times before it converges. Carr &amp; Madan's 1999 insight reframes the entire strike curve as one Fourier transform, so a single Fast Fourier Transform call — not one integration per strike — produces the whole thing at once.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Two families of "tractable" models</h2>
+      <p class="sl-sub">Every model here has a closed-form characteristic function φ_T(u). Not every model has a closed-form price.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="cf-tabs">
+          <button class="sl-tab active" data-panel="cf-1">Black-Scholes</button>
+          <button class="sl-tab" data-panel="cf-2">Heston / SABR-style</button>
+        </div>
+        <div class="sl-panel active" id="cf-1">
+          <div class="sl-row"><div class="sl-box">φ_T(u) known</div><div class="sl-arrow">and</div><div class="sl-box green">C(K) closed-form</div></div>
+          <div class="sl-verdict">Both the characteristic function <strong>and</strong> a direct algebraic price formula exist. Black-Scholes never needs numerical integration or an FFT to price a single vanilla option — the formula just evaluates.</div>
+        </div>
+        <div class="sl-panel" id="cf-2">
+          <div class="sl-row"><div class="sl-box">φ_T(u) known</div><div class="sl-arrow">but</div><div class="sl-box amber">C(K) not closed-form</div></div>
+          <div class="sl-verdict">Heston, and SABR-style stochastic-volatility models, hand you a clean φ_T — but there is no algebraic price formula. The price has to be recovered <em>from</em> φ_T: one strike at a time by direct numerical integration, or, as this lesson covers, a whole strike grid at once by FFT.</div>
+        </div>
+      </div>
+      <p class="sl-p">This lesson picks up exactly where the Heston Model lesson left a deliberately unresolved loose end — a "semi-closed-form" price built from a characteristic function, evaluated by numerical integration — and where the Numerical Integration lesson's "one-dimensional integral, evaluated with Simpson's rule" already covers pricing <em>one</em> option, <em>one</em> time.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">One integration prices one strike</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">∫</div><div><h4>Reduces to a 1D integral</h4><p>A characteristic-function pricing formula turns option pricing into a single one-dimensional integral over a frequency variable — smooth, low-dimensional, exactly where deterministic quadrature (Simpson's rule or similar) is the right tool.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">✓</div><div><h4>Correct, and complete — for one price</h4><p>Set up the integral, evaluate it, get one number. Nothing about this is wrong or approximate in a worrying way.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔁</div><div><h4>But repeats per strike</h4><p>A 50-strike option chain means 50 separate integrations — one per strike, with its own function-evaluation cost, run independently of every other strike.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⏱</div><div><h4>And repeats per calibration try</h4><p>Fitting a model to an observed smile means running that whole 50-integration pass again at every candidate parameter set an optimizer proposes — not once.</p></div></div>
+      </div>
+      <div class="sl-quote">The Numerical Integration lesson already covers this exact case: a characteristic-function pricing formula reduces option pricing to a one-dimensional integral, routinely evaluated with Simpson's rule. That is a complete, honest answer — for pricing <strong>one</strong> option, at <strong>one</strong> strike, <strong>one</strong> time. It is not an answer to what calibration actually asks for.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Calibration multiplies the cost</h2>
+      <p class="sl-sub">Fitting a smile isn't pricing once — it's pricing the entire observed curve, again and again, inside a search.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The multiplication nobody skips</div>
+        <div class="sl-row"><div class="sl-box">N strikes</div><div class="sl-arrow">×</div><div class="sl-box">M parameter sets tried</div><div class="sl-arrow">=</div><div class="sl-box amber">N × M integrations</div></div>
+        <div class="sl-verdict">Every candidate (κ, θ, ξ, ρ, v₀) the optimizer proposes needs the <strong>whole</strong> strike curve repriced and compared to market quotes before the search can tell if it's a better fit — not just one strike.</div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">A realistic overnight run</div>
+        <p>200 strikes — a routine size for a single-name or FX option chain across one expiry — times 500 candidate parameter sets before an optimizer converges is <strong>100,000</strong> separate one-dimensional numerical integrations, each with its own real cost, before a single overnight Heston calibration finishes.</p>
+      </div>
+      <p class="sl-p">That is the gap Peter Carr and Dilip Madan closed in 1999: a way to price an <em>entire strip</em> of strikes in a single Fast Fourier Transform call, turning what would be N separate integrations into one O(N log N) computation covering the whole grid at once.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">The snag, and the fix</h2>
+      <p class="sl-sub">A Fourier transform needs its input to fade to zero. The raw call price refuses to.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Raw price — C_T(k)</span>
+          <p>As log-strike k → −∞ (strike toward zero), a call's price approaches the discounted forward price, not zero. It stays large instead of decaying — so C_T(k) is <strong>not square-integrable</strong>, and directly Fourier-transforming it diverges near the money.</p>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Damped price — c_T(k) = e^(αk)·C_T(k)</span>
+          <p>Multiply by a decaying exponential in k, tuned by a positive constant α. The damped price actually vanishes on both tails, so its Fourier transform exists and converges cleanly — this, not the raw price, is what gets transformed.</p>
+        </div>
+      </div>
+      <div class="sl-quote">The role of α is purely technical, not economic — it doesn't change what an option is worth. It's a mathematical device that pulls the price toward zero fast enough for the transform to exist. Recovering the true price later just means multiplying back by e^(−αk).</div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">The published result: ψ_T(v)</h2>
+      <p class="sl-sub">Carr &amp; Madan (1999)'s central contribution — the Fourier transform of the damped price, in closed form.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">φ</div><div><h4>φ_T(v−(α+1)i) — numerator</h4><p>The model's characteristic function, evaluated at a shifted, complex argument. This is the <strong>one</strong> place the specific model — Heston, or any other with a known φ_T — enters the formula.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">e</div><div><h4>e^(−rT) — discounting</h4><p>Brings the risk-neutral expected payoff back to a present value, the same discounting role it plays throughout option pricing.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">÷</div><div><h4>α²+α−v²+i(2α+1)v — denominator</h4><p>A fixed function of α and the transform variable v, generic machinery that falls out of transforming the damped price — identical for every model plugged in.</p></div></div>
+      </div>
+      <div class="sl-quote">Stated here as the correctly cited published result, not re-derived line by line — the same house convention this curriculum uses for other closed forms, including Heston's own semi-closed-form pricing formula in the previous lesson.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Inversion is exactly FFT-shaped</h2>
+      <p class="sl-sub">Recovering C_T(k) from ψ_T(v) means inverting the transform. Discretized on a grid, that inversion <em>is</em> a discrete Fourier transform.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The same problem, two ways</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Top: N separate strikes each running its own numerical integration to its own price. Bottom: one characteristic function feeding one FFT call that outputs the whole grid of strike prices at once.">
+            <defs>
+              <marker id="fm-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0,0 L10,5 L0,10 z" style="fill:var(--text3)"/>
+              </marker>
+            </defs>
+
+            <text x="10" y="22" font-size="12" font-weight="700" fill="var(--red)">The slow way — one integration per strike</text>
+            <g font-family="'DM Mono',monospace" font-size="10.5">
+              <g>
+                <rect x="10" y="34" width="46" height="24" rx="4" style="fill:none;stroke:var(--red);stroke-width:1.5"/>
+                <text x="33" y="50" text-anchor="middle" fill="var(--red)">k₁</text>
+                <line x1="56" y1="46" x2="80" y2="46" style="stroke:var(--text3);stroke-width:1.2" marker-end="url(#fm-arrow)"/>
+                <rect x="80" y="34" width="46" height="24" rx="4" style="fill:none;stroke:var(--text3);stroke-width:1.5"/>
+                <text x="103" y="50" text-anchor="middle" fill="var(--text2)">∫dv</text>
+                <line x1="126" y1="46" x2="150" y2="46" style="stroke:var(--text3);stroke-width:1.2" marker-end="url(#fm-arrow)"/>
+                <rect x="150" y="34" width="46" height="24" rx="4" style="fill:none;stroke:var(--red);stroke-width:1.5"/>
+                <text x="173" y="50" text-anchor="middle" fill="var(--red)">C₁</text>
+              </g>
+              <g transform="translate(0,34)">
+                <rect x="10" y="34" width="46" height="24" rx="4" style="fill:none;stroke:var(--red);stroke-width:1.5"/>
+                <text x="33" y="50" text-anchor="middle" fill="var(--red)">k₂</text>
+                <line x1="56" y1="46" x2="80" y2="46" style="stroke:var(--text3);stroke-width:1.2" marker-end="url(#fm-arrow)"/>
+                <rect x="80" y="34" width="46" height="24" rx="4" style="fill:none;stroke:var(--text3);stroke-width:1.5"/>
+                <text x="103" y="50" text-anchor="middle" fill="var(--text2)">∫dv</text>
+                <line x1="126" y1="46" x2="150" y2="46" style="stroke:var(--text3);stroke-width:1.2" marker-end="url(#fm-arrow)"/>
+                <rect x="150" y="34" width="46" height="24" rx="4" style="fill:none;stroke:var(--red);stroke-width:1.5"/>
+                <text x="173" y="50" text-anchor="middle" fill="var(--red)">C₂</text>
+              </g>
+              <text x="33" y="105" text-anchor="middle" fill="var(--text3)" font-size="16">⋮</text>
+              <text x="103" y="105" text-anchor="middle" fill="var(--text3)" font-size="16">⋮</text>
+              <text x="173" y="105" text-anchor="middle" fill="var(--text3)" font-size="16">⋮</text>
+              <g transform="translate(0,82)">
+                <rect x="10" y="34" width="46" height="24" rx="4" style="fill:none;stroke:var(--red);stroke-width:1.5"/>
+                <text x="33" y="50" text-anchor="middle" fill="var(--red)">k_N</text>
+                <line x1="56" y1="46" x2="80" y2="46" style="stroke:var(--text3);stroke-width:1.2" marker-end="url(#fm-arrow)"/>
+                <rect x="80" y="34" width="46" height="24" rx="4" style="fill:none;stroke:var(--text3);stroke-width:1.5"/>
+                <text x="103" y="50" text-anchor="middle" fill="var(--text2)">∫dv</text>
+                <line x1="126" y1="46" x2="150" y2="46" style="stroke:var(--text3);stroke-width:1.2" marker-end="url(#fm-arrow)"/>
+                <rect x="150" y="34" width="46" height="24" rx="4" style="fill:none;stroke:var(--red);stroke-width:1.5"/>
+                <text x="173" y="50" text-anchor="middle" fill="var(--red)">C_N</text>
+              </g>
+              <text x="230" y="60" font-size="11" fill="var(--text3)">N separate 1D integrations,</text>
+              <text x="230" y="74" font-size="11" fill="var(--text3)">O(N) integrations total —</text>
+              <text x="230" y="88" font-size="11" fill="var(--text3)">each with its own real cost</text>
+            </g>
+
+            <line x1="10" y1="176" x2="630" y2="176" style="stroke:var(--border2);stroke-width:1"/>
+
+            <text x="10" y="200" font-size="12" font-weight="700" fill="var(--green)">The fast way — one FFT call, whole grid at once</text>
+            <g font-family="'DM Mono',monospace" font-size="11">
+              <rect x="10" y="214" width="110" height="66" rx="6" style="fill:none;stroke:var(--blue);stroke-width:2"/>
+              <text x="65" y="244" text-anchor="middle" fill="var(--blue)">φ_T(u)</text>
+              <text x="65" y="262" text-anchor="middle" font-size="9" fill="var(--text3)" font-family="'DM Sans',sans-serif">characteristic fn</text>
+
+              <line x1="120" y1="247" x2="150" y2="247" style="stroke:var(--text3);stroke-width:1.5" marker-end="url(#fm-arrow)"/>
+
+              <rect x="150" y="214" width="110" height="66" rx="6" style="fill:none;stroke:var(--amber);stroke-width:2"/>
+              <text x="205" y="244" text-anchor="middle" fill="var(--amber)">ψ_T(v)</text>
+              <text x="205" y="262" text-anchor="middle" font-size="9" fill="var(--text3)" font-family="'DM Sans',sans-serif">damped transform</text>
+
+              <line x1="260" y1="247" x2="290" y2="247" style="stroke:var(--text3);stroke-width:1.5" marker-end="url(#fm-arrow)"/>
+
+              <rect x="290" y="214" width="90" height="66" rx="6" style="fill:none;stroke:var(--green);stroke-width:2"/>
+              <text x="335" y="244" text-anchor="middle" fill="var(--green)">FFT</text>
+              <text x="335" y="262" text-anchor="middle" font-size="9" fill="var(--text3)" font-family="'DM Sans',sans-serif">O(N log N)</text>
+
+              <line x1="380" y1="247" x2="410" y2="247" style="stroke:var(--text3);stroke-width:1.5" marker-end="url(#fm-arrow)"/>
+
+              <rect x="410" y="204" width="220" height="86" rx="6" style="fill:none;stroke:var(--purple);stroke-width:2"/>
+              <text x="520" y="238" text-anchor="middle" fill="var(--purple)">C_T(k₁ … k_N)</text>
+              <text x="520" y="256" text-anchor="middle" font-size="9" fill="var(--text3)" font-family="'DM Sans',sans-serif">the whole strike grid,</text>
+              <text x="520" y="270" text-anchor="middle" font-size="9" fill="var(--text3)" font-family="'DM Sans',sans-serif">all N prices, one call</text>
+            </g>
+          </svg>
+        </div>
+        <div class="sl-verdict">Once v is put on an evenly-spaced grid, the inversion integral is structurally a discrete Fourier transform — evaluated at every log-strike k the grid implies, simultaneously. That is precisely what the FFT algorithm computes efficiently: one O(N log N) call instead of N separate O(1)-each integrations.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">The complexity payoff, made visible</h2>
+      <p class="sl-sub">Drag N — the number of strikes a calibration pass needs. Watch how each route's illustrative cost responds.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — illustrative, not a benchmark</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two horizontal bars: naive per-strike integration cost, which grows in proportion to N, versus one FFT call, which grows only in proportion to N log N and stays visually small across the same range.">
+            <text x="10" y="24" font-size="11.5" fill="var(--red)" font-family="'DM Mono',monospace">Naive — N separate integrations</text>
+            <rect x="10" y="32" width="480" height="4" rx="2" style="fill:var(--border2)"/>
+            <rect id="cost-naive-bar" x="10" y="32" width="20" height="4" rx="2" style="fill:var(--red)"/>
+            <text id="cost-naive-label" x="500" y="37" font-size="11" fill="var(--red)" font-family="'DM Mono',monospace">40 ms</text>
+
+            <text x="10" y="84" font-size="11.5" fill="var(--green)" font-family="'DM Mono',monospace">FFT — one O(N log N) call</text>
+            <rect x="10" y="92" width="480" height="4" rx="2" style="fill:var(--border2)"/>
+            <rect id="cost-fft-bar" x="10" y="92" width="4" height="4" rx="2" style="fill:var(--green)"/>
+            <text id="cost-fft-label" x="500" y="97" font-size="11" fill="var(--green)" font-family="'DM Mono',monospace">0.86 ms</text>
+
+            <text x="10" y="132" font-size="11" fill="var(--text3)">Bars use the same fixed unit-cost model at every N — only N changes.</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Strikes needed (N)</span><span class="sl-live" id="cost-nval">N = 200</span></div>
+        <input type="range" class="sl-slider" id="cost-slider" min="20" max="1000" step="20" value="200">
+        <div class="sl-verdict">At this N, the naive route costs roughly <strong id="cost-speedup">46.4×</strong> the FFT route — and that gap only widens as N grows, because one side scales with N and the other scales with N·log₂N against a far smaller per-unit cost.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Do the math yourself</h2>
+      <p class="sl-sub">Same comparison, with your own numbers — enter strikes, a per-integration time estimate, and what one FFT call costs.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Strikes needed (N)</label><input type="number" class="sl-input" id="fftc-n" value="200" step="10" min="0"></div>
+          <div class="sl-calc-op">×</div>
+          <div class="sl-calc-field"><label>Cost / integration (ms)</label><input type="number" class="sl-input" id="fftc-cost" value="2" step="0.1" min="0"></div>
+          <div class="sl-calc-op">vs</div>
+          <div class="sl-calc-field"><label>One FFT call (ms)</label><input type="number" class="sl-input" id="fftc-fft" value="15" step="1" min="0"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Speedup</div>
+            <div class="sl-calc-result-val" id="fftc-speedup">26.7×</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Naive total (N × cost/strike) = <b id="fftc-naive">400.00</b> ms</div>
+          <div>FFT total (one call, whole grid) = <b id="fftc-ffttotal">15.00</b> ms</div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="fftc-reset">Reset to worked-example numbers</button>
+        <div class="sl-note">One FFT call's cost is set by the FFT grid size chosen (typically a power of two comfortably larger than N, e.g. 4096) — not by how many strikes are actually needed, which is why it barely moves as N changes while the naive total scales with N directly.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Where this lives on a real desk</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🌊</div><div><h4>Stochastic-volatility calibration</h4><p>Heston, and jump-diffusion cousins like Merton's or Bates' — fitting five-plus parameters to an observed implied-volatility surface, overnight or intraday.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📐</div><div><h4>Any tractable characteristic function</h4><p>Affine and exponential-Lévy models broadly — a wide, practically important class covering most tractable option-pricing models used in production.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚡</div><div><h4>Real-time repricing</h4><p>Once a parameter set is fixed, quoting a fresh strike off the same FFT grid is essentially free — the expensive part already happened.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⏳</div><div><h4>Feasible vs. infeasible</h4><p>The difference between an overnight calibration that finishes before the desk opens and one that doesn't converge in time to be useful.</p></div></div>
+      </div>
+      <div class="sl-quote">A quant recalibrating Heston's five parameters against that morning's full implied-volatility surface — a few hundred quoted prices, thousands of candidate parameter sets tried by the optimizer — is exactly the workload Carr-Madan targets: not a new source of edge, but the infrastructure that makes running the existing model's calibration at the required scale and speed practically possible at all.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Where it doesn't apply</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Works when</span>
+          <ul>
+            <li>A closed-form characteristic function φ_T exists — Heston, SABR-style, jump-diffusion, affine/exponential-Lévy models</li>
+            <li>Many strikes need repricing repeatedly — calibration, real-time quoting across a chain</li>
+          </ul>
+        </div>
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Doesn't work when</span>
+          <ul>
+            <li>No closed-form φ_T exists — many local-volatility specifications have nothing to plug in</li>
+            <li>Pricing one option, one strike, one time — plain quadrature already does the job with none of the setup</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>The damping factor α and the FFT's strike/frequency grid spacing (η, λ) are not free choices — they trade off against each other (a discrete-FFT uncertainty-principle-style constraint), a real tuning step in any implementation. And a fast calibration loop is still curve-fitting: speed says nothing about whether the fitted parameters generalize out-of-sample, the same caveat the Heston lesson raises about a good smile fit.</p>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Status check — verified against this repo's current source</div>
+        <p>This lesson is conceptual, and that status still holds: this repository has no characteristic-function option pricer, no Heston or SABR calibration routine, and no FFT-based option pricing anywhere in its actual source code (checked directly — every "fft" hit outside Theory Lab was a substring inside an unrelated word or ID, not an FFT call). Nothing here has changed since the Heston and SABR lessons made the same finding.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Why can't the raw call price C_T(k) simply be Fourier-transformed as-is?</h4>
+        <button class="sl-quiz-opt" data-correct="true">As k → −∞ it approaches the discounted forward price instead of decaying to zero, so it isn't square-integrable</button>
+        <button class="sl-quiz-opt">Because k is a complex number, not a real one</button>
+        <button class="sl-quiz-opt">Because Fourier transforms only apply to probability distributions</button>
+        <div class="sl-quiz-explain">A Fourier transform needs its input to fade to zero for the integral to converge. C_T(k) stays large near the money instead of shrinking — Carr &amp; Madan fix this by transforming a damped version, e^(αk)C_T(k), instead.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Where does the specific pricing model (e.g. Heston) actually enter ψ_T(v)?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Entirely through φ_T, evaluated at the shifted argument v−(α+1)i</button>
+        <button class="sl-quiz-opt">Through the discounting term e^(−rT)</button>
+        <button class="sl-quiz-opt">Through the denominator α²+α−v²+i(2α+1)v</button>
+        <div class="sl-quiz-explain">Everything else in ψ_T(v) is generic machinery, identical no matter which model supplied φ_T. Swap in a different model's characteristic function and the rest of the pipeline is unchanged.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Why does discretizing the inversion integral over v make it FFT-computable?</h4>
+        <button class="sl-quiz-opt" data-correct="true">On an evenly-spaced grid, the integral becomes structurally a discrete Fourier transform, evaluated at every k at once</button>
+        <button class="sl-quiz-opt">Because discretizing removes the need for a characteristic function</button>
+        <button class="sl-quiz-opt">Because FFTs only work on discrete data, so this step is unrelated to speed</button>
+        <div class="sl-quiz-explain">Once v sits on a grid, the sum is exactly the summation-of-complex-exponentials shape an FFT computes in O(N log N) — across the whole grid simultaneously, not one point at a time.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>200 strikes, 500 calibration parameter sets — roughly how do the two routes' operation counts compare?</h4>
+        <button class="sl-quiz-opt" data-correct="true">100,000 separate integrations versus 500 FFT calls — about a 200× reduction in call count</button>
+        <button class="sl-quiz-opt">Both routes need exactly 500 operations</button>
+        <button class="sl-quiz-opt">The FFT route needs 100,000 calls too, just faster ones</button>
+        <div class="sl-quiz-explain">200 × 500 = 100,000 one-dimensional integrations for the direct route. Carr-Madan needs one FFT call per parameter set — 500 total — since each call already covers the entire strike grid.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Does Carr-Madan speed up pricing under a local-volatility model with no known closed-form characteristic function?</h4>
+        <button class="sl-quiz-opt" data-correct="true">No — with no φ_T, there is nothing for the damping-and-transform machinery to operate on</button>
+        <button class="sl-quiz-opt">Yes, FFT is a universal pricing accelerator for any model</button>
+        <button class="sl-quiz-opt">Yes, as long as the strikes are evenly spaced</button>
+        <div class="sl-quiz-explain">The entire construction is built on having φ_T in closed form. Without one, the fallback is Monte Carlo simulation or a PDE solve — the same tools the Numerical Integration lesson names for genuinely hard pricing problems.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Heston- and SABR-style models have a known characteristic function φ_T but no closed-form price — recovering a price means transforming φ_T, not evaluating an algebraic formula.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Calibration reprices the entire strike curve at every candidate parameter set — N strikes × M optimizer iterations, an explosion in integration count fast.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>The raw call price isn't square-integrable near the money — damping it by e^(αk) fixes that before any transform is taken.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Carr &amp; Madan's ψ_T(v) has a clean closed form in terms of φ_T — stated as the published result, not re-derived, the same convention this curriculum uses for other closed forms.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Discretizing the inversion integral turns it into exactly the shape an FFT computes — one O(N log N) call prices a whole strike grid at once, instead of N separate integrations.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>It only works when a tractable φ_T exists, and a fast calibration loop is not a validated one — speed is infrastructure, not evidence the fitted model is correct.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Recognize when a pricing problem is a Carr-Madan candidate — a tractable characteristic function plus a need to reprice many strikes fast and repeatedly. Understand why an entire calibration loop's runtime hinges on collapsing "one integration per strike" into "one FFT call, whole grid" — and just as importantly, recognize the boundary: no closed-form φ_T means no Carr-Madan speedup, full stop, and Monte Carlo or a PDE solve are the real fallback.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Market Microstructure: Price Impact &amp; the Bid-Ask Spread</h3>
+        <p>Kyle's Lambda and the Glosten-Milgrom model — why an anonymous order's uncertainty is the formal origin of the bid-ask spread.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="market-microstructure-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="fft-option-pricing-carr-madan.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Section 7 — complexity payoff slider. Illustrative unit-cost model only:
+  // naive route = N strikes * fixed cost-per-integration; FFT route =
+  // FFT_CONST * N * log2(N), where FFT_CONST is deliberately tiny relative
+  // to the naive per-strike cost (an FFT butterfly op is trivial arithmetic;
+  // a single characteristic-function integration is not). Bars are scaled
+  // against the naive cost at the slider's maximum N so both stay on screen.
+  (function(){
+    var slider = document.getElementById('cost-slider');
+    if (!slider) return;
+    var nVal = document.getElementById('cost-nval');
+    var naiveBar = document.getElementById('cost-naive-bar');
+    var fftBar = document.getElementById('cost-fft-bar');
+    var naiveLabel = document.getElementById('cost-naive-label');
+    var fftLabel = document.getElementById('cost-fft-label');
+    var speedupEl = document.getElementById('cost-speedup');
+
+    var COST_PER_STRIKE = 2;      // ms, illustrative — one direct integration
+    var FFT_CONST = 0.01;         // ms per (N log2 N) unit, illustrative
+    var MAX_N = parseFloat(slider.max);
+    var MAX_COST = MAX_N * COST_PER_STRIKE; // scale reference for bar widths
+    var TRACK_W = 480;
+    var MIN_BAR = 4;
+
+    function update(){
+      var n = parseInt(slider.value, 10);
+      nVal.textContent = 'N = ' + n;
+
+      var naiveCost = n * COST_PER_STRIKE;
+      var fftCost = n > 1 ? FFT_CONST * n * (Math.log(n) / Math.LN2) : FFT_CONST * n;
+
+      var naiveW = Math.max(MIN_BAR, (naiveCost / MAX_COST) * TRACK_W);
+      var fftW = Math.max(MIN_BAR, (fftCost / MAX_COST) * TRACK_W);
+
+      naiveBar.setAttribute('width', naiveW.toFixed(1));
+      fftBar.setAttribute('width', fftW.toFixed(1));
+
+      naiveLabel.textContent = naiveCost.toFixed(naiveCost < 10 ? 2 : 0) + ' ms';
+      naiveLabel.setAttribute('x', (10 + naiveW + 10).toFixed(1));
+      fftLabel.textContent = fftCost.toFixed(2) + ' ms';
+      fftLabel.setAttribute('x', (10 + fftW + 10).toFixed(1));
+
+      var speedup = fftCost > 0 ? naiveCost / fftCost : 0;
+      speedupEl.textContent = speedup.toFixed(1) + '×';
+    }
+
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Section 8 — "Do the math yourself" calculator, with defensive guards.
+  (function(){
+    var n = document.getElementById('fftc-n');
+    if (!n) return;
+    var cost = document.getElementById('fftc-cost');
+    var fft = document.getElementById('fftc-fft');
+    var naiveOut = document.getElementById('fftc-naive');
+    var fftOut = document.getElementById('fftc-ffttotal');
+    var speedupOut = document.getElementById('fftc-speedup');
+    var resetBtn = document.getElementById('fftc-reset');
+    var DEFAULTS = { n: 200, cost: 2, fft: 15 };
+
+    function fmt(v){ return v.toFixed(2); }
+
+    function recompute(){
+      var nv = parseFloat(n.value), cv = parseFloat(cost.value), fv = parseFloat(fft.value);
+
+      if (!isFinite(nv) || !isFinite(cv) || !isFinite(fv) || nv <= 0 || cv < 0 || fv <= 0) {
+        naiveOut.textContent = '—';
+        fftOut.textContent = '—';
+        speedupOut.textContent = '—';
+        return;
+      }
+
+      var naiveTotal = nv * cv;
+      naiveOut.textContent = fmt(naiveTotal) + '';
+      fftOut.textContent = fmt(fv) + '';
+
+      if (fv === 0) {
+        speedupOut.textContent = '—';
+      } else {
+        speedupOut.textContent = (naiveTotal / fv).toFixed(1) + '×';
+      }
+    }
+
+    [n, cost, fft].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      n.value = DEFAULTS.n; cost.value = DEFAULTS.cost; fft.value = DEFAULTS.fft;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

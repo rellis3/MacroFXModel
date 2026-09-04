@@ -546,6 +546,25 @@ class Mt5Broker:
         # over-long string is rejected with "Invalid comment argument".
         safe_comment = self._safe_comment(comment, f'Bot {direction[0]}')
 
+        # Stop-side pre-flight. A protective stop on the WRONG SIDE of the market (a
+        # BUY whose SL sits above the ask, a TP below it) is rejected with retcode 10016
+        # "Invalid stops" — and a caller that keeps its trigger armed will re-send the
+        # same doomed order every cooldown for the rest of the session. Nothing about the
+        # market can fix it, so refuse it here like a spread or duplicate block: one
+        # legible warning naming the side, no broker round-trip, no ERROR in the stream.
+        bad = None
+        if direction == 'LONG':
+            if sl and sl >= exec_price:   bad = f'SL {sl} is at/above the ask {exec_price}'
+            elif tp and 0 < tp <= exec_price: bad = f'TP {tp} is at/below the ask {exec_price}'
+        else:
+            if sl and sl <= exec_price:   bad = f'SL {sl} is at/below the bid {exec_price}'
+            elif tp and tp >= exec_price: bad = f'TP {tp} is at/above the bid {exec_price}'
+        if bad:
+            self.log.warning(f'INVALID STOPS {pair}: {direction} — {bad}; skipping (the '
+                             f'broker would reject this with retcode 10016)')
+            self.last_reject_reason = f'invalid_stops_side ({bad})'
+            return None
+
         digits = getattr(info, 'digits', None) or 5
         order = {
             'action':       mt5.TRADE_ACTION_DEAL,
@@ -679,10 +698,40 @@ class Mt5Broker:
         # and every attempt comes back retcode 10025 "No changes" forever.
         info = mt5.symbol_info(mt5_sym)
         digits = getattr(info, 'digits', None) or 5
-        if round(float(sl), digits) == round(float(positions[0].sl), digits):
-            return True                       # broker already holds this SL — no-op, not a failure
+        requested_sl = round(float(sl), digits)
+
+        # Minimum stop distance (found 2026-09-01: a chandelier trail that
+        # never respected this retried the SAME too-tight SL every tick
+        # forever, retcode 10016 "Invalid stops", with no back-off and no
+        # diagnostic price in the log). MT5 rejects any SL closer to the
+        # current price than `trade_stops_level` points (some brokers also
+        # enforce `trade_freeze_level` while a position is mid-modify; both
+        # read from the SAME symbol_info, so honour whichever is larger).
+        # Clamp INTO the allowed band rather than give up outright — a
+        # slightly looser stop that the broker actually accepts beats a
+        # tighter one rejected every single tick.
+        is_long = positions[0].type == getattr(mt5, 'POSITION_TYPE_BUY', 0)
+        tick = mt5.symbol_info_tick(mt5_sym)
+        clamped_sl = requested_sl
+        if tick and info:
+            point = float(getattr(info, 'point', 0.0) or 0.0)
+            min_pts = max(float(getattr(info, 'trade_stops_level', 0) or 0),
+                          float(getattr(info, 'trade_freeze_level', 0) or 0))
+            min_dist = min_pts * point
+            if min_dist > 0:
+                if is_long:
+                    limit = round(float(tick.bid) - min_dist, digits)
+                    if clamped_sl > limit:
+                        clamped_sl = limit
+                else:
+                    limit = round(float(tick.ask) + min_dist, digits)
+                    if clamped_sl < limit:
+                        clamped_sl = limit
+
+        if clamped_sl == round(float(positions[0].sl), digits):
+            return True                       # broker already holds this SL (post-clamp) — no-op, not a failure
         req = {'action': mt5.TRADE_ACTION_SLTP, 'symbol': mt5_sym,
-               'position': ticket, 'sl': round(float(sl), digits), 'magic': self.magic}
+               'position': ticket, 'sl': clamped_sl, 'magic': self.magic}
         if tp is not None:
             req['tp'] = round(float(tp), digits)
         res = mt5.order_send(req)
@@ -691,7 +740,16 @@ class Mt5Broker:
             return False
         if res.retcode == mt5.TRADE_RETCODE_DONE:
             return True
-        self.log.warning(f'Modify {ticket} retcode={res.retcode} comment={getattr(res, "comment", "")}')
+        # Rich enough to diagnose from the log alone, without needing to
+        # reproduce live: what we asked for, what we actually sent (post-
+        # clamp), and the live bid/ask/stops-level context it was judged
+        # against.
+        tick_desc = f'bid={tick.bid} ask={tick.ask}' if tick else 'tick=unavailable'
+        self.log.warning(
+            f'Modify {ticket} ({pair}) retcode={res.retcode} comment={getattr(res, "comment", "")} — '
+            f'requested_sl={requested_sl} sent_sl={clamped_sl} current_sl={positions[0].sl} '
+            f'{tick_desc} is_long={is_long}'
+        )
         return False
 
     def tradable(self, pair: str) -> bool:

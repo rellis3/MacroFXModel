@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Particle Filter — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">The Particle Filter — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivation, a worked N_eff example, and a 6-question self-test?<a href="particle-filter.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">State Space Extensions 1 · State Space Models Extensions</div>
+      <h1 class="sl-h1">When the Kalman Filter Runs Out of Road, <em>Send in a Crowd</em></h1>
+      <p class="sl-lede">The Kalman filter lesson tracked a hidden hedge ratio with two running numbers — a best estimate and a variance — and that trick worked only because of a convenient coincidence: linear dynamics plus Gaussian noise happen to keep the posterior belief exactly Gaussian, forever. Break either assumption — a genuinely nonlinear system, or noise with a fat tail — and that coincidence disappears. This lesson is the direct sequel: it replaces the single confident estimate with a weighted swarm of thousands of simulated guesses, called a particle filter, that can track a belief no clean formula could ever capture.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Why the closed form quietly disappears</h2>
+      <p class="sl-sub">The Kalman recursion isn't a general-purpose trick — it's a special case that happens to have an exact answer.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">∑</div><div><h4>Conjugacy is the whole reason it works</h4><p>A Gaussian prior, combined with a Gaussian likelihood that's <em>linearly</em> related to the state, produces an exactly Gaussian posterior. That's the only reason "mean plus variance" is ever enough to summarize a belief.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">∿</div><div><h4>Nonlinearity breaks it</h4><p>A squared term, a saturating function, a regime-dependent coefficient — feed a Gaussian through any of these and what comes out the other side is no longer Gaussian. There's generally no formula left to solve.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚡</div><div><h4>Fat-tailed or mixed noise breaks it too</h4><p>"Mostly small nudges, occasionally a large jump" is a two-component mixture, not one bell curve. A linear Kalman filter has exactly one Gaussian process-noise term, Q, and no way to represent that shape honestly.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔇</div><div><h4>It fails quietly, not loudly</h4><p>Forced onto a nonlinear or non-Gaussian problem, a Kalman filter doesn't crash — it silently returns a Gaussian approximation that can misjudge both the state and how confident to be about it.</p></div></div>
+      </div>
+      <div class="sl-quote">The true posterior, once either assumption breaks, can be skewed, fat-tailed, or genuinely <strong>multimodal</strong> — two or more separate clusters of plausible states, not one bump. A single mean and variance cannot represent "probably here, but there's a real chance it's actually over there instead." Something else has to.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Trade one confident guess for a crowd of guessers</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The intuition</div>
+        <p class="sl-p" style="margin-top:0">Recall the Kalman filter's boat-at-night analogy — one radar ping a minute, one running estimate. Now suppose the boat isn't drifting in a straight line at all: it's caught in a current that curves unpredictably, and once in a while it doesn't drift, it gets shoved hard by a wave. A single confident estimate has no way to represent "probably here, but there's a real chance it just got shoved somewhere else entirely."</p>
+        <p class="sl-p">So put a thousand guessers on the problem instead of one. Each holds their own candidate position. Every minute, each guesser moves their own candidate forward using their own understanding of how the boat drifts — including, for a few of them, "maybe a wave just hit." When the radar ping arrives, score every guesser by how consistent their candidate is with it. Guessers who turn out to be way off get quietly retired; guessers sitting where the data says the boat probably is get cloned. That crowd, re-scored every step, is a particle filter.</p>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🎲</div><div><h4>A particle is one concrete guess</h4><p>Not a formula, not a distribution — one specific candidate value for the hidden state, exactly like one guesser's current position.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚖</div><div><h4>A weight is how much the data believes it</h4><p>High weight means the observation is consistent with that guess; near-zero weight means the data has effectively ruled it out.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">◈◈</div><div><h4>Many guesses can be lopsided, or split</h4><p>A pile of weighted guesses can smear toward one side, or form two separate clumps — shapes a single tidy mean-and-variance summary simply cannot draw.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Same state-space idea, generalized</h2>
+      <p class="sl-sub">Nothing about "a hidden state that evolves and produces noisy observations" changed — only what f, h, and the noise are allowed to be.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">The Kalman filter's special case</span>
+          <p>x&#7529; = x&#7529;&#8331;&#8321; + w&#7529; and y&#7529; = H&#7529;x&#7529; + v&#7529; — the transition and observation are both <em>linear</em>, and w&#7529;, v&#7529; are <em>Gaussian</em>. That combination is exactly what keeps the posterior Gaussian, forever.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">The particle filter's general case</span>
+          <p>x&#7529; = f(x&#7529;&#8331;&#8321;, w&#7529;) and y&#7529; = h(x&#7529;, v&#7529;) — f and h can be any function, nonlinear included, and w&#7529;, v&#7529; can be drawn from any distribution at all, Gaussian or not.</p>
+        </div>
+      </div>
+      <p class="sl-p">Instead of tracking a mean and a variance, a particle filter represents the belief about the hidden state as a weighted pile of concrete candidate values — formally, a sum of weighted spikes (Dirac deltas) at each particle's location, standing in for a full continuous probability curve. More particles, with higher weight, concentrated in one region means that region is believed more strongly. Given enough particles, that pile can approximate <strong>any</strong> shape — skewed, multimodal, fat-tailed — not just the one symmetric bump a Gaussian is stuck with.</p>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">The price of that generality</div>
+        <p>A particle filter never solves an integral in closed form — it approximates it with samples instead. That means the answer is now a Monte Carlo approximation with its own sampling variance, not an exact number the way a closed-form Kalman estimate is.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">One cycle, four steps</h2>
+      <p class="sl-sub">Initialize once; then propagate, weight, and (sometimes) resample, every single time a new observation arrives.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">1</div><div><h4>Initialize</h4><p>Draw N particles from the prior belief about the starting state, and give every one an equal weight, 1/N. Nobody has any reason to favor one guess over another yet.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">2</div><div><h4>Propagate</h4><p>Push every particle forward through the — possibly nonlinear — state transition, drawing a fresh, independent noise sample for each one. This is "predict," generalized: no data used yet.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">3</div><div><h4>Weight</h4><p>Once the new observation arrives, score each particle by the likelihood of seeing that observation given its own candidate state, then normalize so all weights sum to 1.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">4</div><div><h4>Resample</h4><p>Check how lopsided the weights have become. If it's gotten bad, draw a fresh set of N particles proportional to weight and reset every weight back to 1/N — discrediting the weak guesses, cloning the strong ones.</p></div></div>
+      </div>
+      <div class="sl-note">Steps 2 and 3 repeat every time step. Step 4 is conditional — it only fires when the swarm actually needs it, which is exactly what the next few slides quantify.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Watch the cycle run, one time step at a time</h2>
+      <p class="sl-sub">Five particles tracking a state whose true value is fixed at 1.30. Step through what happens to the swarm as observations arrive.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="cyc-tabs">
+          <button class="sl-tab active" data-panel="cyc-1">t = 1 — wide open</button>
+          <button class="sl-tab" data-panel="cyc-2">t = 2 — narrowing</button>
+          <button class="sl-tab" data-panel="cyc-3">t = 3 — converged</button>
+        </div>
+        <div class="sl-panel active" id="cyc-1">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 130" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Five particles scattered widely around the true state at time 1">
+            <line x1="40" y1="95" x2="600" y2="95" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="335" y1="20" x2="335" y2="110" style="stroke:var(--green);stroke-width:2" stroke-dasharray="3 3"/>
+            <text x="335" y="14" text-anchor="middle" font-size="10.5" fill="var(--green)">true state</text>
+            <circle cx="120" cy="95" r="9" style="fill:var(--blue);opacity:.55"/>
+            <circle cx="230" cy="95" r="10" style="fill:var(--blue);opacity:.6"/>
+            <circle cx="335" cy="95" r="11" style="fill:var(--blue);opacity:.65"/>
+            <circle cx="420" cy="95" r="9" style="fill:var(--blue);opacity:.55"/>
+            <circle cx="530" cy="95" r="8" style="fill:var(--blue);opacity:.5"/>
+          </svg></div>
+          <div class="sl-row"><div class="sl-box">Propagate</div><div class="sl-arrow">→</div><div class="sl-box">Weight</div><div class="sl-arrow">→</div><div class="sl-box amber">no resample</div></div>
+          <div class="sl-verdict">Particles were drawn from a broad prior and haven't seen much data yet — weights are similar (near-equal circle sizes), so N_eff is close to 5 and nothing needs replacing.</div>
+        </div>
+        <div class="sl-panel" id="cyc-2">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 130" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Five particles at time 2, with weight concentrating toward the ones nearest the true state">
+            <line x1="40" y1="95" x2="600" y2="95" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="335" y1="20" x2="335" y2="110" style="stroke:var(--green);stroke-width:2" stroke-dasharray="3 3"/>
+            <text x="335" y="14" text-anchor="middle" font-size="10.5" fill="var(--green)">true state</text>
+            <circle cx="150" cy="95" r="5" style="fill:var(--blue);opacity:.35"/>
+            <circle cx="255" cy="95" r="12" style="fill:var(--blue);opacity:.7"/>
+            <circle cx="330" cy="95" r="17" style="fill:var(--blue);opacity:.85"/>
+            <circle cx="400" cy="95" r="10" style="fill:var(--blue);opacity:.6"/>
+            <circle cx="500" cy="95" r="4" style="fill:var(--blue);opacity:.3"/>
+          </svg></div>
+          <div class="sl-row"><div class="sl-box">Propagate</div><div class="sl-arrow">→</div><div class="sl-box">Weight</div><div class="sl-arrow">→</div><div class="sl-box amber">N_eff dropping</div></div>
+          <div class="sl-verdict">A second observation reinforced the particles already sitting near the true state and further discredited the outliers — weight is now visibly uneven (circle sizes spreading apart).</div>
+        </div>
+        <div class="sl-panel" id="cyc-3">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 130" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Five particles after resampling at time 3, now clustered tightly around the true state">
+            <line x1="40" y1="95" x2="600" y2="95" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="335" y1="20" x2="335" y2="110" style="stroke:var(--green);stroke-width:2" stroke-dasharray="3 3"/>
+            <text x="335" y="14" text-anchor="middle" font-size="10.5" fill="var(--green)">true state</text>
+            <circle cx="308" cy="95" r="11" style="fill:var(--green);opacity:.65"/>
+            <circle cx="322" cy="95" r="11" style="fill:var(--green);opacity:.65"/>
+            <circle cx="335" cy="95" r="12" style="fill:var(--green);opacity:.7"/>
+            <circle cx="348" cy="95" r="11" style="fill:var(--green);opacity:.65"/>
+            <circle cx="362" cy="95" r="11" style="fill:var(--green);opacity:.65"/>
+          </svg></div>
+          <div class="sl-row"><div class="sl-box">Resample fired</div><div class="sl-arrow">→</div><div class="sl-box green">weights reset to 1/5</div></div>
+          <div class="sl-verdict">N_eff had fallen below the N/2 threshold, so the swarm resampled: the two outliers were dropped, the near-true-state particles were cloned, and every weight reset to equal. The finite particle budget is now spent where it matters.</div>
+        </div>
+      </div>
+      <p class="sl-p">Notice what resampling actually buys: it doesn't make the swarm "know more" about the true state than the data already implied — it reallocates a fixed number of particles away from candidates the data has ruled out and toward the ones it still supports.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Degeneracy: the swarm collapsing to one opinion</h2>
+      <p class="sl-sub">Left unchecked, the weighting step has a well-known failure mode.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The diagnostic</div>
+        <div class="sl-row"><div class="sl-box">N_eff</div><div class="sl-arrow">=</div><div class="sl-box">1 ÷ Σ(w_i²)</div></div>
+        <div class="sl-verdict">Ranges from <strong>1</strong> (total degeneracy — one particle carries essentially all the weight, the other N−1 are dead weight) up to <strong>N</strong> (perfectly healthy — every particle equally informative).</div>
+      </div>
+      <div class="sl-compare">
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Equal weights</span>
+          <p>Four particles, each weighted 0.25: Σw² = 4×0.25² = 0.25, so N_eff = 1/0.25 = <strong>4</strong> — the maximum possible. Every particle is pulling its weight.</p>
+        </div>
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Lopsided weights</span>
+          <p>Same four particles, weighted 0.70, 0.10, 0.10, 0.10: Σw² = 0.49 + 0.03 = 0.52, so N_eff = 1/0.52 ≈ <strong>1.92</strong>. There are still four particles — but the swarm is only behaving like about two.</p>
+        </div>
+      </div>
+      <p class="sl-p">Degeneracy is what motivates step 4 of the cycle in the first place: without resampling, one particle's weight tends to dominate almost completely after enough steps, and the population of N particles is effectively wasted on candidates that no longer matter. A common rule of thumb triggers resampling whenever N_eff drops below N/2.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Reweight a swarm live, and watch N_eff move</h2>
+      <p class="sl-sub">Particles (blue dots) sit at fixed positions along the state axis; size and opacity encode weight. Drag the slider to change how many particles are in play.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 210" xmlns="http://www.w3.org/2000/svg" id="pfN-svg" role="img" aria-label="A swarm of particles along a state axis, sized by weight, with a true hidden state marker and an observation line; a slider controls how many particles are simulated">
+            <line x1="60" y1="150" x2="610" y2="150" style="stroke:var(--border2);stroke-width:1"/>
+            <line id="pfN-obs" x1="357" y1="30" x2="357" y2="150" style="stroke:var(--amber);stroke-width:1.5" stroke-dasharray="4 3"/>
+            <text x="357" y="20" text-anchor="middle" font-size="10.5" fill="var(--amber)">observation y</text>
+            <path id="pfN-true-mark" d="M 335 165 l 7 9 l -7 9 l -7 -9 z" style="fill:var(--green)"/>
+            <text x="335" y="196" text-anchor="middle" font-size="10.5" fill="var(--green)">true state</text>
+            <g id="pfN-particles"></g>
+            <text x="60" y="170" text-anchor="middle" font-size="10" fill="var(--text3)">0.8</text>
+            <text x="610" y="170" text-anchor="middle" font-size="10" fill="var(--text3)">1.8</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Number of particles, N</span><span class="sl-live" id="pfN-nval">N = 20</span></div>
+        <input type="range" class="sl-slider" id="pfN-slider" min="5" max="60" step="5" value="20">
+        <div class="sl-calc-steps">
+          <div>Effective sample size: N_eff ≈ <b id="pfN-neff">—</b></div>
+          <div>Swarm efficiency (N_eff ÷ N): <b id="pfN-eff">—</b></div>
+          <div>Approx. Monte Carlo error (∝ 1/√N_eff): <b id="pfN-err">—</b></div>
+        </div>
+        <div class="sl-note">The particle cloud, its spread, and the observation are fixed — only N changes. Watch N_eff climb roughly in step with N (efficiency stays similar), while the approximation error keeps shrinking: more particles means the same swarm shape is now backed by more effective samples, at a proportional compute cost.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Compute N_eff yourself</h2>
+      <p class="sl-sub">Type any set of unnormalized likelihood values below — the calculator normalizes them into weights and computes N_eff, live.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Likelihood 1</label><input type="number" class="sl-input" id="ess-w1" value="0.95" step="0.05"></div>
+          <div class="sl-calc-field"><label>Likelihood 2</label><input type="number" class="sl-input" id="ess-w2" value="1.43" step="0.05"></div>
+          <div class="sl-calc-field"><label>Likelihood 3</label><input type="number" class="sl-input" id="ess-w3" value="1.61" step="0.05"></div>
+          <div class="sl-calc-field"><label>Likelihood 4</label><input type="number" class="sl-input" id="ess-w4" value="1.74" step="0.05"></div>
+          <div class="sl-calc-field"><label>Likelihood 5</label><input type="number" class="sl-input" id="ess-w5" value="1.61" step="0.05"></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Normalized weights: <b id="ess-weights">—</b></div>
+          <div>Σ(w_i²): <b id="ess-sumsq">—</b></div>
+          <div>N_eff = 1 ÷ Σ(w_i²): <b id="ess-neff">—</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="ess-reset">Reset to worked-example numbers</button>
+        <div class="sl-note" id="ess-note">Blank fields, negative numbers, non-numeric input, or all-zero likelihoods all show — rather than a crash — since none of those are a valid weight set.</div>
+      </div>
+      <p class="sl-p">The defaults are five particles' raw likelihoods against one observation — the exact numbers work out to N_eff ≈ 4.83 out of 5, a healthy swarm. Zero out every field to see the guard against dividing by zero; leave one blank to see the guard against missing input.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Resampling isn't a free fix</h2>
+      <p class="sl-sub">Cloning a credible particle isn't the same as generating new information about where the state actually is.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Resample too rarely</span>
+          <ul>
+            <li>Weight keeps concentrating onto fewer and fewer particles</li>
+            <li>N_eff drifts toward 1 — particle degeneracy</li>
+            <li>Most of the particle budget is spent on candidates the data has already ruled out</li>
+          </ul>
+        </div>
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Resample every single step</span>
+          <ul>
+            <li>Cloning happens even when the swarm was already healthy</li>
+            <li>Repeated cloning collapses the swarm to near-duplicate copies of a shrinking handful of originals</li>
+            <li>This is <strong>particle impoverishment</strong> — diversity lost even though N_eff looked fine right before the resample</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-quote">The fix for both failure modes is the same one already on the diagnostic slide: resample only when N_eff actually drops below a threshold, commonly N/2 — not unconditionally, and not never. Resampling is a real trade-off between fighting degeneracy and preserving diversity, not a correction with no cost.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">What a swarm can track that one bell curve can't</h2>
+      <p class="sl-sub">Picture a hedge ratio that usually drifts slowly — but around a scheduled rate decision, it sometimes re-prices in a single discontinuous jump instead.</p>
+      <div class="sl-svgwrap">
+        <svg viewBox="0 0 640 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Comparison of a single Gaussian bump the Kalman filter must use versus two separate clusters of particles a particle filter can represent at once">
+          <text x="160" y="16" text-anchor="middle" font-size="11.5" fill="var(--text2)" font-weight="600">Kalman filter — one Gaussian, forced to pick</text>
+          <path d="M 40,120 C 90,120 100,40 160,40 C 220,40 230,120 280,120" style="fill:none;stroke:var(--red);stroke-width:2.5"/>
+          <line x1="40" y1="120" x2="280" y2="120" style="stroke:var(--border2);stroke-width:1"/>
+          <text x="160" y="136" text-anchor="middle" font-size="10" fill="var(--text3)">must average the two possibilities into one wrong bump</text>
+
+          <text x="480" y="16" text-anchor="middle" font-size="11.5" fill="var(--text2)" font-weight="600">Particle filter — two live clusters at once</text>
+          <line x1="360" y1="120" x2="600" y2="120" style="stroke:var(--border2);stroke-width:1"/>
+          <circle cx="405" cy="112" r="6" style="fill:var(--blue);opacity:.5"/><circle cx="415" cy="112" r="8" style="fill:var(--blue);opacity:.65"/><circle cx="425" cy="112" r="7" style="fill:var(--blue);opacity:.55"/><circle cx="435" cy="112" r="6" style="fill:var(--blue);opacity:.5"/>
+          <text x="420" y="94" text-anchor="middle" font-size="9.5" fill="var(--text3)">"ordinary drift"</text>
+          <circle cx="535" cy="112" r="7" style="fill:var(--purple);opacity:.6"/><circle cx="547" cy="112" r="9" style="fill:var(--purple);opacity:.7"/><circle cx="559" cy="112" r="6" style="fill:var(--purple);opacity:.5"/>
+          <text x="547" y="94" text-anchor="middle" font-size="9.5" fill="var(--text3)">"the jump was real"</text>
+          <text x="480" y="136" text-anchor="middle" font-size="10" fill="var(--text3)">both clusters survive until the next observation decides</text>
+        </svg>
+      </div>
+      <p class="sl-p">A linear Kalman filter has exactly one Gaussian process-noise variance, Q — it can only ever produce one symmetric bump, which either overreacts to ordinary noise (Q set large to accommodate rare jumps) or underreacts to a genuine jump (Q set small for ordinary days). A particle filter can hold a cluster of particles tracking "ordinary drift continues" alongside a separate cluster tracking "the jump was real," simultaneously, and let the next observation's weighting decide which cluster the data actually supports — without ever having to commit to one branch in advance.</p>
+      <div class="sl-note">This is presented as an illustration of what the method is for, not a claim that this exact hedge-ratio scenario has been built, backtested, or shown to add anything over the existing linear approach.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Where this shows up — and what's actually running here</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🤖</div><div><h4>Robot localization</h4><p>A robot with a rough map and noisy sensors, genuinely uncertain which of several matching corridors it's in — "Monte Carlo Localization" is a direct particle-filter application.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📡</div><div><h4>Radar/sonar tracking</h4><p>A maneuvering target whose motion isn't well described by a straight line — the same nonlinear-dynamics problem this lesson generalizes the Kalman filter to handle.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎥</div><div><h4>Video object tracking</h4><p>A target temporarily occluded and later reappearing is a genuinely multimodal situation — exactly the shape a single Gaussian estimate handles poorly.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📈</div><div><h4>Stochastic volatility, jump-diffusion</h4><p>Estimating a latent, continuously evolving volatility path, or fitting a model where price paths jump discontinuously — both genuinely nonlinear or non-Gaussian state-space problems.</p></div></div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Factual grounding — the full lesson's status line is now out of date</div>
+        <p>The full <em>particle-filter.html</em> lesson labels this a "CONCEPT — not built or tested anywhere in this repo," and its takeaways state plainly: "Not built, not prototyped, not validated in this repo." That was true when written, but it no longer is: <code>js/particleFilter.js</code> now implements a real bootstrap particle filter — 200 particles, systematic resampling, resampling triggered when N_eff falls below N/2 — used for live 5-minute regime classification (BULL/BEAR/RANGE/CHOP) across instruments, gated by <code>FEATURE_FLAGS.PARTICLE_FILTER</code> in <code>js/config.js</code>, which is currently set to <strong>true</strong>, and wired into <code>js/main.js</code>'s live dashboard output. That is a genuinely different problem from the continuous hedge-ratio-tracking scenario this lesson illustrates — it tracks a discrete 4-state Markov regime, not a continuous nonlinear state — so the specific hedge-ratio scenario above remains hypothetical. But the core algorithm this lesson teaches — predict, weight, systematically resample, gated on N_eff — is not merely a concept in this repo; it is live, enabled-by-default code.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Why does the Kalman filter's closed form stop working once the state transition is nonlinear?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Conjugacy breaks — a Gaussian pushed through a nonlinear function is no longer exactly Gaussian, so mean and variance stop being enough</button>
+        <button class="sl-quiz-opt">It doesn't — the Kalman filter handles any nonlinearity automatically</button>
+        <button class="sl-quiz-opt">Nonlinearity only affects the observation noise, never the transition</button>
+        <div class="sl-quiz-explain">The exact-Gaussian-posterior result relies on linear transformations of Gaussians staying Gaussian. Break linearity and there's generally no closed form left for the posterior.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>What does resampling actually do to the particle weights?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Draws a fresh set of N particles proportional to current weight, then resets every weight to 1/N</button>
+        <button class="sl-quiz-opt">Multiplies every weight by a fixed constant</button>
+        <button class="sl-quiz-opt">Deletes the lowest-weight particle and stops</button>
+        <div class="sl-quiz-explain">Resampling reallocates the fixed particle budget toward the candidates the data currently supports — cloning high-weight particles, dropping low-weight ones — then starts the next cycle from equal weights again.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Four particles with weights 0.70, 0.10, 0.10, 0.10 — what is N_eff, and what does it mean?</h4>
+        <button class="sl-quiz-opt" data-correct="true">≈ 1.92 — the swarm behaves like it only has about two meaningfully distinct particles, despite N = 4</button>
+        <button class="sl-quiz-opt">4 — N_eff always equals N regardless of the weights</button>
+        <button class="sl-quiz-opt">0.70 — N_eff just equals the largest weight</button>
+        <div class="sl-quiz-explain">Σw² = 0.70² + 3×0.10² = 0.52, so N_eff = 1/0.52 ≈ 1.92 — a clear sign of degeneracy this diagnostic exists to catch.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Why isn't resampling on every single step, regardless of N_eff, the automatically safest choice?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Resampling costs diversity (particle impoverishment) — cloning even a healthy swarm collapses it toward near-duplicate copies of a few originals</button>
+        <button class="sl-quiz-opt">Resampling every step is free and has no downside</button>
+        <button class="sl-quiz-opt">Resampling every step makes the particles more accurate with no trade-off</button>
+        <div class="sl-quiz-explain">Cloning is not new information — it just duplicates already-credible guesses. Doing that when the swarm didn't need it (N_eff already close to N) pays the diversity cost for nothing.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>What kind of belief can a particle filter represent that a Kalman filter fundamentally cannot?</h4>
+        <button class="sl-quiz-opt" data-correct="true">A genuinely multimodal belief — two or more separate, live clusters of plausible states at once</button>
+        <button class="sl-quiz-opt">A belief with a mean of exactly zero</button>
+        <button class="sl-quiz-opt">A belief that never changes over time</button>
+        <div class="sl-quiz-explain">A Kalman filter's posterior is always one symmetric Gaussian bump. A particle filter's weighted swarm can hold two distinct clusters simultaneously — e.g. "ordinary drift" versus "the jump was real" — until new data favors one.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>The Kalman filter's closed form only exists because linear dynamics plus Gaussian noise happen to keep the posterior exactly Gaussian — break either assumption and there's generally no formula left.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>A particle filter replaces "mean and variance" with a weighted swarm of concrete candidate guesses — it needs no closed form, so it works for nonlinear dynamics and any noise shape.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>The cycle is four steps: initialize from the prior, propagate through the dynamics, weight by the observation's likelihood, resample when the swarm gets lopsided.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>N_eff = 1/Σ(w_i²) measures swarm health — from N (every particle informative) down to 1 (total degeneracy, one particle carries everything).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Resampling fixes degeneracy but costs diversity (particle impoverishment) — trigger it on N_eff crossing a threshold, not unconditionally and not never.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Unlike a Kalman filter, a particle swarm can hold two or more live, separate clusters of belief at once — a genuinely multimodal state a single Gaussian can never represent.</p></div>
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">What this now lets you do</div>
+        <p>Recognize the exact moment a linear-Gaussian assumption is quietly failing — nonlinearity, fat tails, or a plausibly two-branch belief — and know the standard remedy by name. Read N_eff on sight and know whether a swarm needs resampling or is still healthy. Explain why resampling is a genuine trade-off, not a free fix, and why a particle filter is strictly more general than a Kalman filter but not automatically the better choice for a problem that's already linear-Gaussian.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>The Kalman Smoother &amp; Extended/Unscented Kalman Filters</h3>
+        <p>A gentler middle ground between the plain linear Kalman filter and the full generality of particles: smoothing an estimate using future data, and two ways to stretch the Kalman recursion itself onto mildly nonlinear problems.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="kalman-smoother-ekf-ukf-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="particle-filter.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // "Reweight a swarm live" — particle-count slider redraws the SVG swarm
+  // and recomputes N_eff / efficiency / an illustrative Monte Carlo error.
+  (function(){
+    var slider = document.getElementById('pfN-slider');
+    if (!slider) return;
+    var nVal = document.getElementById('pfN-nval');
+    var group = document.getElementById('pfN-particles');
+    var neffOut = document.getElementById('pfN-neff');
+    var effOut = document.getElementById('pfN-eff');
+    var errOut = document.getElementById('pfN-err');
+    var NS = 'http://www.w3.org/2000/svg';
+
+    var MAX_N = 60;
+    var X_MIN = 0.8, X_MAX = 1.8;
+    var PX_MIN = 60, PX_MAX = 610;
+    var TRUE_X = 1.30, OBS_X = 1.34;
+    var SPREAD = 0.30;   // triangular-distribution half-spread, in state units
+    var R = 0.035;       // fixed observation variance for the likelihood
+
+    // Deterministic pseudo-random in [0,1) — same swarm shape on every load.
+    function pr(seed){
+      var v = Math.sin(seed * 12.9898) * 43758.5453;
+      return v - Math.floor(v);
+    }
+
+    // Precompute up to MAX_N fixed particle state-values once.
+    var allX = [];
+    for (var i = 0; i < MAX_N; i++){
+      var u1 = pr(i * 2 + 1), u2 = pr(i * 2 + 2);
+      var offset = (u1 + u2 - 1) * SPREAD; // triangular, roughly bell-shaped
+      var x = TRUE_X + offset;
+      if (x < X_MIN) x = X_MIN + (X_MIN - x) * 0.3;
+      if (x > X_MAX) x = X_MAX - (x - X_MAX) * 0.3;
+      allX.push(x);
+    }
+
+    function toPx(x){
+      return PX_MIN + ((x - X_MIN) / (X_MAX - X_MIN)) * (PX_MAX - PX_MIN);
+    }
+
+    var circles = [];
+
+    function update(){
+      var n = parseInt(slider.value, 10);
+      nVal.textContent = 'N = ' + n;
+
+      var xs = allX.slice(0, n);
+      var raw = xs.map(function(x){
+        var d = OBS_X - x;
+        return Math.exp(-(d * d) / (2 * R));
+      });
+      var sum = raw.reduce(function(a, b){ return a + b; }, 0);
+      var weights = raw.map(function(r){ return r / sum; });
+
+      // Rebuild circles to match current N.
+      while (circles.length > n) { group.removeChild(circles.pop()); }
+      while (circles.length < n) {
+        var c = document.createElementNS(NS, 'circle');
+        c.setAttribute('cy', 150);
+        c.setAttribute('style', 'fill:var(--blue)');
+        group.appendChild(c);
+        circles.push(c);
+      }
+
+      var maxW = Math.max.apply(null, weights);
+      xs.forEach(function(x, i){
+        var w = weights[i];
+        var radius = 3 + Math.sqrt(w / maxW) * 13;
+        var opacity = 0.28 + 0.62 * Math.sqrt(w / maxW);
+        circles[i].setAttribute('cx', toPx(x).toFixed(1));
+        circles[i].setAttribute('r', radius.toFixed(1));
+        circles[i].setAttribute('style', 'fill:var(--blue);opacity:' + opacity.toFixed(2));
+      });
+
+      var sumSq = weights.reduce(function(a, w){ return a + w * w; }, 0);
+      var neff = 1 / sumSq;
+      var efficiency = neff / n;
+      var mcError = 1 / Math.sqrt(neff);
+
+      neffOut.textContent = neff.toFixed(2);
+      effOut.textContent = (efficiency * 100).toFixed(0) + '%';
+      errOut.textContent = mcError.toFixed(3);
+    }
+
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // "Compute N_eff yourself" — normalize five typed likelihoods, then N_eff,
+  // guarded against blank, non-finite, negative, and all-zero input.
+  (function(){
+    var ids = ['ess-w1', 'ess-w2', 'ess-w3', 'ess-w4', 'ess-w5'];
+    var inputs = ids.map(function(id){ return document.getElementById(id); });
+    if (!inputs[0]) return;
+    var weightsOut = document.getElementById('ess-weights');
+    var sumSqOut = document.getElementById('ess-sumsq');
+    var neffOut = document.getElementById('ess-neff');
+    var note = document.getElementById('ess-note');
+    var resetBtn = document.getElementById('ess-reset');
+    var DEFAULTS = [0.95, 1.43, 1.61, 1.74, 1.61];
+    var DEFAULT_NOTE = 'Blank fields, negative numbers, non-numeric input, or all-zero likelihoods all show — rather than a crash — since none of those are a valid weight set.';
+
+    function fail(msg){
+      weightsOut.textContent = '—';
+      sumSqOut.textContent = '—';
+      neffOut.textContent = '—';
+      note.textContent = msg;
+    }
+
+    function recompute(){
+      var vals = inputs.map(function(el){ return parseFloat(el.value); });
+      if (vals.some(function(v){ return !isFinite(v); })) {
+        fail('Every field needs a number — blank or non-numeric input can’t be weighted.');
+        return;
+      }
+      if (vals.some(function(v){ return v < 0; })) {
+        fail('A likelihood can’t be negative.');
+        return;
+      }
+      var sum = vals.reduce(function(a, b){ return a + b; }, 0);
+      if (!isFinite(sum) || sum <= 0) {
+        fail('All-zero likelihoods can’t be normalized — there’s nothing to divide by.');
+        return;
+      }
+      var weights = vals.map(function(v){ return v / sum; });
+      weightsOut.textContent = weights.map(function(w){ return w.toFixed(3); }).join(', ');
+      var sumSq = weights.reduce(function(a, w){ return a + w * w; }, 0);
+      sumSqOut.textContent = sumSq.toFixed(4);
+      var neff = 1 / sumSq;
+      neffOut.textContent = neff.toFixed(2);
+      note.textContent = DEFAULT_NOTE + (neff < inputs.length / 2 ? ' This set is below the N/2 threshold — it would trigger a resample.' : '');
+    }
+
+    inputs.forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      inputs.forEach(function(el, i){ el.value = DEFAULTS[i]; });
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

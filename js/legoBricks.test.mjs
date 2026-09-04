@@ -949,6 +949,35 @@ console.log('\n[oi day-expiry]');
     && Number.isFinite(re.inst.dayExpiry.callWall) && Number.isFinite(re.inst.dayExpiry.putWall)
     && (re.inst.dayExpiry.regime === 'PIN' || re.inst.dayExpiry.regime === 'BREAKOUT'));
 
+  // The 2026-09-03 gold incident, end-to-end through buildOIEntry: a far (90 DTE)
+  // column carries a genuine near-money wall (11000 OI at spot) alongside two
+  // deep-OTM strikes (3.4x / 4.5x spot) with implausibly large OI, while the
+  // near (2 DTE) column — the book the bot actually trades — is clean throughout.
+  // Real gold's OGZ6 column is exactly this shape: one legitimate ATM wall the
+  // scrub must trust, and two strikes that dwarf it the scrub must catch.
+  const badOI = [
+    '\tGCV6', '4430\tGCV6', 'Strike\tNEAR', '2 DTE\tFAR', '90 DTE\tX', 'C\tP\tC\tP',
+    '4400\t50\t40\t500\t300',
+    '4425\t200\t150\t2000\t1200',
+    '4430\t180\t190\t11000\t900',
+    '4450\t220\t100\t4000\t2000',
+    '4460\t90\t60\t3000\t1500',
+    '13000\t0\t0\t700\t0',
+    '14950\t0\t0\t36000\t0',
+    '19950\t0\t0\t38000\t0',
+  ].join('\n');
+  const bad = await buildOIEntry({ pair: 'XAU/USD', rawOI: badOI, spotRaw: 4430, futuresRaw: 4430, manualFutures: true, skipLiveQuote: true });
+  ok('buildOIEntry runs clean (no error) on the corrupted matrix', !bad.error, bad.error);
+  ok('scrubs exactly the two implausible strikes', bad.inst?.oiAnomalies?.length === 2,
+    JSON.stringify(bad.inst?.oiAnomalies?.map(a => a.strike)));
+  ok('dataWarning names the exclusion (never silent)', /implausible OI/.test(bad.inst?.dataWarning || ''), bad.inst?.dataWarning);
+  ok('the corrupted strikes do not dominate the top-ranked call walls',
+    !bad.inst?.callWalls?.slice(0, 2).some(w => w.strike > 10000), JSON.stringify(bad.inst?.callWalls?.slice(0, 3)));
+  ok('the genuine 700-OI deep hedge at 13000 survives untouched',
+    bad.inst?.callWalls?.some(w => Math.abs(w.strike - 13000) < 1 && w.oi === 700));
+  ok('the near (traded) dayExpiry book is completely unaffected — 0 anomalies, its own numbers',
+    bad.inst?.dayExpiry?.oiAnomalies?.length === 0 && !bad.inst.dayExpiry.callWalls.some(w => w.strike > 10000));
+
   // Per-expiry SPOT-terms breakdown — for cross-desk comparison / calc verification. A
   // LONGER expiry whose OI is centred below a rallied spot shows max-pain/walls below spot
   // (exactly the "colleague's max pain is under our spot" case), while near expiries sit at

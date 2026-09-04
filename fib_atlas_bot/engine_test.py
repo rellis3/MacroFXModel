@@ -145,5 +145,58 @@ ok("a position on a DIFFERENT pair's symbol -> ignored entirely",
 ok("a ticket this bot never tracked the ladder for (opened before restart) -> ignored, not guessed",
    occupied_directions(book_one_long, {}, EG, "asia") == set())
 
+print("[chandelier_stop - extreme_since measures the run extreme from ENTRY, not the whole lookback]")
+# A long that rallied to 1.1200, then opened a NEW position after price fell
+# back. Bars 0-2 are pre-entry (they carry the 1.1200 high), bars 3-5 are the
+# position's own life, topping out at 1.1030. This is the AUDUSD 2026-09-04
+# shape: a stale high far above where the position actually traded.
+mixed = [
+    {"time": 1000, "high": 1.1200, "low": 1.1180, "close": 1.1190},
+    {"time": 1060, "high": 1.1150, "low": 1.1120, "close": 1.1130},
+    {"time": 1120, "high": 1.1100, "low": 1.1060, "close": 1.1070},
+    {"time": 1180, "high": 1.1030, "low": 1.1000, "close": 1.1020},   # <- entry bar
+    {"time": 1240, "high": 1.1025, "low": 1.0995, "close": 1.1005},
+    {"time": 1300, "high": 1.1010, "low": 1.0990, "close": 1.1000},
+]
+ENTRY = 1180
+whole = chandelier_stop(mixed, mult=3.0, period=60, is_long=True)
+since = chandelier_stop(mixed, mult=3.0, period=60, is_long=True, extreme_since=ENTRY)
+ok("extreme_since trails from the post-entry high (1.1030), not the stale 1.1200 -> lower stop",
+   since < whole, f"since={since:.5f} whole={whole:.5f}")
+ok("the gap is exactly the two highs difference (ATR unchanged - the same bars fed it)",
+   abs((whole - since) - (1.1200 - 1.1030)) < 1e-9, f"gap={whole - since:.5f}")
+ok("the stale version is the one sitting ABOVE the last close (unplaceable SL on a long)",
+   whole > mixed[-1]["close"] and since < mixed[-1]["close"],
+   f"whole={whole:.5f} since={since:.5f} close={mixed[-1]['close']}")
+
+print("[chandelier_stop - extreme_since: ATR still walks EVERY bar, only best is filtered]")
+tail_only = chandelier_stop([b for b in mixed if b["time"] >= ENTRY],
+                            mult=3.0, period=60, is_long=True)
+ok("filtering best is NOT the same as passing only post-entry bars (that reseeds the ATR)",
+   abs(since - tail_only) > 1e-9, f"since={since:.5f} tail_only={tail_only:.5f}")
+
+print("[chandelier_stop - extreme_since edge cases]")
+ok("no bar at/after entry (position younger than its first bar) -> None, not a stale trail",
+   chandelier_stop(mixed, mult=3.0, period=60, is_long=True, extreme_since=99999) is None)
+ok("extreme_since=None keeps the old whole-window behaviour exactly",
+   chandelier_stop(mixed, mult=3.0, period=60, is_long=True, extreme_since=None) == whole)
+ok("bars with no time key are excluded rather than silently counted",
+   chandelier_stop([{"high": 1.11, "low": 1.10, "close": 1.105}], mult=3.0,
+                   is_long=True, extreme_since=0) is None)
+
+print("[chandelier_stop - extreme_since on a SHORT mirrors it (best = post-entry LOW)]")
+mixed_dn = [
+    {"time": 1000, "high": 1.0820, "low": 1.0800, "close": 1.0810},   # stale pre-entry LOW
+    {"time": 1060, "high": 1.0900, "low": 1.0870, "close": 1.0890},
+    {"time": 1120, "high": 1.0960, "low": 1.0930, "close": 1.0950},   # <- entry bar
+    {"time": 1180, "high": 1.0970, "low": 1.0940, "close": 1.0960},
+]
+whole_dn = chandelier_stop(mixed_dn, mult=3.0, period=60, is_long=False)
+since_dn = chandelier_stop(mixed_dn, mult=3.0, period=60, is_long=False, extreme_since=1120)
+ok("short: extreme_since trails from the post-entry low -> a higher stop than the stale one",
+   since_dn > whole_dn, f"since={since_dn:.5f} whole={whole_dn:.5f}")
+ok("short: gap is exactly the two lows difference",
+   abs((since_dn - whole_dn) - (1.0930 - 1.0800)) < 1e-9)
+
 print(f"\n{'ALL PASSED' if fails == 0 else f'{fails} FAILED'}")
 sys.exit(1 if fails else 0)

@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ornstein-Uhlenbeck &amp; Mean Reversion — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Ornstein-Uhlenbeck &amp; Mean Reversion — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivation, a live φ→θ scratchpad, and a 6-question self-test?<a href="ou-mean-reversion.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Lesson 4 · Time Series &amp; Regimes</div>
+      <h1 class="sl-h1">Mean Reversion, Given <em>an Actual Speed</em></h1>
+      <p class="sl-lede">Every trader has a gut feeling about whether a price that's strayed from "normal" tends to come back. The Ornstein-Uhlenbeck process turns that gut feeling into an equation — one with a speed parameter you can fit from real data and convert into a half-life measured in days, not a vibe you'd hesitate to say out loud to a non-quant.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">A rubber band attached to a moving average</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The picture</div>
+        <p class="sl-p" style="margin-top:0">Picture a ball tied by a rubber band to a fixed post, sitting in a tub of water that's constantly jostled by random currents. Two things act on the ball every instant: the band pulls it back toward the post, harder the further away it currently is, while the jostling shoves it in an unpredictable direction by an unpredictable amount. The ball never sits still — the jostling keeps knocking it away — but it never wanders off to infinity either, because the band always drags it back.</p>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">⚑</div><div><h4>The post — μ</h4><p>The long-run mean: the level a price, spread, or z-score is being pulled toward.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">↺</div><div><h4>The band's stiffness — θ</h4><p>The mean-reversion speed. A bigger θ is a stiffer band — the price snaps back faster.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">≈</div><div><h4>The jostling — σ</h4><p>Random noise, the same volatility concept used everywhere else in this curriculum, just jostling the ball instead of the price.</p></div></div>
+      </div>
+      <div class="sl-quote">A plain random walk — the model behind "prices have no memory" — is what's left if you cut the rubber band entirely: θ = 0, nothing pulls the ball back, and it really can wander off forever.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">The equation: drift plus diffusion</h2>
+      <p class="sl-sub">dXₜ = θ(μ − Xₜ)dt + σdWₜ. Read left to right: the next tiny move is a predictable nudge back toward μ, plus an unpredictable random shock.</p>
+      <div class="sl-row">
+        <div class="sl-box amber">θ(μ − Xₜ)dt</div>
+        <div class="sl-arrow">+</div>
+        <div class="sl-box">σdWₜ</div>
+        <div class="sl-arrow">=</div>
+        <div class="sl-box green">dXₜ</div>
+      </div>
+      <div class="sl-verdict" style="margin-bottom:16px"><strong>Drift</strong> (amber) is the predictable restoring force. <strong>Diffusion</strong> (blue) is pure random noise. Add them and you get the next instant's move (green).</div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">Xₜ</div><div><h4>The process's value at time t</h4><p>"Today's reading" — a price, a spread, or a z-scored deviation from a moving average. OU wants something with a plausible stable center, not a raw trending price.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">μ−Xₜ</div><div><h4>The current deviation, signed</h4><p>Above μ, this term is negative and pulls down; below μ, it's positive and pulls up. Structurally identical to Hooke's law for a spring.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">θ</div><div><h4>Mean-reversion speed</h4><p>A positive number with units of "1/time." Larger θ = faster reversion. θ = 0 removes the pull entirely.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">σdWₜ</div><div><h4>The diffusion term</h4><p>Wₜ is a Wiener process — pure random-walk noise, mean zero, no memory. σ scales how large the shocks are.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Cut the band and you get a random walk</h2>
+      <p class="sl-sub">A random walk isn't a different model — it's this exact equation with θ set to zero.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">OU process — θ &gt; 0</span>
+          <p>Drift pulls back toward μ, diffusion adds noise. Variance stays bounded over time — the process settles into a stable, stationary distribution around μ.</p>
+        </div>
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Random walk — θ = 0</span>
+          <p>Diffusion only, no drift — nothing "knows" where μ is. Variance grows without bound as t→∞; the process can wander arbitrarily far from any starting point.</p>
+        </div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">The resting spread — σ²/2θ</div>
+        <p>Given long enough, an OU process settles into a stable normal distribution centered at μ with variance σ²/2θ. More noise (σ) widens that resting spread; a stiffer pull-back (θ) tightens it — so "loud" (high σ) and "fast-reverting" (high θ) are not opposites. A process can be both, and the two combine into how wide its typical range actually is.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Same start, same-looking noise, different fate</h2>
+      <p class="sl-sub">Drag the slider. Only the blue path's pull-back strength changes — the noise sequence is fixed, so you're seeing θ alone at work.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two simulated paths starting at the same point: a mean-reverting OU path pulled back toward a dashed mean line, and a random-walk path drifting steadily away.">
+            <line x1="50" y1="160" x2="610" y2="160" style="stroke:var(--text3);stroke-dasharray:4,3"/>
+            <text x="612" y="164" font-size="13" font-family="'DM Mono',monospace" fill="var(--text3)">&#956;</text>
+            <polyline points="50,160 90,175 130,165 170,190 210,210 250,200 290,225 330,245 370,260 410,250 450,265 490,255 530,270 570,260 610,275" style="stroke:var(--red);stroke-width:2" fill="none"/>
+            <polyline id="ou2-path" points="50,160 90,120 130,90 170,110 210,150 250,165 290,195 330,225 370,190 410,155 450,130 490,100 530,140 570,165 610,155" style="stroke:var(--blue);stroke-width:2.5" fill="none"/>
+            <circle cx="50" cy="160" r="3.5" fill="var(--text2)"/>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Mean-reversion speed θ</span><span class="sl-live" id="ou2-theta-val">θ = 0.15</span></div>
+        <input type="range" class="sl-slider" id="ou2-theta-slider" min="0" max="50" step="1" value="15">
+        <div class="sl-verdict" style="margin-top:12px">Half-life = ln(2)/θ ≈ <b id="ou2-halflife-val">4.6</b> days</div>
+        <div class="sl-note">Red = a random walk (θ = 0, static). Blue = the OU path at whatever θ the slider is set to. Push θ toward 0 and the blue path stops snapping back — it starts to look like the red one.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Turning θ into a number you can say out loud</h2>
+      <p class="sl-sub">Ignore the noise for a moment — in expectation it averages to zero — and solve the drift-only decay for how long a deviation takes to halve.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The derivation</div>
+        <div class="sl-calc-steps" style="font-size:13.5px">
+          <div>Expected deviation decays exponentially: E[Xₜ − μ] = (X₀ − μ)·e<sup>−θt</sup></div>
+          <div>Set the decay factor to one half: e<sup>−θ·t½</sup> = 1/2</div>
+          <div>Take logs of both sides: −θ·t½ = ln(1/2) = −ln(2)</div>
+          <div>Divide both sides by −θ: <b>t½ = ln(2) / θ</b></div>
+        </div>
+      </div>
+      <p class="sl-p">ln(2) ≈ 0.693 is just a constant that falls out of the algebra — the same constant that shows up in radioactive-decay half-life formulas, applied here to a price gap instead of atoms. A half-life isn't "the time until the deviation is fully gone" — under continuous exponential decay it's never exactly zero, only asymptotically closer. It's "the time until you'd expect today's gap to μ to be cut in half."</p>
+      <div class="sl-quote">A short half-life (say, 1 day) is a snappy series where a deviation today is mostly gone within a couple of days. A long half-life (say, 60 days) is technically still mean-reverting, but far too slow to trade on a multi-day horizon — by the time it pulls back, the world has moved on. As θ→0, t½→∞, consistent with the random-walk limit having no reversion at all.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Fitting this from daily bars: the AR(1) twin</h2>
+      <p class="sl-sub">You almost never fit the continuous-time SDE directly. You fit its discrete-time analogue, AR(1), then convert.</p>
+      <div class="sl-row">
+        <div class="sl-box">Xₜ = μ(1−φ) + φXₜ₋₁ + εₜ</div>
+        <div class="sl-arrow">where</div>
+        <div class="sl-box amber">φ = e^(−θΔt)</div>
+      </div>
+      <p class="sl-p">φ is the ordinary "regress today's value on yesterday's value" coefficient from a linear regression — the discrete-time stand-in for the drift/diffusion split above. Inverting the relationship gives θ from a fitted φ:</p>
+      <div class="sl-row"><div class="sl-box green">θ = −ln(φ) / Δt</div></div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">→1</div><div><h4>φ close to 1</h4><p>Today is almost entirely explained by yesterday — weak pull-back, small θ, long half-life.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">→0</div><div><h4>φ close to 0</h4><p>Almost no persistence — the series snaps back to μ almost immediately, large θ, short half-life.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>φ ≥ 1</h4><p>Not mean-reverting at all — φ = 1 is exactly the random walk, φ &gt; 1 is explosive. ln(φ) is undefined or non-negative here, which is the algebra's way of saying the OU model doesn't apply.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">From a fitted φ to a half-life, live</h2>
+      <p class="sl-sub">Starts on φ = 0.90, Δt = 1 day. Edit either field — θ and the half-life recompute instantly.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>AR(1) coefficient φ</label><input type="number" class="sl-input" id="hl-phi" value="0.90" step="0.01" min="0" max="1.5"></div>
+          <div class="sl-calc-op">Δt</div>
+          <div class="sl-calc-field"><label>Sampling interval (days)</label><input type="number" class="sl-input" id="hl-dt" value="1" step="0.25" min="0.01"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Half-life (days)</div>
+            <div class="sl-calc-result-val" id="hl-result">6.58</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>θ = −ln(φ) / Δt = <b id="hl-theta">0.1054</b> / day</div>
+        </div>
+        <div class="sl-note" id="hl-note"></div>
+        <button type="button" class="sl-reset-btn" id="hl-reset">Reset to worked-example numbers</button>
+      </div>
+      <p class="sl-p">Try pushing φ to 1.02. The model doesn't quietly report "very slow reversion" — it refuses to produce a number at all, because a fitted φ ≥ 1 isn't slow mean reversion, it's no mean reversion.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Worked example: two coefficients, two very different trades</h2>
+      <p class="sl-sub">Same regression, same daily data, two hypothetical fits.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">φ = 0.90</span>
+          <p>θ = −ln(0.90)/1 ≈ 0.1054/day. t½ = ln(2)/0.1054 ≈ <strong>6.58 days</strong>. A spread 40 pips from its mean would be expected near 20 pips after ~6–7 days, ~10 pips after another ~6–7 days.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">φ = 0.98</span>
+          <p>θ = −ln(0.98)/1 ≈ 0.0202/day. t½ = ln(2)/0.0202 ≈ <strong>34.3 days</strong>. Still technically mean-reverting — but far too sluggish to be the basis of a multi-day fade trade.</p>
+        </div>
+      </div>
+      <p class="sl-p">Both series pass a basic "is φ &lt; 1" screen. Only one of them reverts on a timescale worth trading. This is exactly why the half-life, not the raw coefficient, is the number worth carrying into a sizing or holding-period decision — 0.90 and 0.98 look close as coefficients but describe holding periods roughly five times apart.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">What a half-life is actually used for</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">↔</div><div><h4>Pairs trading / stat-arb entry &amp; exit</h4><p>Fit OU to a spread between two related instruments. The stationary standard deviation √(σ²/2θ) gives entry/exit thresholds the same way a z-score does — enter a few stationary-sds from μ, exit near μ.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⏱</div><div><h4>Half-life as a horizon filter</h4><p>If a signal's half-life is 2 days, holding for 3 weeks fights the wrong timescale, and exiting in 10 minutes never lets the edge play out. Half-life is a principled way to pick a holding period instead of guessing it.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔎</div><div><h4>A diagnostic, not just a target</h4><p>Fitting OU and getting φ ≥ 1 is a useful, humbling null result — evidence the series behaves like a random walk rather than something to explain away.</p></div></div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Where this stands in this repo, honestly</div>
+        <p>This project's own same-day trend-day-ness score, T = drift ÷ diffusion (blended from rolling efficiency-ratio, variance-ratio, Hurst, and similar estimators), already answers a version of "does this tend to revert" heuristically — but it doesn't produce a number you can say out loud as "reverts halfway every N days." OU is the textbook model that does. It is a research concept here, not yet fit or tested against real data in this codebase — any real use would need the same in-sample/out-of-sample validation and minimum trade count this repo already requires elsewhere, plus a bias-corrected φ estimate rather than a single point fit, since small, noisy samples bias φ toward 1.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Quick check</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>As θ → 0, what happens to the OU process and its half-life?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It collapses to a random walk; the half-life grows without bound</button>
+        <button class="sl-quiz-opt">Nothing changes — θ doesn't affect the half-life</button>
+        <button class="sl-quiz-opt">It reverts instantly; the half-life shrinks to zero</button>
+        <div class="sl-quiz-explain">The drift term θ(μ−Xₜ)dt shrinks toward zero regardless of the current deviation — the "band" goes slack, leaving dXₜ = σdWₜ, pure noise. And t½ = ln(2)/θ blows up as θ→0: dividing by a number approaching zero.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>An AR(1) fit on daily data returns φ = 1.02. What should a careful analyst conclude?</h4>
+        <button class="sl-quiz-opt" data-correct="true">No evidence of mean reversion in this sample — don't force a half-life out of it</button>
+        <button class="sl-quiz-opt">Reversion is unusually slow — half-life is very long but still valid</button>
+        <button class="sl-quiz-opt">Recompute using a negative θ to get a valid half-life</button>
+        <div class="sl-quiz-explain">φ &gt; 1 makes ln(φ) positive, so θ = −ln(φ)/Δt is negative — nonsensical in the OU model (it would mean the "restoring force" pushes away from μ). The formula breaking down is the algebra telling you to stop, not a cue to force a number.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>A daily AR(1) fit gives φ = 0.90. Closest half-life?</h4>
+        <button class="sl-quiz-opt" data-correct="true">≈ 6.6 days</button>
+        <button class="sl-quiz-opt">≈ 0.9 days</button>
+        <button class="sl-quiz-opt">≈ 34 days</button>
+        <div class="sl-quiz-explain">θ = −ln(0.90)/1 ≈ 0.1054/day, and t½ = ln(2)/0.1054 ≈ 6.58 days. (≈34 days is what φ = 0.98 gives instead.)</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>A spread has an estimated half-life of 3 days. What does that NOT tell a trader?</h4>
+        <button class="sl-quiz-opt" data-correct="true">That any single trade will actually revert on that exact schedule</button>
+        <button class="sl-quiz-opt">A rough natural timescale for a reversion trade — days, not minutes or months</button>
+        <button class="sl-quiz-opt">That the expected deviation shrinks by half roughly every 3 days</button>
+        <div class="sl-quiz-explain">Half-life describes the expected path, not a guarantee. The diffusion term σdWₜ means any individual path can widen before it narrows, or fail to revert within a reasonable window at all — and it says nothing about μ itself possibly drifting during the trade.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Why does a bigger θ mean a SMALLER stationary variance, σ²/2θ?</h4>
+        <button class="sl-quiz-opt" data-correct="true">A stiffer pull-back corrects deviations faster, so noise has less time to push the process far from μ</button>
+        <button class="sl-quiz-opt">θ has no real effect — only σ determines the resting spread</button>
+        <button class="sl-quiz-opt">Because θ reduces the noise term σ directly</button>
+        <div class="sl-quiz-explain">θ sits in the denominator: a stronger restoring force corrects deviations faster, so the process doesn't wander as far from μ before being pulled back in, even with the same-sized noise hitting it every instant.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>OU is drift plus diffusion: dXₜ = θ(μ−Xₜ)dt + σdWₜ — a predictable pull toward μ at speed θ, plus noise scaled by σ.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>A random walk is the special case θ = 0 — cut the rubber band and nothing pulls the process back toward any mean.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Half-life turns θ into a number you can say out loud: t½ = ln(2)/θ, the time for an expected deviation to shrink by half.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Fit it via AR(1), not the raw SDE — regress Xₜ on Xₜ₋₁ to get φ, then convert with θ = −ln(φ)/Δt.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>φ ≥ 1 means the model doesn't apply, not "very slow reversion" — the half-life formula breaks down on purpose.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>A half-life describes the expected path, not a promise for any one trade — real θ, μ, and σ drift, and small samples bias φ toward 1.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Read a fitted AR(1) coefficient and immediately state a half-life in days, not just "it's mean-reverting." Recognise the moment φ ≥ 1 disqualifies a series from OU-style reversion trades, instead of forcing a number out of it. Size a holding period or an entry/exit threshold around a real speed estimate rather than a hunch — and know that estimate needs a confidence interval, not blind trust.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Hurst Exponent &amp; Variance Ratio Test</h3>
+        <p>How to test, from data alone, whether a series behaves closer to θ &gt; 0 (mean-reverting) or θ = 0 (random walk) — before ever fitting a half-life to it.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="hurst-variance-ratio-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="ou-mean-reversion.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Slider on mean-reversion speed θ, live-redrawn OU price path.
+  (function(){
+    var slider = document.getElementById('ou2-theta-slider');
+    if (!slider) return;
+    var thetaVal = document.getElementById('ou2-theta-val');
+    var halflifeVal = document.getElementById('ou2-halflife-val');
+    var path = document.getElementById('ou2-path');
+
+    var MEAN_Y = 160;
+    var START_X = 50;
+    var STEP_X = 40;
+    var N_STEPS = 14; // 14 steps => 15 points, matching the static random-walk path
+    // Fixed noise offsets (px) — never change with theta, so the same shocks
+    // hit the path at every slider setting and only the pull-back strength
+    // visibly differs.
+    var NOISE = [-25, 20, -15, -30, 10, -20, 25, -15, -20, 30, -10, -25, 15, -20];
+
+    function update(){
+      var sliderVal = Number(slider.value);
+      var theta = sliderVal / 100; // slider is theta x100, e.g. 15 -> theta=0.15/day
+      thetaVal.textContent = 'θ = ' + theta.toFixed(2);
+      halflifeVal.textContent = theta === 0 ? '∞' : (Math.LN2 / theta).toFixed(1);
+
+      var y = MEAN_Y;
+      var pts = [START_X + ',' + y];
+      for (var i = 0; i < N_STEPS; i++) {
+        y = y + theta * (MEAN_Y - y) + NOISE[i];
+        var x = START_X + STEP_X * (i + 1);
+        pts.push(x + ',' + y.toFixed(1));
+      }
+      path.setAttribute('points', pts.join(' '));
+    }
+
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Fitted φ (and Δt) → θ → half-life, live, with the φ ≥ 1 guard.
+  (function(){
+    var phiInput = document.getElementById('hl-phi');
+    if (!phiInput) return;
+    var dtInput = document.getElementById('hl-dt');
+    var thetaOut = document.getElementById('hl-theta');
+    var resultOut = document.getElementById('hl-result');
+    var note = document.getElementById('hl-note');
+    var resetBtn = document.getElementById('hl-reset');
+    var DEFAULTS = { phi: 0.90, dt: 1 };
+
+    function recompute(){
+      var phi = parseFloat(phiInput.value);
+      var dt = parseFloat(dtInput.value);
+
+      if (!isFinite(phi) || !isFinite(dt) || dt <= 0) {
+        thetaOut.textContent = '—';
+        resultOut.textContent = '—';
+        note.textContent = 'Enter a positive sampling interval Δt.';
+        return;
+      }
+      if (phi <= 0 || phi >= 1) {
+        thetaOut.textContent = '—';
+        resultOut.textContent = '—';
+        note.textContent = 'φ must be strictly between 0 and 1 for the OU model to apply — φ ≥ 1 means no mean reversion, so the half-life formula breaks down rather than producing "a very long half-life."';
+        return;
+      }
+      note.textContent = '';
+      var theta = -Math.log(phi) / dt;
+      var halflife = Math.log(2) / theta;
+      thetaOut.textContent = theta.toFixed(4);
+      resultOut.textContent = halflife.toFixed(2);
+    }
+
+    [phiInput, dtInput].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      phiInput.value = DEFAULTS.phi;
+      dtInput.value = DEFAULTS.dt;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

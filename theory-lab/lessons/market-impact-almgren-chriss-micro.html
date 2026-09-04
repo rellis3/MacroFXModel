@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Market Impact Models &amp; Almgren-Chriss — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Market Impact &amp; Execution — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full Euler-Lagrange derivation, every pitfall, and a 5-question self-test?<a href="market-impact-almgren-chriss.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Market Microstructure 3 · Market Microstructure</div>
+      <h1 class="sl-h1">Market Impact &amp; Execution, <em>One Trade-Off, One Dial</em></h1>
+      <p class="sl-lede">Trade a large order all at once and you pay for the impact of demanding immediacy right now. Spread it out over a long window instead, and you pay a different price — exposure to whatever the market does while you're still holding the unexecuted remainder. Almgren-Chriss turns that tension into a single risk-aversion dial and a closed-form schedule for exactly how fast to trade.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Two ways to get soaked</h2>
+      <p class="sl-sub">There is no third option that avoids both costs — only a spectrum between them.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Trade fast</span>
+          <p>Sell it all right now and you walk deep through the order book, paying a large, immediate, fairly predictable cost for demanding that much immediacy at once. This is <strong>impact cost</strong> — concentrated into a short window.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Trade slow</span>
+          <p>Sell a sliver every hour over a month and each sale barely moves the price — but you're now sitting on a large unsold position, fully exposed to ordinary price drift for the entire time. This is <strong>timing risk</strong> — exposure stretched over a long window.</p>
+        </div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">The tension</div>
+        <p>You cannot minimize both at once. Trading faster shrinks the window you're exposed to volatility but raises the cost of demanding liquidity right now; trading slower does the reverse. Every execution schedule is a specific, implicit answer to how much of one you're willing to accept to reduce the other.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Two kinds of impact — one reverts, one doesn't</h2>
+      <p class="sl-sub">Every trade moves the price. Whether that move sticks around depends on why it happened.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="imp-tabs">
+          <button class="sl-tab active" data-panel="imp-1">Temporary impact</button>
+          <button class="sl-tab" data-panel="imp-2">Permanent impact</button>
+        </div>
+        <div class="sl-panel active" id="imp-1">
+          <div class="sl-svgwrap"><svg viewBox="0 0 400 120" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Price path dips during trading then fully recovers back to its starting level once trading stops">
+            <line x1="20" y1="100" x2="380" y2="100" style="stroke:var(--border);stroke-width:1"/>
+            <line x1="140" y1="18" x2="140" y2="100" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"/>
+            <line x1="260" y1="18" x2="260" y2="100" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"/>
+            <path style="fill:none;stroke:var(--blue);stroke-width:2.5" d="M20,40 L140,40 L260,88 L340,40 L380,40"/>
+            <text x="80" y="14" text-anchor="middle" font-size="9" fill="var(--text3)">before</text>
+            <text x="200" y="14" text-anchor="middle" font-size="9" fill="var(--text3)">trading</text>
+            <text x="345" y="14" text-anchor="middle" font-size="9" fill="var(--text3)">after</text>
+          </svg></div>
+          <div class="sl-verdict">The price concession needed to get filled <strong>right now</strong>. Once trading stops, liquidity refills and the price drifts back — this component <strong>reverts</strong>.</div>
+        </div>
+        <div class="sl-panel" id="imp-2">
+          <div class="sl-svgwrap"><svg viewBox="0 0 400 120" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Price path dips during trading then only partially recovers, settling permanently below its starting level">
+            <line x1="20" y1="100" x2="380" y2="100" style="stroke:var(--border);stroke-width:1"/>
+            <line x1="20" y1="40" x2="380" y2="40" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:2,4"/>
+            <line x1="140" y1="18" x2="140" y2="100" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"/>
+            <line x1="260" y1="18" x2="260" y2="100" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"/>
+            <path style="fill:none;stroke:var(--amber);stroke-width:2.5" d="M20,40 L140,40 L260,88 L340,66 L380,66"/>
+            <text x="80" y="14" text-anchor="middle" font-size="9" fill="var(--text3)">before</text>
+            <text x="200" y="14" text-anchor="middle" font-size="9" fill="var(--text3)">trading</text>
+            <text x="345" y="14" text-anchor="middle" font-size="9" fill="var(--text3)">after — settles lower</text>
+          </svg></div>
+          <div class="sl-verdict">A <strong>lasting</strong> repricing, because the trade itself is informative — others rationally update their belief about fair value partly because you traded. This component does <strong>not</strong> revert.</div>
+        </div>
+      </div>
+      <p class="sl-p">Press your thumb into a memory-foam pillow. Some of the dent springs back the moment you let go — that's temporary impact. But if pressing hard enough actually changed something about the foam itself, part of the dent stays forever — that's permanent impact, because your trade told everyone something real, and nobody un-learns it.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Impact grows with the square root of size, not size itself</h2>
+      <p class="sl-sub">A large body of empirical research finds impact scales roughly as I ≈ Y·σ·√(Q / ADV) — not linearly with order size.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Empirical square-root law vs. a naive linear guess</div>
+        <div class="sl-svgwrap"><svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Chart with order size as a fraction of average daily volume from 0 to 0.5 on the x-axis and impact in basis points from 0 to 150 on the y-axis. A concave square-root curve rises quickly at small sizes and flattens at larger sizes, reaching about 141 basis points at 0.5. A straight dashed chord from the origin to the same endpoint lies below the curve everywhere in between.">
+          <line x1="50" y1="230" x2="610" y2="230" style="stroke:var(--text3);stroke-width:1"/>
+          <line x1="50" y1="230" x2="50" y2="30" style="stroke:var(--text3);stroke-width:1"/>
+          <text x="16" y="130" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)" transform="rotate(-90 16 130)">Impact (bps)</text>
+          <text x="610" y="252" text-anchor="end" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)">Order size / ADV →</text>
+          <text x="46" y="243" text-anchor="end" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">0</text>
+          <text x="330" y="243" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">0.25</text>
+          <text x="606" y="243" text-anchor="end" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">0.5</text>
+          <path style="fill:none;stroke:var(--blue);stroke-width:2.5" d="M50,230 L88,180.88 L126,160.53 L164,144.92 L202,131.76 L240,120.17 L278,109.68 L316,100.04 L354,91.07 L392,82.64 L430,74.67 L468,67.09 L506,59.84 L544,52.90 L582,46.21 L610,41.44"/>
+          <line x1="50" y1="230" x2="610" y2="41.44" style="stroke:var(--text3);stroke-width:2;stroke-dasharray:5,4"/>
+          <circle cx="610" cy="41.44" r="4" style="fill:var(--blue)"/>
+          <text x="600" y="34" text-anchor="end" font-size="10" font-family="'DM Mono',monospace" fill="var(--blue)">both agree: 141bps at 0.5 ADV</text>
+          <circle cx="330" cy="96.67" r="4" style="fill:var(--blue)"/>
+          <circle cx="330" cy="135.72" r="4" style="fill:var(--text3)"/>
+          <text x="338" y="93" font-size="10" font-family="'DM Mono',monospace" fill="var(--blue)">100bps (√ law, at 0.25 ADV)</text>
+          <text x="338" y="150" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">≈71bps (linear guess)</text>
+        </svg></div>
+        <div class="sl-note">Both curves are pinned to agree at 0 and at 0.5 ADV by construction. In between, the concave square-root curve bows above the straight chord — at a quarter of ADV it implies ~100bps versus ~71bps for a naive linear model.</div>
+      </div>
+      <p class="sl-p">Because √x is <strong>concave</strong>, quadrupling order size only roughly doubles the cost (√4Q = 2√Q) — very large orders are cheaper <em>per share</em> than a linear model would suggest. But the same curve cuts the other way for smaller orders: they already cost <strong>more</strong> per share than a linear model calibrated off a bigger reference size would predict.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Try the square-root law yourself</h2>
+      <p class="sl-sub">Enter an order size, the instrument's average daily volume, and an impact coefficient — the estimate updates live.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — estimate impact, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Order size Q (units)</label><input type="number" class="sl-input" id="mi-q" value="500000" step="10000" min="0"></div>
+          <div class="sl-calc-op">/</div>
+          <div class="sl-calc-field"><label>Avg. daily volume (units)</label><input type="number" class="sl-input" id="mi-adv" value="5000000" step="100000" min="0"></div>
+          <div class="sl-calc-op">√ ·</div>
+          <div class="sl-calc-field"><label>Impact coeff. k (bps)</label><input type="number" class="sl-input" id="mi-k" value="200" step="10" min="0"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Est. impact</div>
+            <div class="sl-calc-result-val" id="mi-result">63.2 bps</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Order size as % of ADV, Q/ADV: <b id="mi-step1">10.0%</b></div>
+          <div>√(Q/ADV): <b id="mi-step2">0.316</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="mi-reset">Reset to worked-example numbers</button>
+        <div class="sl-note">Formula: impact (bps) = k · √(Q / ADV). k folds together the empirical constant Y and volatility σ from I ≈ Y·σ·√(Q/ADV) into one "impact coefficient" you can calibrate from historical fills. Blank, zero, or negative ADV shows — instead of an error.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Almgren-Chriss: put a number on both sides of the trade-off</h2>
+      <p class="sl-sub">Liquidate X units over a horizon [0,T]. Two costs compete, and one dial decides how heavily each counts.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The objective</div>
+        <div class="sl-row">
+          <div class="sl-box">Impact cost ∝ (rate)²</div>
+          <div class="sl-arrow">+</div>
+          <div class="sl-box amber">λ × Timing risk ∝ σ²·(inventory)²</div>
+          <div class="sl-arrow">=</div>
+          <div class="sl-box green">Total cost — minimize over the whole schedule</div>
+        </div>
+        <div class="sl-verdict">Trading faster (a larger rate) raises impact cost, modeled as growing with the <strong>square</strong> of the trading rate. Every unit still unsold is exposed to volatility σ, so holding inventory longer raises the variance term. λ is the dial: how heavily the trader weights that variance against expected impact cost.</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">η</div><div><h4>Temporary-impact coefficient</h4><p>Cost per unit of (trading rate)² — how expensive it is, per instant, to demand a given speed of execution.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">λ</div><div><h4>Risk aversion — the dial</h4><p>How heavily the trader penalizes variance (timing risk) relative to expected impact cost. λ = 0 is risk-neutral; larger λ means more nervous about uncertainty.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">σ</div><div><h4>Volatility</h4><p>The instrument's price volatility over the execution horizon — the thing you're exposed to for as long as inventory remains unsold.</p></div></div>
+      </div>
+      <div class="sl-note">Permanent impact doesn't appear here at all — for a linear permanent-impact model, its total cost depends only on the fixed total size X, not on the shape of the schedule, so it's a sunk cost every trajectory pays identically. It still costs real money; it just doesn't affect which shape is optimal.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">One shape parameter decides everything</h2>
+      <p class="sl-sub">Solving the trade-off above (a calculus-of-variations problem) collapses to one clean closed form.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">x(t)</div><div><h4>Remaining inventory</h4><p>Units still left to trade at time t. Starts at X, must reach exactly 0 by time T.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">κ</div><div><h4>κ = √(λσ²/η) — the shape parameter</h4><p>Folds risk aversion, volatility, and the impact coefficient into a single number, in units of 1/time.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">∿</div><div><h4>x(t) = X · sinh(κ(T−t)) / sinh(κT)</h4><p>A straight line at κ→0; increasingly front-loaded — fast early, nearly flat later — as κ grows.</p></div></div>
+      </div>
+      <div class="sl-quote">κ is basically a dial for "how nervous are you." Turn it all the way down and you sell at a perfectly steady pace, like a metronome — that's TWAP. Turn it up and you rush to sell most of it early, accepting a worse average price, just to stop worrying about what the market might do later.</div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Two limits tell the whole story</div>
+        <p>As κ→0 (λ=0, risk-neutral): sinh(z)≈z for small z, so x(t)/X → (T−t)/T — a perfectly straight line, constant trading rate, i.e. TWAP. As κ grows large: sinh grows exponentially, so the trajectory front-loads hard — most of the order sold early, a long, nearly-flat tail after.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Drag the dial — watch the schedule reshape</h2>
+      <p class="sl-sub">The dashed line is the κ = 0 (TWAP) reference, fixed for comparison. The solid curve is x(t)/X = sinh(κ(1−t)) / sinh(κ).</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Chart with time elapsed from 0 to 1 on the x-axis and fraction of order remaining from 0 to 1 on the y-axis. A dashed straight reference line runs from top-left to bottom-right. A solid curve starts flat with the reference line and, as risk aversion increases via the slider, drops steeply at the start and flattens out near zero for the rest of the window.">
+            <line x1="60" y1="250" x2="600" y2="250" style="stroke:var(--text3);stroke-width:1"/>
+            <line x1="60" y1="250" x2="60" y2="30" style="stroke:var(--text3);stroke-width:1"/>
+            <text x="16" y="145" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)" transform="rotate(-90 16 145)">Fraction remaining</text>
+            <text x="600" y="270" text-anchor="end" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)">Time elapsed (fraction of T) →</text>
+            <text x="56" y="254" text-anchor="end" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">0</text>
+            <text x="330" y="264" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">0.5</text>
+            <text x="600" y="264" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">1.0</text>
+            <line x1="60" y1="150" x2="600" y2="150" style="stroke:var(--border);stroke-width:1;stroke-dasharray:2,4"/>
+            <text x="600" y="146" text-anchor="end" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">0.5</text>
+            <path style="fill:none;stroke:var(--text3);stroke-width:1.5;stroke-dasharray:4,4" d="M60,30 L600,250"/>
+            <path id="mac-traj" style="fill:none;stroke:var(--blue);stroke-width:2.5" d="M60,30 L600,250"/>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Risk aversion κ</span><span class="sl-live" id="mac-kappa-val">κ = 3.00</span></div>
+        <input type="range" class="sl-slider" id="mac-kappa-slider" min="0" max="80" step="1" value="30">
+        <div class="sl-note">Drag right to increase risk aversion. At κ = 0 the optimal trajectory is the dashed straight line (constant trading rate). As κ rises, the curve front-loads: more of the order executes early, trading off more impact cost for less timing-risk exposure.</div>
+      </div>
+      <div class="sl-verdict">At the halfway point (t = 0.5T), about <b id="mac-half-val">21.3</b>% of the order remains for this κ — versus a fixed 50% for pure straight-line (TWAP) trading.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Three ways to execute the same order</h2>
+      <p class="sl-sub">Same total size, same horizon, three different schedules — with three different cost/risk profiles.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="sched-tabs">
+          <button class="sl-tab active" data-panel="sched-1">All at once</button>
+          <button class="sl-tab" data-panel="sched-2">TWAP — even</button>
+          <button class="sl-tab" data-panel="sched-3">Front-loaded (AC optimal)</button>
+        </div>
+        <div class="sl-panel active" id="sched-1">
+          <div class="sl-svgwrap"><svg viewBox="0 0 400 100" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart: a long amber impact cost bar and a very short purple timing risk bar">
+            <text x="0" y="22" font-size="11" fill="var(--text2)">Impact cost</text>
+            <rect x="0" y="30" width="340" height="16" rx="4" style="fill:var(--amber)"/>
+            <text x="0" y="70" font-size="11" fill="var(--text2)">Timing risk</text>
+            <rect x="0" y="78" width="18" height="16" rx="4" style="fill:var(--purple)"/>
+          </svg></div>
+          <div class="sl-verdict">One instant, maximum immediacy: you walk deep through the book and pay the full impact cost in a single concentrated hit — but timing risk is essentially zero, because you're done before the market has time to move against you.</div>
+        </div>
+        <div class="sl-panel" id="sched-2">
+          <div class="sl-svgwrap"><svg viewBox="0 0 400 100" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart: a moderate amber impact cost bar and a taller purple timing risk bar">
+            <text x="0" y="22" font-size="11" fill="var(--text2)">Impact cost</text>
+            <rect x="0" y="30" width="150" height="16" rx="4" style="fill:var(--amber)"/>
+            <text x="0" y="70" font-size="11" fill="var(--text2)">Timing risk</text>
+            <rect x="0" y="78" width="230" height="16" rx="4" style="fill:var(--purple)"/>
+          </svg></div>
+          <div class="sl-verdict">Constant trading rate for the whole window (κ = 0 — a risk-neutral trader): impact cost per share is much lower, but you carry meaningful inventory for the entire horizon, fully exposed to ordinary price drift throughout.</div>
+        </div>
+        <div class="sl-panel" id="sched-3">
+          <div class="sl-svgwrap"><svg viewBox="0 0 400 100" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart: an impact cost bar slightly larger than TWAP's and a timing risk bar smaller than TWAP's">
+            <text x="0" y="22" font-size="11" fill="var(--text2)">Impact cost</text>
+            <rect x="0" y="30" width="190" height="16" rx="4" style="fill:var(--amber)"/>
+            <text x="0" y="70" font-size="11" fill="var(--text2)">Timing risk</text>
+            <rect x="0" y="78" width="110" height="16" rx="4" style="fill:var(--purple)"/>
+          </svg></div>
+          <div class="sl-verdict">A moderately risk-averse trader (κ &gt; 0): most of the order gets done early, at a slightly worse expected impact cost than TWAP, specifically to cut the time spent holding inventory — and with it, timing-risk exposure.</div>
+        </div>
+      </div>
+      <div class="sl-note">Bars are illustrative, not fitted to real execution data — they show the direction and relative size of the trade-off, not calibrated magnitudes.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">How desks actually use this</h2>
+      <p class="sl-sub">Almost nobody solves the Euler-Lagrange equation by hand for every order — but the framework's outputs shape real execution-algorithm design.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📐</div><div><h4>Calibrating η and σ from real fills</h4><p>Temporary-impact coefficient and volatility are estimated empirically from historical executions, often using the square-root law as the starting functional form.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎚️</div><div><h4>Choosing λ as an explicit policy</h4><p>A desk sets risk aversion deliberately — based on genuine risk tolerance and situational context, like a known upcoming volatility event — not whatever a default happens to produce.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🤖</div><div><h4>Building TWAP/VWAP/IS algorithm families</h4><p>TWAP is the κ→0 limit; VWAP adapts the same trade-off to typical intraday volume curves; "implementation shortfall" algorithms minimize this exact impact-vs-risk objective, often with front-loading built in.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔄</div><div><h4>Re-solving the schedule in real time</h4><p>Live algorithms adapt as conditions change mid-execution — volatility spiking, liquidity thinning — rather than committing blindly to a static plan computed once.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Where this gets misread</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Easy to misread</span>
+          <ul>
+            <li>Treating the closed-form sinh/cosh trajectory as literally optimal in live markets — it assumes constant σ and η for the whole horizon</li>
+            <li>Assuming permanent impact "doesn't matter" because it drops out of the shape optimization — it's still a real, often large cost</li>
+            <li>Assuming higher risk aversion is always "safer" — a high-κ schedule pays more expected impact cost by construction, not a free lunch</li>
+            <li>Using Kyle's linear impact and the square-root law interchangeably, ignoring the size regime each fits</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">The correct reading</span>
+          <ul>
+            <li>Treat the closed form as a starting schedule, adapted as real intraday volatility and liquidity actually evolve</li>
+            <li>Budget for permanent impact separately as a real, trajectory-independent cost on the full order size</li>
+            <li>Pick λ deliberately to match genuine risk tolerance or a specific situational reason — not by default</li>
+            <li>Use the linear approximation for smaller orders relative to depth; use the square-root law at larger sizes relative to ADV</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Factual grounding — checked against this repo's actual code</div>
+        <p>The full lesson tags this concept "not built or tested in this repo," and that check holds up: no square-root impact law, no Kyle's-Lambda-style size-scaled cost, and no Almgren-Chriss-style execution-trajectory optimizer exists anywhere in this codebase. Cost modeling here is flat — <code>bot/backtest.py</code>'s <code>apply_costs()</code> charges the same spread-plus-slippage debit on every trade regardless of size. Two namesakes are worth ruling out: VWAP appears widely (e.g. <code>vumanchuLab/</code>, <code>Gold/modules/session_engine.py</code>) purely as a technical-analysis anchor level, and "TWAP slope" in <code>backtestSystem/engine.py</code> is a smoothed trend indicator — neither is an execution-scheduling algorithm. This repo trades single orders at flat cost, not sliced institutional blocks.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Under the square-root law, quadrupling an order's size relative to ADV roughly does what to its impact?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Roughly doubles it</button>
+        <button class="sl-quiz-opt">Roughly quadruples it</button>
+        <button class="sl-quiz-opt">Leaves it unchanged</button>
+        <div class="sl-quiz-explain">Impact ∝ √(Q/ADV), and √(4Q) = 2√Q — quadrupling the input to a square root only doubles the output.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Which component of market impact reverts once you stop trading?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Temporary impact</button>
+        <button class="sl-quiz-opt">Permanent impact</button>
+        <button class="sl-quiz-opt">Both revert equally</button>
+        <div class="sl-quiz-explain">Temporary impact is the concession needed for immediacy right now — it unwinds as the book refills. Permanent impact is a lasting, information-driven repricing that doesn't revert.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>In x(t) = X·sinh(κ(T−t))/sinh(κT), what happens as κ → 0?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It becomes a straight line — constant-rate TWAP</button>
+        <button class="sl-quiz-opt">It becomes a step function — trade everything instantly</button>
+        <button class="sl-quiz-opt">It becomes undefined</button>
+        <div class="sl-quiz-explain">sinh(z) ≈ z for small z, so the ratio collapses to (T−t)/T — a straight line, i.e. a constant trading rate the whole horizon.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>A highly risk-averse trader (high κ) typically chooses a trajectory that is:</h4>
+        <button class="sl-quiz-opt" data-correct="true">Front-loaded — most of the order trades early</button>
+        <button class="sl-quiz-opt">Back-loaded — most of the order trades late</button>
+        <button class="sl-quiz-opt">Identical to TWAP</button>
+        <div class="sl-quiz-explain">High κ means sinh grows fast, front-loading the schedule — trading faster early to cut how long inventory sits exposed to timing risk, accepting more impact cost in exchange.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Why does permanent impact drop out of the Almgren-Chriss optimal-trajectory calculation?</h4>
+        <button class="sl-quiz-opt" data-correct="true">For a linear permanent-impact model, its total cost depends only on total size traded, not the schedule's shape</button>
+        <button class="sl-quiz-opt">Because permanent impact doesn't actually cost anything</button>
+        <button class="sl-quiz-opt">Because permanent impact only applies to very small orders</button>
+        <div class="sl-quiz-explain">Every candidate trajectory pays the identical permanent-impact cost (fixed at total size X), so it contributes nothing to choosing between trajectories — it drops out of the shape optimization, but it's still a real cost paid on the full order.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Impact splits into temporary (the cost of immediacy, which reverts) and permanent (an information-driven repricing, which doesn't).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>The empirical square-root law says impact ∝ √(Q/ADV), not linear — big orders are cheaper per share than a linear model implies; small orders are costlier.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Optimal execution is a genuine trade-off — trading fast concentrates impact cost into a short window, trading slow spreads timing-risk exposure over a long one, and you can't shrink both at once.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Almgren-Chriss minimizes expected impact cost plus λ × the variance of execution price (timing risk) over the whole trajectory — λ is the one risk-aversion dial.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The optimal schedule has a closed form: x(t) = X·sinh(κ(T−t))/sinh(κT), κ = √(λσ²/η) — a straight line (TWAP) at κ = 0, increasingly front-loaded as κ rises.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Permanent impact doesn't change which shape is optimal, since it's a sunk cost every schedule pays identically — but it still costs real money on the full order.</p></div>
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">What this now lets you do</div>
+        <p>Read any execution schedule and recognize what risk-aversion assumption it implies. Roughly estimate impact cost from order size, ADV, and a calibrated coefficient using the square-root law. Recognize that front-loading isn't "wrong" or "overcautious" — it's a legitimate, quantifiable choice of a different λ, not a mistake.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>VPIN &amp; Order Flow Toxicity</h3>
+        <p>How to measure, from the order flow itself, when the market is quietly dominated by informed traders — before the price has finished moving.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="vpin-order-flow-toxicity-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="market-impact-almgren-chriss.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Square-root law impact estimator — impact(bps) = k * sqrt(Q/ADV), live.
+  (function(){
+    var q = document.getElementById('mi-q');
+    if (!q) return;
+    var adv = document.getElementById('mi-adv'), k = document.getElementById('mi-k');
+    var result = document.getElementById('mi-result');
+    var step1 = document.getElementById('mi-step1'), step2 = document.getElementById('mi-step2');
+    var resetBtn = document.getElementById('mi-reset');
+    var DEFAULTS = { q: 500000, adv: 5000000, k: 200 };
+
+    function recompute(){
+      var qv = parseFloat(q.value), advv = parseFloat(adv.value), kv = parseFloat(k.value);
+      if (!isFinite(qv) || !isFinite(advv) || !isFinite(kv) || advv <= 0 || qv < 0 || kv < 0) {
+        result.textContent = '—';
+        step1.textContent = '—';
+        step2.textContent = '—';
+        return;
+      }
+      var frac = qv / advv;
+      var sq = Math.sqrt(frac);
+      var impact = kv * sq;
+      step1.textContent = (frac * 100).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
+      step2.textContent = sq.toFixed(3);
+      result.textContent = impact.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' bps';
+    }
+
+    [q, adv, k].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      q.value = DEFAULTS.q; adv.value = DEFAULTS.adv; k.value = DEFAULTS.k;
+      recompute();
+    });
+    recompute();
+  })();
+
+  // Almgren-Chriss trajectory slider — x(t)/X = sinh(kappa*(1-t)) / sinh(kappa).
+  (function(){
+    var slider = document.getElementById('mac-kappa-slider');
+    if (!slider) return;
+    var kappaVal = document.getElementById('mac-kappa-val');
+    var halfVal = document.getElementById('mac-half-val');
+    var traj = document.getElementById('mac-traj');
+
+    var X0 = 60, X1 = 600, Y0 = 250, Y1 = 30;
+    var N = 60;
+
+    function sinh(z){ return (Math.exp(z) - Math.exp(-z)) / 2; }
+
+    function fracRemaining(t, kappa){
+      if (kappa < 1e-6) return 1 - t;
+      return sinh(kappa * (1 - t)) / sinh(kappa);
+    }
+
+    function update(){
+      var kappa = parseInt(slider.value, 10) / 10;
+      kappaVal.textContent = 'κ = ' + kappa.toFixed(2);
+
+      var d = '';
+      for (var i = 0; i <= N; i++){
+        var t = i / N;
+        var frac = fracRemaining(t, kappa);
+        var x = X0 + t * (X1 - X0);
+        var y = Y0 - frac * (Y0 - Y1);
+        d += (i === 0 ? 'M' : 'L') + x.toFixed(2) + ',' + y.toFixed(2) + ' ';
+      }
+      traj.setAttribute('d', d.trim());
+
+      halfVal.textContent = (fracRemaining(0.5, kappa) * 100).toFixed(1);
+    }
+
+    slider.addEventListener('input', update);
+    update();
+  })();
+})();
+</script>
+</body>
+</html>

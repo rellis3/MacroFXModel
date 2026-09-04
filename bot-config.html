@@ -3896,17 +3896,17 @@ python volatility_bot/volatility_bot.py --live --url &lt;dashboard-url&gt;</pre>
       <div style="overflow-x:auto">
         <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace">
           <thead>
-            <tr style="background:var(--s2);color:var(--text3)">
-              <th style="padding:6px 10px;text-align:left">Pair</th>
-              <th style="padding:6px 10px;text-align:left">Side</th>
-              <th style="padding:6px 10px;text-align:left">Rung</th>
-              <th style="padding:6px 10px;text-align:left">Decision</th>
-              <th style="padding:6px 10px;text-align:right">Margin</th>
-              <th style="padding:6px 10px;text-align:right">Entry</th>
-              <th style="padding:6px 10px;text-align:right">SL</th>
-              <th style="padding:6px 10px;text-align:right">TP</th>
-              <th style="padding:6px 10px;text-align:left">Status</th>
-              <th style="padding:6px 10px;text-align:left">Rationale</th>
+            <tr style="background:var(--s2);color:var(--text3)" id="vb2LinesHead">
+              <th data-col="pair" onclick="vb2SortLines('pair')" style="padding:6px 10px;text-align:left;cursor:pointer;user-select:none">Pair<span class="sort-ind"></span></th>
+              <th data-col="side" onclick="vb2SortLines('side')" style="padding:6px 10px;text-align:left;cursor:pointer;user-select:none">Side<span class="sort-ind"></span></th>
+              <th data-col="rung" onclick="vb2SortLines('rung')" style="padding:6px 10px;text-align:left;cursor:pointer;user-select:none">Rung<span class="sort-ind"></span></th>
+              <th data-col="decision" onclick="vb2SortLines('decision')" style="padding:6px 10px;text-align:left;cursor:pointer;user-select:none">Decision<span class="sort-ind"></span></th>
+              <th data-col="margin" onclick="vb2SortLines('margin')" style="padding:6px 10px;text-align:right;cursor:pointer;user-select:none">Margin<span class="sort-ind"></span></th>
+              <th data-col="entry" onclick="vb2SortLines('entry')" style="padding:6px 10px;text-align:right;cursor:pointer;user-select:none">Entry<span class="sort-ind"></span></th>
+              <th data-col="sl" onclick="vb2SortLines('sl')" style="padding:6px 10px;text-align:right;cursor:pointer;user-select:none">SL<span class="sort-ind"></span></th>
+              <th data-col="tp" onclick="vb2SortLines('tp')" style="padding:6px 10px;text-align:right;cursor:pointer;user-select:none">TP<span class="sort-ind"></span></th>
+              <th data-col="status" onclick="vb2SortLines('status')" style="padding:6px 10px;text-align:left;cursor:pointer;user-select:none">Status<span class="sort-ind"></span></th>
+              <th data-col="rationale" onclick="vb2SortLines('rationale')" style="padding:6px 10px;text-align:left;cursor:pointer;user-select:none">Rationale<span class="sort-ind"></span></th>
             </tr>
           </thead>
           <tbody id="vb2LinesBody">
@@ -4033,7 +4033,7 @@ python volatility_bot_v2/volatility_bot_v2.py --live --url &lt;dashboard-url&gt;
         <div class="form-row"><span class="form-lbl" title="Hard ceiling on any single position's lot size, regardless of what the risk-% sizing formula would otherwise compute — a backstop against a sizing bug or an unusually tight stop producing an oversized order.">Max lot</span><input type="number" id="vb2_max_lot" min="0.01" max="50" step="0.01" style="width:80px"></div>
         <div class="form-row"><span class="form-lbl" title="Caps how many positions this bot can hold open across ALL pairs simultaneously. New entries are skipped once this many are already open, regardless of how many good zones the plan shows.">Max open positions</span><input type="number" id="vb2_max_open" min="1" max="40" step="1" style="width:80px"></div>
         <div class="form-row"><span class="form-lbl" title="Caps how many positions this bot can hold open on the SAME pair at once, separate from the account-wide cap above. Matches the backtest's per-pair concurrency limit — without it, one pair firing multiple rungs in a row could dominate the book.">Max concurrent / pair</span><input type="number" id="vb2_max_concurrent_per_pair" min="1" max="10" step="1" style="width:80px"></div>
-        <div class="form-row"><span class="form-lbl" title="Skips an entry if the live bid/ask spread on that symbol is wider than this many pips at the moment of fill — protects against entering during illiquid/volatile conditions where the real fill would be much worse than the planned entry price.">Max spread (pips)</span><input type="number" id="vb2_max_spread_pips" min="0.1" max="50" step="0.1" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="Skips an entry if the live bid/ask spread on that symbol is wider than this many pips at the moment of fill — protects against entering during illiquid/volatile conditions where the real fill would be much worse than the planned entry price.">Max spread (pips)</span><input type="number" id="vb2_max_spread_pips" min="0.1" max="50" step="0.1" style="width:80px"><span id="vb2SpreadCapNote" style="font-size:11px;color:var(--text3);margin-left:8px"></span></div>
         <div style="margin-top:8px;margin-bottom:4px;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Risk overlays</div>
         <div class="form-row"><span class="form-lbl" title="Tracks THIS bot's own realized P&amp;L per currency (e.g. all JPY-leg trades), live, reset at UTC midnight. Once a currency's realized loss today breaches the threshold below, new trades touching that currency are blocked for the rest of the day — existing positions are untouched. OOS-validated: built after finding no single PAIR ever drives more than ~30% of a bad day's loss, but a single CURRENCY often drives 40-80% of it.">Currency loss gate</span>
           <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="vb2_ccy_loss_gate"> on</label></div>
@@ -4043,6 +4043,8 @@ python volatility_bot_v2/volatility_bot_v2.py --live --url &lt;dashboard-url&gt;
         <div class="form-row"><span class="form-lbl" title="Applied by the SERVER when it builds the plan. On a fade zone, cuts the ACTUAL broker stop to this fraction of the full stop distance while still SIZING the position off the full (untightened) distance — an early-exit that can't re-lever, unlike fade-stop tightening. Validated in analysis/early_exit_no_releverage_backtest.mjs.">Early exit (no re-lever) <small>server-side</small></span>
           <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="vb2_early_exit"> on</label></div>
         <div class="form-row"><span class="form-lbl" title="Fraction of the full stop distance the actual broker stop is cut to when Early exit is on (e.g. 0.4 = stop out at 40% of the way to the original stop). Position sizing always uses the FULL distance regardless of this setting.">↳ Early exit threshold</span><input type="number" id="vb2_early_exit_threshold" min="0.1" max="1" step="0.05" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="Trades the outermost (p90) rung — NOT the same mechanism as p50/p75 above. p90 has no further rung to price a stop against, so the normal vote/margin logic can never fire for it; instead EVERY armed p90 touch trades unconditionally (no vote), targeting the distance back to p75 with a FIXED stop = that pair's own 90th-percentile in-sample run distance (scripts/build_p90_votetrades.mjs, fit once, not recomputed live). Validated OOS at your current live config (risk 1%, no heat cap) — see the p90-vs-no-p90 backtest comparison. Defaults OFF: this is a genuinely different trading behavior (unconditional, not vote-gated) with no live track record yet.">P90 rung (unconditional fade) <small>different mechanism — read tooltip, defaults OFF</small></span>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="vb2_p90_enabled"> on</label></div>
         <div class="form-row"><span class="form-lbl" title="Caps the TOTAL risk % this bot has committed across all its own currently-open positions combined — blocks a new entry that would push the running total over this ceiling, even if Max open positions hasn't been hit yet. 0 = off (no cap beyond max open positions itself).">Portfolio heat cap % <small>0 = off</small></span><input type="number" id="vb2_max_open_risk_pct" min="0" max="50" step="0.5" style="width:80px"></div>
         <div class="form-row"><span class="form-lbl" title="Tracks this bot's own running PEAK balance (never resets, unlike the daily/monthly RiskGuard lockout) and once drawdown from that peak breaches the trigger below, scales every new position's size down by the throttle multiplier — a gradual de-risk, not a hard stop — until balance recovers to the restore level. Validated in analysis/drawdown_throttle_backtest.mjs: ~40% shallower drawdown at a real, disclosed Sharpe/CAGR cost.">Drawdown throttle</span>
           <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="vb2_throttle_enabled"> on</label></div>
@@ -4122,6 +4124,14 @@ python volatility_bot_v2/volatility_bot_v2.py --live --url &lt;dashboard-url&gt;
           <button style="background:transparent;border:1px solid #a78bfa;border-radius:7px;color:#a78bfa;font-weight:600;padding:8px 14px;cursor:pointer;font-size:12px">Backtest</button>
         </a>
         <button style="background:#a78bfa;border:none;border-radius:7px;color:#1a1033;font-weight:700;padding:8px 14px;cursor:pointer;font-size:12px" onclick="saveFaConfig();saveFaCreds()">Save All</button>
+      </div>
+    </div>
+
+    <div class="bot-banner" style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.30)">
+      <div class="bot-banner-icon">⚠️</div>
+      <div style="flex:1">
+        <div class="bot-banner-title" style="color:#ef4444">Spread-guard window active — added 2026-09-02, DEMO ACCOUNT ONLY so far</div>
+        <div class="bot-banner-sub">3 positions stopped out within 16min of each other on 2026-09-01 around a spread spike at the NY close / daily rollover — an already-open position's resting stop has zero spread protection (max_spread_pips only ever gated new entries). Fix: <b>no new entries from 21:30 London</b> (both ladders) · <b>existing positions flattened at 21:55 London</b> (both ladders) · <b>Monday entries resume 23:00 London</b> · <b>Asia entries resume 06:00 London</b> (today's rungs aren't fixed until Asia itself closes). All auto-shift with BST/GMT. This was built entirely off spread behavior observed on the DEMO account — untested against the real broker's live spreads, which may not widen the same way. Worth re-checking (and possibly disabling <code>spread_guard_enabled</code>) before/when going live, not carrying it over blind.</div>
       </div>
     </div>
 
@@ -4237,6 +4247,49 @@ python volatility_bot_v2/volatility_bot_v2.py --live --url &lt;dashboard-url&gt;
           </thead>
           <tbody id="faLinesBody">
             <tr><td colspan="10" style="padding:14px;text-align:center;color:var(--text3)">Waiting for the server plan</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- All lines -- unfiltered, every rung the engine currently carries for
+         both ladders, touched or not, regardless of vote margin. The table
+         above is what the bot's actual plan contains (already margin>=2
+         filtered server-side); this one answers "is the engine actually
+         evaluating the full ~40-rung grid per pair, or silently skipping
+         most of it" -- direct owner ask, 2026-09-01, mirrors Vote Atlas's
+         own All Lines table exactly. -->
+    <div class="card" style="padding:0">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 6px">
+        <span style="font-size:12px;font-weight:600;color:#a78bfa">All Lines — every rung, watched or not</span>
+        <span class="bot-banner-sub" style="margin:0">unfiltered — includes margin&lt;2 and "no decision" lines the plan above leaves out, across BOTH ladders</span>
+        <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3);margin-left:auto">
+          Pair <input type="text" id="faAllLinesFilter" placeholder="all" style="width:70px;background:var(--s3);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:2px 6px;font-size:11px" oninput="loadFaAllLines()">
+        </label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3)">
+          Sort <select id="faAllLinesSort" onchange="loadFaAllLines()" style="background:var(--s3);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:2px 6px;font-size:11px">
+            <option value="margin">Margin (high→low)</option>
+            <option value="pair">Pair (A→Z)</option>
+          </select>
+        </label>
+        <button onclick="loadFaAllLines()" style="background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text3);padding:3px 10px;font-size:11px;cursor:pointer">↺ Refresh</button>
+      </div>
+      <div style="overflow-x:auto;max-height:480px;overflow-y:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace">
+          <thead>
+            <tr style="background:var(--s2);color:var(--text3)">
+              <th style="padding:6px 10px;text-align:left">Pair</th>
+              <th style="padding:6px 10px;text-align:left">Ladder</th>
+              <th style="padding:6px 10px;text-align:left">Side</th>
+              <th style="padding:6px 10px;text-align:left">Rung</th>
+              <th style="padding:6px 10px;text-align:left">Status</th>
+              <th style="padding:6px 10px;text-align:left">Decision</th>
+              <th style="padding:6px 10px;text-align:right">Margin</th>
+              <th style="padding:6px 10px;text-align:center">Tradeable now</th>
+            </tr>
+          </thead>
+          <tbody id="faAllLinesBody">
+            <tr><td colspan="8" style="padding:14px;text-align:center;color:var(--text3)">loading…</td></tr>
           </tbody>
         </table>
       </div>
@@ -7365,6 +7418,7 @@ const _POS_BOTS = [
   { key: 'range_line_bot_status',     label: 'Range-Line',  color: '#4fd1c5', bg: '#06302b', bd: '#0f766e', paper: true },
   { key: 'oi_bot_status',             label: 'OI Gamma',    color: '#4dd0e1', bg: '#06282e', bd: '#0e7490', paper: true },
   { key: 'yield_spread_status',          label: 'YieldSpread',    color: '#f472b6', bg: '#2a0a1c', bd: '#9d1f5f', paper: true },
+  { key: 'fib_atlas_bot_status',         label: 'Fib Atlas',      color: '#a78bfa', bg: '#1e1633', bd: '#6d28d9', paper: true },
 ];
 
 let _posRefreshTimer = null;
@@ -8247,8 +8301,9 @@ function _initHistoryView() {
 
   _renderHistBotPills();
 
-  // Set today's date as default for custom range
-  const today = new Date().toISOString().slice(0, 10);
+  // Set today's date (UK calendar day, matching the rest of this view) as
+  // default for custom range
+  const today = _ukToday();
   const fromEl = document.getElementById('histDateFrom');
   const toEl   = document.getElementById('histDateTo');
   if (fromEl) fromEl.value = today;
@@ -8348,17 +8403,21 @@ function setHistPreset(preset) {
 }
 window.setHistPreset = setHistPreset;
 
+// "Today"/"week"/"month" mean the UK calendar day the user is looking at, same
+// as every other date in this view (_ukDate, the calendar grid, dateStr in the
+// table). Anchoring on UTC's date instead used to lose the last BST hour of
+// each UK day off the front of "Today" — see loadHistoryTab's query padding.
 function _getHistDateRange() {
-  const now   = new Date();
-  const today = now.toISOString().slice(0, 10);
+  const today  = _ukToday();
+  const anchor = new Date(today + 'T00:00:00Z'); // date-only arithmetic anchor
   if (_histPreset === 'today') return { from: today, to: today };
   if (_histPreset === 'week') {
-    const dow   = now.getUTCDay(); // 0=Sun
-    const mon   = new Date(now); mon.setUTCDate(now.getUTCDate() - ((dow + 6) % 7));
+    const dow = anchor.getUTCDay(); // 0=Sun
+    const mon = new Date(anchor); mon.setUTCDate(anchor.getUTCDate() - ((dow + 6) % 7));
     return { from: mon.toISOString().slice(0, 10), to: today };
   }
   if (_histPreset === 'month') {
-    const first = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    const first = new Date(Date.UTC(anchor.getUTCFullYear(), anchor.getUTCMonth(), 1));
     return { from: first.toISOString().slice(0, 10), to: today };
   }
   // custom
@@ -8447,6 +8506,34 @@ function _fmtTime(utcSec) {
 }
 function _ukHour(utcSec) { return parseInt(_ukParts(utcSec).hour, 10) % 24; }
 function _ukDate(utcSec) { const p = _ukParts(utcSec); return `${p.year}-${p.month}-${p.day}`; }
+function _ukToday() { return _ukDate(Math.floor(Date.now() / 1000)); }
+function _addDaysIso(iso, delta) {
+  const d = new Date(iso + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + delta);
+  return d.toISOString().slice(0, 10);
+}
+
+// The live status-push path (_worker.js mergeTradeHistory) used to bucket a
+// closed trade under "today" at push time rather than its own close date —
+// a trade still in the bot's re-sent "last N closed" list at day rollover
+// got re-filed into the NEW day's bucket too, so the SAME trade can already
+// sit in two adjacent trade_hist_* KV buckets. Fixed server-side, but the
+// duplicate rows it already wrote are still in KV; collapse them here so
+// they don't double up in the table or double-count P&L totals.
+function _dedupeTrades(trades) {
+  const seen = new Set();
+  const out  = [];
+  for (const t of trades) {
+    const id  = t.position_id ?? t.ticket;
+    const key = id != null
+      ? `${t.bot_key}|${id}`
+      : `${t.bot_key}|${t.symbol}|${t.direction}|${t.lots}|${t.time_close}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(t);
+  }
+  return out;
+}
 
 // ── Analytics breakdown ───────────────────────────────────────────────────────
 
@@ -8489,7 +8576,7 @@ async function toggleCrossBotAnalysis() {
   try {
     const r = await fetch(`/api/trade-history?from=${from}&to=${to}`);
     const j = await r.json();
-    trades = j.trades || [];
+    trades = _dedupeTrades(j.trades || []);
   } catch(e) {
     if (content) content.innerHTML = '<div style="padding:10px 0;color:var(--red);font-size:12px">Failed to load trade history.</div>';
     return;
@@ -8811,18 +8898,34 @@ async function loadHistoryTab() {
 
   let trades = [];
   try {
-    const r = await fetch(`/api/trade-history?from=${from}&to=${to}`);
+    // The server buckets trade_hist_* under its OWN write-time UTC date, which
+    // can lag the UK calendar day by up to an hour (BST) — a trade that closed
+    // just after UK midnight can still be filed under UTC-yesterday. Pad the
+    // query a day on each side so that bucket is included, then narrow back
+    // down to the intended UK window below once we know each trade's true
+    // close date.
+    const queryFrom = _addDaysIso(from, -1);
+    const queryTo   = _addDaysIso(to, 1);
+    const r = await fetch(`/api/trade-history?from=${queryFrom}&to=${queryTo}`);
     const j = await r.json();
     trades = (j.trades || []).filter(t => _histActiveBots.has(t.bot_key));
   } catch(e) {
     tbody.innerHTML = `<tr><td colspan="15" class="pos-empty" style="color:var(--red)">Failed to load history. Check KV connection.</td></tr>`;
     return;
   }
-  _lastHistTrades = trades;
   // Learn each bot's time base from the rows that declare one, so rows written
   // before bots shipped `tz_offset_sec` can still be placed on the right clock.
   _tzAssumed = false;
   _learnTzOffsets(trades);
+  // Now that offsets are known, narrow the padded fetch back down to the UK
+  // calendar dates the user actually asked for.
+  trades = trades.filter(t => {
+    const u = _tradeUtc(t, 'time_close');
+    const d = u ? _ukDate(u) : t.date;
+    return d >= from && d <= to;
+  });
+  trades = _dedupeTrades(trades);
+  _lastHistTrades = trades;
 
   // Join the TDE shadow book (what the model said at entry, keyed by position_id).
   // Advisory only — v0 is an uncalibrated prior; this tracks call-vs-outcome so we
@@ -8955,7 +9058,7 @@ function renderCal() {
   const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   if (titleEl) titleEl.textContent = `${monthNames[_calMonth]} ${_calYear}`;
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = _ukToday();
   const firstDay = new Date(Date.UTC(_calYear, _calMonth, 1));
   const lastDay  = new Date(Date.UTC(_calYear, _calMonth + 1, 0));
   const startDow = (firstDay.getUTCDay() + 6) % 7; // Mon=0

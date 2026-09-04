@@ -184,6 +184,9 @@
   .pcard.hot{border-color:rgba(210,153,34,.55)}
   .pcard.hot.dir-up,.pcard.hot.dir-dn{border-left-color:rgba(210,153,34,.55)}
   .pc-top{display:flex;align-items:baseline;gap:9px;margin-bottom:7px;flex-wrap:wrap}
+  .pc-fav{cursor:pointer;font-size:14px;color:var(--text3);line-height:1;user-select:none}
+  .pc-fav:hover{color:#f59e0b}
+  .pc-fav.on{color:#f59e0b}
   .pc-name{font-size:13.5px;font-weight:700;color:var(--text2);letter-spacing:.01em}
   .pc-price{font-size:19px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--text)}
   .pc-top .push{margin-left:auto;display:flex;gap:5px}
@@ -717,6 +720,29 @@
 <script src="js/scratchpad.js"></script>
 <script src="js/siteApiMap.js"></script>
 
+<!-- Market Outlook horizon toggle — switches the per-pair Outlook chip (card
+     face) between Daily (the page's existing per-pair reads — no overlay),
+     5-Day and 20-Day (js/outlookEngine.js). The GLOBAL 5-Day/20-Day read
+     (currency ranking + bullish/neutral/bearish tally) is no longer gated by
+     this toggle at all — after three rounds of "the pill changes nothing I
+     can see", it's now its own always-visible #outlookPanel section further
+     down the page instead, showing both horizons side by side permanently.
+     This toggle's only remaining job is the compact per-pair card chip,
+     where a toggle genuinely earns its keep (space-constrained, one horizon
+     at a time). Sits as a plain sibling after the Command Hub rather than
+     inside js/commandHub.js, since that file is shared with other pages this
+     feature doesn't apply to. -->
+<div class="outlook-hz help" id="outlookHzBar" title="How far out the per-pair Outlook chip on each card looks. Daily = this page's own existing reads, no overlay. 5-Day / 20-Day = a labelled context composite from js/outlookEngine.js — not a new backtested signal. The global 5-Day/20-Day currency read is always visible further down the page, in its own Market Outlook section — this toggle no longer affects it.">
+  <span class="lbl">🔭 Outlook</span>
+  <button class="fchip" id="outlookHzBtn-daily" onclick="setOutlookHorizon('daily')">Daily</button>
+  <button class="fchip" id="outlookHzBtn-weekly" onclick="setOutlookHorizon('weekly')">5-Day</button>
+  <button class="fchip" id="outlookHzBtn-monthly" onclick="setOutlookHorizon('monthly')">20-Day</button>
+</div>
+<style>
+  .outlook-hz{display:flex;align-items:center;gap:5px;padding:6px 10px}
+  .outlook-hz .lbl{font-size:11px;color:var(--text3);margin-right:2px}
+</style>
+
 <div class="hdr">
   <h1>☀️ Daily Trading Brief</h1>
   <span class="sess" id="hdrSess">—</span>
@@ -740,6 +766,8 @@
       <div class="qstrip delta" id="sinceYday" style="display:none"></div>
 
       <div class="mread" id="mread" style="display:none"></div>
+
+      <div class="mread" id="outlookPanel" style="display:none"></div>
 
       <div class="qstrip" id="weekCtx" style="display:none"></div>
       <div class="qstrip" id="concentration" style="display:none"></div>
@@ -805,6 +833,13 @@
       </h3>
       <div class="dr-sec-body"><div id="drSummary"></div></div>
     </div>
+  <div class="dr-sec" id="drOutlookSec" data-seckey="outlook">
+    <h3 class="help" title="A labelled 5-day / 20-day directional read, built from signals this page already computes for this pair (technical/COT/macro/carry composite, COT positioning, the vol-regime building/cooling read) plus the yield-spread z-score family where this pair has one. CONTEXT composite, NOT a new backtested signal — the yield-spread leg (when shown) is the one component here with a real OOS result behind it; everything else is arithmetic agreement across reads already on this card.">
+      <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>🔭 Market Outlook — 5-Day &amp; 20-Day</span>
+      <span class="chip warn" style="font-size:9px">context composite</span>
+    </h3>
+    <div class="dr-sec-body"><div id="drOutlook"></div></div>
+  </div>
   <div class="dr-sec" id="drChartSec" data-seckey="chart">
     <h3><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Today vs forecast — M5</span> <span class="muted" id="drChartNote"></span><button class="chart-resize" id="drChartResetBtn" onclick="resetDrawerChartZoom()" title="Reset zoom/pan back to auto-fit">⟲</button><button class="chart-resize" id="drChartBtn" onclick="resizeDrawerChart()" title="Taller / shorter chart">⤢</button></h3>
     <div class="dr-sec-body">
@@ -931,6 +966,13 @@
     <div class="hint" style="margin:2px 0 6px">Not a locked-in call — a live read. Recomputed from the current bar's own context every few seconds; "bot would trade this" means the margin already clears volatility_bot_v2's own live threshold (≥3).</div>
     <div class="dr-sec-body"><div id="drVote"><span class="muted">loading…</span></div></div>
   </div>
+  <div class="dr-sec" id="drVoteAnalysisSec" data-seckey="voteanalysis" style="display:none">
+    <h3 class="help" title="What history actually shows for this pair at the bot's own trading threshold (margin≥3), plus a real structural finding measured across all 17 live-traded pairs: once a rung gets touched during the Asia session, does the SAME move tend to keep going (reach the next rung out) or reverse (tag the other side)? Answered from a real re-walk of the touch data, not a live guess — see the card for sample sizes.">
+      <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Vote Atlas — what history shows</span>
+      <span class="chip neu" style="font-size:9px">measured, not live</span>
+    </h3>
+    <div class="dr-sec-body"><div id="drVoteAnalysis"><span class="muted">loading…</span></div></div>
+  </div>
   <div class="dr-sec" id="drPathSec" data-seckey="path" style="display:none">
     <h3 class="help" title="The Forecast Path engine's CALIBRATED intraday claims (event-aware, session-shaped σ — the claims are graded against history on that page, not asserted). Range and timing context, NOT direction: its own calibration shows the direction call is a coin flip."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>📐 Forecast Path — calibrated 4h claims</span></h3>
     <div class="dr-sec-body"><div id="drPath"></div></div>
@@ -960,7 +1002,14 @@
   </div>
   </div>
   <div class="dr-pane" id="drPane-systems" role="tabpanel" aria-labelledby="drTab-systems" hidden>
-    <div class="dr-pending"><b>What the live bots say about this pair</b><p>One row per live system with its current stance, plus sizing and open exposure. Not built yet &mdash; this view does not exist anywhere on the site today.</p><p class="dr-pending-links"><a href="bot-config.html" target="_blank">Bot config &rarr;</a> &middot; <a href="forward-track.html" target="_blank">Forward track &rarr;</a></p></div>
+    <div class="dr-sec" id="drVoteStateSec" data-seckey="votestate">
+      <h3 class="help" title="Everything the Vote Atlas bot (volatility_bot_v2) currently knows about this pair, beyond the armed zones already shown on the Vol &amp; Path tab: whether it's actually enabled to trade, its configured spread cap, today's entered/skipped/rejected decisions with reasons, and any live/closed position.">
+        <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Vote Atlas — bot state</span>
+        <span class="chip neu" style="font-size:9px">volatility_bot_v2</span>
+      </h3>
+      <div class="dr-sec-body"><div id="drVoteState"><span class="muted">loading…</span></div></div>
+    </div>
+    <div class="dr-pending"><b>Other live systems</b><p>Vote Atlas is the only bot wired into this tab so far. Full config for it, and every other bot, still lives on the config page.</p><p class="dr-pending-links"><a href="bot-config.html" target="_blank">Bot config &rarr;</a> &middot; <a href="forward-track.html" target="_blank">Forward track &rarr;</a></p></div>
   </div>
 </div>
 
@@ -1007,6 +1056,7 @@ function toggleTheme() {
 document.addEventListener('DOMContentLoaded', () => {
   const btn = $('themeToggleBtn');
   if (btn) btn.textContent = document.body.classList.contains('light') ? '🌙 Dark' : '☀️ Light';
+  document.querySelectorAll('#outlookHzBar .fchip').forEach(b => b.classList.toggle('on', b.id === `outlookHzBtn-${outlookHorizon}`));
 });
 
 // Map daily-brief instrument NAME → TDE pair key + /api/levels key + display label
@@ -1113,6 +1163,9 @@ let riskFlags = null;    // /api/risk-flags — cross-asset risk-flag composite 
 let cvol = null;         // /api/cvol — EVZ/GVZ implied vol levels + 5y percentiles
 let macroScorecard = null; // /api/macro-scorecard — cross-engine fundamental composite per currency (CPI/GDP/labor/etc)
 let creditQuality = null; // /api/credit-quality — Baa10Y−Aaa10Y quality-spread z-score (credit-curve SHAPE, distinct from the HY-level credit gate)
+let yieldSpreadPlan = null; // /api/yield-spread/plan — today's spread-z per pair from the VALIDATED yield-spread engine (6 pairs only, see js/zscoreSpreadEngine.js ZSCORE_PAIRS); feeds the Market Outlook's one OOS-validated leg
+let cbHistory = null; // { fomc, ecb, boe, boj } — multi-meeting hawkish-score history per central bank. DESCRIPTIVE CONTEXT ONLY — never a Market Outlook driver (see js/outlookEngine.js describeCbTrend's header: this repo already banked a null on hawkish-score momentum predicting price, CB_SENTIMENT_PRICE_TEST.md)
+let goldEtfFlow = null; // /api/gold-etf-flow — GLD+IAU combined-AUM 1d/5d/20d % deltas (own KV-collected history, server.js). Gold-only Outlook Engine driver — no FX-pair equivalent exists
 // MVE fair-value context (6 supported instruments only, /api/mve/:sym).
 // This project's OWN backtest found the underlying signal null-to-negative
 // for NQ and weak/null for the FX legs (js/mve/*, MARKET_VALUATION_ENGINE.md)
@@ -1200,6 +1253,25 @@ function statCardHtml(lbl, big, deltaTxt, deltaUp, sparkVals, sparkUp, wkTxt, wk
 }
 // Rate stat-card pip — 10Y / 2Y / 2s10s share one card slot so the top row
 // doesn't grow a 5th card just for the curve; state persists across reloads.
+let outlookHorizon = (() => { try { return localStorage.getItem('outlookHorizon') || 'daily'; } catch (e) { return 'daily'; } })();
+function setOutlookHorizon(key) {
+  outlookHorizon = key;
+  try { localStorage.setItem('outlookHorizon', key); } catch (e) {}
+  document.querySelectorAll('#outlookHzBar .fchip').forEach(b => b.classList.toggle('on', b.id === `outlookHzBtn-${key}`));
+  render();
+}
+// Per-pair favorites (★) — pinned instruments always sort first, in every
+// view (card/table/scorecard all funnel through sortRows()), ahead of
+// whichever sort mode is selected. Distinct from js/commandHub.js's own
+// "★ Favs" dropdown (bookmarked PAGES, a different feature/data domain) —
+// same star convention, unrelated storage key.
+let favPairs = (() => { try { return new Set(JSON.parse(localStorage.getItem('favPairs') || '[]')); } catch (e) { return new Set(); } })();
+function toggleFav(name, ev) {
+  ev.stopPropagation();   // the card itself opens the drawer on click
+  if (favPairs.has(name)) favPairs.delete(name); else favPairs.add(name);
+  try { localStorage.setItem('favPairs', JSON.stringify([...favPairs])); } catch (e) {}
+  render();
+}
 let rateStatTab = (() => { try { return localStorage.getItem('rateStatTab') || 'us10y'; } catch (e) { return 'us10y'; } })();
 function setRateStatTab(id) {
   rateStatTab = id;
@@ -1345,7 +1417,7 @@ async function loadAll(manual) {
 const GATE_COUNTRIES = new Set(['US', 'EU', 'DE', 'GB', 'JP', 'CH', 'AU', 'CA', 'NZ', 'CN']);
 
 async function loadGate() {
-  const [ev, fr, ss, ct, oi, oiT, wk, ha, rf, cv, oh, mc, msc, cq] = await Promise.all([
+  const [ev, fr, ss, ct, oi, oiT, wk, ha, rf, cv, oh, mc, msc, cq, ysp, fomcH, ecbH, boeH, bojH, gef] = await Promise.all([
     jget('/api/events').catch(() => null),
     jget('/api/fred').catch(() => null),
     jget('/api/session-stats').catch(() => null),
@@ -1360,6 +1432,20 @@ async function loadGate() {
     jget('/api/macro-changes').catch(() => null),
     jget('/api/macro-scorecard').catch(() => null),
     jget('/api/credit-quality').catch(() => null),
+    jget('/api/yield-spread/plan').catch(() => null),
+    // Multi-meeting hawkish-score history per central bank — small, cached
+    // server-side. DESCRIPTIVE CONTEXT ONLY (drawer + AI prompt), never fed
+    // into the Outlook Engine's bias score — see outlookEngine.js's
+    // describeCbTrend header for why (banked-null CB-sentiment test).
+    jget('/api/fomc/history?n=6').catch(() => null),
+    jget('/api/ecb/history?n=6').catch(() => null),
+    jget('/api/boe/history?n=6').catch(() => null),
+    jget('/api/boj/history?n=6').catch(() => null),
+    // GLD+IAU combined AUM, self-collected daily by the server — see
+    // server.js's _goldEtfFlowSeries header for why (no vendor-hosted flow
+    // history exists to fetch directly). UNVERIFIED IN SANDBOX like every
+    // OANDA/Yahoo-dependent feature; needs a live Railway check.
+    jget('/api/gold-etf-flow').catch(() => null),
   ]);
   if (Array.isArray(ev)) events = ev;
   if (fr && Object.keys(fr).length) fred = fr;
@@ -1377,6 +1463,14 @@ async function loadGate() {
   if (mc?.ok && mc.rows) macroMoved = mc.rows;
   if (msc?.ok) macroScorecard = msc;
   if (cq?.ok) creditQuality = cq;
+  if (ysp?.ok) yieldSpreadPlan = ysp.plan;
+  if (fomcH?.ok || ecbH?.ok || boeH?.ok || bojH?.ok) {
+    cbHistory = {
+      fomc: fomcH?.ok ? fomcH.history : [], ecb: ecbH?.ok ? ecbH.history : [],
+      boe: boeH?.ok ? boeH.history : [], boj: bojH?.ok ? bojH.history : [],
+    };
+  }
+  if (gef?.ok) goldEtfFlow = gef;
   getFredHist().then(() => render()).catch(() => {});   // populate HY OAS history for the credit gate
   loadMve().then(() => render()).catch(() => {});       // populate the 6 MVE-supported instruments' fair-value read
   jget('/api/ism').then(r => { if (r?.ok) { ism = r; render(); } }).catch(() => {});   // growth-surprise bars
@@ -2154,6 +2248,137 @@ function renderMarketRead() {
       <span class="wk" style="margin-left:6px">Hottest</span>
       <span>${hotHtml || '—'}</span>
     </div>`)}`;
+}
+
+// ── Market Outlook panel — ALWAYS ON, both horizons side by side ────────────
+// Replaces the earlier design where the Daily/5-Day/20-Day pill tried to
+// switch Market Read/Market Tone between horizons — after three rounds of
+// "the pill changes nothing I can see", the simpler fix is to stop gating
+// the global read behind a toggle at all: 5-Day and 20-Day are just always
+// both visible here, permanently. Same underlying data as before
+// (pairOutlook — js/outlookEngine.js), a collapsible section header
+// (secChev/secBody) matching Market Read's own pattern, and board-wide
+// education-style prose (outlookBoardNarrative below) instead of a bar chart
+// or a single-currency pointer into one pair's own drawer.
+// Friendlier mid-sentence phrase for a driver name — same small map as
+// js/outlookEngine.js's own NARRATIVE_LABEL (kept local here since this file
+// never imports that internal const; both must be read together if a driver
+// name changes).
+const OUTLOOK_NARRATIVE_LABEL = {
+  composite: 'signal composite', yieldSpread: 'yield-spread read', cot: 'positioning read',
+  dxyMomentum: 'dollar-index momentum', realYieldMomentum: 'real-yield momentum',
+  goldEtfFlow: 'gold ETF flow', riskMomentum: 'risk-mood momentum', priceTrend: 'price trend',
+};
+// Board-wide education-style prose — replaces an earlier version of this
+// panel that reduced the whole board down to one standout currency's one
+// biggest-moving pair, which just duplicated that same pair's own drawer
+// text (owner's own read, 2026-09-03: "we essentially lost top 1 and bottom
+// 1 pair and duplicate the content in the per pair"). This version instead
+// aggregates BY DRIVER TYPE across every pair with a read at this horizon —
+// which factor is pulling the most pairs the same way right now, board-wide
+// — so it teaches something a single pair's drawer can't: whether today's
+// theme is one pair's own story or a real cross-board condition. Same
+// "trend + if this keeps going" teaching shape as describeOutlookNarrative
+// in js/outlookEngine.js, just aggregated instead of per-pair. Pure
+// string formatting: no new data, only driver.label/.score/.state already
+// computed by computeOutlook for every pair.
+function outlookBoardNarrative(rs, key) {
+  const byDriver = {};   // name -> { label, up, down, total }
+  let volBuild = 0, volCool = 0, volTotal = 0, nRead = 0;
+  for (const r of rs) {
+    const o = pairOutlook(r, key);
+    if (!o?.bias) continue;
+    nRead++;
+    for (const d of o.drivers) {
+      if (d.name === 'volRegime') {
+        volTotal++;
+        if (d.state === 'BUILDING') volBuild++; else if (d.state === 'COOLING') volCool++;
+        continue;
+      }
+      const c = (byDriver[d.name] ??= { label: d.label, up: 0, down: 0, total: 0 });
+      c.total++;
+      if (d.score > 0.15) c.up++; else if (d.score < -0.15) c.down++;
+    }
+  }
+  if (!nRead) return '<div class="muted" style="font-size:11px">Not enough data for a read yet.</div>';
+
+  // Rank driver types by how one-sided they are across the pairs that carry
+  // them (skew = the larger of up/down as a fraction of total) — a factor
+  // that's lopsided across many pairs at once is the board's real theme;
+  // one that's split roughly 50/50 says nothing board-wide, however big any
+  // single pair's own reading of it is.
+  const ranked = Object.entries(byDriver)
+    .map(([name, c]) => ({ name, ...c, lean: c.up >= c.down ? 'up' : 'down', skew: c.total ? Math.max(c.up, c.down) / c.total : 0 }))
+    .filter(c => c.total >= 3 && c.skew > 0.5)
+    .sort((a, b) => b.skew - a.skew || b.total - a.total);
+
+  const sentences = [];
+  const say = (c) => {
+    const label = OUTLOOK_NARRATIVE_LABEL[c.name] ?? c.label.toLowerCase();
+    const capLabel = label.charAt(0).toUpperCase() + label.slice(1);
+    const cnt = c.lean === 'up' ? c.up : c.down;
+    const dirWord = c.lean === 'up' ? 'higher' : 'lower';
+    return `${capLabel} is pulling ${cnt} of ${c.total} pairs ${dirWord} right now — if that keeps moving the same way, expect it to keep showing up pair after pair, not just one, and it's the board's dominant theme for as long as that lasts.`;
+  };
+  if (ranked[0]) sentences.push(say(ranked[0]));
+  if (ranked[1]) {
+    const label = OUTLOOK_NARRATIVE_LABEL[ranked[1].name] ?? ranked[1].label.toLowerCase();
+    const cnt = ranked[1].lean === 'up' ? ranked[1].up : ranked[1].down;
+    sentences.push(`The ${label} agrees in a similar way, pulling ${cnt} of ${ranked[1].total} pairs the same direction.`);
+  }
+  if (volTotal >= 3) {
+    if (volBuild / volTotal >= 0.4) sentences.push(`Volatility is building in ${volBuild} of ${volTotal} pairs at once — paired with the theme above, that usually means bigger, faster moves are more likely across the board over the coming days, not just in one line.`);
+    else if (volCool / volTotal >= 0.4) sentences.push(`Volatility is cooling in ${volCool} of ${volTotal} pairs at once — paired with the theme above, that usually means today's reads are more likely to keep holding a while longer before something changes them.`);
+  }
+  if (!sentences.length) sentences.push(`No single factor dominates across the board right now — the ${nRead} pairs with a read are splitting on different reasons of their own, not one shared theme.`);
+  return `<div style="font-size:12.5px;line-height:1.65;color:var(--text2)">${sentences.join(' ')}</div>`;
+}
+// Lists which pairs are actually bullish/bearish at this horizon, by name —
+// the old tally chips only showed counts ("10 Bullish"), which doesn't make
+// sense on its own without knowing WHICH pairs those are. Neutral pairs are
+// left out (not asked for — the point was to see the two directional
+// groups), sorted by conviction (|biasScore| descending) so the most
+// convicted pair leads each list, each name clickable straight into that
+// pair's own drawer (same interaction/inline style as Market Read's own
+// "Hottest" line — .pl's CSS is scoped to specific parent selectors this
+// panel isn't inside, so the pointer/underline is inlined here instead of
+// relying on that class).
+function outlookBiasListHtml(rs, key) {
+  const bull = [], bear = [];
+  for (const r of rs) {
+    const o = pairOutlook(r, key);
+    if (!o?.bias) continue;
+    if (o.bias === 'BULLISH') bull.push({ r, score: o.biasScore ?? 0 });
+    else if (o.bias === 'BEARISH') bear.push({ r, score: o.biasScore ?? 0 });
+  }
+  bull.sort((a, b) => b.score - a.score);
+  bear.sort((a, b) => a.score - b.score);
+  const pill = (x) => `<span style="cursor:pointer;border-bottom:1px dotted var(--text3)" onclick="openDrawer('${x.r.name}')">${dispName(x.r.name)}</span>`;
+  const row = (label, colorVar, arr) => arr.length
+    ? `<div style="margin:0 0 6px"><b style="color:var(${colorVar})">${label} (${arr.length}):</b> <span style="font-size:12px">${arr.map(pill).join(', ')}</span></div>`
+    : '';
+  return `<div style="font-size:12.5px;line-height:1.6;margin-bottom:8px">${row('Bullish', '--bull', bull)}${row('Bearish', '--bear', bear)}</div>`;
+}
+function renderOutlookPanel() {
+  const el = $('outlookPanel');
+  if (!el) return;
+  if (!brief?.instruments || !window.outlookBrick) { el.style.display = 'none'; return; }
+  const rs = allRows();   // global synthesis, same scope as Market Read — ignores the FX/Indices/Gold filter
+  if (rs.length < 4) { el.style.display = 'none'; return; }
+  const col = (key, label) => `<div>
+    <div class="mread-h">${label} outlook</div>
+    ${outlookBiasListHtml(rs, key)}
+    ${outlookBoardNarrative(rs, key)}
+  </div>`;
+  el.style.display = 'block';
+  el.innerHTML = `
+    <div class="sec-hd-row"><span class="sec-title">🔭 Market Outlook — 5-Day &amp; 20-Day</span>${secChev('outlookPanel')}</div>
+    ${secBody('outlookPanel', `
+    <div class="mread-cols">
+      ${col('weekly', '5-Day')}
+      ${col('monthly', '20-Day')}
+    </div>
+    <div class="mread-precise" style="margin-top:10px">Context composite across this board's own signals (technical/COT/macro/carry, yield-spread z-score, DXY/risk/real-yield momentum, price trend) — not a validated forecast. This board-wide read names whichever factor is lopsided across the MOST pairs at once, not any one pair's story. Click any card below to see that one pair's own driver breakdown, written out in full, in its drawer's 🔭 Outlook section.</div>`)}`;
 }
 
 const CCY_NAMES = { USD: 'USD', EUR: 'EUR', GBP: 'GBP', JPY: 'JPY', CHF: 'CHF', AUD: 'AUD', CAD: 'CAD', NZD: 'NZD' };
@@ -2979,27 +3204,213 @@ function cotFor(name) {
 // draws from.
 function pairSignalComposite(r) {
   if (!window.pairCompositeBrick) return null;
+  // FX-cross-only legs (need a base/quote currency to difference) — Gold and
+  // the equity indices have no PAIR_CCY entry, so these stay null for them,
+  // left out by pairComposite's own "missing is left out" discipline rather
+  // than the whole composite silently returning null. That silent-null was a
+  // real gap, not a design choice: pairSignal (technical) and r.ct (COT) both
+  // already work for ANY row, but this function used to bail out before ever
+  // computing them for Gold/indices, starving both the card's ⚖ composite
+  // chip AND the Outlook Engine's composite driver (its heaviest-weighted
+  // leg) of any read at all for anything outside the 26 tracked crosses.
   const cc = PAIR_CCY[r.name];
-  if (!cc) return null;
-  const [base, quote] = cc;
-  const macroScore = (() => {
+  const macroScore = cc ? (() => {
     if (!macroScorecard?.ranked) return null;
+    const [base, quote] = cc;
     const b = macroScorecard.ranked.find(x => x.ccy === base);
     const q = macroScorecard.ranked.find(x => x.ccy === quote);
     if (!b || !q) return null;
     return Math.max(-1, Math.min(1, (b.composite - q.composite) / 2));
-  })();
-  const carryScore = (() => {
+  })() : null;
+  const carryScore = cc ? (() => {
+    const [base, quote] = cc;
     const bfk = CCY_FRED10Y[base], qfk = CCY_FRED10Y[quote];
     if (!bfk || !qfk || fred?.[bfk]?.value == null || fred?.[qfk]?.value == null) return null;
     return Math.max(-1, Math.min(1, (fred[bfk].value - fred[qfk].value) / 3));
-  })();
+  })() : null;
   return window.pairCompositeBrick.pairComposite({
     technical: { score: pairSignal(r), label: "Today's flow (technical)" },
     cot: { score: r.ct?.bias ?? null, label: 'Positioning (COT)' },
     macro: { score: macroScore, label: 'Fundamentals (Macro Scorecard)' },
     carry: { score: carryScore, label: 'Carry (10Y yield)' },
   });
+}
+
+// ── Market Outlook (js/outlookEngine.js) — 5-day / 20-day context composite ──
+// Reuses the composite/COT/vol-regime reads this page already computes for
+// every card; the yield-spread leg is the only piece that needed a new fetch
+// (/api/yield-spread/plan, see loadGate). CONTEXT composite, not a new
+// backtested signal — see that file's header for the full honesty posture.
+// Keyed lookup over macroMoved's rows (already fetched in loadGate(), display-
+// only until now — see js/macroChange.js MACRO_CHANGE_SPEC for what's tracked:
+// us2y/us10y/tips/bei/hy/vix/dxy/sofr/rrp, each with 1d/5d/20d deltas).
+function _macroMovedByKey() {
+  return Array.isArray(macroMoved) ? Object.fromEntries(macroMoved.map(x => [x.key, x])) : {};
+}
+// Non-FX single-asset DXY/risk/real-yield character — same sign-only
+// convention as PAIR_CCY-derived pairs, for instruments the FX base/quote
+// model doesn't cover at all (so previously got NEITHER dxyMomentum NOR
+// riskMomentum: real gap, not a design choice — COT and vol-regime were the
+// only drivers gold ever received). Gold is USD-quoted (dollar strength =
+// gold headwind, same sign as a USD-quote FX pair) and a classic risk-off/
+// haven asset (same +1 convention as CCY_RISK_LEAN's own havens).
+//
+// Equity indices (NQ/SPX500/DE30/US30/US2000/UK100) now get a risk-momentum
+// AND real-yield-momentum lean too — covered below, both -1 (a risk-off or
+// rising-real-yield backdrop is a headwind for equities). This is NOT a new
+// claim this repo is guessing at: it is the exact same "risk-on backdrop
+// bullish/bearish" convention already hardcoded for every one of these
+// instruments in RISK_LEAN further down this file (used by thesisFor's trade
+// -thesis scorecard), just re-signed onto this engine's "netLean = benefits
+// from risk-OFF" axis (RISK_LEAN's +1 "risk-on bullish" for every index here
+// ⇒ -1 "hurt by risk-off" on this axis). Two independently-named tables
+// agreeing on the same real-world relationship is the closest thing to
+// "established" this repo has for equities' risk character.
+//
+// Dollar-index (DXY) momentum is DELIBERATELY still NOT extended to indices
+// — a stronger dollar's effect on index earnings/multiples is a materially
+// different, genuinely contestable claim (FX-flow effect vs multinational-
+// earnings effect can point either way) this repo hasn't reasoned through or
+// tested; better to leave that one driver out than guess. Real DE30/UK100
+// COT positioning is ALSO a flagged, unfilled gap: neither has a CFTC future
+// (the Bundesbank/ICE don't publish an equivalent free weekly
+// z-score/percentile feed this repo could plug in the same way) — a
+// documented data gap, not an oversight. See LEGO_MODULES.md §1ar.
+const ASSET_USD_SIDE = { GOLD: 'quote' };
+const ASSET_RISK_LEAN = { GOLD: 1, NQ: -1, SPX500: -1, DE30: -1, US30: -1, US2000: -1, UK100: -1 };
+const ASSET_REALYIELD_LEAN = { NQ: -1, SPX500: -1, DE30: -1, US30: -1, US2000: -1, UK100: -1 };
+function outlookInputsFor(r) {
+  const cc = PAIR_CCY[r.name];
+  const mm = _macroMovedByKey();
+  const usdSide = cc ? (cc[0] === 'USD' ? 'base' : cc[1] === 'USD' ? 'quote' : null) : (ASSET_USD_SIDE[r.name] ?? null);
+  const netLean = cc
+    ? (window.outlookBrick ? window.outlookBrick.pairRiskLean(cc[0], cc[1]) : 0)
+    : (ASSET_RISK_LEAN[r.name] ?? 0);
+  // Real-yield lean reuses dxyMomentum's own resolved USD-side sign for FX
+  // pairs and Gold (same relationship, same sign convention — see
+  // realYieldMomentumDriver's header in js/outlookEngine.js); only the
+  // equity indices need their own table since they have no USD side at all.
+  const realYieldLean = usdSide ? (usdSide === 'base' ? 1 : -1) : (ASSET_REALYIELD_LEAN[r.name] ?? 0);
+  return {
+    composite: pairSignalComposite(r),
+    yieldSpread: yieldSpreadPlan?.[r.name.toLowerCase()] ?? null,
+    volRegime: { volPct: r.d.vol_pct ?? null, cone5d: r.d.cone_5d ?? null },
+    cot: r.ct ?? null,
+    events: pairEvents(r.name),
+    // Rate-of-change of the macro backdrop (NOT its level) — the fix for the
+    // higher horizon this engine originally missed: a same-day macro
+    // snapshot says less about the next 20 days than which way the backdrop
+    // has been MOVING. Zero new fetches — macroMoved was already loaded.
+    dxyMomentum: (usdSide && mm.dxy) ? { deltas: mm.dxy.deltas, usdSide } : null,
+    riskMomentum: (mm.vix || mm.hy) ? { vixDeltas: mm.vix?.deltas ?? {}, hyDeltas: mm.hy?.deltas ?? {}, netLean } : null,
+    // US real 10Y (TIPS) yield momentum — a textbook, low-controversy driver
+    // for gold (opportunity-cost of a non-yielding asset) and equities
+    // (discount-rate effect on valuations), and a rates-side echo of
+    // dxyMomentum for ordinary FX pairs. Zero new fetches — mm.tips comes
+    // from the same macroMoved payload dxyMomentum already reads.
+    realYieldMomentum: (mm.tips && realYieldLean) ? { deltas: mm.tips.deltas, lean: realYieldLean } : null,
+    // The card's own existing HMM daily regime — already loaded for every
+    // pair, zero new fetches. "Is price on a slope, and how cleanly" in the
+    // simplest form this dashboard already computes.
+    priceTrend: r.d.regime ? { label: r.d.regime.label, trendDir: r.d.regime.trend_dir, trendProb: r.d.regime.trend_prob, reliable: r.d.regime.reliable } : null,
+    // GLD+IAU combined-AUM flow — GOLD-ONLY, no FX-pair equivalent exists
+    // (there's no "ETF" for a currency pair the same way). Inflows = demand
+    // for gold = bullish, same convention every other momentum driver here
+    // uses (rising input = the sign the driver itself resolves).
+    goldEtfFlow: (r.name === 'GOLD' && goldEtfFlow?.deltas) ? { deltas: goldEtfFlow.deltas } : null,
+  };
+}
+// Central-bank tone TREND (multi-meeting hawkish/dovish trajectory) for this
+// pair's own two currencies — DESCRIPTIVE CONTEXT ONLY, never fed into
+// outlookInputsFor/computeOutlook. Only USD/EUR/GBP/JPY have a tracked
+// central bank here (FOMC/ECB/BOE/BOJ); AUD/CAD/CHF/NZD legs are silently
+// skipped, same "missing is left out" discipline as every driver above.
+const CB_HISTORY_KEY = { USD: 'fomc', EUR: 'ecb', GBP: 'boe', JPY: 'boj' };
+function cbToneFor(r) {
+  if (!cbHistory || !window.outlookBrick) return [];
+  const cc = PAIR_CCY[r.name];
+  if (!cc) return [];
+  const out = [];
+  for (const ccy of cc) {
+    const key = CB_HISTORY_KEY[ccy];
+    const hist = key && cbHistory[key];
+    if (!hist) continue;
+    out.push({ ccy, bank: key.toUpperCase(), ...window.outlookBrick.describeCbTrend(hist) });
+  }
+  return out;
+}
+function pairOutlook(r, horizonKey) {
+  if (!window.outlookBrick) return null;
+  return window.outlookBrick.computeOutlook(outlookInputsFor(r), horizonKey);
+}
+function pairOutlookBoth(r) {
+  if (!window.outlookBrick) return null;
+  return window.outlookBrick.computeOutlookAllHorizons(outlookInputsFor(r));
+}
+// Drawer section — both horizons side by side, full driver breakdown with
+// each leg's VALIDATED/CONTEXT status badge (never averaged into one number
+// without saying which pieces are which — same discipline every other
+// drawer section on this page already follows).
+// Education-style prose (js/outlookEngine.js's describeOutlookNarrativeParts)
+// instead of a tagged bullet list of raw drivers — same underlying numbers,
+// same CONTEXT-not-validated posture, laid out as icon-labelled sections with
+// real bullets per driver (not one flat paragraph — see col()'s own note).
+function renderDrawerOutlook(r) {
+  const el = $('drOutlook');
+  if (!el) return;
+  const both = pairOutlookBoth(r);
+  if (!both) { $('drOutlookSec').style.display = 'none'; return; }
+  // Icon-labelled sections + real <ul><li> bullets instead of one flat
+  // paragraph — same underlying words as describeOutlookNarrative (just the
+  // structured describeOutlookNarrativeParts form of them), the owner asked
+  // for this to be easier to scan than a wall of text ("make images icon
+  // something? bullets maybe?"). `sec()` renders one labelled block (or
+  // nothing if that section has no content); up/down render each driver as
+  // its own `<li>` rather than one merged sentence.
+  const sec = (icon, label, color, bodyHtml) => bodyHtml ? `<div style="margin:8px 0 0">
+      <div style="font-size:11px;font-weight:700;color:${color};letter-spacing:.3px;margin-bottom:3px">${icon} ${label}</div>
+      <div style="font-size:12.5px;line-height:1.5;color:var(--text2)">${bodyHtml}</div>
+    </div>` : '';
+  const bulletList = (drivers) => `<ul style="margin:0;padding-left:18px">${drivers.map(d => `<li style="margin-bottom:4px">${d.teach ?? d.detail}</li>`).join('')}</ul>`;
+  const col = (o) => {
+    if (!o?.bias) return `<div style="flex:1;min-width:260px"><h4 style="margin:0 0 6px">${o?.horizonLabel ?? ''}</h4><div class="muted">Not enough data for a read.</div></div>`;
+    const cls = o.bias === 'BULLISH' ? 'bull' : o.bias === 'BEARISH' ? 'bear' : 'neu';
+    const p = window.outlookBrick ? window.outlookBrick.describeOutlookNarrativeParts(o) : null;
+    if (!p) return `<div style="flex:1;min-width:260px"><h4 style="margin:0 0 6px">${o.horizonLabel}</h4><div class="muted">Not enough data for a read.</div></div>`;
+    return `<div style="flex:1;min-width:260px">
+      <h4 style="margin:0 0 6px">${o.horizonLabel}</h4>
+      <span class="chip ${cls}" style="font-size:13px;padding:5px 10px">${o.bias} · ${o.confidence}% confidence</span>
+      <div style="margin-top:6px;font-size:12.5px;line-height:1.5;color:var(--text2)">${p.headline}</div>
+      ${sec('▲', 'POINTING UP', 'var(--bull)', p.upDrivers.length ? bulletList(p.upDrivers) : null)}
+      ${sec('▼', 'POINTING DOWN', 'var(--bear)', p.downDrivers.length ? bulletList(p.downDrivers) : null)}
+      ${sec('⚡', 'VOLATILITY', 'var(--text3)', p.volCombo)}
+      ${sec('📅', 'EVENT RISK', 'var(--text3)', p.eventRisk)}
+      ${p.disclaimer ? `<div style="margin-top:10px;padding-top:8px;border-top:1px dashed var(--border);font-size:11px;color:var(--text3)">ℹ️ ${p.disclaimer}</div>` : ''}
+    </div>`;
+  };
+  // Central-bank tone — deliberately rendered OUTSIDE the scored-driver
+  // columns above, in its own visually distinct block, so it can never be
+  // mistaken for a bias input. See cbToneFor()'s header.
+  const cbRows = cbToneFor(r);
+  const cbHtml = cbRows.length ? `
+    <div style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--border)">
+      <div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:4px">🏦 Central-bank tone <span class="chip neu" style="font-size:9px">context only — not scored</span></div>
+      ${cbRows.map(c => `<div class="muted" style="font-size:11px;margin:3px 0"><b>${c.bank}</b> (${c.ccy}): ${c.detail}</div>`).join('')}
+    </div>` : '';
+  el.innerHTML = `<div style="display:flex;gap:18px;flex-wrap:wrap">${col(both.weekly)}${col(both.monthly)}</div>
+    ${cbHtml}`;
+}
+// Card-face chip — only shown once the 5-Day/20-Day horizon toggle is active
+// (Daily is this page's own existing per-pair reads; the toggle is how the
+// user opts into the outlook overlay).
+function outlookChip(r) {
+  if (outlookHorizon === 'daily') return '';
+  const o = pairOutlook(r, outlookHorizon);
+  if (!o || !o.bias) return '';
+  const cls = o.bias === 'BULLISH' ? 'bull' : o.bias === 'BEARISH' ? 'bear' : 'neu';
+  const driverTxt = o.drivers.map(d => `${d.label} (${d.status}): ${d.detail}`).join(' | ');
+  const evTxt = o.eventRisk.highCount ? ` ${o.eventRisk.highCount} high-impact event(s) inside this window — could overturn the read.` : '';
+  return `<span class="chip ${cls}" title="${o.horizonLabel} Outlook — CONTEXT composite, not a validated predictive signal (the yield-spread leg, when present, is the one exception — see its own tag below). ${driverTxt}.${evTxt}">🔭 ${o.horizonLabel} ${o.bias.toLowerCase()} · ${o.confidence}%</span>`;
 }
 // ── Direction tag ────────────────────────────────────────────────────────────
 // The plain question the cards never answered at a glance: is price aiming up
@@ -3167,7 +3578,11 @@ function sortRows(rs) {
     trend:     (a, b) => (b.trending - a.trending) || (b.d.regime?.trend_prob ?? 0) - (a.d.regime?.trend_prob ?? 0),
     name:      (a, b) => a.name.localeCompare(b.name),
   }[m];
-  return rs.sort(by);
+  // Favorites always sort first, ahead of whichever mode is selected above —
+  // each group (favorited / not) is still ordered by that same comparator,
+  // so starring a pair reorders it to the top of the board without changing
+  // how the rest of the board is sorted.
+  return rs.sort((a, b) => (favPairs.has(b.name) - favPairs.has(a.name)) || by(a, b));
 }
 
 // ── Header & summary ──────────────────────────────────────────────────────────
@@ -3608,7 +4023,7 @@ function analogShapeHtml(name) {
 // want while reading the detail. Shared rather than copied, so the two can't drift.
 function pairChipsHtml(r) {
   const d = r.d;
-  return `${directionChip(r)} ${biasLine(r)} ${r.agr?.chip ?? ''}${r.isProx ? `<span class="chip warn" title="Live price is right at one of the key levels now — this is a decision moment. Click the card to score it.">⚑ ${r.near.tag} ${r.near.pips.toFixed(0)}${d.ac === 'fx' ? 'p' : 'pt'} away</span>` : ''}${r.ct?.level === 'EXTREME' ? `<span class="chip warn" title="${r.ct.derived ? `Both legs of this cross are stretched the same way in CFTC positioning (base Z ${r.ct.baseRead?.z ?? '—'}, quote Z ${r.ct.quoteRead?.z ?? '—'}) — a reinforcing double-extreme, derived from each currency's own contract since this cross has no direct CFTC future.` : `The crowd (big speculators, from weekly CFTC data) is very heavily positioned ${r.ct.dir} — about ${r.ct.pct.toFixed(0)}% of the market.`} Crowded one-way bets can snap back hard (a 'squeeze'), so it's a warning against joining late.">⚠ COT ${r.ct.dir} extreme${r.ct.derived ? ' (derived)' : ''}</span>` : ''}${r.oi && !r.oi.stale && r.oi.regime ? `<span class="chip ${r.oi.regime === 'PIN' ? 'range' : 'bear'}" title="${r.oi.regime === 'PIN' ? "From options positioning: price is likely to stay STUCK near here today and drift back to the middle — favours fading the edges, not chasing." : "From options positioning: a move could ACCELERATE today — higher chance of a sharp break, so breakouts are more likely to run."}">◎ ${r.oi.regime}</span>` : ''}${compositeChip(r)}${mveChip(r)}${commodityChip(r)}${sessionResearchChip(r)}`;
+  return `${directionChip(r)} ${biasLine(r)} ${r.agr?.chip ?? ''}${r.isProx ? `<span class="chip warn" title="Live price is right at one of the key levels now — this is a decision moment. Click the card to score it.">⚑ ${r.near.tag} ${r.near.pips.toFixed(0)}${d.ac === 'fx' ? 'p' : 'pt'} away</span>` : ''}${r.ct?.level === 'EXTREME' ? `<span class="chip warn" title="${r.ct.derived ? `Both legs of this cross are stretched the same way in CFTC positioning (base Z ${r.ct.baseRead?.z ?? '—'}, quote Z ${r.ct.quoteRead?.z ?? '—'}) — a reinforcing double-extreme, derived from each currency's own contract since this cross has no direct CFTC future.` : `The crowd (big speculators, from weekly CFTC data) is very heavily positioned ${r.ct.dir} — about ${r.ct.pct.toFixed(0)}% of the market.`} Crowded one-way bets can snap back hard (a 'squeeze'), so it's a warning against joining late.">⚠ COT ${r.ct.dir} extreme${r.ct.derived ? ' (derived)' : ''}</span>` : ''}${r.oi && !r.oi.stale && r.oi.regime ? `<span class="chip ${r.oi.regime === 'PIN' ? 'range' : 'bear'}" title="${r.oi.regime === 'PIN' ? "From options positioning: price is likely to stay STUCK near here today and drift back to the middle — favours fading the edges, not chasing." : "From options positioning: a move could ACCELERATE today — higher chance of a sharp break, so breakouts are more likely to run."}">◎ ${r.oi.regime}</span>` : ''}${compositeChip(r)}${outlookChip(r)}${mveChip(r)}${commodityChip(r)}${sessionResearchChip(r)}`;
 }
 
 function pairStripsHtml(r) {
@@ -3654,6 +4069,7 @@ function cardHtml(r) {
   const dirCls = _dt?.direction === 'up' ? 'dir-up' : _dt?.direction === 'down' ? 'dir-dn' : '';
   return `<div class="pcard ${dirCls} ${(r.used ?? 0) >= 0.8 || d.news_flag ? 'hot' : ''} ${r.isProx ? 'prox' : ''}" onclick="openDrawer('${r.name}')">
     <div class="pc-top">
+      <span class="pc-fav ${favPairs.has(r.name) ? 'on' : ''}" onclick="toggleFav('${r.name}', event)" title="${favPairs.has(r.name) ? 'Remove from favorites' : 'Add to favorites — pins it to the top of the board'}">${favPairs.has(r.name) ? '★' : '☆'}</span>
       <span class="pc-name">${dispName(r.name)}</span>
       ${d.stale ? `<span class="chip warn" title="The live data fetch failed when this forecast was computed (e.g. an Oanda outage) — showing the last good forecast${d.carried_from ? `, from the ${d.carried_from} session` : ''}. It refreshes automatically once the data source recovers.">⟳ ${d.carried_from ?? 'carried'}</span>` : ''}
       <span class="pc-price">${d.current_price != null ? fmtN(d.current_price, d.dp) : ''}</span>
@@ -4019,6 +4435,7 @@ function renderSidebar() {
 function render() {
   renderStatRow();
   renderMarketRead();
+  renderOutlookPanel();
   renderSidebar();
   renderMacroMoved();
   renderGate();
@@ -4065,6 +4482,7 @@ function toggleView() {
 const DR_SEC_DEFAULTS = { // true = open by default; anything not listed defaults open
   analysis: true,  // Full analysis — the plain-English translation, now the headline section
   atlas: true,     // Level Atlas — OOS-checked historical base rates at today's touch
+  outlook: true,   // Market Outlook — 5-day/20-day context composite (js/outlookEngine.js)
   thesis: true, story: true, tde: true, hits: true,
   levels: false,   // Bot Level Book — unvalidated star heuristic, minimised
   chart: true, rates: true, cone: true, path: true, vumanchu: true, sesspath: true,
@@ -4157,6 +4575,8 @@ function closeDrawer() {
   _stopAtlasPolling();
   _stopSessPathPolling();
   _stopHandoffPolling();
+  _stopVoteStatePolling();
+  _drVoteState = null;
 }
 
 let _drR = null;   // current drawer row — for the on-demand "Analyse" button
@@ -4188,6 +4608,7 @@ async function openDrawer(name) {
   // Same summary the card shows — the card is behind the overlay now.
   try { $('drSummary').innerHTML = pairChipsHtml(r) + pairStripsHtml(r); }
   catch (e) { $('drSummarySec').style.display = 'none'; }
+  try { renderDrawerOutlook(r); } catch (e) { $('drOutlookSec').style.display = 'none'; }
   setDrTab(_drTab);
   // Sections hide themselves as their loaders resolve or fail, so tab states
   // can only be judged once those have had a chance to settle.
@@ -4223,6 +4644,7 @@ async function openDrawer(name) {
   loadDrawerArima(name, d.sym);
   loadDrawerAnalysis(r).catch(() => { $('drAnalysisSec').style.display = 'none'; });
   _startAtlasPolling(r);
+  _startVoteStatePolling(r);
   loadDrawerThesis(r).catch(() => { $('drThesisSec').style.display = 'none'; });
   loadDrawerHits(name, d).catch(() => { $('drHitsSec').style.display = 'none'; });
 }
@@ -5075,6 +5497,7 @@ function _atlasMatchBody(m, t, opts = {}) {
 let _atlasSym = null;      // instrument the currently-rendered pending rows belong to
 let _atlasPending = [];    // [{ side, rung, level, pip }] for live distance updates
 let _atlasTimer = null;    // 5s poll interval id, alive only while the drawer's open
+let _drVoteState = null;   // last-fetched /api/level-atlas/vote-state/:instrument result — read by assembleSnapshot() for the AI prompt (synchronous, so it reads this cache rather than fetching fresh)
 const ATLAS_POLL_MS = 5000;
 // Starts (or restarts, on switching pairs) the 5s poll. Called from
 // openDrawer; closeDrawer clears it — polling a closed drawer would just
@@ -5303,6 +5726,160 @@ function updateAtlasDistances(sym, price) {
       el.className = 'chip neu';
     }
   }
+}
+
+// ── Systems tab: Vote Atlas bot state ──────────────────────────────────────
+// One combined call (/api/level-atlas/vote-state/:instrument) instead of
+// the 3-4 separate KV reads this would otherwise take — enabled/spread cap/
+// today's decisions/open position, everything the Vol tab's zone view
+// (drVoteSec/loadDrawerAtlas) does NOT already show. Polled slower than the
+// zone view (this changes on the bot's own status_secs cadence, not tick by
+// tick) so the two loops don't compete for the same pair's attention.
+const VOTE_STATE_POLL_MS = 20_000;
+let _voteStateTimer = null;
+function _startVoteStatePolling(r) {
+  if (_voteStateTimer) clearInterval(_voteStateTimer);
+  loadDrawerVoteState(r).catch(() => { $('drVoteStateSec').style.display = 'none'; });
+  _voteStateTimer = setInterval(() => loadDrawerVoteState(r).catch(() => {}), VOTE_STATE_POLL_MS);
+}
+function _stopVoteStatePolling() {
+  if (_voteStateTimer) { clearInterval(_voteStateTimer); _voteStateTimer = null; }
+}
+function _voteDecisionWord(status) {
+  if (status === 'entered') return { cls: 'range', label: '▶ entered' };
+  if (status === 'rejected') return { cls: 'bear', label: '✕ rejected' };
+  if (status === 'pair_blocked') return { cls: 'warn', label: '⛔ blocked' };
+  return { cls: 'neu', label: '⏸ skipped' };
+}
+// Vol & Path tab companion to drVoteSec's live zone chips — the actual
+// history behind them, from the SAME vote-state fetch loadDrawerVoteState
+// already made (no second round-trip). Deliberately separate from the
+// Systems tab's card: Systems answers "is the bot alive and what did it
+// just do" (operational, glanceable); this answers "what does the DATA
+// show" (research, not tied to any one bot's live status).
+function renderDrVoteAnalysis(j) {
+  const sec = $('drVoteAnalysisSec'), box = $('drVoteAnalysis');
+  if (!sec || !box) return;
+  if (!j?.historical && !j?.liveContext) { sec.style.display = 'none'; return; }
+  let html = '';
+
+  if (j.historical) {
+    const h = j.historical;
+    const yrs = h.tradesPerYr ? (h.trades / h.tradesPerYr).toFixed(1) : null;
+    html += `<div class="th-h ctx">What history shows &mdash; margin&ge;${h.marginTested} (the bot's own threshold) <span class="chip neu" style="font-size:9px" title="Read from this pair's own cached backtest file — a separate number per instrument, never shared or averaged across pairs.">this pair only</span></div>`
+      + `<div class="th-top">${esc0(h.trades)} trades${yrs ? ` over ~${esc0(yrs)}yr` : ''} &mdash; Sharpe ${esc0(h.sharpe?.toFixed?.(2) ?? h.sharpe)}, profit factor ${esc0(h.profitFactor?.toFixed?.(2) ?? h.profitFactor)}, max drawdown ${esc0(h.maxDrawdownPct)}%.</div>`
+      + `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0">`
+      + `<div style="background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:8px 10px">`
+      + `<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">Win rate at margin&ge;${h.marginTested}</div>`
+      + `<div style="font-size:19px;font-weight:700;color:var(--bull)">${esc0(h.winRatePct)}%</div></div>`
+      + `<div style="background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:8px 10px">`
+      + `<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em" title="Measured 2026-09-01, all 17 pairs — a static reference, not recomputed live (needs a full historical walk).">Resolves same-day</div>`
+      + `<div style="font-size:19px;font-weight:700;color:${h.sameDayResolvedPct != null && h.sameDayResolvedPct < 68 ? 'var(--amber)' : 'var(--bull)'}">${h.sameDayResolvedPct != null ? esc0(h.sameDayResolvedPct) + '%' : '—'}</div></div>`
+      + `</div>`
+      + (h.sameDayResolvedPct != null ? `<div class="hint">The other ${esc0((100 - h.sameDayResolvedPct).toFixed(1))}% run past session close — those are what the EOD-close fix (shipped 2026-09-01) now flattens instead of letting ride for days.</div>` : '');
+
+    // Expectation if it DOESN'T resolve same-day — what "past close" actually
+    // means in real time, not just a % that's left dangling. Pooled across
+    // all 17 pairs (analysis/neither_population_live_gap_study.mjs's 9,855-
+    // touch full re-walk) — the same population EOD-close now flattens
+    // instead of letting run, so this describes what USED to happen to them.
+    if (h.sameDayResolvedPct != null) {
+      html += `<div class="th-h ctx" style="margin-top:10px">If it runs past close &mdash; what "unresolved" actually meant <span class="chip neu" style="font-size:9px">pooled, all 17 pairs</span></div>`
+        + `<div class="th-top">Before the EOD-close fix, those trades typically resolved within about a day anyway (<b>median 0.69 days</b>, mean 1.09) &mdash; but the tail was real: <b>up to 7.95 days</b> on record. Pooled across all 17 pairs, win rate on that unresolved population was <b>50.3%</b>, meaningfully below this pair's own ${esc0(h.winRatePct)}% same-day win rate above &mdash; that gap (pooled vs. this pair, not the same population) is exactly why letting it ride was worse than flattening it.</div>`;
+    }
+
+    // Timing: WHICH session actually drives the unresolved population — the
+    // reference-card-style "what flips it" specificity. Real, pooled finding
+    // from the same live-gap study: 52.7% of NY-session touches never
+    // resolve same-day vs 9.0% London / 6.1% Asia — a late-NY touch simply
+    // runs out of session before it can resolve, structurally, every pair.
+    const curSession = j.liveContext?.session;
+    html += `<div class="th-h ctx" style="margin-top:10px">Timing &mdash; which session actually matters <span class="chip neu" style="font-size:9px">pooled, all 17 pairs</span></div>`
+      + `<div class="th-top">A touch late in <b>NY</b> session has far less runway to resolve same-day than one in London or Asia: <b>52.7%</b> of NY touches run past close, vs <b>9.0%</b> London and <b>6.1%</b> Asia.${curSession ? ` We're currently in <b>${esc0(curSession)}</b>${curSession === 'NY' ? ' — exactly the session where same-day odds are lowest.' : curSession === 'London' ? ' — historically the best odds of same-day resolution.' : '.'}` : ''}</div>`
+      + `<div class="hint">Not that NY signals are worse in themselves — it's runway: a touch late in the day simply has less time left in its own session before the EOD-close rule steps in. Nothing to act on directly, but it's why "unresolved" clusters where it does.</div>`;
+  }
+
+  if (j.liveContext?.dayVol) {
+    const volWord = (j.liveContext.dayVol || '').split('·')[1] || j.liveContext.dayVol;
+    html += `<div class="th-h ctx" style="margin-top:10px">Today's day-vol regime</div>`
+      + `<div class="th-top">${esc0(volWord || '—')}</div>`
+      + `<div class="hint">Checked earlier: day-vol regime hasn't shown a strong win-rate split on its own historically (62&ndash;63% across quiet/normal/heavy, pooled) &mdash; context, not a strong standalone signal.</div>`;
+  }
+
+  // Structural continuation finding — measured 2026-09-01 across all 17
+  // pairs, 17,312 pair-days OOS (analysis/asia_touch_rest_of_day_study.mjs).
+  // POOLED across every pair, not specific to this one — said plainly.
+  // The Gold-reference-style "continuation, not exhaustion" read: once Asia
+  // touches a rung, the SAME side's next rung out gets touched later that
+  // day far more than the unconditional base rate, while a same-day
+  // reversal to the OTHER side of that same level is mildly LESS likely,
+  // not more. Two other hypotheses tested the same day (does an Asia touch
+  // raise the odds of a same-day signal at all; does it skew the day's
+  // eventual range/vol regime) came back weak/null — reported honestly as
+  // that, not forced into a story.
+  html += `<div class="th-h ctx" style="margin-top:10px">Asia-session touch &rarr; rest of day <span class="chip neu" style="font-size:9px">pooled, all 17 pairs</span></div>`
+    + `<div class="th-top">Once Asia touches a rung, the <b>next rung out on the same side</b> gets touched later that day at <b>2.8&ndash;4.2&times;</b> the unconditional base rate (p50&rarr;p75/p90: 2.76&times;, n=5,831 vs 28,793 &middot; p75&rarr;p90: 4.21&times;, n=1,668 vs 32,956).</div>`
+    + `<div class="th-top">A same-day reversal to the <b>other side of that same level</b> is mildly <i>less</i> likely once Asia's already tagged it (21.3% vs 27.1% baseline, n=8,016) &mdash; continuation, not exhaustion.</div>`
+    + `<div class="hint">Two related questions came back weak/null, reported honestly rather than forced: an Asia touch barely moves the odds of ANY same-day margin&ge;3 signal (72.5% vs 68.0%, n=17,312 days, consistent direction across all 17 pairs but a small effect) and does not skew the day's eventual range or vol regime at all (essentially identical distributions either way). Measured from a real re-walk of the touch data (analysis/asia_touch_rest_of_day_study.mjs), 17,312 OOS pair-days, min sample floor n&ge;30.</div>`;
+
+  box.innerHTML = html;
+  sec.style.display = 'block';
+}
+
+async function loadDrawerVoteState(r) {
+  const sec = $('drVoteStateSec'), box = $('drVoteState');
+  if (!sec || !box) return;
+  let j;
+  try { j = await jget(`/api/level-atlas/vote-state/${encodeURIComponent(r.name)}`); }
+  catch { sec.style.display = 'none'; const as = $('drVoteAnalysisSec'); if (as) as.style.display = 'none'; return; }
+  if (!j?.ok) { sec.style.display = 'none'; const as = $('drVoteAnalysisSec'); if (as) as.style.display = 'none'; return; }
+  _drVoteState = j;
+  renderDrVoteAnalysis(j);
+
+  const enabledChip = j.enabled
+    ? `<span class="chip range">✓ enabled on the live bot</span>`
+    : `<span class="chip neu">not enabled on the live bot</span>`;
+  const runChip = j.botRunning
+    ? `<span class="chip ${j.botMode === 'live' ? 'bear' : 'neu'}" title="${j.botMode === 'live' ? 'Trading real money' : 'Paper mode'}">${esc0(j.botMode || 'running')}</span>`
+    : `<span class="chip warn">bot not reporting</span>`;
+  let html = `<div class="th-top">${enabledChip} ${runChip} `
+    + `<span class="chip neu" title="Configured entry spread cap, source: ${esc0(j.spreadCap?.source || '')}">spread cap ${esc0(j.spreadCap?.pips ?? '—')}p</span></div>`;
+
+  if (j.openPositions?.length) {
+    html += `<div class="th-h ctx" style="margin-top:6px">Open now</div>`
+      + j.openPositions.map(p => {
+        const buy = String(p.direction || '').toUpperCase() === 'BUY';
+        const pnl = +(p.profit || 0);
+        return `<div class="th-top">${buy ? '▲ BUY' : '▼ SELL'} ${esc0((+(p.lots || 0)).toFixed(2))} lots @ ${esc0(fmtN(p.open_price, r.d?.dp ?? 5))} `
+          + `<span class="chip ${pnl >= 0 ? 'range' : 'bear'}">${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}</span></div>`;
+      }).join('');
+  }
+  if (j.closedToday?.length) {
+    html += `<div class="th-h ctx" style="margin-top:6px">Closed today</div>`
+      + j.closedToday.map(t => {
+        const pnl = +(t.profit || 0);
+        const reason = t.reason === 'tp' ? 'TP hit' : t.reason === 'sl' ? 'SL hit' : 'closed';
+        return `<div class="th-top">${esc0(reason)} <span class="chip ${pnl >= 0 ? 'range' : 'bear'}">${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}</span></div>`;
+      }).join('');
+  }
+
+  if (j.decisions?.length) {
+    html += `<div class="th-h ctx" style="margin-top:6px">Today's decisions</div>`
+      + j.decisions.slice(0, 12).map(d => {
+        const dt = new Date(d.t * 1000);
+        const timeStr = `${String(dt.getUTCHours()).padStart(2, '0')}:${String(dt.getUTCMinutes()).padStart(2, '0')} UTC`;
+        const w = _voteDecisionWord(d.status);
+        const sideArrow = d.side === 'up' ? '▲' : d.side === 'down' ? '▼' : '';
+        const line = [d.rung, d.decision, d.margin != null ? `margin ${d.margin}` : null].filter(Boolean).join(' · ');
+        return `<div class="th-top">${esc0(timeStr)} ${sideArrow} ${esc0(line)} <span class="chip ${w.cls}">${w.label}</span>`
+          + (d.reason ? `<div class="hint">${esc0(d.reason)}</div>` : '') + `</div>`;
+      }).join('');
+  } else if (!j.openPositions?.length && !j.closedToday?.length) {
+    html += `<div class="hint" style="margin-top:6px">No decisions logged for this pair yet today.</div>`;
+  }
+
+  box.innerHTML = html;
+  sec.style.display = 'block';
 }
 
 async function loadDrawerThesis(r) {
@@ -5860,7 +6437,8 @@ async function loadDrawerAnalysis(r) {
   let a = aiCache[symKey];
   if (a === undefined) {
     const kv = await jget(`/api/kv/get?key=ai_${symKey}`).catch(() => null);
-    a = (kv && !kv.miss) ? (kv.data?.analysis ? { ...kv.data.analysis, generatedAt: kv.data.generatedAt } : null) : null;
+    a = (kv && !kv.miss) ? (kv.data?.analysis ? { ...kv.data.analysis, generatedAt: kv.data.generatedAt,
+      weeklyOutlookGeneratedAt: kv.data.weeklyOutlookGeneratedAt, monthlyOutlookGeneratedAt: kv.data.monthlyOutlookGeneratedAt } : null) : null;
     aiCache[symKey] = a;
   }
   if (!a) {
@@ -5908,9 +6486,22 @@ async function loadDrawerAnalysis(r) {
   } else if (tod && tod.rationale) {
     tradeCard = `<div class="ai-trade"><div class="ai-trade-hd"><span class="chip neu">NO TRADE</span><span class="muted" style="font-size:10.5px">Trade of the day</span></div><div class="ai-trade-rationale">${esc(tod.rationale)}</div></div>`;
   }
+  // Weekly/monthly outlook — the AI's narration of js/outlookEngine.js's own
+  // computed bias, NOT a re-derived call (buildAnalysisPrompt rule 19). Each
+  // shows its OWN "as of" timestamp, separate from the daily read's — these
+  // refresh on a slower cadence (~1d / ~5d) since the underlying drivers move
+  // slower, per analysePair()'s splice logic. A visibly older stamp here than
+  // on the daily read above is expected, not stale data being hidden.
+  const hzCard = (o, genAt, label) => {
+    if (!o?.bias) return '';
+    const cls = /BULL/i.test(o.bias) ? 'bull' : /BEAR/i.test(o.bias) ? 'bear' : 'neu';
+    const stamp = genAt ? `<span class="muted" style="font-size:9.5px">as of ${new Date(genAt).toLocaleDateString()}</span>` : '';
+    return `<div class="ai-trade"><div class="ai-trade-hd"><span class="chip ${cls}">${esc(o.bias)}</span><span class="muted" style="font-size:10.5px">${label}${o.confidence ? ` · ${esc(o.confidence)} confidence` : ''}</span>${stamp}</div>${o.rationale ? `<div class="ai-trade-rationale">${esc(o.rationale)}</div>` : ''}</div>`;
+  };
+  const outlookCards = hzCard(a.weeklyOutlook, a.weeklyOutlookGeneratedAt, '5-Day outlook') + hzCard(a.monthlyOutlook, a.monthlyOutlookGeneratedAt, '20-Day outlook');
   const macroBlock = macroReads ? `<div class="ai-macro">${macroReads}</div>` : '';
   const detail = `${reads}${framework}${dodont}${risks}${levels}`;
-  box.innerHTML = `<div class="ai-top">${bias}${conv}</div>${head}${brief}${macroBlock}${tradeCard}` +
+  box.innerHTML = `<div class="ai-top">${bias}${conv}</div>${head}${brief}${macroBlock}${tradeCard}${outlookCards}` +
     (detail ? `<div class="ai-body" style="display:none;margin-top:10px">${detail}</div>` : '') + age;
   const body = box.querySelector('.ai-body');
   if (body) {
@@ -5977,6 +6568,26 @@ function assembleSnapshot(r) {
         baseLeg: ct.baseRead, quoteLeg: ct.quoteRead };
     }
     s.cotBias = `specs net ${ct.dir}${ct.level ? ` (${ct.level})` : ''}${ct.derived ? ' — derived from both legs, no direct CFTC contract for this cross' : ''}`;
+  }
+  // Vote Atlas (volatility_bot_v2) — what the live bot currently thinks about
+  // THIS pair: is it enabled, its spread cap, today's entered/skipped/
+  // rejected decisions with reasons, any open/closed position. Previously
+  // never reached the AI prompt at all despite being fetched elsewhere in
+  // the same drawer (found 2026-09-01). Reads the Systems tab's own cache
+  // (set by loadDrawerVoteState, polled since the drawer opened) rather than
+  // fetching fresh — this function is synchronous. Silently omitted if the
+  // Systems tab hasn't loaded yet (e.g. Analyse clicked in the first second).
+  if (_drVoteState?.ok) {
+    const vs = _drVoteState;
+    s.voteAtlas = {
+      enabled: vs.enabled, botRunning: vs.botRunning, botMode: vs.botMode,
+      spreadCapPips: vs.spreadCap?.pips,
+      openPositions: (vs.openPositions || []).map(p => ({ direction: p.direction, lots: p.lots, openPrice: p.open_price, profit: p.profit })),
+      closedToday: (vs.closedToday || []).map(t => ({ profit: t.profit, reason: t.reason })),
+      decisionsToday: (vs.decisions || []).slice(0, 8).map(d => ({ side: d.side, rung: d.rung, decision: d.decision, margin: d.margin, status: d.status, reason: d.reason })),
+      historical: vs.historical ? { marginTested: vs.historical.marginTested, trades: vs.historical.trades, winRatePct: vs.historical.winRatePct, sharpe: vs.historical.sharpe, sameDayResolvedPct: vs.historical.sameDayResolvedPct } : undefined,
+      todayRegime: vs.liveContext ? { dayVol: vs.liveContext.dayVol, session: vs.liveContext.session } : undefined,
+    };
   }
   // Macro Scorecard (11-dim fundamentals, both legs) — previously never
   // reached the AI prompt at all.
@@ -6076,9 +6687,41 @@ function assembleSnapshot(r) {
     const hasHigh = next4h.some(e => (e.impact ?? '').toLowerCase() === 'high');
     s.eventRisk = { level: hasHigh ? 'high' : next4h.length ? 'medium' : 'low', sizeMult: hasHigh ? 0.5 : 1, inNext4h: next4h.slice(0, 4) };
   }
+  // Market Outlook (js/outlookEngine.js) — the 5-day/20-day context composite
+  // this page already shows on the card/drawer, fed to the AI as GROUND TRUTH
+  // (the AI narrates these numbers, it does not invent its own). Trimmed to
+  // what the prompt needs: bias/confidence/agreement + each driver's label,
+  // status and one-line detail. Central-bank tone rides along as its own,
+  // clearly separate, non-scored field — see cbToneFor()'s header.
+  const both = pairOutlookBoth(r);
+  const trimOutlook = o => o && o.bias ? {
+    bias: o.bias, biasScore: o.biasScore, confidence: o.confidence,
+    agree: o.agree, total: o.total,
+    drivers: o.drivers.map(d => ({ label: d.label, status: d.status, detail: d.detail })),
+    eventRisk: o.eventRisk,
+  } : null;
+  if (both?.weekly) s.outlookWeekly = trimOutlook(both.weekly);
+  if (both?.monthly) s.outlookMonthly = trimOutlook(both.monthly);
+  const cbTone = cbToneFor(r);
+  if (cbTone.length) s.cbTone = cbTone.map(c => ({ bank: c.bank, ccy: c.ccy, trend: c.trend, detail: c.detail }));
   return s;
 }
 // On-demand per-pair analysis — generate + persist so it's cached next time.
+// Weekly/monthly outlook narrative refresh cadence — the underlying drivers
+// (yield-spread z, macro momentum, etc.) move far slower than the daily read,
+// so regenerating AI prose about them on every "Analyse" click is wasted cost
+// for no new information most of the time. v1 tradeoff (documented, not
+// hidden): the model IS still asked for fresh weekly/monthly prose every
+// call (one prompt, not two — see the design discussion this was built from),
+// but analysePair() below DISCARDS it and keeps the old cached narrative +
+// its own timestamp when that cache is still within TTL. A genuinely
+// decoupled second AI call (regenerate weekly/monthly independently of the
+// daily click) is the natural next step if this splice approach feels wrong
+// once live — not built here to avoid standing up an untestable-in-sandbox
+// second pipeline blind.
+const WEEKLY_OUTLOOK_TTL_MS = 24 * 3600e3;        // ~1 day
+const MONTHLY_OUTLOOK_TTL_MS = 5 * 24 * 3600e3;   // ~5 days
+
 async function analysePair() {
   const r = _drR; if (!r) return;
   const btn = $('drAnalyseBtn'), box = $('drAnalysis'), sec = $('drAnalysisSec');
@@ -6104,9 +6747,23 @@ async function analysePair() {
     if (resp.error || !resp.analysis) throw new Error(resp.error || 'no analysis returned');
     const symKey = lvlKey(r.name, r.d.sym).replace('/', '');
     const genAt = resp.generatedAt || new Date().toISOString();
-    aiCache[symKey] = { ...resp.analysis, generatedAt: genAt };
+    const analysis = { ...resp.analysis };
+    // loadDrawerAnalysis() already ran when the drawer opened (before the
+    // "Analyse" button could even be clicked), so aiCache[symKey] already
+    // holds whatever was previously cached — reliable "previous state" here
+    // without a second KV read.
+    const prevA = aiCache[symKey];
+    const now = Date.now();
+    let weeklyGenAt = genAt, monthlyGenAt = genAt;
+    if (prevA?.weeklyOutlook?.bias && prevA.weeklyOutlookGeneratedAt && (now - new Date(prevA.weeklyOutlookGeneratedAt).getTime()) < WEEKLY_OUTLOOK_TTL_MS) {
+      analysis.weeklyOutlook = prevA.weeklyOutlook; weeklyGenAt = prevA.weeklyOutlookGeneratedAt;
+    }
+    if (prevA?.monthlyOutlook?.bias && prevA.monthlyOutlookGeneratedAt && (now - new Date(prevA.monthlyOutlookGeneratedAt).getTime()) < MONTHLY_OUTLOOK_TTL_MS) {
+      analysis.monthlyOutlook = prevA.monthlyOutlook; monthlyGenAt = prevA.monthlyOutlookGeneratedAt;
+    }
+    aiCache[symKey] = { ...analysis, generatedAt: genAt, weeklyOutlookGeneratedAt: weeklyGenAt, monthlyOutlookGeneratedAt: monthlyGenAt };
     fetch('/api/kv/set', { method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ key: 'ai_' + symKey, data: { analysis: resp.analysis, generatedAt: genAt, pair: r.name }, timestamp: Date.now() }) }).catch(() => {});
+      body: JSON.stringify({ key: 'ai_' + symKey, data: { analysis, generatedAt: genAt, weeklyOutlookGeneratedAt: weeklyGenAt, monthlyOutlookGeneratedAt: monthlyGenAt, pair: r.name }, timestamp: Date.now() }) }).catch(() => {});
     await loadDrawerAnalysis(r);
     loadDrawerThesis(r).catch(() => {});
   } catch (e) {
@@ -6431,6 +7088,15 @@ setInterval(() => { jget('/api/vol-forecast').then(f => { if (f?.instruments) fo
 <script type="module">
   import * as CreditHmm from './js/creditHmm.js';
   window.creditHmmBrick = CreditHmm;
+  try { window.render?.(); } catch (e) {}
+</script>
+<!-- Same pattern for the Market Outlook brick (js/outlookEngine.js) — composes
+     the composite/COT/vol-regime/yield-spread reads this page already loads
+     into a labelled 5-day / 20-day directional read per pair. CONTEXT
+     composite, not a new backtested signal — see that file's header. -->
+<script type="module">
+  import * as OutlookEngine from './js/outlookEngine.js';
+  window.outlookBrick = OutlookEngine;
   try { window.render?.(); } catch (e) {}
 </script>
 </body>

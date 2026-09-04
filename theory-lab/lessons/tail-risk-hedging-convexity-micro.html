@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tail Risk Hedging &amp; Portfolio Convexity — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Tail Risk Hedging &amp; Portfolio Convexity — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer full derivations, the complete worked-example scratchpad, and a 6-question self-test?<a href="tail-risk-hedging-convexity.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Risk Deep Dive 2 · Risk Management Deep Dive</div>
+      <h1 class="sl-h1">Tail Risk Hedging, <em>When the Curve Bends Against You</em></h1>
+      <p class="sl-lede">Two portfolios can post the same expected return, and the same VaR and CVaR over most historical windows, and still behave completely differently the one time it counts — because none of those numbers describe the <em>shape</em> of the payoff as the move that's already happening gets bigger. That shape is convexity: whether a portfolio's pain accelerates, decelerates, or stays proportional as the market keeps moving. This deep dive is about that shape, what it costs to bend it in your favor on purpose, and why doing so is harder to sustain than the math alone suggests.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">The average isn't lying — it's just not answering this</h2>
+      <p class="sl-p">The previous deep dive in this series, <a href="coherent-risk-measures.html">Coherent Risk Measures: VaR, CVaR &amp; the Artzner Axioms</a>, is about sizing the tail — how bad is the loss at some percentile, and how bad on average once you're already past it. Two portfolios can match on expected return, volatility, and even VaR/CVaR across most sample periods, and still diverge completely in a crash, because none of those figures describe how a portfolio's <em>own</em> payoff responds as the move gets larger. That response — is the damage speeding up, slowing down, or staying proportional to the move — is convexity, and it's what this deep dive is built on.</p>
+      <div class="sl-quote">This is the same second-derivative idea the curriculum's <a href="duration-convexity-micro.html">Duration &amp; Convexity</a> lesson builds from a bond's Taylor expansion: <strong>V(S) ≈ V₀ + Δ·(S−S₀) + ½Γ·(S−S₀)²</strong>. Δ is the straight-line, first-order sensitivity — how much value moves per unit move in the underlying. Γ is the curvature term sitting one order further out, and it's the entire subject here, just applied to a portfolio's crash behavior instead of a bond's price-yield curve.</div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Why this gets missed</div>
+        <p>A strategy's ordinary-time track record is built almost entirely from small, everyday moves — exactly the region where a linear exposure and a curved one look nearly identical. The curvature only reveals itself once a move is large enough to matter, which by definition doesn't happen often. Judging the strategy from the calm years alone is judging the wrong part of the curve.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Three ways to bend, in options language</h2>
+      <p class="sl-sub">Γ (gamma) is the second derivative of value with respect to the underlying — the curvature of the payoff.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">Γ&gt;0</div><div><h4>Long convexity</h4><p>The payoff curves upward, away from the straight line, in both directions. Losses near the center are small and capped; gains accelerate the further the move goes. This is what owning options — or a deliberate tail hedge — looks like.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">Γ=0</div><div><h4>No convexity</h4><p>A pure linear exposure — value moves by the same amount per unit move in the underlying, no matter how large the move gets. The straight-line baseline everything else is compared against.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">Γ&lt;0</div><div><h4>Short convexity</h4><p>The payoff curves downward, away from the line. Small, steady gains near the center; losses that grow faster than linearly the further the move goes. This is what selling options — or running a short-volatility carry book — looks like.</p></div></div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Same idea, different vocabulary</div>
+        <p>"Gamma" is the options-Greeks name for exactly this curvature (see <a href="gamma-exposure-dealer-hedging-micro.html">Gamma Exposure &amp; Dealer Hedging Flows</a>); "convexity" is the portfolio-risk name for the same second derivative, applied more broadly than just options — a bond, a systematic strategy, or an entire book can be long or short convexity without a single option in it.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Two payoff shapes, same underlying move</h2>
+      <p class="sl-sub">Same market, same size of move — the curve decides what happens to you.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="conv-tabs">
+          <button class="sl-tab active" data-panel="conv-neg">Negative convexity — short gamma</button>
+          <button class="sl-tab" data-panel="conv-pos">Positive convexity — long gamma</button>
+        </div>
+        <div class="sl-panel active" id="conv-neg">
+          <div class="sl-svgwrap"><svg viewBox="0 0 300 130" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A curve that sits slightly above a straight reference line near the center, then drops sharply below it toward one edge, illustrating accelerating losses">
+            <path d="M19,117 L281,39" style="fill:none;stroke:var(--text3);stroke-width:1.5;stroke-dasharray:4,3"/>
+            <path d="M19,126 L62,130 L107,100 L150,76 L194,62 L281,37" style="fill:none;stroke:var(--red);stroke-width:2.5"/>
+            <text x="22" y="14" style="font:9px 'DM Mono',monospace;fill:var(--text3)">← bigger loss side</text>
+          </svg></div>
+          <div class="sl-verdict"><strong>Example: selling options for income, a short-volatility carry trade.</strong> Small, dependable gains most of the time — the curve sits just above the line near the center — funded by a rare, accelerating loss once the move gets large enough. "Picking up pennies in front of a steamroller."</div>
+        </div>
+        <div class="sl-panel" id="conv-pos">
+          <div class="sl-svgwrap"><svg viewBox="0 0 300 130" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A curve that sits slightly below a straight reference line near the center, then rises sharply above it toward one edge, illustrating accelerating gains">
+            <path d="M19,117 L281,39" style="fill:none;stroke:var(--text3);stroke-width:1.5;stroke-dasharray:4,3"/>
+            <path d="M19,56 L62,74 L107,82 L150,79 L194,67 L281,41" style="fill:none;stroke:var(--green);stroke-width:2.5"/>
+            <text x="22" y="14" style="font:9px 'DM Mono',monospace;fill:var(--text3)">← bigger gain side</text>
+          </svg></div>
+          <div class="sl-verdict"><strong>Example: buying out-of-the-money puts, a standing tail hedge.</strong> A small, steady cost most of the time — the curve sits just below the line near the center — in exchange for an accelerating payoff exactly once the move gets large. A security guard's daily fee, paid whether or not the steamroller ever speeds up.</div>
+        </div>
+        <div class="sl-note">Neither shape is "correct" on its own — they're mirror-image trades of ordinary-time cost against crisis-time protection. The discipline is choosing the trade-off deliberately instead of discovering it by accident.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">The same move, two different bends</h2>
+      <p class="sl-sub">A straight line means every extra percent of market move costs (or pays) exactly the same as the last one. These two portfolios don't have a straight line.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Payoff curvature vs. the underlying move</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart with market move on the x axis from a forty percent crash on the left to a twenty percent rally on the right, and portfolio profit and loss on the y axis. A dashed grey line shows the linear unhedged exposure. A red curve tracks slightly above the line near the center then drops sharply below it toward the crash side. A green curve tracks slightly below the line near the center then rises sharply above it toward the crash side.">
+            <line x1="40" y1="150" x2="620" y2="150" style="stroke:var(--border);stroke-width:1"/>
+            <line x1="413" y1="20" x2="413" y2="280" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"/>
+            <text x="45" y="292" style="font:10px 'DM Mono',monospace;fill:var(--text3)">← market crash (−40%)</text>
+            <text x="615" y="292" text-anchor="end" style="font:10px 'DM Mono',monospace;fill:var(--text3)">rally (+20%) →</text>
+            <text x="20" y="25" style="font:10px 'DM Mono',monospace;fill:var(--text3)">+P&amp;L</text>
+            <text x="20" y="280" style="font:10px 'DM Mono',monospace;fill:var(--text3)">−P&amp;L</text>
+            <path d="M 40,270 L 600,90" style="fill:none;stroke:var(--text3);stroke-width:2;stroke-dasharray:4,3"/>
+            <path d="M 40,290 L 133,300 L 227,230 L 320,175 L 413,142 L 600,85" style="fill:none;stroke:var(--red);stroke-width:2.5"/>
+            <path d="M 40,130 L 133,170 L 227,190 L 320,183 L 413,155 L 600,95" style="fill:none;stroke:var(--green);stroke-width:2.5"/>
+            <circle cx="413" cy="142" r="3" style="fill:var(--red)"/>
+            <circle cx="413" cy="155" r="3" style="fill:var(--green)"/>
+            <circle cx="413" cy="150" r="3" style="fill:var(--text3)"/>
+          </svg>
+        </div>
+        <div style="display:flex;gap:18px;flex-wrap:wrap;font-size:11.5px;color:var(--text2);margin-top:6px">
+          <span><i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--text3);margin-right:6px;vertical-align:middle"></i>Linear / unhedged exposure</span>
+          <span><i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--red);margin-right:6px;vertical-align:middle"></i>Short convexity ("steamroller")</span>
+          <span><i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--green);margin-right:6px;vertical-align:middle"></i>Long convexity (tail-hedged)</span>
+        </div>
+        <div class="sl-note">Near the center (small moves), red sits just above the grey line — the steady premium collected — and green sits just below it — the steady cost paid. Toward the crash side, the two curves invert: red falls sharply below the linear line, green rises sharply above it. Schematic, not fitted to real data.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Same move, opposite reaction</h2>
+      <p class="sl-sub">Drag the slider to change the size of the market move. Near zero, the two portfolios are barely apart — the further the move goes, the more the curvature takes over.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A moving vertical marker sweeps across a chart of market move versus portfolio profit and loss, showing an amber short-convexity curve and a green long-convexity curve diverging further from a dashed linear line as the move grows larger">
+            <line x1="50" y1="230" x2="610" y2="230" style="stroke:var(--border2);stroke-width:1"/>
+            <line id="mv-zero-h" x1="50" y1="85.6" x2="610" y2="85.6" style="stroke:var(--border);stroke-width:1;stroke-dasharray:3,3"/>
+            <line id="mv-zero-v" x1="423.3" y1="20" x2="423.3" y2="230" style="stroke:var(--border);stroke-width:1;stroke-dasharray:3,3"/>
+            <polyline id="mv-linear" points="" style="fill:none;stroke:var(--text3);stroke-width:1.8;stroke-dasharray:4,3"/>
+            <polyline id="mv-short" points="" style="fill:none;stroke:var(--amber);stroke-width:2.5"/>
+            <polyline id="mv-long" points="" style="fill:none;stroke:var(--green);stroke-width:2.5"/>
+            <line id="mv-marker" x1="423.3" y1="20" x2="423.3" y2="230" style="stroke:var(--blue);stroke-width:1.5"/>
+            <circle id="mv-dot-short" cx="423.3" cy="85.6" r="5" style="fill:var(--amber)"/>
+            <circle id="mv-dot-long" cx="423.3" cy="85.6" r="5" style="fill:var(--green)"/>
+            <text x="55" y="248" style="font:10px 'DM Mono',monospace;fill:var(--text3)">← crash (−40%)</text>
+            <text x="605" y="248" text-anchor="end" style="font:10px 'DM Mono',monospace;fill:var(--text3)">rally (+20%) →</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Market move</span><span class="sl-live" id="mv-val">+0%</span></div>
+        <input type="range" class="sl-slider" id="mv-slider" min="-40" max="20" step="1" value="0">
+        <div class="sl-row" style="margin-top:16px">
+          <div class="sl-box" style="background:var(--amber-bg);border-color:var(--amber-bd);color:var(--amber)">Short-conv P&amp;L: <span id="mv-short-val">+1.5%</span></div>
+          <div class="sl-box green">Long-conv (hedged) P&amp;L: <span id="mv-long-val">−1.5%</span></div>
+        </div>
+      </div>
+      <p class="sl-p">Watch what happens on the way to −40%: the amber (short-convexity) line pulls further and further below where a straight-line exposure would leave you, while the green (tail-hedged) line pulls further above it. Neither portfolio is doing anything different in kind as the slider moves — the curvature was there the whole time. It just wasn't visible until the move got big enough to show it.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">A calm year and a crash year, three ways</h2>
+      <p class="sl-sub">A $10M portfolio tracking a broad index, with three overlays on top. Illustrative figures, chosen to make the mechanism clear.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">◻</div><div><h4>Unhedged</h4><p>No overlay. <strong>Calm year: +12%.</strong> <strong>Crash year: −35%.</strong> Simply whatever the index does.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">Γ&lt;0</div><div><h4>Short-convexity overlay</h4><p>Sells out-of-the-money puts every year for premium income. <strong>Calm year: +12%+3% = +15%.</strong> <strong>Crash year: −35%−25% = −60%</strong> — the short puts are deep in the money and losses accelerate.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">Γ&gt;0</div><div><h4>Long-convexity (tail-hedged) overlay</h4><p>Buys far out-of-the-money puts every year. <strong>Calm year: +12%−1.5% = +10.5%.</strong> <strong>Crash year: −35%+40% = +5%</strong> — the only one of the three that's profitable in the crash.</p></div></div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>Compounding four calm years like this with one crash year (unhedged ≈ +2.3% cumulative vs. tail-hedged ≈ +56.5%) is a real mechanism — the hedge "loses" every single calm year individually, yet ends far ahead once the crash year compounds in. But that ranking flips easily with a smaller crash, a higher hedge cost, or simply no crash occurring at all in the window examined. This demonstrates the compounding mechanism, not a validated, real-world result.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Buying convexity is a menu, not one trade</h2>
+      <p class="sl-sub">Tail hedging means deliberately trading away some expected return — an ongoing premium — to acquire positive convexity. How much of each depends on the structure.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>Far out-of-the-money puts</h4><p>Close to pure convexity, with limited ongoing management — but the volatility skew (OTM puts trade at elevated implied vol, because everyone wants the same crash protection) makes them structurally expensive per unit of protection.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">✂</div><div><h4>Put spreads &amp; collars</h4><p>A put spread caps the payoff past a second strike to reduce net premium. A zero-cost collar funds the put by selling an upside call, cutting net cost to near zero at the price of giving up upside participation.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📈</div><div><h4>Volatility-linked hedges</h4><p>Instruments that pay off from a rise in volatility itself, not just direction — a second, partially distinct channel of protection, since crashes have historically coincided with volatility spikes.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">💰</div><div><h4>Sized as a fixed budget</h4><p>The practitioners who run these programs most consistently treat the cost as a known, budgeted expense — like an insurance line item — not a position expected to "earn back" its premium on a schedule.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">How rare does the crash need to be?</h2>
+      <p class="sl-sub">Given an ongoing hedge cost and what it pays out in a crash, how often does a crash need to happen for the hedge to break even on average?</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change either input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Hedge cost (% of notional, per year)</label><input type="number" class="sl-input" id="th-cost" value="1.5" step="0.1" min="0"></div>
+          <div class="sl-calc-op">×</div>
+          <div class="sl-calc-field"><label>Crash payout multiple (× that year's cost)</label><input type="number" class="sl-input" id="th-mult" value="25" step="1" min="0"></div>
+          <div class="sl-calc-op">→</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Breakeven crash probability / year</div>
+            <div class="sl-calc-result-val" id="th-prob">4.00%</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Implied payout in the crash year: cost × multiple = <b id="th-payout">37.50%</b></div>
+          <div>Breakeven probability: 1 ÷ multiple = <b id="th-prob2">4.00%</b></div>
+          <div>Equivalent to roughly: <b id="th-years">1 crash every 25.0 years</b></div>
+        </div>
+        <div class="sl-note" id="th-note"></div>
+        <button type="button" class="sl-reset-btn" id="th-reset">Reset to 1.5% cost, 25× payout</button>
+      </div>
+      <p class="sl-p">Notice the breakeven probability depends only on the <em>payout multiple</em>, not on how large the premium is in absolute terms — a more expensive hedge doesn't need a rarer crash to justify itself, as long as it pays out proportionally more too. That's the honest, scale-free version of "how rare does the crash need to be."</p>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">The hard part isn't the math</h2>
+      <p class="sl-sub">A tail hedge is designed to cost money in calm markets. That's not a flaw — it's the whole mechanism.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">During calm markets</span>
+          <ul>
+            <li>The hedge is, almost by construction, the worst line item in the attribution report</li>
+            <li>Its standalone Sharpe ratio looks poor — because it's designed to bleed, not to be judged alone</li>
+            <li>Every year it doesn't pay off looks, in isolation, like a wasted expense</li>
+            <li>Pressure builds to cut or shrink the budget the longer this stretch runs</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">During a crash</span>
+          <ul>
+            <li>The hedge's payoff turns sharply positive exactly when everything else is under stress</li>
+            <li>It cushions the drawdown at the one moment ordinary-time metrics couldn't have shown was coming</li>
+            <li>The <em>combined</em> portfolio — hedge plus the rest of the book — is the only fair thing to judge</li>
+            <li>The hedge that was cut the year before the crash isn't there to help</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">The cost-of-carry tradeoff</div>
+        <p>If the calm period runs long enough, or the eventual crash is smaller than assumed, the cumulative drag can exceed whatever the hedge eventually pays out. That's the actual insurance-premium mechanism working as intended — which is why these programs are sized as a small, deliberate, budgeted cost rather than adopted on a promise that they'll "pay for themselves" on a fixed schedule.</p>
+      </div>
+      <div class="sl-note">Nothing on this slide, or anywhere in this deck, describes a tail-hedge overlay that's actually built or backtested in this repo — checked directly against the current codebase before writing this. It's a framework for reasoning about convexity, not a validated trading edge.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Ways this gets misapplied</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>Judging the hedge by its calm-period Sharpe</h4><p>A hedge designed to lose money most of the time will, almost by definition, show a poor standalone Sharpe over any sample that hasn't included the crash it exists for. That's the intended cost, not a failure.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">✂</div><div><h4>Cutting the budget after a long calm stretch</h4><p>The single most common failure mode — abandoning the hedge exactly because several quiet years made it look wasted, which is the point in the cycle it's statistically closer to being needed, though never predictably timed.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">≠</div><div><h4>Confusing "short vol" with "bad"</h4><p>Short-convexity strategies aren't inherently wrong — many are run responsibly with proper sizing and capital buffers. The point is understanding and sizing the true risk honestly, not discovering it for the first time in the one quarter it matters.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">💸</div><div><h4>Comparing hedge cost to a normal-distribution "fair value"</h4><p>The skew makes far-OTM puts look overpriced against a Black-Scholes-normal benchmark by construction — the market is pricing fatter tails than normal. The honest comparison is against the real, fat-tailed distribution, not a normal one.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>A portfolio has "positive convexity." What does that mean about its payoff?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Losses are bounded/capped while gains can accelerate as the move gets larger</button>
+        <button class="sl-quiz-opt">Its expected return is always positive</button>
+        <button class="sl-quiz-opt">It carries no risk of loss</button>
+        <div class="sl-quiz-explain">Convexity describes the curve's shape, not the sign of its average return. Positive convexity (Γ&gt;0) means the payoff bends favorably — capped downside, accelerating upside.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>A strategy sells options for steady premium income, with losses that grow faster than linearly once the market moves far enough. This is:</h4>
+        <button class="sl-quiz-opt" data-correct="true">Negative convexity — "short gamma"</button>
+        <button class="sl-quiz-opt">Positive convexity — "long gamma"</button>
+        <button class="sl-quiz-opt">A risk-free arbitrage</button>
+        <div class="sl-quiz-explain">Steady small gains with an accelerating, occasional large loss is exactly the short-convexity ("steamroller") shape — Γ&lt;0.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Why does a standing tail hedge typically cost money in calm markets?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The ongoing premium is the price of the crash protection — it's working as designed</button>
+        <button class="sl-quiz-opt">It's a sign the hedge has been poorly constructed</button>
+        <button class="sl-quiz-opt">Hedges are always profitable positions on their own</button>
+        <div class="sl-quiz-explain">A tail hedge that never costs anything in calm markets isn't providing real protection — the calm-year bleed is the whole insurance mechanism, not a flaw to optimize away.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>A hedge costs 1.5%/year and, in a crash, pays out 40× that year's cost. Roughly what annual crash probability makes it breakeven on average?</h4>
+        <button class="sl-quiz-opt" data-correct="true">About 2.5% (1 ÷ 40)</button>
+        <button class="sl-quiz-opt">About 15%</button>
+        <button class="sl-quiz-opt">About 60%</button>
+        <div class="sl-quiz-explain">Breakeven probability = 1 ÷ payout multiple = 1/40 = 2.5% per year — roughly a 1-in-40-year event. The absolute cost (1.5%) cancels out of this ratio.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>What is the single most common real-world failure mode for a tail-hedge program?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Cutting or shrinking the hedge budget after a long stretch of calm markets</button>
+        <button class="sl-quiz-opt">The hedge structure being mathematically impossible to price</button>
+        <button class="sl-quiz-opt">Regulators banning the use of out-of-the-money options</button>
+        <div class="sl-quiz-explain">Abandoning the hedge precisely because several calm years made it look like a wasted expense removes the protection right as the cycle statistically moves closer to needing it.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Expected return and VaR/CVaR describe the middle and the size of the tail — convexity describes its <em>shape</em>: whether losses accelerate, decelerate, or stay proportional as a move gets larger.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Positive convexity ("long gamma"): losses bounded and capped, gains that can accelerate — the curve bends favorably away from a straight line.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Negative convexity ("short gamma"): steady small gains most of the time, an occasional large accelerating loss — the curve bends unfavorably.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Tail hedging is a deliberate trade: giving up some expected return (an ongoing premium, paid mostly in calm years) to buy positive convexity — crash protection — on purpose.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The breakeven math is scale-free: how rare a crash needs to be for a hedge to pay off on average depends on the payout multiple, not the absolute size of the premium.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>The hardest part is organizational, not mathematical — a hedge that "isn't working" for years is often working exactly as designed, and cutting it right before the tail event is the most common way these programs fail.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Recognize short vs. long convexity whether it's described from the option-Greeks side (gamma) or the plain-P&amp;L side (payoff curvature). Judge a standing tail-hedge program by the combined portfolio's crash-year behavior — not its calm-year Sharpe ratio. Run a quick breakeven check on a hedge's cost-vs-payout before dismissing it as "too expensive" or trusting it as "free protection."</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Stress Testing &amp; Scenario Analysis</h3>
+        <p>Convexity tells you a payoff bends unfavorably as a move gets larger — stress testing is how you actually find out how large a move, and how many moves at once, your book can survive.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="stress-testing-scenario-analysis-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="tail-risk-hedging-convexity.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Market-move slider — redraws the short-convexity and long-convexity
+  // curves' current position live as the move size changes.
+  (function(){
+    var slider = document.getElementById('mv-slider');
+    if (!slider) return;
+    var valEl = document.getElementById('mv-val');
+    var shortValEl = document.getElementById('mv-short-val');
+    var longValEl = document.getElementById('mv-long-val');
+    var linearPoly = document.getElementById('mv-linear');
+    var shortPoly = document.getElementById('mv-short');
+    var longPoly = document.getElementById('mv-long');
+    var marker = document.getElementById('mv-marker');
+    var dotShort = document.getElementById('mv-dot-short');
+    var dotLong = document.getElementById('mv-dot-long');
+
+    var X_MIN = -40, X_MAX = 20, PX_MIN = 50, PX_MAX = 610;
+    var Y_MIN = -55, Y_MAX = 25, PY_BOTTOM = 230, PY_TOP = 20;
+
+    function xPix(x){ return PX_MIN + (x - X_MIN) / (X_MAX - X_MIN) * (PX_MAX - PX_MIN); }
+    function yPix(v){ return PY_BOTTOM - (v - Y_MIN) / (Y_MAX - Y_MIN) * (PY_BOTTOM - PY_TOP); }
+
+    function retLinear(x){ return x; }
+    function retShort(x){ return x - 0.006 * x * x + 1.5; }
+    function retLong(x){ return x + 0.006 * x * x - 1.5; }
+
+    function buildPoly(fn){
+      var pts = [];
+      for (var x = X_MIN; x <= X_MAX; x += 2) {
+        pts.push(xPix(x).toFixed(1) + ',' + yPix(fn(x)).toFixed(1));
+      }
+      return pts.join(' ');
+    }
+    linearPoly.setAttribute('points', buildPoly(retLinear));
+    shortPoly.setAttribute('points', buildPoly(retShort));
+    longPoly.setAttribute('points', buildPoly(retLong));
+
+    function fmtPct(v){
+      return (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(1) + '%';
+    }
+
+    function update(){
+      var x = parseFloat(slider.value);
+      valEl.textContent = (x >= 0 ? '+' : '−') + Math.abs(x).toFixed(0) + '%';
+      var sx = xPix(x);
+      marker.setAttribute('x1', sx);
+      marker.setAttribute('x2', sx);
+      var sVal = retShort(x), lVal = retLong(x);
+      dotShort.setAttribute('cx', sx);
+      dotShort.setAttribute('cy', yPix(sVal));
+      dotLong.setAttribute('cx', sx);
+      dotLong.setAttribute('cy', yPix(lVal));
+      shortValEl.textContent = fmtPct(sVal);
+      longValEl.textContent = fmtPct(lVal);
+    }
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Tail-hedge breakeven calculator — cost (%/yr) and crash payout multiple
+  // in, breakeven annual crash probability out. Guarded against blank,
+  // non-finite, and negative input.
+  (function(){
+    var costEl = document.getElementById('th-cost');
+    if (!costEl) return;
+    var multEl = document.getElementById('th-mult');
+    var probOut = document.getElementById('th-prob');
+    var payoutOut = document.getElementById('th-payout');
+    var prob2Out = document.getElementById('th-prob2');
+    var yearsOut = document.getElementById('th-years');
+    var noteOut = document.getElementById('th-note');
+    var resetBtn = document.getElementById('th-reset');
+    var DEFAULTS = { cost: 1.5, mult: 25 };
+
+    function recompute(){
+      var c = parseFloat(costEl.value);
+      var m = parseFloat(multEl.value);
+      if (!isFinite(c) || !isFinite(m) || c <= 0 || m <= 0) {
+        probOut.textContent = '—';
+        payoutOut.textContent = '—';
+        prob2Out.textContent = '—';
+        yearsOut.textContent = '—';
+        noteOut.textContent = '';
+        return;
+      }
+      var payout = c * m;
+      var p = 1 / m;
+      probOut.textContent = (p * 100).toFixed(2) + '%';
+      payoutOut.textContent = payout.toFixed(2) + '%';
+      prob2Out.textContent = (p * 100).toFixed(2) + '%';
+      yearsOut.textContent = '≈ 1 crash every ' + m.toFixed(1) + ' years';
+      noteOut.textContent = m <= 1
+        ? 'At this multiple the payout never exceeds the premium collected/paid — this hedge cannot break even, at any crash frequency.'
+        : '';
+    }
+
+    [costEl, multEl].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      costEl.value = DEFAULTS.cost; multEl.value = DEFAULTS.mult;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

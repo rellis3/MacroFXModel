@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Duration &amp; Convexity — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Duration &amp; Convexity — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivations, a live scratch calculator, and a 5-question self-test?<a href="duration-convexity.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Fixed Income 2 · Fixed Income Mathematics</div>
+      <h1 class="sl-h1">Duration &amp; Convexity, <em>Two Terms of a Taylor Series</em></h1>
+      <p class="sl-lede">A bond's price is a function of yield — nothing more exotic than that. Duration is what you get from drawing a tangent line to that function at today's yield: a linear estimate of how much price moves per unit of yield change. Convexity is the correction for the fact that the function actually curves, so the tangent line quietly drifts away from the truth the further yield moves. Together they explain why a "duration-only" hedge always leaves a little bit of money on the table — and why that leftover money always favors the bondholder.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Price is a function of yield, P(y)</h2>
+      <p class="sl-sub">Every bond's price traces one curve as yield moves — lower yield, higher price, and the bend is the whole story.</p>
+      <div class="sl-svgwrap">
+        <svg viewBox="0 0 640 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A downward-curving price versus yield line, steeper on the left and flatter on the right">
+          <line x1="30" y1="170" x2="610" y2="170" style="stroke:var(--border2);stroke-width:1"/>
+          <line x1="30" y1="20" x2="30" y2="170" style="stroke:var(--border2);stroke-width:1"/>
+          <path style="fill:none;stroke:var(--blue);stroke-width:2.5" d="M60,35 C160,55 220,95 300,120 C380,140 470,152 590,158"/>
+          <text x="335" y="190" text-anchor="middle" style="fill:var(--text3);font-size:11px">Yield →</text>
+          <text x="15" y="100" text-anchor="middle" style="fill:var(--text3);font-size:11px" transform="rotate(-90 15 100)">Price</text>
+          <text x="90" y="30" text-anchor="middle" style="fill:var(--blue);font-size:11px;font-weight:700">low yield → high price</text>
+          <text x="560" y="145" text-anchor="middle" style="fill:var(--blue);font-size:11px;font-weight:700">high yield → low price</text>
+        </svg>
+      </div>
+      <p class="sl-p">Because P(y) is a smooth function, calculus applies to it exactly the way it applies to any other smooth function: near any single point, you can approximate the whole curve with the tangent line at that point (a <strong>first-order Taylor term</strong>), and then correct that approximation with a term that captures how the curve bends away from the tangent (a <strong>second-order Taylor term</strong>). Everything in this lesson is those two ideas, applied to bond pricing.</p>
+      <div class="sl-quote">This is not a bond-specific trick borrowed from finance — it's the general "linear approximation, then a curvature correction" idea from this curriculum's foundation-mathematics lessons, aimed at one specific, very consequential function.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Duration starts as a timing question</h2>
+      <p class="sl-sub">Before duration is a sensitivity number, it's a weighted-average wait: how long, on average, before you get your money back?</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Two bonds, same 5-year maturity</div>
+        <div class="sl-row">
+          <div class="sl-box amber">Zero-coupon<br>bond</div>
+          <div class="sl-arrow">→</div>
+          <div class="sl-box">100% of value<br>arrives at year 5</div>
+        </div>
+        <div class="sl-verdict">Duration = <strong>5.00 years</strong>, exactly equal to maturity — every dollar of value is tied up until the very last day.</div>
+      </div>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Coupon-paying bond</div>
+        <div class="sl-row">
+          <div class="sl-box green">4% coupon<br>bond</div>
+          <div class="sl-arrow">→</div>
+          <div class="sl-box">value trickles in<br>years 1, 2, 3, 4, 5</div>
+        </div>
+        <div class="sl-verdict">Duration ≈ <strong>4.62 years</strong> — shorter than the 5-year maturity, because some cash arrives early and pulls the weighted average forward.</div>
+      </div>
+      <p class="sl-p">Macaulay duration is a genuine weighted average: each cash flow's <em>timing</em> is weighted by its share of the bond's present value, <code>PV(CF<sub>t</sub>)/P</code>, and those weights always sum to exactly 1. This is the same "weighted average" idea as a sample mean — the data points are payment dates, and the weights are each payment's slice of value instead of 1/n each.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Modified duration is the tangent line's slope</h2>
+      <p class="sl-sub">Rescale Macaulay duration by one factor of (1+y), and it stops being a timing number and becomes a direct price-sensitivity number.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Where the formula comes from</div>
+        <div class="sl-row">
+          <div class="sl-box">dP/dy</div>
+          <div class="sl-arrow">=</div>
+          <div class="sl-box amber">−D<sub>mod</sub> × P</div>
+        </div>
+        <div class="sl-verdict">Differentiate the pricing formula P = Σ CF<sub>t</sub>(1+y)<sup>−t</sup> term by term, and this is exactly what falls out — <strong>modified duration is nothing but the price curve's exact slope at the current yield, rescaled to read as a percentage.</strong></div>
+      </div>
+      <div class="sl-row">
+        <div class="sl-box">D<sub>mod</sub> = D<sub>Mac</sub> / (1+y)</div>
+        <div class="sl-arrow">→</div>
+        <div class="sl-box green">ΔP/P ≈ −D<sub>mod</sub> × Δy</div>
+      </div>
+      <p class="sl-p">For the 5-year, 4% coupon, $1,000 face bond at 5% YTM (price $956.71): D<sub>Mac</sub> ≈ 4.62 years, so D<sub>mod</sub> = 4.62 / 1.05 ≈ <strong>4.40</strong>. That single number says: for a small yield move, expect roughly a 4.40% price move in the opposite direction.</p>
+      <div class="sl-quote">This is a first-order Taylor expansion — f(y₀+Δy) ≈ f(y₀) + f′(y₀)Δy — applied to P(y), with f′(y₀) playing the role of −D<sub>mod</sub>·P. Duration <em>is</em> that tangent line's slope. Nothing more exotic than that.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Watch the tangent line peel away from the truth</h2>
+      <p class="sl-sub">The amber tangent line is fixed at 5% yield. Drag the yield-shock slider and watch the actual price (blue curve) and the duration-only estimate (amber line) pull apart as the shock grows.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — same 5-year, 4% coupon, $1,000 face bond at 5% YTM</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Curved true price line and a straight tangent line, with two dots marking the actual price and the duration-only estimate at a movable yield shock">
+            <line x1="70" y1="250" x2="600" y2="250" style="stroke:var(--border);stroke-width:1"/>
+            <line x1="70" y1="20" x2="70" y2="250" style="stroke:var(--border);stroke-width:1"/>
+            <text x="335" y="280" text-anchor="middle" style="fill:var(--text3);font-size:11px">Yield to maturity (%)</text>
+            <text x="20" y="135" text-anchor="middle" style="fill:var(--text3);font-size:11px" transform="rotate(-90 20 135)">Price ($)</text>
+            <text x="70" y="264" text-anchor="middle" style="fill:var(--text3);font-size:10px">1%</text>
+            <text x="600" y="264" text-anchor="middle" style="fill:var(--text3);font-size:10px">12%</text>
+            <path id="dcm-true-path" style="fill:none;stroke:var(--blue);stroke-width:2.5" d=""/>
+            <path id="dcm-tangent-path" style="fill:none;stroke:var(--amber);stroke-width:2;stroke-dasharray:5,4" d=""/>
+            <line id="dcm-guide" x1="0" y1="0" x2="0" y2="0" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:2,3"/>
+            <circle id="dcm-y0-dot" cx="0" cy="0" r="5" style="fill:var(--text);stroke:var(--panel);stroke-width:1.5"/>
+            <circle id="dcm-actual-dot" cx="0" cy="0" r="6" style="fill:var(--blue);stroke:var(--panel);stroke-width:1.5"/>
+            <circle id="dcm-duronly-dot" cx="0" cy="0" r="6" style="fill:var(--amber);stroke:var(--panel);stroke-width:1.5"/>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Yield shock (Δy) from the 5% tangent point</span><span class="sl-live" id="dcm-shock-val">Δy = +100 bp</span></div>
+        <input type="range" class="sl-slider" id="dcm-shock-slider" min="-400" max="400" step="5" value="100">
+        <div class="sl-verdict" style="margin-top:14px"><span style="color:var(--amber);font-weight:700">Duration-only estimate:</span> $<strong id="dcm-duronly-val">914.61</strong> &nbsp;·&nbsp; <span style="color:var(--blue);font-weight:700">Actual price:</span> $<strong id="dcm-actual-val">915.75</strong> &nbsp;·&nbsp; <span style="color:var(--text)">Gap:</span> $<strong id="dcm-gap-val">1.14</strong></div>
+        <div class="sl-note">Drag toward either end. The gap never goes negative and never shrinks back to zero as the shock grows — the true curve always sits <em>on or above</em> its own tangent line, in both directions. That's exactly what "convex" means geometrically.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Convexity is the curvature correction</h2>
+      <p class="sl-sub">The second-order Taylor term uses the curve's second derivative — how fast the slope itself is changing.</p>
+      <div class="sl-row">
+        <div class="sl-box">ΔP/P ≈ −D<sub>mod</sub>Δy</div>
+        <div class="sl-arrow">+</div>
+        <div class="sl-box purple">½ × C × (Δy)²</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">◡</div><div><h4>Convexity is always positive, for a plain bond</h4><p>Every term inside C's defining sum is a positive cash flow times a positive discount factor times a positive t(t+1) weight — so C &gt; 0 always, for any ordinary fixed-coupon bond.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">²</div><div><h4>The correction can never be negative</h4><p>½C(Δy)² is one-half times a positive number times a squared quantity — squared quantities are never negative, whichever direction yield actually moved.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">✓</div><div><h4>For the worked-example bond, C ≈ 24.47</h4><p>Computed the same way as duration — weight each cash flow's present value by t(t+1) this time instead of plain t, then rescale by P·(1+y)².</p></div></div>
+      </div>
+      <p class="sl-p">Because the correction term is always non-negative, duration alone always <strong>underestimates</strong> a plain bond's true price after any yield move — up or down. The straight-line tangent is always a lower bound on the truth, and convexity is precisely the missing piece that closes most of the gap.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Three estimates, one 100bp shock</h2>
+      <p class="sl-sub">Same bond, yield rises from 5% to 6%. Compare the duration-only estimate, the duration+convexity estimate, and the exact re-priced value.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="dcm-tabs">
+          <button class="sl-tab active" data-panel="dcm-p1">Duration only</button>
+          <button class="sl-tab" data-panel="dcm-p2">Duration + convexity</button>
+          <button class="sl-tab" data-panel="dcm-p3">Exact re-priced</button>
+        </div>
+        <div class="sl-panel active" id="dcm-p1">
+          <div class="sl-row"><div class="sl-box">$956.71</div><div class="sl-arrow">×(1 − 4.40×0.01)</div><div class="sl-box amber">$914.61</div></div>
+          <div class="sl-verdict">Off by <strong>$1.14</strong> — the straight-line tangent estimate misses the curve's bend entirely.</div>
+        </div>
+        <div class="sl-panel" id="dcm-p2">
+          <div class="sl-row"><div class="sl-box">$956.71</div><div class="sl-arrow">×(1 − 0.0428)</div><div class="sl-box green">$915.78</div></div>
+          <div class="sl-verdict">Off by only <strong>$0.03</strong> — adding ½×24.47×0.01² closes nearly the entire gap left by the linear estimate.</div>
+        </div>
+        <div class="sl-panel" id="dcm-p3">
+          <div class="sl-row"><div class="sl-box">P(y=6%)</div><div class="sl-arrow">=</div><div class="sl-box green">$915.75</div></div>
+          <div class="sl-verdict">The true value, from re-running the exact cash-flow pricing formula at the new yield — no approximation, no Taylor series, just the definition of price.</div>
+        </div>
+        <div class="sl-note">The estimation error shrinks from $1.14 (duration only) to $0.03 (duration + convexity) — a single second-order term recovers nearly all of it.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Calculate it yourself</h2>
+      <p class="sl-sub">%ΔP ≈ −D×Δy + ½×C×(Δy)². Enter any duration, convexity, and yield shock — starts on the worked example above.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Duration D (years)</label><input type="number" class="sl-input" id="dcm-calc-d" value="4.40" step="0.1"></div>
+          <div class="sl-calc-field"><label>Convexity C</label><input type="number" class="sl-input" id="dcm-calc-c" value="24.47" step="0.5"></div>
+          <div class="sl-calc-field"><label>Yield shock Δy (%)</label><input type="number" class="sl-input" id="dcm-calc-dy" value="1" step="0.1"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Est. % price change</div>
+            <div class="sl-calc-result-val" id="dcm-calc-result">−4.28%</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Linear term (−D×Δy): <b id="dcm-calc-linear">−4.40%</b></div>
+          <div>Convexity term (½×C×Δy²): <b id="dcm-calc-convex">+0.12%</b></div>
+          <div>Applied to a $<span id="dcm-calc-baselabel">956.71</span> base price: <b id="dcm-calc-price">$915.78</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="dcm-calc-reset">Reset to worked-example numbers</button>
+        <div class="sl-note">Try a blank field, a letter, or a huge Δy — the result box shows "—" instead of breaking, rather than silently displaying NaN or Infinity.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Convexity is always a gift to the bondholder</h2>
+      <p class="sl-sub">Shock the same bond by 100bp in each direction. The linear model says the gain and the loss should be identical in size — convexity says otherwise.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Yields fall 100bp (5% → 4%)</span>
+          <p>Price rises from $956.71 to <strong>$1,000.00</strong> — a gain of <strong>$43.29</strong>.</p>
+        </div>
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Yields rise 100bp (5% → 6%)</span>
+          <p>Price falls from $956.71 to <strong>$915.75</strong> — a loss of <strong>$40.96</strong>.</p>
+        </div>
+      </div>
+      <div class="sl-quote">Same size move, opposite directions — but the gain ($43.29) is bigger than the loss ($40.96). A purely linear (duration-only) model would have predicted an identical $42.10 either way. The extra $1.19 on the upside and the $1.14 of cushion on the downside are both the same convexity term, working in the bondholder's favor <em>regardless of which way yields move</em>.</div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>This "always a gift" result assumes fixed, contractual cash flows. A callable bond or a mortgage-backed security can have <em>negative</em> convexity, because falling yields trigger prepayment/refinancing that shortens the bond's actual cash-flow schedule right when it would otherwise be gaining the most — breaking the fixed-CF assumption this lesson's formulas rely on.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">How this actually gets used on a desk</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📏</div><div><h4>DV01 — duration in dollars</h4><p>DV01 ≈ D<sub>mod</sub> × P × 0.0001 — the dollar gain or loss for a 1 basis-point yield move. Desks size and hedge positions in DV01 terms, not percentages.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚖</div><div><h4>Duration matching / immunization</h4><p>A pension fund matches the duration of its assets to the duration of its liabilities, so a parallel rate shift moves both sides by roughly the same amount.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">💰</div><div><h4>Convexity is bought and sold as its own factor</h4><p>Especially in mortgage-backed securities, where convexity can turn negative, and in options markets, where "long gamma" is the same second-order idea under a different name.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🪢</div><div><h4>Barbell vs. bullet</h4><p>A barbell (very short + very long maturities) can match a bullet's (single intermediate maturity) duration while carrying meaningfully more convexity — a standard relative-value lever.</p></div></div>
+      </div>
+      <p class="sl-p">Both duration and convexity, as derived here, assume every point on the yield curve shifts by the same amount — a <strong>parallel shift</strong>. A portfolio can be perfectly duration-neutral to a parallel move and still lose money on a curve steepening or flattening, which is exactly why finer, curve-shape-aware tools exist.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Why is a coupon-paying bond's Macaulay duration always shorter than its maturity?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Because coupons arrive before maturity, pulling the weighted average of payment dates forward</button>
+        <button class="sl-quiz-opt">Because coupon bonds are always priced below face value</button>
+        <button class="sl-quiz-opt">It isn't — duration always equals maturity for any bond</button>
+        <div class="sl-quiz-explain">Duration is a weighted average of payment dates. Coupons paid before maturity carry some weight too, pulling that average forward from the final maturity date. Only a zero-coupon bond, with 100% of its value at one date, has duration exactly equal to maturity.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>In what precise sense is modified duration "the first-order Taylor term" of the bond pricing function?</h4>
+        <button class="sl-quiz-opt" data-correct="true">−D_mod·P is exactly dP/dy, the derivative that a first-order Taylor expansion of P(y) uses</button>
+        <button class="sl-quiz-opt">It's a loose analogy — duration and Taylor series are unrelated mathematically</button>
+        <button class="sl-quiz-opt">Duration only resembles a Taylor term for zero-coupon bonds</button>
+        <div class="sl-quiz-explain">Differentiating P(y) = Σ CF_t(1+y)^−t term by term gives dP/dy = −D_mod·P exactly. Plugging that into the generic first-order Taylor formula f(y₀+Δy) ≈ f(y₀) + f′(y₀)Δy produces ΔP/P ≈ −D_mod·Δy directly — no separate "duration math" involved.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>A bond's yield rises by 100bp. Does duration alone overestimate or underestimate the resulting price?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It underestimates the true (post-shock) price — the tangent line sits below the true curve</button>
+        <button class="sl-quiz-opt">It overestimates the true price</button>
+        <button class="sl-quiz-opt">It's exact whenever the move is a round number of basis points</button>
+        <div class="sl-quiz-explain">The convexity correction ½C(Δy)² is always non-negative for a plain bond, so the true price is always at or above the duration-only (tangent-line) estimate — in either direction of yield move. Duration-only always underestimates price after any shock.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Yields move by the same 100bp in each direction for the same bond. Which is larger — the resulting dollar gain (yields fall) or the resulting dollar loss (yields rise)?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The gain is larger than the loss</button>
+        <button class="sl-quiz-opt">They're always exactly equal in size</button>
+        <button class="sl-quiz-opt">The loss is always larger than the gain</button>
+        <div class="sl-quiz-explain">Convexity's correction term is positive regardless of the direction yield moves, so it adds to the gain on a yield decline and cushions the loss on a yield rise — the net effect is a gain strictly bigger than a same-sized loss, exactly the asymmetry a purely linear (duration-only) model misses.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Can a bond ever have negative convexity?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Yes — e.g. callable or mortgage-backed bonds, where prepayment changes the cash-flow schedule as yields fall</button>
+        <button class="sl-quiz-opt">No — convexity is a mathematical identity that's always positive for any bond</button>
+        <button class="sl-quiz-opt">Only if the coupon rate exceeds the yield</button>
+        <div class="sl-quiz-explain">This lesson's convexity formula assumes fixed, contractual cash flows. A callable bond or MBS breaks that assumption — falling yields trigger prepayment/refinancing that shortens the actual expected cash-flow schedule, which can flip the price-yield curve concave over some range: negative convexity.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Bond price is a function of yield, P(y) — and duration and convexity are nothing more than the first two Taylor terms of that one function, evaluated at today's yield.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Modified duration is the tangent line's slope, rescaled to percent: ΔP/P ≈ −D<sub>mod</sub>×Δy — accurate for a small move, a guess for a large one.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>The linear estimate breaks down for larger moves because the true price-yield curve is convex — it bends away from its own tangent line as yield moves further from where duration was measured.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Convexity is the second-order Taylor term, ½×C×(Δy)² — always non-negative for a plain bond, so the true curve always sits on or above its tangent line.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>That's why duration alone always underestimates a plain bond's true price after any yield move, and why a same-sized yield fall produces a bigger dollar gain than a yield rise produces a dollar loss.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Desks size and hedge in duration/DV01 terms daily, but trade convexity as its own factor — especially once it turns negative, as it can for callable or mortgage-backed bonds.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Read any %ΔP ≈ −D×Δy + ½C(Δy)² line on sight, as the first two terms of a Taylor expansion rather than a memorized bond formula. Explain precisely why a duration-only hedge quietly underestimates a bond's resilience on a large move — and why that same gap always favors the holder, until an embedded option flips convexity negative. Size a DV01 hedge and know exactly which risk (a parallel shift) it covers and which (a curve steepening or flattening) it doesn't.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Bootstrapping the Yield Curve</h3>
+        <p>How a handful of quoted bond prices become a full zero-coupon yield curve, one maturity at a time — the curve this lesson's duration and convexity are both measured against.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="yield-curve-construction-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="duration-convexity.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Shared bond model — 5-year, 4% annual coupon, $1,000 face. Same bond used
+  // throughout duration-convexity.html's worked example, so the numbers on
+  // this deck match the full lesson exactly.
+  var COUPON = 40, FACE = 1000, N = 5;
+
+  function price(y){
+    var p = 0;
+    for (var t = 1; t <= N; t++) p += COUPON / Math.pow(1 + y, t);
+    p += FACE / Math.pow(1 + y, N);
+    return p;
+  }
+  function cashFlow(t){ return t === N ? (COUPON + FACE) : COUPON; }
+  function macDuration(y){
+    var p = price(y), num = 0;
+    for (var t = 1; t <= N; t++) num += t * cashFlow(t) / Math.pow(1 + y, t);
+    return num / p;
+  }
+  function modDuration(y){ return macDuration(y) / (1 + y); }
+  function convexity(y){
+    var p = price(y), num = 0;
+    for (var t = 1; t <= N; t++) num += t * (t + 1) * cashFlow(t) / Math.pow(1 + y, t);
+    return num / (p * Math.pow(1 + y, 2));
+  }
+
+  // Yield-shock slider + chart — tangent fixed at y0 = 5%.
+  (function(){
+    var slider = document.getElementById('dcm-shock-slider');
+    if (!slider) return;
+    var shockVal = document.getElementById('dcm-shock-val');
+    var truePath = document.getElementById('dcm-true-path');
+    var tangentPath = document.getElementById('dcm-tangent-path');
+    var guide = document.getElementById('dcm-guide');
+    var y0Dot = document.getElementById('dcm-y0-dot');
+    var actualDot = document.getElementById('dcm-actual-dot');
+    var duronlyDot = document.getElementById('dcm-duronly-dot');
+    var duronlyOut = document.getElementById('dcm-duronly-val');
+    var actualOut = document.getElementById('dcm-actual-val');
+    var gapOut = document.getElementById('dcm-gap-val');
+
+    var X0 = 70, X1 = 600, YMIN = 0.01, YMAX = 0.12;
+    var PY0 = 250, PY1 = 20, PMIN = 700, PMAX = 1200;
+    var Y0 = 0.05;
+
+    function xForY(y){ return X0 + (y - YMIN) / (YMAX - YMIN) * (X1 - X0); }
+    function yForP(p){
+      var py = PY0 + (p - PMIN) / (PMAX - PMIN) * (PY1 - PY0);
+      if (py < PY1) py = PY1;
+      if (py > PY0) py = PY0;
+      return py;
+    }
+
+    var p0 = price(Y0);
+    var dmod0 = modDuration(Y0);
+
+    (function buildStaticPaths(){
+      var steps = 120, d = '';
+      for (var i = 0; i <= steps; i++) {
+        var y = YMIN + (YMAX - YMIN) * i / steps;
+        d += (i === 0 ? 'M' : 'L') + xForY(y).toFixed(2) + ',' + yForP(price(y)).toFixed(2) + ' ';
+      }
+      truePath.setAttribute('d', d);
+
+      var tsteps = 60, dt = '';
+      for (var j = 0; j <= tsteps; j++) {
+        var yy = YMIN + (YMAX - YMIN) * j / tsteps;
+        var pTan = p0 * (1 - dmod0 * (yy - Y0));
+        dt += (j === 0 ? 'M' : 'L') + xForY(yy).toFixed(2) + ',' + yForP(pTan).toFixed(2) + ' ';
+      }
+      tangentPath.setAttribute('d', dt);
+
+      y0Dot.setAttribute('cx', xForY(Y0));
+      y0Dot.setAttribute('cy', yForP(p0));
+    })();
+
+    function update(){
+      var shockBp = parseInt(slider.value, 10);
+      var dy = shockBp / 10000;
+      var y = Y0 + dy;
+      var actualP = price(y);
+      var duronlyP = p0 * (1 - dmod0 * dy);
+      var gap = actualP - duronlyP;
+
+      shockVal.textContent = 'Δy = ' + (shockBp >= 0 ? '+' : '') + shockBp + ' bp';
+      duronlyOut.textContent = duronlyP.toFixed(2);
+      actualOut.textContent = actualP.toFixed(2);
+      gapOut.textContent = Math.abs(gap).toFixed(2);
+
+      var xAt = xForY(y);
+      actualDot.setAttribute('cx', xAt); actualDot.setAttribute('cy', yForP(actualP));
+      duronlyDot.setAttribute('cx', xAt); duronlyDot.setAttribute('cy', yForP(duronlyP));
+      var yTopPx = Math.min(yForP(actualP), yForP(duronlyP));
+      var yBotPx = Math.max(yForP(actualP), yForP(duronlyP));
+      guide.setAttribute('x1', xAt); guide.setAttribute('x2', xAt);
+      guide.setAttribute('y1', yTopPx); guide.setAttribute('y2', yBotPx);
+    }
+
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Live Taylor-expansion calculator — %ΔP ≈ −D×Δy + ½C(Δy)², with a dollar
+  // read-out against the worked example's $956.71 base price. Defensive
+  // against blank / non-finite input: shows "—" rather than NaN/Infinity.
+  (function(){
+    var dInput = document.getElementById('dcm-calc-d');
+    if (!dInput) return;
+    var cInput = document.getElementById('dcm-calc-c');
+    var dyInput = document.getElementById('dcm-calc-dy');
+    var resultEl = document.getElementById('dcm-calc-result');
+    var linearEl = document.getElementById('dcm-calc-linear');
+    var convexEl = document.getElementById('dcm-calc-convex');
+    var priceEl = document.getElementById('dcm-calc-price');
+    var resetBtn = document.getElementById('dcm-calc-reset');
+
+    var BASE_PRICE = 956.71;
+    var DEFAULTS = { d: 4.40, c: 24.47, dy: 1 };
+
+    function pctFmt(x){ return (x >= 0 ? '+' : '') + (x * 100).toFixed(2) + '%'; }
+
+    function recompute(){
+      var D = parseFloat(dInput.value);
+      var C = parseFloat(cInput.value);
+      var dyPct = parseFloat(dyInput.value);
+
+      var ok = isFinite(D) && isFinite(C) && isFinite(dyPct);
+      if (!ok) {
+        resultEl.textContent = '—';
+        linearEl.textContent = '—';
+        convexEl.textContent = '—';
+        priceEl.textContent = '—';
+        return;
+      }
+
+      var dy = dyPct / 100;
+      var linear = -D * dy;
+      var convexTerm = 0.5 * C * dy * dy;
+      var pctChange = linear + convexTerm;
+      var estPrice = BASE_PRICE * (1 + pctChange);
+
+      resultEl.textContent = pctFmt(pctChange);
+      linearEl.textContent = pctFmt(linear);
+      convexEl.textContent = pctFmt(convexTerm);
+      priceEl.textContent = isFinite(estPrice) ? ('$' + estPrice.toFixed(2)) : '—';
+    }
+
+    [dInput, cInput, dyInput].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      dInput.value = DEFAULTS.d; cInput.value = DEFAULTS.c; dyInput.value = DEFAULTS.dy;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

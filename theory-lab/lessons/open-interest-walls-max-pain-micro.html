@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Open Interest Walls, Max Pain &amp; Squeeze — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Open Interest Walls, Max Pain &amp; Squeeze — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivation, worked examples by hand, and a 5-question self-test?<a href="open-interest-walls-max-pain.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">The Greeks 2 · The Greeks</div>
+      <h1 class="sl-h1">Open Interest Walls &amp; Max Pain, <em>Read as a Map</em></h1>
+      <p class="sl-lede">The previous lesson derived <em>why</em> dealer hedging creates real, mechanical pressure around concentrated open interest. This one applies that mechanism to an actual options chain — turning a table of strikes and open-interest numbers into three tradable landmarks: where the walls sit, where max pain sits, and what happens once a wall breaks instead of holding.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">A chain of numbers is really a map of hedging pressure</h2>
+      <p class="sl-sub">Every large open-interest figure in a chain is a place where the previous lesson's mechanism is doing work.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🧱</div><div><h4>A wall is a strike, not a level someone drew</h4><p>Just a strike whose call or put open interest is an outlier next to its neighbors — the number is public, the "wall" label is a read of that number.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧲</div><div><h4>Max pain is a different kind of landmark</h4><p>Not the biggest single pile of OI — the one settlement price that would leave option <em>writers</em>, summed across the entire chain, paying out the least.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🗺️</div><div><h4>The map redraws itself constantly</h4><p>Open interest opens and closes every session. A wall or a max-pain strike is a snapshot of right now, not a fixed structural level.</p></div></div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Correction to the full lesson's status line</div>
+        <p>The full lesson tags this topic "CONCEPT — not built or tested in this repo." Checked against the current codebase, that line is stale. This repo's <strong>js/oi.js</strong> implements the exact whole-chain <strong>oiCalcMaxPain()</strong> formula used later on this deck, wired live into <strong>oi-dashboard.html</strong>; wall detection uses the same "3×+ vs. neighbors" rule cited below; and a trading bot enforces it directly — <strong>bot/modules/oi_walls.py</strong> blocks entries into a nearby wall, and <strong>oi_bot/engine.py</strong> has a dedicated "maxpain" trade mode. All of it is covered by test files (<strong>js/oiMatrix.test.mjs</strong>, <strong>js/oiPasteContract.test.mjs</strong>, and others). The math on this page isn't hypothetical here — it's shipped, tested code.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Finding a wall: an outlier, not just a big number</h2>
+      <p class="sl-sub">A strike counts as a wall when its OI is roughly 3× or more of its immediate neighbors — not simply "the biggest bar."</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Illustrative example — invented numbers, a generic instrument</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart of open interest by strike. Call open interest is drawn as blue bars above a zero axis, put open interest as red bars below it. The 260 strike carries the largest call bar at 7800 contracts, marked as the call wall. The 240 strike carries the largest put bar at 6500 contracts, marked as the put wall. A dashed purple line marks computed max pain at 250, and a solid line marks current price at 255.">
+            <line x1="50" y1="20" x2="50" y2="280" style="stroke:var(--text3);stroke-width:1"/>
+            <line x1="50" y1="150" x2="610" y2="150" style="stroke:var(--text3);stroke-width:1.2"/>
+            <text x="14" y="150" text-anchor="middle" font-size="10" fill="var(--text3)" transform="rotate(-90 14 150)">Open interest</text>
+
+            <line x1="320" y1="20" x2="320" y2="268" style="stroke:var(--purple);stroke-width:1.3;stroke-dasharray:4,4"/>
+            <text x="320" y="14" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--purple)">MAX PAIN = 250</text>
+
+            <line x1="400" y1="20" x2="400" y2="268" style="stroke:var(--text)" stroke-width="1.3"/>
+            <text x="400" y="286" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text)">SPOT ≈ 255</text>
+
+            <text x="160" y="30" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--red)">PUT WALL</text>
+            <text x="480" y="30" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--amber)">CALL WALL</text>
+
+            <rect x="60"  y="140.0" width="40" height="10.0" fill="var(--blue)"/>
+            <rect x="140" y="135.0" width="40" height="15.0" fill="var(--blue)"/>
+            <rect x="220" y="125.0" width="40" height="25.0" fill="var(--blue)"/>
+            <rect x="300" y="120.0" width="40" height="30.0" fill="var(--blue)"/>
+            <rect x="380" y="122.5" width="40" height="27.5" fill="var(--blue)"/>
+            <rect x="460" y="52.5"  width="40" height="97.5" fill="var(--blue)" style="stroke:var(--amber);stroke-width:2.5"/>
+            <rect x="540" y="132.5" width="40" height="17.5" fill="var(--blue)"/>
+
+            <rect x="60"  y="150" width="40" height="25.0"  fill="var(--red)"/>
+            <rect x="140" y="150" width="40" height="81.25" fill="var(--red)" style="stroke:var(--amber);stroke-width:2.5"/>
+            <rect x="220" y="150" width="40" height="32.5"  fill="var(--red)"/>
+            <rect x="300" y="150" width="40" height="28.75" fill="var(--red)"/>
+            <rect x="380" y="150" width="40" height="27.5"  fill="var(--red)"/>
+            <rect x="460" y="150" width="40" height="20.0"  fill="var(--red)"/>
+            <rect x="540" y="150" width="40" height="11.25" fill="var(--red)"/>
+
+            <text x="80"  y="134" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text2)">800</text>
+            <text x="160" y="129" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text2)">1,200</text>
+            <text x="240" y="119" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text2)">2,000</text>
+            <text x="320" y="114" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text2)">2,400</text>
+            <text x="400" y="116" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text2)">2,200</text>
+            <text x="480" y="47"  text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="#fff">7,800</text>
+            <text x="560" y="126" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text2)">1,400</text>
+
+            <text x="80"  y="181" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text2)">2,000</text>
+            <text x="160" y="222" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="#fff">6,500</text>
+            <text x="240" y="188" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text2)">2,600</text>
+            <text x="320" y="184" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text2)">2,300</text>
+            <text x="400" y="183" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text2)">2,200</text>
+            <text x="480" y="176" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text2)">1,600</text>
+            <text x="560" y="167" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text2)">900</text>
+
+            <text x="80"  y="303" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text2)">235</text>
+            <text x="160" y="303" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text2)">240</text>
+            <text x="240" y="303" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text2)">245</text>
+            <text x="320" y="303" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text2)">250</text>
+            <text x="400" y="303" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text2)">255</text>
+            <text x="480" y="303" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text2)">260</text>
+            <text x="560" y="303" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text2)">265</text>
+          </svg>
+        </div>
+        <div class="sl-verdict"><strong>260 (7,800 calls)</strong> is ~3.5× its neighbor at 255 (2,200) — a call wall. <strong>240 (6,500 puts)</strong> is ~2.5× its neighbor at 245 (2,600) — a put wall. Neither is the max-pain strike, which lands at 250 (worked out on a later slide) — the normal case, not an exception.</div>
+      </div>
+      <p class="sl-p">This same seven-strike table — invented for this deck, not pulled from any live feed — is reused for the max-pain calculation two slides ahead, so the numbers stay traceable end to end rather than resetting with every example.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Two shapes the same ladder can take</h2>
+      <p class="sl-sub">The mechanism is identical either way — dealer hedging around concentrated OI. The shape of the concentration is what changes the outcome.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Compare</div>
+        <div class="sl-tabs" id="shape-tabs">
+          <button class="sl-tab active" data-panel="shape-1">Typical / orderly ladder</button>
+          <button class="sl-tab" data-panel="shape-2">Squeeze setup</button>
+        </div>
+        <div class="sl-panel active" id="shape-1">
+          <div class="sl-svgwrap">
+            <svg viewBox="0 0 640 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Five strikes with gently varying call and put open interest, no strike towering over its neighbors, spot marked in the middle.">
+              <line x1="20" y1="70" x2="620" y2="70" style="stroke:var(--text3);stroke-width:1"/>
+              <line x1="315" y1="10" x2="315" y2="130" style="stroke:var(--text)" stroke-width="1.2"/>
+              <text x="315" y="144" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text)">SPOT</text>
+              <rect x="60"  y="40" width="70" height="30" fill="var(--blue)"/>
+              <rect x="170" y="25" width="70" height="45" fill="var(--blue)"/>
+              <rect x="280" y="15" width="70" height="55" fill="var(--blue)"/>
+              <rect x="390" y="20" width="70" height="50" fill="var(--blue)"/>
+              <rect x="500" y="33" width="70" height="37" fill="var(--blue)"/>
+              <rect x="60"  y="70" width="70" height="37" fill="var(--red)"/>
+              <rect x="170" y="70" width="70" height="50" fill="var(--red)"/>
+              <rect x="280" y="70" width="70" height="55" fill="var(--red)"/>
+              <rect x="390" y="70" width="70" height="45" fill="var(--red)"/>
+              <rect x="500" y="70" width="70" height="30" fill="var(--red)"/>
+            </svg>
+          </div>
+          <div class="sl-verdict">OI fans out fairly evenly across nearby strikes. No single strike towers over its neighbors, so the dealer-hedging flow at any one strike stays modest — a broken level nudges price, it doesn't launch it.</div>
+        </div>
+        <div class="sl-panel" id="shape-2">
+          <div class="sl-svgwrap">
+            <svg viewBox="0 0 640 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Five strikes where put open interest at one strike is far larger than its neighbors and sits immediately beside the current price, marked as a squeeze setup.">
+              <line x1="20" y1="70" x2="620" y2="70" style="stroke:var(--text3);stroke-width:1"/>
+              <line x1="355" y1="10" x2="355" y2="130" style="stroke:var(--text)" stroke-width="1.2"/>
+              <text x="355" y="144" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text)">SPOT</text>
+              <rect x="60"  y="52" width="70" height="18" fill="var(--blue)"/>
+              <rect x="170" y="49" width="70" height="21" fill="var(--blue)"/>
+              <rect x="280" y="47" width="70" height="23" fill="var(--blue)"/>
+              <rect x="390" y="50" width="70" height="20" fill="var(--blue)"/>
+              <rect x="500" y="53" width="70" height="17" fill="var(--blue)"/>
+              <rect x="60"  y="70" width="70" height="12" fill="var(--red)"/>
+              <rect x="170" y="70" width="70" height="14" fill="var(--red)"/>
+              <rect x="280" y="15" width="70" height="55" fill="var(--red)" style="stroke:var(--amber);stroke-width:2.5"/>
+              <rect x="390" y="70" width="70" height="15" fill="var(--red)"/>
+              <rect x="500" y="70" width="70" height="10" fill="var(--red)"/>
+              <text x="315" y="10" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--amber)">short OI, right next to price</text>
+            </svg>
+          </div>
+          <div class="sl-verdict">One strike — usually a put wall a single strike from spot — holds an outsized share of the chain's OI, much of it written by dealers running a continuous short-gamma hedge. Breach that level and the same flow that was dampening moves near it can flip to <strong>accelerating</strong> them, because dealers must trade to stay hedged either way.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">What actually happens when a wall breaks</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">1</div><div><h4>Heavy short OI sits near spot</h4><p>A large chunk of the wall's open interest is held by dealers who are net short those contracts and delta-hedge continuously.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">2</div><div><h4>While it holds, hedging dampens the move</h4><p>As price approaches, dealer rebalancing trades against the move — the previous lesson's mechanism, working as designed and producing the "wall" behavior.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">3</div><div><h4>Once it's decisively broken, the same flow reverses role</h4><p>The dealers unwinding or re-hedging that position must now trade <em>with</em> the move to stay hedged — buying into a rally, selling into a decline — instead of fading it.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">4</div><div><h4>That reversal is the "squeeze"</h4><p>Not a short-stock squeeze in the classic sense — a short-<em>gamma</em> squeeze, where forced hedging flow, not new information, is what accelerates the move past the old wall.</p></div></div>
+      </div>
+      <div class="sl-quote">The strike that was resistance on the way up can become fuel on the way through it — same open interest, same hedging mechanism, opposite effect, purely because the direction dealers must trade to stay hedged flips once the level gives way.</div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">The load-bearing assumption</div>
+        <p>This entire mechanism only runs on the fraction of that OI actually held by delta-hedging market makers. Some of the same headline number belongs to directional traders, covered-call writers, or unrelated hedges — none of whom rebalance this way. The split isn't observable from the OI figure alone, so a big wall is an upper bound on squeeze potential, not a guarantee of it.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Max pain: sum the whole chain, then minimize</h2>
+      <p class="sl-sub">At expiry, a writer owes exactly the intrinsic value of every option that finished in the money — nothing more, nothing less.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The formula, piece by piece</div>
+        <div class="sl-row">
+          <div class="sl-box blue">CallPain(S)</div>
+          <div class="sl-arrow">=</div>
+          <div class="sl-box">Σ call OI<sub>k</sub> × max(0, S−k)</div>
+        </div>
+        <div class="sl-row">
+          <div class="sl-box amber">PutPain(S)</div>
+          <div class="sl-arrow">=</div>
+          <div class="sl-box">Σ put OI<sub>k</sub> × max(0, k−S)</div>
+        </div>
+        <div class="sl-row">
+          <div class="sl-box green">TotalPain(S)</div>
+          <div class="sl-arrow">=</div>
+          <div class="sl-box">CallPain(S) + PutPain(S)</div>
+        </div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🔵</div><div><h4>CallPain(S) — payout owed on ITM calls</h4><p>Every strike below the candidate S contributes S−k times its call OI; strikes at or above S contribute nothing.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🟠</div><div><h4>PutPain(S) — payout owed on ITM puts</h4><p>The mirror image — every strike above S contributes k−S times its put OI.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🟢</div><div><h4>Max pain = the S that minimizes TotalPain(S)</h4><p>Evaluate S at each strike in the chain, summing across the <em>entire</em> chain each time — not one strike's own OI compared to today's price.</p></div></div>
+      </div>
+      <p class="sl-p">A strike can carry a huge single-side concentration and still be an <em>expensive</em> candidate settlement price overall, because settling there also puts every strike below it deep in the money for calls (or above it, for puts). That's exactly why max pain in the earlier chart (250) landed away from both the call wall (260) and the put wall (240).</p>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Why "minimize," not "maximize"</h2>
+      <p class="sl-sub">Two genuinely different mechanisms, often discussed as if they're one.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Dealer-hedging channel</span>
+          <p>A mechanical, moment-to-moment rebalancing process that runs continuously as price moves — regardless of expiry. This is the previous lesson's entire mechanism, in force at any time, on any day.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Max-pain channel</span>
+          <p>A payout-incentive argument about one moment: settlement. Writers collectively pay out exactly the aggregate intrinsic value of whatever finishes ITM. The S that minimizes that is the one outcome uniformly in sellers' favor.</p>
+        </div>
+      </div>
+      <div class="sl-quote">Since a payout to a writer is exactly the gain to the corresponding holder, the price that minimizes aggregate writer payout is also the price at which option buyers, collectively, gain the least. That symmetry — not a conspiracy — is the entire origin of "price gravitates toward max pain": <strong>if</strong> writers (typically larger, better-capitalized participants) have any influence on where price settles, this is the one outcome uniformly in their favor.</div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>The two channels can reinforce each other, and often get talked about as if they were the same thing. They aren't: one is a mechanical flow that never stops; the other is an aggregate incentive that only bites at one instant. Conflating them is a common, avoidable source of overconfidence in "the price has to go there."</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Watch total pain bottom out</h2>
+      <p class="sl-sub">Same seven-strike chain as Section 2. Step through each candidate settlement price and watch where the curve is lowest.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A curve of total pain across seven candidate settlement prices, dipping to a minimum at strike 250 and rising on either side, with a moving marker showing the currently selected candidate.">
+            <line x1="40" y1="220" x2="610" y2="220" style="stroke:var(--border2);stroke-width:1"/>
+            <path style="fill:none;stroke:var(--text3);stroke-width:2" d="M70,40 L153,146 L237,199 L320,220 L403,208 L487,166 L570,58"/>
+            <circle cx="70" cy="40" r="4" style="fill:var(--text3)"/>
+            <circle cx="153" cy="146" r="4" style="fill:var(--text3)"/>
+            <circle cx="237" cy="199" r="4" style="fill:var(--text3)"/>
+            <circle cx="320" cy="220" r="4" style="fill:var(--green)"/>
+            <circle cx="403" cy="208" r="4" style="fill:var(--text3)"/>
+            <circle cx="487" cy="166" r="4" style="fill:var(--text3)"/>
+            <circle cx="570" cy="58" r="4" style="fill:var(--text3)"/>
+            <text x="70" y="238" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text2)">235</text>
+            <text x="153" y="238" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text2)">240</text>
+            <text x="237" y="238" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text2)">245</text>
+            <text x="320" y="238" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--green)">250</text>
+            <text x="403" y="238" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text2)">255</text>
+            <text x="487" y="238" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text2)">260</text>
+            <text x="570" y="238" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text2)">265</text>
+            <text x="325" y="252" text-anchor="middle" font-size="10.5" fill="var(--text3)">Candidate settlement price S</text>
+            <line id="mp-vline" x1="70" y1="20" x2="70" y2="220" style="stroke:var(--blue);stroke-width:1.3;stroke-dasharray:3,3"/>
+            <circle id="mp-dot" cx="70" cy="40" r="7" style="fill:var(--blue)"/>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Candidate strike S</span><span class="sl-live" id="mp-sval">S = 235</span></div>
+        <input type="range" class="sl-slider" id="mp-slider" min="0" max="6" step="1" value="0">
+        <div class="sl-calc-steps">
+          <div>CallPain(S) = <b id="mp-cp">$0</b></div>
+          <div>PutPain(S) = <b id="mp-pp">$204,000</b></div>
+          <div>TotalPain(S) = <b id="mp-tp">$204,000</b></div>
+        </div>
+        <div class="sl-verdict" id="mp-note" style="margin-top:10px">$129,500 higher than the minimum.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Build your own three-strike chain</h2>
+      <p class="sl-sub">A smaller toy chain — 245, 250, 255 — so you can see how editing OI moves the max-pain strike, live.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any OI figure</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>245 — Call OI</label><input type="number" class="sl-input" id="calc-l-call" value="1500" step="100" min="0"></div>
+          <div class="sl-calc-field"><label>245 — Put OI</label><input type="number" class="sl-input" id="calc-l-put" value="4000" step="100" min="0"></div>
+          <div class="sl-calc-op">→</div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Pain(245)</div><div class="sl-calc-result-val" id="calc-l-res">$23,000</div></div>
+        </div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>250 — Call OI</label><input type="number" class="sl-input" id="calc-m-call" value="2200" step="100" min="0"></div>
+          <div class="sl-calc-field"><label>250 — Put OI</label><input type="number" class="sl-input" id="calc-m-put" value="2200" step="100" min="0"></div>
+          <div class="sl-calc-op">→</div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Pain(250)</div><div class="sl-calc-result-val" id="calc-m-res">$13,500</div></div>
+        </div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>255 — Call OI</label><input type="number" class="sl-input" id="calc-h-call" value="5000" step="100" min="0"></div>
+          <div class="sl-calc-field"><label>255 — Put OI</label><input type="number" class="sl-input" id="calc-h-put" value="1200" step="100" min="0"></div>
+          <div class="sl-calc-op">→</div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Pain(255)</div><div class="sl-calc-result-val" id="calc-h-res">$26,000</div></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Max-pain strike (lowest TotalPain): <b id="calc-winner">250</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="calc-reset">Reset to the worked-example numbers</button>
+        <div class="sl-note">Blank or negative OI shows "—" instead of a broken number — a real chain never has negative contracts outstanding.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">How solid is "gravitates toward max pain," really?</h2>
+      <p class="sl-sub">The economic logic from Section 6 is real. The evidence that it actually moves price is much thinner than trading folklore implies.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📉</div><div><h4>The evidence is thin and mixed</h4><p>Academic studies of expiry-day "pinning" do find some effect for some names — but attribute most of it to dealer gamma hedging, the mechanical channel, not to the max-pain aggregate specifically. Direct tests of the max-pain hypothesis on its own generally don't find it reliably beating chance.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🙅</div><div><h4>Nobody is actually enforcing it</h4><p>Unlike dealer hedging — a literal, mechanical trade someone places — max pain describes an incentive spread across thousands of anonymous, uncoordinated writers. There's no single desk trading "to hit max pain."</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔁</div><div><h4>It's easy to confirm after the fact</h4><p>Because it's recomputed continuously and every chain has many candidate strikes, some strike is nearly always "close" to wherever price actually lands — which makes confirmation cheap and a genuine advance prediction hard.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧭</div><div><h4>Best read as incentive, not forecast</h4><p>Useful for describing who benefits where in the chain. Weak, on its own, as a standalone signal for where price is headed next.</p></div></div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>Treating max pain — or any wall — as a guaranteed target is the most common way this gets over-trusted. A scheduled data release or enough directional conviction from other participants can override either one entirely. And a wall computed from yesterday's close can already be stale: OI closes out constantly, so the same strike can be a strong wall one session and a materially weaker one the next, with no change in price at all.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What makes a strike a "wall"?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Its call or put OI is an outlier relative to its immediate neighbors (roughly 3×+)</button>
+        <button class="sl-quiz-opt">It has the single highest open interest in the entire chain</button>
+        <button class="sl-quiz-opt">It's the strike nearest to the current price</button>
+        <div class="sl-quiz-explain">The threshold is local — OI compared to nearby strikes — not a raw, chain-wide maximum.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Max pain is the settlement price that...</h4>
+        <button class="sl-quiz-opt" data-correct="true">Minimizes the total intrinsic value writers owe, summed across the whole chain</button>
+        <button class="sl-quiz-opt">Sits exactly at the strike with the largest single OI figure</button>
+        <button class="sl-quiz-opt">Maximizes the total payout to option holders</button>
+        <div class="sl-quiz-explain">It's a whole-chain minimum of aggregate writer payout — which is also, by construction, the minimum aggregate gain to holders.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>A heavily-shorted OI wall right next to spot breaks decisively. What tends to happen to dealer hedging flow there?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It can flip from dampening the move to accelerating it</button>
+        <button class="sl-quiz-opt">It stops entirely, since the wall no longer exists</button>
+        <button class="sl-quiz-opt">It has no effect either way — hedging only matters before expiry</button>
+        <div class="sl-quiz-explain">Dealers who were fading the move to stay hedged now have to trade with it instead — the "squeeze" is that reversal, not new information hitting the tape.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Which is the more accurate description of the evidence behind "price gravitates toward max pain"?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The economic incentive is real, but the empirical evidence it actually moves price is thin and contested</button>
+        <button class="sl-quiz-opt">It's been robustly proven across markets and time periods</button>
+        <button class="sl-quiz-opt">It has no logical basis at all and is pure superstition</button>
+        <div class="sl-quiz-explain">The writer-incentive logic is sound math; whether it's a demonstrated price-moving force, distinct from dealer hedging, is genuinely contested.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Three strikes: 245 (call 1,500 / put 4,000), 250 (call 2,200 / put 2,200), 255 (call 5,000 / put 1,200). Which is max pain?</h4>
+        <button class="sl-quiz-opt" data-correct="true">250 — total pain $13,500, lower than 245 ($23,000) or 255 ($26,000)</button>
+        <button class="sl-quiz-opt">255 — it has the largest single OI figure in the table</button>
+        <button class="sl-quiz-opt">245 — it has the largest put OI in the table</button>
+        <div class="sl-quiz-explain">Same numbers as the live calculator two slides back — 250 minimizes the whole-chain payout even though it isn't the biggest single OI figure anywhere in the table.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>A wall is a strike whose OI is an outlier next to its neighbors (roughly 3×+) — a local property, not a chain-wide maximum.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Max pain minimizes aggregate writer payout across the <em>entire</em> chain — evaluate every candidate S, sum CallPain(S) + PutPain(S) over every strike, then take the minimum.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Dealer hedging and max pain are two distinct mechanisms that can reinforce each other — one is continuous and mechanical, the other is a one-instant payout incentive.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>A squeeze is a role reversal, not new information — hedging flow that was dampening a move near a wall can flip to accelerating it once the wall breaks.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The evidence that max pain itself moves price is thin and contested — treat it as a description of writer incentives, not a forecast.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Walls and max pain are live snapshots — open interest closes out every session, so re-check rather than assume persistence.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Read a real options chain as a rough expected range — put wall to call wall — with max pain as a secondary pull as expiry nears, while knowing exactly how much confidence that pull deserves. Tell a mechanical dealer-hedging effect apart from a payout-incentive argument when someone conflates the two. Recognise a squeeze setup before it breaks, not just after, by checking how concentrated and how close to spot the short OI actually is.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Theta Decay</h3>
+        <p>Theta isn't a separate fact about options — it falls straight out of the same Black-Scholes PDE that gives delta and gamma.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="theta-decay-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="open-interest-walls-max-pain.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Section 7 — step through candidate strikes, watch total pain bottom out.
+  (function(){
+    var slider = document.getElementById('mp-slider');
+    if (!slider) return;
+    var sVal = document.getElementById('mp-sval');
+    var cpOut = document.getElementById('mp-cp');
+    var ppOut = document.getElementById('mp-pp');
+    var tpOut = document.getElementById('mp-tp');
+    var note = document.getElementById('mp-note');
+    var vline = document.getElementById('mp-vline');
+    var dot = document.getElementById('mp-dot');
+
+    // Same seven-strike chain as Section 2 (235..265, step 5). Pains
+    // hand-computed from the whole-chain formula and cross-checked against
+    // the full lesson's worked example (identical numbers throughout).
+    var DATA = [
+      { S: 235, cp: 0,      pp: 204000, tp: 204000, x: 70,  y: 40 },
+      { S: 240, cp: 4000,   pp: 123500, tp: 127500, x: 153, y: 146 },
+      { S: 245, cp: 14000,  pp: 75500,  tp: 89500,  x: 237, y: 199 },
+      { S: 250, cp: 34000,  pp: 40500,  tp: 74500,  x: 320, y: 220 },
+      { S: 255, cp: 66000,  pp: 17000,  tp: 83000,  x: 403, y: 208 },
+      { S: 260, cp: 109000, pp: 4500,   tp: 113500, x: 487, y: 166 },
+      { S: 265, cp: 191000, pp: 0,      tp: 191000, x: 570, y: 58 }
+    ];
+    var MIN_TP = 74500;
+
+    function fmt(n){ return '$' + n.toLocaleString(undefined, { maximumFractionDigits: 0 }); }
+
+    function update(){
+      var idx = parseInt(slider.value, 10);
+      if (!isFinite(idx) || idx < 0 || idx >= DATA.length) idx = 0;
+      var d = DATA[idx];
+      sVal.textContent = 'S = ' + d.S;
+      cpOut.textContent = fmt(d.cp);
+      ppOut.textContent = fmt(d.pp);
+      tpOut.textContent = fmt(d.tp);
+      vline.setAttribute('x1', d.x); vline.setAttribute('x2', d.x);
+      dot.setAttribute('cx', d.x); dot.setAttribute('cy', d.y);
+      var diff = d.tp - MIN_TP;
+      if (diff === 0) {
+        note.innerHTML = '<strong>This is the minimum — S = 250 is the max-pain strike.</strong>';
+      } else {
+        note.textContent = fmt(diff) + ' higher than the minimum (at S = 250).';
+      }
+    }
+
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Section 8 — three-strike max-pain calculator, live.
+  (function(){
+    var lCall = document.getElementById('calc-l-call');
+    if (!lCall) return;
+    var lPut = document.getElementById('calc-l-put');
+    var mCall = document.getElementById('calc-m-call'), mPut = document.getElementById('calc-m-put');
+    var hCall = document.getElementById('calc-h-call'), hPut = document.getElementById('calc-h-put');
+    var lRes = document.getElementById('calc-l-res'), mRes = document.getElementById('calc-m-res'), hRes = document.getElementById('calc-h-res');
+    var winnerOut = document.getElementById('calc-winner');
+    var resetBtn = document.getElementById('calc-reset');
+    var DEFAULTS = { lCall: 1500, lPut: 4000, mCall: 2200, mPut: 2200, hCall: 5000, hPut: 1200 };
+    // Fixed strikes: 245 (low), 250 (mid), 255 (high) — spacing of 5 both ways.
+
+    function fmt(n){ return '$' + n.toLocaleString(undefined, { maximumFractionDigits: 0 }); }
+
+    function recompute(){
+      var vals = [lCall, lPut, mCall, mPut, hCall, hPut].map(function(el){ return parseFloat(el.value); });
+      var ok = vals.every(function(v){ return isFinite(v) && v >= 0; });
+      if (!ok) {
+        lRes.textContent = '—'; mRes.textContent = '—'; hRes.textContent = '—';
+        winnerOut.textContent = '—';
+        return;
+      }
+      var cL = vals[0], pL = vals[1], cM = vals[2], pM = vals[3], cH = vals[4], pH = vals[5];
+
+      // Pain at 245: no strikes below it here; puts at 250 and 255 are ITM (5, 10 away).
+      var painL = pM * 5 + pH * 10;
+      // Pain at 250: call at 245 ITM (5 away); put at 255 ITM (5 away).
+      var painM = cL * 5 + pH * 5;
+      // Pain at 255: calls at 245 and 250 ITM (10, 5 away); no puts above it.
+      var painH = cL * 10 + cM * 5;
+
+      lRes.textContent = fmt(painL);
+      mRes.textContent = fmt(painM);
+      hRes.textContent = fmt(painH);
+
+      var minPain = Math.min(painL, painM, painH);
+      winnerOut.textContent = minPain === painL ? '245' : (minPain === painM ? '250' : '255');
+    }
+
+    [lCall, lPut, mCall, mPut, hCall, hPut].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      lCall.value = DEFAULTS.lCall; lPut.value = DEFAULTS.lPut;
+      mCall.value = DEFAULTS.mCall; mPut.value = DEFAULTS.mPut;
+      hCall.value = DEFAULTS.hCall; hPut.value = DEFAULTS.hPut;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

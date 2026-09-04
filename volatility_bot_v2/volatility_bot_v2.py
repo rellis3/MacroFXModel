@@ -45,7 +45,7 @@ from pylego.sizing import position_size                       # noqa: E402
 from pylego.broker.paper import PaperBroker                   # noqa: E402
 from pylego.quotes import QuoteFeed                            # noqa: E402
 from pylego.costs import expected_fill, max_spread             # noqa: E402
-from pylego.risk_guard import RiskGuard, log_block_transition  # noqa: E402
+from pylego.risk_guard import RiskGuard, log_block_transition, block_category  # noqa: E402
 from pylego.telegram import send_telegram                     # noqa: E402
 from volatility_bot_v2.engine import VoteSession, stack_conflict  # noqa: E402
 from volatility_bot_v2.currency_gate import CurrencyLossGate    # noqa: E402
@@ -770,7 +770,7 @@ def run(base_url: str, force_live: bool) -> None:
                 guard_why = guard.block_reason(guard_bal, instr)
                 was_blocked = guard_blocks.get(instr)
                 log_block_transition(log, guard_blocks, instr, guard_why)
-                if guard_why and guard_why != was_blocked:
+                if guard_why and block_category(guard_why) != block_category(was_blocked):
                     _record_decision(instr, "pair_blocked", reason=f"risk_guard: {guard_why}")
                 if guard_why:
                     continue

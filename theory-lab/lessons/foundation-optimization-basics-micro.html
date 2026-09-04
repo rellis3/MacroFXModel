@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Optimization Basics — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Optimization Basics — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivations, the contour diagram, and a 5-question self-test?<a href="foundation-optimization-basics.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Lesson 05 · Foundation Mathematics</div>
+      <h1 class="sl-h1">Optimization Basics: <em>Where the Slope Goes Flat</em></h1>
+      <p class="sl-lede">Every "find the best X" question in quantitative finance turns out to be one of two more precise questions: find the input that makes something as large or small as possible with no restrictions at all, or find the best input subject to some condition that has to hold exactly. This lesson builds both from nothing — a zero derivative, then a Lagrange multiplier — and ends at the exact math underneath minimizing a portfolio's risk for a given target return.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">The top of a hill has no uphill left</h2>
+      <p class="sl-sub">"Optimize" has one precise meaning: keep moving as long as some direction still improves things, and stop exactly when none does.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">⛰</div><div><h4>Flat tangent = no better move</h4><p>For a single-variable function, the optimum sits where the tangent line is perfectly flat — the derivative is exactly zero. This is the <strong>first-order condition</strong>: f'(x*) = 0.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">∇</div><div><h4>Same idea, more variables</h4><p>With several inputs, every partial derivative has to be zero at once — the entire gradient vector vanishes: ∇f(x*) = 0. No direction, in any variable, still helps.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚑</div><div><h4>"Stationary" isn't the same word as "optimal"</h4><p>A flat tangent is equally consistent with a minimum, a maximum, or a saddle. The first-order condition narrows the search — it doesn't finish it. More on that two slides from now.</p></div></div>
+      </div>
+      <div class="sl-quote">This exact stopping condition — the gradient hitting zero — is what a numerical optimizer is silently checking for on every iteration, whether it's calibrating a model to market prices or rebalancing a portfolio in production. <strong>"Gradient descent" is just walking downhill until this condition is met.</strong></div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Watch the slope hit exactly zero</h2>
+      <p class="sl-sub">Drag the point along the curve. The tangent line's slope is the first-order condition, live — it should read zero only at the very bottom.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A U-shaped curve with a draggable point and its tangent line, showing the tangent's slope reaching zero at the curve's minimum">
+            <line x1="20" y1="225" x2="620" y2="225" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="320" y1="15" x2="320" y2="225" style="stroke:var(--border2);stroke-width:1"/>
+            <path style="fill:none;stroke:var(--purple);stroke-width:2.5" d="M32,71.4 L104,138.6 L176,186.6 L248,215.4 L284,222.6 L320,225 L356,222.6 L392,215.4 L464,186.6 L536,138.6 L608,71.4"/>
+            <text x="500" y="55" text-anchor="middle" style="fill:var(--purple);font-size:11px">f(x) = 0.15x²</text>
+            <line id="foc-tangent" x1="260" y1="140" x2="380" y2="140" style="stroke:var(--blue);stroke-width:2.5"/>
+            <circle id="foc-dot" cx="320" cy="225" r="6" style="fill:var(--blue)"/>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Position, x</span><span class="sl-live" id="foc-slope">f'(x) = 0.00</span></div>
+        <input type="range" class="sl-slider" id="foc-slider" min="-8" max="8" step="0.5" value="-5">
+        <div class="sl-verdict" id="foc-verdict" style="margin-top:10px">Not at the minimum yet — the tangent still tilts, so there's a direction that still improves f.</div>
+      </div>
+      <p class="sl-p">On the left half of the curve the slope is negative — f is still falling as x increases, so moving right helps. On the right half it's positive — f is rising, so moving left helps. Only at x = 0, the vertex, does the tangent go perfectly flat: <strong>f'(x*) = 0</strong>, the first-order condition, satisfied exactly where the curve stops falling and before it starts rising.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Zero slope alone doesn't say which kind of flat</h2>
+      <p class="sl-sub">Three shapes, all perfectly flat at their center. Only the second derivative tells them apart.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="soc-tabs">
+          <button class="sl-tab active" data-panel="soc-1">Bowl</button>
+          <button class="sl-tab" data-panel="soc-2">Dome</button>
+          <button class="sl-tab" data-panel="soc-3">Saddle</button>
+        </div>
+        <div class="sl-panel active" id="soc-1">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 140" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="An upward-curving bowl shape, flat at its lowest point">
+            <path style="fill:none;stroke:var(--green);stroke-width:3" d="M120,110 Q320,20 520,110"/>
+            <circle cx="320" cy="34" r="6" style="fill:var(--green)"/>
+          </svg></div>
+          <div class="sl-verdict"><strong>f''(x*) &gt; 0</strong> — curves upward on both sides, like a bowl. This flat point is a genuine <strong>local minimum</strong>.</div>
+        </div>
+        <div class="sl-panel" id="soc-2">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 140" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A downward-curving dome shape, flat at its highest point">
+            <path style="fill:none;stroke:var(--amber);stroke-width:3" d="M120,30 Q320,120 520,30"/>
+            <circle cx="320" cy="106" r="6" style="fill:var(--amber)"/>
+          </svg></div>
+          <div class="sl-verdict"><strong>f''(x*) &lt; 0</strong> — curves downward on both sides, like a dome. This flat point is a genuine <strong>local maximum</strong>.</div>
+        </div>
+        <div class="sl-panel" id="soc-3">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 140" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two curves crossing at one flat point, one bending up and one bending down, representing a saddle point in more than one variable">
+            <path style="fill:none;stroke:var(--green);stroke-width:2.5" d="M320,20 Q220,70 320,70 Q420,70 320,120"/>
+            <path style="fill:none;stroke:var(--red);stroke-width:2.5;stroke-dasharray:5,4" d="M170,70 Q245,20 320,70 Q395,120 470,70"/>
+            <circle cx="320" cy="70" r="6" style="fill:var(--text)"/>
+          </svg></div>
+          <div class="sl-verdict">Mixed signs — curves upward in one direction (green), downward in another (red, dashed). Only possible with more than one variable: a <strong>saddle point</strong>, which the first-order condition alone can't tell apart from a true optimum.</div>
+        </div>
+      </div>
+      <p class="sl-p">In several variables, the Hessian matrix (built from every second partial derivative) plays this exact role: check the signs of its eigenvalues at the stationary point. All positive is a bowl in every direction — a genuine minimum. All negative is a dome — a genuine maximum. A mix is a saddle. When a function's Hessian has all-positive eigenvalues <em>everywhere</em>, not just at one point, it's called <strong>convex</strong> — and for a convex function, any stationary point found is guaranteed to be the true global optimum, not just a local one.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Now put a fence around the hill</h2>
+      <p class="sl-sub">You're only allowed to stand on one specific path — not anywhere on the hillside. The unrestricted summit might not even be on it.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The picture</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Concentric rings representing an objective function's level curves around a peak, with a straight line representing a constraint. The best point along the constraint line is where the line is exactly tangent to one of the rings.">
+            <ellipse cx="320" cy="150" rx="220" ry="120" style="fill:none;stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"/>
+            <ellipse cx="320" cy="150" rx="170" ry="92" style="fill:none;stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"/>
+            <ellipse cx="320" cy="150" rx="120" ry="65" style="fill:none;stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"/>
+            <ellipse cx="320" cy="150" rx="70" ry="38" style="fill:none;stroke:var(--blue);stroke-width:2"/>
+            <circle cx="320" cy="150" r="4" style="fill:var(--blue)"/>
+            <text x="320" y="130" text-anchor="middle" style="fill:var(--blue);font-size:11px;font-weight:600">unrestricted peak of f</text>
+            <line x1="120" y1="270" x2="560" y2="40" style="stroke:var(--amber);stroke-width:2.5"/>
+            <text x="565" y="38" style="fill:var(--amber);font-size:11px;font-weight:600">the fence: g(x) = k</text>
+            <ellipse cx="320" cy="150" rx="205" ry="111" style="fill:none;stroke:var(--green);stroke-width:2"/>
+            <circle cx="447" cy="88" r="5" style="fill:var(--green)"/>
+            <text x="452" y="80" style="fill:var(--green);font-size:11px;font-weight:600">best point on the fence, x*</text>
+            <line x1="447" y1="88" x2="447" y2="48" style="stroke:var(--red);stroke-width:2"/>
+            <polygon points="447,48 442,58 452,58" style="fill:var(--red)"/>
+            <text x="452" y="46" style="fill:var(--red);font-size:10px">∇f</text>
+            <line x1="447" y1="88" x2="480" y2="61" style="stroke:var(--purple);stroke-width:2;stroke-dasharray:2,2"/>
+            <polygon points="480,61 470,64 474,54" style="fill:var(--purple)"/>
+            <text x="484" y="58" style="fill:var(--purple);font-size:10px">∇g</text>
+          </svg>
+        </div>
+        <div class="sl-note">Dashed rings: points where f has equal value, rising toward the blue peak. Anywhere else on the amber fence, the two arrows would point in different directions — and sliding along the fence would still improve f.</div>
+      </div>
+      <p class="sl-p">Plain ∇f = 0 is now the wrong thing to check — the unrestricted peak may not even sit on the fence, and even where the fence is feasible, walking along it might still improve f. The best point <em>on the fence</em> is instead where walking further in either direction along it stops helping. At that exact point, something striking is always true: <strong>the objective's gradient and the fence's gradient point along the exact same line.</strong> If they didn't, there'd be a leftover direction along the fence that still climbs — meaning that point wasn't the best one on the fence yet.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">The Lagrangian folds the fence into the hill</h2>
+      <p class="sl-sub">One new function, one new variable λ, and the fence's gradient condition falls straight out of ordinary calculus.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="lag-tabs">
+          <button class="sl-tab active" data-panel="lag-1">Build ℒ</button>
+          <button class="sl-tab" data-panel="lag-2">∂ℒ/∂x = 0</button>
+          <button class="sl-tab" data-panel="lag-3">∂ℒ/∂λ = 0</button>
+        </div>
+        <div class="sl-panel active" id="lag-1">
+          <div class="sl-row"><div class="sl-box">ℒ(x, λ)</div><div class="sl-arrow">=</div><div class="sl-box">f(x)</div><div class="sl-arrow">−</div><div class="sl-box amber">λ (g(x) − k)</div></div>
+          <div class="sl-verdict">The objective, f(x), minus the multiplier λ times "how far the constraint is from being satisfied." λ is a brand-new variable, solved for alongside x.</div>
+        </div>
+        <div class="sl-panel" id="lag-2">
+          <div class="sl-row"><div class="sl-box">f'(x)</div><div class="sl-arrow">=</div><div class="sl-box green">λ g'(x)</div></div>
+          <div class="sl-verdict">Read plainly: the <strong>objective's gradient and the constraint's gradient must be parallel</strong> — exact scalar multiples of one another, with λ as the scaling factor. This is the fence picture, made algebraic.</div>
+        </div>
+        <div class="sl-panel" id="lag-3">
+          <div class="sl-row"><div class="sl-box">g(x)</div><div class="sl-arrow">=</div><div class="sl-box green">k</div></div>
+          <div class="sl-verdict">The original constraint, recovered exactly. ℒ is built so that differentiating with respect to λ hands the constraint straight back — feasibility is enforced by the same machinery, not checked separately.</div>
+        </div>
+      </div>
+      <p class="sl-p">λ itself is not just algebra bookkeeping: its value measures how much the optimal objective would change per unit change in the constraint's target k — a genuine <strong>shadow price</strong> for the constraint. A related idea, the <strong>KKT conditions</strong>, extend this exact logic to constraints that only need to hold as ≤ or ≥ rather than exactly — an inequality constraint is either "active" (binding, behaving just like the equality case above, λ ≠ 0) or "slack" (not limiting anything, λ = 0).</p>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>A stationary point of ℒ is still only a <em>candidate</em> — exactly as with the unconstrained case, a Lagrangian stationary point could be a saddle rather than a genuine constrained optimum unless a second-order check (or convexity) confirms it.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Minimizing portfolio risk is this exact problem</h2>
+      <p class="sl-sub">Two made-up but plausible assets. Find the mix that hits a 6% target return with the smallest possible variance.</p>
+      <div class="sl-quote">Minimizing a portfolio's variance <strong>subject to</strong> hitting a target return is a Lagrange-multiplier problem wearing a trading costume. "Best portfolio subject to a return target" is exactly "best point on the fence" from the last two slides.</div>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Worked by hand</div>
+        <p class="sl-p" style="margin-top:0">Asset 1: μ₁ = 8%, σ₁ = 20%. Asset 2: μ₂ = 4%, σ₂ = 10%. Correlation ρ = 0.30. With only two assets and w₂ = 1 − w₁, the 6% return target alone pins down the one free weight:</p>
+        <div class="sl-row"><div class="sl-box">w₁(8) + (1−w₁)(4)</div><div class="sl-arrow">=</div><div class="sl-box green">6</div></div>
+        <div class="sl-verdict" style="margin-bottom:14px">Solves to <strong>w₁ = 0.5, w₂ = 0.5</strong> — an even split.</div>
+        <div class="sl-row"><div class="sl-box">σₚ²</div><div class="sl-arrow">=</div><div class="sl-box amber">0.25(0.04) + 0.25(0.01) + 0.5(0.30)(0.02)</div></div>
+        <div class="sl-verdict"><strong>σₚ² = 0.0155</strong>, so σₚ = √0.0155 ≈ <strong>12.4%</strong> — below Asset 1's own 20% volatility, and even below a naive 50/50 average of the two (15%), because the correlation is well under 1 and diversification genuinely helps.</div>
+        <div class="sl-note">With exactly two assets and one return target, the return equation alone solves for w₁ — no multiplier needed to arrive at the number. λ becomes indispensable once a third asset (or a second constraint, like "weights sum to 1," handled separately) enters and there's an actual trade-off to balance rather than one equation with one unknown.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Re-solve it yourself, live</h2>
+      <p class="sl-sub">Starts on the worked example's exact numbers. Change any input and the weights and resulting volatility recompute instantly.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>μ₁ (%)</label><input type="number" class="sl-input" id="mv-mu1" value="8" step="0.5"></div>
+          <div class="sl-calc-field"><label>σ₁ (%)</label><input type="number" class="sl-input" id="mv-sigma1" value="20" step="1" min="0"></div>
+          <div class="sl-calc-field"><label>μ₂ (%)</label><input type="number" class="sl-input" id="mv-mu2" value="4" step="0.5"></div>
+          <div class="sl-calc-field"><label>σ₂ (%)</label><input type="number" class="sl-input" id="mv-sigma2" value="10" step="1" min="0"></div>
+          <div class="sl-calc-field"><label>ρ</label><input type="number" class="sl-input" id="mv-rho" value="0.30" step="0.05" min="-1" max="1"></div>
+          <div class="sl-calc-field"><label>Target return (%)</label><input type="number" class="sl-input" id="mv-target" value="6" step="0.5"></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Weight on Asset 1: w₁ = <b id="mv-w1">0.500</b></div>
+          <div>Weight on Asset 2: w₂ = <b id="mv-w2">0.500</b></div>
+          <div>Portfolio volatility: σₚ = <b id="mv-sigp">12.45</b>% <span id="mv-note" style="color:var(--text3)"></span></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="mv-reset">Reset to worked-example numbers</button>
+        <div class="sl-note">w₁ = (target − μ₂) ÷ (μ₁ − μ₂), then w₂ = 1 − w₁ — the same "solve the constraint directly" move as Section 6, generalized to whatever numbers you type in.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Nobody solves a 50-asset Lagrangian by hand</h2>
+      <p class="sl-sub">A numerical optimizer does the algebra. What survives into daily use is the vocabulary and the intuition.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📈</div><div><h4>The efficient frontier</h4><p>Solving this exact Lagrangian for many different target returns at once traces out the whole frontier — one λ value per point on the curve.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">💰</div><div><h4>Shadow prices</h4><p>A Lagrange multiplier's value is routinely read as a shadow price — how much the optimal objective would improve per unit of relaxing a binding constraint (a risk budget, a leverage cap, a sector limit).</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧮</div><div><h4>Numerical solvers, not hand algebra</h4><p>Real portfolio and risk-parity optimizers use quadratic/convex-programming software implementing KKT conditions internally — this lesson's hand-derivation is what to check the output against, not a step performed live.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🚧</div><div><h4>Binding vs. slack, in practice</h4><p>Practitioners routinely check which constraints in a large optimization are actually binding (nonzero multiplier) versus slack (multiplier zero, not limiting anything) — the active/inactive distinction from Section 5.</p></div></div>
+      </div>
+      <div class="sl-quote">Whenever a portfolio, risk, or calibration problem is described as finding the "best" something "subject to" some condition, the Lagrangian/KKT machinery is running underneath — whether or not the report ever uses the word.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Eyeballing the turn vs. checking the rule</h2>
+      <p class="sl-sub">"Where does this curve stop falling and start rising" can be answered two ways.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Eyeballing it</span>
+          <ul>
+            <li>Squint at a chart or a table of values and guess where the turn looks like it happens</li>
+            <li>No way to confirm it's a minimum rather than a saddle or a max</li>
+            <li>Falls apart the moment there's more than one variable, or a constraint bolted on</li>
+            <li>Can't be checked or automated — it's a judgment call, not a method</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Checking the rule</span>
+          <ul>
+            <li>Set the derivative (or gradient) to zero — first-order condition</li>
+            <li>Check the second derivative's sign, or the Hessian's eigenvalues — second-order condition</li>
+            <li>Add a fence: build ℒ, take its own first-order conditions with respect to x and λ</li>
+            <li>Same method whether it's one variable or fifty, unconstrained or not</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>Two common practical mistakes go the other direction from "eyeballing": treating any stationary point as automatically optimal without a second-order check, and assuming every stated inequality constraint must be binding when the true optimum may sit comfortably inside it. And a mathematically exact optimum is only as good as its inputs — Markowitz-style optimization is well known to be highly sensitive to estimation error in expected returns, μ, especially.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Why isn't f'(x*) = 0 alone enough to conclude x* is a minimum?</h4>
+        <button class="sl-quiz-opt" data-correct="true">A flat tangent is equally consistent with a minimum, a maximum, or a saddle — the second-order condition is needed to tell them apart</button>
+        <button class="sl-quiz-opt">It isn't true — a zero derivative always means a minimum</button>
+        <button class="sl-quiz-opt">f'(x*) = 0 only applies to constrained problems</button>
+        <div class="sl-quiz-explain">The first-order condition only says the function is momentarily flat. The sign of f''(x*), or the Hessian's eigenvalues in several variables, resolves which kind of flat point it actually is.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>At a constrained optimum, what must be true of the objective's gradient ∇f and the constraint's gradient ∇g?</h4>
+        <button class="sl-quiz-opt" data-correct="true">They point along the exact same line (parallel) — f'(x*) = λg'(x*)</button>
+        <button class="sl-quiz-opt">They must point in exactly opposite, perpendicular directions</button>
+        <button class="sl-quiz-opt">∇g must equal zero</button>
+        <div class="sl-quiz-explain">If they weren't parallel, the objective's gradient would have a leftover component running along the constraint — meaning a small move along the fence would still improve things, so the point couldn't have been optimal yet.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Two assets: μ₁ = 8%, μ₂ = 4%. What weight on Asset 1 hits a 6% target return?</h4>
+        <button class="sl-quiz-opt" data-correct="true">w₁ = 0.5</button>
+        <button class="sl-quiz-opt">w₁ = 0.75</button>
+        <button class="sl-quiz-opt">w₁ = 0.25</button>
+        <div class="sl-quiz-explain">w₁(8) + (1−w₁)(4) = 6 → 4 + 4w₁ = 6 → w₁ = 0.5.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>A constraint's Lagrange multiplier comes out to exactly zero at the optimum. What does that mean?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The constraint is slack (non-binding) — it isn't actually limiting the optimal solution</button>
+        <button class="sl-quiz-opt">The problem has no solution</button>
+        <button class="sl-quiz-opt">The constraint is binding and carries a large shadow price</button>
+        <div class="sl-quiz-explain">A zero multiplier means the constraint has no marginal effect on the optimal objective — the true best solution doesn't need to push up against that limit at all.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>What do KKT conditions add on top of ordinary Lagrange multipliers?</h4>
+        <button class="sl-quiz-opt" data-correct="true">A way to handle inequality (≤ or ≥) constraints, which can be either active or slack</button>
+        <button class="sl-quiz-opt">A way to avoid ever needing a second-order condition</button>
+        <button class="sl-quiz-opt">A restriction to unconstrained problems only</button>
+        <div class="sl-quiz-explain">Lagrange multipliers as built in this lesson assume an exact equality constraint. KKT conditions generalize the same parallel-gradients logic to constraints that only need to hold as an inequality.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>An unconstrained optimum has a flat gradient — f'(x*) = 0, or ∇f(x*) = 0 with several variables — meaning no direction still improves the objective.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>The second-order condition tells minimum from maximum from saddle — the sign of f''(x*), or the Hessian's eigenvalue signs, resolves what the first-order condition leaves ambiguous.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>The Lagrangian, ℒ = f(x) − λ(g(x) − k), folds a constraint into the objective — its own first-order conditions recover the constraint automatically and force the two gradients to be parallel at the optimum.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>λ is a shadow price, not just algebra — it measures how much the optimal objective would change per unit change in the constraint's target.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Minimizing portfolio variance for a target return is exactly this Lagrangian problem — the two-asset worked example is the smallest possible instance of full Markowitz portfolio theory.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>KKT conditions extend the same logic to inequality constraints, and real solvers use them numerically — the hand-derivation here is for checking output, not for large problems.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Recognise any "find the best X subject to Y" problem as a Lagrangian in disguise, and know what its multiplier actually means economically. Tell a genuine optimum apart from a merely stationary point. See a portfolio manager's minimum-variance calculation for what it is — this lesson's fence-and-hill picture, run at institutional scale.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Descriptive Statistics &amp; the Normal Distribution</h3>
+        <p>Mean, variance, standard deviation, z-scores and the bell curve — the five ideas every other lesson in this series quietly assumes you already have.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="primer-stats-normal-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="foundation-optimization-basics.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // First-order-condition slider: point + tangent line on f(x) = 0.15x^2.
+  (function(){
+    var slider = document.getElementById('foc-slider');
+    if (!slider) return;
+    var slopeLabel = document.getElementById('foc-slope');
+    var verdict = document.getElementById('foc-verdict');
+    var tangent = document.getElementById('foc-tangent');
+    var dot = document.getElementById('foc-dot');
+    var X0 = 320, Y0 = 225, PXU_X = 36, PXU_Y = 16;
+    var A = 0.15; // f(x) = A*x^2, f'(x) = 2A*x
+
+    function update(){
+      var x = parseFloat(slider.value);
+      var f = A * x * x;
+      var slope = 2 * A * x;
+      var cx = X0 + x * PXU_X;
+      var cy = Y0 - f * PXU_Y;
+      dot.setAttribute('cx', cx);
+      dot.setAttribute('cy', cy);
+      var slopePx = -(PXU_Y / PXU_X) * slope;
+      var dx = 60;
+      tangent.setAttribute('x1', cx - dx);
+      tangent.setAttribute('y1', cy - dx * slopePx);
+      tangent.setAttribute('x2', cx + dx);
+      tangent.setAttribute('y2', cy + dx * slopePx);
+      slopeLabel.textContent = "f'(x) = " + slope.toFixed(2);
+      if (Math.abs(slope) < 0.05) {
+        slopeLabel.style.color = 'var(--green)';
+        dot.setAttribute('fill', 'var(--green)');
+        tangent.setAttribute('stroke', 'var(--green)');
+        verdict.innerHTML = '<strong>Flat.</strong> f\'(x) = 0 — the first-order condition holds. Neither direction improves f from here: this is the minimum.';
+      } else {
+        slopeLabel.style.color = 'var(--blue)';
+        dot.setAttribute('fill', 'var(--blue)');
+        tangent.setAttribute('stroke', 'var(--blue)');
+        verdict.textContent = (slope < 0 ? 'Still falling — moving right (increasing x) would improve f further.' : 'Already rising — moving left (decreasing x) would improve f further.');
+      }
+    }
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Minimum-variance two-asset portfolio, live.
+  (function(){
+    var DEFAULTS = { mu1: 8, sigma1: 20, mu2: 4, sigma2: 10, rho: 0.30, target: 6 };
+    var fields = ['mu1', 'sigma1', 'mu2', 'sigma2', 'rho', 'target'];
+    var inputs = {};
+    fields.forEach(function(f){ inputs[f] = document.getElementById('mv-' + f); });
+    if (!inputs.mu1) return;
+
+    var w1Out = document.getElementById('mv-w1');
+    var w2Out = document.getElementById('mv-w2');
+    var sigpOut = document.getElementById('mv-sigp');
+    var noteOut = document.getElementById('mv-note');
+    var resetBtn = document.getElementById('mv-reset');
+
+    function recompute(){
+      var mu1 = parseFloat(inputs.mu1.value) / 100;
+      var sigma1 = parseFloat(inputs.sigma1.value) / 100;
+      var mu2 = parseFloat(inputs.mu2.value) / 100;
+      var sigma2 = parseFloat(inputs.sigma2.value) / 100;
+      var rho = parseFloat(inputs.rho.value);
+      var target = parseFloat(inputs.target.value) / 100;
+
+      if (!isFinite(mu1) || !isFinite(sigma1) || !isFinite(mu2) || !isFinite(sigma2) || !isFinite(rho) || !isFinite(target) || sigma1 < 0 || sigma2 < 0 || rho < -1 || rho > 1) {
+        w1Out.textContent = '—'; w2Out.textContent = '—'; sigpOut.textContent = '—';
+        noteOut.textContent = '(volatilities must be non-negative and ρ must be between -1 and 1)';
+        return;
+      }
+
+      if (mu1 === mu2) {
+        w1Out.textContent = '—'; w2Out.textContent = '—'; sigpOut.textContent = '—';
+        noteOut.textContent = (target === mu1)
+          ? '(μ₁ = μ₂ = target: every weight hits it — this simplified case can\'t pick one)'
+          : '(μ₁ = μ₂ but the target differs: no weight combination can hit it)';
+        return;
+      }
+
+      var w1 = (target - mu2) / (mu1 - mu2);
+      var w2 = 1 - w1;
+      var varp = w1*w1*sigma1*sigma1 + w2*w2*sigma2*sigma2 + 2*w1*w2*rho*sigma1*sigma2;
+
+      w1Out.textContent = w1.toFixed(3);
+      w2Out.textContent = w2.toFixed(3);
+
+      if (varp < 0) {
+        sigpOut.textContent = '—';
+        noteOut.textContent = '(negative variance from these inputs — check that ρ is a valid correlation)';
+        return;
+      }
+
+      sigpOut.textContent = (Math.sqrt(varp) * 100).toFixed(2);
+      noteOut.textContent = (w1 < 0 || w1 > 1) ? '(w₁ outside [0,1] — this target needs a short position)' : '';
+    }
+
+    fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

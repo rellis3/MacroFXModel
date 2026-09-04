@@ -151,6 +151,13 @@ for (const stem of stems.sort()) {
   console.log(`  ${sym.padEnd(12)} ${String(r.parsed.strikes.length).padEnd(8)} `
     + `${String(r.inst.maxPain).padEnd(12)} ${String(r.inst.callWall).padEnd(12)} `
     + `${String(r.inst.putWall).padEnd(12)} ${ivStat.padEnd(6)} ${ok ? 'yes' : 'NO: ' + missing.join(',')}`);
+  // dataWarning carries every "computed something, but don't fully trust it" flag
+  // js/oi.js raises (truncation, spot outside the strike range, an implausible
+  // basis anchor, no near-money OI anywhere, and now the implausible-OI strike
+  // scrub) — and until this line existed it was computed and then never looked
+  // at again: the 2026-09-03 gold incident had a `dataWarning` the moment it was
+  // ingested, and this daily log still read clean, because nothing printed it.
+  if (r.inst.dataWarning) console.log(`    ⚠ ${r.inst.dataWarning}`);
   if (!ok) { bad++; continue; }          // never ship a partial entry
   if (ivStat === 'smile') ivSmile++; else if (ivStat === 'term') ivTerm++;
   payload[sym] = r.inst;

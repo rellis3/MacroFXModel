@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Theta Decay — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Theta Decay — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full PDE derivation, the closed-form proof, and a 6-question self-test?<a href="theta-decay.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">The Greeks 3 · The Greeks</div>
+      <h1 class="sl-h1">Theta Decay, <em>the Rent You Pay for Convexity</em></h1>
+      <p class="sl-lede">Theta isn't a separate fact bolted onto an option after the fact — it falls straight out of the same Black-Scholes PDE that already gives delta and gamma. Rearrange that one equation and "options lose value over time" turns into a precise number, and "theta pays for gamma" stops being a slogan and becomes an identity: Θ ≈ −½σ²S²Γ.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Theta falls out of the PDE — it isn't a separate fact</h2>
+      <p class="sl-sub">The Black-Scholes PDE, with each derivative already named after a Greek, rearranged to isolate Θ.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="pde-tabs">
+          <button class="sl-tab active" data-panel="pde-1">The PDE, in Greek notation</button>
+          <button class="sl-tab" data-panel="pde-2">Isolate Θ</button>
+        </div>
+        <div class="sl-panel active" id="pde-1">
+          <div class="sl-row"><div class="sl-box">Θ</div><div class="sl-arrow">+</div><div class="sl-box amber">½σ²S²Γ</div><div class="sl-arrow">+</div><div class="sl-box">rSΔ</div><div class="sl-arrow">−</div><div class="sl-box">rC</div><div class="sl-arrow">=</div><div class="sl-box green">0</div></div>
+          <div class="sl-verdict">Substitute ∂V/∂t = Θ, ∂V/∂S = Δ, ∂²V/∂S² = Γ directly into the no-arbitrage PDE ∂V/∂t + rS·∂V/∂S + ½σ²S²·∂²V/∂S² − rV = 0. Nothing new is assumed — it's the identical equation, relabeled.</div>
+        </div>
+        <div class="sl-panel" id="pde-2">
+          <div class="sl-row"><div class="sl-box green">Θ</div><div class="sl-arrow">=</div><div class="sl-box">rC</div><div class="sl-arrow">−</div><div class="sl-box">rSΔ</div><div class="sl-arrow">−</div><div class="sl-box amber">½σ²S²Γ</div></div>
+          <div class="sl-verdict">Move every other term to the other side. If you already know C, Δ and Γ, this equation hands you Θ for free — nothing extra needs to be estimated.</div>
+        </div>
+        <div class="sl-note">rC = financing the option's own value. −rSΔ = financing the delta-hedge. −½σ²S²Γ = the convexity term, always working against a long-option position — this is what the rest of the deck focuses on.</div>
+      </div>
+      <p class="sl-p">One notation note: the PDE's ∂V/∂t moves with calendar time <em>t</em>; the closed form below is written in τ, the time <em>remaining</em> to expiry (τ = T − t). ∂/∂t = −∂/∂τ is already baked into the formula next.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">The closed-form theta for a European call</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The formula</div>
+        <div class="sl-row"><div class="sl-box red">Θ = −Sφ(d₁)σ / (2√τ)</div><div class="sl-arrow">−</div><div class="sl-box red">rKe⁻ʳᵀN(d₂)</div></div>
+        <div class="sl-verdict">Same d₁, d₂ as the Black-Scholes price formula. φ(·) is the standard normal <strong>density</strong> (bell-curve height) — different from N(·), the cumulative area used everywhere else. Both terms are negative for a standard long call whenever r, K, S, σ, τ &gt; 0: φ(d₁) is always positive, and the second term is minus a product of positive quantities.</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">Θ</div><div><h4>Theta</h4><p>∂C/∂t — how much the option's value changes per unit of calendar time, everything else fixed. Negative for a long call: value bleeds away as time passes.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">τ</div><div><h4>Time remaining</h4><p>In years — the Black-Scholes lesson's own T, renamed to keep "time passing" and "time remaining" visually distinct.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">φ</div><div><h4>φ(x) = e^(−x²/2)/√(2π)</h4><p>The normal PDF. Reused from the same gamma formula the previous lesson derived.</p></div></div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>This is the plain European, non-dividend case — the same scope the Black-Scholes lesson sticks to. Certain American-style or dividend-paying structures can show positive theta in edge cases; that's outside this scope.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">The key insight — theta pays for gamma</h2>
+      <p class="sl-sub">Strip a delta-hedged position down: no net delta to finance, and the rC term is small next to the convexity term for a reasonably-dated option. What's left:</p>
+      <div class="sl-row"><div class="sl-box amber" style="font-size:19px">Θ ≈ −½σ²S²Γ</div></div>
+      <p class="sl-p">A delta-hedged, long-gamma position bleeds theta at a rate <strong>directly proportional to its own gamma</strong> — not a coincidence, but the PDE forcing them to move together. That bleed is the fair price of convexity. The mirror-image dealer who sold the option is short gamma and, by the same equation with the opposite sign, long theta: they collect exactly what the long-gamma side pays.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Realized vol &gt; implied vol</span>
+          <p>Gamma-scalping gains from continuous rebalancing exceed the theta paid. The long-gamma, delta-hedged position profits — it paid rent for convexity worth more than the rent charged.</p>
+        </div>
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Realized vol &lt; implied vol</span>
+          <p>Rebalancing gains fall short of the theta bled away. The position loses money on net, even with a perfectly executed hedge and zero directional error.</p>
+        </div>
+      </div>
+      <div class="sl-quote">Whether the rent was <strong>fairly priced</strong> comes down to exactly one comparison: implied volatility (baked into theta) versus realized volatility (how much the underlying actually moved). Nothing about direction enters this decision at all.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Theta accelerates near expiry — drag the slider</h2>
+      <p class="sl-sub">S = K = 100, r = 2%, σ = 20% held fixed (the lesson's own worked-example inputs) — only time to expiry changes. Computed live from the exact closed form.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Rising curve of at-the-money theta magnitude against days to expiry, smallest at 90 days and rising sharply toward 1 day, with a draggable marker on the curve">
+            <line x1="60" y1="230" x2="610" y2="230" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="60" y1="230" x2="60" y2="20" style="stroke:var(--border2);stroke-width:1"/>
+            <text x="335" y="248" text-anchor="middle" font-size="11" fill="var(--text3)">Days to expiry (DTE) →</text>
+            <text x="18" y="125" text-anchor="middle" font-size="11" fill="var(--text3)" transform="rotate(-90 18 125)">ATM |Θ| ($/day)</text>
+            <text x="60" y="243" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">1</text>
+            <text x="335" y="243" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">45</text>
+            <text x="610" y="243" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">90</text>
+            <text x="52" y="234" text-anchor="end" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">0</text>
+            <text x="52" y="27" text-anchor="end" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">0.22</text>
+            <polyline id="theta-curve" points="" style="fill:none;stroke:var(--red);stroke-width:2.5"/>
+            <line id="theta-marker" x1="610" y1="20" x2="610" y2="230" style="stroke:var(--amber);stroke-width:1.5;stroke-dasharray:2,2"/>
+            <circle id="theta-dot" cx="610" cy="230" r="5" style="fill:var(--amber);stroke:var(--bg);stroke-width:1.5"/>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Days to expiry (DTE)</span><span class="sl-live" id="theta-dte-val">DTE = 90</span></div>
+        <input type="range" class="sl-slider" id="theta-dte-slider" min="1" max="90" step="1" value="90">
+        <div class="sl-calc-steps">
+          <div>τ = <b id="theta-t-val">0.2466</b>y</div>
+          <div>ATM Θ ≈ $<b id="theta-theta-val">-0.0210</b> per day</div>
+        </div>
+        <div class="sl-note">The exact same 1/√τ acceleration shown for gamma in the previous lesson — theta's daily bleed roughly doubles from 30→7 DTE, then jumps again into the final day. Not a smooth, linear decline.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Worked example: 30, 7, and 1 day to expiry</h2>
+      <p class="sl-sub">S = K = 100, r = 2%, σ = 20% — the same round numbers where r = σ²/2, so d₂ = 0 and N(d₂) = 0.5 exactly at every τ.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">30 DTE</span>
+          <p>τ = 0.0822. Θ ≈ −14.89/year → <strong>−$0.0408/day</strong>.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">7 DTE</span>
+          <p>Θ ≈ −29.80/year → <strong>−$0.0816/day</strong> — roughly <strong>2.0×</strong> the 30-day rate.</p>
+        </div>
+      </div>
+      <div class="sl-row" style="margin-top:14px"><div class="sl-box red">1 DTE: Θ ≈ −77.22/year → −$0.2116/day</div></div>
+      <p class="sl-p">Another roughly <strong>2.6×</strong> jump from the 7-day rate, and about <strong>5.2×</strong> the 30-day rate — the same accelerating, non-linear shape the Gamma Exposure lesson found for gamma itself (there: roughly 2.1× then 2.6×, going 30→7→1 DTE). The two aren't just similarly shaped by coincidence — they're forced to be, by the identity on the next slide.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Cross-checking against the gamma-theta identity</h2>
+      <p class="sl-sub">Plug the previous lesson's own Γ_ATM values into Θ ≈ −½σ²S²Γ = −200×Γ (since ½(0.04)(10,000) = 200) and compare to the exact closed form.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Reproducing the exact answer from Γ alone</div>
+        <div class="sl-calc-steps" style="font-size:13px">
+          <div>DTE 30 — Γ = 0.0696 → −200×Γ = <b>−13.92</b> vs. full closed-form <b>−14.89</b> (residual ≈ −1.0)</div>
+          <div>DTE 7 — Γ = 0.1440 → −200×Γ = <b>−28.80</b> vs. full closed-form <b>−29.80</b> (residual ≈ −1.0)</div>
+          <div>DTE 1 — Γ = 0.3811 → −200×Γ = <b>−76.22</b> vs. full closed-form <b>−77.22</b> (residual ≈ −1.0)</div>
+        </div>
+      </div>
+      <p class="sl-p">The delta-hedged approximation reproduces the full closed-form theta almost exactly at every expiry, with a near-constant residual of about −$1.00/year — precisely the small financing term (rC − rSΔ) the key insight set aside for intuition. Not a coincidence baked into round numbers; it's the PDE identity doing exactly what it says.</p>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Why the residual doesn't shrink too</div>
+        <p>The residual is dominated by rC, the risk-free rate times the option's own value. With r = σ²/2 in these round numbers, N(d₂) stays fixed at 0.5 at every τ, keeping the financing term's shape stable across these particular expiries even as the convexity term changes by more than 5× — a feature of this parameter choice, not a claim the residual is always constant.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Recompute theta live — try your own numbers</h2>
+      <p class="sl-sub">Starts on the worked example's 30-day numbers. Blank or invalid input reads "—", never NaN or Infinity.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Spot S</label><input type="number" class="sl-input" id="sc-S" value="100" step="1"></div>
+          <div class="sl-calc-field"><label>Strike K</label><input type="number" class="sl-input" id="sc-K" value="100" step="1"></div>
+          <div class="sl-calc-field"><label>Rate r (%)</label><input type="number" class="sl-input" id="sc-r" value="2" step="0.25"></div>
+          <div class="sl-calc-field"><label>Vol σ (%)</label><input type="number" class="sl-input" id="sc-sigma" value="20" step="1"></div>
+          <div class="sl-calc-field"><label>Days to expiry</label><input type="number" class="sl-input" id="sc-dte" value="30" step="1" min="0"></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>τ = <b id="sc-tau">0.0822</b> · d₁ = <b id="sc-d1">0.0573</b> · d₂ = <b id="sc-d2">0.0000</b> · φ(d₁) = <b id="sc-phi">0.3983</b> · N(d₂) = <b id="sc-nd2">0.5000</b></div>
+        </div>
+        <div class="sl-calc-row" style="margin-top:10px">
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Θ per year</div><div class="sl-calc-result-val" id="sc-year">-14.89</div></div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Θ per day</div><div class="sl-calc-result-val" id="sc-day">-0.0408</div></div>
+        </div>
+        <div class="sl-note" id="sc-note"></div>
+        <button type="button" class="sl-reset-btn" id="sc-reset">Reset to worked-example numbers</button>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Weekend theta and calendar spreads</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="conv-tabs">
+          <button class="sl-tab active" data-panel="conv-1">Weekend theta</button>
+          <button class="sl-tab" data-panel="conv-2">Calendar spreads</button>
+        </div>
+        <div class="sl-panel active" id="conv-1">
+          <p class="sl-p" style="margin-top:0">The closed form treats time as continuous — every calendar day contributes the same fraction of √τ's shrinkage, trading day or not. In practice, some desks charge theta <em>non-uniformly</em> around a weekend, since two calendar days pass with no trading and often lower realized volatility over that stretch.</p>
+          <div class="sl-verdict">This is a genuine market-practice detail worth knowing exists — but it is a <strong>convention, not a single universal rule</strong>. Different desks and platforms handle it differently. Treat it as "be aware this exists and can differ," not a formula to memorize.</div>
+        </div>
+        <div class="sl-panel" id="conv-2">
+          <p class="sl-p" style="margin-top:0">A calendar spread sells a near-dated option and buys a longer-dated option at the <em>same</em> strike. Both legs have similar delta and gamma near the money, but the near leg's smaller τ gives it a much larger 1/√τ — so it decays faster in dollar terms than the far leg.</p>
+          <div class="sl-verdict">As long as the underlying stays reasonably close to the strike, the position's net theta is positive — collecting the acceleration differential between the two legs, not a directional bet. The main risk: a big enough move away from the strike hurts the near leg's relative gamma disadvantage more than the collected theta compensates for — the same gamma-theta tradeoff, expressed across two expiries instead of one option.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Short gamma and long theta are the same fact</h2>
+      <p class="sl-sub">Apply Θ ≈ −½σ²S²Γ to the dealer's own signed gamma at a strike, and aggregate it the same way DealerGEX aggregates gamma.</p>
+      <div class="sl-row"><div class="sl-box">ThetaExp<sub>k</sub> = s<sub>k</sub>Θ<sub>k</sub>OI<sub>k</sub>100</div><div class="sl-arrow">≈</div><div class="sl-box amber">−50σ² × DealerGEX<sub>k</sub></div></div>
+      <p class="sl-p">The S² cancels entirely between the two formulas, leaving only σ. Since −50σ² is <strong>strictly negative</strong> for any real σ, the sign of ThetaExp<sub>k</sub> is always the <em>opposite</em> of the sign of DealerGEX<sub>k</sub> — not usually, structurally.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">DealerGEX &lt; 0</span>
+          <p>Dealers short gamma (the standard case) forces ThetaExp &gt; 0.</p>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">→ ThetaExp &gt; 0</span>
+          <p>Dealers long theta. "Short gamma" and "long theta" are the same PDE fact, read off ∂²V/∂S² versus ∂V/∂t — not two separate empirical claims.</p>
+        </div>
+      </div>
+      <div class="sl-quote">Applying this to the previous lesson's toy three-strike book (σ = 20%, TotalDealerGEX ≈ −$18.51B at one week to expiry): TotalThetaExp ≈ −50(0.20)² × (−$18.51B) = <strong>+$37.02B</strong> per year, illustrative. The dealer book short $18.51B of GEX is, at the same instant, long roughly $37.02B of aggregate theta exposure.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">How practitioners actually use this</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📉</div><div><h4>Gamma scalping</h4><p>A long-gamma, delta-hedged trader rebalances continuously and compares the resulting trading gains to theta paid — the realized-vs-implied comparison, run live rather than as a one-time calculation.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📅</div><div><h4>Calendar spreads</h4><p>Selling the faster-decaying near leg against a longer-dated leg at the same strike harvests the 1/√τ acceleration differential directly — a structural theta trade, not a directional one.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🗓️</div><div><h4>Weekend theta conventions</h4><p>Desks and platforms that charge theta non-uniformly around a weekend adjust the continuous-time model's assumption that every calendar day contributes equally — worth knowing without assuming any one convention is universal.</p></div></div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Common pitfalls</div>
+        <p><strong>Theta is not linear</strong> — don't extrapolate today's rate across the whole month; the daily rate itself roughly doubles, then accelerates further, near expiry. <strong>The delta-hedged approximation drops a real term</strong> — extremely accurate when the financing term is small, but for a deep in-the-money option or a long time to expiry, that dropped term stops being negligible.</p>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Fact-check against this repo's own code</div>
+        <p>The full lesson's meta badge reads <strong>"CONCEPT — not built or tested in this repo."</strong> Checked directly: <code>js/gammaGreeks.js</code> exports <code>bsGamma</code>, <code>bsVanna</code>, and <code>bsCharm</code>, with a full test suite (<code>gammaGreeks.test.mjs</code>, <code>gammaFlow.test.mjs</code>, <code>fullBookGex.test.mjs</code>) — but no theta or time-decay function exists anywhere in that file, in <code>js/oi.js</code>, or across the rest of the codebase. Every other "theta" hit in the repo (<code>js/arma.js</code>, <code>js/arima-price.js</code>, <code>js/creditHmm.js</code>, <code>volatilityExhaustion/*.py</code>) is an unrelated statistical use of the same Greek letter — an ARMA/ARIMA MA(1) coefficient, an HMM persistence term, or a barrier half-width in volatility-exhaustion research, never an option's time decay. So unlike the gamma lesson's stale badge, <strong>this lesson's "not built or tested in this repo" claim is still accurate</strong> for theta specifically.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Why is theta not an "extra" assumption layered on top of delta and gamma?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It's a pure algebraic rearrangement of the same Black-Scholes PDE that already produces delta and gamma</button>
+        <button class="sl-quiz-opt">It's calibrated separately from historical option prices</button>
+        <button class="sl-quiz-opt">It's an empirical regression fit to observed time decay</button>
+        <div class="sl-quiz-explain">Substituting Θ = ∂V/∂t, Δ = ∂V/∂S, Γ = ∂²V/∂S² into the no-arbitrage PDE and isolating Θ gives Θ = rC − rSΔ − ½σ²S²Γ directly — nothing new needs to be estimated once C, Δ, and Γ are known.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>What does "theta pays for gamma" mean, precisely?</h4>
+        <button class="sl-quiz-opt" data-correct="true">For a delta-hedged position, Θ ≈ −½σ²S²Γ — the theta bleed is rent, proportional to gamma, for holding convexity</button>
+        <button class="sl-quiz-opt">Theta and gamma are unrelated Greeks that happen to both matter for options</button>
+        <button class="sl-quiz-opt">Gamma only matters once theta has decayed to zero</button>
+        <div class="sl-quiz-explain">A long-gamma, delta-hedged position's theta bleed is, to a close approximation, its own gamma scaled by a constant. That rent is offset, on average, by rebalancing gains — if realized volatility matches the implied volatility the rent was priced on.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Why does theta accelerate near expiry, rather than decay in a straight line?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The convexity term contains 1/√τ, the same relationship gamma has — theta inherits gamma's shape via the delta-hedged identity</button>
+        <button class="sl-quiz-opt">It only accelerates because implied volatility rises near expiry</button>
+        <button class="sl-quiz-opt">Theta actually decays linearly; the "acceleration" is a charting artifact</button>
+        <div class="sl-quiz-explain">Since Θ ≈ −½σ²S²Γ and Γ ∝ 1/√τ, theta is forced to inherit gamma's acceleration — the worked example showed roughly 2.0× then 2.6× stepwise jumps going 30→7→1 DTE.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>What does a calendar spread (sell near-dated, buy far-dated, same strike) actually collect?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The acceleration differential in theta between the two legs, via 1/√τ — not a directional bet</button>
+        <button class="sl-quiz-opt">A guaranteed profit regardless of where the underlying moves</button>
+        <button class="sl-quiz-opt">The difference in implied volatility only, with no dependence on time to expiry</button>
+        <div class="sl-quiz-explain">The near leg's smaller τ gives it substantially larger daily theta than the far leg's larger τ. As long as the underlying stays reasonably close to the strike, the spread nets positive theta from that acceleration gap.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Why does "dealers are typically short gamma" force "dealers are typically long theta," rather than these being two separate observations?</h4>
+        <button class="sl-quiz-opt" data-correct="true">ThetaExp ≈ −50σ²×DealerGEX, and −50σ² is always strictly negative — so the two signs are always opposite by algebra, not by coincidence</button>
+        <button class="sl-quiz-opt">They're unrelated facts that happen to correlate historically</button>
+        <button class="sl-quiz-opt">Theta only turns positive when gamma is exactly zero</button>
+        <div class="sl-quiz-explain">Substituting the DealerGEX bracket into the dealer's own delta-hedged theta identity gives ThetaExp_k ≈ −50σ²×DealerGEX_k. Since σ² can never be negative, −50σ² is always negative, so the sign of ThetaExp always flips relative to DealerGEX — a structural consequence of one PDE, not two empirical facts.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Theta falls directly out of the Black-Scholes PDE: Θ = rC − rSΔ − ½σ²S²Γ — an algebraic consequence of the same equation that gives delta and gamma, not an independent fact.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>The gamma-theta identity is the practical core: for a delta-hedged position, Θ ≈ −½σ²S²Γ — theta is the fair rent for convexity, settled by realized vs. implied volatility.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Theta accelerates near expiry via the same 1/√τ term as gamma — the worked example showed the daily rate roughly doubling from 30→7 DTE, then accelerating again into the final day.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Calendar spreads harvest that acceleration differential directly — selling the faster-decaying near leg against a longer-dated leg at the same strike is a structural theta trade.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Short gamma and long theta are the same fact: ThetaExp_k ≈ −50σ²×DealerGEX_k — the sign always flips, so "dealers usually short gamma" forces "dealers usually long theta" by the same PDE.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Weekend theta handling is a practitioner convention, not a universal rule — different desks smooth it differently around the two non-trading days.</p></div>
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">What this now lets you do</div>
+        <p>Reproduce an option's theta from its price, delta, and gamma alone, with no separate estimation. Read a long-gamma position's theta bleed as rent for convexity, and judge whether that rent was worth it from realized vs. implied volatility. Recognise that "dealers are short gamma" and "dealers are long theta" are the identical claim, not two independent facts about how options markets behave.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Vega &amp; the Volatility Surface</h3>
+        <p>Theta and gamma both hold σ fixed — vega is what happens when the market's own volatility assumption itself moves, and why that assumption isn't flat across strikes and expiries.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="vega-volatility-surface-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="theta-decay.html">Read the full theta lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Standard normal CDF via the Abramowitz & Stegun erf approximation
+  // (same helper used in theta-decay.html) plus the standard normal PDF,
+  // needed for the exact closed-form theta.
+  function erf(x){
+    var sign = x < 0 ? -1 : 1;
+    x = Math.abs(x);
+    var a1=0.254829592, a2=-0.284496736, a3=1.421413741, a4=-1.453152027, a5=1.061405429, p=0.3275911;
+    var t = 1/(1+p*x);
+    var y = 1 - (((((a5*t+a4)*t)+a3)*t+a2)*t+a1)*t*Math.exp(-x*x);
+    return sign*y;
+  }
+  function normCDF(x){ return 0.5*(1+erf(x/Math.SQRT2)); }
+  function normPDF(x){ return Math.exp(-x*x/2)/Math.sqrt(2*Math.PI); }
+
+  var S = 100, K = 100, r = 0.02, SIGMA = 0.20;
+
+  // Exact closed-form European call theta (per year): Theta = -S*phi(d1)*sigma/(2*sqrt(T)) - r*K*e^(-rT)*N(d2)
+  function bsThetaPerYear(dte){
+    var T = dte/365;
+    if (T<=0) return 0;
+    var d1 = (Math.log(S/K) + (r + SIGMA*SIGMA/2)*T) / (SIGMA*Math.sqrt(T));
+    var d2 = d1 - SIGMA*Math.sqrt(T);
+    var term1 = -(S*normPDF(d1)*SIGMA)/(2*Math.sqrt(T));
+    var term2 = -r*K*Math.exp(-r*T)*normCDF(d2);
+    return term1 + term2;
+  }
+
+  // Slide 5 — ATM theta-vs-DTE curve, live-redrawing on the slider.
+  (function(){
+    var slider = document.getElementById('theta-dte-slider');
+    if (!slider) return;
+    var X_LEFT = 60, X_RIGHT = 610, DTE_MIN = 1, DTE_MAX = 90;
+    var Y_BASE = 230, Y_TOP = 20, G_MAX = 0.22;
+
+    function dteToX(dte){ return X_LEFT + (dte - DTE_MIN)/(DTE_MAX - DTE_MIN)*(X_RIGHT - X_LEFT); }
+    function thetaToY(mag){ return Y_BASE - Math.min(mag, G_MAX)/G_MAX*(Y_BASE - Y_TOP); }
+
+    var curve = document.getElementById('theta-curve');
+    var marker = document.getElementById('theta-marker');
+    var dot = document.getElementById('theta-dot');
+    var dteVal = document.getElementById('theta-dte-val');
+    var tVal = document.getElementById('theta-t-val');
+    var thetaVal = document.getElementById('theta-theta-val');
+
+    function buildCurve(){
+      var pts = [];
+      var N = 90;
+      for (var i=0; i<N; i++){
+        var dte = DTE_MIN + (i/(N-1))*(DTE_MAX - DTE_MIN);
+        var mag = Math.abs(bsThetaPerYear(dte))/365;
+        pts.push(dteToX(dte).toFixed(2) + ',' + thetaToY(mag).toFixed(2));
+      }
+      curve.setAttribute('points', pts.join(' '));
+    }
+
+    function update(){
+      var dte = parseInt(slider.value, 10);
+      var thetaYear = bsThetaPerYear(dte);
+      var thetaDay = thetaYear/365;
+      var T = dte/365;
+
+      dteVal.textContent = 'DTE = ' + dte;
+      tVal.textContent = T.toFixed(4);
+      thetaVal.textContent = thetaDay.toFixed(4);
+
+      var x = dteToX(dte);
+      var y = thetaToY(Math.abs(thetaDay));
+      marker.setAttribute('x1', x);
+      marker.setAttribute('x2', x);
+      dot.setAttribute('cx', x);
+      dot.setAttribute('cy', y);
+    }
+
+    buildCurve();
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Slide 8 — "recompute theta live" scratchpad, with defensive guards.
+  (function(){
+    var DEFAULTS = { S: 100, K: 100, r: 2, sigma: 20, dte: 30 };
+    var fields = ['S', 'K', 'r', 'sigma', 'dte'];
+    var inputs = {};
+    fields.forEach(function(f){ inputs[f] = document.getElementById('sc-' + f); });
+    if (!inputs.S) return;
+
+    var tauOut = document.getElementById('sc-tau');
+    var d1Out = document.getElementById('sc-d1');
+    var d2Out = document.getElementById('sc-d2');
+    var phiOut = document.getElementById('sc-phi');
+    var nd2Out = document.getElementById('sc-nd2');
+    var yearOut = document.getElementById('sc-year');
+    var dayOut = document.getElementById('sc-day');
+    var noteOut = document.getElementById('sc-note');
+    var resetBtn = document.getElementById('sc-reset');
+
+    function recompute(){
+      var Sv = parseFloat(inputs.S.value);
+      var Kv = parseFloat(inputs.K.value);
+      var rv = parseFloat(inputs.r.value) / 100;
+      var sigmaV = parseFloat(inputs.sigma.value) / 100;
+      var dte = parseFloat(inputs.dte.value);
+
+      if (!isFinite(Sv) || !isFinite(Kv) || !isFinite(rv) || !isFinite(sigmaV) || !isFinite(dte) || Sv<=0 || Kv<=0 || sigmaV<0 || dte<0) {
+        tauOut.textContent = d1Out.textContent = d2Out.textContent = phiOut.textContent = nd2Out.textContent = yearOut.textContent = dayOut.textContent = '—';
+        noteOut.textContent = '(enter positive S, K, a non-negative σ, and a non-negative number of days)';
+        return;
+      }
+
+      var T = dte / 365;
+      var tau, d1, d2, phi, Nd2, thetaYear, note = '';
+
+      if (T === 0) {
+        tau = 0; d1 = d2 = phi = Nd2 = NaN; thetaYear = NaN;
+        note = '(0 days to expiry: τ=0 makes d₁/d₂ undefined — theta is not defined exactly at expiry)';
+      } else if (sigmaV === 0) {
+        tau = T; d1 = d2 = phi = Nd2 = NaN; thetaYear = NaN;
+        note = '(σ=0: no diffusion term left to decay — the closed form is undefined at σ=0)';
+      } else {
+        tau = T;
+        d1 = (Math.log(Sv/Kv) + (rv + sigmaV*sigmaV/2)*tau) / (sigmaV*Math.sqrt(tau));
+        d2 = d1 - sigmaV*Math.sqrt(tau);
+        phi = normPDF(d1);
+        Nd2 = normCDF(d2);
+        thetaYear = -(Sv*phi*sigmaV)/(2*Math.sqrt(tau)) - rv*Kv*Math.exp(-rv*tau)*Nd2;
+      }
+
+      tauOut.textContent = isNaN(tau) ? '—' : tau.toFixed(4);
+      d1Out.textContent = isNaN(d1) ? '—' : d1.toFixed(4);
+      d2Out.textContent = isNaN(d2) ? '—' : d2.toFixed(4);
+      phiOut.textContent = isNaN(phi) ? '—' : phi.toFixed(4);
+      nd2Out.textContent = isNaN(Nd2) ? '—' : Nd2.toFixed(4);
+      yearOut.textContent = isNaN(thetaYear) ? '—' : thetaYear.toFixed(2);
+      dayOut.textContent = isNaN(thetaYear) ? '—' : (thetaYear/365).toFixed(4);
+      noteOut.textContent = note;
+    }
+
+    fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

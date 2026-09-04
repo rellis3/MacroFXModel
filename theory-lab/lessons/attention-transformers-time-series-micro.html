@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Attention &amp; Transformers for Time Series — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Attention &amp; Transformers for Time Series — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivation, the by-hand worked example, and a 5-question self-test?<a href="attention-transformers-time-series.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Deep Learning &amp; Modern ML 2 · Deep Learning &amp; Modern ML for Trading</div>
+      <h1 class="sl-h1">Attention &amp; Transformers, <em>Without the Relay Race</em></h1>
+      <p class="sl-lede">The previous lesson's gated recurrent networks — LSTM and GRU — solved <em>most</em> of the vanishing-gradient problem, but they never solved a second, structural limitation: every hidden state still has to be computed one step after the last, in order, with the entire relevant history squeezed into one fixed-size vector along the way. This lesson introduces the mechanism that removes that constraint entirely — attention — and the architecture built around it, the Transformer, plus a named variant purpose-built for forecasting: the Temporal Fusion Transformer.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Even a gated memory cell still relays, one step at a time</h2>
+      <p class="sl-sub">This is exactly where <a href="recurrent-networks-lstm-gru.html" style="color:var(--blue)">the previous lesson</a> left off — gating fixes the gradient, not the relay.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The chain nothing can skip</div>
+        <div class="sl-row">
+          <div class="sl-box">h₁</div><div class="sl-arrow">→</div>
+          <div class="sl-box">h₂</div><div class="sl-arrow">→</div>
+          <div class="sl-box">h₃</div><div class="sl-arrow">→</div>
+          <div class="sl-box amber">h₄</div>
+        </div>
+        <div class="sl-verdict">Computing h₄ requires h₃ to already exist, which requires h₂, which requires h₁. By the time information from step 1 reaches h₄, it has been compressed and re-compressed three times over — and step 4 <strong>cannot even begin</strong> until step 3 has finished, no matter how much compute is sitting idle.</div>
+        <div class="sl-note">LSTM and GRU gates control <em>what survives</em> each compression step. They do nothing to remove the sequential dependency itself.</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📦</div><div><h4>The compression bottleneck</h4><p>Every relevant fact about the whole history so far — 60 days, 6 months, whatever the lookback is — has to be squeezed into one fixed-size hidden state. Some of it necessarily gets lost.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🐌</div><div><h4>The training bottleneck</h4><p>Step 500 cannot start until step 499 finishes. That dependency chain cannot be parallelized across time during training — a hard architectural ceiling, not a slow implementation.</p></div></div>
+      </div>
+      <div class="sl-quote">Think of it as a game of telephone: a message whispered person to person down a line arrives diluted by every retelling in between, and nobody can start relaying their part until the person before them has finished.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Attention's core idea: look directly, weigh by relevance</h2>
+      <p class="sl-sub">Instead of compressing history into one hidden state, let every prediction look back and directly score <em>every</em> past step.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">❓</div><div><h4>Query — "what am I looking for"</h4><p>The position currently making a prediction holds up a question: given what I need right now, which past steps actually matter?</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🏷</div><div><h4>Key — "what do I contain"</h4><p>Every past step offers a label describing its content, compared against the query to produce a relevance score.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📤</div><div><h4>Value — "what I'd actually contribute"</h4><p>The content itself, blended into the output in proportion to how relevant its key turned out to be.</p></div></div>
+      </div>
+      <div class="sl-row">
+        <div class="sl-box">QKᵀ</div><div class="sl-arrow">÷√dₖ</div>
+        <div class="sl-box amber">softmax</div><div class="sl-arrow">·V</div>
+        <div class="sl-box green">output</div>
+      </div>
+      <p class="sl-p">Compare the query against every key by dot product, scale the scores down (this keeps the next step's gradient well-behaved), turn them into weights that are non-negative and sum to one, then blend the values using those weights. Every past step gets scored and combined <strong>in one computation</strong> — no relay, no compounding compression, and crucially, <strong>every position's score can be computed in parallel</strong> with every other position's, which is exactly what a strictly sequential RNN cannot offer.</p>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>"Look at everyone at once" isn't free — comparing every position against every other position produces an n×n matrix of scores. For a short lookback that's trivial; for a long financial series it becomes a real cost, covered on Section 9.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Two mechanisms, side by side</h2>
+      <p class="sl-sub">Same job — combine information across a sequence — two structurally different ways of doing it.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="mech-tabs">
+          <button class="sl-tab active" data-panel="mech-1">RNN — sequential relay</button>
+          <button class="sl-tab" data-panel="mech-2">Attention — direct &amp; parallel</button>
+        </div>
+        <div class="sl-panel active" id="mech-1">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 140" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four hidden states in a straight chain, each depending only on the previous one">
+            <rect x="30" y="55" width="90" height="34" rx="8" style="fill:var(--panel2);stroke:var(--border2)"/>
+            <text x="75" y="77" text-anchor="middle" style="fill:var(--text2);font-size:12px;font-family:'DM Mono',monospace">h₁</text>
+            <line x1="120" y1="72" x2="165" y2="72" style="stroke:var(--border2);stroke-width:2"/>
+            <rect x="165" y="55" width="90" height="34" rx="8" style="fill:var(--panel2);stroke:var(--border2)"/>
+            <text x="210" y="77" text-anchor="middle" style="fill:var(--text2);font-size:12px;font-family:'DM Mono',monospace">h₂</text>
+            <line x1="255" y1="72" x2="300" y2="72" style="stroke:var(--border2);stroke-width:2"/>
+            <rect x="300" y="55" width="90" height="34" rx="8" style="fill:var(--panel2);stroke:var(--border2)"/>
+            <text x="345" y="77" text-anchor="middle" style="fill:var(--text2);font-size:12px;font-family:'DM Mono',monospace">h₃</text>
+            <line x1="390" y1="72" x2="435" y2="72" style="stroke:var(--border2);stroke-width:2"/>
+            <rect x="435" y="55" width="90" height="34" rx="8" style="fill:var(--red-bg);stroke:var(--red-bd)"/>
+            <text x="480" y="77" text-anchor="middle" style="fill:var(--red);font-size:12px;font-family:'DM Mono',monospace">h₄</text>
+            <text x="30" y="30" style="fill:var(--red);font-size:11px;font-family:'DM Mono',monospace">one hidden state, one path, in order</text>
+          </svg></div>
+          <div class="sl-verdict"><strong>One fixed-size hidden state</strong> carries everything forward. Step 4 must wait for step 3 to finish — training cannot parallelize across time.</div>
+        </div>
+        <div class="sl-panel" id="mech-2">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 140" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="One output position drawing direct lines to four input positions at once, with varying line thickness">
+            <rect x="255" y="15" width="130" height="30" rx="8" style="fill:var(--green-bg);stroke:var(--green-bd)"/>
+            <text x="320" y="35" text-anchor="middle" style="fill:var(--green);font-size:11px;font-family:'DM Mono',monospace">output (query)</text>
+            <rect x="30" y="90" width="90" height="34" rx="8" style="fill:var(--blue-bg);stroke:var(--blue-bd)"/>
+            <text x="75" y="112" text-anchor="middle" style="fill:var(--blue);font-size:12px;font-family:'DM Mono',monospace">pos 1</text>
+            <rect x="185" y="90" width="90" height="34" rx="8" style="fill:var(--blue-bg);stroke:var(--blue-bd)"/>
+            <text x="230" y="112" text-anchor="middle" style="fill:var(--blue);font-size:12px;font-family:'DM Mono',monospace">pos 2</text>
+            <rect x="340" y="90" width="90" height="34" rx="8" style="fill:var(--blue-bg);stroke:var(--blue-bd)"/>
+            <text x="385" y="112" text-anchor="middle" style="fill:var(--blue);font-size:12px;font-family:'DM Mono',monospace">pos 3</text>
+            <rect x="495" y="90" width="90" height="34" rx="8" style="fill:var(--blue-bg);stroke:var(--blue-bd)"/>
+            <text x="540" y="112" text-anchor="middle" style="fill:var(--blue);font-size:12px;font-family:'DM Mono',monospace">pos 4</text>
+            <line x1="75" y1="90" x2="300" y2="45" style="stroke:var(--purple);stroke-width:5" opacity="0.85"/>
+            <line x1="230" y1="90" x2="312" y2="45" style="stroke:var(--purple);stroke-width:1.5" opacity="0.4"/>
+            <line x1="385" y1="90" x2="328" y2="45" style="stroke:var(--purple);stroke-width:1.5" opacity="0.4"/>
+            <line x1="540" y1="90" x2="340" y2="45" style="stroke:var(--purple);stroke-width:5" opacity="0.85"/>
+          </svg></div>
+          <div class="sl-verdict"><strong>No compression, no waiting.</strong> Every position's relevance is computed directly and simultaneously — thick lines (positions 1 and 4 here) mean a higher learned attention weight.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Not every past step earns the same weight</h2>
+      <p class="sl-sub">Drag the slider to change which day is asking the question. Watch which other days it weighs most heavily.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — six trading days, one query</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 240" xmlns="http://www.w3.org/2000/svg" id="atl-svg" role="img" aria-label="Six time-step boxes in a row, with arcs from the selected query box to the other five boxes, thickness and opacity showing the attention weight on each">
+            <path id="atl-arc-0" d="M65,150 Q65,40 65,150" style="fill:none;stroke:var(--purple)"/>
+            <path id="atl-arc-1" d="M65,150 Q116,40 167,150" style="fill:none;stroke:var(--purple)"/>
+            <path id="atl-arc-2" d="M65,150 Q167,40 269,150" style="fill:none;stroke:var(--purple)"/>
+            <path id="atl-arc-3" d="M65,150 Q218,40 371,150" style="fill:none;stroke:var(--purple)"/>
+            <path id="atl-arc-4" d="M65,150 Q269,40 473,150" style="fill:none;stroke:var(--purple)"/>
+            <path id="atl-arc-5" d="M65,150 Q320,40 575,150" style="fill:none;stroke:var(--purple)"/>
+            <text id="atl-qmark" x="65" y="130" text-anchor="middle" style="fill:var(--green);font-size:11px;font-family:'DM Mono',monospace;font-weight:700">▼ query</text>
+            <g>
+              <rect id="atl-box-0" x="23" y="150" width="84" height="40" rx="8" style="stroke-width:1.5"/>
+              <text x="65" y="175" text-anchor="middle" style="font-size:12px;font-family:'DM Mono',monospace" id="atl-lbl-0">t−5</text>
+              <rect id="atl-box-1" x="125" y="150" width="84" height="40" rx="8" style="stroke-width:1.5"/>
+              <text x="167" y="175" text-anchor="middle" style="font-size:12px;font-family:'DM Mono',monospace" id="atl-lbl-1">t−4</text>
+              <rect id="atl-box-2" x="227" y="150" width="84" height="40" rx="8" style="stroke-width:1.5"/>
+              <text x="269" y="175" text-anchor="middle" style="font-size:12px;font-family:'DM Mono',monospace" id="atl-lbl-2">t−3</text>
+              <rect id="atl-box-3" x="329" y="150" width="84" height="40" rx="8" style="stroke-width:1.5"/>
+              <text x="371" y="175" text-anchor="middle" style="font-size:12px;font-family:'DM Mono',monospace" id="atl-lbl-3">t−2</text>
+              <rect id="atl-box-4" x="431" y="150" width="84" height="40" rx="8" style="stroke-width:1.5"/>
+              <text x="473" y="175" text-anchor="middle" style="font-size:12px;font-family:'DM Mono',monospace" id="atl-lbl-4">t−1</text>
+              <rect id="atl-box-5" x="533" y="150" width="84" height="40" rx="8" style="stroke-width:1.5"/>
+              <text x="575" y="175" text-anchor="middle" style="font-size:12px;font-family:'DM Mono',monospace" id="atl-lbl-5">t0</text>
+            </g>
+            <text id="atl-pct-0" x="65" y="208" text-anchor="middle" style="fill:var(--text2);font-size:11px;font-family:'DM Mono',monospace">—</text>
+            <text id="atl-pct-1" x="167" y="208" text-anchor="middle" style="fill:var(--text2);font-size:11px;font-family:'DM Mono',monospace">—</text>
+            <text id="atl-pct-2" x="269" y="208" text-anchor="middle" style="fill:var(--text2);font-size:11px;font-family:'DM Mono',monospace">—</text>
+            <text id="atl-pct-3" x="371" y="208" text-anchor="middle" style="fill:var(--text2);font-size:11px;font-family:'DM Mono',monospace">—</text>
+            <text id="atl-pct-4" x="473" y="208" text-anchor="middle" style="fill:var(--text2);font-size:11px;font-family:'DM Mono',monospace">—</text>
+            <text id="atl-pct-5" x="575" y="208" text-anchor="middle" style="fill:var(--text2);font-size:11px;font-family:'DM Mono',monospace">—</text>
+            <text x="167" y="225" text-anchor="middle" style="fill:var(--amber);font-size:10px;font-family:'DM Mono',monospace">⚡ macro release day</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Which day is the query</span><span class="sl-live" id="atl-qval">query = t0</span></div>
+        <input type="range" class="sl-slider" id="atl-slider" min="0" max="5" step="1" value="5">
+        <div class="sl-note">The weights are recomputed live from a relevance score that rewards both <strong>recency</strong> (nearby days) and <strong>event relevance</strong> — the macro-release day (t−4) keeps pulling weight toward it even when it isn't the most recent day, exactly the kind of pattern real attention weights can reveal about a trained model.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Softmax, live: turning raw scores into weights that sum to one</h2>
+      <p class="sl-sub">Four raw relevance scores for four past time steps. Softmax always produces non-negative weights that add to exactly 1.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — edit any raw score</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>score(t−3)</label><input type="number" class="sl-input" id="smx-s1" value="2.1" step="0.1"></div>
+          <div class="sl-calc-field"><label>score(t−2)</label><input type="number" class="sl-input" id="smx-s2" value="0.4" step="0.1"></div>
+          <div class="sl-calc-field"><label>score(t−1)</label><input type="number" class="sl-input" id="smx-s3" value="-0.3" step="0.1"></div>
+          <div class="sl-calc-field"><label>score(t0)</label><input type="number" class="sl-input" id="smx-s4" value="1.8" step="0.1"></div>
+          <div class="sl-calc-op">→</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Heaviest weight</div>
+            <div class="sl-calc-result-val" id="smx-top">t−3 · 49.6%</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>w(t−3) = <b id="smx-w1">0.496</b></div>
+          <div>w(t−2) = <b id="smx-w2">0.091</b></div>
+          <div>w(t−1) = <b id="smx-w3">0.045</b></div>
+          <div>w(t0) = <b id="smx-w4">0.368</b></div>
+          <div>check — weights sum to <b id="smx-sum">1.000</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="smx-reset">Reset to worked-example scores</button>
+        <div class="sl-note">Blank or non-numeric input shows "—" instead of breaking the calculation — a real attention layer never sees an undefined score, but a live calculator should never silently show NaN either.</div>
+      </div>
+      <p class="sl-p">This is the exact softmax step from Attention(Q,K,V) = softmax(QKᵀ/√dₖ)V, isolated from the dot-product and scaling steps that come before it. In the full lesson's worked example, the raw scores come from q·kᵢ scaled by √dₖ; here, you're editing already-scaled scores directly to see softmax's behavior on its own — notice how a score that's merely "close to the top" (t0 here) still keeps a substantial share, while a clearly negative score (t−1) gets pushed toward — but never all the way to — zero.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Self-attention has no sense of order — so one gets added</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Self-attention</span>
+          <p>Queries, keys, and values all come from the <strong>same</strong> sequence — every position attends to every position in that same sequence, including itself. This is the core mechanism a Transformer stacks over and over.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Positional encoding</span>
+          <p>QKᵀ is a set of pairwise dot products — swap the rows of the input and the set of scores is unchanged, just relabeled. A fixed or learned vector unique to each position is added onto each input embedding <em>before</em> attention runs, restoring the order information an RNN gets for free from its own step-by-step structure.</p>
+        </div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">A pitfall worth naming here</div>
+        <p>Forgetting positional encoding produces a model that is structurally blind to whether a large move happened yesterday or three months ago — order stops mattering at all, which defeats the entire point of applying this to a time series. And for forecasting specifically, attention also needs a <strong>causal mask</strong> so a given step can only attend to earlier steps, never later ones — without it, a model can trivially "attend to the future," producing backtest results that are pure look-ahead leakage, not a real forecast.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Multi-head attention: several relevance judgments at once</h2>
+      <p class="sl-sub">One attention computation learns one notion of "relevant." Multi-head attention runs several, in parallel, each with its own learned projections.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">1</div><div><h4>Head 1 might specialize in recency</h4><p>Learning to weigh whatever happened most recently most heavily — the closest thing to what a plain recurrent state already does.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">2</div><div><h4>Head 2 might specialize in seasonality</h4><p>Learning to weigh the same weekday, or the same point in a macro cycle, regardless of how far back it sits.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">3</div><div><h4>Head 3 might specialize in event relevance</h4><p>Learning to weigh a scheduled macro release or earnings date heavily, independent of its distance from the query — the pattern from Section 4's slider.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">＋</div><div><h4>Nothing forces this split explicitly</h4><p>Each head is independently initialized and projected, then trained side by side — specialization emerges from whatever reduces the loss most, not from an instruction to divide the labor this way.</p></div></div>
+      </div>
+      <div class="sl-quote">One friend reading a room notices who's standing close together; another notices eye contact; another notices the topic of conversation. Multi-head attention is asking several such readings for the same room at once, then combining all of them.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">The Transformer: this mechanism, stacked</h2>
+      <p class="sl-sub">A Transformer is built entirely around self-attention — stacked into layers, with two additions attention doesn't provide on its own.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>One layer, top to bottom</div>
+        <div class="sl-row">
+          <div class="sl-box">input + positional encoding</div><div class="sl-arrow">→</div>
+          <div class="sl-box amber">multi-head self-attention</div><div class="sl-arrow">→</div>
+          <div class="sl-box">feed-forward layer</div>
+        </div>
+        <div class="sl-verdict">Stack this block N times, and every position can still trace a direct, one-hop path to every other position at every layer — the "no relay" property survives however deep the stack goes.</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🧩</div><div><h4>Self-attention is the core, not an add-on</h4><p>Unlike a recurrent network with attention bolted onto it, a Transformer has no recurrence at all — attention is the only mechanism moving information between time steps.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📍</div><div><h4>Positional encoding restores order</h4><p>Added once, at the input, before the first attention layer ever runs — covered in Section 6.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">The catch: O(n²), and a reputation that doesn't automatically transfer</h2>
+      <p class="sl-sub">"Everyone compares against everyone" has a real, named cost — and a real, named temptation to misuse the model's reputation.</p>
+      <div class="sl-row">
+        <div class="sl-box">n positions</div><div class="sl-arrow">×</div>
+        <div class="sl-box">n positions</div><div class="sl-arrow">=</div>
+        <div class="sl-box amber">n² score comparisons</div>
+      </div>
+      <p class="sl-p">For a few dozen steps this is trivial. For years of daily bars, or months of intraday bars, n can be large enough that the quadratic cost becomes a genuine practical constraint — the specific problem time-series-focused variants like the Temporal Fusion Transformer and Informer exist to address.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Mandatory honest framing</div>
+        <p>Transformers are, today, genuinely the dominant architecture for large-scale sequence modeling — a well-evidenced statement about the large text and vision corpora where the architecture was developed and most thoroughly tested. It is <strong>not</strong>, on its own, evidence that a transformer will outperform a well-tuned classical model or a well-tuned LSTM on a typical individual market series, which is usually far shorter and far noisier than the datasets that made the architecture's reputation. Transformers need substantially more data and compute to realize their advantage — without enough data, a transformer's larger capacity can just as easily produce more convincing overfitting rather than a real accuracy gain. Whether a transformer earns its complexity on a specific series is an empirical question, answered only by honest, leakage-free out-of-sample comparison — never assumed from reputation in an unrelated domain.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">A named example, built for forecasting: the Temporal Fusion Transformer</h2>
+      <p class="sl-sub">Lim, Arık, Loeff &amp; Pfister, International Journal of Forecasting, 2021 — attention adapted specifically for time-series forecasting, not repurposed from language modeling.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🎛</div><div><h4>Variable-selection networks</h4><p>Dedicated components that learn which input variables matter most for a given forecast — static features, known-future inputs, and observed-past inputs are all handled through separate, purpose-built gates.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📊</div><div><h4>Full predictive distributions, not just a point forecast</h4><p>Outputs quantiles across multiple horizons at once — a range of plausible outcomes with an explicit sense of uncertainty, rather than a single number pretending to be certain.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔍</div><div><h4>Built-in interpretability</h4><p>Because attention weights are a readable artifact of the computation, the TFT exposes — deliberately, through its own dedicated components — which past time steps and which input variables a given forecast actually relied on most.</p></div></div>
+      </div>
+      <div class="sl-quote">A plain LSTM's final hidden state compresses 60 days of history into one vector with no direct record of which days mattered. An attention-based forecast's weights can say, explicitly: "day 41 and day 58 dominated this prediction, day 12 barely registered." That is genuinely useful for understanding a trained model — it is not, on its own, proof that what the model weighted constitutes real predictive edge, which stays a separate empirical question, exactly as it does for every other model in this curriculum.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What structural limitation does even a gated LSTM or GRU still have, that has nothing to do with vanishing gradients?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It must process the sequence step by step, so training can't parallelize across time</button>
+        <button class="sl-quiz-opt">It requires exactly four gates per cell</button>
+        <button class="sl-quiz-opt">It cannot run on a GPU</button>
+        <div class="sl-quiz-explain">Computing h_t requires h_{t-1} to already exist, all the way back to the start — a dependency chain no amount of compute can parallelize, gated or not.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>What replaces the step-by-step relay in an attention-based model?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Every position computes a direct, weighted comparison against every other position, all at once</button>
+        <button class="sl-quiz-opt">A single, larger hidden state that compresses history more efficiently</button>
+        <button class="sl-quiz-opt">Two recurrent passes instead of one</button>
+        <div class="sl-quiz-explain">Attention(Q,K,V) = softmax(QKᵀ/√dₖ)V — every query is scored against every key in one computation, with no step waiting on any other step's result.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Why does a Transformer need positional encoding when an RNN never did?</h4>
+        <button class="sl-quiz-opt" data-correct="true">QKᵀ's pairwise scores are unchanged by reordering the input rows — attention has no built-in sense of order</button>
+        <button class="sl-quiz-opt">Positional encoding replaces the need for keys entirely</button>
+        <button class="sl-quiz-opt">It's only needed when using more than one attention head</button>
+        <div class="sl-quiz-explain">An RNN's step-by-step structure encodes order for free. Attention compares positions directly and in parallel, so order has to be added back in explicitly, before the first attention layer runs.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>What does the softmax step in scaled dot-product attention guarantee?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The resulting weights are non-negative and sum to exactly 1 for each query</button>
+        <button class="sl-quiz-opt">The resulting weights are all equal, regardless of the input scores</button>
+        <button class="sl-quiz-opt">The output values get rescaled to lie between −1 and 1</button>
+        <div class="sl-quiz-explain">Softmax turns any vector of raw scores into a proper weighting — never negative, always summing to one — which is exactly what lets the next step blend the value vectors as a weighted average.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>What does the Temporal Fusion Transformer add specifically for forecasting, beyond plain self-attention?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Variable-selection networks, multi-horizon predictive distributions, and deliberate interpretability of which steps/features mattered</button>
+        <button class="sl-quiz-opt">It removes the O(n²) attention cost entirely</button>
+        <button class="sl-quiz-opt">It replaces attention with a purely recurrent mechanism</button>
+        <div class="sl-quiz-explain">The TFT (Lim et al., 2021) combines attention with recurrent layers and purpose-built variable-selection gating for interpretable, multi-horizon, distributional forecasts. Reducing the O(n²) cost is Informer's contribution (Zhou et al., 2021), a different named variant.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>LSTM and GRU still process a sequence strictly step by step, compressing all relevant history into one fixed-size hidden state — a genuine bottleneck, and training can't parallelize across time steps.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Attention(Q,K,V) = softmax(QKᵀ/√dₖ)V lets every position directly compare against and weigh every other position at once — no compression, and every comparison can run in parallel during training.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Self-attention applies this within one sequence; multi-head attention runs several independently-projected comparisons in parallel so different heads can specialize.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Attention has no built-in sense of order — positional encoding restores it, and forecasting specifically also requires a causal mask so a step can't attend to the future.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The direct cost of "everyone compares against everyone" is O(n²) in sequence length — the reason time-series-specific variants like the Temporal Fusion Transformer and Informer exist.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>A transformer's dominance in NLP and vision needs far more data and compute to earn that edge — never assume it transfers to a short, noisy market series without testing it, out-of-sample, against a well-tuned simpler baseline.</p></div>
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">What this now lets you do</div>
+        <p>Read a causal, attention-based forecast's weights the way the Temporal Fusion Transformer is built to expose them — which past days or features a prediction actually relied on, not just what it predicted. Recognize when the O(n²) cost of full attention is a real constraint, and know that time-series-specific architectures exist precisely to address it. And most importantly, treat "transformers are state of the art" as a fact about NLP and vision benchmarks, not a substitute for testing the architecture, honestly and out-of-sample, on the specific series in front of you.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Regularized Regression: LASSO &amp; Ridge</h3>
+        <p>Why shrinking coefficients toward zero can beat plain OLS when predictors are numerous or collinear — and why LASSO's diamond-shaped constraint zeroes coefficients outright while Ridge's circle only shrinks them.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="regularized-regression-lasso-ridge-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="attention-transformers-time-series.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Attention-weight heatmap: slider picks which of six time steps is the
+  // "query"; weights over the other five are recomputed live via softmax of
+  // a synthetic relevance score that rewards both recency and a fixed
+  // "event" step (index 1, t-4), so the visualization tells a real story —
+  // not just "closest wins."
+  (function(){
+    var slider = document.getElementById('atl-slider');
+    if (!slider) return;
+    var qval = document.getElementById('atl-qval');
+    var N = 6;
+    var EVENT_IDX = 1;
+    var LABELS = ['t−5','t−4','t−3','t−2','t−1','t0'];
+    var centers = [65, 167, 269, 371, 473, 575];
+    var boxes = [], pcts = [], arcs = [];
+    for (var i = 0; i < N; i++) {
+      boxes.push(document.getElementById('atl-box-' + i));
+      pcts.push(document.getElementById('atl-pct-' + i));
+      arcs.push(document.getElementById('atl-arc-' + i));
+    }
+    var qmark = document.getElementById('atl-qmark');
+
+    function score(q, k) {
+      return -0.4 * Math.abs(q - k) + (k === EVENT_IDX ? 1.6 : 0);
+    }
+
+    function weightsFor(q) {
+      var ks = [], raw = [];
+      for (var k = 0; k < N; k++) { if (k === q) continue; ks.push(k); raw.push(score(q, k)); }
+      var m = Math.max.apply(null, raw);
+      var exps = raw.map(function(s){ return Math.exp(s - m); });
+      var sum = exps.reduce(function(a,b){ return a+b; }, 0);
+      var out = {};
+      ks.forEach(function(k, i){ out[k] = exps[i] / sum; });
+      return out;
+    }
+
+    function render(){
+      var q = parseInt(slider.value, 10);
+      qval.textContent = 'query = ' + LABELS[q];
+      var w = weightsFor(q);
+
+      qmark.setAttribute('x', centers[q]);
+
+      for (var i = 0; i < N; i++) {
+        var isQuery = (i === q);
+        boxes[i].style.fill = isQuery ? 'var(--green-bg)' : 'var(--blue-bg)';
+        boxes[i].style.stroke = isQuery ? 'var(--green-bd)' : 'var(--blue-bd)';
+        var lbl = document.getElementById('atl-lbl-' + i);
+        lbl.style.fill = isQuery ? 'var(--green)' : 'var(--blue)';
+
+        if (isQuery) {
+          pcts[i].textContent = 'query';
+          pcts[i].style.fill = 'var(--green)';
+          arcs[i].style.opacity = 0;
+        } else {
+          var wt = w[i];
+          pcts[i].textContent = Math.round(wt * 1000) / 10 + '%';
+          pcts[i].style.fill = 'var(--text2)';
+          var midx = (centers[q] + centers[i]) / 2;
+          var arcHeight = 40;
+          arcs[i].setAttribute('d', 'M' + centers[q] + ',150 Q' + midx + ',' + arcHeight + ' ' + centers[i] + ',150');
+          arcs[i].style.opacity = 0.22 + wt * 0.7;
+          arcs[i].style.strokeWidth = (1.5 + wt * 20).toFixed(2);
+        }
+      }
+    }
+
+    slider.addEventListener('input', render);
+    render();
+  })();
+
+  // Softmax calculator — four editable raw scores, live weights that sum to 1.
+  (function(){
+    var s1 = document.getElementById('smx-s1');
+    if (!s1) return;
+    var s2 = document.getElementById('smx-s2'), s3 = document.getElementById('smx-s3'), s4 = document.getElementById('smx-s4');
+    var w1 = document.getElementById('smx-w1'), w2 = document.getElementById('smx-w2'), w3 = document.getElementById('smx-w3'), w4 = document.getElementById('smx-w4');
+    var sumEl = document.getElementById('smx-sum');
+    var topEl = document.getElementById('smx-top');
+    var resetBtn = document.getElementById('smx-reset');
+    var LABELS = ['t−3', 't−2', 't−1', 't0'];
+    var DEFAULTS = { s1: 2.1, s2: 0.4, s3: -0.3, s4: 1.8 };
+
+    function blank(){
+      w1.textContent = w2.textContent = w3.textContent = w4.textContent = '—';
+      sumEl.textContent = '—';
+      topEl.textContent = '—';
+    }
+
+    function recompute(){
+      var v1 = parseFloat(s1.value), v2 = parseFloat(s2.value), v3 = parseFloat(s3.value), v4 = parseFloat(s4.value);
+      if (!isFinite(v1) || !isFinite(v2) || !isFinite(v3) || !isFinite(v4)) { blank(); return; }
+      var raw = [v1, v2, v3, v4];
+      var m = Math.max.apply(null, raw);
+      var exps = raw.map(function(v){ return Math.exp(v - m); });
+      var sum = exps.reduce(function(a,b){ return a+b; }, 0);
+      var w = exps.map(function(e){ return e / sum; });
+
+      w1.textContent = w[0].toFixed(3);
+      w2.textContent = w[1].toFixed(3);
+      w3.textContent = w[2].toFixed(3);
+      w4.textContent = w[3].toFixed(3);
+      sumEl.textContent = (w[0]+w[1]+w[2]+w[3]).toFixed(3);
+
+      var bestIdx = 0;
+      for (var i = 1; i < 4; i++) { if (w[i] > w[bestIdx]) bestIdx = i; }
+      topEl.textContent = LABELS[bestIdx] + ' · ' + (Math.round(w[bestIdx]*1000)/10) + '%';
+    }
+
+    [s1, s2, s3, s4].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      s1.value = DEFAULTS.s1; s2.value = DEFAULTS.s2; s3.value = DEFAULTS.s3; s4.value = DEFAULTS.s4;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

@@ -38,7 +38,16 @@ function makeR2Client() {
     endpoint: R2_ENDPOINT,
     region: 'auto',
     credentials: { accessKeyId, secretAccessKey },
-    requestHandler: { connectionTimeout: 10_000 },
+    // connectionTimeout alone only bounds handshake time -- a stalled/slow
+    // response body stream (e.g. a large parquet mid-transfer) had NO bound
+    // at all, so transformToByteArray() could hang indefinitely with no
+    // timeout ever catching it. Found investigating a fib_atlas_bot cold-start
+    // permanently stuck at "warming" (2026-09-01) -- a hung R2 fetch inside
+    // coldStartLiveCache would leave that pair's liveWarming flag set forever
+    // (the finally block that clears it never runs if the promise never
+    // settles), silently occupying one of the 3 concurrent cold-start slots
+    // for good. 120s matches the Google Drive fallback's own timeout below.
+    requestHandler: { connectionTimeout: 10_000, requestTimeout: 120_000 },
   });
 }
 

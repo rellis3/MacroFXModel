@@ -5510,3 +5510,698 @@ P0 cross-language unification
 **Not yet built (deliberate next steps, per `MVE_RUN_GUIDE.md` §7):** dashboard wiring
 (signal score / entry scanner / AI summary — the opt-in `signalAdapter` shows the blend),
 and OOS proof on real feeds before any real capital. The live endpoint is surfacing-only.
+
+### 1ar. Market Outlook engine (2026-09-02, v2 through v5 same day) — 5-day/20-day per-pair context composite + horizon toggle + macro-momentum legs + AI-analysis integration + all-asset-class coverage
+
+Owner request: fold everything the dashboard already reads per pair — the
+composite technical/COT/macro/carry read, COT positioning, the vol-regime
+building/cooling read, and the yield-spread z-score family (the one component
+in this repo with a real OOS result, `YIELD_SPREAD_STRATEGY.md`) — into a
+5-day / 20-day directional outlook, with a page-level toggle to switch the
+per-pair view between Daily / 5-Day / 20-Day, alongside a global
+bullish/neutral/bearish summary across the board. Deliberately built as a
+**composition of already-computed reads**, not a new signal: the only new
+network call is one cached fetch of `/api/yield-spread/plan`, and the engine
+inherits `§1am`'s pair-composite output rather than recomputing legs.
+
+**v2 same-day revision**, prompted by the owner's own worry that the v1 macro
+leg was a *level* snapshot (today's macro-scorecard/carry state) when a
+multi-week horizon calls for *momentum* (which way the backdrop has been
+moving). An audit of the repo's Fed/macro data surface found the fix needed
+**zero new fetches**: `js/macroChange.js`'s `/api/macro-changes` (DXY/VIX/HY
+1d/5d/20d deltas) was already loaded into `today.html` as `macroMoved` and
+used only for a decorative "what moved" list. Two new drivers wire it into
+the bias score instead, matched to the horizon by picking the 5d delta for
+`'weekly'` and the 20d delta for `'monthly'` — the delta window itself does
+most of the horizon-adaptation, the leg-weight table just tilts a bit further
+the same direction. **Deliberately excluded: central-bank hawkish-score
+momentum.** The audit also surfaced `MD files/CB_SENTIMENT_PRICE_TEST.md` — a
+pre-registered, already-run test of exactly this hypothesis (does ΔhawkishScore
+predict next-day/week price beyond the initial 30-minute reaction) — banked a
+clean null on both registered cells (R1~Δscore t=-0.75 N=81; Stage-1 drift
+t=0.32 N=82). Adding it here would re-litigate a falsified test, so it isn't a
+recognized input at all (tested: `js/outlookEngine.test.mjs`'s "CB sentiment
+is NOT a recognized input" case).
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **Outlook engine** | `js/outlookEngine.js` | `computeOutlook(inputs, horizonKey)` — takes `{composite, yieldSpread, volRegime, cot, events, dxyMomentum, riskMomentum, realYieldMomentum, priceTrend}` (each optional, missing legs left out never zeroed, same convention as `pairComposite`; `realYieldMomentum` added v5 — see that addendum) and a horizon key from the re-exported `forecastCore.HORIZONS` (`'weekly'`=5-day, `'monthly'`=20-day), returns `{bias, biasScore, confidence, agree, total, drivers[], eventRisk, disclaimer}`. Each driver carries a `VALIDATED`/`CONTEXT` status — only the yield-spread leg is `VALIDATED` (with the USDJPY-sign caveat from `js/yieldSpreadEngine.js`'s own header note); the vol-regime driver never sets `biasScore`, only `confidence`. **New drivers (v2):** `dxyMomentumDriver` (DXY's window-selected delta, signed by whether USD is this pair's base or quote — absent for USD-free crosses) and `riskMomentumDriver` (VIX+HY-OAS window-selected deltas, signed by the new `pairRiskLean(base, quote)` helper against the new `CCY_RISK_LEAN` table — a small, standard, hand-set FX haven/risk-currency classification, USD/JPY/CHF haven +1, AUD/NZD/CAD risk -1, EUR/GBP neutral 0; absent for neutral-vs-neutral pairs like EURGBP). Both tagged `CONTEXT` — untested hypotheses, explicitly distinct from the banked-null CB-sentiment claim (see above). Per-horizon leg weights are a small hand-set table (not fitted — CLAUDE.md "the brain is a selector, not more knobs"): yield-spread/dxyMomentum/riskMomentum/cot weighted up at 20d, composite/vol-regime weighted toward 5d. Confidence also falls when a high-impact event sits inside the horizon window. Pure, no DOM/network/globals. `computeOutlookAllHorizons(inputs)` convenience wrapper for both horizons at once. Unit-tested `js/outlookEngine.test.mjs` (30 cases: the original 17 plus `pairRiskLean` sign checks, dxy/risk-momentum driver presence/absence/sign/window-selection, and the CB-sentiment exclusion guard). | `today.html` (module → `window.outlookBrick`, same pattern as `window.pairCompositeBrick`) | ✅ built + unit-tested — **context composite, not a validated predictive signal**, same posture as §1am; the yield-spread leg is the one exception, tagged accordingly |
+| **today.html: horizon toggle + outlook chip + drawer section + sidebar summary** | `today.html` (`outlookInputsFor`, `pairOutlook`, `pairOutlookBoth`, `outlookChip`, `renderDrawerOutlook`, `setOutlookHorizon`, `_macroMovedByKey`) | A Daily/5-Day/20-Day pill toggle (`#outlookHzBar`, sibling of `#commandHub` — not folded into `js/commandHub.js` since that file is shared with pages this feature doesn't apply to) persisted to `localStorage` (`outlookHorizon`, same pattern as `rateStatTab`). Daily = the page's existing reads, no overlay. 5-Day/20-Day add a `🔭 Weekly/20-Day bullish/bearish/neutral · confidence%` chip to `pairChipsHtml` (after the existing `⚖` composite chip) and drive a new "🔭 Market Outlook" drawer section (`drOutlookSec`, in the Read tab) showing BOTH horizons side by side with the full driver breakdown, regardless of the global toggle. The sidebar's "Market Outlook" card (after "Volatility Outlook") always shows bullish/neutral/bearish counts for both horizons across the whole board — the "global" view, not gated by the toggle. `loadGate()` gained one new cached fetch (`/api/yield-spread/plan` → `yieldSpreadPlan`, keyed by `js/zscoreSpreadEngine.js`'s lower-cased `ZSCORE_PAIRS` keys — 6 pairs only, everything else has no yield-spread leg). `outlookInputsFor` builds `dxyMomentum`/`riskMomentum` from the already-loaded `macroMoved` (no new fetch) + `PAIR_CCY`'s base/quote lookup. | `cardHtml`→`pairChipsHtml`, `openDrawer`→`renderDrawerOutlook`, `renderSidebar` | ✅ built; verified end-to-end (chip render, horizon switch, drawer breakdown incl. the new momentum drivers, sidebar tally) with synthetic data via headless Chromium — no live OANDA/FRED path in the sandbox |
+
+**Audit of what else is available but unused** (full findings kept in the PR
+discussion, not duplicated here): central-bank tone TREND (`/api/fomc/history`
+etc. — the multi-meeting hawkish trajectory, distinct from the single latest
+score `/api/macro-scorecard` already folds in) reaches nowhere beyond its own
+banked-null test above; the Global Liquidity Index (`js/globalLiquidityEngine.js`,
+`global-liquidity.html` — level/impulse/cycle regime + FX ranking) is used
+**only** on its own page, never reaching `today.html` at all — a real gap,
+untested either way, deferred as a larger follow-up (needs a currency-ranking
+mapping, not a drop-in driver); the 8-currency `/api/real-yield` engine only
+reaches `today.html` via its already-blended macro-scorecard dim, never as a
+raw per-leg BEER-lite carry input — also deferred. GPR, credit (`creditCore`/
+`creditHmm`), and the Fed/ECB/BoJ balance-sheet liquidity GATE (distinct,
+smaller thing from the GLI above) were checked and are already live/rendered
+in `today.html` — not a gap.
+
+**v3 same-day addendum** — three more owner asks, addressed in order:
+
+1. **"Does candle shape / slope belong in this?"** Yes, cheaply — the HMM
+   daily regime (`r.d.regime.trend_dir`/`trend_prob`/`reliable`) is already
+   loaded for every pair, zero new fetches, and is exactly "is price sloping,
+   how cleanly." Added as `priceTrendDriver` (CONTEXT, absent for a RANGE
+   regime). **Named risk, not hidden:** this same regime read already feeds
+   `pairSignal()`'s "technical" leg inside the `composite` driver, so this is
+   NOT fully independent evidence — the driver's own `detail` text says so
+   explicitly, rather than silently double-counting one read as two.
+   Weighted DOWN at 20d (same reasoning as `composite`: a same-day regime
+   read says more about the next few sessions than a month out).
+2. **Central-bank tone (Fed/ECB/BoE/BoJ), delivered end-to-end.** `loadGate()`
+   now fetches `/api/{fomc,ecb,boe,boj}/history?n=6` (small, cached). New
+   `describeCbTrend(history)` in `js/outlookEngine.js` summarizes the
+   multi-meeting hawkish/dovish trajectory in plain words — **structurally
+   NOT a driver**: no `score` field, never read by `computeOutlook`, unit-
+   tested to prove attaching a CB-trend object under any input key changes
+   nothing about the computed bias (banked-null discipline enforced in code,
+   not just by convention — see the null test in §1's own file header for
+   why). Rendered in the drawer's Outlook section in its own visually
+   separate block ("context only — not scored") via `cbToneFor(r)`, and fed
+   to the AI prompt as descriptive color the model is explicitly told never
+   to use as a reason for any call.
+3. **5-day/20-day output in the AI analysis** (`server.js buildAnalysisPrompt`,
+   `/api/analysis`). `assembleSnapshot` now feeds the AI the ALREADY-COMPUTED
+   `outlookWeekly`/`outlookMonthly` (bias/confidence/drivers) as ground truth
+   — new prompt rule 19 has the model narrate those numbers, not re-derive
+   its own, and a new rule states plainly that the daily/weekly/monthly reads
+   may diverge and the model must explain divergence rather than force false
+   consensus. New schema fields `weeklyOutlook`/`monthlyOutlook`
+   (`{bias, confidence, rationale}` — no entry/stop/target, a position read
+   not a trade setup). **Refresh-cadence design:** the underlying drivers
+   move far slower than daily technicals, so `today.html`'s `analysePair()`
+   now keeps the OLD cached weekly/monthly narrative (+ its own timestamp)
+   when it's still within a TTL (~1 day weekly, ~5 days monthly), discarding
+   the model's freshly-generated one for that call — documented v1 tradeoff:
+   the model still writes fresh weekly/monthly prose every call and it gets
+   thrown away when the cache is fresh, rather than standing up a second,
+   independently-triggered AI call (the cleaner design, deferred — building a
+   second live Anthropic pipeline blind, with no `ANT_KEY` in this sandbox to
+   verify it against, was judged the wrong place to add risk). Verified via
+   Playwright with a mocked `/api/analysis` response: three consecutive calls
+   showed the weekly text held constant across an immediate re-click, then
+   refreshed independently of monthly once its own TTL was artificially aged
+   past expiry — the splice logic behaves exactly as designed.
+
+New/changed since v2: `js/outlookEngine.js` (`priceTrendDriver`,
+`describeCbTrend`, +12 tests, 42 total — see v5 addendum below for the +4
+bringing this to 46), `today.html` (`cbHistory` fetch,
+`cbToneFor`, `analysePair`'s splice cache, `loadDrawerAnalysis`'s new
+weekly/monthly cards), `server.js` (`buildAnalysisPrompt`'s new sections/rule
+19, the JSON schema's two new fields — **not live-tested end-to-end**: this
+sandbox has no `ANT_KEY`, so the actual model output needs a live Railway
+check before trusting the prose quality, same as every prior AI-prompt change
+in this repo).
+
+**v4 addendum (2026-09-02)** — two gaps the owner found from the live Railway
+deploy (first real screenshots of this feature), both real, not cosmetic:
+
+1. **The Daily/5-Day/20-Day toggle changed nothing at the global/currency
+   level.** It only ever fed `outlookChip()` (the per-card chip) and the
+   sidebar's small bullish/neutral/bearish tally — the page's actual
+   "global" reads (Market Read headline, the Market Tone currency-strength
+   gauge, the macro-moved list) all stayed on `currencyStrength()`, which is
+   hard-wired to today's tape (`pairSignal`) and has no horizon concept at
+   all. Fixed with a genuinely new function, not a retrofit of the existing
+   one (`currencyStrength()`'s 6 existing call sites are all correctly
+   daily-only and were left untouched): `outlookCurrencyStrength(rs,
+   horizonKey)` (`today.html`) mirrors its exact aggregation shape
+   (base-favored-positive, quote-negative, averaged per currency) but sources
+   from each pair's `pairOutlook(r, horizonKey).biasScore` instead of
+   `pairSignal(r)` — same missing-leg discipline (a pair contributes only if
+   `PAIR_CCY` covers it and the horizon call returns a score). Rendered as a
+   new per-currency ranked strength row in the sidebar's "🔭 Market Outlook"
+   card for both horizons, alongside the existing tally — the first place on
+   the page where flipping the pill changes which currency reads strong/weak,
+   not just a per-pair chip. Deliberately scoped here, not into the Market
+   Tone gauge or Market Read headline (both daily-only reads on this page by
+   design; retrofitting them was judged a bigger, separate UX decision than
+   this fix, not requested).
+2. **Gold's per-pair Outlook was thin** — a live screenshot showed both
+   horizons reading NEUTRAL at 5% confidence off a single COT driver, because
+   `GOLD` isn't in `PAIR_CCY` (the FX base/quote table `dxyMomentumDriver`/
+   `riskMomentumDriver`'s sign inputs are built from), so it silently got
+   NEITHER of them — a real gap, not a deliberate omission (unlike the
+   yield-spread leg, which correctly has no gold entry because no such model
+   exists for gold). Fixed with a small explicit `ASSET_USD_SIDE`/
+   `ASSET_RISK_LEAN` table in `today.html` (`{GOLD: 'quote'}` / `{GOLD: 1}` —
+   USD-quoted, classic risk-off haven, same +1 convention as
+   `CCY_RISK_LEAN`'s own havens) consumed by `outlookInputsFor` as a fallback
+   when `PAIR_CCY` has no entry. Equity indices (NQ/SPX500/US30/US2000/DE30/
+   UK100) are deliberately NOT extended the same way — their dollar/risk
+   relationship is a materially different, contestable claim (growth-driven,
+   not haven-driven) nobody asked to reason through here; better left on
+   COT-only than guessed at.
+
+Verified live-shaped in headless Chromium: a synthetic Gold instrument now
+carries both `dxyMomentum`/`riskMomentum` drivers with correctly-signed
+detail text; a 6-pair synthetic FX book renders a real ranked currency-
+strength row (`USD +12`, `JPY -10`, …) with hoverable per-currency pair
+lists, matching `currencyStrength()`'s own tooltip convention.
+
+Same evidentiary status as §1am/§1aj: a *selector* composing already-built
+reads, shipped with an in-UI disclaimer rather than a performance claim. If
+ever promoted toward a real forecast, pre-register the benchmark (does the
+5-day/20-day bias beat a naive baseline, OOS, per pair) before running it —
+same discipline every prior composite in this registry asks for.
+
+**v5 addendum (2026-09-02)** — owner ask: "this needs to work for all FX, gold
+and indices, based on the best-case data we have or free data we could go
+get." Audited what each of the 26 FX pairs / Gold / 6 equity indices
+(NQ/SPX500/DE30/US30/US2000/UK100) actually gets fed into `computeOutlook`,
+using only data already loaded into `today.html`. Found and fixed one real
+bug and added one new leg; also inventoried the genuine remaining gaps rather
+than guessing at them.
+
+1. **The composite driver silently went null for anything outside the 26 FX
+   crosses — the single biggest gap.** `pairSignalComposite(r)` bailed out
+   entirely (`if (!cc) return null`) before computing ANYTHING for Gold or any
+   index, even though its `technical` leg (`pairSignal(r)`) and `cot` leg
+   (`r.ct`) both already work for any row — only the `macro`/`carry` legs
+   genuinely need a `PAIR_CCY` base/quote pair. This starved `composite` (the
+   Outlook Engine's heaviest-weighted leg, 1.0 at weekly) from Gold and every
+   index that has COT (NQ/SPX500/US30/US2000), and meant their AI-analysis
+   snapshot (`assembleSnapshot`'s `s.pairComposite`) carried nothing either.
+   Fixed by computing `macroScore`/`carryScore` only when `cc` exists,
+   letting `technical`+`cot` populate regardless — `pairComposite`'s own
+   "missing leg left out" discipline (unchanged, see `js/pairCompositeEngine.js`)
+   does the rest. Zero behavior change for the 26 FX pairs (`cc` was always
+   truthy there); DE30/UK100 (no COT either) now get a technical-only
+   composite instead of null — still below the `total < 2` chip-display
+   threshold at all 3 existing call sites, so no visual regression, just no
+   longer silently discarding the technical leg that WAS available.
+2. **New leg: `realYieldMomentum`** (`js/outlookEngine.js`) — US real 10Y
+   (TIPS) yield rate-of-change, read from `macroMoved`'s already-fetched
+   `tips` row (zero new fetch, same source `dxyMomentum` already reads).
+   Textbook, comparatively uncontestable relationship: rising real yields
+   raise the opportunity cost of a non-yielding asset (gold) and the discount
+   rate on future cash flows (equities) — a DIFFERENT, better-established
+   claim than the dollar-flow-vs-earnings ambiguity that keeps `dxyMomentum`
+   excluded from indices below. Sign convention deliberately reuses
+   `dxyMomentum`'s own resolved `usdSide` for FX pairs and Gold (same
+   relationship, same sign), so those need no new lookup table at all; only
+   the equity indices — which have no USD side — get a small new one,
+   `ASSET_REALYIELD_LEAN` (`today.html`, -1 for every tracked index). Tagged
+   CONTEXT, untested, same posture as every other momentum leg. Weighted like
+   `dxyMomentum` in `HORIZON_WEIGHTS` (a bit more at 20d). 4 new test cases in
+   `js/outlookEngine.test.mjs` (46 total): presence/absence by lean sign,
+   window selection at each horizon, zero-lean exclusion.
+3. **Equity indices now get `riskMomentum` too**, via `ASSET_RISK_LEAN`
+   extended to `{NQ:-1, SPX500:-1, DE30:-1, US30:-1, US2000:-1, UK100:-1}`
+   (Gold's existing `+1` unchanged). This is NOT a new claim invented for this
+   engine — it is the exact same "risk-on backdrop bullish for this
+   instrument" read already hardcoded for every one of these six in the
+   pre-existing `RISK_LEAN` table (`today.html`, used by `thesisFor`'s trade-
+   thesis scorecard), just re-signed onto this engine's opposite-facing
+   `netLean` axis ("+1 = benefits from risk-OFF"). Two independently-named,
+   independently-maintained tables agreeing on the same real-world relation
+   is the closest thing to "established" this repo has for equities' risk
+   character — a materially different bar than v4's earlier blanket "leave
+   indices alone, it's contestable" call, which conflated this well-worn risk
+   -on/off read with the genuinely murkier dollar/earnings one below.
+4. **Still deliberately excluded, and why (not an oversight):**
+   - **`dxyMomentum` for indices** — a stronger dollar's net effect on index
+     earnings/multiples can point either way (FX-translation drag on
+     multinational earnings vs. domestic-demand-driven flows) and this repo
+     hasn't reasoned through or tested which dominates; left out rather than
+     guessed at.
+   - **`yieldSpread` for Gold/indices** — inherent to the model, not a gap:
+     the engine mean-reverts a two-currency yield spread, and neither asset
+     has a second currency to spread against.
+   - **COT for DE30/UK100** — no CFTC-listed future exists for either index
+     (unlike NQ/SPX500/US30/US2000), and neither the Bundesbank/Eurex nor
+     ICE/LSE publish a free, machine-readable weekly z-score/percentile
+     positioning feed this repo could plug into `COT_MAP` the same way. A
+     genuine, checked data gap — not something to fake with a proxy.
+   - **Foreign real yields, for a true FX real-rate DIFFERENTIAL** (rather
+     than the one-sided US-TIPS-only lean above) — FRED does carry some
+     non-US index-linked/real-yield series (e.g. UK/Canada), patchily and
+     unverified for coverage/reliability; a genuine "bonus data, free,
+     not yet gone and got" candidate, deferred rather than half-built without
+     checking series availability/history depth first.
+   - **Equity risk premium (index earnings yield vs. 10Y bond yield, the
+     classic "Fed model")** for indices — would need forward/trailing EPS
+     data this repo has no free feed for; flagged as a real, larger candidate
+     for a future session, not attempted here.
+
+Validated: `node --check` on `js/outlookEngine.js` and the extracted
+`today.html` inline scripts; `node js/outlookEngine.test.mjs` — 46/46 passing;
+a standalone `pairComposite({technical, cot})`-only call (Gold/NQ's actual
+shape) confirmed `total:2`, clearing the `total < 2` chip/AI-snapshot
+threshold at all 3 call sites with no changes needed there. No live
+Railway/OANDA path in this sandbox to confirm the rendered chip/drawer visually
+— same standing caveat as every prior revision of this feature.
+
+**v6 addendum (2026-09-02)** — the owner posted a colleague's much richer
+gold morning-brief artifact and asked, directly: is any of that data missing
+from this system, or just unused? Audited every line of it against this
+repo's actual code (not memory) before answering. Confirmed already-present-
+and-richer: DXY, nominal/real 10Y (TIPS), breakevens, full COT (this repo's
+z/pctile/wkChg/raw-contracts read is more detailed than the brief's own COT
+line), the entire options/OI/gamma stack (`buildAnalysisPrompt`'s OI section
+already exceeds the brief's), VIX+term structure, HY OAS, 2s10s, SOFR/RRP,
+**Fed net liquidity** (`fedNetLiquidityLeg`, WALCL−TGA−RRP — already computed,
+just not labelled this way in the UI), GPR, the forecast expected-range bands,
+and live headlines (the general morning-brief builder already fetches Yahoo
+headlines for narrative grounding). Confirmed four genuine, code-verified
+gaps: gold ETF flows, central-bank gold buying (WGC), Fed hike/cut odds
+(CME FedWatch-style), and stock-bond correlation (the lesson's own 5th risk
+flag, already flagged absent in this exact file's comment). Owner said build
+whichever are useful; asked the owner which of the two hardest (CB buying,
+FedWatch odds — both genuinely have no clean free path: WGC data is
+quarterly-PDF-only, FedWatch needs paid futures pricing) to skip vs. revisit
+— chose **skip for now, revisit later** for both, rather than fake a proxy
+(CLAUDE.md: "don't run a lookalike and call it the thing"). Built the other
+two:
+
+1. **Stock-bond correlation — added as a 6th flag in `computeRiskFlags()`**
+   (`server.js`). SPY/TLT are already fetched live elsewhere in this file
+   (`fetchYahooOHLC`, `/api/diversification/data`) — reused directly rather
+   than adding a new fetch path. Rolling 20-obs daily-return correlation via
+   `js/statsCore.js`'s `spearman()` (imported, not re-implemented — rank
+   correlation is also more outlier-robust than Pearson for this). Flag fires
+   on `corr > 0` (zero-crossing, no fitted constant — the traditional hedge
+   is negative, so a positive reading is the anomaly, same reasoning as the
+   existing `vix_term` flag's own ratio ≥ 1.0 crossing point). `active`/
+   `level` thresholds (3+/2 of N) were NOT re-tuned for the new N=6 — same
+   absolute-count convention already used when `evz_stress` (a 5th flag
+   beyond the lesson's original 4) was added previously. No consumer
+   (`s.riskFlags`, `renderRiskFlags()`) hardcodes a flag count — both already
+   iterate the array generically, so this needed zero further wiring.
+2. **Gold ETF flow (GLD+IAU combined AUM)** — a real, code-confirmed gap (this
+   repo only ever fetched GLD's *price*, for an unrelated correlation
+   dataset, never fund AUM/flow). **UNVERIFIED IN SANDBOX**, flagged loudly in
+   code: `query1/query2.finance.yahoo.com` is unreachable from this dev
+   sandbox (same restriction already documented for `fetchYahooOHLC`), so the
+   exact Yahoo `quoteSummary` field parse (`defaultKeyStatistics.totalAssets`,
+   with `summaryDetail.totalAssets`/`price.marketCap` fallbacks) could not be
+   confirmed against a live response — chosen over scraping SPDR's/iShares'
+   own sites specifically because it reuses an ALREADY-proven-live domain
+   (`fetchYahooOHLC`'s own `query1.finance.yahoo.com`) rather than adding two
+   entirely new, equally-unverifiable external domains with their own
+   undocumented CSV formats. No vendor-hosted flow *history* is fetched
+   either way (funds publish current holdings, not a time series) — instead
+   `server.js`'s `_goldEtfFlowSeries` fetches TODAY's combined AUM once a day
+   and keeps its own running history in KV (`gold_etf_flow_history`, added to
+   `kv.js`'s `isCfKey()` persistent-prefix list — a missed day cannot be
+   recovered later, same reasoning as `fomc_`/`vmlog_`), then reuses
+   `js/macroChange.js`'s `seriesDeltas` (imported, not copied) for 1d/5d/20d
+   deltas, converted to a **percent** basis (not raw $) so the read doesn't
+   need re-tuning as the funds' AUM grows over time. New `goldEtfFlowDriver`
+   in `js/outlookEngine.js` — **GOLD-ONLY**, no FX-pair or index equivalent
+   (no other tracked instrument has an "ETF" the same way): inflow (rising
+   AUM) reads bullish, outflow bearish, `/8` divisor (8% over the window =
+   full-scale) is a small round non-fitted constant, sanity-checked against a
+   synthetic gentle-uptrend series (+7.1%/20d) landing well short of
+   saturating. Reaches the AI prompt for free through the EXISTING
+   `outlookWeekly`/`outlookMonthly` trimmed-driver mechanism (no new snapshot
+   field needed — the driver's own `label`/`status`/`detail` already flow
+   through `assembleSnapshot`→`buildAnalysisPrompt` the same way every other
+   driver does) and the drawer's generic `o.drivers.map(...)` render (same,
+   zero extra wiring).
+
+New/changed: `js/outlookEngine.js` (`goldEtfFlowDriver`, `HORIZON_WEIGHTS`
+entry, +4 tests, 50 total), `js/outlookEngine.test.mjs`, `today.html`
+(`goldEtfFlow` state var + `loadGate()` fetch + `outlookInputsFor`'s
+gold-only field), `server.js` (`_stockBondCorr`, `computeRiskFlags`'s new
+flag, `_fetchYahooFundAum`/`_goldEtfFlowSeries`/`/api/gold-etf-flow`, two new
+imports from `js/statsCore.js` and `js/macroChange.js`), `kv.js`
+(`gold_etf_flow_` persistent-prefix rule).
+
+Validated: `node --check` on `server.js`, `kv.js`, `js/outlookEngine.js`, and
+the extracted `today.html` inline scripts; `node js/outlookEngine.test.mjs` —
+50/50 passing. Sanity-traced both new math paths on synthetic data outside
+the test suite: `seriesDeltas` + percent-conversion on a synthetic 30-day AUM
+uptrend produced sane, non-saturating deltas (+7.1%/20d); `spearman` on
+synthetic same-direction vs. opposite-direction SPY/TLT return series
+produced exactly +1.0 ("broken") and −1.0 ("normal") respectively, confirming
+the flag's sign convention before trusting it. **Gold ETF flow is UNVERIFIED
+IN SANDBOX and needs a live Railway check** before trusting the field parse —
+same standing caveat as every OANDA/Yahoo-dependent feature in this repo; if
+Yahoo's schema doesn't match, the fetch fails closed (try/catch, warn-and-
+continue) rather than silently returning a wrong number, but the leg will
+just stay absent for Gold until confirmed working, not stay wrong.
+
+**v7 addendum (2026-09-02)** — owner, a third time and angrily this time:
+toggling Daily/5-Day/20-Day still changed nothing they could see. Root cause
+this time was real and different from v4's: `outlookCurrencyStrength()` (v4)
+was built and wired into exactly ONE new sidebar card, but every PRE-EXISTING
+"global" surface — `renderMarketRead()` (the main narrative + currency-
+strength bars), `equitiesRisk()` (feeds the Market Tone mood/gauge via its
+`haven` calc), `renderSidebar()`'s own "Market Tone" gauge, `currencyDetail()`
+(the per-currency drill-down drawer) — all kept calling `currencyStrength()`
+directly, with no way to pick up the toggle at all. So the toggle only ever
+touched the per-pair chip (invisible on Daily, easy to miss even on 5-Day/
+20-Day) and a sidebar card most of the page's actual "global" surfaces don't
+route through — exactly the gap the owner kept hitting.
+
+Fixed with one new switch point, `currencyStrengthForHorizon(rs, horizonKey)`
+(`today.html`, right after `outlookCurrencyStrength`): returns
+`currencyStrength(rs)` unchanged on `'daily'`, or `outlookCurrencyStrength`'s
+result RESCALED onto the same -1..1 scale (÷100, `outlookCurrencyStrength`'s
+own scale is documented -100..100) so every existing bar-width/sentence-
+threshold calculation downstream — built for the -1..1 scale — keeps working
+completely unchanged; only the SOURCE of the number changes with the toggle,
+never its scale or the shape callers already expect. Swapped in at the sites
+that are genuinely "global/current-state" reads: `equitiesRisk` (now takes a
+`horizonKey` param, threaded through from both its callers),
+`renderMarketRead`, `renderSidebar`'s Market Tone card, `currencyDetail`'s
+headline number (its per-pair "legs" breakdown stays on today's technical
+pull deliberately — daily context under a horizon-scaled headline, same
+layering the Outlook drawer itself already uses). Left alone, deliberately:
+`renderSinceYesterday` (a literal day-over-day snapshot diff, a different
+concept from the outlook horizon) and `renderConcentration` (explicitly says
+"Today is mostly a story of…" — a same-day-tape read, not a multi-day one).
+
+Also fixed the "you can't tell it changed" problem directly, not just the
+underlying data: added a small horizon-label suffix to the "Market Tone"
+sidebar header and the "Who's being bought…" Market Read section header
+(`· 5-Day outlook` / `· 20-Day outlook`, hidden on Daily) so there's a visible
+label change to confirm the toggle did something, and reworded the
+"Today's/This week's/This month's strongest is…" narrative sentence and the
+sidebar's strongest/weakest takeaway line to match whichever horizon they now
+actually reflect, so the wording never claims "today" while showing a 5-day-
+or 20-day-derived number.
+
+New/changed: `today.html` only (`currencyStrengthForHorizon`, `equitiesRisk`'s
+new param, the 4 call-site swaps above, the horizon-label/wording additions).
+No `js/outlookEngine.js` or `server.js` changes — this was purely a wiring
+gap in `today.html`, not a scoring/engine bug.
+
+Validated: `node --check` on every extracted `today.html` inline script (all
+clean); `node js/outlookEngine.test.mjs` — 50/50 still passing (unchanged
+file, sanity re-run only). No live Railway path in this sandbox to click the
+toggle and watch the bars/gauge actually move — same standing caveat as every
+prior revision of this feature; this needs a live check to confirm the fix
+reads right, not just that it compiles.
+
+**v8 addendum (2026-09-03)** — owner: rather than fix the toggle further,
+stop gating the global read behind a toggle at all. "Do the always on, but
+make it prettier than a wall of text."
+
+**Reverted v7's global-surface wiring.** `equitiesRisk`, `renderMarketRead`,
+`renderSidebar`'s Market Tone card, and `currencyDetail` all go back to
+calling `currencyStrength(rs)`/`equitiesRisk(rs)` directly (no `horizonKey`
+param) — v7's rescale-and-swap wrapper served its purpose for one revision
+but is no longer needed with the toggle out of the picture for these
+surfaces, so `currencyStrengthForHorizon` (and the horizon-conditional
+wording it fed — "This week's/This month's strongest", the `· 5-Day outlook`
+header suffixes) was deleted rather than left as dead code.
+
+**New: `#outlookPanel`** — a permanent, always-visible section directly under
+Market Read (`renderOutlookPanel`, `outlookTallyHtml`, `outlookBarsHtml`),
+collapsible via the same `secChev`/`secBody` mechanism Market Read itself
+uses. Shows 5-Day AND 20-Day side by side, always, via a 2-column
+`.mread-cols` grid — each column: a bull/neutral/bearish tally as colored
+`.chip` pills (reused, not new CSS) and a per-currency strength ranking using
+Market Read's OWN bar visual (`.csrow`/`.track`/`.mid`/`.barp`/`.barn`) instead
+of the old sidebar card's cramped inline-chip list — same underlying data
+(`outlookCurrencyStrength`, `pairOutlook`), zero new CSS, just reused
+components instead of a bespoke look, directly answering "prettier than a
+wall of text." The old cramped sidebar "🔭 Market Outlook" card (inline
+chips, no bars) was deleted — this panel replaces it outright, not
+alongside it.
+
+**The Daily/5-Day/20-Day toggle's scope is now narrower and honest about it**:
+its only remaining job is the per-pair card's 🔭 chip, where a toggle
+genuinely earns its keep (space-constrained, one horizon at a time on a
+20+-card grid). Its help-text/comments were rewritten to say this plainly,
+instead of claiming to drive "the sidebar's Market Outlook summary" (a
+surface that no longer exists in the form that claim described).
+
+New/changed: `today.html` only — `renderOutlookPanel`/`outlookTallyHtml`/
+`outlookBarsHtml` (new), `currencyStrengthForHorizon` (removed), 4 call-site
+reverts, old sidebar Market Outlook card removed, `#outlookHzBar`'s
+title/comment rewritten, new `#outlookPanel` container inserted after
+`#mread`. No `js/outlookEngine.js` or `server.js` changes.
+
+Validated: `node --check` on every extracted `today.html` inline script;
+`node js/outlookEngine.test.mjs` — 50/50 still passing (unrelated file,
+sanity re-run only). No live Railway path in this sandbox to actually see the
+new panel's bars render or confirm the visual polish reads as intended —
+same standing caveat as every prior revision of this feature.
+
+**v9 addendum (2026-09-03)** — owner, after seeing both the global panel and
+the per-pair drawer's Outlook section live: "great that we have the data but
+I want to learn from it in a useful way — this isn't helpful either." Wanted:
+"more of a prediction... education based... of what may happen in the future
+from what we know," but explicitly **not** a real backtested forecast when
+that was offered ("feels a waste" — correctly read as: teach me what today's
+data suggests and why, in plain language, not tag me a pile of labelled
+facts, and definitely don't dress up an unvalidated composite as a real
+prediction).
+
+**New: `describeOutlookNarrative(o)`** (`js/outlookEngine.js`) — turns
+`computeOutlook`'s structured result into a connected, teaching-style
+paragraph instead of a `CONTEXT`-tagged bullet list. Pure string formatting,
+zero new data/claims: every sentence traces back to a driver's own
+already-written `detail` text or to `agree`/`total`/`confidence`/`eventRisk`
+— groups drivers into "pointing up" vs "pointing down" (so a NEUTRAL read
+visibly shows ITS OWN internal tension, not just a flat label), states
+conviction in words (high/moderate/low/very low) next to the number, folds
+event risk into a sentence instead of a stat, and closes with the same
+CONTEXT-not-validated posture as `disclaimer`, just written as a sentence a
+reader actually reads rather than a footer they skip. 5 new tests (55 total):
+no-data fallback, bullish-all-agree prose, conflicting-legs producing BOTH an
+up and a down section, no-event reassurance wording, and volRegime's detail
+text still present without being counted as directional.
+
+**Per-pair drawer** (`renderDrawerOutlook`, `today.html`) — replaced the
+`CONTEXT`-tag bullet list entirely with `describeOutlookNarrative`'s prose
+under each horizon's bias badge. Central-bank tone block and the section's
+own "context composite" header chip are unchanged (already correctly
+separated/labelled); only the driver dump inside each column changed shape.
+
+**Global panel** (`today.html`) — replaced the currency-strength BAR CHART
+(the owner's own verdict on it: "is that chart actually useful for me? I
+would say not") with prose: new `outlookTopDriverFor(rs, ccy, key,
+wantPositive)` finds which ONE pair is actually driving a currency's
+aggregate score and that pair's own single strongest driver, and new
+`outlookGlobalNarrative(rs, key)` names the strongest/weakest currency at
+each horizon and explains why using that pair+driver — e.g. "US dollar (+16,
+across 5 pairs) — mainly from USD/JPY: DXY +0.7 over this window...". Same
+"quote the existing detail text, don't re-derive a new claim" discipline as
+the per-pair narrative. The bull/neutral/bear tally chips stayed (a
+legitimate glance-stat, not what was criticized); `outlookBarsHtml` (the bar-
+rendering function) is now dead code and was deleted rather than left in.
+
+New/changed: `js/outlookEngine.js` (`describeOutlookNarrative`, +5 tests, 55
+total), `js/outlookEngine.test.mjs`, `today.html` (`renderDrawerOutlook`
+rewritten, `outlookBarsHtml` removed, `outlookTopDriverFor` +
+`outlookGlobalNarrative` added, `renderOutlookPanel`'s `col()` updated). No
+`server.js` changes.
+
+Validated: `node --check` on `js/outlookEngine.js` and every extracted
+`today.html` inline script; `node js/outlookEngine.test.mjs` — 55/55 passing.
+Manually traced `outlookTopDriverFor`'s currency-reorientation logic against
+`outlookCurrencyStrength`'s own base/quote sign convention to confirm they
+agree (same `cc[0]===ccy ? score : -score` reorientation both places). No
+live Railway path in this sandbox to read the actual generated prose for
+real market data — same standing caveat as every prior revision of this
+feature; the exact WORDING quality (does it actually read well, not just
+compile) needs a live check.
+
+**v10 addendum (2026-09-03)** — owner, after seeing v9's prose live: "we
+essentially lost top 1 and bottom 1 pair and duplicate the content in the per
+pair" (the global panel's strongest/weakest-currency narrative just pointed at
+one pair's own biggest driver, so opening that pair's drawer showed the same
+text again — no board-wide value added) and gave an explicit example of the
+teaching shape actually wanted: *"the yield is consistently dropping day on
+day, if it continues this way then X will occur, paired with high volatility
+this means we may see X in the coming days."* Two changes, both still zero new
+data/claims (Lego Principle 1 — same drivers, same scores, only the prose
+generation changed):
+
+**1. Every scored driver in `js/outlookEngine.js` now carries a `teach` field**
+alongside its existing `detail` (`compositeDriver`, `yieldSpreadDriver`,
+`cotDriver`, `dxyMomentumDriver`, `realYieldMomentumDriver`,
+`goldEtfFlowDriver`, `riskMomentumDriver`, `priceTrendDriver`) — a sentence in
+the trend + "if this continues" + mechanism shape the owner asked for (e.g.
+dxyMomentum: *"The dollar index has been climbing over this window (+0.7). A
+firmer dollar squeezes anything priced or funded in it — if that trend keeps
+going, it tends to pull this pair higher; if the dollar turns instead, that
+pull reverses too."*), instead of the old hedge-heavy "DXY +0.7... a
+rate-of-change reading, not a tested signal" repeated after every clause.
+`volRegimeDriver` additionally now exposes a plain `state` field
+(`'BUILDING'|'COOLING'|'STABLE'`) instead of only encoding it inside `detail`
+text, so callers can branch on it directly rather than regexing a string.
+`detail` is UNCHANGED (still used verbatim by the face-card chip's tooltip via
+`outlookChip()` in `today.html`) — `teach` is additive, not a replacement.
+
+**2. `describeOutlookNarrative(o)` rewritten** to use each driver's `teach`
+(falling back to `detail` if absent) for the "pointing up"/"pointing down"
+groups instead of `detail`, and — new — combines the SINGLE strongest
+directional driver with the volatility-regime read into one closing
+conditional sentence: *"Paired with volatility that's building here, if the
+{dominant driver} keeps moving the same way, the next move could arrive
+faster and sharper than usual over the coming days."* (COOLING/STABLE get
+their own phrasing). This is the actual "trend + if-this-continues +
+paired-with-volatility" shape requested, at the per-pair level. The
+CONTEXT-not-validated hedge ("not a tested signal") is now stated exactly
+ONCE, in the closing disclaimer sentence, instead of once per driver inside
+every up/down clause — the old version repeated it 3-4 times in a single
+paragraph, which read as boilerplate rather than teaching. New
+`NARRATIVE_LABEL` map gives each driver a friendly mid-sentence phrase (e.g.
+"yield-spread read" instead of "Yield-spread z-score") for the combo
+sentence. +10 test assertions (65 total): the combo sentence for
+BUILDING/COOLING/STABLE regimes each, naming the dominant driver, and a check
+that "not a tested signal" is never repeated per-driver while the single
+closing disclaimer still fires.
+
+**3. Global panel rebuilt from currency-level to driver-level aggregation**
+(`today.html`) — `outlookCurrencyStrength`, `outlookTopDriverFor` and
+`outlookGlobalNarrative` (all top1/bottom1-currency logic) DELETED as dead
+code; replaced by new `outlookBoardNarrative(rs, key)`. Instead of picking one
+standout currency and quoting its one biggest pair's one driver (the exact
+duplication complained about), this aggregates EVERY pair's EVERY driver by
+NAME across the whole board at that horizon: for each driver type, what
+fraction of the pairs that carry it are pulled the same way (`skew =
+max(up,down)/total`, driver must have ≥3 pairs and skew **strictly** >0.5 to
+count — a few pairs skewing 2-of-3 by chance, or an exact 50/50 split,
+shouldn't read as a "board theme"). The most lopsided driver becomes the
+board's stated dominant theme (*"Dollar-index momentum is pulling 6 of 8
+pairs higher right now — if that keeps moving the same way, expect it to keep
+showing up pair after pair, not just one..."*), a second one gets a shorter
+"agrees too" sentence, and how many pairs have `volRegime.state===
+'BUILDING'`/`'COOLING'` is folded into a "paired with volatility across the
+board" closing sentence — the same trend+conditional+paired-with-volatility
+shape as the per-pair narrative, but genuinely board-wide instead of a pointer
+into one pair's own drawer. Falls back to "no single factor dominates" when
+nothing clears the skew bar. New `OUTLOOK_NARRATIVE_LABEL` map (today.html's
+own copy of the same friendly-phrase table, since this file doesn't import
+outlookEngine.js's internal const — keep both in sync if a driver name
+changes). The bull/neutral/bear tally chips (`outlookTallyHtml`) were kept in
+this pass — the owner's own read on those was neutral/positive at the time —
+but see the v11 addendum below: removed shortly after.
+
+New/changed: `js/outlookEngine.js` (`teach` field on 8 drivers, `state` field
+on `volRegimeDriver`, `describeOutlookNarrative` rewritten, `NARRATIVE_LABEL`
+map), `js/outlookEngine.test.mjs` (+10 assertions, 65 total), `today.html`
+(`outlookCurrencyStrength`/`outlookTopDriverFor`/`outlookGlobalNarrative`
+deleted, `outlookBoardNarrative` + `OUTLOOK_NARRATIVE_LABEL` added,
+`renderOutlookPanel`'s `col()` updated, panel footer text updated). No
+`server.js` changes.
+
+Validated: `node --check` on `js/outlookEngine.js` and every extracted
+`today.html` inline script; `node js/outlookEngine.test.mjs` — 65/65 passing.
+Hand-ran `outlookBoardNarrative`'s aggregation logic against synthetic
+pair-outlook arrays in a throwaway script (dollar-dominant board with vol
+building, a no-dominant-theme board, and a too-few-pairs board) to confirm the
+skew-ranking and fallback text behave before wiring it into the live DOM path
+— caught and fixed one real edge case this way (an exact 3-of-6/50-50 split
+was incorrectly passing the `skew>=0.5` filter as "dominant" before tightening
+it to strict `>0.5`). No live Railway path in this sandbox to read the actual
+generated prose against real market data or to eyeball the visual layout —
+same standing caveat as every prior revision of this feature.
+
+**v11 addendum (2026-09-03)** — owner, after seeing v10's board-wide panel
+live: "can we not list which are bullish/bearish?" — the `10 Bullish / 10
+Neutral / 9 Bearish` tally chips sitting above the new board-wide narrative
+were now read as redundant clutter once the prose itself already opens by
+naming the dominant theme; asked to drop them. Removed `outlookTallyHtml`
+entirely (its only caller) from `renderOutlookPanel`'s `col()` in
+`today.html` and deleted the now-dead function — each horizon column is just
+its `mread-h` label + `outlookBoardNarrative` prose now. No `js/outlookEngine.js`
+or `server.js` changes; the per-pair drawer's own bias badge (`BULLISH ·
+NN% confidence`) is untouched — that chip lives at the top of each drawer
+column, not in this global panel, and wasn't part of the complaint.
+
+Validated: `node --check` on every extracted `today.html` inline script;
+grepped for any other `outlookTallyHtml` caller before deleting (none) and
+for any leftover "Bullish"/"Bearish" panel reference (only the unrelated
+`currencyDetail` sign-reading helper matched, not this panel). No live
+Railway path in this sandbox to see the panel render without the chips.
+
+**v12 addendum (2026-09-03)** — v11 misread the owner's ask: "can we not
+list which are bullish/bearish?" meant "can we [go ahead and] list which
+[pairs] are bullish/bearish" (an ADD, not a remove) — confirmed directly:
+"I asked for all bullish and bearish pairs to be listed in the 5day and
+20day sections so it makes sense." v11's chip removal stands (that part was
+still correct — counts alone were the complaint), but the panel needed an
+actual per-pair list added back, not just prose.
+
+**New `outlookBiasListHtml(rs, key)`** (`today.html`) — lists every pair's
+name under a "Bullish (N):"/"Bearish (N):" header per horizon (neutral
+pairs excluded — not asked for), sorted by conviction (`|biasScore|`
+descending within each side) so the most-convicted pair leads, each name
+clickable straight into that pair's own drawer via `openDrawer(name)` — same
+interaction as Market Read's own "Hottest" line (`hotHtml`). Its CSS reuses
+that line's visual language (dotted-underline clickable text) but inlined
+rather than via the `.pl` class, since `.pl`'s rules are scoped to specific
+parent selectors (`.mread-verdict .pl`, `.mread-watch .pl`, `.qstrip .pl`)
+this panel isn't inside — adding a fourth scoped rule for one panel would've
+been more surface than inlining the two properties directly. Wired into
+`renderOutlookPanel`'s `col()` between the label and `outlookBoardNarrative`,
+so each horizon column now reads: label → who's bullish/bearish by name →
+the board-wide theme prose.
+
+New/changed: `today.html` only (`outlookBiasListHtml` added, `col()`
+updated). No `js/outlookEngine.js` or `server.js` changes — reuses
+`pairOutlook`'s already-computed `bias`/`biasScore` per row, no new data.
+
+Validated: `node --check` on every extracted `today.html` inline script;
+confirmed `openDrawer(name)`/`dispName(n)` signatures match the exact call
+shape `hotHtml` already uses. No live Railway path in this sandbox to see
+the list render or confirm it doesn't get too long/wide on a board where
+most pairs share a bias (e.g. a strong-dollar day putting 15+ names under
+one header) — worth a live look once deployed.
+
+**v13 addendum (2026-09-03)** — owner, looking at the per-pair drawer's
+🔭 Outlook section live (screenshot of the Gold drawer): "can we make the
+per pair info easier to read make images icon something? bullets maybe?
+not sure." The narrative prose itself (v9-v10's `teach`-based writing) was
+fine content-wise, but `describeOutlookNarrative` only ever returns ONE
+joined string, so the drawer rendered it as a single dense paragraph per
+horizon — several drivers' `teach` sentences run together with no visual
+break, exactly the "wall of text" problem flagged repeatedly across this
+feature's whole history, just resurfaced one layer down (global panel fixed
+in earlier rounds, per-pair drawer not yet).
+
+**New `describeOutlookNarrativeParts(o)`** (`js/outlookEngine.js`) — same
+computation, same wording, but returns the narrative as separate labelled
+fields instead of one blob: `{ headline, up, down, upDrivers, downDrivers,
+volDriver, volCombo, eventRisk, disclaimer }`. `upDrivers`/`downDrivers` are
+the RAW driver objects (not pre-joined strings) so a renderer can lay each
+one out as its own bullet. `describeOutlookNarrative` is now a thin wrapper
+that joins these same fields with spaces — byte-identical output to before,
+confirmed by re-running all 65 pre-existing tests unchanged plus a new
+round-trip test that rebuilds the string by hand from the parts and checks
+it matches `describeOutlookNarrative(o)` exactly, across 3 scenarios
+(full-featured, conflicting legs, no-data). +8 test assertions (76 total
+— see the 4 new blocks after "per-driver hedge is not repeated").
+
+**Per-pair drawer** (`renderDrawerOutlook`'s `col()`, `today.html`) —
+rewritten to use `describeOutlookNarrativeParts` and lay the sections out
+as icon-labelled blocks instead of one paragraph: a new `sec(icon, label,
+color, bodyHtml)` helper renders a small caps header (▲ POINTING UP / ▼
+POINTING DOWN / ⚡ VOLATILITY / 📅 EVENT RISK) above each section's body,
+skipping the block entirely if that section has no content; a new
+`bulletList(drivers)` helper turns `upDrivers`/`downDrivers` into a real
+`<ul><li>` list — one bullet per driver's own `teach` text — instead of
+merging them into one run-on sentence. The closing disclaimer gets its own
+small ℹ️-prefixed footer block, separated by a dashed rule, same as before
+just visually set apart. No new claims or data — same `teach`/`detail` text
+as always, only the HTML structure around it changed.
+
+New/changed: `js/outlookEngine.js` (`describeOutlookNarrativeParts` added,
+`describeOutlookNarrative` now a thin wrapper around it), `js/outlookEngine.test.mjs`
+(+8 assertions, 76 total), `today.html` (`renderDrawerOutlook`'s `col()`
+rewritten with `sec()`/`bulletList()` helpers). No `server.js` changes.
+
+Validated: `node --check` on `js/outlookEngine.js` and every extracted
+`today.html` inline script; `node js/outlookEngine.test.mjs` — 76/76 passing.
+Hand-rendered `describeOutlookNarrativeParts`' output through a throwaway
+copy of the new `sec()`/`bulletList()` HTML logic in a scratch script and
+grepped for stray `undefined` and confirmed exactly 3 `<li>` tags for a
+3-driver bullish case — no crash, no leaked placeholders, empty sections
+correctly emit nothing. No live Railway path in this sandbox to see the
+actual rendered layout/spacing in a real browser — same standing caveat as
+every prior revision of this feature; the visual result (are the icons/
+bullets actually easier to scan, is the spacing right) needs a live look.

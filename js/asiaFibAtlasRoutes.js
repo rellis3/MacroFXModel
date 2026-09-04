@@ -31,6 +31,8 @@ import { buildFibAtlasVotePortfolio } from './fibAtlasVotePortfolio.js';
 import { cvolSeries, CVOL_PRODUCTS } from './cvolLoader.js';
 import { majorEventEpochs } from './calendarLoader.js';
 import { putJSON, getJSON } from './r2Store.js';
+import { packToJSON, packFromJSON } from './levelAtlasRoutes.js';
+import * as kv from '../kv.js';
 import { assetClassFor } from './forecastAnalyserStore.js';
 import { oandaSymbol } from './instrumentRegistry.js';
 import { gapFillPacked } from './m1GapFill.js';
@@ -237,6 +239,21 @@ export async function runOne(instrument, { onLog = () => {} } = {}) {
     // the aggregated book is the product, re-run to regenerate them.
   };
   await putJSON(`${PREFIX}/${pair}.json`, result);
+
+  // Seed the bot's live plan straight from this freshly-built book+ladder —
+  // no live-cache round-trip needed, see mergeIntoFibAtlasPlan's own doc.
+  // Best-effort: a failure here never fails the run itself (the book/live
+  // JSON just persisted above is the real product; this is a downstream
+  // convenience for the bot's own plan).
+  try {
+    const cost = costForPair(pair, assetClass);
+    const zones = zonesFromLiveAndBook(result.live, book, cost);
+    await mergeIntoFibAtlasPlan(`${pair}|asia`, {
+      pair, ladder: 'asia', spot: currentPrice, date: liveDate, zones, zoneCount: zones.length,
+      updatedAt: new Date().toISOString(), source: 'nightly-rebuild',
+    });
+  } catch (e) { onLog(`${sym}: plan seed failed (${e.message}) — non-fatal, book/live still saved`); }
+
   return result;
 }
 
@@ -263,11 +280,61 @@ function boundPacked(packed, days) {
   };
 }
 
+// R2 live-cache snapshotting (2026-09-01) — mirrors js/levelAtlasRoutes.js's
+// own `saveAllLiveSnapshots`/cold-start-from-snapshot pattern EXACTLY
+// (reuses that file's `packToJSON`/`packFromJSON`, no new persistence
+// format). Direct owner ask after discovering every push to `main` restarts
+// the Railway process, wiping this in-memory `liveCache` back to empty and
+// forcing a FULL cold-start marathon (multi-year R2 parquet load + OANDA
+// gap-fill) for all 16 pairs from scratch — repeatedly, on a repo with
+// several pushes/day. On a cold start, try a recent snapshot FIRST: a
+// small, already-180-day-bounded restore plus the SAME small gap-fill
+// catch-up `getFastLive` already does on every warm poll, not years of
+// parquet. Falls through to the original `loadM1ForPair` path unchanged if
+// no snapshot exists yet, it fails to parse, or it's too stale to be worth
+// restoring — never worse than before this existed.
+const LIVE_SNAPSHOT_PREFIX = `${PREFIX}/live-snapshot`;
+const MAX_SNAPSHOT_AGE_HOURS = 72;   // beyond this, the gap-fill catch-up isn't meaningfully cheaper than a fresh load — just reload
+
+async function _saveLiveSnapshot(pair) {
+  const entry = liveCache.get(pair);
+  if (!entry?.packed?.n) return false;
+  try {
+    await putJSON(`${LIVE_SNAPSHOT_PREFIX}/${pair}.json`, { ...packToJSON(entry.packed), savedAt: new Date().toISOString() });
+    return true;
+  } catch (e) {
+    console.warn(`[asia-fib-atlas-live] ${pair}: snapshot save failed — ${e.message}`);
+    return false;
+  }
+}
+
+// Scheduled job body (server.js calls this periodically) — snapshots every
+// CURRENTLY WARM pair in one pass. Cheap: R2 has no write-quota concern like
+// CF KV does, and this only touches pairs already in memory.
+export async function saveAllLiveSnapshots() {
+  let saved = 0;
+  for (const pair of liveCache.keys()) {
+    if (await _saveLiveSnapshot(pair)) saved++;
+  }
+  if (saved) console.log(`[asia-fib-atlas-live] snapshotted ${saved} warm pair(s) to R2`);
+  return saved;
+}
+
 async function coldStartLiveCache(pair) {
   const sym = pair.toUpperCase();
   liveWarming.add(pair);
   try {
-    let packed = await loadM1ForPair(pair);
+    let packed = null, fromSnapshot = false;
+    try {
+      const snap = await getJSON(`${LIVE_SNAPSHOT_PREFIX}/${pair}.json`);
+      const ageH = snap?.savedAt ? (Date.now() - Date.parse(snap.savedAt)) / 3600_000 : Infinity;
+      if (ageH <= MAX_SNAPSHOT_AGE_HOURS) {
+        const restored = packFromJSON(snap);
+        if (restored?.n) { packed = restored; fromSnapshot = true; }
+      }
+    } catch (e) { console.warn(`[asia-fib-atlas-live] ${sym}: snapshot load failed — ${e.message}`); }
+
+    if (!packed) packed = await loadM1ForPair(pair);
     if (!packed?.n) throw new Error(`no M1 data for ${sym}`);
     if (process.env.OANDA_KEY) {
       try { packed = await gapFillPacked(packed, oandaSymbol(pair), fetchM1Range, { nowSec: Math.floor(Date.now() / 1000), minGapSec: 55 }); }
@@ -277,7 +344,7 @@ async function coldStartLiveCache(pair) {
     const ivByDate = await loadIvByDate(pair);
     const macroEvents = majorEventEpochs();
     liveCache.set(pair, { packed: bounded, lastBarTime: bounded.times[bounded.n - 1], ivByDate, macroEvents });
-    console.log(`[asia-fib-atlas-live] ${sym}: warm (${bounded.n.toLocaleString()} bars, ${LIVE_WINDOW_DAYS}d window)`);
+    console.log(`[asia-fib-atlas-live] ${sym}: warm (${bounded.n.toLocaleString()} bars, ${LIVE_WINDOW_DAYS}d window${fromSnapshot ? ', from R2 snapshot' : ''})`);
   } catch (e) {
     console.error(`[asia-fib-atlas-live] ${sym}: cold start failed — ${e.message}`);
   } finally {
@@ -350,15 +417,16 @@ export const FIB_ATLAS_STOP_TIGHTEN_FRAC = 0.9;         // frozen fraction (fib_
 // trades far less densely), see mondayFibAtlasRoutes.js.
 export const FIB_ATLAS_MAX_GAP_MIN = 30;
 
-export async function asiaLivePlanZones(pair, { minMargin = FIB_ATLAS_MIN_MARGIN, minCostRatio = FIB_ATLAS_MIN_COST_RATIO, stopTightenFrac = FIB_ATLAS_STOP_TIGHTEN_FRAC, maxGapMin = FIB_ATLAS_MAX_GAP_MIN } = {}) {
-  const live = await getFastLive(pair);
-  if (live.warming || !live.date) return { spot: null, date: live.date ?? null, boundary: null, zones: [], zoneCount: 0, warming: !!live.warming };
-  const stored = await getJSON(`${PREFIX}/${pair}.json`);
-  const book = stored?.book ?? null;
-  if (!book) return { spot: live.currentPrice, date: live.date, boundary: live.boundary, zones: [], zoneCount: 0, warming: false, skipped: 'no stored book — POST /api/asia-fib-atlas/run first' };
-  const cost = stored.cost ?? 0;
+// Pure core: given an ALREADY-COMPUTED `live` (the shape asiaFibAtlasLiveLadder/
+// getFastLive returns: {date, currentPrice, boundary, ladder}) and `book`,
+// price every rung into zones. Extracted (2026-09-01) so a SECOND caller —
+// the nightly rebuild, which already builds a fresh `live`+`book` inside
+// `runOne` below and can seed the bot's plan straight from that, no live-
+// cache round-trip needed — can reuse the EXACT same scoring/pricing rules
+// `asiaLivePlanZones` (the live-cache-backed wrapper right after this) uses,
+// never a second implementation to drift out of sync.
+export function zonesFromLiveAndBook(live, book, cost, { minMargin = FIB_ATLAS_MIN_MARGIN, minCostRatio = FIB_ATLAS_MIN_COST_RATIO, stopTightenFrac = FIB_ATLAS_STOP_TIGHTEN_FRAC, maxGapMin = FIB_ATLAS_MAX_GAP_MIN } = {}) {
   const nowSec = Date.now() / 1000;
-
   const zones = [];
   for (const rung of live.ladder) {
     const vd = voteDecision(book, rung);
@@ -401,7 +469,74 @@ export async function asiaLivePlanZones(pair, { minMargin = FIB_ATLAS_MIN_MARGIN
       rationale: `${vd.decision} · margin ${vd.margin} (${vd.outVotes} out / ${vd.backVotes} back)`,
     });
   }
+  return zones;
+}
+
+export async function asiaLivePlanZones(pair, opts = {}) {
+  const live = await getFastLive(pair);
+  if (live.warming || !live.date) return { spot: null, date: live.date ?? null, boundary: null, zones: [], zoneCount: 0, warming: !!live.warming };
+  const stored = await getJSON(`${PREFIX}/${pair}.json`);
+  const book = stored?.book ?? null;
+  if (!book) return { spot: live.currentPrice, date: live.date, boundary: live.boundary, zones: [], zoneCount: 0, warming: false, skipped: 'no stored book — POST /api/asia-fib-atlas/run first' };
+  const zones = zonesFromLiveAndBook(live, book, stored.cost ?? 0, opts);
   return { spot: live.currentPrice, date: live.date, boundary: live.boundary, zones, zoneCount: zones.length, warming: false };
+}
+
+// Seeds/refreshes ONE (pair,ladder) constituent of `fib_atlas_bot_plan`
+// directly from an ALREADY-COMPUTED live+book — no live-cache round-trip.
+// The direct owner fix (2026-09-01) for "a restart shows nothing for
+// hours": the nightly rebuild (`runOne` below, for both ladders) already
+// builds a fresh `book`+`live` for every pair once a day regardless of
+// whether the in-memory live cache is warm — this makes that freshly-built
+// data show up in the SAME KV plan `server.js`'s `_refreshFibAtlasPlan`
+// publishes, so a cold pair shows last night's real entry instead of
+// nothing, and the live producer only ever UPGRADES it as its own cache
+// warms through the day (that producer already merges onto the previous
+// plan rather than replacing it, see server.js's own doc). Read-modify-
+// write, not atomic — a rare interleave with the 45s live producer's own
+// write could drop one side's update for a DIFFERENT key; self-heals on
+// either's next tick, same "good enough, self-healing" discipline this
+// whole plan already runs on (its own "never publish empty over good"
+// rule is the same kind of best-effort, not a hard guarantee).
+export async function mergeIntoFibAtlasPlan(key, entry) {
+  try {
+    const raw = await kv.get('fib_atlas_bot_plan').catch(() => null);
+    const prev = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : null;
+    const instruments = { ...(prev?.instruments || {}), [key]: entry };
+    const skipped = { ...(prev?.skipped || {}) };
+    delete skipped[key];
+    await kv.put('fib_atlas_bot_plan', JSON.stringify({
+      data: { strategy: 'fib-atlas-vote', generatedAt: new Date().toISOString(), instruments, skipped },
+      timestamp: Date.now(),
+    }));
+  } catch (e) { console.warn(`[fib-atlas-bot] plan seed for ${key} failed: ${e.message}`); }
+}
+
+// Unfiltered per-rung view (2026-09-01) — EVERY rung the live ladder
+// currently carries, touched or not, regardless of vote margin. Direct
+// owner ask after `asiaLivePlanZones`' margin>=2 filter made it impossible
+// to see whether the engine was actually evaluating the full ~40-rung grid
+// per pair or silently skipping most of it — mirrors volatility_bot_v2's
+// own "All Lines" table (server.js's `/api/level-atlas/vote-preview`)
+// exactly, adapted to this engine's rung/ladder shape. Reuses the SAME
+// `voteDecision` call `asiaLivePlanZones` makes — never a second scoring
+// path, so this can never show a different verdict than the filtered plan
+// does for the same rung, only a fuller list of rows.
+export async function asiaAllLines(pair) {
+  const live = await getFastLive(pair);
+  if (live.warming || !live.date) return { date: live.date ?? null, warming: !!live.warming, lines: [] };
+  const stored = await getJSON(`${PREFIX}/${pair}.json`);
+  const book = stored?.book ?? null;
+  const lines = live.ladder.map(rung => {
+    const vd = book ? voteDecision(book, rung) : null;
+    return {
+      pair, side: rung.side, rung: rung.level,
+      status: rung.touchedToday ? `touched · ${rung.prevOutcomeSameDay}` : 'pending',
+      decision: vd?.decision ?? null, margin: vd?.margin ?? 0,
+      tradeableNow: (vd?.margin ?? 0) >= FIB_ATLAS_MIN_MARGIN,
+    };
+  });
+  return { date: live.date, warming: false, lines };
 }
 
 function startRunJob({ instruments }) {
