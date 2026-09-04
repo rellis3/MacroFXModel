@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MDPs, Value Functions &amp; the Bellman Equation — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">MDPs, Value Functions &amp; the Bellman Equation — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer full derivations, a hand-worked value-iteration table, and a 5-question self-test?<a href="mdp-bellman-equation.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Reinforcement Learning 1 · Reinforcement Learning</div>
+      <h1 class="sl-h1">Value Is Just <em>Reward Now, Plus a Discounted Guess at Later</em></h1>
+      <p class="sl-lede">Every strategy this curriculum has covered so far applies a static rule regardless of what happens next. Reinforcement learning is built for the opposite case: problems where today's action changes tomorrow's situation, so the "right" move can only be judged by its effect on the whole future path. The Markov Decision Process is the formal object underneath every RL method, and the Bellman equation — value now equals immediate reward plus the discounted value of what comes next — is the one recursive trick that makes it solvable at all.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">The five pieces of a Markov Decision Process</h2>
+      <p class="sl-sub">Formally, an MDP is the tuple (S, A, P, R, γ). Nothing more is added later — everything in this lesson is built from just these five things.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">S</div><div><h4>States</h4><p>Every distinct situation the process can be in — flat, long, or short a position, say.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">A</div><div><h4>Actions</h4><p>The choices available in a given state — hold, close, open — possibly a different set per state.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">P</div><div><h4>Transition probabilities — P(s′|s,a)</h4><p>The chance of landing in state s′, given action a was taken in state s. Not always certain — opening a position doesn't guarantee which way the market moves next.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">R</div><div><h4>Rewards — R(s,a,s′)</h4><p>The immediate payoff or cost of one specific transition.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">γ</div><div><h4>Discount factor</h4><p>A number between 0 and 1 saying how much a reward one step in the future is worth today — the subject of Section 4.</p></div></div>
+      </div>
+      <p class="sl-p">A rule for choosing actions — possibly randomized — is called a <strong>policy</strong>, written π(a|s): the probability of taking action a while in state s. Everything downstream in RL is either evaluating a policy (how good is this way of acting?) or improving one (is there a better way to act?).</p>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">A tiny 3-state MDP, drawn out</h2>
+      <p class="sl-sub">Flat, Long, and Short, with two actions per state. Every number in the rest of this deck is solved from this exact diagram.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>State diagram</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="State diagram with three nodes: Flat, Long and Short. From Flat, action Stay loops back to Flat with reward zero, and action Open transitions with probability one half each to Long or Short, each costing a small transition reward of minus 0.1. From Long, action Hold loops back to Long with reward plus 1, and action Close transitions to Flat with reward minus 0.1. From Short, action Hold loops back to Short with reward minus 0.5, and action Close transitions to Flat with reward minus 0.1.">
+            <defs>
+              <marker id="rlArrow" markerWidth="9" markerHeight="9" refX="7" refY="4" orient="auto">
+                <path d="M0,0 L8,4 L0,8 Z" fill="var(--text2)"/>
+              </marker>
+            </defs>
+            <path d="M178,128 Q320,55 430,72" fill="none" stroke="var(--blue)" stroke-width="2" marker-end="url(#rlArrow)"/>
+            <text x="300" y="62" text-anchor="middle" fill="var(--blue)" font-size="11.5" font-family="'DM Mono',monospace">Open (p=0.5): r=−0.1</text>
+            <path d="M178,172 Q320,245 430,228" fill="none" stroke="var(--blue)" stroke-width="2" marker-end="url(#rlArrow)"/>
+            <text x="300" y="262" text-anchor="middle" fill="var(--blue)" font-size="11.5" font-family="'DM Mono',monospace">Open (p=0.5): r=−0.1</text>
+            <path d="M432,95 Q300,120 184,138" fill="none" stroke="var(--amber)" stroke-width="2" marker-end="url(#rlArrow)"/>
+            <text x="300" y="118" text-anchor="middle" fill="var(--amber)" font-size="11.5" font-family="'DM Mono',monospace">Close: r=−0.1</text>
+            <path d="M432,205 Q300,182 184,162" fill="none" stroke="var(--amber)" stroke-width="2" marker-end="url(#rlArrow)"/>
+            <text x="300" y="206" text-anchor="middle" fill="var(--amber)" font-size="11.5" font-family="'DM Mono',monospace">Close: r=−0.1</text>
+            <path d="M112,124 A28,24 0 1 1 168,124" fill="none" stroke="var(--green)" stroke-width="2" marker-end="url(#rlArrow)"/>
+            <text x="140" y="85" text-anchor="middle" fill="var(--green)" font-size="11.5" font-family="'DM Mono',monospace">Stay: r=0</text>
+            <path d="M442,38 A26,22 0 1 1 494,38" fill="none" stroke="var(--green)" stroke-width="2" marker-end="url(#rlArrow)"/>
+            <text x="468" y="15" text-anchor="middle" fill="var(--green)" font-size="11.5" font-family="'DM Mono',monospace">Hold: r=+1</text>
+            <path d="M442,262 A26,22 0 1 1 494,262" fill="none" stroke="var(--red)" stroke-width="2" marker-end="url(#rlArrow)"/>
+            <text x="468" y="303" text-anchor="middle" fill="var(--red)" font-size="11.5" font-family="'DM Mono',monospace">Hold: r=−0.5</text>
+            <circle cx="140" cy="150" r="40" fill="var(--blue-bg)" stroke="var(--blue)" stroke-width="2"/>
+            <text x="140" y="155" text-anchor="middle" fill="var(--text)" font-size="14" font-weight="700" font-family="'DM Sans',sans-serif">Flat</text>
+            <circle cx="468" cy="70" r="40" fill="var(--green-bg)" stroke="var(--green)" stroke-width="2"/>
+            <text x="468" y="75" text-anchor="middle" fill="var(--text)" font-size="14" font-weight="700" font-family="'DM Sans',sans-serif">Long</text>
+            <circle cx="468" cy="230" r="40" fill="var(--red-bg)" stroke="var(--red)" stroke-width="2"/>
+            <text x="468" y="235" text-anchor="middle" fill="var(--text)" font-size="14" font-weight="700" font-family="'DM Sans',sans-serif">Short</text>
+          </svg>
+        </div>
+        <div class="sl-note">One genuinely stochastic transition: opening a position lands you Long or Short with equal probability — representing not knowing which way the market moves next. Everything else is deterministic.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">"Markov" means the past stops mattering</h2>
+      <p class="sl-sub">The simplifying assumption that makes an MDP tractable at all.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Full history</span>
+          <ul>
+            <li>What happens next depends on everything that's happened so far</li>
+            <li>Momentum, regime memory, and path dependence all count</li>
+            <li>Realistic for real markets — and computationally hopeless to model exactly</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Markov state</span>
+          <ul>
+            <li>What happens next depends only on the current state and action</li>
+            <li>The state is assumed to already summarize everything relevant about the past</li>
+            <li>Deliberately idealized — but it's what turns an intractable problem into a solvable one</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-quote">This is the same move as assuming you know your edge exactly in the Kelly derivation, or ignoring fat tails in a normal-distribution primer: build the exact math on a clean idealization first, then reason carefully about where the real world will diverge from it. Real price processes carry momentum and regime memory that a small state (just "current position," say) doesn't capture — the usual fix is enlarging the state to include recent history, at the cost of a much bigger state space.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">The discount factor sets how patient the agent is</h2>
+      <p class="sl-sub">Drag the slider. Each bar is γ raised to the power of how many steps in the future it is — the weight that reward gets in today's value.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart of discount weight gamma to the power t for twenty future time steps, controlled by a slider">
+            <line x1="16" y1="180" x2="624" y2="180" style="stroke:var(--border2);stroke-width:1"/>
+            <rect id="gbar0" x="20" y="180" width="24" height="0" rx="2" style="fill:var(--blue)"/>
+            <rect id="gbar1" x="50" y="180" width="24" height="0" rx="2" style="fill:var(--blue)"/>
+            <rect id="gbar2" x="80" y="180" width="24" height="0" rx="2" style="fill:var(--blue)"/>
+            <rect id="gbar3" x="110" y="180" width="24" height="0" rx="2" style="fill:var(--blue)"/>
+            <rect id="gbar4" x="140" y="180" width="24" height="0" rx="2" style="fill:var(--blue)"/>
+            <rect id="gbar5" x="170" y="180" width="24" height="0" rx="2" style="fill:var(--blue)"/>
+            <rect id="gbar6" x="200" y="180" width="24" height="0" rx="2" style="fill:var(--blue)"/>
+            <rect id="gbar7" x="230" y="180" width="24" height="0" rx="2" style="fill:var(--blue)"/>
+            <rect id="gbar8" x="260" y="180" width="24" height="0" rx="2" style="fill:var(--blue)"/>
+            <rect id="gbar9" x="290" y="180" width="24" height="0" rx="2" style="fill:var(--blue)"/>
+            <rect id="gbar10" x="320" y="180" width="24" height="0" rx="2" style="fill:var(--blue)"/>
+            <rect id="gbar11" x="350" y="180" width="24" height="0" rx="2" style="fill:var(--blue)"/>
+            <rect id="gbar12" x="380" y="180" width="24" height="0" rx="2" style="fill:var(--blue)"/>
+            <rect id="gbar13" x="410" y="180" width="24" height="0" rx="2" style="fill:var(--blue)"/>
+            <rect id="gbar14" x="440" y="180" width="24" height="0" rx="2" style="fill:var(--blue)"/>
+            <rect id="gbar15" x="470" y="180" width="24" height="0" rx="2" style="fill:var(--blue)"/>
+            <rect id="gbar16" x="500" y="180" width="24" height="0" rx="2" style="fill:var(--blue)"/>
+            <rect id="gbar17" x="530" y="180" width="24" height="0" rx="2" style="fill:var(--blue)"/>
+            <rect id="gbar18" x="560" y="180" width="24" height="0" rx="2" style="fill:var(--blue)"/>
+            <rect id="gbar19" x="590" y="180" width="24" height="0" rx="2" style="fill:var(--blue)"/>
+            <text x="20" y="196" font-size="10" fill="var(--text3)" font-family="'DM Mono',monospace">t=0</text>
+            <text x="590" y="196" font-size="10" fill="var(--text3)" font-family="'DM Mono',monospace">t=19</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Discount factor</span><span class="sl-live" id="gamma-val">γ = 0.90</span></div>
+        <input type="range" class="sl-slider" id="gamma-slider" min="0" max="99" step="1" value="90">
+        <div class="sl-note">Effective horizon (≈ 1/(1−γ), roughly how many future periods still carry meaningful weight): <b id="gamma-horizon" style="color:var(--text)">≈ 10.0 periods</b></div>
+      </div>
+      <p class="sl-p">A low γ makes an agent <strong>myopic</strong> — only the next reward or two really counts, and the bars collapse to almost nothing after a few steps. A high γ makes it <strong>far-sighted</strong> — rewards many steps away still carry real weight today. γ is doing two jobs at once: economically, a reward tomorrow is worth less than the same reward today (the same logic behind discounting a bond's future coupons); mathematically, it's what keeps an infinite sum of rewards from adding up to infinity.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">The value function compresses a whole future into one number</h2>
+      <p class="sl-sub">Fix a policy π. V<sup>π</sup>(s) is the expected sum of every future reward, each shrunk by how far away it is.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">V</div><div><h4>V<sup>π</sup>(s)</h4><p>Expected total discounted future reward, starting in state s and following policy π forever after.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">γᵗ</div><div><h4>γᵗ r<sub>t</sub></h4><p>The reward received t steps from now, shrunk by γ raised to the t-th power — far-future rewards count for less.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">π</div><div><h4>s₀=s, π</h4><p>Conditioned on: the starting state is s, and every action along the way is chosen by policy π.</p></div></div>
+      </div>
+      <div class="sl-quote">This single number compresses an entire infinite future into one comparable quantity — exactly the same compression a bond's price performs on a stream of future coupons, or that the Kelly criterion's log-growth objective performs on an entire sequence of compounding bets. Reduce a whole future to one number you can actually maximize, and comparing two situations becomes comparing two numbers.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Where the Bellman equation actually comes from</h2>
+      <p class="sl-sub">It isn't a new assumption bolted onto the value function — it falls straight out of splitting an infinite sum. Step through it.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="bell-tabs">
+          <button class="sl-tab active" data-panel="bell-1">1 — The raw definition</button>
+          <button class="sl-tab" data-panel="bell-2">2 — Split off the first term</button>
+          <button class="sl-tab" data-panel="bell-3">3 — The recursion</button>
+        </div>
+        <div class="sl-panel active" id="bell-1">
+          <div class="sl-row"><div class="sl-box">V(s) = r₀ + γr₁ + γ²r₂ + ⋯</div></div>
+          <div class="sl-verdict">An infinite sum, conditioned on starting at s. Looks hopeless to compute directly — you'd need to sum forever.</div>
+        </div>
+        <div class="sl-panel" id="bell-2">
+          <div class="sl-row"><div class="sl-box amber">V(s) = r₀ + γ(r₁ + γr₂ + ⋯)</div></div>
+          <div class="sl-verdict">Just algebra — factor γ out of every term after the first. Nothing new assumed yet, just re-grouped.</div>
+        </div>
+        <div class="sl-panel" id="bell-3">
+          <div class="sl-row"><div class="sl-box green">V(s) = r + γ · V(s′)</div></div>
+          <div class="sl-verdict"><strong>The part in parentheses is V again</strong> — the exact same infinite-sum shape, just starting one step later at whatever state s′ comes next. That's the Bellman equation: value now equals immediate reward plus the discounted value of what comes next.</div>
+        </div>
+        <div class="sl-note">This is what turns an infinite-horizon problem into a system of equations relating each state only to its immediate neighbors — solvable by substitution, by iteration, or by a learning rule that only ever looks one step ahead.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">One Bellman backup, live</h2>
+      <p class="sl-sub">V(s) = r + γ · V(s′). Change any field — the defaults match the Long/Hold numbers from the diagram above.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Reward r</label><input type="number" class="sl-input" id="bell-r" value="1" step="0.1"></div>
+          <div class="sl-calc-op">+</div>
+          <div class="sl-calc-field"><label>Discount γ</label><input type="number" class="sl-input" id="bell-gamma" value="0.9" step="0.05" min="0" max="1"></div>
+          <div class="sl-calc-op">×</div>
+          <div class="sl-calc-field"><label>Next value V(s′)</label><input type="number" class="sl-input" id="bell-vnext" value="1" step="0.1"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">V(s)</div>
+            <div class="sl-calc-result-val" id="bell-result">1.900</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>γ × V(s′) = <b id="bell-step-gv">0.900</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="bell-reset">Reset to worked-example numbers</button>
+        <div class="sl-note">γ is kept between 0 and 1 by definition — blank, non-numeric, or out-of-range input shows "—" rather than a wrong number.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Value iteration: repeat the backup until it stops moving</h2>
+      <p class="sl-sub">Start every state's value at zero. Apply the Bellman backup to every state, every sweep, using last sweep's numbers. Step through it on the 3-state MDP (γ=0.9).</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="vi-tabs">
+          <button class="sl-tab active" data-panel="vi-0">Start</button>
+          <button class="sl-tab" data-panel="vi-1">Sweep 1</button>
+          <button class="sl-tab" data-panel="vi-2">Sweep 2</button>
+          <button class="sl-tab" data-panel="vi-3">Converged (V*)</button>
+        </div>
+        <div class="sl-panel active" id="vi-0">
+          <div class="sl-row">
+            <div class="sl-box">Flat: 0</div><div class="sl-box">Long: 0</div><div class="sl-box">Short: 0</div>
+          </div>
+          <div class="sl-verdict">Every state starts at zero — no information yet about which action is better anywhere.</div>
+        </div>
+        <div class="sl-panel" id="vi-1">
+          <div class="sl-row">
+            <div class="sl-box amber">Flat: 0</div><div class="sl-box amber">Long: 1</div><div class="sl-box amber">Short: −0.1</div>
+          </div>
+          <div class="sl-verdict">One backup each: Long picks Hold (1 &gt; −0.1). Short picks Close (−0.1 &gt; −0.5). Flat's two options still tie at 0, since Open's payoff depends on Long/Short values that haven't updated yet.</div>
+        </div>
+        <div class="sl-panel" id="vi-2">
+          <div class="sl-row">
+            <div class="sl-box amber">Flat: 0.305</div><div class="sl-box amber">Long: 1.9</div><div class="sl-box amber">Short: −0.1</div>
+          </div>
+          <div class="sl-verdict">Flat's Open branch now sees Long and Short's improved values and finally beats Stay (0.305 &gt; 0). This is also the sweep where every state's best action locks in — the values keep climbing, but the policy itself (Open / Hold / Close) has already stopped changing.</div>
+        </div>
+        <div class="sl-panel" id="vi-3">
+          <div class="sl-row">
+            <div class="sl-box green">Flat: 7.319</div><div class="sl-box green">Long: 10</div><div class="sl-box green">Short: 6.487</div>
+          </div>
+          <div class="sl-verdict">The fixed point, after enough sweeps (or solved exactly, once the policy is known, as one linear system). The numbers alone reconstruct ordinary trading sense — don't sit flat forever, hold winners, cut losers — derived purely from the reward structure, not asserted.</div>
+        </div>
+        <div class="sl-note">Sanity check: at Long, Hold's 10 beats Close's −0.1+0.9(7.319)≈6.487. At Short, Close's 6.487 beats Hold's −0.5+0.9(6.487)≈5.339. At Flat, Open's 7.319 beats Stay's 0.9×7.319≈6.587.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Grading a state versus grading one specific move</h2>
+      <p class="sl-sub">Everything so far evaluated a fixed policy. Optimality asks a sharper question: what's the best possible value, over every policy?</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">V*(s) — grade the state</span>
+          <p>V*(s) = max<sub>a</sub> Σ<sub>s′</sub> P(s′|s,a)[R(s,a,s′) + γV*(s′)]. Averaging over the policy's actions becomes maximizing over actions — the best policy, by definition, always takes whichever action leads to the highest expected value.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Q*(s,a) — grade the action</span>
+          <p>Q*(s,a) = Σ<sub>s′</sub> P(s′|s,a)[R(s,a,s') + γ·max<sub>a′</sub>Q*(s′,a′)]. The value of taking action a right now, then playing optimally forever after. Note V*(s) = max<sub>a</sub> Q*(s,a) — a state's best value is just the value of its best action.</p>
+        </div>
+      </div>
+      <div class="sl-quote">Knowing the score for every individual action is more directly useful than knowing only a state's overall score, because it tells you exactly which move to make — not just how happy to be. This particular rewriting, Q* in terms of itself one step later, is the exact identity the next lesson's Q-learning update rule is built from directly.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Where the MDP framing quietly goes wrong</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>Assuming a market is actually Markov</h4><p>Real price processes carry momentum, volatility clustering, and regime memory that a naively small state doesn't capture — the state has to be enlarged to compensate, at the cost of a much bigger state space.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>Treating V<sup>π</sup> as achievable, not just expected</h4><p>The value function is an expectation over an entire distribution of future paths. One realized trajectory can and will look nothing like the average — the same trap the Kelly lesson raises about expected value versus long-run compounded growth.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>Picking γ without thinking about it</h4><p>γ isn't a free technical knob — it encodes how much future reward genuinely matters, and the optimal policy can change qualitatively depending on it, as Section 4's slider showed even in this 3-state toy.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>The model has to actually be known</h4><p>Value iteration needs P(s′|s,a) and R(s,a,s′) for every state-action pair up front. Real environments — a market, a robot, a game — rarely hand you that table explicitly.</p></div></div>
+      </div>
+      <p class="sl-p">That last gap is exactly the reason the field moved beyond this chapter: learning values from sampled experience, without ever needing an explicit P or R, is the entire subject of the next lesson.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Checked against this repo's actual code</h2>
+      <p class="sl-sub">The full lesson tags this topic as a pure concept. Here's what verifying that against the live codebase actually found.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Full lesson's claim, and today's reality</div>
+        <p><strong>What the full lesson says:</strong> "CONCEPT — explained here, not built or tested anywhere in this repo." <strong>Still true, for what this lesson covers:</strong> nothing in the trading bot solves an explicit discrete state/action/reward table by value iteration or Q-learning — there is no MDP-shaped decision engine here. <strong>One close mathematical cousin does exist</strong>, though: <code>Beta Idea/BETA_STOCHASTIC_CONTROL_README.md</code> documents a live "beta stochastic control" system built on Hamilton-Jacobi-Bellman optimal control — the continuous-time relative of the exact "value now = reward now + discounted value of what's next" identity from this lesson — used to size an inaction band around target factor exposures. By its own documented design it is <strong>monitoring and alerting only</strong>: it does not place trades, size positions, or veto entry signals, so "not used for decision-making here" also still holds.</p>
+      </div>
+      <p class="sl-p">Worth carrying forward: the same recursive idea shows up under different names — discrete Bellman equation here, continuous HJB equation there — well before anything in this repo calls itself "reinforcement learning."</p>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What does the Markov property assume?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The future depends only on the current state, not the full history of how you got there</button>
+        <button class="sl-quiz-opt">Every action leads to the same reward every time</button>
+        <button class="sl-quiz-opt">The discount factor must equal 1</button>
+        <div class="sl-quiz-explain">"Markov" is exactly this simplifying assumption — the current state is assumed to already capture everything relevant about the past.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>In V(s) = r + γV(s′), what job does γ do?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It shrinks the value of future rewards relative to immediate ones, and keeps an infinite sum finite</button>
+        <button class="sl-quiz-opt">It counts how many states exist</button>
+        <button class="sl-quiz-opt">It is the probability of taking the best action</button>
+        <div class="sl-quiz-explain">γ (between 0 and 1) discounts the future — economically, a reward later is worth less than now; mathematically, it stops an infinite sum from diverging.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>In the 3-state MDP at γ=0.9, why does the optimal policy Hold at Long but Close at Short?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Holding Long compounds a +1 reward every period into a value of 10; holding Short compounds a −0.5 reward into something worse than cutting the loss</button>
+        <button class="sl-quiz-opt">"Hold" is always the correct action in any MDP</button>
+        <button class="sl-quiz-opt">Because the transition probabilities differ between the two states</button>
+        <div class="sl-quiz-explain">Same discounting math, opposite-signed rewards: +1 repeated forever compounds to a much bigger number under γ=0.9 than −0.5 repeated forever does — the sign and size of the per-period reward decides the policy, not any special-casing of action names.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>What is the one change that turns the policy-evaluating Bellman equation into the Bellman optimality equation?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Replacing the average over the policy's actions with a maximization over actions</button>
+        <button class="sl-quiz-opt">Setting γ to zero</button>
+        <button class="sl-quiz-opt">Removing the reward term entirely</button>
+        <div class="sl-quiz-explain">Averaging describes how good a fixed policy is; maximizing describes the best value achievable over every possible policy, since the optimal policy always picks the highest-value action.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>r = 2, γ = 0.5, V(s′) = 4. What is V(s) = r + γV(s′)?</h4>
+        <button class="sl-quiz-opt" data-correct="true">4</button>
+        <button class="sl-quiz-opt">6</button>
+        <button class="sl-quiz-opt">3</button>
+        <div class="sl-quiz-explain">2 + 0.5 × 4 = 2 + 2 = 4.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>An MDP is the tuple (S, A, P, R, γ) — states, actions, transition probabilities, rewards, and a discount factor. It's the standard formalism for any sequential decision problem.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>The Markov property assumes the current state already captures everything relevant about the past — a deliberate simplification, not a claim about how real markets actually behave.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>V<sup>π</sup>(s) compresses an entire infinite, discounted future into one comparable number, under a fixed way of acting.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The Bellman equation — value now equals reward now plus γ times the value of what's next — is a recursive identity, not a new assumption. It falls straight out of splitting an infinite sum.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The Bellman optimality equation swaps "average over the policy's actions" for "take the best one," turning policy evaluation into policy search.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Value iteration converges to a fixed point that also encodes the optimal policy — often the greedy policy stabilizes long before the numbers themselves stop moving.</p></div>
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">What this now lets you do</div>
+        <p>Read any reinforcement-learning method — Q-learning, policy gradients, deep Q-networks — as a different way of approximating this one recursive identity, rather than an unrelated algorithm to memorize. Make "how patient is this decision rule" an explicit, tunable number (γ) instead of a vague feeling. Recognize the same value-now-equals-reward-plus-discounted-later idea when it shows up under a different name, like the Hamilton-Jacobi-Bellman control already running in this repo's beta-monitoring system.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Q-Learning &amp; Temporal-Difference Methods</h3>
+        <p>What happens once P and R aren't known in advance — learning a value function directly from sampled experience, one step at a time.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="q-learning-temporal-difference-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="mdp-bellman-equation.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Discount-factor slider — decay curve + effective horizon.
+  (function(){
+    var slider = document.getElementById('gamma-slider');
+    if (!slider) return;
+    var out = document.getElementById('gamma-val');
+    var horizonOut = document.getElementById('gamma-horizon');
+    var bars = [];
+    for (var i = 0; i < 20; i++) { bars.push(document.getElementById('gbar' + i)); }
+    var BASE_Y = 180, MAX_H = 160;
+
+    function update(){
+      var g = parseInt(slider.value, 10) / 100;
+      out.textContent = 'γ = ' + g.toFixed(2);
+      for (var t = 0; t < 20; t++) {
+        var h = MAX_H * Math.pow(g, t);
+        bars[t].setAttribute('height', h);
+        bars[t].setAttribute('y', BASE_Y - h);
+      }
+      var horizon = 1 / (1 - g);
+      horizonOut.textContent = '≈ ' + horizon.toFixed(1) + ' periods';
+    }
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Bellman backup calculator — V(s) = r + gamma * V(s'), with guards.
+  (function(){
+    var r = document.getElementById('bell-r');
+    if (!r) return;
+    var g = document.getElementById('bell-gamma'), vn = document.getElementById('bell-vnext');
+    var result = document.getElementById('bell-result');
+    var stepGV = document.getElementById('bell-step-gv');
+    var resetBtn = document.getElementById('bell-reset');
+    var DEFAULTS = { r: 1, gamma: 0.9, vnext: 1 };
+
+    function recompute(){
+      var rv = parseFloat(r.value), gv = parseFloat(g.value), vv = parseFloat(vn.value);
+      if (!isFinite(rv) || !isFinite(gv) || !isFinite(vv) || gv < 0 || gv > 1) {
+        stepGV.textContent = '—';
+        result.textContent = '—';
+        return;
+      }
+      var discounted = gv * vv;
+      stepGV.textContent = discounted.toFixed(3);
+      result.textContent = (rv + discounted).toFixed(3);
+    }
+
+    [r, g, vn].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      r.value = DEFAULTS.r; g.value = DEFAULTS.gamma; vn.value = DEFAULTS.vnext;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

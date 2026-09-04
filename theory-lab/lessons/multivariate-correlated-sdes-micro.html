@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Multivariate &amp; Correlated SDEs — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Multivariate &amp; Correlated SDEs — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full vector-SDE derivation, the real Monte Carlo convergence study, and a 5-question self-test?<a href="multivariate-correlated-sdes.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">SDEs 3 · Stochastic Differential Equations</div>
+      <h1 class="sl-h1">Multivariate &amp; <em>Correlated</em> SDEs</h1>
+      <p class="sl-lede">Every SDE so far in this curriculum — the Ornstein-Uhlenbeck process, geometric Brownian motion — followed one process driven by one source of randomness. Real books never look like that: an FX desk holds pairs that share a currency leg, Heston's own model needs a stock price and its variance to move together. This lesson builds the standard machinery for many correlated processes at once — a vector SDE, a diffusion matrix, and the Cholesky decomposition that turns a target correlation into simulatable shocks.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">One process was never going to be enough</h2>
+      <p class="sl-sub">Existence &amp; Uniqueness and Numerical Schemes, the two lessons before this one, both worked with a single process — one OU or GBM path, one Brownian motion driving it. Nothing about a real trading book looks like that.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">💱</div><div><h4>Correlated FX pairs</h4><p>EUR/USD, GBP/USD, and EUR/GBP all move on the same book, and they share currency legs — a EUR-strength move pushes two of them the same way and the third the opposite way. Three processes, not independently drawn.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📉</div><div><h4>Heston's own two processes</h4><p>The Heston model, covered earlier in this Theory Lab, is already a live example: a price process and a variance process, each its own SDE, correlated with each other by a single ρ. That ρ is this lesson's whole subject, just not named yet.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📈</div><div><h4>A whole rate curve</h4><p>Level, slope, and curvature of a yield curve don't move independently either — model the curve as several factors evolving together and the same correlated-shock problem shows up again.</p></div></div>
+      </div>
+      <div class="sl-quote">The fix isn't a new kind of SDE — it's the <strong>same</strong> drift-plus-diffusion structure, just stacked into vectors and matrices. Everything built in the previous two lessons about existence, uniqueness, and simulating a single SDE carries over unchanged; the new piece is entirely about how several processes' randomness relates to each other.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Stacking processes into a vector</h2>
+      <p class="sl-sub">Collect n processes into one vector Xₜ, and the same drift-plus-diffusion shape from every earlier lesson still applies — just with vectors and a matrix instead of numbers.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The vector SDE</div>
+        <div class="sl-row">
+          <div class="sl-box">dX<sub>t</sub></div>
+          <div class="sl-arrow">=</div>
+          <div class="sl-box amber">μ(X<sub>t</sub>,t) dt</div>
+          <div class="sl-arrow">+</div>
+          <div class="sl-box green">Σ(X<sub>t</sub>,t) dW<sub>t</sub></div>
+        </div>
+        <div class="sl-verdict">Same shape as a single-process SDE — <strong>drift term plus diffusion term</strong> — except now every symbol is a vector or a matrix.</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">▤</div><div><h4>Xₜ — an n-vector</h4><p>n processes evolving together: n asset prices, n points on a curve, or a price and its variance (n = 2, Heston's case).</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">→</div><div><h4>μ — an n-vector of drifts</h4><p>One drift per process. Nothing new here versus a single-process SDE, just one per row.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">▦</div><div><h4>Σ — an n×m matrix</h4><p>The diffusion <em>loadings</em>. This is the new object, and it's a matrix — see the Linear Algebra &amp; Matrices lesson for the vocabulary "matrix acting on a vector" leans on.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎲</div><div><h4>Wₜ — an m-vector, independent</h4><p>m separate Brownian motions, <strong>independent of each other by construction</strong>. That word "independent" is the whole hinge this lesson turns on.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Independent dice, mixed into correlated outcomes</h2>
+      <p class="sl-sub">Here's the entire idea with no matrices yet. Two ordinary, completely independent dice — call the rolls z₁ and z₂.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The mixing trick</div>
+        <div class="sl-row">
+          <div class="sl-box">z₁, z₂<br><span style="font-size:11px;font-weight:400;color:var(--text3)">independent rolls</span></div>
+          <div class="sl-arrow">mix →</div>
+          <div class="sl-box green">y₁ = z₁<br>y₂ = 0.6z₁ + 0.8z₂</div>
+        </div>
+        <div class="sl-verdict">y₁ and y₂ are now <strong>correlated</strong> — y₂ partly reuses z₁, so whenever z₁ comes up large, both y₁ and y₂ tend to be large. Change the weights 0.6 and 0.8, and the correlation changes, without ever touching z₁ or z₂ themselves.</div>
+      </div>
+      <div class="sl-quote">This is the entire content of the Cholesky recipe two slides from now — continuous-time Brownian increments standing in for dice rolls, a matrix standing in for the two mixing weights. And those weights, 0.6 and 0.8, aren't arbitrary: they're exactly ρ = 0.6 and √(1−ρ²) = 0.8 for a target correlation of 0.6, the example this whole deck builds toward.</div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>Keeping Wₜ's components independent and doing all the correlating through Σ is a <strong>modelling convention</strong>, not a mathematical necessity — but it's the universal one, because it cleanly separates "how much randomness does each process have" (Σ's diagonal magnitude) from "how does that randomness correlate across processes" (Σ's off-diagonal mixing).</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">One identity carries the whole topic</h2>
+      <p class="sl-sub">Apply the same (dWₜ)(dWₜ)ᵀ → I dt rule that underlies Itô's Lemma, and the instantaneous covariance of the moves in Xₜ falls out directly.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="cov-tabs">
+          <button class="sl-tab active" data-panel="cov-1">Forward: Σ known</button>
+          <button class="sl-tab" data-panel="cov-2">Backward: ρ known</button>
+        </div>
+        <div class="sl-panel active" id="cov-1">
+          <div class="sl-row"><div class="sl-box">Σ Σᵀ</div><div class="sl-arrow">=</div><div class="sl-box green">Cov(dX<sub>t</sub>) / dt</div></div>
+          <div class="sl-verdict">Hand this direction a loading matrix Σ, and the covariance of every process pair is a <strong>free lookup</strong> — one matrix multiplication, done.</div>
+        </div>
+        <div class="sl-panel" id="cov-2">
+          <div class="sl-row"><div class="sl-box amber">target ρ</div><div class="sl-arrow">?</div><div class="sl-box">Σ (or its factor L)</div></div>
+          <div class="sl-verdict">This is the direction that actually shows up in practice: you're handed a target correlation from market data or a calibration, and need to <strong>invert</strong> the identity to find a Σ that produces it. That inversion is exactly what Cholesky decomposition is for — next slide.</div>
+        </div>
+      </div>
+      <p class="sl-p">Every entry of ΣΣᵀ is a covariance (or, on the diagonal, a variance). The forward direction — Σ in, covariance out — needs nothing but matrix multiplication, the exact operation the Linear Algebra &amp; Matrices lesson builds from scratch. The backward direction is where the real work of this lesson lives.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">The Cholesky recipe, step by step</h2>
+      <p class="sl-sub">A target correlation ρ = 0.6 between two processes. Walk the recipe through to a pair of correctly-correlated shocks.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="chol-tabs">
+          <button class="sl-tab active" data-panel="chol-1">1 · Target ρ</button>
+          <button class="sl-tab" data-panel="chol-2">2 · Solve L</button>
+          <button class="sl-tab" data-panel="chol-3">3 · Mix shocks</button>
+          <button class="sl-tab" data-panel="chol-4">4 · Check it</button>
+        </div>
+        <div class="sl-panel active" id="chol-1">
+          <div class="sl-row">
+            <div class="sl-box">ρ = &#91;1, 0.6&#93;<br>&#91;0.6, 1&#93;</div>
+          </div>
+          <div class="sl-verdict">Symmetric, 1's on the diagonal, the off-diagonal is the desired correlation. This is the <strong>target</strong> — what you got from historical data or a calibration.</div>
+        </div>
+        <div class="sl-panel" id="chol-2">
+          <div class="sl-row">
+            <div class="sl-box amber">L₂₁ = ρ = 0.600</div>
+            <div class="sl-box amber">L₂₂ = √(1&minus;ρ²) = 0.800</div>
+          </div>
+          <div class="sl-verdict">L = &#91;1, 0&#93; / &#91;0.6, 0.8&#93; — lower-triangular, and it satisfies ρ = LLᵀ. This L <strong>always exists</strong> whenever ρ is a genuine, valid correlation matrix.</div>
+        </div>
+        <div class="sl-panel" id="chol-3">
+          <div class="sl-row">
+            <div class="sl-box">dW¹<sub>corr</sub> = dW¹<sub>ind</sub></div>
+            <div class="sl-box green">dW²<sub>corr</sub> = 0.6 dW¹<sub>ind</sub> + 0.8 dW²<sub>ind</sub></div>
+          </div>
+          <div class="sl-verdict">Draw two <strong>independent</strong> standard shocks, dW¹<sub>ind</sub> and dW²<sub>ind</sub>, then mix them with L. What comes out the other side is what actually feeds each process's SDE.</div>
+        </div>
+        <div class="sl-panel" id="chol-4">
+          <div class="sl-row">
+            <div class="sl-box">Var(dW²<sub>corr</sub>) = 0.36dt + 0.64dt = dt ✓</div>
+          </div>
+          <div class="sl-verdict">Correct unit variance, and Corr(dW¹<sub>corr</sub>, dW²<sub>corr</sub>) works out to <strong>exactly 0.6</strong> — the target, reproduced by construction, not by trial and error.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Two correlated paths, one simulated realization</h2>
+      <p class="sl-sub">Two zero-drift processes, Cholesky-mixed from the same recipe, target correlation 0.70.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>One simulated run</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A chart showing two simulated correlated sample paths over time. Both broadly rise through the middle of the period and fall back near the end, moving together without perfect lockstep, consistent with a positive but not perfect correlation.">
+            <line x1="50" y1="140" x2="610" y2="140" style="stroke:var(--text3);stroke-dasharray:4,3"/>
+            <text x="16" y="144" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--text3)">0</text>
+            <line x1="50" y1="245" x2="610" y2="245" style="stroke:var(--text3)"/>
+            <text x="50" y="258" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">t=0</text>
+            <text x="610" y="258" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)" text-anchor="end">T</text>
+            <polyline points="50.00,140.00 60.00,126.84 70.00,105.44 80.00,75.84 90.00,73.44 100.00,61.31 110.00,61.16 120.00,76.42 130.00,78.46 140.00,97.55 150.00,100.91 160.00,110.20 170.00,104.61 180.00,103.06 190.00,109.27 200.00,117.76 210.00,120.44 220.00,135.73 230.00,144.30 240.00,139.53 250.00,119.93 260.00,128.17 270.00,129.52 280.00,128.38 290.00,125.65 300.00,118.42 310.00,133.88 320.00,140.73 330.00,124.29 340.00,114.92 350.00,91.87 360.00,101.73 370.00,93.13 380.00,89.68 390.00,73.24 400.00,78.89 410.00,105.05 420.00,106.90 430.00,114.11 440.00,118.20 450.00,133.62 460.00,121.60 470.00,133.65 480.00,125.76 490.00,126.53 500.00,141.29 510.00,142.00 520.00,127.43 530.00,137.99 540.00,120.22 550.00,129.47 560.00,130.10 570.00,149.91 580.00,162.35 590.00,151.74 600.00,155.40 610.00,142.66" style="stroke:var(--blue);stroke-width:2" fill="none"/>
+            <polyline points="50.00,140.00 60.00,142.15 70.00,142.42 80.00,132.40 90.00,119.99 100.00,103.13 110.00,98.23 120.00,102.12 130.00,93.06 140.00,105.46 150.00,93.04 160.00,112.12 170.00,103.87 180.00,104.96 190.00,99.52 200.00,103.86 210.00,99.50 220.00,114.59 230.00,127.03 240.00,127.52 250.00,104.02 260.00,111.17 270.00,101.46 280.00,107.55 290.00,107.19 300.00,123.80 310.00,140.32 320.00,145.86 330.00,130.46 340.00,108.35 350.00,99.06 360.00,104.85 370.00,88.46 380.00,83.46 390.00,76.70 400.00,90.17 410.00,126.92 420.00,129.53 430.00,149.92 440.00,153.39 450.00,159.49 460.00,140.52 470.00,152.39 480.00,148.74 490.00,154.53 500.00,162.65 510.00,176.63 520.00,177.91 530.00,180.02 540.00,171.63 550.00,192.21 560.00,204.74 570.00,214.57 580.00,222.70 590.00,220.09 600.00,215.57 610.00,198.38" style="stroke:var(--purple);stroke-width:2" fill="none"/>
+          </svg>
+        </div>
+        <div class="sl-verdict"><span style="color:var(--blue);font-weight:700">■</span> Process 1 &emsp; <span style="color:var(--purple);font-weight:700">■</span> Process 2, mixed via the 2×2 Cholesky factor above with target ρ = 0.70. This particular draw's own sample correlation came out at <strong>≈0.69</strong> — one noisy realization, not a guarantee of hitting the target exactly. The two paths climb together through the middle of the run and give some of it back near the end, without ever moving in perfect lockstep — exactly the visual signature of a strong but not perfect positive correlation.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Drag the correlation, watch it happen</h2>
+      <p class="sl-sub">Same underlying independent shocks every time — only the mixing weight ρ changes. Watch the two paths pull together or drift apart.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A chart of two simulated sample paths that redraw as a correlation slider moves, converging toward moving in lockstep as the slider approaches one and moving increasingly independently as it approaches zero.">
+            <line x1="50" y1="140" x2="610" y2="140" style="stroke:var(--text3);stroke-dasharray:4,3"/>
+            <text x="16" y="144" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--text3)">0</text>
+            <line x1="50" y1="245" x2="610" y2="245" style="stroke:var(--text3)"/>
+            <text x="50" y="258" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">t=0</text>
+            <text x="610" y="258" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)" text-anchor="end">T</text>
+            <polyline id="csl-path1" points="" style="stroke:var(--blue);stroke-width:2" fill="none"/>
+            <polyline id="csl-path2" points="" style="stroke:var(--purple);stroke-width:2" fill="none"/>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Target correlation ρ</span><span class="sl-live" id="csl-rval">ρ = 0.60</span></div>
+        <input type="range" class="sl-slider" id="csl-slider" min="-95" max="95" step="5" value="60">
+        <div class="sl-note">Realized correlation of this single simulated path's increments: <strong id="csl-realized">—</strong>. It moves near ρ but rarely sits exactly on it — the same small-sample noise the full lesson's Monte Carlo study shows shrinking as path count grows.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Try the recipe yourself</h2>
+      <p class="sl-sub">Change ρ, z₁, or z₂ below — the Cholesky factor and the resulting correlated shocks recompute live.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — live calculator</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Target ρ</label><input type="number" class="sl-input" id="cc-rho" value="0.6" step="0.05" min="-0.99" max="0.99"></div>
+          <div class="sl-calc-field"><label>Independent shock z₁</label><input type="number" class="sl-input" id="cc-z1" value="1.00" step="0.25"></div>
+          <div class="sl-calc-field"><label>Independent shock z₂</label><input type="number" class="sl-input" id="cc-z2" value="1.00" step="0.25"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Correlated dW²</div>
+            <div class="sl-calc-result-val" id="cc-result">1.400</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>L₂₁ = ρ = <b id="cc-l21">0.600</b>&emsp;L₂₂ = √(1&minus;ρ²) = <b id="cc-l22">0.800</b></div>
+          <div>dW¹<sub>corr</sub> = z₁ = <b id="cc-dw1">1.000</b></div>
+          <div>dW²<sub>corr</sub> = ρz₁ + L₂₂z₂ = <b id="cc-dw2-step">1.400</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="cc-reset">Reset to worked-example numbers (ρ=0.6)</button>
+        <div class="sl-note">ρ must sit strictly between &minus;1 and 1 — a blank, non-numeric, infinite, or out-of-range value shows "—" instead of a broken number.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">From two processes to N — same idea, bigger matrix</h2>
+      <p class="sl-sub">Nothing about the recipe changes once a third, fourth, or Nth correlated process joins. Only the size of ρ and L grows.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Two processes</span>
+          <ul>
+            <li>A single scalar ρ is all two processes ever need</li>
+            <li>2×2 correlation matrix, closed-form L = &#91;1,0&#93;/&#91;ρ,√(1&minus;ρ²)&#93;</li>
+            <li>This is exactly Heston's price-variance pair, from the earlier lesson in this Theory Lab</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">N processes</span>
+          <ul>
+            <li>A full N×N correlation matrix — one entry per pair of processes</li>
+            <li>No closed form in general — L is solved column by column, but always exists for a valid ρ</li>
+            <li>Same mixing formula: dW<sub>correlated</sub> = L · dW<sub>independent</sub>, just with bigger vectors</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-quote">Heston's model was built — and is usually taught — without ever saying the word "Cholesky." But its single ρ <strong>is</strong> a Cholesky factor of a 2×2 correlation matrix, just never named as one. Recognising that is what makes the jump to three, five, or fifty correlated processes feel like the same problem rather than a new one.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Where this shows up on a desk</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🧺</div><div><h4>Basket and spread option pricing</h4><p>A basket call, a spread option, an FX cross built from two majors — any payoff depending on more than one underlying needs every underlying simulated together, via exactly this Cholesky recipe.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📉</div><div><h4>Portfolio VaR and stress testing</h4><p>Portfolio-level risk depends on the joint, not marginal, distribution of every position's returns. An empirical correlation matrix, Cholesky-decomposed, is the standard bridge from single-asset risk to portfolio-level risk.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📈</div><div><h4>Multi-factor curve models</h4><p>A yield curve modelled as level, slope, and curvature — the same factors <code>nelson-siegel-svensson.html</code> fits cross-sectionally — needs correlated shocks when projected forward in time.</p></div></div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Where this gets misapplied</div>
+        <p><strong>An invalid correlation matrix.</strong> Cholesky decomposition requires ρ to be positive semi-definite — asynchronous or mismatched historical data can quietly violate this, and the decomposition then fails outright or produces nonsense. <strong>Treating a small-sample realization as proof of a bug.</strong> A handful of simulated paths can land visibly off-target from pure sampling noise, not a broken recipe. <strong>Assuming ρ is fixed.</strong> Real correlations shift over time and often spike toward one in a crisis — a static Cholesky-based simulation can't capture that on its own.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>In dXₜ = μdt + ΣdWₜ, are the components of Wₜ correlated with each other?</h4>
+        <button class="sl-quiz-opt" data-correct="true">No — they're independent by convention; all correlation lives in Σ</button>
+        <button class="sl-quiz-opt">Yes — Wₜ's components carry the correlation directly</button>
+        <button class="sl-quiz-opt">Only when n &gt; 2</button>
+        <div class="sl-quiz-explain">Wₜ's components are independent standard Brownian motions by construction. Every bit of correlation between the processes in Xₜ is introduced entirely by the matrix Σ mixing those independent shocks together.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>What equation defines the Cholesky factor L of a target correlation matrix ρ?</h4>
+        <button class="sl-quiz-opt" data-correct="true">ρ = LLᵀ, with L lower-triangular</button>
+        <button class="sl-quiz-opt">ρ = L + Lᵀ</button>
+        <button class="sl-quiz-opt">L = ρ⁻¹</button>
+        <div class="sl-quiz-explain">L is the lower-triangular matrix satisfying ρ = LLᵀ. It always exists, with positive diagonal entries, whenever ρ is a genuine, valid correlation matrix.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Target ρ = 0.8, independent shocks z₁ = 1, z₂ = 1. What is dW²corr?</h4>
+        <button class="sl-quiz-opt" data-correct="true">1.4 — since L₂₂ = √(1−0.64) = 0.6, so 0.8(1) + 0.6(1) = 1.4</button>
+        <button class="sl-quiz-opt">0.8 — just ρ times z₁</button>
+        <button class="sl-quiz-opt">2.0 — z₁ plus z₂</button>
+        <div class="sl-quiz-explain">L₂₁ = ρ = 0.8, L₂₂ = √(1−ρ²) = √0.36 = 0.6. dW²corr = ρz₁ + L₂₂z₂ = 0.8(1) + 0.6(1) = 1.4.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Heston's model correlates its price and variance SDEs with a single scalar ρ. How does this relate to Cholesky decomposition?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It's exactly the 2×2 special case — ρ is already a Cholesky factor, just unnamed</button>
+        <button class="sl-quiz-opt">It's unrelated — Heston's ρ predates Cholesky methods</button>
+        <button class="sl-quiz-opt">Cholesky only applies once n ≥ 3</button>
+        <div class="sl-quiz-explain">The Cholesky factor of the 2×2 matrix [[1,ρ],[ρ,1]] is L=[[1,0],[ρ,√(1−ρ²)]] — precisely Heston's construction, mixing two independent shocks into a correlated pair.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>The vector SDE dXₜ = μ(Xₜ,t)dt + Σ(Xₜ,t)dWₜ generalizes every single-process SDE so far to n processes at once, with the same drift-plus-diffusion shape.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Wₜ's components are independent by convention — every bit of correlation between the processes in Xₜ is introduced entirely through the matrix Σ, never through Wₜ itself.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>ΣΣᵀ = Cov(dXₜ)/dt is the one identity the whole topic reduces to — given Σ, the covariance is a free lookup.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Cholesky decomposition (ρ = LLᵀ) inverts that identity — given a target correlation, it hands back a mixing matrix L that turns independent shocks into correctly-correlated ones.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Heston's single scalar ρ is already this recipe's simplest case: the 2×2 Cholesky factor L=[[1,0],[ρ,√(1−ρ²)]], just never named as one.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>The same idea scales cleanly from 2 to N correlated processes — a bigger correlation matrix, a bigger Cholesky factor, the identical mixing formula.</p></div>
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">What this now lets you do</div>
+        <p>Take any target correlation structure — a handful of FX pairs sharing legs, Heston's price-variance pair, a whole curve of rate factors — and turn it into shocks you can actually feed into each process's SDE, with confidence the simulated correlation will converge to the one you targeted. That's the entire practical payoff of this lesson.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Short-Rate Models: Vasicek, CIR &amp; Hull-White</h3>
+        <p>Three models of the instantaneous interest rate, each fixing a specific flaw in the one before it — and each a direct, named application of the general SDE machinery this sequence has just built.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="short-rate-models-vasicek-cir-hull-white-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="multivariate-correlated-sdes.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Live "try the recipe yourself" Cholesky calculator.
+  (function(){
+    var rhoEl = document.getElementById('cc-rho');
+    if (!rhoEl) return;
+    var z1El = document.getElementById('cc-z1'), z2El = document.getElementById('cc-z2');
+    var l21Out = document.getElementById('cc-l21'), l22Out = document.getElementById('cc-l22');
+    var dw1Out = document.getElementById('cc-dw1'), dw2StepOut = document.getElementById('cc-dw2-step');
+    var resultOut = document.getElementById('cc-result');
+    var resetBtn = document.getElementById('cc-reset');
+    var DEFAULTS = { rho: 0.6, z1: 1.00, z2: 1.00 };
+
+    function fmt(n){ return n.toFixed(3); }
+
+    function recompute(){
+      var rho = parseFloat(rhoEl.value);
+      var z1 = parseFloat(z1El.value);
+      var z2 = parseFloat(z2El.value);
+
+      var valid = isFinite(rho) && isFinite(z1) && isFinite(z2) && rho > -1 && rho < 1;
+      if (!valid) {
+        l21Out.textContent = '—'; l22Out.textContent = '—';
+        dw1Out.textContent = '—'; dw2StepOut.textContent = '—';
+        resultOut.textContent = '—';
+        return;
+      }
+
+      var L21 = rho;
+      var L22 = Math.sqrt(1 - rho * rho);
+      var dW1 = z1;
+      var dW2 = rho * z1 + L22 * z2;
+
+      l21Out.textContent = fmt(L21);
+      l22Out.textContent = fmt(L22);
+      dw1Out.textContent = fmt(dW1);
+      dw2StepOut.textContent = fmt(dW2);
+      resultOut.textContent = fmt(dW2);
+    }
+
+    [rhoEl, z1El, z2El].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      rhoEl.value = DEFAULTS.rho; z1El.value = DEFAULTS.z1; z2El.value = DEFAULTS.z2;
+      recompute();
+    });
+    recompute();
+  })();
+
+  // Correlation slider — redraws two Cholesky-mixed sample paths live.
+  (function(){
+    var slider = document.getElementById('csl-slider');
+    if (!slider) return;
+    var rval = document.getElementById('csl-rval');
+    var path1 = document.getElementById('csl-path1');
+    var path2 = document.getElementById('csl-path2');
+    var realizedOut = document.getElementById('csl-realized');
+
+    // mulberry32 — small seeded PRNG, reproducible across runs/browsers.
+    function mulberry32(a){
+      return function(){
+        a |= 0; a = (a + 0x6D2B79F5) | 0;
+        var t = Math.imul(a ^ (a >>> 15), 1 | a);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+    function makeNormalGen(seed){
+      var rnd = mulberry32(seed), spare = null;
+      return function(){
+        if (spare !== null) { var s = spare; spare = null; return s; }
+        var u1 = Math.max(rnd(), 1e-12), u2 = rnd();
+        var mag = Math.sqrt(-2 * Math.log(u1));
+        var z0 = mag * Math.cos(2 * Math.PI * u2);
+        var z1 = mag * Math.sin(2 * Math.PI * u2);
+        spare = z1;
+        return z0;
+      };
+    }
+
+    var N = 56;
+    var normal = makeNormalGen(777);
+    var Z1 = [], Z2 = [];
+    for (var i = 0; i < N; i++) { Z1.push(normal()); Z2.push(normal()); }
+
+    var X0 = 50, X1 = 610, YMID = 140, PXPERUNIT = 90, SIGMA = 0.16;
+
+    function corr(a, b){
+      var n = a.length, ma = 0, mb = 0;
+      for (var i = 0; i < n; i++) { ma += a[i]; mb += b[i]; }
+      ma /= n; mb /= n;
+      var num = 0, da = 0, db = 0;
+      for (var i = 0; i < n; i++) {
+        num += (a[i] - ma) * (b[i] - mb);
+        da += (a[i] - ma) * (a[i] - ma);
+        db += (b[i] - mb) * (b[i] - mb);
+      }
+      var denom = Math.sqrt(da * db);
+      return denom === 0 ? 0 : num / denom;
+    }
+
+    function update(){
+      var rho = parseInt(slider.value, 10) / 100;
+      rval.textContent = 'ρ = ' + rho.toFixed(2);
+      var L22 = Math.sqrt(Math.max(0, 1 - rho * rho));
+
+      var dw2arr = [];
+      var p1 = [0], p2 = [0];
+      for (var i = 0; i < N; i++) {
+        var dw1 = Z1[i];
+        var dw2 = rho * Z1[i] + L22 * Z2[i];
+        dw2arr.push(dw2);
+        p1.push(p1[i] + SIGMA * dw1);
+        p2.push(p2[i] + SIGMA * dw2);
+      }
+
+      function toPoints(arr){
+        var pts = [];
+        for (var i = 0; i < arr.length; i++) {
+          var x = X0 + (X1 - X0) * i / N;
+          var y = YMID - arr[i] * PXPERUNIT;
+          pts.push(x.toFixed(2) + ',' + y.toFixed(2));
+        }
+        return pts.join(' ');
+      }
+
+      path1.setAttribute('points', toPoints(p1));
+      path2.setAttribute('points', toPoints(p2));
+      realizedOut.textContent = corr(Z1, dw2arr).toFixed(2);
+    }
+
+    slider.addEventListener('input', update);
+    update();
+  })();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Correlation Networks &amp; Minimum Spanning Trees — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Correlation Networks &amp; Minimum Spanning Trees — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivation, the worked 5-node Kruskal walkthrough, and a 5-question self-test?<a href="correlation-networks-mst.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Graph Theory &amp; Networks 2 · Graph Theory &amp; Networks</div>
+      <h1 class="sl-h1">Correlation Networks, <em>Pruned Down to a Picture</em></h1>
+      <p class="sl-lede">A correlation matrix for even a modest basket is a wall of numbers nobody actually reads — N(N−1)/2 pairwise values, none of them showing you the shape of the whole basket at once. This lesson turns that wall into a graph, then prunes the graph down to the handful of edges that matter: its Minimum Spanning Tree. It's the direct sequel to Graph Theory Fundamentals &amp; Centrality Measures, applying that lesson's vocabulary — nodes, edges, weights — specifically to a correlation matrix.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">A table nobody can eyeball</h2>
+      <p class="sl-sub">A correlation heatmap already contains this information. The problem is how fast it grows.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">5</div><div><h4>5 instruments → 10 pairs</h4><p>Small enough to scan a table by eye. This is the size of the worked example running through this whole deck: EUR, GBP, CHF, JPY, AUD.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">20</div><div><h4>20 instruments → 190 pairs</h4><p>A realistic cross-asset basket. Nobody looks at 190 correlation numbers and sees a clean clustering structure — the pattern is in there, but it isn't visible.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">50</div><div><h4>50 instruments → 1,225 pairs</h4><p>N(N−1)/2 grows roughly with the square of N. Doubling the basket roughly quadruples the numbers a human would need to hold in mind at once.</p></div></div>
+      </div>
+      <p class="sl-p">Between "the whole basket, compressed into a handful of factors" (the <a href="pca-factors.html">PCA lesson</a>) and "exactly one pair, tested for an equilibrium" (the cointegration lesson) sits a third view this lesson builds: the basket's full pairwise structure, kept intact, but turned into something a person can actually look at.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Correlation points the wrong way to be a distance</h2>
+      <p class="sl-sub">In any graph, a small edge weight should mean "close." Correlation runs backwards from that. Step through the three checkpoints.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="rho-tabs">
+          <button class="sl-tab active" data-panel="rho-1">ρ = 1 (identical)</button>
+          <button class="sl-tab" data-panel="rho-2">ρ = 0 (uncorrelated)</button>
+          <button class="sl-tab" data-panel="rho-3">ρ = −1 (opposite)</button>
+        </div>
+        <div class="sl-panel active" id="rho-1">
+          <div class="sl-row"><div class="sl-box">ρ = 1</div><div class="sl-arrow">→</div><div class="sl-box green">d = √(2(1−1)) = 0</div></div>
+          <div class="sl-verdict"><strong>Zero distance.</strong> Moving in perfect lockstep is, correctly, "as close as two instruments can be."</div>
+        </div>
+        <div class="sl-panel" id="rho-2">
+          <div class="sl-row"><div class="sl-box">ρ = 0</div><div class="sl-arrow">→</div><div class="sl-box amber">d = √(2(1−0)) ≈ 1.41</div></div>
+          <div class="sl-verdict">The neutral, "no relationship" distance — √2, right in the middle of the 0-to-2 range.</div>
+        </div>
+        <div class="sl-panel" id="rho-3">
+          <div class="sl-row"><div class="sl-box">ρ = −1</div><div class="sl-arrow">→</div><div class="sl-box amber">d = √(2(1−(−1))) = 2</div></div>
+          <div class="sl-verdict">The maximum possible distance. Moving in perfect opposition is, in this metric, as far apart as two series can be.</div>
+        </div>
+        <div class="sl-note">This is Mantegna's (1999) transform: d_ij = √(2(1 − ρ_ij)). It's specifically chosen because it satisfies the triangle inequality — a requirement for shortest-path and spanning-tree machinery to behave the way graph theory expects. A simpler transform like 1 − ρ alone doesn't reliably satisfy that.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 2, continued</div>
+      <h2 class="sl-h2">Watch two instruments move together</h2>
+      <p class="sl-sub">Drag the slider. As correlation rises toward 1, the distance between the two nodes shrinks — literally, in this picture.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 160" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two nodes, A and B, connected by a line whose length shows the correlation distance between them, moving as a slider changes correlation">
+            <line x1="60" y1="80" x2="580" y2="80" style="stroke:var(--border);stroke-width:1"/>
+            <line id="cd-line" x1="110" y1="80" x2="320" y2="80" style="stroke:var(--blue);stroke-width:2.5"/>
+            <text id="cd-dlabel" x="215" y="62" text-anchor="middle" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:13px;font-weight:600">d = 0.63</text>
+            <circle cx="110" cy="80" r="22" style="fill:var(--blue-bg);stroke:var(--blue);stroke-width:2"/>
+            <text x="110" y="85" text-anchor="middle" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:13px;font-weight:700">A</text>
+            <circle id="cd-dotB" cx="320" cy="80" r="22" style="fill:var(--blue-bg);stroke:var(--blue);stroke-width:2"/>
+            <text id="cd-labelB" x="320" y="85" text-anchor="middle" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:13px;font-weight:700">B</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Correlation ρ(A, B)</span><span class="sl-live" id="cd-rval">ρ = 0.80</span></div>
+        <input type="range" class="sl-slider" id="cd-slider" min="-100" max="100" step="5" value="80">
+        <div class="sl-note" id="cd-note">d = √(2(1 − ρ)) = √(2(1 − 0.80)) = 0.63 — highly correlated, so the nodes sit close together.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 2, continued</div>
+      <h2 class="sl-h2">Compute a distance yourself</h2>
+      <p class="sl-sub">Enter any correlation coefficient. Out-of-range or blank input shows — rather than a broken number.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — live calculator</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>ρ (correlation, −1 to 1)</label><input type="number" class="sl-input" id="dcalc-rho" value="0.80" step="0.05" min="-1" max="1"></div>
+          <div class="sl-calc-op">→</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Distance d</div>
+            <div class="sl-calc-result-val" id="dcalc-result">0.63</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>1 − ρ = <b id="dcalc-step1">0.20</b></div>
+          <div>2(1 − ρ) = <b id="dcalc-step2">0.40</b></div>
+          <div>√(2(1 − ρ)) = <b id="dcalc-step3">0.63</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="dcalc-reset">Reset to ρ = 0.80</button>
+        <div class="sl-note">Try ρ = 1.5, ρ = "", or ρ = abc — every case is caught before it reaches Math.sqrt, so the result reads "—" instead of NaN or a silently wrong number.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Every pair, connected — which is still the problem</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Complete graph</span>
+          <p>Compute d_ij for every pair of N instruments and every node connects to every other node — N(N−1)/2 edges, one per correlation. This is the same adjacency-matrix idea from the previous lesson, just built from distances instead of raw connection strengths.</p>
+        </div>
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Still unreadable</span>
+          <p>A fully-connected graph on 20 instruments has 190 edges drawn on top of each other. "Closeness" is now well-defined for every pair — but a picture with every possible line drawn on it is a mess of crossings, not a clustering structure a person can see.</p>
+        </div>
+      </div>
+      <p class="sl-p">The fix isn't a better layout algorithm — it's throwing most of those edges away, deliberately, while keeping the graph connected. That's exactly what a spanning tree does.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 3, continued</div>
+      <h2 class="sl-h2">The cheapest road network that still reaches every town</h2>
+      <div class="sl-quote">Imagine a planner given the cost of building a road directly between any two towns, told: connect every town to the network, somehow, for the least total construction cost, with zero redundant loops. That specific object — the lowest-total-weight way to connect every node with no cycles — is a <strong>Minimum Spanning Tree</strong>.</div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">✓</div><div><h4>Touches every node</h4><p>A spanning tree reaches every instrument in the basket — nothing is left isolated.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⊘</div><div><h4>No cycles</h4><p>Any loop is, by definition, at least one edge too many — a redundant road that adds cost without connecting anything new.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">N−1</div><div><h4>Exactly N−1 edges</h4><p>The minimum number of edges that can still connect N nodes at all. Many spanning trees exist; the <em>minimum</em> one is the one whose edges sum to the lowest total weight.</p></div></div>
+      </div>
+      <p class="sl-p">Replace "towns" with instruments and "road cost" with the Mantegna distance from Section 2, and the same construction answers a market-structure question: which pairs are the tightest, most direct links in the whole basket, and how do smaller clusters connect to the rest through the fewest, cheapest bridges?</p>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Building the tree, one edge at a time</h2>
+      <p class="sl-sub">Kruskal's algorithm: sort every edge by distance, add the shortest one that doesn't close a cycle, repeat. Five FX pairs, ten distances, walked step by step.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — step through Kruskal's algorithm</div>
+        <div class="sl-tabs" id="kr-tabs">
+          <button class="sl-tab active" data-panel="kr-0">Start — sorted edges</button>
+          <button class="sl-tab" data-panel="kr-1">Add EUR–GBP</button>
+          <button class="sl-tab" data-panel="kr-2">Add EUR–CHF</button>
+          <button class="sl-tab" data-panel="kr-3">Skip GBP–CHF</button>
+          <button class="sl-tab" data-panel="kr-4">Add EUR–AUD</button>
+          <button class="sl-tab" data-panel="kr-5">Add JPY–AUD — done</button>
+        </div>
+        <div class="sl-panel active" id="kr-0">
+          <div class="sl-row"><div class="sl-box">0.63</div><div class="sl-box">0.77</div><div class="sl-box">0.89</div><div class="sl-box">1.00</div><div class="sl-box">1.05</div><div class="sl-box">1.10</div><div class="sl-box">…</div></div>
+          <div class="sl-verdict">Every one of the 10 pairwise distances, sorted ascending. Tree so far: <strong>0 edges</strong>. Kruskal's algorithm will walk this list left to right.</div>
+        </div>
+        <div class="sl-panel" id="kr-1">
+          <div class="sl-row"><div class="sl-box green">EUR–GBP · 0.63</div><div class="sl-arrow">✓ added</div></div>
+          <div class="sl-verdict">Shortest edge on the list, no cycle risk yet — the tree has nothing to close a loop with. Tree so far: <strong>1 edge</strong>, weight 0.63.</div>
+        </div>
+        <div class="sl-panel" id="kr-2">
+          <div class="sl-row"><div class="sl-box green">EUR–CHF · 0.77</div><div class="sl-arrow">✓ added</div></div>
+          <div class="sl-verdict">Next shortest. Connects CHF into the growing {EUR, GBP} component. Tree so far: <strong>2 edges</strong>, weight 1.40.</div>
+        </div>
+        <div class="sl-panel" id="kr-3">
+          <div class="sl-row"><div class="sl-box amber">GBP–CHF · 0.89</div><div class="sl-arrow">✗ skipped</div></div>
+          <div class="sl-verdict">Shorter than several edges kept later — but GBP and CHF are already connected through EUR. Adding this would close the EUR-GBP-CHF triangle into a cycle, so Kruskal's algorithm rejects it regardless of how short it is. Tree so far: still <strong>2 edges</strong>.</div>
+        </div>
+        <div class="sl-panel" id="kr-4">
+          <div class="sl-row"><div class="sl-box green">EUR–AUD · 1.00</div><div class="sl-arrow">✓ added</div></div>
+          <div class="sl-verdict">Connects AUD into the main component. (GBP–AUD at 1.05 is skipped next for the same cycle reason as GBP–CHF.) Tree so far: <strong>3 edges</strong>, weight 2.40.</div>
+        </div>
+        <div class="sl-panel" id="kr-5">
+          <div class="sl-row"><div class="sl-box green">JPY–AUD · 1.10</div><div class="sl-arrow">✓ added — done</div></div>
+          <div class="sl-verdict">Connects the last remaining node, JPY, into the tree. <strong>4 edges for 5 nodes — the MST is complete</strong>, total weight 0.63+0.77+1.00+1.10 = <strong>3.50</strong>.</div>
+        </div>
+        <div class="sl-note">Both greedy choices ("shortest available, unless it closes a cycle") and both provably optimal — Kruskal's algorithm never has to backtrack or reconsider an earlier pick.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 4, continued</div>
+      <h2 class="sl-h2">From a tangle to a backbone</h2>
+      <p class="sl-sub">Same five nodes, same ten distances. Left: every edge exists. Right: only the four that survive pruning.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Complete graph — 10 edges</span>
+          <div class="sl-svgwrap">
+            <svg viewBox="0 0 340 380" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Five nodes with all ten pairwise edges drawn, a dense tangle with no visible structure">
+              <line x1="170" y1="60" x2="80" y2="150" style="stroke:var(--text3);stroke-width:1.5;opacity:.5"/>
+              <line x1="170" y1="60" x2="260" y2="150" style="stroke:var(--text3);stroke-width:1.5;opacity:.5"/>
+              <line x1="170" y1="60" x2="170" y2="250" style="stroke:var(--text3);stroke-width:1.5;opacity:.5"/>
+              <line x1="170" y1="60" x2="70" y2="330" style="stroke:var(--text3);stroke-width:1.5;opacity:.5"/>
+              <line x1="80" y1="150" x2="260" y2="150" style="stroke:var(--text3);stroke-width:1.5;opacity:.5"/>
+              <line x1="80" y1="150" x2="170" y2="250" style="stroke:var(--text3);stroke-width:1.5;opacity:.5"/>
+              <line x1="80" y1="150" x2="70" y2="330" style="stroke:var(--text3);stroke-width:1.5;opacity:.5"/>
+              <line x1="260" y1="150" x2="170" y2="250" style="stroke:var(--text3);stroke-width:1.5;opacity:.5"/>
+              <line x1="260" y1="150" x2="70" y2="330" style="stroke:var(--text3);stroke-width:1.5;opacity:.5"/>
+              <line x1="170" y1="250" x2="70" y2="330" style="stroke:var(--text3);stroke-width:1.5;opacity:.5"/>
+              <circle cx="170" cy="60" r="22" style="fill:var(--blue-bg);stroke:var(--blue);stroke-width:2"/>
+              <text x="170" y="65" text-anchor="middle" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:11px;font-weight:700">EUR</text>
+              <circle cx="80" cy="150" r="22" style="fill:var(--blue-bg);stroke:var(--blue);stroke-width:2"/>
+              <text x="80" y="155" text-anchor="middle" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:11px;font-weight:700">GBP</text>
+              <circle cx="260" cy="150" r="22" style="fill:var(--blue-bg);stroke:var(--blue);stroke-width:2"/>
+              <text x="260" y="155" text-anchor="middle" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:11px;font-weight:700">CHF</text>
+              <circle cx="170" cy="250" r="22" style="fill:var(--blue-bg);stroke:var(--blue);stroke-width:2"/>
+              <text x="170" y="255" text-anchor="middle" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:11px;font-weight:700">AUD</text>
+              <circle cx="70" cy="330" r="22" style="fill:var(--amber-bg);stroke:var(--amber);stroke-width:2"/>
+              <text x="70" y="335" text-anchor="middle" style="fill:var(--amber);font-family:'DM Mono',monospace;font-size:11px;font-weight:700">JPY</text>
+            </svg>
+          </div>
+          <p>N(N−1)/2 = 10 edges for 5 nodes. No edge stands out as more important than any other.</p>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Minimum spanning tree — 4 edges</span>
+          <div class="sl-svgwrap">
+            <svg viewBox="0 0 340 380" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The same five nodes with only the four minimum spanning tree edges shown — EUR-GBP, EUR-CHF, EUR-AUD, and JPY-AUD — revealing EUR as a hub and JPY as an outlier attached only through AUD">
+              <line x1="170" y1="60" x2="80" y2="150" style="stroke:var(--green);stroke-width:3.5"/>
+              <line x1="170" y1="60" x2="260" y2="150" style="stroke:var(--green);stroke-width:3.5"/>
+              <line x1="170" y1="60" x2="170" y2="250" style="stroke:var(--green);stroke-width:3.5"/>
+              <line x1="170" y1="250" x2="70" y2="330" style="stroke:var(--green);stroke-width:3.5"/>
+              <text x="105" y="98" style="fill:var(--green);font-family:'DM Mono',monospace;font-size:11px;font-weight:600">0.63</text>
+              <text x="225" y="98" style="fill:var(--green);font-family:'DM Mono',monospace;font-size:11px;font-weight:600">0.77</text>
+              <text x="180" y="160" style="fill:var(--green);font-family:'DM Mono',monospace;font-size:11px;font-weight:600">1.00</text>
+              <text x="90" y="305" style="fill:var(--green);font-family:'DM Mono',monospace;font-size:11px;font-weight:600">1.10</text>
+              <circle cx="170" cy="60" r="24" style="fill:var(--blue);stroke:var(--border2);stroke-width:2"/>
+              <text x="170" y="65" text-anchor="middle" style="fill:#fff;font-family:'DM Mono',monospace;font-size:12px;font-weight:700">EUR</text>
+              <circle cx="80" cy="150" r="22" style="fill:var(--blue-bg);stroke:var(--blue);stroke-width:2"/>
+              <text x="80" y="155" text-anchor="middle" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:11px;font-weight:700">GBP</text>
+              <circle cx="260" cy="150" r="22" style="fill:var(--blue-bg);stroke:var(--blue);stroke-width:2"/>
+              <text x="260" y="155" text-anchor="middle" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:11px;font-weight:700">CHF</text>
+              <circle cx="170" cy="250" r="22" style="fill:var(--blue-bg);stroke:var(--blue);stroke-width:2"/>
+              <text x="170" y="255" text-anchor="middle" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:11px;font-weight:700">AUD</text>
+              <circle cx="70" cy="330" r="22" style="fill:var(--amber-bg);stroke:var(--amber);stroke-width:2"/>
+              <text x="70" y="335" text-anchor="middle" style="fill:var(--amber);font-family:'DM Mono',monospace;font-size:11px;font-weight:700">JPY</text>
+            </svg>
+          </div>
+          <p>EUR sits at the hub of 3 of the 4 edges. JPY — weakest correlated with everything — attaches only through its single least-bad relationship, AUD.</p>
+        </div>
+      </div>
+      <p class="sl-p">Nothing about the underlying data changed between these two pictures — only which edges are drawn. The MST doesn't invent structure; it reveals structure that was always in the correlation matrix but wasn't visible at a glance.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Where this actually gets used</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🌳</div><div><h4>Hierarchical clustering</h4><p>Often drawn alongside a dendrogram — repeatedly merging the closest clusters gives the same backbone from a different algorithmic angle.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📊</div><div><h4>Portfolio sanity checks</h4><p>A basket whose MST is one long chain looks structurally different from one with a dense hub — a fast qualitative diversification read before running any optimizer.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔗</div><div><h4>Network stability monitoring</h4><p>Some studies track how MST topology changes across regimes — the tree "flattens" toward one dominant hub in stressed markets — as a structural, not just numerical, crisis signal.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧮</div><div><h4>A different lens than PCA or RMT</h4><p>The <a href="pca-factors.html">PCA lesson</a> collapses the matrix into ranked, orthogonal factors. The <a href="random-matrix-theory.html">Random Matrix Theory lesson</a> asks which eigenvalues are signal versus noise. The MST keeps every pairwise relationship intact as a sparse graph. Three lenses, one correlation matrix.</p></div></div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>Mantegna's original 1999 demonstration is an <strong>equities</strong> result — a Dow Jones basket, where the tree recovered recognizable industry clusters. Applying the same transform to an FX or cross-asset basket, as this lesson's worked example does, is mathematically sound but a <strong>different application than the one Mantegna tested</strong>. As of this lesson, that FX/cross-asset extension remains a concept — it is not built or tested anywhere in this repo's actual code (checked directly: no MST, graph-pruning, or correlation-to-distance logic exists in this repo's source alongside the correlation and eigenvalue tooling in <code>js/diversificationCore.js</code> and related files). Treat the FX framing as a plausible hypothesis worth testing carefully, not a proven technique.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 5, continued</div>
+      <h2 class="sl-h2">A picture is not a backtest</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">What the MST tells you</span>
+          <ul>
+            <li>Which pairs are the tightest, most direct links in the basket</li>
+            <li>Whether an instrument is a structural hub or a lonely outlier</li>
+            <li>How smaller clusters bridge into the rest of the basket, and how cheaply</li>
+          </ul>
+        </div>
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">What it doesn't tell you</span>
+          <ul>
+            <li>Not fixed — a tree built on calm data and one built on crisis data can disagree about the hub</li>
+            <li>Tree distance isn't "hops away" — a node two edges from the hub isn't half as correlated as one directly connected</li>
+            <li>Small baskets are unstable — two close distances can swap which one the tree keeps with only modest changes to the correlation estimate</li>
+            <li>Seeing a genuine outlier is a diversification <em>read</em>, not proof that adding it improves risk-adjusted returns</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Why can't a raw correlation coefficient be used directly as a graph distance?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Because correlation runs backwards — the most similar pair (ρ=1) has the largest value, but a distance should be smallest for the closest pair</button>
+        <button class="sl-quiz-opt">Because correlation is only defined between 0 and 1</button>
+        <button class="sl-quiz-opt">Because distances must always be integers</button>
+        <div class="sl-quiz-explain">A distance metric needs "close" to mean a small number. Raw correlation has it backwards — perfectly correlated pairs would register as maximally far apart — so a transform like d = √(2(1−ρ)) is needed first.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Using d = √(2(1−ρ)), what is the distance when ρ = 1?</h4>
+        <button class="sl-quiz-opt" data-correct="true">0</button>
+        <button class="sl-quiz-opt">1</button>
+        <button class="sl-quiz-opt">2</button>
+        <div class="sl-quiz-explain">√(2(1−1)) = √0 = 0. Identical behavior means zero distance, exactly as a proper distance metric should behave.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>What does a Minimum Spanning Tree guarantee about the edges it keeps?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Every node is connected, no cycles exist, and the total edge weight is the lowest possible among all spanning trees</button>
+        <button class="sl-quiz-opt">It keeps every edge whose weight is below some fixed threshold</button>
+        <button class="sl-quiz-opt">It always keeps exactly half of the original edges</button>
+        <div class="sl-quiz-explain">A spanning tree touches every node with no cycles, using exactly N−1 edges. The MST is specifically the one, among all possible spanning trees, whose edges sum to the lowest total weight.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>In the worked example, why did Kruskal's algorithm skip GBP–CHF (distance 0.89) even though it's shorter than edges added afterward?</h4>
+        <button class="sl-quiz-opt" data-correct="true">GBP and CHF were already connected through EUR, so adding it would have closed a cycle</button>
+        <button class="sl-quiz-opt">GBP–CHF's distance was calculated incorrectly</button>
+        <button class="sl-quiz-opt">Kruskal's algorithm only considers the four shortest edges overall</button>
+        <div class="sl-quiz-explain">By the time the sorted list reached GBP–CHF, both endpoints were already in the same connected component (via EUR–GBP and EUR–CHF). Adding it would close the EUR-GBP-CHF triangle into a cycle without connecting any new node — rejected regardless of how short it is.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Is applying Mantegna's transform to an FX/cross-asset basket a technique this repo has validated?</h4>
+        <button class="sl-quiz-opt" data-correct="true">No — Mantegna's original result is on equities; the FX extension is mathematically sound but untested here</button>
+        <button class="sl-quiz-opt">Yes — it's been backtested on this repo's FX baskets</button>
+        <button class="sl-quiz-opt">Yes — because the math is identical to the equities case</button>
+        <div class="sl-quiz-explain">The transform and MST construction don't care what asset class the data comes from, so it runs correctly on FX data. But whether the resulting FX tree is economically meaningful is a separate empirical question — this repo has not tested it, and no MST/graph-pruning code exists here yet.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>A raw correlation matrix hides its own structure — N(N−1)/2 numbers is too many for a human to read as a shape, even though the information is technically all there.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Correlation isn't a distance until it's transformed — Mantegna's d = √(2(1−ρ)) flips the direction, so identical behavior becomes zero distance and perfect opposition becomes the maximum, 2.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Computing every pairwise distance gives a complete graph — fully connected, but still too dense to read as a picture.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The Minimum Spanning Tree is the prune — exactly N−1 edges, no cycles, lowest possible total weight, built by Kruskal's (sort, add if no cycle) or Prim's (grow outward from a seed) algorithm.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The worked 5-node example revealed a hub-and-outlier shape — EUR as the structural hub, JPY reached only through AUD — that the raw ten-number table didn't show at a glance.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>The FX/cross-asset application is a plausible extension of an equities result, not a validated one — and nothing in this repo's code builds or tests it yet.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Turn any basket's correlation matrix into a distance graph and prune it to its backbone, so a basket's clustering structure — who's really close to whom, who's the genuine outlier — becomes a picture instead of a table you'd have to scan number by number. Read that picture correctly: as a structural hint worth investigating, not as a finished backtest result on its own.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Systemic Risk &amp; Financial Contagion Networks</h3>
+        <p>What happens when the network itself is the risk — how stress propagates node to node through the same graph structure built here.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="systemic-risk-networks-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="correlation-networks-mst.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  function dist(rho){ return Math.sqrt(2 * (1 - rho)); }
+  function fmt(n){ return n.toFixed(2); }
+
+  // Correlation → distance slider (two nodes moving apart/together).
+  (function(){
+    var slider = document.getElementById('cd-slider');
+    if (!slider) return;
+    var rval = document.getElementById('cd-rval');
+    var line = document.getElementById('cd-line');
+    var dlabel = document.getElementById('cd-dlabel');
+    var dotB = document.getElementById('cd-dotB');
+    var labelB = document.getElementById('cd-labelB');
+    var note = document.getElementById('cd-note');
+    var X0 = 110, PX_PER_UNIT = 210; // d ranges 0..2 -> 0..420px
+
+    function update(){
+      var rho = parseInt(slider.value, 10) / 100;
+      rval.textContent = 'ρ = ' + rho.toFixed(2);
+      var d = dist(rho);
+      var xB = X0 + d * PX_PER_UNIT;
+      line.setAttribute('x2', xB);
+      dotB.setAttribute('cx', xB);
+      labelB.setAttribute('x', xB);
+      dlabel.setAttribute('x', (X0 + xB) / 2);
+      dlabel.textContent = 'd = ' + fmt(d);
+      note.textContent = 'd = √(2(1 − ρ)) = √(2(1 − ' + rho.toFixed(2) + ')) = ' + fmt(d) +
+        (rho > 0.5 ? ' — highly correlated, so the nodes sit close together.' :
+         rho < -0.5 ? ' — strongly anti-correlated, so the nodes sit far apart.' :
+         ' — weakly related, so the nodes sit near the neutral middle distance.');
+    }
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Distance calculator with defensive guards.
+  (function(){
+    var rhoInput = document.getElementById('dcalc-rho');
+    if (!rhoInput) return;
+    var resultEl = document.getElementById('dcalc-result');
+    var step1 = document.getElementById('dcalc-step1');
+    var step2 = document.getElementById('dcalc-step2');
+    var step3 = document.getElementById('dcalc-step3');
+    var resetBtn = document.getElementById('dcalc-reset');
+    var DEFAULT_RHO = 0.80;
+
+    function recompute(){
+      var raw = rhoInput.value;
+      var rho = parseFloat(raw);
+      var valid = raw !== '' && isFinite(rho) && rho >= -1 && rho <= 1;
+      if (!valid) {
+        resultEl.textContent = '—';
+        step1.textContent = '—';
+        step2.textContent = '—';
+        step3.textContent = '—';
+        return;
+      }
+      var diff = 1 - rho;
+      var doubled = 2 * diff;
+      var d = Math.sqrt(doubled);
+      step1.textContent = fmt(diff);
+      step2.textContent = fmt(doubled);
+      step3.textContent = fmt(d);
+      resultEl.textContent = fmt(d);
+    }
+
+    rhoInput.addEventListener('input', recompute);
+    resetBtn.addEventListener('click', function(){
+      rhoInput.value = DEFAULT_RHO;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

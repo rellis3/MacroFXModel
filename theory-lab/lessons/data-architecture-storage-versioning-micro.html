@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Data Architecture, Storage &amp; Versioning — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Data Architecture, Storage &amp; Versioning — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivations, worked examples, and a 5-question self-test?<a href="data-architecture-storage-versioning.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Institutional Data Engineering 5 (final) · Institutional Data Engineering</div>
+      <h1 class="sl-h1">Data Architecture, <em>Storage &amp; Versioning</em></h1>
+      <p class="sl-lede">This closes out the category. Lessons 1–4 built a pipeline — ingest raw ticks, clean them, adjust for corporate actions, serve them point-in-time — and each one produces a value that has to live somewhere and be trusted later. This lesson is that layer underneath: how the data gets stored, why two "identical" pipelines quietly drift apart, and why a live strategy's performance can degrade for two completely different reasons that look, on the equity curve, exactly the same.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">The arc this category has been building</h2>
+      <p class="sl-sub">Four lessons, one raw feed, one growing pipeline. This one is the foundation underneath all of them.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">1</div><div><h4>Raw feeds → trading-ready data</h4><p>Every stage a tick passes through before it's usable, and why the default bar-construction choice is quietly the weakest one.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">2</div><div><h4>Cleaning: outliers &amp; missing data</h4><p>Fat-finger prints, stale quotes, halts and gaps — each needs a different fix, applied without peeking at future data.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">3</div><div><h4>Corporate actions &amp; series continuity</h4><p>Splits, dividends and rolls all fake a jump in a raw price series — and the fix can quietly break other calculations.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">4</div><div><h4>Point-in-time data &amp; survivorship bias</h4><p>Serving data exactly as it looked on each historical date, not as it looks with hindsight applied.</p></div></div>
+      </div>
+      <div class="sl-quote">Every one of those four stages produces a value that eventually has to live <strong>somewhere</strong>, be trusted by more than one consumer, and be reproducible later. This lesson isn't a fifth stage after those four — it's the architecture that makes every earlier stage's output durable, auditable, and safe to build on.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Storage has to match the access pattern</h2>
+      <p class="sl-sub">Historical tick/bar data is almost always queried as "give me a date range of these few columns," not "give me one full row."</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Row-oriented storage</span>
+          <ul>
+            <li>Reads an entire record — every column — to get at just one or two of them</li>
+            <li>A poor structural match for column-range queries over long histories</li>
+            <li>Mixed row data (price, volume, timestamp, metadata) compresses poorly together</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Columnar storage (Parquet-style)</span>
+          <ul>
+            <li>Each column's values stored contiguously — a query reads only what it needs</li>
+            <li>Similar neighboring values compress far better than mixed rows</li>
+            <li>Supports schema evolution — new columns can be added without breaking old readers</li>
+          </ul>
+        </div>
+      </div>
+      <p class="sl-p">None of this makes columnar storage universally "correct" — a system appending single ticks continuously and reading them back immediately has different needs. But for storing and repeatedly querying large historical archives, columnar formats are the practitioner default for concrete structural reasons, not fashion.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">One authoritative pipeline, or two that quietly drift</h2>
+      <p class="sl-sub">"Single source of truth" sounds obvious stated abstractly. It's still one of the most common real failures in data engineering.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Two independent recomputations</span>
+          <ul>
+            <li>Research team and risk team each build their own "adjusted close" from the same raw feed</li>
+            <li>Both match closely at first — the corrections are small, memory is fresh</li>
+            <li>A rounding tweak here, an edge-case fix there, each reasonable in isolation</li>
+            <li>Two years later the numbers don't reconcile, and nobody can say exactly why</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">One authoritative pipeline</span>
+          <ul>
+            <li>Exactly one system computes each derived series</li>
+            <li>Every downstream consumer reads its output — nobody recomputes it independently</li>
+            <li>Changes are reviewed once, in one place, against one shared history</li>
+            <li>There is only ever one number to reconcile against</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">The trap</div>
+        <p>"Our two systems compute this the same way" is almost never re-verified after the initial build — it's assumed true because it was true on day one. Neither copy is necessarily wrong in isolation. The failure is that there were ever two copies of the same authoritative computation running at all.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Lineage tells you where a value came from. Versioning tells you when its meaning changed.</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Data lineage / audit trails</span>
+          <p>The ability to answer, for any value sitting in the store today, exactly which raw inputs and which version of the code produced it — specifically enough to regenerate it from scratch. Without it, a suspicious value months later has no reconstructable history.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Schema versioning</span>
+          <p>An explicit tag marking when a column's shape, name, or units change. Without it, a downstream reader keeps interpreting new data as if it still meant the old thing — not an error, just a silent misread.</p>
+        </div>
+      </div>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Worked example — a silent unit change</div>
+        <div class="sl-row">
+          <div class="sl-box">1.8 <span style="font-size:10.5px;opacity:.75">(bp)</span></div>
+          <div class="sl-arrow">same column, no version tag →</div>
+          <div class="sl-box amber">0.00018 <span style="font-size:10.5px;opacity:.75">(fraction)</span></div>
+        </div>
+        <div class="sl-verdict">A cost model built for basis points now reads the new number as roughly <strong>10,000× tighter</strong> than intended. The backtest doesn't error — it just quietly becomes dramatically optimistic about transaction costs from that date forward.</div>
+        <div class="sl-note">A version tag on the column — or a rename to <code>spread_frac</code> alongside the old <code>spread_bp</code> — turns this into a visible, catchable break instead of an invisible one.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">The genuinely hard problem this lesson centers on</h2>
+      <p class="sl-sub">A live strategy's performance is declining. Below are two completely different root causes — drawn from realistic numbers, not decorated to look alike.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Two equity curves</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two equity curves, both rising then declining after the same date. The top curve is labeled genuine strategy decay, the bottom curve is labeled silent pipeline bug. The two decline in visually indistinguishable ways.">
+            <text x="30" y="35" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:11px;font-weight:700">Case A — genuine strategy decay</text>
+            <path d="M20,110 L60,102 L100,90 L140,95 L180,78 L220,65 L260,72 L300,50 L340,40 L380,48 L420,45 L460,58 L500,55 L540,68 L580,64 L620,80" style="fill:none;stroke:var(--blue);stroke-width:2.5"/>
+            <line x1="20" y1="130" x2="620" y2="130" style="stroke:var(--border2);stroke-width:1"/>
+
+            <text x="30" y="165" style="fill:var(--purple);font-family:'DM Mono',monospace;font-size:11px;font-weight:700">Case B — silent pipeline bug</text>
+            <path d="M20,260 L60,252 L100,240 L140,245 L180,228 L220,215 L260,222 L300,200 L340,190 L380,197 L420,203 L460,210 L500,217 L540,224 L580,231 L620,238" style="fill:none;stroke:var(--purple);stroke-width:2.5"/>
+            <line x1="20" y1="280" x2="620" y2="280" style="stroke:var(--border2);stroke-width:1"/>
+
+            <line x1="340" y1="15" x2="340" y2="290" style="stroke:var(--red);stroke-width:1.4;stroke-dasharray:4,3"/>
+            <text x="340" y="10" text-anchor="middle" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:9.5px;font-weight:700">performance starts declining — same date, both cases</text>
+          </svg>
+        </div>
+        <div class="sl-verdict">Same shape, same date, same magnitude of decline. In <strong>Case A</strong>, the market structure the strategy exploited genuinely weakened. In <strong>Case B</strong>, the market behavior never changed — a data-cleaning threshold, a leakage flip, or a bar-construction tweak quietly broke, and the strategy is reacting to corrupted input. The pixels are identical either way.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Why the curve alone can never settle it</h2>
+      <p class="sl-sub">Each of the earlier lessons in this category is a place a silent break can hide, producing the exact same visible symptom.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">1</div><div><h4>A bar-construction method changed</h4><p>Switching from time bars to a different construction upstream (Lesson 1) shifts every downstream feature slightly — no error, just different numbers.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">2</div><div><h4>A cleaning threshold drifted</h4><p>An outlier filter (Lesson 2) tightened or loosened without anyone noticing changes which ticks survive into every backtest from that point on.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">3</div><div><h4>An adjustment method shifted</h4><p>A corporate-action or roll adjustment (Lesson 3) computed slightly differently puts a small, compounding error into every adjusted price after it.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">4</div><div><h4>A feature started leaking differently</h4><p>A point-in-time boundary (Lesson 4) that used to be respected — or a feature that used to leak and got fixed — changes what the model was effectively trained to see.</p></div></div>
+      </div>
+      <div class="sl-quote">Both a genuine, honest decay and any one of these silent breaks produce the same visible signature: performance that gradually gets worse, with no single dramatic break to point to. The equity curve carries <strong>zero information</strong> distinguishing "the market changed" from "the data quietly became wrong." Something else has to carry that information instead.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">The fix: hold the strategy fixed, swap the data vintage</h2>
+      <p class="sl-sub">If every data/feature/pipeline version is itself versioned and stored, you can re-run an old strategy against a new data snapshot — or vice versa — and isolate which one moved.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — walk the diagnostic re-run</div>
+        <div class="sl-tabs" id="diag-tabs">
+          <button class="sl-tab active" data-panel="diag-1">1. Baseline: old strategy × old data</button>
+          <button class="sl-tab" data-panel="diag-2">2. Same strategy × new data (bug)</button>
+          <button class="sl-tab" data-panel="diag-3">3. Same strategy × new data (clean)</button>
+        </div>
+        <div class="sl-panel active" id="diag-1">
+          <div class="sl-row"><div class="sl-box">Strategy v1</div><div class="sl-arrow">×</div><div class="sl-box">Data snapshot 2024-Q1</div><div class="sl-arrow">=</div><div class="sl-box green">Sharpe 1.4</div></div>
+          <div class="sl-verdict">Re-running the frozen strategy code against the exact data snapshot it was built on <strong>reproduces the original result</strong>. Lineage is intact — this is the trustworthy baseline everything else gets compared to.</div>
+        </div>
+        <div class="sl-panel" id="diag-2">
+          <div class="sl-row"><div class="sl-box">Strategy v1 (unchanged)</div><div class="sl-arrow">×</div><div class="sl-box amber">Data snapshot 2026-Q2</div><div class="sl-arrow">=</div><div class="sl-box amber">Sharpe 0.3</div></div>
+          <div class="sl-verdict">Only the data snapshot changed. Performance collapsed — and tracing lineage shows a cleaning threshold was silently loosened in this pipeline run. <strong>The strategy didn't get worse; the data feeding it did.</strong> This is a pipeline bug, not decay.</div>
+        </div>
+        <div class="sl-panel" id="diag-3">
+          <div class="sl-row"><div class="sl-box">Strategy v1 (unchanged)</div><div class="sl-arrow">×</div><div class="sl-box">Data snapshot 2026-Q2 (bug fixed, re-verified)</div><div class="sl-arrow">=</div><div class="sl-box amber">Sharpe 0.4</div></div>
+          <div class="sl-verdict">Same strategy, same clean and re-verified pipeline, just a later date range. Performance is <strong>still poor</strong>. With the pipeline ruled out by lineage, this decline is genuine — the market structure the strategy exploited has changed. That's real alpha decay.</div>
+        </div>
+        <div class="sl-note">Without versioned lineage, none of these three re-runs is even possible — "the data hasn't changed since I ran this" is a claim you can only test if an old vintage still exists to test it against.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Every backtest date range has a version fingerprint</h2>
+      <p class="sl-sub">Drag the slider to see which data snapshot, schema, and pipeline code were actually in effect for a given range.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 130" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Timeline of five backtest-date eras, each with its own data and pipeline version, with a highlight box marking the currently selected era.">
+            <rect x="20" y="55" width="114" height="42" rx="6" style="fill:var(--blue);opacity:.18;stroke:var(--blue)"/>
+            <rect x="144" y="55" width="114" height="42" rx="6" style="fill:var(--blue);opacity:.18;stroke:var(--blue)"/>
+            <rect x="268" y="55" width="114" height="42" rx="6" style="fill:var(--purple);opacity:.18;stroke:var(--purple)"/>
+            <rect x="392" y="55" width="114" height="42" rx="6" style="fill:var(--amber);opacity:.18;stroke:var(--amber)"/>
+            <rect x="516" y="55" width="114" height="42" rx="6" style="fill:var(--green);opacity:.18;stroke:var(--green)"/>
+            <text x="77" y="48" text-anchor="middle" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:9.5px">2023 H1</text>
+            <text x="201" y="48" text-anchor="middle" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:9.5px">2023 H2–24 H1</text>
+            <text x="325" y="48" text-anchor="middle" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:9.5px">2024 H2–25 H1</text>
+            <text x="449" y="48" text-anchor="middle" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:9.5px">2025 H2</text>
+            <text x="573" y="48" text-anchor="middle" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:9.5px">2026 H1</text>
+            <rect id="lineage-highlight" x="268" y="50" width="114" height="52" rx="8" style="fill:none;stroke:var(--text);stroke-width:2.5"/>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Backtest date range</span><span class="sl-live" id="lineage-live">2024 H2 – 2025 H1</span></div>
+        <input type="range" class="sl-slider" id="lineage-slider" min="0" max="4" step="1" value="2">
+        <div class="sl-calc-steps">
+          <div>Data snapshot: <b id="lineage-snapshot">v2 (2024-07)</b></div>
+          <div>Schema version: <b id="lineage-schema">v2</b></div>
+          <div>Cleaning code: <b id="lineage-cleaning">v3.2.1</b></div>
+          <div>Adjustment code: <b id="lineage-adjustment">v1.3.0</b></div>
+        </div>
+        <div class="sl-note">Notice the adjustment code changes again between 2025 H2 and 2026 H1, while the data snapshot doesn't. Any comparison spanning that boundary needs lineage to check whether that change — not the market — explains a difference.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">A first diagnostic heuristic: how close in time are they?</h2>
+      <p class="sl-sub">Not proof either way — but a pipeline change that lands right before a performance drop is worth checking first.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change either date</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Pipeline change deployed</label><input type="date" class="sl-input" id="lag-deploy" value="2026-01-15"></div>
+          <div class="sl-calc-op">→</div>
+          <div class="sl-calc-field"><label>Performance started degrading</label><input type="date" class="sl-input" id="lag-degrade" value="2026-02-02"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Days between them</div>
+            <div class="sl-calc-result-val" id="lag-result">18 days</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div id="lag-interpret">Degradation began within 30 days of the change — plausible pipeline involvement. Pull the lineage for both dates and compare.</div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="lag-reset">Reset to worked-example dates</button>
+        <div class="sl-note">This is a lag heuristic, not a diagnosis — it only tells you where to look first. The tabs above are the actual proof: re-run the strategy against both data vintages and see which one moved.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Why is columnar storage the better structural fit for large historical tick/bar archives?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It reads only the columns a query actually needs across a date range, and compresses better</button>
+        <button class="sl-quiz-opt">It's always faster than row-oriented storage, for every workload</button>
+        <button class="sl-quiz-opt">It requires no compression at all</button>
+        <div class="sl-quiz-explain">Tick/bar data is queried as "a date range of a few columns" far more often than "one full row." Columnar layouts keep each column contiguous, so a query skips everything it doesn't need — and similar neighboring values compress better than mixed rows.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Two teams independently recompute "adjusted close" from the same raw feed, both starting from correct logic. What happens?</h4>
+        <button class="sl-quiz-opt" data-correct="true">They drift apart over time, even though neither made an obviously wrong change</button>
+        <button class="sl-quiz-opt">They stay identical forever, since the starting logic was correct</button>
+        <button class="sl-quiz-opt">One of them is guaranteed to be wrong from day one</button>
+        <div class="sl-quiz-explain">Small, individually reasonable changes — a rounding tweak, an edge-case fix — applied to one copy and not the other accumulate into real divergence. The failure is structural: there were ever two independently maintained copies at all.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>A "spread" column silently changes from basis points to a decimal fraction, with no version tag. What happens downstream?</h4>
+        <button class="sl-quiz-opt" data-correct="true">A cost model silently misreads the new values, understating trading costs by roughly 10,000×</button>
+        <button class="sl-quiz-opt">The pipeline throws an error immediately</button>
+        <button class="sl-quiz-opt">Nothing — units never affect a downstream calculation</button>
+        <div class="sl-quiz-explain">The column's name and shape stayed the same, so nothing signals the unit changed. A model built for basis points keeps reading the new numbers as if they meant the old thing — silently, with no error.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>A live strategy's performance is declining. Can you tell genuine alpha decay from a pipeline bug using the equity curve alone?</h4>
+        <button class="sl-quiz-opt" data-correct="true">No — both produce the same gradual decline; you need versioned lineage to re-run old and new data and see which one moved</button>
+        <button class="sl-quiz-opt">Yes — decay curves always decline faster than pipeline bugs</button>
+        <button class="sl-quiz-opt">Yes — a pipeline bug always shows up as a sudden cliff, never a gradual decline</button>
+        <div class="sl-quiz-explain">Both causes look identical on an equity curve: a gradual worsening with no single dramatic break. Only reproducible, versioned data lineage lets you re-run the same strategy against different data vintages and isolate which one actually changed.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Columnar storage (Parquet-style) is the practitioner standard for historical tick/bar archives — fast column-range reads, better compression, schema evolution support.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Let exactly one authoritative pipeline compute each derived series. Independent recomputation drifts apart over time, even when both sides start out correct.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Data lineage means being able to regenerate any historical value from its exact raw inputs and exact code version — without it, a suspicious value has no reconstructable history.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>An unversioned schema change — a renamed column, a changed unit — breaks downstream consumers silently, not with an error.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>A genuine strategy decay and a silent pipeline bug produce the identical signature on an equity curve — gradual decline, no single dramatic break.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>The fix is a diagnostic re-run: hold the strategy fixed and swap data vintages to isolate whether the degradation traveled with the data or with the market.</p></div>
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">What this now lets you do</div>
+        <p>Re-run any live strategy against a frozen, versioned data snapshot from any earlier point, and check whether a new performance decline traveled with a data or pipeline change — or is a genuine market shift. That turns "is my edge dying?" from a guess into a testable question, and closes the arc this category has been building: from raw ingestion, through cleaning and adjustment and point-in-time serving, to durable, versioned storage that keeps every earlier stage's output honest months and years later.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in the curriculum</div>
+        <h3>Tree-Based &amp; Ensemble Machine Learning</h3>
+        <p>Institutional Data Engineering ends here. Next up: decision trees and random forests — the first models in this curriculum that split their way to a prediction instead of fitting a smooth curve to it.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="decision-trees-random-forests-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="data-architecture-storage-versioning.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Data-lineage timeline slider — five backtest-date eras, each with its own
+  // data snapshot / schema / cleaning / adjustment code versions.
+  (function(){
+    var slider = document.getElementById('lineage-slider');
+    if (!slider) return;
+    var live = document.getElementById('lineage-live');
+    var highlight = document.getElementById('lineage-highlight');
+    var snapshotEl = document.getElementById('lineage-snapshot');
+    var schemaEl = document.getElementById('lineage-schema');
+    var cleaningEl = document.getElementById('lineage-cleaning');
+    var adjustmentEl = document.getElementById('lineage-adjustment');
+
+    var ERAS = [
+      { label: '2023 H1',            x: 20,  snapshot: 'v1 (2023-01)', schema: 'v1', cleaning: 'v2.0',   adjustment: 'v1.2.0' },
+      { label: '2023 H2 – 2024 H1',  x: 144, snapshot: 'v1 (2023-01)', schema: 'v1', cleaning: 'v3.0',   adjustment: 'v1.2.0' },
+      { label: '2024 H2 – 2025 H1',  x: 268, snapshot: 'v2 (2024-07)', schema: 'v2', cleaning: 'v3.2.1', adjustment: 'v1.3.0' },
+      { label: '2025 H2',            x: 392, snapshot: 'v2 (2024-07)', schema: 'v2', cleaning: 'v3.2.1', adjustment: 'v1.4.0' },
+      { label: '2026 H1',            x: 516, snapshot: 'v3 (2026-01)', schema: 'v2', cleaning: 'v3.2.1', adjustment: 'v1.4.0' }
+    ];
+
+    function update(){
+      var idx = parseInt(slider.value, 10);
+      if (!isFinite(idx) || idx < 0 || idx >= ERAS.length) idx = 0;
+      var era = ERAS[idx];
+      live.textContent = era.label;
+      highlight.setAttribute('x', era.x);
+      snapshotEl.textContent = era.snapshot;
+      schemaEl.textContent = era.schema;
+      cleaningEl.textContent = era.cleaning;
+      adjustmentEl.textContent = era.adjustment;
+    }
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Diagnostic-lag calculator — days between a pipeline deploy date and the
+  // date performance started degrading. Defensive against blank/invalid
+  // dates: shows "—" rather than NaN/Infinity.
+  (function(){
+    var deploy = document.getElementById('lag-deploy');
+    if (!deploy) return;
+    var degrade = document.getElementById('lag-degrade');
+    var result = document.getElementById('lag-result');
+    var interpret = document.getElementById('lag-interpret');
+    var resetBtn = document.getElementById('lag-reset');
+    var DEFAULTS = { deploy: '2026-01-15', degrade: '2026-02-02' };
+
+    function parseDate(v){
+      if (!v) return null;
+      var d = new Date(v + 'T00:00:00Z');
+      return isNaN(d.getTime()) ? null : d;
+    }
+
+    function recompute(){
+      var d1 = parseDate(deploy.value), d2 = parseDate(degrade.value);
+      if (!d1 || !d2) {
+        result.textContent = '—';
+        interpret.textContent = '—';
+        return;
+      }
+      var lagDays = Math.round((d2.getTime() - d1.getTime()) / 86400000);
+      if (!isFinite(lagDays)) {
+        result.textContent = '—';
+        interpret.textContent = '—';
+        return;
+      }
+      result.textContent = lagDays + (lagDays === 1 || lagDays === -1 ? ' day' : ' days');
+      if (lagDays < 0) {
+        interpret.textContent = 'Degradation started before the pipeline change — the change is unlikely to be the cause. Look elsewhere in the lineage first.';
+      } else if (lagDays <= 30) {
+        interpret.textContent = 'Degradation began within 30 days of the change — plausible pipeline involvement. Pull the lineage for both dates and compare.';
+      } else {
+        interpret.textContent = 'Degradation began more than 30 days after the change — a link is possible but far less obvious. Check lineage before assuming either cause.';
+      }
+    }
+
+    [deploy, degrade].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      deploy.value = DEFAULTS.deploy; degrade.value = DEFAULTS.degrade;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

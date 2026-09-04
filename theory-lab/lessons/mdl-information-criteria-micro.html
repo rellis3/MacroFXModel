@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Minimum Description Length &amp; Information Criteria — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Minimum Description Length &amp; Information Criteria — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivations, both formal proofs, and a 6-question self-test?<a href="mdl-information-criteria.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Information Theory 3 (final) · Information Theory</div>
+      <h1 class="sl-h1">The Shortest Explanation Wins — <em>Measured in Bits</em></h1>
+      <p class="sl-lede">This closes out the Information Theory category. Lesson 1 measured how much two variables tell each other, in bits — Lesson 2 asked whether one variable's past predicts another's future. This lesson turns the same bit-counting machinery on a different question: how do you formally judge whether a model is too simple, too complex, or exactly right? The Minimum Description Length (MDL) principle answers by literally treating "model + data" as a message and counting its bits — and lands, via a completely unrelated route through coding theory, on exactly the same penalty term worked out from Bayesian statistics in the earlier <em>Model Selection: AIC &amp; BIC</em> lesson.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Occam's razor, made countable</h2>
+      <p class="sl-sub">Imagine paying by the bit to send someone your model, and the data it describes, over a slow wire.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📡</div><div><h4>Send the raw data</h4><p>No model needed at all — but every idiosyncrasy of this one sample has to be spelled out in full. Expensive, and it teaches the receiver nothing reusable.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">✂️</div><div><h4>Send a model, then the leftovers</h4><p>First a compact description of the pattern you found, then only what that pattern didn't already explain. If the pattern is real, this beats sending raw data outright.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🪶</div><div><h4>Underfit — cheap model, costly leftovers</h4><p>A model too simple to say much needs almost no bits to state, but leaves a mountain of unexplained residual to describe instead.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧩</div><div><h4>Overfit — costly model, suspiciously cheap leftovers</h4><p>A model with a parameter for every quirk memorizes the sample. The residual nearly vanishes — but the model description itself becomes expensive to write down.</p></div></div>
+      </div>
+      <div class="sl-quote">A model that "fits perfectly" by memorizing every data point is not a triumph under this accounting — it's often the most expensive message you could send, because you had to describe every last idiosyncrasy of this one sample instead of the underlying pattern.</div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Why "shortest," not just "simplest"</div>
+        <p>"Simplicity" is a vague, informal word — everyone agrees Occam's razor is a good idea and disagrees about what it means in any specific case. MDL replaces the word with a number: total bits to describe model plus data, lower always better. That's the entire move this lesson builds out.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">The two-part code, formalized</h2>
+      <p class="sl-sub">Total description length splits cleanly into two pieces. Lower is always better.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The formula</div>
+        <div class="sl-row"><div class="sl-box purple">DL(M)</div><div class="sl-arrow">=</div><div class="sl-box amber">L(M)</div><div class="sl-arrow">+</div><div class="sl-box blue">L(D|M)</div></div>
+        <div class="sl-verdict"><strong>L(M)</strong> is the bits needed to state the model's form and its parameters. <strong>L(D|M)</strong> is the bits needed to state the data's residual "surprise," once the model is known — everything the model didn't already explain.</div>
+      </div>
+      <p class="sl-p">L(D|M) has a direct answer from Shannon's source coding theorem, introduced in Lesson 1 of this category: the shortest achievable average code for an outcome under a known probability distribution is −log₂ of that outcome's probability. Treat a fitted model's likelihood L̂(M) as "the probability of this data under this model," and the shortest code for the data given the model costs exactly −log₂ L̂(M) bits.</p>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">A quantity you've already met</div>
+        <p>−log₂ L̂(M) is precisely the "deviance," −2 ln L̂, from the Model Selection: AIC &amp; BIC lesson — just expressed in bits (log₂) instead of nats (ln), and without that lesson's factor of 2. A model that fits well needs very few residual bits; a model that fits poorly needs many.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Costing L(M): Rissanen's precision argument</h2>
+      <p class="sl-sub">A real-valued parameter has infinitely many decimals — but your data can't support infinite precision.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The formula</div>
+        <div class="sl-row"><div class="sl-box purple">L(M)</div><div class="sl-arrow">≈</div><div class="sl-box amber">k/2</div><div class="sl-arrow">×</div><div class="sl-box blue">log₂(n)</div></div>
+        <div class="sl-verdict">k free parameters, each costing about half a log₂(n) bits — enough precision for the data to actually support the stated value, no more.</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">∞</div><div><h4>Exact precision is impossible</h4><p>Writing "3.14159265…" out in full never actually finishes — real numbers have infinite decimal expansions.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📏</div><div><h4>But only finite precision is useful</h4><p>A parameter estimated from n observations carries a standard error shrinking roughly as 1/√n — stating it more finely than that just describes noise.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">➕</div><div><h4>More data buys more digits</h4><p>A bigger sample resolves each parameter more finely, so it costs a little more (growing as log₂n, slowly) to state it precisely.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">×k</div><div><h4>k parameters, k times the cost</h4><p>Each free parameter pays its own share independently — the total scales linearly in k, the model's actual complexity count.</p></div></div>
+      </div>
+      <div class="sl-quote">You don't need every decimal of a fitted parameter — only as many trustworthy digits as your sample size can actually back up. Rissanen's rule prices out exactly how many digits that buys you, per parameter.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Same total budget, three ways to spend it</h2>
+      <p class="sl-sub">n = 100 observations throughout. Tap through underfit, well-fit, and overfit — same accounting, different trade-off.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="fit-tabs">
+          <button class="sl-tab active" data-panel="fit-under">Underfit (k=1)</button>
+          <button class="sl-tab" data-panel="fit-good">Well-fit (k=4)</button>
+          <button class="sl-tab" data-panel="fit-over">Overfit (k=10)</button>
+        </div>
+        <div class="sl-panel active" id="fit-under">
+          <div class="sl-row"><div class="sl-box amber">L(M) ≈ 3.32 bits</div><div class="sl-arrow">+</div><div class="sl-box blue">L(D|M) ≈ 100 bits</div><div class="sl-arrow">=</div><div class="sl-box">DL ≈ 103.32 bits</div></div>
+          <div class="sl-verdict">One free parameter is dirt cheap to state — but it can't capture the real structure in the data, so almost everything still has to be spelled out as residual. <strong>Cheap model, ruinous leftovers.</strong></div>
+        </div>
+        <div class="sl-panel" id="fit-good">
+          <div class="sl-row"><div class="sl-box amber">L(M) ≈ 13.29 bits</div><div class="sl-arrow">+</div><div class="sl-box blue">L(D|M) ≈ 55 bits</div><div class="sl-arrow">=</div><div class="sl-box green">DL ≈ 68.29 bits</div></div>
+          <div class="sl-verdict">Four parameters earn their keep: each one shrinks the residual by more than it costs to state. This is the <strong>shortest total message</strong> of the three — the genuine trade-off, not either extreme.</div>
+        </div>
+        <div class="sl-panel" id="fit-over">
+          <div class="sl-row"><div class="sl-box amber">L(M) ≈ 33.22 bits</div><div class="sl-arrow">+</div><div class="sl-box blue">L(D|M) ≈ 46 bits</div><div class="sl-arrow">=</div><div class="sl-box">DL ≈ 79.22 bits</div></div>
+          <div class="sl-verdict">Ten parameters memorize almost everything — the residual looks great. But stating ten parameters to data-supported precision is expensive, and the total is <strong>longer</strong> than the well-fit model's, not shorter.</div>
+        </div>
+        <div class="sl-note">Same n=100, same underlying accounting (L(M)=(k/2)log₂n, illustrative residual shrinking with k) — only k changes. The next slide turns this into a live, draggable curve.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Two costs pulling in opposite directions</h2>
+      <p class="sl-sub">A schematic, not numeric, illustration of the trade-off — the exact computed version follows on the next two slides.</p>
+      <div class="sl-svgwrap">
+        <svg viewBox="0 0 640 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two horizontal stacked bars of similar total length. The simple model bar has a short segment for L of M and a long segment for L of D given M. The complex model bar has a long segment for L of M and a short segment for L of D given M.">
+          <text x="20" y="40" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600">Simple model</text>
+          <rect x="20" y="52" width="70" height="34" style="fill:var(--amber)"/>
+          <rect x="90" y="52" width="500" height="34" style="fill:var(--blue)"/>
+          <text x="55" y="73" text-anchor="middle" style="fill:#fff;font-family:'DM Mono',monospace;font-size:10.5px">L(M)</text>
+          <text x="340" y="73" text-anchor="middle" style="fill:#fff;font-family:'DM Mono',monospace;font-size:10.5px">L(D|M) — a lot left unexplained</text>
+          <text x="20" y="132" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600">Complex model</text>
+          <rect x="20" y="144" width="320" height="34" style="fill:var(--amber)"/>
+          <rect x="340" y="144" width="250" height="34" style="fill:var(--blue)"/>
+          <text x="180" y="165" text-anchor="middle" style="fill:#fff;font-family:'DM Mono',monospace;font-size:10.5px">L(M) — costly to state</text>
+          <text x="465" y="165" text-anchor="middle" style="fill:#fff;font-family:'DM Mono',monospace;font-size:10.5px">L(D|M)</text>
+          <text x="20" y="192" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">Both bars are similar total length here — a genuine trade-off, not a free lunch either way.</text>
+        </svg>
+      </div>
+      <p class="sl-p">A simple model is cheap to state but may leave more residual surprise. A complex model costs more to state but can leave less residual. MDL adds both costs and picks whichever total is shorter — neither extreme wins automatically, and the only way to know which side of the trade-off you're on is to actually add the two numbers up.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Drag the complexity dial, watch the U-curve</h2>
+      <p class="sl-sub">n = 100 fixed. As k rises, L(M) (amber) climbs, L(D|M) (blue) falls, and the total (purple) traces a U — bottoming out at the sweet spot, then rising again.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Chart of L of M rising, L of D given M falling, and their sum forming a U shape as model complexity k increases, with a draggable marker on the total curve">
+            <line x1="60" y1="20" x2="60" y2="220" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="60" y1="220" x2="600" y2="220" style="stroke:var(--border2);stroke-width:1"/>
+            <text x="330" y="236" text-anchor="middle" style="fill:var(--text3);font-size:11px">model complexity (k)</text>
+            <text x="22" y="120" text-anchor="middle" transform="rotate(-90 22 120)" style="fill:var(--text3);font-size:10px">bits</text>
+
+            <path d="M80,214.0 L135.6,207.9 L191.1,201.9 L246.7,195.8 L302.2,189.8 L357.8,183.8 L413.3,177.7 L468.9,171.7 L524.4,165.6 L580,159.6" style="fill:none;stroke:var(--amber);stroke-width:2"/>
+            <text x="585" y="156" style="fill:var(--amber);font-size:10.5px">L(M) — rising</text>
+
+            <path d="M80,38.2 L135.6,92.7 L191.1,110.9 L246.7,120.0 L302.2,125.5 L357.8,129.1 L413.3,131.7 L468.9,133.6 L524.4,135.2 L580,136.4" style="fill:none;stroke:var(--blue);stroke-width:2"/>
+            <text x="585" y="139" style="fill:var(--blue);font-size:10.5px">L(D|M) — falling</text>
+
+            <path d="M80,32.2 L135.6,80.7 L191.1,92.8 L246.7,95.8 L302.2,95.3 L357.8,92.9 L413.3,89.4 L468.9,85.3 L524.4,80.8 L580,76.0" style="fill:none;stroke:var(--purple);stroke-width:3"/>
+            <text x="300" y="22" text-anchor="middle" style="fill:var(--purple);font-size:11px;font-weight:700">Total DL(M) — the U-shape</text>
+
+            <line id="mdlc-guide" x1="246.7" y1="20" x2="246.7" y2="220" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:3,3;opacity:.5"/>
+            <circle id="mdlc-dot" cx="246.7" cy="95.8" r="6" style="fill:var(--purple);stroke:var(--bg);stroke-width:2"/>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Model complexity</span><span class="sl-live" id="mdlc-kval">k = 4</span></div>
+        <input type="range" class="sl-slider" id="mdlc-slider" min="1" max="10" step="1" value="4">
+        <div class="sl-calc-steps">
+          <div>L(M) = <b id="mdlc-lm">13.29</b> bits &nbsp;·&nbsp; L(D|M) = <b id="mdlc-ld">55.00</b> bits &nbsp;·&nbsp; Total DL(M) = <b id="mdlc-dl">68.29</b> bits</div>
+        </div>
+        <div class="sl-verdict" id="mdlc-verdict"><strong>Near the bottom of the U.</strong> k=4 sits at (or right beside) the shortest total message this curve reaches — the genuine complexity/fit trade-off point.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">The bridge to BIC — the same rule, two directions</h2>
+      <p class="sl-sub">Two completely different starting points. Watch them land on the same number.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Two-part code (bits)</span>
+          <p>DL(M) = (k/2)·log₂(n) − log₂ L̂(M) — built from Shannon's source coding theorem, asking "what's the shortest message that describes this model and this data?"</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">BIC (nats)</span>
+          <p>BIC = k·ln(n) − 2 ln L̂(M) — built from Schwarz's Laplace approximation to a Bayesian marginal likelihood, asking "which model has the highest posterior probability?"</p>
+        </div>
+      </div>
+      <p class="sl-p">Multiply DL(M) by 2ln(2) ≈ 1.386 — a fixed positive constant, the bits-to-nats conversion doubled to match convention — and use ln(x) = ln(2)·log₂(x): the k/2·log₂(n) term becomes exactly k·ln(n), and −log₂L̂(M) becomes exactly −2 ln L̂(M). The result: <strong>BIC(M) = 2ln(2) · DL(M)</strong>, exactly, for every candidate model. Since that scale factor never depends on which model M is, minimizing BIC and minimizing the two-part code are the identical optimization problem.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Not a coincidence</div>
+        <p>Schwarz derived BIC from Bayesian asymptotics in 1978. Rissanen derived (essentially) the same penalty from pure coding theory the same year, entirely independently — no shared assumptions, no shared toolkit. Two unrelated derivations landing on the same practical rule is strong evidence the rule is capturing something real: both are independently answering "how much does added complexity really buy you," and the coding-theory route gives BIC's abstract penalty a concrete, physical meaning — the literal cost, in bits, of writing the model down.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Recompute both models' code lengths, live</h2>
+      <p class="sl-sub">Starts on the AIC &amp; BIC lesson's exact worked-example numbers (n=100, Model A: k=2, Model B: k=5). Edit any field.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>n (observations)</label><input type="number" class="sl-input" id="mdlx-n" value="100" step="1" min="2"></div>
+        </div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Model A — k</label><input type="number" class="sl-input" id="mdlx-ka" value="2" step="1" min="0"></div>
+          <div class="sl-calc-field"><label>Model A — −2lnL̂</label><input type="number" class="sl-input" id="mdlx-nlla" value="100" step="1"></div>
+        </div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Model B — k</label><input type="number" class="sl-input" id="mdlx-kb" value="5" step="1" min="0"></div>
+          <div class="sl-calc-field"><label>Model B — −2lnL̂</label><input type="number" class="sl-input" id="mdlx-nllb" value="94" step="1"></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>DL(M<sub>A</sub>) = <b id="mdlx-dla">78.78</b> bits &nbsp;·&nbsp; DL(M<sub>B</sub>) = <b id="mdlx-dlb">84.42</b> bits</div>
+          <div>Shorter code wins: <b id="mdlx-winner">Model A</b> by <b id="mdlx-gap">5.64</b> bits</div>
+        </div>
+        <div class="sl-note" id="mdlx-warn"></div>
+        <button type="button" class="sl-reset-btn" id="mdlx-reset">Reset to worked-example numbers</button>
+      </div>
+      <p class="sl-p">DL = (k/2)·log₂(n) + (−2lnL̂)/(2ln2). Model B's three extra parameters cost about 3×½log₂(100) ≈ 9.97 extra bits to state, and only bought back about 6/ln2 ≈ 8.66 bits of residual — a losing trade in coding-length terms, and (per the bridge above) the exact same verdict BIC already gave in the AIC &amp; BIC lesson.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">How practitioners actually use this</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📏</div><div><h4>A sanity check on new penalties</h4><p>"Does this correspond to a sensible code length" is a standard test any proposed complexity penalty is held to in the model-selection literature.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧮</div><div><h4>Normalized Maximum Likelihood (NML)</h4><p>A more rigorous, encoding-independent refinement of the simple two-part code — harder to compute, used when the arbitrariness of a naive code matters.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🗜️</div><div><h4>Lossless compression as model selection</h4><p>Universal compressors are, at their core, implicitly solving an MDL-style model-selection problem over candidate coding schemes.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔁</div><div><h4>"Just compute BIC" is usually enough</h4><p>Because of the exact bridge on the previous slide, computing BIC already gets you the MDL answer for the common two-part-code case — a second formula is rarely needed.</p></div></div>
+      </div>
+      <div class="sl-quote">Recall the AIC &amp; BIC lesson's own lag-selection scenario: a 5-lag spread model's four extra coefficients would cost about 4×½log₂(100) ≈ 13.3 extra bits just to state, and only bought back about 6/ln2 ≈ 8.66 fewer bits of residual. Describing those four extra lags costs more, in bits, than the story they tell about the spread is worth — the same BIC verdict, in a physical, checkable currency.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Where this stands in this repo, right now</h2>
+      <p class="sl-p">The full lesson is tagged "concept — background math, not built or tested anywhere in this repo." Checking the actual source code for this deck: no file anywhere in this repository implements a two-part code, a description-length calculation, or normalized maximum likelihood (NML) under any name — an MDL-specific search turns up nothing but an unrelated variable literally named <code>mdl</code> as shorthand for "model" in <code>volatilityExhaustion/daytype_classifier.py</code>, not this lesson's Minimum Description Length.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Fact-check, stated transparently</div>
+        <p>The one nuance carried over from the AIC &amp; BIC lesson's own check still holds: <code>forge/residual.py</code>'s Augmented Dickey-Fuller stationarity test calls statsmodels with <code>autolag="AIC"</code>, so plain AIC does quiet work choosing a lag count inside that one diagnostic. That is AIC, not MDL, and it is not an explicit, reported model-comparison step — nothing in this repo computes a two-part MDL code length, BIC, or NML anywhere. The full lesson's "concept only" framing is, on inspection, still accurate for MDL specifically; nothing new to correct here.</p>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>The classical two-part code's L(M) term depends somewhat on the encoding scheme chosen — NML exists specifically to remove that arbitrariness, so treat the simple two-part number as a useful approximation, not a unique canonical constant. The (k/2)log₂(n)-per-parameter formula is also asymptotic, valid under the same large-n regime BIC's own derivation assumes. And the exact bridge proved above is specific to BIC — it does not extend to AIC, which targets a different quantity (expected out-of-sample KL divergence) entirely.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What does the Minimum Description Length principle say the "best" model is?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The one minimizing total bits: L(M) + L(D|M), model plus residual given the model</button>
+        <button class="sl-quiz-opt">The one with the fewest parameters, always</button>
+        <button class="sl-quiz-opt">The one with the highest in-sample likelihood</button>
+        <div class="sl-quiz-explain">DL(M) = L(M) + L(D|M), lower always better. Fewest parameters can lose (underfitting leaves a huge residual); highest likelihood can lose too (an overfit model's L(M) can outweigh its tiny residual).</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Why is L(D|M) = −log₂ L̂(M)?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Shannon's source coding theorem: the shortest average code for an outcome under a known probability is −log₂ of that probability</button>
+        <button class="sl-quiz-opt">It's an arbitrary convention that BIC also happens to use</button>
+        <button class="sl-quiz-opt">Because likelihoods are always exact powers of two</button>
+        <div class="sl-quiz-explain">Straight from Lesson 1's entropy result, applied to a model's own predicted probability of the observed data. It's also exactly the "deviance," −2lnL̂, from the AIC &amp; BIC lesson — just expressed in bits.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Per Rissanen, roughly how many bits does stating one real-valued parameter cost?</h4>
+        <button class="sl-quiz-opt" data-correct="true">About ½log₂(n) bits — enough precision for the sample size to actually support</button>
+        <button class="sl-quiz-opt">Infinitely many bits, since real numbers never terminate</button>
+        <button class="sl-quiz-opt">A fixed 2 bits, independent of the sample size</button>
+        <div class="sl-quiz-explain">A parameter's standard error shrinks roughly as 1/√n, so stating it finer than that is wasted precision. The resolvable digits work out to about ½log₂(n) bits — growing slowly as more data resolves the parameter more finely.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>n=100, Model A (k=2) gives DL≈78.78 bits, Model B (k=5) gives DL≈84.42 bits. Which model does BIC prefer, from the AIC &amp; BIC lesson?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Model A — the same model, because BIC(M) = 2ln(2)·DL(M) exactly</button>
+        <button class="sl-quiz-opt">Model B — the two-part code and BIC disagree on this example</button>
+        <button class="sl-quiz-opt">There's no way to compare an MDL result to a BIC result</button>
+        <div class="sl-quiz-explain">1.386 × 78.78 ≈ 109.21 and 1.386 × 84.42 ≈ 117.03 — exactly the BIC values from the AIC &amp; BIC lesson. The shorter code always picks the same winner as the lower BIC score.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Schwarz (1978, Bayesian) and Rissanen (1978, coding theory) derived essentially the same penalty independently. Why does that matter?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Two unrelated derivations agreeing is strong evidence the penalty captures something real, not an artifact of either framework's assumptions</button>
+        <button class="sl-quiz-opt">It doesn't — it's a coincidence with no deeper meaning</button>
+        <button class="sl-quiz-opt">It proves AIC, BIC, and MDL are all secretly the identical formula</button>
+        <div class="sl-quiz-explain">That's the "aha" this lesson is built around — but it's specific to BIC and the classical two-part code. AIC targets a different quantity (out-of-sample KL divergence), so the equivalence doesn't extend to it.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>MDL formalizes Occam's razor as literally the shortest total message: DL(M) = L(M) + L(D|M), lower always better.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>L(D|M) = −log₂L̂(M) comes straight from Shannon's source coding theorem (Lesson 1's entropy result), applied to the model's own predicted distribution.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>L(M) ≈ (k/2)log₂(n), per Rissanen — each parameter costs bits proportional to the precision the data can actually support.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>BIC = 2ln(2)·DL(M), exactly, not approximately — verified on the AIC &amp; BIC lesson's own Model A/B numbers: 78.78 and 84.42 bits scale to 109.21 and 117.03 nats precisely.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Two unrelated derivations — Schwarz's 1978 Bayesian asymptotics, Rissanen's 1978 coding theory, the same year — landed on the same practical penalty. Reassuring convergence, not coincidence.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>The bridge is specific to BIC, not AIC — AIC targets a different (out-of-sample, KL-divergence) quantity, so don't over-extend the equivalence.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Explain, in plain "compression" terms, exactly what BIC's abstract penalty is charging for — the literal cost, in bits, of writing a model down. Compute a two-part code length and confirm it always picks the same model BIC does. Recognize an overfit model as a demonstrably inefficient message, not just a vaguely "risky" one — and know that, like BIC itself, a shorter code is a relative verdict among the candidates compared, never proof any of them is true.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Fourier Analysis &amp; the Frequency Domain</h3>
+        <p>The Information Theory category closes here — next opens Signal Processing: decomposing a time series by frequency instead of by time, where it comes from, and what it actually recovers.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="fourier-analysis-frequency-domain-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="mdl-information-criteria.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Slide 7 — draggable complexity dial over the precomputed U-curve.
+  // n = 100 fixed. L(M)=(k/2)log2(100) is the real Rissanen formula;
+  // L(D|M) = 40 + 60/k is an illustrative, monotonically-decreasing
+  // residual cost chosen only to produce a clean U-shape for teaching.
+  (function(){
+    var slider = document.getElementById('mdlc-slider');
+    if (!slider) return;
+    var kval = document.getElementById('mdlc-kval');
+    var lmOut = document.getElementById('mdlc-lm');
+    var ldOut = document.getElementById('mdlc-ld');
+    var dlOut = document.getElementById('mdlc-dl');
+    var verdict = document.getElementById('mdlc-verdict');
+    var dot = document.getElementById('mdlc-dot');
+    var guide = document.getElementById('mdlc-guide');
+
+    var N = 100;
+    // Pixel x-position for k=1..10, matching the hand-plotted curves above.
+    var KX = [80, 135.6, 191.1, 246.7, 302.2, 357.8, 413.3, 468.9, 524.4, 580];
+    // y-pixel of the TOTAL curve at each k (matches the drawn purple path).
+    var TOTAL_Y = [32.2, 80.7, 92.8, 95.8, 95.3, 92.9, 89.4, 85.3, 80.8, 76.0];
+    var BEST_K = 4; // index of the visible minimum on this curve (0-based: index 3)
+
+    function lm(k){ return (k / 2) * Math.log2(N); }
+    function ld(k){ return 40 + 60 / k; }
+
+    function update(){
+      var k = parseInt(slider.value, 10);
+      var LM = lm(k), LD = ld(k), DL = LM + LD;
+      kval.textContent = 'k = ' + k;
+      lmOut.textContent = LM.toFixed(2);
+      ldOut.textContent = LD.toFixed(2);
+      dlOut.textContent = DL.toFixed(2);
+
+      var x = KX[k - 1], y = TOTAL_Y[k - 1];
+      dot.setAttribute('cx', x);
+      dot.setAttribute('cy', y);
+      guide.setAttribute('x1', x);
+      guide.setAttribute('x2', x);
+
+      if (k === BEST_K) {
+        verdict.innerHTML = '<strong>Near the bottom of the U.</strong> k=' + k + ' sits at (or right beside) the shortest total message this curve reaches — the genuine complexity/fit trade-off point.';
+      } else if (k < BEST_K) {
+        verdict.innerHTML = '<strong>Underfit side.</strong> The model is cheap to state (L(M) small), but the residual is still large — moving right would shorten the total message.';
+      } else {
+        verdict.innerHTML = '<strong>Overfit side.</strong> The residual is nearly gone, but stating ' + k + ' parameters costs more bits than that shrinking residual saves — the total is climbing back up.';
+      }
+    }
+
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Slide 9 — live two-part MDL code length calculator for Model A / Model B.
+  (function(){
+    var nEl = document.getElementById('mdlx-n');
+    if (!nEl) return;
+    var kaEl = document.getElementById('mdlx-ka'), nllaEl = document.getElementById('mdlx-nlla');
+    var kbEl = document.getElementById('mdlx-kb'), nllbEl = document.getElementById('mdlx-nllb');
+    var dlaOut = document.getElementById('mdlx-dla'), dlbOut = document.getElementById('mdlx-dlb');
+    var winnerOut = document.getElementById('mdlx-winner'), gapOut = document.getElementById('mdlx-gap');
+    var warn = document.getElementById('mdlx-warn');
+    var resetBtn = document.getElementById('mdlx-reset');
+    var DEFAULTS = { n: 100, ka: 2, nlla: 100, kb: 5, nllb: 94 };
+
+    // Two-part MDL code length: bits to state the model, plus bits to
+    // state the residual given the model, from -2*ln(Lhat).
+    function DL(n, k, negLL){
+      var LM = (k / 2) * Math.log2(n);
+      var LD = negLL / (2 * Math.LN2);
+      return LM + LD;
+    }
+
+    function recompute(){
+      var n = parseFloat(nEl.value);
+      var ka = parseFloat(kaEl.value), nlla = parseFloat(nllaEl.value);
+      var kb = parseFloat(kbEl.value), nllb = parseFloat(nllbEl.value);
+
+      var bad = !isFinite(n) || n < 2 ||
+                !isFinite(ka) || ka < 0 || !isFinite(nlla) ||
+                !isFinite(kb) || kb < 0 || !isFinite(nllb);
+
+      if (bad) {
+        dlaOut.textContent = '—';
+        dlbOut.textContent = '—';
+        winnerOut.textContent = '—';
+        gapOut.textContent = '—';
+        warn.textContent = 'Enter n ≥ 2 and non-negative parameter counts (k ≥ 0).';
+        return;
+      }
+      warn.textContent = '';
+
+      var dlA = DL(n, ka, nlla);
+      var dlB = DL(n, kb, nllb);
+      dlaOut.textContent = dlA.toFixed(2);
+      dlbOut.textContent = dlB.toFixed(2);
+      gapOut.textContent = Math.abs(dlA - dlB).toFixed(2);
+      winnerOut.textContent = dlA <= dlB ? 'Model A' : 'Model B';
+    }
+
+    [nEl, kaEl, nllaEl, kbEl, nllbEl].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      nEl.value = DEFAULTS.n; kaEl.value = DEFAULTS.ka; nllaEl.value = DEFAULTS.nlla;
+      kbEl.value = DEFAULTS.kb; nllbEl.value = DEFAULTS.nllb;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

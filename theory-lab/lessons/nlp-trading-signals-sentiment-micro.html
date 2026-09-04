@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NLP for Trading Signals — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">NLP for Trading Signals — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivations, citations, and a 5-question self-test?<a href="nlp-trading-signals-sentiment.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Deep Learning &amp; Modern ML 6 (final) · Deep Learning &amp; Modern ML for Trading</div>
+      <h1 class="sl-h1">Reading the Statement <em>Like a Model Would</em></h1>
+      <p class="sl-lede">A central bank statement, a news headline, an earnings-call transcript — none of it is a number, and every trading model built so far in this curriculum only eats numbers. This lesson closes that gap: how raw text gets turned into a numeric feature, why "the committee remains attentive to inflation risks" is a loaded phrase a machine can now be taught to weigh correctly, and why the clock on a text-based signal is far easier to get quietly, catastrophically wrong than the clock on a price series ever is.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1 · Closing the loop</div>
+      <h2 class="sl-h2">Six lessons, one arc — and this is the last one</h2>
+      <p class="sl-sub">Deep Learning &amp; Modern ML for Trading, start to finish. This is lesson 6 of 6 — and the final lesson of the entire Theory Lab curriculum.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">1</div><div><h4>RNN / LSTM / GRU</h4><p>A network that carries a memory of everything it has read so far — the first machinery built for reading things in order.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">2</div><div><h4>Attention &amp; Transformers</h4><p>Drop the memory bottleneck — let every position look directly at every other position, weighted by relevance. This is the architecture underneath what comes later in this lesson.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">3</div><div><h4>Regularized Regression</h4><p>LASSO &amp; Ridge — how to keep a model honest when it has more candidate features than it has any right to trust.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">4</div><div><h4>Clustering</h4><p>k-Means &amp; hierarchical clustering — finding structure in the market with no labels at all.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">5</div><div><h4>Anomaly Detection</h4><p>Isolation forests &amp; autoencoders — spotting the bar, the regime, the observation that doesn't belong.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">6</div><div><h4>NLP for Trading Signals — you are here</h4><p>Take the attention mechanism from lesson 2, point it at language instead of price bars, and end up with a number a trading system can consume.</p></div></div>
+      </div>
+      <div class="sl-quote">Every lesson before this one assumed the input was already numeric — a price, a return, a spread. This lesson is the one honest admission that a huge share of real market-moving information never arrives as a number at all. It arrives as a paragraph, and something has to read it first.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">The information is real. The format is the problem.</h2>
+      <p class="sl-sub">None of these arrive as a clean numeric feed — and a purely numeric model never sees them.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🏦</div><div><h4>Central bank statements</h4><p>The rate decision is a number. Whether the guidance is "firm" or "data-dependent," and whether the tone shifted from last meeting, is not — and often moves price more than the decision itself.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📰</div><div><h4>News headlines &amp; wire articles</h4><p>"Beats estimates," "misses on guidance," "unexpected escalation" — the market-relevant content is in the wording, not in any field a numeric feed exposes.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎙</div><div><h4>Earnings-call transcripts</h4><p>The reported EPS number is one line. A CFO hedging on forward guidance for three paragraphs is a different signal entirely, and it's not in the EPS line.</p></div></div>
+      </div>
+      <p class="sl-p">A trained human analyst reads all three fluently, by eye, and forms a fast holistic impression — "this reads more hawkish than last time." This lesson's whole arc is making that impression explicit and reproducible: first teach a model what individual <strong>words</strong> mean, then teach it to read a <strong>whole sentence</strong> at once the way a human does, then specialize that reading skill for finance specifically.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Step one: give every word a location, not a label</h2>
+      <p class="sl-sub">A word embedding is a dense vector — a few hundred real numbers — positioned so words used in similar contexts end up near each other.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Before and after</div>
+        <div class="sl-row"><div class="sl-box">one-hot: [0,0,1,0,…,0]</div><div class="sl-arrow">→</div><div class="sl-box green">embedding: [0.31, −0.08, …]</div></div>
+        <div class="sl-verdict">A one-hot vector says only "this is word #4,812" — every word is equally, meaninglessly far from every other. A trained embedding says "this word tends to keep company with these other words" — and that company is exactly what similarity ends up meaning.</div>
+      </div>
+      <div class="sl-svgwrap">
+        <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A two-dimensional scatter of word embeddings. Hawkish, tighten, raise and inflation risk cluster on the right. Dovish, ease, cut and stimulus cluster on the left, far from the first group.">
+          <rect x="20" y="16" width="600" height="210" style="fill:var(--panel2);stroke:var(--border)"/>
+          <line x1="320" y1="16" x2="320" y2="226" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"/>
+          <circle cx="140" cy="76" r="5" style="fill:var(--blue)"/>
+          <text x="150" y="72" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:11px;font-weight:700">dovish</text>
+          <circle cx="108" cy="112" r="4" style="fill:var(--blue)"/>
+          <text x="118" y="109" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:10px">ease</text>
+          <circle cx="168" cy="130" r="4" style="fill:var(--blue)"/>
+          <text x="178" y="127" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:10px">cut</text>
+          <circle cx="95" cy="166" r="4" style="fill:var(--blue)"/>
+          <text x="105" y="163" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:10px">stimulus</text>
+          <circle cx="152" cy="182" r="4" style="fill:var(--blue)"/>
+          <text x="162" y="179" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:10px">accommodative</text>
+          <circle cx="480" cy="70" r="5" style="fill:var(--red)"/>
+          <text x="490" y="66" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:11px;font-weight:700">hawkish</text>
+          <circle cx="512" cy="106" r="4" style="fill:var(--red)"/>
+          <text x="522" y="103" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:10px">tighten</text>
+          <circle cx="452" cy="128" r="4" style="fill:var(--red)"/>
+          <text x="462" y="125" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:10px">raise</text>
+          <circle cx="498" cy="164" r="4" style="fill:var(--red)"/>
+          <text x="508" y="161" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:10px">inflation risk</text>
+          <circle cx="450" cy="184" r="4" style="fill:var(--red)"/>
+          <text x="460" y="181" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:10px">restrictive</text>
+          <text x="230" y="210" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">dovish neighborhood</text>
+          <text x="410" y="210" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">hawkish neighborhood</text>
+        </svg>
+      </div>
+      <p class="sl-p" style="margin-top:10px">Nobody hand-labels these two neighborhoods. They fall out purely from which words tend to appear near which other words, across a huge body of ordinary text — a training signal that needs no human annotation at all, which is exactly why this technique scales.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Two ways to train the same idea</h2>
+      <p class="sl-sub">Word2Vec's two objectives are mirror images of each other — both trained on nothing but raw, unlabeled text.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="w2v-tabs">
+          <button class="sl-tab active" data-panel="w2v-1">Skip-gram</button>
+          <button class="sl-tab" data-panel="w2v-2">CBOW</button>
+        </div>
+        <div class="sl-panel active" id="w2v-1">
+          <div class="sl-row"><div class="sl-box">target: "hawkish"</div><div class="sl-arrow">predicts →</div><div class="sl-box green">tighten, rates, inflation</div></div>
+          <div class="sl-verdict">Given <strong>one</strong> target word, predict the words likely to surround it. Fed "hawkish" repeatedly, the model learns to expect "tighten" and "inflation" nearby far more than unrelated words — and that repeated pull is what drags "hawkish" close to them in vector space.</div>
+        </div>
+        <div class="sl-panel" id="w2v-2">
+          <div class="sl-row"><div class="sl-box">"the committee remains ___ about inflation risks"</div><div class="sl-arrow">predicts →</div><div class="sl-box green">attentive</div></div>
+          <div class="sl-verdict">The mirror image: given the <strong>surrounding</strong> context, predict the single missing word in the middle. "Attentive" or "concerned" fit that slot far better than an unrelated word — again, purely from how often each candidate actually appears in that company.</div>
+        </div>
+      </div>
+      <p class="sl-p">A well-known side effect of this geometry: vector arithmetic starts capturing relationships, not just similarity — the classic example is vec(king) − vec(man) + vec(woman) landing close to vec(queen). The space encodes "royal" and "gender" as roughly consistent directions, entirely as a byproduct of the prediction task.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">One fixed vector per word is the limitation — attention is the fix</h2>
+      <p class="sl-sub">"Hold" gets the same embedding whether it means "the Fed will hold rates" or "hold my coffee." That's the exact problem the previous lesson's architecture solves.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">↔</div><div><h4>Bidirectional</h4><p>A word's representation is built from both what comes before it and what comes after it, at once — not read strictly left-to-right.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>Attention — straight from lesson 2</h4><p>The same mechanism that let a time-series transformer weigh which past bars matter now lets a language model weigh which other words in the sentence matter to this one.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📚</div><div><h4>Pre-training</h4><p>Trained first on a huge general corpus — Wikipedia, books — before ever seeing a single finance-specific example. This general-purpose model is <strong>BERT</strong>.</p></div></div>
+      </div>
+      <div class="sl-quote">This is the payoff for having built the attention mechanism first. A transformer reading a sentence and a transformer reading a price series are the same underlying trick, pointed at two different kinds of sequence — <strong>every position attending to every other position</strong>, weighted by learned relevance, instead of information having to survive being carried forward one step at a time.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">FinBERT: the same reader, after finance school</h2>
+      <p class="sl-sub">FinBERT is stated plainly: BERT, further trained (fine-tuned) on financial text specifically.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">BERT — general reader</span>
+          <p>Pre-trained on broad text. Reads "bearish," "guidance cut," and "beat estimates" the way general English would — missing the precise financial connotation each phrase actually carries on a desk.</p>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">FinBERT — finance specialist</span>
+          <p>Same architecture, continued training on finance-domain text and labeled financial-sentiment examples. Now "the committee remains highly attentive to inflation risks" is read as the loaded, specific hedge phrase it actually is — not a bland aside.</p>
+        </div>
+      </div>
+      <p class="sl-p">The output is a sentiment score produced directly from raw text — a probability over positive/negative/neutral, or, framed for a central-bank use case, a hawkish/dovish score — with no human hand-scoring that specific sentence. It's the direct computational analogue of an analyst's fluent, context-aware read.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Context-blind vs. context-aware, on the same sentence</h2>
+      <p class="sl-sub">The whole reason FinBERT-style scoring replaced simple word-counting: negation.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — score "the outlook is not bad, but hardly reassuring"</div>
+        <div class="sl-tabs" id="sent-tabs">
+          <button class="sl-tab active" data-panel="sent-1">Bag-of-words scoring</button>
+          <button class="sl-tab" data-panel="sent-2">Transformer (FinBERT-style)</button>
+        </div>
+        <div class="sl-panel active" id="sent-1">
+          <div class="sl-row"><div class="sl-box amber">sees: "bad" → negative word found</div><div class="sl-arrow">=</div><div class="sl-box amber">score: −0.60 (negative)</div></div>
+          <div class="sl-verdict">A word-count scorer matches "bad" against a negative-word list and scores the sentence negative — it has no mechanism to notice "not" sitting immediately in front of it, or "hardly" qualifying "reassuring." Every word is scored in isolation.</div>
+        </div>
+        <div class="sl-panel" id="sent-2">
+          <div class="sl-row"><div class="sl-box green">reads the whole sentence at once, via attention</div><div class="sl-arrow">=</div><div class="sl-box green">score: +0.10 (mildly, hedged, positive)</div></div>
+          <div class="sl-verdict">A transformer's representation of "bad" is built using every other word in the sentence — including "not," directly before it. It correctly reads the negation, and also picks up that "hardly reassuring" pulls the mild positive back down — a hedged, muted read, not a strongly positive or strongly negative one.</div>
+        </div>
+      </div>
+      <p class="sl-p" style="margin-top:14px">This is not a contrived edge case. Hedge phrases, qualified statements, and negation are exactly the register central bank statements and earnings-call answers are written in — a bag-of-words scorer is structurally blind to the part of the sentence that usually carries the real signal.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">The timestamp on the article is not when the market saw it</h2>
+      <p class="sl-sub">This is the trap that's specific to text — a price bar's timestamp is rarely in question; an article's is, constantly.</p>
+      <div class="sl-svgwrap">
+        <svg viewBox="0 0 640 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A timeline showing an article's claimed timestamp on the left and its actual availability to traders several minutes later on the right, with the gap between them shaded as a leakage window.">
+          <line x1="40" y1="120" x2="600" y2="120" style="stroke:var(--border2);stroke-width:2"/>
+          <rect x="170" y="70" width="220" height="90" style="fill:var(--red-bg);stroke:var(--red-bd);stroke-dasharray:4,3"/>
+          <text x="280" y="60" text-anchor="middle" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:11px;font-weight:700">leakage window</text>
+          <circle cx="170" cy="120" r="6" style="fill:var(--blue)"/>
+          <text x="170" y="150" text-anchor="middle" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:11px;font-weight:700">14:00:00</text>
+          <text x="170" y="166" text-anchor="middle" style="fill:var(--text2);font-size:10.5px">article's claimed<tspan x="170" dy="12">timestamp</tspan></text>
+          <circle cx="390" cy="120" r="6" style="fill:var(--amber)"/>
+          <text x="390" y="150" text-anchor="middle" style="fill:var(--amber);font-family:'DM Mono',monospace;font-size:11px;font-weight:700">14:04:12</text>
+          <text x="390" y="166" text-anchor="middle" style="fill:var(--text2);font-size:10.5px">actually retrievable<tspan x="390" dy="12">/ finalized text</tspan></text>
+          <circle cx="560" cy="120" r="5" style="fill:var(--green)"/>
+          <text x="560" y="105" text-anchor="middle" style="fill:var(--green);font-family:'DM Mono',monospace;font-size:10.5px">price already<tspan x="560" dy="11">moved here</tspan></text>
+        </svg>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">✍</div><div><h4>Backfilled or corrected articles</h4><p>A wire service can revise a story and keep the original publish timestamp — the version your dataset scraped may only have existed, in full, several minutes after that stamp claims.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⏱</div><div><h4>Central bank release time, to the second</h4><p>An embargo lifting at 14:00:00.000 ET versus a dataset recording 14:00 flat, or the previous minute, is a subtle, easy-to-miss error — and it sits exactly where the biggest price move happens.</p></div></div>
+      </div>
+      <p class="sl-p">Either error quietly leaks information from <em>after</em> the true decision moment into a backtest that thinks it's trading strictly on the "claimed" timestamp. The backtest never sees an obviously impossible input — it just silently gets to react a little earlier than any real trader ever could have.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Drag the lag — watch how much of the move gets "seen" early</h2>
+      <p class="sl-sub">Assume a typical news-driven move fully plays out over 20 minutes after the true decision moment. How much of it has already happened by the time the dataset says the article existed?</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A chart showing cumulative percent of a price move realized over 20 minutes, with a shaded region showing how much of that move a backtest would improperly see early, given an assumed timestamp lag.">
+            <line x1="60" y1="180" x2="600" y2="180" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="60" y1="20" x2="60" y2="180" style="stroke:var(--border2);stroke-width:1"/>
+            <text x="330" y="205" text-anchor="middle" style="fill:var(--text3);font-size:10.5px">minutes since true decision moment</text>
+            <text x="26" y="100" text-anchor="middle" style="fill:var(--text3);font-size:10.5px" transform="rotate(-90 26 100)">% of move realized</text>
+            <text x="600" y="195" text-anchor="end" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">20 min</text>
+            <rect id="lag-shade" x="60" y="20" width="0" height="160" style="fill:var(--red-bg);opacity:.55"/>
+            <line x1="60" y1="180" x2="600" y2="20" style="stroke:var(--blue);stroke-width:2.5"/>
+            <circle id="lag-dot" cx="60" cy="180" r="6" style="fill:var(--amber);stroke:var(--bg);stroke-width:2"/>
+            <line id="lag-marker" x1="60" y1="20" x2="60" y2="180" style="stroke:var(--amber);stroke-width:1.5;stroke-dasharray:3,3"/>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Assumed timestamp lag error</span><span class="sl-live" id="lag-mval">5 min</span></div>
+        <input type="range" class="sl-slider" id="lag-slider" min="0" max="20" step="1" value="5">
+        <div class="sl-calc-steps">
+          <div>Fraction of the total move already realized: <b id="lag-pct">25%</b></div>
+          <div>Illustrative amount a leaky backtest could "see" before it happened (of a 25 bps move): <b id="lag-bps">6.25 bps</b></div>
+        </div>
+        <div class="sl-note">A straight-line ramp is a simplification — real dissemination is rarely linear — but the direction of the effect is exactly this: the longer the gap between the claimed timestamp and true availability, the more of the eventual move a naive backtest gets to "foresee."</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Put a number on the leak</h2>
+      <p class="sl-sub">A simpler, general version of the same idea — how much return does a given timestamp error make improperly foreseeable?</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change either input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Timestamp lag error (minutes)</label><input type="number" class="sl-input" id="leak-lag" value="6" step="1" min="0"></div>
+          <div class="sl-calc-op">×</div>
+          <div class="sl-calc-field"><label>Assumed move (bps per minute)</label><input type="number" class="sl-input" id="leak-bpm" value="1.8" step="0.1" min="0"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Improperly foreseeable move</div>
+            <div class="sl-calc-result-val" id="leak-result">10.80 bps</div>
+          </div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="leak-reset">Reset to worked-example numbers</button>
+        <div class="sl-note">Blank, negative, or non-numeric input shows "—" rather than a false number — a calculator that quietly returns NaN or Infinity is its own small lesson in why guarding inputs matters.</div>
+      </div>
+      <p class="sl-p">This is deliberately crude — real intraday moves aren't a constant bps-per-minute — but the point isn't precision, it's magnitude: a handful of minutes of timestamp error, at realistic event-driven volatility, is easily enough foreseeable return to make a backtested "text signal" look far more predictive than it could ever be live.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">The same warning, wearing a new outfit</h2>
+      <p class="sl-p">This is exactly the look-ahead-bias problem from the feature-engineering lesson much earlier in this curriculum, back for one more round: a feature is only usable at the moment it was <em>actually, verifiably</em> knowable — not the moment a convenient field in a dataset claims. Text-based signals just make the violation easier to miss, because the "obviously wrong" version (a feature literally computed from the future) rarely happens; what actually happens is a timestamp that's subtly, plausibly, quietly off by a few minutes.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📉</div><div><h4>Trend over single reading</h4><p>One document's sentiment score is a noisy, high-variance read. Averaged across many documents about the same event, or tracked meeting-over-meeting, the per-document noise partially cancels.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>Not a calibrated probability</h4><p>A FinBERT output like "0.72 hawkish" is a model's internal confidence, useful for ranking documents against each other — not a 72% real-world chance of anything.</p></div></div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Checked against this repo's actual code — the full lesson is stale here</div>
+        <p>The full lesson states this repo has "no sentiment pipeline built or tested" anywhere. That's no longer accurate. <code>js/cbLexicon.js</code> is a live, unit-tested hawkish/dovish <strong>word-counting</strong> scorer for FOMC statements — the deliberately old-fashioned, context-blind approach shown two slides ago — and <code>server.js</code> also runs a separate LLM-based reader powering live pages (<code>fomc-sentiment.html</code>, <code>ecb-sentiment.html</code>, <code>boe-sentiment.html</code>, <code>boj-sentiment.html</code>). Neither is Word2Vec or FinBERT specifically — this repo has not built those. A pre-registered test of whether the lexicon score's changes predict price (<code>MD files/CB_SENTIMENT_PRICE_TEST.md</code>) came back a clean null at the first stage: the initial 30-minute reaction carried zero information about the next day's move, and the "sentiment momentum" framing was retired. So: a real text-sentiment pipeline exists and has been tested here — just not the embedding/transformer techniques this lesson teaches, and the one predictive claim tested so far didn't survive contact with data.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What does a word embedding actually encode, that a one-hot vector cannot?</h4>
+        <button class="sl-quiz-opt" data-correct="true">A notion of similarity — words used in similar contexts sit close together</button>
+        <button class="sl-quiz-opt">The word's dictionary definition</button>
+        <button class="sl-quiz-opt">Its part of speech (noun, verb, etc.)</button>
+        <div class="sl-quiz-explain">A one-hot vector treats every word as equally, meaninglessly distant from every other. An embedding is trained so that words appearing in similar contexts end up near each other — a computable notion of similarity that was never hand-labeled.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>What specific limitation of Word2Vec does a transformer's bidirectional attention fix?</h4>
+        <button class="sl-quiz-opt" data-correct="true">One fixed vector per word, regardless of the sentence it appears in</button>
+        <button class="sl-quiz-opt">Word2Vec can't be trained on financial text</button>
+        <button class="sl-quiz-opt">Word2Vec vectors are too large to store</button>
+        <div class="sl-quiz-explain">"Hold" gets the same Word2Vec vector whether it means "hold rates" or "hold my coffee." A transformer builds each word's representation from every other word in the sentence, so the same word gets a different, context-appropriate representation each time.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Why does a bag-of-words scorer fail on "not bad"?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It scores words in isolation and has no mechanism to apply negation</button>
+        <button class="sl-quiz-opt">It only works on numeric data</button>
+        <button class="sl-quiz-opt">"Bad" isn't in its word list</button>
+        <div class="sl-quiz-explain">A word-count scorer matches "bad" against a negative-term list and stops there — it has no way to notice "not" sitting directly in front of it. A transformer's attention lets "bad" be read together with "not," in context.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Why is a text-based signal's timestamp riskier than a price bar's?</h4>
+        <button class="sl-quiz-opt" data-correct="true">An article's claimed timestamp can be backfilled, corrected, or subtly earlier than when the text was actually retrievable</button>
+        <button class="sl-quiz-opt">Text data doesn't have timestamps at all</button>
+        <button class="sl-quiz-opt">Price bars are never timestamped correctly either, so it's the same risk</button>
+        <div class="sl-quiz-explain">A wire correction or backfill can leave an article's stated timestamp earlier than when the finalized text actually existed — silently letting a backtest "know" something before it really could have.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Why does the lesson recommend tracking a sentiment score's trend across many documents, not trusting one reading?</h4>
+        <button class="sl-quiz-opt" data-correct="true">A single document's score is high-variance and noisy; averaging lets that noise partially cancel</button>
+        <button class="sl-quiz-opt">Because a single document is too short for a transformer to read</button>
+        <button class="sl-quiz-opt">Because FinBERT only works on batches of 10 or more documents</button>
+        <div class="sl-quiz-explain">One misread hedge phrase or one instance of sarcasm can swing a single score meaningfully. The trend across many documents or successive meetings is a far steadier, more informative read.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Word embeddings turn words into dense vectors positioned so similar-context words sit close together — trained on raw text alone, no labels needed.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Word2Vec's skip-gram and CBOW objectives are mirror images of the same co-occurrence idea, but each word still gets exactly one fixed vector.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Transformers (the same attention mechanism from lesson 2) fix that: bidirectional, context-aware reading, where the same word means different things in different sentences.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>FinBERT is BERT, further trained on financial text — a sentiment score computed directly from raw text, context-aware in a way bag-of-words scoring structurally cannot be.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>A text signal's timestamp is not automatically trustworthy — backfilled articles and to-the-second release times can leak post-decision information into a backtest that thinks it's using the claimed time.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Trust the trend across many documents, never a single reading — and remember a sentiment score is a model's internal confidence, not a calibrated real-world probability.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do — and the end of the road</div>
+        <p>You can now describe, precisely, how raw text becomes a numeric trading feature — from one-hot vectors to embeddings to attention to a domain-tuned sentiment score — and you know exactly where the timestamp trap hides in that pipeline. That closes out Deep Learning &amp; Modern ML for Trading: sequence memory, attention, disciplined regression, unsupervised structure, anomaly detection, and now language. It also closes out the <strong>entire Theory Lab curriculum</strong>. Congratulations on working through all of it.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">You've completed the Theory Lab curriculum</div>
+        <h3>There's no "next lesson" — that's the point</h3>
+        <p>From here, the two useful directions are backward (the full derivation of anything that felt rushed) and outward (the hub, to pick a thread to go deeper on, or to revisit as these tools actually get used).</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="nlp-trading-signals-sentiment.html">Read the full NLP lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Lag slider — return-realization timeline.
+  (function(){
+    var slider = document.getElementById('lag-slider');
+    if (!slider) return;
+    var mVal = document.getElementById('lag-mval');
+    var shade = document.getElementById('lag-shade');
+    var dot = document.getElementById('lag-dot');
+    var marker = document.getElementById('lag-marker');
+    var pctEl = document.getElementById('lag-pct');
+    var bpsEl = document.getElementById('lag-bps');
+    var X0 = 60, X1 = 600, Y0 = 180, Y1 = 20, W_MIN = 20, TOTAL_BPS = 25;
+
+    function update(){
+      var lag = parseFloat(slider.value);
+      mVal.textContent = lag.toFixed(0) + ' min';
+      var frac = Math.max(0, Math.min(1, lag / W_MIN));
+      var x = X0 + frac * (X1 - X0);
+      var y = Y0 + frac * (Y1 - Y0);
+      shade.setAttribute('width', Math.max(0, x - X0));
+      dot.setAttribute('cx', x);
+      dot.setAttribute('cy', y);
+      marker.setAttribute('x1', x);
+      marker.setAttribute('x2', x);
+      marker.setAttribute('y1', Y1);
+      marker.setAttribute('y2', Y0);
+      pctEl.textContent = (frac * 100).toFixed(0) + '%';
+      bpsEl.textContent = (frac * TOTAL_BPS).toFixed(2) + ' bps';
+    }
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Timestamp-leak calculator.
+  (function(){
+    var lag = document.getElementById('leak-lag');
+    if (!lag) return;
+    var bpm = document.getElementById('leak-bpm');
+    var result = document.getElementById('leak-result');
+    var resetBtn = document.getElementById('leak-reset');
+    var DEFAULTS = { lag: 6, bpm: 1.8 };
+
+    function recompute(){
+      var l = parseFloat(lag.value), b = parseFloat(bpm.value);
+      if (!isFinite(l) || !isFinite(b) || l < 0 || b < 0) {
+        result.textContent = '—';
+        return;
+      }
+      result.textContent = (l * b).toFixed(2) + ' bps';
+    }
+
+    [lag, bpm].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      lag.value = DEFAULTS.lag; bpm.value = DEFAULTS.bpm;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

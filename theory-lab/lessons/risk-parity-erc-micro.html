@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Risk Parity &amp; Equal Risk Contribution — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Risk Parity &amp; Equal Risk Contribution — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full closed-form proof, MathJax'd math, and a 6-question self-test?<a href="risk-parity-erc.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Portfolio Construction 1 · Advanced Portfolio Construction</div>
+      <h1 class="sl-h1">Risk Parity, or <em>Stop Guessing Returns</em></h1>
+      <p class="sl-lede">The Markowitz &amp; Black-Litterman lesson ended on an honest confession: mean-variance optimization is only as good as its expected-return forecasts, and those forecasts are the least trustworthy number in the whole model. Black-Litterman's answer was to moderate that fragile input with a market prior. Risk parity's answer is more radical — it throws the return forecast out entirely, and asks a completely different question: not "which assets will do best," but "how do I make sure no single asset can dominate my portfolio's risk."</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Markowitz's one truly fragile input</h2>
+      <p class="sl-sub">Everything else in mean-variance optimization is estimable. This one piece isn't.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">Σ</div><div><h4>Covariance is estimable</h4><p>Volatilities and correlations, estimated from historical returns, are noisy — but they're reasonably stable from one period to the next. This is the one input Markowitz can lean on with some confidence.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">μ</div><div><h4>Expected returns are not</h4><p>Forecasting which asset will outperform is genuinely hard, and small errors in that forecast are not small in their effect — the optimizer treats a barely-more-confident guess as a strong signal worth betting heavily on.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚡</div><div><h4>The optimizer amplifies the noise</h4><p>Mean-variance optimization is a maximizer — it doesn't just use a slightly-wrong return estimate, it searches out and leans hardest on whichever asset the noise happens to have flattered most that period.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">↺</div><div><h4>Small input change, huge output change</h4><p>Nudging one asset's expected return by a fraction of a percentage point can flip an "optimal" portfolio from 70% in that asset to near zero — the hallmark of an ill-conditioned, unstable optimization.</p></div></div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where the last lesson left off</div>
+        <p>Black-Litterman's fix was to moderate the fragile expected-return input with a market-equilibrium prior and confidence-weighted views — a way of trusting the forecast <em>less</em>, not abandoning it. Risk parity, this lesson, takes the more radical option still on the table: don't moderate the forecast — remove it from the model altogether.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">The radical move: allocate on risk alone</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Markowitz asks</span>
+          <p>"Given how much I expect each asset to return, and how they move together, what mix maximizes return for a given level of risk?" — a question that cannot be answered without an expected-return forecast for every asset.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Risk parity asks</span>
+          <p>"Given only how volatile each asset is and how they move together, what mix makes sure no single asset can dominate my portfolio's total risk?" — a question that never needs a return forecast at all.</p>
+        </div>
+      </div>
+      <p class="sl-p">This isn't a smaller version of Markowitz — it's a different model with a different goal. Risk parity has <strong>no opinion whatsoever</strong> about which asset will perform better. It only has an opinion about how much risk each asset brings to the table, which — as the previous lesson established — is the one piece of the model that actually can be estimated with reasonable stability.</p>
+      <div class="sl-quote">Whether that trade is a good one depends entirely on how much genuine signal was sitting in the expected-return forecasts just discarded. That's a real question, and this lesson doesn't pretend to resolve it for you.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Equal dollars is not equal risk</h2>
+      <p class="sl-sub">Split $300 evenly across a bond fund, an equity index, and a commodity index — $100 each.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The split that looks balanced</div>
+        <div class="sl-row">
+          <div class="sl-box">Bonds<br>$100</div>
+          <div class="sl-box">Equities<br>$100</div>
+          <div class="sl-box">Commodities<br>$100</div>
+        </div>
+        <div class="sl-verdict"><strong>Equal capital.</strong> But bonds are historically several times calmer than commodities — so on almost any given day, nearly all of the portfolio's actual up-and-down movement is coming from that one-third of the money. The bond sleeve is along for the ride, contributing a rounding error's worth of real risk despite an equal dollar share.</div>
+      </div>
+      <p class="sl-p"><strong>Equal weight is not equal risk</strong> — and equal risk, not equal capital, is what risk parity actually targets. To get there, the lower-volatility assets have to be held in <em>larger</em> dollar amounts than the higher-volatility ones, until each one's contribution to the portfolio's total wiggle — not its total dollars — comes out the same.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Defining a "slice of risk" precisely</h2>
+      <p class="sl-sub">Start from portfolio variance, then ask how much each asset's weight is really responsible for.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The risk-contribution formula</div>
+        <div class="sl-row">
+          <div class="sl-box">wᵢ</div>
+          <div class="sl-arrow">×</div>
+          <div class="sl-box">(Σw)ᵢ</div>
+          <div class="sl-arrow">÷</div>
+          <div class="sl-box">σₚ</div>
+          <div class="sl-arrow">=</div>
+          <div class="sl-box green">RCᵢ</div>
+        </div>
+        <div class="sl-verdict">Asset i's weight, times its marginal contribution to portfolio variance, normalized by total portfolio volatility. That's asset i's <strong>risk contribution</strong>.</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">wᵢ</div><div><h4>Asset i's weight</h4><p>The fraction of capital held in asset i — exactly the same weight vector Markowitz optimizes over.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">Σw</div><div><h4>Marginal contribution to variance</h4><p>(Σw)ᵢ is the covariance matrix acting on the weight vector — how much total portfolio variance changes for a tiny nudge in wᵢ, holding every other weight fixed.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">σₚ</div><div><h4>Total portfolio volatility</h4><p>√(wᵀΣw) — the normalizer that converts "variance" units back into the same units as the rest of the risk contributions.</p></div></div>
+      </div>
+      <div class="sl-quote">This isn't a rough attribution — it's an exact identity. The RCᵢ always sum, exactly, to σₚ, for <em>any</em> weights at all (a consequence of portfolio variance being a homogeneous quadratic form — Euler's theorem, applied to σₚ). Risk contribution is a real accounting split of total portfolio risk into per-asset pieces that add back up to the whole, the same way a restaurant bill splits by what each person actually ordered, not by head count.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">The ERC condition: make every slice equal</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>What "Equal Risk Contribution" actually solves for</div>
+        <div class="sl-row">
+          <div class="sl-box amber">RCᵢ</div>
+          <div class="sl-arrow">=</div>
+          <div class="sl-box amber">RCⱼ</div>
+          <div class="sl-arrow">for every pair</div>
+        </div>
+        <div class="sl-verdict">Subject to the weights summing to 1 (fully invested, no leverage in the base case). With N assets that's N−1 independent equations plus the budget constraint, for N unknown weights — a determined system, but a <strong>nonlinear</strong> one, since (Σw)ᵢ and σₚ both depend on every entry of w at once.</div>
+      </div>
+      <p class="sl-p">There is, in general, <strong>no algebraic formula</strong> that hands back the ERC weights directly — they have to be found by an iterative numerical search that nudges the weights back and forth until every RCᵢ equalizes. There's exactly one tractable special case worth knowing:</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">The one closed-form shortcut</div>
+        <p>If every pair of assets happened to share the <em>same</em> correlation ρ, the ERC solution reduces exactly to inverse-volatility weighting, wᵢ ∝ 1/σᵢ — put simply, size each asset in inverse proportion to how jumpy it is, full stop, ignoring correlation altogether. It's a clean, memorable result, and it's the idealization most people picture when they first hear "risk parity." Real markets essentially never have uniform pairwise correlation — the next slide shows exactly what breaks once they don't.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Three ways to split three assets</h2>
+      <p class="sl-sub">Same three assets throughout — bonds (σ=5%), equities (σ=15%), commodities (σ=25%) — but now with realistic, <em>uneven</em> correlations: bonds barely move with either (ρ=0.10 to equities, ρ=0.05 to commodities), while equities and commodities are highly correlated with each other (ρ=0.75).</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="rp-tabs">
+          <button class="sl-tab active" data-panel="rp-t1">Equal-dollar (⅓ each)</button>
+          <button class="sl-tab" data-panel="rp-t2">Equal-vol (1/σ only)</button>
+          <button class="sl-tab" data-panel="rp-t3">True ERC (solved)</button>
+        </div>
+        <div class="sl-panel active" id="rp-t1">
+          <div class="sl-row">
+            <div class="sl-box">Bonds<br>33.3%</div>
+            <div class="sl-box">Equities<br>33.3%</div>
+            <div class="sl-box">Commodities<br>33.3%</div>
+          </div>
+          <div class="sl-verdict"><strong>Risk shares: 2.6% / 35.1% / 62.3%.</strong> Nearly two-thirds of the portfolio's real risk sits in commodities alone, despite exactly equal capital everywhere. Portfolio vol ≈ <strong>12.76%</strong>.</div>
+        </div>
+        <div class="sl-panel" id="rp-t2">
+          <div class="sl-row">
+            <div class="sl-box">Bonds<br>65.2%</div>
+            <div class="sl-box">Equities<br>21.7%</div>
+            <div class="sl-box">Commodities<br>13.0%</div>
+          </div>
+          <div class="sl-verdict"><strong>Risk shares: 24.0% / 38.5% / 37.5%.</strong> Much more balanced than equal-dollar — but equities and commodities still each carry noticeably more risk than bonds, because inverse-vol weighting ignores that those two are highly correlated and therefore share overlapping risk. Portfolio vol ≈ <strong>7.14%</strong>.</div>
+        </div>
+        <div class="sl-panel" id="rp-t3">
+          <div class="sl-row">
+            <div class="sl-box green">Bonds<br>70.8%</div>
+            <div class="sl-box green">Equities<br>18.1%</div>
+            <div class="sl-box green">Commodities<br>11.2%</div>
+          </div>
+          <div class="sl-verdict"><strong>Risk shares: 33.3% / 33.3% / 33.3% — exactly, by construction.</strong> The numerically-solved ERC weights push even more capital into bonds than simple inverse-vol did, specifically to offset equities' and commodities' shared, overlapping risk. Portfolio vol ≈ <strong>6.47%</strong> — the lowest of the three, a side effect of tilting hardest away from the correlated pair, not something ERC targets directly.</div>
+        </div>
+      </div>
+      <p class="sl-p">All three portfolios hold the exact same three assets. The weights are genuinely different in every column, and so is the resulting risk picture — this is what "equal risk contribution also accounts for correlation" means in practice, not just in the formula.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Drag the correlation, watch the weights move</h2>
+      <p class="sl-sub">Bonds fixed at σ=5%, equities at σ=15%, commodities at σ=25%. Bonds' correlation to each stays fixed (0.10, 0.05) — only the equities↔commodities correlation moves.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Grouped bar chart comparing each of three assets share of total portfolio risk under equal-dollar weighting versus equal risk contribution weighting, as the equities-commodities correlation is adjusted by a slider">
+            <line x1="55" y1="250" x2="610" y2="250" style="stroke:var(--border2)" stroke-width="1"/>
+            <line x1="55" y1="250" x2="55" y2="40" style="stroke:var(--border2)" stroke-width="1"/>
+            <line x1="55" y1="166.7" x2="610" y2="166.7" style="stroke:var(--text3);stroke-dasharray:3,3;opacity:.5"/>
+            <text x="615" y="170" fill="var(--text3)" font-size="10" text-anchor="start">33.3%</text>
+            <text x="55" y="26" fill="var(--text3)" font-size="11" text-anchor="start">Share of total portfolio risk</text>
+
+            <rect id="rc-naive-1" x="95" width="34" y="243" height="7" style="fill:var(--blue);opacity:.85"/>
+            <rect id="rc-erc-1" x="135" width="34" y="167" height="83" style="fill:var(--green);opacity:.85"/>
+            <text x="132" y="268" fill="var(--text3)" font-size="11" text-anchor="middle">Bonds</text>
+            <text x="132" y="280" fill="var(--text3)" font-size="9.5" text-anchor="middle">σ = 5%</text>
+            <text id="rc-naive-label-1" x="112" y="238" fill="var(--blue)" font-size="10" text-anchor="middle" font-weight="600">3%</text>
+            <text id="rc-erc-label-1" x="152" y="159" fill="var(--green)" font-size="10" text-anchor="middle" font-weight="600">33%</text>
+
+            <rect id="rc-naive-2" x="270" width="34" y="185" height="65" style="fill:var(--blue);opacity:.85"/>
+            <rect id="rc-erc-2" x="310" width="34" y="167" height="83" style="fill:var(--green);opacity:.85"/>
+            <text x="307" y="268" fill="var(--text3)" font-size="11" text-anchor="middle">Equities</text>
+            <text x="307" y="280" fill="var(--text3)" font-size="9.5" text-anchor="middle">σ = 15%</text>
+            <text id="rc-naive-label-2" x="287" y="177" fill="var(--blue)" font-size="10" text-anchor="middle" font-weight="600">31%</text>
+            <text id="rc-erc-label-2" x="327" y="159" fill="var(--green)" font-size="10" text-anchor="middle" font-weight="600">33%</text>
+
+            <rect id="rc-naive-3" x="445" width="34" y="83" height="167" style="fill:var(--blue);opacity:.85"/>
+            <rect id="rc-erc-3" x="485" width="34" y="167" height="83" style="fill:var(--green);opacity:.85"/>
+            <text x="482" y="268" fill="var(--text3)" font-size="11" text-anchor="middle">Commodities</text>
+            <text x="482" y="280" fill="var(--text3)" font-size="9.5" text-anchor="middle">σ = 25%</text>
+            <text id="rc-naive-label-3" x="462" y="75" fill="var(--blue)" font-size="10" text-anchor="middle" font-weight="600">66%</text>
+            <text id="rc-erc-label-3" x="502" y="159" fill="var(--green)" font-size="10" text-anchor="middle" font-weight="600">33%</text>
+          </svg>
+        </div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--text2);margin-bottom:14px">
+          <span><i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--blue);margin-right:6px;vertical-align:middle"></i>Equal-dollar (⅓ each)</span>
+          <span><i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--green);margin-right:6px;vertical-align:middle"></i>True ERC — always pinned at 33.3% by definition</span>
+        </div>
+        <div class="sl-sliderhead"><span>Correlation, equities ↔ commodities</span><span class="sl-live" id="rc-rho-val">ρ = 0.30</span></div>
+        <input type="range" class="sl-slider" id="rc-rho-slider" min="0" max="90" step="5" value="30">
+        <div class="sl-note" id="rc-weights-note">ERC dollar weights at ρ=0.30 — Bonds 67.5% · Equities 20.1% · Commodities 12.4%. Portfolio vol — equal-dollar: 11.19% · ERC: 6.23%.</div>
+      </div>
+      <p class="sl-p">The <strong>green ERC bars never move</strong> — by definition, an equal-risk-contribution portfolio always splits risk into exactly equal thirds, whatever the correlation. What moves instead, as you drag the slider, is the note below the chart: the <em>dollar weights</em> needed to keep those risk shares flat shift toward bonds as equities and commodities become more entangled with each other — because their shared, overlapping risk has to be diluted by holding relatively less of both.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Compute a risk contribution yourself</h2>
+      <p class="sl-sub">Two assets, any weight split, any pair of volatilities, any correlation. The standard marginal-risk-contribution formula, live.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Weight in A, wₐ (%)</label><input type="number" class="sl-input" id="rc2-wa" value="60" step="5"></div>
+          <div class="sl-calc-field"><label>Vol of A, σₐ (%)</label><input type="number" class="sl-input" id="rc2-sa" value="5" step="1"></div>
+          <div class="sl-calc-field"><label>Vol of B, σᵦ (%)</label><input type="number" class="sl-input" id="rc2-sb" value="15" step="1"></div>
+          <div class="sl-calc-field"><label>Correlation ρ</label><input type="number" class="sl-input" id="rc2-rho" value="0.20" step="0.05" min="-1" max="1"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Risk share of A</div>
+            <div class="sl-calc-result-val" id="rc2-result">24.1%</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Weight in B (= 100 − wₐ): <b id="rc2-wb">40.0%</b></div>
+          <div>Portfolio volatility σₚ: <b id="rc2-sigp">7.22%</b></div>
+          <div>Risk contribution of A: <b id="rc2-rca">1.74%</b></div>
+          <div>Risk contribution of B: <b id="rc2-rcb">5.48%</b> (RCₐ + RCᵦ should equal σₚ, exactly)</div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="rc2-reset">Reset to worked-example numbers</button>
+        <div class="sl-note">Try ρ = 1.3, or blank out a field, or leave wₐ negative — the guard shows "—" rather than a nonsense number. Try wₐ = 0% or 100% too: one asset's risk contribution correctly drops to zero.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">The honest trade-off</h2>
+      <p class="sl-sub">Dropping the return forecast isn't a free lunch — it's a trade, stated plainly.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">What you gain</span>
+          <ul>
+            <li>No need to forecast returns — the one Markowitz input that's genuinely hard to estimate reliably</li>
+            <li>No single asset can quietly dominate the portfolio's actual risk, whatever its dollar weight</li>
+            <li>Risk contribution is an exact accounting identity, not a guess — the RCᵢ provably sum to σₚ</li>
+            <li>Depends only on volatility and correlation, which (per the previous lesson) are comparatively stable to estimate</li>
+          </ul>
+        </div>
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">What you give up</span>
+          <ul>
+            <li>No opinion at all on which asset is more attractive — a genuinely better expected return gets sized identically to a worse one with the same vol and correlation profile</li>
+            <li>Tends to hold large dollar amounts of historically low-volatility assets like government bonds — a real, if unexamined, tilt</li>
+            <li>Still depends on a covariance estimate that drifts — a regime shift in correlation (bonds and equities decoupling is the textbook case) can leave the book carrying different risk than intended</li>
+            <li>To hit a competitive overall return with so much capital parked in the calm sleeve, real implementations often lever that sleeve up — concentrating tail risk exactly where it's least expected</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-quote">Dropping expected returns doesn't remove a bet from the portfolio — it just changes which bet is being made, without saying so out loud. It's an unstated wager that volatility and correlation are stable enough to trust, and that whatever real return differences exist across assets aren't worth acting on. Critics call heavy, unlevered bond weightings "an implicit view" for exactly this reason — risk parity claims to have no view, yet its output leans hard on one asset class more than any human allocator, unprompted, ever would.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Does this actually exist in this codebase?</h2>
+      <p class="sl-sub">The full lesson's own status line calls this "theory only" — that claim was checked against the current source before this slide was written.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">What the full lesson says vs. what's actually in the repo now</div>
+        <p><strong>The full lesson states:</strong> "CONCEPT — theory only, no multi-instrument allocator built or tested in this repo," and its Key Takeaways repeat that "this lesson is the theory behind a multi-instrument allocator this repo has not built, tested, or run out-of-sample."</p>
+        <p style="margin-top:10px"><strong>What's actually in the repo today:</strong> that claim is stale. <code style="font-family:'DM Mono',monospace">js/bookStress.js</code> contains <code style="font-family:'DM Mono',monospace">riskParityWeights()</code> — a genuine iterative Equal Risk Contribution solver (a multiplicative fixed-point update on the sample covariance, the same style of algorithm this slide deck's own correlation slider runs in your browser) — feeding an <code style="font-family:'DM Mono',monospace">allocationCompare()</code> routine that backtests equal / inverse-vol / risk-parity allocation on real sleeve returns and reports realized vol, Sharpe, max drawdown, and effective bets under each. It's covered by passing unit tests in <code style="font-family:'DM Mono',monospace">js/bookStress.test.mjs</code> (weights sum to 1; the equal-risk property holds; it correctly reduces toward inverse-vol weighting for uncorrelated assets), and surfaced live on the <code style="font-family:'DM Mono',monospace">book-stress.html</code> page. A simpler sibling, <code style="font-family:'DM Mono',monospace">inverseVolWeights()</code> in <code style="font-family:'DM Mono',monospace">js/levelAtlasVoteReview.js</code>, is already wired into this project's production trade-vote allocation code.</p>
+      </div>
+      <p class="sl-p">To be precise about what this does and doesn't establish: this is real, tested code applied to this project's own <em>trade sleeves</em> (a trend book vs. a fade book, or per-pair vote portfolios) rather than a classic multi-asset equity/bond/commodity allocation — but it is the same mathematics this lesson teaches, genuinely implemented, genuinely unit-tested, and already live in a page a reader of this repo can open today. Nothing here is silently corrected in the full lesson's text — both claims are left visible, side by side, exactly as found.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What is Markowitz's practical Achilles' heel?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Extreme sensitivity to the expected-return estimates it needs</button>
+        <button class="sl-quiz-opt">It can't handle more than two assets</button>
+        <button class="sl-quiz-opt">It ignores correlation between assets entirely</button>
+        <div class="sl-quiz-explain">Covariance is comparatively stable to estimate; expected returns are not, and the optimizer amplifies small forecast errors into large, unstable weight swings.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>What does risk parity target instead of expected returns?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Equal contribution to total portfolio risk across assets</button>
+        <button class="sl-quiz-opt">Equal dollar allocation across assets</button>
+        <button class="sl-quiz-opt">Maximum Sharpe ratio for a given return target</button>
+        <div class="sl-quiz-explain">Equal Risk Contribution (ERC) sets weights so RCᵢ = RCⱼ for every pair — genuinely different from equal-dollar weighting, which is what most people mean by "balanced" by default.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>In the three-tab example, why did true ERC differ from simple inverse-volatility weighting?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Equities and commodities were highly correlated, so equal-vol weighting under-corrected for their shared, overlapping risk</button>
+        <button class="sl-quiz-opt">Inverse-vol weighting was simply a rounding error in that example</button>
+        <button class="sl-quiz-opt">Correlation never affects a risk-parity solution, only volatility does</button>
+        <div class="sl-quiz-explain">Inverse-vol weighting is exact ERC only under uniform pairwise correlation. With equities and commodities far more correlated with each other than either was with bonds, the true numerical ERC solve shifted even more weight into bonds to compensate.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>What's the honest trade-off in dropping expected returns entirely?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Risk parity has no view on which asset is more attractive, and can end up leaning heavily on historically low-vol assets like bonds</button>
+        <button class="sl-quiz-opt">It requires even more precise return forecasts than Markowitz does</button>
+        <button class="sl-quiz-opt">It ignores volatility as well as returns, so it needs no inputs at all</button>
+        <div class="sl-quiz-explain">Risk parity sizes purely by risk, with zero mechanism to reward a genuinely better expected return — and its bond-heavy tilt is itself an implicit, unexamined bet, according to its critics.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Does this repo have code that numerically solves for equal-risk-contribution weights?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Yes — riskParityWeights() in js/bookStress.js, covered by passing unit tests</button>
+        <button class="sl-quiz-opt">No — the full lesson's "theory only" status is fully accurate today</button>
+        <button class="sl-quiz-opt">Only as an untested prototype with no test coverage</button>
+        <div class="sl-quiz-explain">js/bookStress.js's riskParityWeights() is a real, tested, iterative ERC solver, wired into allocationCompare() and surfaced on book-stress.html — the full lesson's "no allocator built or tested" claim is stale, as flagged on the earlier slide.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Markowitz's fatal flaw is return-estimate sensitivity — small forecast errors can flip "optimal" weights into extreme corner solutions.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Risk parity abandons return forecasting entirely, allocating so that no single asset dominates total portfolio risk.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Risk contribution, RCᵢ = wᵢ(Σw)ᵢ/σₚ, is an exact accounting split — every RCᵢ sums exactly to σₚ, for any weights at all.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>True Equal Risk Contribution (RCᵢ = RCⱼ for every pair) is a genuinely different, correlation-aware target from equal-dollar or naive inverse-vol weighting alone.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Only under the idealized uniform-correlation special case does ERC reduce exactly to inverse-volatility weighting; real, uneven correlations need a numerical solve.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>The trade-off is real: no view on which asset is more attractive, and a real tendency to lean hard on low-vol assets like bonds — itself an implicit bet, by some critics' account.</p></div>
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">What this now lets you do</div>
+        <p>Build a portfolio-weighting scheme that never needs a return forecast — only volatility and correlation, the more stable inputs. Recognize the moment "equal weight" gets silently substituted for "equal risk" in a pitch deck or a fund's marketing. Know precisely when the cheap inverse-vol shortcut is fine (correlations roughly uniform) versus when a full numerical ERC solve is required (they're not) — and know this repo already has that numerical solve built and unit-tested, in <code style="font-family:'DM Mono',monospace">js/bookStress.js</code>, ready to point to.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Hierarchical Risk Parity</h3>
+        <p>ERC treats every asset as one flat list. The next lesson asks what happens once you let correlation structure itself — not a flat covariance matrix — decide how capital gets grouped and split.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="hierarchical-risk-parity-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="risk-parity-erc.html">Read the full risk parity lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Section 7 — correlation slider driving a live equal-risk-contribution
+  // solve for three assets (bonds/equities/commodities), redrawing the
+  // naive-vs-ERC risk-contribution bar chart.
+  (function(){
+    var slider = document.getElementById('rc-rho-slider');
+    if (!slider) return;
+    var rhoLabel = document.getElementById('rc-rho-val');
+    var weightsNote = document.getElementById('rc-weights-note');
+    var SIG = [0.05, 0.15, 0.25];       // bonds, equities, commodities
+    var RHO_BE = 0.10, RHO_BC = 0.05;   // fixed; only equities<->commodities moves
+
+    var naiveBars = [document.getElementById('rc-naive-1'), document.getElementById('rc-naive-2'), document.getElementById('rc-naive-3')];
+    var ercBars = [document.getElementById('rc-erc-1'), document.getElementById('rc-erc-2'), document.getElementById('rc-erc-3')];
+    var naiveLabels = [document.getElementById('rc-naive-label-1'), document.getElementById('rc-naive-label-2'), document.getElementById('rc-naive-label-3')];
+    var ercLabels = [document.getElementById('rc-erc-label-1'), document.getElementById('rc-erc-label-2'), document.getElementById('rc-erc-label-3')];
+    var naiveX = [112, 287, 462];
+    var ercX = [152, 327, 502];
+    var Y0 = 250, PX_PER_PCT = 2.5;
+
+    function buildCov(rhoEC){
+      var rho = [[1, RHO_BE, RHO_BC], [RHO_BE, 1, rhoEC], [RHO_BC, rhoEC, 1]];
+      var cov = [[0,0,0],[0,0,0],[0,0,0]];
+      for (var i = 0; i < 3; i++){
+        for (var j = 0; j < 3; j++){
+          cov[i][j] = (i === j) ? SIG[i]*SIG[i] : rho[i][j]*SIG[i]*SIG[j];
+        }
+      }
+      return cov;
+    }
+
+    function riskContrib(w, cov){
+      var Sw = [0,0,0];
+      for (var i = 0; i < 3; i++){
+        var acc = 0;
+        for (var j = 0; j < 3; j++) acc += cov[i][j]*w[j];
+        Sw[i] = acc;
+      }
+      var varP = 0;
+      for (var i = 0; i < 3; i++) varP += w[i]*Sw[i];
+      if (varP < 0) varP = 0;
+      var sigP = Math.sqrt(varP);
+      var RC = [0,0,0];
+      for (var i = 0; i < 3; i++) RC[i] = sigP > 0 ? w[i]*Sw[i]/sigP : 0;
+      return { RC: RC, sigP: sigP };
+    }
+
+    // Equal Risk Contribution via multiplicative fixed-point iteration —
+    // same algorithm as js/bookStress.js's riskParityWeights().
+    function ercWeights(cov){
+      var k = 3;
+      var w = [1/k, 1/k, 1/k];
+      for (var it = 0; it < 500; it++){
+        var mrc = [0,0,0];
+        for (var a = 0; a < k; a++){
+          var acc = 0;
+          for (var b = 0; b < k; b++) acc += cov[a][b]*w[b];
+          mrc[a] = acc;
+        }
+        var port = 0;
+        for (var a2 = 0; a2 < k; a2++) port += w[a2]*mrc[a2];
+        if (!(port > 0)) return w;
+        var target = port / k;
+        var next = [0,0,0];
+        for (var a3 = 0; a3 < k; a3++){
+          var rc = w[a3]*mrc[a3];
+          next[a3] = rc > 0 ? w[a3]*Math.sqrt(target/rc) : w[a3];
+        }
+        var sum = Math.abs(next[0]) + Math.abs(next[1]) + Math.abs(next[2]);
+        if (!(sum > 0)) return w;
+        next = [next[0]/sum, next[1]/sum, next[2]/sum];
+        var delta = Math.abs(next[0]-w[0]) + Math.abs(next[1]-w[1]) + Math.abs(next[2]-w[2]);
+        w = next;
+        if (delta < 1e-10) break;
+      }
+      return w;
+    }
+
+    function setBar(rect, label, pct, x){
+      var h = Math.max(2, pct/100 * PX_PER_PCT * 100);
+      var y = Y0 - h;
+      rect.setAttribute('y', y.toFixed(1));
+      rect.setAttribute('height', h.toFixed(1));
+      label.setAttribute('y', (y - 8).toFixed(1));
+      label.textContent = pct.toFixed(0) + '%';
+    }
+
+    function update(){
+      var rhoEC = parseInt(slider.value, 10) / 100;
+      rhoLabel.textContent = 'ρ = ' + rhoEC.toFixed(2);
+
+      var cov = buildCov(rhoEC);
+      var wNaive = [1/3, 1/3, 1/3];
+      var wErc = ercWeights(cov);
+
+      var rNaive = riskContrib(wNaive, cov);
+      var rErc = riskContrib(wErc, cov);
+
+      for (var i = 0; i < 3; i++){
+        var pctNaive = rNaive.sigP > 0 ? rNaive.RC[i] / rNaive.sigP * 100 : 0;
+        var pctErc = rErc.sigP > 0 ? rErc.RC[i] / rErc.sigP * 100 : 0;
+        setBar(naiveBars[i], naiveLabels[i], pctNaive, naiveX[i]);
+        setBar(ercBars[i], ercLabels[i], pctErc, ercX[i]);
+      }
+
+      weightsNote.textContent = 'ERC dollar weights at ρ=' + rhoEC.toFixed(2) + ' — Bonds ' + (wErc[0]*100).toFixed(1) +
+        '% · Equities ' + (wErc[1]*100).toFixed(1) + '% · Commodities ' + (wErc[2]*100).toFixed(1) +
+        '%. Portfolio vol — equal-dollar: ' + (rNaive.sigP*100).toFixed(2) + '% · ERC: ' + (rErc.sigP*100).toFixed(2) + '%.';
+    }
+
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Section 8 — live two-asset risk-contribution calculator, with guards
+  // against blank / non-finite / out-of-range input.
+  (function(){
+    var waI = document.getElementById('rc2-wa');
+    if (!waI) return;
+    var saI = document.getElementById('rc2-sa'), sbI = document.getElementById('rc2-sb'), rhoI = document.getElementById('rc2-rho');
+    var wbOut = document.getElementById('rc2-wb'), sigpOut = document.getElementById('rc2-sigp');
+    var rcaOut = document.getElementById('rc2-rca'), rcbOut = document.getElementById('rc2-rcb');
+    var resultOut = document.getElementById('rc2-result');
+    var resetBtn = document.getElementById('rc2-reset');
+    var DEFAULTS = { wa: 60, sa: 5, sb: 15, rho: 0.20 };
+
+    function blank(){
+      wbOut.textContent = '—'; sigpOut.textContent = '—';
+      rcaOut.textContent = '—'; rcbOut.textContent = '—'; resultOut.textContent = '—';
+    }
+
+    function recompute(){
+      var waPct = parseFloat(waI.value);
+      var saPct = parseFloat(saI.value);
+      var sbPct = parseFloat(sbI.value);
+      var rho = parseFloat(rhoI.value);
+
+      if (!isFinite(waPct) || !isFinite(saPct) || !isFinite(sbPct) || !isFinite(rho)) { blank(); return; }
+      if (waPct < 0 || waPct > 100) { blank(); return; }
+      if (saPct < 0 || sbPct < 0) { blank(); return; }
+      if (rho < -1 || rho > 1) { blank(); return; }
+
+      var wa = waPct / 100, wb = 1 - wa;
+      var sa = saPct / 100, sb = sbPct / 100;
+
+      var varP = wa*wa*sa*sa + wb*wb*sb*sb + 2*wa*wb*rho*sa*sb;
+      if (varP < 0) varP = 0;
+      var sigP = Math.sqrt(varP);
+
+      wbOut.textContent = (wb * 100).toFixed(1) + '%';
+      sigpOut.textContent = (sigP * 100).toFixed(2) + '%';
+
+      if (sigP <= 0) {
+        rcaOut.textContent = '0.00%'; rcbOut.textContent = '0.00%'; resultOut.textContent = '—';
+        return;
+      }
+
+      var SwA = wa*sa*sa + wb*rho*sa*sb;
+      var SwB = wb*sb*sb + wa*rho*sa*sb;
+      var rcA = wa*SwA/sigP, rcB = wb*SwB/sigP;
+
+      rcaOut.textContent = (rcA * 100).toFixed(2) + '%';
+      rcbOut.textContent = (rcB * 100).toFixed(2) + '%';
+      resultOut.textContent = (rcA / sigP * 100).toFixed(1) + '%';
+    }
+
+    [waI, saI, sbI, rhoI].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      waI.value = DEFAULTS.wa; saI.value = DEFAULTS.sa; sbI.value = DEFAULTS.sb; rhoI.value = DEFAULTS.rho;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

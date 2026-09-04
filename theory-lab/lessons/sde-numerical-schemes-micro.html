@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Numerical Schemes for SDEs — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Numerical Schemes for SDEs — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer full convergence proofs, a real Monte Carlo convergence study, and a 5-question self-test?<a href="sde-numerical-schemes.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">SDEs 2 · Stochastic Differential Equations</div>
+      <h1 class="sl-h1">Simulating What You <em>Can't</em> Solve</h1>
+      <p class="sl-lede">The last lesson proved an SDE has a genuine, unique solution — it never promised you could write that solution down. This lesson is the direct sequel: it builds the two standard ways to simulate an SDE numerically, step by tiny step, on a computer, and states precisely how much error each way leaves behind. It's the same "take a small step, repeat" idea from Euler's method and Newton-Raphson in this curriculum's Numerical Methods lessons — now with a random shock riding along on every step.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Almost nothing worth building has a clean formula</h2>
+      <p class="sl-sub">Existence &amp; uniqueness says a solution exists. It says nothing about whether you can write it down.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Textbook SDEs — closed form exists</span>
+          <ul>
+            <li>Geometric Brownian Motion (GBM) — Itô's Lemma on ln X reduces it to a plain integral</li>
+            <li>Ornstein-Uhlenbeck (OU) — the linear drift integrates out exactly</li>
+            <li>Handful of others chosen <em>specifically</em> because they're solvable</li>
+          </ul>
+        </div>
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">SDEs actually used in practice — no closed form</span>
+          <ul>
+            <li>Heston's stochastic-volatility pair</li>
+            <li>Any local-volatility surface</li>
+            <li>Any jump-diffusion model</li>
+            <li>Almost every short-rate model outside plain Vasicek</li>
+          </ul>
+        </div>
+      </div>
+      <p class="sl-p">GBM and OU aren't representative of "SDEs" — they're the tiny, deliberately convenient sliver that happens to be solvable, which is exactly why every textbook leans on them. The moment a model needs state-dependent volatility, jumps, or more than one correlated factor, the closed form disappears and the only way left to get a number out of it is to simulate the path, one small time step at a time.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Why textbooks lean on GBM and OU</div>
+        <p>They're the cases where the algebra is clean enough to check a numerical scheme's output against something exact — which is also exactly why this deck (and the full lesson) keeps using GBM for its worked examples: not because it's representative, but because it's the one case where "did the simulation get it right" has a checkable answer.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Euler's method, with a random gust added</h2>
+      <p class="sl-sub">Ordinary Euler's method (from the Numerical Methods lessons) takes a small straight step along the current slope. Euler-Maruyama adds one thing.</p>
+      <div class="sl-row">
+        <div class="sl-box">stand at X_n</div>
+        <div class="sl-arrow">→</div>
+        <div class="sl-box amber">step along drift μ·Δt</div>
+        <div class="sl-arrow">+</div>
+        <div class="sl-box green">random shock σ·√Δt·Z</div>
+        <div class="sl-arrow">=</div>
+        <div class="sl-box">X_n+1</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">↗</div><div><h4>The deterministic part is plain Euler</h4><p>X_n + μ(X_n,t_n)Δt is exactly ordinary Euler's method for dX/dt = μ, applied to the drift alone — nothing new here.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎲</div><div><h4>The addition: a fresh Gaussian shock, every step</h4><p>σ(X_n,t_n)ΔW_n, where ΔW_n ~ N(0,Δt) — generated in practice as √Δt · Z_n with Z_n an independent standard normal draw.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">√</div><div><h4>Why √Δt, not Δt</h4><p>A Brownian increment over a step of size Δt is typically of size √Δt, not Δt — the same scaling fact Itô's Lemma is built from. Halving the step doesn't halve the typical shock; it shrinks it by only √2.</p></div></div>
+      </div>
+      <div class="sl-quote">This is the entire recipe: <strong>X_n+1 = X_n + μ(X_n,t_n)Δt + σ(X_n,t_n)√Δt·Z_n</strong>. Stand at the current point, move along the current drift for one small step, then get pushed by a random gust sized by the current diffusion. Repeat N times and you've traced out one simulated path.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Walking through it, one step at a time</h2>
+      <p class="sl-sub">GBM with μ = 0.10, σ = 0.30, X₀ = 100, Δt = 0.25. Three real Gaussian draws. Step through exactly how each next value gets computed.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="em-tabs">
+          <button class="sl-tab active" data-panel="em-1">Step 1</button>
+          <button class="sl-tab" data-panel="em-2">Step 2</button>
+          <button class="sl-tab" data-panel="em-3">Step 3</button>
+        </div>
+        <div class="sl-panel active" id="em-1">
+          <div class="sl-row"><div class="sl-box">X₀ = 100.00</div><div class="sl-arrow">ΔW₀ = 0.8453</div><div class="sl-box green">X₁ = 127.86</div></div>
+          <div class="sl-verdict">Drift term: 0.10 × 100 × 0.25 = <strong>2.50</strong>. Diffusion term: 0.30 × 100 × 0.8453 = <strong>25.36</strong>. X₁ = 100 + 2.50 + 25.36 = <strong>127.86</strong>. A large positive shock — the path jumps up hard on the very first step.</div>
+        </div>
+        <div class="sl-panel" id="em-2">
+          <div class="sl-row"><div class="sl-box">X₁ = 127.86</div><div class="sl-arrow">ΔW₁ = −0.2330</div><div class="sl-box amber">X₂ = 122.12</div></div>
+          <div class="sl-verdict">Drift term: 0.10 × 127.86 × 0.25 = <strong>3.20</strong>. Diffusion term: 0.30 × 127.86 × (−0.2330) = <strong>−8.94</strong>. X₂ = 127.86 + 3.20 − 8.94 = <strong>122.12</strong>. Notice the diffusion term scales with the current level — it's bigger in absolute terms now that X has grown.</div>
+        </div>
+        <div class="sl-panel" id="em-3">
+          <div class="sl-row"><div class="sl-box">X₂ = 122.12</div><div class="sl-arrow">ΔW₂ = 0.0164</div><div class="sl-box green">X₃ = 125.77</div></div>
+          <div class="sl-verdict">Drift term: 0.10 × 122.12 × 0.25 = <strong>3.05</strong>. Diffusion term: 0.30 × 122.12 × 0.0164 = <strong>0.60</strong>. X₃ = 122.12 + 3.05 + 0.60 = <strong>125.77</strong>. A near-zero shock this time — the step is dominated by drift alone.</div>
+        </div>
+        <div class="sl-note">One more step with ΔW₃ = 0.2038 finishes the path at X₄ ≈ 136.60 — checked against the exact GBM solution on the same Brownian path (135.63) in the full lesson. That's the mechanics this whole deck builds on.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Run your own step</h2>
+      <p class="sl-sub">X_n+1 = X_n + drift·Δt + diffusion·√Δt·Z. Change any field.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — one Euler-Maruyama step, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>X_n</label><input type="number" class="sl-input" id="emc-x" value="100" step="1"></div>
+          <div class="sl-calc-field"><label>Drift μ</label><input type="number" class="sl-input" id="emc-mu" value="0.10" step="0.01"></div>
+          <div class="sl-calc-field"><label>Diffusion σ</label><input type="number" class="sl-input" id="emc-sigma" value="0.30" step="0.01"></div>
+        </div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Δt</label><input type="number" class="sl-input" id="emc-dt" value="0.25" step="0.05" min="0"></div>
+          <div class="sl-calc-field"><label>Z (standard normal draw)</label><input type="number" class="sl-input" id="emc-z" value="1.6906" step="0.01"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">X_n+1</div>
+            <div class="sl-calc-result-val" id="emc-result">127.86</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Drift term (μ·X_n·Δt) = <b id="emc-drift">2.50</b></div>
+          <div>Diffusion term (σ·X_n·√Δt·Z) = <b id="emc-diff">25.36</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="emc-reset">Reset to worked-example numbers</button>
+        <div class="sl-note">Z = 1.6906 here is the raw standard-normal draw — multiplied by √Δt = √0.25 = 0.5 it reproduces the previous slide's ΔW₀ = 0.8453, so the default result matches Step 1 exactly. Blank fields, non-finite input, or a negative Δt show "—" instead of a broken number — a time step can't be negative.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">A coarse straight-line path can't see the wiggle</h2>
+      <p class="sl-sub">Same underlying randomness, two resolutions: a fine reference path (many tiny steps) and Euler-Maruyama's own coarse 4-step approximation.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Discretization error, visualised</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A chart showing one simulated GBM path drawn finely as a jagged continuous curve, alongside a coarse 4-step Euler-Maruyama approximation of the same underlying randomness drawn as five points joined by straight segments. The straight-line approximation follows the general direction but cuts through the fine path's zig-zag detail, including missing a sharp dip early on.">
+            <line x1="40" y1="230" x2="610" y2="230" style="stroke:var(--border2);stroke-width:1"/>
+            <text x="40" y="246" font-size="10.5" fill="var(--text3)" font-family="'DM Mono',monospace">t=0</text>
+            <text x="182.5" y="246" font-size="10.5" fill="var(--text3)" font-family="'DM Mono',monospace" text-anchor="middle">0.25</text>
+            <text x="325" y="246" font-size="10.5" fill="var(--text3)" font-family="'DM Mono',monospace" text-anchor="middle">0.5</text>
+            <text x="467.5" y="246" font-size="10.5" fill="var(--text3)" font-family="'DM Mono',monospace" text-anchor="middle">0.75</text>
+            <text x="610" y="246" font-size="10.5" fill="var(--text3)" font-family="'DM Mono',monospace" text-anchor="end">T=1</text>
+            <polyline points="40.00,196.6 45.50,190.0 51.00,192.0 56.50,192.4 62.00,215.6 67.50,188.8 73.00,169.0 78.50,168.5 84.00,153.6 89.50,145.4 95.00,148.4 100.50,130.6 106.00,130.8 111.50,131.0 117.00,137.0 122.50,125.4 128.00,121.7 133.50,109.0 139.00,113.0 144.50,105.6 150.00,112.3 155.50,93.3 161.00,85.7 166.50,77.0 172.00,70.2 177.50,72.5 183.00,89.0 188.50,77.6 194.00,46.8 199.50,75.0 205.00,102.0 210.50,123.6 216.00,110.6 221.50,108.2 227.00,92.0 232.50,81.6 238.00,79.7 243.50,77.0 249.00,81.5 254.50,70.0 260.00,89.6 265.50,96.9 271.00,93.9 276.50,68.6 282.00,84.8 287.50,102.7 293.00,110.1 298.50,95.3 304.00,100.3 309.50,86.7 315.00,101.7 320.50,127.9 326.00,110.4 331.50,94.5 337.00,115.6 342.50,112.3 348.00,93.4 353.50,92.0 359.00,76.9 364.50,40.0 370.00,39.0 375.50,47.2 381.00,62.9 386.50,54.9 392.00,61.3 397.50,67.0 403.00,71.2 408.50,63.5 414.00,83.2 419.50,106.1 425.00,136.0 430.50,111.8 436.00,105.8 441.50,81.7 447.00,86.7 452.50,91.5 458.00,101.2 463.50,91.8 469.00,91.2 474.50,108.0 480.00,118.4 485.50,88.9 491.00,81.3 496.50,72.9 502.00,76.0 507.50,85.2 513.00,68.7 518.50,69.0 524.00,79.5 529.50,79.1 535.00,90.5 540.50,83.5 546.00,62.0 551.50,73.5 557.00,48.2 562.50,58.8 568.00,54.6 573.50,65.7 579.00,63.4 584.50,55.9 590.00,49.5" style="stroke:var(--blue);stroke-width:1.5" fill="none"/>
+            <polyline points="40.00,196.6 182.5,80.4 325,104.6 467.5,89.2 610,44.4" style="stroke:var(--red);stroke-width:2.5" fill="none"/>
+            <circle cx="40" cy="196.6" r="3.5" fill="var(--red)"/>
+            <circle cx="182.5" cy="80.4" r="3.5" fill="var(--red)"/>
+            <circle cx="325" cy="104.6" r="3.5" fill="var(--red)"/>
+            <circle cx="467.5" cy="89.2" r="3.5" fill="var(--red)"/>
+            <circle cx="610" cy="44.4" r="3.5" fill="var(--red)"/>
+          </svg>
+        </div>
+        <div class="sl-note" style="border:none;padding-top:0;margin-top:6px">
+          <span style="color:var(--blue);font-weight:700">■</span> fine-resolution path (same randomness, many tiny steps) &nbsp;&nbsp;
+          <span style="color:var(--red);font-weight:700">■</span> Euler-Maruyama, N = 4 (the previous slide's five points)
+        </div>
+      </div>
+      <p class="sl-p">The red path gets the overall drift and rough shape right — but being four straight segments, it cannot see the fine path's actual wiggle, including a sharp dip it takes early on. That gap between the smooth true path and its coarse polygonal approximation <em>is</em> discretization error, made visible rather than just stated as a number.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Shrink Δt, watch the approximation tighten</h2>
+      <p class="sl-sub">Same drift, same diffusion, same reproducible random seed (mulberry32) — only the step count changes. Drag the slider.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A chart with a fine reference path and a coarse Euler-Maruyama path that redraws as the step-count slider moves, showing the approximation converge toward the reference path as the step count increases">
+            <line x1="40" y1="230" x2="610" y2="230" style="stroke:var(--border2);stroke-width:1"/>
+            <text x="40" y="246" font-size="10.5" fill="var(--text3)" font-family="'DM Mono',monospace">t=0</text>
+            <text x="610" y="246" font-size="10.5" fill="var(--text3)" font-family="'DM Mono',monospace" text-anchor="end">T=1</text>
+            <polyline id="dtchart-ref" points="" style="stroke:var(--blue);stroke-width:1.5" fill="none"/>
+            <polyline id="dtchart-em" points="" style="stroke:var(--red);stroke-width:2.5" fill="none"/>
+            <g id="dtchart-dots"></g>
+          </svg>
+        </div>
+        <div class="sl-note" style="border:none;padding-top:0;margin-top:6px">
+          <span style="color:var(--blue);font-weight:700">■</span> fine reference path (N = 64, fixed) &nbsp;&nbsp;
+          <span style="color:var(--red);font-weight:700">■</span> Euler-Maruyama at the chosen step count
+        </div>
+        <div class="sl-sliderhead"><span>Euler-Maruyama step count (N)</span><span class="sl-live" id="dtchart-nval">N = 4  (Δt = 0.250)</span></div>
+        <input type="range" class="sl-slider" id="dtchart-slider" min="2" max="32" step="1" value="4">
+        <div class="sl-calc-steps">
+          <div>Simulated endpoint X_N(T) = <b id="dtchart-xn">—</b></div>
+          <div>Reference endpoint X_64(T) = <b id="dtchart-xref">—</b></div>
+          <div>Absolute endpoint error = <b id="dtchart-err">—</b></div>
+        </div>
+      </div>
+      <p class="sl-p">Fewer, larger steps (small N, big Δt) mean the diffusion term √Δt·Z gets applied in a few large, coarse jolts — the polyline visibly cuts corners the fine path takes smoothly. Push N up toward 32 and Δt shrinks toward the reference resolution: the red line hugs the blue one closely, and the endpoint error shrinks — exactly the "smaller step, smaller error" behaviour Euler-Maruyama shares with ordinary Euler's method, just noisier.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Milstein: one extra term, aimed at the error Euler-Maruyama drops</h2>
+      <p class="sl-sub">A full Itô-Taylor expansion has a next-order correction term Euler-Maruyama simply discards. Milstein keeps it.</p>
+      <div class="sl-row">
+        <div class="sl-box">Euler-Maruyama's step</div>
+        <div class="sl-arrow">+</div>
+        <div class="sl-box amber">½σσ′(ΔW² − Δt)</div>
+        <div class="sl-arrow">=</div>
+        <div class="sl-box green">Milstein's step</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">′</div><div><h4>σ′ is the diffusion's own derivative</h4><p>How fast the diffusion coefficient itself changes as the level X changes — ∂σ/∂X, evaluated at the current point.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>It corrects a specific, named source of bias</h4><p>Euler-Maruyama implicitly assumes σ stays fixed for the whole step. Milstein's extra term accounts for σ itself moving a little as X moves during that same step.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📈</div><div><h4>Only matters when σ depends on the state</h4><p>If σ is constant (doesn't depend on X at all), σ′ = 0 and the correction term vanishes entirely — Milstein and Euler-Maruyama become identical.</p></div></div>
+      </div>
+      <div class="sl-quote">For GBM, σ(X) = σX is linear in X, so σ′(X) = σ — a plain constant, trivial to compute. That's exactly why GBM examples make Milstein look easy: the real cost only shows up once σ is a genuinely awkward function of the state, like an arbitrary local-volatility surface.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Which one should you reach for?</h2>
+      <p class="sl-sub">Neither scheme is strictly "better" — they trade accuracy against implementation cost differently.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Euler-Maruyama</span>
+          <ul>
+            <li>Simpler to implement — only needs μ and σ themselves, no derivative</li>
+            <li>Often good enough, especially when σ is constant or a simple function of the state</li>
+            <li>Converges more slowly per step when σ genuinely depends on the state</li>
+            <li>The default choice in almost every Monte Carlo pricing engine</li>
+          </ul>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag green">Milstein</span>
+          <ul>
+            <li>Converges faster and more accurately per step for state-dependent diffusion</li>
+            <li>Needs σ′ — the diffusion's derivative — computed or estimated at every step</li>
+            <li>The extra correction term is free (zero) when σ is constant, so there's no downside there</li>
+            <li>Reserved in practice for cases where the extra accuracy is worth the extra derivative</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>"Milstein is just strictly more accurate" undersells the real cost: in more than one dimension (correlated SDEs, the very next lesson in this series), the full Milstein scheme needs a Lévy area — an extra stochastic integral that is itself expensive to simulate accurately. That's a genuine reason many multi-asset engines stick with Euler-Maruyama even knowing its per-step accuracy is lower.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">A grounding check on this lesson's own claims</h2>
+      <p class="sl-sub">This curriculum's house rule: don't repeat a claim about this repo's own code without checking it against the actual source.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">What the full lesson says, and what a repo check confirms</div>
+        <p>The full lesson presents Euler-Maruyama and Milstein as worked mathematical techniques and a hand-computable/Monte-Carlo-checkable example — it does not claim either scheme is already implemented anywhere in this repo's production code. A direct search of this codebase (excluding the Theory Lab lesson pages themselves) turns up <strong>no Euler-Maruyama or Milstein simulation code anywhere</strong> — no continuous-time SDE step discretization exists in this repo today. The Monte Carlo / bootstrap code that <em>does</em> exist here (e.g. <code>pylego/portfolio_sim.py</code>, and the technique covered in the <code>bootstrapping-monte-carlo</code> lesson) works by resampling historical observations, not by stepping a continuous-time SDE forward in time. Nothing here was found to be stale — this lesson introduces a technique genuinely new to the codebase, not one already sitting in it under a different name.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What does Euler-Maruyama add to ordinary Euler's method for an ODE?</h4>
+        <button class="sl-quiz-opt" data-correct="true">A random Gaussian shock, σ·ΔW_n, at each step</button>
+        <button class="sl-quiz-opt">A second drift term</button>
+        <button class="sl-quiz-opt">Nothing — they're the same method</button>
+        <div class="sl-quiz-explain">The deterministic part, X_n + μΔt, is exactly ordinary Euler's method. The entire addition is the random shock term, scaled by the diffusion coefficient and a fresh Gaussian draw each step.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Why is the random shock scaled by √Δt rather than Δt?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Because a Brownian increment over a step of size Δt is typically of size √Δt, not Δt</button>
+        <button class="sl-quiz-opt">It's a modeling convention with no deeper reason</button>
+        <button class="sl-quiz-opt">Because Δt is always too small to use directly</button>
+        <div class="sl-quiz-explain">This is the same scaling fact Itô's Lemma is built from — ΔW_n ~ N(0,Δt), generated in practice as √Δt · Z_n with Z_n a standard normal draw.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>What extra term does the Milstein scheme add over Euler-Maruyama?</h4>
+        <button class="sl-quiz-opt" data-correct="true">½σ(X_n,t_n)σ′(X_n,t_n)(ΔW_n² − Δt)</button>
+        <button class="sl-quiz-opt">A second independent Gaussian draw</button>
+        <button class="sl-quiz-opt">μ′(X_n,t_n)Δt²</button>
+        <div class="sl-quiz-explain">The extra term involves σ′, the diffusion coefficient's derivative with respect to the state — it corrects for σ itself changing during the step, which Euler-Maruyama ignores.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>For GBM, where σ(X) = σX, what does the Milstein correction term reduce to relative to a general local-volatility model?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Trivial — σ′(X) = σ, a plain constant</button>
+        <button class="sl-quiz-opt">It's undefined for GBM</button>
+        <button class="sl-quiz-opt">It becomes twice as expensive to compute</button>
+        <div class="sl-quiz-explain">σ(X) = σX is linear, so its derivative σ′(X) = σ is just a constant — trivial to compute, which is exactly why GBM worked examples make Milstein look cheap even though a general state-dependent diffusion can make σ′ genuinely costly.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>When does Milstein's extra correction term vanish entirely, making it identical to Euler-Maruyama?</h4>
+        <button class="sl-quiz-opt" data-correct="true">When σ is constant (doesn't depend on the state X at all)</button>
+        <button class="sl-quiz-opt">When Δt is exactly 1</button>
+        <button class="sl-quiz-opt">It never vanishes</button>
+        <div class="sl-quiz-explain">If σ doesn't depend on X, then σ′ = 0, and the whole correction term ½σσ′(ΔW² − Δt) is zero — there's no distinction left between the two schemes in that case.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Existence &amp; uniqueness guarantees a solution exists — it says nothing about whether you can write it down. Almost no SDE worth building has a closed form; GBM and OU are the convenient exceptions, not the rule.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Euler-Maruyama is Euler's method plus a Gaussian shock each step: X_n+1 = X_n + μΔt + σ√Δt·Z, with a fresh independent normal draw Z at every step.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>The √Δt scaling on the shock (not Δt) is the same Brownian-increment fact Itô's Lemma is built from — it's why the random part shrinks more slowly than the deterministic part as Δt shrinks.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Milstein adds ½σσ′(ΔW²−Δt), correcting for the diffusion coefficient changing during the step — a genuine pathwise-accuracy improvement, but it needs σ′ to exist and be computable.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The correction term is free (zero) when σ is constant — Milstein only earns its keep when the diffusion genuinely depends on the state.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Neither scheme is strictly better: Euler-Maruyama is simpler and often adequate; Milstein trades a real implementation cost (σ′, and a Lévy area in multiple dimensions) for faster per-step convergence.</p></div>
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">What this now lets you do</div>
+        <p>Simulate any SDE for which you can write down μ and σ — not just the handful with a closed form — by stepping it forward in small increments on a computer. Choose Euler-Maruyama by default and only reach for Milstein's extra σ′ term when the diffusion genuinely depends on the state and the accuracy is worth the added cost. Recognise that shrinking the time step, not adding more simulated paths, is the lever that fixes discretization error specifically — a distinction the next lesson in this series builds on once multiple correlated SDEs enter the picture at once.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Multivariate &amp; Correlated SDEs</h3>
+        <p>What changes once more than one state variable is driven by correlated Brownian motions — and why Milstein gets a lot harder to use once a Lévy area enters the picture.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="multivariate-correlated-sdes-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="sde-numerical-schemes.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // "Run your own step" — one Euler-Maruyama step, live.
+  (function(){
+    var xEl = document.getElementById('emc-x');
+    if (!xEl) return;
+    var muEl = document.getElementById('emc-mu'), sigmaEl = document.getElementById('emc-sigma');
+    var dtEl = document.getElementById('emc-dt'), zEl = document.getElementById('emc-z');
+    var driftOut = document.getElementById('emc-drift'), diffOut = document.getElementById('emc-diff');
+    var resultOut = document.getElementById('emc-result');
+    var resetBtn = document.getElementById('emc-reset');
+    var DEFAULTS = { x: 100, mu: 0.10, sigma: 0.30, dt: 0.25, z: 1.6906 };
+
+    function fmt(n){ return n.toFixed(2); }
+
+    function recompute(){
+      var x = parseFloat(xEl.value), mu = parseFloat(muEl.value), sigma = parseFloat(sigmaEl.value);
+      var dt = parseFloat(dtEl.value), z = parseFloat(zEl.value);
+      var bad = !isFinite(x) || !isFinite(mu) || !isFinite(sigma) || !isFinite(dt) || !isFinite(z) || dt < 0;
+      if (bad) {
+        driftOut.textContent = '—'; diffOut.textContent = '—'; resultOut.textContent = '—';
+        return;
+      }
+      var drift = mu * x * dt;
+      var diffusion = sigma * x * Math.sqrt(dt) * z;
+      var xNext = x + drift + diffusion;
+      driftOut.textContent = fmt(drift);
+      diffOut.textContent = fmt(diffusion);
+      resultOut.textContent = fmt(xNext);
+    }
+
+    [xEl, muEl, sigmaEl, dtEl, zEl].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      xEl.value = DEFAULTS.x; muEl.value = DEFAULTS.mu; sigmaEl.value = DEFAULTS.sigma;
+      dtEl.value = DEFAULTS.dt; zEl.value = DEFAULTS.z;
+      recompute();
+    });
+    recompute();
+  })();
+
+  // Δt slider — redraws a fine reference path and a coarse Euler-Maruyama
+  // path built from the SAME mulberry32-seeded pseudo-random stream, so the
+  // comparison is reproducible across loads.
+  (function(){
+    var slider = document.getElementById('dtchart-slider');
+    if (!slider) return;
+    var nval = document.getElementById('dtchart-nval');
+    var refPoly = document.getElementById('dtchart-ref');
+    var emPoly = document.getElementById('dtchart-em');
+    var dotsG = document.getElementById('dtchart-dots');
+    var xnOut = document.getElementById('dtchart-xn');
+    var xrefOut = document.getElementById('dtchart-xref');
+    var errOut = document.getElementById('dtchart-err');
+
+    var MU = 0.10, SIGMA = 0.30, X0 = 100, T = 1;
+    var N_REF = 64;
+    var PLOT_X0 = 40, PLOT_X1 = 610, PLOT_Y_TOP = 20, PLOT_Y_BOT = 230;
+
+    // mulberry32 PRNG — deterministic, reproducible across page loads.
+    function mulberry32(a){
+      return function(){
+        a |= 0; a = (a + 0x6D2B79F5) | 0;
+        var t = Math.imul(a ^ (a >>> 15), 1 | a);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+    // Box-Muller, fed by the seeded uniform generator above.
+    function makeGaussian(seed){
+      var rng = mulberry32(seed);
+      var spare = null;
+      return function(){
+        if (spare !== null) { var s = spare; spare = null; return s; }
+        var u1 = Math.max(rng(), 1e-12), u2 = rng();
+        var r = Math.sqrt(-2 * Math.log(u1));
+        spare = r * Math.sin(2 * Math.PI * u2);
+        return r * Math.cos(2 * Math.PI * u2);
+      };
+    }
+
+    // Fixed fine-resolution Brownian path (N_REF steps) built once from a
+    // fixed seed — this is the "reference" path every N below is compared
+    // against, so all curves share identical underlying randomness.
+    var gaussRef = makeGaussian(20260903);
+    var dtRef = T / N_REF;
+    var refIncrements = [];
+    for (var i = 0; i < N_REF; i++) refIncrements.push(Math.sqrt(dtRef) * gaussRef());
+
+    function simulateReference(){
+      var path = [X0];
+      var x = X0;
+      for (var i = 0; i < N_REF; i++) {
+        x = x + MU * x * dtRef + SIGMA * x * refIncrements[i];
+        path.push(x);
+      }
+      return path; // length N_REF+1, at times i*dtRef
+    }
+    var refPath = simulateReference();
+
+    // Euler-Maruyama at a coarser N: aggregate the SAME fine Brownian
+    // increments into N coarse blocks so the coarse path is driven by
+    // exactly the same underlying randomness as the reference.
+    function simulateCoarse(N){
+      var stepsPerBlock = N_REF / N; // N_REF chosen as multiple of every slider N (2..32, all divisors of 64... not all, so round)
+      var path = [X0];
+      var x = X0;
+      var idx = 0;
+      var dtCoarse = T / N;
+      for (var b = 0; b < N; b++) {
+        var lo = Math.round(b * stepsPerBlock);
+        var hi = Math.round((b + 1) * stepsPerBlock);
+        var blockDW = 0;
+        for (var k = lo; k < hi; k++) blockDW += refIncrements[k];
+        x = x + MU * x * dtCoarse + SIGMA * x * blockDW;
+        path.push(x);
+      }
+      return path;
+    }
+
+    function xOfT(t){ return PLOT_X0 + (t / T) * (PLOT_X1 - PLOT_X0); }
+    function yOfVal(v, vMin, vMax){
+      var frac = (v - vMin) / (vMax - vMin);
+      return PLOT_Y_BOT - frac * (PLOT_Y_BOT - PLOT_Y_TOP);
+    }
+
+    function fmt2(n){ return isFinite(n) ? n.toFixed(2) : '—'; }
+
+    function render(){
+      var N = parseInt(slider.value, 10);
+      var dt = T / N;
+      nval.textContent = 'N = ' + N + '  (Δt = ' + dt.toFixed(3) + ')';
+
+      var coarsePath = simulateCoarse(N);
+
+      var allVals = refPath.concat(coarsePath);
+      var vMin = Math.min.apply(null, allVals), vMax = Math.max.apply(null, allVals);
+      var pad = (vMax - vMin) * 0.08 || 5;
+      vMin -= pad; vMax += pad;
+
+      var refPts = [];
+      for (var i = 0; i <= N_REF; i++) {
+        refPts.push(xOfT(i * dtRef).toFixed(2) + ',' + yOfVal(refPath[i], vMin, vMax).toFixed(2));
+      }
+      refPoly.setAttribute('points', refPts.join(' '));
+
+      var emPts = [];
+      var dotsHtml = '';
+      for (var j = 0; j <= N; j++) {
+        var px = xOfT(j * dt), py = yOfVal(coarsePath[j], vMin, vMax);
+        emPts.push(px.toFixed(2) + ',' + py.toFixed(2));
+        dotsHtml += '<circle cx="' + px.toFixed(2) + '" cy="' + py.toFixed(2) + '" r="3.2" fill="var(--red)"></circle>';
+      }
+      emPoly.setAttribute('points', emPts.join(' '));
+      dotsG.innerHTML = dotsHtml;
+
+      var xN = coarsePath[coarsePath.length - 1];
+      var xRef = refPath[refPath.length - 1];
+      xnOut.textContent = fmt2(xN);
+      xrefOut.textContent = fmt2(xRef);
+      errOut.textContent = fmt2(Math.abs(xN - xRef));
+    }
+
+    slider.addEventListener('input', render);
+    render();
+  })();
+})();
+</script>
+</body>
+</html>

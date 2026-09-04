@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stress Testing, Scenario Analysis &amp; Reverse Stress Tests — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Stress Testing &amp; Reverse Stress Tests — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivations, live calculators, and a 6-question self-test?<a href="stress-testing-scenario-analysis.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Risk Deep Dive 3 · Risk Management Deep Dive</div>
+      <h1 class="sl-h1">Stress Testing, Scenario Analysis &amp; <em>Reverse Stress Tests</em></h1>
+      <p class="sl-lede">Coherent Risk Measures (Risk Deep Dive 1) built VaR and CVaR from a return series' ordinary, everyday range of outcomes. Tail Risk Hedging &amp; Portfolio Convexity (Risk Deep Dive 2) showed why a payoff's shape, not just its expected return, decides whether a book bleeds slowly or blows up. This deck picks up exactly where both left off: what happens when the shock isn't ordinary at all — when correlations spike, tails cluster, and the statistics those two lessons relied on stop describing the world. Three techniques address it, and the third — asking "what would have to happen to lose an unacceptable amount" instead of "how bad could losses get" — is the one most likely to surface a risk nobody thought to look for.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">The statistics break exactly when it matters most</h2>
+      <p class="sl-sub">VaR and CVaR are built from a distribution assumption. Genuine crises are precisely the moments that assumption is least trustworthy.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📊</div><div><h4>Built from ordinary days</h4><p>VaR and CVaR summarize the range of outcomes a return series has actually produced — mostly calm, occasionally rough, rarely catastrophic.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔗</div><div><h4>Correlations aren't fixed</h4><p>Assets that diversify each other in calm markets have repeatedly been observed moving together far more strongly once a real risk-off shock hits.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🌪</div><div><h4>Tails cluster</h4><p>A genuine crisis doesn't look like an ordinary bad day scaled up — it looks like a different regime, where several "unlikely" events happen together.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">❓</div><div><h4>History may not have shown it yet</h4><p>A statistical summary can only describe the range of outcomes that has actually occurred in the sample it was built from.</p></div></div>
+      </div>
+      <div class="sl-quote">This isn't a flaw unique to VaR and CVaR — it's a limit of any risk measure built purely from a historical or assumed statistical distribution. Stress testing exists to answer the question those measures were never built to answer: not "how risky does this look on an ordinary day," but "what happens to this exact book under conditions the ordinary-days statistics don't fully capture."</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Three ways to ask "what if"</h2>
+      <p class="sl-sub">A risk team typically layers all three, in this order.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">1</div><div><h4>Historical scenario replay</h4><p>Take a real past shock — an actual severe quarter — and apply it to today's current portfolio. "If that exact storm hit again tomorrow, what happens to the house I live in right now?"</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">2</div><div><h4>Monte Carlo scenario stress</h4><p>Simulate thousands of hypothetical extreme scenarios from an assumed stress distribution, rather than relying only on what has literally happened before.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">3</div><div><h4>Reverse stress testing</h4><p>Start from a specific unacceptable loss and solve <em>backward</em> for what combination of moves would actually produce it — the question nobody thought to ask first.</p></div></div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">The direction each one runs</div>
+        <p>The first two start from a scenario and compute a loss — forward. The third starts from a loss and solves for the scenario — backward. Same underlying loss function, used in opposite directions.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Historical replay: point a real storm at today's house</h2>
+      <p class="sl-sub">The key design choice: today's weights, a past shock.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The move</div>
+        <div class="sl-row"><div class="sl-box">Today's current book</div><div class="sl-arrow">×</div><div class="sl-box amber">2008-style quarter, actually realized</div><div class="sl-arrow">=</div><div class="sl-box green">P&amp;L, marked against real history</div></div>
+        <div class="sl-verdict">The point isn't "how did this portfolio do in 2008" — it may not have existed then, or held completely different positions. It's "if that exact historical shock repeated tomorrow, what happens to the book I actually hold right now."</div>
+      </div>
+      <p class="sl-p">Because the historical returns were <em>jointly observed</em>, every correlation and co-movement between factors is automatically correct — equities, credit spreads, and currencies really did move together that way, once, so nothing needs to be separately modeled. The honest limitation: the next crisis rarely repeats the last one's exact shape. Surviving a replayed 2008 comfortably is not evidence of surviving whatever comes next.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Monte Carlo stress: imagine storms that haven't happened yet</h2>
+      <p class="sl-sub">Draw many hypothetical scenarios from an assumed stress distribution.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">What it does</span>
+          <p>Assumes a stress-regime covariance matrix — commonly, correlations across risk factors moving toward 1, since diversifying assets have repeatedly been seen to move together far more than usual once a real crisis hits. Draws thousands of simulated return vectors from it, applies today's weights to each, and reads off a full simulated loss distribution rather than a single number.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">What it buys you</span>
+          <p>It can explore scenarios that have literally never occurred in the historical record — not limited to replaying the past, the way historical replay is. That flexibility is also its weak point: the result is only as trustworthy as the assumed correlation regime and shock size fed into it.</p>
+        </div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>An understated stress correlation or shock size produces a reassuring loss number for entirely the wrong reason — not because the book is genuinely safe, but because the simulated stress wasn't stressed enough. More Monte Carlo draws make the estimate smoother, never more accurate about a bad assumption.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Reverse stress testing: start from the loss, solve backward</h2>
+      <p class="sl-sub">The question flipped — and the one most likely to surface what forward tests miss.</p>
+      <div class="sl-row"><div class="sl-box amber">Unacceptable loss, Y*</div><div class="sl-arrow">→ solve backward →</div><div class="sl-box green">Scenario, s*, that causes it</div></div>
+      <p class="sl-p" style="margin-top:16px">Forward tests pick a scenario and compute a loss. Reverse stress testing starts from the loss the risk committee has already decided is intolerable — insolvency, a breached capital floor — and solves for the shock, or combination of factor moves, that would actually produce it. With several risk factors, the useful output isn't the size of the shock alone — it's <em>which combination</em> of moves gets there.</p>
+      <div class="sl-quote">A portfolio whose only route to an unacceptable loss requires several large, independent, implausible shocks together is structurally safer than one where a single, modest, entirely plausible move on one factor gets there alone. Finding out which kind of book you actually hold is the entire point — and it's a question a forward-looking scenario list never has to ask, because nobody had to think to construct that exact scenario first.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Same $10M book, three questions</h2>
+      <p class="sl-sub">$6M in a short-volatility equity carry strategy, $4M in a high-yield credit carry strategy. Pick an approach.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="approach-tabs">
+          <button class="sl-tab active" data-panel="ap-1">Historical replay</button>
+          <button class="sl-tab" data-panel="ap-2">Monte Carlo</button>
+          <button class="sl-tab" data-panel="ap-3">Reverse stress test</button>
+        </div>
+        <div class="sl-panel active" id="ap-1">
+          <div class="sl-row"><div class="sl-box">Today's $10M book</div><div class="sl-arrow">apply a real 2008-style quarter</div><div class="sl-box green">Loss: $2.4M (24%)</div></div>
+          <div class="sl-verdict"><strong>Question asked:</strong> "If that exact quarter repeated, what happens to this book right now?" <strong>Answer:</strong> a concrete, internally-consistent $2.4M loss — every correlation in it actually happened.</div>
+        </div>
+        <div class="sl-panel" id="ap-2">
+          <div class="sl-row"><div class="sl-box">Assumed stress regime — correlations → 1</div><div class="sl-arrow">simulate 10,000 draws</div><div class="sl-box amber">Range: roughly $1.8M – $3.4M</div></div>
+          <div class="sl-verdict"><strong>Question asked:</strong> "Across many hypothetical extreme draws, not just the one that historically happened, how bad could it get?" <strong>Answer:</strong> a distribution of outcomes — only as trustworthy as the assumed correlation regime.</div>
+        </div>
+        <div class="sl-panel" id="ap-3">
+          <div class="sl-row"><div class="sl-box amber">Unacceptable loss: $5M (50%)</div><div class="sl-arrow">solve backward</div><div class="sl-box green">s* ≈ 2.08× a typical bad quarter</div></div>
+          <div class="sl-verdict"><strong>Question asked:</strong> "What would it actually take to lose half the book?" <strong>Answer:</strong> a shock only about twice an ordinary bad quarter — on the <em>one</em> latent factor both strategies secretly share. See Section 10.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Forward computes a loss. Reverse solves for a scenario.</h2>
+      <p class="sl-sub">Same relationship, same two boxes — the arrow runs the opposite way.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Same loss function, read in both directions</div>
+        <div class="sl-svgwrap">
+          <!-- inline chart — hand-built SVG, no external chart libs -->
+          <svg viewBox="0 0 640 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two rows of two boxes each. Top row, labeled forward, scenario to loss: a box reading scenario, 2008-style quarter, connected by a blue right-pointing arrow to a box reading loss, 2.4 million dollars, 24 percent of book. Bottom row, labeled reverse, target loss to solved scenario: a box reading scenario solved, s star approximately 2.08 times a typical bad quarter, connected by a red left-pointing dashed arrow from a box reading loss target, 5 million dollars, 50 percent of book, unacceptable — the arrow points backward from the loss to the scenario that causes it.">
+            <defs>
+              <marker id="stArrowF" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0,0 L10,5 L0,10 z" style="fill:var(--blue)"></path>
+              </marker>
+              <marker id="stArrowR" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0,0 L10,5 L0,10 z" style="fill:var(--red)"></path>
+              </marker>
+            </defs>
+
+            <text x="30" y="18" style="font:700 11px 'DM Mono',monospace;letter-spacing:.06em;fill:var(--blue)">FORWARD — scenario → loss</text>
+            <rect x="30" y="30" width="205" height="58" rx="10" style="fill:var(--panel2);stroke:var(--border2);stroke-width:1.5"></rect>
+            <text x="132" y="54" text-anchor="middle" style="font:700 13px 'DM Sans',sans-serif;fill:var(--text)">Scenario</text>
+            <text x="132" y="72" text-anchor="middle" style="font:11px 'DM Mono',monospace;fill:var(--text3)">2008-style quarter (s=1)</text>
+            <line x1="240" y1="59" x2="330" y2="59" style="stroke:var(--blue);stroke-width:3" marker-end="url(#stArrowF)"></line>
+            <rect x="335" y="30" width="270" height="58" rx="10" style="fill:var(--panel2);stroke:var(--border2);stroke-width:1.5"></rect>
+            <text x="470" y="54" text-anchor="middle" style="font:700 13px 'DM Sans',sans-serif;fill:var(--text)">Loss</text>
+            <text x="470" y="72" text-anchor="middle" style="font:11px 'DM Mono',monospace;fill:var(--text3)">$2.4M — 24% of the book</text>
+
+            <text x="30" y="140" style="font:700 11px 'DM Mono',monospace;letter-spacing:.06em;fill:var(--red)">REVERSE — target loss → solved scenario</text>
+            <rect x="30" y="152" width="205" height="58" rx="10" style="fill:var(--panel2);stroke:var(--border2);stroke-width:1.5"></rect>
+            <text x="132" y="176" text-anchor="middle" style="font:700 13px 'DM Sans',sans-serif;fill:var(--text)">Scenario (solved)</text>
+            <text x="132" y="194" text-anchor="middle" style="font:11px 'DM Mono',monospace;fill:var(--text3)">s* ≈ 2.08× typical bad qtr</text>
+            <line x1="330" y1="181" x2="240" y2="181" style="stroke:var(--red);stroke-width:3;stroke-dasharray:6,4" marker-end="url(#stArrowR)"></line>
+            <rect x="335" y="152" width="270" height="58" rx="10" style="fill:var(--panel2);stroke:var(--border2);stroke-width:1.5"></rect>
+            <text x="470" y="176" text-anchor="middle" style="font:700 13px 'DM Sans',sans-serif;fill:var(--text)">Loss target</text>
+            <text x="470" y="194" text-anchor="middle" style="font:11px 'DM Mono',monospace;fill:var(--text3)">$5M — 50%, unacceptable</text>
+          </svg>
+        </div>
+        <div class="sl-note">Both rows use the exact same loss function. Forward picks the left box and reads off the right one. Reverse picks the right box and reads off the left one — the arrow is drawn backward on purpose.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Drag the severity. Watch the loss grow.</h2>
+      <p class="sl-sub">Same $10M book: every unit of stress severity s costs $2.4M. The dot always sits exactly on the line — that's what "linear" means.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart with stress severity s on the x axis from 0 to 3 and portfolio loss in millions of dollars on the y axis from 0 to 8. A straight rising line shows loss equals 2.4 million dollars times s. A dashed red guide marks the 5 million dollar unacceptable loss threshold, crossing the line at s approximately 2.08. A draggable dot on the line shows the currently selected severity and its resulting loss.">
+            <line x1="60" y1="190" x2="600" y2="190" style="stroke:var(--border2);stroke-width:1"></line>
+            <line x1="60" y1="190" x2="60" y2="20" style="stroke:var(--border2);stroke-width:1"></line>
+            <text x="60" y="206" style="font:10px 'DM Mono',monospace;fill:var(--text3)">s=0</text>
+            <text x="330" y="206" text-anchor="middle" style="font:10px 'DM Mono',monospace;fill:var(--text3)">s=1 (typical bad qtr)</text>
+            <text x="600" y="206" text-anchor="end" style="font:10px 'DM Mono',monospace;fill:var(--text3)">s=3</text>
+            <text x="20" y="25" style="font:10px 'DM Mono',monospace;fill:var(--text3)">$8M</text>
+            <text x="20" y="194" style="font:10px 'DM Mono',monospace;fill:var(--text3)">$0</text>
+            <line x1="60" y1="83.75" x2="435" y2="83.75" style="stroke:var(--red);stroke-width:1.5;stroke-dasharray:4,3"></line>
+            <line x1="435" y1="83.75" x2="435" y2="190" style="stroke:var(--red);stroke-width:1.5;stroke-dasharray:4,3"></line>
+            <text x="440" y="78" style="font:600 11px 'DM Sans',sans-serif;fill:var(--red)">$5M unacceptable</text>
+            <text x="440" y="206" style="font:600 11px 'DM Sans',sans-serif;fill:var(--red)">s* ≈ 2.08</text>
+            <path d="M 60,190 L 600,37" style="fill:none;stroke:var(--text2);stroke-width:2.5"></path>
+            <line id="sev-vguide" x1="330" y1="126" x2="330" y2="190" style="stroke:var(--blue);stroke-width:1;stroke-dasharray:3,3;opacity:.6"></line>
+            <circle id="sev-dot" cx="330" cy="126" r="6" style="fill:var(--blue)"></circle>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Stress severity</span><span class="sl-live" id="sev-label">s = 1.00 → loss $2.40M</span></div>
+        <input type="range" class="sl-slider" id="sev-slider" min="0" max="300" step="5" value="100">
+        <div class="sl-note">Below s* ≈ 2.08 the dot is blue and the loss is survivable-looking on its own. At or past it, the dot turns red — the book has crossed the unacceptable threshold.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Solve backward, live</h2>
+      <p class="sl-sub">A simplified reverse stress test: given a target loss and a position's sensitivity to one risk factor, what factor move produces it?</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Notional ($M)</label><input type="number" class="sl-input" id="sr-notional" value="10" step="0.5" min="0"></div>
+          <div class="sl-calc-op">×</div>
+          <div class="sl-calc-field"><label>Sensitivity β (% per unit s)</label><input type="number" class="sl-input" id="sr-beta" value="24" step="1"></div>
+          <div class="sl-calc-op">× s =</div>
+          <div class="sl-calc-field"><label>Target loss ($M)</label><input type="number" class="sl-input" id="sr-target" value="5" step="0.5"></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Per-unit loss = notional × β = <b id="sr-step1">$2.40M</b> per unit of s</div>
+          <div>Reverse-solved shock: s* = target ÷ per-unit loss = <b id="sr-step2">2.08</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="sr-reset">Reset to worked-example numbers</button>
+        <div class="sl-note">Blank, zero, negative, or non-numeric β or notional show "—" instead of a broken number — there's no meaningful shock size when sensitivity is zero or the inputs don't parse.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Diversified on paper, concentrated underneath</h2>
+      <p class="sl-sub">The same $10M book — $6M short-vol equity carry (β=30%), $4M high-yield credit carry (β=15%) — read two ways.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Forward-only verdict</span>
+          <ul>
+            <li>Strategy A alone loses 30% of its $6M under an equity-vol spike — a survivable, well-understood drawdown for that desk</li>
+            <li>Strategy B alone loses 15% of its $4M under a credit-spread widening — also survivable, on its own</li>
+            <li>Each desk, tested against its own scenario, looks fine in isolation</li>
+            <li><strong>Conclusion drawn:</strong> the book looks diversified across asset classes and desks</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Reverse-stress verdict</span>
+          <ul>
+            <li>Both strategies are actually driven by one latent "risk-off" factor s, just with different sensitivities</li>
+            <li>Solving backward for a $5M (50%) loss gives s* ≈ 2.08 — only about twice an ordinary bad quarter</li>
+            <li>That one moderate shock hits <em>both</em> desks at once, because it's the same factor underneath both</li>
+            <li><strong>Conclusion drawn:</strong> what looked like diversification was concentration in a single factor</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-quote">It's two commuters who look totally independent — one drives, one bikes — until you notice they cross the same one bridge every day. Test each separately and everything looks fine. Ask "what's the smallest thing that stops both at once," and the answer is one ordinary bridge closure, not two separate disasters.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">How this actually gets used — and a grounding check</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🏛</div><div><h4>Regulators require all three</h4><p>Post-2008 frameworks (Basel's stress-testing principles, the US CCAR program) require historical and hypothetical scenario testing; the UK's FSA made reverse stress testing a formal requirement in 2009, specifically because forward-only testing had repeatedly missed the channel that actually broke firms.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚖️</div><div><h4>Neither forward method is trusted alone</h4><p>Only running historical replays bets the next crisis resembles a past one; only running Monte Carlo bets the assumed stress distribution is realistic. Serious teams report both and treat a large gap between them as itself informative.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>Reverse results feed risk limits directly</h4><p>Once a reverse stress test names the specific factor combination that produces an unacceptable loss, the natural response is a concentration limit targeted at exactly that factor — more surgical than an across-the-board size cut.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🏢</div><div><h4>Run at the whole-business level too</h4><p>A firm-wide reverse stress test asks what combination of events would make the entire business model unviable — surfacing risks like funding withdrawal that a single trading book's stress test would never capture.</p></div></div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Checked against this repo's actual code</div>
+        <p>The full lesson states plainly that no stress-testing pipeline is built in this repo — it's explained as a concept, not a claim that historical replay, Monte Carlo stress, or reverse stress testing has been implemented here. That check was repeated for this deck: the repo does have real backtesting infrastructure (e.g. <code>backtestSystem/</code>) and an actual "Credit-Stress Index" risk overlay (<code>js/creditStressCore.js</code>) that gates exposure using rolling z-scores of credit spreads and VIX — but that overlay is a continuous, ongoing risk gate, not a historical-crisis replay, a Monte Carlo stress simulator, or a reverse-stress solver in the sense this lesson defines those terms. The lesson's "concept only, nothing like this is built here" framing still holds.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>In historical scenario replay, why apply today's weights to a past shock instead of looking at how the book actually performed at the time?</h4>
+        <button class="sl-quiz-opt" data-correct="true">To answer "what happens to the book I hold right now," not "how did some old, possibly different book do"</button>
+        <button class="sl-quiz-opt">Because old performance data is unreliable</button>
+        <button class="sl-quiz-opt">Current portfolio weights are always safer than historical ones</button>
+        <div class="sl-quiz-explain">The book may not have existed then, or held entirely different positions. Applying the real historical shock to today's actual exposure isolates the question that matters.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Why does "correlations move toward 1" show up so often as a Monte Carlo stress assumption?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Because normally-diversifying assets have repeatedly been observed moving together far more than usual once a real crisis hits</button>
+        <button class="sl-quiz-opt">Because it's the easiest number to simulate</button>
+        <button class="sl-quiz-opt">Because correlations below 1 are mathematically impossible</button>
+        <div class="sl-quiz-explain">It builds an empirically-motivated crisis pattern into the stress distribution, rather than relying on ordinary-times correlations that likely understate a real crisis.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>What question does a reverse stress test ask that a forward scenario test doesn't?</h4>
+        <button class="sl-quiz-opt" data-correct="true">What scenario, or combination of factor moves, would actually produce a specific unacceptable loss</button>
+        <button class="sl-quiz-opt">How volatile has the portfolio been on an average trading day</button>
+        <button class="sl-quiz-opt">What is the portfolio's long-run Sharpe ratio</button>
+        <div class="sl-quiz-explain">Forward tests pick a scenario and compute a loss. Reverse stress testing starts from the loss and solves backward for the scenario.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>In the worked example, why did the two desks look diversified under forward testing but concentrated under the reverse stress test?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Forward testing checked each desk against its own shock in isolation, missing that both share one latent risk-off factor a moderate combined shock hits at once</button>
+        <button class="sl-quiz-opt">Forward testing used bad or corrupted data</button>
+        <button class="sl-quiz-opt">The desks aren't actually concentrated — the reverse test overstates the risk</button>
+        <div class="sl-quiz-explain">Each desk survived its own scenario comfortably in isolation. Solving backward found the one shared factor that gets both at once, with a shock roughly twice an ordinary bad quarter.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Why is it a mistake to report only the reverse-solved shock size s*, without saying which factor combination produces it?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The actionable insight — where the hidden concentration actually is — lives in which factor combination gets you there, not just how big the number is</button>
+        <button class="sl-quiz-opt">s* alone is too difficult to compute accurately</button>
+        <button class="sl-quiz-opt">It isn't a mistake — the magnitude is all that matters for a risk limit</button>
+        <div class="sl-quiz-explain">A report stating "a 2.1x shock breaches our capital floor" without naming the factor combination has skipped the half of the exercise that's actually useful for setting a risk limit.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>VaR and CVaR (Risk Deep Dive 1) are built from ordinary-days statistics — genuine crises spike correlations and cluster tails in ways that history may not yet have captured.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Historical scenario replay applies a REAL past shock to TODAY'S current book — every correlation is automatically right, because it actually happened jointly, once.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Monte Carlo scenario stress simulates many hypothetical extremes from an assumed stress distribution — it can explore what hasn't happened yet, but is only as good as that assumption.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Reverse stress testing solves backward from an unacceptable loss to the scenario that causes it — routinely surfacing hidden concentration forward tests never think to check for.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The worked example: two "diversified" strategies shared one latent risk-off factor — a moderate shock, not an exotic one, took out half the book.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>What matters from a reverse stress test is the WHICH — the specific factor combination — not just the HOW BIG of the shock size alone.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Recognize when a VaR or CVaR figure is being asked to answer a question it wasn't built for. Layer historical replay and Monte Carlo stress to triangulate a book's real tail exposure instead of trusting either alone. And — the sharpest tool here — run a reverse stress test to hunt for the hidden single factor that makes a "diversified-looking" book actually concentrated, before a real shock finds it for you.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Cornish-Fisher Expansion</h3>
+        <p>Adjusting Gaussian VaR for real skew and kurtosis — and the known non-monotonicity trap hiding inside the fix itself.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="cornish-fisher-expansion-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="stress-testing-scenario-analysis.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Section 8 — stress-severity slider: loss = $2.4M per unit of s, s in [0, 3].
+  (function(){
+    var slider = document.getElementById('sev-slider');
+    if (!slider) return;
+    var label = document.getElementById('sev-label');
+    var dot = document.getElementById('sev-dot');
+    var vguide = document.getElementById('sev-vguide');
+    var PER_UNIT = 2.4;      // $M loss per unit of s
+    var X0 = 60, X1 = 600;   // s = 0..3 maps to this pixel range
+    var Y0 = 190, Y1 = 20;   // loss = 0..8 maps to this pixel range
+    var S_MAX = 3, LOSS_MAX = 8;
+    var THRESHOLD = 5;
+
+    function update(){
+      var s = parseInt(slider.value, 10) / 100;
+      var loss = PER_UNIT * s;
+      var x = X0 + (s / S_MAX) * (X1 - X0);
+      var y = Y0 + (loss / LOSS_MAX) * (Y1 - Y0);
+      dot.setAttribute('cx', x);
+      dot.setAttribute('cy', y);
+      dot.setAttribute('style', 'fill:' + (loss >= THRESHOLD ? 'var(--red)' : 'var(--blue)'));
+      vguide.setAttribute('x1', x); vguide.setAttribute('x2', x);
+      vguide.setAttribute('y1', y); vguide.setAttribute('y2', Y0);
+      label.textContent = 's = ' + s.toFixed(2) + ' → loss $' + loss.toFixed(2) + 'M';
+    }
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Section 9 — reverse stress test calculator: s* = target / (notional * beta/100).
+  (function(){
+    var notionalEl = document.getElementById('sr-notional');
+    if (!notionalEl) return;
+    var betaEl = document.getElementById('sr-beta');
+    var targetEl = document.getElementById('sr-target');
+    var step1 = document.getElementById('sr-step1');
+    var step2 = document.getElementById('sr-step2');
+    var resetBtn = document.getElementById('sr-reset');
+    var DEFAULTS = { notional: 10, beta: 24, target: 5 };
+
+    function fmtDollars(n){ return '$' + n.toFixed(2) + 'M'; }
+    function fmtShock(n){ return n.toFixed(2); }
+
+    function recompute(){
+      var notional = parseFloat(notionalEl.value);
+      var betaPct = parseFloat(betaEl.value);
+      var target = parseFloat(targetEl.value);
+
+      if (!isFinite(notional) || !isFinite(betaPct) || !isFinite(target) || notional < 0) {
+        step1.textContent = '—';
+        step2.textContent = '—';
+        return;
+      }
+
+      var beta = betaPct / 100;
+      var perUnit = notional * beta;
+      step1.textContent = fmtDollars(perUnit);
+
+      if (perUnit <= 0) {
+        step2.textContent = '—';
+      } else {
+        step2.textContent = fmtShock(target / perUnit);
+      }
+    }
+
+    [notionalEl, betaEl, targetEl].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      notionalEl.value = DEFAULTS.notional;
+      betaEl.value = DEFAULTS.beta;
+      targetEl.value = DEFAULTS.target;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

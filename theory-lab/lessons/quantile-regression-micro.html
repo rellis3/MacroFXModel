@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quantile Regression — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+<style>
+  .qr-dot{fill:var(--text2);opacity:.75}
+  .qr-axis{stroke:var(--border2);stroke-width:1}
+  .qr-axistext{font:10px 'DM Mono',monospace;fill:var(--text3)}
+  .qr-fan-ref{stroke-width:1.5;opacity:.38}
+</style>
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Quantile Regression — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivation, MathJax'd math, and a 6-question self-test?<a href="quantile-regression.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Risk Deep Dive 5 (final) · Risk Management Deep Dive</div>
+      <h1 class="sl-h1">Quantile Regression, <em>Aiming Past the Average</em></h1>
+      <p class="sl-lede">Ordinary least squares answers one specific question — "what's the average outcome given these conditions?" — no matter what question you actually asked it. A risk manager rarely wants the average; they want to know how bad the 5th-percentile outcome could get given today's conditions, which is a question about one tail of a distribution, not its center. This guide walks through why that mismatch matters, and how swapping squared-error loss for an asymmetric "pinball loss" lets a regression target a specific quantile directly — closing the loop with the Regression Diagnostics lesson's OLS mechanics and the Cornish-Fisher lesson's static distributional adjustment.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">What OLS is actually fitting</h2>
+      <p class="sl-sub">Not "the relationship" in some vague sense — one very specific conditional quantity.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">x̄</div><div><h4>The conditional mean, E[Y∣X]</h4><p>The fitted line ŷ = x⊤β̂ is an estimate of the <em>average</em> value of Y you'd expect given X — not the typical value, not the worst case, the average.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">∑²</div><div><h4>Squared error picks the mean</h4><p>Minimizing the sum of squared residuals is what forces the fit toward the average — squared loss punishes over- and under-prediction identically, and the point that minimizes a symmetric penalty is the mean.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">◎</div><div><h4>One line, one number per x</h4><p>For every value of X, OLS reports exactly one number: the expected Y. It says nothing about how spread out the actual outcomes are around that number.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">✓</div><div><h4>Perfectly fine for most questions</h4><p>"What's the expected return," "what's the expected hedge ratio" — the conditional mean is exactly the right quantity for a huge range of everyday modeling questions.</p></div></div>
+      </div>
+      <div class="sl-quote">As covered in <a href="regression-diagnostics-micro.html" style="color:var(--blue)">Regression Diagnostics</a>, OLS's point estimate β̂ is derived purely by minimizing squared error — no distributional assumption is needed for that minimization itself. What that lesson doesn't dwell on, because it's answering a different question, is <strong>what the fitted line represents</strong>: the conditional mean, not any particular percentile of the outcome.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">The question a risk manager actually asks</h2>
+      <p class="sl-sub">It is almost never "what's the average outcome." It's "how bad can this get."</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">What OLS answers</span>
+          <p>"Given today's volatility, momentum, and macro surprise — what's the <strong>expected</strong> next-day return?" A perfectly good question. Also not the one risk management is usually trying to answer.</p>
+        </div>
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">What a risk desk needs</span>
+          <p>"Given today's conditions — what's my <strong>5th-percentile</strong> worst outcome?" That's a direct, VaR-style question about one specific tail quantile of the conditional distribution, not its center.</p>
+        </div>
+      </div>
+      <p class="sl-p">These are genuinely different quantities, not the same quantity viewed at different confidence levels. Bolting a fixed offset onto a mean forecast only recovers the tail correctly if the spread around the mean stays constant across every condition — and it usually doesn't. When volatility itself rises with the predictors, the gap between "average" and "5th-percentile" widens too, and a mean-based model has no way to see that widening.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>Nothing about OLS is "wrong" here — it was never built to answer a tail question. The mismatch is a mismatch of tool to task, not a flaw in least squares itself.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">The fix: punish a guess unevenly</h2>
+      <p class="sl-sub">Squared error treats over- and under-prediction identically. Pinball loss doesn't — and that asymmetry is the entire mechanism.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The pinball (check) loss, ρ<sub>τ</sub>(u)</div>
+        <div class="sl-row">
+          <div class="sl-box">u = Y − q</div>
+          <div class="sl-arrow">the residual</div>
+        </div>
+        <div class="sl-row">
+          <div class="sl-box amber">u ≥ 0 → τ·u</div>
+          <div class="sl-arrow">under-prediction</div>
+          <div class="sl-box green">u &lt; 0 → (1−τ)·|u|</div>
+          <div class="sl-arrow">over-prediction</div>
+        </div>
+        <div class="sl-note">At τ = 0.05, over-predicting (guessing the tail isn't that bad) is penalized at weight 0.95 — <strong>nineteen times</strong> more heavily than under-predicting at weight 0.05. That lopsidedness is what drags the loss-minimizing guess down toward the low tail instead of the center. τ = 0.5 recovers the symmetric special case: equal weights, and the loss-minimizing fit becomes the median.</div>
+      </div>
+      <p class="sl-p">Nothing about the underlying method changes — it's still "find the line that minimizes total penalty over all observations." Only the shape of the penalty changes, and that shape alone decides whether the fit lands on the mean, the median, or a specific tail quantile. Minimizing the expectation of ρ<sub>τ</sub>(Y − q) over q can be shown to land exactly on q = F⁻¹(τ), the τ-th quantile of Y — the same kind of first-order argument that shows the mean minimizes expected squared error, just applied to this asymmetric loss instead.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Same scatter, two very different lines</h2>
+      <p class="sl-sub">40-point toy dataset, y = 2 + 1.5x + noise, where the noise's spread grows with x (heteroskedastic) — the same dataset the full lesson fits.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="qr-tabs">
+          <button class="sl-tab active" data-panel="qr-p1">OLS — mean line</button>
+          <button class="sl-tab" data-panel="qr-p2">Quantile, τ=0.05</button>
+          <button class="sl-tab" data-panel="qr-p3">Both together</button>
+        </div>
+        <div class="sl-panel active" id="qr-p1">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Scatter of 26 points with spread widening left to right, and a grey OLS mean-regression line running through the middle of the scatter">
+            <line class="qr-axis" x1="60" y1="260" x2="610" y2="260"/><line class="qr-axis" x1="60" y1="260" x2="60" y2="20"/>
+            <text class="qr-axistext" x="60" y="277" text-anchor="middle">0</text>
+            <text class="qr-axistext" x="335" y="277" text-anchor="middle">5</text>
+            <text class="qr-axistext" x="610" y="277" text-anchor="middle">10</text>
+            <text class="qr-axistext" x="620" y="264" text-anchor="start">X</text>
+            <text class="qr-axistext" x="48" y="264" text-anchor="end">0</text>
+            <text class="qr-axistext" x="48" y="145" text-anchor="end">10</text>
+            <text class="qr-axistext" x="48" y="30" text-anchor="end">20</text>
+            <circle class="qr-dot" cx="93.0" cy="226.1" r="3.2"/><circle class="qr-dot" cx="113.3" cy="210.0" r="3.2"/><circle class="qr-dot" cx="133.7" cy="223.1" r="3.2"/><circle class="qr-dot" cx="153.5" cy="196.2" r="3.2"/><circle class="qr-dot" cx="173.8" cy="204.7" r="3.2"/><circle class="qr-dot" cx="194.2" cy="198.7" r="3.2"/><circle class="qr-dot" cx="214.6" cy="157.6" r="3.2"/><circle class="qr-dot" cx="234.9" cy="179.4" r="3.2"/><circle class="qr-dot" cx="254.7" cy="176.7" r="3.2"/><circle class="qr-dot" cx="275.1" cy="154.1" r="3.2"/><circle class="qr-dot" cx="295.4" cy="137.5" r="3.2"/><circle class="qr-dot" cx="315.8" cy="157.5" r="3.2"/><circle class="qr-dot" cx="336.1" cy="135.2" r="3.2"/><circle class="qr-dot" cx="355.9" cy="171.0" r="3.2"/><circle class="qr-dot" cx="376.2" cy="148.4" r="3.2"/><circle class="qr-dot" cx="396.6" cy="144.9" r="3.2"/><circle class="qr-dot" cx="416.9" cy="168.2" r="3.2"/><circle class="qr-dot" cx="437.3" cy="170.0" r="3.2"/><circle class="qr-dot" cx="457.1" cy="170.3" r="3.2"/><circle class="qr-dot" cx="477.4" cy="114.9" r="3.2"/><circle class="qr-dot" cx="497.8" cy="106.4" r="3.2"/><circle class="qr-dot" cx="518.1" cy="106.2" r="3.2"/><circle class="qr-dot" cx="538.5" cy="84.0" r="3.2"/><circle class="qr-dot" cx="558.3" cy="138.9" r="3.2"/><circle class="qr-dot" cx="578.6" cy="77.8" r="3.2"/><circle class="qr-dot" cx="599.0" cy="56.8" r="3.2"/>
+            <line x1="76.5" y1="230.0" x2="599.0" y2="70.0" style="stroke:var(--text2);stroke-width:2.5"/>
+            <text x="420" y="150" style="font:600 11px 'DM Sans',sans-serif;fill:var(--text2)">OLS mean (ŷ = 2.172 + 1.464x)</text>
+          </svg></div>
+          <div class="sl-verdict"><strong>Runs through the middle</strong> of the whole scatter — roughly half the dots sit above it, half below, at every x. It's tracking the average, and only the average.</div>
+        </div>
+        <div class="sl-panel" id="qr-p2">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Same scatter, with a blue quantile regression line at tau equals 0.05 running near the bottom edge of the dots">
+            <line class="qr-axis" x1="60" y1="260" x2="610" y2="260"/><line class="qr-axis" x1="60" y1="260" x2="60" y2="20"/>
+            <text class="qr-axistext" x="60" y="277" text-anchor="middle">0</text>
+            <text class="qr-axistext" x="335" y="277" text-anchor="middle">5</text>
+            <text class="qr-axistext" x="610" y="277" text-anchor="middle">10</text>
+            <text class="qr-axistext" x="620" y="264" text-anchor="start">X</text>
+            <text class="qr-axistext" x="48" y="264" text-anchor="end">0</text>
+            <text class="qr-axistext" x="48" y="145" text-anchor="end">10</text>
+            <text class="qr-axistext" x="48" y="30" text-anchor="end">20</text>
+            <circle class="qr-dot" cx="93.0" cy="226.1" r="3.2"/><circle class="qr-dot" cx="113.3" cy="210.0" r="3.2"/><circle class="qr-dot" cx="133.7" cy="223.1" r="3.2"/><circle class="qr-dot" cx="153.5" cy="196.2" r="3.2"/><circle class="qr-dot" cx="173.8" cy="204.7" r="3.2"/><circle class="qr-dot" cx="194.2" cy="198.7" r="3.2"/><circle class="qr-dot" cx="214.6" cy="157.6" r="3.2"/><circle class="qr-dot" cx="234.9" cy="179.4" r="3.2"/><circle class="qr-dot" cx="254.7" cy="176.7" r="3.2"/><circle class="qr-dot" cx="275.1" cy="154.1" r="3.2"/><circle class="qr-dot" cx="295.4" cy="137.5" r="3.2"/><circle class="qr-dot" cx="315.8" cy="157.5" r="3.2"/><circle class="qr-dot" cx="336.1" cy="135.2" r="3.2"/><circle class="qr-dot" cx="355.9" cy="171.0" r="3.2"/><circle class="qr-dot" cx="376.2" cy="148.4" r="3.2"/><circle class="qr-dot" cx="396.6" cy="144.9" r="3.2"/><circle class="qr-dot" cx="416.9" cy="168.2" r="3.2"/><circle class="qr-dot" cx="437.3" cy="170.0" r="3.2"/><circle class="qr-dot" cx="457.1" cy="170.3" r="3.2"/><circle class="qr-dot" cx="477.4" cy="114.9" r="3.2"/><circle class="qr-dot" cx="497.8" cy="106.4" r="3.2"/><circle class="qr-dot" cx="518.1" cy="106.2" r="3.2"/><circle class="qr-dot" cx="538.5" cy="84.0" r="3.2"/><circle class="qr-dot" cx="558.3" cy="138.9" r="3.2"/><circle class="qr-dot" cx="578.6" cy="77.8" r="3.2"/><circle class="qr-dot" cx="599.0" cy="56.8" r="3.2"/>
+            <line x1="76.5" y1="232.5" x2="599.0" y2="105.2" style="stroke:var(--blue);stroke-width:2.5"/>
+            <text x="380" y="200" style="font:600 11px 'DM Sans',sans-serif;fill:var(--blue)">τ=0.05 (q ≈ 2.04 + 1.17x)</text>
+          </svg></div>
+          <div class="sl-verdict"><strong>Hugs the bottom edge</strong> of the scatter instead of its center — only about 5% of dots should sit below this line at any given x. It's tracking the low tail, not the average.</div>
+        </div>
+        <div class="sl-panel" id="qr-p3">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Same scatter with both lines overlaid: the grey OLS mean line and the blue tau equals 0.05 line, nearly touching on the left side and clearly separated on the right side">
+            <line class="qr-axis" x1="60" y1="260" x2="610" y2="260"/><line class="qr-axis" x1="60" y1="260" x2="60" y2="20"/>
+            <text class="qr-axistext" x="60" y="277" text-anchor="middle">0</text>
+            <text class="qr-axistext" x="335" y="277" text-anchor="middle">5</text>
+            <text class="qr-axistext" x="610" y="277" text-anchor="middle">10</text>
+            <text class="qr-axistext" x="620" y="264" text-anchor="start">X</text>
+            <text class="qr-axistext" x="48" y="264" text-anchor="end">0</text>
+            <text class="qr-axistext" x="48" y="145" text-anchor="end">10</text>
+            <text class="qr-axistext" x="48" y="30" text-anchor="end">20</text>
+            <circle class="qr-dot" cx="93.0" cy="226.1" r="3.2"/><circle class="qr-dot" cx="113.3" cy="210.0" r="3.2"/><circle class="qr-dot" cx="133.7" cy="223.1" r="3.2"/><circle class="qr-dot" cx="153.5" cy="196.2" r="3.2"/><circle class="qr-dot" cx="173.8" cy="204.7" r="3.2"/><circle class="qr-dot" cx="194.2" cy="198.7" r="3.2"/><circle class="qr-dot" cx="214.6" cy="157.6" r="3.2"/><circle class="qr-dot" cx="234.9" cy="179.4" r="3.2"/><circle class="qr-dot" cx="254.7" cy="176.7" r="3.2"/><circle class="qr-dot" cx="275.1" cy="154.1" r="3.2"/><circle class="qr-dot" cx="295.4" cy="137.5" r="3.2"/><circle class="qr-dot" cx="315.8" cy="157.5" r="3.2"/><circle class="qr-dot" cx="336.1" cy="135.2" r="3.2"/><circle class="qr-dot" cx="355.9" cy="171.0" r="3.2"/><circle class="qr-dot" cx="376.2" cy="148.4" r="3.2"/><circle class="qr-dot" cx="396.6" cy="144.9" r="3.2"/><circle class="qr-dot" cx="416.9" cy="168.2" r="3.2"/><circle class="qr-dot" cx="437.3" cy="170.0" r="3.2"/><circle class="qr-dot" cx="457.1" cy="170.3" r="3.2"/><circle class="qr-dot" cx="477.4" cy="114.9" r="3.2"/><circle class="qr-dot" cx="497.8" cy="106.4" r="3.2"/><circle class="qr-dot" cx="518.1" cy="106.2" r="3.2"/><circle class="qr-dot" cx="538.5" cy="84.0" r="3.2"/><circle class="qr-dot" cx="558.3" cy="138.9" r="3.2"/><circle class="qr-dot" cx="578.6" cy="77.8" r="3.2"/><circle class="qr-dot" cx="599.0" cy="56.8" r="3.2"/>
+            <line x1="76.5" y1="230.0" x2="599.0" y2="70.0" style="stroke:var(--text2);stroke-width:2.5"/>
+            <line x1="76.5" y1="232.5" x2="599.0" y2="105.2" style="stroke:var(--blue);stroke-width:2.5"/>
+            <text x="150" y="245" style="font:600 10.5px 'DM Sans',sans-serif;fill:var(--text3)">≈ touching near x=0</text>
+            <text x="470" y="60" style="font:600 10.5px 'DM Sans',sans-serif;fill:var(--text3)">clearly apart by x=10</text>
+          </svg></div>
+          <div class="sl-verdict"><strong>The two lines nearly touch on the left, then visibly diverge moving right</strong> — because the noise widens with x (heteroskedasticity). A single mean line has no way to show that the spread itself is changing; it just reports one number at every x.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Drag τ and watch the fan</h2>
+      <p class="sl-sub">Faint lines mark τ = 0.05, 0.25, 0.5, 0.75, 0.95. The bold line is whatever τ you pick — the fan itself is the heteroskedasticity.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Scatter plot with five faint reference quantile lines fanning out from left to right, and one bold highlighted quantile line whose position is controlled by a slider">
+            <line class="qr-axis" x1="60" y1="260" x2="610" y2="260"/><line class="qr-axis" x1="60" y1="260" x2="60" y2="20"/>
+            <text class="qr-axistext" x="60" y="277" text-anchor="middle">0</text>
+            <text class="qr-axistext" x="335" y="277" text-anchor="middle">5</text>
+            <text class="qr-axistext" x="610" y="277" text-anchor="middle">10</text>
+            <text class="qr-axistext" x="620" y="264" text-anchor="start">X</text>
+            <text class="qr-axistext" x="48" y="264" text-anchor="end">0</text>
+            <text class="qr-axistext" x="48" y="145" text-anchor="end">10</text>
+            <text class="qr-axistext" x="48" y="30" text-anchor="end">20</text>
+            <circle class="qr-dot" cx="93.0" cy="226.1" r="3.2"/><circle class="qr-dot" cx="113.3" cy="210.0" r="3.2"/><circle class="qr-dot" cx="133.7" cy="223.1" r="3.2"/><circle class="qr-dot" cx="153.5" cy="196.2" r="3.2"/><circle class="qr-dot" cx="173.8" cy="204.7" r="3.2"/><circle class="qr-dot" cx="194.2" cy="198.7" r="3.2"/><circle class="qr-dot" cx="214.6" cy="157.6" r="3.2"/><circle class="qr-dot" cx="234.9" cy="179.4" r="3.2"/><circle class="qr-dot" cx="254.7" cy="176.7" r="3.2"/><circle class="qr-dot" cx="275.1" cy="154.1" r="3.2"/><circle class="qr-dot" cx="295.4" cy="137.5" r="3.2"/><circle class="qr-dot" cx="315.8" cy="157.5" r="3.2"/><circle class="qr-dot" cx="336.1" cy="135.2" r="3.2"/><circle class="qr-dot" cx="355.9" cy="171.0" r="3.2"/><circle class="qr-dot" cx="376.2" cy="148.4" r="3.2"/><circle class="qr-dot" cx="396.6" cy="144.9" r="3.2"/><circle class="qr-dot" cx="416.9" cy="168.2" r="3.2"/><circle class="qr-dot" cx="437.3" cy="170.0" r="3.2"/><circle class="qr-dot" cx="457.1" cy="170.3" r="3.2"/><circle class="qr-dot" cx="477.4" cy="114.9" r="3.2"/><circle class="qr-dot" cx="497.8" cy="106.4" r="3.2"/><circle class="qr-dot" cx="518.1" cy="106.2" r="3.2"/><circle class="qr-dot" cx="538.5" cy="84.0" r="3.2"/><circle class="qr-dot" cx="558.3" cy="138.9" r="3.2"/><circle class="qr-dot" cx="578.6" cy="77.8" r="3.2"/><circle class="qr-dot" cx="599.0" cy="56.8" r="3.2"/>
+            <line class="qr-fan-ref" x1="76.5" y1="232.5" x2="599.0" y2="105.2" style="stroke:var(--text3)"/>
+            <line class="qr-fan-ref" x1="76.5" y1="231.1" x2="599.0" y2="91.2" style="stroke:var(--text3)"/>
+            <line class="qr-fan-ref" x1="76.5" y1="229.5" x2="599.0" y2="73.7" style="stroke:var(--text3)"/>
+            <line class="qr-fan-ref" x1="76.5" y1="227.8" x2="599.0" y2="56.1" style="stroke:var(--text3)"/>
+            <line class="qr-fan-ref" x1="76.5" y1="226.4" x2="599.0" y2="42.1" style="stroke:var(--text3)"/>
+            <line id="qr-fan-live" x1="76.5" y1="229.5" x2="599.0" y2="73.7" style="stroke:var(--purple);stroke-width:3"/>
+            <circle id="qr-fan-dot" cx="599.0" cy="73.7" r="4.5" style="fill:var(--purple)"/>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Quantile level τ</span><span class="sl-live" id="qr-fan-tval">τ = 0.50 — q(x) ≈ 2.23 + 1.43x</span></div>
+        <input type="range" class="sl-slider" id="qr-fan-slider" min="5" max="95" step="5" value="50">
+        <div class="sl-note">Slide τ from 0.05 toward 0.95 and the purple line sweeps from the bottom of the fan to the top — passing through the same OLS-like slope near τ≈0.5. Every one of these lines is fit on the exact same scatter; only the loss function's asymmetry changed.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Compute a pinball loss, live</h2>
+      <p class="sl-sub">Enter an actual outcome Y, a predicted quantile q, and a target level τ — the asymmetric penalty recalculates instantly.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Actual outcome (Y)</label><input type="number" class="sl-input" id="pb-y" value="-3.2" step="0.1"></div>
+          <div class="sl-calc-field"><label>Predicted quantile (q)</label><input type="number" class="sl-input" id="pb-q" value="-2.5" step="0.1"></div>
+          <div class="sl-calc-field"><label>Target level τ (%)</label><input type="number" class="sl-input" id="pb-tau" value="5" step="1" min="0" max="100"></div>
+          <div class="sl-calc-op">→</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Pinball loss ρ<sub>τ</sub>(u)</div>
+            <div class="sl-calc-result-val" id="pb-result">0.6650</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Residual u = Y − q = <b id="pb-u">-0.700</b></div>
+          <div>Side = <b id="pb-side">over-prediction (q too high)</b></div>
+          <div>Weight applied = <b id="pb-weight">0.9500</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="pb-reset">Reset to worked-example numbers</button>
+        <div class="sl-note">Guarded against blank fields, non-finite numbers, and a τ outside 0–100% — those show "—" instead of NaN or Infinity.</div>
+      </div>
+      <p class="sl-p">Default numbers: the market actually returned <strong>−3.2%</strong>, but a τ=0.05 model had only predicted a 5th-percentile floor of <strong>−2.5%</strong> — the model's guess was too high (too optimistic about the floor), so this is an over-prediction, penalized at weight (1−τ) = 0.95. |u|·0.95 = 0.7 × 0.95 = <strong>0.665</strong>.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">The practical payoff</h2>
+      <p class="sl-sub">A tail estimate that moves with conditions, instead of a fixed correction hoping the tail scales proportionally.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Cornish-Fisher — static</span>
+          <p>Corrects a Gaussian quantile using the return series's own <em>unconditional</em> skew and kurtosis. One adjustment, computed once from history, applied identically no matter what today's conditions actually look like.</p>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Quantile regression — conditional</span>
+          <p>Fits q<sub>τ</sub>(x) directly against live predictors — today's realized volatility, a momentum signal, a regime flag. The fitted tail <em>moves</em> automatically as those predictors move.</p>
+        </div>
+      </div>
+      <p class="sl-p">In the toy example, the 80%-interval width (τ=0.9 minus τ=0.1) grows from about <strong>0.80</strong> at x=1 to about <strong>4.97</strong> at x=10 — roughly six times wider. A single OLS mean line, or a static Cornish-Fisher offset bolted onto it, has no mechanism to express that the spread itself is widening; both report the same shape of correction at every x. Quantile regression's output tracks how the worst case changes with conditions directly, rather than adjusting an unconditional distribution's mean or moments and hoping the tail follows along proportionally.</p>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>This is a real regression, with real overfitting risk — more predictors and a thin sample can produce a tail estimate that looks sharp in-sample and degrades out-of-sample. Cornish-Fisher's two-number moment correction is cheaper to build and validate; quantile regression trades that cheapness for responsiveness to current conditions.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">How this actually gets used</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>Directly modeling conditional VaR</h4><p>Fitting q<sub>τ</sub>(x) at τ=0.01 or τ=0.05 against relevant predictors is a standard way to build a VaR estimate that responds to current conditions, not just a fixed unconditional shape.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📐</div><div><h4>Many τ values trace a whole shape</h4><p>Fitting the same predictors at τ = 0.05, 0.25, 0.5, 0.75, 0.95 builds a picture of the entire conditional distribution — including how its spread and asymmetry themselves change — without assuming a parametric family.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🌐</div><div><h4>Standard well outside finance</h4><p>Econometrics, epidemiology, and ecology all reach for this exact tool whenever the outcome's spread or shape changes across the predictor range, not just its average.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🤝</div><div><h4>Complements the mean, doesn't replace it</h4><p>A desk reporting both an OLS mean forecast and a quantile-regression tail estimate gets two genuinely different pieces of information from the same predictors.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Where it gets over-trusted</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Quantile crossing — a real limitation, not an edge case</div>
+        <p>Each τ is fit as its own separate optimization, so nothing in the basic method guarantees q̂<sub>0.1</sub>(x) &lt; q̂<sub>0.5</sub>(x) &lt; q̂<sub>0.9</sub>(x) holds at every x. Near the edges of the observed data, fitted lines for different τ can actually cross — nonsensically implying a higher quantile predicts a lower value. This is the direct structural cousin of Cornish-Fisher's own non-monotonicity failure.</p>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🔬</div><div><h4>Extreme τ needs tail data</h4><p>A fit at τ=0.01 is pinned down mostly by the small fraction of observations near that extreme — a modest sample can leave it poorly determined even when the median line is comfortable.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📏</div><div><h4>Still a linear model</h4><p>The loss function changed, not the assumption that the quantile is linear in the predictors. A genuinely nonlinear conditional quantile will be misfit, the same way a nonlinear conditional mean misfits OLS.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>More predictors, more overfitting surface</h4><p>Unlike a two-number moment adjustment, this is a real regression — it needs the same out-of-sample validation discipline any regression does.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Checked against this repo's actual code</h2>
+      <p class="sl-sub">The full lesson makes a specific claim about what's built here. Verifying it against the current source turned up a nuance worth stating plainly.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Original lesson claim vs. current repo reality</div>
+        <p><strong>What the full lesson says:</strong> its status line reads "CONCEPT — explains a conditional-quantile estimation technique; not built or used anywhere in this repo," and its takeaways repeat that "it is not a claim that quantile regression is fitted or used anywhere in this project."</p>
+        <p style="margin-top:10px"><strong>What the current code actually shows:</strong> the pinball loss this lesson derives is <em>not</em> absent — it's implemented and used pervasively as a proper scoring rule: <code>forge/vol.py::pinball_loss</code>, <code>js/volEstimatorAB.js::pinball</code>, <code>js/mve/validation.js::pinball</code>, and <code>js/coneBlend.js::_pinballLoss</code> all score volatility- and cone-forecast calibration with it. <code>forge/drift.py::_fit_linear</code> goes a step further: it grid-searches a drift-adjustment parameter β to minimize out-of-sample pinball loss for a prediction of the form σ·(1+β·d) — a live predictor d (a momentum signal) genuinely shifting the fitted quantile, which is functionally a simple, single-predictor conditional-quantile fit.</p>
+        <p style="margin-top:10px"><strong>What's still accurate:</strong> none of this is the general linear quantile regression q<sub>τ</sub>(x) = x⊤β<sub>τ</sub>, fit by linear programming against an arbitrary predictor matrix, that Koenker &amp; Bassett describe and this lesson derives. That specific machinery genuinely isn't implemented anywhere in this repo — only the pinball-loss scoring rule and one narrow, single-predictor conditional fit are.</p>
+      </div>
+      <p class="sl-p">Both things can be true at once: the general technique this lesson teaches is still conceptual here, but the loss function underneath it is already load-bearing in production calibration code. Neither the original claim nor the correction is dropped — both are on this slide.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What does OLS's fitted line actually estimate?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The conditional mean, E[Y∣X]</button>
+        <button class="sl-quiz-opt">The conditional median</button>
+        <button class="sl-quiz-opt">The conditional 5th percentile</button>
+        <div class="sl-quiz-explain">Squared-error loss is symmetric, and the point minimizing a symmetric penalty is the average — the conditional mean, not any particular percentile.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>In pinball loss at τ=0.05, which side is penalized more heavily, and by how much?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Over-prediction, at weight 0.95 vs. 0.05 — nineteen times more</button>
+        <button class="sl-quiz-opt">Under-prediction, at weight 0.95 vs. 0.05</button>
+        <button class="sl-quiz-opt">Both sides equally, at weight 0.5 each</button>
+        <div class="sl-quiz-explain">Under-prediction is weighted τ; over-prediction is weighted 1−τ. At τ=0.05, that's 0.05 vs. 0.95 — over-prediction is punished nineteen times harder, which drags the loss-minimizing guess down toward the low tail.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Why can't a single OLS mean line show that the τ=0.1–τ=0.9 band widens with x?</h4>
+        <button class="sl-quiz-opt" data-correct="true">OLS reports one number (the average) at every x, with no information about spread</button>
+        <button class="sl-quiz-opt">OLS can show this too, if you add a confidence interval</button>
+        <button class="sl-quiz-opt">It can't, because OLS assumes X and Y are uncorrelated</button>
+        <div class="sl-quiz-explain">Squared-error loss never distinguishes "the spread was wide" from "the spread was narrow but the mean guess was off" — it only ever reports the single expected value, at every x.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>What is quantile crossing?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Separately-fit quantile lines for different τ can cross, implying a higher quantile predicts a lower value</button>
+        <button class="sl-quiz-opt">The point where the OLS line crosses zero</button>
+        <button class="sl-quiz-opt">When τ is set above 0.5</button>
+        <div class="sl-quiz-explain">Each τ is its own separate optimization, so nothing guarantees the fitted lines stay correctly ordered everywhere — a real limitation, and the structural cousin of Cornish-Fisher's own non-monotonicity problem.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>What's the central contrast between Cornish-Fisher and quantile regression?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Cornish-Fisher is a static, unconditional correction; quantile regression moves with live predictors</button>
+        <button class="sl-quiz-opt">Cornish-Fisher only works on FX pairs; quantile regression works on any asset</button>
+        <button class="sl-quiz-opt">They estimate the exact same quantity, just with different formulas</button>
+        <div class="sl-quiz-explain">Cornish-Fisher nudges a Gaussian quantile using the whole sample's unconditional skew and kurtosis — the same correction every day. Quantile regression fits the quantile as a function of today's predictors, so the estimate shifts as conditions shift.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>OLS fits the conditional mean, E[Y∣X] — the average outcome given the predictors, and nothing else, because squared-error loss is symmetric.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>A risk manager's real question is usually about a specific tail quantile — "what's my 5th-percentile worst outcome given these conditions" — a VaR-style question the mean can't answer directly.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>The asymmetric pinball loss ρ<sub>τ</sub>(u) fixes this: minimizing its expectation lands exactly on the τ-th conditional quantile, not the mean.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>On heteroskedastic data, the fitted quantile lines fan out as the predictor grows — a single OLS mean line structurally cannot show that the spread itself is changing.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Quantile regression is conditional, unlike Cornish-Fisher's static moment-based adjustment — the fitted tail moves automatically as live predictors like realized volatility move.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Quantile crossing is a real, documented limitation — separately-fit τ lines aren't guaranteed to stay correctly ordered everywhere.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Build a model whose output directly tracks how the tail — the worst-case outcome — changes with market conditions, instead of adjusting an unconditional distribution's mean or moments and hoping the tail behaves proportionally. That's a genuinely different, and often more useful, answer to "how bad can this get" than any static correction can offer.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Advanced Portfolio Construction</h3>
+        <p>Risk Management Deep Dive wraps here — next up is portfolio construction that treats risk contributions, not capital weights, as the thing being balanced.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="risk-parity-erc-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="quantile-regression.html">Read the full quantile regression lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // τ fan slider — sweeps the live quantile line across the pre-drawn fan.
+  (function(){
+    var slider = document.getElementById('qr-fan-slider');
+    if (!slider) return;
+    var label = document.getElementById('qr-fan-tval');
+    var line = document.getElementById('qr-fan-live');
+    var dot = document.getElementById('qr-fan-dot');
+    var PX0 = 76.5, PX1 = 599.0, X0 = 0.3, X1 = 9.8;
+
+    function q(tau, x){
+      var slope = 1.194 + (tau - 0.1) * 0.58;
+      var intercept = 2.062 + (tau - 0.1) * 0.41625;
+      return intercept + slope * x;
+    }
+    function py(y){ return 260 - 11.5 * y; }
+
+    function update(){
+      var tauPct = parseFloat(slider.value);
+      if (!isFinite(tauPct)) return;
+      var tau = tauPct / 100;
+      var y0 = q(tau, X0), y1 = q(tau, X1);
+      var py0 = py(y0), py1 = py(y1);
+      line.setAttribute('y1', py0.toFixed(1));
+      line.setAttribute('y2', py1.toFixed(1));
+      dot.setAttribute('cy', py1.toFixed(1));
+      var slopeAt10 = 1.194 + (tau - 0.1) * 0.58;
+      var interceptAt10 = 2.062 + (tau - 0.1) * 0.41625;
+      label.textContent = 'τ = ' + tau.toFixed(2) + ' — q(x) ≈ ' + interceptAt10.toFixed(2) + ' + ' + slopeAt10.toFixed(2) + 'x';
+    }
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Live pinball-loss calculator: Y (actual), q (predicted), τ (%).
+  (function(){
+    var yEl = document.getElementById('pb-y');
+    if (!yEl) return;
+    var qEl = document.getElementById('pb-q'), tauEl = document.getElementById('pb-tau');
+    var resultEl = document.getElementById('pb-result');
+    var uEl = document.getElementById('pb-u'), sideEl = document.getElementById('pb-side'), weightEl = document.getElementById('pb-weight');
+    var resetBtn = document.getElementById('pb-reset');
+    var DEFAULTS = { y: -3.2, q: -2.5, tau: 5 };
+
+    function recompute(){
+      var Y = parseFloat(yEl.value), q = parseFloat(qEl.value), tauPct = parseFloat(tauEl.value);
+      if (!isFinite(Y) || !isFinite(q) || !isFinite(tauPct) || tauPct < 0 || tauPct > 100) {
+        resultEl.textContent = '—';
+        uEl.textContent = '—';
+        sideEl.textContent = '—';
+        weightEl.textContent = '—';
+        return;
+      }
+      var tau = tauPct / 100;
+      var u = Y - q;
+      var indicator = u < 0 ? 1 : 0;
+      var weight = tau - indicator;
+      var loss = u * weight;
+
+      uEl.textContent = u.toFixed(3);
+      sideEl.textContent = u < 0 ? 'over-prediction (q too high)' : (u > 0 ? 'under-prediction (q too low)' : 'exact — zero residual');
+      weightEl.textContent = Math.abs(weight).toFixed(4);
+      resultEl.textContent = loss.toFixed(4);
+    }
+
+    [yEl, qEl, tauEl].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      yEl.value = DEFAULTS.y; qEl.value = DEFAULTS.q; tauEl.value = DEFAULTS.tau;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

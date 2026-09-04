@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Transfer Entropy &amp; Information-Theoretic Causality — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Transfer Entropy — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the exact-bits worked derivation, the full causal caveat, and a 6-question self-test?<a href="transfer-entropy-causality.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Information Theory 2 · Information Theory</div>
+      <h1 class="sl-h1">Transfer Entropy, <em>Beyond the Linear Arrow</em></h1>
+      <p class="sl-lede">The <a href="entropy-kl-mutual-information.html" style="color:var(--blue);font-weight:600;text-decoration:none">previous lesson</a> built mutual information as a nonlinear generalization of correlation. The <a href="arima-var-micro.html" style="color:var(--blue);font-weight:600;text-decoration:none">ARIMA &amp; VAR guide</a>'s Granger causality section then asked a directional question with that same linear toolkit: does X's past significantly improve a linear forecast of Y? Transfer entropy asks the identical question — model-free, with mutual information standing in for a regression's R² — and comes bundled with the same hard warning either way: a directional signal is not proof of causation.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Granger causality only ever looks for a straight line</h2>
+      <p class="sl-sub">Recall the test from the <a href="arima-var-micro.html" style="color:var(--blue);font-weight:600;text-decoration:none">ARIMA &amp; VAR guide</a>: fit Y on its own lags, add X's lags, and F-test whether that addition helps.</p>
+      <div class="sl-row">
+        <div class="sl-box">Yₜ = a·Yₜ₋₁ + b·Xₜ₋₁ + εₜ&emsp;→&emsp;is b significant?</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">R²</div><div><h4>The test is exactly as powerful as the model</h4><p>Granger causality's F-test lives entirely inside a linear regression. It can only ever detect the kind of dependence a straight-line coefficient can express.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⊘</div><div><h4>A real, usable relationship can hide from it</h4><p>If X's past predicts Y's future through a threshold, an interaction, or any other nonlinear channel, the linear coefficient b can come back statistically indistinguishable from zero — even with genuine predictive information sitting right there in the data.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">↔</div><div><h4>The identical blind spot as correlation</h4><p>This is the same structural gap the previous lesson's Y = X² example demonstrated for correlation — a real dependence a linear summary statistic simply cannot see, not because the relationship is weak, but because it isn't linear.</p></div></div>
+      </div>
+      <div class="sl-quote">Roosters crowing right before sunrise "Granger-cause" the sunrise by the narrow statistical definition — a rooster's crow is a fine linear predictor of dawn. Whatever tool replaces the linear regression underneath, that warning never goes away; it only gets carried forward, unchanged, to whatever comes next.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">The model-free version: does X's past reduce your uncertainty about Y's future?</h2>
+      <p class="sl-sub">Not "does adding X's lags improve a linear fit" — but "does knowing X's past tell you anything about Y's future that Y's own past didn't already tell you."</p>
+      <div class="sl-row">
+        <div class="sl-box">TE(X→Y) = I( Yₜ ; Xₜ₋₁ | Yₜ₋₁ )</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">Yₜ</div><div><h4>The target — Y's future value</h4><p>What you're trying to predict.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">Xₜ₋₁</div><div><h4>The candidate source — X's past</h4><p>Does it carry genuinely new information?</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">|Yₜ₋₁</div><div><h4>Conditioned on Y's own past</h4><p>Held fixed so only X's contribution is counted — not Y predicting itself.</p></div></div>
+      </div>
+      <p class="sl-p">This is a <strong>conditional mutual information</strong> — the mutual information from the previous lesson, computed within each fixed value of Yₜ₋₁ and averaged, the same way conditional entropy generalizes entropy. Because mutual information registers any form of statistical dependence, not just a linear one, transfer entropy catches exactly the nonlinear relationships Section 1's linear regression is structurally blind to — while asking the identical directional question.</p>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>Like ordinary mutual information, TE(X→Y) ≥ 0 always — it is built from an average of KL divergences, each individually nonnegative. Equality holds exactly when Xₜ₋₁ adds nothing to predicting Yₜ beyond what Yₜ₋₁ already provides. And nothing forces TE(X→Y) to equal TE(Y→X) — conditioning each direction on a <em>different</em> series' own past makes them two genuinely different computations.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">A relationship Granger causality catches, and one it misses</h2>
+      <p class="sl-sub">Same underlying question — does X's past predict Y's future — asked of a linear channel and a nonlinear one. Switch tabs.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="rel-tabs">
+          <button class="sl-tab active" data-panel="rel-linear">Linear channel</button>
+          <button class="sl-tab" data-panel="rel-nonlinear">Nonlinear (XOR) channel</button>
+        </div>
+        <div class="sl-panel active" id="rel-linear">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Scatter plot of X against Y showing points clustered tightly around a rising diagonal line, a clear linear relationship.">
+            <line x1="40" y1="170" x2="600" y2="170" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="40" y1="20" x2="40" y2="170" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="55" y1="160" x2="585" y2="35" style="stroke:var(--blue);stroke-width:1.5;stroke-dasharray:5,4;opacity:.6"/>
+            <circle cx="80" cy="150" r="5" style="fill:var(--blue)"/><circle cx="130" cy="132" r="5" style="fill:var(--blue)"/>
+            <circle cx="170" cy="140" r="5" style="fill:var(--blue)"/><circle cx="220" cy="112" r="5" style="fill:var(--blue)"/>
+            <circle cx="260" cy="118" r="5" style="fill:var(--blue)"/><circle cx="300" cy="95" r="5" style="fill:var(--blue)"/>
+            <circle cx="350" cy="100" r="5" style="fill:var(--blue)"/><circle cx="390" cy="78" r="5" style="fill:var(--blue)"/>
+            <circle cx="430" cy="88" r="5" style="fill:var(--blue)"/><circle cx="470" cy="62" r="5" style="fill:var(--blue)"/>
+            <circle cx="510" cy="70" r="5" style="fill:var(--blue)"/><circle cx="555" cy="48" r="5" style="fill:var(--blue)"/>
+            <text x="320" y="188" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:11px">Xₜ₋₁</text>
+            <text x="22" y="95" text-anchor="middle" transform="rotate(-90 22 95)" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:11px">Yₜ</text>
+          </svg></div>
+          <div class="sl-verdict"><strong>Granger causality:</strong> catches it — Xₜ₋₁'s coefficient is statistically significant in a linear regression of Yₜ. <strong>Transfer entropy:</strong> catches it too — for a linear/Gaussian channel like this one, TE(X→Y) reduces, up to a constant, to exactly the same information Granger's F-test is measuring (Barnett, Barrett &amp; Seth, 2009).</div>
+        </div>
+        <div class="sl-panel" id="rel-nonlinear">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Scatter plot of X against Y for an XOR-style channel: points scattered with no visible linear trend, arranged instead into four quadrant clusters.">
+            <line x1="40" y1="170" x2="600" y2="170" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="40" y1="20" x2="40" y2="170" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="55" y1="95" x2="585" y2="95" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:4,3;opacity:.5"/>
+            <text x="595" y="99" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">flat fit</text>
+            <circle cx="110" cy="150" r="5" style="fill:var(--amber)"/><circle cx="140" cy="158" r="5" style="fill:var(--amber)"/><circle cx="90" cy="140" r="5" style="fill:var(--amber)"/>
+            <circle cx="120" cy="40" r="5" style="fill:var(--amber)"/><circle cx="160" cy="30" r="5" style="fill:var(--amber)"/><circle cx="95" cy="48" r="5" style="fill:var(--amber)"/>
+            <circle cx="480" cy="150" r="5" style="fill:var(--amber)"/><circle cx="510" cy="160" r="5" style="fill:var(--amber)"/><circle cx="450" cy="142" r="5" style="fill:var(--amber)"/>
+            <circle cx="480" cy="40" r="5" style="fill:var(--amber)"/><circle cx="520" cy="32" r="5" style="fill:var(--amber)"/><circle cx="450" cy="50" r="5" style="fill:var(--amber)"/>
+            <text x="320" y="188" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:11px">Xₜ₋₁</text>
+            <text x="22" y="95" text-anchor="middle" transform="rotate(-90 22 95)" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:11px">Yₜ</text>
+          </svg></div>
+          <div class="sl-verdict"><strong>Granger causality:</strong> misses it — a linear regression of Yₜ on Xₜ₋₁ finds essentially zero correlation, so the F-test isn't significant. <strong>Transfer entropy:</strong> catches it — this is the full lesson's worked example (Yₜ = Xₜ₋₁ XOR a 10%-noisy flip), and TE(X→Y) ≈ 0.531 bits exactly, because mutual information registers the deterministic-if-noisy structure a straight line can't express at all.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Two diagrams that can look identical from the outside</h2>
+      <p class="sl-sub">Left: a real, one-directional flow of predictive information. Right: no direct link at all — just a hidden variable Z driving both series.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Real information flow</span>
+          <div class="sl-svgwrap"><svg viewBox="0 0 300 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagram: X sub t minus 1 and Y sub t minus 1 on the left, an arrow from X's past to Y's future labeled transfer entropy greater than zero, and a dashed arrow from Y's own past to Y's future labeled own memory, already accounted for.">
+            <defs><marker id="teA1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" style="fill:var(--blue)"/></marker>
+            <marker id="teA2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" style="fill:var(--text3)"/></marker></defs>
+            <rect x="8" y="15" width="120" height="46" rx="9" style="fill:var(--panel2);stroke:var(--amber);stroke-width:1.5"/>
+            <text x="68" y="43" text-anchor="middle" font-size="14" font-weight="700" font-family="'DM Mono',monospace" fill="var(--amber)">Xₜ₋₁</text>
+            <rect x="8" y="150" width="120" height="46" rx="9" style="fill:var(--panel2);stroke:var(--text3);stroke-width:1.5;stroke-dasharray:4,3"/>
+            <text x="68" y="178" text-anchor="middle" font-size="14" font-weight="700" font-family="'DM Mono',monospace" fill="var(--text3)">Yₜ₋₁</text>
+            <text x="68" y="210" text-anchor="middle" font-size="9.5" fill="var(--text3)">held fixed</text>
+            <rect x="168" y="82" width="120" height="46" rx="9" style="fill:var(--panel2);stroke:var(--blue);stroke-width:1.5"/>
+            <text x="228" y="110" text-anchor="middle" font-size="14" font-weight="700" font-family="'DM Mono',monospace" fill="var(--blue)">Yₜ</text>
+            <path d="M128,45 C170,30 190,55 168,95" fill="none" style="stroke:var(--blue);stroke-width:2.2" marker-end="url(#teA1)"/>
+            <text x="190" y="26" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--blue)">TE(X→Y) &gt; 0</text>
+            <path d="M128,168 C170,180 190,150 168,118" fill="none" style="stroke:var(--text3);stroke-width:1.8" marker-end="url(#teA2)"/>
+            <text x="190" y="228" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">own memory</text>
+          </svg></div>
+          <p>Xₜ₋₁'s past genuinely adds new predictive content for Yₜ, beyond what Yₜ₋₁ already provides.</p>
+        </div>
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">A confound imitates it</span>
+          <div class="sl-svgwrap"><svg viewBox="0 0 300 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagram: a hidden variable Z at the top with arrows down to boxes X and Y at the bottom, and a dashed crossed-out line directly between X and Y labeled no direct link, true coefficient zero.">
+            <defs><marker id="teA3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" style="fill:var(--purple)"/></marker></defs>
+            <rect x="90" y="10" width="120" height="46" rx="9" style="fill:var(--panel2);stroke:var(--purple);stroke-width:1.5"/>
+            <text x="150" y="38" text-anchor="middle" font-size="14" font-weight="700" font-family="'DM Mono',monospace" fill="var(--purple)">Z (hidden)</text>
+            <rect x="8" y="168" width="110" height="46" rx="9" style="fill:var(--panel2);stroke:var(--amber);stroke-width:1.5"/>
+            <text x="63" y="196" text-anchor="middle" font-size="14" font-weight="700" font-family="'DM Mono',monospace" fill="var(--amber)">X</text>
+            <rect x="182" y="168" width="110" height="46" rx="9" style="fill:var(--panel2);stroke:var(--blue);stroke-width:1.5"/>
+            <text x="237" y="196" text-anchor="middle" font-size="14" font-weight="700" font-family="'DM Mono',monospace" fill="var(--blue)">Y</text>
+            <path d="M110,56 C90,100 80,140 68,166" fill="none" style="stroke:var(--purple);stroke-width:2" marker-end="url(#teA3)"/>
+            <path d="M190,56 C210,100 220,140 232,166" fill="none" style="stroke:var(--purple);stroke-width:2" marker-end="url(#teA3)"/>
+            <line x1="118" y1="191" x2="182" y2="191" style="stroke:var(--red);stroke-width:2;stroke-dasharray:5,4"/>
+            <text x="150" y="150" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--red)">no direct link</text>
+            <text x="150" y="228" text-anchor="middle" font-size="9.5" fill="var(--red)">true coefficient = 0</text>
+          </svg></div>
+          <p>Z drives X and Y with slightly different timing. A naive TE(X→Y) can still read clearly above zero.</p>
+        </div>
+      </div>
+      <div class="sl-quote">A diagram that looks structurally different from the one beside it can still produce a numerically similar-looking transfer-entropy reading. That coincidence isn't a flaw in the math to be fixed later — it's the entire reason the causation caveat exists, drawn instead of just stated.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Recompute the exact worked example, live</h2>
+      <p class="sl-sub">Xₜ is a fair coin, independent across time. Yₜ = Xₜ₋₁ XOR a flip with probability ε. Change ε — both bars update.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change ε, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Channel flip probability ε</label><input type="number" class="sl-input" id="te-eps" value="0.1" step="0.01" min="0" max="1"></div>
+          <div class="sl-calc-op">→</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">H(ε), bits</div>
+            <div class="sl-calc-result-val" id="te-h" style="color:var(--text)">0.469</div>
+          </div>
+          <div class="sl-calc-op">→</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">TE(X→Y), bits</div>
+            <div class="sl-calc-result-val" id="te-out">0.531</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>H(ε) = −ε·log₂ε − (1−ε)·log₂(1−ε)</div>
+          <div>TE(X→Y) = 1 − H(ε) &emsp; (because Yₜ inherits a fair 50/50 marginal, and X is memoryless so conditioning on Yₜ₋₁ changes nothing)</div>
+          <div>TE(Y→X) = <b>0</b> bits, always — X was built to have no memory of anything, including Y's past</div>
+        </div>
+        <div class="sl-svgwrap" style="margin-top:14px"><svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart comparing transfer entropy from X to Y, which updates with the slider, against transfer entropy from Y to X, which is a flat line at zero.">
+          <line x1="60" y1="20" x2="60" y2="170" style="stroke:var(--border);stroke-width:1"/>
+          <line x1="60" y1="170" x2="600" y2="170" style="stroke:var(--border);stroke-width:1"/>
+          <text x="52" y="174" text-anchor="end" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">0</text>
+          <text x="52" y="26" text-anchor="end" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">1</text>
+          <rect id="te-bar-xy" x="180" y="43.72" width="140" height="126.28" style="fill:var(--blue)"/>
+          <text id="te-bar-xy-label" x="250" y="34" text-anchor="middle" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:12px">0.531 bits</text>
+          <text x="250" y="192" text-anchor="middle" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:11px">TE(X→Y)</text>
+          <rect x="400" y="169" width="140" height="1" style="fill:var(--red)"/>
+          <text x="470" y="162" text-anchor="middle" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:12px">0 bits, exactly</text>
+          <text x="470" y="192" text-anchor="middle" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:11px">TE(Y→X)</text>
+        </svg></div>
+        <button type="button" class="sl-reset-btn" id="te-reset">Reset to worked-example numbers (ε = 0.1)</button>
+        <div class="sl-note">Blank, negative, or above-1 values show "—" instead of a broken number — a probability outside [0,1] isn't a smaller answer, it's an invalid question.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">A confound can keep the reading elevated even with zero real link</h2>
+      <p class="sl-sub">Drag Z's strength. The true, direct X→Y causal coefficient is fixed at exactly 0 for every position of this slider — it never moves.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap"><svg viewBox="0 0 300 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagram of Z at the top with two arrows down to X and Y whose thickness grows with the slider, and a fixed dashed line directly between X and Y that never changes, labeled true link fixed at zero.">
+          <defs><marker id="confArr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" style="fill:var(--purple)"/></marker></defs>
+          <rect x="90" y="8" width="120" height="44" rx="9" style="fill:var(--panel2);stroke:var(--purple);stroke-width:1.5"/>
+          <text x="150" y="35" text-anchor="middle" font-size="14" font-weight="700" font-family="'DM Mono',monospace" fill="var(--purple)">Z</text>
+          <rect x="8" y="152" width="110" height="44" rx="9" style="fill:var(--panel2);stroke:var(--amber);stroke-width:1.5"/>
+          <text x="63" y="179" text-anchor="middle" font-size="14" font-weight="700" font-family="'DM Mono',monospace" fill="var(--amber)">X</text>
+          <rect x="182" y="152" width="110" height="44" rx="9" style="fill:var(--panel2);stroke:var(--blue);stroke-width:1.5"/>
+          <text x="237" y="179" text-anchor="middle" font-size="14" font-weight="700" font-family="'DM Mono',monospace" fill="var(--blue)">Y</text>
+          <path id="conf-zx" d="M110,52 C90,95 80,130 66,150" fill="none" style="stroke:var(--purple);stroke-width:2" marker-end="url(#confArr)"/>
+          <path id="conf-zy" d="M190,52 C210,95 220,130 234,150" fill="none" style="stroke:var(--purple);stroke-width:2" marker-end="url(#confArr)"/>
+          <line x1="118" y1="174" x2="182" y2="174" style="stroke:var(--red);stroke-width:2;stroke-dasharray:5,4"/>
+          <text x="150" y="135" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--red)">true link fixed at 0</text>
+        </svg></div>
+        <div class="sl-sliderhead"><span>Confounder strength (how hard Z drives both X and Y)</span><span class="sl-live" id="conf-sval">Z strength = 40%</span></div>
+        <input type="range" class="sl-slider" id="conf-slider" min="0" max="95" step="5" value="40">
+        <div class="sl-verdict" style="margin-top:12px">Illustrative apparent TE(X→Y)-style reading: <b id="conf-te">0.047</b> bits — computed only from Z's shared pull on both series, using the same Gaussian mutual-information formula that makes transfer entropy exactly equal Granger causality in the linear case.</div>
+        <div class="sl-note">This is a simplified, illustrative stand-in for a full transfer-entropy calculation, not the exact worked-example formula from the slide above — its only job is to show the reading rise as Z's strength rises, while the real causal coefficient between X and Y never leaves zero.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">The message that must not get lost</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">What a nonzero, asymmetric TE(X→Y) is real evidence of</span>
+          <ul>
+            <li>X's history carries genuine predictive content for Y that Y's own history doesn't already provide</li>
+            <li>A directional, model-free signal — the same kind of asymmetry Granger causality's directionality already gave you</li>
+            <li>A relationship worth investigating further, with real out-of-sample checks</li>
+          </ul>
+        </div>
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">What it is never, on its own, proof of</span>
+          <ul>
+            <li>Causation in the formal, interventionist sense (Judea Pearl's do-calculus: "if I intervened on X, would Y change")</li>
+            <li>The absence of a third, unobserved common driver hitting both series at slightly different speeds</li>
+            <li>A mechanism — only ever "X's past predicts Y's future," never "X makes Y happen"</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-quote">Imagine two friends who always sneeze within seconds of each other. It's tempting to say one sneeze causes the other — but maybe they're both just standing next to the same pile of pollen, reacting at slightly different speeds. Transfer entropy can spot the timing pattern perfectly; it has no way of telling "one triggered the other" apart from "something else set them both off."</div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Mandatory caveat, restated</div>
+        <p>This is the identical confounding failure mode already flagged for Granger causality in the ARIMA &amp; VAR guide — restated for a nonlinear, model-free measure rather than solved by it. Neither tool distinguishes a real direct link from a shared unobserved driver on its own.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Why this is much harder to compute from real data than Granger's regression</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Granger causality's data requirement</span>
+          <p>Fit two linear regressions and run one F-test. The number of parameters is small and fixed — it grows only linearly as more lags are added.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Transfer entropy's data requirement</span>
+          <p>Estimate a full joint probability distribution over Yₜ, Xₜ₋₁, and Yₜ₋₁ — and every additional lag of history multiplies the number of distinct states that distribution has to cover, not just adds to it.</p>
+        </div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📊</div><div><h4>A joint distribution, not a coefficient</h4><p>A linear regression needs a handful of numbers. A conditional mutual information needs the entire shape of how three variables co-occur — vastly more information to pin down accurately.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📈</div><div><h4>Longer history makes it worse fast</h4><p>Extending the relevant lag length from one step to several doesn't add a little more data need — it multiplies the number of joint states, the same curse of dimensionality that makes any density estimation harder in more dimensions.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎛</div><div><h4>Every estimator choice adds bias</h4><p>Binning, kernel bandwidth, or embedding-dimension choices for the joint density all introduce their own estimation bias — the identical concern already flagged for mutual information itself, now compounded by an extra conditioning variable.</p></div></div>
+      </div>
+      <p class="sl-p">This lesson's worked example on the earlier slide is exact <em>by construction</em> — the process's true distributions are known, not estimated. A real, finite, noisy sample never comes with known distributions, which is precisely why a naive transfer-entropy estimator can report a spuriously large number purely from overfitting a small sample's joint density.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Where this sits in the literature — and in this repo</h2>
+      <p class="sl-p">Thomas Schreiber introduced transfer entropy (2000) explicitly as a model-free alternative to Granger causality for nonlinear systems. Barnett, Barrett &amp; Seth (2009) then proved the two are mathematically equivalent, up to a constant, for jointly Gaussian variables under a linear model — confirming transfer entropy is a strict generalization, adding real detection power only once the true relationship stops being linear. In neuroscience, it's a standard tool for directional flow between EEG or physiological channels, where nonlinear coupling is the norm rather than the exception.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Factual grounding — verified against this repo's current source</div>
+        <p>The full lesson tags itself "CONCEPT — not built or tested anywhere in this repo," and that check still holds: a repo-wide search finds no transfer-entropy code and no Granger-causality F-test or multi-series VAR fit anywhere in this codebase — confirming the same gap the ARIMA &amp; VAR visual guide already flagged for Granger causality and VAR. One thing worth not confusing: <code>js/goldMinerArbEngine.js</code> and <code>js/hedgeSignalV2Engine.js</code> do implement <strong>Engle-Granger cointegration</strong> tests — a different test, named after the same economist, that checks whether two non-stationary series share a long-run equilibrium. It is not the lagged-forecast-improvement test this lesson and the ARIMA &amp; VAR guide describe. Nothing here was stale; both claims check out as still accurate.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What's the fundamental limitation of Granger causality that transfer entropy is built to fix?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It only tests for linear predictive relationships</button>
+        <button class="sl-quiz-opt">It requires more data than transfer entropy does</button>
+        <button class="sl-quiz-opt">It can only be computed for exactly two variables</button>
+        <div class="sl-quiz-explain">Granger causality's F-test lives entirely inside a linear regression. Transfer entropy asks the same directional question using mutual information instead, catching nonlinear predictive relationships a linear coefficient can miss entirely.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>In TE(X→Y) = I(Yₜ; Xₜ₋₁ | Yₜ₋₁), what does conditioning on Yₜ₋₁ accomplish?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It removes Y's own self-predictability, so only X's genuinely new contribution is counted</button>
+        <button class="sl-quiz-opt">It removes all measurement noise from the estimate</button>
+        <button class="sl-quiz-opt">It converts the measure into an ordinary linear correlation</button>
+        <div class="sl-quiz-explain">Holding Yₜ₋₁ fixed strips out the part of Yₜ's predictability that comes from Y predicting itself, so what's left and attributed to Xₜ₋₁ is only the new information X's past adds.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>A hidden variable Z drives both X and Y, with no direct link between X and Y at all. What can transfer entropy report here?</h4>
+        <button class="sl-quiz-opt" data-correct="true">A nonzero, asymmetric TE(X→Y), even though no real causal link exists</button>
+        <button class="sl-quiz-opt">Always exactly zero in both directions</button>
+        <button class="sl-quiz-opt">An error, since it can't be computed without knowing Z exists</button>
+        <div class="sl-quiz-explain">A shared, unobserved driver hitting both series with slightly different timing produces exactly this signature — a clean, asymmetric, nonzero transfer entropy with zero direct causal link, the same confounding failure mode already flagged for Granger causality.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Why is estimating transfer entropy from real, finite data typically harder than a Granger-causality regression?</h4>
+        <button class="sl-quiz-opt" data-correct="true">TE needs a full joint/conditional probability distribution, requiring far more data than fitting linear regression coefficients</button>
+        <button class="sl-quiz-opt">Transfer entropy cannot be computed on time-series data at all</button>
+        <button class="sl-quiz-opt">It requires already knowing the true causal structure in advance</button>
+        <div class="sl-quiz-explain">A linear regression estimates a handful of coefficients. Transfer entropy needs the joint distribution's full shape across every relevant lag — a much larger, harder estimation problem that grows fast as the lag length grows.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Granger causality tests whether X's lagged values significantly improve a <strong>linear</strong> regression forecast of Y, beyond Y's own past — and is structurally blind to nonlinear predictive relationships.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Transfer entropy, TE(X→Y) = I(Yₜ; Xₜ₋₁ | Yₜ₋₁), generalizes it model-free — a conditional mutual information asking the identical directional question without assuming linearity.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>The directional asymmetry is the whole point — TE(X→Y) ≠ TE(Y→X) in general, and that asymmetry is what gives it a causality-<em>like</em> signature at all.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>It reduces exactly to Granger causality for jointly Gaussian, linear systems (Barnett, Barrett &amp; Seth, 2009) — added detection power appears only once the relationship is genuinely nonlinear.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Neither tool proves causation — an unobserved common driver Z can produce a nonzero, asymmetric reading with zero real direct link, exactly as demonstrated on the confounder slider.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Estimating transfer entropy from real data needs a full joint probability distribution — far more data than Granger's linear regression, and much more as the relevant lag length grows.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Recognize when a null linear Granger-causality result might be hiding a real nonlinear predictive relationship, and know transfer entropy is the model-free follow-up question to ask, not a different question entirely. Carry the exact same causation caveat forward regardless of which tool produced the directional number. And weigh the real cost — transfer entropy needs a joint distribution's worth of data, not a handful of regression coefficients — before reaching for it on a small sample.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Minimum Description Length &amp; Information Criteria</h3>
+        <p>Occam's razor made countable — and why a totally different starting point, compressing the data itself, lands on exactly BIC's number.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="mdl-information-criteria-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="transfer-entropy-causality.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  function log2(x){ return Math.log(x) / Math.LN2; }
+  function binaryEntropy(p){
+    if (p <= 0 || p >= 1) return 0;
+    return -p * log2(p) - (1 - p) * log2(1 - p);
+  }
+
+  // Live worked-example recompute: epsilon -> H(eps) -> TE(X->Y), plus the bar chart.
+  (function(){
+    var eps = document.getElementById('te-eps');
+    if (!eps) return;
+    var hOut = document.getElementById('te-h');
+    var teOut = document.getElementById('te-out');
+    var bar = document.getElementById('te-bar-xy');
+    var barLabel = document.getElementById('te-bar-xy-label');
+    var resetBtn = document.getElementById('te-reset');
+    var DEFAULT_EPS = 0.1;
+
+    var BASE_Y = 170, TOP_Y = 20, FULL_H = BASE_Y - TOP_Y; // 1 bit == FULL_H px
+
+    function recompute(){
+      var e = parseFloat(eps.value);
+      if (eps.value.trim() === '' || !isFinite(e) || e < 0 || e > 1) {
+        hOut.textContent = '—';
+        teOut.textContent = '—';
+        bar.setAttribute('height', 0);
+        bar.setAttribute('y', BASE_Y);
+        barLabel.textContent = '—';
+        return;
+      }
+      var h = binaryEntropy(e);
+      var te = 1 - h;
+      hOut.textContent = h.toFixed(3);
+      teOut.textContent = te.toFixed(3);
+
+      var clamped = Math.max(0, Math.min(1, te));
+      var height = clamped * FULL_H;
+      bar.setAttribute('height', height);
+      bar.setAttribute('y', BASE_Y - height);
+      barLabel.textContent = te.toFixed(3) + ' bits';
+    }
+
+    eps.addEventListener('input', recompute);
+    resetBtn.addEventListener('click', function(){
+      eps.value = DEFAULT_EPS;
+      recompute();
+    });
+    recompute();
+  })();
+
+  // Confounder-strength slider: apparent TE(X->Y)-style reading from a shared
+  // driver Z alone, with the true direct X->Y coefficient held at exactly 0.
+  (function(){
+    var slider = document.getElementById('conf-slider');
+    if (!slider) return;
+    var sVal = document.getElementById('conf-sval');
+    var teVal = document.getElementById('conf-te');
+    var zx = document.getElementById('conf-zx');
+    var zy = document.getElementById('conf-zy');
+
+    function update(){
+      var pct = parseInt(slider.value, 10);
+      if (!isFinite(pct)) pct = 0;
+      var s = pct / 100; // confound strength, 0..0.95
+      sVal.textContent = 'Z strength = ' + pct + '%';
+
+      var rho = s * s;             // induced correlation between X_{t-1} and Y_t via shared Z
+      var rho2 = rho * rho;
+      var te;
+      if (rho2 >= 1) {
+        te = null; // guarded — shouldn't happen at max slider value (0.95), kept defensive
+      } else {
+        te = -0.5 * log2(1 - rho2); // Gaussian mutual-information formula
+      }
+      teVal.textContent = (te === null || !isFinite(te)) ? '—' : te.toFixed(3);
+
+      var strokeW = (2 + s * 6).toFixed(2);
+      var opacity = (0.35 + s * 0.65).toFixed(2);
+      zx.setAttribute('stroke-width', strokeW);
+      zy.setAttribute('stroke-width', strokeW);
+      zx.setAttribute('opacity', opacity);
+      zy.setAttribute('opacity', opacity);
+    }
+    slider.addEventListener('input', update);
+    update();
+  })();
+})();
+</script>
+</body>
+</html>

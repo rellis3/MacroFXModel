@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Conjugate Priors — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Conjugate Priors — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivations, a live scratch calculator, and a 5-question self-test?<a href="bayesian-conjugate-priors.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Bayesian Extensions 1 · Bayesian Statistics Extensions</div>
+      <h1 class="sl-h1">Conjugate Priors: Updating a Belief <em>Without Ever Leaving Algebra</em></h1>
+      <p class="sl-lede">The Bayesian Inference lesson updated a single number — a 20% chance of a trend day became a 50% chance once a classifier fired. But most real beliefs aren't one number; they're a whole range of plausible values, like "the true trend-day rate is probably near 30%, but I'm not sure if it's 20% or 40%." Updating an entire distribution like that usually needs numerical machinery. Conjugate priors are the special, exactly-solvable case — the one every textbook starts with, because you can watch a belief visibly narrow, update after update, using nothing but addition.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">From one number to a whole curve of belief</h2>
+      <p class="sl-sub">Bayesian Inference &amp; Updating asked "how confident should I be in this one flag?" This lesson asks a harder question.</p>
+      <div class="sl-quote">Instead of "there's a 30% chance today is a trend day" (one number), imagine saying "the <strong>true underlying rate</strong> of trend days is somewhere around 30%, but I'm genuinely unsure whether it's 20% or 40%." That fuzzy belief isn't a number — it's a <em>shape</em>: a curve that's higher near 30% and tapers off toward the edges. Updating that shape as real data arrives, one observation at a time, is what the rest of applied Bayesian statistics is built on.</div>
+      <p class="sl-p">In general, combining an arbitrary belief-shape with an arbitrary likelihood produces a posterior with no tidy formula — recovering it needs numerical integration or simulation. <strong>Conjugate priors</strong> are the handful of special cases where the prior and likelihood are matched so the posterior lands in exactly the same distribution family as the prior, and only its parameters change. That turns the update into an algebra problem instead of a numerical-methods problem.</p>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Direct sequel</div>
+        <p>This is Bayesian Extensions 1, and it assumes the prior/likelihood/posterior vocabulary from the earlier <strong>Bayesian Inference &amp; Updating</strong> lesson. If "prior," "likelihood," and "posterior" don't already feel concrete, that lesson is the one to read first.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">"Conjugate" has one precise meaning</h2>
+      <p class="sl-sub">A prior is conjugate to a likelihood when the posterior comes out of the <em>same family</em> as the prior — only the numbers describing it change.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">The general case</span>
+          <ul>
+            <li>Prior × likelihood can land almost anywhere — no guaranteed named family</li>
+            <li>Getting a mean, a variance, or a plot out of it needs numerical integration or simulation</li>
+            <li>This is the normal, unavoidable situation for most real-world models</li>
+            <li>It's exactly what the next lesson in this series — MCMC — exists to handle</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">The conjugate case</span>
+          <ul>
+            <li>Prior family and posterior family are the <em>same</em>, by construction</li>
+            <li>Updating means recomputing a couple of parameters — pure arithmetic</li>
+            <li>Only exists for a short, specific list of matched pairs</li>
+            <li>Beta + Binomial and Normal + Normal are the two covered here</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Why every course starts here</div>
+        <p>Conjugacy is a mathematical convenience, not a law of nature — most real-world likelihoods have no conjugate prior at all. It's taught first purely because it's the version you can compute by hand and actually watch narrow, before reaching for the simulation-based methods that handle everything else.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">The Beta distribution: a shape for an unknown rate</h2>
+      <p class="sl-sub">θ is an unknown rate between 0 and 1 — say, the true long-run fraction of days that are trend days. Beta(α,β) is a flexible curve over exactly that range.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">α</div><div><h4>"Successes I've already imagined"</h4><p>A pseudo-count of successes the prior assumes, before any real data arrives.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">β</div><div><h4>"Failures I've already imagined"</h4><p>A matching pseudo-count of failures — together, α and β set the prior's shape and its confidence.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">α+β</div><div><h4>The prior's weight</h4><p>How many pseudo-observations the prior is worth. Beta(2,3) is worth 5 — a soft, easily-moved opinion.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">α/(α+β)</div><div><h4>The prior's mean</h4><p>Beta(2,3) has mean 0.40 — "I lean toward thinking trend days are a bit under half of all days."</p></div></div>
+      </div>
+      <div class="sl-row"><div class="sl-box">Beta(2,3)</div><div class="sl-arrow">mean</div><div class="sl-box amber">2/5 = 0.40</div><div class="sl-arrow">variance</div><div class="sl-box amber">0.04 (sd 0.20)</div></div>
+      <p class="sl-p">Think of α and β as two jars of pretend tokens, filled in before any real data shows up. Every real success or failure observed drops one more matching token into the right jar — the new totals are the new belief. No shape gets redrawn from scratch.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Watch the posterior fall out of two kernels multiplied</h2>
+      <p class="sl-sub">Bayes' theorem says posterior ∝ prior × likelihood. Drop the parts that don't involve θ and watch what's left.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — step through the algebra</div>
+        <div class="sl-tabs" id="deriv-tabs">
+          <button class="sl-tab active" data-panel="deriv-1">Prior kernel</button>
+          <button class="sl-tab" data-panel="deriv-2">Likelihood kernel</button>
+          <button class="sl-tab" data-panel="deriv-3">Multiply them</button>
+          <button class="sl-tab" data-panel="deriv-4">Read off the posterior</button>
+        </div>
+        <div class="sl-panel active" id="deriv-1">
+          <div class="sl-row"><div class="sl-box">Beta(α,β) prior</div><div class="sl-arrow">kernel</div><div class="sl-box">θ^(α−1)(1−θ)^(β−1)</div></div>
+          <div class="sl-verdict">The normalizing constant B(α,β) doesn't involve θ at all — it can be dropped and restored at the very end.</div>
+        </div>
+        <div class="sl-panel" id="deriv-2">
+          <div class="sl-row"><div class="sl-box">Binomial(n,θ) likelihood</div><div class="sl-arrow">kernel</div><div class="sl-box">θ^s(1−θ)^(n−s)</div></div>
+          <div class="sl-verdict">s successes, n−s failures observed. The combinatorial count C(n,s) also doesn't involve θ — drop it too.</div>
+        </div>
+        <div class="sl-panel" id="deriv-3">
+          <div class="sl-row"><div class="sl-box amber">θ^(α−1)(1−θ)^(β−1)</div><div class="sl-arrow">×</div><div class="sl-box amber">θ^s(1−θ)^(n−s)</div></div>
+          <div class="sl-verdict">Multiplying same-base powers just <strong>adds exponents</strong>: (α−1)+s on θ, and (β−1)+(n−s) on (1−θ).</div>
+        </div>
+        <div class="sl-panel" id="deriv-4">
+          <div class="sl-row"><div class="sl-box green">θ^(α+s−1)(1−θ)^(β+n−s−1)</div><div class="sl-arrow">is exactly</div><div class="sl-box green">Beta(α+s, β+n−s)</div></div>
+          <div class="sl-verdict">That last expression <strong>is</strong> a Beta kernel — since a Beta distribution is fully determined by its kernel, the posterior must be Beta(α+s, β+n−s). No integration was ever needed.</div>
+        </div>
+        <div class="sl-note">This is the entire proof. The prior family (Beta) and the posterior family (also Beta) came out identical because the exponents just added — that's what "conjugate" means, made concrete.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Three rounds of data, the same prior, a visibly narrower curve</h2>
+      <p class="sl-sub">Prior Beta(2,3). True trend-day rate 30%, unknown to the observer. Step through what real data does to the shape.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="round-tabs">
+          <button class="sl-tab active" data-panel="round-1">Before any data</button>
+          <button class="sl-tab" data-panel="round-2">Round 1 — 10 days, 3 trend</button>
+          <button class="sl-tab" data-panel="round-3">Round 2 — 40 days total, 12 trend</button>
+        </div>
+        <div class="sl-panel active" id="round-1">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Beta 2,3 prior density curve, wide and centered near 0.4">
+            <line x1="60" y1="170" x2="580" y2="170" style="stroke:var(--border2)"/>
+            <line x1="320" y1="20" x2="320" y2="170" style="stroke:var(--border2);stroke-dasharray:2,2"/>
+            <text x="60" y="188" fill="var(--text3)" font-size="11" text-anchor="middle">0.0</text>
+            <text x="320" y="188" fill="var(--text3)" font-size="11" text-anchor="middle">0.5</text>
+            <text x="580" y="188" fill="var(--text3)" font-size="11" text-anchor="middle">1.0</text>
+            <path style="fill:var(--blue);fill-opacity:.18;stroke:var(--blue);stroke-width:2" d="M 60,170 L 61.0,168.0 L 66.2,158.2 L 71.4,148.8 L 76.6,139.7 L 81.8,131.1 L 86.9,122.8 L 92.1,115.0 L 97.3,107.4 L 102.5,100.3 L 107.7,93.4 L 112.8,87.0 L 118.0,80.8 L 123.2,75.0 L 128.4,69.6 L 133.5,64.4 L 138.7,59.6 L 143.9,55.1 L 149.1,50.9 L 154.3,47.0 L 159.4,43.3 L 164.6,40.0 L 169.8,37.0 L 175.0,34.2 L 180.2,31.7 L 185.3,29.4 L 190.5,27.4 L 195.7,25.7 L 200.9,24.2 L 206.1,22.9 L 211.2,21.9 L 216.4,21.1 L 221.6,20.5 L 226.8,20.2 L 232.0,20.0 L 237.1,20.0 L 242.3,20.3 L 247.5,20.7 L 252.7,21.3 L 257.8,22.1 L 263.0,23.1 L 268.2,24.2 L 273.4,25.5 L 278.6,27.0 L 283.7,28.6 L 288.9,30.3 L 294.1,32.2 L 299.3,34.2 L 304.5,36.3 L 309.6,38.6 L 314.8,41.0 L 320.0,43.4 L 325.2,46.0 L 330.4,48.7 L 335.5,51.4 L 340.7,54.3 L 345.9,57.2 L 351.1,60.2 L 356.3,63.2 L 361.4,66.3 L 366.6,69.5 L 371.8,72.7 L 377.0,75.9 L 382.2,79.2 L 387.3,82.5 L 392.5,85.8 L 397.7,89.2 L 402.9,92.5 L 408.0,95.9 L 413.2,99.3 L 418.4,102.6 L 423.6,105.9 L 428.8,109.3 L 433.9,112.6 L 439.1,115.8 L 444.3,119.0 L 449.5,122.2 L 454.7,125.4 L 459.8,128.4 L 465.0,131.4 L 470.2,134.4 L 475.4,137.3 L 480.6,140.1 L 485.7,142.8 L 490.9,145.4 L 496.1,147.9 L 501.3,150.3 L 506.5,152.6 L 511.6,154.8 L 516.8,156.9 L 522.0,158.8 L 527.2,160.6 L 532.3,162.3 L 537.5,163.8 L 542.7,165.2 L 547.9,166.4 L 553.1,167.4 L 558.2,168.3 L 563.4,169.0 L 568.6,169.5 L 573.8,169.9 L 579.0,170.0 L 580,170 Z"/>
+            <text x="320" y="14" fill="var(--text)" font-size="13" font-weight="700" text-anchor="middle">Beta(2,3) — mean 0.400, sd 0.200</text>
+          </svg></div>
+          <div class="sl-verdict">A wide, uncertain guess — the observer suspects "under half," but the curve is spread thin across most of the range.</div>
+        </div>
+        <div class="sl-panel" id="round-2">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Beta 5,10 posterior density curve, narrower and shifted left of the prior">
+            <line x1="60" y1="170" x2="580" y2="170" style="stroke:var(--border2)"/>
+            <line x1="320" y1="20" x2="320" y2="170" style="stroke:var(--border2);stroke-dasharray:2,2"/>
+            <text x="60" y="188" fill="var(--text3)" font-size="11" text-anchor="middle">0.0</text>
+            <text x="320" y="188" fill="var(--text3)" font-size="11" text-anchor="middle">0.5</text>
+            <text x="580" y="188" fill="var(--text3)" font-size="11" text-anchor="middle">1.0</text>
+            <path style="fill:var(--amber);fill-opacity:.18;stroke:var(--amber);stroke-width:2" d="M 60,170 L 61.0,170.0 L 66.2,170.0 L 71.4,169.9 L 76.6,169.6 L 81.8,169.0 L 86.9,168.0 L 92.1,166.2 L 97.3,163.8 L 102.5,160.5 L 107.7,156.4 L 112.8,151.4 L 118.0,145.5 L 123.2,138.9 L 128.4,131.5 L 133.5,123.5 L 138.7,115.1 L 143.9,106.3 L 149.1,97.3 L 154.3,88.2 L 159.4,79.3 L 164.6,70.6 L 169.8,62.3 L 175.0,54.4 L 180.2,47.2 L 185.3,40.8 L 190.5,35.1 L 195.7,30.2 L 200.9,26.3 L 206.1,23.3 L 211.2,21.3 L 216.4,20.2 L 221.6,20.0 L 226.8,20.7 L 232.0,22.3 L 237.1,24.7 L 242.3,27.8 L 247.5,31.6 L 252.7,36.0 L 257.8,40.9 L 263.0,46.3 L 268.2,52.0 L 273.4,58.1 L 278.6,64.3 L 283.7,70.7 L 288.9,77.1 L 294.1,83.6 L 299.3,90.0 L 304.5,96.3 L 309.6,102.4 L 314.8,108.4 L 320.0,114.1 L 325.2,119.5 L 330.4,124.6 L 335.5,129.5 L 340.7,134.0 L 345.9,138.2 L 351.1,142.1 L 356.3,145.6 L 361.4,148.8 L 366.6,151.7 L 371.8,154.3 L 377.0,156.7 L 382.2,158.7 L 387.3,160.5 L 392.5,162.1 L 397.7,163.5 L 402.9,164.7 L 408.0,165.7 L 413.2,166.5 L 418.4,167.2 L 423.6,167.8 L 428.8,168.3 L 433.9,168.7 L 439.1,169.0 L 444.3,169.2 L 449.5,169.4 L 454.7,169.6 L 459.8,169.7 L 465.0,169.8 L 470.2,169.9 L 475.4,169.9 L 480.6,169.9 L 485.7,170.0 L 490.9,170.0 L 496.1,170.0 L 501.3,170.0 L 506.5,170.0 L 511.6,170.0 L 516.8,170.0 L 522.0,170.0 L 527.2,170.0 L 532.3,170.0 L 537.5,170.0 L 542.7,170.0 L 547.9,170.0 L 553.1,170.0 L 558.2,170.0 L 563.4,170.0 L 568.6,170.0 L 573.8,170.0 L 579.0,170.0 L 580,170 Z"/>
+            <text x="320" y="14" fill="var(--text)" font-size="13" font-weight="700" text-anchor="middle">Beta(5,10) — mean 0.333, sd 0.118</text>
+          </svg></div>
+          <div class="sl-verdict">Posterior = Beta(2+3, 3+7) = Beta(5,10). Mean drifted from 0.40 to 0.333; standard deviation already less than half its starting width.</div>
+        </div>
+        <div class="sl-panel" id="round-3">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Beta 14,31 posterior density curve, tall and narrow near 0.31">
+            <line x1="60" y1="170" x2="580" y2="170" style="stroke:var(--border2)"/>
+            <line x1="320" y1="20" x2="320" y2="170" style="stroke:var(--border2);stroke-dasharray:2,2"/>
+            <text x="60" y="188" fill="var(--text3)" font-size="11" text-anchor="middle">0.0</text>
+            <text x="320" y="188" fill="var(--text3)" font-size="11" text-anchor="middle">0.5</text>
+            <text x="580" y="188" fill="var(--text3)" font-size="11" text-anchor="middle">1.0</text>
+            <path style="fill:var(--green);fill-opacity:.18;stroke:var(--green);stroke-width:2" d="M 60,170 L 61.0,170.0 L 66.2,170.0 L 71.4,170.0 L 76.6,170.0 L 81.8,170.0 L 86.9,170.0 L 92.1,170.0 L 97.3,170.0 L 102.5,170.0 L 107.7,169.9 L 112.8,169.8 L 118.0,169.5 L 123.2,168.9 L 128.4,167.9 L 133.5,166.1 L 138.7,163.3 L 143.9,159.3 L 149.1,153.7 L 154.3,146.4 L 159.4,137.2 L 164.6,126.3 L 169.8,113.8 L 175.0,100.1 L 180.2,85.7 L 185.3,71.3 L 190.5,57.6 L 195.7,45.3 L 200.9,34.9 L 206.1,27.0 L 211.2,22.0 L 216.4,20.0 L 221.6,21.0 L 226.8,24.9 L 232.0,31.4 L 237.1,40.0 L 242.3,50.2 L 247.5,61.6 L 252.7,73.5 L 257.8,85.6 L 263.0,97.4 L 268.2,108.5 L 273.4,118.8 L 278.6,128.1 L 283.7,136.2 L 288.9,143.2 L 294.1,149.1 L 299.3,153.9 L 304.5,157.9 L 309.6,161.0 L 314.8,163.4 L 320.0,165.3 L 325.2,166.6 L 330.4,167.7 L 335.5,168.4 L 340.7,168.9 L 345.9,169.3 L 351.1,169.5 L 356.3,169.7 L 361.4,169.8 L 366.6,169.9 L 371.8,169.9 L 377.0,170.0 L 382.2,170.0 L 387.3,170.0 L 392.5,170.0 L 397.7,170.0 L 402.9,170.0 L 408.0,170.0 L 413.2,170.0 L 418.4,170.0 L 423.6,170.0 L 428.8,170.0 L 433.9,170.0 L 439.1,170.0 L 444.3,170.0 L 449.5,170.0 L 454.7,170.0 L 459.8,170.0 L 465.0,170.0 L 470.2,170.0 L 475.4,170.0 L 480.6,170.0 L 485.7,170.0 L 490.9,170.0 L 496.1,170.0 L 501.3,170.0 L 506.5,170.0 L 511.6,170.0 L 516.8,170.0 L 522.0,170.0 L 527.2,170.0 L 532.3,170.0 L 537.5,170.0 L 542.7,170.0 L 547.9,170.0 L 553.1,170.0 L 558.2,170.0 L 563.4,170.0 L 568.6,170.0 L 573.8,170.0 L 579.0,170.0 L 580,170 Z"/>
+            <text x="320" y="14" fill="var(--text)" font-size="13" font-weight="700" text-anchor="middle">Beta(14,31) — mean 0.311, sd 0.068</text>
+          </svg></div>
+          <div class="sl-verdict">Add all counts to the <em>original</em> prior — Beta(2+12, 3+28) = Beta(14,31), same answer whether the 40 days arrive in one batch or two. sd: 0.20 → 0.118 → 0.068 — it more than halved, then nearly halved again.</div>
+        </div>
+        <div class="sl-note">The mean drifts toward the data (0.40 → 0.311, close to the true 0.30) while the spread collapses — a confidence statement with no separate "confidence" calculation bolted on. The width of the curve <em>is</em> the confidence statement.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Drag the sample size, watch the curve redraw live</h2>
+      <p class="sl-sub">Same Beta(2,3) prior. Data keeps arriving at a fixed (unknown-to-the-observer) true rate of 30%. Drag n.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Live-updating Beta posterior density curve controlled by a slider on number of days observed">
+            <line x1="60" y1="190" x2="580" y2="190" style="stroke:var(--border2)"/>
+            <line id="live-true-line" x1="216" y1="20" x2="216" y2="190" style="stroke:var(--amber);stroke-dasharray:4,3;stroke-width:1.5"/>
+            <text x="216" y="14" fill="var(--amber)" font-size="10.5" text-anchor="middle">true rate 0.30</text>
+            <text x="60" y="205" fill="var(--text3)" font-size="11" text-anchor="middle">0.0</text>
+            <text x="190" y="205" fill="var(--text3)" font-size="11" text-anchor="middle">0.25</text>
+            <text x="320" y="205" fill="var(--text3)" font-size="11" text-anchor="middle">0.50</text>
+            <text x="450" y="205" fill="var(--text3)" font-size="11" text-anchor="middle">0.75</text>
+            <text x="580" y="205" fill="var(--text3)" font-size="11" text-anchor="middle">1.0</text>
+            <path id="live-curve" style="fill:var(--blue);fill-opacity:.18;stroke:var(--blue);stroke-width:2" d="M60,190 L580,190 Z"/>
+            <text id="live-mean-label" x="320" y="40" fill="var(--text)" font-size="13" font-weight="700" text-anchor="middle"></text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Days observed (n)</span><span class="sl-live" id="live-n-val">0</span></div>
+        <input type="range" class="sl-slider" id="live-n-slider" min="0" max="150" step="5" value="0">
+        <div class="sl-note">At n=0 the curve is exactly the Beta(2,3) prior. As n grows, s = round(0.30 × n) successes accumulate, the posterior parameters become α=2+s, β=3+(n−s), and the peak visibly slides from 0.40 toward the true 0.30 while the curve narrows — precisely what the variance formula predicts.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Run the Beta-Binomial update yourself</h2>
+      <p class="sl-sub">Enter any prior and any observed data. The posterior parameters, mean, and standard deviation recompute on every keystroke.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — starts on the Round 2 worked-example numbers</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Prior α</label><input type="number" class="sl-input" id="bb-alpha" value="2" step="1" min="0.01"></div>
+          <div class="sl-calc-field"><label>Prior β</label><input type="number" class="sl-input" id="bb-beta" value="3" step="1" min="0.01"></div>
+          <div class="sl-calc-field"><label>Trials n</label><input type="number" class="sl-input" id="bb-n" value="40" step="1" min="0"></div>
+          <div class="sl-calc-field"><label>Successes s</label><input type="number" class="sl-input" id="bb-s" value="12" step="1" min="0"></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Posterior: Beta(<b id="bb-postalpha">14</b>, <b id="bb-postbeta">31</b>)</div>
+          <div>Mean = <b id="bb-mean">0.3111</b>&emsp;sd = <b id="bb-sd">0.0683</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="bb-reset">Reset to worked-example numbers</button>
+        <div class="sl-note" id="bb-guard-note">α and β must be positive; n and s must be non-negative; s can't exceed n. Any violation, or a blank field, shows "—" instead of a broken number.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Normal-Normal: the same trick for a continuous mean</h2>
+      <p class="sl-sub">Instead of an unknown rate, suppose the unknown is a mean μ — say, a strategy's true average daily return — with a known variance σ² for each observation.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">τ</div><div><h4>Precision = 1/variance</h4><p>Working in precision instead of variance matters because precisions from independent sources simply <strong>add</strong> — variance combines through a much less intuitive reciprocal-sum.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">τ₀+τd</div><div><h4>Posterior precision</h4><p>Prior precision plus data precision. Information only ever accumulates — it never disappears.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">μₙ</div><div><h4>Precision-weighted mean</h4><p>The posterior mean sits between the prior mean and the sample mean, weighted by how precise each source is — automatically, with nobody deciding the weight by hand.</p></div></div>
+      </div>
+      <div class="sl-row"><div class="sl-box">μₙ = (τ₀μ₀ + τd·x̄) / (τ₀+τd)</div></div>
+      <div class="sl-quote">A quick check: prior μ₀=0%, σ₀=0.5% (τ₀=4). Observe n=20 days, sample mean x̄=0.15%, known σ=1.0% (τd=20/1=20). μₙ = (4×0 + 20×0.15)/24 = <strong>0.125%</strong> — pulled most of the way toward the data because its precision (20) dwarfs the prior's (4), but not all the way. Posterior variance = 1/24 ≈ 0.0417, so σₙ ≈ <strong>0.204%</strong> — narrower than either source alone.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Run the Normal-Normal update yourself</h2>
+      <p class="sl-sub">Same numbers as the check above. Change any field — the posterior mean and standard deviation recompute live.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Prior mean μ₀ (%)</label><input type="number" class="sl-input" id="nn-mu0" value="0" step="0.05"></div>
+          <div class="sl-calc-field"><label>Prior sd σ₀ (%)</label><input type="number" class="sl-input" id="nn-sigma0" value="0.5" step="0.05" min="0.0001"></div>
+          <div class="sl-calc-field"><label>Sample mean x̄ (%)</label><input type="number" class="sl-input" id="nn-xbar" value="0.15" step="0.01"></div>
+          <div class="sl-calc-field"><label>Known σ (%)</label><input type="number" class="sl-input" id="nn-sigma" value="1.0" step="0.05" min="0.0001"></div>
+          <div class="sl-calc-field"><label>n obs</label><input type="number" class="sl-input" id="nn-n" value="20" step="1" min="0"></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>τ₀ = <b id="nn-tau0">4.00</b>&emsp;τ_data = <b id="nn-taud">20.00</b></div>
+          <div>Posterior mean μₙ = <b id="nn-mun">0.1250</b>%&emsp;posterior sd σₙ = <b id="nn-sdn">0.2041</b>%</div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="nn-reset">Reset to worked-example numbers</button>
+        <div class="sl-note">σ₀ and σ must be positive and n non-negative — a zero or negative volatility isn't a valid variance, so those cases show "—" instead of dividing by zero.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Why closed form is worth having at all</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">⚡</div><div><h4>One line of arithmetic</h4><p>No simulation, no numerical integration — just add pseudo-counts, or add precisions. It runs as fast as the data arrives.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔍</div><div><h4>Every quantity is readable</h4><p>The pseudo-counts, the precision — each intermediate number has a plain-English meaning, unlike an opaque simulation trace.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📐</div><div><h4>Exact, not approximate</h4><p>The posterior isn't estimated from samples — it's derived algebraically, so there's no sampling noise to worry about.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🚧</div><div><h4>But narrow in scope</h4><p>Conjugacy only exists for a handful of matched pairs. The moment a real likelihood doesn't algebraically match a standard prior family, it breaks.</p></div></div>
+      </div>
+      <div class="sl-quote">That last row is the whole reason this is "Bayesian Extensions 1" and not the only lesson in the series. The instant a model needs a mixture of behaviors, a bounded-but-skewed variance, or any likelihood with no algebraic closed form, conjugacy is gone — which is exactly the gap that Markov Chain Monte Carlo, the next lesson in this trio, is built to fill: computing a posterior numerically when no formula for it exists.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Where this already runs, live, in this repo</h2>
+      <p class="sl-sub">This isn't only a textbook exercise — one of the two conjugate pairs above is running inside this repo's own regime-detection code.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🖱️</div><div><h4>Conversion-rate testing</h4><p>Beta-Binomial is the standard model behind "Bayesian A/B testing" — each variant's true conversion rate gets its own Beta posterior, updated live as visits accumulate.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚙️</div><div><h4>Reliability &amp; quality control</h4><p>Manufacturing defect rates are a natural Beta-Binomial problem — a small early sample gives a wide posterior that tightens as production volume grows.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📈</div><div><h4>Regime change-point detection</h4><p>Normal-Normal precision-weighted updating is exactly the math behind Bayesian Online Change-Point Detection (BOCPD) — see the callout below.</p></div></div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Factual grounding — checked against the current code, not assumed</div>
+        <p>The full written lesson this deck condenses labels itself <strong>"CONCEPT — explained here, not a claim this repo has built or validated it."</strong> That framing is now stale for the Normal-Normal half: <code>RegimeV2/bocpd.py</code> implements a <code>_GaussianUPM</code> class whose own docstring says "Uses conjugate Normal-Normal update" — an unknown-mean, known-variance Gaussian posterior, updated exactly as derived two slides ago, used to run Bayesian Online Change-Point Detection on each pair's regime-confidence stream. It's wired into <code>RegimeV2/regime_bot_v2.py</code> as a live exit-gate signal (<code>bocpd_thresh</code>, <code>use_bocpd</code>) and its output is parsed straight out of bot logs by <code>server.js</code>. No dedicated unit test for <code>bocpd.py</code> was found, so "tested" would overstate it — but "not built" is no longer accurate for this specific piece. The Beta-Binomial half of this lesson, meanwhile, still checks out as pure concept: no conjugate Beta-Binomial posterior calculation was found live anywhere else in the repo.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">Where conjugate updating quietly goes wrong</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Easy to get wrong</span>
+          <ul>
+            <li>Treating consecutive days as independent when volatility clusters — this overstates how fast the posterior should narrow</li>
+            <li>Forgetting Normal-Normal needs σ² <em>known</em> — if it's estimated too, the real answer is a fatter-tailed Student-t, not a Normal</li>
+            <li>Picking α,β after peeking at the data — p-hacking wearing a Bayesian costume</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">What stays true</span>
+          <ul>
+            <li>A "flat" Beta(1,1) prior still asserts every rate 0-100% was equally plausible — that's a real claim, not a neutral default</li>
+            <li>A narrow posterior quantifies confidence about the <em>observed sample</em>, not about whether the future looks the same</li>
+            <li>State the prior and its justification before looking at the evidence, every time</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-quote">A tight posterior after 200 observations is not validation. It says "I'm confident about what happened in this sample" — it says nothing about whether that period was representative, or whether the process is even stationary. Conjugate updating narrows a belief about the past; it doesn't certify the future will match.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What does it mean for a prior to be "conjugate" to a likelihood?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The posterior lands in the same distribution family as the prior — only its parameters change</button>
+        <button class="sl-quiz-opt">The prior and the posterior are numerically identical</button>
+        <button class="sl-quiz-opt">The likelihood becomes irrelevant once a prior is chosen</button>
+        <div class="sl-quiz-explain">Conjugacy is a property of a specific prior/likelihood pairing — Beta with Binomial, Normal with Normal — not a general fact about all Bayesian updates.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Prior is Beta(4,6). You observe 8 successes in 20 trials. What's the exact posterior?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Beta(12, 18)</button>
+        <button class="sl-quiz-opt">Beta(4, 6)</button>
+        <button class="sl-quiz-opt">Beta(8, 20)</button>
+        <div class="sl-quiz-explain">Beta(4+8, 6+12) = Beta(12,18) — the pseudo-counts and the real counts just add.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Why is precision (1/variance) easier to reason with than variance in Normal-Normal updating?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Precisions from independent sources simply add; variances combine through a less intuitive reciprocal-sum</button>
+        <button class="sl-quiz-opt">Precision is always a round number</button>
+        <button class="sl-quiz-opt">Variance can't be computed for a Normal distribution</button>
+        <div class="sl-quiz-explain">Posterior precision = prior precision + data precision — that additivity is exactly why the posterior mean is naturally a precision-weighted average.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Why does a Beta(40,60) prior resist new data more than a Beta(2,3) prior?</h4>
+        <button class="sl-quiz-opt" data-correct="true">α+β is the prior's weight in pseudo-observations — 100 versus 5 — so the same real sample moves it far less</button>
+        <button class="sl-quiz-opt">Beta(40,60) is a different kind of distribution entirely</button>
+        <button class="sl-quiz-opt">Larger numbers always mean a flatter curve</button>
+        <div class="sl-quiz-explain">The posterior mean is (α+s)/(α+β+n) — a real sample of n=20 barely moves a 100-pseudo-observation prior, but dominates a 5-pseudo-observation one.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Why doesn't conjugate updating exist for every prior/likelihood pair?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Multiplying the two kernels only lands back in a recognizable, normalizable family for a short, specific list of matched pairs</button>
+        <button class="sl-quiz-opt">It exists for every pair, but nobody has bothered to derive most of them yet</button>
+        <button class="sl-quiz-opt">Conjugacy only applies to distributions with a mean of zero</button>
+        <div class="sl-quiz-explain">Most real likelihoods — especially anything nonlinear — simply don't multiply into a tidy algebraic match with any standard prior family. That gap is exactly why simulation-based methods like MCMC exist.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="15">
+      <div class="sl-kicker">Section 14</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Conjugate = same family in, same family out — Beta prior + Binomial likelihood → Beta posterior; Normal prior + Normal likelihood (known variance) → Normal posterior.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Beta-Binomial updating is just addition: posterior is Beta(α+successes, β+failures) — pseudo-counts and real counts combine directly.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Normal-Normal updating is a precision-weighted average: posterior precision = prior precision + data precision; the more confident source gets more say automatically.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>A "flat" prior is still an assumption — Beta(1,1) asserts every rate is equally plausible beforehand, which is itself a real claim.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Conjugacy is the exception, not the rule — most real likelihoods have no matching conjugate prior, which is the entire motivation for MCMC, next.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>A narrow posterior is not a validated edge — it quantifies confidence about the observed sample, not whether that sample generalizes forward.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Track a rate or a mean as small batches of real evidence arrive, in exact closed form, and watch the belief's spread shrink update by update with no separate confidence calculation bolted on. Recognise when a "confident-sounding" narrow posterior is only confident about the past. And know exactly where this machinery stops working — the moment a real likelihood doesn't match a standard prior family — which is precisely where the next lesson picks up.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>MCMC: Metropolis-Hastings &amp; Gibbs Sampling</h3>
+        <p>When no conjugate pair exists, a posterior still needs computing. MCMC builds one numerically — by sampling from it, not solving for it algebraically.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="mcmc-metropolis-gibbs-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="bayesian-conjugate-priors.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Shared Beta-distribution math (Lanczos approximation for lnGamma),
+  // matching the full lesson's implementation exactly.
+  var g = 7;
+  var LANCZOS = [0.99999999999980993, 676.5203681218851, -1259.1392167224028, 771.32342877765313, -176.61502916214059, 12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7];
+
+  function lnGamma(x){
+    if (x < 0.5) return Math.log(Math.PI / Math.sin(Math.PI * x)) - lnGamma(1 - x);
+    x -= 1;
+    var a = LANCZOS[0];
+    var t = x + g + 0.5;
+    for (var i = 1; i < g + 2; i++) a += LANCZOS[i] / (x + i);
+    return 0.5 * Math.log(2 * Math.PI) + (x + 0.5) * Math.log(t) - t + Math.log(a);
+  }
+  function lnBeta(a, b) { return lnGamma(a) + lnGamma(b) - lnGamma(a + b); }
+  function betaPdf(x, a, b) {
+    if (x <= 0 || x >= 1) return 0;
+    return Math.exp((a - 1) * Math.log(x) + (b - 1) * Math.log(1 - x) - lnBeta(a, b));
+  }
+  function betaMeanSd(a, b){
+    var mean = a / (a + b);
+    var variance = (a * b) / ((a + b) * (a + b) * (a + b + 1));
+    return { mean: mean, sd: Math.sqrt(variance) };
+  }
+
+  // Section 6 — live slider-driven Beta posterior curve.
+  (function(){
+    var slider = document.getElementById('live-n-slider');
+    if (!slider) return;
+    var nVal = document.getElementById('live-n-val');
+    var curve = document.getElementById('live-curve');
+    var meanLabel = document.getElementById('live-mean-label');
+    var A0 = 2, B0 = 3, TRUE_RATE = 0.30;
+    var X0 = 60, X1 = 580, Y0 = 190, Y1 = 20, STEPS = 120;
+
+    function update(){
+      var n = parseInt(slider.value, 10);
+      var s = Math.round(TRUE_RATE * n);
+      var a = A0 + s, b = B0 + (n - s);
+      nVal.textContent = n;
+
+      var pts = [], maxVal = 0;
+      for (var i = 0; i <= STEPS; i++) {
+        var x = 0.002 + (i / STEPS) * 0.996;
+        var d = betaPdf(x, a, b);
+        pts.push([x, d]);
+        if (d > maxVal) maxVal = d;
+      }
+      var scale = (Y0 - Y1) / maxVal;
+      var d0 = 'M ' + X0 + ',' + Y0 + ' ';
+      for (var j = 0; j < pts.length; j++) {
+        var px = X0 + pts[j][0] * (X1 - X0);
+        var py = Y0 - pts[j][1] * scale;
+        d0 += 'L ' + px.toFixed(1) + ',' + py.toFixed(1) + ' ';
+      }
+      d0 += 'L ' + X1 + ',' + Y0 + ' Z';
+      curve.setAttribute('d', d0);
+
+      var ms = betaMeanSd(a, b);
+      var meanPx = X0 + ms.mean * (X1 - X0);
+      var peakDensity = betaPdf(ms.mean, a, b);
+      var meanPy = Math.max(Y0 - peakDensity * scale - 14, 34);
+      meanLabel.setAttribute('x', meanPx);
+      meanLabel.setAttribute('y', meanPy);
+      meanLabel.textContent = 'Beta(' + a + ',' + b + ') — mean ' + ms.mean.toFixed(3) + ', sd ' + ms.sd.toFixed(3);
+    }
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Section 7 — Beta-Binomial live calculator, with guards.
+  (function(){
+    var alphaEl = document.getElementById('bb-alpha');
+    if (!alphaEl) return;
+    var betaEl = document.getElementById('bb-beta'), nEl = document.getElementById('bb-n'), sEl = document.getElementById('bb-s');
+    var postAlphaOut = document.getElementById('bb-postalpha'), postBetaOut = document.getElementById('bb-postbeta');
+    var meanOut = document.getElementById('bb-mean'), sdOut = document.getElementById('bb-sd');
+    var resetBtn = document.getElementById('bb-reset');
+    var DEFAULTS = { alpha: 2, beta: 3, n: 40, s: 12 };
+
+    function fmtParam(n){ return Math.abs(n - Math.round(n)) < 1e-9 ? Math.round(n).toString() : n.toFixed(2); }
+
+    function recompute(){
+      var alpha = parseFloat(alphaEl.value), beta = parseFloat(betaEl.value), n = parseFloat(nEl.value), s = parseFloat(sEl.value);
+      var bad = !isFinite(alpha) || !isFinite(beta) || !isFinite(n) || !isFinite(s) || alpha <= 0 || beta <= 0 || n < 0 || s < 0 || s > n;
+      if (bad) {
+        postAlphaOut.textContent = '—'; postBetaOut.textContent = '—';
+        meanOut.textContent = '—'; sdOut.textContent = '—';
+        return;
+      }
+      var postAlpha = alpha + s, postBeta = beta + (n - s);
+      var ms = betaMeanSd(postAlpha, postBeta);
+      postAlphaOut.textContent = fmtParam(postAlpha);
+      postBetaOut.textContent = fmtParam(postBeta);
+      meanOut.textContent = ms.mean.toFixed(4);
+      sdOut.textContent = ms.sd.toFixed(4);
+    }
+    [alphaEl, betaEl, nEl, sEl].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      alphaEl.value = DEFAULTS.alpha; betaEl.value = DEFAULTS.beta; nEl.value = DEFAULTS.n; sEl.value = DEFAULTS.s;
+      recompute();
+    });
+    recompute();
+  })();
+
+  // Section 9 — Normal-Normal live calculator, with guards.
+  (function(){
+    var mu0El = document.getElementById('nn-mu0');
+    if (!mu0El) return;
+    var sigma0El = document.getElementById('nn-sigma0'), xbarEl = document.getElementById('nn-xbar'), sigmaEl = document.getElementById('nn-sigma'), nEl = document.getElementById('nn-n');
+    var tau0Out = document.getElementById('nn-tau0'), taudOut = document.getElementById('nn-taud');
+    var munOut = document.getElementById('nn-mun'), sdnOut = document.getElementById('nn-sdn');
+    var resetBtn = document.getElementById('nn-reset');
+    var DEFAULTS = { mu0: 0, sigma0: 0.5, xbar: 0.15, sigma: 1.0, n: 20 };
+
+    function recompute(){
+      var mu0 = parseFloat(mu0El.value), sigma0 = parseFloat(sigma0El.value), xbar = parseFloat(xbarEl.value), sigma = parseFloat(sigmaEl.value), n = parseFloat(nEl.value);
+      var bad = !isFinite(mu0) || !isFinite(sigma0) || !isFinite(xbar) || !isFinite(sigma) || !isFinite(n) || sigma0 <= 0 || sigma <= 0 || n < 0;
+      if (bad) {
+        tau0Out.textContent = '—'; taudOut.textContent = '—';
+        munOut.textContent = '—'; sdnOut.textContent = '—';
+        return;
+      }
+      var tau0 = 1 / (sigma0 * sigma0);
+      var taud = n / (sigma * sigma);
+      tau0Out.textContent = tau0.toFixed(2);
+      taudOut.textContent = taud.toFixed(2);
+      if (tau0 + taud === 0) {
+        munOut.textContent = '—'; sdnOut.textContent = '—';
+        return;
+      }
+      var mun = (tau0 * mu0 + taud * xbar) / (tau0 + taud);
+      var varn = 1 / (tau0 + taud);
+      munOut.textContent = mun.toFixed(4);
+      sdnOut.textContent = Math.sqrt(varn).toFixed(4);
+    }
+    [mu0El, sigma0El, xbarEl, sigmaEl, nEl].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      mu0El.value = DEFAULTS.mu0; sigma0El.value = DEFAULTS.sigma0; xbarEl.value = DEFAULTS.xbar; sigmaEl.value = DEFAULTS.sigma; nEl.value = DEFAULTS.n;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

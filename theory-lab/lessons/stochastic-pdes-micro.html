@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stochastic PDEs — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Stochastic PDEs — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivations, the Da Prato–Zabczyk citations, and a 6-question self-test?<a href="stochastic-pdes.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">SDEs 6 · Stochastic Differential Equations</div>
+      <h1 class="sl-h1">Stochastic PDEs: <em>When a Whole Curve Wiggles, Not Just a Point</em></h1>
+      <p class="sl-lede">Every SDE so far in this sequence has moved a single number, or a short finite list of numbers, randomly through time. The Fokker-Planck equation, right before this lesson, showed how the probability density of one of those numbers spreads out deterministically over time. This lesson takes the next step, and it's a genuine jump: what happens when the object evolving randomly stops being a finite list at all, and becomes an entire curve — the whole interest-rate forward curve, at every maturity simultaneously — or an entire probability density that's also being nudged by continuous noisy observations? That object is a stochastic PDE, and this lesson introduces it through two concrete, named examples: the HJM/Musiela forward-curve framework, which connects directly back to the yield-curve-construction and Nelson-Siegel-Svensson lessons earlier in this curriculum, and the Zakai equation from filtering theory.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">One number, a few numbers, then a whole curve</h2>
+      <p class="sl-sub">Everything in this sequence so far has lived in a small, finite space. This lesson is what happens when it stops being finite.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">1</div><div><h4>A single SDE — one number</h4><p>An FX rate, a short rate r_t, a single stock price: one number, wiggling randomly through time. This is where the sequence started.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">n</div><div><h4>A vector SDE — a handful of numbers</h4><p>Multivariate & correlated SDEs stacked several such numbers together — a basket of FX pairs, or a price-and-variance pair — into one finite vector, still a list you could count on your fingers if n were small enough.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">∞</div><div><h4>An SPDE — an entire curve or field</h4><p>Not "the 1-year rate and the 10-year rate" as two numbers, but the rate at <em>every</em> maturity at once, as one continuous, infinite-dimensional object. That whole object is what an SPDE describes evolving randomly.</p></div></div>
+      </div>
+      <div class="sl-quote">Picture the entire forward interest-rate curve as a long rubber band stretched from "today" out to "30 years from now." A short-rate SDE watches one single point on that band bounce around. An SPDE describes the <strong>entire band</strong> flexing and rippling along its whole length at once — with nearby points on the band moving alike, but not identically.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Finite vector vs. whole curve, side by side</h2>
+      <p class="sl-sub">Same randomness, two entirely different kinds of object being moved by it.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="cmp-tabs">
+          <button class="sl-tab active" data-panel="cmp-1">SDE — a finite vector</button>
+          <button class="sl-tab" data-panel="cmp-2">SPDE — a whole curve</button>
+        </div>
+        <div class="sl-panel active" id="cmp-1">
+          <div class="sl-svgwrap"><svg viewBox="0 0 600 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three separate jagged lines representing three finite numbers each wiggling independently through time">
+            <line x1="20" y1="130" x2="580" y2="130" style="stroke:var(--border2);stroke-width:1"/>
+            <text x="20" y="145" font-size="10" fill="var(--text3)" font-family="'DM Mono',monospace">t=0</text>
+            <text x="580" y="145" font-size="10" fill="var(--text3)" font-family="'DM Mono',monospace" text-anchor="end">t=T</text>
+            <path d="M30,40 L90,34 L150,46 L210,30 L270,38 L330,22 L390,32 L450,20 L510,28 L570,18" style="fill:none;stroke:var(--blue);stroke-width:2.5"/>
+            <text x="575" y="14" font-size="10.5" fill="var(--blue)" text-anchor="end" font-family="'DM Mono',monospace">r_t</text>
+            <path d="M30,75 L90,82 L150,70 L210,86 L270,74 L330,90 L390,78 L450,92 L510,80 L570,88" style="fill:none;stroke:var(--purple);stroke-width:2.5"/>
+            <text x="575" y="100" font-size="10.5" fill="var(--purple)" text-anchor="end" font-family="'DM Mono',monospace">v_t</text>
+            <path d="M30,112 L90,118 L150,108 L210,116 L270,106 L330,120 L390,110 L450,122 L510,112 L570,118" style="fill:none;stroke:var(--green);stroke-width:2.5"/>
+            <text x="575" y="132" font-size="10.5" fill="var(--green)" text-anchor="end" font-family="'DM Mono',monospace">S_t</text>
+          </svg></div>
+          <div class="sl-verdict"><strong>A short list of independent traces.</strong> Each of r_t, v_t, S_t is one number at each instant t — a finite vector (X_t ∈ ℝⁿ), however many of them you stack.</div>
+        </div>
+        <div class="sl-panel" id="cmp-2">
+          <div class="sl-svgwrap"><svg viewBox="0 0 600 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two overlaid curves across the same tenor axis, each a slightly different shape, illustrating an entire curve shifting between two moments in time">
+            <line x1="20" y1="130" x2="580" y2="130" style="stroke:var(--border2);stroke-width:1"/>
+            <text x="20" y="145" font-size="10" fill="var(--text3)" font-family="'DM Mono',monospace">x=0 (short end)</text>
+            <text x="580" y="145" font-size="10" fill="var(--text3)" font-family="'DM Mono',monospace" text-anchor="end">x=20y (long end)</text>
+            <path d="M30,108 L142,66 L254,46 L366,34 L478,26 L570,22" style="fill:none;stroke:var(--blue);stroke-width:2.5"/>
+            <path d="M30,96 L142,74 L254,38 L366,42 L478,20 L570,28" style="fill:none;stroke:var(--amber);stroke-width:2.5;stroke-dasharray:5,4"/>
+            <text x="575" y="14" font-size="10.5" fill="var(--amber)" text-anchor="end" font-family="'DM Mono',monospace">f(t+Δt, x)</text>
+            <text x="34" y="122" font-size="10.5" fill="var(--blue)" font-family="'DM Mono',monospace">f(t, x)</text>
+          </svg></div>
+          <div class="sl-verdict"><strong>One object, reshaping itself.</strong> f(t,x) is the whole curve — a real number for every tenor x, at every time t. The dashed curve is the same object one instant later: not one point moving, the whole shape shifting, unevenly, all at once.</div>
+        </div>
+      </div>
+      <div class="sl-note">This is the entire conceptual jump this lesson is built around: finite-dimensional (ℝⁿ) versus infinite-dimensional (a space of functions). Everything below — the noise, the solution formula, the two named examples — is what has to change once the object being moved is a curve instead of a list of numbers.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">The noise driving it is stranger than dW_t</h2>
+      <p class="sl-sub">The canonical, simplest SPDE — the stochastic heat equation — makes the new difficulty concrete.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The equation</div>
+        <div class="sl-row"><div class="sl-box">∂u/∂t</div><div class="sl-arrow">=</div><div class="sl-box">½∂²u/∂x²</div><div class="sl-arrow">+</div><div class="sl-box amber">σ·Ẇ(t,x)</div></div>
+        <div class="sl-verdict">The first two pieces are the ordinary (non-random) heat equation — how heat spreads along a rod, no chance involved. The last piece, <strong>space-time white noise</strong>, is new: independent randomness injected at every point in space, at every instant in time.</div>
+      </div>
+      <p class="sl-p">Here is the single hardest conceptual jump in the whole subject. Ẇ(t,x) is <strong>not a function you can evaluate at a point</strong> — plugging in one specific (t,x) gives nothing meaningful; it is infinitely rough there. It is rigorously defined only through what it does once <em>integrated</em> against a smooth test shape — the same technical sense in which the Dirac delta is a distribution, not a function. An ordinary SDE's dW_t has no such problem: at any single time t it is a genuine, if rough, random value. That's precisely why an SPDE needs the more careful infinite-dimensional machinery (a Q-Wiener process, built from a countable family of ordinary 1-D Brownian motions, one per spatial frequency) that an ordinary SDE never has to reach for.</p>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>The full, rigorous construction of that machinery — exactly which function spaces it lives in, and the technical conditions that make it converge — is genuine graduate-level functional analysis (Da Prato & Zabczyk's <em>Stochastic Equations in Infinite Dimensions</em> is the standard reference). What matters here is the working picture: the noise is a distribution, not a function, and that single fact is why everything downstream needs more care.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">The same solution formula, one dimension up</h2>
+      <p class="sl-sub">SPDEs aren't solved from scratch — the practical solution concept is a direct echo of a formula already used earlier in this sequence.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Ordinary SDE — a number</span>
+          <p>For dX_t = aX_t dt + σ dW_t, the explicit solution is:</p>
+          <p style="font-family:'DM Mono',monospace;color:var(--text);margin:10px 0">X_t = e^(at) X_0 + ∫₀ᵗ e^(a(t−s)) σ dW_s</p>
+          <p>A scalar exponential e^(at) carries the starting value forward; the integral adds up every past random push, each one grown forward by that same exponential.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">SPDE — a whole field</span>
+          <p>For the analogous linear SPDE, the "mild solution" is:</p>
+          <p style="font-family:'DM Mono',monospace;color:var(--text);margin:10px 0">u(t) = S(t) u(0) + ∫₀ᵗ S(t−s) dW(s)</p>
+          <p>A semigroup operator S(t) — the deterministic, noise-free evolution — replaces the scalar exponential; the integral again adds up every past random push, now propagated forward by S(t−s) instead.</p>
+        </div>
+      </div>
+      <div class="sl-quote">Same shape, same idea — "multiply by a growth factor and add up the random pushes along the way" — done for an entire field instead of a single number. <strong>e^(at)</strong> becomes <strong>S(t)</strong>; the ordinary Itô integral becomes a stochastic integral against a Q-Wiener process. Nothing about the logic changes, only the space it happens in.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">HJM/Musiela: one SPDE for the whole forward curve</h2>
+      <p class="sl-sub">The most finance-relevant named example — and the direct generalization of the short-rate models earlier in this sequence.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The equation</div>
+        <div class="sl-row"><div class="sl-box">df(t,x)</div><div class="sl-arrow">=</div><div class="sl-box">[∂f/∂x + α(t,x)]dt</div><div class="sl-arrow">+</div><div class="sl-box amber">σ(t,x)dW(t)</div></div>
+        <div class="sl-verdict">f(t,x) is the forward rate, at calendar time t, for a loan starting x years from now — the <em>entire</em> curve, indexed by time-to-maturity x, evolving as one object.</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">↷</div><div><h4>∂f/∂x — just bookkeeping</h4><p>Present even with zero randomness — a consequence of re-indexing by time-to-maturity instead of calendar date, the same effect traders call "rolling down the curve."</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚖</div><div><h4>α(t,x) — not a free choice</h4><p>The no-arbitrage drift condition pins it down completely once the volatility σ(t,x) is chosen: α(t,x) = σ(t,x)·∫₀ˣσ(t,u)du. Specify the vol, and the drift follows — it isn't chosen independently.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">•</div><div><h4>Vasicek/CIR/Hull-White = x=0 only</h4><p>Those single-number short-rate models track exactly one tenor point of this curve, x=0, and collapse everything else into one mean-reversion parameter.</p></div></div>
+      </div>
+      <p class="sl-p">The earlier <strong>yield-curve-construction</strong> and <strong>Nelson-Siegel-Svensson</strong> lessons in this curriculum fit a single <em>static snapshot</em> of f(t,·) at one moment — a photograph of the rubber band, not a model of how it moves. HJM/Musiela is what models the motion itself.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Watch the whole curve wiggle</h2>
+      <p class="sl-sub">Three snapshots of the same illustrative forward curve, each one randomly perturbed from the last — not three unrelated lines, one evolving object.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Hand-drawn illustration</div>
+        <div class="sl-svgwrap"><svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three overlaid forward curve snapshots across tenors from zero to twenty years, one solid and two dashed, each shaped similarly but perturbed differently at each tenor point, with the short end visibly more different between snapshots than the long end">
+            <line x1="60" y1="174" x2="600" y2="174" style="stroke:var(--border2);stroke-dasharray:2,3"/>
+            <text x="20" y="178" font-size="10.5" fill="var(--text3)" font-family="'DM Mono',monospace">3.0%</text>
+            <line x1="60" y1="116.4" x2="600" y2="116.4" style="stroke:var(--border2);stroke-dasharray:2,3"/>
+            <text x="20" y="120.4" font-size="10.5" fill="var(--text3)" font-family="'DM Mono',monospace">3.8%</text>
+            <line x1="60" y1="87.6" x2="600" y2="87.6" style="stroke:var(--border2);stroke-dasharray:2,3"/>
+            <text x="20" y="91.6" font-size="10.5" fill="var(--text3)" font-family="'DM Mono',monospace">4.2%</text>
+            <line x1="60" y1="69.6" x2="600" y2="69.6" style="stroke:var(--border2);stroke-dasharray:2,3"/>
+            <text x="20" y="73.6" font-size="10.5" fill="var(--text3)" font-family="'DM Mono',monospace">4.45%</text>
+            <line x1="60" y1="220" x2="600" y2="220" style="stroke:var(--text3);stroke-width:1"/>
+            <text x="60" y="238" font-size="11" fill="var(--text3)" font-family="'DM Mono',monospace">x=0</text>
+            <text x="320" y="238" font-size="11" fill="var(--text3)" font-family="'DM Mono',monospace" text-anchor="middle">x=10y</text>
+            <text x="600" y="238" font-size="11" fill="var(--text3)" font-family="'DM Mono',monospace" text-anchor="end">x=20y</text>
+
+            <polyline points="60,174 190,116.4 320,87.6 450,76.8 580,69.6" style="fill:none;stroke:var(--blue);stroke-width:2.5"/>
+            <circle cx="60" cy="174" r="3.5" fill="var(--blue)"/><circle cx="190" cy="116.4" r="3.5" fill="var(--blue)"/><circle cx="320" cy="87.6" r="3.5" fill="var(--blue)"/><circle cx="450" cy="76.8" r="3.5" fill="var(--blue)"/><circle cx="580" cy="69.6" r="3.5" fill="var(--blue)"/>
+
+            <polyline points="60,163.2 190,122.2 320,81.8 450,80.4 580,66" style="fill:none;stroke:var(--amber);stroke-width:2.5;stroke-dasharray:6,4"/>
+            <circle cx="60" cy="163.2" r="3.5" fill="var(--amber)"/><circle cx="190" cy="122.2" r="3.5" fill="var(--amber)"/><circle cx="320" cy="81.8" r="3.5" fill="var(--amber)"/><circle cx="450" cy="80.4" r="3.5" fill="var(--amber)"/><circle cx="580" cy="66" r="3.5" fill="var(--amber)"/>
+
+            <polyline points="60,181.2 190,112.8 320,91.2 450,73.2 580,71.8" style="fill:none;stroke:var(--green);stroke-width:2.5;stroke-dasharray:2,4"/>
+            <circle cx="60" cy="181.2" r="3.5" fill="var(--green)"/><circle cx="190" cy="112.8" r="3.5" fill="var(--green)"/><circle cx="320" cy="91.2" r="3.5" fill="var(--green)"/><circle cx="450" cy="73.2" r="3.5" fill="var(--green)"/><circle cx="580" cy="71.8" r="3.5" fill="var(--green)"/>
+
+            <text x="66" y="150" font-size="10.5" fill="var(--blue)" font-family="'DM Mono',monospace">t = 0 (solid)</text>
+            <text x="66" y="205" font-size="10.5" fill="var(--amber)" font-family="'DM Mono',monospace">t = 1 (dashed, wide)</text>
+            <text x="440" y="55" font-size="10.5" fill="var(--green)" font-family="'DM Mono',monospace">t = 2 (dashed, tight)</text>
+          </svg></div>
+        <div class="sl-note">Front end (x=0) moves ~15–25bp between snapshots; the long end (x=20y) barely moves ~5–8bp — the same short-end-noisier-than-long-end pattern real forward curves show, and exactly what σ(t,x) being tenor-dependent encodes.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Nudge time forward, watch it wiggle</h2>
+      <p class="sl-sub">Same illustrative curve, now advanced step by step. Each step applies a new seeded random perturbation — front end noisier than the back end — and redraws the whole shape.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A forward curve across tenors from zero to twenty years that redraws as a time slider advances, with a fixed seeded random perturbation applied at each step">
+            <line x1="60" y1="200" x2="600" y2="200" style="stroke:var(--text3);stroke-width:1"/>
+            <text x="60" y="216" font-size="11" fill="var(--text3)" font-family="'DM Mono',monospace">x=0</text>
+            <text x="600" y="216" font-size="11" fill="var(--text3)" font-family="'DM Mono',monospace" text-anchor="end">x=20y</text>
+            <line x1="60" y1="30" x2="60" y2="200" style="stroke:var(--border2);stroke-width:1"/>
+            <polyline id="spde-slider-curve" points="60,150 172,110 284,80 396,60 508,42 600,32" style="fill:none;stroke:var(--blue);stroke-width:2.5"/>
+            <g id="spde-slider-dots"></g>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Time step (seeded random walk, reproducible)</span><span class="sl-live" id="spde-slider-tval">t = 0</span></div>
+        <input type="range" class="sl-slider" id="spde-slider" min="0" max="10" step="1" value="0">
+        <div class="sl-calc-steps">
+          <div>Front end f(t,0): <b id="spde-slider-front">3.00%</b></div>
+          <div>Mid tenor f(t,10): <b id="spde-slider-mid">4.20%</b></div>
+          <div>Long end f(t,20): <b id="spde-slider-long">4.45%</b></div>
+        </div>
+        <div class="sl-note">The curve is fully recomputed from the fixed seed at every step — scrub backward and forward and you get the exact same shape at the same step every time, the same reproducibility a fixed-seed Monte Carlo run needs.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">The no-arbitrage drift, computed live</h2>
+      <p class="sl-sub">Once a volatility structure σ(t,x) is specified, HJM's drift condition α(t,x) = σ(t,x) · ∫₀ˣσ(t,u)du is not optional — it's forced. Try different vol inputs below.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change either input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>σ(t,x) — vol at this tenor</label><input type="number" class="sl-input" id="spde-calc-sigma" value="0.010" step="0.001"></div>
+          <div class="sl-calc-op">×</div>
+          <div class="sl-calc-field"><label>∫₀ˣ σ(t,u)du — accumulated vol to x</label><input type="number" class="sl-input" id="spde-calc-intsigma" value="0.045" step="0.001"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Implied drift α(t,x)</div>
+            <div class="sl-calc-result-val" id="spde-calc-result">4.50 bp</div>
+          </div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="spde-calc-reset">Reset to worked-example numbers</button>
+        <div class="sl-note">Both fields are decimals (0.010 = 1.0% annualized vol). Leave a field blank or type something non-numeric and the result shows "—" — this is a no-arbitrage constraint, not a formula that tolerates guessing.</div>
+      </div>
+      <p class="sl-p">0.010 × 0.045 = 0.00045, or <strong>4.5 basis points</strong> of forced drift at that tenor. The modeller never gets to pick α independently — specify σ(t,x) across the whole curve, and the drift at every tenor is already decided.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">The Zakai equation: filtering's own SPDE</h2>
+      <p class="sl-sub">A second, completely different named SPDE — this one from continuous-time filtering, not term-structure modelling.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The equation</div>
+        <div class="sl-row"><div class="sl-box">dπ_t</div><div class="sl-arrow">=</div><div class="sl-box">L*π_t dt</div><div class="sl-arrow">+</div><div class="sl-box amber">π_t h(x_t) dy_t</div></div>
+        <div class="sl-verdict">π_t is the <strong>unnormalized</strong> conditional density of a hidden state x_t, given a noisy, continuously-observed process y_t — a whole probability curve, not one number, updating as each new observation arrives.</div>
+      </div>
+      <div class="sl-compare">
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Kalman filter</span>
+          <p><strong>The exact closed-form solution</strong> — when the hidden-state dynamics are linear and every noise term Gaussian, π_t stays Gaussian at every instant, so the whole infinite-dimensional density collapses to just tracking a mean and a covariance. That finite system of update equations <em>is</em> the Kalman filter.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Particle filter</span>
+          <p><strong>A Monte Carlo approximation</strong> — outside the linear-Gaussian case, π_t has no closed form. The particle filter approximates it with a weighted swarm of simulated trajectories, converging to the true Zakai solution as the particle count grows.</p>
+        </div>
+      </div>
+      <div class="sl-quote">Neither the Kalman filter nor the particle filter lesson earlier in this curriculum names the object both are — in different senses — solving. This is it: one linear SPDE governing how confidence about a hidden state evolves, given noisy continuous evidence.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Genuinely advanced — and genuinely not what's running in this repo</h2>
+      <p class="sl-sub">Worth being explicit about where this machinery actually gets used, and where it doesn't.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🏦</div><div><h4>Specialist curve-modelling desks</h4><p>The HJM/Musiela framework, in something close to its full generality, is genuinely used where a book's exposure to curve <em>shape</em> — not just level — is large enough to justify the complexity.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📚</div><div><h4>Academic filtering research</h4><p>The Zakai equation is standard machinery in the nonlinear-filtering literature; the algorithms it motivates (Kalman, particle filters) are what actually reach production, not a direct SPDE solve.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧭</div><div><h4>A frontier worth recognizing, not a default tool</h4><p>Knowing the SPDE framing is most useful for judging when a finite-dimensional simplification is adequate — and when its assumptions are being stretched.</p></div></div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Verified against this repo's actual code</div>
+        <p>Checked directly rather than assumed: nothing in this codebase implements HJM/Musiela, a Zakai equation, or any whole-curve stochastic model — a repo-wide search turns up no such code anywhere. This curriculum's own <code>js/yieldCurveEngine.js</code> models the yield curve only as a single 2s10s slope number plus a z-score trend versus its own history — a level-and-trend signal, not even a static multi-tenor snapshot, let alone a stochastic model of the whole curve moving through time. That's fully consistent with this lesson's framing below: full SPDE machinery is real, rigorous, and used elsewhere, but nowhere in this repo, and it isn't meant to be — this is background theory for reading specialist material and the next lesson's neural-SPDE extension, not a build spec.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What is the core structural difference between an SDE and an SPDE?</h4>
+        <button class="sl-quiz-opt" data-correct="true">An SDE's solution is a finite vector of numbers; an SPDE's solution is an entire evolving curve or field</button>
+        <button class="sl-quiz-opt">An SPDE just means "an SDE with more noise terms"</button>
+        <button class="sl-quiz-opt">There is no real difference, just different notation</button>
+        <div class="sl-quiz-explain">An SDE lives in a finite-dimensional space ℝⁿ. An SPDE's unknown, u(t,x), lives in an infinite-dimensional space — a space of functions — because it's a whole curve or field at every instant, not a fixed-length list.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Discretizing the HJM/Musiela SPDE and keeping only the tenor point x=0 collapses it into what?</h4>
+        <button class="sl-quiz-opt" data-correct="true">A single short-rate SDE, like Vasicek, CIR, or Hull-White</button>
+        <button class="sl-quiz-opt">The Zakai equation</button>
+        <button class="sl-quiz-opt">Space-time white noise</button>
+        <div class="sl-quiz-explain">Tracking only the short rate r_t = f(t,0) and folding everything else about the curve into one mean-reversion term is exactly what a short-rate model does — the finite-dimensional special case of the full curve SPDE.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Once a volatility structure σ(t,x) is specified for the forward curve, is the drift α(t,x) a free modelling choice?</h4>
+        <button class="sl-quiz-opt" data-correct="true">No — no-arbitrage forces α(t,x) = σ(t,x)·∫₀ˣσ(t,u)du</button>
+        <button class="sl-quiz-opt">Yes, any drift can be paired with any volatility</button>
+        <button class="sl-quiz-opt">Only the sign of α is constrained, not its size</button>
+        <div class="sl-quiz-explain">The HJM drift condition pins α down completely as a function of the already-chosen σ. Picking σ and then an arbitrary α produces an arbitrage, not a valid model.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>What does the Zakai equation describe the evolution of?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The unnormalized conditional probability density of a hidden state, given noisy continuous observations</button>
+        <button class="sl-quiz-opt">The price of a bond as a function of its coupon</button>
+        <button class="sl-quiz-opt">The variance of a single Brownian motion</button>
+        <div class="sl-quiz-explain">π_t in the Zakai equation is a whole density — a field-valued object — updating continuously as new noisy observations y_t arrive, in exactly the filtering setting the Kalman and particle filter lessons build algorithms for.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>How does the Kalman filter relate to the Zakai equation?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It's the exact closed-form solution in the linear-Gaussian special case</button>
+        <button class="sl-quiz-opt">It's an unrelated algorithm that predates the Zakai equation</button>
+        <button class="sl-quiz-opt">It only approximates the Zakai equation, the same way a particle filter does</button>
+        <div class="sl-quiz-explain">When dynamics are linear and noise Gaussian, the Zakai solution stays Gaussian, collapsing to a mean and covariance — the Kalman filter's update equations. The particle filter, by contrast, is the Monte Carlo approximation used outside that special case.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>An SDE moves a finite vector of numbers randomly through time; an SPDE moves an entire curve or field — the direct infinite-dimensional generalization of everything else in this sequence.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Space-time white noise, the canonical SPDE's driving randomness, is a distribution, not a pointwise function — it's rigorously defined only through integration against a test shape.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>The mild solution u(t) = S(t)u(0) + ∫S(t−s)dW(s) is the same "growth factor plus accumulated random pushes" idea as an ordinary linear SDE's closed form — a semigroup replacing a scalar exponential.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>HJM/Musiela writes the whole forward-rate curve's random motion as one SPDE; the no-arbitrage drift condition forces the drift the moment volatility is chosen — it's never a second, independent choice.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Vasicek, CIR, and Hull-White are the x=0-only special case of that same curve SPDE — a single short-rate SDE is what's left once every other tenor is discarded.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>The Zakai equation is the SPDE an unnormalized filtering density evolves by — the Kalman filter solves it exactly in the linear-Gaussian case, a particle filter approximates it by Monte Carlo otherwise.</p></div>
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">What this now lets you do</div>
+        <p>Recognize when a finite-dimensional model in this curriculum — a Hull-White short rate, a Kalman filter — is a deliberate simplification of a richer curve- or field-valued object, and know exactly what it's a simplification <em>of</em>. Name the two SPDEs that connect that richer object to concrete finance and filtering problems: HJM/Musiela for the whole forward curve, Zakai for continuous-time state estimation. That's enough grounding to read specialist term-structure or filtering material, or the next lesson's neural-network extension of this same machinery, without starting from zero.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Neural SDEs &amp; Neural SPDEs</h3>
+        <p>What happens when a neural network replaces the drift, volatility, or entire operator in the equations built here — applied, among other things, to an implied-volatility surface.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="neural-sdes-spdes-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="stochastic-pdes.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // mulberry32 — small, fast, seeded PRNG. Deterministic: same seed always
+  // produces the same sequence, so the curve at a given time step is always
+  // identical however the slider was scrubbed to get there.
+  function mulberry32(seed){
+    var a = seed >>> 0;
+    return function(){
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      var t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  // Time-slider forward-curve wiggle.
+  (function(){
+    var slider = document.getElementById('spde-slider');
+    if (!slider) return;
+    var tVal = document.getElementById('spde-slider-tval');
+    var curveEl = document.getElementById('spde-slider-curve');
+    var dotsEl = document.getElementById('spde-slider-dots');
+    var frontOut = document.getElementById('spde-slider-front');
+    var midOut = document.getElementById('spde-slider-mid');
+    var longOut = document.getElementById('spde-slider-long');
+
+    var TENORS = [0, 4, 8, 12, 16, 20];
+    var BASE   = [3.00, 3.55, 3.95, 4.15, 4.32, 4.45]; // % — illustrative starting curve
+    var VOL    = [0.20, 0.14, 0.10, 0.07, 0.05, 0.04];  // % per step — front end noisier than back end
+    var X0 = 60, X1 = 600, Y_PCT_TOP = 5.2, Y_PCT_BOT = 2.6, Y_TOP = 30, Y_BOT = 200;
+    var SEED = 42;
+
+    function xPx(tenor){ return X0 + (tenor / 20) * (X1 - X0); }
+    function yPx(pct){ return Y_BOT - ((pct - Y_PCT_BOT) / (Y_PCT_TOP - Y_PCT_BOT)) * (Y_BOT - Y_TOP); }
+
+    function curveAtStep(step){
+      var rand = mulberry32(SEED);
+      var vals = BASE.slice();
+      for (var s = 0; s < step; s++) {
+        for (var i = 0; i < vals.length; i++) {
+          var shock = (rand() * 2 - 1) * VOL[i];
+          vals[i] = Math.max(0.05, vals[i] + shock);
+        }
+      }
+      return vals;
+    }
+
+    function render(){
+      var step = parseInt(slider.value, 10);
+      tVal.textContent = 't = ' + step;
+      var vals = curveAtStep(step);
+      var pts = [];
+      var dots = '';
+      for (var i = 0; i < TENORS.length; i++) {
+        var px = xPx(TENORS[i]), py = yPx(vals[i]);
+        pts.push(px.toFixed(1) + ',' + py.toFixed(1));
+        dots += '<circle cx="' + px.toFixed(1) + '" cy="' + py.toFixed(1) + '" r="3.5" fill="var(--blue)"/>';
+      }
+      curveEl.setAttribute('points', pts.join(' '));
+      dotsEl.innerHTML = dots;
+      frontOut.textContent = vals[0].toFixed(2) + '%';
+      midOut.textContent = vals[3].toFixed(2) + '%';
+      longOut.textContent = vals[5].toFixed(2) + '%';
+    }
+
+    slider.addEventListener('input', render);
+    render();
+  })();
+
+  // HJM no-arbitrage drift calculator, with defensive guards.
+  (function(){
+    var sigma = document.getElementById('spde-calc-sigma');
+    if (!sigma) return;
+    var intSigma = document.getElementById('spde-calc-intsigma');
+    var result = document.getElementById('spde-calc-result');
+    var resetBtn = document.getElementById('spde-calc-reset');
+    var DEFAULTS = { sigma: 0.010, intSigma: 0.045 };
+
+    function recompute(){
+      var s = parseFloat(sigma.value), i = parseFloat(intSigma.value);
+      if (sigma.value.trim() === '' || intSigma.value.trim() === '' || !isFinite(s) || !isFinite(i)) {
+        result.textContent = '—';
+        return;
+      }
+      var alpha = s * i;
+      var bp = alpha * 10000;
+      result.textContent = bp.toFixed(2) + ' bp';
+    }
+
+    [sigma, intSigma].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      sigma.value = DEFAULTS.sigma; intSigma.value = DEFAULTS.intSigma;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

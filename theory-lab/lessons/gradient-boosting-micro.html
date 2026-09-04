@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gradient Boosting — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Gradient Boosting — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer full derivations, live math notation, and a 5-question self-test?<a href="gradient-boosting.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Tree-Based &amp; Ensemble ML 2 (final) · Tree-Based &amp; Ensemble Machine Learning</div>
+      <h1 class="sl-h1">Gradient Boosting, <em>Correcting the Ensemble One Tree at a Time</em></h1>
+      <p class="sl-lede">The previous lesson in this category, <a href="decision-trees-random-forests-micro.html" style="color:inherit;text-decoration:underline">Decision Trees &amp; Random Forests</a>, fixed one tree's overfitting by growing many independent trees in parallel and averaging their votes — bagging. Gradient boosting takes the opposite structural bet: build trees one at a time, in strict sequence, where every new tree's entire job is to correct whatever error the ensemble built so far is still making. This is the final lesson in Tree-Based &amp; Ensemble Machine Learning, and it closes the category with the field's other big idea — plus the one caveat that has to travel with it into any real feature set.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Parallel and independent, versus sequential and dependent</h2>
+      <p class="sl-sub">Same goal — a model that predicts well on data it hasn't seen — two structurally opposite strategies.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Random forest — bagging</span>
+          <ul>
+            <li>Grows B trees <strong>independently</strong>, in parallel, each on its own bootstrap resample</li>
+            <li>No tree ever sees another tree's output</li>
+            <li>Combines them only at the end, by averaging</li>
+            <li>Reduces <strong>variance</strong> — many high-variance, low-bias guesses, averaged</li>
+          </ul>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag purple">Gradient boosting</span>
+          <ul>
+            <li>Grows trees <strong>sequentially</strong>, one at a time, in strict order</li>
+            <li>Every new tree is fit specifically to the ensemble-so-far's leftover error</li>
+            <li>Combines them by adding, a shrunk correction at a time</li>
+            <li>Reduces <strong>bias</strong> — a crude first guess, corrected again and again</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-quote">A forest's trees never depend on each other, which is exactly what lets averaging cancel their independent noise — and exactly why the previous lesson's variance floor, ρσ², exists: the trees still all come from the same data. Boosting's trees are <strong>deliberately</strong> dependent — tree 2 cannot even be trained until tree 1's leftover error exists, because that error <em>is</em> tree 2's entire training target.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Four steps, repeated many times</h2>
+      <p class="sl-sub">This is the entire algorithm — everything else in this lesson is this loop, run on real numbers.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">0</div><div><h4>Start simple</h4><p>Initialize the ensemble as a single constant — for a numeric target, just the training mean. A crude starting guess, wrong for almost everyone, but a reasonable baseline.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">−</div><div><h4>Find what's still wrong</h4><p>Compute the residual for every training point: the true target minus the ensemble's current prediction. This is what's left over, not yet explained.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🌱</div><div><h4>Fit a small tree to that leftover</h4><p>Train a fresh, usually shallow tree — using the exact recursive splitting from the previous lesson — with the <strong>residual</strong> as its target, never the original y.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">+</div><div><h4>Shrink it, then add it in</h4><p>Multiply the new tree's prediction by a small shrinkage rate ν (commonly 0.01–0.3), and add that shrunk correction to the running total. Then repeat from step 2.</p></div></div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Why shrink at all</div>
+        <p>Setting ν = 1 lets one tree fully "solve" the current residual in a single step — fast, but that tree ends up fitting that round's specific noise, not a pattern that generalizes. Small, repeated, shrunk corrections — more rounds, each more conservative — empirically generalize better than a few large, confident ones.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Watch three rounds happen, on five points</h2>
+      <p class="sl-sub">Five training points, targets y = [3, 5, 6, 9, 12] at x = 1…5, shrinkage ν = 0.5. Step through the rounds.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="gb-tabs">
+          <button class="sl-tab active" data-panel="gb-r1">Round 1</button>
+          <button class="sl-tab" data-panel="gb-r2">Round 2</button>
+          <button class="sl-tab" data-panel="gb-r3">Round 3</button>
+        </div>
+        <div class="sl-panel active" id="gb-r1">
+          <div class="sl-row"><div class="sl-box">F₀ = 7 (mean)</div><div class="sl-arrow">+ ν·h₁(resid₀) →</div><div class="sl-box amber">F₁</div></div>
+          <div class="sl-verdict">Residuals off the mean are [−4, −2, −1, +2, +5]. The best single split for h₁ is x≤3 vs x&gt;3: leaf means <strong>−2.333</strong> and <strong>+3.5</strong>. With ν=0.5, <strong>F₁ = 5.833</strong> for x≤3 and <strong>8.75</strong> for x&gt;3. Total leftover error (Σ|residual|) drops from <strong>14.0 to 7.33</strong> — roughly halved after one round.</div>
+        </div>
+        <div class="sl-panel" id="gb-r2">
+          <div class="sl-row"><div class="sl-box">F₁</div><div class="sl-arrow">+ ν·h₂(resid₁) →</div><div class="sl-box amber">F₂</div></div>
+          <div class="sl-verdict">h₂ is fit only to what's still wrong after round 1. It isolates the point still furthest off — x=5, where y=12 — with leaf means <strong>−0.812</strong> (x≤4) and <strong>+3.25</strong> (x=5 alone). <strong>F₂ = 5.427</strong> for x≤4, <strong>10.375</strong> at x=5. Σ|residual| keeps falling, <strong>7.33 → 5.71</strong>.</div>
+        </div>
+        <div class="sl-panel" id="gb-r3">
+          <div class="sl-row"><div class="sl-box">F₂</div><div class="sl-arrow">+ ν·h₃(resid₂) →</div><div class="sl-box green">F₃</div></div>
+          <div class="sl-verdict">h₃ splits x≤1 vs x&gt;1: leaf means <strong>−2.427</strong> and <strong>+0.607</strong>. <strong>F₃ ≈ 4.21</strong> at x=1, climbing toward <strong>≈10.68</strong> at x=5. Σ|residual| falls again, <strong>5.71 → 3.89</strong> — nothing was re-taught, each round only chased what was still unexplained.</div>
+        </div>
+      </div>
+      <p class="sl-p">Notice what never happens: no round ever looks at the original target y again after round 0. Every later tree's entire world is the residual handed to it by the round before — which is exactly why the chain can't be reordered or parallelized the way a forest's trees can.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Watching one point converge, round by round</h2>
+      <p class="sl-sub">Following the x=5 point (true y=12) through the exact rounds from the previous slide. The gap to the dashed target line is that round's residual.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Visualize it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart showing the ensemble's prediction for the point x=5 rising toward the true target of 12 across four boosting rounds: 7, 8.75, 10.375, then 10.678, with the shrinking gap to the target labeled as the residual at each round.">
+            <line x1="60" y1="20" x2="60" y2="220" style="stroke:var(--border2)"/>
+            <line x1="60" y1="220" x2="620" y2="220" style="stroke:var(--border2)"/>
+            <text x="340" y="245" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">boosting round</text>
+            <text x="26" y="120" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace" transform="rotate(-90 26 120)">prediction for x=5</text>
+
+            <line x1="60" y1="40" x2="620" y2="40" style="stroke:var(--red);stroke-width:1.5;stroke-dasharray:5 4;opacity:.8"/>
+            <text x="600" y="33" text-anchor="end" fill="var(--red)" font-size="10.5" font-family="'DM Mono',monospace">true y = 12</text>
+
+            <line x1="100" y1="40" x2="100" y2="152.5" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:3 3;opacity:.6"/>
+            <text x="112" y="90" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">r₀ = 5.00</text>
+            <line x1="260" y1="40" x2="260" y2="113.1" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:3 3;opacity:.6"/>
+            <text x="272" y="80" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">r₁ = 3.25</text>
+            <line x1="420" y1="40" x2="420" y2="76.6" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:3 3;opacity:.6"/>
+            <text x="432" y="62" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">r₂ = 1.63</text>
+            <line x1="580" y1="40" x2="580" y2="69.7" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:3 3;opacity:.6"/>
+            <text x="500" y="58" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">r₃ = 1.32</text>
+
+            <path d="M100,152.5 L260,113.1 L420,76.6 L580,69.7" style="fill:none;stroke:var(--blue);stroke-width:2.5"/>
+            <circle cx="100" cy="152.5" r="5" style="fill:var(--blue)"/>
+            <circle cx="260" cy="113.1" r="5" style="fill:var(--blue)"/>
+            <circle cx="420" cy="76.6" r="5" style="fill:var(--blue)"/>
+            <circle cx="580" cy="69.7" r="5" style="fill:var(--blue)"/>
+            <text x="100" y="172" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">F₀=7</text>
+            <text x="260" y="132" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">F₁=8.75</text>
+            <text x="420" y="96" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">F₂=10.38</text>
+            <text x="580" y="52" text-anchor="middle" fill="var(--blue)" font-size="10" font-family="'DM Mono',monospace" font-weight="700">F₃=10.68</text>
+          </svg>
+        </div>
+        <div class="sl-note">The same shrinking pattern holds across the whole 5-point dataset, not just this one point: total leftover error (Σ|residual| over all 5 points) went 14.0 → 7.33 → 5.71 → 3.89 across these same three rounds — every round closes part of the remaining gap, never all of it in one step, by design.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Run one boosting step yourself</h2>
+      <p class="sl-sub">Given the current residual's ingredients, compute the updated prediction and the new residual — this is round 1 → round 2 of the example above, at x=5.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Actual target y</label><input type="number" class="sl-input" id="gbc-y" value="12" step="0.5"></div>
+          <div class="sl-calc-field"><label>Current prediction F</label><input type="number" class="sl-input" id="gbc-F" value="8.75" step="0.25"></div>
+          <div class="sl-calc-field"><label>New tree's leaf h</label><input type="number" class="sl-input" id="gbc-h" value="3.25" step="0.25"></div>
+          <div class="sl-calc-field"><label>Shrinkage ν (0–1)</label><input type="number" class="sl-input" id="gbc-nu" value="0.5" step="0.05" min="0" max="1"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Updated F</div>
+            <div class="sl-calc-result-val" id="gbc-Fnew">10.375</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Residual before this round: r = y − F = <b id="gbc-r0">3.250</b></div>
+          <div>Updated prediction: F_new = F + ν·h = <b id="gbc-Fnew2">10.375</b></div>
+          <div>Residual after this round: r_new = y − F_new = <b id="gbc-r1">1.625</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="gbc-reset">Reset to worked-example numbers</button>
+        <div class="sl-note" id="gbc-note">Blank, non-numeric, or non-finite input — or a shrinkage ν outside 0–1 — shows "—" instead of NaN or Infinity. Shrinkage isn't meaningful above 1 (overcorrecting) or below 0 (subtracting the correction), so this calculator refuses both.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">More rounds helps — until it starts hurting</h2>
+      <p class="sl-sub">Drag the slider. Training error (blue) keeps falling toward zero. Validation error (amber) falls too, but only up to a point — then rises as later rounds start fitting noise.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Chart of illustrative training error, always decreasing, and validation error, decreasing then rising past roughly 105 boosting rounds, with a slider-controlled marker on each curve and a shaded overfitting-risk zone past the validation minimum">
+            <rect x="342.3" y="20" width="257.7" height="200" style="fill:var(--amber);opacity:.06"/>
+            <line x1="342.3" y1="20" x2="342.3" y2="220" style="stroke:var(--amber);stroke-width:1;stroke-dasharray:4 4;opacity:.6"/>
+            <text x="348" y="32" fill="var(--amber)" font-size="10" font-family="'DM Mono',monospace">overfitting risk zone</text>
+
+            <line x1="60" y1="20" x2="60" y2="220" style="stroke:var(--border2)"/>
+            <line x1="60" y1="220" x2="620" y2="220" style="stroke:var(--border2)"/>
+            <text x="340" y="245" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">boosting rounds (M)</text>
+            <text x="26" y="120" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace" transform="rotate(-90 26 120)">error (illustrative)</text>
+
+            <path d="M60,26.2 L111.6,112.5 L165.8,159.9 L220.1,184.3 L274.4,196.7 L328.6,203.2 L382.9,206.5 L437.2,208.2 L491.5,209.1 L545.7,209.5 L600,209.8" style="fill:none;stroke:var(--blue);stroke-width:2.5"/>
+            <text x="480" y="222" fill="var(--blue)" font-size="10.5" font-family="'DM Mono',monospace" transform="translate(0,-6)">training error</text>
+
+            <path d="M60,24.8 L111.6,94 L165.8,135.8 L220.1,159.4 L274.4,167.9 L328.6,170.6 L382.9,170.1 L437.2,167.7 L491.5,164.2 L545.7,160.2 L600,155.8" style="fill:none;stroke:var(--amber);stroke-width:2.5"/>
+            <text x="440" y="150" fill="var(--amber)" font-size="10.5" font-family="'DM Mono',monospace">validation error</text>
+
+            <line id="gbm-vline" x1="328.6" y1="203.2" x2="328.6" y2="220" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:3 3;opacity:.6"/>
+            <circle id="gbm-traindot" cx="328.6" cy="203.2" r="6" style="fill:var(--blue);stroke:var(--bg);stroke-width:2"/>
+            <circle id="gbm-valdot" cx="328.6" cy="170.6" r="6" style="fill:var(--amber);stroke:var(--bg);stroke-width:2"/>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Boosting rounds (M)</span><span class="sl-live" id="gbm-mval">M = 100</span></div>
+        <input type="range" class="sl-slider" id="gbm-slider" min="1" max="200" step="1" value="100">
+        <div class="sl-note" id="gbm-readout">Illustrative curve — training error ≈ 0.084, validation error ≈ 0.247.</div>
+      </div>
+      <p class="sl-p">This is why "early stopping on a genuine validation set" is standard practice, not an optional extra: with enough rounds and too little shrinkage, boosting can drive <em>training</em> error toward zero exactly the way one unconstrained tree can — a falling training curve alone never tells you which side of that amber line you're on.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Nobody trains the raw 2001 algorithm anymore</h2>
+      <p class="sl-sub">Three production libraries dominate real-world use — same sequential-correction core, different practical engineering.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🌲</div><div><h4>XGBoost</h4><p>Adds an explicit regularization term that penalizes tree complexity directly in the training objective, plus efficient built-in handling of missing values and histogram-based split-finding for speed.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🍃</div><div><h4>LightGBM</h4><p>Grows trees leaf-wise instead of level-wise, chasing whichever leaf reduces loss most — often noticeably faster to train on large or high-dimensional data, at some extra overfitting risk on small ones.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🐱</div><div><h4>CatBoost</h4><p>Built around statistically careful native handling of categorical features, avoiding the target leakage naive target-encoding can introduce, plus an ordering scheme to reduce reuse-of-data bias.</p></div></div>
+      </div>
+      <div class="sl-quote">All three sit on top of the exact same two ideas from this lesson — a corrective step fit to the leftover error, and a shrinkage rate — without changing that core mechanism. The engineering is about training efficiently and handling messy real tabular data well, not a different underlying algorithm.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Not just a concept in this repo — checked directly</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Verified against this repo's actual code</div>
+        <p>The full lesson this deck condenses labels gradient boosting a "CONCEPT — explained here, not built or tested anywhere in this repo." Checking each file directly shows that framing is <strong>stale</strong>. Gradient-boosted trees genuinely run here, in three roles: <code>bot/scripts/train_gold_model.py</code> trains XGBoost and LightGBM classifiers on gold macro features; <code>bot/modules/ml_confidence.py</code> loads those two trained models and averages their win-probability to scale live position size; <code>AnalogML/ml_walkforward.py</code> walk-forward tests XGBoost and LightGBM classifiers (plus an XGBRegressor/LGBMRegressor blended into a Ridge meta-learner) against a triple-barrier trading label. Two more files use it in a narrower, secondary role: <code>SessionResearch/forecast.py</code> fits scikit-learn's HistGradientBoosting pair alongside its primary Ridge/Logistic models purely as a "does nonlinearity actually help" check, and <code>volatilityExhaustion/daytype_classifier.py</code> flags a shallow HistGradientBoosting model as a higher-flexibility comparison against its primary, harder-to-overfit logistic regression. Genuine production use in three files, a deliberate ablation/comparison role in two more — not a pure textbook concept.</p>
+      </div>
+      <p class="sl-p">Worth naming the boundary precisely: the previous lesson's forest and plain decision-tree classes still don't appear anywhere in this codebase — that finding stands. It's specifically <em>gradient-boosted</em> trees, this lesson's subject, that turn out to already be live.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">A great knife still needs the right recipe</h2>
+      <div class="sl-quote">Being told "this is the best-selling, most versatile kitchen knife in the world" tells you the knife is genuinely great — but nothing about whether it's the right tool for the specific recipe you're making tonight. Gradient boosting being the strongest general-purpose method for tabular data is the "great knife" claim. Whether it actually finds something real and tradeable in one specific set of FX or macro features is a completely separate question, answered only by testing that exact feature set on its own — every single time.</div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Two different claims, easy to blur together</div>
+        <p><strong>Claim about the method:</strong> gradient-boosted trees are genuinely, consistently the strongest general-purpose technique on structured/tabular prediction problems — well-evidenced, across thousands of unrelated datasets. <strong>Claim about a feature set:</strong> whether this specific set of macro or FX features fed into it contains real, out-of-sample-validated predictive signal — a completely separate question, decided by that feature set alone.</p>
+      </div>
+      <p class="sl-p">A powerful algorithm applied to features with no real signal doesn't fail loudly — it overfits noise, and it can do so <strong>more</strong> convincingly than a weaker method would, because it's flexible enough to trace a shape through pure randomness. That is exactly why leakage-free, honest out-of-sample testing gets <em>more</em> important as the method gets stronger, never less.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What's the core structural difference between how a random forest and a gradient-boosted ensemble are trained?</h4>
+        <button class="sl-quiz-opt" data-correct="true">A forest's trees are trained independently in parallel; boosting's trees are trained strictly in sequence, each fit to the previous ensemble's error</button>
+        <button class="sl-quiz-opt">There is no real difference — both average many trees the same way</button>
+        <button class="sl-quiz-opt">A forest uses one tree; boosting always uses exactly two trees</button>
+        <div class="sl-quiz-explain">A forest's B trees never see each other's output — combined only at the end by averaging. Boosting's trees form a strict chain: tree m can't be trained until tree m−1's residual exists.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>What is each new tree in gradient boosting actually trained to predict?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The current ensemble's residual — what's still left over, not the original target y</button>
+        <button class="sl-quiz-opt">The original target y, from scratch, every round</button>
+        <button class="sl-quiz-opt">A random subset of the previous tree's leaves</button>
+        <div class="sl-quiz-explain">For squared-error loss, the residual is literally y minus the ensemble's current prediction. Every tree after the first is trained on that leftover error, never on y directly.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>What does the shrinkage rate ν control, and what tends to happen at ν = 1?</h4>
+        <button class="sl-quiz-opt" data-correct="true">How much of each new tree's correction is applied; ν = 1 lets one tree overcorrect to that round's specific noise</button>
+        <button class="sl-quiz-opt">The number of trees in the ensemble</button>
+        <button class="sl-quiz-opt">Whether the model classifies or regresses</button>
+        <div class="sl-quiz-explain">A small ν (commonly 0.01–0.3) needs more rounds to reach the same fit, but each step is more conservative — empirically generalizing better than a few large, confident corrections at ν = 1.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Which of the three production libraries grows trees leaf-wise rather than level-wise, chasing whichever leaf reduces loss most?</h4>
+        <button class="sl-quiz-opt" data-correct="true">LightGBM</button>
+        <button class="sl-quiz-opt">XGBoost</button>
+        <button class="sl-quiz-opt">CatBoost</button>
+        <div class="sl-quiz-explain">LightGBM's leaf-wise growth is often noticeably faster on large or high-dimensional data than level-wise growth, at some extra overfitting risk on small datasets without careful depth control.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Gradient boosting is the strongest general-purpose method on tabular data. Does that, by itself, tell you a specific FX/macro feature set has real trading edge?</h4>
+        <button class="sl-quiz-opt" data-correct="true">No — that's a statement about the method; whether one specific feature set has real signal is a separate question, answered only by honest out-of-sample testing</button>
+        <button class="sl-quiz-opt">Yes — a proven method automatically transfers its strength to any feature set fed into it</button>
+        <button class="sl-quiz-opt">No — it actually means the method is too weak for real trading data</button>
+        <div class="sl-quiz-explain">A flexible, powerful method can fit noise very convincingly — possibly more convincingly than a weaker one. Its general strength across unrelated tabular problems says nothing about any one specific feature set's predictive power in one specific market.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>A forest averages independent, parallel trees to cut variance; boosting chains dependent, sequential trees to cut bias — the structural opposite strategy for the same underlying goal.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>The loop is four steps: start with a constant, compute the residual, fit a small tree to that residual, add it back in shrunk by ν — repeated for M rounds.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Each new tree only ever sees the leftover error, never the original target again after round 0 — nothing already fixed gets re-taught.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Shrinkage ν trades more rounds for a more conservative step each round; too many rounds with too little shrinkage overfits, the same way an unconstrained single tree does.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>XGBoost, LightGBM, and CatBoost are the real production implementations — regularization, leaf-wise growth, and careful categorical handling on the same sequential-correction core.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Being the strongest general-purpose method on tabular data is a claim about the method, not about any one specific feature set — that gap is exactly where honest, leakage-free out-of-sample testing earns its keep.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Explain why a forest and a boosted ensemble solve the same overfitting problem from opposite directions — averaging away variance versus chasing down bias — and recognize which one a given tool (a forest, XGBoost, LightGBM, CatBoost) actually is. Read a falling training-loss curve for what it honestly is: not evidence of generalization on its own. And hold the method's strength and a specific feature set's signal as two separate claims, every time gradient boosting gets proposed for a real strategy.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Collateral, Funding &amp; Rehypothecation</h3>
+        <p>This closes Tree-Based &amp; Ensemble Machine Learning. Theory Lab moves next from statistical learning to market plumbing — collateral, funding, and the repo markets that connect them.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="collateral-margin-repo-markets-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="gradient-boosting.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // One boosting step, live: y, F, h, nu -> r_before, F_new, r_after.
+  (function(){
+    var yEl = document.getElementById('gbc-y');
+    if (!yEl) return;
+    var FEl = document.getElementById('gbc-F'), hEl = document.getElementById('gbc-h'), nuEl = document.getElementById('gbc-nu');
+    var FnewOut = document.getElementById('gbc-Fnew'), Fnew2Out = document.getElementById('gbc-Fnew2');
+    var r0Out = document.getElementById('gbc-r0'), r1Out = document.getElementById('gbc-r1');
+    var note = document.getElementById('gbc-note');
+    var resetBtn = document.getElementById('gbc-reset');
+    var DEFAULTS = { y: 12, F: 8.75, h: 3.25, nu: 0.5 };
+    var DEFAULT_NOTE = 'Blank, non-numeric, or non-finite input — or a shrinkage ν outside 0–1 — shows "—" instead of NaN or Infinity. Shrinkage isn\'t meaningful above 1 (overcorrecting) or below 0 (subtracting the correction), so this calculator refuses both.';
+
+    function setBlank(msg){
+      FnewOut.textContent = '—'; Fnew2Out.textContent = '—';
+      r0Out.textContent = '—'; r1Out.textContent = '—';
+      note.textContent = msg;
+    }
+
+    function recompute(){
+      var y = parseFloat(yEl.value), F = parseFloat(FEl.value), h = parseFloat(hEl.value), nu = parseFloat(nuEl.value);
+      if (![y, F, h, nu].every(isFinite)) {
+        setBlank('Enter a number in every field — blank or non-numeric input can\'t be computed.');
+        return;
+      }
+      if (nu < 0 || nu > 1) {
+        setBlank('Shrinkage ν must be between 0 and 1 — a value outside that range isn\'t a meaningful learning rate here.');
+        return;
+      }
+      var r0 = y - F;
+      var Fn = F + nu * h;
+      var r1 = y - Fn;
+      FnewOut.textContent = Fn.toFixed(3);
+      Fnew2Out.textContent = Fn.toFixed(3);
+      r0Out.textContent = r0.toFixed(3);
+      r1Out.textContent = r1.toFixed(3);
+      note.textContent = DEFAULT_NOTE;
+    }
+
+    [yEl, FEl, hEl, nuEl].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      yEl.value = DEFAULTS.y; FEl.value = DEFAULTS.F; hEl.value = DEFAULTS.h; nuEl.value = DEFAULTS.nu;
+      recompute();
+    });
+    recompute();
+  })();
+
+  // Boosting-rounds slider — illustrative training-vs-validation error curves.
+  (function(){
+    var slider = document.getElementById('gbm-slider');
+    if (!slider) return;
+    var mVal = document.getElementById('gbm-mval');
+    var trainDot = document.getElementById('gbm-traindot');
+    var valDot = document.getElementById('gbm-valdot');
+    var vline = document.getElementById('gbm-vline');
+    var readout = document.getElementById('gbm-readout');
+    var OVERFIT_START = 105;
+
+    function trainErr(M){ return 0.05 + 0.95 * Math.exp(-M / 30); }
+    function valErr(M){
+      var e = 0.15 + 0.85 * Math.exp(-M / 35);
+      if (M > 60) e += 0.0012 * (M - 60);
+      return e;
+    }
+    function pxX(M){ return 60 + (M - 1) * 540 / 199; }
+    function pxY(e){ return 220 - e * 200; }
+
+    function update(){
+      var M = parseInt(slider.value, 10);
+      if (!isFinite(M) || M < 1) M = 1;
+      var te = trainErr(M), ve = valErr(M);
+      var x = pxX(M);
+      trainDot.setAttribute('cx', x.toFixed(1));
+      trainDot.setAttribute('cy', pxY(te).toFixed(1));
+      valDot.setAttribute('cx', x.toFixed(1));
+      valDot.setAttribute('cy', pxY(ve).toFixed(1));
+      vline.setAttribute('x1', x.toFixed(1));
+      vline.setAttribute('x2', x.toFixed(1));
+      vline.setAttribute('y1', Math.min(pxY(te), pxY(ve)).toFixed(1));
+      mVal.textContent = 'M = ' + M;
+      var zoneNote = M > OVERFIT_START
+        ? ' Past the validation minimum — more rounds now overfit (validation error rising while training error keeps falling).'
+        : ' Validation error is still falling here — more rounds are still helping.';
+      readout.textContent = 'Illustrative curve — training error ≈ ' + te.toFixed(3) + ', validation error ≈ ' + ve.toFixed(3) + '.' + zoneNote;
+    }
+    slider.addEventListener('input', update);
+    update();
+  })();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Collateral, Margin &amp; Repo Markets — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Collateral, Margin &amp; Repo Markets — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivations, SPAN/SIMM detail, and a 5-question self-test?<a href="collateral-margin-repo-markets.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Collateral, Funding &amp; Rehypothecation 1 · Collateral, Funding &amp; Rehypothecation</div>
+      <h1 class="sl-h1">Collateral, Margin &amp; Repo Markets, <em>the Plumbing Underneath Leverage</em></h1>
+      <p class="sl-lede">Every leveraged position and every derivatives trade rests on machinery most people never see: collateral posted as a buffer against default, discounted for its own riskiness with a "haircut," and funded overnight through the repo market — a market so central that SOFR, the reference rate from the earlier <a href="swap-curves-ois-micro.html">Swap Curves &amp; OIS Discounting</a> lesson, is built directly out of it. This deck opens a brand-new category — Collateral, Funding &amp; Rehypothecation — and this is its first lesson.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Why any leveraged position needs a buffer</h2>
+      <p class="sl-sub">Leverage means one side is exposed to the other for more than either has actually handed over. Something has to sit in reserve against the chance that exposure isn't honored.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>Leverage creates counterparty risk</h4><p>A leveraged position or a derivatives trade means one party could owe the other a meaningful sum if the market moves. If that party can't pay, the other side is exposed — this is true whether the counterparty is a bank, a fund, or a broker.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🛡</div><div><h4>Collateral is the buffer</h4><p>Posting collateral — cash, government bonds, other liquid securities — gives the counterparty something to seize and liquidate if the other side defaults, instead of simply absorbing the loss.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">↔</div><div><h4>It moves both ways</h4><p>Collateral obligations aren't fixed at trade inception — they're recalculated and re-exchanged as the position's risk and value change, which is exactly why margin has two distinct flavors, covered next.</p></div></div>
+      </div>
+      <div class="sl-quote">None of this is exotic — it's the ordinary plumbing sitting underneath market-making, leverage, and derivatives clearing everywhere in the world. It's usually invisible precisely because it's working correctly.</div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Scope check</div>
+        <p>This is institutional market-structure background — how collateral, margin, and repo work across banks, dealers, and clearinghouses generally. It is not a claim about anything built, tested, or traded inside this repo's own bots and broker code, which run simple, unleveraged-margin-free paper/live P&amp;L tracking with no SPAN/SIMM/haircut/repo modeling of any kind — verified directly against the current source before writing this deck.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Two margins, two different questions</h2>
+      <p class="sl-sub">Initial margin asks "what could go wrong?" Variation margin asks "what already did?" Step through a position's first three days.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="im-tabs">
+          <button class="sl-tab active" data-panel="im-1">Day 0 — position opens</button>
+          <button class="sl-tab" data-panel="im-2">Day 1 — position gains</button>
+          <button class="sl-tab" data-panel="im-3">Day 2 — position reverses</button>
+        </div>
+        <div class="sl-panel active" id="im-1">
+          <div class="sl-row"><div class="sl-box">Initial margin</div><div class="sl-arrow">posted once</div><div class="sl-box amber">buffer, upfront</div></div>
+          <div class="sl-verdict"><strong>IM is posted before anything has moved.</strong> It's sized to cover the worst plausible loss that could build up in the short window it would take to close out the position if the counterparty defaulted right now — not a payment for anything that happened.</div>
+        </div>
+        <div class="sl-panel" id="im-2">
+          <div class="sl-row"><div class="sl-box green">Position gains $50k</div><div class="sl-arrow">→</div><div class="sl-box green">VM: $50k paid to the winner</div></div>
+          <div class="sl-verdict"><strong>VM moves with the day's mark-to-market change.</strong> The losing side wires $50k to the winning side today, zeroing out yesterday's unrealized gain into a realized cash settlement. IM from Day 0 hasn't moved at all.</div>
+        </div>
+        <div class="sl-panel" id="im-3">
+          <div class="sl-row"><div class="sl-box">Position loses $80k</div><div class="sl-arrow">→</div><div class="sl-box">VM: $80k paid the other way</div></div>
+          <div class="sl-verdict"><strong>VM can flip direction daily, sometimes intraday.</strong> Yesterday's winner is today's payer. This is precisely why VM keeps current exposure near zero at every exchange — gains and losses get settled as they occur instead of piling up unrealized.</div>
+        </div>
+        <div class="sl-note">IM sits still unless the position's risk profile itself changes materially. VM moves every settlement cycle, in whichever direction the market just moved.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Initial margin: a forward-looking buffer</h2>
+      <p class="sl-p">IM is not guessed independently by each firm — it's sized using standardized, industry-recognized methodologies. This deck names them without deriving their internal mechanics, exactly as the full lesson does.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📊</div><div><h4>SPAN</h4><p>Standard Portfolio Analysis of Risk, developed by CME. Used for exchange-traded and centrally cleared derivatives — a scenario-based approach evaluating a portfolio's worst plausible loss across a grid of price and volatility shifts.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧮</div><div><h4>ISDA SIMM</h4><p>The Standard Initial Margin Model, from ISDA. Used for non-centrally-cleared, bilateral OTC derivatives, mandated for large participants under post-2008 uncleared-margin rules — sensitivity-based, computed from a portfolio's risk-factor exposures.</p></div></div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>SPAN and SIMM are built for structurally different market segments — cleared vs. bilateral — and aren't interchangeable. The window IM protects against is called the "margin period of risk": the time it would actually take to close out or replace a defaulting counterparty's position.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Variation margin: settling what already happened</h2>
+      <p class="sl-p">VM transfers cash equal to a position's realized mark-to-market change since the last exchange — commonly daily, intraday for volatile positions. It is not a cushion against the future; it's a receipt for the past.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">What VM is</span>
+          <p>A daily (or more frequent) true-up. The side that gained gets paid; the side that lost pays. Current exposure between the two parties is pulled back toward zero at every exchange.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">What VM is not</span>
+          <p>Not a buffer against tomorrow's move — that's IM's job. Not returned at trade close the way IM is (net of losses) — VM has already settled and isn't "owed back."</p>
+        </div>
+      </div>
+      <div class="sl-quote">Think of a security deposit versus a monthly rent payment. The deposit (IM) sits aside for something that <em>might</em> break later. Rent (VM) settles for a month you've already lived through.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">A haircut: why $100 of collateral often isn't worth $100</h2>
+      <p class="sl-sub">Collateral is rarely counted at full face value. Two risks justify the discount: the collateral's own price could fall, and selling it quickly — especially in a stressed default scenario — can itself move the price against the seller.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Worked example</div>
+        <div class="sl-row"><div class="sl-box">$100 bond</div><div class="sl-arrow">× (1 − 5%)</div><div class="sl-box green">$95 eligible</div></div>
+        <div class="sl-verdict">Eligible collateral value = market value × (1 − haircut %). A 5% haircut on $100 of market value leaves <strong>$95</strong> counted toward whatever requirement it's posted against — the other $5 is the receiving party's built-in buffer.</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🟢</div><div><h4>~0–2%</h4><p>Cash &amp; short-dated G7 government bonds — highly liquid, low volatility.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🟡</div><div><h4>~5–10%</h4><p>Investment-grade corporate bonds — more price and liquidity risk.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔴</div><div><h4>~15%+</h4><p>Listed equities — materially higher volatility.</p></div></div>
+      </div>
+      <div class="sl-note">These ranges are illustrative, order-of-magnitude figures — real haircut schedules vary by counterparty, tenor, credit rating, and regulatory regime.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Drag the haircut, watch usable collateral shrink</h2>
+      <p class="sl-sub">$100,000 of face value, discounted by whatever haircut a counterparty applies.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 110" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A bar showing eligible collateral value shrinking as the haircut percentage increases">
+            <text x="20" y="24" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10.5px">FACE VALUE — $100,000</text>
+            <rect x="20" y="34" width="600" height="34" rx="6" style="fill:var(--panel2);stroke:var(--border2)"/>
+            <rect id="hc-bar" x="20" y="34" width="570" height="34" rx="6" style="fill:var(--green);opacity:.85"/>
+            <rect id="hc-cut" x="590" y="34" width="30" height="34" style="fill:var(--red);opacity:.35"/>
+            <text id="hc-bar-label" x="30" y="56" style="fill:var(--bg);font-family:'DM Mono',monospace;font-size:12px;font-weight:700">$95,000 eligible</text>
+            <text x="330" y="92" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px" id="hc-cut-label">haircut: $5,000 discounted away</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Haircut</span><span class="sl-live" id="hc-val">5%</span></div>
+        <input type="range" class="sl-slider" id="hc-slider" min="0" max="30" step="1" value="5">
+        <div class="sl-calc-steps">
+          <div>Eligible collateral value = $100,000 × (1 − haircut) = <b id="hc-eligible">$95,000.00</b></div>
+          <div>Face value needed to fully cover a $100,000 requirement = <b id="hc-needed">$105,263.16</b></div>
+        </div>
+        <div class="sl-note">At 0% haircut the bar and the face value match exactly — cash and the most liquid short-dated government bonds sit near this end. At 30% the gap is enormous — the equity-and-below end of the spectrum.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">A repurchase agreement: a loan wearing two sales as a costume</h2>
+      <p class="sl-sub">One party sells a security today, agreeing to buy the exact same security back later at a slightly higher price. Nothing about the security changes — only cash and the security swap hands, twice, in opposite directions each leg.</p>
+      <div class="sl-svgwrap">
+        <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagram of an overnight repo. Leg one at the start: the cash borrower transfers a security to the cash lender, who transfers cash the other way. Leg two the next day: the cash borrower pays back cash plus interest, and the cash lender returns the same security.">
+          <rect x="20" y="20" width="600" height="110" rx="8" style="fill:var(--blue);opacity:.08;stroke:var(--blue)"/>
+          <text x="40" y="42" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:11px;font-weight:700">LEG 1 — START OF THE REPO (today)</text>
+          <rect x="55" y="60" width="160" height="55" rx="6" style="fill:var(--amber);opacity:.2;stroke:var(--amber)"/>
+          <text x="135" y="83" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:10.5px;font-weight:600">Cash borrower</text>
+          <text x="135" y="99" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:9px">sells the security</text>
+          <rect x="425" y="60" width="160" height="55" rx="6" style="fill:var(--green);opacity:.2;stroke:var(--green)"/>
+          <text x="505" y="83" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:10.5px;font-weight:600">Cash lender</text>
+          <text x="505" y="99" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:9px">(a.k.a. "reverse repo")</text>
+          <line x1="215" y1="72" x2="425" y2="72" style="stroke:var(--purple);stroke-width:1.6" marker-end="url(#dk-arrow1)"/>
+          <text x="320" y="65" text-anchor="middle" style="fill:var(--purple);font-family:'DM Mono',monospace;font-size:9.5px">security →</text>
+          <line x1="425" y1="103" x2="215" y2="103" style="stroke:var(--blue);stroke-width:1.6" marker-end="url(#dk-arrow2)"/>
+          <text x="320" y="116" text-anchor="middle" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:9.5px">← cash (sale price)</text>
+          <rect x="20" y="165" width="600" height="110" rx="8" style="fill:var(--green);opacity:.08;stroke:var(--green)"/>
+          <text x="40" y="187" style="fill:var(--green);font-family:'DM Mono',monospace;font-size:11px;font-weight:700">LEG 2 — REPURCHASE (agreed later date, e.g. tomorrow)</text>
+          <rect x="55" y="205" width="160" height="55" rx="6" style="fill:var(--amber);opacity:.2;stroke:var(--amber)"/>
+          <text x="135" y="228" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:10.5px;font-weight:600">Cash borrower</text>
+          <text x="135" y="244" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:9px">repurchases the security</text>
+          <rect x="425" y="205" width="160" height="55" rx="6" style="fill:var(--green);opacity:.2;stroke:var(--green)"/>
+          <text x="505" y="228" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:10.5px;font-weight:600">Cash lender</text>
+          <text x="505" y="244" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:9px">returns the security</text>
+          <line x1="215" y1="217" x2="425" y2="217" style="stroke:var(--blue);stroke-width:1.6" marker-end="url(#dk-arrow1)"/>
+          <text x="320" y="210" text-anchor="middle" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:9.5px">cash + interest →</text>
+          <line x1="425" y1="248" x2="215" y2="248" style="stroke:var(--purple);stroke-width:1.6" marker-end="url(#dk-arrow2)"/>
+          <text x="320" y="261" text-anchor="middle" style="fill:var(--purple);font-family:'DM Mono',monospace;font-size:9.5px">← same security</text>
+          <defs>
+            <marker id="dk-arrow1" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" style="fill:var(--purple)"/></marker>
+            <marker id="dk-arrow2" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" style="fill:var(--blue)"/></marker>
+          </defs>
+        </svg>
+      </div>
+      <p class="sl-p">Legally this is two sales. Economically it's a fully collateralized cash loan — the party selling the security is the <strong>cash borrower</strong>, the party buying it is the <strong>cash lender</strong> holding the security as collateral. From the lender's side, the identical trade is called a <strong>reverse repo</strong> — same trade, mirror-image name.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">The price difference <em>is</em> the interest</h2>
+      <p class="sl-sub">Sale price today, repurchase price later — plug in both and the term, and back out the implied annualized repo rate (actual/360, the U.S. convention).</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — starts on the full lesson's worked example</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Sale price today ($)</label><input type="number" class="sl-input" id="repo-sale" value="50000000" step="1000000"></div>
+          <div class="sl-calc-field"><label>Repurchase price later ($)</label><input type="number" class="sl-input" id="repo-buy" value="50007361.11" step="100"></div>
+          <div class="sl-calc-field"><label>Term (days)</label><input type="number" class="sl-input" id="repo-days" value="1" step="1" min="1"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Implied repo rate</div>
+            <div class="sl-calc-result-val" id="repo-rate-result">5.30%</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Interest earned = repurchase − sale = <b id="repo-interest">$7,361.11</b></div>
+          <div>r = (interest ÷ sale) × (360 ÷ term) = <b id="repo-rate-step">5.30%</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="repo-reset">Reset to worked-example numbers</button>
+        <div class="sl-note">This is the same $50,000,000 overnight Treasury repo from the full lesson, at a 5.30% repo rate — run the numbers backwards here instead of forwards.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Overnight, rolled daily — and where SOFR comes from</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🔁</div><div><h4>Overnight is the norm</h4><p>A large share of repo activity is overnight, rolled fresh day after day — letting a dealer fund a securities inventory flexibly rather than locking into fixed-term borrowing.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🏷</div><div><h4>General collateral vs. "specials"</h4><p>Most repo references a broad basket of eligible securities (GC) at a standard rate. A specific security in high demand can trade "special" — a lower repo rate paid purely to get hold of that exact security.</p></div></div>
+      </div>
+      <div class="sl-callout" style="background:var(--blue-bg);border-color:var(--blue-bd)">
+        <div class="sl-callout-label" style="color:var(--blue)">The direct tie to Swap Curves &amp; OIS Discounting</div>
+        <p><strong>SOFR</strong> — the USD reference rate that replaced LIBOR and anchors OIS discounting for collateralized derivatives, covered in <a href="swap-curves-ois-micro.html">Swap Curves &amp; OIS Discounting</a> — is not a survey or an estimate. It is computed directly from actual, large-volume overnight Treasury <em>repo</em> transaction data, published daily by the New York Fed. The repo mechanism on the previous slide is, literally, the market SOFR is measured from.</p>
+      </div>
+      <p class="sl-p">That earlier lesson discounts collateralized derivatives at OIS/SOFR specifically <em>because</em> those trades are backed by daily-exchanged collateral under a Credit Support Annex (CSA) — the same variation-margin idea from Section 2 of this deck. The two lessons describe one connected system, not two unrelated topics.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Getting this wrong, in practice</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Common mistakes</span>
+          <ul>
+            <li>Confusing IM (forward-looking buffer) with VM (backward-looking settlement)</li>
+            <li>Treating a repo's legal form (two sales) as if it changed its economic substance (a collateralized loan)</li>
+            <li>Applying one haircut to every asset, regardless of its own volatility and liquidity</li>
+            <li>Assuming SPAN and SIMM are interchangeable — they serve structurally different market segments</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">How it's actually used</span>
+          <ul>
+            <li>Dealers fund a securities inventory overnight via repo instead of tying up balance-sheet cash</li>
+            <li>Money market funds use reverse repo as a safe, short-term, fully-collateralized place to park cash</li>
+            <li>A portfolio's IM is recalculated whenever its risk profile changes materially — SPAN if cleared, SIMM if bilateral OTC</li>
+            <li>VM calls settle daily mark-to-market moves whether or not anyone is anywhere near default</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What is the core difference between initial margin and variation margin?</h4>
+        <button class="sl-quiz-opt" data-correct="true">IM is a forward-looking buffer against potential future loss; VM settles a realized mark-to-market change that already happened</button>
+        <button class="sl-quiz-opt">They're the same thing, just under two different names</button>
+        <button class="sl-quiz-opt">IM is paid daily; VM is posted once at trade inception</button>
+        <div class="sl-quiz-explain">IM protects against what might happen next; VM is a receipt for what already occurred. Getting the direction of that distinction backwards is one of the most common real mistakes in this area.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>$100 of bond market value, 5% haircut — how much counts as eligible collateral?</h4>
+        <button class="sl-quiz-opt" data-correct="true">$95</button>
+        <button class="sl-quiz-opt">$105</button>
+        <button class="sl-quiz-opt">$100 — haircuts only apply to cash</button>
+        <div class="sl-quiz-explain">Eligible value = market value × (1 − haircut %) = $100 × 0.95 = $95.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Economically, what is a repurchase agreement equivalent to?</h4>
+        <button class="sl-quiz-opt" data-correct="true">A fully collateralized short-term loan</button>
+        <button class="sl-quiz-opt">An unsecured loan with no collateral involved</button>
+        <button class="sl-quiz-opt">A permanent transfer of ownership of the security</button>
+        <div class="sl-quiz-explain">Legally it's two sales; economically the security acts as collateral for a cash loan, with the price difference between the two legs standing in for interest.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>What is SOFR actually computed from?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Actual, large-volume overnight Treasury repo transaction data</button>
+        <button class="sl-quiz-opt">A daily survey of bank borrowing-cost estimates</button>
+        <button class="sl-quiz-opt">Implied rates from the options market</button>
+        <div class="sl-quiz-explain">Unlike LIBOR, SOFR isn't a survey or an estimate — it's built directly from real repo trades of exactly the kind covered in this deck, published daily by the New York Fed.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>A "reverse repo" is the exact same trade as a repo, viewed from which side?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The cash lender's side — the party buying the security and advancing cash</button>
+        <button class="sl-quiz-opt">A structurally different trade with its own separate mechanics</button>
+        <button class="sl-quiz-opt">The clearinghouse's side, not either counterparty's</button>
+        <div class="sl-quiz-explain">Repo and reverse repo describe the identical transaction from opposite sides — cash borrower calls it a repo, cash lender calls the same trade a reverse repo.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Any leveraged position needs a buffer against counterparty default — that buffer is collateral, and it moves according to two distinct rules.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Initial margin is forward-looking — sized (via SPAN or ISDA SIMM) to cover a worst-case loss over the close-out window, posted upfront and recalculated as risk changes.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Variation margin is backward-looking — exchanged daily (or more often) to settle the realized mark-to-market move, keeping current exposure near zero.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>A haircut discounts collateral below face value to price in the collateral's own price risk and how long it might take to liquidate — $100 at a 5% haircut counts as $95.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>A repo is legally two sales but economically a fully collateralized loan — the price gap between the two legs is the interest, the repo rate.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>SOFR is computed directly from real overnight Treasury repo data — a concrete, factual bridge to the OIS-discounting machinery in Swap Curves &amp; OIS Discounting.</p></div>
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">What this now lets you do</div>
+        <p>Read a margin call and correctly identify whether it's a forward-looking IM top-up or a backward-looking VM settlement. Understand why $100 of posted collateral rarely counts as $100 toward a requirement. Recognize a repo for what it economically is — a secured loan — no matter how its legal paperwork is dressed. And see precisely why SOFR, the rate anchoring modern derivatives discounting, is not an abstraction but a direct measurement of the repo market covered here.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Rehypothecation &amp; Collateral Chains</h3>
+        <p>Once collateral has been posted, what is the counterparty actually allowed to do with it? The next lesson picks up exactly where this one leaves off.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="rehypothecation-collateral-chains-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="collateral-margin-repo-markets.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Haircut slider — usable collateral value from face value + haircut %.
+  (function(){
+    var slider = document.getElementById('hc-slider');
+    if (!slider) return;
+    var hcVal = document.getElementById('hc-val');
+    var bar = document.getElementById('hc-bar');
+    var cut = document.getElementById('hc-cut');
+    var barLabel = document.getElementById('hc-bar-label');
+    var cutLabel = document.getElementById('hc-cut-label');
+    var eligibleOut = document.getElementById('hc-eligible');
+    var neededOut = document.getElementById('hc-needed');
+    var FACE = 100000;
+    var BAR_X = 20, BAR_W = 600;
+
+    function fmtMoney(n){
+      return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function update(){
+      var pct = parseInt(slider.value, 10) / 100;
+      hcVal.textContent = Math.round(pct * 100) + '%';
+      var eligible = FACE * (1 - pct);
+      var discounted = FACE - eligible;
+      var neededFace = pct < 1 ? FACE / (1 - pct) : Infinity;
+
+      var eligibleW = BAR_W * (1 - pct);
+      bar.setAttribute('width', Math.max(eligibleW, 0));
+      cut.setAttribute('x', BAR_X + eligibleW);
+      cut.setAttribute('width', Math.max(BAR_W - eligibleW, 0));
+      barLabel.setAttribute('x', BAR_X + 10);
+      barLabel.textContent = eligibleW > 90 ? (fmtMoney(eligible).replace('.00','') + ' eligible') : '';
+      cutLabel.textContent = pct === 0 ? 'no haircut applied — full face value counts' : ('haircut: ' + fmtMoney(discounted).replace('.00','') + ' discounted away');
+
+      eligibleOut.textContent = fmtMoney(eligible);
+      neededOut.textContent = isFinite(neededFace) ? fmtMoney(neededFace) : '—';
+    }
+
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Repo rate calculator — implied annualized repo rate from sale price,
+  // repurchase price, and term (actual/360 convention).
+  (function(){
+    var sale = document.getElementById('repo-sale');
+    if (!sale) return;
+    var buy = document.getElementById('repo-buy'), days = document.getElementById('repo-days');
+    var interestOut = document.getElementById('repo-interest');
+    var rateStepOut = document.getElementById('repo-rate-step');
+    var rateResultOut = document.getElementById('repo-rate-result');
+    var resetBtn = document.getElementById('repo-reset');
+    var DEFAULTS = { sale: 50000000, buy: 50007361.11, days: 1 };
+
+    function fmtMoney(n){
+      return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function recompute(){
+      var s = parseFloat(sale.value), b = parseFloat(buy.value), d = parseFloat(days.value);
+      if (!isFinite(s) || !isFinite(b) || !isFinite(d) || s <= 0 || d <= 0) {
+        interestOut.textContent = '—';
+        rateStepOut.textContent = '—';
+        rateResultOut.textContent = '—';
+        return;
+      }
+      var interest = b - s;
+      var rate = (interest / s) * (360 / d) * 100;
+      interestOut.textContent = fmtMoney(interest);
+      if (!isFinite(rate)) {
+        rateStepOut.textContent = '—';
+        rateResultOut.textContent = '—';
+        return;
+      }
+      rateStepOut.textContent = rate.toFixed(2) + '%';
+      rateResultOut.textContent = rate.toFixed(2) + '%';
+    }
+
+    [sale, buy, days].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      sale.value = DEFAULTS.sale; buy.value = DEFAULTS.buy; days.value = DEFAULTS.days;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

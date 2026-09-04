@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Factor-Based Portfolio Construction — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Factor-Based Portfolio Construction — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivation, a 2×2 linear-algebra worked example, and a 6-question self-test?<a href="factor-based-portfolio-construction.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Portfolio Construction 3 · Advanced Portfolio Construction</div>
+      <h1 class="sl-h1">Factor-Based Portfolio Construction, <em>Chosen on Purpose</em></h1>
+      <p class="sl-lede">Alpha vs. Beta Separation split a return stream against one named factor — the market. PCA &amp; Factor Models found how many statistically independent risks a basket really contains, with no economic story attached to what any of them represent. This deck combines both ideas and pushes one step further: name a small handful of economically meaningful factors — a broad market factor, a carry factor, maybe momentum — express every asset's return as a mix of them, and then build a portfolio deliberately around the exposures you actually want, instead of picking assets one at a time and hoping the aggregate works out.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Every return, as a few shared exposures</h2>
+      <p class="sl-sub">Instead of treating each asset as its own independent unknown, write its return as a weighted mix of shared factors plus whatever's left over.</p>
+      <div class="sl-row">
+        <div class="sl-box">r_i</div>
+        <div class="sl-arrow">=</div>
+        <div class="sl-box amber">Σ β_ik · f_k</div>
+        <div class="sl-arrow">+</div>
+        <div class="sl-box green">ε_i</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">r</div><div><h4>r_i — asset i's return</h4><p>The thing every model is ultimately trying to explain, one asset at a time.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">β</div><div><h4>β_ik — asset i's loading on factor k</h4><p>How many units of factor k's move show up in asset i's return. This is the number a portfolio gets built around.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">f</div><div><h4>f_k — factor k's own return that period</h4><p>Shared across every asset that loads on it — the market's move, the carry factor's move, and so on.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">ε</div><div><h4>ε_i — idiosyncratic residual</h4><p>Whatever the named factors don't explain about this one asset. Assumed uncorrelated across assets, once the shared factors are removed.</p></div></div>
+      </div>
+      <div class="sl-quote">Setting K=1 and letting f₁ be the market's excess return recovers exactly the Alpha vs. Beta Separation lesson's single-index regression — that lesson is this one's one-factor special case. And where PCA &amp; Factor Models found its factors statistically, purely from correlation structure with no story attached, this lesson names them on purpose — carry, momentum, a broad market factor — so the exposures mean something you can deliberately target.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Why bother — the parameter count</h2>
+      <p class="sl-sub">A 30-instrument universe, compared directly vs. through 2 shared factors.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Estimate every pairwise covariance</span>
+          <ul>
+            <li>N(N−1)/2 pairwise covariances — 435 numbers for N=30</li>
+            <li>Every one of those 435 is its own noisy sample estimate</li>
+            <li>Gets worse, quadratically, as the universe grows</li>
+            <li>Tells you nothing about <em>why</em> two assets move together</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Route it through K shared factors</span>
+          <ul>
+            <li>N×K loadings + a K×K factor covariance + N idiosyncratic variances</li>
+            <li>126 numbers for N=30, K=3 — versus 435 direct</li>
+            <li>Grows linearly in N for fixed K, not quadratically</li>
+            <li>Each loading pools information across the same factor series, so it's typically more stable than a lone pairwise estimate</li>
+          </ul>
+        </div>
+      </div>
+      <p class="sl-p">In matrix form: Σ = B F Bᵀ + D, where B is the N×K matrix of loadings, F is how the factors themselves co-move, and D collects the leftover idiosyncratic variances. The win isn't just fewer numbers — it's numbers that are cheaper and more reliable to estimate in the first place.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Same expected return, three different recipes</h2>
+      <p class="sl-sub">All three assets below target roughly the same ~5% expected return. Tab through them — the mix behind that number is completely different each time.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="fx-tabs">
+          <button class="sl-tab active" data-panel="fx-1">AUDUSD</button>
+          <button class="sl-tab" data-panel="fx-2">MXN carry trade</button>
+          <button class="sl-tab" data-panel="fx-3">Blended EM name</button>
+        </div>
+        <div class="sl-panel active" id="fx-1">
+          <div class="sl-row">
+            <div class="sl-box">Market 1.00 × 5%</div>
+            <div class="sl-arrow">+</div>
+            <div class="sl-box">Carry 0.00 × 4%</div>
+            <div class="sl-arrow">+</div>
+            <div class="sl-box green">ε 0.0%</div>
+            <div class="sl-arrow">=</div>
+            <div class="sl-box amber">5.0%</div>
+          </div>
+          <div class="sl-verdict"><strong>Pure market beta.</strong> Almost the whole 5% is a bet on the broad market factor. Zero carry exposure — this asset is useless if what you actually want is a carry tilt.</div>
+        </div>
+        <div class="sl-panel" id="fx-2">
+          <div class="sl-row">
+            <div class="sl-box">Market 0.00 × 5%</div>
+            <div class="sl-arrow">+</div>
+            <div class="sl-box">Carry 1.25 × 4%</div>
+            <div class="sl-arrow">+</div>
+            <div class="sl-box green">ε 0.0%</div>
+            <div class="sl-arrow">=</div>
+            <div class="sl-box amber">5.0%</div>
+          </div>
+          <div class="sl-verdict"><strong>Pure carry.</strong> The identical 5% expected return, but this time it's entirely a carry-factor bet with zero market beta — exactly the exposure a "long carry, market-neutral" mandate is actually looking for.</div>
+        </div>
+        <div class="sl-panel" id="fx-3">
+          <div class="sl-row">
+            <div class="sl-box">Market 0.40 × 5%</div>
+            <div class="sl-arrow">+</div>
+            <div class="sl-box">Carry 0.50 × 4%</div>
+            <div class="sl-arrow">+</div>
+            <div class="sl-box green">ε 1.0%</div>
+            <div class="sl-arrow">=</div>
+            <div class="sl-box amber">5.0%</div>
+          </div>
+          <div class="sl-verdict"><strong>Blended, plus a genuine idiosyncratic edge.</strong> Same 5% again, but now it's a mix of both factors plus 1.0% that neither factor explains — the part an attribution report would label "skill or noise, not yet determined."</div>
+        </div>
+        <div class="sl-note">Three assets, identical expected return, three completely different factor recipes. Judging them on expected return alone would erase exactly the distinction a factor-based construction process is built to preserve.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Read exposures straight off a chart</h2>
+      <p class="sl-sub">The same idea as the tabs, across four instruments at once — including one funding currency with negative loadings on both factors.</p>
+      <div class="sl-svgwrap">
+        <svg viewBox="0 0 650 270" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Grouped bar chart of four FX instruments' loadings on a market factor and a carry factor, some positive and some negative">
+          <rect x="455" y="12" width="10" height="10" style="fill:var(--blue)"/>
+          <text x="470" y="21" fill="var(--text2)" font-size="11">Market-beta loading</text>
+          <rect x="455" y="29" width="10" height="10" style="fill:var(--green)"/>
+          <text x="470" y="38" fill="var(--text2)" font-size="11">Carry loading</text>
+
+          <line x1="50" y1="150" x2="620" y2="150" style="stroke:var(--border2);stroke-width:1.5"/>
+          <text x="45" y="154" fill="var(--text3)" font-size="10.5" text-anchor="end">0</text>
+          <text x="50" y="46" fill="var(--text3)" font-size="11">Factor loading (β)</text>
+
+          <rect x="115" y="90" width="26" height="60" style="fill:var(--blue)"/>
+          <text x="128" y="83" fill="var(--blue)" font-size="10.5" text-anchor="middle">+1.00</text>
+          <rect x="149" y="148" width="26" height="2" style="fill:var(--green);opacity:.5"/>
+          <text x="162" y="142" fill="var(--green)" font-size="10.5" text-anchor="middle">0.00</text>
+          <text x="145" y="255" fill="var(--text2)" font-size="11" text-anchor="middle">AUDUSD</text>
+
+          <rect x="255" y="148" width="26" height="2" style="fill:var(--blue);opacity:.5"/>
+          <text x="268" y="142" fill="var(--blue)" font-size="10.5" text-anchor="middle">0.00</text>
+          <rect x="289" y="75" width="26" height="75" style="fill:var(--green)"/>
+          <text x="302" y="68" fill="var(--green)" font-size="10.5" text-anchor="middle">+1.25</text>
+          <text x="285" y="255" fill="var(--text2)" font-size="11" text-anchor="middle">MXN carry</text>
+
+          <rect x="395" y="126" width="26" height="24" style="fill:var(--blue)"/>
+          <text x="408" y="119" fill="var(--blue)" font-size="10.5" text-anchor="middle">+0.40</text>
+          <rect x="429" y="120" width="26" height="30" style="fill:var(--green)"/>
+          <text x="442" y="113" fill="var(--green)" font-size="10.5" text-anchor="middle">+0.50</text>
+          <text x="425" y="255" fill="var(--text2)" font-size="11" text-anchor="middle">Blended EM</text>
+
+          <rect x="535" y="150" width="26" height="12" style="fill:var(--blue);opacity:.65"/>
+          <text x="548" y="175" fill="var(--blue)" font-size="10.5" text-anchor="middle">-0.20</text>
+          <rect x="569" y="150" width="26" height="54" style="fill:var(--green);opacity:.85"/>
+          <text x="582" y="217" fill="var(--green)" font-size="10.5" text-anchor="middle">-0.90</text>
+          <text x="565" y="255" fill="var(--text2)" font-size="11" text-anchor="middle">USDJPY</text>
+        </svg>
+      </div>
+      <p class="sl-p">USDJPY's bars sit <em>below</em> the zero line on both factors — a classic funding currency, moving opposite the market and opposite carry. That negative loading is exactly what made it useful for cancelling out unwanted exposure back in the full lesson's worked example, and it's exactly what the slider on the next-but-one slide leans on.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Knowing your exposures vs. choosing them</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📊</div><div><h4>Attribution answers "what happened"</h4><p>Alpha vs. Beta Separation and PCA &amp; Factor Models both measure exposure after the fact — how much of a return stream's history is explained by the market, or by an unnamed statistical factor.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>Construction answers "what to build"</h4><p>Once every candidate asset's loadings are known, you can flip the question: given the loadings, what weights deliver the factor profile I actually want?</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎲</div><div><h4>The naive alternative</h4><p>Pick individual assets that "feel" right and hope the resulting basket's aggregate factor exposure lands somewhere sensible. It usually doesn't, and there's no way to know until after the fact.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">→</div><div><h4>The target-driven alternative</h4><p>Specify the exposure profile first — "long carry, zero market beta" — then solve for the weights that deliver exactly that, by construction rather than by luck.</p></div></div>
+      </div>
+      <div class="sl-quote">This is the actual payoff of a factor model for <strong>construction</strong>, not just attribution: it turns "which assets feel right" into "which weights hit this specific, stated target" — a solvable problem instead of a guess.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">The construction recipe, in three moves</h2>
+      <p class="sl-sub">Portfolio-level exposure is just a weighted sum of asset-level loadings — B_p = wᵀB. Construction runs that equation backwards.</p>
+      <div class="sl-row">
+        <div class="sl-box">1. Target profile q</div>
+        <div class="sl-arrow">→</div>
+        <div class="sl-box amber">2. Solve Bᵀw = q</div>
+        <div class="sl-arrow">→</div>
+        <div class="sl-box green">3. Weights w</div>
+      </div>
+      <p class="sl-p">With exactly as many assets as factors (N=K), Step 2 is a square linear system with one exact solution — the reference deck's worked example is precisely this case. With more assets than factors (N&gt;K, the realistic case), infinitely many weight vectors hit the same target equally well, so a second objective usually gets layered on top of Step 2 — minimize idiosyncratic risk, cap any single position, or hold the smallest total notional that still hits the target. Which tiebreaker gets used is itself a real modeling choice, not a neutral technicality.</p>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>Every β_ik feeding Step 2 is a regression estimate with its own standard error, not a known constant. A target-hitting weight solve only delivers the target as accurately as the loadings it was built on — noisy inputs, noisy output.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Try it — drag the target, watch the weights shift</h2>
+      <p class="sl-sub">AUDUSD's carry loading is +1.00, USDJPY's is -0.80 (the same two loadings as the reference deck's worked example). Fully invested — w₁ + w₂ = 1. Pick a target carry exposure and watch how much of each the portfolio needs.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 190" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A stacked bar showing the split between two assets' weights, and a number line marker showing the resulting blended carry exposure">
+            <text x="40" y="24" fill="var(--text2)" font-size="11.5">Portfolio split</text>
+            <rect x="40" y="34" width="560" height="26" rx="4" style="fill:var(--panel2)"/>
+            <rect id="tf-w1-bar" x="40" y="34" width="311" height="26" rx="4" style="fill:var(--blue)"/>
+            <rect id="tf-w2-bar" x="351" y="34" width="249" height="26" rx="4" style="fill:var(--purple)"/>
+            <text id="tf-w1-label" x="195" y="51" fill="var(--bg)" font-size="11.5" text-anchor="middle" font-weight="700">AUDUSD 55.6%</text>
+            <text id="tf-w2-label" x="475" y="51" fill="var(--bg)" font-size="11.5" text-anchor="middle" font-weight="700">USDJPY 44.4%</text>
+
+            <text x="40" y="100" fill="var(--text2)" font-size="11.5">Resulting blended carry exposure</text>
+            <line x1="40" y1="140" x2="600" y2="140" style="stroke:var(--border2);stroke-width:3"/>
+            <circle cx="330" cy="140" r="4" style="fill:var(--text3)"/>
+            <text x="40" y="162" fill="var(--text3)" font-size="10.5" text-anchor="start">-0.80</text>
+            <text x="330" y="162" fill="var(--text3)" font-size="10.5" text-anchor="middle">0.00</text>
+            <text x="600" y="162" fill="var(--text3)" font-size="10.5" text-anchor="end">+1.00</text>
+            <circle id="tf-marker" cx="384" cy="140" r="8" style="fill:var(--amber);stroke:var(--bg);stroke-width:2"/>
+            <text id="tf-marker-label" x="384" y="120" fill="var(--amber)" font-size="12" text-anchor="middle" font-weight="700">+0.20</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Target carry exposure</span><span class="sl-live" id="tf-target-val">+0.20</span></div>
+        <input type="range" class="sl-slider" id="tf-slider" min="-80" max="100" step="5" value="20">
+        <div class="sl-note">The amber marker always lands exactly on the target — the two weights above are the ones solved to put it there. Drag to either end: at +1.00 the portfolio is 100% AUDUSD, at -0.80 it's 100% USDJPY.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Try it — blend two loadings yourself</h2>
+      <p class="sl-sub">Portfolio-level exposure runs forwards too: given each asset's weight and its loading on some factor, the blended exposure is just the weighted sum.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Asset A weight</label><input type="number" class="sl-input" id="bf-wa" value="0.60" step="0.05"></div>
+          <div class="sl-calc-op">×</div>
+          <div class="sl-calc-field"><label>Asset A loading</label><input type="number" class="sl-input" id="bf-ba" value="0.90" step="0.05"></div>
+        </div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Asset B weight</label><input type="number" class="sl-input" id="bf-wb" value="0.40" step="0.05"></div>
+          <div class="sl-calc-op">×</div>
+          <div class="sl-calc-field"><label>Asset B loading</label><input type="number" class="sl-input" id="bf-bb" value="-0.30" step="0.05"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Blended exposure</div>
+            <div class="sl-calc-result-val" id="bf-result">0.42</div>
+          </div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="bf-reset">Reset to worked-example numbers</button>
+        <div class="sl-note">Leave any field blank, or type something non-numeric, and the result shows "—" instead of breaking. Weights need not sum to 1 here — this is the raw weighted-sum formula, not a fully-invested constraint.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">The honest trade-off</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">What a factor model buys you</span>
+          <ul>
+            <li>Far fewer parameters, and typically more stable ones, than direct covariance estimation</li>
+            <li>A construction process built on stated, deliberate exposures instead of asset-by-asset guessing</li>
+            <li>A shared, reusable vocabulary — "long carry, neutral momentum" — across an entire desk</li>
+          </ul>
+        </div>
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">What it can quietly miss</span>
+          <ul>
+            <li>Idiosyncratic risk — ε_i is assumed uncorrelated across assets, which isn't always true in a real crisis</li>
+            <li>Factor-timing risk — a factor's historical premium can compress once it's crowded, with no warning built into the loadings themselves</li>
+            <li>A factor model is only as good as the factors it includes — which factors make the list is itself a modeling choice, not a neutral default</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Fact-check against this repo's actual code</div>
+        <p>The full lesson states flatly: "no factor loadings are estimated, and no factor-tilted portfolio has been backtested, here." That's now partly stale. <code>js/mve/factorModel.js</code> does fit real loadings — OLS-regressing each instrument's return against a small set of macro factors (real-rate, DXY, risk-appetite, inflation-expectations, liquidity) — and <code>bot/modules/portfolio_beta.py</code> aggregates a live book's exposure to those same factors, weighted by each open position's size and direction. But neither one builds a portfolio: <code>factorModel.js</code> is documented in its own header as "read-only / diagnostic by design — it does not size trades on its own," and <code>portfolio_beta.py</code> only totals up whatever exposure the existing positions already happen to carry. The actual construction step this lesson teaches — solving Bᵀw = q for the weights that <em>deliver</em> a target exposure — is not implemented anywhere in the repo. So: loadings are estimated and portfolio-level exposure is measured, but deliberate factor-based construction remains unbuilt.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>In r_i = Σ β_ik f_k + ε_i, what does β_ik represent?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Asset i's loading (exposure) to factor k</button>
+        <button class="sl-quiz-opt">Factor k's own return that period</button>
+        <button class="sl-quiz-opt">Asset i's idiosyncratic, factor-unexplained return</button>
+        <div class="sl-quiz-explain">f_k is the factor's own return; ε_i is the idiosyncratic leftover. β_ik is specifically how many units of factor k's move show up in asset i's return — the number a target-exposure solve is built around.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>How does this factor model relate to Alpha vs. Beta Separation's single-index regression?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It's the same equation with K=1 and f₁ set to the market's excess return</button>
+        <button class="sl-quiz-opt">They're unrelated frameworks that happen to share notation</button>
+        <button class="sl-quiz-opt">The single-index model has a residual term; this factor model doesn't</button>
+        <div class="sl-quiz-explain">Setting K=1 and f₁ = r_m - r_f recovers exactly r_i - r_f = α_i + β_i(r_m - r_f) + ε_i. The market model is this lesson's one-factor special case, not a separate idea.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>With exactly 2 assets and 2 factors (N=K), and a non-singular loadings matrix, how many weight vectors exactly hit a stated target exposure?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Exactly one</button>
+        <button class="sl-quiz-opt">Infinitely many</button>
+        <button class="sl-quiz-opt">None — the system is unsolvable</button>
+        <div class="sl-quiz-explain">Bᵀw = q is a square system when N=K — as many equations as unknowns — so a non-singular Bᵀ pins down exactly one solution, the same way a 2×2 linear system pins down exactly one (x, y).</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>A desk wants long carry exposure but zero market-beta exposure. Buying one asset with a high carry loading that also carries a positive market-beta loading...</h4>
+        <button class="sl-quiz-opt" data-correct="true">won't hit the target alone — a second asset with an offsetting loading is needed to cancel the unwanted market beta</button>
+        <button class="sl-quiz-opt">is fine, since only the carry number matters for a "long carry" mandate</button>
+        <button class="sl-quiz-opt">automatically guarantees zero market beta, because carry and market are unrelated</button>
+        <div class="sl-quiz-explain">Any nonzero market-beta loading, scaled by whatever weight is needed to hit the carry target, brings along unwanted market exposure. A second position with an offsetting loading (like the slider's USDJPY leg) is what cancels it out.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>A factor model writes return as shared exposures plus a residual — it generalizes Alpha vs. Beta Separation's one-factor market model and gives economic names to the kind of statistically-discovered dimensions PCA &amp; Factor Models finds.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>It's a real parameter-count win: N×K loadings instead of N(N-1)/2 pairwise covariances, and those loadings are typically more stable since every one pools information from the same factor series.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Portfolio-level exposure is just a weighted sum of asset-level loadings, B_p = wᵀB — nothing more exotic than a dot product.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Construction flips that equation around: state the exposure profile you want, then solve (or optimize) for the weights that deliver it — instead of picking assets and hoping the aggregate works out.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>N=K gives one exact solution; the realistic N&gt;K case is underdetermined, so a secondary objective (minimize idiosyncratic risk, cap positions) picks one portfolio out of an entire family that all hit the target equally well.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>It's a simplification, not a free lunch — idiosyncratic risk and factor-timing risk sit outside the exposures themselves, and which factors make the list is a real modeling choice, not a neutral default.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Given a set of assets' factor loadings, specify the exposure profile you actually want — "long carry, market-neutral," say — and solve for the weights that deliver it, rather than picking individual assets and hoping the aggregate lands somewhere sensible. Treat carry, momentum, and value not just as descriptive after-the-fact labels but as dials a portfolio can be deliberately built around.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Active Portfolio Management</h3>
+        <p>Turning a view (or a factor tilt) into a portfolio that actually implements it — active weights, tracking error, and the information ratio that judges whether the active bet was worth taking.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="active-portfolio-management-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="factor-based-portfolio-construction.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Target-exposure slider — 2 assets, fully invested (w1+w2=1), single
+  // factor (carry). AUDUSD carry loading C1=+1.00, USDJPY carry loading
+  // C2=-0.80 — the same two loadings as the full lesson's worked example.
+  // target = w1*C1 + w2*C2 = w1*C1 + (1-w1)*C2, so w1 = (target - C2)/(C1 - C2).
+  (function(){
+    var slider = document.getElementById('tf-slider');
+    if (!slider) return;
+    var targetVal = document.getElementById('tf-target-val');
+    var w1Bar = document.getElementById('tf-w1-bar'), w2Bar = document.getElementById('tf-w2-bar');
+    var w1Label = document.getElementById('tf-w1-label'), w2Label = document.getElementById('tf-w2-label');
+    var marker = document.getElementById('tf-marker'), markerLabel = document.getElementById('tf-marker-label');
+
+    var C1 = 1.00, C2 = -0.80;
+    var BAR_X = 40, BAR_W = 560;
+    var LINE_X0 = 40, LINE_X1 = 600, LINE_RANGE = C1 - C2; // 1.80, spans the full slider range
+
+    function update(){
+      var target = parseInt(slider.value, 10) / 100;
+      targetVal.textContent = (target >= 0 ? '+' : '') + target.toFixed(2);
+
+      var w1 = (target - C2) / (C1 - C2);
+      if (w1 < 0) w1 = 0; if (w1 > 1) w1 = 1;
+      var w2 = 1 - w1;
+
+      var w1w = BAR_W * w1;
+      w1Bar.setAttribute('width', w1w.toFixed(1));
+      w2Bar.setAttribute('x', (BAR_X + w1w).toFixed(1));
+      w2Bar.setAttribute('width', (BAR_W - w1w).toFixed(1));
+      w1Label.setAttribute('x', (BAR_X + w1w / 2).toFixed(1));
+      w1Label.textContent = 'AUDUSD ' + (w1 * 100).toFixed(1) + '%';
+      w1Label.style.display = w1w < 60 ? 'none' : '';
+      w2Label.setAttribute('x', (BAR_X + w1w + (BAR_W - w1w) / 2).toFixed(1));
+      w2Label.textContent = 'USDJPY ' + (w2 * 100).toFixed(1) + '%';
+      w2Label.style.display = (BAR_W - w1w) < 60 ? 'none' : '';
+
+      var achieved = w1 * C1 + w2 * C2;
+      var mx = LINE_X0 + ((achieved - C2) / LINE_RANGE) * (LINE_X1 - LINE_X0);
+      marker.setAttribute('cx', mx.toFixed(1));
+      markerLabel.setAttribute('x', mx.toFixed(1));
+      markerLabel.textContent = (achieved >= 0 ? '+' : '') + achieved.toFixed(2);
+    }
+
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Blended-factor-exposure calculator — forward direction: weighted sum of
+  // two assets' weight × loading, with defensive guards against blank or
+  // non-finite input.
+  (function(){
+    var wa = document.getElementById('bf-wa');
+    if (!wa) return;
+    var ba = document.getElementById('bf-ba'), wb = document.getElementById('bf-wb'), bb = document.getElementById('bf-bb');
+    var result = document.getElementById('bf-result');
+    var resetBtn = document.getElementById('bf-reset');
+    var DEFAULTS = { wa: 0.60, ba: 0.90, wb: 0.40, bb: -0.30 };
+
+    function recompute(){
+      var WA = parseFloat(wa.value), BA = parseFloat(ba.value), WB = parseFloat(wb.value), BB = parseFloat(bb.value);
+      if (!isFinite(WA) || !isFinite(BA) || !isFinite(WB) || !isFinite(BB)) {
+        result.textContent = '—';
+        return;
+      }
+      var blended = WA * BA + WB * BB;
+      result.textContent = (blended >= 0 ? '+' : '') + blended.toFixed(2);
+    }
+
+    [wa, ba, wb, bb].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      wa.value = DEFAULTS.wa; ba.value = DEFAULTS.ba; wb.value = DEFAULTS.wb; bb.value = DEFAULTS.bb;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

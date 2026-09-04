@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Feature Engineering, Leakage &amp; Reproducibility — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Feature Engineering, Leakage &amp; Reproducibility — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivations, the worked z-score example, and a 6-question self-test?<a href="feature-engineering-leakage-reproducibility.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Research Process 2 (final) · Quantitative Research Process</div>
+      <h1 class="sl-h1">A Feature Is Only As Honest As <em>What It Actually Knew</em></h1>
+      <p class="sl-lede">The previous lesson in this pair, <em>The Research Pipeline: Hypothesis to Honest Backtest</em>, covered how to structure the process around a strategy idea — split the data honestly, cost it realistically, don't peek at the test set. This lesson goes one level deeper, into the features that pipeline actually feeds the model: the three specific, easy-to-miss ways a feature can quietly know things it shouldn't, and the discipline that keeps a result re-derivable months later instead of a one-time accident nobody can explain.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">A feature is anything a model is handed as an input</h2>
+      <p class="sl-sub">Not raw data itself — a deliberately computed quantity built from raw data, meant to help a model predict something it hasn't seen yet.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">▢</div><div><h4>Derived, not raw</h4><p>A closing price is raw data. A 20-day rolling volatility, a distance-to-support in ATRs, a cointegration spread's z-score — those are features: computed from raw data, on purpose, to expose a pattern.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">→</div><div><h4>What the model actually sees</h4><p>A model never sees "the market" — it sees a row of numbers, one per feature, at one point in time. If a number in that row is wrong about what was knowable then, the model is being trained on a fiction.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">M</div><div><h4>This repo already builds plenty</h4><p>An ATR-based volatility z-score, a cointegration spread z-score sized beta-neutral, a payrolls revision-surprise score — real features already living in this codebase, all built the same way: raw series in, one computed number out.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⏱</div><div><h4>Dated, whether or not it says so</h4><p>Every feature value belongs to a specific point in time — the moment a live system would have had to compute it to actually use it for a real prediction that morning.</p></div></div>
+      </div>
+      <div class="sl-quote">The previous lesson's leaks live at the <strong>validation</strong> stage — a train/test split that lets the future touch the past. This lesson's leaks live one stage earlier, inside a single feature's own construction, before any split even exists. A perfect split downstream cannot fix a feature that was already contaminated on the way in.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Data leakage, in one sentence</h2>
+      <p class="sl-sub">A feature accidentally contains information that would not really have been available at the moment a live prediction had to be made.</p>
+      <div class="sl-row">
+        <div class="sl-box">Backtest Sharpe 2.4</div>
+        <div class="sl-arrow">≠</div>
+        <div class="sl-box amber">Live Sharpe ≈ 0.3</div>
+      </div>
+      <div class="sl-verdict" style="text-align:center;margin-top:-4px">Same strategy, same rules — the backtest was quietly grading itself on a version of history the live system never actually had access to.</div>
+      <p class="sl-p">This is the single most common reason a backtest looks dramatically better than the same strategy performs live. Nothing about the model or the validation split has to be wrong — the leak lives earlier, in what a "feature" was secretly allowed to know at the moment it was computed. Because the leaked information genuinely happened, it correlates with the outcome almost perfectly; that's exactly what makes it so easy to miss and so damaging once it's gone unnoticed into production.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Why this is worth its own lesson</div>
+        <p>A backtest can pass every check the previous lesson describes — a genuinely out-of-sample split, realistic costs, no peeking at the test set — and still be worthless, if the features feeding it were never point-in-time honest to begin with. The split protects against one failure mode; this lesson covers a different one that happens earlier.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Three specific ways it sneaks in</h2>
+      <p class="sl-sub">Same underlying mistake — using data from the wrong time — wearing three different disguises.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="leak-tabs">
+          <button class="sl-tab active" data-panel="leak-1">Look-ahead bias</button>
+          <button class="sl-tab" data-panel="leak-2">Future-computed statistics</button>
+          <button class="sl-tab" data-panel="leak-3">Target leakage</button>
+        </div>
+        <div class="sl-panel active" id="leak-1">
+          <div class="sl-row"><div class="sl-box amber">Full day's high/low</div><div class="sl-arrow">→</div><div class="sl-box">predicts 9am move</div></div>
+          <div class="sl-verdict"><strong>Using a value that wasn't actually known yet.</strong> A day's complete high and low aren't final until the session closes — using them to predict something earlier that same day hands the model a value from its own future. A live system at 9am simply could not have this number.</div>
+        </div>
+        <div class="sl-panel" id="leak-2">
+          <div class="sl-row"><div class="sl-box amber">mean(all 2,000 rows)</div><div class="sl-arrow">→</div><div class="sl-box">z-score for row 40</div></div>
+          <div class="sl-verdict"><strong>Normalizing with the whole dataset's statistics.</strong> Scaling a feature using the mean/std of every row — including thousands that come chronologically after row 40 — bakes future extremes and regime shifts into a value dated to a much earlier day.</div>
+        </div>
+        <div class="sl-panel" id="leak-3">
+          <div class="sl-row"><div class="sl-box amber">today's realized range</div><div class="sl-arrow">→</div><div class="sl-box">predicts today's direction</div></div>
+          <div class="sl-verdict"><strong>The feature IS the outcome, restated.</strong> A feature derived from — or too tightly bound to — the very event being predicted isn't predicting it, it's describing it after the fact. It looks trivially "predictive" and won't hold up live, because live it can't exist before the outcome does.</div>
+        </div>
+      </div>
+      <p class="sl-p">All three collapse to the same test: <strong>could this exact number have existed, in real time, at the moment the feature is dated to?</strong> If the honest answer is "not really," it's a leak — regardless of which column it's stored in or how reasonable the code looks.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Watch look-ahead bias happen, visually</h2>
+      <p class="sl-sub">A prediction has to be made at a specific moment. A leaky feature reaches backward across that moment to grab information from after it.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Timeline</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A timeline showing a prediction moment as a dashed vertical line. To its left, the past, already known and safe to use. To its right, the rest of the trading day, shown in red as not yet known. A curved red arrow reaches from the future high/low, back across the prediction moment, into the feature used for the prediction — illustrating look-ahead bias.">
+            <defs>
+              <marker id="lk-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" style="fill:var(--red)"/>
+              </marker>
+            </defs>
+            <rect x="20" y="90" width="600" height="46" rx="6" style="fill:var(--panel2);stroke:var(--border)"/>
+            <rect x="20" y="90" width="260" height="46" rx="6" style="fill:var(--green);opacity:.35"/>
+            <rect x="280" y="90" width="340" height="46" rx="6" style="fill:var(--red);opacity:.30"/>
+            <line x1="280" y1="70" x2="280" y2="160" style="stroke:var(--text2);stroke-width:2;stroke-dasharray:5,4"/>
+            <text x="280" y="60" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:11px;font-weight:700">prediction moment — 9:00am</text>
+            <text x="150" y="118" text-anchor="middle" style="fill:var(--green);font-family:'DM Mono',monospace;font-size:11px;font-weight:600">past — safe to use</text>
+            <text x="450" y="118" text-anchor="middle" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:11px;font-weight:600">rest of the day — not known yet</text>
+            <rect x="470" y="96" width="120" height="34" rx="4" style="fill:var(--red);opacity:.55;stroke:var(--red)"/>
+            <text x="530" y="117" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:10px;font-weight:700">day's full high/low</text>
+            <path d="M 520,96 C 460,40 220,40 175,88" style="fill:none;stroke:var(--red);stroke-width:2" marker-end="url(#lk-arrow)"/>
+            <text x="330" y="34" text-anchor="middle" style="fill:var(--red);font-family:'DM Sans',sans-serif;font-size:11px;font-style:italic">leaks backward, into a feature dated before it existed</text>
+            <rect x="150" y="150" width="180" height="40" rx="6" style="fill:var(--red-bg);stroke:var(--red)"/>
+            <text x="240" y="167" text-anchor="middle" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:10px;font-weight:700">❌ feature for 9am move</text>
+            <text x="240" y="182" text-anchor="middle" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:9px">secretly built from data after 9am</text>
+          </svg>
+        </div>
+        <div class="sl-note">The fix is never a formula — it's a discipline: build every feature as if it had to run live, at the exact moment it's dated to, using only what existed then. If the value the feature needs didn't exist yet, the feature doesn't exist yet either.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Rolling-window stats vs. whole-dataset stats, diverging live</h2>
+      <p class="sl-sub">24 daily spread readings, with a one-off spike near the end. Drag the slider to move "today" forward and watch the two normalizing means pull apart — and back together.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 200" id="fs-svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart of 24 daily readings with a spike near the end. Bars up to the current slider position are highlighted as legitimately known; bars after it are shown as not yet known. A blue line marks the causal, only-past mean; a red dashed line marks the contaminated whole-dataset mean.">
+            <line id="fs-leaky-line" x1="20" y1="0" x2="613" y2="0" style="stroke:var(--red);stroke-width:1.6;stroke-dasharray:5,3"/>
+            <line id="fs-proper-line" x1="20" y1="0" x2="45" y2="0" style="stroke:var(--blue);stroke-width:2.2"/>
+            <g id="fs-bars"></g>
+            <line x1="20" y1="170" x2="613" y2="170" style="stroke:var(--border2);stroke-width:1"/>
+            <text x="20" y="14" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:10px;font-weight:700">- - - whole-dataset mean (leaky, sees everything)</text>
+            <text x="20" y="192" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:10px;font-weight:700">— rolling/expanding mean (proper, only-past)</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Current index ("today") — day <span id="fs-i">9</span> of 24</span><span class="sl-live" id="fs-gap">gap = 0.10</span></div>
+        <input type="range" class="sl-slider" id="fs-slider" min="0" max="23" step="1" value="8">
+        <div class="sl-calc-steps">
+          <div>Proper mean (days 1–<span id="fs-n">9</span>, only-past): <b id="fs-proper">1.05</b></div>
+          <div>Leaky mean (all 24 days, including the future): <b id="fs-leaky">1.15</b></div>
+        </div>
+        <div class="sl-note">Before the spike, the leaky mean is already inflated by a jump that hasn't happened yet — every earlier day's "how unusual is this" reading comes out muted, for a reason a live system on that day could never have known about. After the spike, the two converge, because there's no more future left to leak from.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Which data range is actually legitimate?</h2>
+      <p class="sl-sub">Given a rolling window size and where "today" sits in the dataset, compute the honest, causal range — and how many future rows a leaky whole-dataset calculation would improperly pull in.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Window size w</label><input type="number" class="sl-input" id="rng-w" value="20" step="1" min="1"></div>
+          <div class="sl-calc-field"><label>Current index i</label><input type="number" class="sl-input" id="rng-i" value="50" step="1" min="0"></div>
+          <div class="sl-calc-field"><label>Dataset size N</label><input type="number" class="sl-input" id="rng-n" value="200" step="1" min="1"></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Legitimate range (no leakage): rows <b id="rng-range">31–50</b> (<b id="rng-count">20</b> rows)</div>
+          <div>Rows a whole-dataset stat would improperly include: <b id="rng-leak">149</b> future rows beyond index i</div>
+        </div>
+        <div class="sl-calc-row" style="margin-top:14px">
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Verdict</div>
+            <div class="sl-calc-result-val" id="rng-verdict" style="font-size:14px">Leaky if it uses all 200 rows</div>
+          </div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="rng-reset">Reset to worked-example numbers</button>
+        <div class="sl-note" id="rng-note">The legitimate range is always [max(0, i − w + 1), i] — never reaching past i. A window that would start before row 0 just gets clipped to what's actually available yet.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Target leakage: the feature that already knows the answer</h2>
+      <p class="sl-sub">The subtlest of the three, because the feature and the label can sit in different columns and still be two names for the same already-happened event.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Leaky</span>
+          <ul>
+            <li>Label: "did the close finish above the open today"</li>
+            <li>Feature: today's realized volatility, or today's high-low range — both only exist because today's close already happened</li>
+            <li>Looks almost perfectly predictive in a backtest</li>
+            <li>Live, the feature can't be computed before the label is already decided</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Honest</span>
+          <ul>
+            <li>Label: "did the close finish above the open today"</li>
+            <li>Feature: yesterday's realized volatility, or a rolling average of the last 20 days' ranges</li>
+            <li>Looks weaker in a backtest — because it's telling the truth about how hard this is</li>
+            <li>Live, this feature genuinely exists before the prediction has to be made</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-quote">The practical test isn't which column the number sits in — it's whether the feature could have been meaningfully known <strong>before</strong> the outcome was substantially determined. "They happen together" is the tell. A quiz question that quietly hands you the final score as one of its inputs is still just asking "did the team that scored more points win."</div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Two more slow leaks, worth knowing even if they're not the headline three</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📈</div><div><h4>A trending raw level is a disguised time index</h4><p>Feed a model a currency's raw, persistently trending price level instead of a return or z-score, and it can "predict" beautifully in-sample — mostly by learning which half of the sample a row is in. That trick evaporates the moment the trend changes direction.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🪦</div><div><h4>Survivorship bias — a leak in which rows exist, not what they contain</h4><p>Building a universe from "instruments tradeable today" silently drops everything that got delisted, devalued, or defaulted along the way — exactly the historical cases a strategy most needs to be tested against.</p></div></div>
+      </div>
+      <p class="sl-p">Neither one is a single feature reaching across time the way the three headline patterns are — a non-stationary level is a modeling-assumption failure wearing a feature-importance costume, and survivorship bias is a leak in the dataset's row list rather than any one row's values. Both produce the exact same symptom as the other three: a backtest that looks calmer than a live system, operating in real time with no foreknowledge of the future, would actually have experienced.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Reproducibility is a separate, equally practical problem</h2>
+      <p class="sl-sub">Proving a result wasn't leaked is the job of everything above. Proving it can be rebuilt months later, and get the same answer, is a different job entirely.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Version data, code, and parameters together</span>
+          <p>"Which data," "which code," and "which parameter values" have to be pinned down as one unit. Version control on the code alone doesn't help if the underlying dataset silently gets revised without a matching version bump — the same script, run again, quietly produces a different number with no record of why.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Fixed seeds + point-in-time snapshots</span>
+          <p>A fixed random seed makes any randomized step reproducible. But a feature computed "as of December" using today's fully-revised data is a different feature than the one a live system in December could have actually built — reproducibility needs the data exactly as it stood back then, not just the current, possibly-restated version.</p>
+        </div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">The trap</div>
+        <p>"The data hasn't changed since I ran this" is rarely actually true for macro or fundamental series — silent revisions are the norm, not the exception. Without a point-in-time snapshot archive, a result computed "as of" a historical date can never be proven free of a later revision, and can never be honestly reproduced once the source series has been revised again.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Does this repo actually practice any of this?</h2>
+      <p class="sl-sub">Checked against the actual source code, not just assumed from the surrounding discipline.</p>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">What the code shows</div>
+        <p>Better than a blank slate. Several modules already compute features the causal, only-past way: <code>GlobalLiquidity/mathx.py</code>'s <code>rolling_z()</code> is explicitly documented as "causal rolling z-score… using only the past"; <code>forge/residual.py</code>'s <code>causal_zscore()</code> standardizes a residual against a window ending at the <em>prior</em> bar specifically so "this cannot manufacture" a self-referential leak; <code>RegimeV2/backtest_v3.py</code> builds its ATR volatility z-score from a rolling window and states outright "all computed causally (no look-ahead)"; and <code>js/laborMarketEngine.js</code> goes a step further on reproducibility's data-vintage problem specifically — its <code>revisionScore()</code> fetches both the FRED payrolls series <em>and</em> BLS's original first-published vintage (<code>fetchFredInitialRelease</code>) and scores the gap between them, rather than only ever looking at the current, fully-revised numbers.</p>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Where this still needs qualifying</div>
+        <p>This discipline is real, but it's scattered per-module, not centralized. There's no single point-in-time feature store tagging every value with both a calendar date and a true availability date, no explicit publication-date join layer, and no evidence found of a deliberately survivorship-inclusive instrument universe or a general point-in-time snapshot archive across the codebase. Seeded, deterministic random-walk controls do exist (<code>scripts/gen_vumanchu_vectors.mjs</code>, <code>run_sigma_definition_ab.mjs</code>, and siblings), which covers reproducibility for synthetic test data — but that's a narrower guarantee than versioning a live research result's data, code, and parameters together as the section above describes.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">The checklist that catches most of this</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🕒</div><div><h4>Two dates, not one</h4><p>Track a data point's calendar date and its true availability/publication date separately — join on the latter, always.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📏</div><div><h4>Only-past statistics</h4><p>Any normalization, z-score, or rank must come from an expanding or rolling window of strictly prior data — recomputed fresh at every point in time.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🗂️</div><div><h4>Include the delisted</h4><p>A universe built without the failed and discontinued instruments has already excluded a strategy's own worst cases before the test even starts.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📦</div><div><h4>Snapshot, don't just save</h4><p>Keep the data vintage as it stood historically, plus the code commit and parameter file — pinned together, not tracked separately and hoped to still match.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What does "point-in-time computable" mean for a feature?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Every input it depends on genuinely existed and was knowable at or before the moment it's dated</button>
+        <button class="sl-quiz-opt">It must be recalculated every second in real time</button>
+        <button class="sl-quiz-opt">It can never be built from a rolling window</button>
+        <div class="sl-quiz-explain">Point-in-time computability is about honesty regarding what was actually knowable then — not about update frequency or window length.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>A feature uses a full day's high and low to predict which way price would move that same morning. What kind of leak is this?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Look-ahead bias — the full day's range wasn't known yet at the morning's prediction moment</button>
+        <button class="sl-quiz-opt">Survivorship bias</button>
+        <button class="sl-quiz-opt">Not a leak — high/low is just ordinary price data</button>
+        <div class="sl-quiz-explain">The day's complete high/low only becomes final at the close. Using it earlier in the same day hands the model a value from its own future.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>A z-score feature is computed once using the mean/std of the entire dataset, including rows far in the future. What's wrong with it?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Every historical row's reading is contaminated by future extremes that hadn't happened yet as of that row's own date</button>
+        <button class="sl-quiz-opt">Nothing — z-scores are always safe to compute this way</button>
+        <button class="sl-quiz-opt">It's only a problem once the dataset has more than a million rows</button>
+        <div class="sl-quiz-explain">This is future-computed-statistics contamination: a live system on any given historical day could never have known the full dataset's eventual mean and std.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Which is the clearest example of target leakage?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Predicting "did the close finish above the open today" using a feature built from today's own closing price</button>
+        <button class="sl-quiz-opt">Predicting tomorrow's return using yesterday's closing price</button>
+        <button class="sl-quiz-opt">Predicting tomorrow's return using a 20-day rolling average through yesterday</button>
+        <div class="sl-quiz-explain">The feature and the label both depend on the same already-happened event — the feature is restating the outcome, not preceding it.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Why isn't "the data hasn't changed since I ran this" a safe assumption for reproducibility?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Macro/fundamental series get silently revised after publication, so a fixed seed and version-controlled code alone don't guarantee the same result without a point-in-time snapshot too</button>
+        <button class="sl-quiz-opt">Because computers produce different floating-point results on every run, regardless of the code</button>
+        <button class="sl-quiz-opt">Because reproducibility only matters once a strategy is trading live, not during research</button>
+        <div class="sl-quiz-explain">Silent revisions to macro/fundamental series are the norm — a result is only truly reproducible once data, code, and parameters are versioned together as one unit.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>A feature is any computed input a model uses to predict something — and it only earns that role if it could have genuinely existed at the moment it's dated to.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Look-ahead bias: using a value that wasn't actually known yet, like a full day's high/low to predict something earlier that same day.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Future-computed statistics: normalizing with the whole dataset's mean/std instead of only data available up to that point — a narrower, easy-to-miss cousin of a split-boundary leak.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Target leakage: a feature derived from, or too tightly bound to, the very outcome being predicted — trivially "predictive" in a way that never survives contact with live data.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Reproducibility is a separate, practical discipline — fixed seeds, version-pinned data snapshots, and documented feature-computation code, or a "finding" quietly stops being reproducible.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>This repo already practices real causal feature computation in several modules — genuine progress, not a hypothetical concern, though it's scattered rather than centralized as unified point-in-time infrastructure.</p></div>
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">What this now lets you do</div>
+        <p>Look at any feature — in this repo or anywhere else — and ask the one question that actually matters: could this exact value have existed, in real time, at the moment it's dated to? Spot the three specific disguises leakage wears, and know the difference between "this backtest number is honest" and "this result can be rebuilt the same way again in six months."</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Stochastic Differential Equations</h3>
+        <p>The Quantitative Research Process pair closes here — next up is a new category entirely: the continuous-time machinery of existence, uniqueness, and what it actually takes for a stochastic model to be well-posed.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="sde-existence-uniqueness-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="feature-engineering-leakage-reproducibility.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Rolling-window vs whole-dataset normalization — slider-driven bar chart.
+  (function(){
+    var slider = document.getElementById('fs-slider');
+    if (!slider) return;
+    var VALUES = [1.0,1.1,0.95,1.05,1.2,0.9,1.1,1.0,1.15,0.85,1.05,1.1,0.95,1.0,1.2,0.9,1.05,1.1,4.0,1.0,0.95,1.1,1.0,0.9];
+    var N = VALUES.length;
+    var barsG = document.getElementById('fs-bars');
+    var leakyLine = document.getElementById('fs-leaky-line');
+    var properLine = document.getElementById('fs-proper-line');
+    var iLabel = document.getElementById('fs-i');
+    var nLabel = document.getElementById('fs-n');
+    var gapLabel = document.getElementById('fs-gap');
+    var properOut = document.getElementById('fs-proper');
+    var leakyOut = document.getElementById('fs-leaky');
+
+    var X0 = 20, BAR_W = 18, STEP = 25, BASE_Y = 170, SCALE = 30;
+    var fullSum = VALUES.reduce(function(a,b){ return a+b; }, 0);
+    var fullMean = fullSum / N;
+
+    // Build the 24 bars once.
+    var bars = VALUES.map(function(v, idx){
+      var rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      var h = v * SCALE;
+      var x = X0 + idx * STEP;
+      rect.setAttribute('x', x);
+      rect.setAttribute('y', BASE_Y - h);
+      rect.setAttribute('width', BAR_W);
+      rect.setAttribute('height', h);
+      rect.setAttribute('rx', 2);
+      barsG.appendChild(rect);
+      return rect;
+    });
+
+    function fmt(n){ return n.toFixed(2); }
+
+    function update(){
+      var i = parseInt(slider.value, 10);
+      var known = VALUES.slice(0, i + 1);
+      var properMean = known.reduce(function(a,b){ return a+b; }, 0) / known.length;
+
+      bars.forEach(function(rect, idx){
+        if (idx <= i) {
+          rect.setAttribute('style', 'fill:var(--green);opacity:.65');
+        } else {
+          rect.setAttribute('style', 'fill:var(--panel2);stroke:var(--red);stroke-width:1.3;stroke-dasharray:3,2;opacity:.8');
+        }
+      });
+
+      var leakyY = BASE_Y - fullMean * SCALE;
+      leakyLine.setAttribute('y1', leakyY);
+      leakyLine.setAttribute('y2', leakyY);
+
+      var properY = BASE_Y - properMean * SCALE;
+      var rightEdge = X0 + i * STEP + BAR_W;
+      properLine.setAttribute('x2', rightEdge);
+      properLine.setAttribute('y1', properY);
+      properLine.setAttribute('y2', properY);
+
+      iLabel.textContent = i + 1;
+      nLabel.textContent = i + 1;
+      properOut.textContent = fmt(properMean);
+      leakyOut.textContent = fmt(fullMean);
+      gapLabel.textContent = 'gap = ' + fmt(Math.abs(fullMean - properMean));
+    }
+
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Legitimate-range calculator — window w, current index i, dataset size N.
+  (function(){
+    var wEl = document.getElementById('rng-w');
+    if (!wEl) return;
+    var iEl = document.getElementById('rng-i'), nEl = document.getElementById('rng-n');
+    var rangeOut = document.getElementById('rng-range'), countOut = document.getElementById('rng-count');
+    var leakOut = document.getElementById('rng-leak'), verdictOut = document.getElementById('rng-verdict');
+    var noteOut = document.getElementById('rng-note');
+    var resetBtn = document.getElementById('rng-reset');
+    var DEFAULTS = { w: 20, i: 50, n: 200 };
+    var DEFAULT_NOTE = noteOut.textContent;
+
+    function recompute(){
+      var w = parseFloat(wEl.value), i = parseFloat(iEl.value), n = parseFloat(nEl.value);
+
+      var valid = isFinite(w) && isFinite(i) && isFinite(n) &&
+        w >= 1 && Number.isInteger(w) &&
+        n >= 1 && Number.isInteger(n) &&
+        i >= 0 && Number.isInteger(i) && i <= n - 1;
+
+      if (!valid) {
+        rangeOut.textContent = '—';
+        countOut.textContent = '—';
+        leakOut.textContent = '—';
+        verdictOut.textContent = '—';
+        noteOut.textContent = 'Enter whole numbers: w ≥ 1, N ≥ 1, and 0 ≤ i ≤ N − 1.';
+        return;
+      }
+
+      var start = Math.max(0, i - w + 1);
+      var end = i;
+      var count = end - start + 1;
+      var futureLeak = (n - 1) - i;
+
+      rangeOut.textContent = start + '–' + end;
+      countOut.textContent = count;
+      leakOut.textContent = futureLeak;
+      verdictOut.textContent = futureLeak > 0
+        ? 'Leaky if it uses all ' + n + ' rows'
+        : 'No future rows exist — safe either way';
+      noteOut.textContent = DEFAULT_NOTE;
+    }
+
+    [wEl, iEl, nEl].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      wEl.value = DEFAULTS.w; iEl.value = DEFAULTS.i; nEl.value = DEFAULTS.n;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

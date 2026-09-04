@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Order Flow Toxicity &amp; VPIN — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Order Flow Toxicity &amp; VPIN — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivation, the Flash Crash scenario box, and a 6-question self-test?<a href="vpin-order-flow-toxicity.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Market Microstructure 4 · Market Microstructure</div>
+      <h1 class="sl-h1">Order Flow Toxicity &amp; VPIN, <em>Read by the Bucket</em></h1>
+      <p class="sl-lede">A market maker doesn't need one catastrophic trade to get hurt — a long enough run of quietly one-sided, informed flow does the same damage, one small fill at a time. VPIN is an attempt to catch that pattern live: bucket the tape by traded <em>volume</em> instead of by the clock, guess how one-sided each bucket's flow was, and average the result into a single number. It is also one of market microstructure's most publicly argued metrics — famous for a warning it allegedly gave before the 2010 Flash Crash, and just as famous for the researchers who later picked that claim apart.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Toxicity doesn't need one big trade</h2>
+      <p class="sl-sub">A market maker can be picked off slowly — a hundred ordinary-looking fills, all the same direction, adding up to a real loss nobody sees coming until it's already there.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The mechanism</div>
+        <div class="sl-row">
+          <div class="sl-box amber">Many small trades, one direction</div>
+          <div class="sl-arrow">→</div>
+          <div class="sl-box">Quotes get filled, again and again</div>
+          <div class="sl-arrow">→</div>
+          <div class="sl-box amber">Losses accumulate, unnoticed</div>
+        </div>
+        <div class="sl-verdict">No individual trade looks unusual. The market maker only recognizes the pattern in hindsight — after a run of fills that, in isolation, each looked like ordinary two-sided business.</div>
+      </div>
+      <p class="sl-p">The <a href="market-microstructure.html">Market Microstructure</a> lesson builds the bid-ask spread from exactly this risk: a market maker can't tell an informed trader from a noise trader, and prices that uncertainty into the spread via a belief parameter, <strong>α</strong> — the assumed fraction of order flow that's informed. That lesson treats α as a fixed input. VPIN exists to answer the obvious follow-up: where does a number like that actually come from, moment to moment, off the real tape?</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">↔</div><div><h4>One trade tells you almost nothing</h4><p>A single buy could be anyone — a hedger, an index fund rebalancing, someone who simply changed their mind. Direction alone isn't evidence of information.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⏳</div><div><h4>Persistence is the tell</h4><p>A short run of one-sided flow is noise. A long run, sustained across many trades, starts looking like someone trading on information the market maker doesn't have yet.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎭</div><div><h4>Intent is invisible; flow isn't</h4><p>A market maker can't ask a counterparty why they're trading. All that's observable is the tape itself — who lifted the offer, who hit the bid, and how often.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📉</div><div><h4>VPIN tries to score the pattern</h4><p>Not any one trade, but the flow's recent shape: has buying and selling been roughly balanced, or has it been running mostly one direction?</p></div></div>
+      </div>
+      <div class="sl-quote">This is the entire motivation behind VPIN in one sentence: it isn't trying to catch a single bad trade — it's trying to catch a mood.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">A different clock: sample by volume, not by time</h2>
+      <p class="sl-sub">Markets don't generate information at a constant rate — a quiet Tuesday afternoon and the thirty seconds after a surprise headline are not the same five minutes.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Illustrative</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two rows of bars on the same timeline. The top row, clock time, shows bars of equal width but wildly different heights, including one very tall bar during a news spike, since volume traded per fixed five-minute window varies a lot. The bottom row, volume time, shows bars of equal height but different widths — narrow during the news spike, wide during quiet periods — since each bar always represents the same fixed amount of traded volume.">
+            <text x="20" y="18" font-size="11" font-family="'DM Mono',monospace" fill="var(--text2)" font-weight="700">CLOCK TIME — fixed 5-minute bars</text>
+            <line x1="20" y1="90" x2="620" y2="90" style="stroke:var(--border2);stroke-width:1"/>
+            <rect x="30" y="78" width="70" height="12" style="fill:var(--blue);opacity:.6"/>
+            <rect x="110" y="70" width="70" height="20" style="fill:var(--blue);opacity:.6"/>
+            <rect x="190" y="80" width="70" height="10" style="fill:var(--blue);opacity:.6"/>
+            <rect x="270" y="24" width="70" height="66" style="fill:var(--red);opacity:.7"/>
+            <rect x="350" y="66" width="70" height="24" style="fill:var(--blue);opacity:.6"/>
+            <rect x="430" y="76" width="70" height="14" style="fill:var(--blue);opacity:.6"/>
+            <rect x="510" y="82" width="70" height="8" style="fill:var(--blue);opacity:.6"/>
+            <text x="305" y="18" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--red)">news hits</text>
+            <text x="320" y="106" text-anchor="middle" font-size="10.5" font-family="'DM Sans',sans-serif" fill="var(--text3)">Same 5 minutes every bar — volume per bar swings wildly</text>
+
+            <text x="20" y="140" font-size="11" font-family="'DM Mono',monospace" fill="var(--text2)" font-weight="700">VOLUME TIME — fixed-volume buckets</text>
+            <line x1="20" y1="190" x2="620" y2="190" style="stroke:var(--border2);stroke-width:1"/>
+            <rect x="30" y="170" width="95" height="20" style="fill:var(--green);opacity:.6"/>
+            <rect x="130" y="170" width="88" height="20" style="fill:var(--green);opacity:.6"/>
+            <rect x="223" y="170" width="30" height="20" style="fill:var(--red);opacity:.7"/>
+            <rect x="258" y="170" width="26" height="20" style="fill:var(--red);opacity:.7"/>
+            <rect x="289" y="170" width="90" height="20" style="fill:var(--green);opacity:.6"/>
+            <rect x="384" y="170" width="94" height="20" style="fill:var(--green);opacity:.6"/>
+            <rect x="483" y="170" width="127" height="20" style="fill:var(--green);opacity:.6"/>
+            <text x="240" y="164" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--red)">news hits</text>
+            <text x="320" y="205" text-anchor="middle" font-size="10.5" font-family="'DM Sans',sans-serif" fill="var(--text3)">Same fixed volume every bucket — width shrinks in the burst, widens when quiet</text>
+          </svg>
+        </div>
+        <div class="sl-note">Illustrative, not fitted to real data. The clock-time row (top) forces every five-minute window to count as one observation, whatever it contained. The volume-time row (bottom) closes a bucket the instant a fixed amount of volume has traded — keeping roughly the same amount of information per bucket instead of the same amount of time.</div>
+      </div>
+      <p class="sl-p">VPIN's actual mechanical innovation is exactly this and only this: pick a fixed bucket size <strong>V</strong> (often around 1/50th of an average day's volume, so roughly 50 buckets span a normal session), then walk the tape and close a new bucket every time cumulative volume since the last boundary reaches exactly V. A single trade that would push volume past the boundary gets split across the two buckets, so every bucket's total volume is exactly V — only its duration in real time varies.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Why it matters</div>
+        <p>Informed traders reveal themselves by trading <em>more</em> when they have something to act on, not by trading on a schedule. Sampling in volume time is a bet that this synchronizes far better with the true rate information is arriving than any fixed clock interval could.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Splitting a bucket into buy and sell, without asking a trader</h2>
+      <p class="sl-sub">Bulk Volume Classification (BVC) never checks an individual trade against the quote — it reads the bucket's overall price move and guesses.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The formula</div>
+        <div class="sl-row">
+          <div class="sl-box">V_buy = V × Z(ΔP / σ)</div>
+          <div class="sl-arrow">→</div>
+          <div class="sl-box">V_sell = V − V_buy</div>
+        </div>
+        <div class="sl-verdict">Z(·) is the standard normal CDF — the same "how many typical moves was this" idea as a z-score. A flat bucket (ΔP = 0) gets Z(0) = 0.500 → an even 50/50 split.</div>
+      </div>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Bucket closes flat</span>
+          <p>ΔP ≈ 0, standardized to a z-score of 0. Z(0) = 0.500 → V_buy = 50% of V, V_sell = 50% of V → order imbalance = 0. Read as: no net directional evidence in the price move.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Bucket has a big up move</span>
+          <p>Standardized price change of +2.0. Z(2.0) = 0.977 → V_buy ≈ 97.7% of V, V_sell ≈ 2.3% → order imbalance ≈ 95.4% of V. Read as: almost entirely buy-initiated.</p>
+        </div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>BVC classifies an entire bucket at once, from one aggregate number — it never actually asks whether any specific trade was a buy or a sell. A single large resting order getting lifted by one buyer can produce the exact same price move, and get classified identically, as many small informed trades all pushing the same direction. The method genuinely cannot tell the two apart — a limitation the academic critique later in this lesson leans on directly.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Balanced flow vs. toxic flow, side by side</h2>
+      <p class="sl-sub">The same bucket-classification math, run on two very different recent windows.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="flow-tabs">
+          <button class="sl-tab active" data-panel="flow-1">Balanced flow — low VPIN</button>
+          <button class="sl-tab" data-panel="flow-2">Toxic flow — high VPIN</button>
+        </div>
+        <div class="sl-panel active" id="flow-1">
+          <div class="sl-row">
+            <div class="sl-box">Buy volume ≈ 50%</div>
+            <div class="sl-arrow">≈</div>
+            <div class="sl-box">Sell volume ≈ 50%</div>
+          </div>
+          <div class="sl-verdict">Order imbalance sits near zero across the last several buckets — ordinary two-sided trading, buyers and sellers roughly matched. VPIN, the rolling average of that imbalance, sits near its low end.</div>
+        </div>
+        <div class="sl-panel" id="flow-2">
+          <div class="sl-row">
+            <div class="sl-box amber">Buy volume ≈ 90%</div>
+            <div class="sl-arrow">&gt;&gt;</div>
+            <div class="sl-box">Sell volume ≈ 10%</div>
+          </div>
+          <div class="sl-verdict">Recent buckets are heavily one-sided — BVC reads this as informed flow pushing hard in one direction, bucket after bucket. VPIN, the rolling average, climbs toward its high end.</div>
+        </div>
+      </div>
+      <p class="sl-p">Neither reading, by itself, says who is right or where price is headed — only how lopsided recent trading has looked. What a desk does with that reading is a separate decision, covered later in this lesson.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Turn the dial on order-flow toxicity</h2>
+      <p class="sl-sub">Six volume buckets, each holding the same total volume. Drag the slider and watch the buy/sell split — and VPIN — respond.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 232" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Six stacked bar charts of equal total height, one per volume bucket. Each bar splits into a blue buy-volume portion and an amber sell-volume portion. A slider control redraws the split in every bar and updates a computed VPIN readout.">
+            <rect x="30" y="8" width="14" height="14" style="fill:var(--blue)"/>
+            <text x="50" y="19" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text2)">Buy volume</text>
+            <rect x="150" y="8" width="14" height="14" style="fill:var(--amber)"/>
+            <text x="170" y="19" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text2)">Sell volume</text>
+            <line x1="20" y1="130" x2="620" y2="130" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:2,4;opacity:.5"/>
+            <text x="612" y="126" text-anchor="end" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">50 / 50</text>
+            <line x1="20" y1="200" x2="620" y2="200" style="stroke:var(--border2);stroke-width:1"/>
+            <g id="vb-bars">
+              <rect id="vb-sell-0" x="40" y="60" width="70" height="0" style="fill:var(--amber);opacity:.7"/>
+              <rect id="vb-buy-0" x="40" y="200" width="70" height="0" style="fill:var(--blue);opacity:.75"/>
+              <text id="vb-lbl-0" x="75" y="52" text-anchor="middle" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--text2)">50%</text>
+              <text x="75" y="215" text-anchor="middle" font-size="10" font-family="'DM Sans',sans-serif" fill="var(--text3)">B1</text>
+
+              <rect id="vb-sell-1" x="134" y="60" width="70" height="0" style="fill:var(--amber);opacity:.7"/>
+              <rect id="vb-buy-1" x="134" y="200" width="70" height="0" style="fill:var(--blue);opacity:.75"/>
+              <text id="vb-lbl-1" x="169" y="52" text-anchor="middle" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--text2)">50%</text>
+              <text x="169" y="215" text-anchor="middle" font-size="10" font-family="'DM Sans',sans-serif" fill="var(--text3)">B2</text>
+
+              <rect id="vb-sell-2" x="228" y="60" width="70" height="0" style="fill:var(--amber);opacity:.7"/>
+              <rect id="vb-buy-2" x="228" y="200" width="70" height="0" style="fill:var(--blue);opacity:.75"/>
+              <text id="vb-lbl-2" x="263" y="52" text-anchor="middle" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--text2)">50%</text>
+              <text x="263" y="215" text-anchor="middle" font-size="10" font-family="'DM Sans',sans-serif" fill="var(--text3)">B3</text>
+
+              <rect id="vb-sell-3" x="322" y="60" width="70" height="0" style="fill:var(--amber);opacity:.7"/>
+              <rect id="vb-buy-3" x="322" y="200" width="70" height="0" style="fill:var(--blue);opacity:.75"/>
+              <text id="vb-lbl-3" x="357" y="52" text-anchor="middle" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--text2)">50%</text>
+              <text x="357" y="215" text-anchor="middle" font-size="10" font-family="'DM Sans',sans-serif" fill="var(--text3)">B4</text>
+
+              <rect id="vb-sell-4" x="416" y="60" width="70" height="0" style="fill:var(--amber);opacity:.7"/>
+              <rect id="vb-buy-4" x="416" y="200" width="70" height="0" style="fill:var(--blue);opacity:.75"/>
+              <text id="vb-lbl-4" x="451" y="52" text-anchor="middle" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--text2)">50%</text>
+              <text x="451" y="215" text-anchor="middle" font-size="10" font-family="'DM Sans',sans-serif" fill="var(--text3)">B5</text>
+
+              <rect id="vb-sell-5" x="510" y="60" width="70" height="0" style="fill:var(--amber);opacity:.7"/>
+              <rect id="vb-buy-5" x="510" y="200" width="70" height="0" style="fill:var(--blue);opacity:.75"/>
+              <text id="vb-lbl-5" x="545" y="52" text-anchor="middle" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--text2)">50%</text>
+              <text x="545" y="215" text-anchor="middle" font-size="10" font-family="'DM Sans',sans-serif" fill="var(--text3)">B6</text>
+            </g>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Imbalance intensity</span><span class="sl-live" id="vb-vpin">VPIN (avg) ≈ 0.000</span></div>
+        <input type="range" class="sl-slider" id="vb-slider" min="0" max="100" step="5" value="0">
+        <div class="sl-note">Buy-classified volume in blue, sell-classified volume in amber — every bucket always sums to the same height, only the split moves. At zero, every bucket is an even 50/50; turning the dial up mimics BVC reading larger and larger price moves as more one-sided flow, bucket by bucket.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">The VPIN formula, in three pieces</h2>
+      <p class="sl-sub">VPIN = (1 / n·V) × Σ |V_buy,τ − V_sell,τ| — a rolling, normalized average of order imbalance.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">τ</div><div><h4>OI_τ / V — one bucket's toxicity</h4><p>How one-sided a single bucket's classified flow was — 0 at perfectly balanced, 1 at fully one-sided.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">n</div><div><h4>The averaging window</h4><p>Smooths out single-bucket noise, at a real cost: a bigger window lags further behind a genuine, sudden change in flow.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">∴</div><div><h4>VPIN — the result</h4><p>A single number, roughly 0 to 1, meant to track how informed recent flow looks right now — not a literal, calibrated probability.</p></div></div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">VPIN is not a Bayesian probability</div>
+        <p>The name says "probability of informed trading," but VPIN is a normalized order-imbalance average, not a probability produced by a fitted likelihood model the way a genuine Bayesian posterior (like the Glosten-Milgrom belief update) is. A VPIN of 0.6 does not mean "there's a 60% chance the next trade is informed" — it means recent buckets, as classified by BVC, were on average 60% one-sided.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Compute VPIN from bucket volumes yourself</h2>
+      <p class="sl-sub">A simplified version of the real formula: sum |buy − sell| across buckets, divide by the total volume across all of them.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any bucket's buy or sell volume, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Bucket 1 — buy</label><input type="number" class="sl-input" id="vpc-b1buy" value="800" step="10" min="0"></div>
+          <div class="sl-calc-field"><label>Bucket 1 — sell</label><input type="number" class="sl-input" id="vpc-b1sell" value="200" step="10" min="0"></div>
+          <div class="sl-calc-field"><label>Bucket 2 — buy</label><input type="number" class="sl-input" id="vpc-b2buy" value="500" step="10" min="0"></div>
+          <div class="sl-calc-field"><label>Bucket 2 — sell</label><input type="number" class="sl-input" id="vpc-b2sell" value="500" step="10" min="0"></div>
+          <div class="sl-calc-field"><label>Bucket 3 — buy</label><input type="number" class="sl-input" id="vpc-b3buy" value="100" step="10" min="0"></div>
+          <div class="sl-calc-field"><label>Bucket 3 — sell</label><input type="number" class="sl-input" id="vpc-b3sell" value="900" step="10" min="0"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">VPIN (simplified)</div>
+            <div class="sl-calc-result-val" id="vpc-result">0.467</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Σ |buy − sell| across buckets = <b id="vpc-sumoi">1400</b></div>
+          <div>Σ total volume across buckets = <b id="vpc-sumvol">3000</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="vpc-reset">Reset to example numbers</button>
+        <div class="sl-note">Leave a field blank, type text, or zero out every bucket, and the result shows "—" instead of NaN or Infinity — exactly the discipline any real pipeline needs before dividing by total volume.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">The Flash Crash claim — and the fight over it</h2>
+      <p class="sl-sub">VPIN's public reputation rests almost entirely on one event, argued from both directions ever since.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Illustrative</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart of a hypothetical VPIN reading over about 60 volume buckets, drifting around a moderate baseline near 0.3, rising into a labeled stress event, spiking, then decaying back toward baseline.">
+            <line x1="50" y1="170" x2="610" y2="170" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="50" y1="170" x2="50" y2="20" style="stroke:var(--border2);stroke-width:1"/>
+            <text x="46" y="174" text-anchor="end" font-size="9" font-family="'DM Mono',monospace" fill="var(--text3)">0.0</text>
+            <text x="46" y="99" text-anchor="end" font-size="9" font-family="'DM Mono',monospace" fill="var(--text3)">0.5</text>
+            <text x="46" y="24" text-anchor="end" font-size="9" font-family="'DM Mono',monospace" fill="var(--text3)">1.0</text>
+            <text x="610" y="188" text-anchor="end" font-size="10" font-family="'DM Sans',sans-serif" fill="var(--text3)">volume buckets, in sequence →</text>
+            <line x1="420" y1="20" x2="420" y2="170" style="stroke:var(--red);stroke-width:1;stroke-dasharray:3,3"/>
+            <text x="420" y="14" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--red)">stress event</text>
+            <line x1="50" y1="125" x2="610" y2="125" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:2,4;opacity:.5"/>
+            <text x="600" y="140" text-anchor="end" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">≈0.3 baseline</text>
+            <path style="fill:none;stroke:var(--purple);stroke-width:2" d="M50,128 L90,132 L130,122 L170,127 L210,120 L250,110 L290,102 L330,108 L370,88 L400,68 L420,44 L435,28 L450,58 L470,80 L500,98 L530,112 L560,120 L590,124 L610,126"/>
+          </svg>
+        </div>
+        <div class="sl-note">Illustrative, not real market data. A rise into a stress event followed by a spike and slow decay is the shape of the original claim — but whether a rise like this is genuinely predictive, or simply what VPIN mechanically does whenever prices move a lot, is exactly the disputed part.</div>
+      </div>
+      <p class="sl-p">On May 6, 2010, U.S. equity index futures and a wide swath of individual stocks fell roughly 5–9% in minutes, then largely recovered within the same session. VPIN entered the public conversation almost entirely because of this event.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">The claim</span>
+          <p>Easley, López de Prado &amp; O'Hara reported VPIN, computed on E-mini S&amp;P 500 futures order flow, rising to unusually high levels in the hours before the crash — framed as evidence that a real-time toxicity monitor could have flagged the danger building.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">The critique</span>
+          <p>Andersen &amp; Bondarenko re-examined the same data and argued the apparent predictive power was considerably weaker than portrayed, and highly sensitive to the BVC method and to the bucket-size (V) and window-length (n) choices — different reasonable parameters produced meaningfully different VPIN paths around the same event.</p>
+        </div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Genuinely unresolved, not settled</div>
+        <p>VPIN measures something real and mechanically well-defined — rolling, volume-bucketed order imbalance — and a rise in it around this stress event is a fact about the data. Whether that rise was genuine advance warning, as opposed to a coincident or mildly-lagging symptom of volatility that was already building, remains an open, actively debated question. Treat "VPIN predicted the Flash Crash" as a claim you should be able to argue both sides of, not a settled fact to repeat.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Where this shows up on a desk — and where this repo stands</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🛡️</div><div><h4>Market-making risk controls</h4><p>A market maker watching a toxicity proxy rise can mechanically widen quotes or shrink size — the same Glosten-Milgrom logic, applied live.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🐌</div><div><h4>Slowing an execution schedule</h4><p>A desk working a large order that sees toxicity spike may pause or slow participation, on the theory that trading into unusually one-sided flow right now is more likely to get run over.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📊</div><div><h4>One input among several</h4><p>In practice, a toxicity proxy like this typically sits alongside realized volatility, spread widening, and order-book depth — not a standalone signal fired in isolation.</p></div></div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Verified against this repo (September 2026)</div>
+        <p>The full lesson tags this concept "not built or tested in this repo," and that check holds up: nothing in this codebase implements VPIN, Bulk Volume Classification, or any genuine volume-bucketed order-imbalance signal. Two things worth being precise about while checking: the repo's <code>oi_recon/</code>, <code>oi-dashboard.html</code>, and related <code>oi_*</code> files are <strong>Open Interest</strong> — options positioning data — an entirely different, unrelated codebase despite the name overlap. Separately, <code>js/cogExecutionTrigger.js</code> defines its own "orderflowProxy" used by the COG engine's trigger gate — but it computes something much simpler (where a bar's close sits within that bar's own high-low range) and isn't a buy/sell volume split, a volume bucket, or an informed-trading estimate. Neither one is VPIN; the concept tag stands.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What's the core mechanical difference between a VPIN bucket and an ordinary time bar?</h4>
+        <button class="sl-quiz-opt" data-correct="true">A bucket closes after a fixed amount of traded volume, whatever that takes; a time bar closes after a fixed amount of elapsed time, whatever traded</button>
+        <button class="sl-quiz-opt">A bucket only ever spans exactly 5 minutes, like a time bar, but is colored differently on a chart</button>
+        <button class="sl-quiz-opt">A bucket ignores price entirely, while a time bar is built purely from price</button>
+        <div class="sl-quiz-explain">A time bar closes on a fixed clock interval no matter how much volume traded. A VPIN bucket closes the instant cumulative volume hits a fixed size V — spanning twenty minutes on a quiet day, thirty seconds during a burst.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>In Bulk Volume Classification, why does a bucket that closes exactly flat get a 50/50 buy/sell split?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Because Z(0) = 0.500 — a zero standardized price change sits at the exact center of the standard normal CDF</button>
+        <button class="sl-quiz-opt">Because BVC checked each individual trade and found equal numbers of buyers and sellers</button>
+        <button class="sl-quiz-opt">Because a flat bucket is discarded and replaced with an assumed average</button>
+        <div class="sl-quiz-explain">BVC sets V_buy = V·Z(ΔP/σ). A price change of zero standardizes to a z-score of 0, and the standard normal CDF at 0 is exactly 0.5 — an even split, whether or not that reflects what individual trades actually did.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>A bucket has V = 1,000 and is classified as entirely buy-initiated (V_buy = 1,000, V_sell = 0). What is its order imbalance?</h4>
+        <button class="sl-quiz-opt" data-correct="true">1,000 — the maximum possible for this bucket</button>
+        <button class="sl-quiz-opt">500</button>
+        <button class="sl-quiz-opt">0</button>
+        <div class="sl-quiz-explain">OI_τ = |V_buy − V_sell| = |1,000 − 0| = 1,000, the maximum possible value since OI_τ can never exceed V.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>What does the Andersen &amp; Bondarenko critique argue about VPIN's role in the Flash Crash?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The apparent predictive power was weaker than portrayed and sensitive to the BVC method and to the V / n parameter choices</button>
+        <button class="sl-quiz-opt">That VPIN never rose at all before the crash, contradicting the original paper's data</button>
+        <button class="sl-quiz-opt">That the Flash Crash had nothing to do with order flow of any kind</button>
+        <div class="sl-quiz-explain">They re-examined the same data and found the pattern sensitive to the Bulk Volume Classification method and to bucket-size/window choices, with comparably elevated VPIN readings occurring at other times without a crash following — a real, unresolved challenge, not a claim that VPIN never moved.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Does a VPIN reading of 0.6 mean "there is a 60% chance the next trade is informed"?</h4>
+        <button class="sl-quiz-opt" data-correct="true">No — VPIN is a normalized order-imbalance average, not a calibrated Bayesian probability</button>
+        <button class="sl-quiz-opt">Yes, that is exactly what VPIN's name and construction guarantee</button>
+        <button class="sl-quiz-opt">Yes, but only during the first hour of trading</button>
+        <div class="sl-quiz-explain">Despite the name "probability of informed trading," VPIN is not produced by a fitted likelihood model. A VPIN of 0.6 means recent buckets, as classified by BVC, were on average 60% one-sided — not a rigorous probability statement about any single next trade.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Order flow toxicity is death by a thousand cuts — a market maker picked off by persistently one-sided, informed flow, with no single trade unusual enough to raise the alarm on its own.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>VPIN's real innovation is the volume clock, not a new theory — bucketing by traded volume instead of elapsed time better tracks the rate new information actually arrives.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Bulk Volume Classification turns each bucket's price change into an assumed buy/sell split via the normal CDF — a statistical proxy for direction, not a verified per-trade tag.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>VPIN = the rolling average of each bucket's |buy − sell| imbalance, normalized by volume — bounded between 0 (balanced) and 1 (fully one-sided).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The claim that VPIN gave advance warning of the 2010 Flash Crash is genuinely disputed — Andersen &amp; Bondarenko showed sensitivity to BVC and to the bucket-size/window parameters.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Treat VPIN as one input among several — spread, depth, realized volatility — feeding a broader "is the market stressed right now" read, not a standalone crash predictor.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Read a volume-imbalance signal correctly: know exactly what it's built from (equal-volume buckets, a normal-CDF classification, a rolling normalized average), why volume-time sampling was chosen over clock-time, and how much confidence any single claim that it "predicts" a crash actually deserves — plus the guardrails (parameter sensitivity, no literal probability) worth applying before trusting one operationally.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Execution Algorithms: TWAP, VWAP, POV, IS</h3>
+        <p>A desk that believes flow is currently toxic behaves differently — pulling back size, widening, or slowing an execution schedule. The next lesson covers exactly how that schedule gets built.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="execution-algorithms-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="vpin-order-flow-toxicity.html">Read the full VPIN lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Volume-bucket toxicity slider — redraws six stacked buy/sell bars and
+  // recomputes a live "VPIN (avg)" readout as the imbalance intensity moves.
+  (function(){
+    var slider = document.getElementById('vb-slider');
+    if (!slider) return;
+    var vpinOut = document.getElementById('vb-vpin');
+    // Fixed per-bucket deviation-from-balanced pattern, applied at full
+    // (100%) slider intensity; scaled down linearly as the slider moves
+    // toward 0, where every bucket returns to an exact 50/50 split.
+    var PATTERN = [0.15, -0.05, 0.35, -0.25, 0.05, -0.40];
+    var TOP_Y = 60, BASE_Y = 200, FULL_H = BASE_Y - TOP_Y; // 140px total bar height
+
+    function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
+
+    function update(){
+      var intensity = parseInt(slider.value, 10) / 100;
+      var sumImbalance = 0;
+      PATTERN.forEach(function(dev, i){
+        var buyFrac = clamp(0.5 + dev * intensity, 0, 1);
+        var buyH = buyFrac * FULL_H;
+        var sellH = FULL_H - buyH;
+        var buyRect = document.getElementById('vb-buy-' + i);
+        var sellRect = document.getElementById('vb-sell-' + i);
+        var lbl = document.getElementById('vb-lbl-' + i);
+        buyRect.setAttribute('y', BASE_Y - buyH);
+        buyRect.setAttribute('height', buyH);
+        sellRect.setAttribute('y', TOP_Y);
+        sellRect.setAttribute('height', sellH);
+        if (lbl) lbl.textContent = Math.round(buyFrac * 100) + '%';
+        sumImbalance += Math.abs(2 * buyFrac - 1);
+      });
+      var avgVpin = sumImbalance / PATTERN.length;
+      vpinOut.textContent = 'VPIN (avg) ≈ ' + avgVpin.toFixed(3);
+    }
+
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // "Compute VPIN yourself" — simplified Σ|buy-sell| / Σtotal calculator
+  // over three editable buckets, with defensive guards against blank,
+  // non-finite, negative, or all-zero-volume input.
+  (function(){
+    var ids = ['b1buy','b1sell','b2buy','b2sell','b3buy','b3sell'];
+    var inputs = {};
+    ids.forEach(function(id){ inputs[id] = document.getElementById('vpc-' + id); });
+    if (!inputs.b1buy) return;
+    var sumOiOut = document.getElementById('vpc-sumoi');
+    var sumVolOut = document.getElementById('vpc-sumvol');
+    var resultOut = document.getElementById('vpc-result');
+    var resetBtn = document.getElementById('vpc-reset');
+    var DEFAULTS = { b1buy: 800, b1sell: 200, b2buy: 500, b2sell: 500, b3buy: 100, b3sell: 900 };
+
+    function recompute(){
+      var vals = {};
+      var allValid = true;
+      ids.forEach(function(id){
+        var v = parseFloat(inputs[id].value);
+        if (!isFinite(v) || v < 0) allValid = false;
+        vals[id] = v;
+      });
+
+      if (!allValid) {
+        sumOiOut.textContent = '—';
+        sumVolOut.textContent = '—';
+        resultOut.textContent = '—';
+        return;
+      }
+
+      var buckets = [
+        [vals.b1buy, vals.b1sell],
+        [vals.b2buy, vals.b2sell],
+        [vals.b3buy, vals.b3sell]
+      ];
+      var sumOi = 0, sumVol = 0;
+      buckets.forEach(function(pair){
+        sumOi += Math.abs(pair[0] - pair[1]);
+        sumVol += pair[0] + pair[1];
+      });
+
+      if (sumVol === 0) {
+        sumOiOut.textContent = sumOi.toFixed(1);
+        sumVolOut.textContent = '0';
+        resultOut.textContent = '—';
+        return;
+      }
+
+      sumOiOut.textContent = sumOi.toFixed(1);
+      sumVolOut.textContent = sumVol.toFixed(0);
+      resultOut.textContent = (sumOi / sumVol).toFixed(3);
+    }
+
+    ids.forEach(function(id){ inputs[id].addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      ids.forEach(function(id){ inputs[id].value = DEFAULTS[id]; });
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

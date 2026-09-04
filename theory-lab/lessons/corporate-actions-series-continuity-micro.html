@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Corporate Actions &amp; Series Continuity — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Corporate Actions &amp; Series Continuity — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer full derivations, worked examples, and a 5-question self-test?<a href="corporate-actions-series-continuity.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Institutional Data Engineering 3 · Institutional Data Engineering</div>
+      <h1 class="sl-h1">Corporate Actions &amp; <em>Series Continuity</em></h1>
+      <p class="sl-lede">A stock split, a dividend, or — closest to home for an FX/macro/futures desk — a futures contract roll all put a fake, non-tradeable jump into a raw price series, without a single bad tick anywhere in it. The standard fix removes that jump. This lesson is about the part almost nobody mentions until it bites them: the fix that saves your return calculation can quietly break every other calculation built on the actual, historically-quoted price level.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">A jump that never actually happened</h2>
+      <p class="sl-sub">The <a href="data-cleaning-outliers-missing-data.html" style="color:var(--blue)">previous lesson</a> was about catching prices that are simply <em>wrong</em> — bad ticks, stale feeds, impossible values. This one is stranger: every price below is perfectly accurate, correctly timestamped, and free of any error at all — and the series is still unusable as-is.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">✂️</div><div><h4>A stock split</h4><p>A 2-for-1 split turns one $100 share into two $50 shares. Nothing about the company changed — the raw chart still shows a 50% overnight "loss."</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">💵</div><div><h4>A dividend payment</h4><p>The price legitimately drops by roughly the dividend on the ex-date — but a shareholder received that value in cash, they didn't lose it.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔄</div><div><h4>A futures roll</h4><p>The expiring contract and the next-nearest one almost never close at the same price. Splicing them raw reproduces the exact same fake-jump problem.</p></div></div>
+      </div>
+      <div class="sl-quote">All three have the same shape: the raw data isn't lying about any single print, but stitching those accurate prints into one continuous series manufactures a jump that no position anyone held ever actually experienced.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">The roll gap is real — it just isn't a return</h2>
+      <p class="sl-sub">A futures contract expires. A continuous history has to be built by splicing the expiring contract onto the next one that becomes the tradeable front month.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Worked example — a crude oil roll</div>
+        <div class="sl-row">
+          <div class="sl-box">Expiring contract<br>$78.40</div>
+          <div class="sl-arrow">roll →</div>
+          <div class="sl-box amber">New front month<br>$78.90</div>
+        </div>
+        <div class="sl-verdict">That $0.50 gap is <strong>cost-of-carry and curve shape</strong> — a real, expected feature of futures pricing, not an error. A trader who rolled a continuous position captured roughly that spread; they did not experience a discontinuous $0.50 gain overnight.</div>
+      </div>
+      <p class="sl-p">Splice the two contracts' raw prices directly at the roll date, though, and the series shows exactly that: a $0.50 jump that looks, to any naive return calculation, like a real one-day move. Multiply this by every quarterly roll across a multi-year history and the fake jumps stack up fast.</p>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Why this isn't a Data Cleaning problem</div>
+        <p>Nothing here is an outlier or a bad tick — both $78.40 and $78.90 are genuine, correctly-recorded closing prices. The problem is structural: two different instruments were glued together at the seam, not a single instrument misreported.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Same data, two ways to draw it</h2>
+      <p class="sl-sub">Toggle between the raw spliced series and the same series back-adjusted to remove the jump.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="roll-tabs">
+          <button class="sl-tab active" data-panel="roll-raw">Raw, unadjusted</button>
+          <button class="sl-tab" data-panel="roll-adj">Back-adjusted (Panama)</button>
+        </div>
+        <div class="sl-panel active" id="roll-raw">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Raw price series showing a sharp downward jump at the roll date where the expiring contract meets the new contract">
+            <line x1="40" y1="170" x2="600" y2="170" style="stroke:var(--border2);stroke-width:1"/>
+            <text x="40" y="26" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:11px;font-weight:600">Front contract spliced straight into the new contract</text>
+            <polyline points="40,80 120,72 200,64 260,60 261,120 340,116 420,110 500,104 580,98" style="fill:none;stroke:var(--red);stroke-width:2.5"/>
+            <line x1="260" y1="45" x2="260" y2="150" style="stroke:var(--red);stroke-width:1;stroke-dasharray:3,3"/>
+            <text x="260" y="38" text-anchor="middle" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:10.5px;font-weight:700">roll date — fake jump</text>
+          </svg></div>
+          <div class="sl-verdict">Every point on this line actually traded. But that near-vertical drop at the roll date is not a return anyone earned — it's the seam between two different contracts.</div>
+        </div>
+        <div class="sl-panel" id="roll-adj">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Back-adjusted price series showing a smooth continuous line across the same roll date, with no visible jump">
+            <line x1="40" y1="170" x2="600" y2="170" style="stroke:var(--border2);stroke-width:1"/>
+            <text x="40" y="26" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:11px;font-weight:600">Same data, shifted so the roll shows zero jump</text>
+            <polyline points="40,150 120,146 200,142 260,140 340,136 420,130 500,124 580,118" style="fill:none;stroke:var(--green);stroke-width:2.5"/>
+            <line x1="260" y1="118" x2="260" y2="165" style="stroke:var(--green);stroke-width:1;stroke-dasharray:3,3"/>
+            <text x="260" y="182" text-anchor="middle" style="fill:var(--green);font-family:'DM Mono',monospace;font-size:10.5px;font-weight:700">same roll date — smooth splice</text>
+          </svg></div>
+          <div class="sl-verdict">The whole segment before the roll was shifted by one constant offset. Day-to-day <strong>dollar differences</strong> are identical to the raw series — but this segment's price <strong>level</strong> no longer equals what actually printed back then.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Two named fixes, two different tradeoffs</h2>
+      <p class="sl-sub">Both remove the jump at the roll date. They preserve different things about the history.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Back-adjustment — "Panama method"</span>
+          <p>Shift every price before the roll by a constant <strong>additive</strong> offset (the $ gap at the roll). Absolute price <em>differences</em> stay exactly correct — a $2 move is still a $2 move — no matter how far back you look.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Ratio-adjustment</span>
+          <p>Scale every price before the roll by a constant <strong>multiplicative</strong> ratio instead. Percentage returns stay exactly correct across the roll — a 2% move is still a 2% move — at the cost of shifting absolute levels multiplicatively.</p>
+        </div>
+      </div>
+      <div class="sl-quote">Neither is "more correct." Back-adjustment protects dollar/point P&amp;L math; ratio-adjustment protects percentage-return math. Pick based on what the downstream calculation actually needs — not once, as a single infrastructure decision, but per use case.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Compute a back-adjusted price yourself</h2>
+      <p class="sl-sub">Panama-method back-adjustment, one roll at a time: offset = post-roll price − pre-roll price, then add that offset to any older raw price.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Pre-roll price (expiring)</label><input type="number" class="sl-input" id="ca-pre" value="78.40" step="0.01"></div>
+          <div class="sl-calc-field"><label>Post-roll price (new front)</label><input type="number" class="sl-input" id="ca-post" value="78.90" step="0.01"></div>
+          <div class="sl-calc-field"><label>Older raw price</label><input type="number" class="sl-input" id="ca-older" value="72.00" step="0.01"></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Roll offset = post − pre = <b id="ca-offset">0.50</b></div>
+          <div>Back-adjusted older price = older + offset = <b id="ca-adjusted">72.50</b></div>
+        </div>
+        <div class="sl-note" id="ca-warn" style="display:none;color:var(--red);border-top:none;padding-top:0">This adjusted price is negative — it never actually traded there. That's the tradeoff this lesson is about, not a bug in the arithmetic.</div>
+        <button type="button" class="sl-reset-btn" id="ca-reset">Reset to the crude-oil example</button>
+      </div>
+      <p class="sl-p">Leave any field blank or type something non-numeric and the result shows <strong>—</strong> rather than a broken number — the same guard any real pipeline needs before this formula ever sees production data.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Drag far enough back, and the price goes negative</h2>
+      <p class="sl-sub">One real historical print — $20.00, quoted 12 years ago — run through an increasing number of accumulated roll offsets. The raw print never changes. Watch the adjusted price.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A price number line with a fixed marker for the raw historical print and a moving marker for the back-adjusted price, which can cross into a shaded negative-price zone">
+            <rect x="50" y="45" width="240" height="45" style="fill:var(--red);opacity:.12"/>
+            <line x1="50" y1="70" x2="590" y2="70" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="290" y1="40" x2="290" y2="100" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:3,3"/>
+            <text x="290" y="115" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">$0</text>
+            <text x="170" y="35" text-anchor="middle" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:9.5px;font-weight:700">never actually traded here</text>
+            <text x="530" y="35" text-anchor="middle" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:10px">raw print (fixed)</text>
+            <circle cx="530" cy="70" r="6" style="fill:var(--blue)"/>
+            <circle id="roll-dot" cx="530" cy="70" r="7" style="fill:var(--amber);stroke:var(--bg);stroke-width:2"/>
+            <text id="roll-label" x="530" y="112" text-anchor="middle" style="fill:var(--amber);font-family:'DM Mono',monospace;font-size:12px;font-weight:700">adjusted: $20.00</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Rolls back-adjusted through</span><span class="sl-live" id="roll-kval">0 rolls</span></div>
+        <input type="range" class="sl-slider" id="roll-slider" min="0" max="8" step="1" value="0">
+      </div>
+      <p class="sl-p">Each roll's offset is genuine and small on its own — but they compound going backward in time. Eight rolls into this contract's history, the same $20.00 print that actually traded now reads as a negative price back-adjustment produced, not a price anyone ever quoted.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Fixing continuity can break the price level</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">The key warning</div>
+        <p>Back-adjustment fixes returns by design — that's the whole point. But anything downstream that needs the actual, historical price <em>level</em> to mean something can silently break: a percentage return divides by that level, a support/resistance line is drawn on it, a price-level-based signal is triggered by it. A back-adjusted series can hand all three a number that no trade ever actually happened at.</p>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">%</div><div><h4>Percentage returns</h4><p>A % return divides by the price level. Divide by a level that's been shifted (or gone negative), and the "return" is meaningless, even though the point-to-point $ difference is still exactly correct.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📏</div><div><h4>Support / resistance</h4><p>A level drawn on a back-adjusted chart may not correspond to any price that was ever actually quoted on that historical date — the chart is real, the level on it isn't.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🚩</div><div><h4>Any price-level trigger</h4><p>A rule that fires "if price crosses X" needs X and the series it's compared against to live in the same, real price space — back-adjustment can quietly break that match far enough back.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Practitioners keep both series, on purpose</h2>
+      <p class="sl-sub">Serious futures desks don't pick one adjustment method once — they maintain both, and choose per calculation.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Use back-adjusted (Panama)</span>
+          <ul>
+            <li>Absolute dollar / point P&amp;L</li>
+            <li>Position-sizing math</li>
+            <li>Anything comparing price <em>differences</em></li>
+          </ul>
+        </div>
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Use ratio-adjusted (or raw, per contract)</span>
+          <ul>
+            <li>Long-horizon percentage-return statistics</li>
+            <li>Correlation across very different price eras</li>
+            <li>Anything dividing by a historical level</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-quote">A trend-following backtest built on a naively-spliced, unadjusted series can show a suspiciously reliable "breakout" clustering right on every quarterly roll date — the strategy isn't detecting momentum, it's detecting its own data pipeline's roll jump. Re-run it on a properly adjusted series and the pattern vanishes.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Checked against this repo's actual code</h2>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Grounding this in what's actually built here</div>
+        <p>This repo is FX/macro-first and does not maintain a continuous, roll-adjusted futures pipeline — verified by search, not assumed. <code>js/goldMinerArbEngine.js</code> makes the tradeoff explicit in its own comments: it deliberately uses OANDA spot gold instead of CME's GC futures precisely because Yahoo's free GC=F feed is an <strong>unadjusted</strong> continuous front-month series with real jumps at roll dates — exactly the failure mode this lesson describes — and notes that a genuine roll-adjusted GC series would need a broker feed, not a free API. No back-adjustment or ratio-adjustment splicing logic exists anywhere else in the codebase either. The full lesson's framing — "explains real industry practice, not a claim about this repo's own data pipeline" — checks out as accurate; nothing here was stale.</p>
+      </div>
+      <p class="sl-p">That comment is a good instinct in miniature: rather than build a fragile continuous-futures splice and risk exactly the negative-price / distorted-level trap above, the engine sidesteps the whole problem by choosing an instrument that doesn't need rolling at all.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Why does a raw, unadjusted futures series show a jump at every roll date, even though nothing was ever a "bad tick"?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Because splicing two different contracts' accurate prices together at their roll date reproduces the price gap between them as a fake return</button>
+        <button class="sl-quiz-opt">Because the exchange misreports the price on roll days</button>
+        <button class="sl-quiz-opt">Because volume always spikes on roll days</button>
+        <div class="sl-quiz-explain">Both prices are genuine. The problem is structural — gluing two instruments together at the seam, not a data error in either one.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>What does back-adjustment (the "Panama method") preserve, and what does ratio-adjustment preserve instead?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Panama preserves absolute $ differences; ratio-adjustment preserves percentage returns</button>
+        <button class="sl-quiz-opt">Panama preserves percentage returns; ratio-adjustment preserves $ differences</button>
+        <button class="sl-quiz-opt">Both preserve the exact same thing</button>
+        <div class="sl-quiz-explain">Additive offsets keep $ differences exact; multiplicative ratios keep % returns exact. That's the entire tradeoff between the two methods.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Why can a long back-adjusted futures history eventually show a negative price?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Each roll's additive offset compounds going further back in time, and enough of them can push an old price below zero</button>
+        <button class="sl-quiz-opt">Because the underlying commodity's real price actually went negative</button>
+        <button class="sl-quiz-opt">Because of a rounding error in the exchange's settlement price</button>
+        <div class="sl-quiz-explain">The offsets are genuine and small individually, but they stack. A negative back-adjusted price is an adjustment artifact, not a real historical quote.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Pre-roll price $110.00, post-roll price $108.50. What's the back-adjusted value of an older raw price of $95.00?</h4>
+        <button class="sl-quiz-opt" data-correct="true">$93.50</button>
+        <button class="sl-quiz-opt">$96.50</button>
+        <button class="sl-quiz-opt">$95.00</button>
+        <div class="sl-quiz-explain">Offset = 108.50 − 110.00 = −1.50. Adjusted = 95.00 + (−1.50) = $93.50.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>A researcher needs 15 years of percentage-return correlation across two commodity futures, each with many rolls. Which series should they use?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The ratio-adjusted series — it keeps percentage returns exactly correct across every roll</button>
+        <button class="sl-quiz-opt">The back-adjusted (Panama) series — it's the industry-standard default</button>
+        <button class="sl-quiz-opt">The raw, unadjusted series — corporate actions don't apply to correlation</button>
+        <div class="sl-quiz-explain">Percentage-return statistics need the level-preserving-as-ratio property, which is exactly what ratio-adjustment protects and Panama-style back-adjustment does not.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>A raw series can be 100% accurate at every print and still be unusable — splits, dividends, and futures rolls all manufacture a jump that isn't a real, tradeable return.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Splits/dividends are fixed by a cumulative back-adjustment factor, restating historical prices in consistent terms.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Futures rolls have two named fixes — back-adjustment ("Panama," additive, preserves $ differences) and ratio-adjustment (multiplicative, preserves % returns).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Neither fix is free — a back-adjusted series can drift to unusual or negative levels far in the past, which breaks any calculation that needs a real price level, not just a real price difference.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Choose the method per calculation, not once as an infrastructure default: dollar P&amp;L wants back-adjustment, percentage-return statistics want ratio-adjustment.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>This repo currently sidesteps the whole problem for its gold pair by trading spot instead of an unadjusted continuous future — a legitimate third option, not just theory.</p></div>
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">What this now lets you do</div>
+        <p>Recognise a fake roll or corporate-action jump the moment you see one in a raw series, instead of mistaking it for a real return. Pick the right adjustment method — back-adjusted or ratio-adjusted — for whatever calculation you're actually running. And before trusting any price-level-based signal (support/resistance, a percentage return, a level trigger) on adjusted data, check whether that level still corresponds to something that was ever actually quoted.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Point-in-Time Data &amp; Survivorship Bias</h3>
+        <p>What point-in-time data actually requires operationally, and the classic study that first quantified survivorship bias in a real database.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="point-in-time-data-survivorship-bias-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="corporate-actions-series-continuity.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Live Panama-method back-adjustment calculator.
+  (function(){
+    var pre = document.getElementById('ca-pre');
+    if (!pre) return;
+    var post = document.getElementById('ca-post'), older = document.getElementById('ca-older');
+    var offsetEl = document.getElementById('ca-offset'), adjustedEl = document.getElementById('ca-adjusted');
+    var warnEl = document.getElementById('ca-warn');
+    var resetBtn = document.getElementById('ca-reset');
+    var DEFAULTS = { pre: 78.40, post: 78.90, older: 72.00 };
+
+    function fmt(n){ return (n < 0 ? '-$' : '$') + Math.abs(n).toFixed(2); }
+
+    function recompute(){
+      var pv = parseFloat(pre.value), sv = parseFloat(post.value), ov = parseFloat(older.value);
+      if (!isFinite(pv) || !isFinite(sv) || !isFinite(ov)) {
+        offsetEl.textContent = '—';
+        adjustedEl.textContent = '—';
+        warnEl.style.display = 'none';
+        return;
+      }
+      var offset = sv - pv;
+      var adjusted = ov + offset;
+      offsetEl.textContent = fmt(offset);
+      adjustedEl.textContent = fmt(adjusted);
+      warnEl.style.display = adjusted < 0 ? 'block' : 'none';
+    }
+
+    [pre, post, older].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      pre.value = DEFAULTS.pre; post.value = DEFAULTS.post; older.value = DEFAULTS.older;
+      recompute();
+    });
+    recompute();
+  })();
+
+  // Accumulating-rolls slider — one raw historical print, back-adjusted
+  // through an increasing number of compounding roll offsets.
+  (function(){
+    var slider = document.getElementById('roll-slider');
+    if (!slider) return;
+    var kVal = document.getElementById('roll-kval');
+    var dot = document.getElementById('roll-dot');
+    var label = document.getElementById('roll-label');
+    var RAW = 20.00;
+    var OFFSETS = [3.80, 4.50, 3.20, 5.10, 4.30, 4.90, 3.60, 5.80]; // one per roll, oldest-first
+    var PMIN = -20, PMAX = 25, X0 = 50, X1 = 590;
+
+    function priceToX(p){ return X0 + (p - PMIN) / (PMAX - PMIN) * (X1 - X0); }
+    function fmt(n){ return (n < 0 ? '-$' : '$') + Math.abs(n).toFixed(2); }
+
+    function update(){
+      var k = parseInt(slider.value, 10);
+      kVal.textContent = k + (k === 1 ? ' roll' : ' rolls');
+      var cumulative = OFFSETS.slice(0, k).reduce(function(a, b){ return a + b; }, 0);
+      var adjusted = RAW - cumulative;
+      dot.setAttribute('cx', priceToX(adjusted));
+      var neg = adjusted < 0;
+      dot.setAttribute('style', 'fill:' + (neg ? 'var(--red)' : 'var(--amber)') + ';stroke:var(--bg);stroke-width:2');
+      label.setAttribute('style', 'fill:' + (neg ? 'var(--red)' : 'var(--amber)') + ';font-family:\'DM Mono\',monospace;font-size:12px;font-weight:700');
+      label.setAttribute('x', priceToX(adjusted));
+      label.textContent = 'adjusted: ' + fmt(adjusted) + (neg ? ' — never traded' : '');
+    }
+    slider.addEventListener('input', update);
+    update();
+  })();
+})();
+</script>
+</body>
+</html>

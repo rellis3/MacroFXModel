@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Decision Trees &amp; Random Forests — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Decision Trees &amp; Random Forests — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer full derivations, live math notation, and a 6-question self-test?<a href="decision-trees-random-forests.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Tree-Based &amp; Ensemble ML 1 · Tree-Based &amp; Ensemble Machine Learning</div>
+      <h1 class="sl-h1">Decision Trees &amp; Random Forests, <em>One Model's Overfitting, Averaged Away</em></h1>
+      <p class="sl-lede">A single decision tree, grown all the way down, can carve out a private leaf for every training example and reproduce the training set almost perfectly — which is the problem, not the achievement. This is the first lesson in a new category of the curriculum, and it opens on that exact tension: a tree by itself has low bias and dangerously high variance, and the fix isn't a smarter tree — it's growing many different ones and averaging their votes.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Twenty questions, asked by an algorithm</h2>
+      <p class="sl-sub">A decision tree is built by repeatedly asking the single most useful yes/no question about the data it still has left.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">?</div><div><h4>One yes/no question per node</h4><p>At every node, the tree searches every feature and every candidate threshold — "is x₁ above 5?" — and picks whichever split most reduces how mixed the remaining targets still are.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">↳</div><div><h4>Recurse on each branch</h4><p>Whatever split wins gets applied, splitting the data into a "yes" group and a "no" group — then the exact same search runs again, independently, inside each of those two groups.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🍃</div><div><h4>A leaf is the final answer</h4><p>Once a stopping rule fires — a maximum depth, a minimum group size, or no split left that helps enough — a node stops splitting and predicts the average target of whichever training points landed there.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚡</div><div><h4>Nothing is decided in advance</h4><p>Unlike a straight-line regression, a tree commits to no fixed shape ahead of time — it decides which feature matters, and exactly where to draw each line, entirely from the data itself.</p></div></div>
+      </div>
+      <div class="sl-quote">If "tree" already sounds familiar from earlier in this curriculum: hierarchical risk parity built a tree too, but bottom-up and for a completely different job — clustering similar assets together by correlation distance into a dendrogram, then using it to allocate portfolio weight. A decision tree grows top-down instead, splitting rows of data by a feature's value to predict a target. Same branching shape, unrelated purpose.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Follow one example down the tree</h2>
+      <p class="sl-sub">Same small tree throughout — three questions, two features, one final prediction. Step through it.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="tree-tabs">
+          <button class="sl-tab active" data-panel="tree-1">1 · Ask at the root</button>
+          <button class="sl-tab" data-panel="tree-2">2 · Follow a branch</button>
+          <button class="sl-tab" data-panel="tree-3">3 · Land on a leaf</button>
+        </div>
+
+        <div class="sl-panel active" id="tree-1">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Tree diagram with the root node highlighted, asking whether feature x1 is at most 5">
+            <rect x="255" y="14" width="130" height="46" rx="8" style="fill:var(--blue-bg);stroke:var(--blue);stroke-width:2"/>
+            <text x="320" y="33" text-anchor="middle" fill="var(--text)" font-size="13" font-family="'DM Mono',monospace">x₁ ≤ 5 ?</text>
+            <text x="320" y="49" text-anchor="middle" fill="var(--blue)" font-size="10" font-family="'DM Mono',monospace">root — every example starts here</text>
+
+            <line x1="290" y1="60" x2="150" y2="118" style="stroke:var(--border2);stroke-width:1.5;opacity:.35"/>
+            <text x="200" y="88" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace" opacity=".5">yes</text>
+            <line x1="350" y1="60" x2="490" y2="118" style="stroke:var(--border2);stroke-width:1.5;opacity:.35"/>
+            <text x="450" y="88" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace" opacity=".5">no</text>
+
+            <rect x="85" y="118" width="130" height="52" rx="8" style="fill:var(--panel2);stroke:var(--border2)" opacity=".45"/>
+            <text x="150" y="140" text-anchor="middle" fill="var(--text3)" font-size="12" font-family="'DM Mono',monospace" opacity=".8">leaf</text>
+            <text x="150" y="158" text-anchor="middle" fill="var(--text3)" font-size="13" font-family="'DM Mono',monospace" opacity=".8">ŷ = 0.2</text>
+
+            <rect x="420" y="118" width="140" height="46" rx="8" style="fill:var(--panel2);stroke:var(--border2)" opacity=".45"/>
+            <text x="490" y="137" text-anchor="middle" fill="var(--text3)" font-size="13" font-family="'DM Mono',monospace" opacity=".8">x₂ ≤ 3 ?</text>
+
+            <line x1="460" y1="164" x2="390" y2="222" style="stroke:var(--border2);stroke-width:1.5;opacity:.25"/>
+            <line x1="520" y1="164" x2="590" y2="222" style="stroke:var(--border2);stroke-width:1.5;opacity:.25"/>
+            <rect x="325" y="222" width="130" height="52" rx="8" style="fill:var(--panel2);stroke:var(--border2)" opacity=".3"/>
+            <text x="390" y="252" text-anchor="middle" fill="var(--text3)" font-size="12" font-family="'DM Mono',monospace" opacity=".6">ŷ = 0.6</text>
+            <rect x="525" y="222" width="130" height="52" rx="8" style="fill:var(--panel2);stroke:var(--border2)" opacity=".3"/>
+            <text x="590" y="252" text-anchor="middle" fill="var(--text3)" font-size="12" font-family="'DM Mono',monospace" opacity=".6">ŷ = 1.1</text>
+          </svg></div>
+          <div class="sl-verdict">Every new example starts at the same root question. Suppose a fresh example arrives with <strong>x₁ = 7</strong>.</div>
+        </div>
+
+        <div class="sl-panel" id="tree-2">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Tree diagram highlighting the 'no' branch from the root leading to a second node asking whether feature x2 is at most 3">
+            <rect x="255" y="14" width="130" height="46" rx="8" style="fill:var(--panel2);stroke:var(--border2)"/>
+            <text x="320" y="33" text-anchor="middle" fill="var(--text2)" font-size="13" font-family="'DM Mono',monospace">x₁ ≤ 5 ?</text>
+
+            <line x1="290" y1="60" x2="150" y2="118" style="stroke:var(--border2);stroke-width:1.5;opacity:.25"/>
+            <line x1="350" y1="60" x2="490" y2="118" style="stroke:var(--red);stroke-width:2.5"/>
+            <text x="450" y="88" text-anchor="middle" fill="var(--red)" font-size="11" font-family="'DM Mono',monospace" font-weight="700">no (7 &gt; 5)</text>
+
+            <rect x="85" y="118" width="130" height="52" rx="8" style="fill:var(--panel2);stroke:var(--border2)" opacity=".3"/>
+            <text x="150" y="148" text-anchor="middle" fill="var(--text3)" font-size="13" font-family="'DM Mono',monospace" opacity=".6">ŷ = 0.2</text>
+
+            <rect x="420" y="118" width="140" height="46" rx="8" style="fill:var(--blue-bg);stroke:var(--blue);stroke-width:2"/>
+            <text x="490" y="137" text-anchor="middle" fill="var(--text)" font-size="13" font-family="'DM Mono',monospace">x₂ ≤ 3 ?</text>
+            <text x="490" y="153" text-anchor="middle" fill="var(--blue)" font-size="9" font-family="'DM Mono',monospace">second question</text>
+
+            <line x1="460" y1="164" x2="390" y2="222" style="stroke:var(--border2);stroke-width:1.5;opacity:.35"/>
+            <line x1="520" y1="164" x2="590" y2="222" style="stroke:var(--border2);stroke-width:1.5;opacity:.35"/>
+            <rect x="325" y="222" width="130" height="52" rx="8" style="fill:var(--panel2);stroke:var(--border2)" opacity=".45"/>
+            <text x="390" y="252" text-anchor="middle" fill="var(--text3)" font-size="12" font-family="'DM Mono',monospace" opacity=".8">ŷ = 0.6</text>
+            <rect x="525" y="222" width="130" height="52" rx="8" style="fill:var(--panel2);stroke:var(--border2)" opacity=".45"/>
+            <text x="590" y="252" text-anchor="middle" fill="var(--text3)" font-size="12" font-family="'DM Mono',monospace" opacity=".8">ŷ = 1.1</text>
+          </svg></div>
+          <div class="sl-verdict">7 is <strong>not</strong> ≤ 5, so the example follows the "no" branch to a second question: is <strong>x₂ ≤ 3</strong>? Say this example has x₂ = 2.</div>
+        </div>
+
+        <div class="sl-panel" id="tree-3">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Tree diagram highlighting the final leaf reached, predicting 0.6">
+            <rect x="255" y="14" width="130" height="46" rx="8" style="fill:var(--panel2);stroke:var(--border2)"/>
+            <text x="320" y="33" text-anchor="middle" fill="var(--text2)" font-size="13" font-family="'DM Mono',monospace">x₁ ≤ 5 ?</text>
+
+            <line x1="290" y1="60" x2="150" y2="118" style="stroke:var(--border2);stroke-width:1.5;opacity:.25"/>
+            <line x1="350" y1="60" x2="490" y2="118" style="stroke:var(--border2);stroke-width:1.5;opacity:.4"/>
+
+            <rect x="85" y="118" width="130" height="52" rx="8" style="fill:var(--panel2);stroke:var(--border2)" opacity=".3"/>
+            <text x="150" y="148" text-anchor="middle" fill="var(--text3)" font-size="13" font-family="'DM Mono',monospace" opacity=".6">ŷ = 0.2</text>
+
+            <rect x="420" y="118" width="140" height="46" rx="8" style="fill:var(--panel2);stroke:var(--border2)" opacity=".4"/>
+            <text x="490" y="137" text-anchor="middle" fill="var(--text2)" font-size="13" font-family="'DM Mono',monospace" opacity=".8">x₂ ≤ 3 ?</text>
+
+            <line x1="460" y1="164" x2="390" y2="222" style="stroke:var(--green);stroke-width:2.5"/>
+            <text x="405" y="200" text-anchor="middle" fill="var(--green)" font-size="11" font-family="'DM Mono',monospace" font-weight="700">yes (2 ≤ 3)</text>
+            <line x1="520" y1="164" x2="590" y2="222" style="stroke:var(--border2);stroke-width:1.5;opacity:.25"/>
+
+            <rect x="325" y="222" width="130" height="52" rx="8" style="fill:var(--green-bg);stroke:var(--green);stroke-width:2"/>
+            <text x="390" y="244" text-anchor="middle" fill="var(--text)" font-size="12" font-family="'DM Mono',monospace">leaf</text>
+            <text x="390" y="262" text-anchor="middle" fill="var(--green)" font-size="14" font-family="'DM Mono',monospace" font-weight="700">ŷ = 0.6</text>
+            <rect x="525" y="222" width="130" height="52" rx="8" style="fill:var(--panel2);stroke:var(--border2)" opacity=".3"/>
+            <text x="590" y="252" text-anchor="middle" fill="var(--text3)" font-size="12" font-family="'DM Mono',monospace" opacity=".6">ŷ = 1.1</text>
+          </svg></div>
+          <div class="sl-verdict">x₂ = 2 <strong>is</strong> ≤ 3, so the example lands in a leaf. Its prediction is <strong>ŷ = 0.6</strong> — simply the average target of whichever training points happened to land in that exact leaf while the tree was being built.</div>
+        </div>
+      </div>
+      <p class="sl-p">Every internal node is one binary question; every leaf's prediction is just a mean. Nothing here is estimated live — the numbers are illustrative of the structure this recursive splitting produces, not a fitted model.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">A tree with no limits doesn't stop asking</h2>
+      <p class="sl-sub">The same splitting rule, run with a stopping point versus run without one.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">A shallow, restrained tree</span>
+          <ul>
+            <li>Stops after a handful of genuinely general questions</li>
+            <li>Each leaf still holds a healthy group of training examples that broadly agree</li>
+            <li>Regrow it on a slightly different sample of the same data — you get roughly the same tree</li>
+            <li>Low variance, at the cost of some bias</li>
+          </ul>
+        </div>
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">An unconstrained, deep tree</span>
+          <ul>
+            <li>Keeps splitting until every leaf holds a single training point</li>
+            <li>Training error goes essentially to zero</li>
+            <li>Regrow it on a slightly different sample — the specific splits can look completely different</li>
+            <li>Very low bias, but very high variance</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-quote">Zero training error from an unconstrained tree is a <strong>red flag, not an achievement</strong>. At that point the tree has stopped describing a general relationship between features and target and has instead built an elaborate, question-by-question lookup table that reproduces the training set exactly — noise included — and has no principled reason to answer correctly on anything it hasn't already memorized.</div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">The core tension</div>
+        <p>Low bias and low variance rarely come free together. An unconstrained tree buys almost-zero bias by paying for enormous variance — the true relationship between features and target hasn't moved at all, but the specific splits a deep tree draws depend heavily on exactly which training points it happened to see, noise included.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">What overfitting actually looks like, drawn</h2>
+      <p class="sl-sub">Eight points, two of them mislabeled by noise. One fit threads every point exactly; the other one doesn't.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Visualize it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Step chart comparing a single unconstrained decision tree, which forms a jagged staircase touching all eight training points exactly including two noisy ones, against a smoother three-tree average that misses the two noisy points but tracks the true underlying step more closely.">
+            <line x1="60" y1="20" x2="60" y2="220" style="stroke:var(--border2)"/>
+            <line x1="60" y1="220" x2="600" y2="220" style="stroke:var(--border2)"/>
+            <text x="330" y="245" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">x</text>
+            <text x="26" y="120" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace" transform="rotate(-90 26 120)">y</text>
+
+            <circle cx="100" cy="200" r="4" fill="var(--text2)"/>
+            <circle cx="166" cy="200" r="4" fill="var(--text2)"/>
+            <circle cx="232" cy="200" r="4" fill="var(--text2)"/>
+            <circle cx="298" cy="40" r="4.5" fill="var(--red)"/>
+            <circle cx="364" cy="200" r="4.5" fill="var(--red)"/>
+            <circle cx="430" cy="40" r="4" fill="var(--text2)"/>
+            <circle cx="496" cy="40" r="4" fill="var(--text2)"/>
+            <circle cx="562" cy="40" r="4" fill="var(--text2)"/>
+            <text x="298" y="26" text-anchor="middle" fill="var(--red)" font-size="9" font-family="'DM Mono',monospace">noise</text>
+            <text x="364" y="216" text-anchor="middle" fill="var(--red)" font-size="9" font-family="'DM Mono',monospace">noise</text>
+
+            <path d="M100,200 L133,200 L133,200 L166,200 L199,200 L199,200 L232,200 L265,200 L265,40 L298,40 L331,40 L331,200 L364,200 L397,200 L397,40 L430,40 L496,40 L562,40" style="stroke:var(--red);stroke-width:2;fill:none;stroke-linecap:round;opacity:.85"/>
+            <path d="M100,200 L364,200 L364,40 L562,40" style="stroke:var(--green);stroke-width:2.5;fill:none;stroke-linecap:round"/>
+
+            <text x="470" y="80" fill="var(--green)" font-size="11" font-family="'DM Mono',monospace">forest average (3 trees)</text>
+            <text x="140" y="70" fill="var(--red)" font-size="11" font-family="'DM Mono',monospace">single unconstrained tree</text>
+          </svg>
+        </div>
+        <div class="sl-note">The single tree (red) threads a private micro-region around each noisy point to fit it exactly — zero training error, two spurious steps that reflect noise, not signal. The averaged forest (green) is forced smoother because no single resample dominates every tree, and it lands closer to where the true step actually sits — this is exactly what the next three sections build toward.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Fix #1 — bagging: many trees, many resamples</h2>
+      <p class="sl-sub">Bootstrap aggregating ("bagging"): train each tree on its own resample of the training rows, drawn with replacement.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-row">
+          <div class="sl-box">Original<br>rows 1–8</div>
+          <div class="sl-arrow">→</div>
+          <div class="sl-box amber">Resample A<br>2,2,3,4,5,6,7,8</div>
+          <div class="sl-box amber">Resample B<br>1,1,2,4,4,6,7,8</div>
+          <div class="sl-box amber">Resample C<br>1,3,3,5,5,6,8,8</div>
+        </div>
+        <div class="sl-verdict">Each resample has the same size as the original (8 rows), drawn <strong>with replacement</strong> — some rows appear two or three times, others not at all. Each tree only ever trains on its own resample, so each one's overfit quirks — driven by which specific noisy points it happened to oversee — differ from tree to tree.</div>
+        <div class="sl-note">As the number of rows grows large, a given row's chance of being <em>left out</em> of one bootstrap draw converges to (1 − 1/N)ᴺ → e⁻¹ ≈ 36.8%. Those left-out rows are that tree's "out-of-bag" set — never used to train it, and useful later as a free validation check.</div>
+      </div>
+      <p class="sl-p">Averaging \(B\) independent, equally-good estimators, each with variance σ², produces an average with variance σ²/B — variance falls straight toward zero as B grows, while bias barely moves, since averaging equally-biased predictors doesn't shift the expectation. That's the entire case for bagging in one sentence: many high-variance, low-bias trees, averaged, keep the low bias and lose most of the variance.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">The catch: bootstrap-trained trees aren't independent</h2>
+      <p class="sl-sub">They all still come from the exact same underlying dataset.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">The honest formula</div>
+        <p>The variance of an average of B estimators, each with variance σ² and average pairwise correlation ρ, is <strong>ρσ² + (1 − ρ)σ²/B</strong>. As B → ∞ the second term vanishes — but the first term does not. The forest's variance converges to <strong>ρσ²</strong>, a floor set entirely by how correlated the trees are with each other, not by how many of them exist.</p>
+      </div>
+      <div class="sl-quote">If ten people all read the exact same newspaper, averaging their opinions doesn't give you ten independent opinions — they're repeating what one source told them, so the "average" is barely more reliable than asking one of them. Ten people who each got their information from a genuinely different source is where averaging actually starts to pay off. Bootstrap resamples of the same dataset are closer to the newspaper-readers than the fully independent sources — which is exactly why bagging alone leaves a variance floor on the table.</div>
+      <p class="sl-p">This is the setup for the next section: if the floor ρσ² is the real limit, the only way to genuinely improve a forest past what bagging alone offers is to actively push ρ — the correlation between trees — down.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">More trees helps — until it doesn't</h2>
+      <p class="sl-sub">Drag the slider. Variance falls fast at first, then flattens toward the ρσ² floor — it never reaches zero.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Curve of ensemble variance falling steeply as the number of trees increases from 1, then flattening toward a floor, with a marker showing the current number of trees">
+            <line x1="60" y1="220" x2="620" y2="220" style="stroke:var(--border2)"/>
+            <line x1="60" y1="20" x2="60" y2="220" style="stroke:var(--border2)"/>
+            <text x="340" y="245" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">number of trees (B)</text>
+            <text x="26" y="120" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace" transform="rotate(-90 26 120)">variance</text>
+            <line x1="60" y1="172.5" x2="620" y2="172.5" style="stroke:var(--amber);stroke-width:1.5;stroke-dasharray:5 4;opacity:.7"/>
+            <text x="600" y="166" text-anchor="end" fill="var(--amber)" font-size="10" font-family="'DM Mono',monospace">floor = ρσ²</text>
+            <path d="M107,30 L123,101 L135,125 L154,144 L176,155 L205,162 L238,165 L275,168 L335,170 L405,171 L481,171 L544,172 L600,172" style="stroke:var(--blue);stroke-width:2.5;fill:none;stroke-linecap:round"/>
+            <line id="forest-vline" x1="335" y1="170" x2="335" y2="220" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:3 3;opacity:.6"/>
+            <circle id="forest-dot" cx="335" cy="170" r="6" style="fill:var(--blue);stroke:var(--bg);stroke-width:2"/>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Trees in the forest (B)</span><span class="sl-live" id="forest-mval">B = 50</span></div>
+        <input type="range" class="sl-slider" id="forest-slider" min="1" max="200" step="1" value="50">
+        <div class="sl-note" id="forest-readout">Illustrative curve with σ² = 1.00, ρ = 0.25 held fixed: Var(ensemble) ≈ 0.265</div>
+      </div>
+      <p class="sl-p">Growing B from 100 to 10,000 keeps shrinking the (1 − ρ)σ²/B term, but the forest's variance never drops below ρσ². If the trees are highly correlated to begin with, no amount of extra trees fixes that — which is exactly the problem the next section's trick is aimed at.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Fix #2 — random forest's extra trick</h2>
+      <p class="sl-sub">Bagging resamples the rows. A random forest also resamples the <em>features</em> — separately, at every single split.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Bagging alone</span>
+          <ul>
+            <li>Every tree searches all p features at every split</li>
+            <li>Whichever feature is strongest tends to get picked near the root of nearly every tree, resample or not</li>
+            <li>Trees end up making very similar early splits — correlated trees, even after bootstrapping the rows</li>
+            <li>The correlation floor ρσ² stays high</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Random forest (bagging + feature subsets)</span>
+          <ul>
+            <li>At each split, only a random subset of m features (out of p) is even considered</li>
+            <li>The single strongest feature isn't always in the running — different trees get forced down different early paths</li>
+            <li>Trees genuinely decorrelate from each other, not just from resampled rows</li>
+            <li>Lowering ρ lowers the actual floor, not just the part more trees can shrink</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs a number</div>
+        <p>Breiman's original defaults are m ≈ √p candidate features per split for classification, m ≈ p/3 for regression — a deliberately small fraction of the total, chosen specifically to force the trees apart rather than to search as thoroughly as possible at any one split.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Compute the variance floor yourself</h2>
+      <p class="sl-sub">Var(ensemble) = ρσ² + (1 − ρ)σ²/N. Change any input, live.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Single tree variance σ²</label><input type="number" class="sl-input" id="var-sigma2" value="1.0" step="0.1" min="0"></div>
+          <div class="sl-calc-field"><label>Pairwise correlation ρ</label><input type="number" class="sl-input" id="var-rho" value="0.2" step="0.05"></div>
+          <div class="sl-calc-field"><label>Number of trees N</label><input type="number" class="sl-input" id="var-n" value="50" step="1" min="1"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Var(ensemble)</div>
+            <div class="sl-calc-result-val" id="var-result">0.2160</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>ρσ² term = <b id="var-term1">0.2000</b></div>
+          <div>(1 − ρ)σ² / N term = <b id="var-term2">0.0160</b></div>
+          <div>Var(ensemble) = <b id="var-result2">0.2160</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="var-reset">Reset to worked-example numbers</button>
+        <div class="sl-note" id="var-note">Blank, non-numeric, negative-variance, or zero/negative-N inputs show "—" instead of breaking the formula.</div>
+      </div>
+      <p class="sl-p">Notice that pushing N from 50 toward a very large number barely moves the result once ρ is fixed — the second term is already small. Pushing ρ down, instead, moves both terms. That's the whole practical argument for random forest's feature-subsampling trick over "just add more trees."</p>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">What a trained forest hands you for free</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📊</div><div><h4>Feature importance</h4><p>Because the forest already tracks every split every tree made, it can report which features it leaned on most — either cheaply (mean decrease in impurity) or more reliably (permutation importance, which shuffles a feature and measures how much error rises).</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">✅</div><div><h4>Out-of-bag error</h4><p>Each tree already left ~37% of rows unseen. Averaging each row's prediction only over the trees that never trained on it gives an honest validation estimate — with no separate held-out split needed.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧭</div><div><h4>A sane first model</h4><p>Forests have few hyperparameters that meaningfully change the result — mainly B, the feature-subset size m, and each tree's depth — making them a common first "sanity check" before reaching for gradient boosting, next in this series.</p></div></div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Verified against this repo's actual code</div>
+        <p>The full lesson this deck condenses labels decision trees and random forests a "concept — explained here, not built or tested anywhere in this repo." A repo-wide search confirms that's still accurate: no <code>RandomForestClassifier</code>/<code>Regressor</code> and no plain <code>DecisionTreeClassifier</code>/<code>Regressor</code> exist anywhere in this codebase. Worth knowing, though: a <em>different</em> tree-ensemble family — gradient-boosted trees (XGBoost, LightGBM, and scikit-learn's HistGradientBoosting) — genuinely is used in several places (<code>bot/scripts/train_gold_model.py</code>, <code>bot/modules/ml_confidence.py</code>, <code>AnalogML/ml_walkforward.py</code>, <code>SessionResearch/forecast.py</code>, <code>volatilityExhaustion/daytype_classifier.py</code>). That's a related but distinct technique — the subject of the next lesson, not this one.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What does a decision tree's split search try to maximize at each node?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The reduction in impurity (variance) the split would produce</button>
+        <button class="sl-quiz-opt">The total number of training rows in the node</button>
+        <button class="sl-quiz-opt">The depth of the tree built so far</button>
+        <div class="sl-quiz-explain">Every feature and every candidate threshold is tried; the split chosen is whichever one most reduces how mixed the remaining targets still are.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Why does an unconstrained, fully-grown decision tree tend to overfit badly?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It keeps splitting until nearly every leaf holds one training point, memorizing noise along with signal</button>
+        <button class="sl-quiz-opt">It refuses to consider more than one feature</button>
+        <button class="sl-quiz-opt">It always predicts the overall average, ignoring the features entirely</button>
+        <div class="sl-quiz-explain">With no stopping rule, recursion continues until training error is essentially zero — very low bias, but very high variance, since the exact splits depend heavily on which specific noisy points the tree happened to see.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>What does "bagging" actually resample to build each tree?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The training rows — a bootstrap sample drawn with replacement</button>
+        <button class="sl-quiz-opt">The exact same dataset, unchanged, every single time</button>
+        <button class="sl-quiz-opt">Only the target variable, never the features</button>
+        <div class="sl-quiz-explain">Each tree trains on its own N-row resample drawn with replacement from the original N rows — some rows repeat, others are left out entirely (that tree's out-of-bag set).</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>What does a random forest add on top of plain bagging?</h4>
+        <button class="sl-quiz-opt" data-correct="true">At each split, only a random subset of the features is even considered as a candidate</button>
+        <button class="sl-quiz-opt">Every tree is limited to exactly one split, no matter what</button>
+        <button class="sl-quiz-opt">Trees are trained on the full dataset with no resampling at all</button>
+        <div class="sl-quiz-explain">Restricting each split's search to a random feature subset stops one dominant feature from producing similar splits — and therefore correlated trees — across the whole forest.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Does growing the number of trees B toward infinity drive a forest's variance all the way to zero?</h4>
+        <button class="sl-quiz-opt" data-correct="true">No — it converges to ρσ², a floor set by how correlated the trees are</button>
+        <button class="sl-quiz-opt">Yes, always, no matter how correlated the trees are</button>
+        <button class="sl-quiz-opt">No — more trees actually increases variance</button>
+        <div class="sl-quiz-explain">Var(ensemble) = ρσ² + (1 − ρ)σ²/B. As B → ∞ the second term vanishes, but ρσ² does not depend on B at all — lowering ρ (via feature subsampling) is what lowers the floor itself.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>A decision tree recursively splits data on the feature and threshold that most reduces impurity, building yes/no questions down to leaf nodes that predict a mean.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Grown without limit, a single tree drives training error toward zero by memorizing individual training points — very low bias, very high variance.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Bagging trains many trees on independent bootstrap resamples and averages their predictions, canceling out each tree's own overfit noise.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Random forests add one more twist: only a random subset of features is considered at each split, decorrelating the trees further than bagging alone manages.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Averaging B correlated trees never reaches zero variance — it converges to a floor of ρσ², set by tree correlation, not by tree count.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Feature importance and out-of-bag error come essentially free from the bagging design — but neither one, by itself, is evidence of real trading edge.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Recognize when a single model's <em>variance</em> — not its bias — is the actual problem, and reach for averaging many decorrelated models rather than a fancier feature set. Read a forest's feature-importance output for what it honestly is: what the trained model leaned on, not proof of a causal or tradable relationship. Understand exactly why "grow more trees" helps only up to a correlation floor, and what genuinely lowers that floor — which sets up gradient boosting's very different fix for the same underlying tension, next.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Gradient Boosting</h3>
+        <p>Instead of averaging many independent trees, build them one at a time, each one correcting the mistakes the ones before it made.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="gradient-boosting-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="decision-trees-random-forests.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Variance-vs-trees slider — illustrative curve, fixed sigma^2 = 1, rho = 0.25.
+  (function(){
+    var slider = document.getElementById('forest-slider');
+    if (!slider) return;
+    var mVal = document.getElementById('forest-mval');
+    var dot = document.getElementById('forest-dot');
+    var vline = document.getElementById('forest-vline');
+    var readout = document.getElementById('forest-readout');
+    var SIGMA2 = 1.0, RHO = 0.25;
+    var X0 = 70, K = 37.49, Y0 = 220, YTOP = 30;
+
+    function update(){
+      var n = parseInt(slider.value, 10);
+      if (!isFinite(n) || n < 1) n = 1;
+      var v = RHO * SIGMA2 + (1 - RHO) * SIGMA2 / n;
+      var x = X0 + K * Math.sqrt(n);
+      var vFrac = v / SIGMA2; // SIGMA2 is the max possible variance (at N=1, v=SIGMA2)
+      var y = Y0 - vFrac * (Y0 - YTOP);
+      dot.setAttribute('cx', x.toFixed(1));
+      dot.setAttribute('cy', y.toFixed(1));
+      vline.setAttribute('x1', x.toFixed(1));
+      vline.setAttribute('x2', x.toFixed(1));
+      vline.setAttribute('y1', y.toFixed(1));
+      mVal.textContent = 'B = ' + n;
+      readout.textContent = 'Illustrative curve with σ² = 1.00, ρ = 0.25 held fixed: Var(ensemble) ≈ ' + v.toFixed(3);
+    }
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Ensemble-variance calculator: Var = rho*sigma^2 + (1-rho)*sigma^2/N.
+  (function(){
+    var sigma2 = document.getElementById('var-sigma2');
+    if (!sigma2) return;
+    var rho = document.getElementById('var-rho'), n = document.getElementById('var-n');
+    var result = document.getElementById('var-result'), result2 = document.getElementById('var-result2');
+    var term1 = document.getElementById('var-term1'), term2 = document.getElementById('var-term2');
+    var note = document.getElementById('var-note');
+    var resetBtn = document.getElementById('var-reset');
+    var DEFAULTS = { sigma2: 1.0, rho: 0.2, n: 50 };
+    var DEFAULT_NOTE = 'Blank, non-numeric, negative-variance, or zero/negative-N inputs show "—" instead of breaking the formula.';
+
+    function setBlank(msg){
+      term1.textContent = '—'; term2.textContent = '—';
+      result.textContent = '—'; result2.textContent = '—';
+      note.textContent = msg;
+    }
+
+    function recompute(){
+      var s2 = parseFloat(sigma2.value), r = parseFloat(rho.value), nv = parseFloat(n.value);
+      if (!isFinite(s2) || !isFinite(r) || !isFinite(nv)) {
+        setBlank('Enter a number in every field — blank or non-numeric input can\'t be computed.');
+        return;
+      }
+      if (s2 < 0) {
+        setBlank('σ² can\'t be negative — variance is never negative.');
+        return;
+      }
+      if (nv <= 0) {
+        setBlank('N must be a positive number of trees — can\'t average zero or a negative count of trees.');
+        return;
+      }
+      var t1 = r * s2;
+      var t2 = (1 - r) * s2 / nv;
+      var v = t1 + t2;
+      term1.textContent = t1.toFixed(4);
+      term2.textContent = t2.toFixed(4);
+      result.textContent = v.toFixed(4);
+      result2.textContent = v.toFixed(4);
+      note.textContent = (r < 0 || r > 1) ? 'Note: ρ is a correlation and is typically between 0 and 1 — the formula still computes outside that range.' : DEFAULT_NOTE;
+    }
+
+    [sigma2, rho, n].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      sigma2.value = DEFAULTS.sigma2; rho.value = DEFAULTS.rho; n.value = DEFAULTS.n;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>
