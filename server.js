@@ -20412,7 +20412,7 @@ const NML_FAST_COLS = ['bond10_ret', 'bond2_ret', 'usd_basket_ret', 'gold_ret'];
 const NML_FRED_COLS = ['y2_chg', 'y10_chg', 'slope_chg', 'real10_chg', 'be10_chg'];
 
 const _nmlIsoT = epochSec => new Date(epochSec * 1000).toISOString();
-const _nmlRound = (v, p) => (v == null ? null : Number(v.toFixed(p)));
+const _nmlRound = (v, p) => (v == null ? null : Number(Number(v).toFixed(p)));
 
 function _nmlRunVariant(label, times, targetClose, targetRet, featureSeries, featureCols) {
   const available = featureCols.filter(c => c in featureSeries);
@@ -20436,7 +20436,16 @@ async function _computeNasdaqMacroLeadSummary() {
   for (const [name, instrument] of Object.entries(NML_FAST_INSTRUMENTS)) {
     try {
       const candles = await fetchOandaCandleRange(instrument, 'H4', fromISO, toISO);
-      if (candles.length) bars[name] = candles.map(c => ({ t: c.t, open: c.open, high: c.high, low: c.low, close: c.close }));
+      // OANDA returns o/h/l/c as STRINGS (decimal-precise over the wire) —
+      // fetchOandaCandleRange passes them through as-is (other callers just
+      // display them). Math.log()/arithmetic below silently coerces strings
+      // to numbers, so the walk-forward math ran fine either way; it was
+      // only the final _nmlRound()'s v.toFixed(p) that surfaced this, since
+      // that's a method lookup, not a numeric coercion. Cast once here so
+      // everything downstream is a real number throughout.
+      if (candles.length) bars[name] = candles.map(c => ({
+        t: c.t, open: Number(c.open), high: Number(c.high), low: Number(c.low), close: Number(c.close),
+      }));
       else console.warn(`[nasdaq-macro-lead] ${instrument}: no candles returned`);
     } catch (e) {
       console.warn(`[nasdaq-macro-lead] ${instrument} fetch failed: ${e.message}`);

@@ -304,7 +304,7 @@ export function oosStats(oos, { nNull = 2000, seed = 7 } = {}) {
   const rng = mulberry32(seed);
   const p_null = Math.abs(ic) >= 0.02 ? nullP(xz, yz, ic, nNull, rng) : null;
 
-  const round = (v, p) => (v == null ? null : Number(v.toFixed(p)));
+  const round = (v, p) => (v == null ? null : Number(Number(v).toFixed(p)));
   return {
     n, ic: round(ic, 4), t: round(t, 3), hit: round(hit, 4),
     p_null: round(p_null, 4), ic_h1: round(ic1, 4), ic_h2: round(ic2, 4), stable,
