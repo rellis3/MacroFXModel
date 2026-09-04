@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Existence &amp; Uniqueness of SDE Solutions — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Existence &amp; Uniqueness of SDE Solutions — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full theorem statement, the GBM caveat in full, and a 5-question self-test?<a href="sde-existence-uniqueness.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">SDEs 1 · Stochastic Differential Equations</div>
+      <h1 class="sl-h1">Does This Equation Even <em>Have</em> a Solution?</h1>
+      <p class="sl-lede">Every SDE lesson so far in this curriculum — Itô's Lemma, Ornstein-Uhlenbeck mean reversion, Black-Scholes's geometric Brownian motion — writes down dX_t = μ(X_t,t)dt + σ(X_t,t)dW_t and moves straight on to solving it, without ever asking whether a process satisfying that equation actually exists, or whether it's the only one. That assumption is not automatic. This deck states the precise conditions under which it holds, shows why the earlier lessons got it for free, and shows a coefficient choice where it genuinely breaks.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Writing an equation down doesn't make it true</h2>
+      <p class="sl-sub">Every SDE in this curriculum is a special case of the same general form.</p>
+      <div class="sl-row">
+        <div class="sl-box">dX_t</div><div class="sl-arrow">=</div>
+        <div class="sl-box amber">μ(X_t,t)dt</div><div class="sl-arrow">+</div>
+        <div class="sl-box">σ(X_t,t)dW_t</div>
+      </div>
+      <p class="sl-p">The Itô's Lemma lesson works entirely with the simplest possible case — μ and σ are fixed constants, and existence is never in question. But <strong>ou-mean-reversion.html</strong>'s mean-reverting drift θ(μ−X_t) and <strong>black-scholes.html</strong>'s level-proportional GBM coefficients both let μ and σ depend on the current level X_t itself. The moment a coefficient is a <em>function</em> of X_t rather than a fixed number, a real question opens up: for this particular μ and σ, does the equation actually pin down one process, or could it pin down none, or several?</p>
+      <div class="sl-quote">This is the exact same question ordinary differential equations had to answer first. Write dx/dt = f(x) with x(0) = x₀, and it's tempting to assume a curve x(t) simply exists for all time and is the only one doing so. Neither is automatic — and the classical fix, the <strong>Picard-Lindelöf theorem</strong>, is the direct ancestor of the SDE result this deck builds toward.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Two different ways it can break</h2>
+      <p class="sl-sub">Worth keeping these separate — they're genuinely different failures, with different fixes.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">⑂</div><div><h4>Non-uniqueness</h4><p>A rough enough coefficient can let more than one valid curve pass through the same starting point. Classic case: dx/dt = √|x|, x(0)=0 is solved both by x(t)≡0 forever <em>and</em> by x(t)=t²/4 peeling away — nothing in the equation picks one.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">↑∞</div><div><h4>Finite-time blow-up</h4><p>A fast-growing enough coefficient can make the solution race to infinity before any fixed horizon is reached — not "hard to compute," but genuinely undefined past that point, for any method.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">〜</div><div><h4>A third failure, SDE-only</h4><p>The diffusion term σ(X_t,t)dW_t can itself be badly behaved even when the drift μ is perfectly tame — there's no ODE counterpart to a noisy term misbehaving on its own.</p></div></div>
+      </div>
+      <p class="sl-p">The existence-and-uniqueness theorem coming up next is the stochastic-calculus analogue of Picard-Lindelöf, built to control all of these at once — with two conditions on μ and σ, checked together, with the same constant.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Condition one — Lipschitz: no infinitely steep hills</h2>
+      <p class="sl-sub">Rules out non-uniqueness. Holding for all x, y and all t in the horizon of interest:</p>
+      <div class="sl-row">
+        <div class="sl-box">|μ(x,t)−μ(y,t)| + |σ(x,t)−σ(y,t)|</div><div class="sl-arrow">≤</div><div class="sl-box green">K|x−y|</div>
+      </div>
+      <p class="sl-p">In plain terms: neither coefficient's output can change faster than a fixed multiple K of how far apart the two inputs x and y are. A ball rolling down a hill this smooth can slide quickly, but it can never suddenly teleport to a totally different spot — which is exactly what would let two different solution paths branch off from the same starting point.</p>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Why this rules out non-uniqueness</div>
+        <p>√|x| near x=0 has infinite slope — its graph is vertical there. No finite K bounds |σ(ε)−σ(0)| / |ε−0| = σ/√ε as ε→0. That's precisely the coefficient behind the √|x| non-uniqueness example on the previous slide, and precisely why the CIR square-root diffusion (covered later in this category) fails this condition at the boundary that matters most for a short rate: zero.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Condition two — linear growth: no unbounded horsepower</h2>
+      <p class="sl-sub">Rules out finite-time blow-up. Holding for all x and all t in the horizon of interest:</p>
+      <div class="sl-row">
+        <div class="sl-box">|μ(x,t)| + |σ(x,t)|</div><div class="sl-arrow">≤</div><div class="sl-box green">K(1+|x|)</div>
+      </div>
+      <p class="sl-p">Neither coefficient is allowed to grow faster than linearly in x as x gets large. A car's engine can't have literally unlimited horsepower that keeps increasing the faster it's already going — without this bound, the process could accelerate away to infinity before any fixed time horizon T is even reached.</p>
+      <p class="sl-p">Given <strong>both</strong> conditions, holding with the <em>same</em> constant K, a unique strong solution X_t exists on [0,T] for any fixed T. The proof mirrors Picard-Lindelöf almost exactly: successive approximations (Picard iteration), with Lipschitz forcing them to converge and linear growth stopping the limit from escaping to infinity first.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Three coefficients, three verdicts</h2>
+      <p class="sl-sub">Same two conditions, checked against three different real coefficient families from this curriculum.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="verdict-tabs">
+          <button class="sl-tab active" data-panel="verdict-1">OU / GBM — well-behaved</button>
+          <button class="sl-tab" data-panel="verdict-2">CIR-style √|x| — borderline</button>
+          <button class="sl-tab" data-panel="verdict-3">σ(x)=σ₀x^1.5 — ill-behaved</button>
+        </div>
+        <div class="sl-panel active" id="verdict-1">
+          <div class="sl-row"><div class="sl-box green">Lipschitz ✓</div><div class="sl-box green">Growth ✓</div></div>
+          <div class="sl-verdict"><strong>ou-mean-reversion.html</strong>'s θ(μ−x) and <strong>black-scholes.html</strong>'s GBM μx, σx are all exactly linear in x. A linear function's slope is a constant — the same K works for every pair x, y anywhere on the line, and the same K bounds the growth too. Sample paths stay well-defined and finite on any horizon, with room to spare.</div>
+        </div>
+        <div class="sl-panel" id="verdict-2">
+          <div class="sl-row"><div class="sl-box amber">Lipschitz ✗ at x=0</div><div class="sl-box green">Growth ✓</div></div>
+          <div class="sl-verdict">σ(x)=σ√|x| has infinite slope right at zero, so no finite K bounds it there — the standard theorem from Section 3-4 doesn't apply. But it never grows faster than linearly, so the failure is narrow and local, not explosive. This is exactly why CIR needs the separate, weaker <strong>Yamada-Watanabe conditions</strong> instead of an outright rejection — a failed Lipschitz check means "use the more careful theorem," not "abandon the model."</div>
+        </div>
+        <div class="sl-panel" id="verdict-3">
+          <div class="sl-row"><div class="sl-box red">Lipschitz ~ (local only)</div><div class="sl-box red">Growth ✗</div></div>
+          <div class="sl-verdict">x^1.5 is smooth away from zero (locally Lipschitz), but it grows <em>faster</em> than linearly as x→∞ — the linear growth condition fails outright. A local-volatility desk proposal shaped like this is not automatically unusable, but the textbook existence-and-uniqueness guarantee simply does not cover it, and a real non-explosion check becomes genuine due diligence, not a formality.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">What "growth condition satisfied" looks like on a chart</h2>
+      <p class="sl-sub">Same starting value, X(0)=1. One path stays bounded; the other doesn't survive to t=1.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Two sample paths</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A chart comparing a bounded, well-behaved sample path that wanders near its starting value across the full time axis, against a path that stays small at first then rockets to infinity as time approaches 1, illustrating a finite-time blow-up caused by violating the linear growth condition.">
+            <line x1="50" y1="243.4" x2="610" y2="243.4" style="stroke:var(--text3);stroke-dasharray:4,3"/>
+            <text x="20" y="247" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">1</text>
+            <line x1="50" y1="184.3" x2="610" y2="184.3" style="stroke:var(--border2);stroke-dasharray:2,3"/>
+            <text x="16" y="188" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">10</text>
+            <line x1="50" y1="118.6" x2="610" y2="118.6" style="stroke:var(--border2);stroke-dasharray:2,3"/>
+            <text x="16" y="122" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">20</text>
+            <line x1="50" y1="52.9" x2="610" y2="52.9" style="stroke:var(--border2);stroke-dasharray:2,3"/>
+            <text x="16" y="56" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">30</text>
+            <line x1="610" y1="15" x2="610" y2="250" style="stroke:var(--red);stroke-width:1.5;stroke-dasharray:3,2"/>
+            <text x="565" y="14" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--red)">t = 1: blow-up time</text>
+            <line x1="50" y1="250" x2="610" y2="250" style="stroke:var(--text3)"/>
+            <text x="50" y="266" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">t=0</text>
+            <text x="320" y="266" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)" text-anchor="middle">t=0.5</text>
+            <text x="600" y="266" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)" text-anchor="end">t≈1</text>
+            <polyline points="50.00,242.20 57.00,241.62 64.00,241.17 71.00,240.85 78.00,240.66 85.00,240.59 92.00,240.63 99.00,240.76 106.00,240.99 113.00,241.30 120.00,241.67 127.00,242.12 134.00,242.62 141.00,243.18 148.00,243.78 155.00,244.40 162.00,245.02 169.00,245.61 176.00,246.14 183.00,246.57 190.00,246.85 197.00,246.96 204.00,246.88 211.00,246.58 218.00,246.08 225.00,245.39 232.00,244.54 239.00,243.60 246.00,242.61 253.00,241.65 260.00,240.79 267.00,240.08 274.00,239.59 281.00,239.33 288.00,239.35 295.00,239.62 302.00,240.13 309.00,240.84 316.00,241.69 323.00,242.62 330.00,243.56 337.00,244.46 344.00,245.25 351.00,245.89 358.00,246.35 365.00,246.63 372.00,246.71 379.00,246.62 386.00,246.38 393.00,246.02 400.00,245.56 407.00,245.05 414.00,244.51 421.00,243.96 428.00,243.42 435.00,242.91 442.00,242.42 449.00,241.97 456.00,241.56 463.00,241.21 470.00,240.93 477.00,240.72 484.00,240.62 491.00,240.64 498.00,240.79 505.00,241.08 512.00,241.51 519.00,242.08 526.00,242.76 533.00,243.52 540.00,244.31 547.00,245.09 554.00,245.79 561.00,246.37 568.00,246.78 575.00,246.98 582.00,246.96 589.00,246.70 596.00,246.22 603.00,245.55 610.00,244.76" style="stroke:var(--blue);stroke-width:2" fill="none"/>
+            <polyline points="50.00,243.43 57.72,243.34 65.44,243.24 73.16,243.15 80.88,243.05 88.60,242.94 96.32,242.84 104.04,242.73 111.76,242.62 119.48,242.50 127.20,242.38 134.92,242.26 142.64,242.13 150.36,242.00 158.08,241.86 165.80,241.72 173.52,241.57 181.24,241.42 188.96,241.26 196.68,241.10 204.40,240.93 212.12,240.75 219.84,240.57 227.56,240.38 235.28,240.18 243.00,239.97 250.72,239.76 258.44,239.53 266.16,239.30 273.88,239.05 281.60,238.80 289.32,238.53 297.04,238.24 304.76,237.95 312.48,237.63 320.20,237.30 327.92,236.96 335.64,236.59 343.36,236.20 351.08,235.79 358.80,235.35 366.52,234.89 374.24,234.39 381.96,233.87 389.68,233.30 397.40,232.69 405.12,232.04 412.84,231.34 420.56,230.58 428.28,229.75 436.00,228.86 443.72,227.87 451.44,226.80 459.16,225.61 466.88,224.29 474.60,222.83 482.32,221.18 490.04,219.33 497.76,217.22 505.48,214.80 513.20,211.99 520.92,208.70 528.64,204.78 536.36,200.04 544.08,194.19 551.80,186.78 559.52,177.12 567.24,163.96 574.96,145.00 582.68,115.33 590.40,62.29" style="stroke:var(--red);stroke-width:2" fill="none"/>
+          </svg>
+        </div>
+        <div class="sl-verdict">
+          <span style="color:var(--blue);font-weight:700">Blue</span> — a bounded diffusion (linear-growth coefficients, like GBM) wandering near its starting value across the whole time axis, exactly as the growth bound predicts.
+          <span style="color:var(--red);font-weight:700">Red</span> — the exact deterministic solution of dX/dt = X², X(0)=1, which is X(t) = 1/(1−t): tame for a while, then genuinely undefined past t=1. This is the drift-only illustration of exactly the failure the growth condition rules out for the full stochastic case.
+        </div>
+        <div class="sl-note">Not a simulation artifact — the true continuous-time equation has no solution curve past t=1, for any numerical method.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Cross the linear-growth threshold, live</h2>
+      <p class="sl-sub">Drag p. dX/dt = X^p, X(0)=1 is the deterministic illustration — the same shape of failure the SDE growth condition targets.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 90" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A timeline from t=0 to t=3 with a marker showing where the illustrative solution diverges to infinity, moving left as the growth exponent p increases past 1">
+            <line x1="20" y1="55" x2="620" y2="55" style="stroke:var(--border2);stroke-width:3"/>
+            <line x1="20" y1="48" x2="20" y2="62" style="stroke:var(--text3);stroke-width:2"/>
+            <text x="20" y="35" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">t=0</text>
+            <line x1="620" y1="48" x2="620" y2="62" style="stroke:var(--text3);stroke-width:2"/>
+            <text x="620" y="35" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">t=3</text>
+            <circle id="pexp-dot" cx="220" cy="55" r="8" style="fill:var(--green);stroke:var(--bg);stroke-width:2"/>
+            <text id="pexp-label" x="220" y="80" text-anchor="middle" font-size="12" font-weight="700" font-family="'DM Mono',monospace" fill="var(--green)">bounded — never blows up</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Growth exponent p in σ(X) = X^p</span><span class="sl-live" id="pexp-pval">p = 1.00</span></div>
+        <input type="range" class="sl-slider" id="pexp-slider" min="50" max="250" step="5" value="100">
+        <div class="sl-verdict" style="margin-top:12px">Linear growth condition: <b id="pexp-verdict">holds (p ≤ 1)</b>. Illustrative time-to-blow-up: <b id="pexp-blowup">∞ (never)</b></div>
+        <div class="sl-note">p ≤ 1 is linear growth or slower — the theorem's condition holds, and the illustrative path never diverges in finite time. The instant p crosses above 1, growth is superlinear and a finite blow-up time appears, shrinking fast as p climbs toward 2.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Check a mean-reverting SDE's coefficients, live</h2>
+      <p class="sl-sub">dX_t = θ(μ−X_t)dt + σdW_t — the same drift shape as ou-mean-reversion.html. Starts on θ=0.15, μ=0, σ=0.02, tested at x=5.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Speed θ</label><input type="number" class="sl-input" id="ou-theta" value="0.15" step="0.01"></div>
+          <div class="sl-calc-field"><label>Mean μ</label><input type="number" class="sl-input" id="ou-mu" value="0" step="0.5"></div>
+          <div class="sl-calc-field"><label>Vol σ</label><input type="number" class="sl-input" id="ou-sigma" value="0.02" step="0.01"></div>
+          <div class="sl-calc-field"><label>Test point x</label><input type="number" class="sl-input" id="ou-x" value="5" step="1"></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Lipschitz constant (drift slope, diffusion is constant so it adds 0): K = |θ| = <b id="ou-k">0.1500</b></div>
+          <div>Growth check at x: |θ(μ−x)| + |σ| = <b id="ou-lhs">0.7700</b>&emsp;vs.&emsp;K(1+|x|) = <b id="ou-rhs">0.9000</b></div>
+          <div>Growth condition with this K: <b id="ou-verdict">holds</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="ou-reset">Reset to worked-example numbers</button>
+        <div class="sl-note">If the check fails, the fix isn't to abandon the coefficients — it's to enlarge K, since Lipschitz and growth just need <em>some</em> shared constant, not necessarily the tightest one for either condition alone.</div>
+      </div>
+      <p class="sl-p">Because θ(μ−x) is exactly linear in x, its Lipschitz constant is exact everywhere: K = θ, no region-dependence, no caveats. This is the same reason GBM's μx and σx are so clean — linear coefficients are the one case where the honest Lipschitz constant is trivial to state.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Why the earlier lessons got this for free</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">OU — θ(μ−X_t)dt + σdW_t</span>
+          <ul>
+            <li>Drift is exactly affine in X_t — constant slope θ everywhere</li>
+            <li>Diffusion is a flat constant σ — contributes 0 to the Lipschitz bound</li>
+            <li>Same K = θ works for Lipschitz and (with the "+1") for growth</li>
+            <li>ou-mean-reversion.html never has to mention any of this</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">GBM — μX_t dt + σX_t dW_t</span>
+          <ul>
+            <li>Both coefficients exactly linear in X_t, K = |μ|+|σ|</li>
+            <li>Same K bounds Lipschitz and growth simultaneously, everywhere</li>
+            <li>black-scholes.html builds its closed form on this quiet guarantee</li>
+            <li>Well-posedness is essentially free — the honest reason GBM is the default</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">The caveat worth stating, not glossing over</div>
+        <p>GBM's Lipschitz constant is exact and region-independent <em>because</em> its coefficients are exactly linear — that's a property of linearity, not of every growth-condition-satisfying process. For coefficients that are only <em>locally</em> Lipschitz, a fully rigorous global argument needs a second ingredient — a separate non-explosion check — on top of the local property. GBM's coefficients are simple enough that this resolves cleanly, but "it's globally Lipschitz, done" skips a real step.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Where this shows up as actual due diligence</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🧪</div><div><h4>Vetting a new coefficient specification</h4><p>Any time a model departs from the standard families — a custom local-volatility surface, a bespoke jump-diffusion drift — checking Lipschitz and growth (or citing a paper that already has) is the first honest gate before trusting simulated output.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📉</div><div><h4>Diagnosing a Monte Carlo that "blows up"</h4><p>If simulated paths regularly produce NaNs or divergence, the first question is whether the underlying coefficients even satisfy a growth condition — sometimes the numerical scheme isn't the bug, the specification is.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>"It ran without crashing" isn't proof</h4><p>A coarse time step can silently step over a genuine finite-time blow-up or non-uniqueness and still produce a plausible-looking path. Well-posedness is a property of the true continuous-time equation, not of one lucky simulation run.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">✗≠</div><div><h4>Failed Lipschitz ≠ broken model</h4><p>CIR's square-root diffusion fails the standard Lipschitz condition and is still one of the most widely used short-rate specifications in the industry. A failed check means "use Yamada-Watanabe instead," not "abandon this."</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What does the Lipschitz condition rule out?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Non-uniqueness — two different valid solutions from the same start</button>
+        <button class="sl-quiz-opt">Finite-time blow-up</button>
+        <button class="sl-quiz-opt">Negative volatility</button>
+        <div class="sl-quiz-explain">A bound on how fast μ and σ can change output relative to input change stops the coefficients from being rough enough to let two different solution paths branch off the same starting point.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>What does the linear growth condition rule out?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The solution racing to infinity before a fixed time horizon T</button>
+        <button class="sl-quiz-opt">Two solutions from the same starting point</button>
+        <button class="sl-quiz-opt">A discontinuous drift</button>
+        <div class="sl-quiz-explain">Capping how fast μ and σ can grow in x is exactly what stops the process from being able to explode to infinity before reaching T — the dX/dt=X² illustration shows what happens when this fails.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>σ(x) = σ√|x| — the CIR-style square-root diffusion — at x = 0:</h4>
+        <button class="sl-quiz-opt" data-correct="true">Fails the Lipschitz condition, but still satisfies linear growth</button>
+        <button class="sl-quiz-opt">Fails both conditions</button>
+        <button class="sl-quiz-opt">Satisfies both conditions cleanly</button>
+        <div class="sl-quiz-explain">σ/√ε → ∞ as ε→0, so no finite K bounds the Lipschitz ratio near zero. But √|x| never grows faster than linearly, so growth holds fine — the failure is narrow, which is why the weaker Yamada-Watanabe conditions can still guarantee a solution.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Why does OU's drift θ(μ−X_t) have an exact, region-independent Lipschitz constant?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Because it's exactly linear (affine) in X_t — its slope is the constant θ everywhere</button>
+        <button class="sl-quiz-opt">Because θ is always small</button>
+        <button class="sl-quiz-opt">Because it doesn't depend on time</button>
+        <div class="sl-quiz-explain">For a linear function, |f(x)-f(y)|/|x-y| is a fixed number (the slope) for every pair x, y, no matter how far apart or how large — a property of linearity, not of any specific parameter value.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>A proposed local-volatility coefficient fails the Lipschitz check. Should the model be abandoned?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Not necessarily — it means the standard theorem doesn't apply, and a weaker theorem may still work</button>
+        <button class="sl-quiz-opt">Yes — a failed Lipschitz check always means no solution exists</button>
+        <button class="sl-quiz-opt">No further check is needed either way</button>
+        <div class="sl-quiz-explain">CIR's square-root diffusion fails the standard global Lipschitz condition and is nonetheless one of the most widely used, well-validated short-rate models in the industry, thanks to the separate Yamada-Watanabe conditions.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Writing dX_t = μ(X_t,t)dt + σ(X_t,t)dW_t down doesn't automatically mean a unique process satisfying it exists — that has to be checked, coefficient by coefficient.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Global Lipschitz + linear growth, with the same constant K, guarantees a unique strong solution — the SDE analogue of Picard-Lindelöf for ODEs.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Lipschitz rules out non-uniqueness (two solutions from one start); linear growth rules out finite-time blow-up (racing to infinity before time T).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>OU's affine drift and GBM's level-proportional coefficients satisfy both conditions cleanly and cheaply — the quiet reason those closed-form solutions exist at all.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>CIR's σ(x)=σ√|x| fails Lipschitz at x=0 but not growth — a narrow failure that needs Yamada-Watanabe, not a verdict that the model is broken.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Superlinear growth (like σ(x)=σ₀x^1.5, or the illustrative dX/dt=X^p for p&gt;1) is the dangerous failure — no solution exists at all past some finite time, for any method.</p></div>
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">What this now lets you do</div>
+        <p>Look at a new SDE specification — your own, or one proposed on a desk — and ask the right first question before trusting its simulated output: is this coefficient pair Lipschitz and linear-growth, and if not, which of the two failures is it, and does a weaker theorem still cover it? That's the honest gate every model in this curriculum quietly passed before you ever saw its closed form.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Numerical Schemes: Euler-Maruyama &amp; Milstein</h3>
+        <p>Well-posedness guarantees a solution exists in continuous time — it says nothing about how to compute one. Next: turning an SDE into a discrete simulation algorithm, and what can go wrong along the way.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="sde-numerical-schemes-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="sde-existence-uniqueness.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  function fmt(n, d){ return (Math.abs(n) < 1e-9 ? 0 : n).toFixed(d == null ? 4 : d); }
+
+  // Growth-exponent slider: dX/dt = X^p, X(0)=1 — illustrative time-to-blow-up.
+  (function(){
+    var slider = document.getElementById('pexp-slider');
+    if (!slider) return;
+    var pVal = document.getElementById('pexp-pval');
+    var dot = document.getElementById('pexp-dot');
+    var label = document.getElementById('pexp-label');
+    var verdictEl = document.getElementById('pexp-verdict');
+    var blowupEl = document.getElementById('pexp-blowup');
+    var X0 = 20, X3 = 620; // t=0..3 mapped to pixels
+
+    function update(){
+      var p = parseInt(slider.value, 10) / 100;
+      pVal.textContent = 'p = ' + p.toFixed(2);
+
+      if (p <= 1) {
+        verdictEl.textContent = 'holds (p ≤ 1)';
+        blowupEl.textContent = '∞ (never)';
+        dot.setAttribute('cx', X3 + 40); // parked off the right edge — never arrives
+        dot.setAttribute('cx', X3);
+        dot.setAttribute('fill', 'var(--green)');
+        label.setAttribute('fill', 'var(--green)');
+        label.textContent = 'bounded — never blows up';
+      } else {
+        verdictEl.textContent = 'fails (p > 1)';
+        var tStar = 1 / (p - 1); // exact: X(t)=1/(1-(p-1)t)^(1/(p-1)) style blow-up time for X0=1
+        blowupEl.textContent = 't* ≈ ' + fmt(tStar, 3) + ' (illustrative, X0=1)';
+        var px = X0 + Math.min(tStar, 3) / 3 * (X3 - X0);
+        dot.setAttribute('cx', px);
+        dot.setAttribute('fill', 'var(--red)');
+        label.setAttribute('fill', 'var(--red)');
+        label.setAttribute('x', px);
+        label.textContent = 'blows up at t≈' + fmt(tStar, 2);
+      }
+    }
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // OU coefficient calculator: Lipschitz constant + growth check, with guards.
+  (function(){
+    var theta = document.getElementById('ou-theta');
+    if (!theta) return;
+    var mu = document.getElementById('ou-mu'), sigma = document.getElementById('ou-sigma'), xEl = document.getElementById('ou-x');
+    var kOut = document.getElementById('ou-k'), lhsOut = document.getElementById('ou-lhs'), rhsOut = document.getElementById('ou-rhs'), verdictOut = document.getElementById('ou-verdict');
+    var resetBtn = document.getElementById('ou-reset');
+    var DEFAULTS = { theta: 0.15, mu: 0, sigma: 0.02, x: 5 };
+
+    function recompute(){
+      var th = parseFloat(theta.value), m = parseFloat(mu.value), s = parseFloat(sigma.value), x = parseFloat(xEl.value);
+      if (!isFinite(th) || !isFinite(m) || !isFinite(s) || !isFinite(x)) {
+        kOut.textContent = '—'; lhsOut.textContent = '—'; rhsOut.textContent = '—'; verdictOut.textContent = '—';
+        return;
+      }
+      var K = Math.abs(th);
+      var lhs = Math.abs(th * (m - x)) + Math.abs(s);
+      var rhs = K * (1 + Math.abs(x));
+      kOut.textContent = fmt(K);
+      lhsOut.textContent = fmt(lhs);
+      rhsOut.textContent = fmt(rhs);
+      verdictOut.textContent = lhs <= rhs ? 'holds' : 'fails with this K (enlarge K)';
+    }
+
+    [theta, mu, sigma, xEl].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      theta.value = DEFAULTS.theta; mu.value = DEFAULTS.mu; sigma.value = DEFAULTS.sigma; xEl.value = DEFAULTS.x;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>
