@@ -135,12 +135,27 @@ Deliberately **one series per macro dimension** — e.g. not both `bond10_level`
 *and* `y10_level`, which are two proxies for the same 10Y rate and would just
 destabilize the OLS fit for no informational gain.
 
-Two properties make this different from `fast`/`fred`:
+Three properties make this different from `fast`/`fred`:
 
 - **Smooth by construction, not by display-time smoothing.** No moving
   average is applied anywhere in this pipeline — the smoothness comes
   entirely from regressing on slow-moving levels instead of compounding
   noisy per-bar return predictions.
+- **Refit CONTINUOUSLY, one bar at a time — not in 100-bar blocks like
+  `fast`/`fred`.** `fast`/`fred` fit once per 100-bar window and freeze
+  those coefficients for the whole block, which is fine for their return
+  regressions (`window_path` already shows each block as its own segment,
+  gapped at the reset). `levelFairValue` instead refits on every single bar
+  (`testBars: 1, stepBars: 1` — trained on the trailing `trainBars` window,
+  predicting only that one bar, then rolling forward by one and repeating).
+  This matters in practice, not just in theory: block-stepping produced
+  single-step jumps up to ~14% in testing whenever a block boundary landed
+  where the macro relationship had shifted — a vertical "cliff" with no
+  window boundary to gap around, so unlike `window_path` it read as a
+  rendering bug. Continuous refit cut the worst-case jump to under 3% in
+  the same test. It costs roughly a second of server time for 2.5 years of
+  H4 data — trivial next to the 10-30s the OANDA fetch itself already
+  budgets for.
 - **It projects past the end of known history.** For the most recent
   `horizonBars` bars, the target (NAS100's level that far ahead) doesn't
   exist yet — those rows still get a prediction (`scored: false`, a

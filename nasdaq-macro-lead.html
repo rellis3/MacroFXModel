@@ -82,6 +82,10 @@
         <button data-l="window_path" class="active">Window path</button>
         <button data-l="next_bar_pred">Next-bar (1-step)</button>
       </div>
+      <div class="seg" id="zoomSeg">
+        <button data-z="recent" class="active">Recent</button>
+        <button data-z="all">All history</button>
+      </div>
     </div>
     <div id="chartEl"></div>
     <div id="chartNote" class="muted" style="display:none;font-size:12px;margin-top:6px"></div>
@@ -108,7 +112,8 @@
 const $ = s => document.querySelector(s);
 let summary = null, chart = null, candleSeries = null, lineSeries = null, windowSegSeries = [];
 let fvScoredSeries = null, fvTailSeries = null;
-let curVariant = 'fast', curLine = 'window_path';
+let curVariant = 'fast', curLine = 'window_path', curZoom = 'recent';
+const RECENT_BARS = 250; // ~42 days of H4 bars — close enough to the reference chart's scope that the smooth shape and the live forward tail are actually visible without manually zooming in
 
 function toUnix(iso) { return Math.floor(new Date(iso).getTime() / 1000); }
 
@@ -226,7 +231,17 @@ function renderChart() {
   }
 
   if (candles.length) {
-    try { chart.timeScale().setVisibleRange({ from: candles[0].time, to: candles[candles.length - 1].time }); }
+    // Default to a RECENT window, not the full 2+ year history — at full-
+    // history zoom the smooth shape and the live forward tail (a handful of
+    // bars out of thousands) are both effectively invisible. "All history"
+    // is one click away via the zoom toggle.
+    const fromIdx = curZoom === 'recent' ? Math.max(0, candles.length - RECENT_BARS) : 0;
+    let toTime = candles[candles.length - 1].time;
+    if (curVariant === 'fairvalue') {
+      const lastTail = summary.variants?.fairvalue?.tail_path?.at(-1);
+      if (lastTail) toTime = Math.max(toTime, toUnix(lastTail.t));
+    }
+    try { chart.timeScale().setVisibleRange({ from: candles[fromIdx].time, to: toTime }); }
     catch (e) { console.error('[nasdaq-macro-lead] setVisibleRange failed:', e); }
   }
 }
@@ -254,6 +269,12 @@ function wireControls() {
     const b = e.target.closest('button'); if (!b) return;
     curLine = b.dataset.l;
     [...$('#lineSeg').children].forEach(x => x.classList.toggle('active', x === b));
+    renderChart();
+  });
+  $('#zoomSeg').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    curZoom = b.dataset.z;
+    [...$('#zoomSeg').children].forEach(x => x.classList.toggle('active', x === b));
     renderChart();
   });
 }
