@@ -42,7 +42,11 @@ const PAIRS = [
 ];
 const DEFAULT_REARM = 0.3;
 const MIN_MARGIN = 2;
-const GAP_CUTOFFS_MIN = [30, 60, 120];   // candidate live thresholds to sweep
+// Widened (2026-09-03 follow-up) after the first pass found Asia's pooled
+// Sharpe already peaks at the tightest cutoff tested (30m), but Monday's
+// pooled Sharpe was still RISING at 120m (the widest tested) -- more points
+// needed to find where Monday's own optimum actually sits, per-pair.
+const GAP_CUTOFFS_MIN = [30, 60, 90, 120, 150, 180, 240];
 
 function fmt(s) {
   if (!s || !s.trades) return 'n=0';
@@ -148,17 +152,19 @@ async function main() {
       console.log(`    ${' '.repeat(label.length)}  3x ${fmt(cs['3x'])}`);
     }
 
-    console.log(`\n  -- per-pair: does gap<=${GAP_CUTOFFS_MIN[0]}m beat baseline on Sharpe? (n>=30 both) --`);
-    let agree = 0, testable = 0;
-    for (const p of perPairByLadder[ladder]) {
-      const b = p.baseline, g = p[`gap${GAP_CUTOFFS_MIN[0]}`];
-      if (!b?.trades || !g?.trades || b.trades < 30 || g.trades < 30) continue;
-      testable++;
-      const won = (g.sharpe ?? -Infinity) > (b.sharpe ?? -Infinity);
-      if (won) agree++;
-      console.log(`    ${won ? 'BETTER' : 'worse '} ${p.pair.padEnd(8)} baseline sharpe=${b.sharpe?.toFixed(2)}(n${b.trades}) -> gap-filtered sharpe=${g.sharpe?.toFixed(2)}(n${g.trades})`);
+    console.log(`\n  -- per-pair Sharpe-improvement consistency, EVERY cutoff (n>=30 both cells) --`);
+    for (const cutoff of GAP_CUTOFFS_MIN) {
+      let agree = 0, testable = 0;
+      const disagreers = [];
+      for (const p of perPairByLadder[ladder]) {
+        const b = p.baseline, g = p[`gap${cutoff}`];
+        if (!b?.trades || !g?.trades || b.trades < 30 || g.trades < 30) continue;
+        testable++;
+        const won = (g.sharpe ?? -Infinity) > (b.sharpe ?? -Infinity);
+        if (won) agree++; else disagreers.push(p.pair);
+      }
+      console.log(`    gap<=${cutoff}m: improves Sharpe on ${agree}/${testable} testable pairs${disagreers.length ? ` (worse on: ${disagreers.join(', ')})` : ''}`);
     }
-    console.log(`  gap filter improves Sharpe on ${agree}/${testable} testable pairs`);
   }
 }
 
