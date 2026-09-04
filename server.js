@@ -20485,6 +20485,22 @@ async function _computeNasdaqMacroLeadSummary() {
 }
 
 let _nasdaqMacroLeadBusy = false;
+
+// Shared by the scheduled tick AND the manual /refresh route below — one
+// compute-then-write, so a manual "run it now" click reuses the exact same
+// path (and the exact same busy-guard) as the 4h timer instead of having
+// its own parallel copy that could race the scheduled one onto the file.
+async function _runNasdaqMacroLeadOnce() {
+  const startedAt = Date.now();
+  console.log(`[nasdaq-macro-lead] run starting ${new Date().toISOString()}`);
+  const summary = await _computeNasdaqMacroLeadSummary();
+  fs.mkdirSync(path.dirname(NASDAQ_MACRO_LEAD_SUMMARY_PATH), { recursive: true });
+  fs.writeFileSync(NASDAQ_MACRO_LEAD_SUMMARY_PATH, JSON.stringify(summary));
+  console.log(`[nasdaq-macro-lead] run done in ${((Date.now() - startedAt) / 1000).toFixed(0)}s `
+    + `(${summary.candles.length} candles, fast ok=${summary.variants.fast.ok}, fred ok=${summary.variants.fred.ok})`);
+  return summary;
+}
+
 async function _nasdaqMacroLeadTick() {
   if (_nasdaqMacroLeadBusy) { console.warn('[nasdaq-macro-lead] tick still running, skipping this interval'); return; }
   if (!process.env.OANDA_KEY || !process.env.FRED_KEY) {
@@ -20492,27 +20508,41 @@ async function _nasdaqMacroLeadTick() {
     return;
   }
   _nasdaqMacroLeadBusy = true;
-  const startedAt = Date.now();
-  console.log(`[nasdaq-macro-lead] tick starting ${new Date().toISOString()}`);
-  try {
-    const summary = await _computeNasdaqMacroLeadSummary();
-    fs.mkdirSync(path.dirname(NASDAQ_MACRO_LEAD_SUMMARY_PATH), { recursive: true });
-    fs.writeFileSync(NASDAQ_MACRO_LEAD_SUMMARY_PATH, JSON.stringify(summary));
-    console.log(`[nasdaq-macro-lead] tick done in ${((Date.now() - startedAt) / 1000).toFixed(0)}s `
-      + `(${summary.candles.length} candles, fast ok=${summary.variants.fast.ok}, fred ok=${summary.variants.fred.ok})`);
-  } catch (e) {
-    console.warn(`[nasdaq-macro-lead] tick failed: ${e.message}`);
-  } finally {
-    _nasdaqMacroLeadBusy = false;
-  }
+  try { await _runNasdaqMacroLeadOnce(); }
+  catch (e) { console.warn(`[nasdaq-macro-lead] tick failed: ${e.message}`); }
+  finally { _nasdaqMacroLeadBusy = false; }
 }
 _nasdaqMacroLeadTick();
 setInterval(_nasdaqMacroLeadTick, NASDAQ_MACRO_LEAD_INTERVAL_MS);
 
 app.get('/api/nasdaq-macro-lead/summary', async (_req, res) => {
   const out = await _loadAnalogMLJson(NASDAQ_MACRO_LEAD_SUMMARY_PATH, 'nasdaq-macro-lead/dashboard_summary.json');
-  if (!out) return res.status(404).json({ ok: false, error: 'no dashboard_summary.json yet — the native in-process job (every ~4h, needs OANDA_KEY + FRED_KEY) hasn\'t completed a run yet on this deploy' });
+  if (!out) return res.status(404).json({ ok: false, error: 'no dashboard_summary.json yet — POST /api/nasdaq-macro-lead/refresh to run it now, or wait for the next scheduled tick (every ~4h)' });
   return res.json(out);
+});
+
+// Manual trigger — run it now instead of waiting up to 4h for the next
+// scheduled tick. Synchronous (awaited): a full run is a handful of OANDA
+// H4 pulls + 4 FRED calls, seconds not minutes, so there's no job-polling
+// dance here — same shape as POST /api/yield-spread/refresh-plan above.
+// Returns the REAL error (OANDA response body, FRED HTTP status, whatever
+// actually failed) in the response body, not just a Railway log line.
+app.post('/api/nasdaq-macro-lead/refresh', async (_req, res) => {
+  if (!process.env.OANDA_KEY || !process.env.FRED_KEY) {
+    return res.status(500).json({ ok: false, error: 'OANDA_KEY/FRED_KEY not set on this deploy' });
+  }
+  if (_nasdaqMacroLeadBusy) {
+    return res.status(409).json({ ok: false, error: 'a run is already in progress — check back in a few seconds' });
+  }
+  _nasdaqMacroLeadBusy = true;
+  try {
+    const summary = await _runNasdaqMacroLeadOnce();
+    res.json(summary);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  } finally {
+    _nasdaqMacroLeadBusy = false;
+  }
 });
 
 app.get('/api/analogml/motif-trades', async (_req, res) => {
