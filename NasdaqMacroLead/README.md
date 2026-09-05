@@ -230,6 +230,21 @@ into TradingView's Pine Editor, fix whatever doesn't compile, and confirm
 ticker availability (`TVC:US10Y`, `TVC:US02Y`, `TVC:DXY`, `TVC:GOLD`,
 `FRED:DFII10`) on your plan before trusting any output.
 
+**Known failure mode: an unstable-coefficient spike in macro-rates mode.**
+US10Y, US02Y and their own slope (US10Y-US02Y) are fit as three features in
+the same regression, and the slope is derived from the other two, so
+they're collinear. `nasdaqMacroLeadCore.js`'s Gaussian-elimination solver
+has a built-in guard for this (`solveLinearSystem`'s near-singular-column
+check zeroes that direction instead of letting it blow up), but Pine's
+`matrix.inv()` has no equivalent — on an ill-conditioned XtX it can invert
+"successfully" into huge, unstable coefficients, which showed up live as a
+single prediction several multiples of NAS100's actual range, compressing
+the whole chart's y-axis around it. Fixed with a `ridgeFrac` input that
+adds a small term to the feature columns' diagonal (never the intercept)
+before inverting — standard ridge regularization for exactly this
+collinear-features case. Raise `ridgeFrac` if a spike like this recurs; 0
+disables it and reproduces the original unguarded behavior.
+
 ## Running it
 
 It runs automatically on Railway: `server.js`'s "Nasdaq Macro Lead: native

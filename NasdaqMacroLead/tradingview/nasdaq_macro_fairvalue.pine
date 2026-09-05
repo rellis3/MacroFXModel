@@ -21,6 +21,13 @@
 //     that in mind, don't assume it's a leading indicator just because it
 //     tracks.
 //
+// Macro-rates mode fits US10Y, US02Y, DXY, GOLD, DFII10 AND their own
+// slope (US10Y-US02Y) in the same regression — the slope is derived from
+// the other two, so they're collinear. A `ridgeFrac` input regularizes
+// the fit to keep that from producing huge, unstable coefficients (see
+// the comment above matrix.inv() below for what that failure looks like
+// and why it's not just a tuning issue).
+//
 // NOT VERIFIED IN A PINE EDITOR — this session has no way to execute Pine
 // Script, so treat this as a first draft to compile and tune by hand, not
 // a working artifact. Cross-check ticker availability on your TradingView
@@ -41,6 +48,7 @@ trainBars   = input.int(300, "Training window (bars)", minval = 30, maxval = 500
 refitEvery  = input.int(20, "Refit every N bars", minval = 1, tooltip = "How often coefficients are re-fit. Inputs still update every bar in between, so the line stays smooth")
 zWindow     = input.int(250, "Z-score window (bars)", minval = 20)
 corrWindow  = input.int(120, "Rolling correlation window (bars)", minval = 20, tooltip = "Lightweight live honesty gauge — NOT the full IC/null/split-half suite from the Node dashboard")
+ridgeFrac   = input.float(0.02, "Ridge regularization (x trainBars)", minval = 0.0, step = 0.005, tooltip = "US10Y, US02Y and their own slope (US10Y-US02Y) are collinear by construction. Without regularization an ill-conditioned fit can return huge, unstable coefficients that blow the chart's scale out — this shrinks the fit instead. Raise if you still see spikes, 0 to disable.")
 
 showBacktest = input.bool(true, "Show backtest overlay (past predictions vs realized price)")
 
@@ -136,6 +144,21 @@ if canRefit
     Xt    = matrix.transpose(X)
     XtX   = matrix.mult(Xt, X)
     Xty   = matrix.mult(Xt, y)
+
+    // Ridge: add a small term to the diagonal of the FEATURE columns only
+    // (never the intercept, at index nFeat, which carries the price level
+    // itself and shouldn't be shrunk). This is what
+    // nasdaqMacroLeadCore.js's solveLinearSystem gets implicitly from its
+    // "near-singular column -> leave as 0" guard on Gaussian elimination;
+    // Pine's matrix.inv() has no equivalent protection, so an ill-
+    // conditioned XtX (e.g. US10Y/US02Y/slope all in the same fit) can
+    // invert "successfully" into huge, unstable coefficients instead of
+    // failing cleanly.
+    ridgeLambda = ridgeFrac * trainBars
+    if ridgeLambda > 0
+        for d = 0 to nFeat - 1
+            matrix.set(XtX, d, d, matrix.get(XtX, d, d) + ridgeLambda)
+
     XtXinv = matrix.inv(XtX)
 
     if not na(XtXinv)
