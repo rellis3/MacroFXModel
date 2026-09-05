@@ -1,0 +1,155 @@
+//@version=6
+// Nasdaq Macro Lead - Fair Value (TradingView port)
+//
+// Pine port of the "fairvalue" variant in js/nasdaqMacroLeadCore.js
+// (levelFairValue): a walk-forward LEVEL regression of the chart's own
+// close, `horizonBars` bars ahead, on z-scored macro levels — then plotted
+// shifted forward in time via plot(..., offset=horizonBars) so the line
+// visually leads price, the same effect the Node dashboard's
+// scored_path/tail_path split produces.
+//
+// NOT VERIFIED IN A PINE EDITOR — this session has no way to execute Pine
+// Script, so treat this as a first draft to compile and tune by hand, not
+// a working artifact. Cross-check ticker availability (TVC:US10Y,
+// TVC:US02Y, TVC:DXY, TVC:GOLD, FRED:DFII10) on your TradingView plan;
+// FRED mirror coverage can vary. This is a research overlay, not a
+// trading signal — see NasdaqMacroLead/README.md for the methodology and
+// its honesty checks, only a lightweight rolling-correlation approximation
+// of which is reproduced here (see notes at the bottom).
+
+indicator("Nasdaq Macro Lead - Fair Value", shorttitle = "NQ Macro Lead", overlay = true, max_bars_back = 2000)
+
+// ---------------------------------------------------------------------
+// Inputs
+// ---------------------------------------------------------------------
+horizonBars = input.int(8, "Horizon (bars ahead)", minval = 1, tooltip = "On an H4 chart, 8≈32h, 9≈36h — matches NasdaqMacroLead's fairvalue variant")
+trainBars   = input.int(300, "Training window (bars)", minval = 30, maxval = 500, tooltip = "Rolling OLS fit window. Larger = smoother/slower, smaller = more reactive")
+refitEvery  = input.int(20, "Refit every N bars", minval = 1, tooltip = "How often coefficients are re-fit. Inputs still update every bar in between, so the line stays smooth")
+zWindow     = input.int(250, "Z-score window (bars)", minval = 20)
+corrWindow  = input.int(120, "Rolling correlation window (bars)", minval = 20, tooltip = "Lightweight live honesty gauge — NOT the full IC/null/split-half suite from the Node dashboard")
+
+showBacktest = input.bool(true, "Show backtest overlay (past predictions vs realized price)")
+
+// ---------------------------------------------------------------------
+// Macro feature sources
+// ---------------------------------------------------------------------
+us10y  = request.security("TVC:US10Y", timeframe.period, close, gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_off)
+us02y  = request.security("TVC:US02Y", timeframe.period, close, gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_off)
+dxy    = request.security("TVC:DXY",   timeframe.period, close, gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_off)
+gold   = request.security("TVC:GOLD",  timeframe.period, close, gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_off)
+real10 = request.security("FRED:DFII10", "D", close, gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_off)
+slope  = us10y - us02y
+
+max_bars_back(us10y, 2000)
+max_bars_back(us02y, 2000)
+max_bars_back(dxy, 2000)
+max_bars_back(gold, 2000)
+max_bars_back(real10, 2000)
+max_bars_back(slope, 2000)
+
+target = close
+
+// ---------------------------------------------------------------------
+// Z-scoring (rolling, never looks past the current bar)
+// ---------------------------------------------------------------------
+z(src) =>
+    (src - ta.sma(src, zWindow)) / ta.stdev(src, zWindow)
+
+f1 = z(us10y)
+f2 = z(us02y)
+f3 = z(dxy)
+f4 = z(gold)
+f5 = z(real10)
+f6 = z(slope)
+
+const int N_FEATURES = 6
+
+// ---------------------------------------------------------------------
+// Walk-forward OLS, refit every `refitEvery` bars
+//
+// Training row k (k = 0 .. trainBars-1) pairs:
+//   features known `horizonBars` bars before target time k bars ago
+//   -> the realized close at that target time
+// i.e. X[k] = features[horizonBars + k] bars back, y[k] = target[k] bars back
+// This mirrors nasdaqMacroLeadCore.levelFairValue's training alignment.
+// ---------------------------------------------------------------------
+var array<float> coefs = array.new<float>(N_FEATURES + 1, 0.0)  // last slot = intercept
+var bool haveCoefs = false
+
+minBarsNeeded = trainBars + horizonBars + zWindow
+
+canRefit = bar_index > minBarsNeeded and bar_index % refitEvery == 0
+
+if canRefit
+    X = matrix.new<float>(trainBars, N_FEATURES + 1, 1.0)
+    y = matrix.new<float>(trainBars, 1, 0.0)
+    for k = 0 to trainBars - 1
+        matrix.set(X, k, 0, f1[horizonBars + k])
+        matrix.set(X, k, 1, f2[horizonBars + k])
+        matrix.set(X, k, 2, f3[horizonBars + k])
+        matrix.set(X, k, 3, f4[horizonBars + k])
+        matrix.set(X, k, 4, f5[horizonBars + k])
+        matrix.set(X, k, 5, f6[horizonBars + k])
+        matrix.set(X, k, 6, 1.0)
+        matrix.set(y, k, 0, target[k])
+
+    Xt    = matrix.transpose(X)
+    XtX   = matrix.mult(Xt, X)
+    Xty   = matrix.mult(Xt, y)
+    XtXinv = matrix.inv(XtX)
+
+    if not na(XtXinv)
+        beta = matrix.mult(XtXinv, Xty)
+        for j = 0 to N_FEATURES
+            array.set(coefs, j, matrix.get(beta, j, 0))
+        haveCoefs := true
+
+// ---------------------------------------------------------------------
+// Predict target `horizonBars` bars ahead using THIS bar's features
+// ---------------------------------------------------------------------
+predict() =>
+    haveCoefs ?
+         array.get(coefs, 0) * f1 +
+         array.get(coefs, 1) * f2 +
+         array.get(coefs, 2) * f3 +
+         array.get(coefs, 3) * f4 +
+         array.get(coefs, 4) * f5 +
+         array.get(coefs, 5) * f6 +
+         array.get(coefs, 6)
+       : na
+
+pred = predict()
+
+// ---------------------------------------------------------------------
+// Plots
+//
+// "Forecast" line: this bar's prediction of the close `horizonBars` bars
+// from now, drawn shifted forward — the leading blue-line effect.
+// "Backtest" line: what the model predicted `horizonBars` bars ago for
+// THIS bar, drawn at zero offset directly against the realized candle —
+// the honesty check ("did the shifted line actually arrive where price
+// went").
+// ---------------------------------------------------------------------
+plot(pred, title = "Macro fair value (forecast)", offset = horizonBars, color = color.new(color.blue, 0), linewidth = 2)
+
+backtestPred = pred[horizonBars]
+plot(showBacktest ? backtestPred : na, title = "Macro fair value (backtest, aligned)", color = color.new(color.orange, 40), linewidth = 1)
+
+// ---------------------------------------------------------------------
+// Lightweight live honesty gauge
+//
+// This is NOT the Node dashboard's full oosStats (rank-IC + t-stat +
+// circular-shift null p-value + split-half stability) — that suite is
+// impractical to run every bar inside Pine's per-bar compute budget.
+// This is a plain rolling Pearson correlation between the backtested
+// prediction and the realized close over `corrWindow` bars, as a rough
+// "is this line tracking reality at all right now" signal. Treat a
+// reading here as a hint to go check the real stats on the dashboard,
+// not as a substitute for them.
+// ---------------------------------------------------------------------
+liveCorr = ta.correlation(backtestPred, target, corrWindow)
+
+var label corrLabel = na
+if barstate.islast
+    label.delete(corrLabel)
+    corrLabel := label.new(bar_index + horizonBars, high, "corr(" + str.tostring(corrWindow) + "): " + str.tostring(liveCorr, "#.##"), style = label.style_label_down, color = color.new(color.gray, 20), textcolor = color.white)
