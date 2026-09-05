@@ -39,13 +39,26 @@ holdout is standard practice, but it's not perfectly zero-leakage either --
 report that plainly rather than pretend the top HOLDOUT result is as clean
 as a single pre-registered hypothesis test would be.
 
+Every combo predicts the SAME fixed forecast horizon (--target-lag-h, default
+12h) regardless of how far back any individual ingredient looks -- e.g.
+nas_rvol's x_i is its own change over the last 3h, but it still predicts
+NAS100's return over the next `target_lag_h` hours, same as every other
+ingredient. An earlier version derived the target from the SHORTEST lag
+among a combo's members instead, which unfairly penalized any combo
+containing a short-lookback ingredient (nas_rvol, hangseng, both 3h) by
+forcing the whole blend onto a noisier 3h target. Fixed here -- run with
+different --target-lag-h values (e.g. 12 and 45) to see whether short-lookback
+intraday ingredients combine better into a near-term or a longer-horizon
+target.
+
 Usage:
-    python -m analysis.nasdaq_blend_search
+    python -m analysis.nasdaq_blend_search [--target-lag-h 12]
         (reuses analysis/output/nasdaq_lead_lag/raw/ -- run
         nasdaq_lead_lag_scan.py --refresh first if that cache is missing)
 """
 from __future__ import annotations
 
+import argparse
 from itertools import combinations
 from pathlib import Path
 
@@ -66,6 +79,17 @@ SELECT_FRAC = 0.825   # of the FULL series: 0-65% train (reused lags only),
 RIDGE_LAMBDA_FRAC = 0.05   # x n_select, same idea as the Pine ridge fix
 TOP_N_TO_HOLDOUT = 6        # how many SELECT-ranked combos get a HOLDOUT shot
 MIN_SPLIT_OBS = 150
+DEFAULT_TARGET_LAG_H = 12   # --target-lag-h overrides. The forecast HORIZON,
+                             # fixed for the whole run and shared by every
+                             # combo -- separate from how far back each
+                             # ingredient's own x_i looks (that's each pool
+                             # member's own lag in BLEND_POOL below).
+                             # Earlier version picked target = the SHORTEST
+                             # lag among a combo's members, which unfairly
+                             # penalized combos containing nas_rvol/hangseng
+                             # (3h) by forcing the whole blend onto a
+                             # noisier 3h target instead of a real, fixed
+                             # forecast horizon. Fixed here.
 
 # The candidate pool: every nasdaq_lead_lag_scan.py candidate that cleared
 # REAL or came close (|ic| >= 0.02 on that run's test split), each pinned at
@@ -79,9 +103,10 @@ BLEND_POOL = [
     ("vix",                             45),   # REAL, ic=-0.12
     ("hy_ig_oas_diff",                   6),   # REAL, ic=-0.06
     ("copper_gold_ratio_yahoo",          3),   # REAL, ic=0.04
-    ("hangseng",                         3),   # close miss: ic=0.033, p_null=0.052
+    ("hangseng",                         3),   # REAL (borderline), ic=0.033, p_null=0.047 -- intraday-native
     ("leg_hy_ig_credit_yahoo",          15),   # not real alone (ic=0.034, p_null=0.38) -- test if it adds anything combined
     ("usd_basket",                      12),   # NO SIGNAL alone -- included as a genuine "does more data help or hurt" test
+    ("nas_rvol",                         3),   # REAL, ic=0.055, p_null=0.005 -- intraday-native (OANDA-derived, updates every bar)
 ]
 
 
@@ -106,6 +131,13 @@ def rank_z(a: np.ndarray) -> np.ndarray:
 
 
 def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--target-lag-h", type=int, default=DEFAULT_TARGET_LAG_H,
+                     help="Fixed forecast horizon (hours) shared by every combo, "
+                          "independent of each ingredient's own lookback lag.")
+    args = ap.parse_args()
+    target_lag_h = args.target_lag_h
+
     oanda = {name: load_oanda(name) for name in OANDA_M15}
     oanda = {k: v for k, v in oanda.items() if v is not None}
     fred = load_fred()
@@ -128,12 +160,18 @@ def main():
     print(f"TRAIN (lags already fixed): {nas_idx[0]} .. {nas_idx[train_end_i]}")
     print(f"SELECT (fit blend weights): {nas_idx[train_end_i]} .. {nas_idx[select_i]}")
     print(f"HOLDOUT (final honest test): {nas_idx[select_i]} .. {nas_idx[-1]}")
+    print(f"Target horizon (fixed for all combos): {target_lag_h}h")
+
+    # ONE shared forecast target for every combo -- NAS100's forward return
+    # over the fixed target_lag_h, independent of any ingredient's own
+    # lookback lag.
+    y_target = time_shift(nas_logpx, -target_lag_h) - nas_logpx
 
     # -- build each pool member's x_i(t) = candidate's own realized change
-    # over ITS lag, on NAS100's grid, same formula as nasdaq_lead_lag_scan.py's
-    # run_candidate() -- and NAS100's own forward-return y_i(t) at that SAME
-    # lag (each candidate has a different lag, so each gets its own y too).
-    series = {}   # key -> (x: pd.Series, y: pd.Series) both on nas_idx
+    # over ITS OWN lag (how far back this specific ingredient looks -- e.g.
+    # nas_rvol looks back 3h even though the target is 12h ahead), same
+    # formula as nasdaq_lead_lag_scan.py's run_candidate().
+    series = {}   # key -> x: pd.Series, on nas_idx
     for key, L in BLEND_POOL:
         if key not in src:
             print(f"  SKIP {key}: source unavailable")
@@ -141,20 +179,20 @@ def main():
         cand_aligned = align_asof(nas_idx, src[key])
         cand_lag = time_shift(cand_aligned, L)
         x = cand_aligned - cand_lag
-        nas_ahead = time_shift(nas_logpx, -L)
-        y = nas_ahead - nas_logpx
-        series[key] = (x, y)
-        print(f"  loaded {key:32s} lag={L}h  n_valid={int((x.notna() & y.notna()).sum()):,}")
+        series[key] = x
+        n_valid = int((x.notna() & y_target.notna()).sum())
+        print(f"  loaded {key:32s} lookback={L}h  n_valid={n_valid:,}")
 
     pool_keys = list(series.keys())
     if len(pool_keys) < 2:
         raise SystemExit("fewer than 2 usable pool candidates -- nothing to blend")
 
     # -- SELECT: for every combo size 2..N, fit ridge weights, rank by SELECT IC --
+    y_valid = y_target.notna()
     select_mask_by_key = {}
-    for key, (x, y) in series.items():
+    for key, x in series.items():
         idx_pos = np.arange(n)
-        m = (x.notna() & y.notna()).to_numpy() & (idx_pos > train_end_i) & (idx_pos <= select_i)
+        m = (x.notna() & y_valid).to_numpy() & (idx_pos > train_end_i) & (idx_pos <= select_i)
         select_mask_by_key[key] = m
 
     combo_results = []
@@ -167,66 +205,54 @@ def main():
             n_sel = int(m.sum())
             if n_sel < MIN_SPLIT_OBS:
                 continue
-            # y must agree across members at different lags -- it doesn't
-            # (each candidate's y is NAS100's forward return over ITS OWN
-            # lag). Use the SHORTEST lag in the combo's y as the blend's
-            # target horizon -- the shortest-horizon claim is the more
-            # conservative (harder) one to satisfy anyway.
-            lags = {key: L for key, L in BLEND_POOL if key in combo}
-            target_key = min(lags, key=lags.get)
-            y_sel = series[target_key][1].to_numpy()[m]
-            X_sel = np.column_stack([rank_z(series[key][0].to_numpy()[m]) for key in combo])
+            y_sel = y_target.to_numpy()[m]
+            X_sel = np.column_stack([rank_z(series[key].to_numpy()[m]) for key in combo])
             yz_sel = rank_z(y_sel)
             w = ridge_ols(X_sel, yz_sel, RIDGE_LAMBDA_FRAC)
             pred_sel = w[0] + X_sel @ w[1:]
             ic_sel = float(np.corrcoef(rank_z(pred_sel), yz_sel)[0, 1])
-            combo_results.append(dict(combo=combo, target_key=target_key, target_lag_h=lags[target_key],
-                                        weights=w, n_select=n_sel, ic_select=ic_sel))
+            combo_results.append(dict(combo=combo, weights=w, n_select=n_sel, ic_select=ic_sel))
 
     combo_results.sort(key=lambda r: abs(r["ic_select"]), reverse=True)
     print(f"\n{len(combo_results)} combinations tested on SELECT split. Top {TOP_N_TO_HOLDOUT} by |IC|:")
     for r in combo_results[:TOP_N_TO_HOLDOUT]:
-        print(f"  {'+'.join(r['combo']):70s} lag={r['target_lag_h']}h  ic_select={r['ic_select']:.4f}  n={r['n_select']}")
+        print(f"  {'+'.join(r['combo']):70s} ic_select={r['ic_select']:.4f}  n={r['n_select']}")
 
     # -- HOLDOUT: only the top finalists get scored here, ONCE --
     print(f"\nHOLDOUT results (final, honest -- this is the number that matters):")
     rng = np.random.default_rng(11)
     holdout_rows = []
+    nw_lag_bars = max(1, int(target_lag_h * 4))
     for r in combo_results[:TOP_N_TO_HOLDOUT]:
         combo = r["combo"]
-        target_key = r["target_key"]
         idx_pos = np.arange(n)
-        m = np.ones(n, dtype=bool)
+        m = y_valid.to_numpy() & (idx_pos > select_i)
         for key in combo:
-            x, y = series[key]
-            m &= (x.notna() & y.notna()).to_numpy()
-        m &= idx_pos > select_i
+            m &= series[key].notna().to_numpy()
         n_hold = int(m.sum())
         if n_hold < MIN_SPLIT_OBS:
             print(f"  {'+'.join(combo):70s} SKIP -- insufficient holdout overlap ({n_hold})")
             continue
-        X_hold = np.column_stack([rank_z(series[key][0].to_numpy()[m]) for key in combo])
-        y_hold = series[target_key][1].to_numpy()[m]
+        X_hold = np.column_stack([rank_z(series[key].to_numpy()[m]) for key in combo])
+        y_hold = y_target.to_numpy()[m]
         w = r["weights"]
         pred_hold = w[0] + X_hold @ w[1:]
-        L = r["target_lag_h"]
-        nw_lag_bars = max(1, int(L * 4))
         st = cell_stats(pred_hold, y_hold, nw_lag_bars, rng)
         verdict = "REAL" if (abs(st["ic"]) >= VERDICT_IC_FLOOR and st.get("p_null") is not None
                               and np.isfinite(st.get("p_null", np.nan)) and st["p_null"] < VERDICT_P_NULL
                               and st["stable"]) else "NOT CONFIRMED ON HOLDOUT"
         print(f"  {'+'.join(combo):70s} ic_holdout={st['ic']:.4f}  p_null={st.get('p_null')}  "
               f"stable={st['stable']}  n={n_hold}  -> {verdict}")
-        holdout_rows.append(dict(combo="+".join(combo), target_lag_h=L, ic_select=r["ic_select"],
+        holdout_rows.append(dict(combo="+".join(combo), target_lag_h=target_lag_h, ic_select=r["ic_select"],
                                    n_select=r["n_select"], ic_holdout=st["ic"], p_null=st.get("p_null"),
                                    stable=st["stable"], n_holdout=n_hold, verdict=verdict))
 
-    pd.DataFrame(holdout_rows).to_csv(OUT / "blend_holdout_results.csv", index=False)
-    pd.DataFrame([dict(combo="+".join(r["combo"]), target_lag_h=r["target_lag_h"],
-                        ic_select=r["ic_select"], n_select=r["n_select"])
-                  for r in combo_results]).to_csv(OUT / "blend_all_combos_select.csv", index=False)
-    print(f"\nwrote {OUT / 'blend_holdout_results.csv'}")
-    print(f"wrote {OUT / 'blend_all_combos_select.csv'}")
+    suffix = f"_h{target_lag_h}"
+    pd.DataFrame(holdout_rows).to_csv(OUT / f"blend_holdout_results{suffix}.csv", index=False)
+    pd.DataFrame([dict(combo="+".join(r["combo"]), ic_select=r["ic_select"], n_select=r["n_select"])
+                  for r in combo_results]).to_csv(OUT / f"blend_all_combos_select{suffix}.csv", index=False)
+    print(f"\nwrote {OUT / f'blend_holdout_results{suffix}.csv'}")
+    print(f"wrote {OUT / f'blend_all_combos_select{suffix}.csv'}")
 
 
 if __name__ == "__main__":

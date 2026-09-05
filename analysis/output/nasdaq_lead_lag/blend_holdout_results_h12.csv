@@ -1,0 +1,7 @@
+combo,target_lag_h,ic_select,n_select,ic_holdout,p_null,stable,n_holdout,verdict
+leg_discretionary_staples_yahoo+jordan_composite_yahoo+vix+hy_ig_oas_diff+copper_gold_ratio_yahoo+hangseng+usd_basket+nas_rvol,12,0.4687019961375119,12367,0.382451597313937,0.0,True,12367,REAL
+leg_discretionary_staples_yahoo+jordan_composite_yahoo+vix+hy_ig_oas_diff+hangseng+usd_basket+nas_rvol,12,0.4686910203825801,12367,0.3821926710208992,0.0,True,12367,REAL
+leg_discretionary_staples_yahoo+jordan_composite_yahoo+vix+hy_ig_oas_diff+copper_gold_ratio_yahoo+usd_basket+nas_rvol,12,0.46869049036796845,12367,0.3823558661797701,0.0,True,12367,REAL
+leg_discretionary_staples_yahoo+jordan_composite_yahoo+vix+hy_ig_oas_diff+usd_basket+nas_rvol,12,0.46867527263407366,12367,0.382110348861039,0.0,True,12367,REAL
+leg_discretionary_staples_yahoo+jordan_composite_yahoo+vix+hy_ig_oas_diff+hangseng+leg_hy_ig_credit_yahoo+usd_basket+nas_rvol,12,0.46822498252408756,12367,0.37923733831147,0.0,True,12367,REAL
+leg_discretionary_staples_yahoo+jordan_composite_yahoo+vix+hy_ig_oas_diff+copper_gold_ratio_yahoo+hangseng+leg_hy_ig_credit_yahoo+usd_basket+nas_rvol,12,0.4682166536256201,12367,0.3794803434138753,0.0,True,12367,REAL

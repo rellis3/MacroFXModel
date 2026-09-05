@@ -423,6 +423,38 @@ def build_source_series(oanda: dict, fred: pd.DataFrame | None, yahoo: dict) -> 
     if "us2000" in src and "spx500" in src:
         src["smallcap_largecap_oanda"] = (src["us2000"] - src["spx500"]).dropna()
 
+    if "oil" in src and "gold" in src:
+        src["oil_gold_ratio_oanda"] = (src["oil"] - src["gold"]).dropna()
+
+    # NAS100's own realized vol -- a fully continuous, OANDA-native
+    # alternative to VIX (VIX itself is daily-close-only for free). This is
+    # an OWN-asset feature (vol clustering), not a cross-asset macro one --
+    # worth testing on those terms, not oversold as "macro".
+    nas0 = oanda.get("nas100")
+    if nas0 is not None and len(nas0) > 200:
+        nas_ret = np.log(nas0).diff()
+        src["nas_rvol"] = nas_ret.rolling(96, min_periods=40).std().dropna()
+
+    # Continuously-quoted FX carry/risk-sentiment crosses, built from legs
+    # already fetched (AUDJPY = AUDUSD * USDJPY -> sum of logs; same for
+    # NZDJPY). Classic real-time risk-on/risk-off barometers in FX, unlike
+    # the synthetic usd_basket which is USD strength specifically, not
+    # broad risk appetite.
+    def cross(base_name: str, quote_name: str) -> pd.Series | None:
+        b, q = oanda.get(base_name), oanda.get(quote_name)
+        if b is None or q is None:
+            return None
+        bl, ql = np.log(b), np.log(q)
+        idx = bl.index.union(ql.index)
+        return (bl.reindex(idx).ffill() + ql.reindex(idx).ffill()).dropna()
+
+    audjpy = cross("audusd", "usdjpy")
+    if audjpy is not None:
+        src["audjpy"] = audjpy
+    nzdjpy = cross("nzdusd", "usdjpy")
+    if nzdjpy is not None:
+        src["nzdjpy"] = nzdjpy
+
     # USD basket: average signed per-bar log return of the FX legs, aligned
     # first onto NAS100's own grid (so the diff step is wall-clock-consistent
     # with everything else), then cumsum'd into an additive "log level".
@@ -517,6 +549,15 @@ CANDIDATES = [
     ("ftse",                           "FTSE UK100_GBP (OANDA)",                        "F", "oanda_m15"),
     ("nikkei",                         "Nikkei JP225_USD (OANDA)",                      "F", "oanda_m15"),
     ("hangseng",                       "Hang Seng HK33_HKD (OANDA)",                    "F", "oanda_m15"),
+    # Group G: added specifically to test whether GENUINELY continuous
+    # (not daily-close) data can sustain a longer, non-flat lead than the
+    # daily XLY/XLP+VIX blend's honest 12h -- see analysis/output/nasdaq_lead_lag/
+    # for the finding that motivated this (the daily blend's forward tail
+    # goes flat within hours because its own inputs don't update that often).
+    ("oil_gold_ratio_oanda",           "Oil/Gold ratio, Brent/XAU (OANDA)",             "G", "oanda_m15"),
+    ("nas_rvol",                       "NAS100's own realized vol (OANDA-native VIX proxy)", "G", "oanda_m15"),
+    ("audjpy",                         "AUD/JPY carry cross (OANDA legs)",              "G", "oanda_m15"),
+    ("nzdjpy",                         "NZD/JPY carry cross (OANDA legs)",              "G", "oanda_m15"),
 ]
 
 

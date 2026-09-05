@@ -1,0 +1,7 @@
+combo,target_lag_h,ic_select,n_select,ic_holdout,p_null,stable,n_holdout,verdict
+leg_discretionary_staples_yahoo+jordan_composite_yahoo+vix+hy_ig_oas_diff+hangseng+usd_basket+nas_rvol,45,0.307612655209481,12367,0.10560847402830352,0.13066666666666665,True,12367,NOT CONFIRMED ON HOLDOUT
+leg_discretionary_staples_yahoo+jordan_composite_yahoo+vix+hy_ig_oas_diff+copper_gold_ratio_yahoo+hangseng+usd_basket+nas_rvol,45,0.3075645815281338,12367,0.10604828154039495,0.116,True,12367,NOT CONFIRMED ON HOLDOUT
+leg_discretionary_staples_yahoo+jordan_composite_yahoo+vix+hy_ig_oas_diff+usd_basket+nas_rvol,45,0.30745278030730255,12367,0.10605796097015356,0.10733333333333334,True,12367,NOT CONFIRMED ON HOLDOUT
+leg_discretionary_staples_yahoo+jordan_composite_yahoo+vix+hy_ig_oas_diff+copper_gold_ratio_yahoo+usd_basket+nas_rvol,45,0.30739664587848226,12367,0.10649720899488908,0.09866666666666667,True,12367,NOT CONFIRMED ON HOLDOUT
+leg_discretionary_staples_yahoo+jordan_composite_yahoo+vix+hy_ig_oas_diff+hangseng+nas_rvol,45,0.30535838678420824,12367,0.10562945697867915,0.10133333333333333,True,12367,NOT CONFIRMED ON HOLDOUT
+leg_discretionary_staples_yahoo+jordan_composite_yahoo+vix+hy_ig_oas_diff+nas_rvol,45,0.30533602454664244,12367,0.10572876473926127,0.11266666666666666,True,12367,NOT CONFIRMED ON HOLDOUT
