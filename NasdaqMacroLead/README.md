@@ -167,6 +167,69 @@ Three properties make this different from `fast`/`fred`:
   where it's a live, ungraded projection — so it's never possible to mistake
   the guess for the track record.
 
+## TradingView port
+
+[`tradingview/nasdaq_macro_fairvalue.pine`](tradingview/nasdaq_macro_fairvalue.pine)
+is a Pine v6 port of the `fairvalue` methodology above, for anyone who wants
+this on their own TradingView chart instead of the Railway dashboard.
+
+It exposes a **Feature set** input with two modes feeding the same
+walk-forward regression:
+
+- **Macro rates** — the same six factors as the Railway `fairvalue` variant
+  (below).
+- **Risk appetite** — `Z(IWM/SPY) + Z(XLY/XLP) + Z(HYG/LQD)`: small-cap vs
+  large-cap, cyclical vs defensive sector, and high-yield vs
+  investment-grade credit, each continuously quoted and trivially available
+  on TradingView (`AMEX:IWM/SPY/XLY/XLP/HYG/LQD`) — this factor set isn't
+  currently portable to the Railway/OANDA dashboard, since OANDA doesn't
+  carry US-listed sector/credit ETFs as instruments. **Caveat:** XLY
+  (consumer discretionary) is heavily weighted with the same mega-cap
+  growth names that dominate NAS100, so part of any correlation this mode
+  finds could be structural overlap rather than a genuine leading signal —
+  IWM and HYG/LQD are cleaner, more independent legs. Don't read the live
+  correlation gauge as proof of an edge; it's exactly the kind of result
+  the honesty checks in this package exist to stress-test.
+
+TradingView has continuous quotes for most of `fairvalue`'s factors, and two
+are actually better proxies there than what OANDA offered: `TVC:DXY` is a
+real, continuously-quoted USD index (no need to build the synthetic
+FX-basket `usd_basket_level` this package computes for OANDA), and
+`TVC:US10Y - TVC:US02Y` is a continuously updated curve slope instead of the
+daily FRED one. `FRED:DFII10` covers the real-yield leg the same way FRED
+does here.
+
+Two things are genuinely different in the Pine version, not just ported:
+
+- **`plot(pred, offset=horizonBars)`** draws the prediction shifted forward
+  in time on the chart — Pine's native mechanism for exactly the "line
+  arrives before the candle" effect this whole package exists to test
+  honestly, replacing the synthesized-future-timestamp `tail_path` trick
+  the JS/dashboard version needs.
+- **Refit cadence is periodic (default every 20 bars), not per-bar.**
+  Rebuilding a `trainBars`-row training matrix and inverting it on every
+  single bar, for years of intraday history, is too much for Pine's
+  per-bar compute budget. Coefficients update every `refitEvery` bars;
+  the z-scored inputs still update every bar in between, so the line stays
+  smooth without reintroducing the block-refit "cliff" `levelFairValue`
+  had to fix (see above) — the cadence trade-off is coarser than the JS
+  version's continuous refit, tune `refitEvery`/`trainBars` against your
+  own plan's compute limits.
+
+The full `oosStats` honesty suite (rank-IC, t-stat, circular-shift null,
+split-half stability) isn't reproduced — running that every bar isn't
+practical in Pine. The script instead plots a plain rolling correlation
+between backtested predictions and realized price as a rough live gauge;
+treat it as a prompt to go check the real stats on the dashboard, not as a
+replacement for them.
+
+**This file has not been run in a Pine Editor** — there's no way to execute
+Pine Script from wherever this was authored, unlike the rest of this
+package, which is unit-tested offline. Treat it as a first draft: paste it
+into TradingView's Pine Editor, fix whatever doesn't compile, and confirm
+ticker availability (`TVC:US10Y`, `TVC:US02Y`, `TVC:DXY`, `TVC:GOLD`,
+`FRED:DFII10`) on your plan before trusting any output.
+
 ## Running it
 
 It runs automatically on Railway: `server.js`'s "Nasdaq Macro Lead: native
