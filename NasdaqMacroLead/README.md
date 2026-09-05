@@ -173,6 +173,24 @@ Three properties make this different from `fast`/`fred`:
 is a Pine v6 port of the `fairvalue` methodology above, for anyone who wants
 this on their own TradingView chart instead of the Railway dashboard.
 
+It exposes a **Feature set** input with two modes feeding the same
+walk-forward regression:
+
+- **Macro rates** — the same six factors as the Railway `fairvalue` variant
+  (below).
+- **Risk appetite** — `Z(IWM/SPY) + Z(XLY/XLP) + Z(HYG/LQD)`: small-cap vs
+  large-cap, cyclical vs defensive sector, and high-yield vs
+  investment-grade credit, each continuously quoted and trivially available
+  on TradingView (`AMEX:IWM/SPY/XLY/XLP/HYG/LQD`) — this factor set isn't
+  currently portable to the Railway/OANDA dashboard, since OANDA doesn't
+  carry US-listed sector/credit ETFs as instruments. **Caveat:** XLY
+  (consumer discretionary) is heavily weighted with the same mega-cap
+  growth names that dominate NAS100, so part of any correlation this mode
+  finds could be structural overlap rather than a genuine leading signal —
+  IWM and HYG/LQD are cleaner, more independent legs. Don't read the live
+  correlation gauge as proof of an edge; it's exactly the kind of result
+  the honesty checks in this package exist to stress-test.
+
 TradingView has continuous quotes for most of `fairvalue`'s factors, and two
 are actually better proxies there than what OANDA offered: `TVC:DXY` is a
 real, continuously-quoted USD index (no need to build the synthetic

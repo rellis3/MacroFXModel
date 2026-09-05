@@ -8,11 +8,24 @@
 // visually leads price, the same effect the Node dashboard's
 // scored_path/tail_path split produces.
 //
+// Two selectable feature sets feed the same regression (see "Feature set"
+// input below):
+//   - Macro rates: US10Y/US02Y/DXY/GOLD/DFII10/curve slope — the same six
+//     factors as the Railway dashboard's fairvalue variant.
+//   - Risk appetite: Z(IWM/SPY) + Z(XLY/XLP) + Z(HYG/LQD), a cross-asset
+//     small-cap/cyclical/credit composite. NOTE: XLY (consumer
+//     discretionary) is heavily weighted with the same mega-cap growth
+//     names that dominate NAS100 — some of any correlation here could be
+//     structural overlap, not a genuine leading signal. IWM and HYG/LQD
+//     are cleaner, more independent legs. Read the correlation gauge with
+//     that in mind, don't assume it's a leading indicator just because it
+//     tracks.
+//
 // NOT VERIFIED IN A PINE EDITOR — this session has no way to execute Pine
 // Script, so treat this as a first draft to compile and tune by hand, not
-// a working artifact. Cross-check ticker availability (TVC:US10Y,
-// TVC:US02Y, TVC:DXY, TVC:GOLD, FRED:DFII10) on your TradingView plan;
-// FRED mirror coverage can vary. This is a research overlay, not a
+// a working artifact. Cross-check ticker availability on your TradingView
+// plan; FRED mirror coverage and exchange prefixes (AMEX vs ARCA vs BATS
+// for the sector/credit ETFs) can vary. This is a research overlay, not a
 // trading signal — see NasdaqMacroLead/README.md for the methodology and
 // its honesty checks, only a lightweight rolling-correlation approximation
 // of which is reproduced here (see notes at the bottom).
@@ -22,6 +35,7 @@ indicator("Nasdaq Macro Lead - Fair Value", shorttitle = "NQ Macro Lead", overla
 // ---------------------------------------------------------------------
 // Inputs
 // ---------------------------------------------------------------------
+modeInput   = input.string("Macro rates", "Feature set", options = ["Macro rates", "Risk appetite"], tooltip = "Macro rates = US10Y/US02Y/DXY/GOLD/DFII10/slope. Risk appetite = Z(IWM/SPY)+Z(XLY/XLP)+Z(HYG/LQD)")
 horizonBars = input.int(8, "Horizon (bars ahead)", minval = 1, tooltip = "On an H4 chart, 8≈32h, 9≈36h — matches NasdaqMacroLead's fairvalue variant")
 trainBars   = input.int(300, "Training window (bars)", minval = 30, maxval = 500, tooltip = "Rolling OLS fit window. Larger = smoother/slower, smaller = more reactive")
 refitEvery  = input.int(20, "Refit every N bars", minval = 1, tooltip = "How often coefficients are re-fit. Inputs still update every bar in between, so the line stays smooth")
@@ -30,8 +44,11 @@ corrWindow  = input.int(120, "Rolling correlation window (bars)", minval = 20, t
 
 showBacktest = input.bool(true, "Show backtest overlay (past predictions vs realized price)")
 
+useMacro = modeInput == "Macro rates"
+nFeat    = useMacro ? 6 : 3
+
 // ---------------------------------------------------------------------
-// Macro feature sources
+// Macro-rate feature sources
 // ---------------------------------------------------------------------
 us10y  = request.security("TVC:US10Y", timeframe.period, close, gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_off)
 us02y  = request.security("TVC:US02Y", timeframe.period, close, gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_off)
@@ -40,12 +57,28 @@ gold   = request.security("TVC:GOLD",  timeframe.period, close, gaps = barmerge.
 real10 = request.security("FRED:DFII10", "D", close, gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_off)
 slope  = us10y - us02y
 
+// ---------------------------------------------------------------------
+// Risk-appetite feature sources
+// ---------------------------------------------------------------------
+iwm = request.security("AMEX:IWM", timeframe.period, close, gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_off)
+spy = request.security("AMEX:SPY", timeframe.period, close, gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_off)
+xly = request.security("AMEX:XLY", timeframe.period, close, gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_off)
+xlp = request.security("AMEX:XLP", timeframe.period, close, gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_off)
+hyg = request.security("AMEX:HYG", timeframe.period, close, gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_off)
+lqd = request.security("AMEX:LQD", timeframe.period, close, gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_off)
+
 max_bars_back(us10y, 2000)
 max_bars_back(us02y, 2000)
 max_bars_back(dxy, 2000)
 max_bars_back(gold, 2000)
 max_bars_back(real10, 2000)
 max_bars_back(slope, 2000)
+max_bars_back(iwm, 2000)
+max_bars_back(spy, 2000)
+max_bars_back(xly, 2000)
+max_bars_back(xlp, 2000)
+max_bars_back(hyg, 2000)
+max_bars_back(lqd, 2000)
 
 target = close
 
@@ -62,7 +95,9 @@ f4 = z(gold)
 f5 = z(real10)
 f6 = z(slope)
 
-const int N_FEATURES = 6
+g1 = z(iwm / spy)
+g2 = z(xly / xlp)
+g3 = z(hyg / lqd)
 
 // ---------------------------------------------------------------------
 // Walk-forward OLS, refit every `refitEvery` bars
@@ -73,7 +108,7 @@ const int N_FEATURES = 6
 // i.e. X[k] = features[horizonBars + k] bars back, y[k] = target[k] bars back
 // This mirrors nasdaqMacroLeadCore.levelFairValue's training alignment.
 // ---------------------------------------------------------------------
-var array<float> coefs = array.new<float>(N_FEATURES + 1, 0.0)  // last slot = intercept
+var array<float> coefs = array.new<float>(7, 0.0)
 var bool haveCoefs = false
 
 minBarsNeeded = trainBars + horizonBars + zWindow
@@ -81,16 +116,21 @@ minBarsNeeded = trainBars + horizonBars + zWindow
 canRefit = bar_index > minBarsNeeded and bar_index % refitEvery == 0
 
 if canRefit
-    X = matrix.new<float>(trainBars, N_FEATURES + 1, 1.0)
+    X = matrix.new<float>(trainBars, nFeat + 1, 1.0)
     y = matrix.new<float>(trainBars, 1, 0.0)
     for k = 0 to trainBars - 1
-        matrix.set(X, k, 0, f1[horizonBars + k])
-        matrix.set(X, k, 1, f2[horizonBars + k])
-        matrix.set(X, k, 2, f3[horizonBars + k])
-        matrix.set(X, k, 3, f4[horizonBars + k])
-        matrix.set(X, k, 4, f5[horizonBars + k])
-        matrix.set(X, k, 5, f6[horizonBars + k])
-        matrix.set(X, k, 6, 1.0)
+        if useMacro
+            matrix.set(X, k, 0, f1[horizonBars + k])
+            matrix.set(X, k, 1, f2[horizonBars + k])
+            matrix.set(X, k, 2, f3[horizonBars + k])
+            matrix.set(X, k, 3, f4[horizonBars + k])
+            matrix.set(X, k, 4, f5[horizonBars + k])
+            matrix.set(X, k, 5, f6[horizonBars + k])
+        else
+            matrix.set(X, k, 0, g1[horizonBars + k])
+            matrix.set(X, k, 1, g2[horizonBars + k])
+            matrix.set(X, k, 2, g3[horizonBars + k])
+        matrix.set(X, k, nFeat, 1.0)
         matrix.set(y, k, 0, target[k])
 
     Xt    = matrix.transpose(X)
@@ -100,7 +140,8 @@ if canRefit
 
     if not na(XtXinv)
         beta = matrix.mult(XtXinv, Xty)
-        for j = 0 to N_FEATURES
+        coefs := array.new<float>(nFeat + 1, 0.0)
+        for j = 0 to nFeat
             array.set(coefs, j, matrix.get(beta, j, 0))
         haveCoefs := true
 
@@ -108,15 +149,22 @@ if canRefit
 // Predict target `horizonBars` bars ahead using THIS bar's features
 // ---------------------------------------------------------------------
 predict() =>
-    haveCoefs ?
-         array.get(coefs, 0) * f1 +
-         array.get(coefs, 1) * f2 +
-         array.get(coefs, 2) * f3 +
-         array.get(coefs, 3) * f4 +
-         array.get(coefs, 4) * f5 +
-         array.get(coefs, 5) * f6 +
-         array.get(coefs, 6)
-       : na
+    float result = na
+    if haveCoefs
+        result := useMacro ?
+             array.get(coefs, 0) * f1 +
+             array.get(coefs, 1) * f2 +
+             array.get(coefs, 2) * f3 +
+             array.get(coefs, 3) * f4 +
+             array.get(coefs, 4) * f5 +
+             array.get(coefs, 5) * f6 +
+             array.get(coefs, 6)
+           :
+             array.get(coefs, 0) * g1 +
+             array.get(coefs, 1) * g2 +
+             array.get(coefs, 2) * g3 +
+             array.get(coefs, 3)
+    result
 
 pred = predict()
 
@@ -145,11 +193,14 @@ plot(showBacktest ? backtestPred : na, title = "Macro fair value (backtest, alig
 // prediction and the realized close over `corrWindow` bars, as a rough
 // "is this line tracking reality at all right now" signal. Treat a
 // reading here as a hint to go check the real stats on the dashboard,
-// not as a substitute for them.
+// not as a substitute for them. For "Risk appetite" mode especially,
+// a high reading can partly reflect XLY's structural overlap with
+// NAS100 constituents rather than a genuine leading relationship —
+// don't read this number alone as proof of an edge.
 // ---------------------------------------------------------------------
 liveCorr = ta.correlation(backtestPred, target, corrWindow)
 
 var label corrLabel = na
 if barstate.islast
     label.delete(corrLabel)
-    corrLabel := label.new(bar_index + horizonBars, high, "corr(" + str.tostring(corrWindow) + "): " + str.tostring(liveCorr, "#.##"), style = label.style_label_down, color = color.new(color.gray, 20), textcolor = color.white)
+    corrLabel := label.new(bar_index + horizonBars, high, modeInput + " corr(" + str.tostring(corrWindow) + "): " + str.tostring(liveCorr, "#.##"), style = label.style_label_down, color = color.new(color.gray, 20), textcolor = color.white)
