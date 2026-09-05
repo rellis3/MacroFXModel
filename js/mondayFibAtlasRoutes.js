@@ -13,7 +13,7 @@ import { buildAsiaFibAtlasBook, DIMENSIONS } from './asiaFibAtlasReport.js';
 import { matchLiveContext } from './levelAtlasReport.js';
 import { runBarrierWalkForward, voteDecision } from './asiaFibAtlasVoteReview.js';
 import { loadVoteTrades, mergeIntoFibAtlasPlan } from './asiaFibAtlasRoutes.js';
-import { applyFadeStopFraction, applyCostEfficiencyFilter, applyTrailingContinuation, applyStoredContinuationExit } from './levelAtlasVoteReview.js';
+import { applyFadeStopFraction, applyCostEfficiencyFilter, applyGapFilter, applyTrailingContinuation, applyStoredContinuationExit } from './levelAtlasVoteReview.js';
 import { buildFibAtlasVotePortfolio } from './fibAtlasVotePortfolio.js';
 import { putJSON, getJSON } from './r2Store.js';
 import { packToJSON, packFromJSON } from './levelAtlasRoutes.js';
@@ -488,16 +488,22 @@ export function mountMondayFibAtlasRoutes(app, express) {
       const minMargin = req.query.minMargin ? Number(req.query.minMargin) : 2;
       const stopTightenFrac = req.query.stopTightenFrac ? Number(req.query.stopTightenFrac) : null;
       const minCostRatio = req.query.minCostRatio ? Number(req.query.minCostRatio) : null;
+      // Whiplash gap filter (2026-09-04) — same FIB_ATLAS_MONDAY_MAX_GAP_MIN
+      // the live plan already applies (mondayLivePlanZones), now exposed
+      // here so the interactive backtest can reproduce it. Query-param
+      // overridable like the others; omitted means no filter.
+      const maxGapMin = req.query.maxGapMin ? Number(req.query.maxGapMin) : null;
       // 'true'|'giveback'|'chandelier'|undefined -- applyStoredContinuationExit
       // does its own interpreting now (2026-08-31), so no boolean coercion here.
       const continuationExit = req.query.continuationExit;
       const swapped = applyStoredContinuationExit(stored.trades, continuationExit);
       const marginFiltered = swapped.filter(t => t.margin >= minMargin);
-      const filtered = applyCostEfficiencyFilter(marginFiltered, stored.cost, minCostRatio);
+      const costFiltered = applyCostEfficiencyFilter(marginFiltered, stored.cost, minCostRatio);
+      const filtered = applyGapFilter(costFiltered, maxGapMin);
       const trades = applyFadeStopFraction(filtered, stopTightenFrac, 0, { preserveSizing: true });
       const summaryByMargin = letRide ? (stored.extSummaryByMargin ?? stored.summaryByMargin) : stored.summaryByMargin;
       res.json({ ok: true, instrument: stored.instrument, generatedAt: stored.generatedAt, cost: stored.cost,
-                 splitDate: stored.splitDate, minMargin, stopTightenFrac, minCostRatio, continuationExit, letRide,
+                 splitDate: stored.splitDate, minMargin, stopTightenFrac, minCostRatio, maxGapMin, continuationExit, letRide,
                  summary: summaryByMargin?.[minMargin] ?? null, trades });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
@@ -527,6 +533,10 @@ export function mountMondayFibAtlasRoutes(app, express) {
         throttleMult: req.query.throttleMult ? Number(req.query.throttleMult) : 0.5,
         stopTightenFrac: req.query.stopTightenFrac ? Number(req.query.stopTightenFrac) : null,
         minCostRatio: req.query.minCostRatio ? Number(req.query.minCostRatio) : null,
+        // Whiplash gap filter (2026-09-04) — see /vote-trades/:instrument's
+        // own comment above; threaded straight through to
+        // buildFibAtlasVotePortfolio.
+        maxGapMin: req.query.maxGapMin ? Number(req.query.maxGapMin) : null,
         continuationExit: req.query.continuationExit, // 'true'|'giveback'|'chandelier'|undefined -- applyStoredContinuationExit interprets it
         loadPairVoteTrades: async pair => loadVoteTrades(`${PREFIX}/${pair}-votetrades.json`, req.query.letRide === 'true'),
       });

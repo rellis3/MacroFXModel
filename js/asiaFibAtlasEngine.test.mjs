@@ -245,6 +245,34 @@ t('prevOutcomeSameDay / prevOutcomeCrossDay partition daysSincePrev cleanly and 
   }
 });
 
+t('gapMin (2026-09-04 whiplash-gap filter) is null exactly when daysSincePrev!==0, and otherwise matches this rung\'s own last-touch time delta, grouped BY OUTCOME (unlike prevOutcomeSameDay, a same-day neither prior still counts)', () => {
+  const { touches } = asiaFibAtlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFracs: [0.3] });
+  const key = r => `${r.side}|${r.level}|${r.rearmFrac}`;
+  const byKey = {};
+  for (const r of touches) (byKey[key(r)] ??= []).push(r);
+  let checked = 0;
+  for (const list of Object.values(byKey)) {
+    for (let i = 1; i < list.length; i++) {
+      const r = list[i], prev = list[i - 1];
+      if (r.daysSincePrev === 0) {
+        assert.equal(r.gapMin, +((r.time - prev.time) / 60).toFixed(1),
+          `gapMin must equal minutes since this exact rung's own immediately-prior touch this session for ${key(r)}`);
+        checked++;
+      } else {
+        assert.equal(r.gapMin, null, `gapMin must be null across a session boundary for ${key(r)}`);
+      }
+    }
+    if (list.length && list[0].daysSincePrev == null) assert.equal(list[0].gapMin, null, 'a rung\'s very first-ever touch has no prior gap');
+  }
+  assert.ok(checked > 0, 'expected at least one same-session repeat touch to actually exercise gapMin');
+  // The defining difference from prevOutcomeSameDay: a same-day 'neither'
+  // prior still produces a real gapMin (unlike prevOutcomeSameDay, which is
+  // deliberately null there) -- confirms gapMin isn't accidentally reusing
+  // prevOutcomeSameDay's own exclusion.
+  const neitherPriorWithGap = touches.filter(r => r.daysSincePrev === 0 && r.prevOutcome === 'neither' && r.gapMin != null);
+  assert.ok(neitherPriorWithGap.length > 0, 'expected at least one same-day neither-prior touch to still carry a real gapMin');
+});
+
 t('rollingRate only reports once >=3 prior visits exist, and never counts the current touch', () => {
   const { touches } = asiaFibAtlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFracs: [0.3] });
   const key = r => `${r.side}|${r.level}|${r.rearmFrac}`;

@@ -105,6 +105,39 @@ t('prevOutcomeSameDay only carries forward within the SAME reference week, never
   assert.ok(checked > 20, 'expected enough same-key touch pairs to actually exercise this check');
 });
 
+t('gapMin (2026-09-04 whiplash-gap filter) is null across a reference-week boundary, and otherwise matches this rung\'s own last-touch time delta THIS week, grouped BY OUTCOME (unlike prevOutcomeSameDay, a same-week neither prior still counts)', () => {
+  const { touches } = mondayFibAtlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx' });
+  const byKey = new Map();   // `${side}|${level}` -> touches sorted by time
+  for (const r of touches) { const k = `${r.side}|${r.level}`; (byKey.get(k) ?? byKey.set(k, []).get(k)).push(r); }
+  let checked = 0;
+  for (const [, list] of byKey) {
+    list.sort((a, b) => a.time - b.time);
+    for (let i = 1; i < list.length; i++) {
+      const prev = list[i - 1], cur = list[i];
+      if (cur.mondayDate !== prev.mondayDate) {
+        assert.equal(cur.gapMin, null, `gapMin must be null across a reference-week boundary (${prev.mondayDate}->${cur.mondayDate})`);
+      } else {
+        assert.equal(cur.gapMin, +((cur.time - prev.time) / 60).toFixed(1),
+          `gapMin must equal minutes since this exact rung's own immediately-prior touch this week`);
+        checked++;
+      }
+    }
+  }
+  assert.ok(checked > 0, 'expected at least one same-week repeat touch to actually exercise gapMin');
+  // The defining difference from prevOutcomeSameDay: a same-week 'neither'
+  // prior still produces a real gapMin (unlike prevOutcomeSameDay, which is
+  // deliberately null there).
+  const neitherPriorWithGap = [];
+  for (const [, list] of byKey) {
+    list.sort((a, b) => a.time - b.time);
+    for (let i = 1; i < list.length; i++) {
+      const prev = list[i - 1], cur = list[i];
+      if (cur.mondayDate === prev.mondayDate && prev.outcome === 'neither' && cur.gapMin != null) neitherPriorWithGap.push(cur);
+    }
+  }
+  assert.ok(neitherPriorWithGap.length > 0, 'expected at least one same-week neither-prior touch to still carry a real gapMin');
+});
+
 t('sessionHandoff matches sessionHandoffPhase(hour) for every touch — no second, drifted copy', () => {
   const { touches } = mondayFibAtlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx' });
   for (const r of touches.slice(0, 300)) {

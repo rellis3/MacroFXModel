@@ -373,6 +373,33 @@ export function applyCostEfficiencyFilter(trades, cost, minCostRatio) {
 }
 
 /**
+ * Whiplash gap filter (2026-09-03/04) — OOS-validated on the Fib Atlas
+ * engines (analysis/fib_atlas_whiplash_analysis.mjs, fib_atlas_whiplash_
+ * gap_deepdive.mjs, fib_atlas_gap_filter_backtest.mjs; see LEGO_MODULES.md).
+ * The fastest repeat touches of a rung (short gap since that exact rung's
+ * own last touch this session) win far more than slow "clean" retests —
+ * the opposite of the naive worry that a recently-whipsawed rung is
+ * unreliable. Already shipped live-side (asiaFibAtlasRoutes.js/
+ * mondayFibAtlasRoutes.js's zonesFromLiveAndBook); this is the same idea
+ * applied to the STORED trade list so the interactive backtest/portfolio
+ * pages can reproduce it, not just the live plan.
+ *
+ * A pure selection gate exactly like applyCostEfficiencyFilter above —
+ * fewer trades, none resized, no leverage-in-disguise question. `gapMin`
+ * (minutes since this rung's own last touch this session, any outcome) is
+ * null for a touch with no prior touch this session — which, per
+ * prevOutcomeSameDay's own definition, can never itself reach margin>=2,
+ * so it never survives into the trade list this runs on anyway; still
+ * excluded explicitly for safety. `null` `maxGapMin` is a no-op passthrough.
+ *
+ *   applyGapFilter(trades, maxGapMin) -> trades (subset, unchanged shape)
+ */
+export function applyGapFilter(trades, maxGapMin) {
+  if (!trades?.length || maxGapMin == null) return trades ?? [];
+  return trades.filter(t => t.gapMin != null && t.gapMin <= maxGapMin);
+}
+
+/**
  * Trailing/continuation exit for WINNING rows — originally follow-only
  * (2026-08-30 — the owner's own suggestion: "if we are trading a level
  * which will continue the same direction we move to, sl etc and don't

@@ -168,6 +168,12 @@ export function buildBarrierTrades(touches, book, { rearmFrac = 0.3, cost = 0, m
       maePct: denom ? +(Math.abs(maePips) * t.pip / denom * 100).toFixed(4) : null,
       win: priced.win, pnlPct: priced.pnlPct,
       asiaConfPips: t.asiaConfPips ?? null,
+      // Whiplash gap-since-this-rung's-own-last-touch (2026-09-04) — carried
+      // straight through from the touch record (asiaFibAtlasWalk/
+      // mondayFibAtlasWalk both set it, shared trade shape) so
+      // applyGapFilter can gate on it downstream, same pattern as
+      // asiaConfPips above.
+      gapMin: t.gapMin ?? null,
     });
   }
   return trades;

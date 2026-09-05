@@ -32,7 +32,7 @@
 import {
   applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights,
   riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyFadeStopFraction,
-  applyCostEfficiencyFilter, applyStoredContinuationExit,
+  applyCostEfficiencyFilter, applyGapFilter, applyStoredContinuationExit,
 } from './levelAtlasVoteReview.js';
 import { maxDrawdownFromPnls, neweyWestSharpe, summarizeTrades } from './metricsCore.js';
 import { portfolioStats } from './backtestStats.js';
@@ -98,7 +98,7 @@ export async function buildFibAtlasVotePortfolio({
   weighting = 'equal', sizing = 'fixed-risk', riskPct = 1,
   maxHeatPct = null, targetVol = 10,
   throttleOn = false, triggerDD = -5, restoreDD = 0, throttleMult = 0.5,
-  stopTightenFrac = null, minCostRatio = null, continuationExit = false,
+  stopTightenFrac = null, minCostRatio = null, maxGapMin = null, continuationExit = false,
   loadPairVoteTrades,
 }) {
   // Each iteration is one "constituent" of the combined portfolio — normally
@@ -120,13 +120,22 @@ export async function buildFibAtlasVotePortfolio({
     // decision, not applied after. See applyStoredContinuationExit's own doc.
     const swapped = applyStoredContinuationExit(stored.trades, continuationExit);
     const marginFiltered = swapped.filter(t => t.margin >= minMargin);
-    const filtered = applyCostEfficiencyFilter(marginFiltered, stored.cost, minCostRatio);
+    const costFiltered = applyCostEfficiencyFilter(marginFiltered, stored.cost, minCostRatio);
+    // Whiplash gap filter (2026-09-04) — a pure selection gate exactly like
+    // applyCostEfficiencyFilter above, so applied at the same stage (before
+    // the concurrency cap — a gap-filtered-out trade should never occupy a
+    // concurrency slot either).
+    const filtered = applyGapFilter(costFiltered, maxGapMin);
     const capped = applyConcurrencyCap(filtered, { maxConcurrent, perDirection });
     const tightened = applyFadeStopFraction(capped?.kept ?? [], stopTightenFrac, 0, { preserveSizing: true });
     const sym = stored.groupKey ?? stored.instrument;
     perPairTradesRaw[sym] = tightened.map(t => ({ ...t, instrument: stored.instrument, ladder: stored.ladder ?? null }));
     perPair[sym] = {
       totalDecided: marginFiltered.length,
+      // Now reflects BOTH the cost-efficiency and gap filters combined
+      // (2026-09-04) — the two run back-to-back as independent selection
+      // gates, so there's no meaningful way to attribute a dropped trade to
+      // one or the other individually here.
       costFilteredOut: marginFiltered.length - filtered.length,
       kept: capped?.kept?.length ?? 0,
       skipped: capped?.skippedCount ?? 0,

@@ -206,7 +206,15 @@ export function mondayFibAtlasWalk(packed, { instrument, assetClass = 'fx', rear
             // "Same reference week" = same Monday index `i`, not same
             // calendar date (a touch Wednesday and one the following
             // Monday can both belong to week `i`).
-            const prevOutcomeSameDay = (prev && prev.weekIdx === i && prev.outcome !== 'neither') ? prev.outcome : null;
+            const sameWeek = prev && prev.weekIdx === i;
+            const prevOutcomeSameDay = (sameWeek && prev.outcome !== 'neither') ? prev.outcome : null;
+            // "Whiplash" gap-since-this-rung's-own-last-touch (2026-09-03/04
+            // finding, analysis/fib_atlas_whiplash_analysis.mjs +
+            // fib_atlas_gap_filter_backtest.mjs, LEGO_MODULES.md) — minutes
+            // since the LAST touch of this exact (side, level) this same
+            // reference week, any outcome (a 'neither' still counts, unlike
+            // prevOutcomeSameDay). null when there is no prior touch this week.
+            const gapMin = (sameWeek && prev.time != null) ? +((bar.time - prev.time) / 60).toFixed(1) : null;
 
             touches.push({
               instrument: sym, assetClass, date: barDate, mondayDate: mon.date,
@@ -218,10 +226,10 @@ export function mondayFibAtlasWalk(packed, { instrument, assetClass = 'fx', rear
               fadePips: +fadePips.toFixed(1), runPips: +runPips.toFixed(1),
               innerDistPips: +innerDistPips.toFixed(1), outerDistPips: outerDistPips != null ? +outerDistPips.toFixed(1) : null,
               session, sessionHandoff,
-              prevOutcomeSameDay, mondayConfluenceGrade,
+              prevOutcomeSameDay, gapMin, mondayConfluenceGrade,
               mondayHigh: mon.high, mondayLow: mon.low, mondayRange: mon.range,
             });
-            lastVisit[key] = [...hist, { outcome, weekIdx: i }].slice(-3);
+            lastVisit[key] = [...hist, { outcome, weekIdx: i, time: bar.time }].slice(-3);
           }
         }
       }
