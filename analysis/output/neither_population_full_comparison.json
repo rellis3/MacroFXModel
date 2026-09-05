@@ -1,0 +1,190 @@
+{
+  "generatedAt": "2026-08-31T20:37:39.258Z",
+  "pairsCovered": [
+    "EURUSD",
+    "GBPUSD",
+    "USDJPY",
+    "AUDUSD",
+    "USDCHF",
+    "EURAUD",
+    "EURCHF",
+    "AUDJPY",
+    "CADJPY",
+    "CHFJPY",
+    "GOLD",
+    "NQ",
+    "SPX",
+    "DOW",
+    "US2000",
+    "DE30",
+    "UK100"
+  ],
+  "config": {
+    "REARM": 0.3,
+    "MIN_MARGIN": 3,
+    "MAX_CONCURRENT": 1,
+    "RISK_PCT": 0.5,
+    "MAX_HEAT_PCT": 1,
+    "REWALK_MAX_BARS": 700000
+  },
+  "perPairMeta": [
+    {
+      "pair": "EURUSD",
+      "cost": 0.008,
+      "baselineN": 1189,
+      "extendedN": 587,
+      "eodN": 587
+    },
+    {
+      "pair": "GBPUSD",
+      "cost": 0.01,
+      "baselineN": 1368,
+      "extendedN": 687,
+      "eodN": 688
+    },
+    {
+      "pair": "USDJPY",
+      "cost": 0.009,
+      "baselineN": 1539,
+      "extendedN": 655,
+      "eodN": 656
+    },
+    {
+      "pair": "AUDUSD",
+      "cost": 0.011,
+      "baselineN": 1211,
+      "extendedN": 666,
+      "eodN": 667
+    },
+    {
+      "pair": "USDCHF",
+      "cost": 0.011,
+      "baselineN": 1600,
+      "extendedN": 693,
+      "eodN": 695
+    },
+    {
+      "pair": "EURAUD",
+      "cost": 0.018,
+      "baselineN": 1622,
+      "extendedN": 605,
+      "eodN": 605
+    },
+    {
+      "pair": "EURCHF",
+      "cost": 0.015,
+      "baselineN": 1576,
+      "extendedN": 778,
+      "eodN": 780
+    },
+    {
+      "pair": "AUDJPY",
+      "cost": 0.016,
+      "baselineN": 1620,
+      "extendedN": 648,
+      "eodN": 649
+    },
+    {
+      "pair": "CADJPY",
+      "cost": 0.018,
+      "baselineN": 1481,
+      "extendedN": 718,
+      "eodN": 718
+    },
+    {
+      "pair": "CHFJPY",
+      "cost": 0.018,
+      "baselineN": 1466,
+      "extendedN": 700,
+      "eodN": 701
+    },
+    {
+      "pair": "GOLD",
+      "cost": 0.02,
+      "baselineN": 1339,
+      "extendedN": 550,
+      "eodN": 550
+    },
+    {
+      "pair": "NQ",
+      "cost": 0.008,
+      "baselineN": 1047,
+      "extendedN": 333,
+      "eodN": 333
+    },
+    {
+      "pair": "SPX",
+      "cost": 0.008,
+      "baselineN": 507,
+      "extendedN": 212,
+      "eodN": 212
+    },
+    {
+      "pair": "DOW",
+      "cost": 0.01,
+      "baselineN": 462,
+      "extendedN": 146,
+      "eodN": 146
+    },
+    {
+      "pair": "US2000",
+      "cost": 0.015,
+      "baselineN": 1083,
+      "extendedN": 524,
+      "eodN": 524
+    },
+    {
+      "pair": "DE30",
+      "cost": 0.012,
+      "baselineN": 1256,
+      "extendedN": 687,
+      "eodN": 688
+    },
+    {
+      "pair": "UK100",
+      "cost": 0.015,
+      "baselineN": 1470,
+      "extendedN": 656,
+      "eodN": 656
+    }
+  ],
+  "baselineStats": {
+    "trades": 8528,
+    "sharpe": 2.01,
+    "sharpeCI95": [
+      1.09,
+      2.93
+    ],
+    "maxDD": -17.76,
+    "cagr": 55.78,
+    "annVol": 23.39,
+    "profitFactor": 1.4,
+    "days": 1162
+  },
+  "liveStats": {
+    "trades": 7639,
+    "sharpe": 1.49,
+    "sharpeCI95": [
+      0.58,
+      2.4
+    ],
+    "maxDD": -26.34,
+    "cagr": 35.72,
+    "annVol": 22.22,
+    "profitFactor": 1.28,
+    "days": 1164
+  },
+  "eodStats": {
+    "trades": 9312,
+    "sharpe": 1.52,
+    "sharpeCI95": [
+      0.61,
+      2.43
+    ],
+    "maxDD": -21.81,
+    "cagr": 37.67,
+    "annVol": 22.68,
+    "profitFactor": 1.29,
+    "days": 1172
+  }
+}

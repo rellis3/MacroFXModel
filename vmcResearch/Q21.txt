@@ -1,0 +1,30 @@
+Q21  EXIT GRID - all 9 cells reported, no cherry-picking. E in ATR after spread.
+     positive cells marked *. IS/OOS shown so a cell that flips is visible.
+
+XAUUSD  (n=25,995, spread 0.565 ATR)
+  target         stop 1.0     stop 2.0     stop 3.0
+  25% of ext     -0.5277      -0.5532      -0.5646 
+  50% of ext     -0.5067      -0.5147      -0.5253 
+  75% of ext     -0.4964      -0.4984      -0.5013 
+    best cell: target 75% stop 1.0 -> E -0.4964  (IS -0.4914  OOS -0.5014)
+
+EURUSD  (n=27,556, spread 0.428 ATR)
+  target         stop 1.0     stop 2.0     stop 3.0
+  25% of ext     -0.3874      -0.4137      -0.4262 
+  50% of ext     -0.3356      -0.3485      -0.3632 
+  75% of ext     -0.3134      -0.3168      -0.3317 
+    best cell: target 75% stop 1.0 -> E -0.3134  (IS -0.3066  OOS -0.3203)
+
+NQ  (n=26,139, spread 0.296 ATR)
+  target         stop 1.0     stop 2.0     stop 3.0
+  25% of ext     -0.3168      -0.3338      -0.3282 
+  50% of ext     -0.2591      -0.2879      -0.3006 
+  75% of ext     -0.2570      -0.2957      -0.3125 
+    best cell: target 75% stop 1.0 -> E -0.2570  (IS -0.2345  OOS -0.2794)
+
+GBPUSD  (n=27,272, spread 0.467 ATR)
+  target         stop 1.0     stop 2.0     stop 3.0
+  25% of ext     -0.4153      -0.4609      -0.4610 
+  50% of ext     -0.3559      -0.3928      -0.4023 
+  75% of ext     -0.3198      -0.3399      -0.3419 
+    best cell: target 75% stop 1.0 -> E -0.3198  (IS -0.2878  OOS -0.3518)

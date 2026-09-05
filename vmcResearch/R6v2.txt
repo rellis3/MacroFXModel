@@ -1,0 +1,39 @@
+  [eurusd] 47,556 breakout trades
+  [gbpusd] 47,080 breakout trades
+  [usdjpy] 47,530 breakout trades
+  [audusd] 46,410 breakout trades
+  [usdcad] 48,124 breakout trades
+  [usdchf] 44,789 breakout trades
+  [eurjpy] 48,007 breakout trades
+  [gbpjpy] 48,230 breakout trades
+  [xauusd] 45,619 breakout trades
+  [nq] 45,863 breakout trades
+
+==================================================================================
+R6 THIRD STRATEGY  -  N-bar range breakout (momentum, no VWAP/fib/session reference)
+==================================================================================
+  total trades: 469,208
+
+  P(stopped out) and MAE by extension-toward-breakout quintile:
+    Q1  n= 93842  ext med  +2.16  stop-out 0.514  MAE med 7.13
+    Q2  n= 93841  ext med  +2.81  stop-out 0.518  MAE med 7.54
+    Q3  n= 93842  ext med  +3.39  stop-out 0.521  MAE med 7.81
+    Q4  n= 93841  ext med  +4.12  stop-out 0.524  MAE med 8.18
+    Q5  n= 93842  ext med  +5.64  stop-out 0.527  MAE med 8.49
+
+  Q1->Q5 stop-out delta +0.0127 (z=5.47)   MAE delta +1.607 (z=31.32)
+
+  by instrument (sign of stop-out delta, Q5-Q1):
+    audusd   n= 46410  delta +0.0134
+    eurjpy   n= 48007  delta +0.0042
+    eurusd   n= 47556  delta +0.0297
+    gbpjpy   n= 48230  delta -0.0001
+    gbpusd   n= 47080  delta +0.0011
+    nq       n= 45863  delta +0.0157
+    usdcad   n= 48124  delta +0.0051
+    usdchf   n= 44789  delta +0.0147
+    usdjpy   n= 47530  delta +0.0283
+    xauusd   n= 45619  delta +0.0253
+
+  VERDICT:
+  CONFIRMS on a third, mechanically unrelated strategy -> the risk-state claim strengthens.

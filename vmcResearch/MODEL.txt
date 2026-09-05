@@ -1,0 +1,56 @@
+Loading panels...
+  eurusd 99,018 rows
+  gbpusd 98,956 rows
+  usdjpy 99,063 rows
+  audusd 98,620 rows
+  usdcad 98,989 rows
+  usdchf 98,017 rows
+  eurjpy 99,077 rows
+  gbpjpy 99,184 rows
+  audjpy 99,197 rows
+  eurgbp 99,067 rows
+  xauusd 94,202 rows
+  nq 93,540 rows
+
+AUC (0.500 = no skill). Embargo 288 rows between train and test.
+
+=== target: y_cont ===
+split      features       AUC     base   n_train    n_test
+time       vmc         0.5037    0.497    57,602    37,978
+time       ret         0.5125    0.497    57,602    37,978
+time       vmc+ret     0.5028    0.497    57,602    37,978
+instrument vmc         0.5082    0.498   772,505   374,185
+instrument ret         0.5092    0.498   772,505   374,185
+instrument vmc+ret     0.5095    0.498   772,505   374,185
+both       vmc         0.5046    0.499   463,832   149,518
+
+  top permutation importances (test set, AUC drop when shuffled):
+    tf240_mf_accel               +0.00126 +/- 0.00063
+    tf60_mf                      +0.00116 +/- 0.00018
+    tf60_wt1_slope               +0.00105 +/- 0.00027
+    tf240_wt2_slope              +0.00103 +/- 0.00092
+    tf5_wt_spread                +0.00098 +/- 0.00041
+    tf5_vwap_dist                +0.00095 +/- 0.00108
+    tf60_wt2_slope               +0.00093 +/- 0.00029
+    tf15_vwap_dist               +0.00090 +/- 0.00014
+    tf15_mf                      +0.00086 +/- 0.00005
+    tf15_wt1_slope               +0.00076 +/- 0.00009
+    tf60_bars_since_zero         +0.00069 +/- 0.00030
+    tf15_wt2                     +0.00060 +/- 0.00016
+    tf60_mf_accel                +0.00058 +/- 0.00034
+    tf15_bars_since_zero         +0.00055 +/- 0.00037
+    tf240_mf_slope               +0.00049 +/- 0.00036
+both       ret         0.5082    0.499   463,832   149,518
+both       vmc+ret     0.5076    0.499   463,832   149,518
+
+=== target: y_dir ===
+split      features       AUC     base   n_train    n_test
+time       vmc         0.5125    0.500    59,397    39,317
+time       ret         0.5142    0.500    59,397    39,317
+time       vmc+ret     0.5109    0.500    59,397    39,317
+instrument vmc         0.5202    0.513   790,798   385,943
+instrument ret         0.5182    0.513   790,798   385,943
+instrument vmc+ret     0.5215    0.513   790,798   385,943
+both       vmc         0.5161    0.514   474,447   154,392
+both       ret         0.5157    0.514   474,447   154,392
+both       vmc+ret     0.5166    0.514   474,447   154,392

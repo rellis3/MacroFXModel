@@ -1,0 +1,70 @@
+[eurusd]
+    eurusd 2022-12-16  trades=6353
+    eurusd 2023-04-14  trades=13369
+    eurusd 2023-08-10  trades=19691
+    eurusd 2023-12-07  trades=25269
+    eurusd 2024-04-05  trades=31283
+    eurusd 2024-08-01  trades=37013
+    eurusd 2024-11-27  trades=42575
+    eurusd 2025-03-27  trades=49581
+    eurusd 2025-07-23  trades=57107
+    eurusd 2025-11-18  trades=64273
+    eurusd 2026-03-17  trades=69871
+    eurusd 2026-07-13  trades=76317
+  30,080 trades
+[gbpusd]
+    gbpusd 2022-12-15  trades=8153
+    gbpusd 2023-04-14  trades=16594
+    gbpusd 2023-08-10  trades=23807
+    gbpusd 2023-12-06  trades=30143
+    gbpusd 2024-04-04  trades=37483
+    gbpusd 2024-07-31  trades=43519
+    gbpusd 2024-11-26  trades=49622
+    gbpusd 2025-03-26  trades=56726
+    gbpusd 2025-07-22  trades=63770
+    gbpusd 2025-11-17  trades=70867
+    gbpusd 2026-03-17  trades=77885
+    gbpusd 2026-07-10  trades=85627
+  33,150 trades
+[usdjpy]
+    usdjpy 2022-12-16  trades=7912
+    usdjpy 2023-04-14  trades=18328
+    usdjpy 2023-08-10  trades=26531
+    usdjpy 2023-12-06  trades=33349
+    usdjpy 2024-04-04  trades=41362
+    usdjpy 2024-08-01  trades=48675
+    usdjpy 2024-11-27  trades=57136
+    usdjpy 2025-03-27  trades=65671
+    usdjpy 2025-07-23  trades=75043
+    usdjpy 2025-11-17  trades=83076
+    usdjpy 2026-03-17  trades=91440
+    usdjpy 2026-07-13  trades=98095
+  35,275 trades
+[xauusd]
+    xauusd 2022-12-21  trades=3575
+    xauusd 2023-04-27  trades=7329
+    xauusd 2023-08-28  trades=10897
+    xauusd 2023-12-29  trades=14376
+    xauusd 2024-05-03  trades=18560
+    xauusd 2024-09-03  trades=23891
+    xauusd 2025-01-07  trades=28459
+    xauusd 2025-05-09  trades=33097
+    xauusd 2025-09-10  trades=38791
+    xauusd 2026-01-14  trades=44575
+    xauusd 2026-05-18  trades=53891
+  24,984 trades
+
+ZONE ENGINE ONLY (no score filter, no VuManChu confirm, no session filter)
+inst      tf           n     mean R      net R     win%   total R
+eurusd    H4      10,069     0.0184     0.0103    49.7%    +103.3
+eurusd    M30     20,011     0.0047    -0.0151    48.9%    -302.4
+gbpusd    H4      10,849     0.0053    -0.0051    49.9%     -55.6
+gbpusd    M30     22,301     0.0477     0.0228    49.8%    +507.9
+usdjpy    H4      10,752     0.0117     0.0048    49.5%     +52.1
+usdjpy    M30     24,523    -0.0143    -0.0307    46.8%    -752.0
+xauusd    H4       8,495    -0.0104    -0.0158    49.3%    -133.9
+xauusd    M30     16,489    -0.0225    -0.0347    49.8%    -571.8
+
+POOLED BY TIMEFRAME - the question the live log could not answer
+  H4    n=40,165  net R/trade -0.0008  win 49.6%  |  1st half -0.0045  2nd half +0.0028
+  M30   n=83,324  net R/trade -0.0134  win 48.7%  |  1st half -0.0146  2nd half -0.0122

@@ -1,0 +1,142 @@
+{
+  "grid": [
+    {
+      "N": 15,
+      "is": {
+        "nTrades": 493,
+        "winRate": 44.8,
+        "meanPnlPct": -0.039,
+        "sharpe": -1.81,
+        "maxDD": -22.04,
+        "cagr": -32.65,
+        "annVol": 20.62,
+        "tradingDays": 130
+      }
+    },
+    {
+      "N": 30,
+      "is": {
+        "nTrades": 493,
+        "winRate": 47.5,
+        "meanPnlPct": -0.0506,
+        "sharpe": -1.61,
+        "maxDD": -29.12,
+        "cagr": -41.25,
+        "annVol": 30,
+        "tradingDays": 130
+      }
+    },
+    {
+      "N": 45,
+      "is": {
+        "nTrades": 493,
+        "winRate": 49.1,
+        "meanPnlPct": -0.0409,
+        "sharpe": -1.13,
+        "maxDD": -25.32,
+        "cagr": -36.6,
+        "annVol": 34.64,
+        "tradingDays": 130
+      }
+    },
+    {
+      "N": 60,
+      "is": {
+        "nTrades": 493,
+        "winRate": 47.7,
+        "meanPnlPct": -0.0613,
+        "sharpe": -1.43,
+        "maxDD": -33.41,
+        "cagr": -49.44,
+        "annVol": 41.07,
+        "tradingDays": 130
+      }
+    },
+    {
+      "N": 90,
+      "is": {
+        "nTrades": 493,
+        "winRate": 47.9,
+        "meanPnlPct": -0.0994,
+        "sharpe": -1.37,
+        "maxDD": -52.62,
+        "cagr": -72.18,
+        "annVol": 69.35,
+        "tradingDays": 130
+      }
+    },
+    {
+      "N": 120,
+      "is": {
+        "nTrades": 493,
+        "winRate": 44.4,
+        "meanPnlPct": -0.1383,
+        "sharpe": -1.31,
+        "maxDD": -71.87,
+        "cagr": -89.52,
+        "annVol": 100.93,
+        "tradingDays": 130
+      }
+    },
+    {
+      "N": 150,
+      "is": {
+        "nTrades": 493,
+        "winRate": 46.5,
+        "meanPnlPct": -0.1082,
+        "sharpe": -0.99,
+        "maxDD": -73.33,
+        "cagr": -87.03,
+        "annVol": 104.66,
+        "tradingDays": 130
+      }
+    },
+    {
+      "N": 180,
+      "is": {
+        "nTrades": 493,
+        "winRate": 46.9,
+        "meanPnlPct": -0.1373,
+        "sharpe": -1.02,
+        "maxDD": -88.36,
+        "cagr": -97.18,
+        "annVol": 128.85,
+        "tradingDays": 130
+      }
+    },
+    {
+      "N": 240,
+      "is": {
+        "nTrades": 493,
+        "winRate": 47.7,
+        "meanPnlPct": -0.1232,
+        "sharpe": -0.75,
+        "maxDD": -104.97,
+        "cagr": -100,
+        "annVol": 156.2,
+        "tradingDays": 130
+      }
+    }
+  ],
+  "bestN": 240,
+  "is": {
+    "nTrades": 493,
+    "winRate": 47.7,
+    "meanPnlPct": -0.1232,
+    "sharpe": -0.75,
+    "maxDD": -104.97,
+    "cagr": -100,
+    "annVol": 156.2,
+    "tradingDays": 130
+  },
+  "oos": {
+    "nTrades": 306,
+    "winRate": 52,
+    "meanPnlPct": 0.096,
+    "sharpe": 1.61,
+    "maxDD": -23.78,
+    "cagr": 117.45,
+    "annVol": 59.03,
+    "tradingDays": 78
+  }
+}

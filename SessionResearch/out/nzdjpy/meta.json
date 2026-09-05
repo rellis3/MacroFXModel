@@ -1,13 +1,13 @@
 {
   "pair": "nzdjpy",
-  "generated_at": "2026-08-17T17:31:26.920637+00:00",
+  "generated_at": "2026-08-31T09:17:13.430530+00:00",
   "data_start": "2016-01-04 00:00:00+00:00",
-  "data_end": "2026-05-21 23:59:00+00:00",
-  "m1_rows": 3848393,
-  "n_trading_day_sessions": 13167,
+  "data_end": "2026-08-20 23:59:00+00:00",
+  "m1_rows": 3940495,
+  "n_trading_day_sessions": 13488,
   "day_start_hour": 0,
   "n_perm": 1000,
   "bh_q": 0.1,
   "n_hypotheses_pooled": 155,
-  "n_bh_pass": 109
+  "n_bh_pass": 108
 }

@@ -1,0 +1,27 @@
+Q10  DOES EXTENSION AT A STRUCTURAL LEVEL BEAT EXTENSION IN OPEN SPACE?
+  levels: prior day/week H+L, Asia range H+L, 20-day H+L. all pre-defined.
+inst     distance to level        n      E(ATR)
+XAUUSD   <0.25 AT IT           854     -0.5071
+         0.25-0.5              906     -0.4159
+         0.5-1               1,840     -0.4072
+         1-2                 3,269     -0.4007
+         2+ open space      19,113     -0.5498
+
+EURUSD   <0.25 AT IT           758     -0.3092
+         0.25-0.5              917     -0.2692
+         0.5-1               1,835     -0.2543
+         1-2                 3,312     -0.2703
+         2+ open space      20,566     -0.3740
+
+NQ       <0.25 AT IT           880     -0.3374
+         0.25-0.5            1,028     -0.2158
+         0.5-1               2,020     -0.2085
+         1-2                 3,497     -0.2100
+         2+ open space      18,585     -0.3136
+
+GBPUSD   <0.25 AT IT           804     -0.4583
+         0.25-0.5              920     -0.3864
+         0.5-1               1,767     -0.4192
+         1-2                 3,310     -0.3044
+         2+ open space      20,338     -0.4036
+

@@ -1,13 +1,13 @@
 {
   "pair": "eurusd",
-  "generated_at": "2026-08-17T17:25:27.661016+00:00",
+  "generated_at": "2026-08-31T08:37:48.074316+00:00",
   "data_start": "2016-01-04 00:00:00+00:00",
-  "data_end": "2026-05-21 23:59:00+00:00",
-  "m1_rows": 3747913,
-  "n_trading_day_sessions": 12018,
+  "data_end": "2026-08-20 23:59:00+00:00",
+  "m1_rows": 3840908,
+  "n_trading_day_sessions": 12343,
   "day_start_hour": 0,
   "n_perm": 1000,
   "bh_q": 0.1,
   "n_hypotheses_pooled": 155,
-  "n_bh_pass": 106
+  "n_bh_pass": 109
 }

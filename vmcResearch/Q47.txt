@@ -1,0 +1,30 @@
+  eurusd     538 trades
+  gbpusd     519 trades
+  usdjpy     495 trades
+  audusd     560 trades
+  usdcad     554 trades
+  usdchf     537 trades
+  eurjpy     529 trades
+  gbpjpy     529 trades
+  xauusd     396 trades
+  nq         419 trades
+
+STAGE 1  POPULATION TRANSFER TEST
+  Independent strategy: Vol-Forecast fade. Entry logic contains no VWAP/ATR/oscillator.
+  Question: at ITS entries, does VWAP extension predict the MAE distribution?
+  pooled trades: 5,076   base MAE median 7.716 ATR   base stop-out 0.256
+
+  bucket        n      ext   MAE med   MAE p75   MAE p90   MAE p95   stopout
+  1         1,016     3.72     6.256    11.732    19.465    26.724     0.163
+  2         1,015     5.24     6.873    13.835    23.458    31.524     0.220
+  3         1,015     6.56     7.521    12.964    23.444    31.899     0.235
+  4         1,015     8.14     7.718    15.006    25.908    35.465     0.274
+  5         1,015    11.22    10.518    19.229    32.664    41.578     0.387
+
+  Q1->Q5 spread:  MAE med +4.263 | MAE p90 +13.200 | stop-out +0.224
+
+  SHUFFLE CONTROL (extension permuted within instrument x NY-hour x vol tercile)
+  shuffled Q1->Q5 spreads over 20 permutations:
+    MAE med   real +4.263 | shuffled mean +2.026  sd 0.419  -> z = 5.34
+    MAE p90   real +13.200 | shuffled mean +6.730  sd 1.257  -> z = 5.15
+    stop-out  real +0.224 | shuffled mean +0.135  sd 0.018  -> z = 4.93

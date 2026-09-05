@@ -1,13 +1,13 @@
 {
   "pair": "audcad",
-  "generated_at": "2026-08-17T17:16:30.638039+00:00",
+  "generated_at": "2026-08-31T07:45:30.749927+00:00",
   "data_start": "2016-01-04 00:00:00+00:00",
-  "data_end": "2026-05-21 23:59:00+00:00",
-  "m1_rows": 3840189,
-  "n_trading_day_sessions": 13048,
+  "data_end": "2026-08-20 23:59:00+00:00",
+  "m1_rows": 3930944,
+  "n_trading_day_sessions": 13346,
   "day_start_hour": 0,
   "n_perm": 1000,
   "bh_q": 0.1,
   "n_hypotheses_pooled": 155,
-  "n_bh_pass": 105
+  "n_bh_pass": 103
 }

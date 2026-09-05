@@ -1,0 +1,142 @@
+{
+  "generatedAt": "2026-08-31T19:54:16.890Z",
+  "pairsCovered": [
+    "EURUSD",
+    "GBPUSD",
+    "USDJPY",
+    "AUDUSD",
+    "USDCHF",
+    "EURAUD",
+    "EURCHF",
+    "AUDJPY",
+    "CADJPY",
+    "CHFJPY",
+    "GOLD",
+    "NQ",
+    "SPX",
+    "DOW",
+    "US2000",
+    "DE30",
+    "UK100"
+  ],
+  "config": {
+    "REARM": 0.3,
+    "MIN_MARGIN": 3,
+    "MAX_CONCURRENT": 1,
+    "RISK_PCT": 0.5,
+    "MAX_HEAT_PCT": 1
+  },
+  "perPairMeta": [
+    {
+      "pair": "EURUSD",
+      "baselineN": 1189,
+      "eodN": 587
+    },
+    {
+      "pair": "GBPUSD",
+      "baselineN": 1368,
+      "eodN": 688
+    },
+    {
+      "pair": "USDJPY",
+      "baselineN": 1539,
+      "eodN": 656
+    },
+    {
+      "pair": "AUDUSD",
+      "baselineN": 1211,
+      "eodN": 667
+    },
+    {
+      "pair": "USDCHF",
+      "baselineN": 1600,
+      "eodN": 695
+    },
+    {
+      "pair": "EURAUD",
+      "baselineN": 1622,
+      "eodN": 605
+    },
+    {
+      "pair": "EURCHF",
+      "baselineN": 1576,
+      "eodN": 780
+    },
+    {
+      "pair": "AUDJPY",
+      "baselineN": 1620,
+      "eodN": 649
+    },
+    {
+      "pair": "CADJPY",
+      "baselineN": 1481,
+      "eodN": 718
+    },
+    {
+      "pair": "CHFJPY",
+      "baselineN": 1466,
+      "eodN": 701
+    },
+    {
+      "pair": "GOLD",
+      "baselineN": 1339,
+      "eodN": 550
+    },
+    {
+      "pair": "NQ",
+      "baselineN": 1047,
+      "eodN": 333
+    },
+    {
+      "pair": "SPX",
+      "baselineN": 507,
+      "eodN": 212
+    },
+    {
+      "pair": "DOW",
+      "baselineN": 462,
+      "eodN": 146
+    },
+    {
+      "pair": "US2000",
+      "baselineN": 1083,
+      "eodN": 524
+    },
+    {
+      "pair": "DE30",
+      "baselineN": 1256,
+      "eodN": 688
+    },
+    {
+      "pair": "UK100",
+      "baselineN": 1470,
+      "eodN": 656
+    }
+  ],
+  "baselineCheck": {
+    "trades": 8528,
+    "sharpe": 2.01,
+    "sharpeCI95": [
+      1.09,
+      2.93
+    ],
+    "maxDD": -17.76,
+    "cagr": 55.78,
+    "annVol": 23.39,
+    "profitFactor": 1.4,
+    "days": 1162
+  },
+  "eodStats": {
+    "trades": 9312,
+    "sharpe": 2.01,
+    "sharpeCI95": [
+      1.1,
+      2.92
+    ],
+    "maxDD": -19.14,
+    "cagr": 53.78,
+    "annVol": 22.66,
+    "profitFactor": 1.41,
+    "days": 1172
+  }
+}

@@ -1,0 +1,41 @@
+  done eurusd
+  done gbpusd
+  done usdjpy
+  done audusd
+  done usdcad
+  done usdchf
+  done eurjpy
+  done gbpjpy
+  done audjpy
+  done eurgbp
+  done xauusd
+  done nq
+
+1. COMPOSITION - do these events cluster in the reversal-prone hours (16-19 ET)?
+   inst          cell share baseline share    ratio
+   EURUSD            0.063          0.123     0.51x
+   GBPUSD            0.066          0.123     0.53x
+   USDJPY            0.097          0.124     0.79x
+   AUDUSD            0.109          0.121     0.90x
+   USDCAD            0.073          0.123     0.59x
+   USDCHF            0.079          0.119     0.66x
+   EURJPY            0.117          0.124     0.94x
+   GBPJPY            0.120          0.125     0.96x
+   AUDJPY            0.130          0.125     1.04x
+   EURGBP            0.088          0.124     0.71x
+   XAUUSD            0.052          0.086     0.61x
+   NQ                0.023          0.081     0.28x
+   mean ratio 0.71x  (1.00 = no clustering, so no confound possible)
+
+2. HOUR-MATCHED RESCORE - does the delta survive 24 NY hours vs 4 sessions?
+   cell                         nInst   delta SESS   delta HOUR    shrink sign kept
+   tf15/cross_from_OS@range        12     -0.0151     -0.0146        4%     12/12
+   tf15/zone=OB2@range             12     -0.0093     -0.0085        8%     12/12
+   tf15/zone=OS1@range             12     -0.0123     -0.0121        2%     12/12
+   tf15/zone=OS2@range             12     -0.0150     -0.0149        1%     12/12
+
+   per-instrument sign consistency of the HOUR-matched delta:
+   tf15/cross_from_OS@range    negative on 12/12   mean |t| 1.47
+   tf15/zone=OB2@range         negative on 10/12   mean |t| 1.59
+   tf15/zone=OS1@range         negative on 12/12   mean |t| 1.64
+   tf15/zone=OS2@range         negative on 12/12   mean |t| 1.75

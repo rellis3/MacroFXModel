@@ -1,0 +1,121 @@
+Loading M1 for eurusd (1189 margin>=3 trades, exit-split 2025-04-02)...
+Loading M1 for gbpusd (1368 margin>=3 trades, exit-split 2025-04-22)...
+Loading M1 for usdjpy (1539 margin>=3 trades, exit-split 2025-03-11)...
+Loading M1 for audusd (1211 margin>=3 trades, exit-split 2025-06-11)...
+Loading M1 for usdchf (1600 margin>=3 trades, exit-split 2025-04-07)...
+Loading M1 for euraud (1622 margin>=3 trades, exit-split 2025-03-11)...
+Loading M1 for eurchf (1576 margin>=3 trades, exit-split 2025-03-11)...
+Loading M1 for audjpy (1620 margin>=3 trades, exit-split 2025-04-09)...
+Loading M1 for cadjpy (1481 margin>=3 trades, exit-split 2025-03-19)...
+Loading M1 for chfjpy (1466 margin>=3 trades, exit-split 2025-02-14)...
+Loading M1 for gold (1339 margin>=3 trades, exit-split 2025-06-17)...
+Loading M1 for nq (1047 margin>=3 trades, exit-split 2025-06-20)...
+Loading M1 for spx (507 margin>=3 trades, exit-split 2025-12-11)...
+Loading M1 for dow (462 margin>=3 trades, exit-split 2025-10-10)...
+Loading M1 for us2000 (1083 margin>=3 trades, exit-split 2025-04-02)...
+Loading M1 for de30 (1256 margin>=3 trades, exit-split 2025-05-20)...
+Loading M1 for uk100 (1470 margin>=3 trades, exit-split 2025-03-31)...
+
+==== FIT: trailFrac grid search on IS only (pooled across 17 pairs) ====
+  trailFrac=1  n=15246 (unmatched 0)  fixed[mean=0.0607 sharpe=10.3520 winRate=62.4000]  beRide[mean=0.0599 sharpe=8.1580 winRate=53.2000]  meanDelta=-0.0008
+  trailFrac=1.5  n=15246 (unmatched 0)  fixed[mean=0.0607 sharpe=10.3520 winRate=62.4000]  beRide[mean=0.0601 sharpe=7.4800 winRate=43.6000]  meanDelta=-0.0006
+  trailFrac=2  n=15246 (unmatched 0)  fixed[mean=0.0607 sharpe=10.3520 winRate=62.4000]  beRide[mean=0.0606 sharpe=7.2840 winRate=38.7000]  meanDelta=-0.0001
+  trailFrac=2.5  n=15246 (unmatched 0)  fixed[mean=0.0607 sharpe=10.3520 winRate=62.4000]  beRide[mean=0.0596 sharpe=7.1300 winRate=37.0000]  meanDelta=-0.0011
+
+Best IS trailFrac = 2 (mean pnl delta -0.0001) -- FREEZING and applying to OOS.
+
+==== FROZEN trailFrac=2 -- PER-PAIR (OOS) ====
+  eurusd: n=360 unmatched=0 crossCheck.maxAbsDiffPct=0.3401
+    fixed  total=21.7200  mean=0.0603  winRate=69.4000  sharpe=4.7010
+    chand  total=21.4500  mean=0.0596  winRate=69.2000  sharpe=4.6440
+    ride   total=23.0570  mean=0.0640  winRate=53.1000  sharpe=3.1030
+    beRide total=24.6770  mean=0.0685  winRate=43.9000  sharpe=3.4380
+  gbpusd: n=412 unmatched=0 crossCheck.maxAbsDiffPct=0.4405
+    fixed  total=13.9530  mean=0.0339  winRate=62.4000  sharpe=2.9380
+    chand  total=13.0800  mean=0.0317  winRate=61.9000  sharpe=2.7580
+    ride   total=13.3540  mean=0.0324  winRate=47.6000  sharpe=1.9620
+    beRide total=12.6230  mean=0.0306  winRate=38.3000  sharpe=2.0140
+  usdjpy: n=465 unmatched=0 crossCheck.maxAbsDiffPct=0.3798
+    fixed  total=29.9540  mean=0.0644  winRate=64.5000  sharpe=4.1370
+    chand  total=29.6060  mean=0.0637  winRate=64.3000  sharpe=4.0860
+    ride   total=39.5890  mean=0.0851  winRate=50.8000  sharpe=3.4900
+    beRide total=40.3340  mean=0.0867  winRate=43.2000  sharpe=3.7450
+  audusd: n=366 unmatched=0 crossCheck.maxAbsDiffPct=0
+    fixed  total=18.1780  mean=0.0497  winRate=63.1000  sharpe=3.5110
+    chand  total=18.1860  mean=0.0497  winRate=63.1000  sharpe=3.5130
+    ride   total=14.7520  mean=0.0403  winRate=47.5000  sharpe=2.0450
+    beRide total=13.5590  mean=0.0370  winRate=38.3000  sharpe=2.0220
+  usdchf: n=484 unmatched=0 crossCheck.maxAbsDiffPct=0
+    fixed  total=27.0440  mean=0.0559  winRate=68.6000  sharpe=4.3520
+    chand  total=27.0730  mean=0.0559  winRate=68.6000  sharpe=4.3580
+    ride   total=37.4340  mean=0.0773  winRate=51.0000  sharpe=3.4820
+    beRide total=44.2590  mean=0.0914  winRate=43.8000  sharpe=4.2700
+  euraud: n=493 unmatched=0 crossCheck.maxAbsDiffPct=0
+    fixed  total=17.0270  mean=0.0345  winRate=63.5000  sharpe=2.6560
+    chand  total=17.0640  mean=0.0346  winRate=63.5000  sharpe=2.6620
+    ride   total=13.3090  mean=0.0270  winRate=50.5000  sharpe=1.4830
+    beRide total=7.4060  mean=0.0150  winRate=39.1000  sharpe=0.9060
+  eurchf: n=473 unmatched=0 crossCheck.maxAbsDiffPct=0.2306
+    fixed  total=0.9530  mean=0.0020  winRate=59.0000  sharpe=0.2510
+    chand  total=0.7930  mean=0.0017  winRate=58.8000  sharpe=0.2090
+    ride   total=-2.7990  mean=-0.0059  winRate=42.5000  sharpe=-0.5460
+    beRide total=-1.9240  mean=-0.0041  winRate=34.0000  sharpe=-0.4060
+  audjpy: n=488 unmatched=0 crossCheck.maxAbsDiffPct=0.3694
+    fixed  total=11.6860  mean=0.0239  winRate=60.2000  sharpe=1.5580
+    chand  total=11.3340  mean=0.0232  winRate=60.0000  sharpe=1.5120
+    ride   total=-4.3970  mean=-0.0090  winRate=44.7000  sharpe=-0.4570
+    beRide total=2.0750  mean=0.0043  winRate=37.3000  sharpe=0.2310
+  cadjpy: n=446 unmatched=0 crossCheck.maxAbsDiffPct=0.4096
+    fixed  total=0.4890  mean=0.0011  winRate=54.0000  sharpe=0.0710
+    chand  total=0.1710  mean=0.0004  winRate=53.8000  sharpe=0.0250
+    ride   total=-9.7930  mean=-0.0220  winRate=37.7000  sharpe=-1.0410
+    beRide total=-8.4830  mean=-0.0190  winRate=31.8000  sharpe=-1.0340
+  chfjpy: n=440 unmatched=0 crossCheck.maxAbsDiffPct=0.5604
+    fixed  total=11.8330  mean=0.0269  winRate=63.9000  sharpe=1.9940
+    chand  total=10.7360  mean=0.0244  winRate=63.4000  sharpe=1.8030
+    ride   total=10.0970  mean=0.0229  winRate=50.5000  sharpe=1.2340
+    beRide total=6.7890  mean=0.0154  winRate=38.6000  sharpe=0.8930
+  gold: n=403 unmatched=0 crossCheck.maxAbsDiffPct=0
+    fixed  total=61.9000  mean=0.1536  winRate=63.3000  sharpe=3.9370
+    chand  total=62.0140  mean=0.1539  winRate=63.3000  sharpe=3.9460
+    ride   total=78.6570  mean=0.1952  winRate=45.9000  sharpe=3.0880
+    beRide total=79.4870  mean=0.1972  winRate=39.2000  sharpe=3.3240
+  nq: n=317 unmatched=0 crossCheck.maxAbsDiffPct=0
+    fixed  total=35.1830  mean=0.1110  winRate=61.2000  sharpe=3.2260
+    chand  total=35.6700  mean=0.1125  winRate=61.2000  sharpe=3.2820
+    ride   total=31.4200  mean=0.0991  winRate=46.1000  sharpe=2.0670
+    beRide total=28.8780  mean=0.0911  winRate=38.8000  sharpe=1.9870
+  spx: n=155 unmatched=0 crossCheck.maxAbsDiffPct=0
+    fixed  total=30.9120  mean=0.1994  winRate=72.9000  sharpe=9.0250
+    chand  total=27.5730  mean=0.1779  winRate=70.3000  sharpe=7.9110
+    ride   total=31.4500  mean=0.2029  winRate=54.8000  sharpe=5.4380
+    beRide total=27.9300  mean=0.1802  winRate=47.1000  sharpe=5.6160
+  dow: n=140 unmatched=0 crossCheck.maxAbsDiffPct=0
+    fixed  total=22.8830  mean=0.1634  winRate=66.4000  sharpe=5.7290
+    chand  total=22.8830  mean=0.1634  winRate=66.4000  sharpe=5.7290
+    ride   total=15.4760  mean=0.1105  winRate=52.1000  sharpe=3.2730
+    beRide total=12.4040  mean=0.0886  winRate=40.7000  sharpe=2.8270
+  us2000: n=330 unmatched=0 crossCheck.maxAbsDiffPct=0.9122
+    fixed  total=43.4340  mean=0.1316  winRate=63.9000  sharpe=3.2020
+    chand  total=40.1610  mean=0.1217  winRate=62.7000  sharpe=2.9560
+    ride   total=37.6490  mean=0.1141  winRate=45.8000  sharpe=1.9380
+    beRide total=44.1070  mean=0.1337  winRate=39.7000  sharpe=2.4000
+  de30: n=377 unmatched=0 crossCheck.maxAbsDiffPct=0
+    fixed  total=20.6810  mean=0.0549  winRate=57.6000  sharpe=1.9800
+    chand  total=20.7000  mean=0.0549  winRate=57.6000  sharpe=1.9820
+    ride   total=29.5050  mean=0.0783  winRate=47.2000  sharpe=2.0380
+    beRide total=29.4840  mean=0.0782  winRate=40.3000  sharpe=2.1290
+  uk100: n=441 unmatched=0 crossCheck.maxAbsDiffPct=0
+    fixed  total=20.7780  mean=0.0471  winRate=60.5000  sharpe=2.2070
+    chand  total=20.8020  mean=0.0472  winRate=60.5000  sharpe=2.2100
+    ride   total=-0.2280  mean=-0.0005  winRate=41.0000  sharpe=-0.0180
+    beRide total=11.3340  mean=0.0257  winRate=37.0000  sharpe=0.9480
+
+==== POOLED OOS across 17 pairs (NOT concurrency-adjusted -- illustrative magnitude only, see header) ====
+  n=6590
+  fixed  total=388.6070  mean=0.0590  winRate=62.6000  sharpe=10.4330  maxDD=-10.5630
+  chand  total=379.2960  mean=0.0576  winRate=62.4000  sharpe=10.1860  maxDD=-10.8740
+  ride   total=358.5330  mean=0.0544  winRate=47.1000  sharpe=6.5620  maxDD=-28.2330
+  beRide total=374.9380  mean=0.0569  winRate=39.1000  sharpe=7.3040  maxDD=-19.5790
+
+Wrote full results to C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\output\beride_exit_study.json

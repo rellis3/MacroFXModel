@@ -1,13 +1,13 @@
 {
   "pair": "gold",
-  "generated_at": "2026-08-17T17:16:24.542780+00:00",
+  "generated_at": "2026-08-31T09:13:05.398484+00:00",
   "data_start": "2016-01-04 00:00:00+00:00",
-  "data_end": "2026-06-05 20:59:00+00:00",
-  "m1_rows": 3648400,
-  "n_trading_day_sessions": 10627,
+  "data_end": "2026-08-20 23:59:00+00:00",
+  "m1_rows": 3722340,
+  "n_trading_day_sessions": 10841,
   "day_start_hour": 0,
   "n_perm": 1000,
   "bh_q": 0.1,
   "n_hypotheses_pooled": 155,
-  "n_bh_pass": 103
+  "n_bh_pass": 101
 }

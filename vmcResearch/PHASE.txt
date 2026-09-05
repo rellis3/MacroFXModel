@@ -1,0 +1,56 @@
+  [eurusd] done
+  [gbpusd] done
+  [usdjpy] done
+  [audusd] done
+  [usdcad] done
+  [usdchf] done
+  [eurjpy] done
+  [gbpjpy] done
+  [audjpy] done
+  [eurgbp] done
+  [xauusd] done
+  [nq] done
+
+VuManChu edge measured INSIDE its own phase (price-structure removed)
+
+=== cont48 : largest VuManChu effects WITHIN phase ===
+  cell                                          med n      delta   crossT   sign
+  tf15/div=reg_bear@impulse                       532    +0.0250     2.61  11/12 
+  mtf=HTFbull_LTFbear@impulse                    1247    +0.0249     3.27  11/12 
+  tf5/vwap=above@broken                           454    -0.0207    -2.79   7/10 
+  tf5/zone=OB2@broken                             854    +0.0191     3.18   9/12 
+  mtf=HTFbear_LTFbull@impulse                    1080    +0.0169     2.45   9/12 
+  tf15/cross=bull_from_OS@range                  7970    -0.0158    -4.40  12/12 
+  tf5/vwap=extended_OB@broken                    1194    +0.0157     3.20  10/12 
+  tf15/zone=OS2@range                           20370    -0.0154    -6.75  12/12 
+  tf5/zone=above0@broken                         1340    -0.0147    -2.58   8/12 
+  tf60/div=hid_bear@impulse                       578    +0.0138     1.32   7/12 
+  tf5/zone=OS1@pullback                          1611    +0.0135     2.42  10/12 
+  mtf=conflict_HTF@pullback                      1295    -0.0133    -2.16   9/12 
+  tf15/zone=OS1@range                           15815    -0.0128    -6.90  12/12 
+  tf5/cross=bull_from_OS@pullback                1025    +0.0121     1.92   9/12 
+  tf5/zone=OB2@pullback                          1994    +0.0113     1.95   9/12 
+  tf5/vwap=extended_OB@pullback                  2969    +0.0110     3.15  10/12 
+  tf60/zone=OB1@impulse                          3595    +0.0106     1.85   8/12 
+  tf5/zone=OS2@pullback                          2019    +0.0104     1.80   7/12 
+
+=== dir20 : largest VuManChu effects WITHIN phase ===
+  cell                                          med n      delta   crossT   sign
+  tf60/zone=OB2@broken                            684    -0.1541    -3.25   9/10 
+  tf60/div=reg_bull@impulse                       583    -0.0936    -2.87   9/12 
+  tf5/cross=bear_above0@broken                    495    +0.0919     3.51   8/11 
+  tf5/vwap=above@broken                           459    +0.0820     3.56   9/10 
+  tf5/zone=above0@broken                         1358    +0.0800     3.99  10/12 
+  tf5/vwap=far_below@broken                      1978    -0.0712    -4.12  11/12 
+  mtf=HTFbear_LTFbull@impulse                    1095    -0.0642    -4.10  10/12 
+  tf5/zone=below0@broken                         1292    -0.0640    -2.70   9/12 
+  tf5/vwap=extended_OS@broken                    1117    -0.0604    -3.43  10/12 
+  tf5/zone=OS2@broken                             786    -0.0600    -2.59   9/12 
+  tf5/mf=just_turned_pos@broken                   493    +0.0565     1.75   8/10 
+  tf15/cross=bull_aged@broken                    1832    +0.0503     1.93   9/12 
+  mtf=bear_count_2@broken                        1221    +0.0488     3.28  10/12 
+  tf60/zone=below0@broken                        1621    +0.0450     3.06   9/12 
+  tf5/vwap=far_above@broken                      1990    +0.0438     2.36   9/12 
+  mtf=conflict_HTF@impulse                       2573    -0.0426    -1.50   8/12 
+  tf15/cross=bear_aged@broken                    1497    -0.0400    -1.69   8/12 
+  tf60/div=hid_bull@impulse                       650    -0.0389    -0.81   6/12 

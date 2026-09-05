@@ -1,0 +1,87 @@
+{
+  "generatedAt": "2026-08-31T22:20:05.865Z",
+  "pairs": [
+    "eurusd",
+    "gbpusd",
+    "usdjpy",
+    "audusd",
+    "usdchf",
+    "euraud",
+    "eurchf",
+    "audjpy",
+    "cadjpy",
+    "chfjpy",
+    "gold",
+    "nq",
+    "spx",
+    "dow",
+    "us2000",
+    "de30",
+    "uk100"
+  ],
+  "minMargin": 3,
+  "maxConcurrent": 1,
+  "riskPct": 0.5,
+  "rows": [
+    {
+      "heatCap": 1,
+      "trades": 8528,
+      "sharpe": 2.01,
+      "sharpeCI95": [
+        1.09,
+        2.93
+      ],
+      "maxDD": -17.76,
+      "cagr": 55.78,
+      "profitFactor": 1.4
+    },
+    {
+      "heatCap": 1.5,
+      "trades": 11330,
+      "sharpe": 2.75,
+      "sharpeCI95": [
+        1.83,
+        3.67
+      ],
+      "maxDD": -16.86,
+      "cagr": 109.44,
+      "profitFactor": 1.58
+    },
+    {
+      "heatCap": 2,
+      "trades": 13366,
+      "sharpe": 3.06,
+      "sharpeCI95": [
+        2.14,
+        3.98
+      ],
+      "maxDD": -15.93,
+      "cagr": 149.44,
+      "profitFactor": 1.67
+    },
+    {
+      "heatCap": 3,
+      "trades": 15523,
+      "sharpe": 3.41,
+      "sharpeCI95": [
+        2.49,
+        4.33
+      ],
+      "maxDD": -16.22,
+      "cagr": 209,
+      "profitFactor": 1.78
+    },
+    {
+      "heatCap": 0,
+      "trades": 16363,
+      "sharpe": 3.63,
+      "sharpeCI95": [
+        2.71,
+        4.55
+      ],
+      "maxDD": -13.64,
+      "cagr": 255.1,
+      "profitFactor": 1.86
+    }
+  ]
+}

@@ -1,13 +1,13 @@
 {
   "pair": "gbpusd",
-  "generated_at": "2026-08-17T17:29:58.826170+00:00",
+  "generated_at": "2026-08-31T09:09:15.483816+00:00",
   "data_start": "2016-01-04 00:00:00+00:00",
-  "data_end": "2026-05-21 23:59:00+00:00",
-  "m1_rows": 3722767,
-  "n_trading_day_sessions": 12010,
+  "data_end": "2026-08-20 23:59:00+00:00",
+  "m1_rows": 3815842,
+  "n_trading_day_sessions": 12334,
   "day_start_hour": 0,
   "n_perm": 1000,
   "bh_q": 0.1,
   "n_hypotheses_pooled": 155,
-  "n_bh_pass": 89
+  "n_bh_pass": 90
 }

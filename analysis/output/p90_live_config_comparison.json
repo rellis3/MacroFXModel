@@ -1,0 +1,57 @@
+{
+  "generatedAt": "2026-09-01T20:22:31.477Z",
+  "pairs": [
+    "eurusd",
+    "gbpusd",
+    "usdjpy",
+    "audusd",
+    "usdchf",
+    "euraud",
+    "eurchf",
+    "audjpy",
+    "cadjpy",
+    "chfjpy",
+    "gold",
+    "nq",
+    "spx",
+    "dow",
+    "us2000",
+    "de30",
+    "uk100"
+  ],
+  "minMargin": 3,
+  "maxConcurrent": 1,
+  "riskPct": 1,
+  "maxDailyLossPct": 1,
+  "heatCap": 0,
+  "earlyExit": false,
+  "fadeStopTighten": false,
+  "noP90": {
+    "trades": 12248,
+    "sharpe": 3.52,
+    "sharpeCI95": [
+      2.6,
+      4.44
+    ],
+    "maxDD": -26.38,
+    "cagr": 668.53,
+    "profitFactor": 1.82,
+    "days": 1162,
+    "totalP90Added": 0,
+    "missingP90": []
+  },
+  "withP90": {
+    "trades": 13726,
+    "sharpe": 3.94,
+    "sharpeCI95": [
+      3.01,
+      4.87
+    ],
+    "maxDD": -26.95,
+    "cagr": 1017.54,
+    "profitFactor": 1.99,
+    "days": 1162,
+    "totalP90Added": 4255,
+    "missingP90": []
+  }
+}

@@ -1,0 +1,73 @@
+Loading M1 + walking eurusd...
+  eurusd: 33 filtered touches, cost=0.008%
+Loading M1 + walking gbpusd...
+  gbpusd: 31 filtered touches, cost=0.01%
+Loading M1 + walking usdjpy...
+  usdjpy: 63 filtered touches, cost=0.009%
+Loading M1 + walking audusd...
+  audusd: 35 filtered touches, cost=0.011%
+Loading M1 + walking usdchf...
+  usdchf: 28 filtered touches, cost=0.011%
+Loading M1 + walking euraud...
+  euraud: 55 filtered touches, cost=0.018%
+Loading M1 + walking eurchf...
+  eurchf: 66 filtered touches, cost=0.015%
+Loading M1 + walking audjpy...
+  audjpy: 88 filtered touches, cost=0.016%
+Loading M1 + walking cadjpy...
+  cadjpy: 72 filtered touches, cost=0.018%
+Loading M1 + walking chfjpy...
+  chfjpy: 52 filtered touches, cost=0.018%
+Loading M1 + walking gold...
+  gold: 42 filtered touches, cost=0.02%
+Loading M1 + walking nq...
+  nq: 28 filtered touches, cost=0.008%
+Loading M1 + walking spx...
+  spx: 16 filtered touches, cost=0.008%
+Loading M1 + walking dow...
+  dow: 5 filtered touches, cost=0.01%
+Loading M1 + walking us2000...
+  us2000: 25 filtered touches, cost=0.015%
+Loading M1 + walking de30...
+  de30: 80 filtered touches, cost=0.012%
+Loading M1 + walking uk100...
+  uk100: 80 filtered touches, cost=0.015%
+
+==== FIT: grid search N on IS only ====
+  N= 15min  trades=493  winRate=44.8%  sharpe=-1.81  meanPnl=-0.039%
+  N= 30min  trades=493  winRate=47.5%  sharpe=-1.61  meanPnl=-0.0506%
+  N= 45min  trades=493  winRate=49.1%  sharpe=-1.13  meanPnl=-0.0409%
+  N= 60min  trades=493  winRate=47.7%  sharpe=-1.43  meanPnl=-0.0613%
+  N= 90min  trades=493  winRate=47.9%  sharpe=-1.37  meanPnl=-0.0994%
+  N=120min  trades=493  winRate=44.4%  sharpe=-1.31  meanPnl=-0.1383%
+  N=150min  trades=493  winRate=46.5%  sharpe=-0.99  meanPnl=-0.1082%
+  N=180min  trades=493  winRate=46.9%  sharpe=-1.02  meanPnl=-0.1373%
+  N=240min  trades=493  winRate=47.7%  sharpe=-0.75  meanPnl=-0.1232%
+
+Best IS N = 240 minutes (Sharpe -0.75) -- FREEZING this and applying to OOS, unseen.
+
+==== FROZEN N=240min -- IS ====
+{
+  "nTrades": 493,
+  "winRate": 47.7,
+  "meanPnlPct": -0.1232,
+  "sharpe": -0.75,
+  "maxDD": -104.97,
+  "cagr": -100,
+  "annVol": 156.2,
+  "tradingDays": 130
+}
+
+==== FROZEN N=240min -- OOS (never touched during fit) ====
+{
+  "nTrades": 306,
+  "winRate": 52,
+  "meanPnlPct": 0.096,
+  "sharpe": 1.61,
+  "maxDD": -23.78,
+  "cagr": 117.45,
+  "annVol": 59.03,
+  "tradingDays": 78
+}
+
+Wrote full results to C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\output\p90_timestop_backtest.json

@@ -1,0 +1,92 @@
+Loading M1 for eurusd (1189 margin>=3 trades)...
+  eurusd: 1189 trades, 0 unlabeled (no dayVol coverage)
+    1·quiet  n=317  winRate=70.3000  mean=0.0561  sharpe=2.5320  total=17.7840
+    2·normal  n=790  winRate=68.1000  mean=0.0662  sharpe=3.8680  total=52.3150
+    3·heavy  n=82  winRate=62.2000  mean=0.0349  sharpe=0.5380  total=2.8650
+Loading M1 for gbpusd (1368 margin>=3 trades)...
+  gbpusd: 1368 trades, 0 unlabeled (no dayVol coverage)
+    1·quiet  n=106  winRate=67.0000  mean=0.0510  sharpe=1.2200  total=5.4100
+    2·normal  n=1178  winRate=63.8000  mean=0.0547  sharpe=3.7490  total=64.4660
+    3·heavy  n=84  winRate=61.9000  mean=0.0389  sharpe=0.4530  total=3.2640
+Loading M1 for usdjpy (1539 margin>=3 trades)...
+  usdjpy: 1539 trades, 0 unlabeled (no dayVol coverage)
+    1·quiet  n=157  winRate=57.3000  mean=0.0160  sharpe=0.4410  total=2.5190
+    2·normal  n=1135  winRate=63.3000  mean=0.0628  sharpe=3.1930  total=71.3190
+    3·heavy  n=247  winRate=61.1000  mean=0.0657  sharpe=1.4050  total=16.2380
+Loading M1 for audusd (1211 margin>=3 trades)...
+  audusd: 1211 trades, 0 unlabeled (no dayVol coverage)
+    1·quiet  n=269  winRate=61.0000  mean=0.0410  sharpe=1.3490  total=11.0230
+    2·normal  n=872  winRate=63.0000  mean=0.0607  sharpe=2.9480  total=52.9400
+    3·heavy  n=70  winRate=68.6000  mean=0.1355  sharpe=1.5820  total=9.4820
+Loading M1 for usdchf (1600 margin>=3 trades)...
+  usdchf: 1600 trades, 0 unlabeled (no dayVol coverage)
+    1·quiet  n=457  winRate=63.7000  mean=0.0290  sharpe=1.4320  total=13.2620
+    2·normal  n=980  winRate=64.5000  mean=0.0439  sharpe=2.8430  total=43.0520
+    3·heavy  n=163  winRate=54.6000  mean=-0.0055  sharpe=-0.1040  total=-0.9030
+Loading M1 for euraud (1622 margin>=3 trades)...
+  euraud: 1622 trades, 0 unlabeled (no dayVol coverage)
+    1·quiet  n=141  winRate=70.2000  mean=0.0582  sharpe=1.9080  total=8.2130
+    2·normal  n=1387  winRate=61.8000  mean=0.0233  sharpe=1.8550  total=32.3480
+    3·heavy  n=94  winRate=71.3000  mean=0.1083  sharpe=1.5770  total=10.1780
+Loading M1 for eurchf (1576 margin>=3 trades)...
+  eurchf: 1576 trades, 0 unlabeled (no dayVol coverage)
+    1·quiet  n=138  winRate=66.7000  mean=0.0284  sharpe=1.1970  total=3.9130
+    2·normal  n=1332  winRate=64.2000  mean=0.0256  sharpe=2.7320  total=34.1410
+    3·heavy  n=106  winRate=61.3000  mean=0.0166  sharpe=0.3450  total=1.7570
+Loading M1 for audjpy (1620 margin>=3 trades)...
+  audjpy: 1620 trades, 0 unlabeled (no dayVol coverage)
+    1·quiet  n=407  winRate=61.4000  mean=0.0326  sharpe=1.2130  total=13.2710
+    2·normal  n=1012  winRate=60.3000  mean=0.0379  sharpe=1.8140  total=38.3750
+    3·heavy  n=201  winRate=58.7000  mean=0.0416  sharpe=0.6560  total=8.3580
+Loading M1 for cadjpy (1481 margin>=3 trades)...
+  cadjpy: 1481 trades, 0 unlabeled (no dayVol coverage)
+    1·quiet  n=132  winRate=56.1000  mean=0.0093  sharpe=0.2180  total=1.2260
+    2·normal  n=1209  winRate=60.4000  mean=0.0435  sharpe=2.3930  total=52.5750
+    3·heavy  n=140  winRate=56.4000  mean=0.0356  sharpe=0.6410  total=4.9780
+Loading M1 for chfjpy (1466 margin>=3 trades)...
+  chfjpy: 1466 trades, 0 unlabeled (no dayVol coverage)
+    1·quiet  n=153  winRate=60.1000  mean=0.0099  sharpe=0.2380  total=1.5100
+    2·normal  n=1164  winRate=65.0000  mean=0.0430  sharpe=2.6980  total=50.0890
+    3·heavy  n=149  winRate=61.1000  mean=0.0363  sharpe=0.6480  total=5.4120
+Loading M1 for gold (1339 margin>=3 trades)...
+  gold: 1339 trades, 0 unlabeled (no dayVol coverage)
+    1·quiet  n=342  winRate=59.4000  mean=0.0853  sharpe=1.6890  total=29.1850
+    2·normal  n=830  winRate=59.0000  mean=0.0738  sharpe=2.1390  total=61.2200
+    3·heavy  n=167  winRate=67.7000  mean=0.2323  sharpe=1.9680  total=38.7880
+Loading M1 for nq (1047 margin>=3 trades)...
+  nq: 1047 trades, 0 unlabeled (no dayVol coverage)
+    1·quiet  n=337  winRate=64.1000  mean=0.1267  sharpe=2.2220  total=42.6990
+    2·normal  n=602  winRate=59.0000  mean=0.1153  sharpe=2.2150  total=69.4390
+    3·heavy  n=108  winRate=60.2000  mean=0.1342  sharpe=0.8210  total=14.4950
+Loading M1 for spx (507 margin>=3 trades)...
+  spx: 507 trades, 0 unlabeled (no dayVol coverage)
+    1·quiet  n=200  winRate=64.0000  mean=0.1108  sharpe=3.1690  total=22.1530
+    2·normal  n=220  winRate=69.1000  mean=0.1825  sharpe=4.5100  total=40.1540
+    3·heavy  n=87  winRate=70.1000  mean=0.1913  sharpe=2.2780  total=16.6390
+Loading M1 for dow (462 margin>=3 trades)...
+  dow: 462 trades, 0 unlabeled (no dayVol coverage)
+    1·quiet  n=139  winRate=69.1000  mean=0.1196  sharpe=2.9750  total=16.6220
+    2·normal  n=264  winRate=66.7000  mean=0.1388  sharpe=4.2330  total=36.6540
+    3·heavy  n=59  winRate=71.2000  mean=0.2754  sharpe=2.6950  total=16.2500
+Loading M1 for us2000 (1083 margin>=3 trades)...
+  us2000: 1083 trades, 0 unlabeled (no dayVol coverage)
+    1·quiet  n=330  winRate=66.7000  mean=0.1530  sharpe=2.5490  total=50.4820
+    2·normal  n=659  winRate=62.2000  mean=0.1099  sharpe=2.1330  total=72.4260
+    3·heavy  n=94  winRate=59.6000  mean=0.1328  sharpe=0.7130  total=12.4860
+Loading M1 for de30 (1256 margin>=3 trades)...
+  de30: 1256 trades, 0 unlabeled (no dayVol coverage)
+    1·quiet  n=376  winRate=55.6000  mean=0.0285  sharpe=0.7960  total=10.7040
+    2·normal  n=738  winRate=58.0000  mean=0.0581  sharpe=1.8870  total=42.8940
+    3·heavy  n=142  winRate=60.6000  mean=0.1166  sharpe=1.0850  total=16.5530
+Loading M1 for uk100 (1470 margin>=3 trades)...
+  uk100: 1470 trades, 0 unlabeled (no dayVol coverage)
+    1·quiet  n=387  winRate=58.7000  mean=0.0341  sharpe=1.0500  total=13.2130
+    2·normal  n=931  winRate=59.4000  mean=0.0402  sharpe=1.6480  total=37.3860
+    3·heavy  n=152  winRate=67.1000  mean=0.1416  sharpe=1.7000  total=21.5170
+
+==== POOLED across all pairs, by dayVol regime ====
+  1·quiet  n=4388  winRate=62.6000  mean=0.0600  sharpe=5.4500  total=263.1880  maxDD=-9.8480
+  2·normal  n=15303  winRate=62.5000  mean=0.0557  sharpe=9.3070  total=851.7960  maxDD=-14.3880
+  3·heavy  n=2145  winRate=62.3000  mean=0.0925  sharpe=3.7590  total=198.3570  maxDD=-7.2740
+
+Wrote full results to C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\output\dayvol_regime_breakdown.json

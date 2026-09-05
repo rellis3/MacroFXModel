@@ -1,0 +1,53 @@
+{
+  "generatedAt": "2026-08-31T22:35:42.417Z",
+  "pairs": [
+    "eurusd",
+    "gbpusd",
+    "usdjpy",
+    "audusd",
+    "usdchf",
+    "euraud",
+    "eurchf",
+    "audjpy",
+    "cadjpy",
+    "chfjpy",
+    "gold",
+    "nq",
+    "spx",
+    "dow",
+    "us2000",
+    "de30",
+    "uk100"
+  ],
+  "minMargin": 3,
+  "maxConcurrent": 1,
+  "riskPct": 0.5,
+  "maxDailyLossPct": 1,
+  "heatCap": 0,
+  "off": {
+    "trades": 14831,
+    "sharpe": 3.52,
+    "sharpeCI95": [
+      2.6,
+      4.44
+    ],
+    "maxDD": -13.09,
+    "cagr": 222.77,
+    "profitFactor": 1.82,
+    "totalRepriced": 0,
+    "threshold": null
+  },
+  "on": {
+    "trades": 15181,
+    "sharpe": 4.26,
+    "sharpeCI95": [
+      3.33,
+      5.19
+    ],
+    "maxDD": -14.62,
+    "cagr": 291.68,
+    "profitFactor": 2.07,
+    "totalRepriced": 3734,
+    "threshold": 0.4
+  }
+}

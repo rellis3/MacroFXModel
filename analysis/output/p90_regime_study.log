@@ -1,0 +1,106 @@
+Loading M1 + walking eurusd...
+  eurusd: 2757 sessions walked (2016-03-28 -> 2026-08-20), p90 touched 621 days (22.5% of sessions) -- up 11.6% / down 11%
+Loading M1 + walking gbpusd...
+  gbpusd: 2757 sessions walked (2016-03-28 -> 2026-08-20), p90 touched 624 days (22.6% of sessions) -- up 11.8% / down 10.8%
+Loading M1 + walking usdjpy...
+  usdjpy: 2757 sessions walked (2016-03-28 -> 2026-08-20), p90 touched 597 days (21.7% of sessions) -- up 10.4% / down 11.5%
+Loading M1 + walking audusd...
+  audusd: 2757 sessions walked (2016-03-28 -> 2026-08-20), p90 touched 666 days (24.2% of sessions) -- up 12.5% / down 11.8%
+Loading M1 + walking usdchf...
+  usdchf: 2757 sessions walked (2016-03-28 -> 2026-08-20), p90 touched 661 days (24% of sessions) -- up 11.8% / down 12.2%
+Loading M1 + walking euraud...
+  euraud: 2757 sessions walked (2016-03-28 -> 2026-08-20), p90 touched 655 days (23.8% of sessions) -- up 12% / down 11.9%
+Loading M1 + walking eurchf...
+  eurchf: 2757 sessions walked (2016-03-28 -> 2026-08-20), p90 touched 575 days (20.9% of sessions) -- up 10.5% / down 10.4%
+Loading M1 + walking audjpy...
+  audjpy: 2757 sessions walked (2016-03-28 -> 2026-08-20), p90 touched 609 days (22.1% of sessions) -- up 11.1% / down 11.2%
+Loading M1 + walking cadjpy...
+  cadjpy: 2757 sessions walked (2016-03-28 -> 2026-08-20), p90 touched 618 days (22.4% of sessions) -- up 11.5% / down 11.1%
+Loading M1 + walking chfjpy...
+  chfjpy: 2757 sessions walked (2016-03-28 -> 2026-08-20), p90 touched 563 days (20.4% of sessions) -- up 10.2% / down 10.4%
+Loading M1 + walking gold...
+  gold: 2744 sessions walked (2016-03-29 -> 2026-08-20), p90 touched 644 days (23.5% of sessions) -- up 12.5% / down 11.1%
+Loading M1 + walking nq...
+  nq: 2747 sessions walked (2016-03-29 -> 2026-08-20), p90 touched 595 days (21.7% of sessions) -- up 11% / down 10.7%
+Loading M1 + walking spx...
+  spx: 1293 sessions walked (2021-08-30 -> 2026-06-05), p90 touched 280 days (21.7% of sessions) -- up 11.3% / down 10.7%
+Loading M1 + walking dow...
+  dow: 1293 sessions walked (2021-08-30 -> 2026-06-05), p90 touched 257 days (19.9% of sessions) -- up 10.4% / down 9.5%
+Loading M1 + walking us2000...
+  us2000: 2747 sessions walked (2016-03-29 -> 2026-08-20), p90 touched 597 days (21.7% of sessions) -- up 11.2% / down 10.7%
+Loading M1 + walking de30...
+  de30: 2702 sessions walked (2016-03-30 -> 2026-08-20), p90 touched 545 days (20.2% of sessions) -- up 10.5% / down 9.8%
+Loading M1 + walking uk100...
+  uk100: 2687 sessions walked (2016-03-30 -> 2026-08-20), p90 touched 564 days (21% of sessions) -- up 11.2% / down 10%
+
+==== TOUCH RATE (nominal calibration target: ~10% of sessions, either side) ====
+pair      sessions  touched%  up%    down%   n
+EURUSD       2757     22.5%   11.6%     11%  1266
+GBPUSD       2757     22.6%   11.8%   10.8%  1280
+USDJPY       2757     21.7%   10.4%   11.5%  1258
+AUDUSD       2757     24.2%   12.5%   11.8%  1385
+USDCHF       2757       24%   11.8%   12.2%  1441
+EURAUD       2757     23.8%     12%   11.9%  1418
+EURCHF       2757     20.9%   10.5%   10.4%  1469
+AUDJPY       2757     22.1%   11.1%   11.2%  1252
+CADJPY       2757     22.4%   11.5%   11.1%  1250
+CHFJPY       2757     20.4%   10.2%   10.4%  1299
+GOLD         2744     23.5%   12.5%   11.1%  1255
+NQ           2747     21.7%     11%   10.7%  1127
+SPX          1293     21.7%   11.3%   10.7%  553
+DOW          1293     19.9%   10.4%    9.5%  491
+US2000       2747     21.7%   11.2%   10.7%  1212
+DE30         2702     20.2%   10.5%    9.8%  1050
+UK100        2687       21%   11.2%     10%  1180
+
+Average across pairs: 22.0% of sessions see a p90 touch (either side).
+
+==== OVERALL (pooled across all pairs, 20186 touches) ====
+{
+  "n": 20186,
+  "backPct": 37.9,
+  "neitherPct": 62.1,
+  "meanFadePct": 0.2,
+  "medFadePct": 0.2,
+  "meanRunPct": 0.3,
+  "medRunPct": 0.2,
+  "medMinsToFadeBack": 93
+}
+
+==== BY vwapSide ====
+  1·far        n=16680  back= 38.1%  neither= 61.9%  fade(mean/med)=0.2/0.2%  run(mean/med)=0.3/0.2%  medMinsToFadeBack=91
+  2·mid        n= 2863  back= 34.8%  neither= 65.2%  fade(mean/med)=0.2/0.2%  run(mean/med)=0.4/0.2%  medMinsToFadeBack=100
+  3·near       n=  643  back= 47.3%  neither= 52.7%  fade(mean/med)=0.3/0.2%  run(mean/med)=0.4/0.2%  medMinsToFadeBack=88
+
+==== BY dayVol ====
+  1·quiet      n= 4284  back= 37.9%  neither= 62.1%  fade(mean/med)=0.2/0.2%  run(mean/med)=0.3/0.2%  medMinsToFadeBack=97
+  2·normal     n=13738  back= 36.5%  neither= 63.5%  fade(mean/med)=0.2/0.2%  run(mean/med)=0.3/0.2%  medMinsToFadeBack=92
+  3·heavy      n= 2164  back=   47%  neither=   53%  fade(mean/med)=0.4/0.3%  run(mean/med)=0.6/0.3%  medMinsToFadeBack=89
+
+==== BY prevSessionVol ====
+  1·quiet      n= 1709  back= 31.4%  neither= 68.6%  fade(mean/med)=0.2/0.2%  run(mean/med)=0.3/0.2%  medMinsToFadeBack=63
+  2·normal     n= 9182  back= 33.4%  neither= 66.6%  fade(mean/med)=0.2/0.2%  run(mean/med)=0.3/0.1%  medMinsToFadeBack=90
+  3·wild       n= 8380  back= 42.2%  neither= 57.8%  fade(mean/med)=0.3/0.2%  run(mean/med)=0.4/0.2%  medMinsToFadeBack=95
+
+==== BY session ====
+  Asia         n= 1810  back= 50.2%  neither= 49.8%  fade(mean/med)=0.3/0.2%  run(mean/med)=0.5/0.1%  medMinsToFadeBack=94
+  London       n= 4941  back= 54.5%  neither= 45.5%  fade(mean/med)=0.3/0.2%  run(mean/med)=0.4/0.2%  medMinsToFadeBack=132
+  NY           n=13435  back= 30.2%  neither= 69.8%  fade(mean/med)=0.2/0.2%  run(mean/med)=0.3/0.2%  medMinsToFadeBack=75
+
+==== BY churn ====
+  1·churned    n=  263  back= 47.9%  neither= 52.1%  fade(mean/med)=0.3/0.3%  run(mean/med)=0.4/0.2%  medMinsToFadeBack=31
+  2·mixed      n= 3922  back= 37.3%  neither= 62.7%  fade(mean/med)=0.2/0.2%  run(mean/med)=0.3/0.2%  medMinsToFadeBack=68
+  3·driven     n=16001  back= 37.9%  neither= 62.1%  fade(mean/med)=0.2/0.2%  run(mean/med)=0.3/0.2%  medMinsToFadeBack=101
+
+==== STACKED: vwapSide x dayVol ====
+  1·far | 1·quiet          n= 3558  fade(mean)=0.2%  run(mean)=0.3%  back=37.9%
+  1·far | 2·normal         n=11454  fade(mean)=0.2%  run(mean)=0.3%  back=37%
+  1·far | 3·heavy          n= 1668  fade(mean)=0.4%  run(mean)=0.6%  back=45.9%
+  2·mid | 1·quiet          n=  589  fade(mean)=0.2%  run(mean)=0.3%  back=36.3%
+  2·mid | 2·normal         n= 1937  fade(mean)=0.2%  run(mean)=0.3%  back=32.5%
+  2·mid | 3·heavy          n=  337  fade(mean)=0.5%  run(mean)=0.9%  back=44.8%
+  3·near | 1·quiet         n=  137  fade(mean)=0.2%  run(mean)=0.2%  back=42.3%
+  3·near | 2·normal        n=  347  fade(mean)=0.2%  run(mean)=0.4%  back=41.8%
+  3·near | 3·heavy         n=  159  fade(mean)=0.5%  run(mean)=0.7%  back=63.5%
+
+Wrote touch-rate summary + raw pooled touches to C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\output/p90_regime_study_*

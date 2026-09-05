@@ -1,59 +1,59 @@
 {
-  "generated_at": "2026-08-27T12:41:46.458541+00:00",
+  "generated_at": "2026-08-31T09:54:06.311660+00:00",
   "pairs": [
     {
       "pair": "audcad",
-      "data_through": "2026-05-21",
+      "data_through": "2026-08-20",
       "n_hypotheses_pooled": 155,
-      "n_bh_pass": 105,
+      "n_bh_pass": 103,
       "range_handoff": {
         "n_significant": 7,
         "strongest_pair": "overlap->ny",
-        "strongest_rho": 0.248
+        "strongest_rho": 0.255
       },
       "direction_handoff": {
-        "any_significant": true,
+        "any_significant": false,
         "n_tested": 7,
-        "max_deviation_from_coinflip": 0.019
+        "max_deviation_from_coinflip": 0.017
       },
       "spike_reversal": {
         "asia": {
           "reversal_rate_spike": 0.533,
-          "reversal_rate_nonspike": 0.422,
+          "reversal_rate_nonspike": 0.423,
           "bh_pass": true
         },
         "london": {
-          "reversal_rate_spike": 0.536,
+          "reversal_rate_spike": 0.533,
           "reversal_rate_nonspike": 0.4,
           "bh_pass": true
         },
         "overlap": {
-          "reversal_rate_spike": 0.501,
-          "reversal_rate_nonspike": 0.412,
+          "reversal_rate_spike": 0.505,
+          "reversal_rate_nonspike": 0.413,
           "bh_pass": false
         },
         "ny": {
-          "reversal_rate_spike": 0.554,
-          "reversal_rate_nonspike": 0.402,
+          "reversal_rate_spike": 0.553,
+          "reversal_rate_nonspike": 0.404,
           "bh_pass": true
         }
       },
       "impulse": {
         "by_kind": {
           "low": {
-            "win_rate_impulse": 0.489,
-            "win_rate_grind": 0.473,
+            "win_rate_impulse": 0.49,
+            "win_rate_grind": 0.474,
             "bh_pass": true
           },
           "high": {
             "win_rate_impulse": 0.489,
-            "win_rate_grind": 0.465,
+            "win_rate_grind": 0.464,
             "bh_pass": true
           }
         },
         "symmetry_30min": {
           "win_rate_low": 0.491,
-          "win_rate_high": 0.488,
+          "win_rate_high": 0.489,
           "bh_pass": false
         }
       },
@@ -61,31 +61,31 @@
         "post_asia": {
           "remaining_range_atr": {
             "beats_persistence": false,
-            "p": 0.0956
+            "p": 0.1612
           },
           "direction": {
             "beats_persistence": false,
-            "p": 0.6724
+            "p": 0.6264
           }
         },
         "post_london": {
-          "remaining_range_atr": {
-            "beats_persistence": true,
-            "p": 0.0003
-          },
-          "direction": {
-            "beats_persistence": false,
-            "p": 0.8653
-          }
-        },
-        "post_overlap": {
           "remaining_range_atr": {
             "beats_persistence": true,
             "p": 0.0002
           },
           "direction": {
             "beats_persistence": false,
-            "p": 0.2718
+            "p": 0.8024
+          }
+        },
+        "post_overlap": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.0001
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.4344
           }
         }
       },
@@ -170,93 +170,93 @@
         }
       ],
       "today_outlook_is_live": false,
-      "live_status": "no_checkpoint_yet"
+      "live_status": "no_data_yet"
     },
     {
       "pair": "audchf",
-      "data_through": "2020-07-10",
+      "data_through": "2026-08-20",
       "n_hypotheses_pooled": 155,
-      "n_bh_pass": 96,
+      "n_bh_pass": 99,
       "range_handoff": {
         "n_significant": 7,
         "strongest_pair": "overlap->ny",
-        "strongest_rho": 0.275
+        "strongest_rho": 0.272
       },
       "direction_handoff": {
         "any_significant": false,
         "n_tested": 7,
-        "max_deviation_from_coinflip": 0.025
+        "max_deviation_from_coinflip": 0.013
       },
       "spike_reversal": {
         "asia": {
-          "reversal_rate_spike": 0.571,
-          "reversal_rate_nonspike": 0.429,
+          "reversal_rate_spike": 0.563,
+          "reversal_rate_nonspike": 0.416,
           "bh_pass": true
         },
         "london": {
-          "reversal_rate_spike": 0.527,
-          "reversal_rate_nonspike": 0.4,
+          "reversal_rate_spike": 0.519,
+          "reversal_rate_nonspike": 0.403,
           "bh_pass": true
         },
         "overlap": {
-          "reversal_rate_spike": 0.49,
-          "reversal_rate_nonspike": 0.395,
+          "reversal_rate_spike": 0.502,
+          "reversal_rate_nonspike": 0.407,
           "bh_pass": false
         },
         "ny": {
-          "reversal_rate_spike": 0.581,
-          "reversal_rate_nonspike": 0.404,
+          "reversal_rate_spike": 0.571,
+          "reversal_rate_nonspike": 0.409,
           "bh_pass": true
         }
       },
       "impulse": {
         "by_kind": {
           "low": {
-            "win_rate_impulse": 0.482,
-            "win_rate_grind": 0.479,
+            "win_rate_impulse": 0.488,
+            "win_rate_grind": 0.482,
             "bh_pass": false
           },
           "high": {
-            "win_rate_impulse": 0.491,
+            "win_rate_impulse": 0.483,
             "win_rate_grind": 0.466,
             "bh_pass": true
           }
         },
         "symmetry_30min": {
-          "win_rate_low": 0.493,
-          "win_rate_high": 0.494,
+          "win_rate_low": 0.495,
+          "win_rate_high": 0.485,
           "bh_pass": false
         }
       },
       "forecast_reliability": {
         "post_asia": {
           "remaining_range_atr": {
-            "beats_persistence": false,
-            "p": 0.1934
+            "beats_persistence": true,
+            "p": 0.0088
           },
           "direction": {
             "beats_persistence": false,
-            "p": 1.0
+            "p": 0.3535
           }
         },
         "post_london": {
           "remaining_range_atr": {
             "beats_persistence": true,
-            "p": 0.0478
+            "p": 0.0088
           },
           "direction": {
             "beats_persistence": false,
-            "p": 0.0929
+            "p": 0.7484
           }
         },
         "post_overlap": {
           "remaining_range_atr": {
             "beats_persistence": true,
-            "p": 0.0119
+            "p": 0.0
           },
           "direction": {
             "beats_persistence": false,
-            "p": 0.5958
+            "p": 0.3523
           }
         }
       },
@@ -341,42 +341,42 @@
         }
       ],
       "today_outlook_is_live": false,
-      "live_status": "no_checkpoint_yet"
+      "live_status": "no_data_yet"
     },
     {
       "pair": "audjpy",
-      "data_through": "2026-05-21",
+      "data_through": "2026-08-20",
       "n_hypotheses_pooled": 155,
       "n_bh_pass": 108,
       "range_handoff": {
         "n_significant": 7,
         "strongest_pair": "overlap->ny",
-        "strongest_rho": 0.322
+        "strongest_rho": 0.324
       },
       "direction_handoff": {
         "any_significant": false,
         "n_tested": 7,
-        "max_deviation_from_coinflip": 0.012
+        "max_deviation_from_coinflip": 0.011
       },
       "spike_reversal": {
         "asia": {
-          "reversal_rate_spike": 0.514,
-          "reversal_rate_nonspike": 0.39,
+          "reversal_rate_spike": 0.511,
+          "reversal_rate_nonspike": 0.391,
           "bh_pass": true
         },
         "london": {
-          "reversal_rate_spike": 0.493,
-          "reversal_rate_nonspike": 0.4,
+          "reversal_rate_spike": 0.498,
+          "reversal_rate_nonspike": 0.399,
           "bh_pass": false
         },
         "overlap": {
           "reversal_rate_spike": 0.535,
-          "reversal_rate_nonspike": 0.4,
+          "reversal_rate_nonspike": 0.401,
           "bh_pass": true
         },
         "ny": {
-          "reversal_rate_spike": 0.579,
-          "reversal_rate_nonspike": 0.409,
+          "reversal_rate_spike": 0.58,
+          "reversal_rate_nonspike": 0.407,
           "bh_pass": true
         }
       },
@@ -394,7 +394,7 @@
           }
         },
         "symmetry_30min": {
-          "win_rate_low": 0.505,
+          "win_rate_low": 0.504,
           "win_rate_high": 0.481,
           "bh_pass": true
         }
@@ -403,27 +403,27 @@
         "post_asia": {
           "remaining_range_atr": {
             "beats_persistence": true,
-            "p": 0.0009
+            "p": 0.001
           },
           "direction": {
             "beats_persistence": false,
-            "p": 0.1116
+            "p": 0.0828
           }
         },
         "post_london": {
           "remaining_range_atr": {
             "beats_persistence": true,
-            "p": 0.001
+            "p": 0.0012
           },
           "direction": {
             "beats_persistence": true,
-            "p": 0.0475
+            "p": 0.0253
           }
         },
         "post_overlap": {
           "remaining_range_atr": {
             "beats_persistence": true,
-            "p": 0.001
+            "p": 0.0001
           },
           "direction": {
             "beats_persistence": true,
@@ -1025,7 +1025,7 @@
         }
       ],
       "today_outlook_is_live": false,
-      "live_status": "no_checkpoint_yet"
+      "live_status": "no_data_yet"
     },
     {
       "pair": "chfjpy",
@@ -1367,41 +1367,41 @@
         }
       ],
       "today_outlook_is_live": false,
-      "live_status": "no_checkpoint_yet"
+      "live_status": "no_data_yet"
     },
     {
       "pair": "eurcad",
-      "data_through": "2026-05-21",
+      "data_through": "2026-08-20",
       "n_hypotheses_pooled": 155,
       "n_bh_pass": 112,
       "range_handoff": {
         "n_significant": 7,
         "strongest_pair": "overlap->ny",
-        "strongest_rho": 0.227
+        "strongest_rho": 0.229
       },
       "direction_handoff": {
         "any_significant": true,
         "n_tested": 7,
-        "max_deviation_from_coinflip": 0.023
+        "max_deviation_from_coinflip": 0.021
       },
       "spike_reversal": {
         "asia": {
-          "reversal_rate_spike": 0.553,
-          "reversal_rate_nonspike": 0.406,
+          "reversal_rate_spike": 0.548,
+          "reversal_rate_nonspike": 0.407,
           "bh_pass": true
         },
         "london": {
-          "reversal_rate_spike": 0.519,
-          "reversal_rate_nonspike": 0.406,
+          "reversal_rate_spike": 0.516,
+          "reversal_rate_nonspike": 0.407,
           "bh_pass": true
         },
         "overlap": {
-          "reversal_rate_spike": 0.556,
-          "reversal_rate_nonspike": 0.412,
+          "reversal_rate_spike": 0.561,
+          "reversal_rate_nonspike": 0.41,
           "bh_pass": true
         },
         "ny": {
-          "reversal_rate_spike": 0.573,
+          "reversal_rate_spike": 0.571,
           "reversal_rate_nonspike": 0.409,
           "bh_pass": true
         }
@@ -1409,18 +1409,18 @@
       "impulse": {
         "by_kind": {
           "low": {
-            "win_rate_impulse": 0.494,
+            "win_rate_impulse": 0.495,
             "win_rate_grind": 0.465,
             "bh_pass": true
           },
           "high": {
-            "win_rate_impulse": 0.492,
-            "win_rate_grind": 0.465,
+            "win_rate_impulse": 0.493,
+            "win_rate_grind": 0.463,
             "bh_pass": true
           }
         },
         "symmetry_30min": {
-          "win_rate_low": 0.495,
+          "win_rate_low": 0.496,
           "win_rate_high": 0.496,
           "bh_pass": false
         }
@@ -1429,31 +1429,31 @@
         "post_asia": {
           "remaining_range_atr": {
             "beats_persistence": true,
-            "p": 0.0262
+            "p": 0.0189
           },
           "direction": {
             "beats_persistence": false,
-            "p": 0.9147
+            "p": 1.0
           }
         },
         "post_london": {
           "remaining_range_atr": {
             "beats_persistence": true,
-            "p": 0.0356
+            "p": 0.0303
           },
           "direction": {
             "beats_persistence": false,
-            "p": 0.6047
+            "p": 0.7495
           }
         },
         "post_overlap": {
           "remaining_range_atr": {
             "beats_persistence": true,
-            "p": 0.0446
+            "p": 0.0302
           },
           "direction": {
             "beats_persistence": false,
-            "p": 0.4564
+            "p": 0.7156
           }
         }
       },
@@ -1538,7 +1538,7 @@
         }
       ],
       "today_outlook_is_live": false,
-      "live_status": "no_checkpoint_yet"
+      "live_status": "no_data_yet"
     },
     {
       "pair": "eurchf",
@@ -1709,7 +1709,7 @@
         }
       ],
       "today_outlook_is_live": false,
-      "live_status": "no_checkpoint_yet"
+      "live_status": "no_data_yet"
     },
     {
       "pair": "eurgbp",
@@ -1880,42 +1880,42 @@
         }
       ],
       "today_outlook_is_live": false,
-      "live_status": "no_checkpoint_yet"
+      "live_status": "no_data_yet"
     },
     {
       "pair": "eurjpy",
-      "data_through": "2026-05-21",
+      "data_through": "2026-08-20",
       "n_hypotheses_pooled": 155,
       "n_bh_pass": 113,
       "range_handoff": {
         "n_significant": 7,
         "strongest_pair": "overlap->ny",
-        "strongest_rho": 0.293
+        "strongest_rho": 0.299
       },
       "direction_handoff": {
         "any_significant": false,
         "n_tested": 7,
-        "max_deviation_from_coinflip": 0.014
+        "max_deviation_from_coinflip": 0.013
       },
       "spike_reversal": {
         "asia": {
-          "reversal_rate_spike": 0.538,
+          "reversal_rate_spike": 0.537,
           "reversal_rate_nonspike": 0.382,
           "bh_pass": true
         },
         "london": {
-          "reversal_rate_spike": 0.499,
-          "reversal_rate_nonspike": 0.399,
+          "reversal_rate_spike": 0.5,
+          "reversal_rate_nonspike": 0.398,
           "bh_pass": false
         },
         "overlap": {
-          "reversal_rate_spike": 0.567,
-          "reversal_rate_nonspike": 0.404,
+          "reversal_rate_spike": 0.571,
+          "reversal_rate_nonspike": 0.407,
           "bh_pass": true
         },
         "ny": {
           "reversal_rate_spike": 0.554,
-          "reversal_rate_nonspike": 0.399,
+          "reversal_rate_nonspike": 0.398,
           "bh_pass": true
         }
       },
@@ -1927,13 +1927,13 @@
             "bh_pass": true
           },
           "high": {
-            "win_rate_impulse": 0.483,
-            "win_rate_grind": 0.464,
+            "win_rate_impulse": 0.482,
+            "win_rate_grind": 0.465,
             "bh_pass": true
           }
         },
         "symmetry_30min": {
-          "win_rate_low": 0.512,
+          "win_rate_low": 0.513,
           "win_rate_high": 0.483,
           "bh_pass": true
         }
@@ -1942,27 +1942,27 @@
         "post_asia": {
           "remaining_range_atr": {
             "beats_persistence": false,
-            "p": 0.129
+            "p": 0.0659
           },
           "direction": {
             "beats_persistence": false,
-            "p": 0.539
+            "p": 0.4192
           }
         },
         "post_london": {
           "remaining_range_atr": {
             "beats_persistence": true,
-            "p": 0.0017
+            "p": 0.001
           },
           "direction": {
             "beats_persistence": true,
-            "p": 0.014
+            "p": 0.0089
           }
         },
         "post_overlap": {
           "remaining_range_atr": {
             "beats_persistence": true,
-            "p": 0.0171
+            "p": 0.0031
           },
           "direction": {
             "beats_persistence": true,
@@ -2051,41 +2051,41 @@
         }
       ],
       "today_outlook_is_live": false,
-      "live_status": "no_checkpoint_yet"
+      "live_status": "no_data_yet"
     },
     {
       "pair": "eurnzd",
-      "data_through": "2026-05-21",
+      "data_through": "2026-08-20",
       "n_hypotheses_pooled": 155,
       "n_bh_pass": 104,
       "range_handoff": {
         "n_significant": 7,
         "strongest_pair": "overlap->ny",
-        "strongest_rho": 0.238
+        "strongest_rho": 0.237
       },
       "direction_handoff": {
         "any_significant": true,
         "n_tested": 7,
-        "max_deviation_from_coinflip": 0.023
+        "max_deviation_from_coinflip": 0.025
       },
       "spike_reversal": {
         "asia": {
-          "reversal_rate_spike": 0.499,
-          "reversal_rate_nonspike": 0.397,
+          "reversal_rate_spike": 0.494,
+          "reversal_rate_nonspike": 0.396,
           "bh_pass": false
         },
         "london": {
-          "reversal_rate_spike": 0.525,
-          "reversal_rate_nonspike": 0.387,
+          "reversal_rate_spike": 0.524,
+          "reversal_rate_nonspike": 0.388,
           "bh_pass": true
         },
         "overlap": {
-          "reversal_rate_spike": 0.517,
+          "reversal_rate_spike": 0.523,
           "reversal_rate_nonspike": 0.402,
           "bh_pass": true
         },
         "ny": {
-          "reversal_rate_spike": 0.578,
+          "reversal_rate_spike": 0.577,
           "reversal_rate_nonspike": 0.396,
           "bh_pass": true
         }
@@ -2094,17 +2094,17 @@
         "by_kind": {
           "low": {
             "win_rate_impulse": 0.491,
-            "win_rate_grind": 0.47,
+            "win_rate_grind": 0.471,
             "bh_pass": true
           },
           "high": {
             "win_rate_impulse": 0.489,
-            "win_rate_grind": 0.473,
+            "win_rate_grind": 0.472,
             "bh_pass": true
           }
         },
         "symmetry_30min": {
-          "win_rate_low": 0.494,
+          "win_rate_low": 0.493,
           "win_rate_high": 0.494,
           "bh_pass": false
         }
@@ -2113,11 +2113,11 @@
         "post_asia": {
           "remaining_range_atr": {
             "beats_persistence": false,
-            "p": 0.1442
+            "p": 0.1141
           },
           "direction": {
             "beats_persistence": false,
-            "p": 0.0558
+            "p": 0.0829
           }
         },
         "post_london": {
@@ -2127,17 +2127,17 @@
           },
           "direction": {
             "beats_persistence": false,
-            "p": 0.8852
+            "p": 0.9159
           }
         },
         "post_overlap": {
           "remaining_range_atr": {
             "beats_persistence": true,
-            "p": 0.0106
+            "p": 0.0041
           },
           "direction": {
             "beats_persistence": false,
-            "p": 0.5467
+            "p": 0.5343
           }
         }
       },
@@ -2222,49 +2222,49 @@
         }
       ],
       "today_outlook_is_live": false,
-      "live_status": "no_checkpoint_yet"
+      "live_status": "no_data_yet"
     },
     {
       "pair": "eurusd",
-      "data_through": "2026-05-21",
+      "data_through": "2026-08-20",
       "n_hypotheses_pooled": 155,
-      "n_bh_pass": 106,
+      "n_bh_pass": 109,
       "range_handoff": {
         "n_significant": 7,
         "strongest_pair": "overlap->ny",
-        "strongest_rho": 0.222
+        "strongest_rho": 0.225
       },
       "direction_handoff": {
         "any_significant": true,
         "n_tested": 7,
-        "max_deviation_from_coinflip": 0.04
+        "max_deviation_from_coinflip": 0.042
       },
       "spike_reversal": {
         "asia": {
-          "reversal_rate_spike": 0.495,
-          "reversal_rate_nonspike": 0.391,
+          "reversal_rate_spike": 0.499,
+          "reversal_rate_nonspike": 0.389,
           "bh_pass": true
         },
         "london": {
-          "reversal_rate_spike": 0.533,
+          "reversal_rate_spike": 0.535,
           "reversal_rate_nonspike": 0.401,
           "bh_pass": true
         },
         "overlap": {
-          "reversal_rate_spike": 0.559,
-          "reversal_rate_nonspike": 0.403,
+          "reversal_rate_spike": 0.558,
+          "reversal_rate_nonspike": 0.405,
           "bh_pass": true
         },
         "ny": {
-          "reversal_rate_spike": 0.595,
-          "reversal_rate_nonspike": 0.386,
+          "reversal_rate_spike": 0.593,
+          "reversal_rate_nonspike": 0.385,
           "bh_pass": true
         }
       },
       "impulse": {
         "by_kind": {
           "low": {
-            "win_rate_impulse": 0.497,
+            "win_rate_impulse": 0.498,
             "win_rate_grind": 0.471,
             "bh_pass": true
           },
@@ -2276,7 +2276,7 @@
         },
         "symmetry_30min": {
           "win_rate_low": 0.507,
-          "win_rate_high": 0.489,
+          "win_rate_high": 0.49,
           "bh_pass": true
         }
       },
@@ -2284,31 +2284,31 @@
         "post_asia": {
           "remaining_range_atr": {
             "beats_persistence": false,
-            "p": 0.9026
+            "p": 0.7167
           },
           "direction": {
             "beats_persistence": false,
-            "p": 0.7724
+            "p": 0.6088
           }
         },
         "post_london": {
           "remaining_range_atr": {
             "beats_persistence": true,
-            "p": 0.0023
+            "p": 0.0018
           },
           "direction": {
             "beats_persistence": false,
-            "p": 0.3433
+            "p": 0.4265
           }
         },
         "post_overlap": {
           "remaining_range_atr": {
-            "beats_persistence": false,
-            "p": 0.064
+            "beats_persistence": true,
+            "p": 0.0216
           },
           "direction": {
             "beats_persistence": false,
-            "p": 0.7769
+            "p": 0.7284
           }
         }
       },
@@ -2393,41 +2393,41 @@
         }
       ],
       "today_outlook_is_live": false,
-      "live_status": "no_checkpoint_yet"
+      "live_status": "no_data_yet"
     },
     {
       "pair": "gbpaud",
-      "data_through": "2026-05-21",
+      "data_through": "2026-08-20",
       "n_hypotheses_pooled": 155,
-      "n_bh_pass": 108,
+      "n_bh_pass": 110,
       "range_handoff": {
         "n_significant": 7,
         "strongest_pair": "overlap->ny",
-        "strongest_rho": 0.279
+        "strongest_rho": 0.282
       },
       "direction_handoff": {
         "any_significant": true,
         "n_tested": 7,
-        "max_deviation_from_coinflip": 0.022
+        "max_deviation_from_coinflip": 0.018
       },
       "spike_reversal": {
         "asia": {
-          "reversal_rate_spike": 0.563,
-          "reversal_rate_nonspike": 0.408,
+          "reversal_rate_spike": 0.557,
+          "reversal_rate_nonspike": 0.41,
           "bh_pass": true
         },
         "london": {
-          "reversal_rate_spike": 0.491,
-          "reversal_rate_nonspike": 0.389,
-          "bh_pass": false
+          "reversal_rate_spike": 0.492,
+          "reversal_rate_nonspike": 0.388,
+          "bh_pass": true
         },
         "overlap": {
-          "reversal_rate_spike": 0.562,
-          "reversal_rate_nonspike": 0.389,
+          "reversal_rate_spike": 0.556,
+          "reversal_rate_nonspike": 0.39,
           "bh_pass": true
         },
         "ny": {
-          "reversal_rate_spike": 0.54,
+          "reversal_rate_spike": 0.536,
           "reversal_rate_nonspike": 0.421,
           "bh_pass": true
         }
@@ -2440,13 +2440,13 @@
             "bh_pass": true
           },
           "high": {
-            "win_rate_impulse": 0.487,
+            "win_rate_impulse": 0.488,
             "win_rate_grind": 0.467,
             "bh_pass": true
           }
         },
         "symmetry_30min": {
-          "win_rate_low": 0.488,
+          "win_rate_low": 0.489,
           "win_rate_high": 0.498,
           "bh_pass": false
         }
@@ -2455,31 +2455,31 @@
         "post_asia": {
           "remaining_range_atr": {
             "beats_persistence": true,
-            "p": 0.0422
+            "p": 0.0455
           },
           "direction": {
             "beats_persistence": false,
-            "p": 0.6021
+            "p": 0.5708
           }
         },
         "post_london": {
           "remaining_range_atr": {
             "beats_persistence": true,
-            "p": 0.0003
+            "p": 0.0002
           },
           "direction": {
             "beats_persistence": false,
-            "p": 0.5721
+            "p": 0.4982
           }
         },
         "post_overlap": {
           "remaining_range_atr": {
             "beats_persistence": true,
-            "p": 0.0005
+            "p": 0.0002
           },
           "direction": {
-            "beats_persistence": false,
-            "p": 0.0627
+            "beats_persistence": true,
+            "p": 0.0597
           }
         }
       },
@@ -2564,7 +2564,7 @@
         }
       ],
       "today_outlook_is_live": false,
-      "live_status": "no_checkpoint_yet"
+      "live_status": "no_data_yet"
     },
     {
       "pair": "gbpcad",
@@ -2735,7 +2735,7 @@
         }
       ],
       "today_outlook_is_live": false,
-      "live_status": "no_checkpoint_yet"
+      "live_status": "no_data_yet"
     },
     {
       "pair": "gbpchf",
@@ -2906,7 +2906,7 @@
         }
       ],
       "today_outlook_is_live": false,
-      "live_status": "no_checkpoint_yet"
+      "live_status": "no_data_yet"
     },
     {
       "pair": "gbpjpy",
@@ -3077,7 +3077,7 @@
         }
       ],
       "today_outlook_is_live": false,
-      "live_status": "no_checkpoint_yet"
+      "live_status": "no_data_yet"
     },
     {
       "pair": "gbpnzd",
@@ -3248,13 +3248,13 @@
         }
       ],
       "today_outlook_is_live": false,
-      "live_status": "no_checkpoint_yet"
+      "live_status": "no_data_yet"
     },
     {
       "pair": "gbpusd",
-      "data_through": "2026-05-21",
+      "data_through": "2026-08-20",
       "n_hypotheses_pooled": 155,
-      "n_bh_pass": 89,
+      "n_bh_pass": 90,
       "range_handoff": {
         "n_significant": 6,
         "strongest_pair": "overlap->ny",
@@ -3263,17 +3263,17 @@
       "direction_handoff": {
         "any_significant": false,
         "n_tested": 7,
-        "max_deviation_from_coinflip": 0.013
+        "max_deviation_from_coinflip": 0.012
       },
       "spike_reversal": {
         "asia": {
-          "reversal_rate_spike": 0.49,
-          "reversal_rate_nonspike": 0.408,
+          "reversal_rate_spike": 0.488,
+          "reversal_rate_nonspike": 0.404,
           "bh_pass": false
         },
         "london": {
-          "reversal_rate_spike": 0.502,
-          "reversal_rate_nonspike": 0.4,
+          "reversal_rate_spike": 0.507,
+          "reversal_rate_nonspike": 0.399,
           "bh_pass": false
         },
         "overlap": {
@@ -3282,27 +3282,27 @@
           "bh_pass": true
         },
         "ny": {
-          "reversal_rate_spike": 0.549,
-          "reversal_rate_nonspike": 0.414,
+          "reversal_rate_spike": 0.552,
+          "reversal_rate_nonspike": 0.413,
           "bh_pass": true
         }
       },
       "impulse": {
         "by_kind": {
           "low": {
-            "win_rate_impulse": 0.487,
-            "win_rate_grind": 0.479,
+            "win_rate_impulse": 0.488,
+            "win_rate_grind": 0.478,
             "bh_pass": false
           },
           "high": {
-            "win_rate_impulse": 0.49,
-            "win_rate_grind": 0.465,
+            "win_rate_impulse": 0.489,
+            "win_rate_grind": 0.464,
             "bh_pass": true
           }
         },
         "symmetry_30min": {
           "win_rate_low": 0.496,
-          "win_rate_high": 0.496,
+          "win_rate_high": 0.497,
           "bh_pass": false
         }
       },
@@ -3310,31 +3310,31 @@
         "post_asia": {
           "remaining_range_atr": {
             "beats_persistence": false,
-            "p": 0.7879
+            "p": 0.6948
           },
           "direction": {
             "beats_persistence": false,
-            "p": 0.3716
+            "p": 0.3802
           }
         },
         "post_london": {
           "remaining_range_atr": {
             "beats_persistence": true,
-            "p": 0.022
+            "p": 0.0235
           },
           "direction": {
             "beats_persistence": false,
-            "p": 0.8299
+            "p": 0.7408
           }
         },
         "post_overlap": {
           "remaining_range_atr": {
             "beats_persistence": false,
-            "p": 0.3907
+            "p": 0.4001
           },
           "direction": {
             "beats_persistence": false,
-            "p": 0.5989
+            "p": 0.6047
           }
         }
       },
@@ -3419,61 +3419,61 @@
         }
       ],
       "today_outlook_is_live": false,
-      "live_status": "no_checkpoint_yet"
+      "live_status": "no_data_yet"
     },
     {
       "pair": "gold",
-      "data_through": "2026-06-05",
+      "data_through": "2026-08-20",
       "n_hypotheses_pooled": 155,
-      "n_bh_pass": 103,
+      "n_bh_pass": 101,
       "range_handoff": {
         "n_significant": 7,
         "strongest_pair": "overlap->ny",
-        "strongest_rho": 0.212
+        "strongest_rho": 0.215
       },
       "direction_handoff": {
         "any_significant": false,
         "n_tested": 7,
-        "max_deviation_from_coinflip": 0.014
+        "max_deviation_from_coinflip": 0.015
       },
       "spike_reversal": {
         "asia": {
-          "reversal_rate_spike": 0.527,
+          "reversal_rate_spike": 0.529,
           "reversal_rate_nonspike": 0.373,
           "bh_pass": true
         },
         "london": {
-          "reversal_rate_spike": 0.585,
+          "reversal_rate_spike": 0.582,
           "reversal_rate_nonspike": 0.391,
           "bh_pass": true
         },
         "overlap": {
-          "reversal_rate_spike": 0.506,
-          "reversal_rate_nonspike": 0.398,
+          "reversal_rate_spike": 0.505,
+          "reversal_rate_nonspike": 0.4,
           "bh_pass": true
         },
         "ny": {
-          "reversal_rate_spike": 0.522,
-          "reversal_rate_nonspike": 0.392,
+          "reversal_rate_spike": 0.523,
+          "reversal_rate_nonspike": 0.393,
           "bh_pass": true
         }
       },
       "impulse": {
         "by_kind": {
           "low": {
-            "win_rate_impulse": 0.49,
-            "win_rate_grind": 0.478,
-            "bh_pass": true
+            "win_rate_impulse": 0.489,
+            "win_rate_grind": 0.479,
+            "bh_pass": false
           },
           "high": {
-            "win_rate_impulse": 0.477,
+            "win_rate_impulse": 0.478,
             "win_rate_grind": 0.466,
             "bh_pass": true
           }
         },
         "symmetry_30min": {
-          "win_rate_low": 0.501,
-          "win_rate_high": 0.483,
+          "win_rate_low": 0.5,
+          "win_rate_high": 0.484,
           "bh_pass": true
         }
       },
@@ -3481,31 +3481,31 @@
         "post_asia": {
           "remaining_range_atr": {
             "beats_persistence": false,
-            "p": 0.1822
+            "p": 0.252
           },
           "direction": {
             "beats_persistence": false,
-            "p": 0.8245
+            "p": 1.0
           }
         },
         "post_london": {
           "remaining_range_atr": {
             "beats_persistence": false,
-            "p": 0.1295
+            "p": 0.1364
           },
           "direction": {
             "beats_persistence": false,
-            "p": 0.0034
+            "p": 0.0018
           }
         },
         "post_overlap": {
           "remaining_range_atr": {
             "beats_persistence": false,
-            "p": 0.4113
+            "p": 0.262
           },
           "direction": {
             "beats_persistence": false,
-            "p": 0.0871
+            "p": 0.1627
           }
         }
       },
@@ -3590,13 +3590,13 @@
         }
       ],
       "today_outlook_is_live": false,
-      "live_status": "no_checkpoint_yet"
+      "live_status": "no_data_yet"
     },
     {
       "pair": "nzdjpy",
-      "data_through": "2026-05-21",
+      "data_through": "2026-08-20",
       "n_hypotheses_pooled": 155,
-      "n_bh_pass": 109,
+      "n_bh_pass": 108,
       "range_handoff": {
         "n_significant": 7,
         "strongest_pair": "overlap->ny",
@@ -3605,26 +3605,26 @@
       "direction_handoff": {
         "any_significant": false,
         "n_tested": 7,
-        "max_deviation_from_coinflip": 0.011
+        "max_deviation_from_coinflip": 0.012
       },
       "spike_reversal": {
         "asia": {
-          "reversal_rate_spike": 0.469,
-          "reversal_rate_nonspike": 0.403,
+          "reversal_rate_spike": 0.466,
+          "reversal_rate_nonspike": 0.399,
           "bh_pass": false
         },
         "london": {
-          "reversal_rate_spike": 0.528,
-          "reversal_rate_nonspike": 0.402,
+          "reversal_rate_spike": 0.529,
+          "reversal_rate_nonspike": 0.403,
           "bh_pass": true
         },
         "overlap": {
-          "reversal_rate_spike": 0.541,
+          "reversal_rate_spike": 0.542,
           "reversal_rate_nonspike": 0.401,
           "bh_pass": true
         },
         "ny": {
-          "reversal_rate_spike": 0.551,
+          "reversal_rate_spike": 0.543,
           "reversal_rate_nonspike": 0.407,
           "bh_pass": true
         }
@@ -3632,19 +3632,19 @@
       "impulse": {
         "by_kind": {
           "low": {
-            "win_rate_impulse": 0.499,
-            "win_rate_grind": 0.484,
+            "win_rate_impulse": 0.5,
+            "win_rate_grind": 0.485,
             "bh_pass": true
           },
           "high": {
-            "win_rate_impulse": 0.479,
-            "win_rate_grind": 0.465,
+            "win_rate_impulse": 0.477,
+            "win_rate_grind": 0.466,
             "bh_pass": true
           }
         },
         "symmetry_30min": {
           "win_rate_low": 0.502,
-          "win_rate_high": 0.491,
+          "win_rate_high": 0.49,
           "bh_pass": true
         }
       },
@@ -3652,31 +3652,31 @@
         "post_asia": {
           "remaining_range_atr": {
             "beats_persistence": true,
-            "p": 0.044
+            "p": 0.0478
           },
           "direction": {
             "beats_persistence": false,
-            "p": 0.8927
+            "p": 0.8946
           }
         },
         "post_london": {
           "remaining_range_atr": {
             "beats_persistence": false,
-            "p": 0.0895
+            "p": 0.1201
           },
           "direction": {
             "beats_persistence": true,
-            "p": 0.0143
+            "p": 0.0137
           }
         },
         "post_overlap": {
           "remaining_range_atr": {
             "beats_persistence": true,
-            "p": 0.0509
+            "p": 0.0116
           },
           "direction": {
             "beats_persistence": true,
-            "p": 0.0016
+            "p": 0.002
           }
         }
       },
@@ -3761,42 +3761,42 @@
         }
       ],
       "today_outlook_is_live": false,
-      "live_status": "no_checkpoint_yet"
+      "live_status": "no_data_yet"
     },
     {
       "pair": "nzdusd",
-      "data_through": "2026-05-21",
+      "data_through": "2026-08-20",
       "n_hypotheses_pooled": 155,
-      "n_bh_pass": 92,
+      "n_bh_pass": 94,
       "range_handoff": {
         "n_significant": 7,
         "strongest_pair": "overlap->ny",
-        "strongest_rho": 0.199
+        "strongest_rho": 0.203
       },
       "direction_handoff": {
         "any_significant": false,
         "n_tested": 7,
-        "max_deviation_from_coinflip": 0.017
+        "max_deviation_from_coinflip": 0.014
       },
       "spike_reversal": {
         "asia": {
-          "reversal_rate_spike": 0.485,
-          "reversal_rate_nonspike": 0.406,
+          "reversal_rate_spike": 0.486,
+          "reversal_rate_nonspike": 0.404,
           "bh_pass": false
         },
         "london": {
-          "reversal_rate_spike": 0.548,
-          "reversal_rate_nonspike": 0.405,
+          "reversal_rate_spike": 0.552,
+          "reversal_rate_nonspike": 0.404,
           "bh_pass": true
         },
         "overlap": {
-          "reversal_rate_spike": 0.467,
-          "reversal_rate_nonspike": 0.405,
+          "reversal_rate_spike": 0.469,
+          "reversal_rate_nonspike": 0.404,
           "bh_pass": false
         },
         "ny": {
-          "reversal_rate_spike": 0.526,
-          "reversal_rate_nonspike": 0.398,
+          "reversal_rate_spike": 0.523,
+          "reversal_rate_nonspike": 0.397,
           "bh_pass": true
         }
       },
@@ -3808,13 +3808,13 @@
             "bh_pass": true
           },
           "high": {
-            "win_rate_impulse": 0.495,
+            "win_rate_impulse": 0.494,
             "win_rate_grind": 0.477,
             "bh_pass": true
           }
         },
         "symmetry_30min": {
-          "win_rate_low": 0.499,
+          "win_rate_low": 0.498,
           "win_rate_high": 0.497,
           "bh_pass": false
         }
@@ -3823,31 +3823,31 @@
         "post_asia": {
           "remaining_range_atr": {
             "beats_persistence": true,
-            "p": 0.0238
+            "p": 0.0193
           },
           "direction": {
             "beats_persistence": false,
-            "p": 0.5587
+            "p": 0.4877
           }
         },
         "post_london": {
           "remaining_range_atr": {
             "beats_persistence": true,
-            "p": 0.0052
+            "p": 0.0053
           },
           "direction": {
             "beats_persistence": false,
-            "p": 0.9697
+            "p": 0.8822
           }
         },
         "post_overlap": {
           "remaining_range_atr": {
             "beats_persistence": true,
-            "p": 0.0191
+            "p": 0.0057
           },
           "direction": {
             "beats_persistence": false,
-            "p": 0.7629
+            "p": 0.9738
           }
         }
       },
@@ -3932,7 +3932,7 @@
         }
       ],
       "today_outlook_is_live": false,
-      "live_status": "no_checkpoint_yet"
+      "live_status": "no_data_yet"
     },
     {
       "pair": "usdcad",
@@ -4103,41 +4103,41 @@
         }
       ],
       "today_outlook_is_live": false,
-      "live_status": "no_checkpoint_yet"
+      "live_status": "no_data_yet"
     },
     {
       "pair": "usdchf",
-      "data_through": "2026-05-21",
+      "data_through": "2026-08-20",
       "n_hypotheses_pooled": 155,
-      "n_bh_pass": 104,
+      "n_bh_pass": 105,
       "range_handoff": {
         "n_significant": 7,
         "strongest_pair": "asia->london",
-        "strongest_rho": 0.267
+        "strongest_rho": 0.258
       },
       "direction_handoff": {
-        "any_significant": true,
+        "any_significant": false,
         "n_tested": 7,
-        "max_deviation_from_coinflip": 0.026
+        "max_deviation_from_coinflip": 0.023
       },
       "spike_reversal": {
         "asia": {
-          "reversal_rate_spike": 0.519,
-          "reversal_rate_nonspike": 0.394,
+          "reversal_rate_spike": 0.518,
+          "reversal_rate_nonspike": 0.392,
           "bh_pass": true
         },
         "london": {
-          "reversal_rate_spike": 0.559,
-          "reversal_rate_nonspike": 0.412,
+          "reversal_rate_spike": 0.564,
+          "reversal_rate_nonspike": 0.411,
           "bh_pass": true
         },
         "overlap": {
-          "reversal_rate_spike": 0.515,
+          "reversal_rate_spike": 0.514,
           "reversal_rate_nonspike": 0.408,
           "bh_pass": false
         },
         "ny": {
-          "reversal_rate_spike": 0.579,
+          "reversal_rate_spike": 0.576,
           "reversal_rate_nonspike": 0.398,
           "bh_pass": true
         }
@@ -4145,51 +4145,51 @@
       "impulse": {
         "by_kind": {
           "low": {
-            "win_rate_impulse": 0.499,
+            "win_rate_impulse": 0.5,
             "win_rate_grind": 0.473,
             "bh_pass": true
           },
           "high": {
-            "win_rate_impulse": 0.49,
+            "win_rate_impulse": 0.489,
             "win_rate_grind": 0.474,
             "bh_pass": true
           }
         },
         "symmetry_30min": {
-          "win_rate_low": 0.499,
-          "win_rate_high": 0.496,
+          "win_rate_low": 0.5,
+          "win_rate_high": 0.495,
           "bh_pass": false
         }
       },
       "forecast_reliability": {
         "post_asia": {
           "remaining_range_atr": {
-            "beats_persistence": false,
-            "p": 0.0729
+            "beats_persistence": true,
+            "p": 0.0383
           },
           "direction": {
             "beats_persistence": false,
-            "p": 0.9062
+            "p": 0.8197
           }
         },
         "post_london": {
           "remaining_range_atr": {
             "beats_persistence": true,
-            "p": 0.0004
+            "p": 0.0009
           },
           "direction": {
             "beats_persistence": false,
-            "p": 0.183
+            "p": 0.1593
           }
         },
         "post_overlap": {
           "remaining_range_atr": {
             "beats_persistence": true,
-            "p": 0.0105
+            "p": 0.0093
           },
           "direction": {
             "beats_persistence": false,
-            "p": 0.451
+            "p": 0.5284
           }
         }
       },
@@ -4274,7 +4274,7 @@
         }
       ],
       "today_outlook_is_live": false,
-      "live_status": "no_checkpoint_yet"
+      "live_status": "no_data_yet"
     },
     {
       "pair": "usdjpy",
@@ -4445,7 +4445,7 @@
         }
       ],
       "today_outlook_is_live": false,
-      "live_status": "no_checkpoint_yet"
+      "live_status": "no_data_yet"
     }
   ]
 }
