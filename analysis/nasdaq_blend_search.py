@@ -107,6 +107,7 @@ BLEND_POOL = [
     ("leg_hy_ig_credit_yahoo",          15),   # not real alone (ic=0.034, p_null=0.38) -- test if it adds anything combined
     ("usd_basket",                      12),   # NO SIGNAL alone -- included as a genuine "does more data help or hurt" test
     ("nas_rvol",                         3),   # REAL, ic=0.055, p_null=0.005 -- intraday-native (OANDA-derived, updates every bar)
+    ("eurusd_skew",                     15),   # near-miss: ic=0.103 (largest of anything tested), p_null=0.015 passes, but fails split-half stability alone -- test if combining stabilizes it
 ]
 
 

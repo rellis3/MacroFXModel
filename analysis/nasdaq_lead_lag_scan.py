@@ -157,9 +157,19 @@ OANDA_M15 = {
     "usdjpy":   "USD_JPY",
     "usdcad":   "USD_CAD",
     "usdchf":   "USD_CHF",
+    # Added for the "cast a wider net for anything that could explain a
+    # genuine 36-45h lead" pass -- see analysis/output/nasdaq_lead_lag/summary.md
+    # for why 12h is the only horizon confirmed so far.
+    "dow":      "US30_USD",     # Dow -- paired with spx500 for a value/growth-rotation ratio (NOT nas100 itself, to avoid using the target in its own predictor)
+    "silver":   "XAG_USD",      # silver/gold ratio: industrial-vs-safe-haven metal, a classic risk gauge
+    "usdmxn":   "USD_MXN",      # EM FX risk barometers -- EM currencies sell off hard in risk-off
+    "usdzar":   "USD_ZAR",
+    "usdtry":   "USD_TRY",
+    "usb05y":   "USB05Y_USD",   # mid-curve -- may 400/404 if OANDA doesn't serve it; fetch_oanda_m15 handles that cleanly
 }
 USD_BASE_LEGS = ["eurusd", "gbpusd", "audusd", "nzdusd"]   # USD is quote -> basket rises when these FALL
 USD_QUOTE_LEGS = ["usdjpy", "usdcad", "usdchf"]            # USD is base -> basket rises when these RISE
+EM_FX_LEGS = ["usdmxn", "usdzar", "usdtry"]                # USD is base for all three -> basket rises when these RISE (EM weakness / risk-off)
 
 FRED_SERIES = {
     "hy_oas":   "BAMLH0A0HYM2",
@@ -170,7 +180,9 @@ FRED_SERIES = {
     "vix":      "VIXCLS",
     "nfci":     "NFCI",
     "y2":       "DGS2",
+    "y5":       "DGS5",
     "y10":      "DGS10",
+    "y30":      "DGS30",
 }
 
 YAHOO = {
@@ -271,6 +283,10 @@ def pull_fred(start="2018-01-01") -> None:
         print(f"  FRED {sid:14s} {cols[name].notna().sum():5d} obs")
     df = pd.DataFrame(cols).sort_index()
     df["slope_2s10s"] = df["y10"] - df["y2"]
+    if "y5" in df.columns and "y30" in df.columns:
+        df["slope_2s5s"] = df["y5"] - df["y2"]
+        df["slope_5s30s"] = df["y30"] - df["y5"]
+        df["slope_2s30s"] = df["y30"] - df["y2"]
     df["hy_ig_oas_diff"] = df["hy_oas"] - df["ig_oas"]
     df.to_csv(RAW / "fred.csv")
 
@@ -280,6 +296,30 @@ def load_fred() -> pd.DataFrame | None:
     if not p.exists():
         return None
     return pd.read_csv(p, index_col=0, parse_dates=True)
+
+
+# ============================================================================
+# CVOL (CME implied vol / skew, EOD) -- already cached locally by other work
+# in this repo (data/cvol/), no fetch needed. EOD-only (daily), same caveat
+# as VIX/FRED, but a DIFFERENT signal type (options-market implied vol +
+# skew vs realized VIX) worth testing on its own terms, not just relabeled.
+# No equity-index product is covered (FX pairs + gold only), so this can't
+# speak to Nasdaq-specific implied vol -- only broad cross-asset risk vol.
+# ============================================================================
+def load_cvol() -> dict[str, pd.Series]:
+    p = ROOT / "data" / "cvol" / "cme_cvol_eod.parquet"
+    if not p.exists():
+        return {}
+    df = pd.read_parquet(p)
+    out = {}
+    for product in ["EURUSD", "XAUUSD"]:
+        sub = df[df["product"] == product].set_index("timestamp").sort_index()
+        if not len(sub):
+            continue
+        idx = sub.index.tz_localize(None)
+        out[f"{product.lower()}_cvol"] = pd.Series(sub["cvol"].to_numpy(), index=idx).dropna()
+        out[f"{product.lower()}_skew"] = pd.Series(sub["skew"].to_numpy(), index=idx).dropna()
+    return out
 
 
 # ============================================================================
@@ -415,7 +455,8 @@ def build_source_series(oanda: dict, fred: pd.DataFrame | None, yahoo: dict) -> 
         s = oanda.get(name)
         return np.log(s) if s is not None and len(s) else None
 
-    for name in ["us2000", "spx500", "usb02y", "usb10y", "gold", "oil", "dax", "ftse", "nikkei", "hangseng"]:
+    for name in ["us2000", "spx500", "usb02y", "usb10y", "gold", "oil", "dax", "ftse", "nikkei", "hangseng",
+                 "dow", "silver", "usb05y"]:
         lp = logpx(name)
         if lp is not None:
             src[name] = lp
@@ -425,6 +466,15 @@ def build_source_series(oanda: dict, fred: pd.DataFrame | None, yahoo: dict) -> 
 
     if "oil" in src and "gold" in src:
         src["oil_gold_ratio_oanda"] = (src["oil"] - src["gold"]).dropna()
+
+    if "silver" in src and "gold" in src:
+        src["silver_gold_ratio_oanda"] = (src["silver"] - src["gold"]).dropna()
+
+    # Dow/SPX500 (NOT Dow/Nasdaq -- using the prediction TARGET itself in a
+    # predictor ratio would be circular, the same trap XLY's constituent
+    # overlap already flagged). Value/industrial vs broad-market rotation.
+    if "dow" in src and "spx500" in src:
+        src["dow_spx_ratio_oanda"] = (src["dow"] - src["spx500"]).dropna()
 
     # NAS100's own realized vol -- a fully continuous, OANDA-native
     # alternative to VIX (VIX itself is daily-close-only for free). This is
@@ -478,10 +528,27 @@ def build_source_series(oanda: dict, fred: pd.DataFrame | None, yahoo: dict) -> 
             basket_ret = pd.concat(leg_rets, axis=1).mean(axis=1, skipna=True)
             src["usd_basket"] = basket_ret.fillna(0).cumsum()
 
+        # EM FX basket: same construction, EM currencies as risk barometers
+        # (EM FX sells off hard in risk-off) rather than USD strength per se.
+        em_rets = []
+        for leg in EM_FX_LEGS:
+            s = oanda.get(leg)
+            if s is None or not len(s):
+                continue
+            aligned = align_asof(nas_idx, np.log(s))
+            em_rets.append(aligned.diff())
+        if em_rets:
+            em_ret = pd.concat(em_rets, axis=1).mean(axis=1, skipna=True)
+            src["em_fx_basket"] = em_ret.fillna(0).cumsum()
+
     if fred is not None:
-        for name in ["hy_oas", "ig_oas", "hy_ig_oas_diff", "real10", "be10", "fwd5y5y", "vix", "nfci", "slope_2s10s"]:
+        for name in ["hy_oas", "ig_oas", "hy_ig_oas_diff", "real10", "be10", "fwd5y5y", "vix", "nfci",
+                     "slope_2s10s", "slope_2s5s", "slope_5s30s", "slope_2s30s"]:
             if name in fred.columns:
                 src[name] = fred[name].dropna()
+
+    for name, s in load_cvol().items():
+        src[name] = s.dropna()
 
     def ylog(name):
         s = yahoo.get(name)
@@ -558,6 +625,19 @@ CANDIDATES = [
     ("nas_rvol",                       "NAS100's own realized vol (OANDA-native VIX proxy)", "G", "oanda_m15"),
     ("audjpy",                         "AUD/JPY carry cross (OANDA legs)",              "G", "oanda_m15"),
     ("nzdjpy",                         "NZD/JPY carry cross (OANDA legs)",              "G", "oanda_m15"),
+    # Group H: second wider-net pass -- new sources not tried in group G,
+    # still directly targeting "does ANYTHING validate 36-45h".
+    ("silver_gold_ratio_oanda",        "Silver/Gold ratio, XAG/XAU (OANDA)",            "H", "oanda_m15"),
+    ("dow_spx_ratio_oanda",            "Dow/SPX500 ratio (OANDA) -- value/growth rotation", "H", "oanda_m15"),
+    ("em_fx_basket",                   "EM FX basket, USDMXN/ZAR/TRY (OANDA legs)",     "H", "oanda_m15"),
+    ("usb05y",                         "OANDA USB05Y_USD bond CFD price (mid-curve)",   "H", "oanda_m15"),
+    ("slope_2s5s",                     "2s5s slope, DGS5-DGS2 (FRED)",                  "H", "fred_daily"),
+    ("slope_5s30s",                    "5s30s slope, DGS30-DGS5 (FRED)",                "H", "fred_daily"),
+    ("slope_2s30s",                    "2s30s slope, DGS30-DGS2 (FRED)",                "H", "fred_daily"),
+    ("eurusd_cvol",                    "EURUSD implied vol (CME CVOL, EOD)",            "H", "cvol_daily"),
+    ("eurusd_skew",                    "EURUSD vol skew (CME CVOL, EOD)",               "H", "cvol_daily"),
+    ("xauusd_cvol",                    "Gold implied vol (CME CVOL, EOD)",              "H", "cvol_daily"),
+    ("xauusd_skew",                    "Gold vol skew (CME CVOL, EOD)",                 "H", "cvol_daily"),
 ]
 
 
