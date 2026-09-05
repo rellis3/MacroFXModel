@@ -5224,6 +5224,41 @@ routes for ad-hoc inspection. No Python-side change needed — the bot
 never sees a gap-filtered zone in its plan, identical mechanism to how
 `minCostRatio` already worked with zero bot changes.
 
+**Follow-up: the interactive backtest/portfolio page never saw it either
+(2026-09-04/05).** Owner's own catch: the gap filter above only ever
+reached the LIVE plan (`zonesFromLiveAndBook`, called by `server.js`'s
+`_refreshFibAtlasPlan`) — `asia-fib-atlas-vote-portfolio.html`'s "default
+pairs"/"Select recommended" + "Load best config" buttons hit a completely
+different code path (pre-stored `{pair}-votetrades.json` blobs, filtered
+live via `applyCostEfficiencyFilter`/`applyFadeStopFraction`), which never
+carried the gap information at all. So clicking through the interactive
+backtest could not reproduce what the live bot was actually doing —
+"best config" was silently missing an already-validated lever. Fixed by
+extending the SAME `gapMin` idea one layer further back, into the
+STORED-BACKTEST pipeline (not just the live-ladder one):
+`asiaFibAtlasWalk`/`mondayFibAtlasWalk` now stamp `gapMin` (minutes since
+this exact rung's own last touch this session/reference-week) onto every
+TOUCH record too — deliberately grouping by ANY outcome, not just
+non-`neither` ones (unlike `prevOutcomeSameDay`, a same-session `neither`
+prior still produces a real `gapMin`, matching how the original whiplash
+finding grouped touches in the first place). `buildBarrierTrades`
+(`js/asiaFibAtlasVoteReview.js`, shared by both ladders) carries it
+through onto the stored trade rows. New `applyGapFilter`
+(`js/levelAtlasVoteReview.js`) is a pure selection gate — same shape as
+`applyCostEfficiencyFilter` — now threaded through `maxGapMin` on
+`/vote-trades/:instrument`, `/vote-portfolio`, `/vote-portfolio-combined`
+(both ladders) and into `buildFibAtlasVotePortfolio` itself, applied at
+the same stage as the cost-efficiency filter (before the concurrency
+cap). `asia-fib-atlas-vote-portfolio.html` gets a "Whiplash gap filter"
+checkbox with the SAME frozen per-ladder cutoffs (`gapMinFor`: 30min
+Asia/180min Monday — combined mode reuses Asia's, same precedent as
+`costRatioFor`/`recommendedExcludeFor`), wired into "Load best config"
+alongside the other validated levers. Stored `{pair}-votetrades.json` R2
+blobs for the bot's actual 16-pair live universe (`FIB_ATLAS_DEFAULT_PAIRS`)
+were regenerated end-to-end via `scripts/backfill_fib_atlas_vote_trades.mjs`
+so the page shows real numbers rather than an empty result from missing
+`gapMin` on stale blobs. PR #1415.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
