@@ -1,0 +1,7 @@
+combo,target_lag_h,ic_select,n_select,ic_holdout,p_null,stable,n_holdout,verdict
+leg_discretionary_staples_yahoo+jordan_composite_yahoo+vix+leg_hy_ig_credit_yahoo+usd_basket,12,0.4516224320370348,12368,0.36569039040002976,0.0,True,12367,REAL
+leg_discretionary_staples_yahoo+jordan_composite_yahoo+vix+usd_basket,12,0.45151495312268475,12368,0.36899750437583223,0.0006666666666666666,True,12367,REAL
+leg_discretionary_staples_yahoo+jordan_composite_yahoo+vix,12,0.45137796656556717,12368,0.3699480808875316,0.0,True,12367,REAL
+leg_discretionary_staples_yahoo+jordan_composite_yahoo+vix+leg_hy_ig_credit_yahoo,12,0.4510386043501721,12368,0.3667485347480094,0.0,True,12367,REAL
+leg_discretionary_staples_yahoo+vix+leg_hy_ig_credit_yahoo+usd_basket,12,0.441045330894834,12368,0.3440509831118733,0.0,True,12367,REAL
+leg_discretionary_staples_yahoo+vix+leg_hy_ig_credit_yahoo,12,0.4406468126368716,12368,0.34556240572908326,0.0,True,12367,REAL
