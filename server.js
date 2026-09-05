@@ -310,6 +310,13 @@ const AUTH_PASSWORDS     = {
   education: process.env.EDUCATION_PASSWORD  || '',
 };
 const AUTH_ENABLED = !!AUTH_SECRET && !!AUTH_PASSWORDS.main && !!AUTH_PASSWORDS.education;
+// Optional second password for the 'education' zone only. Signing in with
+// this one (instead of EDUCATION_PASSWORD) mints a cookie carrying
+// role=admin, which the HIDE_MICRO_EDUCATION gate below treats as always
+// showing the visual-guide toggle for that session, regardless of the env
+// var. Leave unset to disable this entirely — there is no admin path if
+// this is empty.
+const EDUCATION_ADMIN_PASSWORD = process.env.EDUCATION_ADMIN_PASSWORD || '';
 const AUTH_EDU_PREFIXES = ['/education', '/theory-lab'];
 // Shared presentational assets (no lesson content, just CSS) that a page in
 // any zone may reference across zone boundaries — e.g. cog/hub.html (zone
@@ -356,26 +363,37 @@ function authSign(payload) {
   return crypto.createHmac('sha256', AUTH_SECRET).update(payload).digest('hex');
 }
 
-function authMakeCookie(zone) {
-  const exp     = Date.now() + AUTH_COOKIE_MAX_MS;
-  const payload = `zone=${zone}&exp=${exp}`;
+function authMakeCookie(zone, role) {
+  const exp        = Date.now() + AUTH_COOKIE_MAX_MS;
+  const roleSuffix = role ? `&role=${role}` : '';
+  const payload     = `zone=${zone}&exp=${exp}${roleSuffix}`;
   return Buffer.from(`${payload}&sig=${authSign(payload)}`).toString('base64');
 }
 
-function authVerifyCookie(raw, requiredZone) {
-  if (!raw) return false;
+// Decodes and verifies a session cookie, returning { zone, role } on success
+// (role is null for a plain, non-admin session) or null if missing, expired,
+// tampered with, or for the wrong zone.
+function authDecodeCookie(raw, requiredZone) {
+  if (!raw) return null;
   let decoded;
-  try { decoded = Buffer.from(raw, 'base64').toString('utf8'); } catch { return false; }
+  try { decoded = Buffer.from(raw, 'base64').toString('utf8'); } catch { return null; }
   const params = new URLSearchParams(decoded);
   const zone = params.get('zone');
   const exp  = Number(params.get('exp'));
   const sig  = params.get('sig');
-  if (!zone || !exp || !sig) return false;
-  const expected = authSign(`zone=${zone}&exp=${exp}`);
+  const role = params.get('role') || null;
+  if (!zone || !exp || !sig) return null;
+  const roleSuffix = role ? `&role=${role}` : '';
+  const expected = authSign(`zone=${zone}&exp=${exp}${roleSuffix}`);
   const sigBuf = Buffer.from(sig), expBuf = Buffer.from(expected);
-  if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) return false;
-  if (Date.now() > exp) return false;
-  return zone === requiredZone;
+  if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) return null;
+  if (Date.now() > exp) return null;
+  if (zone !== requiredZone) return null;
+  return { zone, role };
+}
+
+function authVerifyCookie(raw, requiredZone) {
+  return !!authDecodeCookie(raw, requiredZone);
 }
 
 function authParseCookies(req) {
@@ -27709,22 +27727,58 @@ app.post('/login', (req, res) => {
   const zone     = req.body?.zone === 'education' ? 'education' : 'main';
   const password = req.body?.password || '';
   const remember = req.body?.remember !== false; // no checkbox on the main-zone page ⇒ always remember
-  if (!AUTH_ENABLED || password !== AUTH_PASSWORDS[zone]) {
+  if (!AUTH_ENABLED) return res.status(401).json({ error: 'invalid password' });
+  let role = null;
+  if (password === AUTH_PASSWORDS[zone]) {
+    // plain session, role stays null
+  } else if (zone === 'education' && EDUCATION_ADMIN_PASSWORD && password === EDUCATION_ADMIN_PASSWORD) {
+    role = 'admin';
+  } else {
     return res.status(401).json({ error: 'invalid password' });
   }
   const maxAge = remember ? `; Max-Age=${Math.floor(AUTH_COOKIE_MAX_MS / 1000)}` : '';
   res.setHeader('Set-Cookie',
-    `${AUTH_COOKIE_NAME}_${zone}=${authMakeCookie(zone)}${maxAge}; Path=/; HttpOnly; SameSite=Lax${req.secure ? '; Secure' : ''}`);
+    `${AUTH_COOKIE_NAME}_${zone}=${authMakeCookie(zone, role)}${maxAge}; Path=/; HttpOnly; SameSite=Lax${req.secure ? '; Secure' : ''}`);
   res.json({ ok: true });
+});
+
+// /logout is public, like /login — clears only the zone cookie you were in
+// (an education-zone logout leaves a main-zone session, if any, untouched).
+app.get('/logout', (req, res) => {
+  const zone = req.query.zone === 'education' ? 'education' : 'main';
+  res.setHeader('Set-Cookie',
+    `${AUTH_COOKIE_NAME}_${zone}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax${req.secure ? '; Secure' : ''}`);
+  res.redirect(zone === 'education' ? '/theory-lab/hub.html' : '/');
 });
 
 app.use(requireAuth);
 
-if (HIDE_MICRO_EDUCATION) {
+// Injected into hub.html's crumb line when AUTH_ENABLED, replacing the plain
+// "Theory Lab" breadcrumb — reuses theory.css's own --text3/--border2
+// tokens so it needs no separate stylesheet change.
+const HUB_CRUMB_RE = /<div class="tl-crumb">Theory Lab<\/div>/;
+const HUB_CRUMB_WITH_LOGOUT = '<div class="tl-crumb" style="display:flex;justify-content:space-between;align-items:center">Theory Lab<a href="/logout?zone=education" style="color:var(--text3);text-decoration:none;border-bottom:1px dashed var(--border2)">Log out</a></div>';
+
+if (HIDE_MICRO_EDUCATION || AUTH_ENABLED) {
   app.get(MICRO_LESSON_PAGE_RE, (req, res, next) => {
+    const isHub = req.path === '/theory-lab/hub.html';
+    // Nothing to transform on a lesson page unless the hide feature is on.
+    if (!isHub && !HIDE_MICRO_EDUCATION) return next();
+
     fs.readFile(path.join(__dirname, req.path), 'utf8', (err, html) => {
       if (err) return next();
-      res.type('html').send(stripMicroEducationUI(html, req.path === '/theory-lab/hub.html'));
+
+      if (HIDE_MICRO_EDUCATION) {
+        const cookies = authParseCookies(req);
+        const info = authDecodeCookie(cookies[`${AUTH_COOKIE_NAME}_education`], 'education');
+        if (info?.role !== 'admin') html = stripMicroEducationUI(html, isHub);
+      }
+
+      if (isHub && AUTH_ENABLED) {
+        html = html.replace(HUB_CRUMB_RE, HUB_CRUMB_WITH_LOGOUT);
+      }
+
+      res.type('html').send(html);
     });
   });
 }
