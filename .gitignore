@@ -136,3 +136,8 @@ portfolioBacktest/cache/
 
 # CVOL history: the copy in data/cvol/ is the one forge reads (see forge/vol.py).
 cme_cvol_eod_available_history.parquet
+
+# nasdaq_lead_lag_scan.py's raw OANDA M15 cache: ~35MB, regenerable via
+# `--refresh`, not worth repo bloat (unlike yield_coupling's daily-res
+# price CSVs, which are small enough to just commit).
+analysis/output/nasdaq_lead_lag/raw/
