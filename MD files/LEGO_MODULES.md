@@ -5539,6 +5539,158 @@ Validated: `node --check server.js` and `node --check js/bot-config.js`
 both clean; confirmed the `fa_gap_filter_asia`/`fa_gap_filter_monday`
 element IDs match exactly between the HTML and the JS reads.
 
+#### Combined-portfolio smoothness audit — external critique of Sharpe 18.37 / 0 losing months (2026-09-06)
+
+Owner relayed a sharp external critique of the live "Asia+Monday combined"
+Performance Summary (Sharpe 18.37, Calmar 783.5, max DD -1.01%, apparently 0
+negative months across 62, and a claimed "10x" gap between trade count ×
+average trade and the reported total return). Traced every one of these on
+the real engine (`analysis/fib_atlas_smoothness_audit.mjs`, same
+`loadBestConfigBtn` config as the live page, riskPct=0.5%, real R2 trades —
+not reasoned about abstractly) rather than defending or dismissing:
+
+- **The "10x mismatch" was a misread, not a bug.** Total Return is
+  **+3762.03%**, not +37,762% — 9,847 trades × 0.382% avg = 3762.03% exactly
+  (ratio to the actual additive daily-pooled sum: 1.0000). No double-counting,
+  no hidden multiplier in `buildPortfolioDailySeries`/`riskAdjustTrades`.
+- **Zero negative months is real, confirmed directly from the day-pooled
+  series** (62/62 positive, worst Nov 2021 +1.39%, matches the dashboard
+  exactly) — mechanically explained by only 32/1,198 days (2.7%) being
+  net-negative at all (worst single day -1.01%), a law-of-large-numbers
+  smoothing effect from pooling ~8 trades/day at an 85.6% win rate IF those
+  trades are close to independent. That independence assumption is the same
+  one this doc's own correlated-drawdown study already treats as the real
+  risk (why 10 pairs are excluded) — not a new concern, but a real one.
+- **Max DD -1.01% is the DAY-POOLED figure. The honest per-trade
+  (chronological, non-netted) max drawdown on this exact live config is
+  -5.45% — 5.4x deeper** (`maxDrawdownFromPnls` on trades sorted by
+  `resolveTime`, no same-day netting). Recomputing Calmar against -5.45%
+  gives ≈145, not 783. Same mechanism as the 2026-09-06 day-pooled-vs-per-trade
+  entry above, reconfirmed on this specific combined/riskPct=0.5% config.
+- **Sharpe 18.37 is the naive daily figure — Newey-West HAC-corrected gives
+  14.27** (variance inflation 1.66x, bandwidth 6) — consistent with, not new
+  beyond, the already-documented autocorrelation investigation elsewhere in
+  this doc (the "elevated, unexplained residual" finding).
+- **Fragility test passed — a genuinely positive result.** Stripping the
+  best 1%/5%/10% of trades by pnlPct: Sharpe does NOT collapse (18.37 →
+  19.27 → 19.89 → 19.59 — if anything it firms up), maxDD barely moves
+  (-1.01% → -1.01% → -2.05% → -2.05%), and total return degrades roughly
+  proportional to trade count removed (3762% → 3506% → 2962% → 2497%). The
+  result is not concentrated in a handful of outlier trades.
+- **Basic lookahead sanity check passes** (0/9,847 trades have
+  `resolveTime` before entry `time`, 0 negative `gapMin`) — this is only a
+  timestamp-ordering check, NOT a re-verification of the deeper
+  signal-construction lookahead work done in PR #1352, which predates
+  stop-tightening, the chandelier exit, the continuation exit, and the gap
+  filter. **Flagged as the one genuinely open item from this critique** —
+  worth a dedicated re-audit of `margin`/`gapMin`/rung-vote computation
+  against everything added since #1352 if full confidence is wanted.
+- **Not yet built**: the proposed cost/slippage staircase (raw → +spread →
+  +N-tick slippage → 2x/3x spread). `minCostRatio=3` already gates trades on
+  real per-pair round-trip cost vs. target distance, but no explicit
+  sensitivity table exists yet.
+
+Validated: `node --check` clean; script reuses `buildFibAtlasVotePortfolio`
+and `maxDrawdownFromPnls` directly (no parallel/duplicate math), run against
+the same live R2-stored trade blobs the production route reads.
+
+#### Live/demo vs. offline-backtest reconciliation infrastructure (2026-09-06)
+
+Owner is starting a DEMO account run on `fib_atlas_bot` and asked, ahead of
+it: after a week, is there a way to check whether the real trades match the
+backtest? First pass at this wrongly concluded Fib Atlas had NO durable trade
+history and built a from-scratch accumulator (`_fibAtlasBotAccumulateTradeLog`,
+a new `fib_atlas_bot_trade_log` KV rollup) to fix it — **wrong**, caught by
+the owner's own follow-up question ("the bot stores all its trades in bot
+config position trade audit doesn't it?"). It already did:
+`fib_atlas_bot_status` was already in `_worker.js`'s `STATUS_KEYS`, so every
+closed trade the bot reports was ALREADY flowing automatically into
+`trade_hist_fib_atlas_bot_status_<date>` via the existing, generic
+`mergeTradeHistory()` — the SAME mechanism bot-config.html's "Positions →
+Trade History" tab and `/api/trade-history` already use for every other bot,
+correctly bucketed by real close date (not open date, which the now-removed
+accumulator got wrong) and deduped by `position_id`. `kv.js`/`_worker.js`'s
+separate `fib_atlas_bot_trade_log` KV-gate registration (pre-existing, unused
+until this mistake) is a DIFFERENT, richer per-bot log pattern 4 other bots
+use for give-back/MFE analysis (`/api/giveback`) — not a sign anything was
+missing for Fib Atlas's own close-date history. The redundant accumulator
+and its `setInterval` were removed; `/api/fib-atlas-bot/trade-log` now reads
+`trade_hist_fib_atlas_bot_status_<date>` directly, one KV key per day in
+range, mirroring `/api/trade-history`'s own date-loop exactly (imported
+reasoning, not copied logic — same key format, same per-day fetch).
+
+What's still genuinely new here (the correct, non-redundant part of the
+original build):
+1. **`fib_atlas_bot.py`'s `_record_decision`** (the function behind
+   `fib_atlas_bot_decision_log`) now also captures `entry`/`sl`/`tp` — the
+   plan's own priced levels at decision time — on `entered`/`rejected`/
+   `skipped` events. Previously only `side`/`rung`/`decision`/`margin` were
+   recorded; without the prices, there'd be nothing to compare a real fill
+   against except the closed trade's own `open_price`, which conflates "what
+   the plan said" with "what the broker actually filled at." This was a real
+   gap — `trade_hist_*` never carried the plan's own intended price either.
+2. **`pylego/broker/paper.py`'s `serialize_closed_trades()`** now emits
+   `comment` (Mt5Broker's own version already did — see its docstring; only
+   the paper/simulated broker was missing it). The comment carries
+   `FA[<dedupeTag>]` (`asiaLivePlanZones`/`mondayLivePlanZones`'s own tag,
+   `${a|m}_${side[0]}${level}`) — without it, a paper-mode trade loses its
+   (ladder, side, rung) identity the moment it closes, since `trade_hist_*`
+   rows carry whatever `serialize_closed_trades()` gives them. Live/demo
+   (Mt5Broker) was already fine; this was a paper-mode-only gap.
+3. **`server.js`'s `_parseFibAtlasDedupeTag()`** — decodes each
+   `trade_hist_*` row's `comment` into `ladder`/`side`/`rung` fields at READ
+   time (inside the route below), so the reconciliation script doesn't
+   re-parse the tag string itself.
+4. **`GET /api/fib-atlas-bot/trade-log?from=&to=`** — loops the date range
+   over `trade_hist_fib_atlas_bot_status_<date>` (defaults to today if
+   omitted, same as `/api/trade-history`), decodes each trade's tag, resolves
+   its pair key, and returns it alongside the matching decision-log events
+   for the same range in one call.
+5. **`analysis/fib_atlas_live_vs_backtest_reconcile.mjs`** — the actual
+   comparison, run on demand (not scheduled) once real trades exist. For a
+   `--from`/`--to` range: fetches the real trade+decision history from the
+   dashboard, re-runs `runOne` (`asiaFibAtlasRoutes.js`/
+   `mondayFibAtlasRoutes.js` — the EXACT function the nightly
+   reference-engine-rebuild job and the manual "Regenerate" button already
+   call, imported not re-derived) against fresh M1 so the stored
+   `{pair}-votetrades.json` now covers the demo week, then joins each real
+   trade to (a) its own live decision-log entry by (pair, ladder, side, rung,
+   closest timestamp) and (b) the offline backtest's own touch for the same
+   (pair, ladder, side, rung, date), reporting decision (fade/follow)
+   agreement, entry-price drift in pips, and unmatched-trade counts.
+   Re-running `runOne` on demand is not a new side effect — it's the same
+   regen the nightly job already does to every pair, every night; this just
+   triggers it for the pairs actually traded, on demand.
+
+**What this can and can't tell you**: a mismatch could mean real
+slippage/spread (live fill vs. backtest's M1-bar-close price), a timing
+gap between the live 45s-poll plan and the walk-forward engine's bar
+granularity, or a genuine bug in one path but not the other — the script
+surfaces the numbers, it doesn't diagnose which cause applies; that needs a
+human look at the specific mismatched trades. A HANDFUL of unmatched trades
+or a few pips of entry drift is expected; a CLUSTER of decision-level
+mismatches (backtest says fade, live said follow, for the same touch) is the
+actual signal worth chasing.
+
+**Not yet possible from here**: this sandbox has no `CF_ACCOUNT_ID`/
+`CF_API_TOKEN`, so it can't read Cloudflare KV directly — the reconciliation
+script fetches over HTTP from the dashboard's own `/api/fib-atlas-bot/trade-log`
+route instead (which needs no auth — `/api/*` is unauthenticated by design)
+specifically so it doesn't need those credentials. It also can't reach the
+live Railway URL from this sandbox (403 — the same documented egress
+restriction as OANDA/Yahoo), so end-to-end testing against real data has to
+happen either on Railway itself or from a machine with real network access,
+once a week of demo trades exists. The matching/join logic itself WAS unit
+tested against hand-built synthetic decision/trade/backtest data (both the
+matched and the no-match paths) before this was written up.
+
+Validated: `python3 -m py_compile fib_atlas_bot/fib_atlas_bot.py` and
+`pylego/broker/paper.py` clean; `node --check` clean on `server.js` and the
+new script; the script's own matching functions dry-run correctly against
+synthetic fixtures (matched trade → correct decision+backtest join with
+right price fields; unmatched trade → both lookups correctly return null
+rather than a wrong pairing).
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted

@@ -249,6 +249,12 @@ class PaperBroker:
             # MFE/MAE in pips (peak favourable / worst adverse) — the give-back
             # inputs; the server rollup persists them into *_trade_log.
             "mfe_pips": c.get("mfe_pips"), "mae_pips": c.get("mae_pips"),
+            # comment: carries the caller's own per-strategy tag (e.g. Fib
+            # Atlas's "FA[dedupe_tag]") through to the closed-trade record —
+            # Mt5Broker's serialize_closed_trades already emits this (see its
+            # own docstring); paper must match or a paper-mode trade loses
+            # its identifying tag the moment it closes.
+            "comment": c.get("comment", ""),
         } for c in self._closed[-50:]]
 
     # ── triple-barrier execution (what MT5 does natively via SL/TP) ────────────
