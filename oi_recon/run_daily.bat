@@ -107,14 +107,14 @@ REM stopped firing visible: a failure shouts, but a machine that never woke up s
 REM nothing at all, and only a last-seen time that stops advancing reveals it.
 REM Telegram is sent by the server, which holds the token.
 if %RC% NEQ 0 (set OKFLAG=false) else (set OKFLAG=true)
-for /f "delims=" %%v in ('powershell -NoProfile -Command "(Select-String -Path '%LOGFILE%' -Pattern 'VERDICT|tables captured|complete .*skipped|level\(s\) across' | Select-Object -Last 6 | ForEach-Object { $_.Line.Trim() }) -join ' | '"') do set DETAIL=%%v
+for /f "delims=" %%v in ('powershell -NoProfile -Command "(Select-String -Path '%LOGFILE%' -Pattern 'VERDICT|tables captured|complete .*skipped|level\(s\) across|freshness' | Select-Object -Last 6 | ForEach-Object { $_.Line.Trim() }) -join ' | '"') do set DETAIL=%%v
 powershell -NoProfile -Command ^
   "try { Invoke-RestMethod -Uri '%BASE%/api/oi/sweep-alert' -Method Post -ContentType 'application/json' -TimeoutSec 30 -Body (@{ ok = [bool]::Parse('%OKFLAG%'); detail = $env:DETAIL; target = 'run_daily' } | ConvertTo-Json) | Out-Null } catch { Write-Host ('heartbeat post failed: ' + $_.Exception.Message) }" >> "%LOGFILE%" 2>&1
 
 REM Echo the verdict to the console too, so a manual run shows the result without
 REM opening the log.
 echo.
-findstr /C:"capture " /C:"ingest " /C:"expect " /C:"compare " /C:"VERDICT" "%LOGFILE%"
+findstr /C:"capture " /C:"ingest " /C:"freshness " /C:"expect " /C:"compare " /C:"VERDICT" "%LOGFILE%"
 echo.
 echo Full log: %~dp0%LOGFILE%
 

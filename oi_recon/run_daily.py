@@ -17,6 +17,7 @@ Runs the stages that were separate commands, and ends with one verdict a human
 
     capture   44/44 tables
     ingest    11/11 entries complete
+    freshness vs 2026-08-02: 9/11 product(s) moved, 2/11 identical
     expect    284 level(s) logged for 2026-08-03
     compare   41/44 agree with your pastes
     VERDICT   OK
@@ -25,6 +26,19 @@ EXIT CODE IS THE POINT. Non-zero if any stage falls short, because a scheduled
 job can only alert on what the process reports, and "captured 3 of 44 but exited
 0" is how a broken nightly goes unnoticed for a week. Every stage below already
 signals honestly; this only aggregates them.
+
+FRESHNESS IS ADVISORY, DELIBERATELY (see freshness_check.py). Shape checks alone
+(right columns, non-zero OI) can pass on a stale/cached QuikStrike session that is
+quietly re-serving an old settlement — this stage compares tonight's capture
+against the last one on disk to catch exactly that, same night. It never joins
+`failed`: it can only see whatever capture happens to still be on THIS machine, so
+it has no notion of weekends/holidays and would false-positive every Saturday if
+it were fatal. The durable, weekend-aware version of this same check lives
+server-side (js/oiRawArchive.js `oiFreshnessStreak`) and alerts through the same
+Telegram channel this script's own heartbeat uses — that is the one with real
+teeth; this stage exists only so tonight's own log shows the same signal
+immediately, not several days later. Do not promote it to `failed` without also
+teaching it the trading calendar.
 
 WHERE IT PUBLISHES IS NOT DECIDED HERE. `ingest.mjs` asks the server for the
 `oi_auto_target` setting (the toggle in the OI modal), so the feed can be handed
@@ -201,6 +215,16 @@ def main() -> None:
            ('oi_store' if a.live else '(decided by oi_auto_target)'))
     if rc:
         failed.append('ingest')
+
+    # 2b. FRESHNESS — same-night, advisory: does tonight's capture actually differ
+    # from the last one on disk? capture/ingest both validate SHAPE (right columns,
+    # non-zero OI) but never asked whether the CONTENT moved — a stale/cached
+    # QuikStrike session can pass both while quietly re-serving an old settlement.
+    # Never contributes to `failed` (see freshness_check.py's docstring for why the
+    # weekend-aware judgement call belongs to the server-side detector instead);
+    # this is purely so tonight's own log shows the same signal immediately.
+    rc, out = run([PY, 'freshness_check.py', '--sweep', str(SWEEP_DIR)], 'freshness')
+    stages['freshness'] = grab(out, 'identical') or grab(out, 'skipping') or 'no summary line'
 
     # 3. LOG EXPECTATIONS - what every level CLAIMED today, against the key just
     # written. This is the forward record; miss a night and that day is gone for

@@ -56,7 +56,7 @@ function isAllowedKVKey(key) {
   // PERMANENT_KEYS below, so it carries the 48h TTL while it is only being compared.
   const EXACT = new Set(['fred', 'fred2', 'oi_store', 'oi_store_py', 'oi_expect_log', 'oi_auto_target', 'oi_sweep_last', 'journal_store', 'journal_replay_store', 'journal_running_totals', 'cot_data', 'ifo_data', 'surprise_index', 'events_today', 'sentiment', 'bot_config', 'bot_status', 'bot_credentials', 'bot_override', 'backtestsystem_status', 'backtestsystem_credentials', 'backtestsystem_live_config', 'backtestsystem_journal', 'regime_bot_config', 'regime_bot_credentials', 'regime_bot_status', 'regime_bot_v2_config', 'regime_bot_v2_credentials', 'regime_bot_v2_status', 'rgv2_force_unlock', 'regime_bot_v4_config', 'regime_bot_v4_credentials', 'regime_bot_v4_status', 'rgv4_force_unlock', 'regime_bot_v7_config', 'regime_bot_v7_credentials', 'regime_bot_v7_status', 'rgv7_force_unlock', 'regime_bot_v7_audit_log', 'gold_bot_status', 'gold_bot_config', 'gold_bot_credentials', 'dyn_anchor_config', 'dyn_anchor_credentials', 'dyn_anchor_status', 'dyn_anchor_forecast', 'da_force_unlock', 'hedge_alerts_cache', 'hedge_audit_log', 'wt_winrate_v1', 'macro_equity_config', 'macro_equity_credentials', 'macro_equity_bot_status', 'hedge_bot_config', 'hedge_bot_credentials', 'hedge_bot_status', 'nq_qmr_status', 'nq_qmr_config', 'nq_qmr_audit', 'spx_qmr_status', 'spx_qmr_config', 'spx_qmr_audit', 'dow_qmr_status', 'dow_qmr_config', 'dow_qmr_audit', 'dax_qmr_status', 'dax_qmr_config', 'dax_qmr_audit', 'nq_qmr_validation', 'spx_qmr_validation', 'dow_qmr_validation', 'dax_qmr_validation', 'cog_signal_log', 'cog_shadow_log', 'zone_audit_history', 'volatility_bot_config', 'volatility_bot_credentials', 'volatility_bot_status', 'volatility_bot_plan', 'volatility_bot_audit_log', 'vol_force_unlock', 'range_line_bot_config', 'range_line_bot_credentials', 'range_line_bot_status', 'range_line_bot_plan', 'range_line_confluence', 'range_line_oi_live', 'range_line_oi', 'oi_history', 'range_line_bot_audit_log', 'rl_force_unlock', 'yield_spread_config', 'yield_spread_credentials', 'yield_spread_status', 'yield_spread_plan', 'yield_spread_audit', 'ys_force_unlock',
     'oi_bot_config', 'oi_bot_credentials', 'oi_bot_status', 'oi_bot_zones', 'oi_bot_trades', 'oi_force_unlock',
-    'oi_bot_state', 'oi_hold_calibration',
+    'oi_bot_state', 'oi_hold_calibration', 'oi_capture_freshness',
     'volatility_bot_v2_config', 'volatility_bot_v2_credentials', 'volatility_bot_v2_status',
     'volatility_bot_v2_plan', 'volatility_bot_v2_state', 'volatility_bot_v2_trade_log', 'volatility_bot_v2_decision_log',
     'fib_atlas_bot_config', 'fib_atlas_bot_credentials', 'fib_atlas_bot_status',
@@ -1005,6 +1005,10 @@ export default {
             // One-shot state (double-entry protection across bot restarts) + the
             // hold-score calibration — both must outlive the 48h market-data TTL.
             'oi_bot_state', 'oi_hold_calibration',
+            // Per-pair stale-capture streak (js/oiRawArchive.js oiFreshnessStreak) — a
+            // 48h TTL here would reset the streak right as a real stale run was about
+            // to cross tolerance, silently delaying the alert it exists to give.
+            'oi_capture_freshness',
             'volatility_bot_v2_config', 'volatility_bot_v2_credentials', 'volatility_bot_v2_plan',
             'volatility_bot_v2_state', 'volatility_bot_v2_trade_log', 'volatility_bot_v2_decision_log',
             'fib_atlas_bot_config', 'fib_atlas_bot_credentials', 'fib_atlas_bot_plan',
