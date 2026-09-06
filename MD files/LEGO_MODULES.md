@@ -5329,17 +5329,39 @@ Sharpe (autocorr-adjusted), with an explicit caveat that this is a local
 robustness check, not proof the whole lever stack survives independent
 validation.
 
-**Real finding surfaced while smoke-testing**: the full "best config"
-stack (margin≥2, hedge-only, chandelier, gap-filter≤30min) on the live
-16-pair Asia universe produces only ~94 kept trades over ~10 years of
-history (chandelier's much longer holds under maxConcurrent=1 hedge-only
-block far more subsequent signals than the pre-chandelier pipeline did) —
-a thin sample that `sharpeSE`/`minTrackYears` (already on the per-trade
-card) would flag hard, even though the 6-trial DSR sweep alone reads a
-comfortable 0.999 (expected — it only tests 6 nearby points, not sample
-size). Worth a dedicated look at whether "best config"'s own trade count
-under the full stack is still large enough to trust, separate from this
-change.
+**CORRECTION (2026-09-06, same day):** the "~94 trades" figure above was
+NOT a real finding about the strategy — it was corrupted smoke-test data,
+caught when the owner (correctly) balked at the number. Root cause: this
+PR was still open/unmerged/undeployed at the time, and `server.js`'s
+existing `reference-engine-rebuild` nightly job (`_scheduleDailyLondon(0,
+30, ...)` → `_startAsiaFibAtlasRunJob`, fires 00:30 London) reran
+`runOne` for 15 of the 16 pairs on PRODUCTION overnight, using whatever
+engine code Railway has actually deployed — which does NOT yet include
+this PR's `gapMin` field. That job legitimately refreshed each pair's
+`{pair}-votetrades.json` with new M1 data, but as a side effect silently
+overwrote the `gapMin` field this PR's local backfill had just written,
+because the currently-deployed `asiaFibAtlasWalk` doesn't compute it.
+`applyGapFilter`'s `t.gapMin != null` check correctly excludes a
+genuinely-absent field the same way it excludes a legitimate null,
+so once a pair's stored trades lost the field, the gap filter dropped
+essentially 100% of THAT pair's trades — 15/16 pairs collapsed, 1
+(`audnzd`, untouched by that night's job) did not, netting ~94 pooled
+trades instead of the ~8,900 originally validated. Confirmed directly:
+every affected pair's `generatedAt` timestamp landed at 23:31–23:56 UTC
+(00:30 London, BST), sequential per pair, and every trade on those pairs
+has `gapMin === undefined` (missing), not `null` (legitimately absent).
+
+**Lesson for future backtest-data changes**: a local R2 backfill for an
+unmerged feature branch is not safe from production's own scheduled
+rebuild jobs — they run on whatever is actually deployed and will
+silently clobber a field a still-open PR added, every night, until that
+PR merges and Railway redeploys. Don't trust "94 trades" (or any other
+backtest-page number depending on a not-yet-deployed field) as evidence
+about the strategy until the underlying data is confirmed fresh AND the
+enabling code is merged — check `generatedAt` and the field's actual
+presence on the live-stored blob first, per this file's own "Assume Code
+Failure First" rule in `CLAUDE.md`, which this incident is a direct
+instance of not following closely enough before writing the note above.
 
 ---
 
