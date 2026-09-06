@@ -40,6 +40,39 @@ export function buildWeeklyGrid(fredMaps) {
   return dates;
 }
 
+// Stress-regime split — credit (HY OAS FRED:BAMLH0A0HYM2) and vol (VIX
+// FRED:VIXCLS) z-scores, 1-week publication lag. NOT js/globalLiquidityEngine.js's
+// own CFG.RISK_GATE thresholds (creditZ>1.0 OR volZ>1.25) — those are
+// deliberately loose because that gate's JOB is to cut gross defensively and
+// often; checked against synthetic data, a 1.0/1.25-sigma bar flags roughly
+// 15-20% of ALL weeks (one-tailed z>1 is ~16% of a normal by chance alone),
+// which is "elevated caution", not "distinct crisis episode". A
+// regime-conditioning research split needs the opposite property — isolating
+// genuinely rare stress regimes so a handful of real episodes (2008, 2020,
+// 2022, …) don't get diluted by ordinary noise — so this uses a stricter,
+// round 2-sigma bar on both series instead. Picked once, before looking at
+// results, not tuned to produce a particular episode count.
+const REGIME_PUB_LAG = 1, REGIME_CREDIT_Z = 2.0, REGIME_VOL_Z = 2.0;
+
+export function computeStressRegime(dates, fredMaps) {
+  if (!fredMaps.hy?.size || !fredMaps.vix?.size) return null;
+  const hy = ffillArr(forwardFillToDates(dates, fredMaps.hy));
+  const vix = ffillArr(forwardFillToDates(dates, fredMaps.vix));
+  const creditZ = rollingZScore(lagArr(hy, REGIME_PUB_LAG), Z_WINDOW);
+  const volZ = rollingZScore(lagArr(vix, REGIME_PUB_LAG), Z_WINDOW);
+  return dates.map((_, i) => (isNum(creditZ[i]) && creditZ[i] > REGIME_CREDIT_Z) || (isNum(volZ[i]) && volZ[i] > REGIME_VOL_Z));
+}
+
+// Count maximal runs of `true` in a boolean array — a rough proxy for the
+// number of INDEPENDENT stress episodes (2008, 2020, 2022, …) rather than the
+// number of stress WEEKS, since weeks inside one episode are highly
+// autocorrelated and don't each count as separate evidence.
+export function countEpisodes(flags) {
+  let n = 0, prev = false;
+  for (const f of flags) { if (f && !prev) n++; prev = !!f; }
+  return n;
+}
+
 export function computeNetLiquidityImpulse(dates, fredMaps, pubLagWeeks) {
   const walcl = ffillArr(forwardFillToDates(dates, fredMaps.walcl));
   const tga = ffillArr(forwardFillToDates(dates, fredMaps.tga));
@@ -91,6 +124,14 @@ export function isOosTest(x, y, isFrac = 0.7) {
   };
 }
 
+// Run isOosTest on only the weeks where `keep[i]` is true — reuses isOosTest
+// unmodified by NaN-ing out the excluded weeks (its own isNum filter drops them).
+function isOosTestFiltered(x, y, keep) {
+  const xf = x.map((v, i) => (keep[i] ? v : NaN));
+  const yf = y.map((v, i) => (keep[i] ? v : NaN));
+  return isOosTest(xf, yf);
+}
+
 export function verdictFor(res) {
   if (!res) return 'insufficient overlapping history for an honest IS/OOS split';
   const robust = Math.abs(res.tStatNW) >= 3;   // Harvey-Liu-Zhu factor-discovery bar (regression-analysis-course-notes.md L4)
@@ -111,6 +152,19 @@ const round = (x, d = 4) => (isFinite(x) ? Math.round(x * 10 ** d) / 10 ** d : n
  *   nqRets    : Map<'YYYY-MM-DD', weekly log return> for NASDAQ (NQ)
  * Returns a plain, JSON-friendly result object (no Maps/functions).
  */
+function summarizeResult(h, res) {
+  return {
+    horizonWeeks: h,
+    n: res?.n ?? 0, nIS: res?.nIS ?? 0, nOOS: res?.nOOS ?? 0,
+    beta: res ? round(res.beta, 5) : null,
+    r2IS: res ? round(res.r2IS, 4) : null,
+    tStatNW: res ? round(res.tStatNW, 2) : null,
+    r2OOS: res && res.r2OOS != null ? round(res.r2OOS, 4) : null,
+    hitRateOOS: res ? round(res.hitRateOOS, 3) : null,
+    verdict: verdictFor(res),
+  };
+}
+
 export function computeNetLiquidityRegression({ fredMaps, fredSource = 'unknown', nqRets, nqSource = 'unknown', pubLagWeeks = 2, horizons = [4, 8, 13] }) {
   const dates = buildWeeklyGrid(fredMaps);
   if (!dates.length) throw new Error('no Net Liquidity data (empty FRED series)');
@@ -120,26 +174,33 @@ export function computeNetLiquidityRegression({ fredMaps, fredSource = 'unknown'
   const nqWeekly = R.map((row) => row[0]);
 
   const real = !/synthetic/i.test(fredSource) && !/synthetic/i.test(nqSource);
-  const results = horizons.map((h) => {
-    const y = forwardReturns(nqWeekly, h);
-    const res = isOosTest(impulse, y);
-    return {
-      horizonWeeks: h,
-      n: res?.n ?? 0, nIS: res?.nIS ?? 0, nOOS: res?.nOOS ?? 0,
-      beta: res ? round(res.beta, 5) : null,
-      r2IS: res ? round(res.r2IS, 4) : null,
-      tStatNW: res ? round(res.tStatNW, 2) : null,
-      r2OOS: res && res.r2OOS != null ? round(res.r2OOS, 4) : null,
-      hitRateOOS: res ? round(res.hitRateOOS, 3) : null,
-      verdict: verdictFor(res),
+  const results = horizons.map((h) => summarizeResult(h, isOosTest(impulse, forwardReturns(nqWeekly, h))));
+
+  // Regime conditioning (education/macro-deep-dives-notes.md Lesson 3: "regime
+  // conditioning is mandatory" — an unconditional multi-decade regression can
+  // wash out an effect that only shows up in stress). Only computed when the
+  // caller supplied VIX + HY OAS; otherwise omitted rather than guessed at.
+  const stress = computeStressRegime(dates, fredMaps);
+  let regime = null;
+  if (stress) {
+    const calm = stress.map((s) => !s);
+    const stressWeeks = stress.filter(Boolean).length;
+    const stressEpisodes = countEpisodes(stress);
+    regime = {
+      stressWeeks, calmWeeks: dates.length - stressWeeks,
+      stressShare: round(stressWeeks / dates.length, 3),
+      stressEpisodes,
+      resultsStress: horizons.map((h) => summarizeResult(h, isOosTestFiltered(impulse, forwardReturns(nqWeekly, h), stress))),
+      resultsCalm: horizons.map((h) => summarizeResult(h, isOosTestFiltered(impulse, forwardReturns(nqWeekly, h), calm))),
+      caveat: `Only ${stressEpisodes} independent stress episode(s) in this sample (not ${stressWeeks} — stress weeks inside one episode are highly autocorrelated, not separate evidence). A regime-conditioned t-stat here is much weaker evidence than the same t-stat computed from many independent episodes — read a "ROBUST" verdict on this split as suggestive at best, not confirmed.`,
     };
-  });
+  }
 
   return {
     fredSource, nqSource, real,
     pubLagWeeks, impulseSmoothWeeks: IMPULSE_SMOOTH, impulseLookbackWeeks: IMPULSE_LOOKBACK, zWindowWeeks: Z_WINDOW,
     weeks: dates.length, start: dates[0], asOf: dates.at(-1),
-    results,
+    results, regime,
     caveat: 'RESEARCH DIAGNOSTIC ONLY — not a trading signal, not a system, no position sizing. Answers one question (does Net Liquidity have an honest out-of-sample relationship with forward Nasdaq returns) and reports both sides of that answer, including a negative OOS R² when the in-sample fit does not carry forward.',
   };
 }

@@ -109,30 +109,44 @@ table.reg-tbl td.verdict { white-space: normal; min-width: 320px; color: var(--t
       '<div class="meta-card"><div class="meta-lbl">Impulse construction</div><div class="meta-val">lag ' + d.pubLagWeeks + 'w · ' + d.impulseSmoothWeeks + 'w smooth · ' + d.impulseLookbackWeeks + 'w RoC · z(' + d.zWindowWeeks + 'w)</div></div>' +
       '</div>';
 
-    var rows = d.results.map(function (r) {
-      if (!r.n) {
-        return '<tr><td>' + r.horizonWeeks + 'w</td><td colspan="6" class="verdict dim">' + r.verdict + '</td></tr>';
-      }
-      var betaCls = r.beta >= 0 ? 'pos' : 'neg';
-      var tCls = Math.abs(r.tStatNW) >= 2 ? (r.beta >= 0 ? 'pos' : 'neg') : 'dim';
-      var r2OosCls = r.r2OOS != null && r.r2OOS > 0 ? 'pos' : 'neg';
-      return '<tr>' +
-        '<td>' + r.horizonWeeks + 'w</td>' +
-        '<td class="dim">' + r.nIS + ' / ' + r.nOOS + '</td>' +
-        '<td class="' + betaCls + '">' + r.beta.toFixed(5) + '</td>' +
-        '<td class="' + tCls + '">' + r.tStatNW.toFixed(2) + '</td>' +
-        '<td class="dim">' + r.r2IS.toFixed(3) + '</td>' +
-        '<td class="' + r2OosCls + '">' + (r.r2OOS == null ? '—' : r.r2OOS.toFixed(3)) + '</td>' +
-        '<td class="dim">' + (r.hitRateOOS * 100).toFixed(1) + '%</td>' +
-        '<td class="verdict">' + verdictBadge(r.verdict) + ' ' + r.verdict + '</td>' +
-      '</tr>';
-    }).join('');
+    function tableFor(resultRows) {
+      var trs = resultRows.map(function (r) {
+        if (!r.n) return '<tr><td>' + r.horizonWeeks + 'w</td><td colspan="6" class="verdict dim">' + r.verdict + '</td></tr>';
+        var betaCls = r.beta >= 0 ? 'pos' : 'neg';
+        var tCls = Math.abs(r.tStatNW) >= 2 ? (r.beta >= 0 ? 'pos' : 'neg') : 'dim';
+        var r2OosCls = r.r2OOS != null && r.r2OOS > 0 ? 'pos' : 'neg';
+        return '<tr>' +
+          '<td>' + r.horizonWeeks + 'w</td>' +
+          '<td class="dim">' + r.nIS + ' / ' + r.nOOS + '</td>' +
+          '<td class="' + betaCls + '">' + r.beta.toFixed(5) + '</td>' +
+          '<td class="' + tCls + '">' + r.tStatNW.toFixed(2) + '</td>' +
+          '<td class="dim">' + r.r2IS.toFixed(3) + '</td>' +
+          '<td class="' + r2OosCls + '">' + (r.r2OOS == null ? '—' : r.r2OOS.toFixed(3)) + '</td>' +
+          '<td class="dim">' + (r.hitRateOOS * 100).toFixed(1) + '%</td>' +
+          '<td class="verdict">' + verdictBadge(r.verdict) + ' ' + r.verdict + '</td>' +
+        '</tr>';
+      }).join('');
+      return '<div class="tbl-wrap"><table class="reg-tbl"><thead><tr>' +
+        '<th>Horizon</th><th>n (IS/OOS)</th><th>β</th><th>IS t (NW)</th><th>IS R²</th><th>OOS R²</th><th>OOS hit-rate</th><th>Verdict</th>' +
+        '</tr></thead><tbody>' + trs + '</tbody></table></div>';
+    }
+
+    var regimeHtml = '';
+    if (d.regime) {
+      var g = d.regime;
+      regimeHtml =
+        '<h3 style="font-size:13px;font-weight:700;margin:22px 0 6px;color:var(--text2);">Regime-conditioned split <span class="dim" style="font-weight:400;">— "regime conditioning is mandatory" (education/macro-deep-dives-notes.md)</span></h3>' +
+        '<div class="status-line">Stress = ' + g.stressWeeks + 'w (' + (g.stressShare * 100).toFixed(1) + '%) across <b>' + g.stressEpisodes + ' independent episode(s)</b> — credit (HY OAS) or vol (VIX) z-score &gt; 2.0. Calm = ' + g.calmWeeks + 'w.</div>' +
+        '<div style="margin-top:10px;font-size:12px;font-weight:600;color:var(--text2);">Stress weeks</div>' + tableFor(g.resultsStress) +
+        '<div style="margin-top:14px;font-size:12px;font-weight:600;color:var(--text2);">Calm weeks</div>' + tableFor(g.resultsCalm) +
+        '<div class="diag-banner" style="margin-top:14px;">' + g.caveat + '</div>';
+    } else {
+      regimeHtml = '<div class="status-line" style="margin-top:20px;">No VIX/HY OAS data available — regime-conditioned split skipped.</div>';
+    }
 
     var html = metaHtml +
-      '<div class="tbl-wrap"><table class="reg-tbl">' +
-      '<thead><tr>' +
-      '<th>Horizon</th><th>n (IS/OOS)</th><th>β</th><th>IS t (NW)</th><th>IS R²</th><th>OOS R²</th><th>OOS hit-rate</th><th>Verdict</th>' +
-      '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+      '<h3 style="font-size:13px;font-weight:700;margin:16px 0 6px;color:var(--text2);">Unconditional (full sample)</h3>' +
+      tableFor(d.results) + regimeHtml;
 
     document.getElementById('resultArea').innerHTML = html;
     document.getElementById('footNote').innerHTML =
