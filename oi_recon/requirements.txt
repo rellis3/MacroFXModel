@@ -2,3 +2,9 @@ requests>=2.31
 playwright>=1.44
 # After installing:  playwright install chromium
 # (--probe and --diff work with requests alone; only --login/--browse need playwright)
+
+databento>=0.86
+pandas>=2.0
+# Only needed for databento_oi_pull.py -- the sanctioned-source historical
+# puller, see that file's docstring and oi_recon/README.md's "durable answer
+# is a sanctioned source" note.
