@@ -1,0 +1,13 @@
+combo,ic_select,ic_holdout,p_null,stable,verdict
+vix +smallcap_largecap_oanda,-0.4294277816512082,-0.23689456980682944,0.0,True,REAL
+leg_discretionary_staples_yahoo -vix -smallcap_largecap_oanda,0.4187800333385799,0.28579074521294223,0.0,True,REAL
+vix +smallcap_largecap_oanda -hy_oas,-0.41115496246809,-0.2390324251003474,0.0,True,REAL
+jordan_composite_yahoo -vix -leg_smallcap_largecap_yahoo,0.4091037656098683,0.2029419712069319,0.0,True,REAL
+vix -nas_rvol +smallcap_largecap_oanda,-0.40682922420672935,-0.24673827820278582,0.0,True,REAL
+leg_discretionary_staples_yahoo -vix +hy_oas,0.40320269962814514,0.2578489455016217,0.0,True,REAL
+vix +oil -hy_oas,-0.4020327989705183,-0.0981451925532941,0.208,True,NOT CONFIRMED ON HOLDOUT
+jordan_composite_yahoo -vix -smallcap_largecap_oanda,0.3989248317974803,0.3043100516450046,0.0,True,REAL
+jordan_composite_yahoo -vix +hy_oas,0.39878020093227806,0.26559566779449223,0.0,True,REAL
+leg_discretionary_staples_yahoo -vix +nas_rvol,0.393862023942353,0.2885162548875718,0.0,True,REAL
+vix -nas_rvol -hy_oas,-0.39277116601788964,-0.182498524768356,0.0006666666666666666,True,REAL
+vix +smallcap_largecap_oanda +xauusd_skew,-0.39142731040134193,-0.29409296384914335,0.0,True,REAL
