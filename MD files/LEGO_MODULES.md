@@ -5539,6 +5539,61 @@ Validated: `node --check server.js` and `node --check js/bot-config.js`
 both clean; confirmed the `fa_gap_filter_asia`/`fa_gap_filter_monday`
 element IDs match exactly between the HTML and the JS reads.
 
+#### Combined-portfolio smoothness audit — external critique of Sharpe 18.37 / 0 losing months (2026-09-06)
+
+Owner relayed a sharp external critique of the live "Asia+Monday combined"
+Performance Summary (Sharpe 18.37, Calmar 783.5, max DD -1.01%, apparently 0
+negative months across 62, and a claimed "10x" gap between trade count ×
+average trade and the reported total return). Traced every one of these on
+the real engine (`analysis/fib_atlas_smoothness_audit.mjs`, same
+`loadBestConfigBtn` config as the live page, riskPct=0.5%, real R2 trades —
+not reasoned about abstractly) rather than defending or dismissing:
+
+- **The "10x mismatch" was a misread, not a bug.** Total Return is
+  **+3762.03%**, not +37,762% — 9,847 trades × 0.382% avg = 3762.03% exactly
+  (ratio to the actual additive daily-pooled sum: 1.0000). No double-counting,
+  no hidden multiplier in `buildPortfolioDailySeries`/`riskAdjustTrades`.
+- **Zero negative months is real, confirmed directly from the day-pooled
+  series** (62/62 positive, worst Nov 2021 +1.39%, matches the dashboard
+  exactly) — mechanically explained by only 32/1,198 days (2.7%) being
+  net-negative at all (worst single day -1.01%), a law-of-large-numbers
+  smoothing effect from pooling ~8 trades/day at an 85.6% win rate IF those
+  trades are close to independent. That independence assumption is the same
+  one this doc's own correlated-drawdown study already treats as the real
+  risk (why 10 pairs are excluded) — not a new concern, but a real one.
+- **Max DD -1.01% is the DAY-POOLED figure. The honest per-trade
+  (chronological, non-netted) max drawdown on this exact live config is
+  -5.45% — 5.4x deeper** (`maxDrawdownFromPnls` on trades sorted by
+  `resolveTime`, no same-day netting). Recomputing Calmar against -5.45%
+  gives ≈145, not 783. Same mechanism as the 2026-09-06 day-pooled-vs-per-trade
+  entry above, reconfirmed on this specific combined/riskPct=0.5% config.
+- **Sharpe 18.37 is the naive daily figure — Newey-West HAC-corrected gives
+  14.27** (variance inflation 1.66x, bandwidth 6) — consistent with, not new
+  beyond, the already-documented autocorrelation investigation elsewhere in
+  this doc (the "elevated, unexplained residual" finding).
+- **Fragility test passed — a genuinely positive result.** Stripping the
+  best 1%/5%/10% of trades by pnlPct: Sharpe does NOT collapse (18.37 →
+  19.27 → 19.89 → 19.59 — if anything it firms up), maxDD barely moves
+  (-1.01% → -1.01% → -2.05% → -2.05%), and total return degrades roughly
+  proportional to trade count removed (3762% → 3506% → 2962% → 2497%). The
+  result is not concentrated in a handful of outlier trades.
+- **Basic lookahead sanity check passes** (0/9,847 trades have
+  `resolveTime` before entry `time`, 0 negative `gapMin`) — this is only a
+  timestamp-ordering check, NOT a re-verification of the deeper
+  signal-construction lookahead work done in PR #1352, which predates
+  stop-tightening, the chandelier exit, the continuation exit, and the gap
+  filter. **Flagged as the one genuinely open item from this critique** —
+  worth a dedicated re-audit of `margin`/`gapMin`/rung-vote computation
+  against everything added since #1352 if full confidence is wanted.
+- **Not yet built**: the proposed cost/slippage staircase (raw → +spread →
+  +N-tick slippage → 2x/3x spread). `minCostRatio=3` already gates trades on
+  real per-pair round-trip cost vs. target distance, but no explicit
+  sensitivity table exists yet.
+
+Validated: `node --check` clean; script reuses `buildFibAtlasVotePortfolio`
+and `maxDrawdownFromPnls` directly (no parallel/duplicate math), run against
+the same live R2-stored trade blobs the production route reads.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
