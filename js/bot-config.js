@@ -4339,6 +4339,11 @@ const FA_DEFAULT_CHECKED = new Set(FA_PAIRS.filter(p => !FA_RECOMMENDED_EXCLUDE.
 const FA_DEFAULTS = {
   paper_mode: true, kill_switch: false,
   ladders: { asia: true, monday: true },
+  // Server-side whiplash gap filter (FIB_ATLAS_MAX_GAP_MIN /
+  // FIB_ATLAS_MONDAY_MAX_GAP_MIN) -- on by default, per ladder, since that's
+  // the OOS-validated config. Read by _refreshFibAtlasPlan in server.js, not
+  // by the Python bot itself.
+  gap_filter: { asia: true, monday: true },
   risk_pct: 0.5, max_lot: 5.0, max_open: 20, max_concurrent_per_pair: 4,
   max_spread_pips: 2.0,
   enabled_pairs: [...FA_DEFAULT_CHECKED],
@@ -4381,6 +4386,8 @@ function renderFaForm() {
   chk('fa_kill_switch', _faCfg.kill_switch);
   chk('fa_ladder_asia',   _faCfg.ladders?.asia ?? true);
   chk('fa_ladder_monday', _faCfg.ladders?.monday ?? true);
+  chk('fa_gap_filter_asia',   _faCfg.gap_filter?.asia ?? true);
+  chk('fa_gap_filter_monday', _faCfg.gap_filter?.monday ?? true);
   set('fa_risk_pct',            _faCfg.risk_pct            ?? FA_DEFAULTS.risk_pct);
   set('fa_max_lot',             _faCfg.max_lot             ?? FA_DEFAULTS.max_lot);
   set('fa_max_open',            _faCfg.max_open            ?? FA_DEFAULTS.max_open);
@@ -4413,6 +4420,10 @@ function readFaForm() {
     asia:   !!document.getElementById('fa_ladder_asia')?.checked,
     monday: !!document.getElementById('fa_ladder_monday')?.checked,
   };
+  _faCfg.gap_filter = {
+    asia:   !!document.getElementById('fa_gap_filter_asia')?.checked,
+    monday: !!document.getElementById('fa_gap_filter_monday')?.checked,
+  };
   _faCfg.risk_pct             = num('fa_risk_pct', FA_DEFAULTS.risk_pct);
   _faCfg.max_lot              = num('fa_max_lot', FA_DEFAULTS.max_lot);
   _faCfg.max_open             = Math.round(num('fa_max_open', FA_DEFAULTS.max_open));
@@ -4438,7 +4449,7 @@ function readFaForm() {
 }
 
 async function loadFaConfig() {
-  try { const stored = await kvGet('fib_atlas_bot_config'); if (stored) _faCfg = { ...FA_DEFAULTS, ...stored, ladders: { ...FA_DEFAULTS.ladders, ...(stored.ladders || {}) } }; renderFaForm(); } catch (e) {}
+  try { const stored = await kvGet('fib_atlas_bot_config'); if (stored) _faCfg = { ...FA_DEFAULTS, ...stored, ladders: { ...FA_DEFAULTS.ladders, ...(stored.ladders || {}) }, gap_filter: { ...FA_DEFAULTS.gap_filter, ...(stored.gap_filter || {}) } }; renderFaForm(); } catch (e) {}
 }
 async function saveFaConfig() {
   readFaForm();
@@ -4458,7 +4469,7 @@ async function testFaTelegram() {
   } catch (e) { if (el) { el.textContent = `Test failed: ${e.message}`; el.style.color = 'var(--red)'; } }
 }
 function resetFaDefaults() {
-  _faCfg = { ...FA_DEFAULTS, ladders: { ...FA_DEFAULTS.ladders } }; renderFaForm();
+  _faCfg = { ...FA_DEFAULTS, ladders: { ...FA_DEFAULTS.ladders }, gap_filter: { ...FA_DEFAULTS.gap_filter } }; renderFaForm();
   const el = document.getElementById('faSaveStatus');
   if (el) { el.textContent = 'Defaults restored — click Save to apply'; el.style.color = 'var(--text3)'; }
 }

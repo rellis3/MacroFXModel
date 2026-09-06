@@ -5436,6 +5436,109 @@ fetch and the actual chart pixels — same standing sandbox limitation as
 every other CDN-chart/live-OANDA feature in this file; needs a live look
 on Railway.
 
+#### Gap filter made a live on/off config toggle (2026-09-06)
+
+Owner ask: until now the whiplash gap filter
+(`FIB_ATLAS_MAX_GAP_MIN`/`FIB_ATLAS_MONDAY_MAX_GAP_MIN`, always-on since
+2026-09-04) had no live switch — turning it off required a code deploy.
+Added a `gap_filter: { asia, monday }` field to the SAME
+`fib_atlas_bot_config` KV object the Python bot's own config already lives
+in (`FA_DEFAULTS` in `js/bot-config.js`), defaulting both to `true` (the
+OOS-validated behavior) so nothing changes for anyone who doesn't touch it.
+
+- `server.js`: `FIB_ATLAS_PLAN_CFG_DEFAULTS` now carries
+  `gap_filter: { asia: true, monday: true }` alongside the existing
+  `enabled_pairs`. `_refreshFibAtlasPlan`'s per-(pair, ladder) loop reads
+  `cfg.gap_filter?.[ladder] !== false` and calls
+  `planFn(pair, gapFilterEnabled ? {} : { maxGapMin: null })` — `{}` uses
+  each ladder's own frozen default via `zonesFromLiveAndBook`'s own default
+  param, `{ maxGapMin: null }` hits its `maxGapMin != null` guard and skips
+  the filter block entirely for that tick. Previously the loop called
+  `planFn(pair)` with no opts at all.
+- `bot-config.html` (Fib Atlas tab, Bot Control card): new "Gap filter"
+  form-row, one checkbox per ladder (`fa_gap_filter_asia`/
+  `fa_gap_filter_monday`), right under the existing "Ladders" row —
+  same `form-row`/`form-lbl` pattern as every other toggle in that card.
+- `js/bot-config.js`: `FA_DEFAULTS.gap_filter`, `renderFaForm`/`readFaForm`
+  wire the two checkboxes the same way `ladders` already does, and
+  `loadFaConfig`/`resetFaDefaults` deep-merge/reset the nested object so a
+  config saved before this field existed still defaults both ladders to on.
+
+**Known, deliberately out-of-scope gap**: the nightly
+`reference-engine-rebuild` job's `runOne` path (both `asiaFibAtlasRoutes.js`
+and `mondayFibAtlasRoutes.js`) calls `zonesFromLiveAndBook` directly with no
+config lookup, so it always uses the frozen default regardless of this
+toggle. This is a short-lived inconsistency — the next `_refreshFibAtlasPlan`
+tick (≤45s) overwrites it with the config-respecting value — left out to
+keep this change minimal; flag if the nightly path should read the same KV
+config too.
+
+#### Risk-% / trade sweep — is there a "perfect" %, or is it a personal dial? (2026-09-06)
+
+Owner picked 1% risk/trade without being sure it was right, having seen
+people discuss 1% vs 3%. Tested it on the real engine rather than reasoning
+about it in the abstract: `analysis/fib_atlas_risk_pct_sweep.mjs` runs
+`buildFibAtlasVotePortfolio` at the page's own "best config"
+(`loadBestConfigBtn`: 16-pair combined Asia+Monday, maxConcurrent=1 hedge-only,
+stopTightenFrac=0.9, minCostRatio=3, maxGapMin=30, continuationExit=
+chandelier) sweeping ONLY `riskPct` across 0.25%–5%, on the real R2-stored
+trade set (32 constituents, 9,847 trades, 1,198 trading days ≈ 4.75yr).
+
+**Result — exactly what fixed-fractional sizing predicts, confirmed
+empirically, not assumed:**
+- **Sharpe (both the naive daily and the Newey-West HAC-corrected version)
+  is IDENTICAL at every riskPct tested — 18.370 / 14.270, flat from 0.25% to
+  5.0%, to 3 decimal places.** `riskAdjustTrades` scales every trade's
+  `pnlPct` by a pure constant (`rMultiple × riskPct`, sized off ORIGINAL
+  notional every time, never compounded per-trade) — scaling an entire
+  return series by one constant scales its mean and stdev by the same
+  factor, so mean÷stdev (Sharpe) is mathematically invariant to the scalar.
+  There is no risk-adjusted-return sense in which 1% "beats" 3% or vice
+  versa — under this sizing scheme that question has no answer, by
+  construction.
+- **On the honest ADDITIVE (non-reinvested) basis — the one this module's own
+  `withNonCompoundedDD` flags as the correct complement to fixed-fractional,
+  non-compounded sizing — CAGR and maxDD scale EXACTLY linearly with
+  riskPct**: `cagrAdditive/riskPct` and `maxDDAdditive/riskPct` are constant
+  (≈1582.7 and ≈-2.02 respectively) across the entire sweep. Concretely:
+  **maxDD(additive) ≈ -2.02% × riskPct** on this book. There is no curve, no
+  interior optimum, no "sweet spot" — just a straight line through the
+  origin. Choosing a risk% is choosing a point on that line, nothing more.
+- **The `stats.cagr`/`maxDD`/`calmar` (COMPOUND) fields blow up
+  super-exponentially with riskPct** (compound CAGR goes from ~4,859% at
+  0.25% risk to ~7×10²⁹% at 5% risk) — this is a real artifact of
+  `portfolioStats` geometrically reinvesting the POOLED DAILY return series
+  (many trades/day, ~4.75 years, positive daily edge) while the underlying
+  per-trade sizing explicitly does NOT reinvest (fixed % of original
+  notional per trade, per this file's own top-of-file comment). The two
+  compounding assumptions don't match each other, so the compound-view
+  numbers are not a usable real-money growth prediction here — this is
+  exactly why the additive view exists and is the one to trust for a
+  cross-riskPct comparison.
+
+**Direct answer to "is there a real optimal %, or does it not matter?"**:
+for this sizing scheme, there is no risk-adjusted optimum — it's a pure,
+linear personal-risk-tolerance dial, confirmed rather than assumed. The
+actual constraint is the owner's own stated 10% max-drawdown limit: at
+≈-2.02% additive maxDD per 1% risked, this book's OWN historical worst case
+would need ≈4.9% risk/trade to reach a 10% drawdown — meaning 1% carries
+roughly 5x headroom under that cap on this specific backtest. That headroom
+should NOT be read as "it's safe to run near 5%": the OOS window here is the
+same ~4.75-year stretch already flagged elsewhere in this doc as excluding
+COVID, Brexit and the SNB shock — a real crisis inside the window could make
+the realized worst-case materially deeper than -2.02%/1%-risk. 1% is a
+reasonable, conservative choice precisely because of that untested tail risk,
+not because backtested math prefers it to 3%.
+
+Validated: `node --check` clean; script run against the same live R2-stored
+`{pair}-votetrades.json` blobs the production `/vote-portfolio-combined`
+route reads (32/32 constituents loaded), so this reuses the exact same
+computation the dashboard would run — no separate/parallel logic.
+
+Validated: `node --check server.js` and `node --check js/bot-config.js`
+both clean; confirmed the `fa_gap_filter_asia`/`fa_gap_filter_monday`
+element IDs match exactly between the HTML and the JS reads.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
