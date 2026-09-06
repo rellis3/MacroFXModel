@@ -85,9 +85,10 @@ export function weeklyReturns(points) {
  */
 // Align each pair's weekly returns onto the engine's weekly date grid (±4 days
 // — FX close timestamps and the engine's Friday-anchored grid don't line up
-// exactly). Shared by computeBacktest and computeRegressionTest so the two can
-// never see different realized returns for the same week.
-function alignFxToGrid(dates, pairs, fxByPair) {
+// exactly). Shared by computeBacktest and computeRegressionTest (and reused by
+// analysis/liquidity_net_regression.mjs for the same NQ-vs-liquidity join) so
+// nothing sees a different realized return for the same week.
+export function alignFxToGrid(dates, pairs, fxByPair) {
   const m = pairs.length, n = dates.length;
   const R = dates.map(() => new Array(m).fill(0));
   const fxCover = new Array(m).fill(0);
