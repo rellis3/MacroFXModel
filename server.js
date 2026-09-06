@@ -214,6 +214,7 @@ import { _fetchAllH1 as _fetchH1AB, _fetchAllH1 as _fetchH1 } from './js/session
 import { runMacroEquityBacktest } from './js/macroEquityEngine.js';
 import { loadEngine as loadGliEngine } from './GlobalLiquidity/engineLoader.mjs';
 import { computeBacktest as computeGliBacktest, computeNqBacktest as computeGliNqBacktest, computeRegressionTest as computeGliRegressionTest, accumulateWeekly as gliAccumulateWeekly, weeklyReturnsFromByWeek as gliWeeklyFromByWeek, FRED_IDS as GLI_FRED_IDS, FX_FILE_ALIAS as GLI_FX_ALIAS } from './GlobalLiquidity/backtestCore.mjs';
+import { computeNetLiquidityRegression } from './analysis/liquidityNetRegressionCore.mjs';
 import { runFullZScoreBacktest, ZSCORE_PAIRS, computeZScoreStats, fetchFredObservations } from './js/zscoreSpreadEngine.js';
 import {
   buildFastFeatures as nmlBuildFastFeatures, buildFredFeatures as nmlBuildFredFeatures,
@@ -7609,6 +7610,81 @@ app.get('/api/global-liquidity/regression/status/:jobId', (req, res) => {
   if (!job) {
     if (GLI_REG_CACHE.result && Date.now() - GLI_REG_CACHE.builtAt < GLI_BT_TTL) {
       return res.json({ ok: true, status: 'done', cached: true, data: GLI_REG_CACHE.result });
+    }
+    return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  }
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000), phase: job.phase ?? 'Running…' });
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error });
+});
+
+// ── Net Liquidity → NQ research diagnostic (Stage A control case) ────────────
+// RESEARCH DIAGNOSTIC ONLY — deliberately NOT part of the GlobalLiquidity
+// trading engine above. Answers one question: does Net Liquidity's impulse
+// (WALCL − TGA − RRP) have an out-of-sample relationship with forward Nasdaq
+// returns? See analysis/liquidity_net_regression.mjs / liquidityNetRegressionCore.mjs
+// for the full rationale and math. No position sizing, no book, no P&L claim.
+// POST /api/liquidity-analysis/net-liquidity-nq/run        → { ok, jobId }
+// GET  /api/liquidity-analysis/net-liquidity-nq/status/:id → { ok, status, ...result }
+const netLiqJobs = new Map();
+const NET_LIQ_CACHE = { result: null, builtAt: 0 };
+const NET_LIQ_TTL = 6 * 60 * 60 * 1000;   // 6h — FRED/FX update at most daily
+const NET_LIQ_FRED_IDS = { walcl: 'WALCL', tga: 'WTREGEN', rrp: 'RRPONTSYD' };
+
+async function _netLiqFetchFred(fredKey) {
+  const maps = {};
+  for (const [k, sid] of Object.entries(NET_LIQ_FRED_IDS)) {
+    try { maps[k] = await fetchFredSeries(sid, '2003-01-01', fredKey); }
+    catch (e) { console.warn(`[net-liq] FRED ${sid} failed: ${e.message}`); maps[k] = new Map(); }
+  }
+  return maps;
+}
+
+app.post('/api/liquidity-analysis/net-liquidity-nq/run', express.json({ limit: '256kb' }), (req, res) => {
+  const fredKey = process.env.FRED_KEY || process.env.FRED_API_KEY || req.body?.fredKey;
+  if (!fredKey) {
+    return res.status(400).json({ ok: false,
+      error: 'FRED_KEY not set — add it to Railway env vars (or pass fredKey in the request body).' });
+  }
+  const force = req.body?.force === true || req.body?.force === 'true';
+  const jobId = `netliq_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  for (const [id, j] of netLiqJobs) if (Date.now() - j.startedAt > 30 * 60 * 1000) netLiqJobs.delete(id);
+
+  if (!force && NET_LIQ_CACHE.result && Date.now() - NET_LIQ_CACHE.builtAt < NET_LIQ_TTL) {
+    netLiqJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, cached: true, data: NET_LIQ_CACHE.result } });
+    return res.json({ ok: true, jobId, cached: true });
+  }
+
+  netLiqJobs.set(jobId, { status: 'running', startedAt, phase: 'Fetching FRED (WALCL/TGA/RRP)…' });
+  (async () => {
+    try {
+      const fredMaps = await _netLiqFetchFred(fredKey);
+      netLiqJobs.set(jobId, { status: 'running', startedAt, phase: 'Loading NQ from R2…' });
+      const nqRets = await _gliWeeklyForPair('nq');   // reuse the existing R2 + local-disk loader
+      if (!nqRets || !nqRets.size) throw new Error('no NQ data (R2/disk unavailable)');
+      netLiqJobs.set(jobId, { status: 'running', startedAt, phase: 'Running IS/OOS regression…' });
+      const data = computeNetLiquidityRegression({
+        fredMaps, fredSource: 'FRED API (Railway key)', nqRets, nqSource: 'R2 (nq_m1.parquet)',
+      });
+      NET_LIQ_CACHE.result = data; NET_LIQ_CACHE.builtAt = Date.now();
+      netLiqJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, cached: false, data } });
+      console.log(`[net-liq] job ${jobId} done (${Math.round((Date.now() - startedAt) / 1000)}s)`);
+    } catch (e) {
+      const msg = e?.message || String(e);
+      console.error('[net-liq] error:', msg, e?.stack ?? '');
+      netLiqJobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/liquidity-analysis/net-liquidity-nq/status/:jobId', (req, res) => {
+  const job = netLiqJobs.get(req.params.jobId);
+  if (!job) {
+    if (NET_LIQ_CACHE.result && Date.now() - NET_LIQ_CACHE.builtAt < NET_LIQ_TTL) {
+      return res.json({ ok: true, status: 'done', cached: true, data: NET_LIQ_CACHE.result });
     }
     return res.status(404).json({ ok: false, error: 'Job not found or expired' });
   }
