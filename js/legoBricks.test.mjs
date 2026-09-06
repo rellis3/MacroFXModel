@@ -7,7 +7,7 @@
 import { bisect, extractBars, resampleTo, bodyRange, calcATR } from './barUtils.js';
 import { rollingZScore, rollingPercentile, rollingZAt, linregSlope, ewma, stdev, rankData, spearman, rankIC, mulberry32, blockResample, blockBootstrapIC } from './statsCore.js';
 import { atrWilder, adxWilder, ema, rsiWilder, pmo } from './indicatorCore.js';
-import { summarizeTrades, sharpeRatio, maxDrawdownFromPnls, profitFactor, winRate, sharpeStdError, minTrackRecordLength, skewness, excessKurtosis, histVaR, histCVaR, neweyWestSharpe } from './metricsCore.js';
+import { summarizeTrades, sharpeRatio, maxDrawdownFromPnls, profitFactor, winRate, sharpeStdError, minTrackRecordLength, skewness, excessKurtosis, histVaR, histCVaR, neweyWestSharpe, neweyWestOLS } from './metricsCore.js';
 import { FIB_LEVELS, calcFibs } from './fibProjection.js';
 import { instrument, pipSize, resolveKey, INSTRUMENT_KEYS } from './instrumentRegistry.js';
 import { summarize } from './honestForecastEngine.js';
@@ -690,6 +690,61 @@ console.log('[metricsCore — Newey-West HAC-adjusted Sharpe]');
   ok('degenerate input (n<2) returns zeros, not a throw or NaN',
      JSON.stringify(neweyWestSharpe([1], 252)) === JSON.stringify({ sharpeNaive: 0, sharpeNW: 0, bandwidth: 0, varianceInflation: 1, n: 1 })
      && JSON.stringify(neweyWestSharpe([], 252)) === JSON.stringify({ sharpeNaive: 0, sharpeNW: 0, bandwidth: 0, varianceInflation: 1, n: 0 }));
+}
+
+// neweyWestOLS — HAC-robust single-regressor OLS, the regression-test brick
+// behind the Global Liquidity spread-vs-forward-return test. Checked three
+// ways: (1) a KNOWN linear relationship y = a + b*x + noise recovers b and a;
+// (2) on i.i.d. noise regressed against unrelated i.i.d. x, beta should be
+// ~0 and the NW t-stat should rarely exceed 2 in magnitude (no false
+// positive by construction); (3) autocorrelated residuals should widen the
+// NW standard error relative to the naive OLS SE (the whole reason this
+// exists — a naive t-stat on autocorrelated data overstates significance).
+console.log('[metricsCore — Newey-West HAC-robust OLS]');
+{
+  const rand = mulberry32(4242);
+  const n = 500, trueA = 0.02, trueB = 1.5;
+  const x1 = Array.from({ length: n }, () => (rand() - 0.5) * 2);
+  const y1 = x1.map((xi) => trueA + trueB * xi + (rand() - 0.5) * 0.1);
+  const fit1 = neweyWestOLS(x1, y1);
+  ok('recovers a known linear relationship: beta close to truth',
+     Math.abs(fit1.beta - trueB) < 0.05, `beta=${fit1.beta.toFixed(3)} (true ${trueB})`);
+  ok('recovers a known linear relationship: intercept close to truth',
+     Math.abs(fit1.intercept - trueA) < 0.02, `intercept=${fit1.intercept.toFixed(4)} (true ${trueA})`);
+  ok('r2 is high for a tight linear relationship (little noise)', fit1.r2 > 0.99);
+  ok('a real relationship produces a large NW t-stat', Math.abs(fit1.tStatNW) > 10);
+
+  const rand2 = mulberry32(99);
+  const xNoise = Array.from({ length: 400 }, () => (rand2() - 0.5) * 2);
+  const yNoise = Array.from({ length: 400 }, () => (rand2() - 0.5) * 2);
+  const fitNoise = neweyWestOLS(xNoise, yNoise);
+  ok('unrelated i.i.d. series: beta near zero', Math.abs(fitNoise.beta) < 0.3, `beta=${fitNoise.beta.toFixed(3)}`);
+  ok('unrelated i.i.d. series: NW t-stat is not "significant" (no false positive)',
+     Math.abs(fitNoise.tStatNW) < 2.5, `t=${fitNoise.tStatNW.toFixed(2)}`);
+
+  // Both the regressor AND the residual autocorrelated (like two smoothly-
+  // trending macro series — a fixed, WHITE-NOISE x wouldn't do it: the NW
+  // score is (x-x̄)·u, and if x is i.i.d. and independent of u then
+  // Cov(score_t, score_t+k) = Cov(x_t,x_t+k)·Cov(u_t,u_t+k) = 0·Cov(u) = 0 —
+  // white-noise x KILLS the very serial correlation this correction targets).
+  // With both AR(1), the score series inherits real serial correlation, which
+  // should widen the NW SE relative to the naive OLS SE — that inflation is
+  // the entire point of this correction.
+  const rand3 = mulberry32(555);
+  const n3 = 2000, phi = 0.6, psi = 0.7;
+  const x3 = [0]; for (let i = 1; i < n3; i++) x3.push(psi * x3[i - 1] + (rand3() - 0.5) * 2);
+  const u3 = [0]; for (let i = 1; i < n3; i++) u3.push(phi * u3[i - 1] + (rand3() - 0.5) * 2);
+  const y3 = x3.map((xi, i) => 0.3 * xi + u3[i]);
+  const fit3 = neweyWestOLS(x3, y3, 50);
+  ok('autocorrelated residuals: NW SE is wider than the naive OLS SE',
+     fit3.seNW > fit3.seNaive, `seNaive=${fit3.seNaive.toFixed(4)} seNW=${fit3.seNW.toFixed(4)}`);
+  ok('autocorrelated residuals: NW t-stat is smaller in magnitude than the naive t-stat',
+     Math.abs(fit3.tStatNW) < Math.abs(fit3.tStatNaive));
+
+  ok('degenerate input (n<3) returns zeros, not a throw or NaN',
+     neweyWestOLS([1, 2], [1, 2]).beta === 0 && neweyWestOLS([], []).n === 0);
+  ok('constant x (zero variance) returns beta 0, not divide-by-zero NaN/Infinity',
+     neweyWestOLS([5, 5, 5, 5, 5], [1, 2, 3, 4, 5]).beta === 0);
 }
 
 // skewness / excessKurtosis / histVaR / histCVaR — distribution shape & tail.

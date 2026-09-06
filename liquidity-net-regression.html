@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Net Liquidity Regression Test — Research Diagnostic</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/index.css">
+<style>
+#app { padding: 0 20px 60px; max-width: 1100px; margin: 0 auto; }
+
+.diag-banner {
+  background: rgba(139,92,246,.08); border: 1.5px solid rgba(139,92,246,.35); border-radius: var(--rl);
+  padding: 14px 18px; margin: 14px 0; font-size: 13px; line-height: 1.6; color: var(--text2);
+}
+.diag-banner b { color: #a78bfa; }
+
+.run-bar {
+  background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--r);
+  padding: 12px 16px; margin-top: 10px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+}
+.run-btn {
+  background: #8b5cf6; border: none; border-radius: 6px; color: #fff; font-family: 'DM Mono', monospace;
+  font-size: 12px; font-weight: 700; padding: 8px 22px; cursor: pointer; transition: opacity .2s;
+}
+.run-btn:hover { opacity: .85; }
+.run-btn:disabled { opacity: .5; cursor: wait; }
+.run-lbl { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
+
+.meta-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px; }
+@media (max-width: 700px) { .meta-grid { grid-template-columns: 1fr 1fr; } }
+.meta-card { background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--rl); padding: 12px 14px; }
+.meta-lbl { font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--text3); font-family: 'DM Mono', monospace; }
+.meta-val { font-size: 14px; font-weight: 600; font-family: 'DM Mono', monospace; color: var(--text); margin-top: 4px; }
+.meta-val.live { color: var(--green); }
+.meta-val.demo { color: var(--amber); }
+
+.tbl-wrap { overflow-x: auto; margin-top: 16px; }
+table.reg-tbl { width: 100%; border-collapse: collapse; font-family: 'DM Mono', monospace; font-size: 12.5px; }
+table.reg-tbl th { text-align: left; padding: 8px 10px; color: var(--text3); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; border-bottom: 1.5px solid var(--border); white-space: nowrap; }
+table.reg-tbl td { padding: 9px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+table.reg-tbl td.verdict { white-space: normal; min-width: 320px; color: var(--text2); }
+.pos { color: var(--green); } .neg { color: var(--red); } .dim { color: var(--text3); }
+.badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px; font-family: 'DM Mono', monospace; }
+.badge.robust { background: rgba(52,211,153,.12); color: var(--green); }
+.badge.suggestive { background: rgba(245,158,11,.12); color: var(--amber); }
+.badge.fail { background: rgba(248,113,113,.12); color: var(--red); }
+.badge.none { background: var(--s3); color: var(--text3); }
+
+.status-line { font-size: 12px; color: var(--text3); font-family: 'DM Mono', monospace; margin-top: 10px; }
+.err { color: var(--red); font-family: 'DM Mono', monospace; font-size: 13px; padding: 14px 0; }
+.foot-note { font-size: 11px; color: var(--text3); line-height: 1.6; margin-top: 20px; font-family: 'DM Mono', monospace; }
+</style>
+</head>
+<body>
+<div id="app">
+
+<div style="padding:16px 0 10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;border-bottom:1px solid var(--border);margin-bottom:14px;">
+  <div>
+    <h1 style="font-size:20px;font-weight:700;margin:0;color:#a78bfa;">🔬 Net Liquidity Regression Test</h1>
+    <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">Stage A control case — does Net Liquidity's impulse predict forward Nasdaq returns, honestly?</div>
+  </div>
+  <div style="margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+    <a href="global-liquidity.html" style="text-decoration:none;font-size:11px;font-family:'DM Mono',monospace;color:#22d3ee;">💧 Global Liquidity (trading engine) →</a>
+    <a href="hub.html" style="text-decoration:none;font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);">Risk Hub</a>
+    <a href="index.html" style="text-decoration:none;font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);">← Dashboard</a>
+  </div>
+</div>
+
+<div class="diag-banner">
+  <b>Research diagnostic — not a trading signal or system.</b> This page runs one honest statistical
+  test: does <code>Net Liquidity (WALCL − TGA − RRP)</code>'s 13-week impulse have a relationship with
+  forward NASDAQ returns that survives an out-of-sample split — the "control case" from the education
+  course notes (Fed's 2020 injection vs Nasdaq), tested <i>before</i> trusting anything on the FX
+  cross-section. It reports a β, a Newey-West t-stat, and — the number that actually matters — an
+  out-of-sample R² computed from in-sample-fitted coefficients, which can and does come back negative.
+  Nothing here sizes a position, gates a book, or claims an edge.
+</div>
+
+<div class="run-bar">
+  <button class="run-btn" id="runBtn">▶ Run regression test</button>
+  <span class="run-lbl" id="statusMsg">Needs FRED_KEY on Railway — click to fetch real WALCL/TGA/RRP + real NQ (R2) and run the IS/OOS test.</span>
+</div>
+
+<div id="resultArea"></div>
+
+<div class="foot-note" id="footNote"></div>
+
+</div>
+<script>
+(function () {
+  'use strict';
+  var running = false;
+
+  function setStatus(t) { document.getElementById('statusMsg').textContent = t || ''; }
+
+  function verdictBadge(v) {
+    if (/ROBUST/.test(v)) return '<span class="badge robust">ROBUST</span>';
+    if (/SUGGESTIVE/.test(v)) return '<span class="badge suggestive">SUGGESTIVE</span>';
+    if (/DOES NOT SURVIVE/.test(v)) return '<span class="badge fail">FAILS OOS</span>';
+    if (/NO SIGNAL/.test(v)) return '<span class="badge none">NO SIGNAL</span>';
+    return '<span class="badge none">N/A</span>';
+  }
+
+  function render(d) {
+    var metaHtml = '<div class="meta-grid">' +
+      '<div class="meta-card"><div class="meta-lbl">Data</div><div class="meta-val ' + (d.real ? 'live' : 'demo') + '">' + (d.real ? 'REAL (FRED + R2)' : 'SYNTHETIC / DEMO') + '</div></div>' +
+      '<div class="meta-card"><div class="meta-lbl">History</div><div class="meta-val">' + d.weeks + 'w · ' + d.start + ' → ' + d.asOf + '</div></div>' +
+      '<div class="meta-card"><div class="meta-lbl">Impulse construction</div><div class="meta-val">lag ' + d.pubLagWeeks + 'w · ' + d.impulseSmoothWeeks + 'w smooth · ' + d.impulseLookbackWeeks + 'w RoC · z(' + d.zWindowWeeks + 'w)</div></div>' +
+      '</div>';
+
+    var rows = d.results.map(function (r) {
+      if (!r.n) {
+        return '<tr><td>' + r.horizonWeeks + 'w</td><td colspan="6" class="verdict dim">' + r.verdict + '</td></tr>';
+      }
+      var betaCls = r.beta >= 0 ? 'pos' : 'neg';
+      var tCls = Math.abs(r.tStatNW) >= 2 ? (r.beta >= 0 ? 'pos' : 'neg') : 'dim';
+      var r2OosCls = r.r2OOS != null && r.r2OOS > 0 ? 'pos' : 'neg';
+      return '<tr>' +
+        '<td>' + r.horizonWeeks + 'w</td>' +
+        '<td class="dim">' + r.nIS + ' / ' + r.nOOS + '</td>' +
+        '<td class="' + betaCls + '">' + r.beta.toFixed(5) + '</td>' +
+        '<td class="' + tCls + '">' + r.tStatNW.toFixed(2) + '</td>' +
+        '<td class="dim">' + r.r2IS.toFixed(3) + '</td>' +
+        '<td class="' + r2OosCls + '">' + (r.r2OOS == null ? '—' : r.r2OOS.toFixed(3)) + '</td>' +
+        '<td class="dim">' + (r.hitRateOOS * 100).toFixed(1) + '%</td>' +
+        '<td class="verdict">' + verdictBadge(r.verdict) + ' ' + r.verdict + '</td>' +
+      '</tr>';
+    }).join('');
+
+    var html = metaHtml +
+      '<div class="tbl-wrap"><table class="reg-tbl">' +
+      '<thead><tr>' +
+      '<th>Horizon</th><th>n (IS/OOS)</th><th>β</th><th>IS t (NW)</th><th>IS R²</th><th>OOS R²</th><th>OOS hit-rate</th><th>Verdict</th>' +
+      '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+
+    document.getElementById('resultArea').innerHTML = html;
+    document.getElementById('footNote').innerHTML =
+      'Reading this: <b>OOS R² can be negative</b> — the in-sample-fitted line predicting worse than just ' +
+      'guessing the out-of-sample mean — that is the honest overfitting signal, not a bug. ' +
+      '<b>|t| ≥ 3</b> is the Harvey-Liu-Zhu bar for a mined factor (education/regression-analysis-course-notes.md); ' +
+      '2–3 is suggestive only. ' + (d.caveat || '');
+  }
+
+  function showErr(msg) {
+    document.getElementById('resultArea').innerHTML = '<div class="err">Error: ' + msg + '</div>';
+  }
+
+  function poll(jobId, t0, fails) {
+    fails = fails || 0;
+    fetch('/api/liquidity-analysis/net-liquidity-nq/status/' + jobId)
+      .then(function (r) { if (r.status === 404 && fails < 8) throw new Error('__retry__'); return r.json(); })
+      .then(function (j) {
+        if (j.status === 'running') {
+          setStatus((j.phase || 'running') + '  ·  ' + (j.elapsed || 0) + 's');
+          setTimeout(function () { poll(jobId, t0, 0); }, 3000);
+        } else if (j.status === 'done') {
+          running = false; document.getElementById('runBtn').disabled = false;
+          setStatus((j.cached ? 'cached' : 'done') + '  ·  ' + Math.round((Date.now() - t0) / 1000) + 's');
+          render(j.data);
+        } else {
+          fail(j.error || 'failed');
+        }
+      })
+      .catch(function (e) {
+        if (fails < 60 && (e.message === '__retry__' || /fetch|network|load|reset|timeout/i.test(e.message))) {
+          setStatus('working…  ·  ' + Math.round((Date.now() - t0) / 1000) + 's');
+          setTimeout(function () { poll(jobId, t0, fails + 1); }, 5000);
+        } else {
+          fail(e.message);
+        }
+      });
+  }
+
+  function fail(msg) {
+    running = false; document.getElementById('runBtn').disabled = false;
+    setStatus('');
+    showErr(msg);
+  }
+
+  document.getElementById('runBtn').addEventListener('click', function () {
+    if (running) return;
+    running = true; this.disabled = true;
+    document.getElementById('resultArea').innerHTML = '';
+    setStatus('starting…');
+    var t0 = Date.now();
+    fetch('/api/liquidity-analysis/net-liquidity-nq/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (x) { if (!x.ok || !x.j.ok) return fail(x.j.error || 'could not start'); poll(x.j.jobId, t0); })
+      .catch(function (e) { fail(e.message); });
+  });
+})();
+</script>
+</body>
+</html>

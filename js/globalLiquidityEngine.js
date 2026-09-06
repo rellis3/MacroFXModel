@@ -253,7 +253,11 @@
       pair: x.pair, score: round(x.s), rank: idx + 1,
       side: longs.has(x.pair) ? 'long' : shorts.has(x.pair) ? 'short' : 'flat',
     }));
-    return { book: tradedBook, ranking };
+    // `scored` carries every pair's RAW (undiscretised) liquidity-impulse spread,
+    // in CFG.PAIRS order — this is what a regression test needs (the traded book
+    // only keeps the long/short EXTREMES, discretised to ±weight, which throws
+    // away the continuous signal for the pairs in between).
+    return { book: tradedBook, ranking, scored };
   }
 
   // ── Top-level: payload → snapshot ──────────────────────────────────────────
@@ -292,17 +296,18 @@
     const reg = classify(dates, series, gli);
     const m = CFG.PAIRS.length, idx = {};
     CFG.PAIRS.forEach((p, j) => { idx[p] = j; });
-    const weights = [], regime = [], gate = [], grossMult = [], conviction = [], impulse = [];
+    const weights = [], regime = [], gate = [], grossMult = [], conviction = [], impulse = [], scores = [];
     for (let i = 0; i < dates.length; i++) {
       const row = new Array(m).fill(0);
-      const { book } = buildBook(gli, reg, i);            // identical to live
+      const { book, scored } = buildBook(gli, reg, i);     // identical to live
       book.forEach((b) => { row[idx[b.pair]] = b.weight; });
       weights.push(row);
       regime.push(reg.regime[i]); gate.push(reg.gate[i]); grossMult.push(reg.grossMult[i]);
       conviction.push(isNum(reg.conviction[i]) ? reg.conviction[i] : 0);
       impulse.push(isNum(gli.impulse[i]) ? gli.impulse[i] : 0);
+      scores.push(scored.map((x) => x.s));                 // scored is already CFG.PAIRS-ordered
     }
-    return { dates, pairs: CFG.PAIRS.slice(), weights, regime, gate, grossMult, conviction, impulse };
+    return { dates, pairs: CFG.PAIRS.slice(), weights, regime, gate, grossMult, conviction, impulse, scores };
   }
 
   function round(x) { return isNum(x) ? Math.round(x * 1000) / 1000 : null; }
