@@ -11,7 +11,7 @@
 // buckets a real dose-response pattern the way the real-data check did.
 
 import assert from 'node:assert/strict';
-import { voteDecision, reorientExcursion, reviewVoteBacktest, priceBarrierTrade, buildBarrierTrades, runBarrierWalkForward, priceAtTighterStop, applyFadeStopFraction, runStopStudy, runExitVariantStudy, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyFadeStopTightening, currencyLegs, applyCurrencyLossGate, mergeMajorEventWindows, applyNewsProximityThrottle, betDirection, tradeFactors, applyExposureCap, applyTrailingContinuation, applyStoredContinuationExit } from './levelAtlasVoteReview.js';
+import { voteDecision, reorientExcursion, reviewVoteBacktest, priceBarrierTrade, buildBarrierTrades, runBarrierWalkForward, priceAtTighterStop, applyFadeStopFraction, runStopStudy, runExitVariantStudy, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyFadeStopTightening, currencyLegs, applyCurrencyLossGate, mergeMajorEventWindows, applyNewsProximityThrottle, betDirection, tradeFactors, applyExposureCap, applyTrailingContinuation, applyStoredContinuationExit, applyGapFilter } from './levelAtlasVoteReview.js';
 
 let failures = 0;
 const ok = (name, cond, extra = '') => { console.log(`  ${cond ? '✓' : '✗ FAIL'} ${name}${extra ? '  ' + extra : ''}`); if (!cond) failures++; };
@@ -769,6 +769,26 @@ function mkBook(dimSpecs) {
   ok('T24 mode=\'chandelier\' with only giveback fields stored -- passes the row through untouched, not a throw', applyStoredContinuationExit([onlyGiveback], 'chandelier')[0].pnlPct === 0.2);
   ok('T24 mode=\'giveback\' with no trailed fields at all -- passes the row through untouched', applyStoredContinuationExit([untrailed], 'giveback')[0].pnlPct === 0.2);
   ok('T24 empty/null input -> empty array, not a throw', applyStoredContinuationExit([], 'chandelier').length === 0 && applyStoredContinuationExit(null, 'chandelier').length === 0);
+}
+
+// ── applyGapFilter: whiplash gap-since-last-touch filter (2026-09-04) ──────
+// A pure selection gate mirroring applyCostEfficiencyFilter's own no-op/
+// filtering shape — proves the null-maxGapMin passthrough, the keep/drop
+// boundary at exactly maxGapMin, and that a trade with no prior touch this
+// session (gapMin == null) is always dropped once a cutoff is set.
+{
+  const short = { gapMin: 10 }, atCutoff = { gapMin: 30 }, long = { gapMin: 31 }, none = { gapMin: null };
+  const all = [short, atCutoff, long, none];
+
+  ok('T25 maxGapMin=null is a no-op passthrough', applyGapFilter(all, null).length === 4);
+  ok('T25 empty/null input -> empty array, not a throw', applyGapFilter([], 30).length === 0 && applyGapFilter(null, 30).length === 0);
+
+  const kept = applyGapFilter(all, 30);
+  ok('T25 keeps gapMin < cutoff', kept.includes(short));
+  ok('T25 keeps gapMin === cutoff (inclusive boundary)', kept.includes(atCutoff));
+  ok('T25 drops gapMin > cutoff', !kept.includes(long));
+  ok('T25 drops gapMin == null even when a cutoff is set', !kept.includes(none));
+  ok('T25 kept count matches expectation', kept.length === 2, JSON.stringify(kept));
 }
 
 console.log(`\n${failures === 0 ? 'ALL PASSED' : failures + ' FAILURE(S)'}`);

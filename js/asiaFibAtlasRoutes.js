@@ -26,8 +26,8 @@ import { asiaFibAtlasWalk, asiaFibAtlasLiveLadder, asiaRungBarrierPips } from '.
 import { buildAsiaFibAtlasBook, renderAsiaFibBookText, DIMENSIONS } from './asiaFibAtlasReport.js';
 import { matchLiveContext } from './levelAtlasReport.js';
 import { runBarrierWalkForward, voteDecision } from './asiaFibAtlasVoteReview.js';
-import { applyFadeStopFraction, applyCostEfficiencyFilter, applyTrailingContinuation, applyStoredContinuationExit } from './levelAtlasVoteReview.js';
-import { buildFibAtlasVotePortfolio } from './fibAtlasVotePortfolio.js';
+import { applyFadeStopFraction, applyCostEfficiencyFilter, applyGapFilter, applyTrailingContinuation, applyStoredContinuationExit } from './levelAtlasVoteReview.js';
+import { buildFibAtlasVotePortfolio, computeFibAtlasDeflatedSharpe } from './fibAtlasVotePortfolio.js';
 import { cvolSeries, CVOL_PRODUCTS } from './cvolLoader.js';
 import { majorEventEpochs } from './calendarLoader.js';
 import { putJSON, getJSON } from './r2Store.js';
@@ -671,6 +671,13 @@ export function mountAsiaFibAtlasRoutes(app, express) {
       const minMargin = req.query.minMargin ? Number(req.query.minMargin) : 2;
       const stopTightenFrac = req.query.stopTightenFrac ? Number(req.query.stopTightenFrac) : null;
       const minCostRatio = req.query.minCostRatio ? Number(req.query.minCostRatio) : null;
+      // Whiplash gap filter (2026-09-04) — same FIB_ATLAS_MAX_GAP_MIN the
+      // live plan already applies (asiaLivePlanZones), now exposed here so
+      // the interactive backtest can reproduce it instead of only ever
+      // seeing it live. Query-param overridable like the others; omitted
+      // means no filter (this route's own default stays "off" so existing
+      // callers/pages see byte-identical output until they opt in).
+      const maxGapMin = req.query.maxGapMin ? Number(req.query.maxGapMin) : null;
       // 'true'|'giveback'|'chandelier'|undefined -- applyStoredContinuationExit
       // does its own interpreting now (2026-08-31), so no boolean coercion here.
       const continuationExit = req.query.continuationExit;
@@ -688,11 +695,12 @@ export function mountAsiaFibAtlasRoutes(app, express) {
       // for consistency).
       const swapped = applyStoredContinuationExit(baseTrades, continuationExit);
       const marginFiltered = swapped.filter(t => t.margin >= minMargin);
-      const filtered = applyCostEfficiencyFilter(marginFiltered, stored.cost, minCostRatio);
+      const costFiltered = applyCostEfficiencyFilter(marginFiltered, stored.cost, minCostRatio);
+      const filtered = applyGapFilter(costFiltered, maxGapMin);
       const trades = applyFadeStopFraction(filtered, stopTightenFrac, 0, { preserveSizing: true });
       const summaryByMargin = letRide ? (stored.extSummaryByMargin ?? stored.summaryByMargin) : stored.summaryByMargin;
       res.json({ ok: true, instrument: stored.instrument, generatedAt: stored.generatedAt, cost: stored.cost,
-                 splitDate: stored.splitDate, minMargin, stopTightenFrac, minCostRatio, continuationExit, letRide,
+                 splitDate: stored.splitDate, minMargin, stopTightenFrac, minCostRatio, maxGapMin, continuationExit, letRide,
                  summary: summaryByMargin?.[minMargin] ?? null, trades });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
@@ -714,7 +722,20 @@ export function mountAsiaFibAtlasRoutes(app, express) {
     try {
       const pairs = (req.query.pairs ? String(req.query.pairs).split(',') : ['eurusd', 'gbpusd', 'usdjpy', 'gold'])
         .map(p => p.trim().toLowerCase()).filter(Boolean);
-      const result = await buildFibAtlasVotePortfolio({
+      const letRide = req.query.letRide === 'true';
+      // Pre-fetch each pair's stored JSON ONCE (2026-09-06) so the deflated-
+      // Sharpe sensitivity sweep below can re-run the aggregation pipeline
+      // several times over the SAME data with zero extra R2 round-trips —
+      // only the main call used to fetch per-pair, this now backs both it
+      // and every trial off one shared in-memory cache.
+      const rawCache = new Map();
+      await Promise.all(pairs.map(async pair => { rawCache.set(pair, await getJSON(`${PREFIX}/${pair}-votetrades.json`)); }));
+      const cachedLoader = async pair => {
+        const stored = rawCache.get(pair);
+        if (!stored) return null;
+        return letRide ? { ...stored, trades: stored.extTrades ?? stored.trades } : stored;
+      };
+      const opts = {
         pairs,
         minMargin: req.query.minMargin ? Number(req.query.minMargin) : 2,
         maxConcurrent: req.query.maxConcurrent ? Number(req.query.maxConcurrent) : 1,
@@ -730,11 +751,23 @@ export function mountAsiaFibAtlasRoutes(app, express) {
         throttleMult: req.query.throttleMult ? Number(req.query.throttleMult) : 0.5,
         stopTightenFrac: req.query.stopTightenFrac ? Number(req.query.stopTightenFrac) : null,
         minCostRatio: req.query.minCostRatio ? Number(req.query.minCostRatio) : null,
+        // Whiplash gap filter (2026-09-04) — see /vote-trades/:instrument's
+        // own comment above for the full reasoning; threaded straight
+        // through to buildFibAtlasVotePortfolio.
+        maxGapMin: req.query.maxGapMin ? Number(req.query.maxGapMin) : null,
         continuationExit: req.query.continuationExit, // 'true'|'giveback'|'chandelier'|undefined -- applyStoredContinuationExit interprets it
-        loadPairVoteTrades: async pair => loadVoteTrades(`${PREFIX}/${pair}-votetrades.json`, req.query.letRide === 'true'),
-      });
+      };
+      const result = await buildFibAtlasVotePortfolio({ ...opts, loadPairVoteTrades: cachedLoader });
       if (result.error) return res.status(404).json({ ok: false, error: result.error, missing: result.missing });
-      res.json({ ok: true, letRide: req.query.letRide === 'true', ...result });
+      // Deflated Sharpe (2026-09-06) — see computeFibAtlasDeflatedSharpe's
+      // own doc for the trial design. Best-effort: a failure here never
+      // fails the whole request, the rest of the response is the real
+      // product.
+      let deflated = null;
+      try { deflated = await computeFibAtlasDeflatedSharpe(opts, result.trades, cachedLoader,
+        { stopTightenFrac: FIB_ATLAS_STOP_TIGHTEN_FRAC, minCostRatio: FIB_ATLAS_MIN_COST_RATIO, maxGapMin: FIB_ATLAS_MAX_GAP_MIN }); }
+      catch (e) { console.error('deflatedSharpe (asia vote-portfolio) failed:', e.message); }
+      res.json({ ok: true, letRide, deflated, ...result });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }
@@ -761,7 +794,24 @@ export function mountAsiaFibAtlasRoutes(app, express) {
       const LADDER_LABEL = { asia: 'Asia', monday: 'Monday' };
       // One constituent key per (pair, ladder) combination actually requested.
       const constituentKeys = pairs.flatMap(pair => ladders.map(ladder => `${pair}|${ladder}`));
-      const result = await buildFibAtlasVotePortfolio({
+      const letRide = req.query.letRide === 'true';
+      // Pre-fetch each (pair, ladder) constituent's JSON ONCE (2026-09-06) —
+      // same reasoning as the single-ladder /vote-portfolio routes, keyed by
+      // the composite constituentKey since a pair can appear under both
+      // ladders here.
+      const rawCache = new Map();
+      await Promise.all(constituentKeys.map(async key => {
+        const [pair, ladder] = key.split('|');
+        rawCache.set(key, await getJSON(`${LADDER_PREFIX[ladder]}/${pair}-votetrades.json`));
+      }));
+      const cachedLoader = async constituentKey => {
+        const [pair, ladder] = constituentKey.split('|');
+        const stored = rawCache.get(constituentKey);
+        if (!stored) return null;
+        const base = letRide ? { ...stored, trades: stored.extTrades ?? stored.trades } : stored;
+        return { ...base, groupKey: `${base.instrument} (${LADDER_LABEL[ladder]})`, ladder };
+      };
+      const opts = {
         pairs: constituentKeys,
         minMargin: req.query.minMargin ? Number(req.query.minMargin) : 2,
         maxConcurrent: req.query.maxConcurrent ? Number(req.query.maxConcurrent) : 1,
@@ -777,16 +827,24 @@ export function mountAsiaFibAtlasRoutes(app, express) {
         throttleMult: req.query.throttleMult ? Number(req.query.throttleMult) : 0.5,
         stopTightenFrac: req.query.stopTightenFrac ? Number(req.query.stopTightenFrac) : null,
         minCostRatio: req.query.minCostRatio ? Number(req.query.minCostRatio) : null,
+        // Whiplash gap filter (2026-09-04) — ONE shared value applied to
+        // every constituent regardless of ladder, same precedent as
+        // `minCostRatio` above and the client's own `costRatioFor`/
+        // `recommendedExcludeFor` for combined mode: Asia's frozen choice is
+        // reused rather than resolved per-ladder (Asia is the dominant risk
+        // driver — see this route's own header comment).
+        maxGapMin: req.query.maxGapMin ? Number(req.query.maxGapMin) : null,
         continuationExit: req.query.continuationExit, // 'true'|'giveback'|'chandelier'|undefined -- applyStoredContinuationExit interprets it
-        loadPairVoteTrades: async constituentKey => {
-          const [pair, ladder] = constituentKey.split('|');
-          const stored = await loadVoteTrades(`${LADDER_PREFIX[ladder]}/${pair}-votetrades.json`, req.query.letRide === 'true');
-          if (!stored) return null;
-          return { ...stored, groupKey: `${stored.instrument} (${LADDER_LABEL[ladder]})`, ladder };
-        },
-      });
+      };
+      const result = await buildFibAtlasVotePortfolio({ ...opts, loadPairVoteTrades: cachedLoader });
       if (result.error) return res.status(404).json({ ok: false, error: result.error, missing: result.missing });
-      res.json({ ok: true, ladders, letRide: req.query.letRide === 'true', ...result });
+      // Deflated Sharpe (2026-09-06) — combined mode reuses Asia's own
+      // frozen "on" values for the same reason `maxGapMin` above does.
+      let deflated = null;
+      try { deflated = await computeFibAtlasDeflatedSharpe(opts, result.trades, cachedLoader,
+        { stopTightenFrac: FIB_ATLAS_STOP_TIGHTEN_FRAC, minCostRatio: FIB_ATLAS_MIN_COST_RATIO, maxGapMin: FIB_ATLAS_MAX_GAP_MIN }); }
+      catch (e) { console.error('deflatedSharpe (asia vote-portfolio-combined) failed:', e.message); }
+      res.json({ ok: true, ladders, letRide, deflated, ...result });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }

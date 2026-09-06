@@ -5224,6 +5224,145 @@ routes for ad-hoc inspection. No Python-side change needed — the bot
 never sees a gap-filtered zone in its plan, identical mechanism to how
 `minCostRatio` already worked with zero bot changes.
 
+**Follow-up: the interactive backtest/portfolio page never saw it either
+(2026-09-04/05).** Owner's own catch: the gap filter above only ever
+reached the LIVE plan (`zonesFromLiveAndBook`, called by `server.js`'s
+`_refreshFibAtlasPlan`) — `asia-fib-atlas-vote-portfolio.html`'s "default
+pairs"/"Select recommended" + "Load best config" buttons hit a completely
+different code path (pre-stored `{pair}-votetrades.json` blobs, filtered
+live via `applyCostEfficiencyFilter`/`applyFadeStopFraction`), which never
+carried the gap information at all. So clicking through the interactive
+backtest could not reproduce what the live bot was actually doing —
+"best config" was silently missing an already-validated lever. Fixed by
+extending the SAME `gapMin` idea one layer further back, into the
+STORED-BACKTEST pipeline (not just the live-ladder one):
+`asiaFibAtlasWalk`/`mondayFibAtlasWalk` now stamp `gapMin` (minutes since
+this exact rung's own last touch this session/reference-week) onto every
+TOUCH record too — deliberately grouping by ANY outcome, not just
+non-`neither` ones (unlike `prevOutcomeSameDay`, a same-session `neither`
+prior still produces a real `gapMin`, matching how the original whiplash
+finding grouped touches in the first place). `buildBarrierTrades`
+(`js/asiaFibAtlasVoteReview.js`, shared by both ladders) carries it
+through onto the stored trade rows. New `applyGapFilter`
+(`js/levelAtlasVoteReview.js`) is a pure selection gate — same shape as
+`applyCostEfficiencyFilter` — now threaded through `maxGapMin` on
+`/vote-trades/:instrument`, `/vote-portfolio`, `/vote-portfolio-combined`
+(both ladders) and into `buildFibAtlasVotePortfolio` itself, applied at
+the same stage as the cost-efficiency filter (before the concurrency
+cap). `asia-fib-atlas-vote-portfolio.html` gets a "Whiplash gap filter"
+checkbox with the SAME frozen per-ladder cutoffs (`gapMinFor`: 30min
+Asia/180min Monday — combined mode reuses Asia's, same precedent as
+`costRatioFor`/`recommendedExcludeFor`), wired into "Load best config"
+alongside the other validated levers. Stored `{pair}-votetrades.json` R2
+blobs for the bot's actual 16-pair live universe (`FIB_ATLAS_DEFAULT_PAIRS`)
+were regenerated end-to-end via `scripts/backfill_fib_atlas_vote_trades.mjs`
+so the page shows real numbers rather than an empty result from missing
+`gapMin` on stale blobs. PR #1415.
+
+#### Portfolio-stats audit + risk/robustness metrics parity with Level Atlas (2026-09-06)
+
+Owner review of `asia-fib-atlas-vote-portfolio.html`'s own numbers — a
+day-pooled Sharpe of 16+ next to a 4% drawdown, "3 is world-class," felt
+wrong. Full audit of `js/backtestStats.js`/`js/metricsCore.js`/
+`js/levelAtlasVoteReview.js`'s daily-series/weighting/concurrency-cap
+code: **no arithmetic bug found** — every formula matches its textbook
+definition. The headline numbers are real artifacts of two known, already-
+partially-documented effects, not a miscalculation: (1) this is a 16-pair
+diversified portfolio Sharpe, not a single-strategy Sharpe — √N
+diversification credit is expected, not a bug, when pairs are only weakly
+correlated; (2) the combined lever stack (margin≥2 + cost-ratio +
+stop-tighten + chandelier + hedge-only + gap-filter) has never been
+validated as ONE system on a clean non-overlapping OOS slice — each lever
+was validated individually/pairwise on overlapping windows, a real,
+already-flagged risk. `sharpeHAC` (Newey-West) already corrects for daily
+autocorrelation and sits right next to the naive Sharpe on this page, but
+its own code comment says the correction has no clean plateau — treat it
+as a floor, not the truth.
+
+Comparison against `level-atlas-vote-portfolio.html` found real, already-
+built risk/robustness tooling **missing from the Fib Atlas page**:
+Monte Carlo (`portfolioStats`'s own `mc` option was explicitly `false` for
+every Fib Atlas call), an outlier-concentration table, an EVT tail fit,
+and the Deflated Sharpe Ratio (already wired into 5 OTHER engines —
+`strategyLabEngine.js`, `trendFollowEngine.js`, `forecastAnalyserStore.js`,
+`mve/validateInstrument.js`, `server.js` — but unused on EITHER
+vote-portfolio page). Owner confirmed: add all four, scoped to Fib
+Atlas's own portfolio (not a per-fib-rung breakdown).
+
+**Ported, zero new math** (`js/backtestStats.js`'s `backtestStats`/
+`shuffle`, `js/evtTail.js`'s `fitTailModel` — same client-side pattern
+`level-atlas-vote-portfolio.html` already uses, adapted for Fib Atlas's
+own fixed-fractional-sizing voice):
+- **Monte Carlo fan chart** — 300 reshuffled equity paths (p5–p95 bands)
+  against the actual path, plus bootstrap/reshuffled-drawdown KPIs.
+- **Outlier-concentration card** — trade skew/kurtosis, top-N-trades'
+  share of total profit, and a "remove the top N winners" Sharpe/CAGR/
+  maxDD degradation table.
+- **EVT tail fit** — Peaks-Over-Threshold/Generalized Pareto fit on the
+  daily-return series, with an implied "no single day should exceed X%"
+  ceiling when the shape parameter is bounded.
+
+**New backend work — Deflated Sharpe Ratio**
+(`computeFibAtlasDeflatedSharpe`, `js/fibAtlasVotePortfolio.js`): unlike
+the three above, DSR needs `trialSRs` — Sharpes of OTHER configs actually
+tried — which the interactive page doesn't have lying around. Design
+choice: a real, principled LOCAL sensitivity sweep, not a fabricated
+trial count — one trial per lever this page actually exposes as a toggle
+(`stopTightenFrac`, `minCostRatio`, `maxGapMin`, `maxConcurrent`,
+`perDirection`, `continuationExit`), each flipped ALONE to its natural
+alternate (using each ladder's own frozen "on" value —
+`FIB_ATLAS_STOP_TIGHTEN_FRAC`/`MIN_COST_RATIO`/`MAX_GAP_MIN` or the
+Monday equivalents — when flipping a currently-off lever on), everything
+else held at the chosen config. Deliberately NOT the full 2^6 combinatorial
+space (intractable on a button click, and most of that space was never
+actually explored during validation either) — this answers "how much does
+the chosen Sharpe wobble under the nearby choices this exact page makes
+available," the honest tractable version of the question for an
+interactive tool. Both `/vote-portfolio` routes (`js/asiaFibAtlasRoutes.js`,
+`js/mondayFibAtlasRoutes.js`) and Asia's `/vote-portfolio-combined` now
+pre-fetch every pair's stored JSON ONCE into an in-memory cache before the
+main call, so the 6-trial sweep costs zero extra R2 round-trips — only the
+already-loaded per-pair data gets re-filtered/re-aggregated (~2s added
+latency on a 16-pair request, measured on real data). Rendered as a
+"Deflated Sharpe (DSR)" tile in `kpiShared`, right after Sharpe (naive)/
+Sharpe (autocorr-adjusted), with an explicit caveat that this is a local
+robustness check, not proof the whole lever stack survives independent
+validation.
+
+**CORRECTION (2026-09-06, same day):** the "~94 trades" figure above was
+NOT a real finding about the strategy — it was corrupted smoke-test data,
+caught when the owner (correctly) balked at the number. Root cause: this
+PR was still open/unmerged/undeployed at the time, and `server.js`'s
+existing `reference-engine-rebuild` nightly job (`_scheduleDailyLondon(0,
+30, ...)` → `_startAsiaFibAtlasRunJob`, fires 00:30 London) reran
+`runOne` for 15 of the 16 pairs on PRODUCTION overnight, using whatever
+engine code Railway has actually deployed — which does NOT yet include
+this PR's `gapMin` field. That job legitimately refreshed each pair's
+`{pair}-votetrades.json` with new M1 data, but as a side effect silently
+overwrote the `gapMin` field this PR's local backfill had just written,
+because the currently-deployed `asiaFibAtlasWalk` doesn't compute it.
+`applyGapFilter`'s `t.gapMin != null` check correctly excludes a
+genuinely-absent field the same way it excludes a legitimate null,
+so once a pair's stored trades lost the field, the gap filter dropped
+essentially 100% of THAT pair's trades — 15/16 pairs collapsed, 1
+(`audnzd`, untouched by that night's job) did not, netting ~94 pooled
+trades instead of the ~8,900 originally validated. Confirmed directly:
+every affected pair's `generatedAt` timestamp landed at 23:31–23:56 UTC
+(00:30 London, BST), sequential per pair, and every trade on those pairs
+has `gapMin === undefined` (missing), not `null` (legitimately absent).
+
+**Lesson for future backtest-data changes**: a local R2 backfill for an
+unmerged feature branch is not safe from production's own scheduled
+rebuild jobs — they run on whatever is actually deployed and will
+silently clobber a field a still-open PR added, every night, until that
+PR merges and Railway redeploys. Don't trust "94 trades" (or any other
+backtest-page number depending on a not-yet-deployed field) as evidence
+about the strategy until the underlying data is confirmed fresh AND the
+enabling code is merged — check `generatedAt` and the field's actual
+presence on the live-stored blob first, per this file's own "Assume Code
+Failure First" rule in `CLAUDE.md`, which this incident is a direct
+instance of not following closely enough before writing the note above.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted

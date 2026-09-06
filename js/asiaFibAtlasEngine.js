@@ -803,10 +803,21 @@ export function asiaFibAtlasWalk(packed, { instrument, assetClass = 'fx', rearmF
               // 'neither' re-arm repeat is close to a tautology, not a finding).
               prevOutcomeSameDay: (daysSincePrevN === 0 && prev.outcome !== 'neither') ? prev.outcome : null,
               prevOutcomeCrossDay: (daysSincePrevN > 0) ? prev.outcome : null,
+              // "Whiplash" gap-since-this-rung's-own-last-touch (2026-09-03/04
+              // finding, analysis/fib_atlas_whiplash_analysis.mjs +
+              // fib_atlas_gap_filter_backtest.mjs, LEGO_MODULES.md) — minutes
+              // since the LAST touch of this exact (side, level) this same
+              // session, any outcome (unlike prevOutcomeSameDay, a 'neither'
+              // still counts here — the finding groups ALL touches, not just
+              // non-neither ones). null when there is no prior touch this
+              // session (the same population prevOutcomeSameDay is null for
+              // isn't quite the same set, since 'neither' priors keep a real
+              // gapMin but a null prevOutcomeSameDay).
+              gapMin: (daysSincePrevN === 0 && prev.time != null) ? +((bar.time - prev.time) / 60).toFixed(1) : null,
               rollingRate,
             };
             touches.push(record);
-            lastVisit[key] = [...hist, { outcome, wtState: feats.wtState?.bucket ?? null, sessIdx: i }].slice(-5);
+            lastVisit[key] = [...hist, { outcome, wtState: feats.wtState?.bucket ?? null, sessIdx: i, time: bar.time }].slice(-5);
           }
         }
       }
