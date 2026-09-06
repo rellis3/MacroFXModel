@@ -5594,6 +5594,96 @@ Validated: `node --check` clean; script reuses `buildFibAtlasVotePortfolio`
 and `maxDrawdownFromPnls` directly (no parallel/duplicate math), run against
 the same live R2-stored trade blobs the production route reads.
 
+#### Live/demo vs. offline-backtest reconciliation infrastructure (2026-09-06)
+
+Owner is starting a DEMO account run on `fib_atlas_bot` and asked, ahead of
+it: after a week, is there a way to check whether the real trades match the
+backtest? Investigated what already existed and found a real, time-sensitive
+gap — every OTHER bot (range_line, oi_bot, confluence, volatility_bot_v2) has
+a durable `*_trade_log` KV rollup (`_volatilityV2AccumulateTradeLog` and
+siblings in `server.js`) that survives redeploys and day-rollovers; Fib Atlas
+did NOT. `fib_atlas_bot_trade_log` was already pre-registered in all three KV
+persistence gates (`kv.js`'s `_CF_EXACT`, `_worker.js`'s `isAllowedKVKey` and
+`PERMANENT_KEYS`) but nothing ever wrote to it — closed trades only lived in
+`fib_atlas_bot_status`'s rolling `today_closed_trades` (capped at 50, and
+only "today's" per `Mt5Broker`'s own UTC-day windowing via
+`pylego/broker/clock.py`'s `closes_on_utc_day`), so anything older than one
+day was already unrecoverable. This had to be fixed BEFORE trading starts —
+building the rollup after the fact cannot recover history that was never
+durably stored.
+
+Built, in order:
+1. **`fib_atlas_bot.py`'s `_record_decision`** (the function behind
+   `fib_atlas_bot_decision_log`) now also captures `entry`/`sl`/`tp` — the
+   plan's own priced levels at decision time — on `entered`/`rejected`/
+   `skipped` events. Previously only `side`/`rung`/`decision`/`margin` were
+   recorded; without the prices, there'd be nothing to compare a real fill
+   against except the closed trade's own `open_price`, which conflates "what
+   the plan said" with "what the broker actually filled at."
+2. **`pylego/broker/paper.py`'s `serialize_closed_trades()`** now emits
+   `comment` (Mt5Broker's own version already did — see its docstring; only
+   the paper/simulated broker was missing it). The comment carries
+   `FA[<dedupeTag>]` (`asiaLivePlanZones`/`mondayLivePlanZones`'s own tag,
+   `${a|m}_${side[0]}${level}`) — without it, a paper-mode trade loses its
+   (ladder, side, rung) identity the moment it closes, since none of the
+   other closed-trade fields carry that. Live/demo (Mt5Broker) was already
+   fine; this was a paper-mode-only gap.
+3. **`server.js`'s `_fibAtlasBotAccumulateTradeLog()`** — structural copy of
+   `_volatilityV2AccumulateTradeLog`, on the same 10-minute interval. Reads
+   `fib_atlas_bot_status`'s `today_closed_trades`, dedupes by
+   `position_id`/`ticket` against what's already in `fib_atlas_bot_trade_log`,
+   decodes each trade's `FA[<dedupeTag>]` comment into `ladder`/`side`/`rung`
+   fields (`_parseFibAtlasDedupeTag`) so a later reconciliation doesn't
+   re-parse the tag string itself, and appends (capped at 5000 rows) into the
+   now-actually-written durable KV key.
+4. **`GET /api/fib-atlas-bot/trade-log?from=&to=`** — returns the trade log
+   PLUS the matching decision-log events for a date range in one call, so a
+   week of real trading can be pulled in one request.
+5. **`analysis/fib_atlas_live_vs_backtest_reconcile.mjs`** — the actual
+   comparison, run on demand (not scheduled) once real trades exist. For a
+   `--from`/`--to` range: fetches the real trade+decision history from the
+   dashboard, re-runs `runOne` (`asiaFibAtlasRoutes.js`/
+   `mondayFibAtlasRoutes.js` — the EXACT function the nightly
+   reference-engine-rebuild job and the manual "Regenerate" button already
+   call, imported not re-derived) against fresh M1 so the stored
+   `{pair}-votetrades.json` now covers the demo week, then joins each real
+   trade to (a) its own live decision-log entry by (pair, ladder, side, rung,
+   closest timestamp) and (b) the offline backtest's own touch for the same
+   (pair, ladder, side, rung, date), reporting decision (fade/follow)
+   agreement, entry-price drift in pips, and unmatched-trade counts.
+   Re-running `runOne` on demand is not a new side effect — it's the same
+   regen the nightly job already does to every pair, every night; this just
+   triggers it for the pairs actually traded, on demand.
+
+**What this can and can't tell you**: a mismatch could mean real
+slippage/spread (live fill vs. backtest's M1-bar-close price), a timing
+gap between the live 45s-poll plan and the walk-forward engine's bar
+granularity, or a genuine bug in one path but not the other — the script
+surfaces the numbers, it doesn't diagnose which cause applies; that needs a
+human look at the specific mismatched trades. A HANDFUL of unmatched trades
+or a few pips of entry drift is expected; a CLUSTER of decision-level
+mismatches (backtest says fade, live said follow, for the same touch) is the
+actual signal worth chasing.
+
+**Not yet possible from here**: this sandbox has no `CF_ACCOUNT_ID`/
+`CF_API_TOKEN`, so it can't read Cloudflare KV directly — the reconciliation
+script fetches over HTTP from the dashboard's own `/api/fib-atlas-bot/trade-log`
+route instead (which needs no auth — `/api/*` is unauthenticated by design)
+specifically so it doesn't need those credentials. It also can't reach the
+live Railway URL from this sandbox (403 — the same documented egress
+restriction as OANDA/Yahoo), so end-to-end testing against real data has to
+happen either on Railway itself or from a machine with real network access,
+once a week of demo trades exists. The matching/join logic itself WAS unit
+tested against hand-built synthetic decision/trade/backtest data (both the
+matched and the no-match paths) before this was written up.
+
+Validated: `python3 -m py_compile fib_atlas_bot/fib_atlas_bot.py` and
+`pylego/broker/paper.py` clean; `node --check` clean on `server.js` and the
+new script; the script's own matching functions dry-run correctly against
+synthetic fixtures (matched trade → correct decision+backtest join with
+right price fields; unmatched trade → both lookups correctly return null
+rather than a wrong pairing).
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted

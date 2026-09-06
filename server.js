@@ -14601,6 +14601,66 @@ async function _volatilityV2AccumulateTradeLog() {
 setInterval(_volatilityV2AccumulateTradeLog, 10 * 60_000);
 setTimeout(_volatilityV2AccumulateTradeLog, 35_000);
 
+// Trade-history rollup for Fib Atlas — structural copy of
+// _volatilityV2AccumulateTradeLog above. fib_atlas_bot_trade_log was already
+// registered in kv.js/_worker.js's persistence gates (the standard bot
+// key set) but nothing ever wrote to it — closed trades only ever lived in
+// fib_atlas_bot_status's rolling `today_closed_trades` (last 50, and only
+// "today's" per Mt5Broker's own UTC-day windowing), so anything older than
+// one day was silently unrecoverable. Needed BEFORE demo trading starts so
+// a week of real trades survives redeploys and daily rollovers — building
+// this after the fact cannot recover already-lost history.
+//
+// Each trade's own `comment` (Mt5Broker/paper.py both emit it) carries
+// "FA[<dedupeTag>]" — asiaLivePlanZones/mondayLivePlanZones's own tag,
+// `${a|m}_${side[0]}${level}` — decoded here into ladder/side/rung so a
+// later reconciliation against the offline backtest doesn't need to
+// re-parse the string itself.
+function _parseFibAtlasDedupeTag(comment) {
+  const m = /FA\[([am])_([ab])(-?\d+)\]/.exec(comment || '');
+  if (!m) return { ladder: null, side: null, rung: null };
+  return {
+    ladder: m[1] === 'a' ? 'asia' : 'monday',
+    side: m[2] === 'a' ? 'above' : 'below',
+    rung: Number(m[3]),
+  };
+}
+async function _fibAtlasBotAccumulateTradeLog() {
+  try {
+    const raw = await kv.get('fib_atlas_bot_status').catch(() => null);
+    if (!raw) return;
+    const status = JSON.parse(raw).data ?? JSON.parse(raw);
+    const closed = status?.today_closed_trades || [];
+    if (!closed.length) return;
+    const logRaw = await kv.get('fib_atlas_bot_trade_log').catch(() => null);
+    const log = logRaw ? (JSON.parse(logRaw).data ?? JSON.parse(logRaw)) : [];
+    const seen = new Set(log.map(t => t.position_id ?? t.ticket));
+    let added = 0;
+    for (const c of closed) {
+      const id = c.position_id ?? c.ticket;
+      if (id == null || seen.has(id)) continue;
+      seen.add(id);
+      const { ladder, side, rung } = _parseFibAtlasDedupeTag(c.comment);
+      log.push({
+        position_id: id, symbol: c.symbol, direction: c.direction,
+        key: (() => { try { return resolveKey(c.symbol) || String(c.symbol || '').toLowerCase().replace(/[/_]/g, ''); } catch { return String(c.symbol || '').toLowerCase().replace(/[/_]/g, ''); } })(),
+        open_price: c.open_price, close_price: c.close_price, profit: c.profit,
+        reason: c.reason, time_open: c.time_open, time_close: c.time_close,
+        mfe_pips: c.mfe_pips ?? null, mae_pips: c.mae_pips ?? null,
+        date: c.time_open ? new Date(c.time_open * 1000).toISOString().slice(0, 10) : null,
+        comment: c.comment ?? null, ladder, side, rung,
+      });
+      added++;
+    }
+    if (!added) return;
+    if (log.length > 5000) log.splice(0, log.length - 5000);
+    await kv.put('fib_atlas_bot_trade_log', JSON.stringify({ data: log, timestamp: Date.now() }));
+    console.log(`[fib-atlas-bot] trade log +${added} (${log.length} total)`);
+  } catch (e) { console.error('[fib-atlas-bot] trade-log accumulate failed:', e.message); }
+}
+setInterval(_fibAtlasBotAccumulateTradeLog, 10 * 60_000);
+setTimeout(_fibAtlasBotAccumulateTradeLog, 40_000);
+
 // GET /api/level-atlas/bot-enabled?instruments=EUR/USD,XAU/USD,NAS100_USD —
 // which of the given instruments are in volatility_bot_v2's CURRENT
 // enabled_pairs config. Lets a page (vol-forecast-v2.html's cards) badge
@@ -14791,6 +14851,36 @@ app.post('/api/fib-atlas-bot/telegram-test', async (_req, res) => {
     if (!cfg.tg_token || !cfg.tg_chat_id) return res.json({ ok: false, error: 'no tg_token/tg_chat_id saved on the Fib Atlas Bot config yet' });
     const sent = await sendTelegram(cfg.tg_token, cfg.tg_chat_id, '✅ Fib Atlas Bot — test alert. Entered/skipped/rejected + SL/TP close alerts will use this bot.');
     res.json({ ok: sent, error: sent ? undefined : 'Telegram API call failed' });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// GET /api/fib-atlas-bot/trade-log?from=YYYY-MM-DD&to=YYYY-MM-DD — the
+// durable closed-trade log (`_fibAtlasBotAccumulateTradeLog` above) PLUS the
+// matching decision-log events (entered/rejected/skipped, now carrying the
+// plan's own entry/sl/tp — 2026-09-06), for reconciling a stretch of real
+// demo/live trading against what the offline backtest says should have
+// happened. `from`/`to` are inclusive UTC calendar dates; omit both for the
+// full retained history (trade log capped at 5000 rows, decision log at
+// 5000 events — see their own accumulators).
+app.get('/api/fib-atlas-bot/trade-log', async (req, res) => {
+  try {
+    const from = req.query.from ? String(req.query.from) : null;
+    const to = req.query.to ? String(req.query.to) : null;
+    const inRange = (dateStr) => {
+      if (!dateStr) return true; // keep rows we can't date-filter rather than silently drop them
+      if (from && dateStr < from) return false;
+      if (to && dateStr > to) return false;
+      return true;
+    };
+    const logRaw = await kv.get('fib_atlas_bot_trade_log').catch(() => null);
+    const trades = ((logRaw ? (JSON.parse(logRaw).data ?? JSON.parse(logRaw)) : []) || [])
+      .filter(t => inRange(t.date));
+    const decRaw = await kv.get('fib_atlas_bot_decision_log').catch(() => null);
+    const decisions = (((decRaw ? (JSON.parse(decRaw).data ?? JSON.parse(decRaw)) : null)?.events) || [])
+      .filter(d => inRange(d.t ? new Date(d.t * 1000).toISOString().slice(0, 10) : null));
+    res.json({ ok: true, from, to, trades, decisions });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }

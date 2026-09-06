@@ -577,10 +577,17 @@ def run(base_url: str, force_live: bool) -> None:
 
     def _record_decision(pair: str, ladder: str, status: str, *, side: str | None = None, rung=None,
                           dedupe_tag: str | None = None, decision: str | None = None, margin: int | None = None,
-                          reason: str | None = None) -> None:
+                          reason: str | None = None, entry: float | None = None, sl: float | None = None,
+                          tp: float | None = None) -> None:
+        # entry/sl/tp (2026-09-06): the plan's OWN priced levels at decision
+        # time -- without these, reconciling a live/demo trade back against
+        # "what did the plan say to do" needs the plan's OWN 45s-refresh
+        # history (not retained), which is strictly harder than just
+        # recording the number already in hand right here. Needed to compare
+        # a week of real fills against what this bot was actually TOLD to do.
         decision_events.append({"t": int(time.time()), "pair": pair, "ladder": ladder, "side": side, "rung": rung,
                                  "dedupeTag": dedupe_tag, "decision": decision, "margin": margin,
-                                 "status": status, "reason": reason})
+                                 "status": status, "reason": reason, "entry": entry, "sl": sl, "tp": tp})
         if len(decision_events) > DECISION_LOG_MAX_EVENTS:
             del decision_events[:len(decision_events) - DECISION_LOG_MAX_EVENTS]
 
@@ -924,7 +931,8 @@ def run(base_url: str, force_live: bool) -> None:
                             log.info(f"HEDGE CAP [{pair}|{ladder}] {dedupe_tag} skipped — {skip_reason}")
                             _record_decision(pair, ladder, "skipped", side=z.get("side"), rung=z.get("rung"),
                                               dedupe_tag=dedupe_tag, decision=z.get("decision"),
-                                              margin=z.get("margin"), reason=skip_reason)
+                                              margin=z.get("margin"), reason=skip_reason,
+                                              entry=z.get("entry"), sl=z.get("sl"), tp=z.get("tp"))
                             if cfg.get("tg_enabled", True) and tg_master_on:
                                 send_telegram(cfg.get("tg_token", ""), cfg.get("tg_chat_id", ""),
                                               _fmt_skip_alert(pair, ladder, z, skip_reason, " [PAPER]" if paper else ""))
@@ -957,7 +965,8 @@ def run(base_url: str, force_live: bool) -> None:
                                 log.info(f"RISK BUDGET [{pair}|{ladder}] {dedupe_tag} deferred — {skip_reason}")
                                 _record_decision(pair, ladder, "skipped", side=z.get("side"), rung=z.get("rung"),
                                                   dedupe_tag=dedupe_tag, decision=z.get("decision"),
-                                                  margin=z.get("margin"), reason=skip_reason)
+                                                  margin=z.get("margin"), reason=skip_reason,
+                                                  entry=z.get("entry"), sl=z.get("sl"), tp=z.get("tp"))
                                 if cfg.get("tg_enabled", True) and tg_master_on:
                                     send_telegram(cfg.get("tg_token", ""), cfg.get("tg_chat_id", ""),
                                                   _fmt_skip_alert(pair, ladder, z, skip_reason, " [PAPER]" if paper else ""))
@@ -985,7 +994,8 @@ def run(base_url: str, force_live: bool) -> None:
                                  f"{direction} @~{z['entry']} SL {z['sl']} TP {z['tp']} → ticket {tid} "
                                  f"lots {lots} (margin {z['margin']})")
                         _record_decision(pair, ladder, "entered", side=z.get("side"), rung=z.get("rung"),
-                                          dedupe_tag=dedupe_tag, decision=z.get("decision"), margin=z.get("margin"))
+                                          dedupe_tag=dedupe_tag, decision=z.get("decision"), margin=z.get("margin"),
+                                          entry=z.get("entry"), sl=z.get("sl"), tp=z.get("tp"))
                         if cfg.get("tg_enabled", True) and tg_master_on:
                             mid = _tg_send(cfg.get("tg_token", ""), cfg.get("tg_chat_id", ""),
                                            _fmt_entry_alert(pair, ladder, z, is_long, lots, " [PAPER]" if paper else ""))
@@ -1000,7 +1010,8 @@ def run(base_url: str, force_live: bool) -> None:
                                         f"backing off {REJECT_COOLDOWN_SECS}s")
                             _record_decision(pair, ladder, "rejected", side=z.get("side"), rung=z.get("rung"),
                                               dedupe_tag=dedupe_tag, decision=z.get("decision"),
-                                              margin=z.get("margin"), reason=reject_reason)
+                                              margin=z.get("margin"), reason=reject_reason,
+                                              entry=z.get("entry"), sl=z.get("sl"), tp=z.get("tp"))
                             if cfg.get("tg_enabled", True) and tg_master_on:
                                 send_telegram(cfg.get("tg_token", ""), cfg.get("tg_chat_id", ""),
                                               _fmt_skip_alert(pair, ladder, z, reject_reason or "order rejected",
