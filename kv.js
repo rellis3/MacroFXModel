@@ -90,6 +90,11 @@ const _CF_EXACT = new Set([
   // The single-key design measured 330KB/day across 11 pairs against a 365-day
   // retention, i.e. ~117MB in one value — past CF KV's 25MB ceiling at ~77 days,
   // and it would have failed silently with no signal until a restore came back short.
+  'oi_capture_freshness',   // per-pair consecutive-unchanged-day streak for the automated OI feed
+                            // (js/oiRawArchive.js oiFreshnessStreak) — cheap to rebuild (a lost
+                            // streak just resets to 0 and takes a few days to re-trip), but losing
+                            // it right as a real stale streak was about to alert would silently
+                            // delay the exact warning it exists to give.
   'oi_history_raw',         // ~90-day archive of the FULL per-strike ladder (rawOI/rawChg/rawVol +
                             // spot/basis context) per pair per day — side-by-side with the lean
                             // oi_history summary. The strike-over-time map + early wall-building

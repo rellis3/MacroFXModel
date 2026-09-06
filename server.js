@@ -49,7 +49,7 @@ import { stressReplay, allocationCompare, STRESS_WINDOWS }           from './js/
 import { forecastFields, buildAllExports }                           from './js/forecastExport.js';
 import { buildLadderExportText, buildSessionAddendum }               from './js/ladderExport.js';
 import { ladderPathChain, describeSide }                            from './js/ladderPathStats.js';   // "at the p50 line, what happens next?" — the conditional rung chain
-import { rawDayDecision, mergeRawDay }                              from './js/oiRawArchive.js';
+import { rawDayDecision, mergeRawDay, oiContentFingerprint, oiFreshnessStreak } from './js/oiRawArchive.js';
 import { runHonestSuite, HONEST_INSTRUMENTS }                        from './js/honestForecastEngine.js';
 import { runTrendFlipSummarized, DEFAULTS as TREND_FLIP_DEFAULTS }   from './js/trendFlipEngine.js';
 import { runRankICSuite, RANKIC_INSTRUMENTS }                       from './js/rankICEngine.js';
@@ -13489,6 +13489,25 @@ async function _snapshotOIHistory(force = false) {
     const rawDayKey = `oi_raw_${day}`;
     const rawDayRaw = await kv.get(rawDayKey).catch(() => null);
     const rawDay = rawDayRaw ? (JSON.parse(rawDayRaw).data ?? JSON.parse(rawDayRaw)) : {};
+    // ── Capture-freshness detector (2026-09) ──────────────────────────────────
+    // The automated nightly feed can report full STRUCTURAL success (44/44 tables,
+    // 11/11 ingested, right shape, non-zero OI — every check the sweep itself runs)
+    // while quietly re-serving a STALE capture: a cached QuikStrike session can stay
+    // pinned to whatever settlement it was minted against instead of rolling forward.
+    // Nothing upstream checks whether the CONTENT actually advanced day over day —
+    // this does, off the archive itself, via oiContentFingerprint/oiFreshnessStreak
+    // (js/oiRawArchive.js — pure, unit-tested). Found live in EUR/USD's history:
+    // 2026-08-29 (Sat) through 2026-09-01 (Tue) archived byte-identical OI for four
+    // straight days despite fresh savedAtMs on the (non-backfilled) Mon/Tue runs —
+    // the third recurrence of "the OI feed silently isn't moving" nobody caught for
+    // weeks. Best-effort throughout: a read/write hiccup here must never block the
+    // real archive write above it.
+    let freshState = {};
+    try {
+      const fRaw = await kv.get('oi_capture_freshness').catch(() => null);
+      freshState = fRaw ? (JSON.parse(fRaw).data ?? JSON.parse(fRaw)) : {};
+    } catch { /* start clean rather than block the archive on this */ }
+    const staleAlerts = [];   // {pair, streak} — pairs whose content hasn't moved past tolerance
     let n = 0, changed = 0, rawChanged = 0;
     for (const [pair, inst] of Object.entries(store)) {
       const summary = _oiHistorySummary(inst);
@@ -13499,6 +13518,17 @@ async function _snapshotOIHistory(force = false) {
         // KV's free plan allows 1,000 writes/day — blindly re-putting an identical blob 48
         // times a day would spend 5% of that quota to store nothing new.
         const before = JSON.stringify(hist[pair][day] ?? null);
+        // Freshness streak, computed BEFORE hist[pair][day] is overwritten — prevFp needs
+        // the entry from the day strictly before `day`, which the pre-write `dates` (below)
+        // would otherwise already include `day` itself once it's been written once today.
+        try {
+          const priorDates = Object.keys(hist[pair]).filter(d => d !== day).sort();
+          const prevFp = oiContentFingerprint(hist[pair][priorDates[priorDates.length - 1]]);
+          const fp = oiContentFingerprint(summary);
+          const st = oiFreshnessStreak(freshState[pair], day, fp, prevFp);
+          freshState[pair] = { day: st.day, streak: st.streak };
+          if (st.alert) staleAlerts.push({ pair, streak: st.streak });
+        } catch (e) { console.warn(`[oi-history] freshness check skipped for ${pair}:`, e.message); }
         hist[pair][day] = summary;                                 // overwrite today (tracks the latest morning paste)
         if (JSON.stringify(summary) !== before) changed++;
         const dates = Object.keys(hist[pair]).sort();
@@ -13562,8 +13592,27 @@ async function _snapshotOIHistory(force = false) {
       } catch (e) { console.warn('[oi-history] marker write failed (archive is safe):', e.message); }
     }
     if (rawChanged || force) { await kv.put(rawDayKey, JSON.stringify({ data: rawDay, timestamp: Date.now() })); wrote = true; }
-    if (wrote) console.log(`[oi-history] archived ${n} pair(s), ${changed} summary / ${rawChanged} raw changed → ${day}`);
-    return { n, wrote, day, changed, rawChanged };
+    // Persist the freshness streaks (cheap; one small blob, once per calendar day in
+    // practice since oiFreshnessStreak short-circuits same-day re-ticks) and alert
+    // through the SAME channel the nightly sweep heartbeat already uses — one
+    // combined message per day, not one per pair, and only on a genuine call to
+    // action (this never fires on a healthy weekend by construction).
+    try {
+      await kv.put('oi_capture_freshness', JSON.stringify({ data: freshState, timestamp: Date.now() }));
+    } catch (e) { console.warn('[oi-history] freshness-state write failed:', e.message); }
+    if (staleAlerts.length) {
+      const list = staleAlerts.map(a => `${a.pair} (${a.streak}d unchanged)`).join(', ');
+      console.warn(`[oi-history] STALE CAPTURE: ${list}`);
+      if (state.tg?.token && state.tg?.chatId && state.cfg?.serverEnabled !== false && tgOn('oiSweep')) {
+        sendTelegram(state.tg.token, state.tg.chatId,
+          `⚠️ <b>OI capture looks stale</b>\nThe nightly feed reports success, but the OI numbers ` +
+          `for these pair(s) have not changed in longer than a weekend can explain:\n<code>${list}</code>\n\n` +
+          `This usually means the scrape is re-serving an old session's data rather than a genuine ` +
+          `failure — CME serves no history, so check it directly rather than waiting it out.`,
+        ).catch(() => {});
+      }
+    }
+    return { n, wrote, day, changed, rawChanged, staleAlerts: staleAlerts.length ? staleAlerts : undefined };
   } catch (e) { console.error('[oi-history] snapshot failed:', e.message); return { n: 0, wrote: false, day: null, error: e.message }; }
 }
 setInterval(_snapshotOIHistory, 30 * 60_000);                    // archive the day's paste periodically
