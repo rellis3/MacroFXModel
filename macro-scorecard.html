@@ -104,7 +104,7 @@
     <h2>Ranked composite (strongest → weakest)</h2>
     <div id="body" class="empty">Loading…</div>
     <div id="uncoveredWrap"></div>
-    <div class="note">Averages whatever's actually covered for each currency across every engine on this dashboard: central-bank text sentiment (USD/EUR/GBP/JPY only — the 4 with a built sentiment engine), CPI, GDP, business activity, labor market, retail sales, trade balance, real yield, yield curve, consumer confidence, and PPI (USD only). Every dimension already arrives on the same -1..+1 scale from its own engine, so this is a plain equal-weight average — no dimension is judged more important than another without real evidence for a specific weighting. Missing data is treated as missing, not neutral: a currency covered on 3 of 11 dimensions is flagged as partial coverage, not silently averaged as if the other 8 read zero. Click a row to see which dimensions drove its score. Reads live off every other engine's already-cached data — refreshing here doesn't re-fetch FRED, it just re-aggregates; refresh the individual pages to pull fresh source data.</div>
+    <div class="note">Averages whatever's actually covered for each currency across every engine on this dashboard: central-bank text sentiment (USD/EUR/GBP/JPY only — the 4 with a built sentiment engine), CPI, GDP, business activity, labor market, retail sales, trade balance, real yield, yield curve, consumer confidence, rate (carry) differential, and PPI (USD only). Every dimension already arrives on the same -1..+1 scale from its own engine, so this is a plain equal-weight average — no dimension is judged more important than another without real evidence for a specific weighting. Missing data is treated as missing, not neutral: a currency covered on 3 of 12 dimensions is flagged as partial coverage, not silently averaged as if the other 9 read zero. Click a row to see which dimensions drove its score. Reads live off every other engine's already-cached data — refreshing here doesn't re-fetch FRED, it just re-aggregates; refresh the individual pages to pull fresh source data.</div>
   </div>
 </div>
 
@@ -116,7 +116,7 @@ async function jget(url, opts) { const r = await fetch(url, opts); return r.json
 const DIM_LABEL = {
   cbSentiment: 'Central-bank sentiment', cpi: 'CPI / Inflation', gdp: 'GDP / Growth',
   ism: 'Business Activity', laborMarket: 'Labor Market', retailSales: 'Retail Sales',
-  tradeBalance: 'Trade Balance', realYield: 'Real Yield', yieldCurve: 'Yield Curve', consumerConfidence: 'Consumer Confidence', ppi: 'PPI',
+  tradeBalance: 'Trade Balance', realYield: 'Real Yield', yieldCurve: 'Yield Curve', consumerConfidence: 'Consumer Confidence', rateDiff: 'Rate Differential', ppi: 'PPI',
 };
 const CB_PAGE = { USD: 'fomc-sentiment.html', EUR: 'ecb-sentiment.html', GBP: 'boe-sentiment.html', JPY: 'boj-sentiment.html' };
 function dimHref(dim, ccy) {

@@ -1278,6 +1278,23 @@ function setRateStatTab(id) {
   try { localStorage.setItem('rateStatTab', id); } catch (e) {}
   renderStatRow();
 }
+// VIX stat-card pip — spot / term-structure share one card slot, same reason
+// as rateStatTab above. Term = VIX/VIX3M ratio; >=1 is backwardation (near-term
+// fear priced above the 3-month), which macro_overlay.py's own VIXFetcher
+// tracks a dead version of (vix3m hardcoded None there — no source). This one
+// is real: VIX3M (VXVCLS) already comes through /api/fred live, this just adds
+// the matching 90-day history from fredhistory_series_vix3m.
+let vixStatTab = (() => { try { return localStorage.getItem('vixStatTab') || 'vix'; } catch (e) { return 'vix'; } })();
+function setVixStatTab(id) {
+  vixStatTab = id;
+  try { localStorage.setItem('vixStatTab', id); } catch (e) {}
+  renderStatRow();
+}
+function vixStatTabsHtml() {
+  const tabs = [['vix', 'VIX'], ['term', 'Term']];
+  return `<div class="stat-tabs">${tabs.map(([id, lbl]) =>
+    `<button class="stat-tab${vixStatTab === id ? ' on' : ''}" onclick="event.stopPropagation();setVixStatTab('${id}')">${lbl}</button>`).join('')}</div>`;
+}
 function rateStatTabsHtml() {
   const tabs = [['us10y', '10Y'], ['us2y', '2Y'], ['spread', '2s10s']];
   return `<div class="stat-tabs">${tabs.map(([id, lbl]) =>
@@ -1335,7 +1352,22 @@ function renderStatRow() {
       wkPct != null ? `${wkPct >= 0 ? '+' : ''}${wkPct.toFixed(2)}%` : null, wkPct == null || wkPct >= 0));
   }
 
-  if (vix?.value != null) {
+  const vix3m = fred?.vix3m;
+  if (vixStatTab === 'term' && vix?.value != null && vix3m?.value != null) {
+    const ratio = vix.value / vix3m.value;
+    const prevRatio = (vix.prev != null && vix3m.prev != null) ? vix.prev / vix3m.prev : null;
+    const d = prevRatio != null ? ratio - prevRatio : null;
+    const h1 = (fredHist?.vix ?? []).map(p => p.value), h2 = (fredHist?.vix3m ?? []).map(p => p.value);
+    const n = Math.min(h1.length, h2.length);
+    const hist = n ? h1.slice(-n).map((v, i) => v / h2.slice(-n)[i]) : [];
+    const wkAgo = hist.length >= 6 ? hist[hist.length - 6] : null;
+    const wk = wkAgo != null ? ratio - wkAgo : null;
+    cards.push(statCardHtml('VIX Term Structure', `${ratio.toFixed(2)} ${ratio >= 1 ? '(back.)' : '(cont.)'}`,
+      d != null ? `${d >= 0 ? '+' : ''}${d.toFixed(2)}` : null, d == null || d >= 0,
+      hist, wk == null || wk >= 0,
+      wk != null ? `${wk >= 0 ? '+' : ''}${wk.toFixed(2)}` : null, wk == null || wk >= 0,
+      vixStatTabsHtml()));
+  } else if (vix?.value != null) {
     const d = vix.prev != null ? (vix.value - vix.prev) : null;
     const hist = (fredHist?.vix ?? []).map(p => p.value);
     const wkAgo = hist.length >= 6 ? hist[hist.length - 6] : null;
@@ -1343,7 +1375,8 @@ function renderStatRow() {
     cards.push(statCardHtml('VIX Index', vix.value.toFixed(2),
       d != null ? `${d >= 0 ? '+' : ''}${d.toFixed(2)}` : null, d == null || d >= 0,
       hist, wk == null || wk >= 0,
-      wk != null ? `${wk >= 0 ? '+' : ''}${wk.toFixed(2)}` : null, wk == null || wk >= 0));
+      wk != null ? `${wk >= 0 ? '+' : ''}${wk.toFixed(2)}` : null, wk == null || wk >= 0,
+      vix3m?.value != null ? vixStatTabsHtml() : null));
   }
 
   if (wti) {
@@ -2593,7 +2626,7 @@ function closeCcyDrawer() {
 const CCY_DIM_LABEL = {
   cbSentiment: 'Central-bank sentiment', cpi: 'CPI / Inflation', gdp: 'GDP / Growth',
   ism: 'Business Activity', laborMarket: 'Labor Market', retailSales: 'Retail Sales',
-  tradeBalance: 'Trade Balance', realYield: 'Real Yield', yieldCurve: 'Yield Curve', consumerConfidence: 'Consumer Confidence', ppi: 'PPI',
+  tradeBalance: 'Trade Balance', realYield: 'Real Yield', yieldCurve: 'Yield Curve', consumerConfidence: 'Consumer Confidence', rateDiff: 'Rate Differential', ppi: 'PPI',
 };
 const CCY_DIM_PAGE = { USD: 'fomc-sentiment.html', EUR: 'ecb-sentiment.html', GBP: 'boe-sentiment.html', JPY: 'boj-sentiment.html' };
 function ccyDimHref(dim, ccy) {
@@ -2616,7 +2649,7 @@ function fundamentalsHtml(ccy) {
   const chipWord = row.composite == null ? 'No coverage yet' : row.composite > 0.25 ? 'Fundamentally strong' : row.composite < -0.25 ? 'Fundamentally weak' : 'Fundamentally neutral';
   return `
     <div style="margin-bottom:8px"><span class="chip ${chipCls}">${chipWord}${row.composite != null ? ` · ${row.composite > 0 ? '+' : ''}${row.composite}` : ''}</span></div>
-    <div class="ccy-explain">Averages whatever's covered across ${row.coverage.length} of 11 real economic dimensions (missing data is left out, not treated as neutral) — the same read as the <a href="macro-scorecard.html">Macro Scorecard</a>, unlike "Today's flow" above which is price/positioning, not fundamentals.</div>
+    <div class="ccy-explain">Averages whatever's covered across ${row.coverage.length} of 12 real economic dimensions (missing data is left out, not treated as neutral) — the same read as the <a href="macro-scorecard.html">Macro Scorecard</a>, unlike "Today's flow" above which is price/positioning, not fundamentals.</div>
     <div class="ccy-legs" style="margin-top:8px">${dimRows || '<div class="muted">No dimensions covered yet.</div>'}</div>`;
 }
 function openCcyDrawer(ccy) {
@@ -6188,7 +6221,7 @@ const DRIVERS = {
   AUDJPY: { a: 'au10y', b: 'jp10y', label: 'AU–JP 10y', sign: +1 },
   CADJPY: { a: 'ca10y', b: 'jp10y', label: 'CA–JP 10y', sign: +1 },
 };
-const FREDHIST_KEYS = 'us10y,us2y,de10y,gb10y,jp10y,au10y,ca10y,ch10y,tips,vix,dxy,hy,walcl,tga,rrp,ecb_assets,boj_assets';
+const FREDHIST_KEYS = 'us10y,us2y,de10y,gb10y,jp10y,au10y,ca10y,ch10y,tips,vix,vix3m,dxy,hy,walcl,tga,rrp,ecb_assets,boj_assets';
 
 async function getFredHist() {
   if (fredHist) return fredHist;
