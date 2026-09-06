@@ -5436,6 +5436,47 @@ fetch and the actual chart pixels — same standing sandbox limitation as
 every other CDN-chart/live-OANDA feature in this file; needs a live look
 on Railway.
 
+#### Gap filter made a live on/off config toggle (2026-09-06)
+
+Owner ask: until now the whiplash gap filter
+(`FIB_ATLAS_MAX_GAP_MIN`/`FIB_ATLAS_MONDAY_MAX_GAP_MIN`, always-on since
+2026-09-04) had no live switch — turning it off required a code deploy.
+Added a `gap_filter: { asia, monday }` field to the SAME
+`fib_atlas_bot_config` KV object the Python bot's own config already lives
+in (`FA_DEFAULTS` in `js/bot-config.js`), defaulting both to `true` (the
+OOS-validated behavior) so nothing changes for anyone who doesn't touch it.
+
+- `server.js`: `FIB_ATLAS_PLAN_CFG_DEFAULTS` now carries
+  `gap_filter: { asia: true, monday: true }` alongside the existing
+  `enabled_pairs`. `_refreshFibAtlasPlan`'s per-(pair, ladder) loop reads
+  `cfg.gap_filter?.[ladder] !== false` and calls
+  `planFn(pair, gapFilterEnabled ? {} : { maxGapMin: null })` — `{}` uses
+  each ladder's own frozen default via `zonesFromLiveAndBook`'s own default
+  param, `{ maxGapMin: null }` hits its `maxGapMin != null` guard and skips
+  the filter block entirely for that tick. Previously the loop called
+  `planFn(pair)` with no opts at all.
+- `bot-config.html` (Fib Atlas tab, Bot Control card): new "Gap filter"
+  form-row, one checkbox per ladder (`fa_gap_filter_asia`/
+  `fa_gap_filter_monday`), right under the existing "Ladders" row —
+  same `form-row`/`form-lbl` pattern as every other toggle in that card.
+- `js/bot-config.js`: `FA_DEFAULTS.gap_filter`, `renderFaForm`/`readFaForm`
+  wire the two checkboxes the same way `ladders` already does, and
+  `loadFaConfig`/`resetFaDefaults` deep-merge/reset the nested object so a
+  config saved before this field existed still defaults both ladders to on.
+
+**Known, deliberately out-of-scope gap**: the nightly
+`reference-engine-rebuild` job's `runOne` path (both `asiaFibAtlasRoutes.js`
+and `mondayFibAtlasRoutes.js`) calls `zonesFromLiveAndBook` directly with no
+config lookup, so it always uses the frozen default regardless of this
+toggle. This is a short-lived inconsistency — the next `_refreshFibAtlasPlan`
+tick (≤45s) overwrites it with the config-respecting value — left out to
+keep this change minimal; flag if the nightly path should read the same KV
+config too.
+
+Validated: `node --check server.js` and `node --check js/bot-config.js`
+both clean; confirmed the `fa_gap_filter_asia`/`fa_gap_filter_monday`
+element IDs match exactly between the HTML and the JS reads.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted

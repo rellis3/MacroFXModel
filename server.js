@@ -14383,7 +14383,13 @@ const FIB_ATLAS_ALL_PAIRS = ['eurusd', 'gbpusd', 'usdjpy', 'audusd', 'nzdusd', '
 const FIB_ATLAS_RECOMMENDED_EXCLUDE = new Set(['gbpcad', 'gbpchf', 'eurcad', 'gbpnzd', 'eurchf', 'audchf', 'chfjpy', 'eurnzd', 'gbpjpy', 'eurjpy']);
 const FIB_ATLAS_DEFAULT_PAIRS = FIB_ATLAS_ALL_PAIRS.filter(p => !FIB_ATLAS_RECOMMENDED_EXCLUDE.has(p));
 
-const FIB_ATLAS_PLAN_CFG_DEFAULTS = { enabled_pairs: [] };   // [] -> FIB_ATLAS_DEFAULT_PAIRS
+// gap_filter: per-ladder on/off for the whiplash gap filter (2026-09-04,
+// FIB_ATLAS_MAX_GAP_MIN/FIB_ATLAS_MONDAY_MAX_GAP_MIN) -- {} or a missing
+// ladder key defaults to "on" (the OOS-validated behavior); explicitly
+// false disables it for that ladder by passing { maxGapMin: null } through
+// to planFn, which zonesFromLiveAndBook treats as "skip the filter block
+// entirely" (its default param only applies when the key is absent).
+const FIB_ATLAS_PLAN_CFG_DEFAULTS = { enabled_pairs: [], gap_filter: { asia: true, monday: true } };   // [] -> FIB_ATLAS_DEFAULT_PAIRS
 
 // Reads the CURRENTLY PUBLISHED plan so a tick can MERGE onto it rather
 // than rebuilding from nothing. Never throws — a read failure degrades to
@@ -14440,7 +14446,8 @@ async function _refreshFibAtlasPlan() {
           continue;
         }
         try {
-          const plan = await planFn(pair);
+          const gapFilterEnabled = cfg.gap_filter?.[ladder] !== false;
+          const plan = await planFn(pair, gapFilterEnabled ? {} : { maxGapMin: null });
           if (plan.warming) { if (!instruments[key]) skipped[key] = 'warming (cold cache)'; continue; }
           if (plan.skipped) { if (!instruments[key]) skipped[key] = plan.skipped; continue; }
           instruments[key] = { pair, ladder, spot: plan.spot, date: plan.date, zones: plan.zones, zoneCount: plan.zoneCount, updatedAt: new Date().toISOString(), source: 'live' };
