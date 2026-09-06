@@ -103,6 +103,7 @@ import { gprScore as _gprScore } from './js/gprEngine.js';
 import { fetchRetailSalesData, retailSalesCompositeScore, RETAIL_SALES_UNIVERSE } from './js/retailSalesEngine.js';
 import { fetchTradeBalanceData, tradeBalanceScore, TRADE_BALANCE_UNIVERSE } from './js/tradeBalanceEngine.js';
 import { fetchRealYieldData, realYieldScore, REAL_YIELD_UNIVERSE } from './js/realYieldEngine.js';
+import { fetchRateDiffData, rateDiffScore, RATE_DIFF_UNIVERSE } from './js/rateDiffEngine.js';
 import { fetchPpiData, ppiCompositeScore, PPI_UNIVERSE } from './js/ppiEngine.js';
 import { buildScorecard as buildMacroScorecard, topBottomPair as macroTopBottomPair } from './js/macroScorecardEngine.js';
 import { fetchYieldCurveData, yieldCurveScore, YIELD_CURVE_UNIVERSE } from './js/yieldCurveEngine.js';
@@ -5473,6 +5474,60 @@ setInterval(() => {
   _buildRealYieldScores().catch(() => {}).finally(() => { _realYieldRunning = false; });
 }, 20 * 60_000);
 
+// ── Rate ("Carry") Differential Engine (see js/rateDiffEngine.js) ──────────
+// Entirely derived — no new data source, reuses YIELD_CURVE_UNIVERSE's own
+// short-rate leg (already fetched for the `yieldCurve` dimension). Fills the
+// gap flagged during the Databento/VIX-term-structure review: the scorecard
+// had realYield (inflation-adjusted) and yieldCurve (each currency's own
+// steepness) but nothing scoring the raw nominal short-rate differential —
+// the actual FX carry signal. Same daily-gate refresh pattern as every
+// other engine here.
+const _RATE_DIFF_KV = 'rate_diff_v1';
+async function _buildRateDiffScores() {
+  const fredKey = process.env.FRED_KEY;
+  if (!fredKey) throw new Error('FRED_KEY not configured');
+  const byCcy = {}, availability = {};
+  await Promise.all(Object.keys(RATE_DIFF_UNIVERSE).map(async ccy => {
+    try {
+      const { obs, series } = await fetchRateDiffData(ccy, fredKey);
+      byCcy[ccy] = rateDiffScore(obs);
+      availability[ccy] = [{ series, n: obs.size }];
+    } catch (e) {
+      availability[ccy] = [{ error: e.message }];
+    }
+  }));
+  const payload = { byCcy, availability, generatedAt: new Date().toISOString() };
+  await kv.put(_RATE_DIFF_KV, JSON.stringify(payload)).catch(() => {});
+  return payload;
+}
+app.get('/api/rate-diff', async (_req, res) => {
+  try {
+    const raw = await kv.get(_RATE_DIFF_KV);
+    if (!raw) return res.json({ ok: false, error: 'No rate differential data yet — click Refresh.' });
+    res.json({ ok: true, ...JSON.parse(raw) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+let _rateDiffRunning = false;
+app.post('/api/rate-diff/refresh', (_req, res) => {
+  if (_rateDiffRunning) return res.json({ ok: true, started: false, alreadyRunning: true });
+  _rateDiffRunning = true;
+  _buildRateDiffScores().catch(() => {}).finally(() => { _rateDiffRunning = false; });
+  res.json({ ok: true, started: true });
+});
+app.get('/api/rate-diff/refresh-status', async (_req, res) => {
+  const raw = await kv.get(_RATE_DIFF_KV).catch(() => null);
+  res.json({ ok: true, running: _rateDiffRunning, last: raw ? JSON.parse(raw) : null });
+});
+let _rateDiffLastRun = null;
+setInterval(() => {
+  if (!process.env.FRED_KEY || _rateDiffRunning) return;
+  const today = new Date().toISOString().slice(0, 10);
+  if (_rateDiffLastRun === today) return;
+  _rateDiffLastRun = today;
+  _rateDiffRunning = true;
+  _buildRateDiffScores().catch(() => {}).finally(() => { _rateDiffRunning = false; });
+}, 20 * 60_000);
+
 // ── PPI / Pipeline Inflation Engine (see js/ppiEngine.js) ──────────────────
 // USD-only, deliberately — the non-US OECD PPI family on FRED was
 // confirmed frozen since ~Dec 2022 during research; see that file's header
@@ -5659,7 +5714,7 @@ async function _loadCbSentiment() {
   return out;
 }
 async function _buildMacroScorecard() {
-  const [cpiRaw, gdpRaw, ismRaw, laborRaw, retailRaw, tradeRaw, realYieldRaw, ppiRaw, yieldCurveRaw, confidenceRaw, cbSentiment] = await Promise.all([
+  const [cpiRaw, gdpRaw, ismRaw, laborRaw, retailRaw, tradeRaw, realYieldRaw, ppiRaw, yieldCurveRaw, confidenceRaw, rateDiffRaw, cbSentiment] = await Promise.all([
     kv.get(_CPI_KV).catch(() => null),
     kv.get(_GDP_KV).catch(() => null),
     kv.get(_ISM_KV).catch(() => null),
@@ -5670,6 +5725,7 @@ async function _buildMacroScorecard() {
     kv.get(_PPI_KV).catch(() => null),
     kv.get(_YIELD_CURVE_KV).catch(() => null),
     kv.get(_CONSUMER_CONFIDENCE_KV).catch(() => null),
+    kv.get(_RATE_DIFF_KV).catch(() => null),
     _loadCbSentiment(),
   ]);
   const cpi = cpiRaw ? JSON.parse(cpiRaw).byCcy : {};
@@ -5682,6 +5738,7 @@ async function _buildMacroScorecard() {
   const ppi = ppiRaw ? JSON.parse(ppiRaw).byCcy : {};
   const yieldCurve = yieldCurveRaw ? JSON.parse(yieldCurveRaw).byCcy : {};
   const confidence = confidenceRaw ? JSON.parse(confidenceRaw).byCcy : {};
+  const rateDiff = rateDiffRaw ? JSON.parse(rateDiffRaw).byCcy : {};
 
   const byCcyDims = {};
   for (const ccy of ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'NZD']) {
@@ -5696,6 +5753,7 @@ async function _buildMacroScorecard() {
       realYield: realYield[ccy]?.score ?? null,
       yieldCurve: yieldCurve[ccy]?.score ?? null,
       consumerConfidence: confidence[ccy]?.confidence ?? null,
+      rateDiff: rateDiff[ccy]?.score ?? null,
       ...(ccy === 'USD' ? { ppi: ppi[ccy]?.pressure ?? null } : {}),
     };
   }

@@ -2202,7 +2202,7 @@ function closeCcyDrawer() {
 const CCY_DIM_LABEL = {
   cbSentiment: 'Central-bank sentiment', cpi: 'CPI / Inflation', gdp: 'GDP / Growth',
   ism: 'Business Activity', laborMarket: 'Labor Market', retailSales: 'Retail Sales',
-  tradeBalance: 'Trade Balance', realYield: 'Real Yield', yieldCurve: 'Yield Curve', consumerConfidence: 'Consumer Confidence', ppi: 'PPI',
+  tradeBalance: 'Trade Balance', realYield: 'Real Yield', yieldCurve: 'Yield Curve', consumerConfidence: 'Consumer Confidence', rateDiff: 'Rate Differential', ppi: 'PPI',
 };
 const CCY_DIM_PAGE = { USD: 'fomc-sentiment.html', EUR: 'ecb-sentiment.html', GBP: 'boe-sentiment.html', JPY: 'boj-sentiment.html' };
 function ccyDimHref(dim, ccy) {
@@ -2225,7 +2225,7 @@ function fundamentalsHtml(ccy) {
   const chipWord = row.composite == null ? 'No coverage yet' : row.composite > 0.25 ? 'Fundamentally strong' : row.composite < -0.25 ? 'Fundamentally weak' : 'Fundamentally neutral';
   return `
     <div style="margin-bottom:8px"><span class="chip ${chipCls}">${chipWord}${row.composite != null ? ` · ${row.composite > 0 ? '+' : ''}${row.composite}` : ''}</span></div>
-    <div class="ccy-explain">Averages whatever's covered across ${row.coverage.length} of 11 real economic dimensions (missing data is left out, not treated as neutral) — the same read as the <a href="macro-scorecard.html">Macro Scorecard</a>, unlike "Today's flow" above which is price/positioning, not fundamentals.</div>
+    <div class="ccy-explain">Averages whatever's covered across ${row.coverage.length} of 12 real economic dimensions (missing data is left out, not treated as neutral) — the same read as the <a href="macro-scorecard.html">Macro Scorecard</a>, unlike "Today's flow" above which is price/positioning, not fundamentals.</div>
     <div class="ccy-legs" style="margin-top:8px">${dimRows || '<div class="muted">No dimensions covered yet.</div>'}</div>`;
 }
 function openCcyDrawer(ccy) {
