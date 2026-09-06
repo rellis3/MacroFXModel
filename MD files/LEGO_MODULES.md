@@ -5691,6 +5691,89 @@ synthetic fixtures (matched trade → correct decision+backtest join with
 right price fields; unmatched trade → both lookups correctly return null
 rather than a wrong pairing).
 
+#### Lookahead re-audit + honest day-pooled Deflated Sharpe + concentration check (2026-09-06)
+
+Owner asked directly, re-looking at the live Sharpe 18.37 / Calmar 783.5
+numbers: "are you not worried at all... where would you go to check if
+something was dodgy." Answered with a real code-level audit, not
+reassurance, then two more targeted checks on request.
+
+**Lookahead — traced the 3 highest-probability spots, all clean:**
+- **Core vote signal.** `buildBarrierTrades` (`js/asiaFibAtlasVoteReview.js:139`)
+  hard-filters every reported trade to `t.date >= book.splitDate` — the
+  win-rate book (`buildAsiaFibAtlasBook`, `js/asiaFibAtlasReport.js`) is fit
+  ONLY on the IS portion, then applied unseen to OOS touches. A real
+  train/test split, not a lookahead. The vote is also deliberately narrowed
+  to 2 dimensions (`prevOutcomeSameDay`, `sessionHandoff`) chosen because an
+  earlier 26-pair check found they held OOS broadly — a real anti-overfit
+  design choice, not incidental.
+- **Chandelier trailing exit.** `applyTrailingContinuation`
+  (`js/levelAtlasVoteReview.js:507`) walks forward bar-by-bar from the
+  trade's own resolve time; its ATR (`rollingATR`) is a standard
+  backward-only EMA (`out[i] = k·tr + (1-k)·out[i-1]`, bars `<= i` only). No
+  future bar ever reaches the trailing stop calc.
+- **`gapMin`** (the newest lever, added 2026-09-03/04) is literally
+  `currentTouchTime − previousTouchTime` where "previous" is tracked
+  strictly chronologically (`js/asiaFibAtlasEngine.js:816`). Can't reference
+  a future touch by construction.
+- **One modeling assumption flagged, not a bug**: the trailed-exit calc
+  floors the outcome at the original fixed target
+  (`Math.max(trailedPnl, targetPips)`, `levelAtlasVoteReview.js:530`) — a
+  trade that reached target can never be recorded as worse than that target
+  in the backtest, only better via the trail. Reasonable IF the live bot's
+  own chandelier management actually locks in the target before extending —
+  worth confirming against `fib_atlas_bot.py`'s real trail logic, not yet
+  checked.
+
+**Real finding: the dashboard's own Deflated Sharpe tile tests the wrong
+series.** `computeFibAtlasDeflatedSharpe` (`js/fibAtlasVotePortfolio.js:319`)
+builds `chosenPnls`/`trialSRs` from the PER-TRADE pnl list (the ~0.76
+"Sharpe (single trade)" basis) — not the day-pooled series that produces the
+headline 18.37/14.27 numbers the DSR tile sits directly next to in
+`kpiShared` (`asia-fib-atlas-vote-portfolio.html:1122-1126`). The
+computation itself is internally consistent (trial and chosen series share
+the same basis), but a reader would reasonably assume the tile means the
+flashy day-pooled number survived a deflation check — it hasn't. Not yet
+fixed; flagged for the owner to decide (swap to day-pooled daily-return
+trials, or re-label to make the per-trade basis explicit).
+
+**`analysis/fib_atlas_dsr_and_concentration_audit.mjs`** — an HONEST
+day-pooled DSR using a real 125-combo grid (`stopTightenFrac` ×
+`minCostRatio` × `maxGapMin`, 5 values each including "off") instead of the
+page's own 6 single-lever-flips, plus a year-by-year concentration check on
+the shipped config's day-pooled series. Findings:
+- **Shipped config (0.9/3/30) ranks 17th of 125 by Sharpe** — not the
+  cherry-picked best of the grid (a real point in its favor).
+- **But Sharpe barely moves across the ENTIRE grid: 14.66–18.56, median
+  17.53** — including combos with all three filters OFF. This reframes the
+  original multiple-testing worry: the extreme Sharpe is NOT coming from
+  tuning these three levers — it's a structural property of day-pooling ~32
+  small-edge, high-win-rate, assumed-independent constituents. The honest
+  DSR computed on this wider grid comes back ≈1.0, which correctly means
+  "not distinguishable from the best of these 125 trials" — but that answers
+  "did we cherry-pick these three knobs" (no), not "is the underlying
+  day-pooled number itself honest" (still open — same independence
+  assumption behind the day-pooled-vs-per-trade 5.4x drawdown gap already
+  documented above).
+- **Year-by-year additive-return share, shipped config**: 2021 0.6% (partial,
+  right at the OOS start), 2022 21.7%, 2023 26.1%, 2024 20.2%, 2025 20.7%,
+  2026 10.7% (partial). Best single year is 26%, best two combined 48% — a
+  genuinely even spread across 5 calendar years, not one lucky year
+  extrapolated. Positive evidence, though the window still excludes any
+  actual crisis period (unchanged finding from 2026-09-06 earlier this doc).
+
+**Net reframing**: the lookahead concern is resolved (checked, clean). The
+multiple-testing concern on the specific tuned lever VALUES turns out to be
+smaller than expected (Sharpe is insensitive to them). What remains
+genuinely open — unchanged by tonight's checks, just now isolated more
+precisely — is whether the day-pooled portfolio construction's implicit
+near-independence-across-constituents assumption holds under real
+correlated stress, which only a live/demo run (or an actual crisis inside
+the test window, which doesn't exist here) can settle.
+
+Validated: `node --check` clean; script runs end-to-end against live
+R2-stored trades (125/125 combos succeeded).
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
