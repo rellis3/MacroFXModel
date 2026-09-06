@@ -186,6 +186,14 @@
   <canvas id="tradeEqChart" style="max-height:280px"></canvas>
 </div>
 
+<div class="card">
+  <h2>Outlier sensitivity — is this carried by a handful of trades?</h2>
+  <div class="muted" style="margin-bottom:8px">Excess kurtosis above tells you the daily-return distribution's tail shape, but not whether a few individual trades are doing the work — several trades can land on the same day and average out in that number. This looks at the raw per-trade PnL directly: what share of total profit comes from the biggest winners, and what happens to Sharpe/CAGR/drawdown if you'd simply missed them.</div>
+  <div id="outlierKurt" class="kpi-grid" style="margin-bottom:12px"></div>
+  <div id="outlierConcentration" style="overflow-x:auto;margin-bottom:12px"></div>
+  <div id="outlierRemoval" style="overflow-x:auto"></div>
+</div>
+
 <div class="card" id="walkForwardCard" style="border-color:#3a2e4a;background:linear-gradient(135deg,#1e1424,#0e0e1b)">
   <h2 style="color:#c084fc">Walk-Forward OOS — most recent 60% of history only (2026-08-31)</h2>
   <div class="muted" style="margin-bottom:10px">
@@ -214,6 +222,21 @@
   <h2>Cumulative portfolio return % <label style="font-size:11px;color:var(--muted);font-weight:400;margin-left:10px">Log scale (compounded) <input type="checkbox" id="logScaleChk" checked></label></h2>
   <div class="muted" style="margin-bottom:10px">Compounded reinvests each day's % return into the next day's base — a hypothetical this engine does NOT actually run (see the warning above; real sizing is fixed-%-of-original-capital, matching the non-compounded line). Non-compounded sums the daily % returns — what this engine's own fixed-fractional sizing actually produces, and the one to trust. Log scale defaults ON because a linear plot of exponential compounding is unreadable (a hockey stick) regardless of whether the underlying edge is real — toggle off to see the raw curve.</div>
   <canvas id="eqChart"></canvas>
+</div>
+
+<div class="card">
+  <h2>Monte Carlo — randomised trade order <span class="muted" style="font-weight:400;text-transform:none;letter-spacing:0" id="mcRunsLabel"></span></h2>
+  <div class="muted" style="margin-bottom:10px">Same trades, same days — just reshuffled into a different chronological order — replayed <span id="mcRunsLabel2"></span> times to build a corridor of possible equity curves. This is path-dependent risk: total return is invariant to order (it's the same sum either way), but drawdown and how bumpy the ride feels are NOT — a bad stretch landing early vs. spread out changes what you'd have actually lived through. The bold line is what actually happened; the bands are what COULD have happened with the exact same edge, just different luck in the ordering. Built on the compounded basis (order only matters once you reinvest) — the KPIs below add sample-size uncertainty on top via bootstrap.</div>
+  <canvas id="mcFanChart" style="height:340px"></canvas>
+  <div class="kpi-grid" id="mcKpi" style="margin-top:12px"></div>
+</div>
+
+<div class="card">
+  <h2>Extreme tail fit — Peaks-Over-Threshold (Generalized Pareto)</h2>
+  <div class="muted" style="margin-bottom:10px" id="evtExplainer"></div>
+  <canvas id="evtChart" style="height:320px"></canvas>
+  <div class="kpi-grid" id="evtKpi" style="margin-top:12px"></div>
+  <div id="evtCompare" style="overflow-x:auto;margin-top:12px"></div>
 </div>
 
 <div class="card">
@@ -266,7 +289,10 @@
 </div>
 
 <script type="module">
-import { summarizeTrades, sortinoRatio, calmar as calmarRatio } from './js/metricsCore.js';
+import { summarizeTrades, sortinoRatio, calmar as calmarRatio, histVaR } from './js/metricsCore.js';
+import { backtestStats, shuffle } from './js/backtestStats.js';
+import { mulberry32 } from './js/statsCore.js';
+import { fitTailModel } from './js/evtTail.js';
 // All 26 locally-cached pairs both Fib Atlas ladders were widened to (same
 // list scripts/backfill_fib_atlas_vote_trades.mjs uses) — no exclusions here,
 // unlike level-atlas-vote-portfolio.html's curated 21/26, since no
@@ -441,8 +467,12 @@ syncSizingUI();
 
 let eqChart = null;
 let tradeEqChart = null;
+let mcFanChart = null;
+let evtChart = null;
 let lastTrades = [];
 let lastResponse = null;
+const OUTLIER_TOP_N = [1, 5, 10, 20, 50];
+const MC_RUNS = 300;
 
 // ── Per-trade stats (2026-08-31) — same brick + method
 // asia-fib-atlas-vote-backtest.html's own `computeStats` already uses
@@ -583,6 +613,230 @@ function renderWalkForwardOOS(wf) {
   ].join('');
 }
 
+// ── Outlier sensitivity (2026-09-06) — same brick + method as
+// level-atlas-vote-portfolio.html's own card: is this edge carried by a
+// handful of trades? Per-trade basis (pnlPct×weight, matching the per-trade
+// card above), NOT the day-pooled series, since several trades landing on
+// one day would otherwise average a concentration problem away.
+function outlierDailySeriesExcluding(excludeSet) {
+  const m = new Map();
+  for (const t of lastTrades) {
+    if (excludeSet.has(t)) continue;
+    const p = t.pnlPct * (t.weight ?? 1);
+    m.set(t.date, (m.get(t.date) || 0) + p);
+  }
+  return [...m.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([, p]) => p);
+}
+function renderOutlierSensitivity() {
+  const kurtEl = document.getElementById('outlierKurt');
+  const concEl = document.getElementById('outlierConcentration');
+  const remEl = document.getElementById('outlierRemoval');
+  if (!kurtEl || !lastTrades.length) { if (kurtEl) kurtEl.innerHTML = ''; if (concEl) concEl.innerHTML = ''; if (remEl) remEl.innerHTML = ''; return; }
+
+  const pnls = lastTrades.map(t => t.pnlPct * (t.weight ?? 1));
+  const dates = lastTrades.map(t => t.date);
+  const summary = summarizeTrades(pnls, dates);
+  kurtEl.innerHTML = [
+    kpiCard('Trade Skew', fmt2(summary.skew), '', 'per-trade pnl distribution'),
+    kpiCard('Trade Excess Kurtosis', fmt2(summary.excessKurt), '', summary.excessKurt > 0 ? 'fatter tails than normal' : 'thinner tails than normal — bounded target/stop caps single-trade outliers'),
+  ].join('');
+
+  const totalProfit = pnls.reduce((a, b) => a + b, 0);
+  const sortedDesc = [...pnls].sort((a, b) => b - a);
+  concEl.innerHTML = `<table><thead><tr><th>Top N trades (of ${lastTrades.length})</th><th class="num">Summed pnl%</th><th class="num">% of total profit</th></tr></thead><tbody>`
+    + OUTLIER_TOP_N.map(n => {
+      const topSum = sortedDesc.slice(0, n).reduce((a, b) => a + b, 0);
+      return `<tr><td>${n}</td><td class="num">${fmtPct(topSum, 1)}</td><td class="num">${totalProfit !== 0 ? fmt1(topSum / totalProfit * 100) + '%' : '—'}</td></tr>`;
+    }).join('')
+    + '</tbody></table>';
+
+  const byPnlDesc = [...lastTrades].sort((a, b) => (b.pnlPct * (b.weight ?? 1)) - (a.pnlPct * (a.weight ?? 1)));
+  const base = portfolioStatsLocal(outlierDailySeriesExcluding(new Set()));
+  const rows = [['Nothing removed (base)', base]];
+  for (const n of OUTLIER_TOP_N) {
+    const excl = new Set(byPnlDesc.slice(0, n));
+    rows.push([`Top ${n} winners removed`, portfolioStatsLocal(outlierDailySeriesExcluding(excl))]);
+  }
+  remEl.innerHTML = `<table><thead><tr><th></th><th class="num">Sharpe</th><th class="num">CAGR</th><th class="num">Max DD</th></tr></thead><tbody>`
+    + rows.map(([label, s]) => `<tr><td>${label}</td><td class="num">${fmt2(s.sharpe)}</td><td class="num">${fmt1(s.cagr)}%</td><td class="num red">${fmt1(s.maxDD)}%</td></tr>`).join('')
+    + '</tbody></table>';
+}
+// Minimal local re-derivation of the 3 fields this card needs from a raw
+// daily-return array (Sharpe/CAGR/compounded maxDD) -- NOT a re-import of
+// the full server-side portfolioStats (that lives in js/fibAtlasVotePortfolio.js
+// on the server and isn't meant for repeated client-side what-if reruns);
+// same formulas, annualized by 252 same as the server's own daily basis.
+function portfolioStatsLocal(daily) {
+  const n = daily.length;
+  if (!n) return { sharpe: 0, cagr: 0, maxDD: 0 };
+  const m = daily.reduce((a, b) => a + b, 0) / n;
+  const sd = Math.sqrt(daily.reduce((a, b) => a + (b - m) ** 2, 0) / n);
+  const sharpe = sd > 1e-9 ? m / sd * Math.sqrt(252) : 0;
+  const years = n / 252;
+  let eq = 1, peak = 1, maxDD = 0;
+  for (const r of daily) { eq *= (1 + r / 100); if (eq > peak) peak = eq; const dd = (eq - peak) / peak; if (dd < maxDD) maxDD = dd; }
+  const cagr = years > 0 ? (Math.pow(Math.max(1e-9, eq), 1 / years) - 1) * 100 : 0;
+  return { sharpe, cagr, maxDD: maxDD * 100 };
+}
+
+// ── Monte Carlo — randomised trade order (2026-09-06, ported from
+// level-atlas-vote-portfolio.html). Reshuffles the SAME daily returns into a
+// different chronological order, replays each as a compounded equity path,
+// and bands the result at every percentile — path-dependent risk (same
+// edge, same trades, different luck in the ORDER they arrived). Total
+// return is order-invariant (same sum); drawdown is not, which is exactly
+// what this corridor shows next to the real path. Fixed seed -> reproducible
+// across reloads of the SAME data, not fresh noise every time.
+function runOrderShuffleFan(dailyReturns, runs = MC_RUNS) {
+  const rng = mulberry32(0x9e3779b9);
+  const n = dailyReturns.length;
+  const paths = new Array(runs);
+  for (let r = 0; r < runs; r++) {
+    const shuffled = shuffle(dailyReturns, rng);
+    let eq = 1;
+    const path = new Array(n);
+    for (let i = 0; i < n; i++) { eq *= (1 + shuffled[i] / 100); path[i] = +((eq - 1) * 100).toFixed(3); }
+    paths[r] = path;
+  }
+  const q = (sorted, p) => {
+    const pos = p * (sorted.length - 1), lo = Math.floor(pos), frac = pos - lo;
+    return lo + 1 < sorted.length ? sorted[lo] + frac * (sorted[lo + 1] - sorted[lo]) : sorted[lo];
+  };
+  const bands = { p5: new Array(n), p25: new Array(n), p50: new Array(n), p75: new Array(n), p95: new Array(n) };
+  for (let i = 0; i < n; i++) {
+    const vals = paths.map(p => p[i]).sort((a, b) => a - b);
+    bands.p5[i] = +q(vals, 0.05).toFixed(2);
+    bands.p25[i] = +q(vals, 0.25).toFixed(2);
+    bands.p50[i] = +q(vals, 0.50).toFixed(2);
+    bands.p75[i] = +q(vals, 0.75).toFixed(2);
+    bands.p95[i] = +q(vals, 0.95).toFixed(2);
+  }
+  return bands;
+}
+function renderMonteCarlo(j) {
+  document.getElementById('mcRunsLabel').textContent = `(${MC_RUNS} reshuffles)`;
+  document.getElementById('mcRunsLabel2').textContent = MC_RUNS;
+  const dailyReturns = (j.equityCurve || []).map(p => p.dailyReturn);
+  const labels = (j.equityCurve || []).map(p => p.date);
+  if (mcFanChart) { mcFanChart.destroy(); mcFanChart = null; }
+  if (dailyReturns.length < 5) { document.getElementById('mcKpi').innerHTML = ''; return; }
+
+  const bands = runOrderShuffleFan(dailyReturns);
+  let eq = 1;
+  const actual = dailyReturns.map(r => { eq *= (1 + r / 100); return +((eq - 1) * 100).toFixed(2); });
+
+  // Same log-scale toggle the equity chart above uses, and for the same
+  // reason: this engine's own fixed-fractional sizing means the NON-
+  // compounded curve is the one to trust, but the reshuffle corridor is
+  // built on the compounded basis (order-dependence only exists once you
+  // reinvest) -- log scale just keeps a strongly compounding total readable.
+  const logMode = logScaleChk.checked;
+  const toIndex = arr => arr.map(v => v + 100);
+  const plotBands = logMode
+    ? { p5: toIndex(bands.p5), p25: toIndex(bands.p25), p50: toIndex(bands.p50), p75: toIndex(bands.p75), p95: toIndex(bands.p95) }
+    : bands;
+  const plotActual = logMode ? toIndex(actual) : actual;
+
+  mcFanChart = new Chart(document.getElementById('mcFanChart'), {
+    type: 'line',
+    data: { labels, datasets: [
+      { label: '5th–95th pctile', data: plotBands.p95, borderColor: 'transparent', backgroundColor: 'rgba(96,165,250,.10)', fill: 1, pointRadius: 0, tension: .1 },
+      { label: '_p5', data: plotBands.p5, borderColor: 'transparent', backgroundColor: 'transparent', fill: false, pointRadius: 0, tension: .1 },
+      { label: '25th–75th pctile', data: plotBands.p75, borderColor: 'transparent', backgroundColor: 'rgba(96,165,250,.22)', fill: 3, pointRadius: 0, tension: .1 },
+      { label: '_p25', data: plotBands.p25, borderColor: 'transparent', backgroundColor: 'transparent', fill: false, pointRadius: 0, tension: .1 },
+      { label: 'Median reshuffled path', data: plotBands.p50, borderColor: '#94a3b8', borderDash: [3, 3], borderWidth: 1.2, pointRadius: 0, tension: .1, fill: false },
+      { label: 'What actually happened', data: plotActual, borderColor: '#5b9dff', borderWidth: 2, pointRadius: 0, tension: .1, fill: false },
+    ] },
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: true, labels: { color: '#94a3b8', boxWidth: 12, font: { size: 11 },
+        filter: item => !item.text.startsWith('_') } } },
+      scales: {
+        x: { ticks: { color: '#5a6380', maxTicksLimit: 10 }, grid: { display: false } },
+        y: { type: logMode ? 'logarithmic' : 'linear', ticks: { color: '#5a6380', callback: v => logMode ? Number(v).toLocaleString() : (v + '%') }, grid: { color: '#1e2436' },
+          title: { display: true, text: logMode ? 'Equity index (100 = start)' : '% gain', color: '#5a6380', font: { size: 10 } } },
+      } },
+  });
+
+  // Scalar summary alongside the chart — reuses backtestStats' own bootstrap
+  // (resample WITH replacement — sample uncertainty) and montecarlo (shuffle
+  // order — the SAME thing the fan chart draws, collapsed to drawdown
+  // percentiles) fields directly. Per-TRADE basis (pnlPct×weight), matching
+  // the outlier-sensitivity card above.
+  const pnls = lastTrades.map(t => t.pnlPct * (t.weight ?? 1));
+  const dates = lastTrades.map(t => t.date);
+  const bs = backtestStats(pnls, dates);
+  document.getElementById('mcKpi').innerHTML = [
+    kpiCard('P(profitable)', fmt1(bs.bootstrap.pPositive * 100) + '%', bs.bootstrap.pPositive >= 0.95 ? 'green' : bs.bootstrap.pPositive >= 0.8 ? 'blue' : 'red', 'resampled with replacement — sample-size uncertainty'),
+    kpiCard('Total Return (5th–95th)', `${fmt1(bs.bootstrap.total.p5)}% – ${fmt1(bs.bootstrap.total.p95)}%`, '', `median ${fmt1(bs.bootstrap.total.p50)}%`),
+    kpiCard('Sharpe (5th–95th)', `${fmt2(bs.bootstrap.sharpe.p5)} – ${fmt2(bs.bootstrap.sharpe.p95)}`, '', `median ${fmt2(bs.bootstrap.sharpe.p50)}`),
+    kpiCard('Reshuffled Max DD (p50/p95/p99)', `${fmt1(bs.montecarlo.maxDD.p50)}% / ${fmt1(bs.montecarlo.maxDD.p95)}% / ${fmt1(bs.montecarlo.maxDD.p99)}%`, 'red', `vs ${fmt1(bs.maxDD)}% actually realised`),
+  ].join('');
+}
+
+// ── Extreme tail fit — Peaks-Over-Threshold / Generalized Pareto
+// (js/evtTail.js), ported 2026-09-06. Answers a genuinely different
+// question than the empirical VaR/CVaR cards above: how bad could a day be
+// BEYOND anything actually observed. Fit on the daily-return series (same
+// basis as Skew/Excess Kurtosis), threshold at the 90th loss percentile.
+function renderEvtTail(j) {
+  const explainerEl = document.getElementById('evtExplainer');
+  const kpiEl = document.getElementById('evtKpi');
+  const compareEl = document.getElementById('evtCompare');
+  const dailyReturns = (j.equityCurve || []).map(p => p.dailyReturn);
+  const model = fitTailModel(dailyReturns);
+  if (evtChart) { evtChart.destroy(); evtChart = null; }
+
+  if (!model.ok) {
+    explainerEl.textContent = `Tail fit unavailable: ${model.reason}.`;
+    kpiEl.innerHTML = ''; compareEl.innerHTML = '';
+    return;
+  }
+  const tailType = model.shape > 0.05 ? 'a fat, unbounded tail — extreme losses genuinely more likely than the bulk of the data suggests'
+    : model.shape < -0.05 ? 'a bounded tail — the fit implies a hard ceiling on how bad a single day can get'
+    : 'a roughly exponential tail — moderate, no strong evidence either way';
+  const ceiling = model.shape < -1e-6 ? model.threshold + model.scale / Math.abs(model.shape) : null;
+  explainerEl.innerHTML = `Fit on the worst ${fmt1(model.freq * 100)}% of days (${model.nExceed} of ${model.n}, above a ${fmt2(model.threshold)}% loss threshold). `
+    + `Shape ξ = ${fmt2(model.shape)} → <b>${tailType}</b>.`
+    + (ceiling != null ? ` The fit's own implied ceiling: no single day should exceed roughly <b>${fmt1(ceiling)}%</b>.` : '')
+    + ` Dots = actual days; the line is the fitted model, extrapolated a bit past your worst day so far.`;
+
+  kpiEl.innerHTML = [
+    kpiCard('Shape (ξ)', fmt2(model.shape), model.shape < -0.05 ? 'green' : model.shape > 0.05 ? 'red' : '', model.shape < -0.05 ? 'bounded tail' : model.shape > 0.05 ? 'fat tail' : 'exponential-ish'),
+    kpiCard('Scale (β)', fmt2(model.scale), '', 'GPD scale, loss % units'),
+    kpiCard('Threshold', fmt2(model.threshold) + '%', '', `90th pctile of daily loss`),
+    kpiCard('Exceedances', `${model.nExceed} / ${model.n}`, '', 'days used to fit the tail'),
+    ...(ceiling != null ? [kpiCard('Implied ceiling', fmt1(ceiling) + '%', 'amber', "the fit's own worst-case claim")] : []),
+  ].join('');
+
+  const fittedPts = model.fittedCurve.filter(pt => pt.survival > 0);
+  evtChart = new Chart(document.getElementById('evtChart'), {
+    type: 'scatter',
+    data: {
+      datasets: [
+        { type: 'scatter', label: 'Actual days (empirical)', data: model.empiricalPoints.map(p => ({ x: p.lossPct, y: p.survival })),
+          backgroundColor: '#5b9dff', pointRadius: 2.5, pointHoverRadius: 4 },
+        { type: 'line', label: 'Fitted GPD tail', data: fittedPts.map(p => ({ x: p.lossPct, y: p.survival })),
+          borderColor: '#f87171', backgroundColor: 'transparent', borderWidth: 1.5, pointRadius: 0, tension: 0 },
+      ],
+    },
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: true, labels: { color: '#94a3b8', boxWidth: 12, font: { size: 11 } } } },
+      scales: {
+        x: { type: 'linear', title: { display: true, text: 'Daily loss %', color: '#5a6380', font: { size: 10 } }, ticks: { color: '#5a6380', callback: v => v + '%' }, grid: { color: '#1e2436' } },
+        y: { type: 'logarithmic', title: { display: true, text: 'P(loss ≥ x) — log scale', color: '#5a6380', font: { size: 10 } }, ticks: { color: '#5a6380' }, grid: { color: '#1e2436' } },
+      } },
+  });
+
+  compareEl.innerHTML = `<table><thead><tr><th>Confidence</th><th class="num">Empirical VaR</th><th class="num">Fitted VaR</th><th class="num">Fitted CVaR</th><th></th></tr></thead><tbody>`
+    + model.probes.map(pr => {
+      const empVar = -histVaR(dailyReturns, pr.p);
+      return `<tr><td>${(pr.p * 100).toFixed(1)}%</td><td class="num">${fmt2(empVar)}%</td>`
+        + `<td class="num">${fmt2(pr.varLossPct)}%</td><td class="num">${pr.cvarLossPct != null ? fmt2(pr.cvarLossPct) + '%' : '—'}</td>`
+        + `<td class="muted" style="font-size:10px">${pr.empirical ? 'within sample (fitted ≈ empirical by construction)' : 'extrapolated beyond your worst day'}</td></tr>`;
+    }).join('')
+    + '</tbody></table>';
+}
+
 function fmt1(v) { return v == null ? '—' : Number(v).toFixed(1); }
 function fmt2(v) { return v == null ? '—' : Number(v).toFixed(2); }
 function fmtPct(v, dp = 1) { return v == null ? '—' : (v >= 0 ? '+' : '') + Number(v).toFixed(dp) + '%'; }
@@ -703,6 +957,8 @@ function render(j) {
   document.getElementById('kpiShared').innerHTML = [
     kpiCard('Sharpe (naive)', fmt2(s.sharpe), s.sharpe >= 2 ? 'green' : s.sharpe >= 1 ? 'blue' : 'amber', `PSR ${fmt2(s.psr)} — assumes independent days, see next card`),
     kpiCard('Sharpe (autocorr-adjusted)', s.sharpeHAC ? fmt2(s.sharpeHAC.sharpeNW) : '—', 'amber', s.sharpeHAC ? `Newey-West, bandwidth ${s.sharpeHAC.bandwidth}d — ${fmt2(s.sharpeHAC.varianceInflation)}× variance vs naive; a WIDER window corrects further still, no clean plateau found — trust this as an upper bound, not the final number` : ''),
+    kpiCard('Deflated Sharpe (DSR)', j.deflated ? fmt2(j.deflated.dsr) : '—', j.deflated ? (j.deflated.dsr >= 0.95 ? 'green' : j.deflated.dsr >= 0.5 ? 'amber' : 'red') : '',
+      j.deflated ? `P(true Sharpe > 0) after correcting for ${j.deflated.nTrials} nearby configs tried (one-lever-flipped-at-a-time from THIS page's own toggles — stop-tighten/cost-ratio/gap-filter/concurrency/hedge-only/continuation-exit — not the full historical search). A LOCAL robustness check, not proof the whole lever stack survives independent validation — see the walk-forward OOS card for that.` : 'not enough trades to compute'),
     kpiCard('Sortino', fmt2(s.sortino), s.sortino >= 2 ? 'green' : s.sortino >= 1 ? 'blue' : 'amber', 'downside-deviation-only Sharpe'),
     kpiCard('Profit Factor', fmt2(s.profitFactor), s.profitFactor >= 1.5 ? 'green' : s.profitFactor >= 1 ? 'blue' : 'red', 'gross up-days ÷ gross down-days'),
     kpiCard('Win Rate', fmt1(s.winRate) + '%', '', '% of positive trading days'),
@@ -734,6 +990,9 @@ function render(j) {
   renderPerTradeKpis(perTradeStats);
   renderTradeEquityChart(perTradeStats);
   renderWalkForwardOOS(j.walkForwardOOS);
+  renderOutlierSensitivity();
+  renderMonteCarlo(j);
+  renderEvtTail(j);
 
   const vt = s.volTarget;
   document.getElementById('targetVolLabel').textContent = vt.target;

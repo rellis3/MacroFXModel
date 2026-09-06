@@ -5259,6 +5259,88 @@ were regenerated end-to-end via `scripts/backfill_fib_atlas_vote_trades.mjs`
 so the page shows real numbers rather than an empty result from missing
 `gapMin` on stale blobs. PR #1415.
 
+#### Portfolio-stats audit + risk/robustness metrics parity with Level Atlas (2026-09-06)
+
+Owner review of `asia-fib-atlas-vote-portfolio.html`'s own numbers — a
+day-pooled Sharpe of 16+ next to a 4% drawdown, "3 is world-class," felt
+wrong. Full audit of `js/backtestStats.js`/`js/metricsCore.js`/
+`js/levelAtlasVoteReview.js`'s daily-series/weighting/concurrency-cap
+code: **no arithmetic bug found** — every formula matches its textbook
+definition. The headline numbers are real artifacts of two known, already-
+partially-documented effects, not a miscalculation: (1) this is a 16-pair
+diversified portfolio Sharpe, not a single-strategy Sharpe — √N
+diversification credit is expected, not a bug, when pairs are only weakly
+correlated; (2) the combined lever stack (margin≥2 + cost-ratio +
+stop-tighten + chandelier + hedge-only + gap-filter) has never been
+validated as ONE system on a clean non-overlapping OOS slice — each lever
+was validated individually/pairwise on overlapping windows, a real,
+already-flagged risk. `sharpeHAC` (Newey-West) already corrects for daily
+autocorrelation and sits right next to the naive Sharpe on this page, but
+its own code comment says the correction has no clean plateau — treat it
+as a floor, not the truth.
+
+Comparison against `level-atlas-vote-portfolio.html` found real, already-
+built risk/robustness tooling **missing from the Fib Atlas page**:
+Monte Carlo (`portfolioStats`'s own `mc` option was explicitly `false` for
+every Fib Atlas call), an outlier-concentration table, an EVT tail fit,
+and the Deflated Sharpe Ratio (already wired into 5 OTHER engines —
+`strategyLabEngine.js`, `trendFollowEngine.js`, `forecastAnalyserStore.js`,
+`mve/validateInstrument.js`, `server.js` — but unused on EITHER
+vote-portfolio page). Owner confirmed: add all four, scoped to Fib
+Atlas's own portfolio (not a per-fib-rung breakdown).
+
+**Ported, zero new math** (`js/backtestStats.js`'s `backtestStats`/
+`shuffle`, `js/evtTail.js`'s `fitTailModel` — same client-side pattern
+`level-atlas-vote-portfolio.html` already uses, adapted for Fib Atlas's
+own fixed-fractional-sizing voice):
+- **Monte Carlo fan chart** — 300 reshuffled equity paths (p5–p95 bands)
+  against the actual path, plus bootstrap/reshuffled-drawdown KPIs.
+- **Outlier-concentration card** — trade skew/kurtosis, top-N-trades'
+  share of total profit, and a "remove the top N winners" Sharpe/CAGR/
+  maxDD degradation table.
+- **EVT tail fit** — Peaks-Over-Threshold/Generalized Pareto fit on the
+  daily-return series, with an implied "no single day should exceed X%"
+  ceiling when the shape parameter is bounded.
+
+**New backend work — Deflated Sharpe Ratio**
+(`computeFibAtlasDeflatedSharpe`, `js/fibAtlasVotePortfolio.js`): unlike
+the three above, DSR needs `trialSRs` — Sharpes of OTHER configs actually
+tried — which the interactive page doesn't have lying around. Design
+choice: a real, principled LOCAL sensitivity sweep, not a fabricated
+trial count — one trial per lever this page actually exposes as a toggle
+(`stopTightenFrac`, `minCostRatio`, `maxGapMin`, `maxConcurrent`,
+`perDirection`, `continuationExit`), each flipped ALONE to its natural
+alternate (using each ladder's own frozen "on" value —
+`FIB_ATLAS_STOP_TIGHTEN_FRAC`/`MIN_COST_RATIO`/`MAX_GAP_MIN` or the
+Monday equivalents — when flipping a currently-off lever on), everything
+else held at the chosen config. Deliberately NOT the full 2^6 combinatorial
+space (intractable on a button click, and most of that space was never
+actually explored during validation either) — this answers "how much does
+the chosen Sharpe wobble under the nearby choices this exact page makes
+available," the honest tractable version of the question for an
+interactive tool. Both `/vote-portfolio` routes (`js/asiaFibAtlasRoutes.js`,
+`js/mondayFibAtlasRoutes.js`) and Asia's `/vote-portfolio-combined` now
+pre-fetch every pair's stored JSON ONCE into an in-memory cache before the
+main call, so the 6-trial sweep costs zero extra R2 round-trips — only the
+already-loaded per-pair data gets re-filtered/re-aggregated (~2s added
+latency on a 16-pair request, measured on real data). Rendered as a
+"Deflated Sharpe (DSR)" tile in `kpiShared`, right after Sharpe (naive)/
+Sharpe (autocorr-adjusted), with an explicit caveat that this is a local
+robustness check, not proof the whole lever stack survives independent
+validation.
+
+**Real finding surfaced while smoke-testing**: the full "best config"
+stack (margin≥2, hedge-only, chandelier, gap-filter≤30min) on the live
+16-pair Asia universe produces only ~94 kept trades over ~10 years of
+history (chandelier's much longer holds under maxConcurrent=1 hedge-only
+block far more subsequent signals than the pre-chandelier pipeline did) —
+a thin sample that `sharpeSE`/`minTrackYears` (already on the per-trade
+card) would flag hard, even though the 6-trial DSR sweep alone reads a
+comfortable 0.999 (expected — it only tests 6 nearby points, not sample
+size). Worth a dedicated look at whether "best config"'s own trade count
+under the full stack is still large enough to trust, separate from this
+change.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted

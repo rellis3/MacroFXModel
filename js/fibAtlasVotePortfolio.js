@@ -35,7 +35,7 @@ import {
   applyCostEfficiencyFilter, applyGapFilter, applyStoredContinuationExit,
 } from './levelAtlasVoteReview.js';
 import { maxDrawdownFromPnls, neweyWestSharpe, summarizeTrades } from './metricsCore.js';
-import { portfolioStats } from './backtestStats.js';
+import { portfolioStats, deflatedSharpe } from './backtestStats.js';
 
 // portfolioStats' own maxDD/cagr/calmar assume reinvestment (compounding).
 // riskAdjustTrades never actually compounds — every trade risks a CONSTANT
@@ -285,4 +285,64 @@ export async function buildFibAtlasVotePortfolio({
     equityCurve: datesFinal.map((d, i) => ({ date: d, dailyReturn: dailyReturnsFinal[i] })),
     perPair, trades, walkForwardOOS,
   };
+}
+
+/**
+ * Deflated Sharpe Ratio for a Fib Atlas vote-portfolio call (2026-09-06) —
+ * López de Prado's multiple-testing correction, applied to the ACTUAL
+ * levers this page lets a caller toggle. Owner's own concern after seeing a
+ * day-pooled Sharpe of 16+: is this just the best of everything we tried?
+ *
+ * `trialSRs` here is a real, principled LOCAL sensitivity sweep, not a
+ * fabricated trial count: for each of the six levers this page exposes
+ * (stopTightenFrac, minCostRatio, maxGapMin, maxConcurrent, perDirection,
+ * continuationExit), one trial with THAT lever alone flipped to its natural
+ * alternate value, everything else held at the chosen config. This is
+ * deliberately NOT the full combinatorial search space (2^6 = 64+ combos —
+ * intractable to run on every button click, and most of that space was
+ * never actually explored during validation either) — it answers "how much
+ * does the chosen Sharpe wobble under the nearby choices this exact page
+ * makes available," which is the honest, tractable version of the question
+ * for an interactive tool. `altValues` supplies each ladder's own frozen
+ * "on" value (FIB_ATLAS_STOP_TIGHTEN_FRAC/MIN_COST_RATIO/MAX_GAP_MIN or
+ * their Monday equivalents) so a trial that flips a currently-off lever ON
+ * lands on a real, previously-validated setting, not an arbitrary guess.
+ *
+ * Every trial reuses the SAME `loadPairVoteTrades` the caller passes —
+ * pass one backed by an already-populated in-memory cache (see both
+ * routes' own `/vote-portfolio` handlers) so this never re-fetches R2 per
+ * trial, only re-runs the cheap in-memory filter/aggregation pipeline.
+ *
+ *   computeFibAtlasDeflatedSharpe(baseOpts, chosenTrades, loadPairVoteTrades, altValues)
+ *     -> { dsr, sr, sr0, nTrials, trialSharpeStd } | null
+ */
+export async function computeFibAtlasDeflatedSharpe(baseOpts, chosenTrades, loadPairVoteTrades, altValues = {}) {
+  const chosenPnls = (chosenTrades ?? []).map(t => t.pnlPct * (t.weight ?? 1));
+  if (chosenPnls.length < 5) return null;
+
+  const { stopTightenFrac: altStop = 0.9, minCostRatio: altCost = 3, maxGapMin: altGap = 30 } = altValues;
+  const flip = (val, alt) => (val == null ? alt : null);
+
+  const trialConfigs = [
+    { ...baseOpts, stopTightenFrac: flip(baseOpts.stopTightenFrac, altStop) },
+    { ...baseOpts, minCostRatio: flip(baseOpts.minCostRatio, altCost) },
+    { ...baseOpts, maxGapMin: flip(baseOpts.maxGapMin, altGap) },
+    { ...baseOpts, maxConcurrent: baseOpts.maxConcurrent === 1 ? 2 : 1 },
+    { ...baseOpts, perDirection: !baseOpts.perDirection },
+    { ...baseOpts, continuationExit: (!baseOpts.continuationExit || baseOpts.continuationExit === 'off') ? 'chandelier' : 'off' },
+  ];
+
+  const trialSRs = [];
+  for (const cfg of trialConfigs) {
+    let r;
+    try { r = await buildFibAtlasVotePortfolio({ ...cfg, loadPairVoteTrades }); } catch { continue; }
+    if (!r || r.error || !r.trades?.length) continue;
+    const pnls = r.trades.map(t => t.pnlPct * (t.weight ?? 1));
+    if (pnls.length < 2) continue;
+    const m = pnls.reduce((a, b) => a + b, 0) / pnls.length;
+    const sd = Math.sqrt(pnls.reduce((a, b) => a + (b - m) ** 2, 0) / pnls.length);
+    if (sd > 1e-9) trialSRs.push(m / sd);
+  }
+  if (trialSRs.length < 2) return null;
+  return deflatedSharpe(chosenPnls, trialSRs);
 }
