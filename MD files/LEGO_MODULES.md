@@ -5363,6 +5363,79 @@ presence on the live-stored blob first, per this file's own "Assume Code
 Failure First" rule in `CLAUDE.md`, which this incident is a direct
 instance of not following closely enough before writing the note above.
 
+#### Day-pooled vs per-trade drawdown — real gap, plus a trade blotter + candle drilldown (2026-09-06)
+
+Owner pushback on the -1.65% day-pooled maxDD ("if 3 wins and 4 losses net
+positive, is that really zero drawdown?"): yes, exactly — the day-pooled
+basis sums every trade resolving on the same calendar day into ONE
+observation BEFORE computing drawdown (same convention `dailySeriesFor`/
+`buildPortfolioDailySeries` already use, matches the OOS-honest daily-Sharpe
+reasoning), so 4 individual losses fully offset by same-day wins elsewhere
+contribute nothing to it. Recomputed the SAME trade list per-trade
+(chronological, no day-netting, `maxDrawdownFromPnls`): **-5.15% additive /
+-5.04% compounded — ~3x deeper**, with a real 7-trade losing streak
+totalling -3.93%. This number was already on the page (the "Per-trade
+stats" card's own Max Drawdown tiles use exactly this basis) — it just
+lives in a different card than "Portfolio summary," which is easy to miss.
+Also corrected a repeated claim from the entry above: the OOS-tested window
+is **~4-5 years (each pair's own splitDate lands in 2021-2022, confirmed
+across all 16 pairs), not "~10 years"** — meaning COVID (Mar 2020), Brexit
+(Jun 2016) and the SNB shock (Jan 2015) are NOT in this backtest's OOS
+window at all; the only two real stress days that ARE in-window (UK
+mini-budget Sep 2022, SVB collapse Mar 2023) show the portfolio making
+money, not losing it. The shallow day-pooled drawdown is mechanically real
+(chandelier lets winners run to +7-11% days; tight stops + a 1-trade-per-
+pair-per-direction cap hard-limit how bad one day can get) but untested
+against an actual crisis — trust the arithmetic, not the number as a
+realistic worst case.
+
+**New feature, same session**: a trade blotter on
+`asia-fib-atlas-vote-portfolio.html` — every closed trade grouped by the
+day it resolved (a day-picker with net pnl% + a color dot per day, plus
+"Worst day"/"Best day" jump buttons for exactly this kind of
+investigation), click a trade to load real OANDA M1 candles around it with
+entry/target/stop drawn on the chart. Zero new charting logic: ported
+verbatim from `level-atlas-vote-backtest.html`'s own click-a-trade pattern
+(`js/levelChart.js`'s `createLevelChart`, `KIND_STYLE`'s existing
+`voteEntry`/`voteTarget`/`voteStop` kinds, the `/api/vol-backtest/candles/:pair`
+route, the retry-on-cold-cache `fetchJsonWithRetry` helper) — only real
+adaptation was per-DAY grouping instead of per-pair (a portfolio day spans
+many pairs at once) and Fib Atlas's own `side` convention
+(`'above'`/`'below'` vs Level Atlas's `'up'`/`'down'`) in `priceLinesFor`.
+Needed a fix while building: `asia-fib-atlas-vote-portfolio.html` only
+loaded Chart.js, not the Lightweight-Charts standalone script
+`createLevelChart` actually depends on (`window.LightweightCharts`) — added
+the same `<script src=unpkg.com/lightweight-charts@4.2.0>` tag
+`level-atlas-vote-backtest.html` already carries; without it the page's
+entire module script would throw at load (a top-level `const` calling
+`createLevelChart` immediately) and nothing on the page would work, not
+just the new blotter.
+
+Validated: `node --check` clean; extracted-and-parsed the page's own module
+script (`node --check` on the extracted text) after every edit; confirmed
+`js/levelChart.js`'s exports and `KIND_STYLE` entries and the
+`/api/vol-backtest/candles/:pair` route both exist exactly as expected.
+Sandboxed `file://` and even a local `http://` load both fail before real
+verification is possible — `file://` blocks ES module imports outright,
+and this sandbox's own network policy blocks the `unpkg.com`/`jsdelivr.net`
+CDN fetches (`ERR_TUNNEL_CONNECTION_FAILED`, same known egress restriction
+as OANDA/Yahoo — not a bug), which makes `createLevelChart` throw for want
+of `window.LightweightCharts`. Worked around it for real coverage: stubbed
+`window.LightweightCharts`/`window.Chart` via Playwright's `addInitScript`
+(matching the exact method surface `js/levelChart.js` calls —
+`createChart`/`addCandlestickSeries`/`setData`/`createPriceLine`/
+`setMarkers`/`timeScale().fitContent()`) and mocked the two API routes with
+realistic multi-pair/multi-day fixture data, then drove the page in
+headless Chromium end-to-end: page loads with zero console/page errors,
+the day dropdown populates correctly (sorted, color-coded, net% per day),
+"Worst day" correctly jumps to the lowest-net day, clicking a trade row
+fires `loadTradeChart` and updates the chart-meta line with the right
+trade detail, and the clicked row gets the `.selected` class. The one
+thing this can't verify from here is the REAL OANDA/archived-M1 candle
+fetch and the actual chart pixels — same standing sandbox limitation as
+every other CDN-chart/live-OANDA feature in this file; needs a live look
+on Railway.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted

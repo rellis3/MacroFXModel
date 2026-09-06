@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Asia/Monday Fib Atlas Vote Portfolio</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <style>
   :root { --bg:#0b0e14; --panel:#11151f; --panel2:#0e121b; --line:#1e2436; --text:#cbd5e1; --text2:#94a3b8; --text3:#5a6380; --muted:#64748b; --accent:#5b9dff; --green:#34d399; --red:#f87171; --amber:#fbbf24; --blue:#60a5fa; }
   * { box-sizing:border-box; }
@@ -42,6 +43,12 @@
   .callout .big { font-size:28px; font-weight:700; }
   .barwrap { display:flex; height:10px; border-radius:5px; overflow:hidden; margin-top:4px; }
   .bar { height:100%; }
+  #tradeChart { height:420px; background:var(--panel2); border:1px solid var(--line); border-radius:8px; }
+  .legend { display:flex; gap:14px; font-size:11px; color:var(--muted); padding:6px 2px 0; flex-wrap:wrap; }
+  .legend span { display:inline-flex; align-items:center; gap:5px; }
+  .dot { width:9px; height:9px; border-radius:50%; display:inline-block; }
+  #blotterBody tr:hover { background:#182030; cursor:pointer; }
+  #blotterBody tr.selected { background:#1f2b45; }
 </style>
 </head>
 <body>
@@ -252,6 +259,30 @@
 </div>
 
 <div class="card">
+  <h2>Trade blotter — every trade, by day, with real M1 candles (2026-09-06)</h2>
+  <div class="muted" style="margin-bottom:10px">Every closed trade across every selected pair, grouped by the day it resolved (same day-grouping the day-pooled Sharpe/drawdown above uses) — pick a day to see each individual win/loss, then click a trade to load the real OANDA M1 candles around it with entry/target/stop drawn on the chart. Same reused pattern as <a href="level-atlas-vote-backtest.html" style="color:var(--accent)">the Level Atlas trade log</a>, applied per-day here instead of per-pair since a portfolio day can span many pairs at once.</div>
+  <div class="controls" style="margin-bottom:10px">
+    <label>Day <select id="blotterDaySel" style="min-width:220px"></select></label>
+    <button id="blotterWorstBtn" title="Jump to the day with the most negative net pnl%">⚠ Worst day</button>
+    <button id="blotterBestBtn" title="Jump to the day with the most positive net pnl%">🏆 Best day</button>
+    <span class="sub" id="blotterDaySummary"></span>
+  </div>
+  <div id="tradeChart"></div>
+  <div class="legend">
+    <span><span class="dot" style="background:#94a3b8"></span>entry</span>
+    <span><span class="dot" style="background:#10b981"></span>target</span>
+    <span><span class="dot" style="background:#f87171"></span>stop</span>
+  </div>
+  <div class="sub" id="chartMeta" style="padding-top:6px">Pick a day above, then click a trade in the table below to load its chart.</div>
+  <table id="blotterTable" style="margin-top:12px">
+    <thead><tr>
+      <th>Time</th><th>Pair</th><th>Side</th><th>Rung</th><th>Decision</th><th class="num">Margin</th><th>Result</th><th class="num">PnL%</th>
+    </tr></thead>
+    <tbody id="blotterBody"></tbody>
+  </table>
+</div>
+
+<div class="card">
   <h2>Export constituent trades (<span id="tradeCount">0</span>)</h2>
   <div class="export-row">
     <span class="muted">Export:</span>
@@ -293,6 +324,7 @@ import { summarizeTrades, sortinoRatio, calmar as calmarRatio, histVaR } from '.
 import { backtestStats, shuffle } from './js/backtestStats.js';
 import { mulberry32 } from './js/statsCore.js';
 import { fitTailModel } from './js/evtTail.js';
+import { createLevelChart } from './js/levelChart.js';
 // All 26 locally-cached pairs both Fib Atlas ladders were widened to (same
 // list scripts/backfill_fib_atlas_vote_trades.mjs uses) — no exclusions here,
 // unlike level-atlas-vote-portfolio.html's curated 21/26, since no
@@ -473,6 +505,21 @@ let lastTrades = [];
 let lastResponse = null;
 const OUTLIER_TOP_N = [1, 5, 10, 20, 50];
 const MC_RUNS = 300;
+
+// ── Trade blotter — per-day trade list + real M1 candle drilldown (2026-09-06)
+// Same click-a-trade-see-the-candles pattern as level-atlas-vote-backtest.html
+// (js/levelChart.js's createLevelChart + /api/vol-backtest/candles/:pair),
+// applied per-DAY here instead of per-pair since one portfolio day spans many
+// pairs at once. `view` created once; blotterDay tracks which day's trades
+// are currently listed so a re-render (new backtest run) can try to keep the
+// same day selected instead of always resetting to the latest.
+const tradeChartView = createLevelChart(document.getElementById('tradeChart'), { height: 420 });
+const blotterDaySel = document.getElementById('blotterDaySel');
+const blotterBody = document.getElementById('blotterBody');
+const chartMetaEl = document.getElementById('chartMeta');
+let blotterDay = null;
+let blotterSelectedTrade = null;
+function isoToEpoch(iso) { return Math.floor(Date.parse(iso.endsWith('Z') ? iso : iso + 'Z') / 1000); }
 
 // ── Per-trade stats (2026-08-31) — same brick + method
 // asia-fib-atlas-vote-backtest.html's own `computeStats` already uses
@@ -837,6 +884,124 @@ function renderEvtTail(j) {
     + '</tbody></table>';
 }
 
+// The candle cache behind this route is shared site-wide — a pair not
+// recently viewed anywhere else is often a cold miss (a synchronous
+// multi-MB R2 parquet load) that can outrun a reverse-proxy timeout and
+// surface as a bare network error even though the server-side load keeps
+// running and finishes populating the cache regardless. One retry after a
+// short delay almost always lands on the now-warm cache — same fix
+// level-atlas-vote-backtest.html already uses for this exact route.
+async function fetchJsonWithRetry(url, { retries = 1, delayMs = 1500, onRetry } = {}) {
+  for (let attempt = 0; ; attempt++) {
+    try { const res = await fetch(url); return await res.json(); }
+    catch (e) { if (attempt >= retries) throw e; onRetry?.(); await new Promise(r => setTimeout(r, delayMs)); }
+  }
+}
+
+// Fib Atlas's own side convention is 'above'/'below' (a rung above/below the
+// session range), unlike Level Atlas's 'up'/'down' -- same sign logic
+// otherwise, straight port of level-atlas-vote-backtest.html's own
+// priceLinesFor.
+function priceLinesFor(t) {
+  const isUp = t.side === 'above';
+  const contSign = isUp ? 1 : -1;
+  const targetSign = t.decision === 'fade' ? -contSign : contSign;
+  const stopSign = t.decision === 'fade' ? contSign : -contSign;
+  return [
+    { price: t.entry, kind: 'voteEntry', label: `entry ${t.entry.toFixed(5)}` },
+    { price: t.entry + targetSign * t.targetPips * t.pip, kind: 'voteTarget', label: `target (+${t.targetPips}p)` },
+    { price: t.entry + stopSign * t.stopPips * t.pip, kind: 'voteStop', label: `stop (-${t.stopPips}p)` },
+  ];
+}
+
+async function loadTradeChart(t) {
+  blotterSelectedTrade = t;
+  renderBlotterRows();
+  const pair = t.instrument.toLowerCase(), bufferSecs = 4 * 3600;
+  const fromDate = new Date((t.time - bufferSecs) * 1000).toISOString().slice(0, 10);
+  const toDate = new Date((t.resolveTime + bufferSecs) * 1000).toISOString().slice(0, 10);
+  chartMetaEl.textContent = `Loading ${t.instrument} M1 candles ${fromDate}…${toDate}…`;
+  try {
+    const j = await fetchJsonWithRetry(
+      `/api/vol-backtest/candles/${pair}?from=${fromDate}&to=${toDate}`,
+      { onRetry: () => { chartMetaEl.textContent = `retrying ${t.instrument} M1 candles ${fromDate}…${toDate} (first load of this pair can be slow)…`; } }
+    );
+    if (!j.ok || !j.candles?.length) { chartMetaEl.textContent = `no candle data for ${fromDate}…${toDate}`; return; }
+    const bars = j.candles.map(c => ({ time: isoToEpoch(c.time), open: c.open, high: c.high, low: c.low, close: c.close }));
+    tradeChartView.setCandles(bars);
+    tradeChartView.setLevels(priceLinesFor(t), { showTitle: true });
+    tradeChartView.series.setMarkers([
+      { time: t.time, position: 'inBar', color: '#94a3b8', shape: 'circle', text: `entry ${t.decision}/${t.side}` },
+      { time: t.resolveTime, position: t.win ? 'belowBar' : 'aboveBar', color: t.win ? '#10b981' : '#f87171', shape: t.win ? 'arrowUp' : 'arrowDown', text: `${t.win ? 'WIN' : 'LOSS'} ${t.pnlPct.toFixed(3)}%` },
+    ]);
+    tradeChartView.fit();
+    chartMetaEl.textContent = `${t.instrument} · ${t.date} · ${t.side} ${t.rung} · ${t.decision} (margin ${t.margin}) · ${t.win ? 'WIN' : 'LOSS'} ${fmtPct(t.pnlPct, 3)} · target ${t.targetPips}p / stop ${t.stopPips}p`;
+  } catch (e) {
+    chartMetaEl.textContent = `error loading candles: ${e.message}`;
+  }
+}
+
+function blotterTradesForDay(date) {
+  return lastTrades.filter(t => t.date === date).sort((a, b) => a.time - b.time);
+}
+
+function renderBlotterRows() {
+  const rows = blotterDay ? blotterTradesForDay(blotterDay) : [];
+  blotterBody.innerHTML = rows.map((t, i) => `
+    <tr data-i="${i}" class="${t === blotterSelectedTrade ? 'selected' : ''}">
+      <td>${new Date(t.time * 1000).toISOString().slice(11, 16)}</td>
+      <td>${t.instrument}</td><td>${t.side}</td><td>${t.rung}</td><td>${t.decision}</td><td class="num">${t.margin}</td>
+      <td class="${t.win ? 'green' : 'red'}">${t.win ? 'WIN' : 'LOSS'}</td>
+      <td class="${signClass(t.pnlPct)}">${fmtPct(t.pnlPct, 3)}</td>
+    </tr>`).join('');
+  [...blotterBody.querySelectorAll('tr')].forEach(tr => tr.addEventListener('click', () => loadTradeChart(rows[+tr.dataset.i])));
+}
+
+function selectBlotterDay(date) {
+  blotterDay = date;
+  blotterSelectedTrade = null;
+  blotterDaySel.value = date;
+  const rows = blotterTradesForDay(date);
+  const net = rows.reduce((s, t) => s + t.pnlPct, 0);
+  document.getElementById('blotterDaySummary').innerHTML =
+    `${rows.length} trade${rows.length === 1 ? '' : 's'} · net <span class="${signClass(net)}">${fmtPct(net, 3)}</span>`;
+  renderBlotterRows();
+  chartMetaEl.textContent = 'Click a trade in the table below to load its chart.';
+}
+
+// Populates the day dropdown from the CURRENT lastTrades (called once per
+// loadData()) -- tries to keep the previously-selected day if it still
+// exists in the new result (e.g. toggling a lever that doesn't remove that
+// day's trades entirely), otherwise falls back to the most recent day.
+function renderBlotter() {
+  const byDate = new Map();
+  for (const t of lastTrades) byDate.set(t.date, (byDate.get(t.date) ?? 0) + t.pnlPct);
+  const dates = [...byDate.keys()].sort();
+  blotterDaySel.innerHTML = dates.slice().reverse().map(d => {
+    const net = byDate.get(d);
+    const dot = net > 0 ? '🟢' : net < 0 ? '🔴' : '⚪';
+    return `<option value="${d}">${dot} ${d} (${fmtPct(net, 2)})</option>`;
+  }).join('');
+  if (!dates.length) { blotterDay = null; blotterBody.innerHTML = ''; document.getElementById('blotterDaySummary').textContent = ''; return; }
+  const keep = blotterDay && byDate.has(blotterDay) ? blotterDay : dates[dates.length - 1];
+  selectBlotterDay(keep);
+}
+blotterDaySel.addEventListener('change', () => selectBlotterDay(blotterDaySel.value));
+document.getElementById('blotterWorstBtn').addEventListener('click', () => {
+  const byDate = new Map();
+  for (const t of lastTrades) byDate.set(t.date, (byDate.get(t.date) ?? 0) + t.pnlPct);
+  if (!byDate.size) return;
+  const worst = [...byDate.entries()].reduce((a, b) => (b[1] < a[1] ? b : a));
+  selectBlotterDay(worst[0]);
+});
+document.getElementById('blotterBestBtn').addEventListener('click', () => {
+  const byDate = new Map();
+  for (const t of lastTrades) byDate.set(t.date, (byDate.get(t.date) ?? 0) + t.pnlPct);
+  if (!byDate.size) return;
+  const best = [...byDate.entries()].reduce((a, b) => (b[1] > a[1] ? b : a));
+  selectBlotterDay(best[0]);
+});
+
 function fmt1(v) { return v == null ? '—' : Number(v).toFixed(1); }
 function fmt2(v) { return v == null ? '—' : Number(v).toFixed(2); }
 function fmtPct(v, dp = 1) { return v == null ? '—' : (v >= 0 ? '+' : '') + Number(v).toFixed(dp) + '%'; }
@@ -993,6 +1158,7 @@ function render(j) {
   renderOutlierSensitivity();
   renderMonteCarlo(j);
   renderEvtTail(j);
+  renderBlotter();
 
   const vt = s.volTarget;
   document.getElementById('targetVolLabel').textContent = vt.target;
