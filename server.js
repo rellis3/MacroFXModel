@@ -14601,21 +14601,17 @@ async function _volatilityV2AccumulateTradeLog() {
 setInterval(_volatilityV2AccumulateTradeLog, 10 * 60_000);
 setTimeout(_volatilityV2AccumulateTradeLog, 35_000);
 
-// Trade-history rollup for Fib Atlas — structural copy of
-// _volatilityV2AccumulateTradeLog above. fib_atlas_bot_trade_log was already
-// registered in kv.js/_worker.js's persistence gates (the standard bot
-// key set) but nothing ever wrote to it — closed trades only ever lived in
-// fib_atlas_bot_status's rolling `today_closed_trades` (last 50, and only
-// "today's" per Mt5Broker's own UTC-day windowing), so anything older than
-// one day was silently unrecoverable. Needed BEFORE demo trading starts so
-// a week of real trades survives redeploys and daily rollovers — building
-// this after the fact cannot recover already-lost history.
-//
-// Each trade's own `comment` (Mt5Broker/paper.py both emit it) carries
-// "FA[<dedupeTag>]" — asiaLivePlanZones/mondayLivePlanZones's own tag,
-// `${a|m}_${side[0]}${level}` — decoded here into ladder/side/rung so a
-// later reconciliation against the offline backtest doesn't need to
-// re-parse the string itself.
+// Fib Atlas dedupe-tag decoder — `fib_atlas_bot_status` is ALREADY in
+// _worker.js's STATUS_KEYS, so every closed trade it reports already flows
+// automatically into the durable, correctly-close-date-bucketed
+// `trade_hist_fib_atlas_bot_status_<date>` KV entries via `mergeTradeHistory`
+// (same mechanism as every other bot's Trade History tab) — NO separate
+// accumulator needed here (an earlier version of this patch built one from
+// scratch, not realizing this already existed; removed — see
+// LEGO_MODULES.md's correction). This just decodes each trade's own
+// `comment` (Mt5Broker/paper.py both emit it) — "FA[<dedupeTag>]",
+// asiaLivePlanZones/mondayLivePlanZones's own tag, `${a|m}_${side[0]}${level}`
+// — into ladder/side/rung at READ time, for `/api/fib-atlas-bot/trade-log` below.
 function _parseFibAtlasDedupeTag(comment) {
   const m = /FA\[([am])_([ab])(-?\d+)\]/.exec(comment || '');
   if (!m) return { ladder: null, side: null, rung: null };
@@ -14625,41 +14621,6 @@ function _parseFibAtlasDedupeTag(comment) {
     rung: Number(m[3]),
   };
 }
-async function _fibAtlasBotAccumulateTradeLog() {
-  try {
-    const raw = await kv.get('fib_atlas_bot_status').catch(() => null);
-    if (!raw) return;
-    const status = JSON.parse(raw).data ?? JSON.parse(raw);
-    const closed = status?.today_closed_trades || [];
-    if (!closed.length) return;
-    const logRaw = await kv.get('fib_atlas_bot_trade_log').catch(() => null);
-    const log = logRaw ? (JSON.parse(logRaw).data ?? JSON.parse(logRaw)) : [];
-    const seen = new Set(log.map(t => t.position_id ?? t.ticket));
-    let added = 0;
-    for (const c of closed) {
-      const id = c.position_id ?? c.ticket;
-      if (id == null || seen.has(id)) continue;
-      seen.add(id);
-      const { ladder, side, rung } = _parseFibAtlasDedupeTag(c.comment);
-      log.push({
-        position_id: id, symbol: c.symbol, direction: c.direction,
-        key: (() => { try { return resolveKey(c.symbol) || String(c.symbol || '').toLowerCase().replace(/[/_]/g, ''); } catch { return String(c.symbol || '').toLowerCase().replace(/[/_]/g, ''); } })(),
-        open_price: c.open_price, close_price: c.close_price, profit: c.profit,
-        reason: c.reason, time_open: c.time_open, time_close: c.time_close,
-        mfe_pips: c.mfe_pips ?? null, mae_pips: c.mae_pips ?? null,
-        date: c.time_open ? new Date(c.time_open * 1000).toISOString().slice(0, 10) : null,
-        comment: c.comment ?? null, ladder, side, rung,
-      });
-      added++;
-    }
-    if (!added) return;
-    if (log.length > 5000) log.splice(0, log.length - 5000);
-    await kv.put('fib_atlas_bot_trade_log', JSON.stringify({ data: log, timestamp: Date.now() }));
-    console.log(`[fib-atlas-bot] trade log +${added} (${log.length} total)`);
-  } catch (e) { console.error('[fib-atlas-bot] trade-log accumulate failed:', e.message); }
-}
-setInterval(_fibAtlasBotAccumulateTradeLog, 10 * 60_000);
-setTimeout(_fibAtlasBotAccumulateTradeLog, 40_000);
 
 // GET /api/level-atlas/bot-enabled?instruments=EUR/USD,XAU/USD,NAS100_USD —
 // which of the given instruments are in volatility_bot_v2's CURRENT
@@ -14866,17 +14827,36 @@ app.post('/api/fib-atlas-bot/telegram-test', async (_req, res) => {
 // 5000 events — see their own accumulators).
 app.get('/api/fib-atlas-bot/trade-log', async (req, res) => {
   try {
-    const from = req.query.from ? String(req.query.from) : null;
-    const to = req.query.to ? String(req.query.to) : null;
+    const today = new Date().toISOString().slice(0, 10);
+    const from = req.query.from ? String(req.query.from) : today;
+    const to = req.query.to ? String(req.query.to) : from;
     const inRange = (dateStr) => {
       if (!dateStr) return true; // keep rows we can't date-filter rather than silently drop them
-      if (from && dateStr < from) return false;
-      if (to && dateStr > to) return false;
-      return true;
+      return dateStr >= from && dateStr <= to;
     };
-    const logRaw = await kv.get('fib_atlas_bot_trade_log').catch(() => null);
-    const trades = ((logRaw ? (JSON.parse(logRaw).data ?? JSON.parse(logRaw)) : []) || [])
-      .filter(t => inRange(t.date));
+    // Read from the SAME durable trade_hist_fib_atlas_bot_status_<date>
+    // buckets every other bot's "Trade History" tab already uses
+    // (_worker.js's mergeTradeHistory — fib_atlas_bot_status is already in
+    // its STATUS_KEYS, so every closed trade lands here automatically,
+    // bucketed by real close date, deduped by position_id). Loop the date
+    // range the same way /api/trade-history does — one KV key per day.
+    const dates = [];
+    for (let d = new Date(`${from}T00:00:00Z`); d <= new Date(`${to}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + 1)) {
+      dates.push(d.toISOString().slice(0, 10));
+    }
+    const perDay = await Promise.all(dates.map(async dt => {
+      try {
+        const raw = await kv.get(`trade_hist_fib_atlas_bot_status_${dt}`);
+        return raw ? JSON.parse(raw).map(t => ({ ...t, date: dt })) : [];
+      } catch { return []; }
+    }));
+    const trades = perDay.flat().map(t => {
+      const { ladder, side, rung } = _parseFibAtlasDedupeTag(t.comment);
+      let key = null;
+      try { key = resolveKey(t.symbol) || String(t.symbol || '').toLowerCase().replace(/[/_]/g, ''); }
+      catch { key = String(t.symbol || '').toLowerCase().replace(/[/_]/g, ''); }
+      return { ...t, key, ladder, side, rung };
+    });
     const decRaw = await kv.get('fib_atlas_bot_decision_log').catch(() => null);
     const decisions = (((decRaw ? (JSON.parse(decRaw).data ?? JSON.parse(decRaw)) : null)?.events) || [])
       .filter(d => inRange(d.t ? new Date(d.t * 1000).toISOString().slice(0, 10) : null));

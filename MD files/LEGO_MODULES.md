@@ -5598,47 +5598,54 @@ the same live R2-stored trade blobs the production route reads.
 
 Owner is starting a DEMO account run on `fib_atlas_bot` and asked, ahead of
 it: after a week, is there a way to check whether the real trades match the
-backtest? Investigated what already existed and found a real, time-sensitive
-gap — every OTHER bot (range_line, oi_bot, confluence, volatility_bot_v2) has
-a durable `*_trade_log` KV rollup (`_volatilityV2AccumulateTradeLog` and
-siblings in `server.js`) that survives redeploys and day-rollovers; Fib Atlas
-did NOT. `fib_atlas_bot_trade_log` was already pre-registered in all three KV
-persistence gates (`kv.js`'s `_CF_EXACT`, `_worker.js`'s `isAllowedKVKey` and
-`PERMANENT_KEYS`) but nothing ever wrote to it — closed trades only lived in
-`fib_atlas_bot_status`'s rolling `today_closed_trades` (capped at 50, and
-only "today's" per `Mt5Broker`'s own UTC-day windowing via
-`pylego/broker/clock.py`'s `closes_on_utc_day`), so anything older than one
-day was already unrecoverable. This had to be fixed BEFORE trading starts —
-building the rollup after the fact cannot recover history that was never
-durably stored.
+backtest? First pass at this wrongly concluded Fib Atlas had NO durable trade
+history and built a from-scratch accumulator (`_fibAtlasBotAccumulateTradeLog`,
+a new `fib_atlas_bot_trade_log` KV rollup) to fix it — **wrong**, caught by
+the owner's own follow-up question ("the bot stores all its trades in bot
+config position trade audit doesn't it?"). It already did:
+`fib_atlas_bot_status` was already in `_worker.js`'s `STATUS_KEYS`, so every
+closed trade the bot reports was ALREADY flowing automatically into
+`trade_hist_fib_atlas_bot_status_<date>` via the existing, generic
+`mergeTradeHistory()` — the SAME mechanism bot-config.html's "Positions →
+Trade History" tab and `/api/trade-history` already use for every other bot,
+correctly bucketed by real close date (not open date, which the now-removed
+accumulator got wrong) and deduped by `position_id`. `kv.js`/`_worker.js`'s
+separate `fib_atlas_bot_trade_log` KV-gate registration (pre-existing, unused
+until this mistake) is a DIFFERENT, richer per-bot log pattern 4 other bots
+use for give-back/MFE analysis (`/api/giveback`) — not a sign anything was
+missing for Fib Atlas's own close-date history. The redundant accumulator
+and its `setInterval` were removed; `/api/fib-atlas-bot/trade-log` now reads
+`trade_hist_fib_atlas_bot_status_<date>` directly, one KV key per day in
+range, mirroring `/api/trade-history`'s own date-loop exactly (imported
+reasoning, not copied logic — same key format, same per-day fetch).
 
-Built, in order:
+What's still genuinely new here (the correct, non-redundant part of the
+original build):
 1. **`fib_atlas_bot.py`'s `_record_decision`** (the function behind
    `fib_atlas_bot_decision_log`) now also captures `entry`/`sl`/`tp` — the
    plan's own priced levels at decision time — on `entered`/`rejected`/
    `skipped` events. Previously only `side`/`rung`/`decision`/`margin` were
    recorded; without the prices, there'd be nothing to compare a real fill
    against except the closed trade's own `open_price`, which conflates "what
-   the plan said" with "what the broker actually filled at."
+   the plan said" with "what the broker actually filled at." This was a real
+   gap — `trade_hist_*` never carried the plan's own intended price either.
 2. **`pylego/broker/paper.py`'s `serialize_closed_trades()`** now emits
    `comment` (Mt5Broker's own version already did — see its docstring; only
    the paper/simulated broker was missing it). The comment carries
    `FA[<dedupeTag>]` (`asiaLivePlanZones`/`mondayLivePlanZones`'s own tag,
    `${a|m}_${side[0]}${level}`) — without it, a paper-mode trade loses its
-   (ladder, side, rung) identity the moment it closes, since none of the
-   other closed-trade fields carry that. Live/demo (Mt5Broker) was already
-   fine; this was a paper-mode-only gap.
-3. **`server.js`'s `_fibAtlasBotAccumulateTradeLog()`** — structural copy of
-   `_volatilityV2AccumulateTradeLog`, on the same 10-minute interval. Reads
-   `fib_atlas_bot_status`'s `today_closed_trades`, dedupes by
-   `position_id`/`ticket` against what's already in `fib_atlas_bot_trade_log`,
-   decodes each trade's `FA[<dedupeTag>]` comment into `ladder`/`side`/`rung`
-   fields (`_parseFibAtlasDedupeTag`) so a later reconciliation doesn't
-   re-parse the tag string itself, and appends (capped at 5000 rows) into the
-   now-actually-written durable KV key.
-4. **`GET /api/fib-atlas-bot/trade-log?from=&to=`** — returns the trade log
-   PLUS the matching decision-log events for a date range in one call, so a
-   week of real trading can be pulled in one request.
+   (ladder, side, rung) identity the moment it closes, since `trade_hist_*`
+   rows carry whatever `serialize_closed_trades()` gives them. Live/demo
+   (Mt5Broker) was already fine; this was a paper-mode-only gap.
+3. **`server.js`'s `_parseFibAtlasDedupeTag()`** — decodes each
+   `trade_hist_*` row's `comment` into `ladder`/`side`/`rung` fields at READ
+   time (inside the route below), so the reconciliation script doesn't
+   re-parse the tag string itself.
+4. **`GET /api/fib-atlas-bot/trade-log?from=&to=`** — loops the date range
+   over `trade_hist_fib_atlas_bot_status_<date>` (defaults to today if
+   omitted, same as `/api/trade-history`), decodes each trade's tag, resolves
+   its pair key, and returns it alongside the matching decision-log events
+   for the same range in one call.
 5. **`analysis/fib_atlas_live_vs_backtest_reconcile.mjs`** — the actual
    comparison, run on demand (not scheduled) once real trades exist. For a
    `--from`/`--to` range: fetches the real trade+decision history from the
