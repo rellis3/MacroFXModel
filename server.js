@@ -213,7 +213,7 @@ import { evaluateSessions, dailySessionContributions } from './js/forecastSessio
 import { _fetchAllH1 as _fetchH1AB, _fetchAllH1 as _fetchH1 } from './js/sessionStats.js';
 import { runMacroEquityBacktest } from './js/macroEquityEngine.js';
 import { loadEngine as loadGliEngine } from './GlobalLiquidity/engineLoader.mjs';
-import { computeBacktest as computeGliBacktest, computeNqBacktest as computeGliNqBacktest, accumulateWeekly as gliAccumulateWeekly, weeklyReturnsFromByWeek as gliWeeklyFromByWeek, FRED_IDS as GLI_FRED_IDS, FX_FILE_ALIAS as GLI_FX_ALIAS } from './GlobalLiquidity/backtestCore.mjs';
+import { computeBacktest as computeGliBacktest, computeNqBacktest as computeGliNqBacktest, computeRegressionTest as computeGliRegressionTest, accumulateWeekly as gliAccumulateWeekly, weeklyReturnsFromByWeek as gliWeeklyFromByWeek, FRED_IDS as GLI_FRED_IDS, FX_FILE_ALIAS as GLI_FX_ALIAS } from './GlobalLiquidity/backtestCore.mjs';
 import { runFullZScoreBacktest, ZSCORE_PAIRS, computeZScoreStats, fetchFredObservations } from './js/zscoreSpreadEngine.js';
 import {
   buildFastFeatures as nmlBuildFastFeatures, buildFredFeatures as nmlBuildFredFeatures,
@@ -7555,6 +7555,60 @@ app.get('/api/global-liquidity/nq-backtest/status/:jobId', (req, res) => {
   if (!job) {
     if (GLI_NQ_CACHE.result && Date.now() - GLI_NQ_CACHE.builtAt < GLI_BT_TTL) {
       return res.json({ ok: true, status: 'done', cached: true, data: GLI_NQ_CACHE.result });
+    }
+    return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  }
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000), phase: job.phase ?? 'Running…' });
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error });
+});
+
+// ── Global Liquidity → regression test (does the spread actually predict returns?) ──
+// The statistical companion to the equity-curve backtest above: a per-pair
+// Newey-West OLS of week i's liquidity-impulse spread against week i+1's
+// realized return. Same FRED+R2 real-data plumbing, same job/cache pattern.
+const gliRegJobs   = new Map();
+const GLI_REG_CACHE = { result: null, builtAt: 0 };
+
+app.post('/api/global-liquidity/regression/run', express.json({ limit: '256kb' }), (req, res) => {
+  const fredKey = process.env.FRED_KEY || process.env.FRED_API_KEY || req.body?.fredKey;
+  if (!fredKey) return res.status(400).json({ ok: false, error: 'FRED_KEY not set on Railway.' });
+  const force = req.body?.force === true || req.body?.force === 'true';
+  const jobId = `glireg_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  for (const [id, j] of gliRegJobs) if (Date.now() - j.startedAt > 30 * 60 * 1000) gliRegJobs.delete(id);
+
+  if (!force && GLI_REG_CACHE.result && Date.now() - GLI_REG_CACHE.builtAt < GLI_BT_TTL) {
+    gliRegJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, cached: true, data: GLI_REG_CACHE.result } });
+    return res.json({ ok: true, jobId, cached: true });
+  }
+  gliRegJobs.set(jobId, { status: 'running', startedAt, phase: 'Fetching FRED…' });
+  (async () => {
+    try {
+      const engine = loadGliEngine();
+      const payload = await _gliFetchFred(fredKey);
+      gliRegJobs.set(jobId, { status: 'running', startedAt, phase: 'Loading FX from R2…' });
+      const { fxByPair, found } = await _gliLoadFx(engine);
+      if (!found) throw new Error('no FX data loaded (R2/disk unavailable)');
+      gliRegJobs.set(jobId, { status: 'running', startedAt, phase: 'Running per-pair NW-HAC regressions…' });
+      const data = computeGliRegressionTest({ engine, payload, fxByPair, fredSource: 'FRED API (Railway key)' });
+      GLI_REG_CACHE.result = data; GLI_REG_CACHE.builtAt = Date.now();
+      gliRegJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, cached: false, data } });
+      console.log(`[gli-reg] job ${jobId} done (${Math.round((Date.now() - startedAt) / 1000)}s, ${data.pairsTested} pairs)`);
+    } catch (e) {
+      const msg = e?.message || String(e);
+      console.error('[gli-reg] error:', msg, e?.stack ?? '');
+      gliRegJobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/global-liquidity/regression/status/:jobId', (req, res) => {
+  const job = gliRegJobs.get(req.params.jobId);
+  if (!job) {
+    if (GLI_REG_CACHE.result && Date.now() - GLI_REG_CACHE.builtAt < GLI_BT_TTL) {
+      return res.json({ ok: true, status: 'done', cached: true, data: GLI_REG_CACHE.result });
     }
     return res.status(404).json({ ok: false, error: 'Job not found or expired' });
   }

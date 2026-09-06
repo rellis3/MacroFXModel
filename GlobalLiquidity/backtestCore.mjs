@@ -11,6 +11,8 @@
  * Railway server endpoint (R2 FX) so the two can never disagree.
  */
 
+import { neweyWestOLS } from '../js/metricsCore.js';
+
 const WEEK_MS = 7 * 864e5;
 const COST_PER_UNIT_TURNOVER = 0.0002;   // ~2bp per unit gross traded
 
@@ -81,13 +83,12 @@ export function weeklyReturns(points) {
  *   fredSource : label string for the report
  * Returns a plain stats object (JSON-friendly).
  */
-export function computeBacktest({ engine, payload, fxByPair, fredSource = 'unknown' }) {
-  const hist = engine.runHistory(payload);
-  if (hist.error) throw new Error('engine: ' + hist.error);
-  const { dates, pairs, weights, regime, gate, grossMult, conviction } = hist;
+// Align each pair's weekly returns onto the engine's weekly date grid (±4 days
+// — FX close timestamps and the engine's Friday-anchored grid don't line up
+// exactly). Shared by computeBacktest and computeRegressionTest so the two can
+// never see different realized returns for the same week.
+function alignFxToGrid(dates, pairs, fxByPair) {
   const m = pairs.length, n = dates.length;
-
-  // Align each pair's weekly returns onto the engine's weekly grid (±4 days).
   const R = dates.map(() => new Array(m).fill(0));
   const fxCover = new Array(m).fill(0);
   for (let j = 0; j < m; j++) {
@@ -99,6 +100,16 @@ export function computeBacktest({ engine, payload, fxByPair, fredSource = 'unkno
       if (ptr < keys.length && Math.abs(+new Date(keys[ptr]) - t) <= 4 * 864e5) { R[i][j] = rets.get(keys[ptr]); fxCover[j]++; }
     }
   }
+  return { R, fxCover };
+}
+
+export function computeBacktest({ engine, payload, fxByPair, fredSource = 'unknown' }) {
+  const hist = engine.runHistory(payload);
+  if (hist.error) throw new Error('engine: ' + hist.error);
+  const { dates, pairs, weights, regime, gate, grossMult, conviction } = hist;
+  const m = pairs.length, n = dates.length;
+
+  const { R, fxCover } = alignFxToGrid(dates, pairs, fxByPair);
   const coveredPairs = fxCover.filter((c) => c > 20).length;
 
   // Gross-1 book return: apply week i-1 weights to week i returns.
@@ -228,5 +239,70 @@ export function computeNqBacktest({ engine, payload, nqReturns, fredSource = 'un
     verdict: beatsBH.length
       ? `Liquidity timing beats buy-and-hold: ${beatsBH.map(([k]) => k).join('; ')}`
       : 'No liquidity rule beats buy-and-hold NQ risk-adjusted — the signal adds no timing edge.',
+  };
+}
+
+/*
+ * computeRegressionTest({ engine, payload, fxByPair, fredSource })
+ *   THE actual statistical regression test: does each pair's raw (continuous,
+ *   undiscretised) liquidity-impulse spread at week i predict its REALIZED
+ *   return in week i+1? computeBacktest above answers "is the resulting P&L
+ *   good" (an equity-curve backtest); this answers "is the underlying
+ *   relationship real" (an OLS regression with a Newey-West HAC t-stat, since
+ *   weekly macro series are autocorrelated and a naive t-stat would overstate
+ *   significance).
+ *
+ *   Every pair gets its own honest single time-series regression. The pooled
+ *   regression (all pair-weeks stacked) is reported too but is NOT a clean
+ *   test on its own — every pair shares the same weekly GLI shock, so pooling
+ *   understates the true standard error. Read it as indicative; the per-pair
+ *   tests are the real evidence.
+ */
+export function computeRegressionTest({ engine, payload, fxByPair, fredSource = 'unknown' }) {
+  const hist = engine.runHistory(payload);
+  if (hist.error) throw new Error('engine: ' + hist.error);
+  const { dates, pairs, scores } = hist;
+  const m = pairs.length, n = dates.length;
+  const warm = 52; // let 156w Z_WINDOW/impulse windows fill in before trusting a score
+
+  const { R, fxCover } = alignFxToGrid(dates, pairs, fxByPair);
+  const round = (x, d = 4) => (isFinite(x) ? Math.round(x * 10 ** d) / 10 ** d : null);
+
+  const perPair = [];
+  const pooledX = [], pooledY = [];
+  for (let j = 0; j < m; j++) {
+    if (fxCover[j] <= 20) continue;             // not enough real FX history for this pair
+    const xs = [], ys = [];
+    for (let i = warm; i < n - 1; i++) {
+      const x = scores[i][j], y = R[i + 1][j];  // week i's spread → week i+1's realized return (no lookahead)
+      if (isFinite(x) && isFinite(y)) { xs.push(x); ys.push(y); }
+    }
+    if (xs.length < 52) continue;               // need at least a year of forward-return observations
+    const fit = neweyWestOLS(xs, ys);
+    perPair.push({
+      pair: pairs[j], n: fit.n, beta: round(fit.beta, 5), r2: round(fit.r2, 4),
+      tStatNW: round(fit.tStatNW, 2), bandwidth: fit.bandwidth,
+      significant: Math.abs(fit.tStatNW) >= 1.96,
+    });
+    pooledX.push(...xs); pooledY.push(...ys);
+  }
+
+  const pooledFit = pooledX.length >= 52 ? neweyWestOLS(pooledX, pooledY) : null;
+  const sigPairs = perPair.filter((p) => p.significant);
+  const meanR2 = perPair.length ? round(perPair.reduce((s, p) => s + p.r2, 0) / perPair.length, 4) : null;
+
+  return {
+    fredSource, real: !/synthetic/i.test(fredSource),
+    asOf: dates[n - 1], start: dates[Math.min(warm, n - 1)], weeks: Math.max(0, n - warm),
+    pairsTested: perPair.length, significantPairs: sigPairs.length, meanR2,
+    perPair,
+    pooled: pooledFit ? {
+      n: pooledFit.n, beta: round(pooledFit.beta, 5), r2: round(pooledFit.r2, 4),
+      tStatNW: round(pooledFit.tStatNW, 2), bandwidth: pooledFit.bandwidth,
+    } : null,
+    verdict: sigPairs.length
+      ? `Liquidity spread significantly predicts next-week return (|t|≥1.96, NW-HAC) in ${sigPairs.length}/${perPair.length} pairs: ${sigPairs.map((p) => p.pair).join(', ')}.`
+      : `No pair shows a statistically significant (|t|≥1.96, NW-HAC) relationship between liquidity spread and next-week return — no evidence of weekly predictive power.`,
+    caveat: 'The pooled regression stacks all pair-weeks together and does not correct for every pair sharing the same weekly GLI shock (cross-sectional correlation), so its t-stat is optimistic — treat it as a headline, not proof. The per-pair regressions are each an honest single time-series HAC test.',
   };
 }

@@ -131,6 +131,52 @@ export function neweyWestSharpe(returns, periodsPerYear = 252, bandwidth = null)
   };
 }
 
+// Newey-West (1987) HAC-robust single-regressor OLS — the honest way to ask
+// "does this factor actually predict this outcome" without assuming i.i.d.
+// residuals. Same Bartlett-kernel long-run-variance machine as
+// `neweyWestSharpe` above, applied to the regression score (x−x̄)·u instead of
+// to a return series — the standard OLS sandwich SE for k=1 regressor. Built
+// for regression-testing a macro factor (e.g. liquidity impulse) against
+// forward returns, where overlapping/autocorrelated residuals are the norm
+// and a naive OLS t-stat overstates significance.
+//   neweyWestOLS(x, y, bandwidth=null) ->
+//     { beta, intercept, r2, n, seNaive, seNW, tStatNaive, tStatNW, bandwidth }
+export function neweyWestOLS(x, y, bandwidth = null) {
+  const n = Math.min(x?.length ?? 0, y?.length ?? 0);
+  const degenerate = { beta: 0, intercept: 0, r2: 0, n, seNaive: Infinity, seNW: Infinity, tStatNaive: 0, tStatNW: 0, bandwidth: 0 };
+  if (n < 3) return degenerate;
+
+  const xbar = x.reduce((a, b) => a + b, 0) / n, ybar = y.reduce((a, b) => a + b, 0) / n;
+  let sxx = 0, sxy = 0;
+  for (let i = 0; i < n; i++) { const dx = x[i] - xbar; sxx += dx * dx; sxy += dx * (y[i] - ybar); }
+  if (sxx < 1e-12) return { ...degenerate, intercept: ybar };
+
+  const beta = sxy / sxx, intercept = ybar - beta * xbar;
+  const resid = new Array(n);
+  let ssr = 0, sst = 0;
+  for (let i = 0; i < n; i++) {
+    const u = y[i] - intercept - beta * x[i];
+    resid[i] = u; ssr += u * u; sst += (y[i] - ybar) ** 2;
+  }
+  const r2 = sst > 1e-12 ? 1 - ssr / sst : 0;
+  const seNaive = Math.sqrt((ssr / Math.max(1, n - 2)) / sxx);
+
+  const L = bandwidth ?? Math.max(1, Math.floor(4 * Math.pow(n / 100, 2 / 9)));
+  const score = x.map((xi, i) => (xi - xbar) * resid[i]);
+  const sMean = score.reduce((a, b) => a + b, 0) / n;
+  const autocov = (k) => { let s = 0; for (let i = 0; i < n - k; i++) s += (score[i] - sMean) * (score[i + k] - sMean); return s / n; };
+  let lrv = autocov(0);
+  for (let k = 1; k <= Math.min(L, n - 1); k++) lrv += 2 * (1 - k / (L + 1)) * autocov(k);
+  lrv = Math.max(lrv, 0);
+  const seNW = Math.sqrt(n * lrv) / sxx;
+
+  return {
+    beta, intercept, r2, n, seNaive, seNW, bandwidth: L,
+    tStatNaive: seNaive > 1e-12 ? beta / seNaive : 0,
+    tStatNW: seNW > 1e-12 ? beta / seNW : 0,
+  };
+}
+
 // Minimum Track Record Length (Bailey & López de Prado 2012): how many YEARS of
 // live returns are needed before `sharpeAnnual` is statistically distinguishable
 // from `benchmark` (default 0) at the confidence implied by `z` (default 1.645 =

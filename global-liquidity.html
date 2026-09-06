@@ -156,6 +156,23 @@
     </div>
   </div>
 
+  <!-- Regression test: does the liquidity spread actually predict returns? -->
+  <div class="card" id="regCard">
+    <div class="card-hdr"><span>Regression test — spread → forward return</span><span class="dim">server · Railway</span></div>
+    <div class="card-body">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <button class="gl-btn" id="regRun" style="border-color:var(--purple);color:var(--purple);">▶ Run regression test</button>
+        <span class="dim" id="regStatus" style="font-size:12px;"></span>
+      </div>
+      <div id="regResult" style="margin-top:12px;"></div>
+      <div class="dim" style="font-size:11px;margin-top:10px;line-height:1.5;">
+        A statistical test, not a backtest: per pair, does week t's raw liquidity-impulse spread
+        predict week t+1's REALIZED return, with a Newey-West HAC t-stat (autocorrelation-robust,
+        since weekly macro series aren't i.i.d.)? Real FX (R2) + real FRED on the server.
+      </div>
+    </div>
+  </div>
+
   <!-- NQ liquidity-timing test: does liquidity beat buy-and-hold NASDAQ? -->
   <div class="card" id="nqCard">
     <div class="card-hdr"><span>Does liquidity time NASDAQ?</span><span class="dim">vs buy &amp; hold</span></div>
@@ -493,6 +510,60 @@
         btPoll(x.j.jobId, t0);
       })
       .catch(function (e) { btFail(e.message); });
+  });
+
+  // ── Regression test (server-side, real data) ──────────────────────────────
+  var regRunning = false;
+  function regSetStatus(t) { document.getElementById('regStatus').textContent = t || ''; }
+  function regRender(d) {
+    var tCls = function (t) { return t == null ? 'dim' : Math.abs(t) >= 1.96 ? 'green' : 'dim'; };
+    var rows = d.perPair.map(function (p) {
+      return '<div class="book-row"><span class="book-pair" style="flex:1.4;font-size:12px;font-weight:' +
+        (p.significant ? '700' : '600') + ';">' + (p.significant ? '✓ ' : '· ') + p.pair + '</span>' +
+        '<span class="book-w">β ' + p.beta + '</span>' +
+        '<span class="book-w ' + tCls(p.tStatNW) + '" style="font-weight:700;">t ' + p.tStatNW + '</span>' +
+        '<span class="book-w">R² ' + p.r2 + '</span>' +
+        '<span class="book-w">n ' + p.n + '</span></div>';
+    }).join('');
+    var html = '<div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--' +
+      (d.significantPairs ? 'green' : 'red') + ');">' + (d.significantPairs ? '✓ ' : '✗ ') + d.verdict + '</div>' +
+      rows;
+    if (d.pooled) html += '<div class="dim" style="font-size:11px;margin-top:10px;">Pooled (all pair-weeks): β ' +
+      d.pooled.beta + ', t ' + d.pooled.tStatNW + ', R² ' + d.pooled.r2 + ', n ' + d.pooled.n + '</div>';
+    html += '<div class="dim" style="font-size:11px;margin-top:6px;">' + d.caveat + '</div>';
+    if (!d.real) html += '<div class="dim" style="font-size:11px;margin-top:8px;color:var(--amber);">' +
+      'FRED is synthetic on the server — set FRED_KEY on Railway for a real read.</div>';
+    else html += '<div class="dim" style="font-size:11px;margin-top:8px;">' + d.pairsTested + ' pairs tested · ' +
+      d.weeks + 'w · ' + d.start + ' → ' + d.asOf + '</div>';
+    document.getElementById('regResult').innerHTML = html;
+  }
+  function regFail(msg) {
+    regRunning = false; document.getElementById('regRun').disabled = false;
+    regSetStatus(''); document.getElementById('regResult').innerHTML = '<div class="err" style="padding:8px 0;">Regression test failed: ' + msg + '</div>';
+  }
+  function regPoll(jobId, t0, fails) {
+    fails = fails || 0;
+    fetch('/api/global-liquidity/regression/status/' + jobId)
+      .then(function (r) { if (r.status === 404 && fails < 8) throw new Error('__retry__'); return r.json(); })
+      .then(function (j) {
+        if (j.status === 'running') { regSetStatus((j.phase || 'running') + '  ·  ' + (j.elapsed || 0) + 's'); setTimeout(function () { regPoll(jobId, t0, 0); }, 3000); }
+        else if (j.status === 'done') { regRunning = false; document.getElementById('regRun').disabled = false; regSetStatus((j.cached ? 'cached' : 'done') + '  ·  ' + Math.round((Date.now() - t0) / 1000) + 's'); regRender(j.data); }
+        else regFail(j.error || 'failed');
+      })
+      .catch(function (e) {
+        if (fails < 60 && (e.message === '__retry__' || /fetch|network|load|reset|timeout/i.test(e.message))) { regSetStatus('working…  ·  ' + Math.round((Date.now() - t0) / 1000) + 's'); setTimeout(function () { regPoll(jobId, t0, fails + 1); }, 5000); }
+        else regFail(e.message);
+      });
+  }
+  document.getElementById('regRun').addEventListener('click', function () {
+    if (regRunning) return;
+    regRunning = true; this.disabled = true;
+    document.getElementById('regResult').innerHTML = ''; regSetStatus('starting…');
+    var t0 = Date.now();
+    fetch('/api/global-liquidity/regression/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (x) { if (!x.ok || !x.j.ok) return regFail(x.j.error || 'could not start'); regPoll(x.j.jobId, t0); })
+      .catch(function (e) { regFail(e.message); });
   });
 
   // ── NQ liquidity-timing test (vs buy & hold) ──────────────────────────────
