@@ -61,6 +61,14 @@
   .dim .val{width:52px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
   .dim .val.pos{color:var(--bull)} .dim .val.neg{color:var(--bear)} .dim .val.na{color:var(--text3);font-weight:400}
 
+  .age{color:var(--text3);font-size:10.5px;font-family:var(--mono,monospace);margin-left:8px;white-space:nowrap}
+  .age.bad{color:var(--warn,#e8963c)}
+  .val.stale{color:var(--text3);text-decoration:line-through}
+  .stalepill{display:inline-block;margin-left:7px;padding:1px 6px;border-radius:3px;font-size:10px;
+    font-weight:700;letter-spacing:.04em;color:var(--warn,#e8963c);border:1px solid currentColor}
+  .stalebanner{margin-top:10px;padding:10px 13px;border-radius:6px;font-size:12.5px;line-height:1.6;
+    background:rgba(232,150,60,.08);border:1px solid rgba(232,150,60,.3);color:var(--text2)}
+  .stalebanner b{color:var(--warn,#e8963c)}
   .uncovered{color:var(--text3);font-size:11.5px;margin-top:4px}
   .uncovered b{color:var(--text2)}
 
@@ -103,6 +111,7 @@
   <div class="card">
     <h2>Ranked composite (strongest → weakest)</h2>
     <div id="body" class="empty">Loading…</div>
+    <div id="staleWrap"></div>
     <div id="uncoveredWrap"></div>
     <div class="note">Averages whatever's actually covered for each currency across every engine on this dashboard: central-bank text sentiment (USD/EUR/GBP/JPY only — the 4 with a built sentiment engine), CPI, GDP, business activity, labor market, retail sales, trade balance, real yield, yield curve, consumer confidence, rate (carry) differential, and PPI (USD only). Every dimension already arrives on the same -1..+1 scale from its own engine, so this is a plain equal-weight average — no dimension is judged more important than another without real evidence for a specific weighting. Missing data is treated as missing, not neutral: a currency covered on 3 of 12 dimensions is flagged as partial coverage, not silently averaged as if the other 9 read zero. Click a row to see which dimensions drove its score. Reads live off every other engine's already-cached data — refreshing here doesn't re-fetch FRED, it just re-aggregates; refresh the individual pages to pull fresh source data.</div>
   </div>
@@ -140,12 +149,31 @@ function renderPair(pair) {
     <div class="gap">composite gap ${pair.gap}</div>`;
 }
 
+// How old the underlying observation is, in plain words. This is the number the page
+// never showed: it displayed when the JOB last ran (always today) and never when the
+// DATA was last published (sometimes years ago), so a dead feed and a live one looked
+// identical. Audited 2026-09-07: JPY CPI was scoring off a June 2021 print.
+function ageTxt(days) {
+  if (days == null) return '';
+  if (days <= 45) return `${days}d old`;
+  const m = Math.round(days / 30.44);
+  return m < 24 ? `${m}mo old` : `${(m / 12).toFixed(1)}yr old`;
+}
+
 function renderBreakdown(row) {
+  const staleBy = Object.fromEntries((row.stale || []).map(st => [st.dim, st]));
   const parts = Object.entries(row.dims).map(([dim, v]) => {
-    const cls = v == null ? 'na' : (v >= 0 ? 'pos' : 'neg');
+    const st = staleBy[dim];
+    const cls = st ? 'stale' : v == null ? 'na' : (v >= 0 ? 'pos' : 'neg');
     const label = DIM_LABEL[dim] || dim;
+    // A stale dimension keeps showing its number so it doesn't look like a rendering
+    // fault, but it is struck through and excluded from the composite above.
     const valTxt = v == null ? 'no data' : (v > 0 ? `+${v}` : `${v}`);
-    return `<div class="dim"><a href="${dimHref(dim, row.ccy)}">${esc(label)}</a><span class="val ${cls}">${valTxt}</span></div>`;
+    const age = (row.ageDays || {})[dim];
+    const note = st
+      ? `<span class="age bad" title="Newest data ${st.asOf} — past the ${st.maxAgeDays}d budget for this release, so it is excluded from the composite.">${ageTxt(st.ageDays)} · excluded</span>`
+      : age != null ? `<span class="age">${ageTxt(age)}</span>` : '';
+    return `<div class="dim"><a href="${dimHref(dim, row.ccy)}">${esc(label)}</a>${note}<span class="val ${cls}">${valTxt}</span></div>`;
   }).join('');
   return `<div class="breakdown" id="bd-${row.ccy}">${parts}</div>`;
 }
@@ -158,7 +186,8 @@ function renderRow(row, rank) {
     <div class="ccy">${row.ccy}</div>
     ${gauge(row.composite)}
     <div class="composite ${cls}">${compTxt}</div>
-    <div class="cov">${row.coverage.length}/11 dims</div>
+    <div class="cov">${row.coverage.length}/11 dims${(row.stale || []).length
+      ? `<span class="stalepill" title="${row.stale.map(st => (DIM_LABEL[st.dim] || st.dim) + ': newest data ' + st.asOf).join(' · ')}">${row.stale.length} stale</span>` : ''}</div>
     <div class="chev">▸</div>
   </div>` + renderBreakdown(row);
 }
@@ -187,6 +216,14 @@ async function load() {
     } else {
       $('body').innerHTML = r.ranked.map((row, i) => renderRow(row, i + 1)).join('');
     }
+    const nStale = r.staleCount || 0;
+    $('staleWrap').innerHTML = nStale
+      ? `<div class="stalebanner"><b>${nStale}</b> currency-dimension${nStale === 1 ? '' : 's'} excluded as stale \u2014 `
+        + `the source series has stopped updating, so the last value is no longer a description of today. `
+        + `Affected: ${Object.entries(r.staleDims || {}).map(([d, xs]) =>
+             `<b>${esc(DIM_LABEL[d] || d)}</b> (${xs.map(x => x.ccy).join(', ')})`).join(' \u00b7 ')}. `
+        + `Expand a row to see each one's date.</div>`
+      : '';
     $('uncoveredWrap').innerHTML = r.uncovered?.length
       ? `<div class="uncovered">No coverage yet: <b>${r.uncovered.join(', ')}</b> — visit their individual pages and click Refresh.</div>` : '';
   } catch (e) {

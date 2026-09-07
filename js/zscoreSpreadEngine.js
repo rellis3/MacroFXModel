@@ -57,13 +57,68 @@ const ASIA_MAX_HOUR_REQUIRED = 5;
 
 // ── FRED ──────────────────────────────────────────────────────────────────────
 
+// ── FRED request governor ────────────────────────────────────────────────────
+// Every macro builder in server.js fans out Promise.all over currencies AND over
+// series, and all twelve builders are registered at boot so they tick together.
+// Measured 2026-09-07: ~176 simultaneous requests, and FRED answers the overflow
+// with HTTP 403 (not the 429 you would expect). Every caller wraps its fetch in a
+// try/catch that files the failure into an availability[] array no page renders,
+// so the result was a silently half-empty scorecard -- USD CPI, PPI, GDP, GS2 and
+// GS10 all null on the same tick, then perfectly fine when refreshed on their own.
+// Proven by triggering one builder in isolation: 14/14 series OK, zero 403s.
+//
+// One process-wide gate shared by all 17 modules that import from this file, so
+// bursts queue instead of being discarded. Concurrency is deliberately well under
+// FRED's documented ceiling: these are background refreshes with a whole day of
+// slack, so there is nothing to gain from crowding the limit.
+const FRED_MAX_INFLIGHT = 4;
+const FRED_MAX_RETRIES  = 4;
+let _fredInflight = 0;
+const _fredQueue = [];
+
+function _fredAcquire() {
+  if (_fredInflight < FRED_MAX_INFLIGHT) { _fredInflight++; return Promise.resolve(); }
+  return new Promise(resolve => _fredQueue.push(resolve));
+}
+// Hand the slot straight to the next waiter rather than decrementing and letting
+// it re-race -- otherwise a queued caller can be skipped indefinitely under load.
+function _fredRelease() {
+  const next = _fredQueue.shift();
+  if (next) next(); else _fredInflight--;
+}
+
+const _fredSleep = ms => new Promise(r => setTimeout(r, ms));
+
+// 403/429/5xx from FRED under load are transient: the identical series fetched
+// alone succeeds. Those are retried with backoff. A 400 (genuinely bad series id)
+// is not -- retrying it just burns the budget for series that would have worked.
+async function _fredFetchJson(url, label, attempt = 0) {
+  await _fredAcquire();
+  let r;
+  try { r = await fetch(url, { signal: AbortSignal.timeout(25_000) }); }
+  finally { _fredRelease(); }
+  if (r.ok) return r.json();
+  const transient = r.status === 403 || r.status === 429 || r.status >= 500;
+  if (transient && attempt < FRED_MAX_RETRIES) {
+    await _fredSleep(400 * 2 ** attempt + Math.random() * 250);
+    return _fredFetchJson(url, label, attempt + 1);
+  }
+  // Message shape preserved verbatim -- callers file it into availability[].error
+  // and the audit tooling greps for "FRED <series> HTTP <code>".
+  throw new Error(`FRED ${label} HTTP ${r.status}`);
+}
+
+// Test seam: lets a test assert the gate actually bounds concurrency without
+// having to reach FRED. Not used in production paths.
+export function _fredGovernorState() {
+  return { inflight: _fredInflight, queued: _fredQueue.length, max: FRED_MAX_INFLIGHT };
+}
+
 export async function fetchFredObservations(seriesId, fromDate, fredKey) {
   const url = `https://api.stlouisfed.org/fred/series/observations`
             + `?series_id=${seriesId}&api_key=${fredKey}&file_type=json`
             + `&observation_start=${fromDate}&sort_order=asc`;
-  const r = await fetch(url, { signal: AbortSignal.timeout(25_000) });
-  if (!r.ok) throw new Error(`FRED ${seriesId} HTTP ${r.status}`);
-  const json = await r.json();
+  const json = await _fredFetchJson(url, seriesId);
   const out = new Map();
   for (const obs of json.observations ?? []) {
     if (obs.value === '.' || obs.value == null) continue;
@@ -88,9 +143,7 @@ export async function fetchFredInitialRelease(seriesId, fromDate, fredKey) {
             + `?series_id=${seriesId}&api_key=${fredKey}&file_type=json`
             + `&observation_start=${fromDate}&sort_order=asc`
             + `&output_type=4&realtime_start=1776-07-04&realtime_end=9999-12-31`;
-  const r = await fetch(url, { signal: AbortSignal.timeout(25_000) });
-  if (!r.ok) throw new Error(`FRED ${seriesId} (initial release) HTTP ${r.status}`);
-  const json = await r.json();
+  const json = await _fredFetchJson(url, `${seriesId} (initial release)`);
   const out = new Map();
   for (const obs of json.observations ?? []) {
     if (obs.value === '.' || obs.value == null) continue;

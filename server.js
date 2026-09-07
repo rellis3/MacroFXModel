@@ -5714,6 +5714,35 @@ async function _loadCbSentiment() {
   }));
   return out;
 }
+// The newest OBSERVATION date inside one engine's per-currency payload -- which is
+// a different question from when the job last ran, and the only one that says
+// whether a score describes today. Every engine shapes its payload differently
+// (cpiEngine nests dims{}, gdpEngine is flat, cbSentiment carries meetingDate), so
+// rather than teach the scorecard eleven shapes this walks for any key ending in
+// "Date" holding a YYYY-MM-DD. Every engine records the date it scored off under
+// some such key; a payload with none returns null and is trusted, exactly as
+// before, rather than being guessed at.
+function _newestDataDate(node, depth = 0) {
+  if (!node || typeof node !== 'object' || depth > 6) return null;
+  let best = null;
+  for (const [k, v] of Object.entries(node)) {
+    // Anchored on the camelCase / snake_case boundary, NOT a bare /date$/i --
+    // that also matches "update", "mandate" and "validate", so a housekeeping
+    // timestamp would be read as an observation date.
+    if (/(^date|Date|_date)$/.test(k) && typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v)) {
+      if (!best || v > best) best = v;
+    } else if (v && typeof v === 'object') {
+      const deeper = _newestDataDate(v, depth + 1);
+      if (deeper && (!best || deeper > best)) best = deeper;
+    }
+  }
+  return best;
+}
+
+// Pair a dimension's score with the date it was computed from, in the shape
+// js/macroScorecardEngine.js's readDim() age-checks.
+const _dim = (score, node) => (score == null ? null : { score, asOf: _newestDataDate(node) });
+
 async function _buildMacroScorecard() {
   const [cpiRaw, gdpRaw, ismRaw, laborRaw, retailRaw, tradeRaw, realYieldRaw, ppiRaw, yieldCurveRaw, confidenceRaw, rateDiffRaw, cbSentiment] = await Promise.all([
     kv.get(_CPI_KV).catch(() => null),
@@ -5744,18 +5773,18 @@ async function _buildMacroScorecard() {
   const byCcyDims = {};
   for (const ccy of ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'NZD']) {
     byCcyDims[ccy] = {
-      cbSentiment: cbSentiment[ccy]?.score ?? null,
-      cpi: cpi[ccy]?.pressure ?? null,
-      gdp: gdp[ccy]?.score ?? null,
-      ism: ism[ccy]?.activity ?? null,
-      laborMarket: labor[ccy]?.strength ?? null,
-      retailSales: retail[ccy]?.spending ?? null,
-      tradeBalance: trade[ccy]?.score ?? null,
-      realYield: realYield[ccy]?.score ?? null,
-      yieldCurve: yieldCurve[ccy]?.score ?? null,
-      consumerConfidence: confidence[ccy]?.confidence ?? null,
-      rateDiff: rateDiff[ccy]?.score ?? null,
-      ...(ccy === 'USD' ? { ppi: ppi[ccy]?.pressure ?? null } : {}),
+      cbSentiment: _dim(cbSentiment[ccy]?.score ?? null, cbSentiment[ccy]),
+      cpi: _dim(cpi[ccy]?.pressure ?? null, cpi[ccy]),
+      gdp: _dim(gdp[ccy]?.score ?? null, gdp[ccy]),
+      ism: _dim(ism[ccy]?.activity ?? null, ism[ccy]),
+      laborMarket: _dim(labor[ccy]?.strength ?? null, labor[ccy]),
+      retailSales: _dim(retail[ccy]?.spending ?? null, retail[ccy]),
+      tradeBalance: _dim(trade[ccy]?.score ?? null, trade[ccy]),
+      realYield: _dim(realYield[ccy]?.score ?? null, realYield[ccy]),
+      yieldCurve: _dim(yieldCurve[ccy]?.score ?? null, yieldCurve[ccy]),
+      consumerConfidence: _dim(confidence[ccy]?.confidence ?? null, confidence[ccy]),
+      rateDiff: _dim(rateDiff[ccy]?.score ?? null, rateDiff[ccy]),
+      ...(ccy === 'USD' ? { ppi: _dim(ppi[ccy]?.pressure ?? null, ppi[ccy]) } : {}),
     };
   }
   const { ranked, uncovered } = buildMacroScorecard(byCcyDims);
