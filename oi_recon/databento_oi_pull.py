@@ -10,27 +10,19 @@ GLBX.MDP3 record for them exists at all), over the last 10 years. Writes one
 CSV per pair to oi_recon/databento_oi/.
 
 IMPORTANT -- read before running the real thing:
-    I do not have a live Databento API key from where this script was
-    written, so nothing here has been checked against real market data or a
-    real account. What IS verified: the field names, stat_type codes, and
-    instrument_class values below are read directly out of the installed
-    `databento`/`databento_dbn` package's own type definitions (StatType,
-    InstrumentClass, InstrumentDefMsg, StatMsg, and the smart-symbol
-    validator's own "ES.OPT" example for parent symbology) -- not guessed.
-    What is NOT verified, and already confirmed WRONG at least once against
-    a real account: GLBX.MDP3 parent symbology does not simply resolve
-    "<futures root>.OPT" for every product -- a live --verify run got
-    `422 symbology_invalid_request: Could not resolve smart symbols: 6E.OPT`
-    for EUR/USD. Whatever the real root turns out to be (per-product, and
-    possibly not the futures root at all), use `--discover <hint>` to find
-    it from a live 1-day whole-dataset definitions pull, then add it to
-    ROOT_OVERRIDE near the top of this script. Also still unverified:
-    whether coverage reaches back a full 10 years for every one of these 11
-    products once symbology is fixed, and whether some other real-world
-    quirk (a gap, a renamed root, an unexpected empty range) shows up.
-    Running --verify first is not optional -- it pulls ~5 days for one
-    instrument and prints exactly what Databento returns, so any such
-    surprise shows up before you spend money on the full 10-year pull.
+    Confirmed live 2026-09-07: GLBX.MDP3 parent symbology does not simply
+    resolve "<futures root>.OPT" for every product. EUR/USD's real options
+    asset code is "EUU" (already in ROOT_OVERRIDE below), found via
+    --discover-all -- a whole-dataset definitions pull that, in one $1.66
+    charge, contains the real asset code for all 11 products at once (no
+    need to run --discover per product). CME also lists a dozen+ WEEKLY
+    option series per FX product under their own asset codes (MO2/WE3/1EU/
+    etc.) -- ROOT_OVERRIDE deliberately picks the standard one, not those.
+    Still unverified: the other 10 products' asset codes (run
+    --discover-all, add each to ROOT_OVERRIDE, then --verify-all to
+    confirm), whether coverage reaches back a full 10 years for all of
+    them, and any other real-world data quirk. Run --discover-all and
+    --verify-all before --yes -- both are cheap, --yes is not.
 
 Setup:
     pip install -r requirements.txt
@@ -43,13 +35,16 @@ Setup:
     # DATABENTO_API_KEY=...` instead of a .env file works too.
 
 Usage:
-    python databento_oi_pull.py --verify                    # cheap sanity check -- run this FIRST
-    python databento_oi_pull.py --discover 6E                # if --verify's symbology fails, find the real root
-    python databento_oi_pull.py --cost-only                 # show estimated $ cost for the full pull, fetches nothing
-    python databento_oi_pull.py --yes                        # run the full 10-year pull, all 11 instruments
-    python databento_oi_pull.py --yes --only "EUR/USD"       # just one pair
-    python databento_oi_pull.py --yes --years 2               # shorter window while testing
-    python databento_oi_pull.py --yes --resume                # skip (pair, year) chunks already written
+    python databento_oi_pull.py --discover-all                # find every product's real option asset code, ONE charge
+    python databento_oi_pull.py --verify                      # cheap sanity check on one instrument (EUR/USD by default)
+    python databento_oi_pull.py --verify --only "GBP/USD"     # sanity check a specific pair
+    python databento_oi_pull.py --verify-all                  # one-line-per-product sweep, after ROOT_OVERRIDE is filled in
+    python databento_oi_pull.py --discover 6E                 # find ONE product's root manually (costs its own $ each call)
+    python databento_oi_pull.py --cost-only                   # show estimated $ cost for the full pull, fetches nothing
+    python databento_oi_pull.py --yes                          # run the full 10-year pull, all 11 instruments
+    python databento_oi_pull.py --yes --only "EUR/USD"        # just one pair
+    python databento_oi_pull.py --yes --years 2                 # shorter window while testing
+    python databento_oi_pull.py --yes --resume                  # skip (pair, year) chunks already written
 """
 import argparse
 import sys
@@ -110,13 +105,19 @@ INVERSE_QUOTED = {"USD/JPY", "USD/CAD", "USD/CHF"}
 
 # Maps a products.py futures root (e.g. "6E") to the root Databento's parent
 # symbology actually resolves for that product's OPTIONS, when it differs
-# from the futures root. Confirmed live: "6E.OPT" -> 422
-# symbology_invalid_request ("Could not resolve smart symbols: 6E.OPT"), so
-# CME's options-chain root on Databento is NOT simply the futures root for
-# at least this product. Run `--discover <hint>` (e.g. `--discover 6E` or
-# `--discover EUR`) to find the real root/asset code from a live 1-day,
-# whole-dataset definitions pull, then add it here, e.g. "6E": "EUU".
-ROOT_OVERRIDE = {}
+# from the futures root. Confirmed live via --discover-all: CME lists the
+# STANDARD (American, monthly/quarterly) EUR/USD option under asset code
+# "EUU", not futures root "6E" -- e.g. raw_symbol EUUZ6, underlying 6EZ6,
+# instrument_class C/P, real strikes like 1.265. CME also lists a dozen+
+# WEEKLY option series on the same 6E futures under their own asset codes
+# (MO2/MO3/MO4, WE2/WE3/WE4, 1EU/2EU/3EU, TU2, SU2, ...) -- EUU is
+# deliberately the only one used here; the weeklies are out of scope unless
+# added explicitly. The other 10 products' overrides (if any -- some may
+# already resolve fine under their futures root) still need confirming via
+# --discover-all before --yes.
+ROOT_OVERRIDE = {
+    "6E": "EUU",  # EUR/USD standard option -- confirmed live 2026-09-07
+}
 
 
 def get_client():
@@ -267,8 +268,10 @@ def add_oi_change(df):
     return df
 
 
-def run_verify(client):
-    p = CME_PRODUCTS[0]
+def run_verify(client, only=None):
+    p = next((x for x in CME_PRODUCTS if x["sym"] == only), None) if only else CME_PRODUCTS[0]
+    if p is None:
+        sys.exit(f"--only {only!r} doesn't match any CME_PRODUCTS symbol.")
     root = resolve_root(p["fut"])
     end = get_available_end(client)
     start = end - pd.Timedelta(days=7)
@@ -311,6 +314,28 @@ def run_verify(client):
         "whatever other stats this root reports. If any of that looks wrong, stop and "
         "fix it before running --yes -- everything downstream depends on it."
     )
+
+
+def run_verify_all(client):
+    """One-line-per-product sweep, not the full verbose dump --verify gives
+    for a single pair -- run after ROOT_OVERRIDE is filled in (via
+    --discover-all) to confirm every product's symbology actually resolves
+    before committing to --yes. A short 2-day window per product, so this
+    stays cheap even across all 11."""
+    end = get_available_end(client)
+    start = end - pd.Timedelta(days=2)
+    print(f"[verify-all] {start.date()} .. {end.date()}, all {len(CME_PRODUCTS)} products\n")
+    for p in CME_PRODUCTS:
+        sym, root = p["sym"], resolve_root(p["fut"])
+        try:
+            defs_n = len(fetch_definitions(client, p["fut"], start, end))
+            stats_n = len(fetch_statistics(client, p["fut"], start, end))
+            flag = "OK" if defs_n and stats_n else "0 rows -- check ROOT_OVERRIDE or --discover this one"
+            print(f"  {sym:12s} root={root:6s} definitions={defs_n:5d}  statistics_rows={stats_n:5d}  {flag}")
+        except db.common.error.BentoClientError as e:
+            print(f"  {sym:12s} root={root:6s} FAILED: {e}")
+        time.sleep(0.3)
+    print("\nOnce every row reads OK, run --cost-only then --yes.")
 
 
 def run_discover(client, hint):
@@ -361,6 +386,67 @@ def run_discover(client, hint):
         "option chain together, distinct from the outright future's own row) and add it to "
         "ROOT_OVERRIDE near the top of this script, e.g. ROOT_OVERRIDE = {\"6E\": \"<real root>\"}. "
         "Then re-run --verify."
+    )
+
+
+def _underlying_root(underlying):
+    """Strip the trailing month-code+year-digit CME Globex contract symbols
+    carry (e.g. 'Z6' in '6EZ6') to get the bare product root ('6E'). Used to
+    precisely match an option's underlying future to a products.py futures
+    root -- naive substring matching on 'contains 6E' wrongly lumps in
+    unrelated roots that merely share characters (06E, 6EB, 6EP, M6E, ...,
+    all real distinct products visible in a --discover 6E run)."""
+    s = str(underlying)
+    return s[:-2] if len(s) > 2 else s
+
+
+def run_discover_all(client):
+    """Same whole-dataset definitions pull as --discover, but paid for ONCE
+    and checked against every CME_PRODUCTS futures root -- the pull already
+    contains the answer for all 11 products, so there's no reason to pay
+    ~$1.66 x 11 by running --discover per product. Reports each product's
+    real option asset code(s), precisely matched via _underlying_root()
+    rather than substring search."""
+    end = get_available_end(client)
+    start = end - pd.Timedelta(days=1)
+    cost = client.metadata.get_cost(dataset=DATASET, schema="definition", start=start, end=end)
+    print(f"[discover-all] pulling ALL instrument definitions for {start.date()} .. {end.date()} "
+          f"(whole dataset, ~${cost:.2f} -- ONE charge, checked against all {len(CME_PRODUCTS)} products) ...\n")
+
+    df = client.timeseries.get_range(
+        dataset=DATASET, schema="definition", start=start, end=end,
+    ).to_df()
+    print(f"{len(df)} instruments defined on {end.date()}\n")
+
+    missing = [c for c in ("underlying", "asset", "instrument_class") if c not in df.columns]
+    if missing:
+        print(f"Expected columns missing: {missing} (got {list(df.columns)}). "
+              f"Falling back to `--discover <hint>` per product instead.")
+        return
+
+    opts = df[df["instrument_class"].isin(["C", "P"])].copy()
+    opts["_root"] = opts["underlying"].map(_underlying_root)
+
+    for p in CME_PRODUCTS:
+        root, sym = p["fut"], p["sym"]
+        matches = opts[opts["_root"].str.upper() == root.upper()]
+        already = f" (ROOT_OVERRIDE already has {ROOT_OVERRIDE[root]!r})" if root in ROOT_OVERRIDE else ""
+        print(f"=== {sym}  (futures root {root}){already} ===")
+        if matches.empty:
+            print("  no option instruments matched this root -- try `--discover <hint>` manually\n")
+            continue
+        assets = sorted(matches["asset"].astype(str).unique())
+        print(f"  option asset code(s): {', '.join(assets)}")
+        if len(assets) > 1:
+            print(f"  ({len(assets)} distinct series found -- likely one standard + several weekly/daily "
+                  f"variants; the standard one is usually the shortest/plainest-looking code, e.g. 'EUU' "
+                  f"vs weekly codes like 'MO2'/'WE3'/'1EU')")
+        print()
+
+    print(
+        "Add the standard (non-weekly) asset code for each product to ROOT_OVERRIDE near the top "
+        "of this script, e.g. ROOT_OVERRIDE = {\"6E\": \"EUU\", \"6B\": \"...\", ...}. Then run "
+        "--verify-all to sanity-check every product's definitions + statistics pull at once."
     )
 
 
@@ -456,9 +542,14 @@ def run_pull(client, years, only, resume):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--verify", action="store_true", help="cheap sanity check on one instrument -- run this first")
+    ap.add_argument("--verify-all", action="store_true",
+                     help="one-line-per-product sanity sweep across all 11, after ROOT_OVERRIDE is filled in")
     ap.add_argument("--discover", type=str, default=None, metavar="HINT",
                      help="if --verify's parent symbology fails to resolve, find the real root "
                           "from a live 1-day whole-dataset definitions pull, e.g. --discover 6E")
+    ap.add_argument("--discover-all", action="store_true",
+                     help="same pull as --discover but paid for once and checked against all 11 "
+                          "products' futures roots -- run this instead of --discover per product")
     ap.add_argument("--cost-only", action="store_true", help="print estimated $ cost, fetch nothing else")
     ap.add_argument("--yes", action="store_true", help="actually run the (paid) historical pull")
     ap.add_argument("--years", type=int, default=10, help="how many years back (default 10)")
@@ -466,17 +557,23 @@ def main():
     ap.add_argument("--resume", action="store_true", help="skip (pair, year) chunks already marked done")
     args = ap.parse_args()
 
-    if not (args.verify or args.discover or args.cost_only or args.yes):
+    if not (args.verify or args.verify_all or args.discover or args.discover_all or args.cost_only or args.yes):
         ap.print_help()
-        sys.exit("\nPick one of --verify, --discover, --cost-only, or --yes.")
+        sys.exit("\nPick one of --verify, --verify-all, --discover, --discover-all, --cost-only, or --yes.")
 
     client = get_client()
 
+    if args.discover_all:
+        run_discover_all(client)
+        return
     if args.discover:
         run_discover(client, args.discover)
         return
+    if args.verify_all:
+        run_verify_all(client)
+        return
     if args.verify:
-        run_verify(client)
+        run_verify(client, only=args.only)
         return
     if args.cost_only:
         run_cost_estimate(client, args.years, args.only)
