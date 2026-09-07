@@ -17,11 +17,17 @@ IMPORTANT -- read before running the real thing:
     `databento`/`databento_dbn` package's own type definitions (StatType,
     InstrumentClass, InstrumentDefMsg, StatMsg, and the smart-symbol
     validator's own "ES.OPT" example for parent symbology) -- not guessed.
-    What is NOT verified: whether GLBX.MDP3 parent symbology actually
-    resolves the option complex the way I expect for every one of these 11
-    roots, whether coverage reaches back a full 10 years for all of them,
-    and whether there's some real-world data quirk (a gap, a renamed root,
-    an unexpected empty range) that only shows up against live data.
+    What is NOT verified, and already confirmed WRONG at least once against
+    a real account: GLBX.MDP3 parent symbology does not simply resolve
+    "<futures root>.OPT" for every product -- a live --verify run got
+    `422 symbology_invalid_request: Could not resolve smart symbols: 6E.OPT`
+    for EUR/USD. Whatever the real root turns out to be (per-product, and
+    possibly not the futures root at all), use `--discover <hint>` to find
+    it from a live 1-day whole-dataset definitions pull, then add it to
+    ROOT_OVERRIDE near the top of this script. Also still unverified:
+    whether coverage reaches back a full 10 years for every one of these 11
+    products once symbology is fixed, and whether some other real-world
+    quirk (a gap, a renamed root, an unexpected empty range) shows up.
     Running --verify first is not optional -- it pulls ~5 days for one
     instrument and prints exactly what Databento returns, so any such
     surprise shows up before you spend money on the full 10-year pull.
@@ -34,6 +40,7 @@ Setup:
 
 Usage:
     python databento_oi_pull.py --verify                    # cheap sanity check -- run this FIRST
+    python databento_oi_pull.py --discover 6E                # if --verify's symbology fails, find the real root
     python databento_oi_pull.py --cost-only                 # show estimated $ cost for the full pull, fetches nothing
     python databento_oi_pull.py --yes                        # run the full 10-year pull, all 11 instruments
     python databento_oi_pull.py --yes --only "EUR/USD"       # just one pair
@@ -64,7 +71,7 @@ from products import CME_PRODUCTS  # noqa: E402
 
 # ── Configuration ────────────────────────────────────────────────────────────
 
-API_KEY = "db-DjpfLBnBXCNdGrMAEDF5JNenimitM"  # paste your Databento key here if you'd rather not use an env var
+API_KEY = ""  # paste your Databento key here if you'd rather not use an env var -- NEVER commit a real key (see git history: it already happened once, rotate that key)
 DATASET = "GLBX.MDP3"
 OUT_DIR = Path(__file__).parent / "databento_oi"
 PROGRESS_DIR = OUT_DIR / ".progress"
@@ -84,6 +91,16 @@ WANTED_STAT_NAMES = {"settlement_price", "open_interest", "cleared_volume"}
 # it writes the raw CME-quoted numbers and stamps a warning column so you
 # don't discover this by silently getting a max-pain level backwards.
 INVERSE_QUOTED = {"USD/JPY", "USD/CAD", "USD/CHF"}
+
+# Maps a products.py futures root (e.g. "6E") to the root Databento's parent
+# symbology actually resolves for that product's OPTIONS, when it differs
+# from the futures root. Confirmed live: "6E.OPT" -> 422
+# symbology_invalid_request ("Could not resolve smart symbols: 6E.OPT"), so
+# CME's options-chain root on Databento is NOT simply the futures root for
+# at least this product. Run `--discover <hint>` (e.g. `--discover 6E` or
+# `--discover EUR`) to find the real root/asset code from a live 1-day,
+# whole-dataset definitions pull, then add it here, e.g. "6E": "EUU".
+ROOT_OVERRIDE = {}
 
 
 def get_client():
@@ -133,6 +150,12 @@ def year_ranges(years_back, available_end):
     return out
 
 
+def resolve_root(root):
+    """The futures root as products.py has it, unless ROOT_OVERRIDE says
+    Databento's options-chain root is different for this product."""
+    return ROOT_OVERRIDE.get(root, root)
+
+
 def fetch_definitions(client, root, start, end):
     """instrument_id -> {strike, expiration, right, raw_symbol} for every
     option instrument ever defined under this root in [start, end)."""
@@ -140,7 +163,7 @@ def fetch_definitions(client, root, start, end):
         dataset=DATASET,
         schema="definition",
         stype_in="parent",
-        symbols=[f"{root}.OPT"],
+        symbols=[f"{resolve_root(root)}.OPT"],
         start=start,
         end=end,
     ).to_df()
@@ -169,7 +192,7 @@ def fetch_statistics(client, root, start, end):
         dataset=DATASET,
         schema="statistics",
         stype_in="parent",
-        symbols=[f"{root}.OPT"],
+        symbols=[f"{resolve_root(root)}.OPT"],
         start=start,
         end=end,
     ).to_df()
@@ -228,16 +251,24 @@ def add_oi_change(df):
 
 def run_verify(client):
     p = CME_PRODUCTS[0]
-    root = p["fut"]
+    root = resolve_root(p["fut"])
     end = get_available_end(client)
     start = end - pd.Timedelta(days=7)
     print(f"[verify] pulling {root}.OPT definitions + statistics for {p['sym']}, "
           f"{start.date()} .. {end.date()} (should be cheap/fast)\n")
 
-    defs_df = client.timeseries.get_range(
-        dataset=DATASET, schema="definition", stype_in="parent",
-        symbols=[f"{root}.OPT"], start=start, end=end,
-    ).to_df()
+    try:
+        defs_df = client.timeseries.get_range(
+            dataset=DATASET, schema="definition", stype_in="parent",
+            symbols=[f"{root}.OPT"], start=start, end=end,
+        ).to_df()
+    except db.common.error.BentoClientError as e:
+        sys.exit(
+            f"{e}\n\nDatabento didn't recognize '{root}.OPT' as a parent symbol. Run:\n"
+            f"    python databento_oi_pull.py --discover {p['fut']}\n"
+            f"to find the real root/asset code from a live 1-day, whole-dataset definitions "
+            f"pull, then add it to ROOT_OVERRIDE near the top of this script."
+        )
     print(f"definitions: {len(defs_df)} rows")
     print("columns:", list(defs_df.columns))
     if not defs_df.empty:
@@ -264,13 +295,64 @@ def run_verify(client):
     )
 
 
+def run_discover(client, hint):
+    """1-day, whole-dataset definitions pull (no root filter at all) -- for
+    when parent symbology (`--verify`) comes back `symbology_invalid_request:
+    Could not resolve smart symbols`, meaning Databento's real root/asset
+    code for that product isn't simply the futures root from products.py.
+    Pulls every instrument GLBX.MDP3 defines on the most recent available
+    day and prints whichever raw_symbol/asset/underlying values contain
+    `hint` (case-insensitive), so the real root can be read off directly
+    instead of guessed again."""
+    end = get_available_end(client)
+    start = end - pd.Timedelta(days=1)
+    cost = client.metadata.get_cost(dataset=DATASET, schema="definition", start=start, end=end)
+    print(f"[discover] pulling ALL instrument definitions for {start.date()} .. {end.date()} "
+          f"(whole dataset, ~${cost:.2f}) ...\n")
+
+    df = client.timeseries.get_range(
+        dataset=DATASET, schema="definition", start=start, end=end,
+    ).to_df()
+    print(f"{len(df)} instruments defined on {end.date()}\n")
+
+    hint_u = hint.upper()
+    id_cols = [c for c in ("asset", "underlying", "raw_symbol") if c in df.columns]
+    if not id_cols:
+        print(f"None of asset/underlying/raw_symbol are in the returned columns: {list(df.columns)}")
+        return
+    show_cols = [c for c in ("raw_symbol", "asset", "underlying", "instrument_class", "strike_price", "expiration") if c in df.columns]
+
+    found_any = False
+    for col in id_cols:
+        matches = df[df[col].astype(str).str.upper().str.contains(hint_u, na=False, regex=False)]
+        if matches.empty:
+            continue
+        found_any = True
+        print(f"-- matches on `{col}` containing {hint!r} ({len(matches)} rows) --")
+        dedup_on = [c for c in ("asset", "underlying") if c in matches.columns] or show_cols
+        print(matches[show_cols].drop_duplicates(subset=dedup_on).head(20).to_string())
+        print()
+
+    if not found_any:
+        print(f"No asset/underlying/raw_symbol values contain {hint!r}. Try a shorter or "
+              f"different hint (e.g. the currency code instead of the futures root, or vice versa).")
+        return
+
+    print(
+        "Read the real root off `asset` or `underlying` above (whichever one groups the "
+        "option chain together, distinct from the outright future's own row) and add it to "
+        "ROOT_OVERRIDE near the top of this script, e.g. ROOT_OVERRIDE = {\"6E\": \"<real root>\"}. "
+        "Then re-run --verify."
+    )
+
+
 def run_cost_estimate(client, years, only):
     products = [p for p in CME_PRODUCTS if only is None or p["sym"] == only]
     ranges = year_ranges(years, get_available_end(client))
     start, end = ranges[0][0], ranges[-1][1]
     total = 0.0
     for p in products:
-        root = p["fut"]
+        root = resolve_root(p["fut"])
         for schema in ("definition", "statistics"):
             try:
                 cost = client.metadata.get_cost(
@@ -356,6 +438,9 @@ def run_pull(client, years, only, resume):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--verify", action="store_true", help="cheap sanity check on one instrument -- run this first")
+    ap.add_argument("--discover", type=str, default=None, metavar="HINT",
+                     help="if --verify's parent symbology fails to resolve, find the real root "
+                          "from a live 1-day whole-dataset definitions pull, e.g. --discover 6E")
     ap.add_argument("--cost-only", action="store_true", help="print estimated $ cost, fetch nothing else")
     ap.add_argument("--yes", action="store_true", help="actually run the (paid) historical pull")
     ap.add_argument("--years", type=int, default=10, help="how many years back (default 10)")
@@ -363,12 +448,15 @@ def main():
     ap.add_argument("--resume", action="store_true", help="skip (pair, year) chunks already marked done")
     args = ap.parse_args()
 
-    if not (args.verify or args.cost_only or args.yes):
+    if not (args.verify or args.discover or args.cost_only or args.yes):
         ap.print_help()
-        sys.exit("\nPick one of --verify, --cost-only, or --yes.")
+        sys.exit("\nPick one of --verify, --discover, --cost-only, or --yes.")
 
     client = get_client()
 
+    if args.discover:
+        run_discover(client, args.discover)
+        return
     if args.verify:
         run_verify(client)
         return
