@@ -33,10 +33,14 @@ IMPORTANT -- read before running the real thing:
     surprise shows up before you spend money on the full 10-year pull.
 
 Setup:
-    pip install databento pandas
-    export DATABENTO_API_KEY="db-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-    # or paste your key into API_KEY below -- the env var is safer since it
-    # never ends up committed to git by accident.
+    pip install -r requirements.txt
+    cp .env.example .env
+    # then edit .env and set DATABENTO_API_KEY -- .env is already gitignored
+    # (repo-wide ".env" pattern), same convention backtestSystem/ and
+    # portfolioBacktest/ already use. NEVER hardcode a real key directly in
+    # this script: that already happened once (see git history, commit "v")
+    # and the exposed key had to be rotated. A shell `export
+    # DATABENTO_API_KEY=...` instead of a .env file works too.
 
 Usage:
     python databento_oi_pull.py --verify                    # cheap sanity check -- run this FIRST
@@ -63,15 +67,27 @@ try:
 except ImportError:
     sys.exit("Missing dependency -- run: pip install databento")
 
+try:
+    from dotenv import load_dotenv
+except ImportError:                              # dotenv is optional -- a plain `export` still works
+    def load_dotenv(*_a, **_kw):
+        return False
+
 # Reuses this repo's single source of truth for which 11 instruments are
 # actually CME-listed (see products.py's own header/notes for the DE30/UK100
 # exclusion and the JPY/CAD/CHF inverse-quote trap referenced below).
 sys.path.insert(0, str(Path(__file__).parent))
 from products import CME_PRODUCTS  # noqa: E402
 
+# Loads oi_recon/.env into the environment (DATABENTO_API_KEY=...) if present
+# -- same load_dotenv(dotenv_path=.../.env) convention backtestSystem/ and
+# portfolioBacktest/ already use. db.Historical() (called with no args, see
+# get_client() below) reads DATABENTO_API_KEY from the environment itself,
+# so nothing else needs to touch the key once this line has run.
+load_dotenv(dotenv_path=Path(__file__).parent / ".env")
+
 # ── Configuration ────────────────────────────────────────────────────────────
 
-API_KEY = ""  # paste your Databento key here if you'd rather not use an env var -- NEVER commit a real key (see git history: it already happened once, rotate that key)
 DATASET = "GLBX.MDP3"
 OUT_DIR = Path(__file__).parent / "databento_oi"
 PROGRESS_DIR = OUT_DIR / ".progress"
@@ -104,14 +120,16 @@ ROOT_OVERRIDE = {}
 
 
 def get_client():
-    key = API_KEY or None
+    # No key arg -- db.Historical() reads DATABENTO_API_KEY from the
+    # environment itself, already populated either by a real `export` or by
+    # the load_dotenv() call above reading oi_recon/.env.
     try:
-        return db.Historical(key) if key else db.Historical()
+        return db.Historical()
     except Exception as e:
         sys.exit(
             f"Could not create Databento client ({e}).\n"
-            "Set DATABENTO_API_KEY in your environment, or paste your key "
-            "into API_KEY at the top of this script."
+            "Set DATABENTO_API_KEY in oi_recon/.env (cp .env.example .env, "
+            "then edit it) or export it in your shell."
         )
 
 
