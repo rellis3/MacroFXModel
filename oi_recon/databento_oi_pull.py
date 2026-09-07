@@ -11,18 +11,22 @@ CSV per pair to oi_recon/databento_oi/.
 
 IMPORTANT -- read before running the real thing:
     Confirmed live 2026-09-07: GLBX.MDP3 parent symbology does not simply
-    resolve "<futures root>.OPT" for every product. EUR/USD's real options
-    asset code is "EUU" (already in ROOT_OVERRIDE below), found via
-    --discover-all -- a whole-dataset definitions pull that, in one $1.66
-    charge, contains the real asset code for all 11 products at once (no
-    need to run --discover per product). CME also lists a dozen+ WEEKLY
-    option series per FX product under their own asset codes (MO2/WE3/1EU/
-    etc.) -- ROOT_OVERRIDE deliberately picks the standard one, not those.
-    Still unverified: the other 10 products' asset codes (run
-    --discover-all, add each to ROOT_OVERRIDE, then --verify-all to
-    confirm), whether coverage reaches back a full 10 years for all of
-    them, and any other real-world data quirk. Run --discover-all and
-    --verify-all before --yes -- both are cheap, --yes is not.
+    resolve "<futures root>.OPT" for every product -- a whole-dataset
+    --discover-all run (one $1.66 charge, checked against all 11 products
+    at once) found each one's real options asset code, now in
+    ROOT_OVERRIDE below. Confidence varies by product -- see that dict's
+    own header comment for which ones are solid (the 6 FX pairs, plus
+    NQ/ES which turned out to already equal their futures root) versus
+    which are a best-effort reading that still needs confirming
+    (GC/YM/RTY -- none of their asset-code families were as clean as the
+    FX pattern). CME also lists a dozen+ WEEKLY option series per product
+    under their own separate asset codes -- ROOT_OVERRIDE deliberately
+    picks only the standard (monthly/quarterly) one for each.
+    Still unverified: whether coverage reaches back a full 10 years for
+    every product, and any other real-world data quirk. Run --verify-all
+    (confirms every product's pull actually returns real rows) before
+    --cost-only/--yes -- --verify-all is cheap, --yes is not. Pay
+    particular attention to GC/YM/RTY's rows in --verify-all's output.
 
 Setup:
     pip install -r requirements.txt
@@ -105,18 +109,37 @@ INVERSE_QUOTED = {"USD/JPY", "USD/CAD", "USD/CHF"}
 
 # Maps a products.py futures root (e.g. "6E") to the root Databento's parent
 # symbology actually resolves for that product's OPTIONS, when it differs
-# from the futures root. Confirmed live via --discover-all: CME lists the
-# STANDARD (American, monthly/quarterly) EUR/USD option under asset code
-# "EUU", not futures root "6E" -- e.g. raw_symbol EUUZ6, underlying 6EZ6,
-# instrument_class C/P, real strikes like 1.265. CME also lists a dozen+
-# WEEKLY option series on the same 6E futures under their own asset codes
-# (MO2/MO3/MO4, WE2/WE3/WE4, 1EU/2EU/3EU, TU2, SU2, ...) -- EUU is
-# deliberately the only one used here; the weeklies are out of scope unless
-# added explicitly. The other 10 products' overrides (if any -- some may
-# already resolve fine under their futures root) still need confirming via
-# --discover-all before --yes.
+# from the futures root. Filled in from a live --discover-all run
+# (2026-09-07) against the real GLBX.MDP3 dataset -- every CME FX product
+# lists a dozen+ WEEKLY option series per underlying under their own asset
+# codes (MO2/WE3/1EU/TU2/SU2/... for EUR/USD, and the same day-letter
+# pattern for the others); each entry below is deliberately the STANDARD
+# (American, monthly/quarterly) series, picked as the shortest/plainest
+# code in that product's family -- the weeklies are out of scope unless
+# added explicitly.
+#
+# Confidence varies by product -- HIGH for the FX pairs (a clean, exactly
+# parallel pattern across all six: 3-letter currency code + "U", cleanly
+# distinct from the numbered/lettered weekly codes) and for NQ/ES (their
+# standard code turned out to equal the bare futures root itself -- these
+# two entries are functional no-ops, included so it's explicit they were
+# checked, not silently skipped). LOWER for GC/YM/RTY, whose asset-code
+# families don't follow as clean a pattern -- OG/OYM/RTO are the best
+# reading of --discover-all's output but unconfirmed; run
+# `--verify --only "<pair>"` on these three specifically before trusting
+# them in the full --yes pull.
 ROOT_OVERRIDE = {
-    "6E": "EUU",  # EUR/USD standard option -- confirmed live 2026-09-07
+    "6E":  "EUU",   # EUR/USD    -- confirmed live: real strikes, C/P rows
+    "6B":  "GBU",   # GBP/USD    -- high confidence, same FX pattern as EUU
+    "6J":  "JPU",   # USD/JPY    -- high confidence, same FX pattern as EUU
+    "6A":  "ADU",   # AUD/USD    -- high confidence, same FX pattern as EUU
+    "6C":  "CAU",   # USD/CAD    -- high confidence, same FX pattern as EUU
+    "6S":  "CHU",   # USD/CHF    -- high confidence, same FX pattern as EUU
+    "GC":  "OG",    # XAU/USD    -- medium confidence: bare "OG" vs numbered "OG1".."OG4", verify
+    "NQ":  "NQ",    # NAS100_USD -- confirmed: standard code equals the futures root here (explicit no-op)
+    "ES":  "ES",    # SPX500_USD -- confirmed: standard code equals the futures root here (explicit no-op)
+    "YM":  "OYM",   # US30_USD   -- LOW confidence: no bare "YM" appeared at all, verify before trusting
+    "RTY": "RTO",   # US2000_USD -- LOW confidence: no bare "RTY" appeared at all, verify before trusting
 }
 
 
