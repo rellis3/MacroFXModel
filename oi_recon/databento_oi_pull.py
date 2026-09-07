@@ -64,7 +64,7 @@ from products import CME_PRODUCTS  # noqa: E402
 
 # ── Configuration ────────────────────────────────────────────────────────────
 
-API_KEY = "db-DjpfLBnBXCNdGrMAEDF5JNenimitM"  # paste your Databento key here if you'd rather not use an env var
+API_KEY = "db-YRs98kPYNNtR7Xv3FLJns5juBcyAH"  # paste your Databento key here if you'd rather not use an env var
 DATASET = "GLBX.MDP3"
 OUT_DIR = Path(__file__).parent / "databento_oi"
 PROGRESS_DIR = OUT_DIR / ".progress"
