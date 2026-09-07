@@ -131,22 +131,30 @@ table.reg-tbl td.verdict { white-space: normal; min-width: 320px; color: var(--t
         '</tr></thead><tbody>' + trs + '</tbody></table></div>';
     }
 
-    var regimeHtml = '';
-    if (d.regime) {
-      var g = d.regime;
-      regimeHtml =
-        '<h3 style="font-size:13px;font-weight:700;margin:22px 0 6px;color:var(--text2);">Regime-conditioned split <span class="dim" style="font-weight:400;">— "regime conditioning is mandatory" (education/macro-deep-dives-notes.md)</span></h3>' +
+    function regimeSectionHtml(g) {
+      if (!g) return '<div class="status-line" style="margin-top:20px;">No VIX/HY OAS data available — regime-conditioned split skipped.</div>';
+      return '<h3 style="font-size:13px;font-weight:700;margin:22px 0 6px;color:var(--text2);">Regime-conditioned split <span class="dim" style="font-weight:400;">— "regime conditioning is mandatory" (education/macro-deep-dives-notes.md)</span></h3>' +
         '<div class="status-line">Stress = ' + g.stressWeeks + 'w (' + (g.stressShare * 100).toFixed(1) + '%) across <b>' + g.stressEpisodes + ' independent episode(s)</b> — credit (HY OAS) or vol (VIX) z-score &gt; 2.0. Calm = ' + g.calmWeeks + 'w.</div>' +
         '<div style="margin-top:10px;font-size:12px;font-weight:600;color:var(--text2);">Stress weeks</div>' + tableFor(g.resultsStress) +
         '<div style="margin-top:14px;font-size:12px;font-weight:600;color:var(--text2);">Calm weeks</div>' + tableFor(g.resultsCalm) +
         '<div class="diag-banner" style="margin-top:14px;">' + g.caveat + '</div>';
+    }
+
+    var nfciHtml = '';
+    if (d.nfci) {
+      nfciHtml = '<div style="border-top:1.5px solid var(--border);margin-top:28px;padding-top:6px;">' +
+        '<h2 style="font-size:16px;font-weight:700;margin:14px 0 4px;color:#a78bfa;">Second proxy — NFCI (Chicago Fed Financial Conditions)</h2>' +
+        '<div class="diag-banner">' + d.nfci.note + '</div>' +
+        '<h3 style="font-size:13px;font-weight:700;margin:16px 0 6px;color:var(--text2);">Unconditional (full sample)</h3>' +
+        tableFor(d.nfci.results) + regimeSectionHtml(d.nfci.regime) +
+      '</div>';
     } else {
-      regimeHtml = '<div class="status-line" style="margin-top:20px;">No VIX/HY OAS data available — regime-conditioned split skipped.</div>';
+      nfciHtml = '<div class="status-line" style="margin-top:20px;">No NFCI data available — second-proxy test skipped.</div>';
     }
 
     var html = metaHtml +
       '<h3 style="font-size:13px;font-weight:700;margin:16px 0 6px;color:var(--text2);">Unconditional (full sample)</h3>' +
-      tableFor(d.results) + regimeHtml;
+      tableFor(d.results) + regimeSectionHtml(d.regime) + nfciHtml;
 
     document.getElementById('resultArea').innerHTML = html;
     document.getElementById('footNote').innerHTML =

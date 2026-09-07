@@ -7720,7 +7720,7 @@ app.get('/api/global-liquidity/regression/status/:jobId', (req, res) => {
 const netLiqJobs = new Map();
 const NET_LIQ_CACHE = { result: null, builtAt: 0 };
 const NET_LIQ_TTL = 6 * 60 * 60 * 1000;   // 6h — FRED/FX update at most daily
-const NET_LIQ_FRED_IDS = { walcl: 'WALCL', tga: 'WTREGEN', rrp: 'RRPONTSYD', vix: 'VIXCLS', hy: 'BAMLH0A0HYM2' };
+const NET_LIQ_FRED_IDS = { walcl: 'WALCL', tga: 'WTREGEN', rrp: 'RRPONTSYD', vix: 'VIXCLS', hy: 'BAMLH0A0HYM2', nfci: 'NFCI' };
 
 async function _netLiqFetchFred(fredKey) {
   const maps = {};

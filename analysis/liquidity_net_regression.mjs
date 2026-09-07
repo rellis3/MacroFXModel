@@ -48,7 +48,7 @@ const NQ_DIRS = [
   path.join(ROOT, 'portfolioBacktest', 'cache'),
 ];
 const WEEK_MS = 7 * 864e5;
-const FRED_SERIES = { walcl: 'WALCL', tga: 'WTREGEN', rrp: 'RRPONTSYD', vix: 'VIXCLS', hy: 'BAMLH0A0HYM2' };
+const FRED_SERIES = { walcl: 'WALCL', tga: 'WTREGEN', rrp: 'RRPONTSYD', vix: 'VIXCLS', hy: 'BAMLH0A0HYM2', nfci: 'NFCI' };
 const isNum = (x) => typeof x === 'number' && Number.isFinite(x);
 
 // ── CLI args ──────────────────────────────────────────────────────────────
@@ -148,6 +148,25 @@ function syntheticNqReturns(dates, liquidityLike) {
   return rets;
 }
 
+function printResultsTable(rows, indent = '') {
+  console.log(`${indent}Horizon  n(IS/OOS)   β         IS t(NW)   IS R²    OOS R²    OOS hit-rate   Verdict`);
+  for (const r of rows) {
+    const row = r.n
+      ? `${indent}${String(r.horizonWeeks + 'w').padEnd(8)} ${String(r.nIS + '/' + r.nOOS).padEnd(11)} ${r.beta.toFixed(4).padStart(8)}  ${r.tStatNW.toFixed(2).padStart(9)}  ${r.r2IS.toFixed(3).padStart(7)}  ${(r.r2OOS ?? NaN).toFixed(3).padStart(8)}   ${(r.hitRateOOS * 100).toFixed(1).padStart(10)}%   ${r.verdict}`
+      : `${indent}${String(r.horizonWeeks + 'w').padEnd(8)} ${r.verdict}`;
+    console.log(row);
+  }
+}
+
+function printRegimeSection(regime) {
+  if (!regime) { console.log('\n(No VIX/HY OAS data available — regime-conditioned split skipped.)'); return; }
+  console.log(`\nRegime split (education/macro-deep-dives-notes.md Lesson 3 — "regime conditioning is mandatory"):`);
+  console.log(`Stress = ${regime.stressWeeks}w (${(regime.stressShare * 100).toFixed(1)}%) across ${regime.stressEpisodes} independent episode(s) — credit (HY OAS) or vol (VIX) z-score > 2.0. Calm = ${regime.calmWeeks}w.\n`);
+  console.log('  STRESS weeks:'); printResultsTable(regime.resultsStress, '  ');
+  console.log('  CALM weeks:'); printResultsTable(regime.resultsCalm, '  ');
+  console.log(`\n  ⚠️  ${regime.caveat}`);
+}
+
 function printReport(result) {
   console.log('='.repeat(78));
   console.log('Net Liquidity → forward Nasdaq returns — Stage A control-case regression test');
@@ -159,34 +178,18 @@ function printReport(result) {
   console.log(`\nWeeks of history: ${result.weeks}  (${result.start} → ${result.asOf})`);
   console.log(`Net Liquidity impulse: publication lag ${result.pubLagWeeks}w, ${result.impulseSmoothWeeks}w smooth, ${result.impulseLookbackWeeks}w rate-of-change, z-scored over ${result.zWindowWeeks}w\n`);
 
-  console.log('Horizon  n(IS/OOS)   β         IS t(NW)   IS R²    OOS R²    OOS hit-rate   Verdict');
-  console.log('-'.repeat(110));
-  for (const r of result.results) {
-    const row = r.n
-      ? `${String(r.horizonWeeks + 'w').padEnd(8)} ${String(r.nIS + '/' + r.nOOS).padEnd(11)} ${r.beta.toFixed(4).padStart(8)}  ${r.tStatNW.toFixed(2).padStart(9)}  ${r.r2IS.toFixed(3).padStart(7)}  ${(r.r2OOS ?? NaN).toFixed(3).padStart(8)}   ${(r.hitRateOOS * 100).toFixed(1).padStart(10)}%   ${r.verdict}`
-      : `${String(r.horizonWeeks + 'w').padEnd(8)} ${r.verdict}`;
-    console.log(row);
-  }
+  printResultsTable(result.results);
+  printRegimeSection(result.regime);
 
-  if (result.regime) {
-    const g = result.regime;
-    console.log(`\nRegime split (education/macro-deep-dives-notes.md Lesson 3 — "regime conditioning is mandatory"):`);
-    console.log(`Stress = ${g.stressWeeks}w (${(g.stressShare * 100).toFixed(1)}%) across ${g.stressEpisodes} independent episode(s) — credit (HY OAS) or vol (VIX) z-score > 2.0. Calm = ${g.calmWeeks}w.\n`);
-    const printRegimeTable = (label, rows) => {
-      console.log(`  ${label}:`);
-      console.log('  Horizon  n(IS/OOS)   β         IS t(NW)   IS R²    OOS R²    OOS hit-rate   Verdict');
-      for (const r of rows) {
-        const row = r.n
-          ? `  ${String(r.horizonWeeks + 'w').padEnd(8)} ${String(r.nIS + '/' + r.nOOS).padEnd(11)} ${r.beta.toFixed(4).padStart(8)}  ${r.tStatNW.toFixed(2).padStart(9)}  ${r.r2IS.toFixed(3).padStart(7)}  ${(r.r2OOS ?? NaN).toFixed(3).padStart(8)}   ${(r.hitRateOOS * 100).toFixed(1).padStart(10)}%   ${r.verdict}`
-          : `  ${String(r.horizonWeeks + 'w').padEnd(8)} ${r.verdict}`;
-        console.log(row);
-      }
-    };
-    printRegimeTable('STRESS weeks', g.resultsStress);
-    printRegimeTable('CALM weeks', g.resultsCalm);
-    console.log(`\n  ⚠️  ${g.caveat}`);
+  if (result.nfci) {
+    console.log('\n' + '='.repeat(78));
+    console.log('NFCI (Chicago Fed Financial Conditions) → forward Nasdaq returns — second proxy');
+    console.log('='.repeat(78));
+    console.log(`\n${result.nfci.note}\n`);
+    printResultsTable(result.nfci.results);
+    printRegimeSection(result.nfci.regime);
   } else {
-    console.log('\n(No VIX/HY OAS data available — regime-conditioned split skipped.)');
+    console.log('\n(No NFCI data available — second-proxy test skipped.)');
   }
 
   console.log('\n' + '-'.repeat(78));
