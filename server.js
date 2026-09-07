@@ -49,7 +49,8 @@ import { stressReplay, allocationCompare, STRESS_WINDOWS }           from './js/
 import { forecastFields, buildAllExports }                           from './js/forecastExport.js';
 import { buildLadderExportText, buildSessionAddendum }               from './js/ladderExport.js';
 import { ladderPathChain, describeSide }                            from './js/ladderPathStats.js';   // "at the p50 line, what happens next?" — the conditional rung chain
-import { rawDayDecision, mergeRawDay, oiContentFingerprint, oiFreshnessStreak } from './js/oiRawArchive.js';
+import { rawDayDecision, mergeRawDay, oiContentFingerprint, oiFreshnessStreak,
+         settledFreshnessInputs } from './js/oiRawArchive.js';
 import { runHonestSuite, HONEST_INSTRUMENTS }                        from './js/honestForecastEngine.js';
 import { runTrendFlipSummarized, DEFAULTS as TREND_FLIP_DEFAULTS }   from './js/trendFlipEngine.js';
 import { runRankICSuite, RANKIC_INSTRUMENTS }                       from './js/rankICEngine.js';
@@ -13721,8 +13722,11 @@ async function _snapshotOIHistory(force = false) {
     // 2026-08-29 (Sat) through 2026-09-01 (Tue) archived byte-identical OI for four
     // straight days despite fresh savedAtMs on the (non-backfilled) Mon/Tue runs —
     // the third recurrence of "the OI feed silently isn't moving" nobody caught for
-    // weeks. Best-effort throughout: a read/write hiccup here must never block the
-    // real archive write above it.
+    // weeks. EVALUATED ONE DAY IN ARREARS (see the comment at the per-pair call
+    // site below) — never against today's still-live read, which races the
+    // nightly ingest and was structurally guaranteed to look "unchanged" every
+    // single day regardless of real movement (the bug this replaced). Best-effort
+    // throughout: a read/write hiccup here must never block the real archive write.
     let freshState = {};
     try {
       const fRaw = await kv.get('oi_capture_freshness').catch(() => null);
@@ -13739,16 +13743,31 @@ async function _snapshotOIHistory(force = false) {
         // KV's free plan allows 1,000 writes/day — blindly re-putting an identical blob 48
         // times a day would spend 5% of that quota to store nothing new.
         const before = JSON.stringify(hist[pair][day] ?? null);
-        // Freshness streak, computed BEFORE hist[pair][day] is overwritten — prevFp needs
-        // the entry from the day strictly before `day`, which the pre-write `dates` (below)
-        // would otherwise already include `day` itself once it's been written once today.
+        // Freshness streak — evaluated ONE DAY IN ARREARS, on two already-SETTLED
+        // archive entries (yesterday vs the day before), NEVER on today's live
+        // `summary`. This runs on a 30-min timer that starts ticking immediately
+        // after the London-midnight session boundary rolls — hours before the
+        // nightly ingest (~05:17 UTC) has actually landed fresh data for `day`.
+        // The first bug shipped here compared TODAY's live (pre-ingest) read
+        // against YESTERDAY's already-settled archive: at that first tick, today's
+        // oi_store still holds YESTERDAY's content verbatim (today's own ingest
+        // hasn't run yet), so it was structurally guaranteed to read "unchanged"
+        // every single day regardless of real movement — confirmed live 2026-09-08:
+        // every one of 11 pairs showed streak 2 the same morning the LOCAL
+        // freshness_check.py stage reported "11/11 moved, 0/11 identical" for the
+        // exact same night. Comparing two already-completed days sidesteps the
+        // race entirely: `yest`'s entry self-heals (via the changed-write check
+        // below) well within its own day, long before `day` even begins.
         try {
-          const priorDates = Object.keys(hist[pair]).filter(d => d !== day).sort();
-          const prevFp = oiContentFingerprint(hist[pair][priorDates[priorDates.length - 1]]);
-          const fp = oiContentFingerprint(summary);
-          const st = oiFreshnessStreak(freshState[pair], day, fp, prevFp);
-          freshState[pair] = { day: st.day, streak: st.streak };
-          if (st.alert) staleAlerts.push({ pair, streak: st.streak });
+          const dates = Object.keys(hist[pair]).filter(d => d !== day).sort();
+          const inputs = settledFreshnessInputs(dates, freshState[pair]?.day);
+          if (inputs) {
+            const fp = oiContentFingerprint(hist[pair][inputs.yest]);
+            const prevFp = oiContentFingerprint(hist[pair][inputs.dayBefore]);
+            const st = oiFreshnessStreak(freshState[pair], inputs.yest, fp, prevFp);
+            freshState[pair] = { day: st.day, streak: st.streak };
+            if (st.alert) staleAlerts.push({ pair, streak: st.streak });
+          }
         } catch (e) { console.warn(`[oi-history] freshness check skipped for ${pair}:`, e.message); }
         hist[pair][day] = summary;                                 // overwrite today (tracks the latest morning paste)
         if (JSON.stringify(summary) !== before) changed++;

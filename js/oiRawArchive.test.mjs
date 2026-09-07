@@ -9,7 +9,7 @@
 //   node js/oiRawArchive.test.mjs
 
 import { ivBits, ladderKey, rawDayDecision, mergeRawDay,
-         oiContentFingerprint, oiFreshnessStreak } from './oiRawArchive.js';
+         oiContentFingerprint, oiFreshnessStreak, settledFreshnessInputs } from './oiRawArchive.js';
 
 let failures = 0;
 const ok = (name, cond, extra = '') => {
@@ -128,6 +128,81 @@ console.log('\n[oiFreshnessStreak — the weekend must not look like a failure, 
     oiFreshnessStreak({ day: '2026-08-31', streak: 5 }, '2026-09-01', null, fp, 3).streak === 0);
   ok('toleranceDays is honoured (0 = alert on the very first repeat)',
     oiFreshnessStreak(null, '2026-08-30', fp, fp, 0).alert === true);
+}
+
+console.log('\n[settledFreshnessInputs — which two archived days to compare]');
+{
+  ok('picks the most recent archived day + the one before it',
+    JSON.stringify(settledFreshnessInputs(['2026-09-05', '2026-09-06'], null)) ===
+    JSON.stringify({ yest: '2026-09-06', dayBefore: '2026-09-05' }));
+  ok('already evaluated this "yest" -> null (don\'t redo it every 30-min tick)',
+    settledFreshnessInputs(['2026-09-05', '2026-09-06'], '2026-09-06') === null);
+  ok('a NEW "yest" (the day advanced) -> evaluates again',
+    settledFreshnessInputs(['2026-09-05', '2026-09-06', '2026-09-07'], '2026-09-06')?.yest === '2026-09-07');
+  ok('nothing archived yet -> null', settledFreshnessInputs([], null) === null);
+  ok('exactly one archived day -> yest set, dayBefore undefined (never "unchanged" with nothing to compare)',
+    (() => { const r = settledFreshnessInputs(['2026-09-06'], null); return r?.yest === '2026-09-06' && r.dayBefore === undefined; })());
+}
+
+console.log('\n[regression — the race this replaced: never compare today\'s live read]');
+{
+  // Reproduces the exact live incident (2026-09-08): all 11 pairs read streak=2
+  // the same morning the local freshness_check.py stage reported real movement.
+  // Four days, GENUINELY DIFFERENT content every day (mirrors what freshness_check.py
+  // actually observed) — the correct streak must stay 0 throughout. Two ticks per
+  // day: the first happens right after the session boundary rolls, hours BEFORE
+  // that day's own nightly ingest — so it still reads the PRIOR day's content
+  // (the exact condition that broke the original comparison); the second happens
+  // after the ingest has landed.
+  const days = ['2026-09-05', '2026-09-06', '2026-09-07', '2026-09-08'];
+  const contentByDay = { '2026-09-04': 'D0', '2026-09-05': 'D1', '2026-09-06': 'D2',
+                         '2026-09-07': 'D3', '2026-09-08': 'D4' };
+  const hist = { '2026-09-04': mkSummary('D0') };   // yesterday-of-day-1, already settled
+  const freshState = {};
+  const alerts = [];
+  function mkSummary(tag) { return { totalCallOI: 1, totalPutOI: 0, pcRatio: 1,
+    callWalls: [{ oi: tag }], putWalls: [] }; }
+  for (const day of days) {
+    const priorContent = contentByDay[days[days.indexOf(day) - 1] ?? '2026-09-04'] ??
+      contentByDay['2026-09-04'];
+    for (const tick of ['pre-ingest', 'post-ingest']) {
+      const liveContent = tick === 'pre-ingest' ? priorContent : contentByDay[day];
+      const dates = Object.keys(hist).filter(d => d !== day).sort();
+      const inputs = settledFreshnessInputs(dates, freshState.day);
+      if (inputs) {
+        const fp = oiContentFingerprint(hist[inputs.yest]);
+        const prevFp = oiContentFingerprint(hist[inputs.dayBefore]);
+        const st = oiFreshnessStreak(freshState, inputs.yest, fp, prevFp);
+        freshState.day = st.day; freshState.streak = st.streak;
+        if (st.alert) alerts.push({ day, streak: st.streak });
+      }
+      hist[day] = mkSummary(liveContent);   // mirrors the unconditional in-memory overwrite each tick
+    }
+  }
+  ok('streak never climbs when every day genuinely differs (no false alert)',
+    freshState.streak === 0 && alerts.length === 0, `streak=${freshState.streak} alerts=${JSON.stringify(alerts)}`);
+
+  console.log('\n[regression — a REAL stale run is still caught]');
+  const hist2 = { '2026-09-04': mkSummary('STUCK') };
+  const freshState2 = {};
+  const alerts2 = [];
+  const stuckDays = ['2026-09-05', '2026-09-06', '2026-09-07', '2026-09-08', '2026-09-09'];
+  for (const day of stuckDays) {
+    for (const tick of ['pre-ingest', 'post-ingest']) {
+      const dates = Object.keys(hist2).filter(d => d !== day).sort();
+      const inputs = settledFreshnessInputs(dates, freshState2.day);
+      if (inputs) {
+        const fp = oiContentFingerprint(hist2[inputs.yest]);
+        const prevFp = oiContentFingerprint(hist2[inputs.dayBefore]);
+        const st = oiFreshnessStreak(freshState2, inputs.yest, fp, prevFp);
+        freshState2.day = st.day; freshState2.streak = st.streak;
+        if (st.alert) alerts2.push({ day, streak: st.streak });
+      }
+      hist2[day] = mkSummary('STUCK');   // every day, every tick — genuinely frozen content
+    }
+  }
+  ok('a genuinely stuck feed (STUCK every day) still crosses tolerance and alerts',
+    alerts2.length > 0 && freshState2.streak > 3, `streak=${freshState2.streak} alerts=${JSON.stringify(alerts2)}`);
 }
 
 console.log('');
