@@ -5787,9 +5787,13 @@ async function _buildMacroScorecard() {
       ...(ccy === 'USD' ? { ppi: _dim(ppi[ccy]?.pressure ?? null, ppi[ccy]) } : {}),
     };
   }
-  const { ranked, uncovered } = buildMacroScorecard(byCcyDims);
+  // staleDims/staleCount are the board-wide roll-up of dimensions excluded for
+  // being past their age budget. They must be threaded through explicitly -- this
+  // destructure silently dropped them on the first pass, so every row carried its
+  // own `stale` array but the page had no count to show a banner from.
+  const { ranked, uncovered, staleDims, staleCount } = buildMacroScorecard(byCcyDims);
   const pair = macroTopBottomPair(ranked);
-  return { ranked, uncovered, pair, cbSentiment, generatedAt: new Date().toISOString() };
+  return { ranked, uncovered, staleDims, staleCount, pair, cbSentiment, generatedAt: new Date().toISOString() };
 }
 app.get('/api/macro-scorecard', async (_req, res) => {
   try {
