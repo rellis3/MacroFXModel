@@ -98,19 +98,36 @@ def get_client():
         )
 
 
-def year_ranges(years_back):
-    """[(start, end), ...] covering the last `years_back` years, split by
-    calendar year so each request stays a bounded size and a failed run can
-    resume year-by-year instead of re-pulling everything."""
-    now = datetime.now(timezone.utc)
+def get_available_end(client):
+    """GLBX.MDP3's queryable range lags real-time -- these are EOD-published
+    stats, so asking for end=now() throws a 422 data_end_after_available_end
+    (confirmed against a live run: available end was ~07:30 UTC while a
+    07:50 UTC `now()` request was rejected). Asks Databento what the actual
+    end of available data is and uses THAT as the ceiling everywhere below,
+    instead of guessing a fixed buffer that could be wrong either direction."""
+    info = client.metadata.get_dataset_range(DATASET)
+    end_str = info.get("end") or info.get("end_date")
+    if not end_str:
+        sys.exit(f"Could not read an 'end' from get_dataset_range({DATASET!r}) -> {info!r}")
+    ts = pd.Timestamp(end_str)
+    if ts.tzinfo is None:
+        ts = ts.tz_localize("UTC")
+    return ts.to_pydatetime()
+
+
+def year_ranges(years_back, available_end):
+    """[(start, end), ...] covering the last `years_back` years up to
+    `available_end`, split by calendar year so each request stays a bounded
+    size and a failed run can resume year-by-year instead of re-pulling
+    everything."""
     try:
-        overall_start = now.replace(year=now.year - years_back)
+        overall_start = available_end.replace(year=available_end.year - years_back)
     except ValueError:
-        overall_start = now.replace(year=now.year - years_back, day=28)  # Feb 29 landing on a non-leap year
+        overall_start = available_end.replace(year=available_end.year - years_back, day=28)  # Feb 29 landing on a non-leap year
     out = []
-    for y in range(overall_start.year, now.year + 1):
+    for y in range(overall_start.year, available_end.year + 1):
         start = max(datetime(y, 1, 1, tzinfo=timezone.utc), overall_start)
-        end = min(datetime(y + 1, 1, 1, tzinfo=timezone.utc), now)
+        end = min(datetime(y + 1, 1, 1, tzinfo=timezone.utc), available_end)
         if start < end:
             out.append((start, end))
     return out
@@ -212,7 +229,7 @@ def add_oi_change(df):
 def run_verify(client):
     p = CME_PRODUCTS[0]
     root = p["fut"]
-    end = datetime.now(timezone.utc)
+    end = get_available_end(client)
     start = end - pd.Timedelta(days=7)
     print(f"[verify] pulling {root}.OPT definitions + statistics for {p['sym']}, "
           f"{start.date()} .. {end.date()} (should be cheap/fast)\n")
@@ -249,7 +266,7 @@ def run_verify(client):
 
 def run_cost_estimate(client, years, only):
     products = [p for p in CME_PRODUCTS if only is None or p["sym"] == only]
-    ranges = year_ranges(years)
+    ranges = year_ranges(years, get_available_end(client))
     start, end = ranges[0][0], ranges[-1][1]
     total = 0.0
     for p in products:
@@ -275,7 +292,7 @@ def run_pull(client, years, only, resume):
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     PROGRESS_DIR.mkdir(parents=True, exist_ok=True)
     products = [p for p in CME_PRODUCTS if only is None or p["sym"] == only]
-    ranges = year_ranges(years)
+    ranges = year_ranges(years, get_available_end(client))
 
     for p in products:
         sym, root = p["sym"], p["fut"]
