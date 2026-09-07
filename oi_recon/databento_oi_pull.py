@@ -88,10 +88,6 @@ load_dotenv(dotenv_path=Path(__file__).parent / ".env")
 
 # ── Configuration ────────────────────────────────────────────────────────────
 
-<<<<<<< HEAD
-API_KEY = "db-YRs98kPYNNtR7Xv3FLJns5juBcyAH"  # paste your Databento key here if you'd rather not use an env var
-=======
->>>>>>> 0ed16323a9b16b72fe53403a2d1bffb27bfc5948
 DATASET = "GLBX.MDP3"
 OUT_DIR = Path(__file__).parent / "databento_oi"
 PROGRESS_DIR = OUT_DIR / ".progress"
