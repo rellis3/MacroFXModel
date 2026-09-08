@@ -109,7 +109,7 @@ def main():
 
     print(f"Databento COST ESTIMATE ONLY -- no data pulled, no credit spent.")
     print(f"Dataset: {DATASET}   Window: {args.days}d ({start.date()} -> {end.date()})")
-    print(f"Symbols: {', '.join(f'{sym} ({fut})' for sym, fut in roots.items())}")
+    print(f"Symbols: {', '.join(f'{sym} ({fut}.FUT)' for sym, fut in roots.items())}")
     print(f"Schemas: {', '.join(schemas)}\n")
 
     rows = []
@@ -119,8 +119,8 @@ def main():
             try:
                 cost = client.metadata.get_cost(
                     dataset=DATASET,
-                    symbols=[fut],
-                    stype_in="parent",       # e.g. "NQ.FUT" style parent symbology -- pulls ALL expiries' front months under that root
+                    symbols=[f"{fut}.FUT"],  # parent symbology REQUIRES the class suffix -- bare "NQ" 400s
+                    stype_in="parent",       # ".FUT" pulls ALL expiries' front months under that root
                     schema=schema,
                     start=start,
                     end=end,
