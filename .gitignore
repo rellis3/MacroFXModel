@@ -197,3 +197,9 @@ oi_recon/databento_oi/.progress/USD_JPY_2023.done
 oi_recon/databento_oi/.progress/USD_JPY_2024.done
 oi_recon/databento_oi/.progress/USD_JPY_2025.done
 oi_recon/databento_oi/.progress/USD_JPY_2026.done
+
+# oi_research_book: raw R2 export + contract-level cache are large and
+# reproducible from R2 (OI Data/EUR_USD.csv) -- never commit them, only the
+# small derived surfaces/wall-summaries/results tables in oi_research_book/data/.
+oi_research_book/data/cache/
+oi_research_book/data/raw/

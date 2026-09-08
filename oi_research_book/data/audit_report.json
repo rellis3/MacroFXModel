@@ -1,0 +1,63 @@
+{
+  "n_rows": 3021390,
+  "date_min": "2020-09-04 00:00:00",
+  "date_max": "2026-09-04 00:00:00",
+  "n_trading_days": 1520,
+  "expiry_min": "2020-10-09 14:00:00",
+  "expiry_max": "2028-09-08 14:00:00",
+  "n_unique_expiries": 88,
+  "n_unique_strikes": 175,
+  "n_unique_instrument_ids": 14232,
+  "n_unique_raw_symbols": 14277,
+  "missingness": {
+    "settlement": {
+      "pct_null": 0.24872657948824878,
+      "pct_zero": 0.4895759898589722
+    },
+    "open_interest": {
+      "pct_null": 64.63250358278806,
+      "pct_zero": 0.03243540224863391
+    },
+    "open_interest_change": {
+      "pct_null": 64.95838008333912,
+      "pct_zero": 29.29962699287414
+    },
+    "volume": {
+      "pct_null": 64.63250358278806,
+      "pct_zero": 27.818057251794702
+    }
+  },
+  "instrument_id_maps_to_single_contract": false,
+  "contract_maps_to_single_instrument_id": true,
+  "n_contracts_with_multiple_instrument_ids": 0,
+  "n_duplicate_date_instrument_rows": 0,
+  "rows_per_day_min": 1,
+  "rows_per_day_max": 2594,
+  "rows_per_day_median": 2010.0,
+  "n_missing_business_days_approx": 47,
+  "missing_business_days_sample": [
+    "2020-09-07",
+    "2020-11-26",
+    "2020-12-25",
+    "2021-01-01",
+    "2021-01-18",
+    "2021-02-15",
+    "2021-05-31",
+    "2021-07-05",
+    "2021-09-06",
+    "2021-11-25"
+  ],
+  "n_negative_oi": 0,
+  "n_negative_volume": 0,
+  "max_open_interest": 33452.0,
+  "max_volume": 35328.0,
+  "right_values": [
+    "C",
+    "P"
+  ],
+  "dte_min": 0,
+  "dte_max": 1067,
+  "pct_rows_dte_negative": 0.0,
+  "n_raw_symbols_with_multiple_instrument_ids": 0,
+  "pct_instruments_first_seen_with_nonzero_oi": 65.28246205733558
+}
