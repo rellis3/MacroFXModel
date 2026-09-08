@@ -47,6 +47,10 @@
   .hdr .sess{font-size:12px;color:var(--text2)}
   .hdr .spacer{flex:1}
   .hdr .stamp{font-size:10.5px;color:var(--text3)}
+  /* A price feed that has stopped arriving is a fault, not a detail — it has to be
+     visible from across the room, because every level distance on the page is being
+     measured against a number that is no longer moving. */
+  .hdr .stamp.stamp-stale{color:var(--amber);font-weight:600}
   .hbtn{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:6px;
         padding:5px 12px;font-size:12px;font-weight:600}
   .hbtn:hover{color:var(--text);border-color:var(--text3)}
@@ -1198,6 +1202,16 @@ let econSurprise = null;  // /api/econ-surprise — REAL surprise index: each re
                          // against its own series' historical surprise dispersion and decayed.
                          // Distinct from `ism` below, which is an activity LEVEL and was being
                          // captioned as surprise.
+// When a live price last actually ARRIVED — not when it last changed.
+// Every other feed on this page is age-checked (OI ageH, GPR daysStale, CVOL
+// discontinuation, macro dims ageDays); the single most time-critical number had
+// nothing. Both price paths swallow their errors, `livePrices` stored no timestamp,
+// and the render throttle only advanced when a price MOVED — so a still market and a
+// dead feed looked identical, while the ⚑ "price is at a level" flag and the Level
+// Atlas distances kept being computed off a frozen number.
+let lastPriceAt = 0;
+let lastPriceSrc = null;     // 'stream' | 'poll' — which path delivered it
+const PRICE_STALE_MS = 120_000;   // past this, stop treating the price as live
 let spreads = null;      // /api/spreads — LIVE dealing spread per instrument, batched + 20s-cached
                          // server-side. The page previously carried no execution-cost read at
                          // all: every other use of "spread" here is a yield or credit spread.
@@ -1472,6 +1486,7 @@ async function loadAll(manual) {
       jget('/api/exhaustion-ladder').catch(() => null),
     ]);
     brief = b; session = s; forecast = f;
+    invalidateRows();
     exhLadder = xl?.ok ? xl : null;
     analogml = a?.ok ? Object.fromEntries((a.pairs ?? []).map(p => [p.pair, p])) : null;
     sessionResearch = sr?.ok ? Object.fromEntries((sr.pairs ?? []).map(p => [p.pair, p])) : null;
@@ -1519,6 +1534,7 @@ async function loadGate() {
     // OANDA/Yahoo-dependent feature; needs a live Railway check.
     jget('/api/gold-etf-flow').catch(() => null),
   ]);
+  invalidateRows();   // every assignment below feeds a row field (cot, oi, spreads…)
   if (Array.isArray(ev)) events = ev;
   if (fr && Object.keys(fr).length) fred = fr;
   if (ss?.instruments) sessionStats = ss;
@@ -1543,6 +1559,7 @@ async function loadGate() {
     };
   }
   if (gef?.ok) goldEtfFlow = gef;
+  invalidateRows();
   getFredHist().then(() => render()).catch(() => {});   // populate HY OAS history for the credit gate
   loadMve().then(() => render()).catch(() => {});       // populate the 6 MVE-supported instruments' fair-value read
   jget('/api/ism').then(r => { if (r?.ok) { ism = r; render(); } }).catch(() => {});   // growth-surprise bars
@@ -1749,8 +1766,15 @@ function newsScenarios(kind, ccy, isUsd) {
 // once released: which way did it break vs forecast?
 function newsOutcome(kind, actual, est) {
   if (actual == null || est == null) return null;
-  const a = parseFloat(actual), e = parseFloat(est);
-  if (isNaN(a) || isNaN(e)) return null;
+  // parseFloat is wrong for calendar values and wrong SILENTLY: parseFloat('1,250')
+  // returns 1 (it stops at the comma), so a big beat could read as "about in line",
+  // and parseFloat('<0.1') is NaN. js/econSurprise.js already had to solve exactly this
+  // to standardise surprises, so this uses that parser rather than keeping a second,
+  // wrong copy — same numbers behind the words here and the index in Market Read.
+  const num = window.econSurpriseBrick?.parseCalNumber
+    ?? (v => { const n = parseFloat(String(v).replace(/,/g, '').replace(/[<>~]/g, '')); return Number.isFinite(n) ? n : null; });
+  const a = num(actual), e = num(est);
+  if (a == null || e == null || isNaN(a) || isNaN(e)) return null;
   const inverted = (kind === 'unemp' || kind === 'claims');   // higher number = weaker
   const diff = a - e;
   const dead = Math.max(Math.abs(e) * 0.02, 0.05);
@@ -1828,15 +1852,43 @@ function toggleNews() {
 }
 window.toggleNews = toggleNews;
 
+// ── One risk table ───────────────────────────────────────────────────────────
+// The stat tile and the Market Read verdict both classify risk from VIX and HY, and
+// used DIFFERENT cut-points: this function called stress at VIX>24 / HY>4.5 while
+// equitiesRisk() fired volStress at VIX>22 / HY>4.3. At VIX 23 the tile said "Mixed"
+// while the verdict beneath it leaned defensive — two hand-set tables on one page
+// disagreeing about the same two numbers. One table now; both read it.
+const RISK_LEVELS = {
+  stress: { vix: 22, hy: 4.3 },   // the tighter of the two former pairs — a warning
+  mixed:  { vix: 16, hy: 3.8 },   // that fires late is worth less than one that fires early
+};
+function volStressed() {
+  const vix = fred?.vix?.value, hy = fred?.hy?.value;
+  return (vix != null && vix > RISK_LEVELS.stress.vix) || (hy != null && hy > RISK_LEVELS.stress.hy);
+}
+// FRED's VIXCLS is a DAILY CLOSE — on an intraday page it is the previous settle, not
+// what the tape is doing now. Now that the FRED cache carries `asOf` through, that can
+// finally be said out loud instead of implied away.
+function fredAsOfNote(key, label) {
+  const a = fred?.[key]?.asOf;
+  if (!a) return '';
+  const days = Math.floor((Date.now() - Date.parse(a + 'T00:00:00Z')) / 864e5);
+  if (!Number.isFinite(days)) return '';
+  return ` ${label} is a daily CLOSE (${a}${days >= 1 ? `, ${days}d ago` : ', latest'}) — not a live intraday reading.`;
+}
 function riskLight() {
   const vix = fred?.vix?.value, hy = fred?.hy?.value;
   if (vix == null && hy == null) return null;
-  const state = (vix > 24 || hy > 4.5) ? ['🔴', 'Stress', 'var(--red)']
-              : (vix > 16 || hy > 3.8) ? ['🟡', 'Mixed', 'var(--amber)']
+  const stress = volStressed();
+  const mixed = (vix != null && vix > RISK_LEVELS.mixed.vix) || (hy != null && hy > RISK_LEVELS.mixed.hy);
+  const state = stress ? ['🔴', 'Stress', 'var(--red)']
+              : mixed ? ['🟡', 'Mixed', 'var(--amber)']
               : ['🟢', 'Calm', 'var(--bull)'];
   const d = (cur, prev) => cur != null && prev != null ? (cur >= prev ? '↑' : '↓') : '';
+  const asOf = fred?.vix?.asOf ? ` · as of ${fred.vix.asOf}` : '';
   return { icon: state[0], label: state[1], color: state[2],
-    detail: `VIX ${fmtN(vix, 1)}${d(vix, fred?.vix?.prev)} · HY ${fmtN(hy, 2)}${d(hy, fred?.hy?.prev)}${fred?.dxy?.value != null ? ` · DXY ${fmtN(fred.dxy.value, 1)}${d(fred.dxy.value, fred.dxy.prev)}` : ''}` };
+    note: fredAsOfNote('vix', 'VIX'),
+    detail: `VIX ${fmtN(vix, 1)}${d(vix, fred?.vix?.prev)} · HY ${fmtN(hy, 2)}${d(hy, fred?.hy?.prev)}${fred?.dxy?.value != null ? ` · DXY ${fmtN(fred.dxy.value, 1)}${d(fred.dxy.value, fred.dxy.prev)}` : ''}${asOf}` };
 }
 
 // Lives in the sidebar's "Today's Calendar" card (#calList) — moved off the
@@ -1940,6 +1992,8 @@ function renderWeekly() {
 
 // ── ZOOM: the clock — when the day usually moves + when news lands ────────────
 const _LDN_FMT = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', hour12: false });
+const _LDN_DAY_FMT = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', weekday: 'short' });
+const _LDN_DAY_IDX = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
 function londonHour() { return parseInt(_LDN_FMT.format(new Date()), 10); }
 function currentSession() { const h = londonHour(); return h < 6 ? 'Asia' : h < 8 ? 'pre-London' : h < 13 ? 'London' : h < 21 ? 'US' : 'after-hours'; }
 // Appends into the sidebar's "Today's Calendar" card (#calWatch), below the
@@ -1992,8 +2046,16 @@ function renderConcentration() {
   // themes: a dominant currency drives many pairs
   const themes = [];
   const nps = n => `${n} pair${n === 1 ? '' : 's'}`;
-  if (strongest && strongest.score > 0.2) themes.push(`<b>${ccyShort(strongest.ccy)} strength</b> (in ${nps(strongest.n)})`);
-  if (weakest && weakest.score < -0.2) themes.push(`<b>${ccyShort(weakest.ccy)} weakness</b> (in ${nps(weakest.n)})`);
+  // The 0.2 cut-off was set for the model-lean scale (a bounded ±1 blend of regime and
+  // session bias). The measured scores are in EXPECTED DAY RANGES, a different unit, so
+  // the threshold is stated per scale instead of being inherited: a fifth of a normal
+  // day's range moved in one direction is a real theme; a 0.2 model lean is a weak one.
+  const usingMeasured = !!csrC?.scores?.length;
+  const THEME_MIN = usingMeasured ? 0.20 : 0.25;   // day-ranges vs lean units
+  const unitTxt = usingMeasured ? ' of a normal day\u2019s range' : '';
+  const mag = v => usingMeasured ? ` <span class="muted">(${Math.abs(v).toFixed(2)}${unitTxt})</span>` : '';
+  if (strongest && strongest.score > THEME_MIN) themes.push(`<b>${ccyShort(strongest.ccy)} strength</b>${mag(strongest.score)} (in ${nps(strongest.n)})`);
+  if (weakest && weakest.score < -THEME_MIN) themes.push(`<b>${ccyShort(weakest.ccy)} weakness</b>${mag(weakest.score)} (in ${nps(weakest.n)})`);
   // Only claim "same bet" when the cross-section actually says so. A high R² IS the
   // evidence that these pairs are one trade; a low one is evidence they are not.
   const cR2 = csrC?.r2 ?? null;
@@ -2370,7 +2432,7 @@ function equitiesRisk(rs) {
   const creditStress = cg ? (cg.gate === 'RISK-OFF' ? 1 : cg.gate === 'CAUTION' ? 0.5 : 0) : 0;
   const creditEase   = cg && cg.gate === 'RISK-ON' ? 1 : 0;
   let tone, cls;
-  const volStress = (vix != null && vix > 22) || (hy != null && hy > 4.3) || creditStress >= 1;
+  const volStress = volStressed() || creditStress >= 1;   // RISK_LEVELS — one table, shared with riskLight()
   if (equity <= -0.34 && (haven > 0.05 || volStress || creditStress >= 1)) { tone = 'RISK-OFF'; cls = 'off'; }
   else if (equity >= 0.34 && haven < 0.1 && !volStress && creditStress === 0) { tone = 'RISK-ON'; cls = 'on'; }
   else if (creditStress >= 1 && equity < 0.34) { tone = 'CAUTION (credit widening)'; cls = 'mix'; }
@@ -2457,7 +2519,10 @@ function renderMarketRead() {
   const hot = rs.slice().sort((a, b) => b.att - a.att).slice(0, 3);
 
   // ── Plain-English narrative ──
-  const partOfDay = (() => { const h = new Date().getHours(); return h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening'; })();
+  // London hours, matching currentSession()/londonHour() and every session boundary on
+  // this page. It read the BROWSER's clock, so on a machine outside UK time the opening
+  // sentence could say "this evening" while the session logic said London morning.
+  const partOfDay = (() => { const h = londonHour(); return h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening'; })();
   const sentences = [];
   // 1) mood opener
   const mood = risk.cls === 'off'
@@ -2604,7 +2669,7 @@ function renderMarketRead() {
         <div class="mread-h">Stocks &amp; the market mood</div>
         <div class="eqgrid">${eqChips}${goldChip}</div>
         <div class="riskverdict">Mood: <b class="tone ${risk.cls}" style="font-weight:800">${riskPlain(risk.cls)}</b>
-          ${risk.vix != null ? `<span class="muted"> · fear gauge (VIX) ${fmtN(risk.vix, 1)}${risk.vix > 20 ? ' — jittery' : ' — calm'}${risk.vix3m != null ? ` · 3m ${fmtN(risk.vix3m, 1)} (${risk.vix > risk.vix3m ? 'backwardated — near-term fear' : 'contango — normal'})` : ''}</span>` : ''}</div>
+          ${risk.vix != null ? `<span class="muted" title="${esc0(fredAsOfNote('vix', 'VIX').trim())}"> · fear gauge (VIX) ${fmtN(risk.vix, 1)}${fred?.vix?.asOf ? ` <span style="font-size:9px">(${fred.vix.asOf} close)</span>` : ''}${risk.vix > 20 ? ' — jittery' : ' — calm'}${risk.vix3m != null ? ` · 3m ${fmtN(risk.vix3m, 1)} (${risk.vix > risk.vix3m ? 'backwardated — near-term fear' : 'contango — normal'})` : ''}</span>` : ''}</div>
         ${risk.credit ? `<div class="riskverdict" style="margin-top:3px" title="Corporate bond spreads lead equity stress. Widening = warning for stocks; tightening = supportive. Persistence % (when shown) is a 2-state HMM's self-transition probability on daily HY-OAS changes — the odds the current regime continues, not a prediction of direction.">Credit: <b class="tone ${risk.credit.cls}" style="font-weight:800">${risk.credit.widening > 0 ? 'widening' : risk.credit.widening < 0 ? 'tightening' : 'steady'}</b><span class="muted"> · HY ${risk.credit.hyBps}bps${risk.credit.pct != null ? ` (P${risk.credit.pct})` : ''}${risk.credit.d5 != null ? ` · ${risk.credit.d5 >= 0 ? '+' : ''}${risk.credit.d5}bps/wk` : ''}${risk.credit.persistProb != null ? ` · ${risk.credit.persistProb}% likely to persist` : ''} — ${risk.credit.widening > 0 ? 'headwind for stocks' : risk.credit.widening < 0 ? 'supportive' : 'neutral'}</span></div>` : ''}
         ${risk.liquidity ? `<div class="riskverdict" style="margin-top:3px" title="Fed (WALCL−TGA−RRP) nets directly (all USD); ECB/BoJ balance sheets are scored independently in their own currency and combined by sign agreement, never summed cross-currency. ${risk.liquidity.legs.map(l => `${l.label}: ${l.score > 0 ? '+' : ''}${l.score}`).join(' · ')}. Context, not a backtested rule — see how many of the 3 central banks agree, not just the composite number.">Liquidity: <b class="tone ${risk.liquidity.direction === 'LONG' ? 'on' : risk.liquidity.direction === 'SHORT' ? 'off' : 'mix'}" style="font-weight:800">${risk.liquidity.direction === 'LONG' ? 'expanding' : risk.liquidity.direction === 'SHORT' ? 'contracting' : 'mixed'}</b><span class="muted"> · ${risk.liquidity.agree}/${risk.liquidity.total} central banks agree${risk.liquidity.vixNote && risk.liquidity.vixNote.read !== 'flat' ? ` · ${risk.liquidity.vixNote.read === 'diverging' ? 'diverging from VIX — worth watching' : 'confirmed by VIX'}` : ''}</span></div>` : ''}
         ${risk.creditQ ? `<div class="riskverdict" style="margin-top:3px" title="Baa10Y−Aaa10Y investment-grade quality spread, z-scored against its own history — a different axis than the HY-level Credit line above (junk-bond spreads). Widening = investors demanding more premium for lower-quality investment-grade debt, an early credit-curve-shape tell. Context, not a backtested rule.">Credit quality (Baa−Aaa): <b class="tone ${risk.creditQ.z > 0.5 ? 'off' : risk.creditQ.z < -0.5 ? 'on' : 'mix'}" style="font-weight:800">${risk.creditQ.z > 0.5 ? 'widening' : risk.creditQ.z < -0.5 ? 'tightening' : 'steady'}</b><span class="muted"> · z ${risk.creditQ.z >= 0 ? '+' : ''}${risk.creditQ.z}</span></div>` : ''}
@@ -3532,6 +3597,8 @@ async function pollPrices() {
     const r = await jget('/api/hedge-signals/prices');
     if (!r?.prices) return;
     livePrices = r.prices;
+    lastPriceAt = Date.now(); lastPriceSrc = 'poll';
+    invalidateRows();
     let changed = false;
     for (const d of Object.values(brief?.instruments ?? {})) {
       const p = livePriceFor(d);
@@ -3575,6 +3642,10 @@ function _openTodaySse(syms) {
         const d = JSON.parse(evt.data);
         if (d.price == null || !d.instrument) return;
         _todaySseDelay = 3000;
+        // Stamped on ARRIVAL. Stamping only when the price differs would make a quiet
+        // market read as a dead feed, which is the confusion this exists to remove.
+        lastPriceAt = Date.now(); lastPriceSrc = 'stream';
+        invalidateRows();
         if (!livePrices) livePrices = {};
         livePrices[d.instrument] = { price: d.price };
         updateAtlasDistances(d.instrument, d.price);
@@ -3612,6 +3683,25 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
+// ── Live-price freshness ─────────────────────────────────────────────────────
+// { ageS, stale, src } | null before the first tick. Markets close at the weekend, so
+// "stale" is only a fault during trading hours — outside them a still feed is correct
+// and saying otherwise would train you to ignore the badge.
+function marketIsOpen() {
+  const now = new Date();
+  const day = _LDN_DAY_IDX[_LDN_DAY_FMT.format(now)] ?? 1;   // 0=Sun .. 6=Sat, London
+  const h = londonHour();
+  if (day === 6) return false;                      // Saturday
+  if (day === 0) return h >= 22;                    // Sunday: Sydney opens ~22:00 London
+  if (day === 5) return h < 22;                     // Friday: NY closes ~22:00 London
+  return true;
+}
+function priceFreshness() {
+  if (!lastPriceAt) return null;
+  const ageS = Math.round((Date.now() - lastPriceAt) / 1000);
+  return { ageS, src: lastPriceSrc, stale: marketIsOpen() && (Date.now() - lastPriceAt) > PRICE_STALE_MS };
+}
+
 // ── Execution cost — the live dealing spread, and what it eats ───────────────
 // This page used to show 25+ tradeable setups a day with no cost information on
 // any of them. That is not a cosmetic gap: this repo's own execution-feasibility
@@ -3628,15 +3718,23 @@ document.addEventListener('visibilitychange', () => {
 const COST_GATE_LEVEL = 0.15;   // banked: spread ÷ move-scale above this and the edge is gone
 const COST_WARN_RANGE = 0.03;   // spread eats ≥3% of the expected day range
 const COST_BAD_RANGE  = 0.06;   // ≥6% — expensive before anything has happened
+// A spread quote goes off faster than almost anything else on this page. Past this
+// age it is history, not cost: it must stop demoting cards in the attention sort and
+// stop being quoted as live. Cost then reads as UNKNOWN, which is the honest state —
+// never as zero, and never as a stale number that keeps a card buried.
+const COST_MAX_AGE_MS = 5 * 60_000;
 
 async function loadSpreads() {
   const syms = [...new Set(Object.values(brief?.instruments ?? {}).map(d => d.sym).filter(Boolean))];
   if (!syms.length) return;
   try {
     const r = await jget('/api/spreads?symbols=' + encodeURIComponent(syms.join(',')));
-    if (r?.ok && r.pairs) { spreads = r.pairs; spreadsAt = Date.now(); render(); }
-    else if (r && !r.ok) { spreads = null; }   // say "cost unknown", never imply zero cost
-  } catch (e) { /* a dead spread feed degrades the board, it does not break it */ }
+    if (r?.ok && r.pairs && Object.keys(r.pairs).length) { spreads = r.pairs; spreadsAt = Date.now(); invalidateRows(); render(); }
+    else { spreads = null; invalidateRows(); render(); }   // say "cost unknown", never imply zero cost
+  } catch (e) {
+    // A dead feed degrades the board, it does not break it — but the last good quote
+    // must not linger as if it were live. costFor() ages it out on read.
+  }
 }
 
 // { pips, ofRange, ofLevel, level, tradeable, ageS, gate } | null
@@ -3644,6 +3742,7 @@ function costFor(r) {
   const d = r.d;
   const q = spreads?.[d.sym];
   if (!q || q.spreadPips == null) return null;
+  if (!spreadsAt || Date.now() - spreadsAt > COST_MAX_AGE_MS) return null;   // too old to be a cost
   const pipSz = _pipSz(d);
   // Expected day range in the same pip units as the spread. hlMed is a PERCENT of
   // price (same field r.used divides by), so convert rather than trusting range_pts,
@@ -4168,8 +4267,28 @@ function agreement(r) {
 }
 
 // ── Derived per-instrument row ────────────────────────────────────────────────
+// Rebuilding all 25 rows is not cheap — each does cotFor + oiFor + nearestLevel +
+// agreement + costFor, and oiFor runs two Object.keys(...).find() scans per instrument.
+// render() calls it SIX times (renderSinceYesterday, renderWeekly, renderMarketRead,
+// renderOutlookPanel, renderConcentration, rows()), and the SSE re-renders every 3s —
+// roughly 150 row builds every three seconds, all identical within a pass.
+//
+// Invalidation is explicit rather than time-based: `_rowsEpoch` is bumped by whatever
+// actually changes a row's inputs. A stale-cache bug here would be invisible (the board
+// would just quietly stop updating), so anything that mutates brief/session/prices must
+// bump it — that is the one rule this cache imposes.
+let _rowsEpoch = 0;
+let _rowsCache = { epoch: -1, val: null };
+function invalidateRows() { _rowsEpoch++; }
 function allRows() {
+  if (_rowsCache.epoch === _rowsEpoch && _rowsCache.val) return _rowsCache.val;
+  const val = _buildRows();
+  _rowsCache = { epoch: _rowsEpoch, val };
+  return val;
+}
+function _buildRows() {
   const out = [];
+  const priceStale = priceFreshness()?.stale === true;
   for (const [name, d] of Object.entries(brief.instruments ?? {})) {
     // One bad instrument (a throw in cotFor/oiFor/agreement/nearestLevel) must
     // not take every instrument after it down with it — a plain for...of loop
@@ -4184,7 +4303,9 @@ function allRows() {
       const used  = (s?.hl != null && hlMed) ? s.hl / hlMed : null;   // fraction of median H-L consumed
       const trending = d.regime?.label === 'TREND';
       const near = nearestLevel(d);
-      const isProx = near != null && near.pips <= (PROX_LIMIT[d.ac] ?? 12);
+      // ⚑ says "price is AT a level right now — this is a decision moment". On a frozen
+      // feed that claim is about where price WAS, which is worse than saying nothing.
+      const isProx = !priceStale && near != null && near.pips <= (PROX_LIMIT[d.ac] ?? 12);
       const agr = agreement({ d, s });
       const ct = cotFor(name);
       const oi = oiFor(name, d.sym);
@@ -4247,12 +4368,19 @@ function renderHeader() {
   } else n.style.display = 'none';
   const stamps = [];
   if (forecast?.computed_at) stamps.push(`forecast ${new Date(forecast.computed_at).toLocaleTimeString()}`);
-  if (session?.fetched_at)   stamps.push(`live ${new Date(session.fetched_at).toLocaleTimeString()}`);
+  if (session?.fetched_at)   stamps.push(`session ${new Date(session.fetched_at).toLocaleTimeString()}`);
+  // The PRICE feed's own age, separate from the session endpoint's fetch time — which
+  // keeps ticking from a different source whether or not prices are still arriving.
+  const pf = priceFreshness();
+  if (pf) stamps.push(pf.stale ? `⚠ price feed ${pf.ageS}s old` : `price ${pf.ageS < 5 ? 'live' : pf.ageS + 's'}`);
+  else stamps.push('⚠ no live price yet');
   if (brief.has_hit_rates && brief.hit_rates_age) stamps.push(`hit-rates ${new Date(brief.hit_rates_age).toLocaleDateString()}`);
   // Carried-forward instruments (their data source was down at forecast time)
   const nStale = Object.values(brief.instruments ?? {}).filter(d => d?.stale).length;
   if (nStale) stamps.push(`⟳ ${nStale} instrument${nStale === 1 ? '' : 's'} on a carried forecast`);
-  $('hdrStamp').textContent = stamps.join(' · ');
+  const hs = $('hdrStamp');
+  hs.textContent = stamps.join(' · ');
+  hs.classList.toggle('stamp-stale', !!(pf?.stale) || !pf);
 }
 
 function renderSummary() {
@@ -4277,7 +4405,7 @@ function renderSummary() {
     <div class="stile" title="Is there major scheduled news today that could whip markets around? If so, consider waiting until it's out."><div class="k help">Event risk</div>
       <div class="v">${brief.news_flag ? '⚠' : '—'}</div>
       <div class="s">${brief.news_flag ? `${brief.news_flag} (×${brief.news_mult})` : 'no high-impact flag on today'}</div></div>
-    ${(() => { const rl = riskLight(); return rl ? `<div class="stile" title="The overall market mood, from the 'fear gauge' (VIX) and how nervous credit markets are. Calm = risk-taking; Stress = defensive/risk-off."><div class="k help">Market mood</div>
+    ${(() => { const rl = riskLight(); return rl ? `<div class="stile" title="The overall market mood, from the 'fear gauge' (VIX) and how nervous credit markets are. Calm = risk-taking; Stress = defensive/risk-off.${esc0(rl.note || '')}"><div class="k help">Market mood</div>
       <div class="v" style="color:${rl.color}">${rl.icon} ${rl.label}</div>
       <div class="s">${rl.detail}</div></div>` : ''; })()}`;
 }
@@ -5385,19 +5513,59 @@ function renderDrawerFlow(r) {
   }
 
   // ---- what changed since the last capture ---------------------------------
+  // Field names here are js/oiConfluence.js's oiDeltas() output, verbatim. They are
+  // NOT the obvious ones: the totals are totalCallOIChange / totalPutOIChange, and the
+  // max-pain move is maxPainShift with a basis-drift-corrected maxPainShiftNet
+  // alongside. Guessing at callOI / putOI / maxPain here renders nothing at all and
+  // fails silently — the exact way features in this repo have died before.
   const chg = o?.change;
   if (chg) {
     any = true;
     $('drOiChgSec').style.display = '';
     const rows = [];
-    const fmtDelta = (v, unit = '') => v == null ? '—' : `${v > 0 ? '+' : ''}${Math.abs(v) >= 1000 ? (v / 1000).toFixed(1) + 'k' : v}${unit}`;
-    if (chg.callOI != null) rows.push(_oiKv('Call OI', fmtDelta(chg.callOI), 'Change in total call open interest since the previous capture. Rising = calls being BUILT.'));
-    if (chg.putOI != null) rows.push(_oiKv('Put OI', fmtDelta(chg.putOI), 'Change in total put open interest since the previous capture.'));
-    if (chg.maxPain != null) rows.push(_oiKv('Max pain moved', fmtDelta(chg.maxPain), 'How far the max-pain magnet has shifted. A moving magnet is positioning genuinely rotating, not just growing.'));
+    const fmtOI = v => v == null ? '—' : `${v > 0 ? '+' : ''}${Math.abs(v) >= 1000 ? (v / 1000).toFixed(1) + 'k' : v}`;
+    const fmtPx = v => v == null ? '—' : `${v > 0 ? '+' : ''}${fmtN(v, dp)}`;
+    if (chg.totalOIChange != null) {
+      rows.push(_oiKv('Total OI', `${fmtOI(chg.totalOIChange)}${chg.totalOIChangePct != null ? ` (${chg.totalOIChangePct > 0 ? '+' : ''}${chg.totalOIChangePct}%)` : ''}`,
+        'Change in total open interest since the previous capture. Rising = new money entering; falling = positions being closed.'));
+    }
+    if (chg.totalCallOIChange != null) rows.push(_oiKv('Call OI', fmtOI(chg.totalCallOIChange), 'Change in total CALL open interest. Rising = upside being built.'));
+    if (chg.totalPutOIChange != null) rows.push(_oiKv('Put OI', fmtOI(chg.totalPutOIChange), 'Change in total PUT open interest. Rising = downside protection being bought.'));
+    if (chg.pcRatioChange != null) rows.push(_oiKv('Put/call shift', `${chg.pcRatioChange > 0 ? '+' : ''}${chg.pcRatioChange}`, 'Which way the balance of the book tilted since the last capture.'));
+    // Prefer the basis-corrected shift. Overnight futures-vs-spot drift moves EVERY
+    // archived strike in lockstep, and quoting the raw shift reports that drift as if
+    // positioning had rotated.
+    const mpNet = chg.maxPainShiftNet ?? chg.maxPainShift;
+    if (mpNet != null) {
+      rows.push(_oiKv('Max pain moved', fmtPx(mpNet),
+        `How far the max-pain magnet shifted${chg.maxPainShiftNet != null && chg.basisDrift ? ', after removing the overnight futures-basis drift that moves every strike together' : ''}. A moving magnet means positioning genuinely rotated, not just grew.`));
+    }
+    const flowLine = chg.flow
+      ? `<div class="ccy-explain"><b>${chg.flow === 'building' ? 'Money is coming IN' : chg.flow === 'unwinding' ? 'Positions are being CLOSED' : 'Book is flat'}</b>${chg.confirm?.read ? ` — versus the price move this reads as <b>${esc0(String(chg.confirm.read))}</b>${chg.confirm.note ? `: ${esc0(String(chg.confirm.note))}` : ''}` : ''}.</div>`
+      : '';
+    const ambiguous = chg.driftAmbiguous
+      ? `<div class="err" style="margin:6px 0">⚠ The overnight basis shift could not be pinned down for this pair, so the per-wall firming/fading below may be matching walls to the wrong prior strike. The whole-book totals above are unaffected.</div>` : '';
+    // The genuinely useful half: WHICH walls are being defended and which have stopped
+    // mattering. Already computed per strike and never shown anywhere on this page.
+    const wallMove = (side, w) => {
+      const firm = (w?.strengthening || []).slice(0, 3).map(x => `${fmtN(x.strike, dp)} +${Math.round(x.delta)}${x.pct != null ? ` (${x.pct > 0 ? '+' : ''}${x.pct}%)` : ''}`);
+      const fade = [...(w?.weakening || []).slice(0, 3).map(x => `${fmtN(x.strike, dp)} ${Math.round(x.delta)}${x.pct != null ? ` (${x.pct}%)` : ''}`),
+                    ...(w?.faded || []).slice(0, 2).map(x => `${fmtN(x.strike, dp)} gone`)];
+      const fresh = (w?.appeared || []).slice(0, 3).map(x => fmtN(x.strike, dp));
+      if (!firm.length && !fade.length && !fresh.length) return '';
+      return `<div class="ccy-explain" style="margin-top:6px"><b>${side} walls</b>`
+        + (firm.length ? ` · <span class="pos">building:</span> ${firm.join(', ')}` : '')
+        + (fade.length ? ` · <span class="neg">fading:</span> ${fade.join(', ')}` : '')
+        + (fresh.length ? ` · <b>new:</b> ${fresh.join(', ')}` : '') + '</div>';
+    };
     const classify = chg.classify ? `<div class="ccy-explain"><b>${esc0(String(chg.classify))}</b></div>` : '';
-    const stability = chg.stability != null ? `<div class="ccy-explain" style="margin-top:6px">Book stability: ${esc0(String(chg.stability))} — how much of yesterday's structure is still there.</div>` : '';
+    const stab = Array.isArray(chg.stability) && chg.stability.length
+      ? `<div class="ccy-explain" style="margin-top:6px">Wall age: ${chg.stability.slice(0, 5).map(w => `${(w.kind || '?')[0].toUpperCase()}${fmtN(w.strike, dp)} ${w.daysPresent}d`).join(' · ')} — a wall that has held for days is structural; an overnight one is not yet.</div>`
+      : '';
     const span = (chg.fromDate && chg.toDate) ? `<div class="muted" style="font-size:10.5px;margin-bottom:6px">${esc0(chg.fromDate)} → ${esc0(chg.toDate)}</div>` : '';
-    $('drOiChg').innerHTML = span + classify + (rows.length ? `<div class="ccy-legs">${rows.join('')}</div>` : '<div class="muted">No comparable deltas in this capture pair.</div>') + stability;
+    $('drOiChg').innerHTML = span + classify + flowLine + ambiguous
+      + (rows.length ? `<div class="ccy-legs">${rows.join('')}</div>` : '<div class="muted">No comparable totals between these two captures.</div>')
+      + wallMove('Call', chg.callWalls) + wallMove('Put', chg.putWalls) + stab;
   } else {
     $('drOiChgSec').style.display = 'none';
   }
@@ -7881,6 +8049,7 @@ setInterval(loadGate, 60 * 60_000);            // calendar + risk state, hourly
 setInterval(pollPrices, 30_000);               // REST fallback, in case SSE can't connect
 setInterval(loadSpreads, 60_000);              // live dealing spreads (server caches 20s; this is the board's own tick)
 setInterval(() => { renderGate(); renderNewsPlay(); }, 60_000);  // tick countdowns / released-event updates
+setInterval(invalidateRows, 30_000);   // cost/proximity age out even when no payload changed
 setInterval(async () => {           // live session + brief refresh (prices/regime move)
   try {
     const [s, b] = await Promise.all([
@@ -7889,16 +8058,27 @@ setInterval(async () => {           // live session + brief refresh (prices/regi
     ]);
     if (s?.ok) session = s;
     if (b?.ok) brief = b;
+    invalidateRows();
     renderHeader(); renderSummary(); render();
   } catch (e) {}
 }, 60_000);
-setInterval(() => { jget('/api/vol-forecast').then(f => { if (f?.instruments) forecast = f; }).catch(() => {}); }, 5 * 60_000);
+setInterval(() => { jget('/api/vol-forecast').then(f => { if (f?.instruments) { forecast = f; invalidateRows(); } }).catch(() => {}); }, 5 * 60_000);
 </script>
 <!-- Import the shared credit brick (one definition, per LEGO_MODULES.md) and expose
      it to the inline script; re-render once it's available. -->
 <script type="module">
   import * as CreditCore from './js/creditCore.js';
   window.creditBrick = CreditCore;
+  try { window.render?.(); } catch (e) {}
+</script>
+<!-- Economic-surprise brick (js/econSurprise.js). Used here for TWO things: the
+     surprise-index rows in Market Read, and — via parseCalNumber — the actual-vs-
+     forecast reading on each event in the news panel, which used to use parseFloat and
+     silently truncated any value carrying a thousands separator. One parser, so the
+     words on an event and the index it feeds cannot disagree. -->
+<script type="module">
+  import * as EconSurprise from './js/econSurprise.js';
+  window.econSurpriseBrick = EconSurprise;
   try { window.render?.(); } catch (e) {}
 </script>
 <!-- Same pattern for the pair-composite brick (js/pairCompositeEngine.js) —
