@@ -306,6 +306,18 @@ Apply these to any new signal, Python throwaway or JS engine alike.
 - **Data**: OANDA D1 via `fetchD1` (needs `OANDA_KEY`); M1 via `loadM1ForPair`
   (R2 / parquet / Drive). OANDA is reachable in Railway, not in the sandbox
   (expect 403 locally — that's environment, not a bug).
+  **Never run a `runOne`/regeneration function (or any M1-gap-fill-then-persist
+  pipeline) from the sandbox for a live pair and let it write back to R2.**
+  The OANDA gap-fill step fails PER-CHUNK, logged as a warning, not an
+  abort — the walk then proceeds anyway on whatever's left in the R2-cached
+  parquet, and the result gets persisted with a fresh `generatedAt`
+  timestamp that makes it LOOK current. On 2026-09-08 this silently
+  regressed `asia-fib-atlas/gbpaud-votetrades.json` and its Monday
+  counterpart from "stale by 2 days" (real data through Sept 6) to "stale
+  by 3.5 months" (capped at 2026-05-21, the R2 parquet's last real sync) —
+  see LEGO_MODULES.md's 2026-09-08 entry. Read-only R2 fetches (`getJSON`)
+  are fine from the sandbox; anything that re-walks M1 and writes back is
+  not, unless the pair's R2-cached M1 is already known current.
 - **Validate locally before committing**: `node --check` the engine + `server.js`,
   and unit-test the core on synthetic data (no network needed).
 - **KV persistence is opt-in per key — the #1 recurring "my settings vanished on

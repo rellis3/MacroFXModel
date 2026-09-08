@@ -6755,3 +6755,106 @@ correctly emit nothing. No live Railway path in this sandbox to see the
 actual rendered layout/spacing in a real browser — same standing caveat as
 every prior revision of this feature; the visual result (are the icons/
 bullets actually easier to scan, is the spacing right) needs a live look.
+
+---
+
+#### Incident: sandbox regen silently degraded GBPAUD's stored backtest data (2026-09-08)
+
+Demo trading started 2026-09-07. Owner compared the Trade Blotter (interactive
+backtest page) against the real Trade History tab for the same day and asked
+why the blotter showed an AUDUSD win but not the real GBPAUD trade the bot
+actually took. Investigated with real R2 reads (`analysis/
+fib_atlas_check_sept7.mjs`): AUDUSD's stored `{pair}-votetrades.json` had been
+freshly rebuilt (`generatedAt` 2026-09-07T23:38 UTC, 9 real Sept-7 touches);
+GBPAUD's had NOT been rebuilt since 2026-09-06T09:08 UTC and carried ZERO
+Sept-7 touches — that's the entire reason the blotter shows one and not the
+other. Not a live-trading bug: the bot trades off the separate, always-current
+`fib_atlas_bot_plan` live-poll path, and correctly took the real GBPAUD trade
+(+$330.36, confirmed in the Trade History tab). Root cause of GBPAUD's own
+staleness (why the nightly `reference-engine-rebuild` job — which should cover
+all 16 default pairs including GBPAUD — didn't refresh it the last night or
+two) is still unknown; worth checking Railway logs for a silent per-pair
+failure in that job.
+
+**Made worse while investigating**: attempted to fix this by calling
+`runOneAsia('gbpaud')`/`runOneMonday('gbpaud')` (`analysis/
+fib_atlas_regen_gbpaud.mjs`) directly from THIS sandbox to regenerate fresh
+data and cross-check the live trade against the offline backtest. The
+sandbox has no OANDA access (documented, expected — see CLAUDE.md's "Data"
+bullet). What was NOT anticipated: the M1 gap-fill step fails per-chunk as a
+logged warning, not an abort (`m1 gap chunk ... failed: Oanda M1 GBP_AUD:
+HTTP 403`, repeated ~31 times), and `runOne` proceeds anyway on whatever's
+left in the R2-cached parquet — which for gbpaud only went up to
+2026-05-21. The walk completed "successfully" (53,678 Asia touch-records,
+20,840 Monday touch-records) and PERSISTED to R2 with a fresh `generatedAt`
+(2026-09-08T17:2x UTC) that makes the data look current when it is now
+**worse than before** — real data through Sept 6, now truncated to real data
+through May 21, a >3-month regression, silently.
+
+**Net state**: `asia-fib-atlas/gbpaud-votetrades.json` and
+`monday-fib-atlas/gbpaud-votetrades.json` in R2 currently reflect only
+2016-03-28→2026-05-21 (Asia) / 2016-02-08→2026-05-18 (Monday) — NOT current.
+Zero impact on live trading (confirmed — separate code path). Impact is
+limited to the interactive backtest/blotter page's GBPAUD reference data
+being wrong/stale until fixed. **Needs a real regen run from Railway** (where
+OANDA is reachable) — via whatever single-pair "Regenerate" affordance the
+vote-portfolio page has, or the next nightly `reference-engine-rebuild` pass,
+neither of which this session can trigger from here. Flagged to the owner
+directly; not yet fixed as of this entry.
+
+**Fix applied this same entry**: added an explicit warning to CLAUDE.md's
+"Data" bullet — never run `runOne`/any M1-gap-fill-then-persist pipeline
+from the sandbox and let it write back to R2 for a pair whose cache might be
+behind. Read-only `getJSON` fetches remain fine from here; anything that
+re-walks M1 and persists is not, absent a known-current R2 cache.
+
+Validated: `node --check` on both new analysis scripts
+(`fib_atlas_check_sept7.mjs`, `fib_atlas_regen_gbpaud.mjs`) — the regen
+script itself ran "successfully" by its own log output, which is exactly
+the problem being documented (success ≠ correct here). No further sandbox
+action taken on gbpaud's R2 data to avoid compounding the regression.
+
+**Follow-up, same day — the gap is much wider than one pair.** Owner pushed
+back on the framing above after noticing the trade-blotter's day-picker
+shows a return for essentially every recent date, including 2026-09-07 —
+"how are all these days in the list if R2 ended days ago?" Checked all 16
+default pairs' `asia-fib-atlas/{pair}-votetrades.json` directly
+(`analysis/fib_atlas_check_coverage.mjs`) instead of assuming gbpaud was an
+isolated case:
+
+```
+FRESH (real 2026-09-07 data): eurusd, gbpusd, usdjpy, audusd, nzdusd   (5/16)
+STALE:
+  usdcad, usdchf, eurgbp         — last real trade 2026-08-20 (~19d behind)
+  audjpy, audnzd, audcad, cadjpy — last real trade 2026-08-18/19 (~20d behind)
+  gold                           — last real trade 2026-09-04 (a few days behind)
+  euraud, nzdjpy, gbpaud         — last real trade 2026-05-21 (~4 months behind)
+```
+
+Only 5 of the 16 default pairs actually have current data. The reason the
+COMBINED portfolio day-picker still shows a return for nearly every day
+(including today) is exactly that pooling: EURUSD/GBPUSD/USDJPY/AUDUSD/
+NZDUSD are active majors that touch a rung most days, so those 5 alone are
+enough to make a pooled day look "complete" while silently missing whatever
+the other 11 pairs would have contributed. This is NOT just a display quirk
+— any combined-portfolio stat computed over a recent window has been
+silently under-representing 11 of 16 constituents.
+
+Critically, **euraud and nzdjpy are ALSO capped at exactly 2026-05-21** —
+the same date gbpaud regressed to from the sandbox mistake above — but this
+session never touched euraud or nzdjpy. That means the silent
+gap-fill-fails-per-chunk-but-persists-anyway failure mode documented above
+has already happened for real, in production, independent of anything this
+session did. `usdcad`/`usdchf`/`eurgbp`/`audjpy`/`audnzd`/`audcad`/`cadjpy`
+being stuck ~19-20 days behind (not months) looks like a separate, milder
+symptom — most likely the nightly `reference-engine-rebuild` job simply
+hasn't successfully covered them in ~3 weeks (worth checking Railway logs
+for a per-pair failure/timeout pattern in that job, not yet done).
+
+**Not fixed**: none of the 11 stale pairs have been regenerated (deliberately
+— doing so from this sandbox would repeat the exact regression documented
+above). All 11 need a real regen from Railway, and the nightly job's own
+reliability for covering all 16 pairs needs checking so this doesn't recur.
+
+Validated: `node --check` on `fib_atlas_check_coverage.mjs`; read-only R2
+fetches only, no writes.
