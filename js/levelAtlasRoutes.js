@@ -36,6 +36,7 @@ import { assetClassFor } from './forecastAnalyserStore.js';
 import { instrument as instrumentMeta, oandaSymbol, resolveKey } from './instrumentRegistry.js';
 import { gapFillPacked } from './m1GapFill.js';
 import { fetchM1Range } from './volBacktestEngine.js';
+import { BANDS as HL_BANDS, bandOf as hlBandOf, CHECKPOINTS_MIN as HL_CHECKPOINTS_MIN, priceTradeFromTouch as hlPriceTradeFromTouch } from './hlSignalCore.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -65,6 +66,15 @@ function loadLocalP90VoteTrades(pair) {
 // Same pattern, for the no-releverage early-exit trade list (scripts/build_early_exit_votetrades.mjs).
 function loadLocalEarlyExitVoteTrades(pair) {
   try { return JSON.parse(fs.readFileSync(path.join(VOTE_TRADES_DIR, `${pair}-earlyexit-votetrades.json`), 'utf8')); }
+  catch { return null; }
+}
+
+// Same pattern, for the dynamic-HL early-reaction RAW touches (scripts/build_hl_touches.mjs)
+// -- unlike the votetrades files above, these are unpriced (a touch, not a
+// trade): pricing depends on which checkpoint/band the caller asks for, done
+// in the route below via js/hlSignalCore.js's priceTradeFromTouch.
+function loadLocalHlTouches(pair) {
+  try { return JSON.parse(fs.readFileSync(path.join(VOTE_TRADES_DIR, `${pair}-hltouches.json`), 'utf8')); }
   catch { return null; }
 }
 
@@ -1261,6 +1271,137 @@ export function mountLevelAtlasRoutes(app, express) {
         stats, statsUncapped, statsNoThrottle, statsNoFadeTighten, statsNoSlFraction, statsNoP90, statsNoEarlyExit, statsNoCcyGate, naiveAvgSharpe, days: datesFinal.length,
         intradayMAE,
         equityCurve: datesFinal.map((d, i) => ({ date: d, dailyReturn: dailyReturnsFinal[i] })),
+        perPair, trades,
+      });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // GET /api/level-atlas/hl-vote-portfolio — backtest for the dynamic-HL
+  // early-reaction signal (2026-09-08: analysis/causal_early_reaction_study.mjs
+  // found it, analysis/hl_early_reaction_tradeable_study.mjs cost-validated
+  // it — real, OOS-confirmed edge specifically in the shallow-pullback bands
+  // betting continuation; the deep-pullback reversal band does NOT clear cost
+  // at any checkpoint, off by default here for that reason). Deliberately a
+  // SEPARATE route/page from /vote-portfolio above, not a checkbox merged
+  // into it — this is a structurally different mechanic (enter at a fixed
+  // checkpoint AFTER the touch, not at the touch itself) with its own config
+  // surface (checkpoint minutes, which bands to trade), not another lever on
+  // the OH/OL rung pipeline. Same underlying bricks reused throughout
+  // (applyConcurrencyCap/riskAdjustTrades/buildPortfolioDailySeries/
+  // portfolioStats/applyPortfolioHeatCap) so results are directly comparable.
+  //
+  // Touches are precomputed ONCE per pair (scripts/build_hl_touches.mjs, the
+  // expensive M1 walk) and stored as {pair}-hltouches.json; this route only
+  // prices+pools+stats on request, which is cheap regardless of how many
+  // pairs/checkpoints a caller asks for — same division of labour /vote-portfolio
+  // already uses for {pair}-votetrades.json.
+  app.get('/api/level-atlas/hl-vote-portfolio', async (req, res) => {
+    try {
+      const pairs = (req.query.pairs ? String(req.query.pairs).split(',') : ['eurusd', 'gbpusd', 'gold', 'usdjpy', 'audusd'])
+        .map(p => p.trim().toLowerCase()).filter(Boolean);
+      const checkpoint = HL_CHECKPOINTS_MIN.includes(Number(req.query.checkpoint)) ? Number(req.query.checkpoint) : 60;
+      // Which bands actually get TRADED this request -- defaults to just the
+      // one band the tradeable study found cost-positive at every checkpoint
+      // ('<15%'). '15-35%' is a real, weaker, still cost-positive lever a
+      // caller can opt into. '>60%' (reversal) is offered for completeness/
+      // comparison ONLY -- the tradeable study found it does not clear cost
+      // at any checkpoint, so it's never on unless explicitly requested.
+      // '35-60%' can never be requested -- BANDS itself marks it bet:null
+      // (no edge found there), enforced below regardless of what's asked for.
+      const requestedBands = req.query.bands ? String(req.query.bands).split(',').map(s => s.trim()) : ['<15%'];
+      const maxConcurrent = req.query.maxConcurrent ? Number(req.query.maxConcurrent) : 1;
+      const riskPct = req.query.riskPct ? Number(req.query.riskPct) : 1;
+      const maxHeatPct = req.query.maxHeatPct ? Number(req.query.maxHeatPct) : null;
+      const targetVol = req.query.targetVol ? Number(req.query.targetVol) : 10;
+
+      const perPairTradesRaw = {}, perPair = {}, missing = [];
+      for (const pair of pairs) {
+        const stored = pickFresher(await getJSON(`${PREFIX}/${pair}-hltouches.json`), loadLocalHlTouches(pair));
+        if (!stored) { missing.push(pair.toUpperCase()); continue; }
+        const sym = stored.instrument;
+        const cost = costForPair(pair, assetClassFor(pair));
+        const oosTouches = stored.touches.filter(t => t.date >= stored.splitDate);
+        const eligible = [];
+        for (const t of oosTouches) {
+          const snap = t.checks?.[checkpoint];
+          if (!snap) continue;
+          const band = hlBandOf(snap.frac);
+          if (!band || band.bet == null) continue;              // middle band: never tradeable
+          if (!requestedBands.includes(band.key)) continue;      // not opted into this request
+          const priced = hlPriceTradeFromTouch(t, checkpoint, band.bet, cost);
+          if (priced) eligible.push({ ...priced, band: band.key });
+        }
+        const capped = applyConcurrencyCap(eligible, { maxConcurrent });
+        const adjusted = riskAdjustTrades(capped?.kept ?? [], riskPct).map(t => ({ ...t, pair: sym }));
+        perPairTradesRaw[sym] = adjusted;
+        perPair[sym] = {
+          totalDecided: eligible.length,
+          kept: capped?.kept?.length ?? 0,
+          skipped: capped?.skippedCount ?? 0,
+          ownWinRate: capped?.keptSummary?.winRate ?? null,
+          cost,
+        };
+      }
+      if (!Object.keys(perPairTradesRaw).length) return res.status(404).json({ ok: false, error: `no HL touch data for any of: ${pairs.join(',')}`, missing });
+
+      for (const sym of Object.keys(perPairTradesRaw)) {
+        const solo = buildPortfolioDailySeries({ [sym]: perPairTradesRaw[sym] });
+        perPair[sym].ownSharpe = solo ? portfolioStats(solo.dailyReturns, { mc: false, targetVol }).sharpe : null;
+      }
+
+      let perPairTradesFinal = perPairTradesRaw;
+      let heatCap = null;
+      if (maxHeatPct) {
+        const heatResult = applyPortfolioHeatCap(perPairTradesRaw, { maxHeatPct });
+        if (heatResult) {
+          const byPair = {};
+          for (const t of heatResult.kept) (byPair[t.pair] ??= []).push(t);
+          perPairTradesFinal = byPair;
+          heatCap = { maxHeatPct, skippedCount: heatResult.skippedCount, totalCount: heatResult.totalCount };
+          for (const sym of Object.keys(perPair)) perPair[sym].keptAfterHeat = byPair[sym]?.length ?? 0;
+        }
+      }
+
+      const buildWeights = perPairTrades => Object.fromEntries(Object.keys(perPairTrades).map(p => [p, 1]));
+      const withNonCompoundedDD = (statsObj, dailyReturns) => {
+        const maxDDNonCompounded = +maxDrawdownFromPnls(dailyReturns).toFixed(2);
+        const years = dailyReturns.length / 252;
+        const cagrNonCompounded = years > 0 ? +(dailyReturns.reduce((s, r) => s + r, 0) / years).toFixed(2) : 0;
+        const calmarNonCompounded = maxDDNonCompounded < 0 ? +(cagrNonCompounded / Math.abs(maxDDNonCompounded)).toFixed(2) : 0;
+        return { ...statsObj, maxDDNonCompounded, cagrNonCompounded, calmarNonCompounded };
+      };
+      const withSharpeCI = (statsObj, perPairDict) => {
+        const all = Object.values(perPairDict).flat();
+        if (all.length < 5 || !(statsObj.days > 1)) return statsObj;
+        const se = sharpeStdError(statsObj.sharpe, statsObj.days, 252);
+        const sharpeCI95 = isFinite(se) ? [+(statsObj.sharpe - 1.96 * se).toFixed(2), +(statsObj.sharpe + 1.96 * se).toFixed(2)] : null;
+        const mtry = minTrackRecordLength(statsObj.sharpe, { periodsPerYear: 252, skew: statsObj.skew ?? 0, kurt: (statsObj.excessKurt ?? 0) + 3 });
+        const st = summarizeTrades(all.map(t => t.pnlPct), all.map(t => t.date));
+        return { ...statsObj, perTradeSharpe: st.sharpe, perTradeSharpeSE: st.sharpeSE, sharpeCI95, minTrackYears: isFinite(mtry) ? +mtry.toFixed(2) : null, perTradeWinRate: st.winRate };
+      };
+
+      const weights = buildWeights(perPairTradesFinal);
+      const combined = buildPortfolioDailySeries(perPairTradesFinal, { weights });
+      let stats = withNonCompoundedDD(portfolioStats(combined.dailyReturns, { mc: false, targetVol }), combined.dailyReturns);
+      stats = withSharpeCI(stats, perPairTradesFinal);
+
+      const totalKept = Object.values(perPair).reduce((a, p) => a + p.kept, 0);
+      for (const sym of Object.keys(perPair)) {
+        perPair[sym].weight = combined.byPair?.[sym]?.weight ?? 1;
+        perPair[sym].tradeShare = totalKept > 0 ? +(perPair[sym].kept / totalKept).toFixed(4) : 0;
+      }
+
+      const trades = Object.entries(perPairTradesFinal).flatMap(([sym, list]) =>
+        list.map(t => ({ ...t, weight: perPair[sym].weight }))
+      ).sort((a, b) => a.time - b.time);
+
+      res.json({
+        ok: true, pairs: Object.keys(perPairTradesRaw), missing, checkpoint, bandsTraded: requestedBands,
+        bandDefs: HL_BANDS.map(b => ({ key: b.key, bet: b.bet })), maxConcurrent, riskPct, heatCap, targetVol,
+        stats, days: combined.dates.length,
+        equityCurve: combined.dates.map((d, i) => ({ date: d, dailyReturn: combined.dailyReturns[i] })),
         perPair, trades,
       });
     } catch (e) {
