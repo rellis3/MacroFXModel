@@ -129,6 +129,7 @@ import { runCreditLeadLag as _runCreditLeadLag, alignByDate as _alignByDate } fr
 import { compareForecastLines as _compareForecastLines } from './js/forecastDriftCompare.js';
 import { buildEventWindows as _buildEventWindows } from './js/eventGateCore.js';
 import { fetchWeekEvents as _fetchWeekEvents } from './js/econCalendar.js';
+import { buildSurpriseIndex as _buildSurpriseIndex, mergeReleases as _mergeReleases } from './js/econSurprise.js';   // real economic-surprise index (actual vs consensus), accumulated week by week
 import { buildMacroChanges as _buildMacroChanges, MACRO_CHANGE_SPEC as _MACRO_CHANGE_SPEC, seriesDeltas as _seriesDeltas } from './js/macroChange.js';
 import { macroContext as _macroContext, macroContextByDate as _macroContextByDate, MACRO_FRED_SERIES as _MACRO_FRED_SERIES, riskSensFor as _riskSensFor } from './js/macroCore.js';
 import { analyzePair as _mcondAnalyzePair, summarizeRows as _mcondSummarize, verdict as _mcondVerdict } from './js/macroConditionerEngine.js';
@@ -2702,6 +2703,41 @@ ${s.riskFlags ? `${s.riskFlags.active}/${s.riskFlags.available} flags active  �
 ${(s.riskFlags.flags || []).join('\n')}
 ${s.riskFlags.note ?? ''}` : '  Not available'}
 
+EXECUTION COST (a fact, not a forecast — it subtracts from every setup whether or not the direction is right)
+${s.executionCost ? `Live dealing spread: ${s.executionCost.spreadPips} pips${s.executionCost.pctOfExpectedDayRange != null ? `  |  ${s.executionCost.pctOfExpectedDayRange}% of the whole expected day range` : ''}${s.executionCost.pctOfDistanceToNearestLevel != null ? `  |  ${s.executionCost.pctOfDistanceToNearestLevel}% of the distance to the nearest level (${s.executionCost.nearestLevelPips} pips away)` : ''}
+Feasibility gate: ${s.executionCost.gate === 'fail' ? 'FAILS — cost is at or past the ~15% of move-scale where this desk’s own execution-feasibility work found the edge gone. Say so explicitly and do not present a setup here as actionable without addressing it.' : s.executionCost.gate === 'bad' ? 'EXPENSIVE — spread eats a large share of the day’s expected range before anything happens.' : s.executionCost.gate === 'warn' ? 'ELEVATED — worth mentioning in sizing.' : 'OK — cost is not the binding constraint here.'}${s.executionCost.tradeable === false ? `
+INSTRUMENT IS NOT CURRENTLY TRADEABLE — the quote above is not a cost that can actually be paid.` : ''}` : '  Not available (spread feed cold) — do NOT assume cost is zero; say it is unknown if it matters to the call.'}
+
+CURRENCY STRENGTH, MEASURED (what has actually MOVED, not what a model leans)
+${s.currencyStrengthMeasured ? `Board-wide fit R²: ${s.currencyStrengthMeasured.fitR2 ?? 'N/A'} across ${s.currencyStrengthMeasured.nPairs} pairs${s.currencyStrengthMeasured.fitR2 != null && s.currencyStrengthMeasured.fitR2 < 0.3 ? '  →  WEAK: today is NOT a clean currency story. Do not frame this pair as "strong X vs weak Y"; it is moving on its own.' : ''}
+Strongest: ${s.currencyStrengthMeasured.strongest ?? 'N/A'}  |  Weakest: ${s.currencyStrengthMeasured.weakest ?? 'N/A'}${s.currencyStrengthMeasured.base ? `
+This pair: ${s.currencyStrengthMeasured.base} ${s.currencyStrengthMeasured.baseScore ?? 'N/A'} vs ${s.currencyStrengthMeasured.quote} ${s.currencyStrengthMeasured.quoteScore ?? 'N/A'} (units = expected day ranges since the London-midnight open)` : ''}
+${s.currencyStrengthMeasured.note}` : '  Not available'}
+
+CORRELATION REGIME (a SIZING input — how much independent risk is actually on)
+${s.correlationRegime ? `State: ${s.correlationRegime.state}  |  mean |ρ| ${s.correlationRegime.meanAbsRho}${s.correlationRegime.z != null ? ` (z ${s.correlationRegime.z >= 0 ? '+' : ''}${s.correlationRegime.z} vs each combination's own 5yr normal)` : ''}  |  ${Math.round((s.correlationRegime.shareAbove070 ?? 0) * 100)}% of ${s.correlationRegime.nPairCombinations} combinations above 0.7
+${s.correlationRegime.state === 'HIGH' ? 'Concurrent setups are effectively ONE position — reflect that in sizing guidance, and note that historical hedges will hedge less than their history suggests.' : s.correlationRegime.state === 'LOW' ? 'Pairs are moving independently — separate setups diversify more than usual right now.' : 'Normal clustering; standard diversification assumptions hold.'}` : '  Not available'}
+
+ECONOMIC SURPRISE (actual vs CONSENSUS — what markets reprice on; distinct from the activity LEVEL above)
+${s.econSurprise ? Object.entries(s.econSurprise).filter(([k]) => k !== 'note').map(([ccy, v]) => v
+  ? `  ${ccy}: ${v.score == null ? `still collecting (${v.nReleases} scored, ${v.pendingForScore} more needed) — treat as UNKNOWN, not zero` : `${v.score >= 0 ? '+' : ''}${v.score} typical surprises (${v.nReleases} releases, ${v.nSeries} series)${v.assumedPolarityShare >= 0.5 ? ` — CAUTION: ${Math.round(v.assumedPolarityShare * 100)}% of these have an inferred higher-is-better sign` : ''}${(v.top || []).length ? `; driven by ${v.top.map(t => `${t.event} ${t.actual} vs ${t.estimate} est`).join(', ')}` : ''}`}`
+  : `  ${ccy}: no coverage`).join('\n') + `\n${s.econSurprise.note}` : '  Not available'}
+
+MACRO SCORECARD EDGE (per-dimension, over dimensions BOTH legs actually cover)
+${s.macroEdge ? `Score: ${s.macroEdge.score ?? 'null — too few shared dimensions to compare'}  |  shared dimensions: ${s.macroEdge.sharedDims}${(s.macroEdge.dims || []).length ? ` (${s.macroEdge.dims.join(', ')})` : ''}
+${s.macroEdge.note}` : '  Not available'}
+
+CARRY EDGE
+${s.carryEdge ? `Score: ${s.carryEdge.score}  |  source: ${s.carryEdge.source}  |  z: ${s.carryEdge.z}  |  status: ${s.carryEdge.status}
+${s.carryEdge.note}` : '  Not available'}
+
+CENTRAL-BANK TONE (descriptive record only — banked NULL as a predictor; never cite as a directional reason)
+${s.centralBankTone ? s.centralBankTone.legs.map(t => `  ${t.ccy} (${t.bank}): ${t.trend}, latest hawkish score ${t.latestScore}${t.deltaVsPrev != null ? ` (${t.deltaVsPrev >= 0 ? '+' : ''}${t.deltaVsPrev} vs prior meeting)` : ''}, ${t.nMeetings} meetings scored`).join('\n') + `\n${s.centralBankTone.note}` : '  Not available'}
+
+MACRO CHANGE WINDOWS (each row now reports the horizon it ACTUALLY spans)
+${(s.macroChangeWindows || []).length ? s.macroChangeWindows.map(x => `  ${x.label} ${x.last}: 1d ${x.d1 ?? 'n/a'}${x.unit} · 5d ${x.d5 ?? 'n/a'}${x.unit} · 20d ${x.d20 ?? 'n/a'}${x.unit}${x.actualSpanDays ? `  [real spans: ${Object.entries(x.actualSpanDays).filter(([, v]) => v != null).map(([w, v]) => `${w}d→${v}d`).join(', ') || 'as labelled'}]` : ''}${x.seriesCadenceDays ? ` (series prints every ~${x.seriesCadenceDays}d)` : ''}`).join('\n') + `
+A window shown as n/a is one this series' print cadence cannot answer — that is deliberate, not missing data. Do NOT substitute a longer window for a shorter one.` : '  Not available'}
+
 === END SNAPSHOT ===
 
 You are a professional FX/futures prop desk analyst — but you are briefing a SHARP TRADER WHO IS NOT AN OPTIONS/QUANT SPECIALIST. Your job is a specific, calibrated, and PLAINLY-WRITTEN brief: grounded in the numbers, readable by a human, and honest about how much weight each signal actually deserves. Not generic observations — and not a wall of desk jargon that only a gamma trader could parse.
@@ -2731,6 +2767,11 @@ Rules for your response:
 17. LEAD WITH WHAT DRIVES THE DECISION — don't stack every metric. Pick the handful of things that actually make the trade — normally the entry/stop/target level, the macro backdrop behind it, and the one evidenced positioning/technical signal — and build around them; that's three legs, not one, so don't collapse the read down to a level and a single stat. Secondary readings get a clause, not a sentence each. If two signals conflict, resolve it for the reader in plain words ("so despite the breakout flag, the near-term odds still favour the fade") — don't just list both and leave them hanging.
 18. CLOSING TASK — TRADE OF THE DAY. As your final step, using everything above, decide whether there is ONE concrete trade worth proposing right now. If yes: fill tradeOfDay with direction ("LONG" or "SHORT"), and entry/stopLoss/takeProfit as REAL levels — reuse a level you already named elsewhere in your response, or one present in the snapshot (a keyLevel, OI wall, pivot, fib, range edge, or retail cluster) — never a fabricated round number (same rule as #14, applied here too). riskReward is the resulting R multiple as a string (e.g. "1:2.1"). confidence is HIGH/MEDIUM/LOW and must be consistent with convictionScore, not more confident than the rest of your read. rationale is ONE sentence citing the 1-2 strongest pieces of evidence behind it — no new claims not already grounded above. If the evidence is thin, conflicting, or nothing here clears a reasonable bar for an actual trade, set direction to "NONE", leave entry/stopLoss/takeProfit as empty strings, and use rationale to say briefly why there's no trade today (e.g. "levels are stacked against each other and vol is too compressed to size a stop") — do not force a trade that isn't there just to fill the field.
 19. WEEKLY/MONTHLY OUTLOOK — fill weeklyOutlook and monthlyOutlook from the MARKET OUTLOOK section's given bias/confidence/drivers, one sentence each explaining WHY (cite the 1-2 strongest drivers by name) — you are narrating those numbers, not producing a new independent call, and you MUST NOT invent a bias that contradicts the given one. Unlike tradeOfDay, these are position/bias reads, not trade setups — no entry/stop/target, no risk/reward. If the given bias is NEUTRAL or confidence is low, say that plainly rather than manufacturing conviction. Central-bank tone is never valid supporting evidence here (rule above) — if you mention it, it's colour, not a reason.
+
+20. EXECUTION COST IS PART OF THE CALL, AND THIS RULE OVERRIDES #11. If the EXECUTION COST section shows the feasibility gate FAILING, or the instrument is not tradeable, you MUST say so in the brief and reflect it in convictionScore and tradeOfDay — a setup whose spread eats a sixth of the move it is trading for is not actionable no matter how good the direction looks, and silently proposing it anyway is the failure this section exists to prevent. If the spread is merely elevated, give it a clause in the sizing guidance. If the section says the cost is unknown, you may say the cost needs checking before acting — that specific absence is decision-relevant and is the one exception to never mentioning missing data.
+21. MEASURED BEATS MODELLED, AND SAY WHICH YOU MEAN. Where the snapshot gives both a measured quantity and a model read of the same thing, lead with the measured one and label it. Specifically: when CURRENCY STRENGTH, MEASURED reports a fit R² below ~0.3, do NOT frame the pair as "strong X versus weak Y" — the board is not moving as a currency story that day, and saying otherwise invents a theme the data rejects. When it is high, naming the theme is well-supported and worth leading with.
+22. TREAT NULL AS UNKNOWN, NEVER AS ZERO OR NEUTRAL. Several sections deliberately report null rather than a number when their own sample or cadence cannot support one — the economic-surprise index while it is still collecting history, a macro edge with too few shared dimensions, a macro-change window a series' print cadence cannot answer. A null there is a statement that the question cannot be answered yet, not a reading of "no change". Do not average it in, and do not describe it as balanced or neutral.
+23. CORRELATION REGIME CHANGES SIZE, NOT DIRECTION. If it reports HIGH, note in the brief that concurrent setups across the board are effectively one position and that historical hedges will hedge less than their history suggests. Never convert it into a directional argument for this pair.
 
 Respond with a single valid JSON object. No markdown. No text outside the JSON. Field string values 1-2 sentences max EXCEPT "brief" which is 3-5 short paragraphs. Max 3 items per arrays.
 convictionScore MUST be an integer from 0 to 10 only (0=no conviction, 5=moderate, 10=maximum). Do not use any other scale.
@@ -3072,13 +3113,52 @@ async function _buildMorningBrief() {
       cv.levels.GVZCLS != null ? `Gold 1M implied vol (GVZ) ${cv.levels.GVZCLS} — ${cv.pct.GVZCLS}th pctile of 5y${cmp(cv.levels.GVZCLS, rlz('GOLD'))}` : null,
     ].filter(Boolean).join('\n');
   } catch { /* omitted from prompt when unavailable */ }
+  // Economic surprise — actual vs CONSENSUS per currency, which is the macro
+  // quantity markets actually reprice on and which this brief has never had.
+  let surpriseLine = '';
+  try {
+    const rows = await _readSurpriseStore();
+    const idx = _buildSurpriseIndex(rows);
+    const scored = Object.entries(idx.byCcy).filter(([, v]) => v.score != null)
+      .sort((a, b) => b[1].score - a[1].score);
+    if (scored.length) {
+      surpriseLine = 'Economic surprise vs consensus (units = that series\' own typical surprise, decay-weighted; positive = beating): '
+        + scored.map(([c, v]) => `${c} ${v.score >= 0 ? '+' : ''}${v.score} (${v.n} releases)`).join(' · ')
+        + '. This is DISTINCT from how strong each economy is — an economy can be weak and still beating a weaker consensus.';
+    } else {
+      surpriseLine = `Economic surprise index is still accumulating release history (${rows.length} releases stored) — treat as unknown, not neutral.`;
+    }
+  } catch { /* omitted from prompt when unavailable */ }
+  // Correlation regime — the board-level SIZING read. Drawn from the same
+  // 5-year rolling correlation history the hedge tooling already rebuilds.
+  let corrLine = '';
+  try {
+    const raw = fs.existsSync(CORR_HISTORY_PATH) ? JSON.parse(fs.readFileSync(CORR_HISTORY_PATH, 'utf8')) : null;
+    const recs = raw?.records || [];
+    const last = recs[recs.length - 1]?.corr || {};
+    const vals = Object.values(last).filter(Number.isFinite).map(Math.abs);
+    if (vals.length >= 6) {
+      const mean = vals.reduce((a, x) => a + x, 0) / vals.length;
+      const high = vals.filter(v => v >= 0.7).length;
+      corrLine = `Correlation regime: mean |rho| ${mean.toFixed(2)} across ${vals.length} pair-combinations, ${Math.round(100 * high / vals.length)}% above 0.7. `
+        + (mean >= 0.6
+          ? 'HIGH — markets are moving as one, so several "different" setups today are really one position; this is a SIZING point, not a directional one.'
+          : mean <= 0.35
+          ? 'LOW — pairs are moving on their own stories and genuinely diversify each other more than usual.'
+          : 'Normal clustering.');
+    }
+  } catch { /* omitted from prompt when unavailable */ }
   const macro = [
     `VIX ${g('vix')} (prev ${gp('vix')})${g('vix3m') != null ? ` · VIX3M ${g('vix3m')} (${g('vix') > g('vix3m') ? 'BACKWARDATED — near-term fear' : 'contango — normal'})` : ''}`,
     `HY credit spread ${g('hy')}% (prev ${gp('hy')}%)`,
     `DXY ${g('dxy')} (prev ${gp('dxy')})`,
-    `US 2Y ${g('us2y')} · US 10Y ${g('us10y')} · 2s10s ${s2s10}`,
-    `DE10Y ${g('de10y')} · JP10Y ${g('jp10y')} · GB10Y ${g('gb10y')}`,
+    // US tenors are DAILY series (DGS*) now, not GS* monthly averages — "prev" here
+    // is the prior business day, which is what a morning brief has always implied.
+    `US 2Y ${g('us2y')} · US 10Y ${g('us10y')} · 2s10s ${s2s10}${fred?.us10y?.asOf ? ` (as of ${fred.us10y.asOf})` : ''}`,
+    `DE10Y ${g('de10y')} · JP10Y ${g('jp10y')} · GB10Y ${g('gb10y')}${fred?.de10y?.asOf ? ` — NOTE: these are OECD MONTHLY series, latest print ${fred.de10y.asOf}; they are not comparable to the daily US tenors above on a same-day basis` : ''}`,
     `Real 10Y (TIPS) ${g('tips')} · WTI ${g('wti')}`,
+    surpriseLine || null,
+    corrLine || null,
     riskLine || null,
     ivLine || null,
   ].filter(Boolean).join('\n');
@@ -11684,6 +11764,141 @@ async function computeRiskFlags() {
 app.get('/api/risk-flags', async (_req, res) => {
   try { res.json({ ok: true, ...(await computeRiskFlags()) }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// ── Live dealing spreads, batched ─────────────────────────────────────────────
+// _worker.js already has /api/spread, but it prices ONE instrument per call and
+// never caches. today.html shows 25+ instruments, so using it there would mean 25
+// uncached OANDA round-trips on every board render — which is why the page ended up
+// carrying no cost information at all: 64 uses of the word "spread" in that file and
+// not one of them is the dealing spread.
+//
+// This is the same OANDA pricing endpoint, one call for every instrument at once,
+// cached briefly. Spreads move on a scale of seconds and the board re-renders far
+// more often than that, so a short TTL is the difference between "usable on a grid"
+// and "rate-limited".
+//
+// Returns pips using the SAME convention as the rest of this file: PIP_SIZE where it
+// has an entry, otherwise 0.01 for JPY crosses and 0.0001 for everything else. Gold
+// is 1.0 (canonical — js/utils.js's 0.1 is the known-wrong one), so XAU spreadPips is
+// a dollar spread.
+const _SPREADS_TTL_MS = 20_000;
+let _spreadsCache = { at: 0, key: '', data: null };
+
+function _spreadPipSize(oandaSym) {
+  const slash = oandaSym.replace('_', '/');
+  if (PIP_SIZE[oandaSym] != null) return PIP_SIZE[oandaSym];
+  if (PIP_SIZE[slash] != null) return PIP_SIZE[slash];
+  return oandaSym.includes('JPY') ? 0.01 : 0.0001;
+}
+
+// Default universe = whatever this server already prices, in OANDA underscore form.
+const _SPREADS_DEFAULT = Object.keys(PIP_SIZE).map(k => k.replace('/', '_'));
+
+async function _fetchSpreads(symbols) {
+  if (!process.env.OANDA_KEY || !process.env.OANDA_ACCOUNT_ID) {
+    return { ok: false, reason: 'OANDA credentials not configured', pairs: {} };
+  }
+  const base = (process.env.OANDA_ENV || 'live') === 'practice'
+    ? 'https://api-fxpractice.oanda.com' : 'https://api-fxtrade.oanda.com';
+  const r = await fetch(
+    `${base}/v3/accounts/${process.env.OANDA_ACCOUNT_ID}/pricing?instruments=${symbols.map(encodeURIComponent).join('%2C')}`,
+    { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(8_000) }
+  );
+  if (!r.ok) return { ok: false, reason: `OANDA ${r.status}`, pairs: {} };
+  const d = await r.json();
+  const pairs = {};
+  for (const p of (d.prices ?? [])) {
+    const bid = parseFloat(p.bids?.[0]?.price ?? NaN);
+    const ask = parseFloat(p.asks?.[0]?.price ?? NaN);
+    if (!Number.isFinite(bid) || !Number.isFinite(ask)) continue;
+    const pipSz = _spreadPipSize(p.instrument);
+    pairs[p.instrument] = {
+      bid, ask,
+      spread: +(ask - bid).toFixed(8),
+      spreadPips: +((ask - bid) / pipSz).toFixed(2),
+      // OANDA reports tradeability per instrument; a spread quoted while the
+      // instrument is halted is not a cost you can actually pay.
+      tradeable: p.tradeable !== false,
+      at: p.time ?? null,
+    };
+  }
+  return { ok: true, pairs };
+}
+
+// -- Economic surprise index (actual vs consensus, per currency) ---------------
+// today.html's "Growth surprise by currency" bars never measured surprise: they
+// plot ismEngine's `activity` composite, which is a LEVEL. And /api/surprise, the
+// endpoint meant to carry the real thing, calls Finnhub's /calendar/economic --
+// a PREMIUM endpoint that 403s on a free key -- and returns [] on the failure, so
+// it has been quietly empty rather than loudly broken.
+//
+// The calendar feed only ever exposes ONE WEEK, so a surprise index cannot be
+// computed on demand; it has to be ACCUMULATED. This job merges each week's printed
+// releases into a rolling KV store, and the route standardises them per series and
+// decays them per js/econSurprise.js.
+//
+// Cold start is honest, not hidden: until a series has enough history to have a
+// dispersion, it is excluded, and until a currency has enough scored releases it
+// reports null with a `pending` count. An empty index says "collecting", never 0.
+const _SURPRISE_KV = 'econ_surprise_v1';
+const _SURPRISE_REFRESH_MS = 60 * 60_000;   // releases print hourly at most; the feed itself caches
+
+async function _readSurpriseStore() {
+  try {
+    const raw = await kv.get(_SURPRISE_KV);
+    if (!raw) return [];
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    const rows = parsed?.data?.rows ?? parsed?.rows ?? parsed?.data ?? parsed;
+    return Array.isArray(rows) ? rows : [];
+  } catch { return []; }
+}
+
+async function _refreshSurpriseStore() {
+  const r = await _fetchWeekEvents({ finnhubKey: process.env.FINNHUB_KEY });
+  if (!r.ok) throw new Error(`calendar feed unavailable: ${r.error || 'unknown'}`);
+  const stored = await _readSurpriseStore();
+  const merged = _mergeReleases(stored, r.events ?? []);
+  await kv.put(_SURPRISE_KV, JSON.stringify({
+    data: { rows: merged.rows, updatedAt: Date.now() }, timestamp: Date.now(),
+  }));
+  console.log(`[surprise] ${merged.rows.length} stored releases (+${merged.added} new, ${merged.updated} revised, -${merged.dropped} aged out)`);
+  return merged;
+}
+
+app.get('/api/econ-surprise', async (_req, res) => {
+  try {
+    const rows = await _readSurpriseStore();
+    const idx = _buildSurpriseIndex(rows);
+    res.json({ ok: true, storedReleases: rows.length, ...idx, generatedAt: new Date().toISOString() });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/econ-surprise/refresh', async (_req, res) => {
+  try { const m = await _refreshSurpriseStore(); res.json({ ok: true, stored: m.rows.length, added: m.added, updated: m.updated }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+_refreshSurpriseStore().catch(e => console.error('[surprise] initial refresh failed:', e.message));
+setInterval(() => _refreshSurpriseStore().catch(e => console.error('[surprise] refresh failed:', e.message)), _SURPRISE_REFRESH_MS);
+
+app.get('/api/spreads', async (req, res) => {
+  try {
+    const raw = (req.query.symbols || '').toString().trim();
+    const symbols = raw
+      ? raw.split(',').map(x => x.trim().replace('/', '_')).filter(Boolean).slice(0, 60)
+      : _SPREADS_DEFAULT;
+    const key = symbols.join(',');
+    if (_spreadsCache.data && _spreadsCache.key === key && Date.now() - _spreadsCache.at < _SPREADS_TTL_MS) {
+      return res.json({ ..._spreadsCache.data, cached: true, ageMs: Date.now() - _spreadsCache.at });
+    }
+    const out = await _fetchSpreads(symbols);
+    const payload = { ...out, asOf: new Date().toISOString(), count: Object.keys(out.pairs).length };
+    if (out.ok) _spreadsCache = { at: Date.now(), key, data: payload };
+    res.json({ ...payload, cached: false, ageMs: 0 });
+  } catch (e) {
+    // A dead spread feed must not take the board down — the page degrades to
+    // "cost unknown", which it says out loud rather than implying zero cost.
+    res.json({ ok: false, reason: e.message, pairs: {}, asOf: new Date().toISOString(), count: 0 });
+  }
 });
 
 // ── Gold ETF flow (GLD + IAU combined AUM) ────────────────────────────────────
@@ -28386,8 +28601,14 @@ async function refreshMacroContext() {
 // via the shared fetchD1 primitive), and stores the combined payload in
 // fred_data_v3 KV. Runs at startup and every 6h so the /api/fred endpoint
 // always serves from KV — no client-triggered concurrent FRED batches.
+// GS2/GS5/GS10 are FRED's MONTHLY-AVERAGE constant-maturity series. They were
+// being consumed by a daily dashboard and by buildMacroChanges' [1,5,20] windows,
+// which turned "US 10Y · 1d" into a one-MONTH move and "20d" into twenty months.
+// DGS2/DGS5/DGS10 are the daily equivalents — same units, same meaning, right
+// cadence. (seriesDeltas is now calendar-day aware too, so a monthly series
+// degrades honestly instead of silently; this is the other half of that fix.)
 const _FRED_DASH_SERIES = {
-  vix: 'VIXCLS', vix3m: 'VXVCLS', us2y: 'GS2', us5y: 'GS5', us10y: 'GS10',
+  vix: 'VIXCLS', vix3m: 'VXVCLS', us2y: 'DGS2', us5y: 'DGS5', us10y: 'DGS10',
   dxy: 'DTWEXBGS', hy: 'BAMLH0A0HYM2', nfci: 'NFCI',
   tips: 'DFII10', tips5: 'DFII5', bei: 'T10YIE',
   aud_usd: 'DEXUSAL', usd_jpy: 'DEXJPUS',
@@ -28408,7 +28629,10 @@ let   _fredDashRunning  = false;
 // /api/fredhistory assembles from KV instead of making concurrent FRED calls from every
 // client compass load. Stored as fredhistory_series_<key> with 6h TTL.
 const _FREDHISTORY_SERIES = {
-  us2y: 'GS2', us5y: 'GS5', us10y: 'GS10', dxy: 'DTWEXBGS',
+  // Daily tenors, not GS* monthly averages — see _FRED_DASH_SERIES' note. This
+  // map feeds buildMacroChanges' 1d/5d/20d rows directly, so the cadence here IS
+  // the label's meaning.
+  us2y: 'DGS2', us5y: 'DGS5', us10y: 'DGS10', dxy: 'DTWEXBGS',
   tips: 'DFII10', tips5: 'DFII5', bei: 'T10YIE', vix: 'VIXCLS', vix3m: 'VXVCLS',
   hy: 'BAMLH0A0HYM2', usd_jpy: 'DEXJPUS',
   sofr: 'SOFR', rrp: 'RRPONTSYD',   // repo rate + reverse-repo facility usage (macro-change strip)
@@ -28490,7 +28714,12 @@ async function refreshFredDashboard(retry = 0) {
     const existing = await kv.get(_FRED_DASH_KV);
     if (existing) {
       const { d, t } = JSON.parse(existing);
-      if (_FRED_DASH_CRIT.every(k => d[k]?.value != null) &&
+      // A cache written before the DGS*/asOf change carries no `asOf` on us10y —
+      // and its us10y is a MONTHLY average, which is the bug this fix removes.
+      // Treat a date-blind payload as stale so the first boot after deploy
+      // repopulates instead of serving the old shape for up to 5 more hours.
+      const preFix = d?.us10y?.asOf == null;
+      if (!preFix && _FRED_DASH_CRIT.every(k => d[k]?.value != null) &&
           Date.now() - (t || 0) < 5 * 60 * 60 * 1000) {
         await _writeBotFredKey(d);   // keep the bot mirror alive even when the dash cache is fresh
         return;
@@ -28510,10 +28739,19 @@ async function refreshFredDashboard(retry = 0) {
         const d = await r.json();
         const valid = (d.observations || [])
           .filter(o => o.value && o.value !== '.')
-          .map(o => parseFloat(o.value));
-        out[key] = { value: valid[0] ?? null, prev: valid[1] ?? null };
+          .map(o => ({ v: parseFloat(o.value), date: o.date }));
+        // asOf/prevAsOf are kept alongside value/prev because every consumer of
+        // this payload was previously date-blind: the currency drawer could say a
+        // yield was "currently rising" with no way to know the comparison spanned
+        // a day or a quarter, and it ranked US GS10 (~1wk lag) against OECD
+        // IRLTLT01* (1-2 MONTH lag) as if both were observed today. Two extra
+        // fields; every existing {value, prev} reader is unaffected.
+        out[key] = {
+          value: valid[0]?.v ?? null, prev: valid[1]?.v ?? null,
+          asOf: valid[0]?.date ?? null, prevAsOf: valid[1]?.date ?? null,
+        };
       } catch {
-        out[key] = { value: null, prev: null };
+        out[key] = { value: null, prev: null, asOf: null, prevAsOf: null };
       }
       await new Promise(res => setTimeout(res, 600)); // 600ms gap ≈ 100 req/min
     }

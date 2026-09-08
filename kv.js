@@ -47,6 +47,11 @@ const KV_FILE   = path.join(DATA_DIR, 'kv.json');
 //    surprise_index, events_*  re-fetched from Finnhub on next page load
 const _CF_EXACT = new Set([
   'tg_config', 'ai_alert_cfg',
+  'econ_surprise_v1',        // rolling store of PRINTED economic releases (actual vs consensus).
+                             // The calendar feed only ever exposes one week, so the surprise
+                             // index is ACCUMULATED — a lost store is months of history that
+                             // cannot be re-fetched from anywhere.
+
   'fwd_fade_log',            // forward-track confirmed-fade signal log — accumulates a live post-research record, cannot be rebuilt
   'fwd_fade_meta',           // forward-track tracking-start date + last-scan bookkeeping
   'cone_fwd_log',            // cone forward-track: live cone claims + resolved outcomes — accumulates a post-research record, cannot be rebuilt

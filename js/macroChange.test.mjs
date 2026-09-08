@@ -1,7 +1,7 @@
 // Synthetic, no-network unit tests for the macro-change brick.
 //   node js/macroChange.test.mjs
 
-import { seriesDeltas, buildMacroChanges, formatMacroChanges, MACRO_CHANGE_SPEC, flowDp, formatFlowBn } from './macroChange.js';
+import { seriesDeltas, seriesCadenceDays, buildMacroChanges, formatMacroChanges, MACRO_CHANGE_SPEC, flowDp, formatFlowBn } from './macroChange.js';
 
 let failures = 0;
 const ok = (name, cond, extra = '') => { console.log(`  ${cond ? '✓' : '✗ FAIL'} ${name}${extra ? '  ' + extra : ''}`); if (!cond) failures++; };
@@ -68,6 +68,52 @@ ok('a live trickle is not rounded away', formatFlowBn(0.004) === '<0.01' && form
 ok('missing data is a dash, not a number', [null, undefined, NaN, 'x'].every(v => formatFlowBn(v) === '–'));
 ok('negative flows keep their sign', formatFlowBn(-1) === '-1.00' && formatFlowBn(-250) === '-250');
 ok('rrp spec carries flow precision', MACRO_CHANGE_SPEC.rrp.dp === 2 && MACRO_CHANGE_SPEC.rrp.kind === 'flow');
+
+
+// ── calendar-day windows, not observation counts ────────────────────────────
+// Regression: the 1d/5d/20d labels used to be OBSERVATION offsets. Fed FRED's GS10
+// (a MONTHLY average, which is what us10y was wired to), "1d" was a one-month move
+// and "20d" a twenty-month move — rendered in the same strip, in the same style, as
+// genuinely-daily VIX and HY rows.
+const monthly = [
+  '2025-01-01','2025-02-01','2025-03-01','2025-04-01','2025-05-01','2025-06-01',
+  '2025-07-01','2025-08-01','2025-09-01','2025-10-01','2025-11-01','2025-12-01',
+  '2026-01-01','2026-02-01','2026-03-01','2026-04-01','2026-05-01','2026-06-01',
+  '2026-07-01','2026-08-01','2026-09-01',
+].map((date, i) => ({ date, value: 4.00 + i * 0.05 }));
+
+const md = seriesDeltas(monthly, [1, 5, 20]);
+ok('monthly cadence is measured', Math.round(seriesCadenceDays(monthly)) === 30 || Math.round(seriesCadenceDays(monthly)) === 31, String(seriesCadenceDays(monthly)));
+ok('a monthly series cannot answer "1 day"', md.d[1] === null, String(md.d[1]));
+ok('a monthly series cannot answer "5 days"', md.d[5] === null, String(md.d[5]));
+ok('a monthly series CAN answer "20 days"', md.d[20] != null, String(md.d[20]));
+ok('and it reports the span it actually used', md.refGapDays[20] >= 28 && md.refGapDays[20] <= 35, String(md.refGapDays[20]));
+
+// A daily series with a weekend/holiday hole still answers 1d, and says how far back it reached.
+const gappy = [
+  { date: '2026-09-01', value: 4.10 },
+  { date: '2026-09-02', value: 4.12 },
+  { date: '2026-09-07', value: 4.20 },   // 5-day hole (long weekend)
+];
+const gd = seriesDeltas(gappy, [1]);
+ok('a gap does not blank the 1d window', gd.d[1] != null, String(gd.d[1]));
+ok('the real span is reported, not assumed', gd.refGapDays[1] === 5, String(gd.refGapDays[1]));
+
+// The formatter must SAY when a window spans more than its label.
+const gapText = formatMacroChanges([{
+  label: 'US 10Y', unit: 'bps', kind: 'rate', last: 4.2, dir: '↑', note: '',
+  deltas: { 1: 8, 5: null, 20: null }, refGapDays: { 1: 5, 5: null, 20: null }, cadenceDays: 1,
+}], [1, 5, 20]);
+ok('formatter flags a window wider than its label', /1d \+8bps \(over 5d\)/.test(gapText), gapText);
+ok('formatter prints n/a for an unanswerable window', /5d n\/a/.test(gapText), gapText);
+
+// Undated series keep the old positional behaviour, so existing callers are unaffected.
+const undated = [1, 2, 3, 4, 5, 6].map(v => ({ value: v }));
+ok('undated series fall back to positional windows', seriesDeltas(undated, [1])?.d[1] === 1, String(seriesDeltas(undated, [1])?.d[1]));
+
+// Rows carry the provenance downstream so the page and the AI prompt can show it.
+const provRows = buildMacroChanges({ us10y }, MACRO_CHANGE_SPEC, { windows: [1, 5, 20] }).rows;
+ok('rows expose refGapDays/cadenceDays', provRows[0].refGapDays != null && provRows[0].cadenceDays != null);
 
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nAll macroChange tests passed');
 process.exit(failures ? 1 : 0);

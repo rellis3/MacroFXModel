@@ -1,0 +1,268 @@
+
+=== EURUSD ===
+  2757 sessions (2016-03-28→2026-08-20), 6220 touches total, split 2022-04-26 — 37.3s
+
+=== GBPUSD ===
+  2757 sessions (2016-03-28→2026-08-20), 6238 touches total, split 2022-05-18 — 11.2s
+
+=== USDJPY ===
+  2757 sessions (2016-03-28→2026-08-20), 5617 touches total, split 2022-06-08 — 11.4s
+
+=== AUDUSD ===
+  2757 sessions (2016-03-28→2026-08-20), 6154 touches total, split 2022-07-14 — 41.4s
+
+=== USDCHF ===
+  2757 sessions (2016-03-28→2026-08-20), 6537 touches total, split 2022-04-26 — 49.4s
+
+=== EURAUD ===
+  (no CVOL coverage for EURAUD — ivRegime/vrp/ivSkewDir will read null)
+  2757 sessions (2016-03-28→2026-08-20), 6924 touches total, split 2022-06-14 — 11.5s
+
+=== EURCHF ===
+  (no CVOL coverage for EURCHF — ivRegime/vrp/ivSkewDir will read null)
+  2757 sessions (2016-03-28→2026-08-20), 8402 touches total, split 2022-05-09 — 9.7s
+
+=== AUDJPY ===
+  (no CVOL coverage for AUDJPY — ivRegime/vrp/ivSkewDir will read null)
+  2757 sessions (2016-03-28→2026-08-20), 7127 touches total, split 2022-07-14 — 10.3s
+
+=== CADJPY ===
+  (no CVOL coverage for CADJPY — ivRegime/vrp/ivSkewDir will read null)
+  2757 sessions (2016-03-28→2026-08-20), 5970 touches total, split 2022-09-22 — 15.6s
+
+=== CHFJPY ===
+  (no CVOL coverage for CHFJPY — ivRegime/vrp/ivSkewDir will read null)
+  2757 sessions (2016-03-28→2026-08-20), 7197 touches total, split 2022-03-01 — 14.4s
+
+=== GOLD ===
+  2744 sessions (2016-03-29→2026-08-20), 4296 touches total, split 2022-06-30 — 40.7s
+
+=== NQ ===
+  (no CVOL coverage for NQ — ivRegime/vrp/ivSkewDir will read null)
+  2747 sessions (2016-03-29→2026-08-20), 3777 touches total, split 2022-04-06 — 34.4s
+
+=== SPX ===
+  (no CVOL coverage for SPX — ivRegime/vrp/ivSkewDir will read null)
+  1293 sessions (2021-08-30→2026-06-05), 1766 touches total, split 2024-08-02 — 8.1s
+
+=== DOW ===
+  (no CVOL coverage for DOW — ivRegime/vrp/ivSkewDir will read null)
+  1293 sessions (2021-08-30→2026-06-05), 1652 touches total, split 2024-07-25 — 6.0s
+
+=== US2000 ===
+  (no CVOL coverage for US2000 — ivRegime/vrp/ivSkewDir will read null)
+  2747 sessions (2016-03-29→2026-08-20), 3634 touches total, split 2022-04-28 — 29.6s
+
+=== DE30 ===
+  (no CVOL coverage for DE30 — ivRegime/vrp/ivSkewDir will read null)
+  2702 sessions (2016-03-30→2026-08-20), 3183 touches total, split 2022-06-14 — 31.4s
+
+=== UK100 ===
+  (no CVOL coverage for UK100 — ivRegime/vrp/ivSkewDir will read null)
+  2687 sessions (2016-03-30→2026-08-20), 3162 touches total, split 2022-02-24 — 27.8s
+
+
+Pooled: 17 pairs, 87856 total touches (35211 OOS).
+
+================ UNCONDITIONAL BASELINE (OOS, p50+p75 only, sanity check vs Stage 1) ================
+  P(out|resolved) = 64.2% [63.5-64.9%], n=19125
+
+================ HELD DIMENSIONS (cleared holdsOOS: n>=30 both halves, |delta|>=3pp, same sign) ================
+  up|p50  (n IS=10258 OOS=7040)  base IS out=48.4%/back=6.8%  OOS out=50.9%/back=6.8%
+    HELD  session              NY               IS out=39.7% (n=6174, Δ-8.7)   OOS out=43% (n=4245, Δ-7.9)
+    HELD  session              London           IS out=62.3% (n=3057, Δ+13.9)   OOS out=63.3% (n=2082, Δ+12.4)
+    HELD  session              Asia             IS out=59.9% (n=1027, Δ+11.5)   OOS out=62% (n=713, Δ+11.1)
+    HELD  dowSession           2|NY             IS out=38.9% (n=1132, Δ-9.5)   OOS out=43.4% (n=758, Δ-7.5)
+    HELD  dowSession           3|NY             IS out=42.2% (n=1466, Δ-6.2)   OOS out=47.3% (n=991, Δ-3.6)
+    HELD  dowSession           4|London         IS out=64.7% (n=682, Δ+16.3)   OOS out=63.8% (n=472, Δ+12.9)
+    HELD  dowSession           5|London         IS out=60.7% (n=634, Δ+12.3)   OOS out=62.4% (n=439, Δ+11.5)
+    HELD  dowSession           5|NY             IS out=37% (n=1305, Δ-11.4)   OOS out=40% (n=918, Δ-10.9)
+    HELD  dowSession           1|NY             IS out=36.1% (n=949, Δ-12.3)   OOS out=38.7% (n=671, Δ-12.2)
+    HELD  dowSession           2|London         IS out=60.2% (n=664, Δ+11.8)   OOS out=59% (n=346, Δ+8.1)
+    HELD  dowSession           4|NY             IS out=42.7% (n=1322, Δ-5.7)   OOS out=44.1% (n=907, Δ-6.8)
+    HELD  dowSession           1|London         IS out=62.7% (n=549, Δ+14.3)   OOS out=65.6% (n=433, Δ+14.7)
+    HELD  dowSession           3|London         IS out=63.1% (n=528, Δ+14.7)   OOS out=64.8% (n=392, Δ+13.9)
+    HELD  dowSession           5|Asia           IS out=74.9% (n=187, Δ+26.5)   OOS out=76.8% (n=138, Δ+25.9)
+    HELD  dowSession           2|Asia           IS out=57.5% (n=240, Δ+9.1)   OOS out=59.6% (n=156, Δ+8.7)
+    HELD  dowSession           3|Asia           IS out=58.6% (n=244, Δ+10.2)   OOS out=58.5% (n=123, Δ+7.6)
+    HELD  dowSession           1|Asia           IS out=57.8% (n=161, Δ+9.4)   OOS out=57.3% (n=157, Δ+6.4)
+    HELD  dowSession           4|Asia           IS out=51.8% (n=195, Δ+3.4)   OOS out=58.3% (n=139, Δ+7.4)
+    HELD  sessionPos           3·late           IS out=29.9% (n=3366, Δ-18.5)   OOS out=30.2% (n=2123, Δ-20.7)
+    HELD  sessionPos           2·mid            IS out=55.1% (n=5885, Δ+6.7)   OOS out=57.7% (n=4232, Δ+6.8)
+    HELD  sessionPos           1·early          IS out=71.2% (n=1007, Δ+22.8)   OOS out=73% (n=685, Δ+22.1)
+    HELD  gapBucket            gap-down         IS out=59% (n=519, Δ+10.6)   OOS out=60.9% (n=340, Δ+10)
+    HELD  asiaVol              3·wild           IS out=55.8% (n=1891, Δ+7.4)   OOS out=58.1% (n=1337, Δ+7.2)
+    HELD  asiaVol              1·quiet          IS out=37.4% (n=1177, Δ-11)   OOS out=41.2% (n=857, Δ-9.7)
+    HELD  londonVol            2·normal         IS out=37.6% (n=3644, Δ-10.8)   OOS out=41.1% (n=2436, Δ-9.8)
+    HELD  londonVol            1·quiet          IS out=37.5% (n=792, Δ-10.9)   OOS out=36% (n=586, Δ-14.9)
+    HELD  prevSessionVol       2·normal         IS out=45% (n=5549, Δ-3.4)   OOS out=47.7% (n=3660, Δ-3.2)
+    HELD  prevSessionVol       1·quiet          IS out=43.9% (n=1112, Δ-4.5)   OOS out=43.4% (n=839, Δ-7.5)
+    HELD  prevSessionVol       3·wild           IS out=53.7% (n=3012, Δ+5.3)   OOS out=56.6% (n=2094, Δ+5.7)
+    HELD  otherSideTouchedBefore true             IS out=51.4% (n=2290, Δ+3)   OOS out=54.9% (n=1580, Δ+4)
+    HELD  approachVel          3·spike          IS out=66.6% (n=1169, Δ+18.2)   OOS out=73.3% (n=833, Δ+22.4)
+    HELD  approachVel          2·med            IS out=53.6% (n=3902, Δ+5.2)   OOS out=58.1% (n=2421, Δ+7.2)
+    HELD  approachVel          1·grind          IS out=40.3% (n=5180, Δ-8.1)   OOS out=41.4% (n=3786, Δ-9.5)
+    HELD  wtState              1·counter        IS out=75.5% (n=49, Δ+27.1)   OOS out=80% (n=50, Δ+29.1)
+    HELD  wtMtf                3·with           IS out=44.7% (n=3598, Δ-3.7)   OOS out=45.9% (n=2355, Δ-5)
+    HELD  wtMtf                1·against        IS out=67.2% (n=201, Δ+18.8)   OOS out=69.8% (n=189, Δ+18.9)
+    HELD  wtSlow               3·stretched      IS out=44.8% (n=1976, Δ-3.6)   OOS out=46.3% (n=1387, Δ-4.6)
+    HELD  wtSlow               1·counter        IS out=61.3% (n=697, Δ+12.9)   OOS out=65.1% (n=450, Δ+14.2)
+    HELD  vwapSide             3·near           IS out=57.5% (n=915, Δ+9.1)   OOS out=59.4% (n=757, Δ+8.5)
+    HELD  volClimax            1·quiet          IS out=39% (n=461, Δ-9.4)   OOS out=35.7% (n=347, Δ-15.2)
+    HELD  prevCloseLoc         3·beyond-p75-dn  IS out=51.7% (n=1715, Δ+3.3)   OOS out=54.7% (n=1275, Δ+3.8)
+    HELD  ivRegime             3·iv-high        IS out=52.9% (n=291, Δ+4.5)   OOS out=58.2% (n=146, Δ+7.3)
+    HELD  vrp                  3·iv-rich        IS out=55.3% (n=969, Δ+6.9)   OOS out=56.1% (n=603, Δ+5.2)
+    HELD  vrp                  1·iv-cheap       IS out=40.5% (n=116, Δ-7.9)   OOS out=38.4% (n=164, Δ-12.5)
+    HELD  candleReject         3·reject         IS out=43.9% (n=1568, Δ-4.5)   OOS out=45.8% (n=1076, Δ-5.1)
+    HELD  ordinal              2                IS out=44.4% (n=1710, Δ-4)   OOS out=47.7% (n=1159, Δ-3.2)
+    HELD  ordinal              4                IS out=60.2% (n=103, Δ+11.8)   OOS out=57.7% (n=78, Δ+6.8)
+    HELD  prevOutcomeSameDay   back             IS out=60.7% (n=178, Δ+12.3)   OOS out=59.7% (n=134, Δ+8.8)
+    HELD  prevOutcomeSameDay   out              IS out=52% (n=646, Δ+3.6)   OOS out=54.5% (n=466, Δ+3.6)
+  up|p75  (n IS=9903 OOS=7168)  base IS out=35.2%/back=37.8%  OOS out=34.8%/back=40.2%
+    HELD  session              NY               IS out=31.7% (n=6852, Δ-3.5)   OOS out=31.7% (n=4884, Δ-3.1)
+    HELD  session              London           IS out=48.7% (n=2064, Δ+13.5)   OOS out=44.5% (n=1659, Δ+9.7)
+    HELD  dowSession           2|NY             IS out=31.2% (n=1273, Δ-4)   OOS out=29.6% (n=884, Δ-5.2)
+    HELD  dowSession           4|London         IS out=50.9% (n=450, Δ+15.7)   OOS out=40.8% (n=368, Δ+6)
+    HELD  dowSession           3|NY             IS out=31.6% (n=1533, Δ-3.6)   OOS out=29.1% (n=1125, Δ-5.7)
+    HELD  dowSession           5|NY             IS out=26.2% (n=1433, Δ-9)   OOS out=27.8% (n=966, Δ-7)
+    HELD  dowSession           2|London         IS out=48.9% (n=468, Δ+13.7)   OOS out=47.3% (n=260, Δ+12.5)
+    HELD  dowSession           3|London         IS out=50.3% (n=362, Δ+15.1)   OOS out=41.5% (n=275, Δ+6.7)
+    HELD  dowSession           5|London         IS out=42.6% (n=420, Δ+7.4)   OOS out=48.9% (n=364, Δ+14.1)
+    HELD  dowSession           3|Asia           IS out=28.2% (n=273, Δ-7)   OOS out=27.4% (n=113, Δ-7.4)
+    HELD  dowSession           1|London         IS out=51.4% (n=364, Δ+16.2)   OOS out=44.4% (n=392, Δ+9.6)
+    HELD  dowSession           1|Asia           IS out=25.2% (n=155, Δ-10)   OOS out=26.3% (n=160, Δ-8.5)
+    HELD  sessionPos           3·late           IS out=24.3% (n=4280, Δ-10.9)   OOS out=22.9% (n=2868, Δ-11.9)
+    HELD  sessionPos           2·mid            IS out=43.2% (n=4896, Δ+8)   OOS out=42% (n=3852, Δ+7.2)
+    HELD  sessionPos           1·early          IS out=45.8% (n=727, Δ+10.6)   OOS out=48.7% (n=448, Δ+13.9)
+    HELD  asiaVol              3·wild           IS out=42.2% (n=2180, Δ+7)   OOS out=39.9% (n=1655, Δ+5.1)
+    HELD  asiaVol              1·quiet          IS out=31.7% (n=853, Δ-3.5)   OOS out=28.9% (n=667, Δ-5.9)
+    HELD  londonVol            2·normal         IS out=30.1% (n=3430, Δ-5.1)   OOS out=28.8% (n=2427, Δ-6)
+    HELD  approachVel          3·spike          IS out=44.3% (n=945, Δ+9.1)   OOS out=42.5% (n=730, Δ+7.7)
+    HELD  approachVel          1·grind          IS out=31.6% (n=6386, Δ-3.6)   OOS out=30.7% (n=4715, Δ-4.1)
+    HELD  approachVel          2·med            IS out=40.8% (n=2568, Δ+5.6)   OOS out=42.7% (n=1723, Δ+7.9)
+    HELD  wtState              1·counter        IS out=47.2% (n=127, Δ+12)   OOS out=38.6% (n=83, Δ+3.8)
+    HELD  wtMtf                1·against        IS out=47.2% (n=108, Δ+12)   OOS out=39% (n=123, Δ+4.2)
+    HELD  wtSlow               1·counter        IS out=44.2% (n=452, Δ+9)   OOS out=45.8% (n=369, Δ+11)
+    HELD  vwapSide             3·near           IS out=40.2% (n=729, Δ+5)   OOS out=43.2% (n=703, Δ+8.4)
+    HELD  volClimax            1·quiet          IS out=29.6% (n=686, Δ-5.6)   OOS out=25.8% (n=473, Δ-9)
+    HELD  overlapWindow        false            IS out=32% (n=5987, Δ-3.2)   OOS out=30.1% (n=4048, Δ-4.7)
+    HELD  overlapWindow        true             IS out=40.2% (n=3916, Δ+5)   OOS out=40.8% (n=3120, Δ+6)
+    HELD  ivRegime             1·iv-low         IS out=24.1% (n=79, Δ-11.1)   OOS out=17.2% (n=58, Δ-17.6)
+    HELD  vrp                  1·iv-cheap       IS out=27.8% (n=79, Δ-7.4)   OOS out=24.7% (n=97, Δ-10.1)
+    HELD  candleReject         3·reject         IS out=28.8% (n=1451, Δ-6.4)   OOS out=31.7% (n=1036, Δ-3.1)
+  up|p90  (n IS=4575 OOS=3384)  base IS out=0%/back=44.9%  OOS out=0%/back=48.2%
+  down|p50  (n IS=10493 OOS=6829)  base IS out=52.8%/back=6.6%  OOS out=52%/back=6.7%
+    HELD  session              NY               IS out=44.2% (n=6245, Δ-8.6)   OOS out=44.2% (n=4049, Δ-7.8)
+    HELD  session              London           IS out=66.3% (n=3144, Δ+13.5)   OOS out=63.5% (n=2038, Δ+11.5)
+    HELD  session              Asia             IS out=63.3% (n=1104, Δ+10.5)   OOS out=62.8% (n=742, Δ+10.8)
+    HELD  dowSession           5|NY             IS out=43% (n=1285, Δ-9.8)   OOS out=44.3% (n=861, Δ-7.7)
+    HELD  dowSession           2|NY             IS out=41.3% (n=1207, Δ-11.5)   OOS out=42.4% (n=776, Δ-9.6)
+    HELD  dowSession           4|London         IS out=69.2% (n=757, Δ+16.4)   OOS out=66.6% (n=473, Δ+14.6)
+    HELD  dowSession           2|London         IS out=64.5% (n=633, Δ+11.7)   OOS out=63.3% (n=409, Δ+11.3)
+    HELD  dowSession           3|London         IS out=63.5% (n=578, Δ+10.7)   OOS out=61.4% (n=381, Δ+9.4)
+    HELD  dowSession           3|NY             IS out=43.5% (n=1371, Δ-9.3)   OOS out=43.9% (n=886, Δ-8.1)
+    HELD  dowSession           4|NY             IS out=48.8% (n=1446, Δ-4)   OOS out=47.7% (n=956, Δ-4.3)
+    HELD  dowSession           5|London         IS out=66.8% (n=674, Δ+14)   OOS out=64.5% (n=448, Δ+12.5)
+    HELD  dowSession           1|NY             IS out=43.4% (n=936, Δ-9.4)   OOS out=41.4% (n=570, Δ-10.6)
+    HELD  dowSession           5|Asia           IS out=76.4% (n=225, Δ+23.6)   OOS out=75.2% (n=113, Δ+23.2)
+    HELD  dowSession           1|London         IS out=66.9% (n=502, Δ+14.1)   OOS out=60.2% (n=327, Δ+8.2)
+    HELD  dowSession           2|Asia           IS out=68% (n=219, Δ+15.2)   OOS out=61% (n=123, Δ+9)
+    HELD  dowSession           4|Asia           IS out=60.2% (n=241, Δ+7.4)   OOS out=58.9% (n=168, Δ+6.9)
+    HELD  sessionPos           2·mid            IS out=58.9% (n=6140, Δ+6.1)   OOS out=57.6% (n=4143, Δ+5.6)
+    HELD  sessionPos           3·late           IS out=34.1% (n=3249, Δ-18.7)   OOS out=31.7% (n=1924, Δ-20.3)
+    HELD  sessionPos           1·early          IS out=74.4% (n=1104, Δ+21.6)   OOS out=72.6% (n=762, Δ+20.6)
+    HELD  dayVol               3·heavy          IS out=55.8% (n=1117, Δ+3)   OOS out=57% (n=688, Δ+5)
+    HELD  asiaVol              2·normal         IS out=48.5% (n=4225, Δ-4.3)   OOS out=47.5% (n=2680, Δ-4.5)
+    HELD  asiaVol              1·quiet          IS out=43.6% (n=974, Δ-9.2)   OOS out=40.9% (n=623, Δ-11.1)
+    HELD  asiaVol              3·wild           IS out=61.5% (n=2158, Δ+8.7)   OOS out=60.4% (n=1461, Δ+8.4)
+    HELD  londonVol            2·normal         IS out=42.8% (n=3795, Δ-10)   OOS out=42% (n=2489, Δ-10)
+    HELD  londonVol            3·wild           IS out=47.6% (n=1636, Δ-5.2)   OOS out=48.8% (n=1054, Δ-3.2)
+    HELD  londonVol            1·quiet          IS out=43.8% (n=812, Δ-9)   OOS out=45.7% (n=506, Δ-6.3)
+    HELD  prevSessionVol       2·normal         IS out=49.4% (n=5779, Δ-3.4)   OOS out=47.7% (n=3744, Δ-4.3)
+    HELD  prevSessionVol       3·wild           IS out=58.2% (n=2970, Δ+5.4)   OOS out=58.4% (n=1982, Δ+6.4)
+    HELD  approachVel          3·spike          IS out=69.5% (n=1224, Δ+16.7)   OOS out=71.4% (n=921, Δ+19.4)
+    HELD  approachVel          2·med            IS out=55.8% (n=4533, Δ+3)   OOS out=56.2% (n=2780, Δ+4.2)
+    HELD  approachVel          1·grind          IS out=45.7% (n=4732, Δ-7.1)   OOS out=42.5% (n=3125, Δ-9.5)
+    HELD  approachER           3·driven         IS out=55.8% (n=4086, Δ+3)   OOS out=55.5% (n=2731, Δ+3.5)
+    HELD  wtMtf                1·against        IS out=66.1% (n=165, Δ+13.3)   OOS out=72.5% (n=153, Δ+20.5)
+    HELD  wtSlow               1·counter        IS out=60.1% (n=496, Δ+7.3)   OOS out=62.4% (n=348, Δ+10.4)
+    HELD  vwapSide             2·mid            IS out=49.8% (n=2777, Δ-3)   OOS out=47.7% (n=1641, Δ-4.3)
+    HELD  vwapSide             3·near           IS out=56.4% (n=684, Δ+3.6)   OOS out=59.9% (n=501, Δ+7.9)
+    HELD  volClimax            1·quiet          IS out=46.3% (n=367, Δ-6.5)   OOS out=40.9% (n=237, Δ-11.1)
+    HELD  ivRegime             3·iv-high        IS out=58.6% (n=266, Δ+5.8)   OOS out=56% (n=134, Δ+4)
+    HELD  vrp                  1·iv-cheap       IS out=45.8% (n=118, Δ-7)   OOS out=43.2% (n=169, Δ-8.8)
+    HELD  candleReject         3·reject         IS out=47.2% (n=1547, Δ-5.6)   OOS out=44.2% (n=972, Δ-7.8)
+    HELD  ordinal              2                IS out=48.8% (n=1845, Δ-4)   OOS out=46.6% (n=1207, Δ-5.4)
+  down|p75  (n IS=11860 OOS=7290)  base IS out=36.6%/back=41.6%  OOS out=36.3%/back=41.6%
+    HELD  session              NY               IS out=33.2% (n=8155, Δ-3.4)   OOS out=32.9% (n=4826, Δ-3.4)
+    HELD  session              London           IS out=48.7% (n=2633, Δ+12.1)   OOS out=47.4% (n=1755, Δ+11.1)
+    HELD  session              Asia             IS out=33.5% (n=1072, Δ-3.1)   OOS out=31.9% (n=709, Δ-4.4)
+    HELD  dowSession           4|London         IS out=50.9% (n=619, Δ+14.3)   OOS out=46.1% (n=425, Δ+9.8)
+    HELD  dowSession           4|NY             IS out=33.2% (n=2037, Δ-3.4)   OOS out=31.8% (n=1147, Δ-4.5)
+    HELD  dowSession           2|London         IS out=51.6% (n=564, Δ+15)   OOS out=44.9% (n=332, Δ+8.6)
+    HELD  dowSession           5|Asia           IS out=52.1% (n=211, Δ+15.5)   OOS out=39.7% (n=126, Δ+3.4)
+    HELD  dowSession           5|London         IS out=42.9% (n=562, Δ+6.3)   OOS out=46% (n=417, Δ+9.7)
+    HELD  dowSession           1|NY             IS out=33.2% (n=1208, Δ-3.4)   OOS out=30% (n=724, Δ-6.3)
+    HELD  dowSession           3|Asia           IS out=29.9% (n=254, Δ-6.7)   OOS out=25.8% (n=155, Δ-10.5)
+    HELD  dowSession           1|London         IS out=49.3% (n=440, Δ+12.7)   OOS out=49.5% (n=309, Δ+13.2)
+    HELD  dowSession           4|Asia           IS out=28% (n=264, Δ-8.6)   OOS out=17.6% (n=131, Δ-18.7)
+    HELD  dowSession           3|London         IS out=48.4% (n=448, Δ+11.8)   OOS out=51.8% (n=272, Δ+15.5)
+    HELD  sessionPos           2·mid            IS out=44.3% (n=6026, Δ+7.7)   OOS out=43.9% (n=3890, Δ+7.6)
+    HELD  sessionPos           3·late           IS out=25.2% (n=4947, Δ-11.4)   OOS out=24.3% (n=2861, Δ-12)
+    HELD  sessionPos           1·early          IS out=48.1% (n=887, Δ+11.5)   OOS out=45.5% (n=539, Δ+9.2)
+    HELD  gapBucket            gap-down         IS out=40.3% (n=724, Δ+3.7)   OOS out=45.8% (n=408, Δ+9.5)
+    HELD  asiaVol              1·quiet          IS out=28.9% (n=942, Δ-7.7)   OOS out=31.7% (n=515, Δ-4.6)
+    HELD  asiaVol              3·wild           IS out=42.8% (n=2982, Δ+6.2)   OOS out=41.5% (n=1863, Δ+5.2)
+    HELD  londonVol            2·normal         IS out=31.6% (n=4168, Δ-5)   OOS out=31.5% (n=2432, Δ-4.8)
+    HELD  approachVel          2·med            IS out=40.9% (n=3429, Δ+4.3)   OOS out=39.9% (n=1976, Δ+3.6)
+    HELD  approachVel          3·spike          IS out=43.3% (n=990, Δ+6.7)   OOS out=47.8% (n=807, Δ+11.5)
+    HELD  wtState              1·counter        IS out=43.1% (n=116, Δ+6.5)   OOS out=50% (n=52, Δ+13.7)
+    HELD  wtMtf                1·against        IS out=50% (n=80, Δ+13.4)   OOS out=40.3% (n=124, Δ+4)
+    HELD  wtSlow               1·counter        IS out=48.7% (n=314, Δ+12.1)   OOS out=45.9% (n=196, Δ+9.6)
+    HELD  volClimax            1·quiet          IS out=32.5% (n=751, Δ-4.1)   OOS out=28.4% (n=377, Δ-7.9)
+    HELD  overlapWindow        true             IS out=41.7% (n=4694, Δ+5.1)   OOS out=42.1% (n=3013, Δ+5.8)
+    HELD  overlapWindow        false            IS out=33.3% (n=7166, Δ-3.3)   OOS out=32.2% (n=4277, Δ-4.1)
+    HELD  candleReject         3·reject         IS out=33.6% (n=1749, Δ-3)   OOS out=30% (n=1073, Δ-6.3)
+  down|p90  (n IS=5556 OOS=3500)  base IS out=0%/back=48.9%  OOS out=0%/back=50.6%
+
+================ WIN RATE BY VOTE MARGIN (OOS, resolved p50/p75 touches only) ================
+  margin=0    n=  2119  decided=     0  winRate=n/a  [THIN n<30]
+  margin=1    n=  4337  decided=  4337  winRate=49.8% [48.3-51.2%]
+  margin=2    n=  3576  decided=  3576  winRate=50.7% [49.1-52.4%]
+  margin=3    n=  3246  decided=  3246  winRate=51.1% [49.4-52.8%]
+  margin=4+   n=  5847  decided=  5847  winRate=51.9% [50.6-53.2%]
+
+================ HEADLINE: margin>=3 vs unconditional baseline ================
+  margin>=3: n=9093, winRate=51.6% [50.6-52.6%]
+  unconditional baseline: 64.2% [63.5-64.9%]
+  => CIs are NON-OVERLAPPING — margin>=3 is genuinely different from baseline.
+
+================ BY RUNG (margin>=3, OOS) ================
+  p50    n= 4682  winRate=51.1% [49.6-52.5%]
+  p75    n= 4411  winRate=52.2% [50.7-53.7%]
+
+================ BY ASSET CLASS (margin>=3, OOS) ================
+  fx         n= 6792  winRate=53.4% [52.2-54.6%]
+  commodity  n=  407  winRate=49.9% [45-54.7%]
+  index      n= 1894  winRate=45.5% [43.2-47.7%]
+
+================ BY INSTRUMENT (margin>=3, OOS) ================
+  EURUSD     n=  637  winRate=46.6% [42.8-50.5%]
+  GBPUSD     n=  625  winRate=49.3% [45.4-53.2%]
+  USDJPY     n=  602  winRate=58.6% [54.7-62.6%]
+  AUDUSD     n=  584  winRate=53.6% [49.6-57.6%]
+  USDCHF     n=  696  winRate=50.4% [46.7-54.1%]
+  EURAUD     n=  591  winRate=52.6% [48.6-56.6%]
+  EURCHF     n=  962  winRate=55.3% [52.2-58.4%]
+  AUDJPY     n=  727  winRate=56.4% [52.8-60%]
+  CADJPY     n=  656  winRate=54% [50.1-57.8%]
+  CHFJPY     n=  712  winRate=56.2% [52.5-59.8%]
+  GOLD       n=  407  winRate=49.9% [45-54.7%]
+  NQ         n=  466  winRate=38.8% [34.4-43.3%]
+  SPX        n=  212  winRate=45.8% [39-52.5%]
+  DOW        n=  180  winRate=36.1% [29.1-43.1%]
+  US2000     n=  385  winRate=41.6% [36.6-46.5%]
+  DE30       n=  334  winRate=56.3% [51-61.6%]
+  UK100      n=  317  winRate=53.6% [48.1-59.1%]
+
+Wrote full detail to C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\output/dynamic_hl_level_confluence_study.json

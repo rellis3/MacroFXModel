@@ -1,0 +1,142 @@
+
+
+================ FAMILY: DAILY OPEN (breakaway/retest) ================
+=== EURUSD ===
+  [daily-open] 2757 sessions, 6347 eligible retests (>=1 checkpoint), split 2022-05-20
+=== GBPUSD ===
+  [daily-open] 2757 sessions, 5963 eligible retests (>=1 checkpoint), split 2022-08-12
+=== USDJPY ===
+  [daily-open] 2757 sessions, 5607 eligible retests (>=1 checkpoint), split 2022-01-28
+=== AUDUSD ===
+  [daily-open] 2757 sessions, 6027 eligible retests (>=1 checkpoint), split 2022-07-28
+=== USDCHF ===
+  [daily-open] 2757 sessions, 6368 eligible retests (>=1 checkpoint), split 2022-03-08
+=== EURAUD ===
+  [daily-open] 2757 sessions, 6082 eligible retests (>=1 checkpoint), split 2022-08-10
+=== EURCHF ===
+  [daily-open] 2757 sessions, 7040 eligible retests (>=1 checkpoint), split 2022-03-07
+=== AUDJPY ===
+  [daily-open] 2757 sessions, 5792 eligible retests (>=1 checkpoint), split 2022-08-30
+=== CADJPY ===
+  [daily-open] 2757 sessions, 6118 eligible retests (>=1 checkpoint), split 2022-05-30
+=== CHFJPY ===
+  [daily-open] 2757 sessions, 6281 eligible retests (>=1 checkpoint), split 2021-10-07
+=== GOLD ===
+  [daily-open] 2744 sessions, 6251 eligible retests (>=1 checkpoint), split 2022-07-12
+=== NQ ===
+  [daily-open] 2747 sessions, 6170 eligible retests (>=1 checkpoint), split 2022-05-26
+=== SPX ===
+  [daily-open] 1293 sessions, 3013 eligible retests (>=1 checkpoint), split 2024-05-01
+=== DOW ===
+  [daily-open] 1293 sessions, 3056 eligible retests (>=1 checkpoint), split 2024-04-16
+=== US2000 ===
+  [daily-open] 2747 sessions, 5917 eligible retests (>=1 checkpoint), split 2022-05-06
+=== DE30 ===
+  [daily-open] 2702 sessions, 5761 eligible retests (>=1 checkpoint), split 2022-10-14
+=== UK100 ===
+  [daily-open] 2687 sessions, 5722 eligible retests (>=1 checkpoint), split 2022-08-22
+
+Pooled DAILY OPEN (breakaway/retest): 17 pairs, 97515 eligible touches (>=1 checkpoint each).
+
+  -- checkpoint=5min -- (OOS n=39042, IS n=58473)
+    band <15%     n=26454  observedRev= 47.8%  theoryRev= 47.2%  diff=+0.62pp [0.03, 1.22]
+    band 15-35%   n= 9512  observedRev= 54.9%  theoryRev= 53.4%  diff=+1.53pp [0.56, 2.51]
+    band 35-60%   n= 2282  observedRev= 63.7%  theoryRev= 61.5%  diff=+2.24pp [0.34, 4.14]
+    band >60%     n=  794  observedRev= 71.8%  theoryRev= 70.9%  diff=+0.84pp [-2.05, 3.73]
+
+  -- checkpoint=15min -- (OOS n=38104, IS n=57052)
+    band <15%     n=19467  observedRev= 43.7%  theoryRev= 43.9%  diff=-0.18pp [-0.86, 0.5]
+    band 15-35%   n=12134  observedRev= 53.5%  theoryRev= 51.9%  diff=+1.59pp [0.73, 2.45]
+    band 35-60%   n= 4509  observedRev= 64.4%  theoryRev= 61.4%  diff=+2.99pp [1.66, 4.33]
+    band >60%     n= 1994  observedRev= 75.4%  theoryRev= 73.7%  diff=+1.71pp [-0.03, 3.46]
+
+  -- checkpoint=30min -- (OOS n=36334, IS n=54580)
+    band <15%     n=14754  observedRev= 39.9%  theoryRev=   41%  diff=-1.11pp [-1.88, -0.35]
+    band 15-35%   n=12010  observedRev= 51.3%  theoryRev= 49.6%  diff=+1.69pp [0.84, 2.55]
+    band 35-60%   n= 6225  observedRev= 63.4%  theoryRev= 60.3%  diff=+3.08pp [1.94, 4.21]
+    band >60%     n= 3345  observedRev= 75.3%  theoryRev=   73%  diff=+2.26pp [0.91, 3.6]
+
+  -- checkpoint=60min -- (OOS n=32754, IS n=49003)
+    band <15%     n=10145  observedRev= 35.2%  theoryRev= 37.1%  diff=-1.83pp [-2.72, -0.94]
+    band 15-35%   n=10330  observedRev= 47.7%  theoryRev= 46.8%  diff=+0.83pp [-0.09, 1.75]
+    band 35-60%   n= 7160  observedRev= 60.6%  theoryRev=   58%  diff=+2.69pp [1.63, 3.75]
+    band >60%     n= 5119  observedRev= 75.7%  theoryRev= 72.4%  diff=+3.21pp [2.15, 4.28]
+
+
+================ FAMILY: DYNAMIC HL (p50/p75 rungs) ================
+=== EURUSD ===
+  [dyn-hl] 2757 sessions, 2952 eligible touches (p50/p75, >=1 checkpoint), split 2022-04-21
+=== GBPUSD ===
+  [dyn-hl] 2757 sessions, 2879 eligible touches (p50/p75, >=1 checkpoint), split 2022-05-18
+=== USDJPY ===
+  [dyn-hl] 2757 sessions, 2655 eligible touches (p50/p75, >=1 checkpoint), split 2022-03-28
+=== AUDUSD ===
+  [dyn-hl] 2757 sessions, 3112 eligible touches (p50/p75, >=1 checkpoint), split 2022-06-13
+=== USDCHF ===
+  [dyn-hl] 2757 sessions, 3168 eligible touches (p50/p75, >=1 checkpoint), split 2022-02-28
+=== EURAUD ===
+  [dyn-hl] 2757 sessions, 3487 eligible touches (p50/p75, >=1 checkpoint), split 2022-07-06
+=== EURCHF ===
+  [dyn-hl] 2757 sessions, 4197 eligible touches (p50/p75, >=1 checkpoint), split 2022-07-26
+=== AUDJPY ===
+  [dyn-hl] 2757 sessions, 3700 eligible touches (p50/p75, >=1 checkpoint), split 2022-07-05
+=== CADJPY ===
+  [dyn-hl] 2757 sessions, 2892 eligible touches (p50/p75, >=1 checkpoint), split 2022-08-10
+=== CHFJPY ===
+  [dyn-hl] 2757 sessions, 3516 eligible touches (p50/p75, >=1 checkpoint), split 2022-03-01
+=== GOLD ===
+  [dyn-hl] 2744 sessions, 1872 eligible touches (p50/p75, >=1 checkpoint), split 2022-09-23
+=== NQ ===
+  [dyn-hl] 2747 sessions, 1871 eligible touches (p50/p75, >=1 checkpoint), split 2022-02-24
+=== SPX ===
+  [dyn-hl] 1293 sessions, 874 eligible touches (p50/p75, >=1 checkpoint), split 2024-08-05
+=== DOW ===
+  [dyn-hl] 1293 sessions, 817 eligible touches (p50/p75, >=1 checkpoint), split 2024-07-18
+=== US2000 ===
+  [dyn-hl] 2747 sessions, 1804 eligible touches (p50/p75, >=1 checkpoint), split 2022-01-24
+=== DE30 ===
+  [dyn-hl] 2702 sessions, 1645 eligible touches (p50/p75, >=1 checkpoint), split 2022-01-27
+=== UK100 ===
+  [dyn-hl] 2687 sessions, 1618 eligible touches (p50/p75, >=1 checkpoint), split 2022-02-14
+
+Pooled DYNAMIC HL (p50/p75 rungs): 17 pairs, 43059 eligible touches (>=1 checkpoint each).
+
+  -- checkpoint=5min -- (OOS n=17269, IS n=25790)
+    band <15%     n= 8544  observedRev= 20.9%  theoryRev=   28%  diff=-7.11pp [-7.9, -6.32]
+    band 15-35%   n= 5347  observedRev= 45.3%  theoryRev= 46.1%  diff=-0.76pp [-2.01, 0.49]
+    band 35-60%   n= 2348  observedRev= 55.2%  theoryRev=   57%  diff=-1.86pp [-3.73, 0.01]
+    band >60%     n= 1030  observedRev=   67%  theoryRev= 66.6%  diff=+0.36pp [-2.16, 2.89]
+
+  -- checkpoint=15min -- (OOS n=15276, IS n=22847)
+    band <15%     n= 6108  observedRev= 16.2%  theoryRev=   24%  diff=-7.85pp [-8.7, -7.01]
+    band 15-35%   n= 4664  observedRev= 37.5%  theoryRev= 40.4%  diff=-2.91pp [-4.19, -1.62]
+    band 35-60%   n= 2713  observedRev= 55.2%  theoryRev= 55.3%  diff=-0.11pp [-1.86, 1.63]
+    band >60%     n= 1791  observedRev= 70.7%  theoryRev= 70.6%  diff=+0.13pp [-1.79, 2.04]
+
+  -- checkpoint=30min -- (OOS n=12727, IS n=19122)
+    band <15%     n= 4233  observedRev= 12.6%  theoryRev= 21.2%  diff=-8.62pp [-9.55, -7.69]
+    band 15-35%   n= 3783  observedRev=   32%  theoryRev= 35.9%  diff=-3.94pp [-5.32, -2.56]
+    band 35-60%   n= 2557  observedRev= 53.2%  theoryRev= 52.1%  diff=+1.14pp [-0.62, 2.91]
+    band >60%     n= 2154  observedRev= 70.3%  theoryRev= 68.1%  diff=+2.27pp [0.55, 3.98]
+
+  -- checkpoint=60min -- (OOS n=9201, IS n=13885)
+    band <15%     n= 2397  observedRev=  9.7%  theoryRev= 19.2%  diff=-9.55pp [-10.67, -8.44]
+    band 15-35%   n= 2701  observedRev= 25.6%  theoryRev= 31.8%  diff=-6.21pp [-7.71, -4.7]
+    band 35-60%   n= 1998  observedRev= 48.7%  theoryRev= 47.2%  diff=+1.48pp [-0.5, 3.47]
+    band >60%     n= 2105  observedRev=   70%  theoryRev= 65.7%  diff=+4.36pp [2.67, 6.05]
+
+
+================ VERDICT: observed minus gambler's-ruin fair-race theory (pp) ================
+  dailyOpen: overall weighted diff = 0.86pp
+    checkpoint=5min: 0.94pp
+    checkpoint=15min: 0.86pp
+    checkpoint=30min: 0.84pp
+    checkpoint=60min: 0.78pp
+  dynamicHl: overall weighted diff = -3.7pp
+    checkpoint=5min: -3.98pp
+    checkpoint=15min: -4.03pp
+    checkpoint=30min: -3.42pp
+    checkpoint=60min: -2.99pp
+
+Wrote full detail to C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\output/causal_early_reaction_study.json
+NODE_EXIT_0

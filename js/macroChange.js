@@ -60,19 +60,83 @@ export function formatFlowBn(v) {
 }
 
 
-// Latest value + change over each window (in OBSERVATIONS: FRED daily series skip
-// weekends/holidays, so 1/5/20 obs ≈ 1d/1wk/1mo). Returns null if too few points.
+// Latest value + change over each window, measured in CALENDAR DAYS BACK, not in
+// observation count.
+//
+// It used to index back N observations and label the result "1d / 5d / 20d". On a
+// daily series that is roughly right (weekends/holidays are skipped, so 1/5/20 obs
+// ≈ 1d/1wk/1mo). On a MONTHLY series it is silently catastrophic: `us10y` was fed
+// FRED's GS10 monthly average, so the "1d" row was a one-month move and the "20d"
+// row was a twenty-month move — displayed in the same strip, in the same style, as
+// genuinely-daily VIX and HY rows. The series are now DGS*, but a count-based
+// window would re-break the moment any monthly series is added, so the window is
+// now what the label says it is.
+//
+// Semantics: for window N, take the newest observation dated at least N days before
+// the latest one, and accept it only if it is not much older than N.
+//
+// The tolerance is N + max(4, 0.6N) days. The flat 4 covers market holidays and long
+// weekends on a daily series (a "1d" ask over Easter legitimately reaches 4 days
+// back); the proportional part lets a coarse series answer a wide window (a monthly
+// series answering "20d" with a 31-day gap is a fair approximation) while still
+// refusing to answer a narrow one (that same 31-day gap cannot be called "1d", which
+// is exactly what GS10 was doing on this strip). Deliberately NOT scaled by the
+// series' own cadence: doing that makes a slow series tolerant of everything, which
+// re-admits the bug.
+//
+// `refDate`/`refGapDays`/`cadenceDays` let a caller show what a row actually spans
+// rather than trusting the label. Undated series keep the old positional behaviour,
+// so any caller passing bare {value} arrays is unaffected.
+const _DAY_MS = 864e5;
+const _ts = p => { const t = Date.parse(p?.date ?? ''); return Number.isFinite(t) ? t : NaN; };
+
+/** Median calendar-day spacing of a dated series; null when it can't be measured. */
+export function seriesCadenceDays(pts) {
+  if (!Array.isArray(pts) || pts.length < 3) return null;
+  const gaps = [];
+  for (let i = 1; i < pts.length; i++) {
+    const a = _ts(pts[i - 1]), b = _ts(pts[i]);
+    if (Number.isFinite(a) && Number.isFinite(b) && b > a) gaps.push((b - a) / _DAY_MS);
+  }
+  if (gaps.length < 2) return null;
+  gaps.sort((x, y) => x - y);
+  const mid = gaps.length >> 1;
+  const med = gaps.length % 2 ? gaps[mid] : (gaps[mid - 1] + gaps[mid]) / 2;
+  return Math.round(med * 10) / 10;
+}
+
 export function seriesDeltas(pts, windows = [1, 5, 20]) {
   if (!Array.isArray(pts) || pts.length < 2) return null;
   const last = pts[pts.length - 1];
   if (last?.value == null || !Number.isFinite(last.value)) return null;
-  const d = {};
+  const lastT = _ts(last);
+  const dated = Number.isFinite(lastT);
+  const cadenceDays = dated ? seriesCadenceDays(pts) : null;
+  const d = {}, refDate = {}, refGapDays = {};
   for (const n of windows) {
-    const ref = pts[pts.length - 1 - n];
-    d[n] = (pts.length >= n + 1 && ref?.value != null && Number.isFinite(ref.value))
-      ? last.value - ref.value : null;
+    d[n] = null; refDate[n] = null; refGapDays[n] = null;
+    if (!dated) {
+      // Legacy positional path — only for series with no usable dates at all.
+      const ref = pts[pts.length - 1 - n];
+      if (pts.length >= n + 1 && ref?.value != null && Number.isFinite(ref.value)) d[n] = last.value - ref.value;
+      continue;
+    }
+    const cutoff = lastT - n * _DAY_MS;
+    let ref = null;
+    for (let i = pts.length - 2; i >= 0; i--) {
+      const t = _ts(pts[i]);
+      if (Number.isFinite(t) && t <= cutoff) { ref = pts[i]; break; }
+    }
+    if (!ref || ref.value == null || !Number.isFinite(ref.value)) continue;
+    const gap = Math.round((lastT - _ts(ref)) / _DAY_MS);
+    // The nearest available print is much older than the window asked for: this
+    // series' cadence cannot answer this question, so report nothing rather than a
+    // number whose real horizon differs from its label.
+    if (!Number.isFinite(gap) || gap > n + Math.max(4, 0.6 * n)) continue;
+    refDate[n] = ref.date ?? null; refGapDays[n] = gap;
+    d[n] = last.value - ref.value;
   }
-  return { last: last.value, lastDate: last.date, d };
+  return { last: last.value, lastDate: last.date, d, refDate, refGapDays, cadenceDays };
 }
 
 const _dirOf = v => (v == null ? '' : v > 0 ? '↑' : v < 0 ? '↓' : '→');
@@ -96,6 +160,10 @@ export function buildMacroChanges(histByKey = {}, spec = MACRO_CHANGE_SPEC, opts
     const row = {
       key, label: meta.label, unit: meta.unit ?? (meta.bps ? 'bps' : 'pt'), kind: meta.kind,
       last: s.last, lastDate: s.lastDate, deltas,
+      // What each window ACTUALLY spans, and the series' own print cadence — so a
+      // consumer can show "1d" honestly, or say why a window is blank, instead of
+      // assuming every row on the strip is measured over the same horizon.
+      refGapDays: s.refGapDays, cadenceDays: s.cadenceDays,
       dir: _dirOf(lead),
       note: meta.up ? (lead > 0 ? meta.up : lead < 0 ? meta.down : '') : '',
     };
@@ -114,6 +182,10 @@ export function buildMacroChanges(histByKey = {}, spec = MACRO_CHANGE_SPEC, opts
     rows.splice(rows.findIndex(r => r.key === 'us10y') + 1, 0, {
       key: 'us2s10s', label: '2s10s curve', unit: 'bps', kind: 'curve',
       last: _round((byKey.us10y.last - byKey.us2y.last) * 100, 0), lastDate: byKey.us10y.lastDate,
+      // A derived row is only as well-dated as its slower leg.
+      refGapDays: Object.fromEntries(windows.map(n => [n,
+        Math.max(byKey.us10y.refGapDays?.[n] ?? 0, byKey.us2y.refGapDays?.[n] ?? 0) || null])),
+      cadenceDays: Math.max(byKey.us10y.cadenceDays ?? 0, byKey.us2y.cadenceDays ?? 0) || null,
       deltas, dir: _dirOf(trend),
       note: trend > 0 ? 'steepening' : trend < 0 ? 'flattening' : '',
     });
@@ -138,7 +210,15 @@ export function formatMacroChanges(rows, windows = [1, 5, 20]) {
   if (!rows?.length) return '';
   const lbl = { 1: '1d', 5: '5d', 20: '20d' };
   return rows.map(r => {
-    const parts = windows.map(n => `${lbl[n] ?? n + 'obs'} ${_sign(r.deltas[n])}${r.deltas[n] != null ? r.unit : ''}`);
+    const parts = windows.map(n => {
+      if (r.deltas[n] == null) return `${lbl[n] ?? n + 'd'} n/a`;
+      // Say so when the nearest print is materially older than the window asked
+      // for (holiday weeks, a slower series) rather than letting the label imply
+      // a horizon the data doesn't have.
+      const gap = r.refGapDays?.[n];
+      const span = (gap != null && gap > n + 1) ? ` (over ${gap}d)` : '';
+      return `${lbl[n] ?? n + 'd'} ${_sign(r.deltas[n])}${r.unit}${span}`;
+    });
     return `${r.label} ${_fmtLast(r)} · ${parts.join(' · ')} ${r.dir}${r.note ? ' ' + r.note : ''}`;
   }).join('\n');
 }

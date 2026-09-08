@@ -989,6 +989,12 @@ export default {
             // outright while range_line_oi_live (allowlisted) kept working and made the
             // snapshotter look healthy.
             'range_line_oi', 'oi_history',
+            // Same shape of archive: the economic-surprise store is built one week at a
+            // time from a feed that only ever shows the current week, so a 48h TTL would
+            // quietly cap it at two days of history and the index would never leave its
+            // "still collecting" state. Allow-listed in kv.js too — that is a SEPARATE
+            // gate, and passing only one of them fails silently rather than with a 403.
+            'econ_surprise_v1',
             'oi_store', 'journal_store', 'journal_replay_store', 'journal_running_totals',
             'tg_config', 'ai_alert_cfg', 'caps',
             'cot_data', 'cot_urls', 'cot_url',
@@ -1198,9 +1204,13 @@ export default {
         if (!env.FRED_KEY) return err('FRED_KEY not configured', 503);
 
         const ALL_SERIES = {
-          us2y:     'GS2',
-          us5y:     'GS5',
-          us10y:    'GS10',
+          // Daily constant-maturity tenors. These were GS2/GS5/GS10 — FRED's
+          // MONTHLY-AVERAGE series — which made every "1d / 5d / 20d" change row
+          // built from them a 1-month / 5-month / 20-month change instead.
+          // Kept in step with server.js's _FREDHISTORY_SERIES.
+          us2y:     'DGS2',
+          us5y:     'DGS5',
+          us10y:    'DGS10',
           dxy:      'DTWEXBGS',
           tips:     'DFII10',   // 10Y TIPS real yield — gold model Layer 1 + 2
           tips5:    'DFII5',    // 5Y TIPS real yield — more reactive to near-term policy

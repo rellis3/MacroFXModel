@@ -1,0 +1,139 @@
+
+=== EURUSD ===
+  2757 sessions (2016-03-28→2026-08-20), 6220 touches total, p90 touched on 17.8% of days, split 2022-04-26 — 28.1s
+
+=== GBPUSD ===
+  2757 sessions (2016-03-28→2026-08-20), 6238 touches total, p90 touched on 17.2% of days, split 2022-05-18 — 3.6s
+
+=== USDJPY ===
+  2757 sessions (2016-03-28→2026-08-20), 5617 touches total, p90 touched on 15.9% of days, split 2022-06-08 — 4.2s
+
+=== AUDUSD ===
+  2757 sessions (2016-03-28→2026-08-20), 6154 touches total, p90 touched on 18.3% of days, split 2022-07-14 — 34.5s
+
+=== USDCHF ===
+  2757 sessions (2016-03-28→2026-08-20), 6537 touches total, p90 touched on 18.2% of days, split 2022-04-26 — 44.0s
+
+=== EURAUD ===
+  2757 sessions (2016-03-28→2026-08-20), 6924 touches total, p90 touched on 19.5% of days, split 2022-06-14 — 5.8s
+
+=== EURCHF ===
+  2757 sessions (2016-03-28→2026-08-20), 8402 touches total, p90 touched on 19.5% of days, split 2022-05-09 — 5.7s
+
+=== AUDJPY ===
+  2757 sessions (2016-03-28→2026-08-20), 7127 touches total, p90 touched on 19.3% of days, split 2022-07-14 — 6.5s
+
+=== CADJPY ===
+  2757 sessions (2016-03-28→2026-08-20), 5970 touches total, p90 touched on 16.4% of days, split 2022-09-22 — 7.8s
+
+=== CHFJPY ===
+  2757 sessions (2016-03-28→2026-08-20), 7197 touches total, p90 touched on 17.1% of days, split 2022-03-01 — 4.5s
+
+=== GOLD ===
+  2744 sessions (2016-03-29→2026-08-20), 4296 touches total, p90 touched on 12% of days, split 2022-06-30 — 33.6s
+
+=== NQ ===
+  2747 sessions (2016-03-29→2026-08-20), 3777 touches total, p90 touched on 10.8% of days, split 2022-04-06 — 32.9s
+
+=== SPX ===
+  1293 sessions (2021-08-30→2026-06-05), 1766 touches total, p90 touched on 10.1% of days, split 2024-08-02 — 9.6s
+
+=== DOW ===
+  1293 sessions (2021-08-30→2026-06-05), 1652 touches total, p90 touched on 10.6% of days, split 2024-07-25 — 7.5s
+
+=== US2000 ===
+  2747 sessions (2016-03-29→2026-08-20), 3634 touches total, p90 touched on 9.8% of days, split 2022-04-28 — 33.9s
+
+=== DE30 ===
+  2702 sessions (2016-03-30→2026-08-20), 3183 touches total, p90 touched on 8.8% of days, split 2022-06-14 — 35.3s
+
+=== UK100 ===
+  2687 sessions (2016-03-30→2026-08-20), 3162 touches total, p90 touched on 8% of days, split 2022-02-24 — 25.6s
+
+
+================ COVERAGE ================
+pair       nTouches  p90DayRate  splitDate    coverage
+EURUSD         6220       17.8%  2022-04-26  2016-03-28→2026-08-20
+GBPUSD         6238       17.2%  2022-05-18  2016-03-28→2026-08-20
+USDJPY         5617       15.9%  2022-06-08  2016-03-28→2026-08-20
+AUDUSD         6154       18.3%  2022-07-14  2016-03-28→2026-08-20
+USDCHF         6537       18.2%  2022-04-26  2016-03-28→2026-08-20
+EURAUD         6924       19.5%  2022-06-14  2016-03-28→2026-08-20
+EURCHF         8402       19.5%  2022-05-09  2016-03-28→2026-08-20
+AUDJPY         7127       19.3%  2022-07-14  2016-03-28→2026-08-20
+CADJPY         5970       16.4%  2022-09-22  2016-03-28→2026-08-20
+CHFJPY         7197       17.1%  2022-03-01  2016-03-28→2026-08-20
+GOLD           4296         12%  2022-06-30  2016-03-29→2026-08-20
+NQ             3777       10.8%  2022-04-06  2016-03-29→2026-08-20
+SPX            1766       10.1%  2024-08-02  2021-08-30→2026-06-05
+DOW            1652       10.6%  2024-07-25  2021-08-30→2026-06-05
+US2000         3634        9.8%  2022-04-28  2016-03-29→2026-08-20
+DE30           3183        8.8%  2022-06-14  2016-03-30→2026-08-20
+UK100          3162          8%  2022-02-24  2016-03-30→2026-08-20
+
+Pooled: 17 pairs, 87856 total touches (52645 IS, 35211 OOS).
+BM_P90 used = 2.555 (see file header for derivation).
+
+
+================ HEADLINE — OOS ONLY, ALL PAIRS POOLED ================
+  ALL touches (OOS)            n= 35211  out= 34.9%  back= 29.1%  neither=   36%   P(out|resolved)=54.5% [53.8-55.1%]
+
+================ BY RUNG (OOS) ================
+  rung=p50                     n= 13869  out= 51.4%  back=  6.8%  neither= 41.8%   P(out|resolved)=88.4% [87.7-89.1%]
+  rung=p75                     n= 14458  out= 35.6%  back= 40.9%  neither= 23.6%   P(out|resolved)=46.5% [45.6-47.4%]
+  rung=p90                     n=  6884  out=    0%  back= 49.4%  neither= 50.6%   P(out|resolved)=0% [0-0%]
+  Note: p90 has no outer rung to break through by construction — "out" is structurally 0% for it (a ceiling artifact, not a finding), same as the live OH/OL p90 rung.
+
+================ BY SIDE (OOS) ================
+  side=up                      n= 17592  out= 34.5%  back= 28.4%  neither= 37.1%   P(out|resolved)=54.9% [54-55.8%]
+  side=down                    n= 17619  out= 35.2%  back= 29.9%  neither=   35%   P(out|resolved)=54.1% [53.2-55%]
+
+================ BY SESSION OF TOUCH (OOS) ================
+  session=Asia                 n=  3478  out= 38.5%  back=   31%  neither= 30.5%   P(out|resolved)=55.4% [53.5-57.4%]
+  session=London               n=  9002  out= 46.4%  back=   36%  neither= 17.6%   P(out|resolved)=56.4% [55.2-57.5%]
+  session=NY                   n= 22731  out= 29.7%  back= 26.1%  neither= 44.2%   P(out|resolved)=53.2% [52.3-54.1%]
+
+================ BY ORDINAL (OOS) ================
+  ordinal=1                    n= 19297  out=   40%  back= 24.1%  neither= 35.9%   P(out|resolved)=62.4% [61.6-63.3%]
+  ordinal=2                    n=  7586  out= 31.6%  back= 31.6%  neither= 36.8%   P(out|resolved)=50% [48.6-51.4%]
+  ordinal=3+                   n=  8328  out= 25.9%  back= 38.5%  neither= 35.6%   P(out|resolved)=40.2% [38.9-41.5%]
+
+================ BY DAYVOL REGIME (OOS) ================
+  dayVol=1·quiet               n=  6818  out= 34.9%  back= 28.9%  neither= 36.1%   P(out|resolved)=54.7% [53.2-56.2%]
+  dayVol=2·normal              n= 24738  out= 34.8%  back= 28.4%  neither= 36.8%   P(out|resolved)=55% [54.2-55.8%]
+  dayVol=3·heavy               n=  3655  out= 35.4%  back= 34.1%  neither= 30.5%   P(out|resolved)=50.9% [48.9-52.8%]
+
+================ BY PAIR (OOS) ================
+  EURUSD                       n=  2488  out= 33.8%  back= 27.3%  neither= 38.9%   P(out|resolved)=55.4% [52.9-57.9%]
+  GBPUSD                       n=  2497  out= 33.2%  back= 28.2%  neither= 38.6%   P(out|resolved)=54% [51.5-56.5%]
+  USDJPY                       n=  2253  out= 35.5%  back= 30.9%  neither= 33.6%   P(out|resolved)=53.4% [50.9-55.9%]
+  AUDUSD                       n=  2464  out= 34.4%  back= 28.5%  neither= 37.1%   P(out|resolved)=54.6% [52.2-57.1%]
+  USDCHF                       n=  2615  out= 34.5%  back= 28.7%  neither= 36.9%   P(out|resolved)=54.6% [52.2-57%]
+  EURAUD                       n=  2773  out= 35.8%  back= 28.3%  neither=   36%   P(out|resolved)=55.9% [53.5-58.2%]
+  EURCHF                       n=  3365  out= 35.9%  back=   32%  neither= 32.1%   P(out|resolved)=52.9% [50.8-54.9%]
+  AUDJPY                       n=  2853  out= 36.2%  back=   33%  neither= 30.8%   P(out|resolved)=52.3% [50.1-54.5%]
+  CADJPY                       n=  2394  out= 35.2%  back= 30.5%  neither= 34.4%   P(out|resolved)=53.6% [51.1-56.1%]
+  CHFJPY                       n=  2892  out= 35.7%  back= 32.3%  neither=   32%   P(out|resolved)=52.5% [50.3-54.7%]
+  GOLD                         n=  1721  out= 34.2%  back= 22.9%  neither= 42.9%   P(out|resolved)=59.9% [56.8-62.9%]
+  NQ                           n=  1519  out= 35.5%  back= 25.5%  neither=   39%   P(out|resolved)=58.2% [55-61.4%]
+  SPX                          n=   714  out= 33.5%  back= 34.5%  neither= 32.1%   P(out|resolved)=49.3% [44.8-53.7%]
+  DOW                          n=   664  out= 36.3%  back= 28.5%  neither= 35.2%   P(out|resolved)=56% [51.4-60.7%]
+  US2000                       n=  1459  out= 33.5%  back= 28.4%  neither= 38.1%   P(out|resolved)=54.2% [50.9-57.4%]
+  DE30                         n=  1274  out=   33%  back=   25%  neither=   42%   P(out|resolved)=56.8% [53.3-60.4%]
+  UK100                        n=  1266  out= 34.4%  back=   24%  neither= 41.6%   P(out|resolved)=58.9% [55.3-62.4%]
+
+================ BY ASSET CLASS (OOS) ================
+  assetClass=fx                n= 26594  out= 35.1%  back= 30.1%  neither= 34.9%   P(out|resolved)=53.8% [53.1-54.6%]
+  assetClass=commodity         n=  1721  out= 34.2%  back= 22.9%  neither= 42.9%   P(out|resolved)=59.9% [56.8-62.9%]
+  assetClass=index             n=  6896  out= 34.3%  back=   27%  neither= 38.8%   P(out|resolved)=56% [54.5-57.5%]
+
+
+================ RUNG x SIDE (OOS) ================
+  up|p50                       n=  7040  out= 50.9%  back=  6.8%  neither= 42.3%   P(out|resolved)=88.2% [87.2-89.2%]
+  down|p50                     n=  6829  out=   52%  back=  6.7%  neither= 41.3%   P(out|resolved)=88.5% [87.5-89.5%]
+  up|p75                       n=  7168  out= 34.8%  back= 40.2%  neither=   25%   P(out|resolved)=46.4% [45.1-47.7%]
+  down|p75                     n=  7290  out= 36.3%  back= 41.6%  neither= 22.1%   P(out|resolved)=46.6% [45.3-47.9%]
+  up|p90                       n=  3384  out=    0%  back= 48.2%  neither= 51.8%   P(out|resolved)=0% [0-0%]
+  down|p90                     n=  3500  out=    0%  back= 50.6%  neither= 49.4%   P(out|resolved)=0% [0-0%]
+
+Wrote full detail to C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\output/dynamic_hl_level_study.json
