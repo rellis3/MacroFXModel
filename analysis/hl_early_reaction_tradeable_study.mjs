@@ -77,6 +77,7 @@ import { pipSize } from '../js/instrumentRegistry.js';
 import { costForPair } from '../js/perLineStrategy.js';
 import { applyConcurrencyCap } from '../js/levelAtlasVoteReview.js';
 import { backtestStats } from '../js/backtestStats.js';
+import { BANDS, bandOf, CHECKPOINTS_MIN, priceTradeFromTouch } from '../js/hlSignalCore.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const __filename = fileURLToPath(import.meta.url);
@@ -86,21 +87,16 @@ const REARM_FRAC = 0.3;
 const MIN_LOOKBACK = 60;
 export const MIN_SAMPLE = 30;
 const SPLIT_FRAC = 0.6;
-export const CHECKPOINTS_MIN = [5, 15, 30, 60];
 // BM_P90 — see analysis/dynamic_hl_level_study.mjs's header for the full derivation.
 // Duplicated as a plain constant, unused for touch detection (p90 excluded, no outer
 // rung — see that header) but needed to build p75's OUTER neighbour correctly.
 const BM_P90 = 2.555;
 
-// Banded rule per the task: shallow (<15%, 15-35%) bets CONTINUATION, deep (>60%)
-// bets REVERSAL, middle (35-60%) is skipped entirely (no edge found there).
-export const BANDS = [
-  { key: '<15%', test: f => f < 0.15, bet: 'continuation' },
-  { key: '15-35%', test: f => f >= 0.15 && f < 0.35, bet: 'continuation' },
-  { key: '35-60%', test: f => f >= 0.35 && f < 0.6, bet: null },   // skip — no edge
-  { key: '>60%', test: f => f >= 0.6, bet: 'reversal' },
-];
-export function bandOf(frac) { for (const b of BANDS) if (b.test(frac)) return b; return null; }
+// BANDS/bandOf/CHECKPOINTS_MIN moved to js/hlSignalCore.js (2026-09-08) so the
+// live backtest route can import the SAME definitions — re-exported here
+// unchanged so nothing importing them from this file (e.g. the portfolio-
+// additive study) needs to change.
+export { BANDS, bandOf, CHECKPOINTS_MIN };
 
 export const ALL_PAIRS = ['eurusd', 'gbpusd', 'usdjpy', 'audusd', 'usdchf', 'euraud', 'eurchf',
   'audjpy', 'cadjpy', 'chfjpy', 'gold', 'nq', 'spx', 'dow', 'us2000', 'de30', 'uk100'];
@@ -258,29 +254,16 @@ export async function processPair(pair) {
 }
 
 // ── Price ONE candidate trade at a given checkpoint under a given bet ───────────
+// Delegates to js/hlSignalCore.js's priceTradeFromTouch (2026-09-08 extraction)
+// so the analysis script and the live backtest route price identically — this
+// wrapper just supplies touch.pair's cost (the shared fn takes cost as a
+// plain number, no js/perLineStrategy.js dependency of its own) and re-adds
+// `bet` to the return for this file's own console-reporting code, which reads
+// the BAND's `.bet` (unaffected either way) but keeps this for clarity.
 export function priceTrade(touch, cp, bet) {
-  const snap = touch.checks[cp];
-  if (!snap) return null;
-  const entryPrice = snap.ckPrice;
-  const targetPrice = bet === 'continuation' ? touch.contTarget : touch.revTarget;
-  const stopPrice = bet === 'continuation' ? touch.revTarget : touch.contTarget;
-  const win = (bet === 'continuation' && touch.outcome === 'continuation') || (bet === 'reversal' && touch.outcome === 'reversal');
-  const distToTarget = Math.abs(targetPrice - entryPrice);
-  const distToStop = Math.abs(stopPrice - entryPrice);
-  if (!(entryPrice > 0) || !(distToTarget > 0) || !(distToStop > 0)) return null;
   const cost = costForPair(touch.pair, touch.assetClass);
-  const pnlPct = +(((win ? distToTarget : -distToStop) / entryPrice * 100) - cost).toFixed(4);
-  return {
-    instrument: touch.instrument, assetClass: touch.assetClass, date: touch.date, side: touch.side, rung: touch.rung,
-    time: snap.ckTime, resolveTime: touch.resolveTime, frac: snap.frac, bet, win, pnlPct,
-    // entry/pip (2026-09-08, additive — no existing consumer reads these off
-    // this function's return value) let a downstream caller (e.g. the
-    // portfolio-additive study) run this trade through the SAME
-    // `riskAdjustTrades` brick levelAtlasVoteReview.js's own trades already
-    // go through, instead of re-deriving an R-multiple by hand.
-    entry: entryPrice, pip: touch.pip,
-    targetPips: +(distToTarget / touch.pip).toFixed(1), stopPips: +(distToStop / touch.pip).toFixed(1),
-  };
+  const priced = priceTradeFromTouch(touch, cp, bet, cost);
+  return priced ? { ...priced, bet } : null;
 }
 
 // Cap concurrency per pair (maxConcurrent=1), then pool — same shape every
