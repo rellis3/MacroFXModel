@@ -4584,7 +4584,69 @@ async function loadFaLiveStatus() {
   }
   loadFaAllLines();
   loadFaDecisionLog();
+  loadFaFrequencyCheck();
 }
+
+// Frozen reference: the offline backtest's OWN daily trade-count
+// distribution (both ladders combined, 16-pair recommended universe,
+// margin>=2 + the whiplash gap filter (30min Asia/180min Monday) + chandelier
+// + cost-efficiency + hedge-only concurrency — i.e. EXACTLY what production
+// runs, not a looser/older config). Same convention as _VB2_SAME_DAY_RATE_PCT
+// elsewhere in this file: a static table refreshed by hand if the backtest
+// is re-run against materially more history, not recomputed live (32 R2
+// reads/request across both ladders would be too expensive to pay on every
+// dashboard load). Computed 2026-09-08 via /api/asia-fib-atlas/vote-portfolio
+// + /api/monday-fib-atlas/vote-portfolio with matching query params.
+const FA_DAILY_TRADE_REFERENCE = {
+  p10: 2, median: 7, mean: 8.92, p90: 17,
+  zeroDayRatePct: 34.2,   // of ALL calendar days, not just active ones
+  dateRange: ['2021-07-06', '2026-09-07'],
+  computedAt: '2026-09-08',
+};
+
+// Direct owner ask (2026-09-08): is today's/this week's real trade count
+// actually near the backtest's own median, or genuinely short of it? Reads
+// the durable trade-log (NOT the 5000-event decision-log ring buffer, which
+// found 2026-09-08 only retains a few days before older "entered" events get
+// silently pushed out by the far more numerous pair_blocked/cooldown events).
+async function loadFaFrequencyCheck() {
+  const body = document.getElementById('faFreqBody');
+  if (!body) return;
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const from = new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10);
+    const r = await fetch(`/api/fib-atlas-bot/trade-log?from=${from}&to=${today}`);
+    const j = await r.json();
+    if (!j.ok) { body.innerHTML = j.error || 'failed to load'; return; }
+    const byDate = {};
+    for (const t of (j.trades || [])) byDate[t.date] = (byDate[t.date] || 0) + 1;
+    const todayCount = byDate[today] || 0;
+    const ref = FA_DAILY_TRADE_REFERENCE;
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+      days.push({ date: d, count: byDate[d] || 0 });
+    }
+    // A day that hasn't finished yet (today) reads differently from one that
+    // HAS finished and came back short — don't flag today amber just because
+    // it's early; only judge days that are actually over.
+    const todayColor = todayCount >= ref.median ? 'var(--green)' : 'var(--text3)';
+    const last7Str = days.map(d => {
+      const c = d.count;
+      const color = c === 0 ? 'var(--text3)' : (c >= ref.median ? 'var(--green)' : 'var(--amber,#e0a93b)');
+      return `<span style="color:${color}">${d.date.slice(5)}:${c}</span>`;
+    }).join('&nbsp;&nbsp;');
+    body.innerHTML = `
+      <div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:6px">
+        <div>Today: <b style="color:${todayColor}">${todayCount}</b></div>
+        <div>Backtest median (active days): <b>${ref.median}</b> <span style="color:var(--text3)">(p10 ${ref.p10} / p90 ${ref.p90}, mean ${ref.mean})</span></div>
+        <div style="color:var(--text3)">~${ref.zeroDayRatePct}% of ALL days see zero trades historically — one quiet day alone isn't unusual on its own</div>
+      </div>
+      <div>last 7 days: ${last7Str}</div>
+    `;
+  } catch (e) { body.innerHTML = e.message; }
+}
+window.loadFaFrequencyCheck = loadFaFrequencyCheck;
 
 // Unfiltered companion to the Today's Levels table above: EVERY rung the
 // engine currently carries across BOTH ladders for the configured pair
