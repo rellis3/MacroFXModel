@@ -4629,6 +4629,13 @@ async function loadFaAllLines() {
       const strong = r.tradeableNow;
       const decLabel = !r.decision ? '🪙 no decision' : (r.decision === 'follow' ? '↗ follow' : '↘ fade');
       const decColor = !r.decision ? 'var(--text3)' : (r.decision === 'follow' ? 'var(--blue,#60a5fa)' : 'var(--amber)');
+      // Margin clears but the whiplash gap filter (2026-09-04) still says no
+      // — show WHY instead of a bare "—", so a margin>=2 row doesn't read as
+      // "just not good enough" when it's actually "too long since this rung
+      // was last touched" (a different, gap-specific reason).
+      const gapBlocked = !strong && (r.margin ?? 0) >= 2 && r.gapMin != null;
+      const tradeCell = strong ? '✓' : (gapBlocked ? `⏱ ${r.gapMin}m gap` : '—');
+      const tradeColor = strong ? 'var(--green)' : (gapBlocked ? 'var(--amber,#e0a93b)' : 'var(--text3)');
       return `<tr>
         <td style="padding:5px 10px;font-weight:600;text-align:left">${r.pair.toUpperCase()}</td>
         <td style="padding:5px 10px;text-align:left;color:${r.ladder === 'asia' ? '#38bdf8' : '#4fd1c5'}">${r.ladder === 'asia' ? 'Asia' : 'Monday'}</td>
@@ -4637,7 +4644,7 @@ async function loadFaAllLines() {
         <td style="padding:5px 10px;text-align:left;color:var(--text3)">${r.status}</td>
         <td style="padding:5px 10px;text-align:left;color:${decColor}">${decLabel}</td>
         <td style="padding:5px 10px;text-align:right">${r.margin ?? '—'}</td>
-        <td style="padding:5px 10px;text-align:center;color:${strong ? 'var(--green)' : 'var(--text3)'}">${strong ? '✓' : '—'}</td>
+        <td style="padding:5px 10px;text-align:center;color:${tradeColor}">${tradeCell}</td>
       </tr>`;
     }).join('');
   } catch (e) { body.innerHTML = `<tr><td colspan="8" style="padding:14px;text-align:center;color:var(--text3)">${e.message}</td></tr>`; }

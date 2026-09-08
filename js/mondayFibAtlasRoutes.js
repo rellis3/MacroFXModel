@@ -251,19 +251,24 @@ export async function mondayLivePlanZones(pair, opts = {}) {
 }
 
 // Monday's own copy of asiaFibAtlasRoutes.js's `asiaAllLines` — see that
-// function's own doc.
-export async function mondayAllLines(pair) {
+// function's own doc, including the 2026-09-08 gap-filter fix.
+export async function mondayAllLines(pair, { maxGapMin = FIB_ATLAS_MONDAY_MAX_GAP_MIN } = {}) {
   const live = await getFastLive(pair);
   if (live.warming || !live.date) return { date: live.date ?? null, warming: !!live.warming, lines: [] };
   const stored = await getJSON(`${PREFIX}/${pair}.json`);
   const book = stored?.book ?? null;
+  const nowSec = Date.now() / 1000;
   const lines = live.ladder.map(rung => {
     const vd = book ? voteDecision(book, rung) : null;
+    const margin = vd?.margin ?? 0;
+    const gapMin = (maxGapMin != null && rung.lastTouchTime != null)
+      ? +((nowSec - rung.lastTouchTime) / 60).toFixed(1) : null;
+    const gapOk = gapMin == null || gapMin <= maxGapMin;
     return {
       pair, side: rung.side, rung: rung.level,
       status: rung.touchedToday ? `touched · ${rung.prevOutcomeSameDay}` : 'pending',
-      decision: vd?.decision ?? null, margin: vd?.margin ?? 0,
-      tradeableNow: (vd?.margin ?? 0) >= FIB_ATLAS_MONDAY_MIN_MARGIN,
+      decision: vd?.decision ?? null, margin, gapMin,
+      tradeableNow: margin >= FIB_ATLAS_MONDAY_MIN_MARGIN && gapOk,
     };
   });
   return { date: live.date, warming: false, lines };

@@ -522,18 +522,29 @@ export async function mergeIntoFibAtlasPlan(key, entry) {
 // `voteDecision` call `asiaLivePlanZones` makes — never a second scoring
 // path, so this can never show a different verdict than the filtered plan
 // does for the same rung, only a fuller list of rows.
-export async function asiaAllLines(pair) {
+export async function asiaAllLines(pair, { maxGapMin = FIB_ATLAS_MAX_GAP_MIN } = {}) {
   const live = await getFastLive(pair);
   if (live.warming || !live.date) return { date: live.date ?? null, warming: !!live.warming, lines: [] };
   const stored = await getJSON(`${PREFIX}/${pair}.json`);
   const book = stored?.book ?? null;
+  const nowSec = Date.now() / 1000;
   const lines = live.ladder.map(rung => {
     const vd = book ? voteDecision(book, rung) : null;
+    const margin = vd?.margin ?? 0;
+    // Whiplash gap filter (2026-09-04) — mirrors zonesFromLiveAndBook's own
+    // check EXACTLY, so this diagnostic table can never disagree with what
+    // the real plan actually does (found 2026-09-08: this route was never
+    // updated when the gap filter shipped, so `tradeableNow` kept showing
+    // margin-only, silently drifting out of sync with the live plan it's
+    // meant to explain).
+    const gapMin = (maxGapMin != null && rung.lastTouchTime != null)
+      ? +((nowSec - rung.lastTouchTime) / 60).toFixed(1) : null;
+    const gapOk = gapMin == null || gapMin <= maxGapMin;
     return {
       pair, side: rung.side, rung: rung.level,
       status: rung.touchedToday ? `touched · ${rung.prevOutcomeSameDay}` : 'pending',
-      decision: vd?.decision ?? null, margin: vd?.margin ?? 0,
-      tradeableNow: (vd?.margin ?? 0) >= FIB_ATLAS_MIN_MARGIN,
+      decision: vd?.decision ?? null, margin, gapMin,
+      tradeableNow: margin >= FIB_ATLAS_MIN_MARGIN && gapOk,
     };
   });
   return { date: live.date, warming: false, lines };
