@@ -95,7 +95,12 @@ def main():
     key = load_key()
     client = db.Historical(key)
 
-    end = datetime.now(timezone.utc)
+    # GLBX.MDP3 historical data has a publish lag -- a real run (2026-09-08)
+    # 400'd with "data available up to 13:00:00, end requested 13:11:58" when
+    # `end` was the exact current instant. A day's buffer is comfortably past
+    # any observed or documented lag for this dataset; precision doesn't
+    # matter for a cost estimate, so back off rather than guess the exact minimum.
+    end = datetime.now(timezone.utc) - timedelta(hours=24)
     start = end - timedelta(days=args.days)
     schemas = [s.strip() for s in args.schema.split(",") if s.strip()]
 
