@@ -6813,3 +6813,48 @@ Validated: `node --check` on both new analysis scripts
 script itself ran "successfully" by its own log output, which is exactly
 the problem being documented (success ≠ correct here). No further sandbox
 action taken on gbpaud's R2 data to avoid compounding the regression.
+
+**Follow-up, same day — the gap is much wider than one pair.** Owner pushed
+back on the framing above after noticing the trade-blotter's day-picker
+shows a return for essentially every recent date, including 2026-09-07 —
+"how are all these days in the list if R2 ended days ago?" Checked all 16
+default pairs' `asia-fib-atlas/{pair}-votetrades.json` directly
+(`analysis/fib_atlas_check_coverage.mjs`) instead of assuming gbpaud was an
+isolated case:
+
+```
+FRESH (real 2026-09-07 data): eurusd, gbpusd, usdjpy, audusd, nzdusd   (5/16)
+STALE:
+  usdcad, usdchf, eurgbp         — last real trade 2026-08-20 (~19d behind)
+  audjpy, audnzd, audcad, cadjpy — last real trade 2026-08-18/19 (~20d behind)
+  gold                           — last real trade 2026-09-04 (a few days behind)
+  euraud, nzdjpy, gbpaud         — last real trade 2026-05-21 (~4 months behind)
+```
+
+Only 5 of the 16 default pairs actually have current data. The reason the
+COMBINED portfolio day-picker still shows a return for nearly every day
+(including today) is exactly that pooling: EURUSD/GBPUSD/USDJPY/AUDUSD/
+NZDUSD are active majors that touch a rung most days, so those 5 alone are
+enough to make a pooled day look "complete" while silently missing whatever
+the other 11 pairs would have contributed. This is NOT just a display quirk
+— any combined-portfolio stat computed over a recent window has been
+silently under-representing 11 of 16 constituents.
+
+Critically, **euraud and nzdjpy are ALSO capped at exactly 2026-05-21** —
+the same date gbpaud regressed to from the sandbox mistake above — but this
+session never touched euraud or nzdjpy. That means the silent
+gap-fill-fails-per-chunk-but-persists-anyway failure mode documented above
+has already happened for real, in production, independent of anything this
+session did. `usdcad`/`usdchf`/`eurgbp`/`audjpy`/`audnzd`/`audcad`/`cadjpy`
+being stuck ~19-20 days behind (not months) looks like a separate, milder
+symptom — most likely the nightly `reference-engine-rebuild` job simply
+hasn't successfully covered them in ~3 weeks (worth checking Railway logs
+for a per-pair failure/timeout pattern in that job, not yet done).
+
+**Not fixed**: none of the 11 stale pairs have been regenerated (deliberately
+— doing so from this sandbox would repeat the exact regression documented
+above). All 11 need a real regen from Railway, and the nightly job's own
+reliability for covering all 16 pairs needs checking so this doesn't recur.
+
+Validated: `node --check` on `fib_atlas_check_coverage.mjs`; read-only R2
+fetches only, no writes.
