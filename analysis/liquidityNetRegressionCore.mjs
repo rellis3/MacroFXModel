@@ -73,6 +73,17 @@ export function countEpisodes(flags) {
   return n;
 }
 
+// Shared transform: raw level → impulse (lag → smooth → rate-of-change →
+// z-score). Identical pipeline for every proxy tested against Nasdaq so a
+// comparison between proxies is apples-to-apples — only the input level
+// series changes, never the transform.
+function levelToImpulse(levelArr, pubLagWeeks) {
+  const lagged = lagArr(levelArr, pubLagWeeks);      // publication lag — can't know this week's release this week
+  const smoothed = smaArr(lagged, IMPULSE_SMOOTH);
+  const changeK = rocArr(smoothed, IMPULSE_LOOKBACK);
+  return rollingZScore(changeK, Z_WINDOW);
+}
+
 export function computeNetLiquidityImpulse(dates, fredMaps, pubLagWeeks) {
   const walcl = ffillArr(forwardFillToDates(dates, fredMaps.walcl));
   const tga = ffillArr(forwardFillToDates(dates, fredMaps.tga));
@@ -80,11 +91,21 @@ export function computeNetLiquidityImpulse(dates, fredMaps, pubLagWeeks) {
   // WALCL is $millions on FRED; TGA/RRP are $billions — convert WALCL→$B first
   // (same unit trap globalLiquidityEngine.js documents for its own USD block).
   const netLiquidity = dates.map((_, i) => (isNum(walcl[i]) ? walcl[i] / 1000 : NaN) - (isNum(tga[i]) ? tga[i] : 0) - (isNum(rrp[i]) ? rrp[i] : 0));
-  const lagged = lagArr(netLiquidity, pubLagWeeks);      // publication lag — can't know this week's release this week
-  const smoothed = smaArr(lagged, IMPULSE_SMOOTH);
-  const changeK = rocArr(smoothed, IMPULSE_LOOKBACK);
-  const impulse = rollingZScore(changeK, Z_WINDOW);
-  return { netLiquidity, impulse };
+  return { netLiquidity, impulse: levelToImpulse(netLiquidity, pubLagWeeks) };
+}
+
+// NFCI (Chicago Fed National Financial Conditions Index, FRED:NFCI) — a
+// single, already-composite series (positive = TIGHTER than average
+// conditions, negative = LOOSER), unlike Net Liquidity's 3-series build.
+// Same lag/smooth/RoC/z transform as Net Liquidity for a fair comparison.
+// Sign convention differs on purpose: tightening (rising impulse) is the
+// textbook HEADWIND for risk assets, so a genuine relationship here should
+// show a NEGATIVE beta — the opposite expected sign from Net Liquidity's
+// impulse, where the textbook story predicts a POSITIVE beta.
+export function computeNfciImpulse(dates, fredMaps, pubLagWeeks) {
+  if (!fredMaps.nfci?.size) return null;
+  const nfci = ffillArr(forwardFillToDates(dates, fredMaps.nfci));
+  return { nfci, impulse: levelToImpulse(nfci, pubLagWeeks) };
 }
 
 export function forwardReturns(weeklyRet, horizonWeeks) {
@@ -165,21 +186,13 @@ function summarizeResult(h, res) {
   };
 }
 
-export function computeNetLiquidityRegression({ fredMaps, fredSource = 'unknown', nqRets, nqSource = 'unknown', pubLagWeeks = 2, horizons = [4, 8, 13] }) {
-  const dates = buildWeeklyGrid(fredMaps);
-  if (!dates.length) throw new Error('no Net Liquidity data (empty FRED series)');
-  const { impulse } = computeNetLiquidityImpulse(dates, fredMaps, pubLagWeeks);
-
-  const { R } = alignFxToGrid(dates, ['NQ'], { NQ: nqRets || new Map() });
-  const nqWeekly = R.map((row) => row[0]);
-
-  const real = !/synthetic/i.test(fredSource) && !/synthetic/i.test(nqSource);
+// Runs the full unconditional + regime-conditioned test for ONE proxy's
+// impulse series against ONE forward-return series. Shared by Net Liquidity
+// and NFCI (and any future proxy) so every proxy gets the identical honest
+// treatment — only the impulse input differs.
+function runProxyRegression(impulse, nqWeekly, dates, fredMaps, horizons) {
   const results = horizons.map((h) => summarizeResult(h, isOosTest(impulse, forwardReturns(nqWeekly, h))));
 
-  // Regime conditioning (education/macro-deep-dives-notes.md Lesson 3: "regime
-  // conditioning is mandatory" — an unconditional multi-decade regression can
-  // wash out an effect that only shows up in stress). Only computed when the
-  // caller supplied VIX + HY OAS; otherwise omitted rather than guessed at.
   const stress = computeStressRegime(dates, fredMaps);
   let regime = null;
   if (stress) {
@@ -195,12 +208,44 @@ export function computeNetLiquidityRegression({ fredMaps, fredSource = 'unknown'
       caveat: `Only ${stressEpisodes} independent stress episode(s) in this sample (not ${stressWeeks} — stress weeks inside one episode are highly autocorrelated, not separate evidence). A regime-conditioned t-stat here is much weaker evidence than the same t-stat computed from many independent episodes — read a "ROBUST" verdict on this split as suggestive at best, not confirmed.`,
     };
   }
+  return { results, regime };
+}
+
+/*
+ * computeNetLiquidityRegression({ fredMaps, fredSource, nqRets, nqSource, pubLagWeeks, horizons })
+ *   fredMaps  : { walcl, tga, rrp, vix?, hy?, nfci? } each a Map<'YYYY-MM-DD', number>
+ *   nqRets    : Map<'YYYY-MM-DD', weekly log return> for NASDAQ (NQ)
+ * Returns a plain, JSON-friendly result object (no Maps/functions). Always
+ * runs the Net Liquidity control case; also runs NFCI as a second,
+ * pre-specified proxy (education/QUANT_MACRO_LESSONS_1-6.md Tier 1) when the
+ * caller supplied it, reported alongside rather than replacing the first.
+ */
+export function computeNetLiquidityRegression({ fredMaps, fredSource = 'unknown', nqRets, nqSource = 'unknown', pubLagWeeks = 2, horizons = [4, 8, 13] }) {
+  const dates = buildWeeklyGrid(fredMaps);
+  if (!dates.length) throw new Error('no Net Liquidity data (empty FRED series)');
+
+  const { R } = alignFxToGrid(dates, ['NQ'], { NQ: nqRets || new Map() });
+  const nqWeekly = R.map((row) => row[0]);
+  const real = !/synthetic/i.test(fredSource) && !/synthetic/i.test(nqSource);
+
+  const { impulse } = computeNetLiquidityImpulse(dates, fredMaps, pubLagWeeks);
+  const { results, regime } = runProxyRegression(impulse, nqWeekly, dates, fredMaps, horizons);
+
+  const nfciImpulse = computeNfciImpulse(dates, fredMaps, pubLagWeeks);
+  let nfci = null;
+  if (nfciImpulse) {
+    const nfciRun = runProxyRegression(nfciImpulse.impulse, nqWeekly, dates, fredMaps, horizons);
+    nfci = {
+      ...nfciRun,
+      note: 'A second, pre-specified proxy (Chicago Fed NFCI) tested the same way as Net Liquidity above, after the Net Liquidity control case failed to survive out-of-sample. Sign convention is OPPOSITE: NFCI impulse rising = tightening = the textbook headwind, so a genuine relationship here should show a NEGATIVE beta.',
+    };
+  }
 
   return {
     fredSource, nqSource, real,
     pubLagWeeks, impulseSmoothWeeks: IMPULSE_SMOOTH, impulseLookbackWeeks: IMPULSE_LOOKBACK, zWindowWeeks: Z_WINDOW,
     weeks: dates.length, start: dates[0], asOf: dates.at(-1),
-    results, regime,
+    results, regime, nfci,
     caveat: 'RESEARCH DIAGNOSTIC ONLY — not a trading signal, not a system, no position sizing. Answers one question (does Net Liquidity have an honest out-of-sample relationship with forward Nasdaq returns) and reports both sides of that answer, including a negative OOS R² when the in-sample fit does not carry forward.',
   };
 }
