@@ -1,12 +1,26 @@
-# EUR/USD Options Positioning — Research Book (v1)
+# EUR/USD Options Positioning — Research Book (v1.1)
 
 **Data:** CME EUR/USD FX options, R2 `OI Data/EUR_USD.csv` (Databento-style
-per-strike daily export), 2020‑09‑04 → 2026‑09‑04, joined to `m1/eurusd_d1.parquet`
-(daily OHLC). All numbers in this document come from the scripts in
-`oi_research_book/scripts/`, run against that data — nothing here is estimated
-or asserted from memory. Re-run `scripts/00_audit.py` → `01_build_daily_dataset.py`
-→ `02_walls_and_gamma.py` → `03_pinning_and_walls_reaction.py` → `04_predictive_ic.py`
-in order to reproduce every table (see `README.md`).
+per-strike daily export), 2020‑09‑04 → 2026‑09‑04, joined to
+`m1/eurusd_d1.parquet` (daily OHLC) and, for the intraday validation in Part
+9b, `m1/eurusd_m1.parquet` (minute OHLC, 2016–2026, 3.84M bars). All numbers
+in this document come from the scripts in `oi_research_book/scripts/`, run
+against that data — nothing here is estimated or asserted from memory.
+Re-run `scripts/00_audit.py` → `01_build_daily_dataset.py` →
+`02_walls_and_gamma.py` → `03_pinning_and_walls_reaction.py` →
+`04_predictive_ic.py` → `05_intraday_validation.py` in order to reproduce
+every table (see `README.md`).
+
+**v1.1 change:** added Part 9b, an intraday validation pass using real R2
+minute candles instead of daily OHLC. It fixes a same-day lookahead wrinkle
+in the original Part 8 (lags every wall/gamma level to the prior trading
+day's known value) and replaces a 35–80-event daily-close sample with
+~400–425 real per-minute touch events per wall side — enough to actually
+test significance, which changes the verdict on two of Part 10's answers
+(A, B) from "not shown" to "yes, short-horizon, with real p-values," while
+confirming two others stay null even with far more power (D: wall strength;
+gamma-flip regime). See Part 9b for the honest caveats (event
+non-independence, chief among them) before reading those p-values as final.
 
 **Scope of this v1.** The brief that motivated this book listed 36 research
 sections and 18 closing questions. Doing all 36 with genuine statistical care
@@ -407,14 +421,81 @@ not a demonstrated compression for *prediction*.
 
 ---
 
+## Part 9b — Intraday validation: does more resolution change the answers?
+
+Part 8's wall reject/break test ran on daily OHLC and flagged its own two
+weaknesses: only 35–80 touch events per bucket (too thin to test for
+significance), and a subtle lookahead wrinkle — the wall level used to grade
+a day's high/low was that **same day's** own OI-derived level, which isn't
+actually known until that day's CME report lands. Since R2 also holds EUR/USD
+M1 candles (`m1/eurusd_m1.parquet`, 3.84M bars, 2016–2026), both problems can
+be fixed directly: use the **prior trading day's** wall/gamma level (genuinely
+known before the day starts) and scan every minute bar for real touch events
+instead of reading one day-close (`05_intraday_validation.py`).
+
+**This changes the verdict on questions A, B and D from Part 10 below — not
+because the daily-resolution test was run wrong, but because it didn't have
+the statistical power to see what was there.**
+
+| Side | Horizon | Events | % Break | % Reject | p vs. 50/50 |
+|---|---|---|---|---|---|
+| Call wall | 15 min | 412 | 31.6% | **68.4%** | 5×10⁻¹⁴ |
+| Call wall | 60 min | 407 | 39.3% | 60.7% | 1.9×10⁻⁵ |
+| Call wall | 240 min | 389 | 40.6% | 59.4% | 2.5×10⁻⁴ |
+| Put wall | 15 min | 425 | 37.4% | **62.6%** | 2.4×10⁻⁷ |
+| Put wall | 60 min | 421 | 41.8% | 58.2% | 9.0×10⁻⁴ |
+| Put wall | 240 min | 392 | 52.0% | 47.9% | 0.45 (not significant) |
+
+Full events: `oi_research_book/data/results/intraday_touch_events.csv`;
+summary: `intraday_touch_summary.csv`.
+
+**A real, sizeable, short-horizon rejection effect exists at both wall
+types** — roughly 400 touch events per side (vs. 35–80 daily-close "break"
+counts before), rejecting a level nearly 2-to-1 in the 15 minutes after a
+touch, with p-values far past any reasonable significance bar. Forward
+returns move the direction you'd expect (break events continue through the
+level, reject events retreat from it, growing in magnitude with horizon).
+**The effect fades with time and fades faster for puts**: by 4 hours out,
+call walls still show a real (if smaller) rejection edge, but put walls have
+decayed to a coin flip (p=0.45). This is a **short-horizon microstructure
+effect, not a multi-hour edge**, and the two wall types don't decay at the
+same rate.
+
+**Two honesty caveats on this result, stated plainly:**
+1. **Touch events are not independent draws.** A wall level persists 8–18
+   trading days on average (Part 4), so many touches in this table are
+   repeated visits to the *same* underlying level across consecutive days,
+   not 400 unrelated experiments. The p-values above almost certainly
+   overstate independence. The effect sizes are large enough (2-to-1 at 15
+   minutes, p orders of magnitude past 0.05) that they likely survive a
+   properly clustered or block-bootstrapped test, but that test wasn't run
+   here — flagged as the immediate next step before trading on this.
+2. **Does wall OI strength (Part 4's un-resolved question D) predict the
+   break rate now that there's a real sample?** Sorting the same events into
+   OI terciles (`intraday_wall_strength_vs_outcome.csv`) still shows **no
+   clean monotonic pattern** — put walls show the expected direction
+   (strongest tercile breaks least, 32.9% vs 44.7%/47.9% at 60 min) but call
+   walls show the opposite (weakest tercile breaks least, 35.3% vs
+   40.4–42.2%). Bigger sample, same inconclusive answer: **wall strength by
+   this OI measure still doesn't cleanly predict outcome.**
+
+**Gamma-flip regime, re-tested intraday:** replacing Part 5's daily
+above/below split with the actual intraday realized range and volatility
+while spot sits on each side of the (T-1, lagged) flip
+(`intraday_gamma_regime_daily.csv` / `_summary.csv`) reproduces the same
+null — 0.68% vs. 0.67% mean intraday range, p=0.66. **More resolution didn't
+rescue this one; the gamma-flip regime effect still isn't there.**
+
+---
+
 ## Part 10 — Answers to the brief's closing questions
 
 | # | Question | Answer |
 |---|---|---|
-| A | Do call walls act as resistance? | Not shown. Reject>break by raw count (63%) but untested for significance on 95 events; no lead/lag or strength effect found. |
-| B | Do put walls act as support? | Same picture: reject>break (67% of 119 events, untested); no supporting lead/lag/strength result. |
-| C | When do walls fail? | Not modeled — 35–80 break events per wall type in this single-pair sample is likely too thin for a real classifier; roadmap item. |
-| D | Does wall strength matter? | No monotonic effect on next-day move size, once the distance confound is accounted for (Part 4). |
+| A | Do call walls act as resistance? | **Yes, short-horizon.** Intraday validation (Part 9b, 407–412 real touch events, T-1 known level): 60–69% reject rate at 15–60 minutes, p<10⁻⁴, decaying but still significant at 4 hours (p=2.5×10⁻⁴). Daily-resolution test alone (63% reject, n=95, untested) had missed this only for lack of power. |
+| B | Do put walls act as support? | **Yes, but shorter-lived than calls.** Same pattern at 15–60 min (58–63% reject, p<10⁻³), but decays to a coin flip by 4 hours (p=0.45) — the support effect doesn't last as long as the call-wall resistance effect. |
+| C | When do walls fail? | Still not modeled as a real classifier, but now know *when* in time: mostly a function of horizon (the reject edge just fades, faster for puts) rather than OI strength (which shows no clean pattern — see D). A real break/reject classifier is now feasible with ~400 events/side; roadmap item. |
+| D | Does wall strength matter? | **No, still.** Even with ~140 events per OI tercile (Part 9b), there's no clean monotonic relationship between wall OI size and break rate — puts show the expected direction, calls show the opposite. Confirms the daily-resolution null (Part 4) rather than overturning it. |
 | E | Does wall migration lead price? | No — nor does price lead wall migration (Part 4, 8 tests, all p>0.08). |
 | F | Does OI change beat OI level? | No — OI-change z-scores were no better than OI-level features in the predictive test; neither type survived OOS (Part 9). |
 | G | Does volume+OI separate opening/closing flow? | Not tested in this v1 — needs contract-level (not daily-aggregate) granularity; roadmap item. |
@@ -423,11 +504,11 @@ not a demonstrated compression for *prediction*.
 | J | Does crossing the flip predict vol expansion? | No — the one nominal p<0.05 result pointed the wrong direction (Part 6). |
 | K | Does price pin near large strikes into expiry? | No, once the initial-distance confound is controlled for (Part 7) — the naive result was an artifact. |
 | L | Do large-OI strikes act as magnets generally? | Not shown; see K. |
-| M | What predicts rejection vs. breakout? | Not modeled — sample too thin in this single-pair pass; roadmap item. |
-| N | Does distance to a wall matter? | Only weakly and inconsistently in the raw tercile scan (Part 4); nothing survived the OOS test (Part 9). |
-| O | Does gamma + walls combined beat either alone? | Not tested. Given neither carries OOS signal alone (Part 9), a combination is unlikely to rescue it without a genuinely new ingredient (real IV, more pairs, a different horizon). |
-| P | Can any of this become a defensible signal? | Not from what's tested here, at 1-day-ahead, on EUR/USD alone. See roadmap for the concrete next steps before this question can be answered for good. |
-| Q | What doesn't work? | Pinning (once corrected), gamma-flip regime/crossing effects, wall-migration lead/lag, wall-strength-tercile monotonicity, all 40 tested 1-day-ahead predictive combinations. |
+| M | What predicts rejection vs. breakout? | Not modeled as a real classifier yet — but Part 9b shows horizon is the dominant driver (rejection strong at 15-60min, gone by 4h for puts) while OI strength is not; a real classifier is now buildable on ~400 real events/side. |
+| N | Does distance to a wall matter? | Only weakly and inconsistently in the raw daily tercile scan (Part 4); nothing survived the daily-horizon OOS test (Part 9). Not re-tested intraday. |
+| O | Does gamma + walls combined beat either alone? | Not tested. Given neither carries daily-ahead OOS signal alone (Part 9), a combination is unlikely to rescue it without a genuinely new ingredient (real IV, more pairs, a different horizon) — though Part 9b's short-horizon wall effect suggests the *walls* half might combine productively with an intraday-horizon target specifically, unlike the daily one. |
+| P | Can any of this become a defensible signal? | Not at 1-day-ahead (Part 9). **The short-horizon (15–60min) wall-rejection effect in Part 9b is the one candidate in this book with real, large-sample, low-p-value support** — but it still needs the clustering/independence caveat resolved (events aren't independent draws) and a costs/execution model before it's a signal, not just a finding. |
+| Q | What doesn't work? | Pinning (once corrected), gamma-flip regime/crossing effects (null at both daily *and* intraday resolution), wall-migration lead/lag, wall-strength-tercile monotonicity (null at both resolutions), all 40 tested 1-day-ahead predictive combinations. |
 | R | What additional data would help most? | See roadmap below — real per-strike IV top of the list. |
 
 ---
@@ -437,6 +518,15 @@ not a demonstrated compression for *prediction*.
 In priority order, each buildable on the infrastructure already in this
 directory:
 
+0. **Re-test Part 9b's wall-rejection effect with a clustering/independence
+   correction** (e.g. block bootstrap by wall-episode, or one observation per
+   contiguous same-level run rather than per day) before treating its
+   p-values at face value — this is now the single most promising lead in
+   the book precisely because it's the first result with real sample size,
+   which also makes it the one most worth stress-testing properly. If it
+   survives, build the real break/reject classifier (question M) on top of
+   it and add a costs/execution model (spread, slippage on a 15-60min hold)
+   before calling it a signal.
 1. **Invert `settlement` (Black‑76) into a real per-strike implied vol.** The
    premium is populated on 99.75% of rows — this is the single highest-value
    upgrade, replacing the realized-vol proxy everywhere in Parts 5–7 with
@@ -480,11 +570,13 @@ python3 oi_research_book/scripts/01_build_daily_dataset.py /path/to/EUR_USD.csv 
 python3 oi_research_book/scripts/02_walls_and_gamma.py
 python3 oi_research_book/scripts/03_pinning_and_walls_reaction.py
 python3 oi_research_book/scripts/04_predictive_ic.py
+python3 oi_research_book/scripts/05_intraday_validation.py   # needs m1/eurusd_m1.parquet (R2, ~63MB)
 ```
 
-Raw R2 inputs (`OI Data/EUR_USD.csv`, ~227MB; `m1/eurusd_d1.parquet`, ~175KB)
-and the contract-level forward-filled cache are intentionally **not**
-committed (gitignored) — they're a few seconds' download from R2 and a
-~50-second rebuild. Everything under `oi_research_book/data/*.parquet` and
-`oi_research_book/data/results/*.csv` **is** committed — small,
-derived, and exactly what every number in this document was read from.
+Raw R2 inputs (`OI Data/EUR_USD.csv`, ~227MB; `m1/eurusd_d1.parquet`, ~175KB;
+`m1/eurusd_m1.parquet`, ~63MB) and the contract-level forward-filled cache are
+intentionally **not** committed (gitignored) — they're a few seconds'
+download from R2 and under a minute to rebuild everything. Everything under
+`oi_research_book/data/*.parquet` and `oi_research_book/data/results/*.csv`
+**is** committed — small, derived, and exactly what every number in this
+document was read from.

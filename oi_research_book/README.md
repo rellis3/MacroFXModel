@@ -31,6 +31,13 @@ alongside the one real positive finding.
 - `scripts/04_predictive_ic.py` — chronological 60/20/20 in/out-of-sample
   predictive-IC test across 10 features × 2 targets × 2 surfaces, plus the
   variable-reduction ranking.
+- `scripts/05_intraday_validation.py` — re-runs the wall reject/break test
+  (Part 8) at real minute-bar resolution against `m1/eurusd_m1.parquet`,
+  using each trading day's *prior-day-known* wall/gamma levels (fixing a
+  same-day lookahead issue in the daily version) — ~400 real touch events
+  per wall side instead of 35–80, big enough to actually test significance.
+  Also re-runs the gamma-flip regime test at intraday resolution and checks
+  whether wall OI strength predicts the intraday outcome.
 - `data/results/*.csv` — every numeric table cited in `RESEARCH_BOOK.md`,
   small and committed, one file per test.
 
@@ -49,6 +56,7 @@ s3 = boto3.client("s3", endpoint_url="https://3e867110ae519cd24afc877c72e5026e.r
 bucket = os.environ.get("R2_BUCKET", "r2-storage")
 s3.download_file(bucket, "OI Data/EUR_USD.csv", "/tmp/EUR_USD.csv")
 s3.download_file(bucket, "m1/eurusd_d1.parquet", "/tmp/eurusd_d1.parquet")
+s3.download_file(bucket, "m1/eurusd_m1.parquet", "/tmp/eurusd_m1.parquet")  # only needed for script 05
 EOF
 
 python3 oi_research_book/scripts/00_audit.py /tmp/EUR_USD.csv
@@ -56,10 +64,11 @@ python3 oi_research_book/scripts/01_build_daily_dataset.py /tmp/EUR_USD.csv /tmp
 python3 oi_research_book/scripts/02_walls_and_gamma.py
 python3 oi_research_book/scripts/03_pinning_and_walls_reaction.py
 python3 oi_research_book/scripts/04_predictive_ic.py
+python3 oi_research_book/scripts/05_intraday_validation.py  # needs m1/eurusd_m1.parquet too
 ```
 
 Total run time is under two minutes; the raw CSV/cache are gitignored
-(reproducible from R2, not worth committing at ~230MB).
+(reproducible from R2, not worth committing at ~290MB combined).
 
 ## Extending to other pairs
 
