@@ -280,6 +280,12 @@
 </div>
 
 <div class="card">
+  <h2>Monthly &amp; daily breakdown — click a month to see the days inside it</h2>
+  <div class="muted" style="margin-bottom:10px">Non-compounded (additive) daily returns, same convention as the "Fixed risk" KPIs — every trading day, no reinvestment assumption, so a bad week doesn't look worse or better just from where it lands on the equity curve. Most recent month first. Click any row to expand its individual trading days (and see which pairs made them up) — useful for checking whether a rough week you're living through actually looks unusual against the strategy's own history, or is well within normal variance.</div>
+  <div id="monthlyBody" style="overflow-x:auto"></div>
+</div>
+
+<div class="card">
   <h2>Trade detail — real M1 candles</h2>
   <div id="chart"></div>
   <div class="legend">
@@ -965,6 +971,7 @@ function render(j) {
   renderMonteCarlo(j);
   renderEvtTail(j);
   renderCapacity(j);
+  renderMonthlyBreakdown(j);
   const s = j.stats;
   document.getElementById('naiveSharpe').textContent = fmt2(j.naiveAvgSharpe);
   document.getElementById('combinedSharpe').textContent = fmt2(s.sharpe);
@@ -1338,6 +1345,86 @@ function monthKey(dateStr) { return dateStr.slice(0, 7); }
 function fmtDateLong(dateStr) {
   const d = new Date(dateStr + 'T00:00:00Z');
   return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' });
+}
+
+// Monthly & daily breakdown (2026-09-09) -- built entirely from data the page
+// already has loaded (j.equityCurve for the day-by-day return series, j.trades
+// for which trades made up each day) -- no server change needed. Non-
+// compounded (additive) daily returns throughout, same convention as the
+// "Fixed risk" KPIs elsewhere on this page, so a rough week isn't made to
+// look artificially worse/better by where it happens to land on a compounding
+// equity curve. Exists to answer "is the week I'm living through unusual, or
+// does the strategy's own history already contain weeks like this" directly,
+// rather than by eye off the equity chart.
+function buildMonthlyBreakdown(j) {
+  const eq = j.equityCurve ?? [];
+  const trades = j.trades ?? [];
+  const tradesByDate = new Map();
+  for (const t of trades) {
+    if (!tradesByDate.has(t.date)) tradesByDate.set(t.date, []);
+    tradesByDate.get(t.date).push(t);
+  }
+  const byMonth = new Map(); // 'YYYY-MM' -> { days: [{date, dailyReturn, trades}] }
+  for (const p of eq) {
+    const mk = monthKey(p.date);
+    if (!byMonth.has(mk)) byMonth.set(mk, []);
+    byMonth.get(mk).push({ date: p.date, dailyReturn: p.dailyReturn, trades: tradesByDate.get(p.date) ?? [] });
+  }
+  const months = [...byMonth.entries()].map(([mk, days]) => {
+    const winDays = days.filter(d => d.dailyReturn > 0).length;
+    const monthReturn = days.reduce((a, d) => a + d.dailyReturn, 0);
+    const best = days.reduce((a, d) => (d.dailyReturn > (a?.dailyReturn ?? -Infinity) ? d : a), null);
+    const worst = days.reduce((a, d) => (d.dailyReturn < (a?.dailyReturn ?? Infinity) ? d : a), null);
+    const tradeCount = days.reduce((a, d) => a + d.trades.length, 0);
+    return { month: mk, days: days.sort((a, b) => a.date < b.date ? -1 : 1), tradingDays: days.length, winDays, winRatePct: days.length ? 100 * winDays / days.length : 0, monthReturn, best, worst, tradeCount };
+  });
+  months.sort((a, b) => b.month < a.month ? -1 : b.month > a.month ? 1 : 0); // most recent first
+  return months;
+}
+function renderMonthlyBreakdown(j) {
+  const months = buildMonthlyBreakdown(j);
+  const rowsHtml = months.map((m, i) => {
+    const rowId = `mBreak_${i}`;
+    const dayRows = m.days.map(d => {
+      const pairs = d.trades.length ? [...new Set(d.trades.map(t => `${t.pair}(${t.decision === 'fade' ? 'F' : 'C'})`))].join(', ') : '—';
+      const dWins = d.trades.filter(t => t.win).length;
+      return `<tr>
+        <td style="padding-left:28px">${fmtDateLong(d.date)}</td>
+        <td class="num" style="color:${d.dailyReturn >= 0 ? '#10b981' : '#ef4444'}">${fmtPct(d.dailyReturn, 2)}</td>
+        <td class="num">${d.trades.length}</td>
+        <td class="num">${d.trades.length ? `${dWins}/${d.trades.length}` : '—'}</td>
+        <td style="font-size:12px;color:#6b7280">${pairs}</td>
+      </tr>`;
+    }).join('');
+    return `<tr class="mBreakMonthRow" data-target="${rowId}" style="cursor:pointer">
+        <td>▸ ${m.month}</td>
+        <td class="num">${m.tradingDays}</td>
+        <td class="num">${fmt1(m.winRatePct)}%</td>
+        <td class="num" style="color:${m.monthReturn >= 0 ? '#10b981' : '#ef4444'};font-weight:600">${fmtPct(m.monthReturn, 2)}</td>
+        <td class="num">${m.tradeCount}</td>
+        <td class="num" style="color:#10b981">${m.best ? fmtPct(m.best.dailyReturn, 2) : '—'}</td>
+        <td class="num" style="color:#ef4444">${m.worst ? fmtPct(m.worst.dailyReturn, 2) : '—'}</td>
+      </tr>
+      <tr id="${rowId}" style="display:none"><td colspan="7" style="padding:0">
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead><tr style="color:#6b7280"><th style="padding-left:28px;text-align:left">Date</th><th class="num">Return</th><th class="num">Trades</th><th class="num">Win/Total</th><th style="text-align:left">Pairs (F=fade, C=continuation)</th></tr></thead>
+          <tbody>${dayRows}</tbody>
+        </table>
+      </td></tr>`;
+  }).join('');
+  document.getElementById('monthlyBody').innerHTML = `
+    <table>
+      <thead><tr><th>Month</th><th class="num">Trading days</th><th class="num">Win rate (days)</th><th class="num">Return</th><th class="num">Trades</th><th class="num">Best day</th><th class="num">Worst day</th></tr></thead>
+      <tbody>${rowsHtml}</tbody>
+    </table>`;
+  document.querySelectorAll('.mBreakMonthRow').forEach(row => {
+    row.addEventListener('click', () => {
+      const detail = document.getElementById(row.dataset.target);
+      const open = detail.style.display !== 'none';
+      detail.style.display = open ? 'none' : '';
+      row.firstElementChild.textContent = (open ? '▸ ' : '▾ ') + row.firstElementChild.textContent.slice(2);
+    });
+  });
 }
 // Per-trade risk-adjusted stats (2026-08-31) -- same brick + same fix as
 // asia-fib-atlas-vote-portfolio.html's Performance Summary: `j.stats`'s
