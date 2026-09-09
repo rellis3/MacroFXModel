@@ -12183,14 +12183,30 @@ setInterval(() => { _refreshRegimeStudy().catch(e => console.warn('[regime-fx] r
 const _SURPRISE_KV = 'econ_surprise_v1';
 const _SURPRISE_REFRESH_MS = 60 * 60_000;   // releases print hourly at most; the feed itself caches
 
+// getStrict, not get — and the throw is deliberate.
+//
+// This is a READ-MODIFY-WRITE store, and kv.js says exactly what happens when one of
+// those swallows a failed read: "the caller sees {}, merges today into it, writes it
+// back, and has silently destroyed everything that was there." That is not
+// hypothetical here — it is what `oi_history` did on 2026-08-26, going from ~25 days
+// to one in a single write.
+//
+// I reproduced it: the backfill wrote 10,229 releases, the refresh a moment later read
+// them back as [] through a swallowing catch, merged nothing into nothing, and wrote an
+// empty store over the top. A caller that merges MUST let a read failure throw so the
+// write never happens.
 async function _readSurpriseStore() {
+  const raw = await kv.getStrict(_SURPRISE_KV);   // 404 -> null; any real failure throws
+  if (!raw) return [];
+  let parsed;
   try {
-    const raw = await kv.get(_SURPRISE_KV);
-    if (!raw) return [];
-    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    const rows = parsed?.data?.rows ?? parsed?.rows ?? parsed?.data ?? parsed;
-    return Array.isArray(rows) ? rows : [];
-  } catch { return []; }
+    parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+  } catch (e) {
+    // A corrupt value is NOT an empty store. Refuse rather than overwrite it.
+    throw new Error(`econ_surprise_v1 is unparseable (${raw.length} bytes): ${e.message}`);
+  }
+  const rows = parsed?.data?.rows ?? parsed?.rows ?? parsed?.data ?? parsed;
+  return Array.isArray(rows) ? rows : [];
 }
 
 async function _refreshSurpriseStore() {
@@ -12198,12 +12214,71 @@ async function _refreshSurpriseStore() {
   if (!r.ok) throw new Error(`calendar feed unavailable: ${r.error || 'unknown'}`);
   const stored = await _readSurpriseStore();
   const merged = _mergeReleases(stored, r.events ?? []);
+  // The store carries ~26k backfilled releases, so it is a multi-megabyte value.
+  // Rewriting it hourly when nothing printed is pure churn — most hours the calendar
+  // has no new actuals at all.
+  // Deliberately NOT "|| !stored.length" — an empty read is the one case where writing
+  // is most dangerous, since it is indistinguishable from a store that was never
+  // loaded. With nothing to add there is nothing to write either way.
+  if (merged.added || merged.updated || merged.dropped) {
+    await kv.put(_SURPRISE_KV, JSON.stringify({
+      data: { rows: merged.rows, updatedAt: Date.now() }, timestamp: Date.now(),
+    }));
+    console.log(`[surprise] ${merged.rows.length} stored releases (+${merged.added} new, ${merged.updated} revised, -${merged.dropped} aged out)`);
+  } else {
+    console.log(`[surprise] ${merged.rows.length} stored releases — nothing new, store untouched`);
+  }
+  return merged;
+}
+
+// -- One-time historical backfill ----------------------------------------------
+// The calendar feed only ever exposes the current week, so without this the surprise
+// index and the event-day study both have to wait months to become useful. The
+// archive is precomputed by scripts/build_surprise_backfill.mjs (the raw 68MB CSV is
+// untracked and never reaches Railway) and merged in on first boot.
+//
+// It is ForexFactory, the same feed as live, so backfilled event titles JOIN to newly
+// collected ones — the reason this uses that archive rather than the longer but
+// differently-titled calendar_events.csv, whose series names would fragment.
+//
+// Note what it does NOT fix: the archive ends 2025-04, so it supplies history and
+// nothing recent. The engine's recency guard is what keeps that honest — a currency
+// with deep history but no recent releases reports `staleOnly` and NO score, rather
+// than a confident-looking 0.00 assembled from releases that have all decayed to
+// nothing.
+// backfill/, not data/ — data/ is gitignored and would never ship to Railway.
+const _SURPRISE_BACKFILL = path.join(path.dirname(fileURLToPath(import.meta.url)), 'backfill', 'surprise_backfill.json');
+// The file is column-oriented to keep the committed size down; expand it back to the
+// row shape mergeReleases expects.
+function _expandBackfill(pack) {
+  if (Array.isArray(pack?.rows) && pack.rows.length && !Array.isArray(pack.rows[0])) return pack.rows;
+  const cols = pack?.cols ?? [];
+  return (pack?.rows ?? []).map(arr => {
+    const o = {};
+    cols.forEach((c, i) => { o[c] = arr[i]; });
+    // `time` is derived rather than stored — it is just ms in another format.
+    if (o.ms != null) o.time = new Date(o.ms).toISOString().slice(0, 19).replace('T', ' ');
+    return o;
+  });
+}
+async function _backfillSurpriseStore({ force = false } = {}) {
+  if (!fs.existsSync(_SURPRISE_BACKFILL)) return { skipped: 'no backfill file' };
+  const stored = await _readSurpriseStore();
+  // Idempotent by row identity, but re-reading and re-merging 26k rows on every boot
+  // is wasted work once it has landed.
+  if (!force && stored.length > 20000) return { skipped: 'already backfilled', stored: stored.length };
+  const pack = JSON.parse(fs.readFileSync(_SURPRISE_BACKFILL, 'utf8'));
+  const merged = _mergeReleases(stored, _expandBackfill(pack));
   await kv.put(_SURPRISE_KV, JSON.stringify({
     data: { rows: merged.rows, updatedAt: Date.now() }, timestamp: Date.now(),
   }));
-  console.log(`[surprise] ${merged.rows.length} stored releases (+${merged.added} new, ${merged.updated} revised, -${merged.dropped} aged out)`);
-  return merged;
+  console.log(`[surprise] backfilled ${merged.added} historical releases (${pack.from} -> ${pack.to}); store now ${merged.rows.length}`);
+  return { added: merged.added, stored: merged.rows.length, from: pack.from, to: pack.to };
 }
+app.post('/api/econ-surprise/backfill', async (req, res) => {
+  try { res.json({ ok: true, ...(await _backfillSurpriseStore({ force: req.query.force === '1' })) }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 
 app.get('/api/econ-surprise', async (_req, res) => {
   try {
@@ -12219,7 +12294,11 @@ app.post('/api/econ-surprise/refresh', async (_req, res) => {
   try { const m = await _refreshSurpriseStore(); res.json({ ok: true, stored: m.rows.length, added: m.added, updated: m.updated }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
-_refreshSurpriseStore().catch(e => console.error('[surprise] initial refresh failed:', e.message));
+// NOTE: the initial backfill+refresh is deliberately NOT triggered here. Everything at
+// this point in the file runs during module evaluation, which is BEFORE `await
+// kv.load()` further down — and fileLoad() does `store = JSON.parse(raw)`, a wholesale
+// replace. Anything written to KV up here is discarded a moment later. That is why the
+// surprise store read as empty on every boot. The trigger now sits after kv.load().
 setInterval(() => _refreshSurpriseStore().catch(e => console.error('[surprise] refresh failed:', e.message)), _SURPRISE_REFRESH_MS);
 
 app.get('/api/spreads', async (req, res) => {
@@ -29175,6 +29254,11 @@ async function runHMM5mTraining(pairs) {
 }
 
 await kv.load();
+// Only now is the KV store real — kv.load() REPLACES the in-memory store, so any
+// read-modify-write scheduled during module evaluation would have been thrown away.
+_backfillSurpriseStore()
+  .then(() => _refreshSurpriseStore())
+  .catch(e => console.error('[surprise] initial load failed (store left untouched):', e.message));
 await reloadConfig();
 await reloadLevels();
 _restoreVolatilityV2Config().catch(e => console.error('[VOLATILITY-V2] config repair error:', e.message));

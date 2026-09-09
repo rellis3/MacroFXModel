@@ -163,3 +163,39 @@ test('seriesHistory', async t => {
     assert.equal(rows[0].z, null);
   });
 });
+
+test('recency guard', async t => {
+  // A store full of OLD releases and nothing current: plenty of history, all of it
+  // decayed to near-zero weight. The honest answer is "unknown", not 0.00.
+  await t.test('history with nothing recent scores null, not a confident zero', () => {
+    const old = series({ n: 12, startDaysAgo: 1500, stepDays: 30 });
+    const idx = buildSurpriseIndex(old, { now: NOW, recencyDays: 120, minRecentObs: 3 });
+    assert.equal(idx.byCcy.USD.score, null);
+    assert.ok(idx.byCcy.USD.n >= 6, 'the history is still counted');
+    assert.equal(idx.byCcy.USD.staleOnly, true);
+    assert.equal(idx.byCcy.USD.nRecent, 0);
+  });
+
+  await t.test('adding recent releases turns the score back on', () => {
+    const old = series({ n: 12, startDaysAgo: 1500, stepDays: 30 });
+    const fresh = series({ n: 4, startDaysAgo: 80, stepDays: 20 });
+    const idx = buildSurpriseIndex([...old, ...fresh], { now: NOW, recencyDays: 120, minRecentObs: 3 });
+    assert.notEqual(idx.byCcy.USD.score, null);
+    assert.equal(idx.byCcy.USD.staleOnly, false);
+    assert.ok(idx.byCcy.USD.nRecent >= 3);
+  });
+
+  await t.test('too-few-overall still reports pending against the history minimum', () => {
+    const idx = buildSurpriseIndex(series({ n: 6, startDaysAgo: 60, stepDays: 10 }),
+      { now: NOW, minSeriesObs: 6, minCcyObs: 10, recencyDays: 120, minRecentObs: 3 });
+    assert.equal(idx.byCcy.USD.score, null);
+    assert.equal(idx.byCcy.USD.pending, 4);
+    assert.equal(idx.byCcy.USD.staleOnly, false);
+  });
+
+  await t.test('deep history is retained, not truncated — the event study needs it', () => {
+    const deep = series({ n: 10, startDaysAgo: 2000, stepDays: 60 });
+    const { rows } = mergeReleases([], deep, { now: NOW });
+    assert.equal(rows.length, 10, 'an 11-year window must keep 5-year-old releases');
+  });
+});

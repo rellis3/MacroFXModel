@@ -42,9 +42,21 @@
 
 export const DEFAULTS = {
   halfLifeDays: 60,      // a surprise is worth half as much after two months
-  maxAgeDays: 240,       // beyond this it is history, not news
+  // Deep, because the store serves TWO consumers with opposite needs. The surprise
+  // INDEX only cares about recent releases (the half-life makes anything older
+  // weightless anyway), but the event-day study wants every occurrence it can get —
+  // "how much does this pair move on CPI" is a question about sample size, not
+  // recency. A 240-day cap silently threw away the history that question needs.
+  maxAgeDays: 4000,      // ~11 years; decay, not truncation, is what ages the index
   minSeriesObs: 6,       // historical surprises needed before a series' sigma is trusted
   minCcyObs: 4,          // scored releases needed before a currency gets a number
+  // A currency also needs RECENT releases before it gets a score. Without this, a
+  // store full of backfilled history and nothing current produces a confident-looking
+  // 0.00 — every release in it decayed to near-zero weight, so the weighted mean
+  // collapses toward nothing and reports a large `n` behind it. That is a null
+  // wearing a number, which is the exact failure this whole engine exists to avoid.
+  recencyDays: 120,
+  minRecentObs: 3,
   impacts: ['high', 'medium'],
 };
 
@@ -186,11 +198,18 @@ export function buildSurpriseIndex(events = [], opts = {}) {
   for (const [ccy, v] of Object.entries(byCcy)) {
     const rows = v.rows;
     const wSum = rows.reduce((a, r) => a + r.weight, 0);
-    const score = (rows.length >= o.minCcyObs && wSum > 0)
+    // Recent enough to say anything? See DEFAULTS.recencyDays.
+    const recent = rows.filter(r => r.ageDays != null && r.ageDays <= o.recencyDays).length;
+    const enoughRecent = recent >= o.minRecentObs;
+    const score = (rows.length >= o.minCcyObs && enoughRecent && wSum > 0)
       ? round2(rows.reduce((a, r) => a + r.z * r.weight, 0) / wSum)
       : null;
     out[ccy] = {
       score, n: rows.length,
+      nRecent: recent, recencyDays: o.recencyDays,
+      // Distinguishes "not enough history yet" from "plenty of history, none of it
+      // recent" — different problems with different fixes, and the page says which.
+      staleOnly: rows.length >= o.minCcyObs && !enoughRecent,
       nSeries: new Set(rows.map(r => r.series)).size,
       lastAsOf: rows[0]?.time ?? null,
       // How much of this currency's reading rests on a polarity we inferred rather
@@ -201,7 +220,8 @@ export function buildSurpriseIndex(events = [], opts = {}) {
         .sort((a, b) => Math.abs(b.z * b.weight) - Math.abs(a.z * a.weight))
         .slice(0, 5)
         .map(r => ({ event: r.event, time: r.time, z: r.z, actual: r.actual, estimate: r.estimate, polarity: r.polarity })),
-      pending: rows.length < o.minCcyObs ? o.minCcyObs - rows.length : 0,
+      pending: rows.length < o.minCcyObs ? o.minCcyObs - rows.length
+             : (!enoughRecent ? o.minRecentObs - recent : 0),
     };
   }
   return {
