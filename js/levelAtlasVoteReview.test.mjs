@@ -151,6 +151,40 @@ function mkBook(dimSpecs) {
   ok('T5 no open price -> null, not a throw', noOpen === null);
 }
 
+// ── Test 5b: priceBarrierTrade marks an unresolved ('neither') race to
+// market at the real session close, instead of returning null (the fix for
+// the look-ahead selection bias that dropping these caused — see
+// priceBarrierTrade's own header) ─────────────────────────────────────────
+{
+  const base = { open: 1.1, pip: 0.0001, innerDistPips: 10, outerDistPips: 25, level: 1.1050, outcome: 'neither' };
+
+  // Up touch, close 6 pips BEYOND the touch (continuation direction).
+  const upCont = { ...base, side: 'up', sessionClose: 1.1050 + 6 * 0.0001 };
+  const followWin = priceBarrierTrade(upCont, 'follow', 0);
+  ok('T5b timed-out follow wins when close sits past the touch in the continuation direction', followWin.win === true && Math.abs(followWin.pnlPips - 6) < 1e-6 && followWin.timedOut === true, JSON.stringify(followWin));
+  const fadeLoss = priceBarrierTrade(upCont, 'fade', 0);
+  ok('T5b the SAME close is a timed-out LOSS for the opposite (fade) decision', fadeLoss.win === false && Math.abs(fadeLoss.pnlPips + 6) < 1e-6, JSON.stringify(fadeLoss));
+
+  // Up touch, close 4 pips BACK through the touch (retracement direction).
+  const upRetr = { ...base, side: 'up', sessionClose: 1.1050 - 4 * 0.0001 };
+  const followLoss = priceBarrierTrade(upRetr, 'follow', 0);
+  ok('T5b timed-out follow loses when close sits back through the touch', followLoss.win === false && Math.abs(followLoss.pnlPips + 4) < 1e-6, JSON.stringify(followLoss));
+  const fadeWin = priceBarrierTrade(upRetr, 'fade', 0);
+  ok('T5b the SAME close is a timed-out WIN for the opposite (fade) decision', fadeWin.win === true && Math.abs(fadeWin.pnlPips - 4) < 1e-6, JSON.stringify(fadeWin));
+
+  // Down touch — same magnitude check with side flipped, proving the sign
+  // convention isn't hardcoded to "up".
+  const downCont = { ...base, side: 'down', sessionClose: 1.1050 - 5 * 0.0001 }; // price fell = continuation for a down touch
+  const downFollowWin = priceBarrierTrade(downCont, 'follow', 0);
+  ok('T5b down touch: follow wins when close continues in the down direction', downFollowWin.win === true && Math.abs(downFollowWin.pnlPips - 5) < 1e-6, JSON.stringify(downFollowWin));
+
+  const magnitudeBound = Math.abs(followWin.pnlPips) < base.outerDistPips && Math.abs(followLoss.pnlPips) < base.innerDistPips;
+  ok('T5b timed-out pnlPips never reaches the full target/stop magnitude (by construction — neither barrier was breached)', magnitudeBound, JSON.stringify({ followWin: followWin.pnlPips, followLoss: followLoss.pnlPips }));
+
+  const noClose = priceBarrierTrade({ ...base, side: 'up', sessionClose: null }, 'follow', 0);
+  ok('T5b no sessionClose recorded -> null, not a bad number', noClose === null);
+}
+
 // ── Test 6/7: buildBarrierTrades + runBarrierWalkForward end-to-end ────────
 {
   const book = mkBook([['dimA', 'high', true], ['dimB', 'high', true], ['dimC', 'high', false]]);
@@ -173,6 +207,29 @@ function mkBook(dimSpecs) {
 
   const highMargin = buildBarrierTrades(touches, book, { rearmFrac: 0.3, minMargin: 2 });
   ok('T6 minMargin filters out lower-margin touches (all these are margin=1)', highMargin.length === 0, highMargin.length);
+
+  // T6b — outcome:'neither' touches are KEPT and priced, not dropped (the
+  // 2026-09-09 fix). Same book/votes as above, mixed in with real
+  // resolutions so the fix is proven alongside the existing behavior, not
+  // in isolation.
+  const withTimeouts = touches.concat([
+    { instrument: 'EURUSD', side: 'up', rung: 'p50', rearmFrac: 0.3, date: '2022-01-15',
+      time: 1700000000, resolveTime: null, dimA: 'high', dimB: 'high', dimC: 'high',
+      outcome: 'neither', level: 1.1050, sessionClose: 1.1050 + 5 * 0.0001, sessionCloseTime: 1700086400,
+      innerDistPips: 8, outerDistPips: 20, pip: 0.0001, open: 1.1, session: 'London', fadePips: 3, runPips: 5 },
+    { instrument: 'EURUSD', side: 'up', rung: 'p50', rearmFrac: 0.3, date: '2022-01-15',
+      time: 1700010000, resolveTime: null, dimA: 'high', dimB: 'high', dimC: 'high',
+      outcome: 'neither', level: 1.1050, sessionClose: null, sessionCloseTime: null, // no close recorded -> unpriceable
+      innerDistPips: 8, outerDistPips: 20, pip: 0.0001, open: 1.1, session: 'London', fadePips: 3, runPips: 5 },
+  ]);
+  const tradesWithTimeouts = buildBarrierTrades(withTimeouts, book, { rearmFrac: 0.3 });
+  ok('T6b the priceable timed-out touch is INCLUDED (41 = 40 real + 1 priceable timeout; the unpriceable one is dropped by priceBarrierTrade itself, same as any other unpriceable touch)',
+     tradesWithTimeouts.length === 41, tradesWithTimeouts.length);
+  const timedOutTrade = tradesWithTimeouts.find(t => t.timedOut);
+  ok('T6b the included timeout trade is flagged timedOut and priced to market at the session close (5 pips, positive for a follow decision)',
+     timedOutTrade && Math.abs(timedOutTrade.pnlPct - (5 * 0.0001 / 1.1 * 100)) < 1e-3, JSON.stringify(timedOutTrade));
+  ok('T6b a timed-out trade\'s resolveTime falls back to sessionCloseTime (never null, downstream code sorts/gates on it)',
+     timedOutTrade.resolveTime === 1700086400, timedOutTrade.resolveTime);
 
   const wf = runBarrierWalkForward(touches, book, { rearmFrac: 0.3, cost: 0.01 });
   ok('T7 tradesUsed matches buildBarrierTrades count', wf.tradesUsed === trades.length);

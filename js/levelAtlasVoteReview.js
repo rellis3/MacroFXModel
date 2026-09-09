@@ -158,6 +158,15 @@ export function reviewVoteBacktest(touches, book, { excludeRungs = ['p90'], rear
   };
 }
 
+// Bumped 2026-09-09 alongside the outcome:'neither' fix (priceBarrierTrade's
+// own header has the full account). A schema-1 {pair}-votetrades.json file
+// silently EXCLUDES every touch whose race never resolved before the session
+// ended — the same look-ahead selection bias a parallel session found and
+// fixed for the HL early-reaction signal (js/hlSignalCore.js's
+// HL_TOUCH_SCHEMA). js/levelAtlasRoutes.js refuses to serve a schema-1 file
+// rather than silently reproducing the pre-fix (inflated) numbers.
+export const VOTE_TRADES_SCHEMA = 2;
+
 /**
  * The HONEST version of a traded outcome: a real bracket order, target/stop
  * FIXED at the moment of touch (`innerDistPips`/`outerDistPips` — the actual
@@ -169,7 +178,25 @@ export function reviewVoteBacktest(touches, book, { excludeRungs = ['p90'], rear
  * tradeable. Reuses the touch's own already-computed `outcome` (which barrier
  * was hit first) rather than re-simulating the path a second way.
  *
- *   priceBarrierTrade(touch, decision, cost) -> { win, pnlPips, pnlPct, targetPips, stopPips } | null
+ * `outcome: 'neither'` (the race never reached either barrier before the
+ * session ended) is priced too, not dropped — 2026-09-09 fix, the SAME class
+ * of look-ahead selection bias that a parallel session found and fixed for
+ * the HL early-reaction signal (js/hlSignalCore.js's header has the full
+ * account: silently dropping an unresolved touch means the backtest only
+ * ever sees races that had time to finish, which biases the surviving sample
+ * toward whichever barrier sat closer). Marked to market at the session's
+ * REAL closing price (`touch.sessionClose`, always present — atlasWalk),
+ * matching what the live bot's own EOD-close feature actually does: flatten
+ * at session close rather than let the position run past the day boundary.
+ * The realized pips are the close's displacement from the touch level in the
+ * decision's own favourable direction — the exact same sign convention
+ * fadePips/runPips use, evaluated at ONE point (the close) instead of the
+ * session's extreme — and are guaranteed to sit strictly inside both
+ * targetPips and stopPips by construction (outcome:'neither' means neither
+ * barrier's own high/low was ever breached, including on the final bar, so
+ * its close can't be either).
+ *
+ *   priceBarrierTrade(touch, decision, cost) -> { win, pnlPips, pnlPct, targetPips, stopPips, timedOut? } | null
  */
 export function priceBarrierTrade(touch, decision, cost = 0) {
   const denom = touch.open > 0 ? touch.open : null;
@@ -179,6 +206,15 @@ export function priceBarrierTrade(touch, decision, cost = 0) {
   // target — same structural gap `reviewVoteBacktest`'s p90 exclusion exists
   // for, enforced here too so a caller can't accidentally price one anyway.
   if (denom == null || targetPips == null || stopPips == null) return null;
+  if (touch.outcome === 'neither') {
+    if (touch.sessionClose == null || !(touch.pip > 0) || touch.level == null) return null;
+    const sgn = touch.side === 'up' ? 1 : -1;
+    const runAtClose = (touch.sessionClose - touch.level) / touch.pip * sgn;
+    const pnlPips = decision === 'follow' ? runAtClose : -runAtClose;
+    const win = pnlPips > 0;
+    const pnlPct = +((pnlPips * touch.pip / denom * 100) - cost).toFixed(4);
+    return { win, pnlPips: +pnlPips.toFixed(1), pnlPct, targetPips, stopPips, timedOut: true };
+  }
   const win = (decision === 'fade' && touch.outcome === 'back') || (decision === 'follow' && touch.outcome === 'out');
   const pnlPips = win ? targetPips : -stopPips;
   const pnlPct = +((pnlPips * touch.pip / denom * 100) - cost).toFixed(4);
@@ -197,8 +233,13 @@ export function priceBarrierTrade(touch, decision, cost = 0) {
  */
 export function buildBarrierTrades(touches, book, { excludeRungs = ['p90'], rearmFrac = 0.3, cost = 0, minMargin = 1 } = {}) {
   if (!book) return null;
+  // outcome:'neither' KEPT, not filtered out — 2026-09-09 fix (see
+  // priceBarrierTrade's own header). Dropping it was a look-ahead selection
+  // bias: whether a touch's race resolves before the session ends isn't
+  // knowable at entry time, so excluding those touches silently biased the
+  // backtest population toward races that had time to finish.
   const oos = touches.filter(t => t.rearmFrac === rearmFrac && t.date >= book.splitDate
-    && t.outcome !== 'neither' && !excludeRungs.includes(t.rung));
+    && !excludeRungs.includes(t.rung));
   const trades = [];
   for (const t of oos) {
     const vd = voteDecision(book, t);
@@ -213,7 +254,13 @@ export function buildBarrierTrades(touches, book, { excludeRungs = ['p90'], rear
     const { mfePips, maePips } = reorientExcursion(t, vd.decision);
     const denom = t.open > 0 ? t.open : null;
     trades.push({
-      instrument: t.instrument, date: t.date, time: t.time, resolveTime: t.resolveTime,
+      instrument: t.instrument, date: t.date, time: t.time,
+      // A timed-out trade's real close moment IS the session close, not
+      // `t.resolveTime` (null — the race never resolved) — several downstream
+      // consumers sort/gate on resolveTime (e.g. applyCurrencyLossGate's
+      // causal per-leg check) and a null there is a bug waiting to happen,
+      // not a "no data" case this trade genuinely lacks.
+      resolveTime: t.resolveTime ?? t.sessionCloseTime,
       side: t.side, rung: t.rung, session: t.session, entry: t.level, pip: t.pip,
       decision: vd.decision, margin: vd.margin,
       targetPips: priced.targetPips, stopPips: priced.stopPips,
@@ -225,6 +272,11 @@ export function buildBarrierTrades(touches, book, { excludeRungs = ['p90'], rear
       mfePct: denom ? +(mfePips * t.pip / denom * 100).toFixed(4) : null,
       maePct: denom ? +(Math.abs(maePips) * t.pip / denom * 100).toFixed(4) : null,
       win: priced.win, pnlPct: priced.pnlPct,
+      // Marks a mark-to-market-at-session-close trade (outcome was 'neither')
+      // vs a real target/stop hit — surfaced so a page can report what
+      // fraction of trades never actually resolved (see the equivalent "Timed
+      // Out %" KPI the HL signal page added for the same fix).
+      timedOut: !!priced.timedOut,
     });
   }
   return trades;
