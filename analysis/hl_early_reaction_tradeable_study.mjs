@@ -110,9 +110,15 @@ function pct(n, d) { return d > 0 ? +(n / d * 100).toFixed(1) : null; }
 // earlyCheckpointMeasurements, but returns the checkpoint bar's own price/time (the
 // real entry a bracket order would have used) instead of the gambler's-ruin pTheory
 // (not needed here — this is a P&L study, not a geometry-deviation study).
-function checkpointSnapshot(bars, k, level, revDir, minsToResolve, outcome, revSpan) {
+// 2026-09-09: `outcome` is gone from the signature. It was used to bail out on
+// 'neither' — which is exactly the look-ahead selection filter that invalidated
+// the original study (js/hlSignalCore.js's header has the full account). The
+// caller now passes an EFFECTIVE resolution time — the real one when the race
+// resolved, the session close when it didn't — so an unresolved touch still gets
+// its checkpoints and still becomes a trade, priced as a timeout.
+function checkpointSnapshot(bars, k, level, revDir, minsToResolve, revSpan) {
   const out = {};
-  if (outcome === 'neither' || minsToResolve == null || !(revSpan > 0)) return out;
+  if (minsToResolve == null || !(revSpan > 0)) return out;
   const touchTime = bars[k].time;
   for (const cp of CHECKPOINTS_MIN) {
     if (!(minsToResolve > cp)) continue;   // STRICT — no checkpoint past the touch's real resolution (no lookahead)
@@ -184,24 +190,37 @@ function walkSideTradeable(bars, open, hl, isUp, rearmFrac, pip) {
       if (!reach) continue;
       armed = false;
 
-      let outcome = 'neither', resolveTime = null;
+      let outcome = 'neither', resolveTime = null, straddle = 0;
       for (let j = k; j < n; j++) {
         const b2 = bars[j];
         const fwd = isUp ? b2.high : b2.low, bwd = isUp ? b2.low : b2.high;
-        if (outer != null && (isUp ? fwd >= outer : fwd <= outer)) { outcome = 'out'; resolveTime = b2.time; break; }
-        if (isUp ? bwd <= inner : bwd >= inner) { outcome = 'back'; resolveTime = b2.time; break; }
+        const hitOuter = outer != null && (isUp ? fwd >= outer : fwd <= outer);
+        const hitInner = isUp ? bwd <= inner : bwd >= inner;
+        // 2026-09-09: this bar's range covers BOTH barriers. M1 OHLC cannot say
+        // which came first; the old code silently took `outer` (a continuation
+        // win) because it tested that branch first. Flag it and let the pricer
+        // score it as a loss whichever way the caller bets.
+        if (hitOuter && hitInner) straddle = 1;
+        if (hitOuter) { outcome = 'out'; resolveTime = b2.time; break; }
+        if (hitInner) { outcome = 'back'; resolveTime = b2.time; break; }
       }
-      const minsToResolve = resolveTime != null ? +((resolveTime - bar.time) / 60).toFixed(0) : null;
-      const displayOutcome = outcome === 'out' ? 'continuation' : outcome === 'back' ? 'reversal' : 'neither';
       if (outer == null) continue;   // p90-shaped rung with no outer — structurally excluded (shouldn't occur for ri<2, defensive)
+      const displayOutcome = outcome === 'out' ? 'continuation' : outcome === 'back' ? 'reversal' : 'neither';
+      // 2026-09-09: an unresolved race is no longer thrown away. It gets an
+      // EFFECTIVE resolution at the session close — the real exit a trader takes
+      // — so its checkpoints exist, it becomes a trade, and the concurrency cap
+      // holds its slot for the whole time it is genuinely open.
+      const effResolveTime = resolveTime != null ? resolveTime : bars[n - 1].time;
+      const minsToResolve = +((effResolveTime - bar.time) / 60).toFixed(0);
       const revDir = isUp ? 'down' : 'up';
       const revSpan = Math.abs(here - inner);
-      const checks = checkpointSnapshot(bars, k, here, revDir, minsToResolve, displayOutcome, revSpan);
+      const checks = checkpointSnapshot(bars, k, here, revDir, minsToResolve, revSpan);
 
       if (Object.keys(checks).length) {
         out.push({
-          rung: ri === 0 ? 'p50' : 'p75', touchTime: bar.time, outcome: displayOutcome,
-          minsToResolve, resolveTime, contTarget: outer, revTarget: inner, pip, checks,
+          rung: ri === 0 ? 'p50' : 'p75', touchTime: bar.time, outcome: displayOutcome, straddle,
+          minsToResolve, resolveTime: effResolveTime, contTarget: outer, revTarget: inner, pip,
+          sessionClose: bars[n - 1].close, sessionEndTime: bars[n - 1].time, checks,
         });
       }
     }
@@ -289,6 +308,17 @@ function statsFor(trades) {
   };
 }
 
+// How the trades actually ended. 'timeout' is the share that never resolved
+// inside the session — the population the original build dropped, so seeing it
+// printed on every row is the point (2026-09-09).
+function exitMix(trades) {
+  if (!trades.length) return '';
+  const c = {};
+  for (const t of trades) c[t.exitKind] = (c[t.exitKind] ?? 0) + 1;
+  return ['target', 'stop', 'timeout', 'ambiguous']
+    .filter(k => c[k]).map(k => `${k} ${(100 * c[k] / trades.length).toFixed(0)}%`).join(' / ');
+}
+
 function byAssetClassStats(trades) {
   const out = {};
   for (const ac of ['fx', 'commodity', 'index']) {
@@ -318,47 +348,39 @@ async function main() {
     console.log(`\n\n================ CHECKPOINT = ${cp}min ================`);
     const eligible = oosRecords.filter(r => r.checks[cp] !== undefined);
 
-    // ── Per-band trades (banded rule) ──────────────────────────────────────────
+    // ── Per-band, per-BET (2026-09-09) ────────────────────────────────────────
+    // Both directions are now priced for every band, including the middle one.
+    // The old code traded each band's single hard-coded `bet` and skipped
+    // '35-60%' outright, but every one of those choices came out of the biased
+    // sample — so none of them is a default any more, they are hypotheses the
+    // corrected numbers get to re-judge.
     const bandResults = {};
-    const bandedTradesForCombine = [];
     for (const b of BANDS) {
       const rows = eligible.filter(r => bandOf(r.checks[cp].frac)?.key === b.key);
-      if (b.bet == null) {
-        bandResults[b.key] = { n: rows.length, note: 'not traded — middle band, no edge per causal study', excluded: true };
-        continue;
+      bandResults[b.key] = { nTouches: rows.length, bets: {} };
+      for (const bet of ['continuation', 'reversal']) {
+        const capped = capPerPairThenPool(rows.map(r => priceTrade(r, cp, bet)).filter(Boolean));
+        const s = statsFor(capped);
+        bandResults[b.key].bets[bet] = { ...s, exits: exitMix(capped), byAssetClass: byAssetClassStats(capped) };
+        console.log(`  band ${b.key.padEnd(8)} bet=${bet.padEnd(12)} n=${String(s.n).padStart(5)}  winRate=${String(s.winRate).padStart(5)}%  PF=${String(s.profitFactor).padStart(5)}  sharpe=${String(s.sharpe).padStart(6)}  ${exitMix(capped)}${s.thin ? '  [THIN n<' + MIN_SAMPLE + ']' : ''}`);
       }
-      const priced = rows.map(r => priceTrade(r, cp, b.bet)).filter(Boolean);
-      const capped = capPerPairThenPool(priced);
-      bandedTradesForCombine.push(...capped);
-      const s = statsFor(capped);
-      bandResults[b.key] = { ...s, byAssetClass: byAssetClassStats(capped) };
-      console.log(`  band ${b.key.padEnd(8)} bet=${b.bet.padEnd(12)} n=${String(s.n).padStart(5)}  winRate=${String(s.winRate).padStart(5)}%  PF=${String(s.profitFactor).padStart(5)}  sharpe=${String(s.sharpe).padStart(6)}${s.thin ? '  [THIN n<' + MIN_SAMPLE + ']' : ''}`);
     }
-    console.log(`  band 35-60%      SKIPPED (not traded) — n=${bandResults['35-60%'].n} touches would have been eligible`);
-
-    // ── Banded rule combined (what you'd actually trade) ───────────────────────
-    const bandedCombined = statsFor(bandedTradesForCombine);
-    bandedCombined.byAssetClass = byAssetClassStats(bandedTradesForCombine);
-    console.log(`  BANDED RULE (combined, excl. middle) n=${String(bandedCombined.n).padStart(5)}  winRate=${String(bandedCombined.winRate).padStart(5)}%  PF=${String(bandedCombined.profitFactor).padStart(5)}  sharpe=${String(bandedCombined.sharpe).padStart(6)}${bandedCombined.thin ? '  [THIN]' : ''}`);
 
     // ── Unconditional control: every eligible touch, always bet continuation ──
-    const uncondPriced = eligible.map(r => priceTrade(r, cp, 'continuation')).filter(Boolean);
-    const uncondCapped = capPerPairThenPool(uncondPriced);
+    const uncondCapped = capPerPairThenPool(eligible.map(r => priceTrade(r, cp, 'continuation')).filter(Boolean));
     const unconditional = statsFor(uncondCapped);
+    unconditional.exits = exitMix(uncondCapped);
     unconditional.byAssetClass = byAssetClassStats(uncondCapped);
-    console.log(`  UNCONDITIONAL (all bands, always continuation) n=${String(unconditional.n).padStart(5)}  winRate=${String(unconditional.winRate).padStart(5)}%  PF=${String(unconditional.profitFactor).padStart(5)}  sharpe=${String(unconditional.sharpe).padStart(6)}${unconditional.thin ? '  [THIN]' : ''}`);
+    console.log(`  UNCONDITIONAL (all bands, always continuation) n=${String(unconditional.n).padStart(5)}  winRate=${String(unconditional.winRate).padStart(5)}%  PF=${String(unconditional.profitFactor).padStart(5)}  sharpe=${String(unconditional.sharpe).padStart(6)}  ${unconditional.exits}`);
 
-    const sharpeMargin = (bandedCombined.sharpe != null && unconditional.sharpe != null) ? +(bandedCombined.sharpe - unconditional.sharpe).toFixed(3) : null;
-    const pfMargin = (bandedCombined.profitFactor != null && unconditional.profitFactor != null) ? +(bandedCombined.profitFactor - unconditional.profitFactor).toFixed(3) : null;
-    console.log(`  MARGIN (banded − unconditional): sharpe=${sharpeMargin}  PF=${pfMargin}`);
-
-    byCheckpoint[cp] = { nEligibleOos: eligible.length, bands: bandResults, bandedCombined, unconditional, sharpeMarginOverUnconditional: sharpeMargin, pfMarginOverUnconditional: pfMargin };
+    byCheckpoint[cp] = { nEligibleOos: eligible.length, bands: bandResults, unconditional };
   }
 
   fs.mkdirSync(OUT_DIR, { recursive: true });
   fs.writeFileSync(path.join(OUT_DIR, 'hl_early_reaction_tradeable_study.json'), JSON.stringify({
     generatedAt: new Date().toISOString(),
-    pairs: PAIRS, checkpointsMin: CHECKPOINTS_MIN, bands: BANDS.map(b => ({ key: b.key, bet: b.bet })),
+    pairs: PAIRS, checkpointsMin: CHECKPOINTS_MIN, bands: BANDS.map(b => b.key), bets: ['continuation', 'reversal'],
+    corrected: '2026-09-09 — unresolved touches restored (session-close exit) and ambiguous straddle bars scored as losses; every number in here predates nothing, the pre-correction run is void',
     rearmFrac: REARM_FRAC, splitFrac: SPLIT_FRAC, minSample: MIN_SAMPLE,
     perPairMeta, totalEligibleOos: oosRecords.length,
     byCheckpoint,

@@ -16,6 +16,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { processPair, ALL_PAIRS } from '../analysis/hl_early_reaction_tradeable_study.mjs';
+import { HL_TOUCH_SCHEMA } from '../js/hlSignalCore.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIR = path.join(__dirname, '..', 'analysis', 'output', 'level-atlas-vote-trades');
@@ -29,11 +30,21 @@ for (const pair of PAIRS) {
   const result = await processPair(pair);
   if (!result) { console.log('  skipped (see reason above)'); continue; }
   const out = {
+    // schema 2 (2026-09-09): touches now include the ones whose race never
+    // resolved in-session (outcome 'neither', carrying sessionClose so the
+    // pricer can mark them out) and a `straddle` flag for bars that covered both
+    // barriers at once. A v1 file has neither, and its missing rows are the
+    // LOSING half of the population -- so readers must refuse v1 outright
+    // rather than quietly pricing what is there and reporting the old, inflated
+    // numbers. js/hlSignalCore.js's header has the full account.
+    schema: HL_TOUCH_SCHEMA,
     instrument: result.pair, splitDate: result.splitDate, coverage: result.coverage,
     generatedAt: new Date().toISOString(), touches: result.records,
   };
+  const nNeither = result.records.filter(r => r.outcome === 'neither').length;
+  const nStraddle = result.records.filter(r => r.straddle).length;
   fs.writeFileSync(path.join(DIR, `${pair}-hltouches.json`), JSON.stringify(out));
-  console.log(`  wrote ${result.records.length} touches (split ${result.splitDate})`);
+  console.log(`  wrote ${result.records.length} touches (split ${result.splitDate}) — ${nNeither} unresolved (${(100 * nNeither / result.records.length).toFixed(1)}%), ${nStraddle} straddled`);
   builtCount++;
 }
 console.log(`\nBuilt ${builtCount}/${PAIRS.length} pairs' HL touches files.`);

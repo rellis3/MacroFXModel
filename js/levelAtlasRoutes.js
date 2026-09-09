@@ -36,7 +36,7 @@ import { assetClassFor } from './forecastAnalyserStore.js';
 import { instrument as instrumentMeta, oandaSymbol, resolveKey } from './instrumentRegistry.js';
 import { gapFillPacked } from './m1GapFill.js';
 import { fetchM1Range } from './volBacktestEngine.js';
-import { BANDS as HL_BANDS, bandOf as hlBandOf, CHECKPOINTS_MIN as HL_CHECKPOINTS_MIN, priceTradeFromTouch as hlPriceTradeFromTouch } from './hlSignalCore.js';
+import { BANDS as HL_BANDS, bandOf as hlBandOf, CHECKPOINTS_MIN as HL_CHECKPOINTS_MIN, priceTradeFromTouch as hlPriceTradeFromTouch, HL_TOUCH_SCHEMA } from './hlSignalCore.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -715,7 +715,7 @@ export function mountLevelAtlasRoutes(app, express) {
       // not a tunable grid, same discipline as p90.
       const earlyExit = req.query.earlyExit === 'true';
 
-      const perPairTradesRaw = {}, perPair = {}, missing = [];
+      const perPairTradesRaw = {}, perPair = {}, missing = [], staleSchema = [];
       const fadeStopInfo = {};
       const slInfo = {};
       const p90Info = {};
@@ -1310,16 +1310,35 @@ export function mountLevelAtlasRoutes(app, express) {
       // at any checkpoint, so it's never on unless explicitly requested.
       // '35-60%' can never be requested -- BANDS itself marks it bet:null
       // (no edge found there), enforced below regardless of what's asked for.
-      const requestedBands = req.query.bands ? String(req.query.bands).split(',').map(s => s.trim()) : ['<15%'];
+      // `bands` is now band:bet pairs (2026-09-09), because BANDS no longer carry
+      // a bet of their own -- the old per-band bets came out of the biased
+      // sample, so the caller states the direction and nothing is implied.
+      // Bare 'key' (no ':bet') still parses, defaulting to continuation, so old
+      // links keep working. There is no default band any more that claims to be
+      // "the validated one"; '<15%:continuation' is just the historical config.
+      const betByBand = new Map();
+      for (const spec of String(req.query.bands ?? '<15%:continuation').split(',')) {
+        const [key, bet] = spec.split(':').map(x => x.trim());
+        if (!key) continue;
+        if (!HL_BANDS.some(b => b.key === key)) continue;
+        betByBand.set(key, bet === 'reversal' ? 'reversal' : 'continuation');
+      }
+      if (!betByBand.size) return res.status(400).json({ ok: false, error: `no valid band in "${req.query.bands}" -- expected e.g. "<15%:continuation,>60%:reversal" from ${HL_BANDS.map(b => b.key).join(', ')}` });
+      const requestedBands = [...betByBand].map(([k, v]) => `${k}:${v}`);
       const maxConcurrent = req.query.maxConcurrent ? Number(req.query.maxConcurrent) : 1;
       const riskPct = req.query.riskPct ? Number(req.query.riskPct) : 1;
       const maxHeatPct = req.query.maxHeatPct ? Number(req.query.maxHeatPct) : null;
       const targetVol = req.query.targetVol ? Number(req.query.targetVol) : 10;
 
-      const perPairTradesRaw = {}, perPair = {}, missing = [];
+      const perPairTradesRaw = {}, perPair = {}, missing = [], staleSchema = [];
       for (const pair of pairs) {
         const stored = pickFresher(await getJSON(`${PREFIX}/${pair}-hltouches.json`), loadLocalHlTouches(pair));
         if (!stored) { missing.push(pair.toUpperCase()); continue; }
+        // A schema-1 file is not just old, it is SILENTLY BIASED: it has no
+        // unresolved touches in it at all (they were dropped at build time --
+        // see js/hlSignalCore.js's header), so pricing it would go on serving
+        // the pre-correction numbers with nothing anywhere saying so. Refuse it.
+        if ((stored.schema ?? 1) < HL_TOUCH_SCHEMA) { staleSchema.push(pair.toUpperCase()); continue; }
         const sym = stored.instrument;
         const cost = costForPair(pair, assetClassFor(pair));
         const oosTouches = stored.touches.filter(t => t.date >= stored.splitDate);
@@ -1328,9 +1347,10 @@ export function mountLevelAtlasRoutes(app, express) {
           const snap = t.checks?.[checkpoint];
           if (!snap) continue;
           const band = hlBandOf(snap.frac);
-          if (!band || band.bet == null) continue;              // middle band: never tradeable
-          if (!requestedBands.includes(band.key)) continue;      // not opted into this request
-          const priced = hlPriceTradeFromTouch(t, checkpoint, band.bet, cost);
+          if (!band) continue;
+          const bet = betByBand.get(band.key);
+          if (!bet) continue;                                    // not opted into this request
+          const priced = hlPriceTradeFromTouch(t, checkpoint, bet, cost);
           if (priced) eligible.push({ ...priced, band: band.key });
         }
         const capped = applyConcurrencyCap(eligible, { maxConcurrent });
@@ -1343,6 +1363,10 @@ export function mountLevelAtlasRoutes(app, express) {
           ownWinRate: capped?.keptSummary?.winRate ?? null,
           cost,
         };
+      }
+      if (staleSchema.length && !Object.keys(perPairTradesRaw).length) {
+        return res.status(409).json({ ok: false, staleSchema,
+          error: `${staleSchema.join(', ')} still have schema-1 HL touch files, which silently EXCLUDE every unresolved touch and would reproduce the withdrawn pre-2026-09-09 numbers. Rebuild with: node scripts/build_hl_touches.mjs` });
       }
       if (!Object.keys(perPairTradesRaw).length) return res.status(404).json({ ok: false, error: `no HL touch data for any of: ${pairs.join(',')}`, missing });
 
@@ -1397,9 +1421,15 @@ export function mountLevelAtlasRoutes(app, express) {
         list.map(t => ({ ...t, weight: perPair[sym].weight }))
       ).sort((a, b) => a.time - b.time);
 
+      // How the book actually ended, surfaced so the page can show it: `timeout`
+      // is the share that never resolved in-session -- exactly the population
+      // the pre-correction build dropped, so it should never be invisible again.
+      const exitMix = {};
+      for (const t of trades) exitMix[t.exitKind] = (exitMix[t.exitKind] ?? 0) + 1;
+
       res.json({
-        ok: true, pairs: Object.keys(perPairTradesRaw), missing, checkpoint, bandsTraded: requestedBands,
-        bandDefs: HL_BANDS.map(b => ({ key: b.key, bet: b.bet })), maxConcurrent, riskPct, heatCap, targetVol,
+        ok: true, pairs: Object.keys(perPairTradesRaw), missing, staleSchema, checkpoint, bandsTraded: requestedBands,
+        bandDefs: HL_BANDS.map(b => b.key), exitMix, maxConcurrent, riskPct, heatCap, targetVol,
         stats, days: combined.dates.length,
         equityCurve: combined.dates.map((d, i) => ({ date: d, dailyReturn: combined.dailyReturns[i] })),
         perPair, trades,

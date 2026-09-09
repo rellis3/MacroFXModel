@@ -67,13 +67,15 @@
     <label title="Fixed % risk/trade: every trade risks the SAME % of account off its own real stop distance, priced from the checkpoint entry.">Risk % / trade <input type="number" id="riskPctInput" value="1" step="0.1" min="0.1" style="width:60px"></label>
   </div>
   <div class="controls" id="bandChecks">
-    <span class="muted" style="margin-right:4px">Bands to trade:</span>
-    <label class="pair-check" title="The ONE band validated cost-positive at every checkpoint tested (OOS profit factor 1.71-2.50 depending on checkpoint). On by default.">
-      <input type="checkbox" id="band_lt15" checked>&lt;15% (continuation) — validated</label>
-    <label class="pair-check" title="Real but weaker signal, still cost-positive at 15/30/60min checkpoints. Off by default -- opt in deliberately.">
-      <input type="checkbox" id="band_15_35">15-35% (continuation) — weaker, real</label>
-    <label class="pair-check" title="A real, OOS-confirmed statistical deviation from fair-race odds -- but the tradeable study found it does NOT clear real transaction cost at ANY checkpoint (profit factor &lt;1 at 5/15min, only marginal at 60min, stays a net loser for gold throughout). Off by default for a real reason, not caution alone.">
-      <input type="checkbox" id="band_gt60">&gt;60% (reversal) — does NOT clear cost, not recommended</label>
+    <span class="muted" style="margin-right:4px" title="How far the pullback's EXTREME travelled back toward the reversal target by the checkpoint. Pick which slices you trade AND which way you bet each -- the bands no longer carry a built-in direction, because the old per-band directions were read off the biased sample.">Bands to trade:</span>
+    <label class="pair-check"><input type="checkbox" id="band_lt15" checked>&lt;15%</label>
+    <select id="bet_lt15"><option value="continuation">continuation</option><option value="reversal">fade</option></select>
+    <label class="pair-check"><input type="checkbox" id="band_15_35">15-35%</label>
+    <select id="bet_15_35"><option value="continuation">continuation</option><option value="reversal">fade</option></select>
+    <label class="pair-check"><input type="checkbox" id="band_35_60">35-60%</label>
+    <select id="bet_35_60"><option value="continuation">continuation</option><option value="reversal">fade</option></select>
+    <label class="pair-check"><input type="checkbox" id="band_gt60">&gt;60%</label>
+    <select id="bet_gt60"><option value="reversal">fade</option><option value="continuation">continuation</option></select>
   </div>
   <div class="controls">
     <label id="heatCapWrap" title="Caps TOTAL simultaneous exposure across ALL pairs combined. 0 = off.">Portfolio heat cap % <input type="number" id="maxHeatPctInput" value="0" step="0.5" min="0" style="width:55px"></label>
@@ -85,17 +87,25 @@
 <main>
 
 <div class="card muted">
-  Backtests the dynamic-HL early-reaction signal found 2026-09-08 (<code>analysis/causal_early_reaction_study.mjs</code> /
-  <code>analysis/hl_early_reaction_tradeable_study.mjs</code>): a touch on a dynamic HL50/HL75 level (anchored to the
-  OPPOSITE running intraday extreme, not the open) where the pullback stays SHALLOW by a fixed checkpoint after the touch
-  continues MORE than fair two-barrier-race odds predict. Entry is AT THE CHECKPOINT, not at the touch itself — a
-  genuinely different mechanic from the OH/OL rung system on <a href="level-atlas-vote-portfolio.html" style="color:#5b9dff">the
-  main portfolio page</a>, priced with the same real per-pair cost and pooled the same way (<code>applyConcurrencyCap</code>,
-  <code>riskAdjustTrades</code>, <code>portfolioStats</code> — all reused, not reimplemented). The only band validated as
-  cost-positive at every checkpoint is <strong>&lt;15% pullback</strong> — everything else offered below is real but
-  weaker (15-35%) or does NOT clear cost at any checkpoint tested (&gt;60% reversal, off by default) — see each
-  toggle's own tooltip, and <code>analysis/hl_early_reaction_tradeable_study.mjs</code>'s own header for the full
-  per-band, per-checkpoint numbers.
+  A touch on a dynamic HL50/HL75 level (anchored to the OPPOSITE running intraday extreme, not the open), then entry
+  AT A FIXED CHECKPOINT after the touch rather than at the touch itself — a genuinely different mechanic from the OH/OL
+  rung system on <a href="level-atlas-vote-portfolio.html" style="color:#5b9dff">the main portfolio page</a>, priced with
+  the same real per-pair cost and pooled the same way (<code>applyConcurrencyCap</code>, <code>riskAdjustTrades</code>,
+  <code>portfolioStats</code> — all reused, not reimplemented).
+  <div style="margin-top:10px;padding:10px 12px;border:1px solid #6b3030;border-radius:6px;background:#1d1315">
+    <strong style="color:#f87171">Every number this page showed before 2026-09-09 is withdrawn.</strong>
+    The touch builder dropped any touch whose barrier race never resolved before the session close — but you cannot know
+    at the checkpoint whether it will resolve, so those are trades the rule really takes. They were 30-43% of each pair's
+    touches and 55% of the old default '&lt;15% @ 60min' slice, and they were the losing half: restoring them turned
+    +0.104R/trade (PF 2.05) into <strong>—0.019R/trade (PF 0.86)</strong> across 8 pairs OOS.
+    The claim it rested on — "continues MORE than fair two-barrier-race odds predict" — was measured against the
+    <em>infinite-horizon</em> gambler's-ruin probability on a sample truncated at the session close, which biases every
+    surviving race toward whichever barrier is nearer. That is why the "excess" ran monotone in geometry
+    (+9.6pp / +6.2pp / —1.5pp / —4.4pp across the four bands), came out the same in-sample as out
+    (10.6 vs 9.6pp), and landed within a few points of identical on all 17 instruments.
+    Bands no longer carry a built-in direction and none is marked "validated" — pick a band, pick a direction, and read
+    the corrected numbers. Watch the <strong>timeout share</strong> in the stats card: that is the restored population.
+  </div>
 </div>
 
 <div class="card callout">
@@ -108,7 +118,7 @@
 </div>
 
 <div class="card">
-  <h2>Portfolio summary (raw — capital split across pairs, not levered)</h2>
+  <h2>Portfolio summary (fixed risk per trade, every pair full size, not levered)</h2>
   <div class="muted" style="margin-bottom:10px">Sharpe, Sortino, profit factor, win rate, vol, skew/kurtosis and VaR/CVaR are computed straight off the daily-return DISTRIBUTION — they're the SAME number either way, reinvesting or not. Only CAGR, max drawdown, and Calmar genuinely differ by that assumption, so those three are split out below instead of picking one silently.</div>
   <h2 style="margin-top:4px">Distribution &amp; risk-adjusted (same either way)</h2>
   <div class="kpi-grid" id="kpiShared"></div>
@@ -273,9 +283,18 @@ document.getElementById('selectAllBtn').addEventListener('click', () => {
 const checkpointSel = document.getElementById('checkpointSel');
 const capSel = document.getElementById('capSel');
 const riskPctInput = document.getElementById('riskPctInput');
-const bandLt15 = document.getElementById('band_lt15');
-const band1535 = document.getElementById('band_15_35');
-const bandGt60 = document.getElementById('band_gt60');
+// Band -> {checkbox, direction select}. '35-60%' is present now: it used to be
+// hard-excluded as "no edge", but that verdict came from the withdrawn
+// pre-2026-09-09 sample, so it is a testable option like the rest.
+const BAND_UI = [
+  { key: '<15%', cb: 'band_lt15', sel: 'bet_lt15' },
+  { key: '15-35%', cb: 'band_15_35', sel: 'bet_15_35' },
+  { key: '35-60%', cb: 'band_35_60', sel: 'bet_35_60' },
+  { key: '>60%', cb: 'band_gt60', sel: 'bet_gt60' },
+].map(b => ({ ...b, cbEl: document.getElementById(b.cb), selEl: document.getElementById(b.sel) }));
+function selectedBandSpecs() {
+  return BAND_UI.filter(b => b.cbEl.checked).map(b => `${b.key}:${b.selEl.value}`);
+}
 const maxHeatPctInput = document.getElementById('maxHeatPctInput');
 const targetVolInput = document.getElementById('targetVolInput');
 const logScaleChk = document.getElementById('logScaleChk');
@@ -407,6 +426,20 @@ function outlierDailySeriesExcluding(excludeSet) {
     m.set(t.date, (m.get(t.date) || 0) + p);
   }
   return [...m.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([, p]) => p);
+}
+
+// Share of trades by how they actually ended. `timeout` = never resolved inside
+// the session, marked out at the close: the rows the old build threw away.
+function exitMixCard() {
+  const mix = lastResponse?.exitMix;
+  if (!mix) return '';
+  const total = Object.values(mix).reduce((a, b) => a + b, 0);
+  if (!total) return '';
+  const pctOf = k => (100 * (mix[k] ?? 0) / total);
+  const sub = ['target', 'stop', 'timeout', 'ambiguous']
+    .filter(k => mix[k]).map(k => `${k} ${fmt1(pctOf(k))}%`).join(' · ');
+  return kpiCard('Timed Out', fmt1(pctOf('timeout')) + '%',
+    pctOf('timeout') >= 40 ? 'amber' : '', sub || 'how trades ended');
 }
 
 function renderOutlierSensitivity() {
@@ -630,21 +663,28 @@ function renderEvtTail(j) {
 }
 
 // ── Capacity — cost-sensitivity test ────────────────────────────────────────
-// Proxy for strategy capacity: every trade's pnlPct already has that pair's
-// FIXED roundtrip cost baked in at build time (priceBarrierTrade: pnlPct =
-// gross - cost, server-side js/levelAtlasVoteReview.js), so re-netting at a
-// higher multiplier is exact, not an approximation: pnlPct - cost*(mult-1).
-// `cost` comes straight from the server's own perPair[sym].cost (added
-// specifically for this) rather than re-deriving costForPair/assetClassFor
-// client-side, which would need js/forecastAnalyserStore.js's Node-only
-// (fs/R2) import chain that can't run in a browser.
+// Proxy for strategy capacity: every trade's pnl already has that pair's FIXED
+// roundtrip cost baked in at build time, so re-netting at a higher multiplier is
+// exact rather than an approximation. `cost` comes straight from the server's own
+// perPair[sym].cost rather than re-deriving costForPair/assetClassFor client-side,
+// which would need js/forecastAnalyserStore.js's Node-only (fs/R2) import chain.
+//
+// UNIT FIX 2026-09-09 -- this used to do `t.pnlPct - cost*(mult-1)`, which is only
+// right when pnlPct is a raw percent of notional. This route runs the trades through
+// riskAdjustTrades, so t.pnlPct is an R MULTIPLE (raw% / stop%) scaled by riskPctUsed,
+// while `cost` is still a percent of notional -- subtracting one from the other mixed
+// units. Measured across the shipped 17-pair book that UNDER-charged cost by a median
+// 1.43x (p90 3.30x), so "Portfolio Dies At" read ~8x when the real answer was ~4.8x.
+// Convert cost into the same R units the pnl is in first.
 const CAPACITY_MULTS = [1, 1.5, 2, 3, 4, 5, 7, 10, 15, 20, 30, 50];
 function capacityDailySeriesAt(tradeList, mult, costByPair) {
   const m = new Map();
   for (const t of tradeList) {
     const cost = costByPair[t.pair];
     if (cost == null) continue;
-    const pnl = (t.pnlPct - cost * (mult - 1)) * (t.weight ?? 1);
+    const stopRiskPct = t.stopPips * t.pip / t.entry * 100;   // what riskAdjustTrades divided by
+    const costR = stopRiskPct > 1e-9 ? (cost / stopRiskPct) * (t.riskPctUsed ?? 1) : 0;
+    const pnl = (t.pnlPct - costR * (mult - 1)) * (t.weight ?? 1);
     m.set(t.date, (m.get(t.date) || 0) + pnl);
   }
   return [...m.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([, v]) => v);
@@ -763,7 +803,7 @@ async function loadData() {
   const pairs = selectedPairs();
   if (!pairs.length) { headerSub.textContent = 'select at least one pair'; return; }
   headerSub.textContent = 'loading…';
-  const bands = [bandLt15.checked && '<15%', band1535.checked && '15-35%', bandGt60.checked && '>60%'].filter(Boolean);
+  const bands = selectedBandSpecs();
   if (!bands.length) { headerSub.textContent = 'select at least one band to trade'; return; }
   const params = new URLSearchParams({
     pairs: pairs.join(','), checkpoint: checkpointSel.value, maxConcurrent: capSel.value,
@@ -817,6 +857,10 @@ function render(j) {
     kpiCard('Profit Factor', fmt2(s.profitFactor), s.profitFactor >= 1.5 ? 'green' : s.profitFactor >= 1 ? 'blue' : 'red', 'gross up-days ÷ gross down-days'),
     kpiCard('Win Rate (days)', fmt1(s.winRate) + '%', '', '% of positive trading days — NOT per-trade (a losing trade can still land on a net-positive day)'),
     kpiCard('Win Rate (trades)', s.perTradeWinRate != null ? fmt1(s.perTradeWinRate) + '%' : '—', '', 'traditional per-trade win rate — usually lower than the day-based one above'),
+    // The population the pre-2026-09-09 build silently dropped. Kept on the face
+    // of the page, not buried in the trade log, because its absence is exactly
+    // what made the old numbers look like a 5-Sharpe system.
+    exitMixCard(),
     kpiCard('Worst Intraday MAE', j.intradayMAE?.worstDayMAEPct != null ? fmt1(j.intradayMAE.worstDayMAEPct) + '%' : '—', j.intradayMAE?.worstDayMAEPct < -1 ? 'red' : '', j.intradayMAE?.worstDayDate ? `worst point WITHIN a day, ${j.intradayMAE.worstDayDate} — a losses-then-wins day can breach this before recovering` : 'deepest running loss reached mid-day, before any same-day recovery'),
     kpiCard('Annualised Vol', fmt1(s.annVol) + '%', '', 'realised, unlevered'),
     kpiCard('Skew', fmt2(s.skew), '', 'daily return distribution'),
@@ -1147,9 +1191,7 @@ pairChecksEl.addEventListener('change', loadData);
 checkpointSel.addEventListener('change', loadData);
 capSel.addEventListener('change', loadData);
 riskPctInput.addEventListener('change', loadData);
-bandLt15.addEventListener('change', loadData);
-band1535.addEventListener('change', loadData);
-bandGt60.addEventListener('change', loadData);
+for (const b of BAND_UI) { b.cbEl.addEventListener('change', loadData); b.selEl.addEventListener('change', loadData); }
 maxHeatPctInput.addEventListener('change', loadData);
 targetVolInput.addEventListener('change', loadData);
 logScaleChk.addEventListener('change', () => { if (lastResponse) render(lastResponse); });
@@ -1164,9 +1206,8 @@ document.getElementById('loadBestConfigBtn').addEventListener('click', () => {
   checkpointSel.value = '60';
   capSel.value = '1';
   riskPctInput.value = '1';
-  bandLt15.checked = true;
-  band1535.checked = false;
-  bandGt60.checked = false;
+  for (const b of BAND_UI) b.cbEl.checked = (b.key === '<15%');
+  BAND_UI[0].selEl.value = 'continuation';
   maxHeatPctInput.value = '0';
     loadData();
 });
