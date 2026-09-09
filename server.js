@@ -3399,6 +3399,48 @@ async function _buildMorningBrief() {
     }
   } catch { /* omitted when unavailable */ }
 
+  // CROSS-SOURCE CHECK. The brief reads FRED's DCOILWTICO — a lagged daily settle —
+  // while the page's own stat card shows the live OANDA quote. A deployed brief said
+  // "our WTI print is near $91" while the header beside it read $97.09, and then built
+  // an inflation-expectations story on the stale one. Two readings of the same barrel
+  // must be compared before either is narrated.
+  let conflictLine = '';
+  try {
+    const fredWti = g('wti');
+    const bars = await _btFetchD1('WTICO_USD', 3).catch(() => null);
+    const liveWti = bars?.at(-1)?.close ?? null;
+    if (Number.isFinite(fredWti) && Number.isFinite(liveWti) && fredWti > 0) {
+      const gap = (liveWti - fredWti) / fredWti * 100;
+      if (Math.abs(gap) >= 4) {
+        conflictLine = `DATA CONFLICT — WTI: FRED DCOILWTICO reads ${fredWti.toFixed(2)}${fred?.wti?.asOf ? ` (as of ${fred.wti.asOf})` : ''} while the live OANDA daily close reads ${liveWti.toFixed(2)} — a ${gap.toFixed(1)}% gap. `
+          + `The live print is the current one; the FRED series settles with a lag. Oil is load-bearing for any inflation-expectations story and for the commodity currencies, so LEAD with this conflict and treat oil-driven reads as unsupported until it resolves. Do NOT quote the FRED number as "our print" when a fresher one disagrees.`;
+      } else if (Number.isFinite(liveWti)) {
+        conflictLine = `WTI cross-check: FRED ${fredWti.toFixed(2)} vs live ${liveWti.toFixed(2)} — sources agree.`;
+      }
+    }
+  } catch { /* omitted when the live leg is unavailable */ }
+
+  // WINDOW RECONCILIATION. The regime study measures real yields over 20 TRADING days
+  // on its own 8-year series; the macro-change rows measure 20 CALENDAR days. They can
+  // disagree in sign, and a deployed brief noticed exactly that ("the precedent block's
+  // 'real yields falling' tag sits awkwardly against a real 10-year up 2bps on the
+  // month"). Both windows are now stated so the model reconciles rather than contradicts.
+  let realYieldWindows = '';
+  try {
+    const mcR = await _loadMacroChanges().catch(() => null);
+    const tipsRow = (mcR?.rows ?? []).find(r => r.key === 'tips');
+    const raw = await kv.get(_REGIME_KV).catch(() => null);
+    const rdata = raw ? (JSON.parse(raw)?.data ?? JSON.parse(raw)) : null;
+    const feat = rdata?.now?.features;
+    if (tipsRow || feat) {
+      realYieldWindows = 'REAL YIELDS, BOTH WINDOWS (reconcile these — do not let two sections contradict): '
+        + (tipsRow ? `macro-change 20 CALENDAR days = ${tipsRow.deltas?.[20] >= 0 ? '+' : ''}${tipsRow.deltas?.[20] ?? 'n/a'}bp (1d ${tipsRow.deltas?.[1] ?? 'n/a'}bp)` : 'macro-change unavailable')
+        + ' | '
+        + (feat ? `regime classifier 20 TRADING days = ${feat.dReal >= 0 ? '+' : ''}${(feat.dReal * 100).toFixed(0)}bp -> tagged "${rdata.now.key.split('|')[0] === 'realUp' ? 'real yields rising' : 'real yields falling'}"` : 'regime classifier unavailable')
+        + '. Different windows on the same series, so a sign disagreement is expected, not an error — if they differ, SAY which window you are using and do not present the other as a contradiction.';
+    }
+  } catch { /* omitted when either side is unavailable */ }
+
   const macro = [
     `VIX ${g('vix')} (prev ${gp('vix')})${g('vix3m') != null ? ` · VIX3M ${g('vix3m')} (${g('vix') > g('vix3m') ? 'BACKWARDATED — near-term fear' : 'contango — normal'})` : ''}`,
     `HY credit spread ${g('hy')}% (prev ${gp('hy')}%)`,
@@ -3408,6 +3450,8 @@ async function _buildMorningBrief() {
     `US 2Y ${g('us2y')} · US 10Y ${g('us10y')} · 2s10s ${s2s10}${fred?.us10y?.asOf ? ` (as of ${fred.us10y.asOf})` : ''}`,
     `DE10Y ${g('de10y')} · JP10Y ${g('jp10y')} · GB10Y ${g('gb10y')}${fred?.de10y?.asOf ? ` — NOTE: these are OECD MONTHLY series, latest print ${fred.de10y.asOf}; they are not comparable to the daily US tenors above on a same-day basis` : ''}`,
     `Real 10Y (TIPS) ${g('tips')} · WTI ${g('wti')}`,
+    conflictLine || null,
+    realYieldWindows || null,
     ratesSplitLine || null,
     surpriseLine || null,
     corrLine || null,
@@ -3480,8 +3524,14 @@ READABILITY IS THE #1 GOAL — write for a sharp trader who is NOT a rates/vol s
 
 Finally, go one level more specific than the USD/EUR/JPY/GBP/Gold/Stocks/Oil reads above: give a board-wide read across ELEVEN instruments — the seven USD-pairs EURUSD, GBPUSD, USDJPY, USDCHF, USDCAD, AUDUSD, NZDUSD, PLUS four risk/commodity instruments this desk also trades: XAUUSD (gold), NAS100, SPX500, WTI. For each FX pair, state a lean — BULLISH/BEARISH toward the pair's BASE currency (the first one — e.g. "BULLISH" on EURUSD means EUR strength/USD weakness), or NEUTRAL — grounded strictly in the macro scorecard composites/deltas, yields and risk mood above. For XAUUSD/NAS100/SPX500/WTI, lean BULLISH/BEARISH/NEUTRAL on the instrument itself, grounded in whatever of the dollar/real-yields (gold), VIX/credit spreads/risk mood (NAS100, SPX500), and the raw WTI level + broad risk mood (WTI — you have no supply/demand-side oil data here, so lean on this one more cautiously and say so) actually supports it. NEUTRAL is the correct answer whenever the data doesn't clearly lean either way; lean less confidently wherever coverage is thin, and say so in the note. Then, from all eleven, name the ONE instrument whose fundamental case is currently clearest — the single best one to have on the watchlist today, FX or not — with a direction and a rationale that cites the SPECIFIC data points behind it (composite scores, deltas, yield/vol readings — not a vibe). This is a macro-fundamentals read, not a price-level or entry/stop/target call (this brief carries no live price data) — if nothing clearly stands out, say so honestly and return "pair":null rather than forcing a pick.
 
+STRUCTURE RULES — this is read every morning before the open, so length is a cost:
+- SAY EACH NUMBER ONCE. Pick the one place a figure actually decides something and put it there. A deployed brief repeated "USD +0.19 across 12 dimensions" four times and "JPY +0.4, curve +0.83" three times; roughly a third of its length was restatement. If a number has already appeared, refer to it in words ("the same scorecard gap") rather than reprinting it.
+- "verdict" IS THE WHOLE BRIEF IN THREE LINES and must stand alone: (1) the regime in plain words, (2) the ONE thing that changed since yesterday, (3) the ONE thing to watch. Someone who reads only those three lines should not be misled. No jargon, no numbers beyond one or two that carry real weight.
+- "pairsOutlook" notes are TABLE CELLS, not sentences — at most ~14 words, leading with the single number that drives the lean. They render as rows next to each other, so parallel phrasing matters more than prose.
+- Every section below "verdict" is OPTIONAL DEPTH. Do not restate the verdict in "theme"; extend it.
+
 Respond with ONLY valid JSON, no markdown:
-{"headline":"one-sentence front-page read, plain-English so-what first","regime":"RISK-ON|RISK-OFF|MIXED|TRANSITION","theme":"2-3 plain-spoken sentences on what's driving markets today, jargon glossed","dollar":"1-2 sentences on the USD","rates":"1-2 sentences on yields/curve","risk":"1-2 sentences on the risk mood (VIX/credit)","complex":"1-2 sentences: what it means for the FX majors + gold/indices","watch":["1-3 things to watch"],"byAsset":[{"asset":"USD|EUR|JPY|GBP|Gold|Stocks|Oil","lean":"BULLISH|BEARISH|NEUTRAL","note":"one line"}],"pairsOutlook":[{"pair":"EURUSD|GBPUSD|USDJPY|USDCHF|USDCAD|AUDUSD|NZDUSD|XAUUSD|NAS100|SPX500|WTI","lean":"BULLISH|BEARISH|NEUTRAL","note":"one line citing the data behind it"}],"boardTradeOfDay":{"pair":"one of the eleven instruments above, or null if nothing clears the bar","direction":"LONG|SHORT","confidence":"LOW|MEDIUM|HIGH","rationale":"2-3 sentences citing specific data points, or why nothing clears the bar"},"tldr":"one-line bottom line"}`;
+{"verdict":["regime in plain words","the one thing that changed","the one thing to watch"],"headline":"one-sentence front-page read, plain-English so-what first","regime":"RISK-ON|RISK-OFF|MIXED|TRANSITION","theme":"2-3 plain-spoken sentences on what's driving markets today, jargon glossed","dollar":"1-2 sentences on the USD","rates":"1-2 sentences on yields/curve","risk":"1-2 sentences on the risk mood (VIX/credit)","complex":"1-2 sentences: what it means for the FX majors + gold/indices","watch":["1-3 things to watch"],"byAsset":[{"asset":"USD|EUR|JPY|GBP|Gold|Stocks|Oil","lean":"BULLISH|BEARISH|NEUTRAL","note":"one line"}],"pairsOutlook":[{"pair":"EURUSD|GBPUSD|USDJPY|USDCHF|USDCAD|AUDUSD|NZDUSD|XAUUSD|NAS100|SPX500|WTI","lean":"BULLISH|BEARISH|NEUTRAL","note":"one line citing the data behind it"}],"boardTradeOfDay":{"pair":"one of the eleven instruments above, or null if nothing clears the bar","direction":"LONG|SHORT","confidence":"LOW|MEDIUM|HIGH","rationale":"2-3 sentences citing specific data points, or why nothing clears the bar"},"tldr":"one-line bottom line"}`;
   const antRes = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
     body: JSON.stringify({ model: 'claude-opus-5', max_tokens: 16000, system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim in the provided data/headlines; never invent events or figures.', messages: [{ role: 'user', content: prompt }] }),

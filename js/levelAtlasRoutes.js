@@ -27,7 +27,7 @@
 import { loadM1ForPair } from './volBacktestM1Engine.js';
 import { atlasWalk } from './levelAtlasEngine.js';
 import { buildAtlasBook, buildAtlasCard, sessionTransitionTable, renderBookText, matchLiveContext } from './levelAtlasReport.js';
-import { buildBarrierTrades, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyFadeStopTightening, applyCurrencyLossGate, priceAtTighterStop, voteDecision } from './levelAtlasVoteReview.js';
+import { buildBarrierTrades, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyFadeStopTightening, applyCurrencyLossGate, priceAtTighterStop, voteDecision, VOTE_TRADES_SCHEMA } from './levelAtlasVoteReview.js';
 import { summarizeTrades, maxDrawdownFromPnls, sharpeStdError, minTrackRecordLength } from './metricsCore.js';
 import { portfolioStats } from './backtestStats.js';
 import { costForPair } from './perLineStrategy.js';
@@ -151,7 +151,7 @@ async function runOne(instrument, { rearmFracs = [0.15, 0.3, 0.5], onLog = () =>
       }
       await putJSON(`${PREFIX}/${pair}-votetrades.json`, {
         instrument: sym, generatedAt: new Date().toISOString(), cost, splitDate: voteBook.splitDate,
-        trades, summaryByMargin,
+        schema: VOTE_TRADES_SCHEMA, trades, summaryByMargin,
       });
     } catch (e) { onLog(`${sym}: vote-trades build/persist failed (${e.message}) — non-fatal, main book still saved`); }
   }
@@ -581,6 +581,11 @@ export function mountLevelAtlasRoutes(app, express) {
       // assuming "R2 = newest" fixes this in both directions.
       const stored = pickFresher(await getJSON(`${PREFIX}/${pair}-votetrades.json`), loadLocalVoteTrades(pair));
       if (!stored) return res.status(404).json({ ok: false, error: `no vote-backtest data for ${req.params.instrument} yet` });
+      // A schema-1 file is not just old, it is SILENTLY BIASED — see
+      // VOTE_TRADES_SCHEMA's own doc (js/levelAtlasVoteReview.js).
+      if ((stored.schema ?? 1) < VOTE_TRADES_SCHEMA) {
+        return res.status(409).json({ ok: false, error: `${req.params.instrument} still has a schema-1 votetrades file, which silently EXCLUDES every unresolved touch and would reproduce withdrawn pre-2026-09-09 numbers. Rebuild with: POST /api/level-atlas/run` });
+      }
       const minMargin = req.query.minMargin ? Number(req.query.minMargin) : 1;
       const trades = stored.trades.filter(t => t.margin >= minMargin);
       res.json({ ok: true, instrument: stored.instrument, generatedAt: stored.generatedAt, cost: stored.cost,
@@ -724,6 +729,10 @@ export function mountLevelAtlasRoutes(app, express) {
       for (const pair of pairs) {
         const stored = pickFresher(await getJSON(`${PREFIX}/${pair}-votetrades.json`), loadLocalVoteTrades(pair));
         if (!stored) { missing.push(pair.toUpperCase()); continue; }
+        // A schema-1 file silently EXCLUDES every unresolved touch — see
+        // VOTE_TRADES_SCHEMA's own doc. Skipped rather than served, same
+        // treatment the HL route's own schema guard uses.
+        if ((stored.schema ?? 1) < VOTE_TRADES_SCHEMA) { staleSchema.push(pair.toUpperCase()); continue; }
         storedByPair[stored.instrument] = stored;
         let filtered = stored.trades.filter(t => t.margin >= minMargin);
         // Swapped in BEFORE fadeStopTighten/slFraction -- both retune
@@ -795,7 +804,13 @@ export function mountLevelAtlasRoutes(app, express) {
           cost: stored.cost,
         };
       }
-      if (!Object.keys(perPairTradesRaw).length) return res.status(404).json({ ok: false, error: `no vote-backtest data for any of: ${pairs.join(',')}`, missing });
+      if (!Object.keys(perPairTradesRaw).length) {
+        if (staleSchema.length) {
+          return res.status(409).json({ ok: false, staleSchema,
+            error: `${staleSchema.join(', ')} still have schema-1 votetrades files, which silently EXCLUDE every unresolved touch and would reproduce withdrawn pre-2026-09-09 numbers. Rebuild with: POST /api/level-atlas/run` });
+        }
+        return res.status(404).json({ ok: false, error: `no vote-backtest data for any of: ${pairs.join(',')}`, missing });
+      }
 
       // `rMultiple` is invariant to sizing scheme (it's the trade's own
       // realized outcome ÷ its own stop-based risk unit) — always attached,
@@ -1261,7 +1276,7 @@ export function mountLevelAtlasRoutes(app, express) {
       ).sort((a, b) => a.time - b.time);
 
       res.json({
-        ok: true, pairs: Object.keys(perPairTradesForStats), missing, minMargin, maxConcurrent, perDirection, weighting,
+        ok: true, pairs: Object.keys(perPairTradesForStats), missing, staleSchema, minMargin, maxConcurrent, perDirection, weighting,
         sizing, riskPct, heatCap, targetVol, throttle,
         fadeStopTighten, fadeStopInfo,
         slFraction, slInfo,

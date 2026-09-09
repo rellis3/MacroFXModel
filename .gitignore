@@ -204,3 +204,7 @@ oi_recon/databento_oi/.progress/USD_JPY_2026.done
 oi_research_book/data/cache/
 oi_research_book/data/raw/
 oi_research_book/data/bot_backtest/
+
+# Line Touch Response Study raw per-pair responses (~9MB/pair, 17 pairs).
+# Derived data, rebuildable with: node analysis/line_touch_response_study.mjs
+analysis/output/line-touch-response/

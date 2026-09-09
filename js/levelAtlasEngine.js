@@ -564,6 +564,18 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
               level: +here.toFixed(6), pip, open,
               time: bar.time, resolveTime,
               outcome, resolveIdx,
+              // The session's own final bar — always recorded, not just for
+              // `outcome:'neither'` touches, so a consumer never has to
+              // special-case which touches carry it. Lets a caller mark a
+              // race that never resolved to a real fixed target/stop (e.g.
+              // js/levelAtlasVoteReview.js's priceBarrierTrade) to market at
+              // the real session close instead of silently dropping it —
+              // dropping is a look-ahead selection bias (you can't know at
+              // touch time whether the race will resolve before the session
+              // ends), the same bug that invalidated the HL early-reaction
+              // signal (see js/hlSignalCore.js's header for the full account).
+              sessionClose: bars[bars.length - 1].close,
+              sessionCloseTime: bars[bars.length - 1].time,
               minsToResolve: minsToResolve != null ? +minsToResolve.toFixed(0) : null,
               pullbackFrac: pullbackFrac != null ? +pullbackFrac.toFixed(3) : null,
               fadePips: +fadePips.toFixed(1), runPips: +runPips.toFixed(1),
