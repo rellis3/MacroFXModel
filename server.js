@@ -2748,9 +2748,19 @@ POSITIONING vs PRICE
 ${s.positioningDivergence ? `${s.positioningDivergence.state}: the crowd is ${s.positioningDivergence.crowdSide} at the ${s.positioningDivergence.cotPercentile}th percentile and today price ${s.positioningDivergence.state === 'STALLED' ? 'has gone nowhere' : 'moved the other way'} (${s.positioningDivergence.todayMoveDayRanges} day-ranges)${s.positioningDivergence.derived ? ', derived from both legs' : ''}.
 ${s.positioningDivergence.note}` : '  No crowded-and-stalled condition — nothing to report here.'}
 
-THE RATES MOVE, DECOMPOSED (never describe a yield move without saying which component drove it)
-${s.ratesDecomposition ? `10Y nominal ${s.ratesDecomposition.nominalBp >= 0 ? '+' : ''}${s.ratesDecomposition.nominalBp}bp = real ${s.ratesDecomposition.realBp >= 0 ? '+' : ''}${s.ratesDecomposition.realBp}bp + breakeven ${s.ratesDecomposition.breakevenBp >= 0 ? '+' : ''}${s.ratesDecomposition.breakevenBp}bp  ->  ${s.ratesDecomposition.dominant}-driven
+DATA CONFLICTS (resolve before narrating - these outrank everything below)
+${s.dataConflicts ? s.dataConflicts.map(c => `  ${c.what}: ${c.sourceA} vs ${c.sourceB} - ${c.gapPct}% apart. Load-bearing for ${c.loadBearingFor}.`).join('\n') + `
+${s.dataConflictsNote}` : '  None - sources agree where they can be cross-checked.'}
+
+THE RATES MOVE, DECOMPOSED (an identity - check it before you use it)
+${s.ratesDecomposition ? `Window: ${s.ratesDecomposition.windowDays}d${s.ratesDecomposition.asOf ? ` (as of ${s.ratesDecomposition.asOf})` : ''}
+10Y nominal ${s.ratesDecomposition.nominalBp >= 0 ? '+' : ''}${s.ratesDecomposition.nominalBp}bp  =  real ${s.ratesDecomposition.realBp >= 0 ? '+' : ''}${s.ratesDecomposition.realBp}bp + breakeven ${s.ratesDecomposition.breakevenBp >= 0 ? '+' : ''}${s.ratesDecomposition.breakevenBp}bp   (residual ${s.ratesDecomposition.residualBp}bp)
+datesAgree=${s.ratesDecomposition.datesAgree} | identityHolds=${s.ratesDecomposition.identityHolds} | moveExceedsNoise=${s.ratesDecomposition.moveExceedsNoise} -> ${s.ratesDecomposition.dominant}
 ${s.ratesDecomposition.note}` : '  Not available'}
+
+WHEN THE USUAL RELATIONSHIP BREAKS (often the most informative thing on the board)
+${s.divergences ? s.divergences.map(d => `  [${d.severity}] ${d.what} - ${d.observed}
+     WHY IT MATTERS: ${d.why}`).join('\n') : '  No textbook relationship is currently broken.'}
 
 YIELD CURVE SHAPES, BOTH LEGS
 ${s.curveShapes ? `${s.curveShapes.base} ${s.curveShapes.baseBps >= 0 ? '+' : ''}${s.curveShapes.baseBps}bp (${s.curveShapes.baseShape})  vs  ${s.curveShapes.quote} ${s.curveShapes.quoteBps >= 0 ? '+' : ''}${s.curveShapes.quoteBps}bp (${s.curveShapes.quoteShape})  ->  differential ${s.curveShapes.diffBps >= 0 ? '+' : ''}${s.curveShapes.diffBps}bp
@@ -2817,13 +2827,18 @@ Rules for your response:
 23. CORRELATION REGIME CHANGES SIZE, NOT DIRECTION. If it reports HIGH, note in the brief that concurrent setups across the board are effectively one position and that historical hedges will hedge less than their history suggests. Never convert it into a directional argument for this pair.
 
 24. NAME WHICH VIEW THE INSTRUMENT EXPRESSES. Use WHERE TODAY'S MOVE CAME FROM to tell the reader whether they are taking a base-currency view, a quote-currency view, or a bet on this specific pair. When the pair-specific share is high, say outright that a macro thesis is better expressed in a different instrument and name the cleaner leg if the data supports one. This is the single most useful sentence you can give someone choosing between correlated setups.
-25. A YIELD MOVE IS NEVER JUST A YIELD MOVE. If you mention rates at all, say whether the move was real-rate driven (growth/policy repricing — a genuine headwind for gold and long-duration risk) or breakeven driven (an inflation repricing, much softer). The decomposition is exact and provided; describing a nominal move without it is the error this section exists to prevent.
+25. A YIELD MOVE IS NEVER JUST A YIELD MOVE - BUT CHECK THE SPLIT BEFORE USING IT. If you mention rates, say whether the move was real-rate driven (a genuine discount-rate hit to gold and long-duration equities) or breakeven driven (an inflation repricing, much softer, and the version that flips stock-bond correlation positive). BUT the decomposition is only usable when datesAgree, identityHolds AND moveExceedsNoise are all true. If datesAgree is false the legs printed on different days - say the split is unavailable. If identityHolds is false the numbers do not add up - name no driver. If moveExceedsNoise is false there is no move to attribute - say the yield move is inside the noise and move on. A brief that built an "inflation scare" narrative on a 1bp move whose components did not sum is the exact failure this rule exists to prevent.
+25a. DATA CONFLICTS OUTRANK THE NARRATIVE. If DATA CONFLICTS lists anything, lead with it and state plainly that any read depending on that number is unsupported until it resolves. Never assert the conclusion and then note the conflict afterwards - the ordering is the whole point.
+25b. TEACH THE MECHANISM AS YOU GO. Every relationship you invoke gets one clause explaining WHY it works - why real yields hurt gold, why a crowded position is fuel rather than confirmation, why bonds failing to hedge equities is a sizing fact rather than a direction call. Woven into the read, never a separate lesson, and never instead of the number.
 26. PRECEDENT IS A BASE RATE, NOT A FORECAST, AND ITS SAMPLE IS THE STORY. When you cite the regime precedent, give the effect AND its independent sample size in the same breath, and never attach a confidence or probability to it beyond the stated hit rate. If signFlippedBetweenHalves is set, you must either omit the row or state plainly that it did not hold up — presenting it as an edge is a fabrication. Never write a p-value or the word "significant": forward windows overlap and no valid test is available here.
 27. AN HONEST NULL IS A RESULT. Where a section reports no measurable effect — a flat turn-of-month, a regime with too few days, an absent divergence — that is worth one clause, not silence and not a hedge. It tells the reader there is nothing to trade there, which is information.
 
 28. EVENT SIZE IS PREDICTABLE; EVENT DIRECTION USUALLY IS NOT. When you cite the measured release behaviour, lead with the size multiple (it changes stop width and whether to be in the trade at all) and treat any direction hit-rate near 50% as the coin flip it is - say so in plain words rather than dressing it as an edge.
 29. "PRICED IN" IS THE POINT. If rates matter to the read, use HOW MUCH RATE CHANGE IS ALREADY PRICED to explain why a cut or hike may not move the currency the obvious way - a currency responds to the expected PATH changing, not to the level or to a move already embedded in the curve.
 30. A DISAGREEING RATES CROSS-CHECK IS A WARNING ABOUT YOUR OWN READ. If the 10y differential and the pair's move disagree, say plainly that the rate differential is not what is driving this pair today, and lower the weight you put on any macro framing accordingly. Agreement is worth one clause; disagreement is worth a sentence.
+
+31. TEACH THE MECHANISM AS YOU GO - THIS IS A DAILY BRIEF SOMEONE LEARNS FROM. Every relationship you invoke gets one clause saying WHY it works: why real yields are the true opportunity cost of holding gold, why a positive stock-bond correlation means a mixed book has stopped hedging itself, why a currency responds to the expected path changing rather than to the level of rates. One sentence of mechanism per claim, woven into the prose - never a separate lesson block, and never instead of the number.
+32. LEAD WITH BROKEN RELATIONSHIPS AND CONTRADICTED DATA, NOT WITH LEVELS. A textbook relationship failing (yields up while the dollar falls; the yen firming into rising US yields; bonds no longer hedging equities) is more informative than any level on the page, because nothing looks individually wrong - the signal is in the relationship. Explain what the break normally means. And if two sources disagree about a load-bearing number, that outranks the narrative built on it: say the read is unsupported until it resolves, up front, never as a closing caveat.
 
 Respond with a single valid JSON object. No markdown. No text outside the JSON. Field string values 1-2 sentences max EXCEPT "brief" which is 3-5 short paragraphs. Max 3 items per arrays.
 convictionScore MUST be an integer from 0 to 10 only (0=no conviction, 5=moderate, 10=maximum). Do not use any other scale.
@@ -3007,7 +3022,15 @@ SCHEDULED FOR THIS ECONOMY
 ${(s.events || []).length ? s.events.map(e => `  ${e.when}: ${e.event}${e.estimate ? ` (est ${e.estimate})` : ''}${e.actual ? ` -> came in ${e.actual}` : ''}`).join('\n') : '  Nothing further scheduled today'}
 
 BOARD BACKDROP
-${s.backdrop ? `Risk mood ${s.backdrop.risk ?? '?'}. ${s.backdrop.corr ? `Correlation regime ${s.backdrop.corr}.` : ''} ${s.backdrop.rates ? `Rates move today was ${s.backdrop.rates}-driven.` : ''}` : '  Not available'}
+${s.backdrop ? `Risk mood ${s.backdrop.risk ?? '?'}. ${s.backdrop.corr ? `Correlation regime ${s.backdrop.corr}.` : ''} ${s.backdrop.rates ? `Rates move: ${s.backdrop.rates}.` : ''}` : '  Not available'}
+
+DATA CONFLICTS (resolve before narrating)
+${(s.conflicts || []).length ? s.conflicts.map(c => `  ${c}`).join('\n') + `
+Anything depending on a conflicted number is UNSUPPORTED until it resolves. Say so up front; do not append it as a caveat after the conclusion.` : '  None where sources can be cross-checked.'}
+
+WHEN THE USUAL RELATIONSHIP BREAKS
+${(s.divergences || []).length ? s.divergences.map(d => `  ${d.what} - ${d.observed}
+     WHY IT MATTERS: ${d.why}`).join('\n') : '  Nothing unusual in the standard relationships.'}
 
 === END SNAPSHOT ===
 
@@ -3019,6 +3042,8 @@ Rules:
 5. Never cite central-bank tone as a directional reason (banked null). Never treat a null or "still collecting" as zero or neutral -- it means unknown.
 6. Say what would CHANGE this read: one or two specific, checkable observations (a level, a release, a spread), not a feeling.
 7. Plain English. Gloss any desk term the first time you use it. No invented numbers -- every figure must come from the snapshot.
+8. TEACH WHILE YOU READ. The reader wants to understand the machinery, not just be handed an answer. Whenever you use a relationship, give the one-clause MECHANISM alongside it -- why a steeper curve implies what it implies, why a crowded position is fuel, why beating consensus matters more than the level itself. One sentence of mechanism per claim, woven into the read; never a separate lecture, and never at the expense of the actual number.
+9. DATA CONFLICTS AND BROKEN RELATIONSHIPS COME FIRST. If a cross-check disagrees, lead with that and refuse to build on the affected number. If a textbook relationship has broken, that is usually more informative than any level on the page -- explain what the break normally means before giving the currency read.
 
 Respond with a single valid JSON object, no markdown, no text outside it:
 {"headline":"one sentence on ${ccy} right now","bias":"STRONG|WEAK|NEUTRAL","conviction":0-10,"whatHappened":"1-2 sentences on the measured move and what drove it","whatMarketExpects":"1-2 sentences from the curve, scheduled events and positioning","fundamentals":"1-2 sentences on the scorecard and surprise data","cleanestExpression":"which pair and why","risks":"the main thing that would hurt this view","whatWouldChangeIt":"1-2 specific checkable observations","brief":"3-4 short paragraphs separated by blank lines, plain English, teaching the reader WHY not just what"}`;
@@ -3352,10 +3377,25 @@ async function _buildMorningBrief() {
     const mc = await _loadMacroChanges().catch(() => null);
     const by = Object.fromEntries((mc?.rows ?? []).map(r => [r.key, r]));
     const nom = by.us10y?.deltas?.[1], real = by.tips?.deltas?.[1], bei = by.bei?.deltas?.[1];
-    if (real != null && bei != null) {
-      const dominant = Math.abs(real) >= Math.abs(bei) ? 'REAL-RATE' : 'INFLATION-EXPECTATION';
-      ratesSplitLine = `Rates decomposition: 10Y nominal ${nom != null ? (nom >= 0 ? '+' : '') + nom : '?'}bp = real ${real >= 0 ? '+' : ''}${real}bp + breakeven ${bei >= 0 ? '+' : ''}${bei}bp -> ${dominant} driven. `
-        + `A real-rate rise is a genuine headwind for gold and long-duration risk; the same nominal rise driven by breakevens is an inflation repricing and much softer. Never describe the yield move without saying which one it is.`;
+    if (real != null && bei != null && nom != null) {
+      // nominal = real + breakeven is an IDENTITY. Publishing a split that does not
+      // close, or one assembled from legs that printed on different days, is how a
+      // 1bp move became an "inflation scare" in an earlier brief.
+      const dates = [by.us10y?.lastDate, by.tips?.lastDate, by.bei?.lastDate];
+      const datesAgree = dates.every(d => d && d === dates[0]);
+      const residual = Math.round(nom - (real + bei));
+      const NOISE_BP = 3;
+      if (!datesAgree) {
+        ratesSplitLine = `Rates decomposition UNAVAILABLE: the nominal, TIPS and breakeven series printed on different days (${dates.filter(Boolean).join(', ')}), so the split would compare one day against another. Do not attribute the yield move to a component today.`;
+      } else if (Math.abs(residual) > 1) {   // integer bps: a real rounding residual is at most 1
+        ratesSplitLine = `Rates decomposition BROKEN: nominal ${nom}bp vs real ${real}bp + breakeven ${bei}bp leaves a ${residual}bp residual. nominal = real + breakeven is an identity, so a gap this size means one leg is not measuring what the others are. Name NO driver.`;
+      } else if (Math.abs(nom) < NOISE_BP) {
+        ratesSplitLine = `Rates: the 10Y moved ${nom >= 0 ? '+' : ''}${nom}bp today, inside the ~${NOISE_BP}bp noise floor. The split is arithmetically fine (real ${real >= 0 ? '+' : ''}${real}, breakeven ${bei >= 0 ? '+' : ''}${bei}) but there is no move to attribute — say so rather than narrating rounding. Use the monthly move if a rates story is needed.`;
+      } else {
+        const dominant = Math.abs(real) >= Math.abs(bei) ? 'REAL-RATE' : 'INFLATION-EXPECTATION';
+        ratesSplitLine = `Rates decomposition: 10Y nominal ${nom >= 0 ? '+' : ''}${nom}bp = real ${real >= 0 ? '+' : ''}${real}bp + breakeven ${bei >= 0 ? '+' : ''}${bei}bp -> ${dominant} driven${residual ? ` (residual ${residual}bp)` : ''}. `
+          + `A real-rate rise is a genuine discount-rate hit to gold and long-duration equities; the same nominal rise driven by breakevens is an inflation repricing, much softer for risk, and the version that flips stock-bond correlation positive so bonds stop hedging equities.`;
+      }
     }
   } catch { /* omitted when unavailable */ }
 
@@ -14259,6 +14299,13 @@ function _oiHistorySummary(inst) {
   // this isn't captured is a day of regime history that can never be recovered.
   const regimeAt = _oiRegimeAtSpot(inst);
   return {
+    // WHICH SETTLEMENT this row's numbers are from, as the exchange stated it —
+    // distinct from the archive's own date key, which only records the day we filed
+    // it. Those diverged for four straight days in Sept 2026 (files dated 07/09,
+    // 08/09 and 09/09 all holding the 04/09 book) and nothing in the archive could
+    // say so, which made every day-over-day delta computed off it quietly wrong.
+    // Null on rows archived before the capture started reporting it.
+    asOf: inst.oiAsOf ?? null,
     spot: inst.spot ?? null, maxPain: inst.maxPain ?? null,
     callWall: inst.callWall ?? null, putWall: inst.putWall ?? null,
     callWallOI: inst.callWallOI ?? null, putWallOI: inst.putWallOI ?? null,

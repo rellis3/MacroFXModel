@@ -715,6 +715,18 @@
   .move-row .mv-arrow.flat{color:var(--text3)} .move-row .mv-arrow.neu{color:var(--text2)}
   .move-row .mv-blip{margin-left:2px;color:var(--amber);font-size:10.5px;cursor:help}
   .move-row .mv-span{margin-left:3px;color:var(--text3);font-size:9px;cursor:help;white-space:nowrap}
+  .conflict{margin-top:12px;border:1px solid var(--red);border-radius:6px;padding:9px 12px;
+    background:rgba(239,68,68,.06)}
+  .conflict-h{font-size:11px;font-weight:700;color:var(--red);margin-bottom:5px}
+  .conflict-r{font-size:11.5px;line-height:1.6;color:var(--text2)}
+  .conflict-r b{color:var(--text)}
+  .diverg{margin-top:12px;border-top:1px solid var(--border);padding-top:9px}
+  .diverg-h{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--text3);margin-bottom:6px}
+  .diverg-r{border-left:2px solid var(--border);padding:2px 0 2px 9px;margin-bottom:8px}
+  .diverg-r.high{border-left-color:var(--amber)}
+  .diverg-t{font-size:12.5px;font-weight:700;line-height:1.4}
+  .diverg-d{font-size:11.5px;color:var(--text2);line-height:1.55;margin:2px 0}
+  .diverg-w{font-size:11.5px;color:var(--text3);line-height:1.6}
   .fals{margin-top:12px;border-top:1px solid var(--border);padding-top:9px}
   .fals-h{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--text3);
     margin-bottom:5px;cursor:help}
@@ -2348,6 +2360,113 @@ function currencyStrengthReturns(rs) {
   return { scores, r2: r2 == null ? null : +r2.toFixed(2), nPairs: obs.length, obs };
 }
 
+// ── Data conflicts: when two sources disagree about the same number ──────────
+// A brief once opened with "an oil-driven inflation scare" while this page's own WTI
+// print sat ~10% below what the headlines were quoting. The conflict was noted — at the
+// bottom, after the conclusion had already been drawn.
+//
+// That ordering is backwards. When two independent readings of the SAME quantity
+// disagree materially, and that quantity is load-bearing for the narrative, the correct
+// output is not a footnote: it is that the narrative is unsupported until the conflict
+// resolves. This detects those cases so the page and the AI both have to deal with them
+// before writing a story on top.
+const CONFLICT_PCT = 4;   // two readings of one price disagreeing by more than this
+function dataConflicts() {
+  const out = [];
+  // Oil: FRED's DCOILWTICO (daily settle, published with a lag) vs the live OANDA
+  // quote. These measure the same barrel and should be within a percent or two.
+  const fredWti = fred?.wti?.value, liveWti = commodityDrivers?.wti?.price;
+  if (Number.isFinite(fredWti) && Number.isFinite(liveWti) && fredWti > 0) {
+    const diffPct = (liveWti - fredWti) / fredWti * 100;
+    if (Math.abs(diffPct) >= CONFLICT_PCT) {
+      out.push({
+        id: 'wti', label: 'WTI crude',
+        a: { src: 'FRED DCOILWTICO', v: +fredWti.toFixed(2), asOf: fred?.wti?.asOf ?? null },
+        b: { src: 'live OANDA quote', v: +liveWti.toFixed(2) },
+        diffPct: +diffPct.toFixed(1),
+        // Oil is load-bearing whenever the story is about inflation expectations.
+        loadBearing: 'inflation-expectations and any commodity-currency read',
+      });
+    }
+  }
+  return out;
+}
+function dataConflictHtml() {
+  const c = dataConflicts();
+  if (!c.length) return '';
+  return `<div class="conflict"><div class="conflict-h">⚠ Sources disagree — treat anything built on this as unsupported</div>`
+    + c.map(x => `<div class="conflict-r"><b>${esc0(x.label)}</b>: ${x.a.src} reads <b>${x.a.v}</b>${x.a.asOf ? ` (${esc0(x.a.asOf)})` : ''} while the ${esc0(x.b.src)} reads <b>${x.b.v}</b> — a <b>${x.diffPct > 0 ? '+' : ''}${x.diffPct}%</b> gap. `
+      + `This number is load-bearing for ${esc0(x.loadBearing)}, so those reads are <b>not supported</b> until the gap resolves — this is a reason to wait, not a caveat to append to a conclusion.</div>`).join('')
+    + `</div>`;
+}
+
+// ── Divergences: when the textbook relationship breaks ───────────────────────
+// These are the most informative states on the board and the easiest to miss, because
+// nothing looks individually wrong — each series is just doing its own thing. The
+// signal is in the RELATIONSHIP failing.
+function macroDivergences() {
+  const by = _macroMovedByKey();
+  const out = [];
+  const d10 = by.us10y?.deltas?.[20], dxy = by.dxy?.deltas?.[20];
+
+  // 1) Yields up, dollar down. The textbook chain is: US yields rise -> US assets pay
+  //    more -> capital flows in -> dollar strengthens. When that breaks, the usual
+  //    reading is that investors want MORE compensation to hold US assets, i.e. a risk
+  //    premium story rather than a carry story — historically the "bad" kind of yield
+  //    rise (the 2022 gilt shape).
+  if (Number.isFinite(d10) && Number.isFinite(dxy) && Math.abs(d10) >= 5 && Math.abs(dxy) >= 0.4) {
+    if (Math.sign(d10) !== Math.sign(dxy)) {
+      out.push({
+        id: 'yieldsFx',
+        title: d10 > 0 ? 'Yields up, dollar down' : 'Yields down, dollar up',
+        detail: `Over 20 days the US 10-year is ${d10 >= 0 ? '+' : ''}${d10}bp while the dollar index is ${dxy >= 0 ? '+' : ''}${dxy}. Normally those move together.`,
+        teach: d10 > 0
+          ? 'Higher yields usually pull capital in and lift the dollar. When yields rise and the dollar falls anyway, the market is typically demanding a larger risk premium to hold US assets rather than being attracted by the yield — that is the uncomfortable version of a rate rise, and it tends to come with fiscal or inflation-credibility worries rather than a growth upgrade.'
+          : 'Falling yields with a firmer dollar is usually a flight-to-safety pattern: money is buying Treasuries for protection rather than for yield, and the dollar is being bought for the same reason.',
+        severity: 'high',
+      });
+    }
+  }
+
+  // 2) Yen strength into rising US yields. A wider US-Japan rate gap should push
+  //    USD/JPY UP; when the yen firms anyway it is usually positioning unwinding
+  //    rather than rates, and carry unwinds arrive with volatility.
+  const rs = allRows();
+  const csr = currencyStrengthMeasured(rs);
+  const jpy = csr?.scores?.find(x => x.ccy === 'JPY')?.score ?? null;
+  if (Number.isFinite(d10) && d10 >= 5 && jpy != null && jpy > 0.15) {
+    out.push({
+      id: 'carryUnwind',
+      title: 'Yen firming while US yields rise',
+      detail: `US 10-year ${d10 >= 0 ? '+' : ''}${d10}bp over 20 days, yet the yen is the ${jpy > 0.3 ? 'strongest' : 'stronger'} side today (${jpy >= 0 ? '+' : ''}${jpy} day-ranges).`,
+      teach: 'A wider US-Japan rate gap should make the yen a cheaper funding currency and push USD/JPY higher. When the yen strengthens INTO rising US yields, rates are not what is driving it — the usual explanation is carry positions being closed, and those unwinds historically arrive with a volatility spike rather than a smooth trend. Treat it as a reason to size smaller, not as a directional signal.',
+      severity: 'high',
+    });
+  }
+
+  // 3) Bonds have stopped hedging equities. The single most useful sizing fact on the
+  //    board when it is true, and invisible if you only look at levels.
+  const creg = correlationRegime();
+  if (creg && creg.state === 'HIGH') {
+    out.push({
+      id: 'stockBond',
+      title: 'Diversification is thinner than it looks',
+      detail: `Mean absolute correlation across the board is ${creg.mean.toFixed(2)}${creg.z != null ? `, ${creg.z >= 0 ? '+' : ''}${creg.z.toFixed(2)} standard deviations above normal` : ''}.`,
+      teach: 'In a growth scare bonds rally as equities fall, so a mixed book hedges itself. In an inflation regime they fall together and that hedge disappears — which is why the same portfolio can be far riskier than its history suggests without a single position changing. This is a sizing instruction, not a direction call.',
+      severity: 'medium',
+    });
+  }
+  return out;
+}
+function divergenceHtml() {
+  const d = macroDivergences();
+  if (!d.length) return '';
+  return `<div class="diverg"><div class="diverg-h">When the usual relationship breaks — the most informative thing on the board</div>`
+    + d.map(x => `<div class="diverg-r ${x.severity}"><div class="diverg-t">${esc0(x.title)}</div>`
+      + `<div class="diverg-d">${esc0(x.detail)}</div><div class="diverg-w">${esc0(x.teach)}</div></div>`).join('')
+    + `</div>`;
+}
+
 // ── What would change this read ──────────────────────────────────────────────
 // The page states conclusions and never states what would overturn them, which is the
 // difference between holding a view and holding a bias. Every line here is built from a
@@ -2810,26 +2929,81 @@ function divergenceChip(r) {
 // and risk; breakevens up with real yields flat is an inflation scare, which gold
 // historically likes. All three series (DGS10, DFII10, T10YIE) were already loaded and
 // shown as three unrelated rows that never spoke to each other.
-function ratesDecomp() {
+// nominal = real + breakeven is an IDENTITY, not an approximation — so if the three
+// numbers don't add up, one of them is not describing the same thing as the others and
+// the split must not be published.
+//
+// This shipped without either guard and produced a decomposition that read "the 10-year
+// rose 1bp, of which breakevens added 2bp and real added 1bp". 1 != 3. Two causes, both
+// now checked:
+//
+//   1. DIFFERENT AS-OF DATES. DGS10, DFII10 and T10YIE are all daily FRED series but
+//      publish on slightly different lags. If TIPS has not printed today and nominal
+//      has, you are differencing Tuesday's real yield against Wednesday's nominal and
+//      calling the residual an inflation story.
+//   2. NO RESIDUAL CHECK. Even on matching dates, rounding and revisions leave a gap.
+//      A small one is fine and is reported; a large one means the identity is broken
+//      and there is nothing to interpret.
+//
+// And a noise floor, because the deeper failure was interpretive rather than
+// arithmetic: a 1bp daily move in the 10-year is noise, and no narrative should be
+// built on it however cleanly it decomposes.
+const RATES_NOISE_BP = 3;      // below this the daily move says nothing
+// 1bp, not 2. These are integer-rounded basis points, so a genuine residual from
+// rounding is at most 1. The brief that shipped had nominal 1 = real 1 + breakeven 2,
+// a residual of -2 — which a 2bp tolerance would wave through. Defence in depth: that
+// case is now caught by the identity check as well as the noise floor.
+const RATES_MAX_RESIDUAL_BP = 1;
+function ratesDecomp(win = 1) {
   const by = _macroMovedByKey();
-  const nom = by.us10y?.deltas?.[1], real = by.tips?.deltas?.[1], bei = by.bei?.deltas?.[1];
-  if (nom == null && real == null && bei == null) return null;
-  // Deltas are already in bps for these rate rows.
-  const known = [real, bei].filter(v => v != null);
-  if (!known.length) return null;
-  const total = nom != null ? nom : (real ?? 0) + (bei ?? 0);
-  const realPart = real ?? (nom != null && bei != null ? nom - bei : null);
-  const beiPart = bei ?? (nom != null && real != null ? nom - real : null);
-  if (realPart == null || beiPart == null) return null;
-  const mag = Math.abs(realPart) + Math.abs(beiPart);
-  const dominant = mag === 0 ? 'flat' : (Math.abs(realPart) >= Math.abs(beiPart) ? 'real' : 'inflation');
-  return { total: Math.round(total), real: Math.round(realPart), bei: Math.round(beiPart),
-           dominant, realShare: mag > 0 ? Math.round(100 * Math.abs(realPart) / mag) : null };
+  const nom = by.us10y?.deltas?.[win], real = by.tips?.deltas?.[win], bei = by.bei?.deltas?.[win];
+  if (nom == null || real == null || bei == null) return null;   // all three, or nothing
+  // Guard 1 — the three legs must describe the same day.
+  const dates = [by.us10y?.lastDate, by.tips?.lastDate, by.bei?.lastDate];
+  const datesAgree = dates.every(d => d && d === dates[0]);
+  // Guard 2 — the identity must close.
+  const residual = Math.round(nom - (real + bei));
+  const identityHolds = Math.abs(residual) <= RATES_MAX_RESIDUAL_BP;
+  const usable = datesAgree && identityHolds;
+  const mag = Math.abs(real) + Math.abs(bei);
+  return {
+    win, total: Math.round(nom), real: Math.round(real), bei: Math.round(bei),
+    residual, datesAgree, identityHolds, usable,
+    asOf: dates[0] ?? null, dates,
+    // Only claim a driver when the split is trustworthy AND the move is bigger than
+    // the noise floor for this horizon (scaled by sqrt(t), the usual convention).
+    meaningful: usable && Math.abs(nom) >= RATES_NOISE_BP * Math.sqrt(win),
+    dominant: !usable ? 'unknown'
+      : mag === 0 ? 'flat'
+      : (Math.abs(real) >= Math.abs(bei) ? 'real' : 'inflation'),
+    realShare: mag > 0 ? Math.round(100 * Math.abs(real) / mag) : null,
+  };
+}
+// The daily split is usually noise; the monthly one usually is not. Prefer whichever
+// is actually interpretable rather than always leading with today's.
+function ratesDecompBest() {
+  const d1 = ratesDecomp(1), d20 = ratesDecomp(20);
+  if (d1?.meaningful) return d1;
+  if (d20?.meaningful) return d20;
+  return d1 ?? d20 ?? null;
 }
 function ratesDecompLine() {
-  const d = ratesDecomp();
+  const d = ratesDecompBest();
   if (!d) return '';
+  const winTxt = d.win === 1 ? 'today' : `over ${d.win} days`;
+  // Refuse rather than mislead. Each branch names the specific defect, because "we
+  // can't split this" and "the split says nothing" are different problems.
+  if (!d.datesAgree) {
+    return `<div class="riskverdict" style="margin-top:3px" title="${esc0(`The three legs printed on different days (${d.dates.filter(Boolean).join(', ')}). nominal = real + breakeven only holds when all three describe the same session, so no split is shown rather than one built across days.`)}">Rates, split: <b class="tone mix" style="font-weight:800">unavailable</b><span class="muted"> · the nominal, TIPS and breakeven series printed on different days, so the decomposition would compare one day against another</span></div>`;
+  }
+  if (!d.identityHolds) {
+    return `<div class="riskverdict" style="margin-top:3px" title="${esc0(`nominal ${d.total}bp vs real ${d.real}bp + breakeven ${d.bei}bp leaves a ${d.residual}bp residual. That identity should close to within a basis point or two; a larger gap means at least one leg is not measuring what the others are, so no driver is claimed.`)}">Rates, split: <b class="tone off" style="font-weight:800">doesn't add up</b><span class="muted"> · nominal ${d.total}bp vs real ${d.real} + breakeven ${d.bei} (residual ${d.residual}bp) — the identity is broken, so no driver is claimed</span></div>`;
+  }
+  if (!d.meaningful) {
+    return `<div class="riskverdict" style="margin-top:3px" title="${esc0(`The 10-year moved ${d.total}bp ${winTxt}, inside the noise floor of ~${RATES_NOISE_BP}bp. The split is arithmetically fine (real ${d.real} + breakeven ${d.bei}) but there is no move to attribute, and a narrative built on it would be a story about rounding.`)}">Rates, split: <b class="tone mix" style="font-weight:800">no real move</b><span class="muted"> · 10Y ${d.total >= 0 ? '+' : ''}${d.total}bp ${winTxt} is inside the noise floor — nothing to attribute</span></div>`;
+  }
   const sgn = v => `${v > 0 ? '+' : ''}${v}bp`;
+  const spanTxt = d.win === 1 ? '' : ` (${d.win}d)`;
   const read = d.dominant === 'flat'
     ? 'Yields are going nowhere in either component.'
     : d.dominant === 'real'
@@ -2842,7 +3016,7 @@ function ratesDecompLine() {
   const tip = `The 10-year nominal yield is the real (inflation-adjusted) yield plus expected inflation, so a move in it splits exactly into those two parts: `
     + `real ${sgn(d.real)} (DFII10, TIPS) and breakeven ${sgn(d.bei)} (T10YIE). Same headline number, opposite meanings — this is the distinction that decides whether a yield rise is bad for gold or not. Context, not a signal.`;
   return `<div class="riskverdict" style="margin-top:3px" title="${esc0(tip)}">Rates, split: <b class="tone ${d.dominant === 'real' ? (d.real > 0 ? 'off' : 'on') : 'mix'}" style="font-weight:800">${d.dominant === 'flat' ? 'flat' : d.dominant === 'real' ? 'real-rate driven' : 'inflation-driven'}</b>`
-    + `<span class="muted"> · 10Y ${sgn(d.total)} = real ${sgn(d.real)} + breakeven ${sgn(d.bei)} — ${read}</span></div>`;
+    + `<span class="muted"> · 10Y ${sgn(d.total)}${spanTxt} = real ${sgn(d.real)} + breakeven ${sgn(d.bei)}${d.residual ? ` (residual ${d.residual}bp)` : ''} — ${read}</span></div>`;
 }
 
 // ── Move attribution ─────────────────────────────────────────────────────────
@@ -3313,6 +3487,8 @@ function renderMarketRead() {
         ${risk.gpr ? `<div class="riskverdict" style="margin-top:3px" title="Caldara &amp; Iacoviello's Geopolitical Risk Index (Federal Reserve Board) — counts geopolitical-tension language across 10 major newspapers. The source republishes this file weekly (Mondays), not daily, so freshness is checked against that cadence, not a daily one. Shown as a 30-day smoothed level, z-scored against its own trailing 2-year history. Genuinely global and currency-agnostic — not derived from anything else on this page. Context, not a backtested rule.">Geopolitical risk: ${risk.gpr.stale ? `<b class="tone off" style="font-weight:800">⚠ stale</b><span class="muted"> · last update ${risk.gpr.asOfDate} (${risk.gpr.daysStale}d ago) — the weekly pull may have failed, check /api/gpr/refresh-status</span>` : `<b class="tone ${risk.gpr.z > 0.75 ? 'off' : risk.gpr.z < -0.5 ? 'on' : 'mix'}" style="font-weight:800">${risk.gpr.z > 0.75 ? 'elevated' : risk.gpr.z < -0.5 ? 'subdued' : 'normal'}</b><span class="muted"> · z ${risk.gpr.z >= 0 ? '+' : ''}${risk.gpr.z} · ${risk.gpr.trend}${risk.gpr.asOfDate ? ` · as of ${risk.gpr.asOfDate}` : ''}</span>`}</div>` : ''}
       </div>
     </div>
+    ${dataConflictHtml()}
+    ${divergenceHtml()}
     ${falsifierHtml(rs, risk, csrMR)}
     <div class="mread-watch">
       <span class="wk">Watch</span>
@@ -3806,7 +3982,7 @@ function assembleCcySnapshot(ccy) {
     .sort((a, b) => a.ms - b.ms).slice(0, 6);
   const risk = equitiesRisk(rs);
   const creg = correlationRegime();
-  const rd = ratesDecomp();
+  const rd = ratesDecompBest();
   return {
     measured: mRow ? { score: mRow.score, n: mRow.n, r2: csr.r2,
       rank: (csr.scores.findIndex(x => x.ccy === ccy) + 1) || null, of: csr.scores.length } : null,
@@ -3833,7 +4009,9 @@ function assembleCcySnapshot(ccy) {
                event: e.event, estimate: e.estimate ?? null, actual: e.actual ?? null };
     }),
     backdrop: { risk: risk?.tone ?? null, corr: creg ? `${creg.state} (mean |rho| ${creg.mean})` : null,
-                rates: rd?.dominant ?? null },
+                rates: (rd && rd.usable && rd.meaningful) ? rd.dominant : 'not interpretable today' },
+    conflicts: dataConflicts().map(c => `${c.label}: ${c.a.src}=${c.a.v} vs ${c.b.src}=${c.b.v} (${c.diffPct}% gap) — load-bearing for ${c.loadBearing}`),
+    divergences: macroDivergences().map(d => ({ what: d.title, observed: d.detail, why: d.teach })),
   };
 }
 
@@ -8545,10 +8723,26 @@ function assembleSnapshot(r) {
       note: 'The crowd is stretched one way and price has stopped going that way. A practitioner pattern with NO backtest in this repo and COT is days lagged — describe it as a risk shape, never as a signal.' };
   }
   // The rates move split into its two components, which mean opposite things.
-  const rdAI = ratesDecomp();
+  const rdAI = ratesDecompBest();
   if (rdAI) {
-    s.ratesDecomposition = { nominalBp: rdAI.total, realBp: rdAI.real, breakevenBp: rdAI.bei, dominant: rdAI.dominant,
-      note: 'Nominal = real + breakeven, so this split is exact. A real-rate rise is a genuine headwind for gold and long-duration risk; the same nominal rise driven by breakevens is an inflation repricing and much softer. Do not describe a yield move without saying which one it is.' };
+    s.ratesDecomposition = {
+      windowDays: rdAI.win, nominalBp: rdAI.total, realBp: rdAI.real, breakevenBp: rdAI.bei,
+      residualBp: rdAI.residual, datesAgree: rdAI.datesAgree, identityHolds: rdAI.identityHolds,
+      moveExceedsNoise: rdAI.meaningful, dominant: rdAI.dominant, asOf: rdAI.asOf,
+      note: 'nominal = real + breakeven is an IDENTITY. If datesAgree is false the three legs printed on different days and the split is meaningless. If identityHolds is false the numbers do not add up and NO driver may be claimed. If moveExceedsNoise is false the move is inside the noise floor (~3bp daily) and there is nothing to attribute — say that plainly instead of narrating rounding. Only when all three are true may you name a driver.',
+    };
+  }
+  // Cross-source disagreements — these OUTRANK the narrative built on them.
+  const confAI = dataConflicts();
+  if (confAI.length) {
+    s.dataConflicts = confAI.map(c => ({ what: c.label, sourceA: `${c.a.src}=${c.a.v}`, sourceB: `${c.b.src}=${c.b.v}`,
+      gapPct: c.diffPct, loadBearingFor: c.loadBearing }));
+    s.dataConflictsNote = 'Two independent readings of the same number disagree materially. Anything that depends on this number is UNSUPPORTED until it resolves — say so up front and decline to build the read on it. Do not mention it only as a closing caveat after asserting the conclusion.';
+  }
+  // Broken textbook relationships — usually the most informative state on the board.
+  const divAI = macroDivergences();
+  if (divAI.length) {
+    s.divergences = divAI.map(d => ({ what: d.title, observed: d.detail, why: d.teach, severity: d.severity }));
   }
   // Curve shapes for both legs.
   const cdAI = curveDiffFor(r.name);
