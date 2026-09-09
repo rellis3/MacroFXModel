@@ -43,6 +43,20 @@ alongside the one real positive finding.
   the same wall level across consecutive days aren't independent draws), to
   check whether it survives treating ~27–43 independent wall-episodes as the
   real sample size instead of ~400+ raw touch events.
+- `scripts/07_export_bot_chain.py` — exports each historical day's near-dated
+  chain in the exact paste format the real `js/oi.js` parser expects (one
+  JSON line per day: date, spot, dte, rawOI, rawChg), so the live bot's own
+  code can be fed real history instead of a Python re-implementation.
+- `scripts/08_bot_backtest_zones.mjs` — **Node**, not Python: calls the
+  actual production `buildOIEntry` (`js/oi.js`) and `buildOIZones`
+  (`js/oiZones.js`) — unmodified — with the bot's real shipped default
+  config, to generate the exact zones the live bot would have proposed each
+  day for 6 years. Zero reimplementation, zero drift risk.
+- `scripts/09_bot_backtest_execute.py` — simulates execution of those zones
+  against real M1 candles, mirroring `oi_bot.py`'s real mechanics (touch
+  entry, shared stop, TP1/TP2 scale-out to breakeven, mode-specific time
+  exit). Found and fixed a real fill-direction bug during development — see
+  `RESEARCH_BOOK.md` Part 12 for what it was.
 - `data/results/*.csv` — every numeric table cited in `RESEARCH_BOOK.md`,
   small and committed, one file per test.
 
@@ -71,10 +85,16 @@ python3 oi_research_book/scripts/03_pinning_and_walls_reaction.py
 python3 oi_research_book/scripts/04_predictive_ic.py
 python3 oi_research_book/scripts/05_intraday_validation.py  # needs m1/eurusd_m1.parquet too
 python3 oi_research_book/scripts/06_intraday_cluster_significance.py  # depends on 05's output
+python3 oi_research_book/scripts/07_export_bot_chain.py     # depends on 01's contract-level cache
+node    oi_research_book/scripts/08_bot_backtest_zones.mjs  # calls the real js/oi.js + js/oiZones.js — needs Node, run from the repo root
+python3 oi_research_book/scripts/09_bot_backtest_execute.py # needs m1/eurusd_m1.parquet again
 ```
 
 Total run time is under two minutes; the raw CSV/cache are gitignored
-(reproducible from R2, not worth committing at ~290MB combined).
+(reproducible from R2, not worth committing at ~290MB combined). Scripts
+07–09 also gitignore their own intermediate JSONL files
+(`data/bot_backtest/`) for the same reason — only the final
+`bot_backtest_trades.csv`/`_summary.csv` are committed.
 
 ## Extending to other pairs
 

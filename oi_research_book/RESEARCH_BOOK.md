@@ -1,4 +1,4 @@
-# EUR/USD Options Positioning — Research Book (v1.2)
+# EUR/USD Options Positioning — Research Book (v1.3)
 
 **Data:** CME EUR/USD FX options, R2 `OI Data/EUR_USD.csv` (Databento-style
 per-strike daily export), 2020‑09‑04 → 2026‑09‑04, joined to
@@ -30,6 +30,16 @@ touch as independent) — the 15–60 minute effect survives on 27–43 genuinel
 independent wall-episodes; the 4-hour version mostly doesn't (call
 borderline, put clearly null). See Part 9b's "clustering correction"
 subsection.
+
+**v1.3 change:** adds Part 12 — a backtest of the live `oi_bot`'s *actual*
+trading logic (not just the underlying OI concepts) against 6 years of real
+history, using its real production code (`buildOIEntry`/`buildOIZones`) via
+Node, with execution simulated against real M1 candles. Result: no robust
+edge on EUR/USD (OOS mean −0.031R) — the first time that question has been
+testable with real data instead of an untested assumption. Also documents a
+real fill-direction bug this pass found and fixed in its own execution
+simulator before trusting the result (see Part 12 for what it was and how
+extreme the wrong number looked before the fix).
 
 **Scope of this v1.** The brief that motivated this book listed 36 research
 sections and 18 closing questions. Doing all 36 with genuine statistical care
@@ -608,6 +618,123 @@ directory:
 
 ---
 
+## Part 12 — Backtesting the live OI bot's actual logic
+
+Everything above tests the *concepts* behind the OI system in the abstract.
+This part tests something more direct and higher-stakes: **the live
+`oi_bot`'s own trading logic**, using its actual production code, against
+6 years of real history it has never had before. The Aug 2026 quant review
+(`OI System Quant Review Aug 2026.md`, H2/H6) flagged this as a critical gap
+— the bot has never been backtested, specifically because no historical OI
+existed to test it against. That gap is now closed for EUR/USD.
+
+**Method, chosen specifically to avoid a worse problem than not testing at
+all.** A Python re-implementation of `js/oiZones.js`'s ~800-line planner (11
+sizing multipliers, wall tiers, GEX regime, reachability, minRR gating) risks
+silently drifting from what the bot actually runs — the exact "bit-identical
+port" failure this repo's own `TRADABILITY_REVIEW.md` documents. So this
+backtest calls the **unmodified production functions** instead: `buildOIEntry`
+(`js/oi.js`) and `buildOIZones` (`js/oiZones.js`) are already pure, DOM-free,
+and explicitly built for this ("ONE implementation → the page renders it AND
+the Python executor trades it — no drift"). A Python script
+(`07_export_bot_chain.py`) exports each historical day's near-dated chain in
+the exact paste format the real parser expects; a Node script
+(`08_bot_backtest_zones.mjs`) feeds it through the real `buildOIEntry` →
+`buildOIZones`, using the bot's actual shipped default config
+(`OI_BOT_CFG_DEFAULTS` from `server.js`) — not a tuned or guessed one; a
+Python script (`09_bot_backtest_execute.py`) simulates execution against real
+M1 candles, mirroring `oi_bot.py`'s real mechanics (limit/stop touch entry, a
+shared stop, TP1/TP2 scale-out with the runner moved to breakeven, and the
+mode-specific time exit — `max_hold_hours: {fade:48, break:24, maxpain:24}`,
+read directly from `oi_bot.py`).
+
+**Two honest simplifications, stated once:** no multi-day `oi_store` archive
+exists to replicate `oiWallStability`/`classifyOIChange` from (the live
+server derives these from whatever days happened to be pasted, which for
+EUR/USD has historically meant sparse data anyway — `null` here is not a
+worse assumption than what production usually has); and `holdWeights` is
+`null` (no forward-test calibration exists for this run, so the wall
+hold-score uses its documented theory-prior defaults — the same state a
+freshly deployed bot starts in). Also worth stating plainly: **EUR/USD is not
+in the bot's default trading universe** — FX is opt-in, and the planner's own
+code comment calls it "the weak asset (CME OI partial); gold + indices are
+where the mechanism is real." This backtest answers "would enabling EUR/USD
+have worked," not "is the live bot (on gold/indices) working."
+
+**A real bug, found and fixed before trusting any result — reported because
+catching it is what makes the rest of this trustworthy, not despite it.** The
+first version of the execution simulator kept the fill-direction rule from
+the earlier wall-touch work: buys fill on a dip to entry, sells fill on a
+rally to entry. That's correct for a *fade* (limit) order but exactly
+backwards for a *breakout* (stop) order, and it went undetected long enough
+to nearly ship a headline number: **93% loss rate, mean −0.82R**, because
+every breakout stop-buy was being "filled" on a dip toward it instead of a
+rally through it. Per this repo's own rule ("Assume Code Failure First"),
+that result was implausible enough to distrust before it was believed —
+checking where zones actually place entries relative to spot confirmed it:
+386 of 421 sampled breakout buys sit *above* spot (needing a rally to fill,
+`high >= entry`), not below. Fixed to key fill direction off entry-vs-spot
+geometry rather than the buy/sell label. The corrected numbers below are
+**not** the number that was almost reported.
+
+### Results
+
+`bot_backtest_trades.csv` (1,114 filled trades of 5,948 zones proposed — most
+zones never got touched within their fill window) / `bot_backtest_summary.csv`:
+
+| Segment | Trades | Win rate | Mean R | Median R | Sum R | Std R |
+|---|---|---|---|---|---|---|
+| **All** | 1,114 | 42.7% | **−0.043** | −0.15 | −47.5 | 1.04 |
+| Mode = break (BREAKOUT) | 831 | 46.0% | −0.018 | −0.09 | −14.6 | 0.84 |
+| Mode = fade (PIN) | 251 | 29.5% | −0.125 | −1.02 | −31.4 | 1.53 |
+| Mode = maxpain | 32 | 62.5% | −0.049 | +0.03 | −1.6 | 0.60 |
+| IS (first 60%) | 668 | 42.5% | +0.013 | −0.19 | +8.9 | 1.12 |
+| Validation (20%) | 223 | 43.9% | −0.222 | −0.12 | −49.4 | 0.82 |
+| **OOS (last 20%)** | 223 | 42.2% | **−0.031** | −0.11 | −7.0 | 0.93 |
+
+**Gross (no-cost) vs. net:** mean R is −0.023 gross, −0.043 net (costs) — so
+this isn't "a good strategy killed by spread," it's close to flat-to-slightly-negative
+both before and after costs.
+
+**Reading this honestly:** on EUR/USD, using the bot's real shipped logic and
+real default config, this does not show a robust edge. In-sample mean R is
+barely positive (+0.013); out-of-sample it's slightly negative (−0.031),
+consistent with in-sample noise rather than a real signal — the same
+"beautiful in-sample, disappears out-of-sample" pattern flagged elsewhere in
+this book (Part 9), now found in the bot's own logic rather than a
+univariate feature. PIN (fade) mode is the weakest slice (29.5% win rate,
+mean −0.125R) despite a fat right tail (best trade +6.96R) — a real
+mean-reversion signature, just not currently a profitable one on this pair.
+Mode C (max-pain reversion) is the closest to breakeven but n=32 is far too
+small to read anything into.
+
+**What this does and doesn't tell you about the live bot's current profit:**
+it doesn't resolve that question directly — the live bot trades gold and
+indices, not EUR/USD, and the code's own comment already flags FX as the
+weaker asset for this mechanism. What it does tell you: if the live profit
+had been used as a reason to *enable* EUR/USD in the bot's universe, this
+backtest gives no support for that expectation on this pair, using this
+strategy's actual logic, over 6 years of genuine history. It's the first time
+that question has been answerable with real data at all instead of an
+untested assumption either way.
+
+### Roadmap for this piece specifically
+
+- **Run the same pipeline on gold and the indices** — R2's `OI Data/` folder
+  doesn't have those in the schema this book used, but if/when it does, this
+  is the test that actually speaks to the live bot's current universe and
+  its live profit.
+- **Reconstruct `stability`/`change` from this book's own historical OI**
+  rather than passing `null` — this book already computes day-over-day OI
+  change (Part 0's audit); wiring it into `classifyOIChange`'s expected shape
+  would let `avoidLiquidating` actually gate zones in this backtest, closer
+  to what a well-supplied live server would do.
+- **A walk-forward re-run**, not one chronological split — per this repo's
+  own Lego Principle 5, a single IS/OOS split is a weaker bar than
+  walk-forward before treating any of this as settled.
+
+---
+
 ## Appendix — reproduction
 
 ```
@@ -618,6 +745,9 @@ python3 oi_research_book/scripts/03_pinning_and_walls_reaction.py
 python3 oi_research_book/scripts/04_predictive_ic.py
 python3 oi_research_book/scripts/05_intraday_validation.py   # needs m1/eurusd_m1.parquet (R2, ~63MB)
 python3 oi_research_book/scripts/06_intraday_cluster_significance.py   # depends on 05's output
+python3 oi_research_book/scripts/07_export_bot_chain.py      # depends on 01's contract-level cache
+node    oi_research_book/scripts/08_bot_backtest_zones.mjs   # calls the REAL js/oi.js + js/oiZones.js
+python3 oi_research_book/scripts/09_bot_backtest_execute.py  # needs m1/eurusd_m1.parquet again
 ```
 
 Raw R2 inputs (`OI Data/EUR_USD.csv`, ~227MB; `m1/eurusd_d1.parquet`, ~175KB;

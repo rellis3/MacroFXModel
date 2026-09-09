@@ -203,3 +203,4 @@ oi_recon/databento_oi/.progress/USD_JPY_2026.done
 # small derived surfaces/wall-summaries/results tables in oi_research_book/data/.
 oi_research_book/data/cache/
 oi_research_book/data/raw/
+oi_research_book/data/bot_backtest/
