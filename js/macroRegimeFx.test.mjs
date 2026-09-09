@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   alignSeries, classifyRegimes, describeRegime, buildRegimeStudy, currentRegime,
-  businessDayIndex, buildCalendarStudy, DEFAULTS,
+  businessDayIndex, buildCalendarStudy, buildEventStudy, eventsForPair, DEFAULTS,
 } from './macroRegimeFx.js';
 
 // N business-ish days starting 2020-01-01, skipping weekends so month indexing is real.
@@ -161,5 +161,52 @@ test('macroRegimeFx', async t => {
     assert.ok(DEFAULTS.isFrac > 0 && DEFAULTS.isFrac < 1);
     assert.ok(DEFAULTS.minObs >= 20);
     assert.ok(DEFAULTS.horizons.every(h => h > 0));
+  });
+});
+
+test('buildEventStudy', async t => {
+  const D = busDays(600);
+  // A pair that moves 5x harder on the 1st of each month, when "NFP" prints.
+  const evDates = D.filter(d => d.endsWith('-01'));
+  const evSet = new Set(evDates);
+  let v = 1.1;
+  const px = D.map(d => { v *= (1 + (evSet.has(d) ? 0.02 : 0.004)); return { date: d, value: +v.toFixed(6) }; });
+  const releases = evDates.map(d => ({
+    country: 'US', event: 'Non-Farm Payrolls', ms: Date.parse(d + 'T13:30:00Z'), actual: '250K', estimate: '200K',
+  }));
+  const st = buildEventStudy({ EURUSD: px }, releases, { EURUSD: ['EUR', 'USD'] }, { minObs: 5 });
+  const row = Object.values(st.pairs.EURUSD)[0];
+
+  await t.test('detects that the release day moves harder than a normal day', () => {
+    assert.ok(row.moveMultiple > 2, `expected a large multiple, got ${row.moveMultiple}`);
+  });
+  await t.test('reports the baseline alongside — the multiple is the comparison', () => {
+    assert.ok(row.baselineAbsMovePct > 0 && row.avgAbsMovePct > row.baselineAbsMovePct);
+  });
+  await t.test('orients direction by which SIDE of the pair the currency is', () => {
+    // USD is the QUOTE of EUR/USD, so a US beat should read as pair-DOWN. The price
+    // rises on event days here, so hit rate must be low, not high.
+    assert.ok(row.directionHitPct === 0, `USD is the quote leg; got ${row.directionHitPct}`);
+    // Flip the pair so USD is the base: the same data must now read as hits.
+    const st2 = buildEventStudy({ USDJPY: px }, releases, { USDJPY: ['USD', 'JPY'] }, { minObs: 5 });
+    assert.equal(Object.values(st2.pairs.USDJPY)[0].directionHitPct, 100);
+  });
+  await t.test('a release that touches neither leg is skipped', () => {
+    const st3 = buildEventStudy({ AUDNZD: px }, releases, { AUDNZD: ['AUD', 'NZD'] }, { minObs: 5 });
+    assert.equal(st3.pairs.AUDNZD, undefined);
+  });
+  await t.test('too few observations means no row, not a shaky one', () => {
+    const st4 = buildEventStudy({ EURUSD: px }, releases.slice(0, 3), { EURUSD: ['EUR', 'USD'] }, { minObs: 12 });
+    assert.equal(st4.pairs.EURUSD, undefined);
+  });
+  await t.test('releases with no consensus are unusable and dropped', () => {
+    const noEst = releases.map(r => ({ ...r, estimate: null }));
+    const st5 = buildEventStudy({ EURUSD: px }, noEst, { EURUSD: ['EUR', 'USD'] }, { minObs: 5 });
+    assert.equal(st5.seriesCount, 0);
+  });
+  await t.test('eventsForPair ranks by how much the release actually moves it', () => {
+    const top = eventsForPair(st, 'EURUSD', 3);
+    assert.ok(top.length >= 1);
+    assert.ok(top[0].moveMultiple >= (top[1]?.moveMultiple ?? 0));
   });
 });

@@ -130,7 +130,7 @@ import { compareForecastLines as _compareForecastLines } from './js/forecastDrif
 import { buildEventWindows as _buildEventWindows } from './js/eventGateCore.js';
 import { fetchWeekEvents as _fetchWeekEvents } from './js/econCalendar.js';
 import { buildSurpriseIndex as _buildSurpriseIndex, mergeReleases as _mergeReleases, seriesHistory as _seriesHistory } from './js/econSurprise.js';   // real economic-surprise index (actual vs consensus), accumulated week by week
-import { buildRegimeStudy as _buildRegimeStudy, buildCalendarStudy as _buildCalendarStudy, currentRegime as _currentRegime, describeRegime as _describeRegime } from './js/macroRegimeFx.js';   // what FX has historically done in the macro conditions holding right now
+import { buildRegimeStudy as _buildRegimeStudy, buildCalendarStudy as _buildCalendarStudy, currentRegime as _currentRegime, describeRegime as _describeRegime, buildEventStudy as _buildEventStudy } from './js/macroRegimeFx.js';   // what FX has historically done in the macro conditions holding right now, and on release days
 import { buildMacroChanges as _buildMacroChanges, MACRO_CHANGE_SPEC as _MACRO_CHANGE_SPEC, seriesDeltas as _seriesDeltas } from './js/macroChange.js';
 import { macroContext as _macroContext, macroContextByDate as _macroContextByDate, MACRO_FRED_SERIES as _MACRO_FRED_SERIES, riskSensFor as _riskSensFor } from './js/macroCore.js';
 import { analyzePair as _mcondAnalyzePair, summarizeRows as _mcondSummarize, verdict as _mcondVerdict } from './js/macroConditionerEngine.js';
@@ -2765,6 +2765,22 @@ TURN-OF-MONTH FLOW
 ${s.turnOfMonth ? `Month-boundary days move ${s.turnOfMonth.edgeVsBaselineBp >= 0 ? '+' : ''}${s.turnOfMonth.edgeVsBaselineBp}bp/day differently from ordinary days (${s.turnOfMonth.turnDays} vs ${s.turnOfMonth.otherDays} days).
 ${s.turnOfMonth.note}` : '  No measurable month-boundary tilt for this pair — that null is itself worth knowing.'}
 
+WHAT THE SCHEDULED RELEASES ACTUALLY DO TO THIS PAIR (measured, not assumed)
+${s.eventDayBehaviour ? s.eventDayBehaviour.releases.map(x => `  ${x.event}: moves ${x.movesVsNormalDay}x a normal day (n=${x.n})${x.directionFollowedSurprisePct != null ? ` · went the surprise's way ${x.directionFollowedSurprisePct}% of the time (n=${x.directionN})` : ''}`).join('\n') + `
+${s.eventDayBehaviour.note}` : '  No measured release history for this pair yet.'}
+
+HOW MUCH RATE CHANGE IS ALREADY PRICED
+${s.ratePathPriced ? `2Y ${s.ratePathPriced.twoYear}% vs policy ${s.ratePathPriced.policyRate}% = ${s.ratePathPriced.gapBp >= 0 ? '+' : ''}${s.ratePathPriced.gapBp}bp  ->  about ${Math.abs(s.ratePathPriced.movesPriced)} ${s.ratePathPriced.direction} already priced.
+${s.ratePathPriced.note}` : '  Not available'}
+
+IS THE MOVE RATES-BACKED?
+${s.ratesCrossCheck ? `10y differential ${s.ratesCrossCheck.spreadChangeBp >= 0 ? '+' : ''}${s.ratesCrossCheck.spreadChangeBp}bp vs pair move ${s.ratesCrossCheck.pairMoveDayRanges} day-ranges -> they ${s.ratesCrossCheck.agrees ? 'AGREE' : 'DISAGREE'}.
+${s.ratesCrossCheck.note}` : '  Not available'}
+
+OPTIONS vs REALISED VOLATILITY (this pair)
+${s.impliedVsRealised ? `Implied ${s.impliedVsRealised.impliedPct}% vs realised ${s.impliedVsRealised.realisedPct}% = ${s.impliedVsRealised.ratio}x.
+${s.impliedVsRealised.note}` : '  Not available'}
+
 === END SNAPSHOT ===
 
 You are a professional FX/futures prop desk analyst — but you are briefing a SHARP TRADER WHO IS NOT AN OPTIONS/QUANT SPECIALIST. Your job is a specific, calibrated, and PLAINLY-WRITTEN brief: grounded in the numbers, readable by a human, and honest about how much weight each signal actually deserves. Not generic observations — and not a wall of desk jargon that only a gamma trader could parse.
@@ -2804,6 +2820,10 @@ Rules for your response:
 25. A YIELD MOVE IS NEVER JUST A YIELD MOVE. If you mention rates at all, say whether the move was real-rate driven (growth/policy repricing — a genuine headwind for gold and long-duration risk) or breakeven driven (an inflation repricing, much softer). The decomposition is exact and provided; describing a nominal move without it is the error this section exists to prevent.
 26. PRECEDENT IS A BASE RATE, NOT A FORECAST, AND ITS SAMPLE IS THE STORY. When you cite the regime precedent, give the effect AND its independent sample size in the same breath, and never attach a confidence or probability to it beyond the stated hit rate. If signFlippedBetweenHalves is set, you must either omit the row or state plainly that it did not hold up — presenting it as an edge is a fabrication. Never write a p-value or the word "significant": forward windows overlap and no valid test is available here.
 27. AN HONEST NULL IS A RESULT. Where a section reports no measurable effect — a flat turn-of-month, a regime with too few days, an absent divergence — that is worth one clause, not silence and not a hedge. It tells the reader there is nothing to trade there, which is information.
+
+28. EVENT SIZE IS PREDICTABLE; EVENT DIRECTION USUALLY IS NOT. When you cite the measured release behaviour, lead with the size multiple (it changes stop width and whether to be in the trade at all) and treat any direction hit-rate near 50% as the coin flip it is - say so in plain words rather than dressing it as an edge.
+29. "PRICED IN" IS THE POINT. If rates matter to the read, use HOW MUCH RATE CHANGE IS ALREADY PRICED to explain why a cut or hike may not move the currency the obvious way - a currency responds to the expected PATH changing, not to the level or to a move already embedded in the curve.
+30. A DISAGREEING RATES CROSS-CHECK IS A WARNING ABOUT YOUR OWN READ. If the 10y differential and the pair's move disagree, say plainly that the rate differential is not what is driving this pair today, and lower the weight you put on any macro framing accordingly. Agreement is worth one clause; disagreement is worth a sentence.
 
 Respond with a single valid JSON object. No markdown. No text outside the JSON. Field string values 1-2 sentences max EXCEPT "brief" which is 3-5 short paragraphs. Max 3 items per arrays.
 convictionScore MUST be an integer from 0 to 10 only (0=no conviction, 5=moderate, 10=maximum). Do not use any other scale.
@@ -2920,6 +2940,118 @@ app.post('/api/levels/reload-kv', async (_req, res) => {
 
 // Claude AI analysis — handled natively in Node rather than via callWorker
 // so the Anthropic fetch runs in the Railway process and benefits from env vars directly.
+// -- Currency-level analysis ---------------------------------------------------
+// today.html has three views -- global, per-currency, per-pair -- and only two of them
+// could ever produce an AI read. The currency drawer is where the macro question
+// actually lives ("is the euro strong, and WHY"), and it had no synthesis at all: the
+// same data reached the pair prompt as two legs of a spread and was never asked about
+// on its own terms.
+//
+// Deliberately a DIFFERENT question from the pair prompt. There is no entry, stop or
+// target here, because a currency is not a tradeable instrument -- the output is a
+// judgement about the currency plus the cleanest instrument to express it in, which is
+// exactly the decision the per-pair view cannot make for you.
+// Pull the assistant's TEXT out of a Messages API response.
+//
+// Every call site here used to read `content[0].text`. That was correct on
+// claude-sonnet-4-6, where the first block was always the text. On claude-opus-5
+// adaptive thinking is ON BY DEFAULT, so `content[0]` is a THINKING block and
+// `content[0].text` is undefined — every one of these calls would have started
+// returning empty with no error raised. Find the block by TYPE, never by index.
+function _antText(data) {
+  const blocks = Array.isArray(data?.content) ? data.content : [];
+  for (const b of blocks) if (b?.type === 'text' && typeof b.text === 'string') return b.text;
+  return '';
+}
+
+function buildCurrencyPrompt(ccy, s) {
+  return `You are a professional FX macro strategist. Analyse ${ccy} as a CURRENCY -- not a pair -- from the snapshot below, and produce a structured read.
+
+=== CURRENCY SNAPSHOT: ${ccy} ===
+
+MEASURED MOVE TODAY (what has actually happened, from a cross-sectional fit of every pair's real move)
+${s.measured ? `${ccy} is ${s.measured.score >= 0 ? '+' : ''}${s.measured.score} expected day ranges, fitted across ${s.measured.n} pairs.
+Board-wide fit R-squared: ${s.measured.r2 ?? 'n/a'}${s.measured.r2 != null && s.measured.r2 < 0.3 ? '  ->  WEAK: the board is NOT moving as a currency story today, so do not present this as a clean currency theme.' : ''}
+Rank: ${s.measured.rank ?? '?'} of ${s.measured.of ?? '?'} tracked currencies.` : '  Not available'}
+
+MODEL LEAN (a blend of HMM regime and session bias -- a model read, NOT a measure of how far anything moved)
+${s.lean != null ? `${s.lean >= 0 ? '+' : ''}${s.lean} across ${s.leanN ?? '?'} pairs. Where this DISAGREES with the measured move above, say so and lead with the measured one.` : '  Not available'}
+
+PER-PAIR LEGS (which instruments are pulling this currency, and how hard)
+${(s.legs || []).length ? s.legs.map(l => `  ${l.pair}: ${l.read}`).join('\n') : '  Not available'}
+
+FUNDAMENTALS (Macro Scorecard, per dimension; stale dimensions are EXCLUDED from the composite)
+${s.macro ? `Composite ${s.macro.composite ?? 'n/a'} across ${s.macro.coverage ?? 0} covered dimensions${s.macro.stale ? ` (${s.macro.stale} excluded as too old to score)` : ''}.
+${Object.entries(s.macro.dims || {}).filter(([, v]) => v != null).map(([k, v]) => `  ${k}: ${v > 0 ? '+' : ''}${v}`).join('\n')}` : '  Not available'}
+
+ECONOMIC SURPRISE (actual vs CONSENSUS -- what markets reprice on, distinct from the level of activity)
+${s.surprise ? (s.surprise.score == null
+  ? `  Still collecting (${s.surprise.n} scored releases, ${s.surprise.pending} more needed) -- treat as UNKNOWN, never as zero.`
+  : `  ${s.surprise.score >= 0 ? '+' : ''}${s.surprise.score} typical surprises across ${s.surprise.n} releases in ${s.surprise.nSeries} series${s.surprise.assumed >= 0.5 ? `  (CAUTION: ${Math.round(s.surprise.assumed * 100)}% have an inferred higher-is-better sign)` : ''}.
+${(s.surprise.top || []).map(t => `    ${t.event}: ${t.actual} vs ${t.estimate} est`).join('\n')}`) : '  Not available'}
+
+RATES AND CURVE
+${s.rates ? `10Y ${s.rates.long ?? 'n/a'}% (rank #${s.rates.rank ?? '?'} of ${s.rates.of ?? '?'} for carry)${s.rates.dir ? `, currently ${s.rates.dir}` : ''}${s.rates.asOf ? `  [as of ${s.rates.asOf}]` : ''}
+Short end ${s.rates.short ?? 'n/a'}%  ->  curve ${s.rates.curveBps != null ? `${s.rates.curveBps > 0 ? '+' : ''}${s.rates.curveBps}bp (${s.rates.curveShape})` : 'n/a'}
+The LEVEL says what this currency pays to hold; the SLOPE says what the market expects to happen to that. An inverted curve is the market pricing CUTS -- trouble, not strength. Non-US legs are OECD monthly series with a publication lag: read the slope as where it SITS, not what changed today.` : '  Not available'}
+
+POSITIONING (CFTC weekly, lagged)
+${s.cot ? `Specs are net ${s.cot.dir ?? '?'}${s.cot.pct != null ? `, about ${s.cot.pct}% of open interest` : ''}${s.cot.pctile != null ? ` (${s.cot.pctile}th percentile of its own history)` : ''}${s.cot.wkChg != null ? `, week change ${s.cot.wkChg > 0 ? '+' : ''}${s.cot.wkChg}` : ''}${s.cot.derived ? '  [DERIVED as the mirror of the other majors -- this feed has no direct USD index contract]' : ''}.
+This is who is ALREADY positioned, not who is buying now.` : '  Not available'}
+
+CENTRAL BANK (descriptive record only)
+${s.cb ? `${s.cb.bank}: ${s.cb.trend}, latest hawkish score ${s.cb.latestScore}${s.cb.deltaVsPrev != null ? ` (${s.cb.deltaVsPrev >= 0 ? '+' : ''}${s.cb.deltaVsPrev} vs the prior meeting)` : ''}, ${s.cb.nMeetings} meetings scored.
+BANKED NULL as a predictor in this project's own pre-registered test -- never cite tone as a directional reason.` : '  No scored central-bank feed for this currency'}
+
+SCHEDULED FOR THIS ECONOMY
+${(s.events || []).length ? s.events.map(e => `  ${e.when}: ${e.event}${e.estimate ? ` (est ${e.estimate})` : ''}${e.actual ? ` -> came in ${e.actual}` : ''}`).join('\n') : '  Nothing further scheduled today'}
+
+BOARD BACKDROP
+${s.backdrop ? `Risk mood ${s.backdrop.risk ?? '?'}. ${s.backdrop.corr ? `Correlation regime ${s.backdrop.corr}.` : ''} ${s.backdrop.rates ? `Rates move today was ${s.backdrop.rates}-driven.` : ''}` : '  Not available'}
+
+=== END SNAPSHOT ===
+
+Rules:
+1. Answer about the CURRENCY. No entry, stop or target -- a currency is not a tradeable instrument.
+2. Lead with the MEASURED move, not the model lean, and say which you are using. If the board-wide fit R-squared is below about 0.30, state plainly that this is not a clean currency story today and lower your conviction accordingly.
+3. Separate what has HAPPENED (measured move, positioning, surprise) from what the market EXPECTS (curve shape, scheduled events). The reader should finish knowing which of the two your view rests on.
+4. Name the single cleanest INSTRUMENT to express a view on this currency, chosen from the per-pair legs above, and say why that one -- this is the decision the per-pair view cannot make.
+5. Never cite central-bank tone as a directional reason (banked null). Never treat a null or "still collecting" as zero or neutral -- it means unknown.
+6. Say what would CHANGE this read: one or two specific, checkable observations (a level, a release, a spread), not a feeling.
+7. Plain English. Gloss any desk term the first time you use it. No invented numbers -- every figure must come from the snapshot.
+
+Respond with a single valid JSON object, no markdown, no text outside it:
+{"headline":"one sentence on ${ccy} right now","bias":"STRONG|WEAK|NEUTRAL","conviction":0-10,"whatHappened":"1-2 sentences on the measured move and what drove it","whatMarketExpects":"1-2 sentences from the curve, scheduled events and positioning","fundamentals":"1-2 sentences on the scorecard and surprise data","cleanestExpression":"which pair and why","risks":"the main thing that would hurt this view","whatWouldChangeIt":"1-2 specific checkable observations","brief":"3-4 short paragraphs separated by blank lines, plain English, teaching the reader WHY not just what"}`;
+}
+
+app.post('/api/currency-analysis', async (req, res) => {
+  const key = process.env.ANT_KEY;
+  if (!key) return res.status(503).json({ error: 'ANT_KEY not configured' });
+  try {
+    const { ccy, snapshot } = req.body ?? {};
+    if (!ccy || !snapshot) return res.status(400).json({ error: 'Missing ccy or snapshot' });
+    const prompt = buildCurrencyPrompt(ccy, snapshot);
+    const antRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({
+        model: 'claude-opus-5',
+        max_tokens: 16000,
+        system: 'You are a professional FX macro strategist. You ALWAYS respond with valid complete JSON only — no markdown, no backticks, no text before or after the JSON object. JSON must be fully closed.',
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    });
+    if (!antRes.ok) return res.status(502).json({ error: `Anthropic ${antRes.status}` });
+    const j = await antRes.json();
+    const txt = _antText(j);
+    let analysis;
+    try { analysis = JSON.parse(txt); }
+    catch { const m = txt.match(/\{[\s\S]*\}/); analysis = m ? JSON.parse(m[0]) : null; }
+    if (!analysis) return res.status(502).json({ error: 'model did not return parseable JSON' });
+    res.json({ ok: true, ccy, analysis, generatedAt: new Date().toISOString() });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.post('/api/analysis', async (req, res) => {
   const key = process.env.ANT_KEY;
   if (!key) return res.status(503).json({ error: 'ANT_KEY not configured — add it in Railway → Variables' });
@@ -2942,8 +3074,8 @@ app.post('/api/analysis', async (req, res) => {
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 4000,
+        model: 'claude-opus-5',
+        max_tokens: 16000,
         system: 'You are a professional FX/futures desk analyst. You ALWAYS respond with valid complete JSON only — no markdown, no backticks, no text before or after the JSON object. Keep each string value to 1-2 sentences max. Arrays max 3 items. JSON must be fully closed.',
         messages: [{ role: 'user', content: prompt }],
       }),
@@ -2961,7 +3093,7 @@ app.post('/api/analysis', async (req, res) => {
       return res.status(502).json({ error: 'Response truncated (hit token limit) — please try again' });
     }
 
-    const rawText = antData.content?.[0]?.text ?? '';
+    const rawText = _antText(antData);
     const clean   = rawText.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
 
     let parsed;
@@ -3040,7 +3172,7 @@ Rules for your response:
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
+        model: 'claude-opus-5',
         max_tokens: 2000,
         messages: [{ role: 'user', content: prompt }],
       }),
@@ -3050,7 +3182,7 @@ Rules for your response:
       return res.status(502).json({ error: `Anthropic error ${antRes.status}: ${err.slice(0, 300)}` });
     }
     const antData = await antRes.json();
-    const raw   = antData.content?.[0]?.text ?? '';
+    const raw   = _antText(antData);
     const clean = raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
     let parsed;
     try { parsed = JSON.parse(clean); } catch { parsed = { raw_text: clean }; }
@@ -3180,6 +3312,53 @@ async function _buildMorningBrief() {
           : 'Normal clustering.');
     }
   } catch { /* omitted from prompt when unavailable */ }
+  // PRECEDENT — the one global read that says what FOLLOWED conditions like today's
+  // rather than describing them. Read straight from the cached study; if it has not
+  // been built yet the brief simply omits it rather than guessing.
+  let regimeLine = '';
+  try {
+    const raw = await kv.get(_REGIME_KV).catch(() => null);
+    const data = raw ? (JSON.parse(raw)?.data ?? JSON.parse(raw)) : null;
+    const key = data?.now?.key, st = data?.study;
+    if (key && st?.ok) {
+      const H = 20;
+      const rows = (st.pairs || []).map(pr => ({ pr, r: st.regimes?.[key]?.[pr]?.[H] }))
+        .filter(x => x.r?.all?.enough);
+      const stable = rows.filter(x => !x.r.unstable);
+      const flipped = rows.length - stable.length;
+      regimeLine = `PRECEDENT — today's macro conditions are ${data.now.describe}. `
+        + `That combination has occurred on ${st.counts?.[key] ?? '?'} days since ${st.dates?.from ?? '?'}. What each pair did over the following ${H} trading days:\n`
+        + (stable.length
+            ? stable.map(x => `  ${x.pr}: mean ${x.r.all.mean}%, higher ${x.r.all.hitRate}% of the time (n=${x.r.all.n}, only ~${x.r.all.nEffective} independent)`).join('\n')
+            : '  (no pair has a reading that held its sign across both halves of history)')
+        + `\n  BASE RATES, not forecasts. Forward windows overlap heavily so no significance test exists — judge on the independent sample size and the size of the effect.`
+        + (flipped ? ` ${flipped} pair(s) flipped sign between the two halves of history and are deliberately excluded above.` : '');
+    }
+    // Month-boundary flow, with its baseline — the comparison IS the result.
+    const cal = data?.calendar?.turnOfMonth;
+    if (cal) {
+      const notable = Object.entries(cal).filter(([, v]) => v?.edgeBp != null && Math.abs(v.edgeBp) >= 3);
+      regimeLine += notable.length
+        ? `\nTURN OF MONTH: ${notable.map(([k, v]) => `${k} ${v.edgeBp > 0 ? '+' : ''}${v.edgeBp}bp/day vs its own baseline`).join(', ')}.`
+        : `\nTURN OF MONTH: no measurable difference from an ordinary day on any tracked pair — an honest null worth stating rather than assuming.`;
+    }
+  } catch { /* omitted when the study has not been built */ }
+
+  // THE RATES MOVE, SPLIT. nominal = real + breakeven, so the same headline number
+  // means opposite things depending on which component moved. Computed from the macro
+  // change rows already assembled below.
+  let ratesSplitLine = '';
+  try {
+    const mc = await _loadMacroChanges().catch(() => null);
+    const by = Object.fromEntries((mc?.rows ?? []).map(r => [r.key, r]));
+    const nom = by.us10y?.deltas?.[1], real = by.tips?.deltas?.[1], bei = by.bei?.deltas?.[1];
+    if (real != null && bei != null) {
+      const dominant = Math.abs(real) >= Math.abs(bei) ? 'REAL-RATE' : 'INFLATION-EXPECTATION';
+      ratesSplitLine = `Rates decomposition: 10Y nominal ${nom != null ? (nom >= 0 ? '+' : '') + nom : '?'}bp = real ${real >= 0 ? '+' : ''}${real}bp + breakeven ${bei >= 0 ? '+' : ''}${bei}bp -> ${dominant} driven. `
+        + `A real-rate rise is a genuine headwind for gold and long-duration risk; the same nominal rise driven by breakevens is an inflation repricing and much softer. Never describe the yield move without saying which one it is.`;
+    }
+  } catch { /* omitted when unavailable */ }
+
   const macro = [
     `VIX ${g('vix')} (prev ${gp('vix')})${g('vix3m') != null ? ` · VIX3M ${g('vix3m')} (${g('vix') > g('vix3m') ? 'BACKWARDATED — near-term fear' : 'contango — normal'})` : ''}`,
     `HY credit spread ${g('hy')}% (prev ${gp('hy')}%)`,
@@ -3189,8 +3368,10 @@ async function _buildMorningBrief() {
     `US 2Y ${g('us2y')} · US 10Y ${g('us10y')} · 2s10s ${s2s10}${fred?.us10y?.asOf ? ` (as of ${fred.us10y.asOf})` : ''}`,
     `DE10Y ${g('de10y')} · JP10Y ${g('jp10y')} · GB10Y ${g('gb10y')}${fred?.de10y?.asOf ? ` — NOTE: these are OECD MONTHLY series, latest print ${fred.de10y.asOf}; they are not comparable to the daily US tenors above on a same-day basis` : ''}`,
     `Real 10Y (TIPS) ${g('tips')} · WTI ${g('wti')}`,
+    ratesSplitLine || null,
     surpriseLine || null,
     corrLine || null,
+    regimeLine || null,
     riskLine || null,
     ivLine || null,
   ].filter(Boolean).join('\n');
@@ -3263,12 +3444,12 @@ Respond with ONLY valid JSON, no markdown:
 {"headline":"one-sentence front-page read, plain-English so-what first","regime":"RISK-ON|RISK-OFF|MIXED|TRANSITION","theme":"2-3 plain-spoken sentences on what's driving markets today, jargon glossed","dollar":"1-2 sentences on the USD","rates":"1-2 sentences on yields/curve","risk":"1-2 sentences on the risk mood (VIX/credit)","complex":"1-2 sentences: what it means for the FX majors + gold/indices","watch":["1-3 things to watch"],"byAsset":[{"asset":"USD|EUR|JPY|GBP|Gold|Stocks|Oil","lean":"BULLISH|BEARISH|NEUTRAL","note":"one line"}],"pairsOutlook":[{"pair":"EURUSD|GBPUSD|USDJPY|USDCHF|USDCAD|AUDUSD|NZDUSD|XAUUSD|NAS100|SPX500|WTI","lean":"BULLISH|BEARISH|NEUTRAL","note":"one line citing the data behind it"}],"boardTradeOfDay":{"pair":"one of the eleven instruments above, or null if nothing clears the bar","direction":"LONG|SHORT","confidence":"LOW|MEDIUM|HIGH","rationale":"2-3 sentences citing specific data points, or why nothing clears the bar"},"tldr":"one-line bottom line"}`;
   const antRes = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 3800, system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim in the provided data/headlines; never invent events or figures.', messages: [{ role: 'user', content: prompt }] }),
+    body: JSON.stringify({ model: 'claude-opus-5', max_tokens: 16000, system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim in the provided data/headlines; never invent events or figures.', messages: [{ role: 'user', content: prompt }] }),
   });
   if (!antRes.ok) throw new Error(`Anthropic ${antRes.status}: ${(await antRes.text()).slice(0, 200)}`);
   const antData = await antRes.json();
   if (antData.stop_reason === 'max_tokens') throw new Error('response truncated — try again');
-  const clean = (antData.content?.[0]?.text ?? '').replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+  const clean = (_antText(antData)).replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
   const analysis = JSON.parse(clean);
   const payload = { analysis, generatedAt: new Date().toISOString(), headlineCount: headlines.length, session: fc?.session_label ?? null };
   await kv.put(_MORNING_BRIEF_KV, JSON.stringify(payload)).catch(() => {});
@@ -3443,7 +3624,7 @@ Respond with ONLY valid JSON, no markdown:
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-6', max_tokens: 3200,
+      model: 'claude-opus-5', max_tokens: 16000,
       system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim strictly in the provided data; never invent levels, catalysts, or figures.',
       messages: [{ role: 'user', content: prompt }],
     }),
@@ -3451,7 +3632,7 @@ Respond with ONLY valid JSON, no markdown:
   if (!antRes.ok) throw new Error(`Anthropic ${antRes.status}: ${(await antRes.text()).slice(0, 300)}`);
   const antData = await antRes.json();
   if (antData.stop_reason === 'max_tokens') throw new Error('response truncated — try again');
-  const clean = (antData.content?.[0]?.text ?? '').replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+  const clean = (_antText(antData)).replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
   const analysis = JSON.parse(clean);
   const payload = { analysis, generatedAt: new Date().toISOString(), reportDate, marketCount: ranked.length, extremeCount: ext.length };
   await kv.put(_COT_ANALYSIS_KV, JSON.stringify(payload)).catch(() => {});
@@ -3691,11 +3872,11 @@ async function _buildPairAnalysis(name, sym) {
   const snapshot = await _serverSnapshotFor(name, sym);
   const antRes = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 4000, system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Keep each string value to 1-2 sentences. Arrays max 3 items.', messages: [{ role: 'user', content: buildAnalysisPrompt(_aiPairName(name, sym), snapshot) }] }),
+    body: JSON.stringify({ model: 'claude-opus-5', max_tokens: 16000, system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Keep each string value to 1-2 sentences. Arrays max 3 items.', messages: [{ role: 'user', content: buildAnalysisPrompt(_aiPairName(name, sym), snapshot) }] }),
   });
   if (!antRes.ok) throw new Error(`Anthropic ${antRes.status}`);
   const antData = await antRes.json();
-  const clean = (antData.content?.[0]?.text ?? '').replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+  const clean = (_antText(antData)).replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
   const analysis = JSON.parse(clean);
   await kv.put(_aiKvKey(name, sym), JSON.stringify({ data: { analysis, generatedAt: new Date().toISOString(), pair: name }, timestamp: Date.now() })).catch(() => {});
 }
@@ -3847,12 +4028,12 @@ Respond with ONLY valid JSON, no markdown:
 
   const antRes = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 2800, system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim (especially keyQuotes) in the provided text; never invent a quote or fact.', messages: [{ role: 'user', content: prompt }] }),
+    body: JSON.stringify({ model: 'claude-opus-5', max_tokens: 16000, system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim (especially keyQuotes) in the provided text; never invent a quote or fact.', messages: [{ role: 'user', content: prompt }] }),
   });
   if (!antRes.ok) throw new Error(`Anthropic ${antRes.status}: ${(await antRes.text()).slice(0, 200)}`);
   const antData = await antRes.json();
   if (antData.stop_reason === 'max_tokens') throw new Error('response truncated — try again');
-  const clean = (antData.content?.[0]?.text ?? '').replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+  const clean = (_antText(antData)).replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
   const analysis = JSON.parse(clean);
 
   const payload = {
@@ -4447,12 +4628,12 @@ Respond with ONLY valid JSON, no markdown:
 
   const antRes = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 2800, system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim (especially keyQuotes) in the provided text; never invent a quote or fact.', messages: [{ role: 'user', content: prompt }] }),
+    body: JSON.stringify({ model: 'claude-opus-5', max_tokens: 16000, system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim (especially keyQuotes) in the provided text; never invent a quote or fact.', messages: [{ role: 'user', content: prompt }] }),
   });
   if (!antRes.ok) throw new Error(`Anthropic ${antRes.status}: ${(await antRes.text()).slice(0, 200)}`);
   const antData = await antRes.json();
   if (antData.stop_reason === 'max_tokens') throw new Error('response truncated — try again');
-  const clean = (antData.content?.[0]?.text ?? '').replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+  const clean = (_antText(antData)).replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
   const analysis = JSON.parse(clean);
 
   const payload = { kind, meetingDate, analysis, diffSegments, prevDate, sourceUrl: url, generatedAt: new Date().toISOString() };
@@ -4644,12 +4825,12 @@ Respond with ONLY valid JSON, no markdown:
 
   const antRes = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 2800, system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim (especially keyQuotes) in the provided text; never invent a quote or fact.', messages: [{ role: 'user', content: prompt }] }),
+    body: JSON.stringify({ model: 'claude-opus-5', max_tokens: 16000, system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim (especially keyQuotes) in the provided text; never invent a quote or fact.', messages: [{ role: 'user', content: prompt }] }),
   });
   if (!antRes.ok) throw new Error(`Anthropic ${antRes.status}: ${(await antRes.text()).slice(0, 200)}`);
   const antData = await antRes.json();
   if (antData.stop_reason === 'max_tokens') throw new Error('response truncated — try again');
-  const clean = (antData.content?.[0]?.text ?? '').replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+  const clean = (_antText(antData)).replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
   const analysis = JSON.parse(clean);
 
   const payload = { kind, meetingDate, analysis, vote, diffSegments, prevDate, sourceUrl: url, generatedAt: new Date().toISOString() };
@@ -4811,12 +4992,12 @@ Respond with ONLY valid JSON, no markdown:
 
   const antRes = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 2800, system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim (especially keyQuotes) in the provided text; never invent a quote or fact.', messages: [{ role: 'user', content: prompt }] }),
+    body: JSON.stringify({ model: 'claude-opus-5', max_tokens: 16000, system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim (especially keyQuotes) in the provided text; never invent a quote or fact.', messages: [{ role: 'user', content: prompt }] }),
   });
   if (!antRes.ok) throw new Error(`Anthropic ${antRes.status}: ${(await antRes.text()).slice(0, 200)}`);
   const antData = await antRes.json();
   if (antData.stop_reason === 'max_tokens') throw new Error('response truncated — try again');
-  const clean = (antData.content?.[0]?.text ?? '').replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+  const clean = (_antText(antData)).replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
   const analysis = JSON.parse(clean);
 
   const payload = { kind, meetingDate, analysis, vote, diffSegments, prevDate, sourceUrl: url, generatedAt: new Date().toISOString() };
@@ -4994,12 +5175,12 @@ Respond with ONLY valid JSON, no markdown:
 
   const antRes = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 2800, system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim (especially keyQuotes) in the provided text; never invent a quote or fact.', messages: [{ role: 'user', content: prompt }] }),
+    body: JSON.stringify({ model: 'claude-opus-5', max_tokens: 16000, system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim (especially keyQuotes) in the provided text; never invent a quote or fact.', messages: [{ role: 'user', content: prompt }] }),
   });
   if (!antRes.ok) throw new Error(`Anthropic ${antRes.status}: ${(await antRes.text()).slice(0, 200)}`);
   const antData = await antRes.json();
   if (antData.stop_reason === 'max_tokens') throw new Error('response truncated — try again');
-  const clean = (antData.content?.[0]?.text ?? '').replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+  const clean = (_antText(antData)).replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
   const analysis = JSON.parse(clean);
 
   const payload = { meetingDate, fomcMeetingDate, analysis, diffSegments, prevDate, sourceUrl: url, generatedAt: new Date().toISOString() };
@@ -5993,7 +6174,7 @@ Reply in this exact format (use ** for bold headers):
     }
 
     const antData = await antRes.json();
-    const text = antData.content?.[0]?.text ?? '(empty)';
+    const text = (_antText(antData) || '(empty)');
     res.json({ ok: true, text });
   } catch (e) {
     console.error('[ai-backtest]', e.message);
@@ -11872,6 +12053,10 @@ async function _fetchSpreads(symbols) {
 const _REGIME_KV = 'macro_regime_fx_v1';
 const _REGIME_TTL_MS = 24 * 60 * 60_000;
 const _REGIME_MACRO = { real: 'DFII10', credit: 'BAMLH0A0HYM2', ten: 'DGS10', two: 'DGS2' };
+// Effective fed funds — the POLICY rate the 2Y is priced against. 2Y minus policy,
+// divided by 25bp, is the market's own count of cuts or hikes priced over roughly two
+// years. It is the most-quoted number in macro FX and the page had no way to state it.
+const _POLICY_SERIES = 'DFF';
 // name -> [series, orientation note]. All are quoted so a RISING value = the pair up.
 const _REGIME_FX = {
   EURUSD: 'DEXUSEU',   // USD per EUR  -> already EUR/USD
@@ -11918,7 +12103,39 @@ async function _refreshRegimeStudy() {
     const study = _buildRegimeStudy(macro, fx);
     const calendar = _buildCalendarStudy(fx);
     const now = _currentRegime(macro);
-    const payload = { ok: true, study, calendar, now, builtAt: Date.now() };
+
+    // Event-day behaviour: cross the accumulated release history against the same FX
+    // series. Both datasets already exist; nothing new is fetched.
+    let events = null;
+    try {
+      const releases = await _readSurpriseStore();
+      const pairMap = {
+        EURUSD: ['EUR', 'USD'], GBPUSD: ['GBP', 'USD'], AUDUSD: ['AUD', 'USD'],
+        NZDUSD: ['NZD', 'USD'], USDJPY: ['USD', 'JPY'], USDCAD: ['USD', 'CAD'], USDCHF: ['USD', 'CHF'],
+      };
+      events = _buildEventStudy(fx, releases, pairMap);
+    } catch (e) { console.warn('[regime-fx] event study skipped:', e.message); }
+
+    // Rate expectations: how much easing/tightening the 2Y already embeds.
+    let policy = null;
+    try {
+      const dff = await _fredSeries(_POLICY_SERIES, from);
+      const two = macro.two || [];
+      const lastP = dff[dff.length - 1], lastTwo = two[two.length - 1];
+      if (lastP && lastTwo) {
+        const gapBp = Math.round((lastTwo.value - lastP.value) * 100);
+        policy = {
+          policyRate: lastP.value, policyAsOf: lastP.date,
+          twoYear: lastTwo.value, twoYearAsOf: lastTwo.date,
+          gapBp,
+          // Negative gap = 2Y below the policy rate = cuts priced.
+          movesPriced: +(gapBp / 25).toFixed(1),
+          direction: gapBp < -12 ? 'cuts' : gapBp > 12 ? 'hikes' : 'roughly on hold',
+        };
+      }
+    } catch (e) { console.warn('[regime-fx] policy gap skipped:', e.message); }
+
+    const payload = { ok: true, study, calendar, now, events, policy, builtAt: Date.now() };
     await kv.put(_REGIME_KV, JSON.stringify({ data: payload, timestamp: Date.now() }));
     console.log(`[regime-fx] built — ${study.pairs?.length ?? 0} pairs, ${Object.keys(study.counts || {}).length} regimes, ${study.dates?.n ?? 0} days, now=${now?.key ?? 'n/a'}`);
     return payload;

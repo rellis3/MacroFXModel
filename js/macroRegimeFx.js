@@ -42,6 +42,11 @@
  * js/macroRegimeFx.test.mjs (no network).
  */
 
+// Country code -> currency. Imported rather than re-declared: js/econSurprise.js is
+// the canonical mapping (it is what the surprise store is keyed on), and two copies
+// would drift the moment a country is added to one of them.
+import { COUNTRY_TO_CCY } from './econSurprise.js';
+
 export const DEFAULTS = {
   lookback: 20,       // trading days for the "is it rising/falling" features
   horizons: [5, 20],  // forward return horizons, in trading days
@@ -264,4 +269,119 @@ export function buildCalendarStudy(fx = {}, opts = {}) {
     out.dayOfWeek[pair] = Object.fromEntries(Object.entries(dows).map(([k, v]) => [k, summarise(v, 1, o.minObs)]));
   }
   return out;
+}
+
+// ── Event-day behaviour ──────────────────────────────────────────────────────
+// A calendar that names the next release but cannot say what that release
+// USUALLY DOES is only half a calendar. Two datasets already exist separately —
+// the surprise store holds every printed release with its consensus, and the FX
+// series above hold daily prices — and crossing them answers the question that
+// actually decides whether to trade through an event:
+//
+//   1. Does this pair move MORE than usual on this release? (a size/stop question)
+//   2. Does it move in the SURPRISE's direction? (a direction question — usually
+//      much weaker, and reported honestly when it is a coin flip)
+//
+// Same guards as everything else here: a minimum sample, an explicit baseline to
+// compare against, and no significance test — 1-day windows do not overlap, but
+// these are still small samples on noisy data.
+//
+// `releases` = [{ country, event, ms, actual, estimate }] (the surprise store's shape).
+// `pairMap`  = { PAIRNAME: [baseCcy, quoteCcy] } so a release can be attributed to
+//              the side of the pair it belongs to — a US release moves USD, and
+//              whether that is "up" for the pair depends on which side USD sits.
+export function buildEventStudy(fx = {}, releases = [], pairMap = {}, opts = {}) {
+  const o = { minObs: 12, ...opts };
+  const parse = v => {
+    if (v == null) return null;
+    if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+    const m = /^(-?\d*\.?\d+)\s*([KMBT])?/i.exec(String(v).replace(/[<>~,]/g, '').trim());
+    if (!m) return null;
+    let n = parseFloat(m[1]);
+    if (!Number.isFinite(n)) return null;
+    const u = (m[2] || '').toUpperCase();
+    if (u === 'K') n *= 1e3; else if (u === 'M') n *= 1e6; else if (u === 'B') n *= 1e9; else if (u === 'T') n *= 1e12;
+    return n;
+  };
+  const C2C = COUNTRY_TO_CCY;
+  // Group releases by series, keeping only those with a consensus to compare to.
+  const bySeries = new Map();
+  for (const r of releases) {
+    if (!r || r.ms == null) continue;
+    const a = parse(r.actual), e = parse(r.estimate);
+    if (a == null || e == null) continue;
+    const ccy = C2C[String(r.country || '').toUpperCase()];
+    if (!ccy) continue;
+    const key = `${String(r.country).toUpperCase()}|${String(r.event || '').trim().toLowerCase()}`;
+    if (!bySeries.has(key)) bySeries.set(key, { ccy, event: r.event, rows: [] });
+    bySeries.get(key).rows.push({ date: new Date(r.ms).toISOString().slice(0, 10), surprise: a - e });
+  }
+
+  const out = {};
+  for (const [pair, legs] of Object.entries(pairMap)) {
+    const series = fx[pair];
+    if (!Array.isArray(series) || series.length < 250) continue;
+    const rows = series.filter(x => x?.date && Number.isFinite(x.value)).sort((a, b) => (a.date < b.date ? -1 : 1));
+    const idx = new Map(rows.map((r, i) => [r.date, i]));
+    // The return measured INTO each day's close — log(close_t / close_t-1) — NOT the
+    // day after. A release printing during day D shows up in D's own close, so
+    // associating it with D->D+1 measures the day AFTER the event and misses the move
+    // entirely. (Caught by the fixture: a synthetic 2% event-day jump read as a 0.88x
+    // multiple, i.e. quieter than a normal day, which is the signature of this being
+    // off by one.)
+    //
+    // Timing caveat worth stating: FRED's DEX* series are noon-ET snapshots, so a
+    // release before noon ET (NFP and CPI at 08:30 ET) lands in the same day's
+    // observation, while an afternoon release lands in the NEXT one. The numbers here
+    // are therefore reliable for morning US/European releases and understate
+    // late-session ones.
+    const ret = new Array(rows.length).fill(null);
+    for (let i = 1; i < rows.length; i++) {
+      const a = rows[i - 1].value, b = rows[i].value;
+      if (a > 0 && b > 0) ret[i] = Math.log(b / a);
+    }
+    const absAll = ret.filter(Number.isFinite).map(Math.abs);
+    if (absAll.length < 100) continue;
+    const baseAbs = absAll.reduce((a, x) => a + x, 0) / absAll.length;
+
+    for (const [key, meta] of bySeries) {
+      const side = legs[0] === meta.ccy ? 1 : legs[1] === meta.ccy ? -1 : 0;
+      if (!side) continue;                       // release does not touch this pair
+      const moves = [], dirHits = [];
+      for (const r of meta.rows) {
+        const i = idx.get(r.date);
+        if (i == null || !Number.isFinite(ret[i])) continue;
+        moves.push(Math.abs(ret[i]));
+        if (r.surprise !== 0) {
+          // A beat is currency-positive; whether that is pair-positive depends on
+          // which side of the pair the currency sits.
+          const expected = Math.sign(r.surprise) * side;
+          dirHits.push(Math.sign(ret[i]) === expected ? 1 : 0);
+        }
+      }
+      if (moves.length < o.minObs) continue;
+      const mAbs = moves.reduce((a, x) => a + x, 0) / moves.length;
+      const hit = dirHits.length ? dirHits.reduce((a, x) => a + x, 0) / dirHits.length : null;
+      ((out[pair] ??= {}))[key] = {
+        event: meta.event, ccy: meta.ccy, n: moves.length,
+        // The headline: how much bigger than an ordinary day, as a multiple.
+        moveMultiple: +(mAbs / baseAbs).toFixed(2),
+        avgAbsMovePct: +(mAbs * 100).toFixed(3),
+        baselineAbsMovePct: +(baseAbs * 100).toFixed(3),
+        directionHitPct: hit == null ? null : +(hit * 100).toFixed(1),
+        directionN: dirHits.length,
+      };
+    }
+  }
+  return { pairs: out, seriesCount: bySeries.size, minObs: o.minObs };
+}
+
+/** The releases relevant to one pair, biggest mover first. */
+export function eventsForPair(study, pair, limit = 6) {
+  const m = study?.pairs?.[pair];
+  if (!m) return [];
+  return Object.entries(m)
+    .map(([key, v]) => ({ key, ...v }))
+    .sort((a, b) => b.moveMultiple - a.moveMultiple)
+    .slice(0, limit);
 }

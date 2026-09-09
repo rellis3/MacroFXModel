@@ -1549,8 +1549,8 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
               'anthropic-version': '2023-06-01'
             },
             body: JSON.stringify({
-              model: 'claude-sonnet-4-6',
-              max_tokens: 4000,
+              model: 'claude-opus-5',
+              max_tokens: 16000,
               system: 'You are a professional FX/futures desk analyst. You ALWAYS respond with valid complete JSON only  -  no markdown, no backticks, no text before or after the JSON object. Keep each string value to 1-2 sentences max. Arrays max 3 items. JSON must be fully closed.',
               messages: [{ role: 'user', content: prompt }]
             })
@@ -1568,7 +1568,10 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
             return err('Response truncated (hit token limit)  -  please try again');
           }
 
-          const rawText = antData.content?.[0]?.text ?? '';
+          // content[0] is a THINKING block on claude-opus-5 (adaptive thinking is on by
+          // default) — find the text block by type or this silently returns ''.
+          const rawText = (Array.isArray(antData?.content) ? antData.content : [])
+            .find(b => b?.type === 'text' && typeof b.text === 'string')?.text ?? '';
           // Strip any accidental markdown fences
           const clean = rawText.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
 
