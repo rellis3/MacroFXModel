@@ -38,6 +38,11 @@ alongside the one real positive finding.
   per wall side instead of 35–80, big enough to actually test significance.
   Also re-runs the gamma-flip regime test at intraday resolution and checks
   whether wall OI strength predicts the intraday outcome.
+- `scripts/06_intraday_cluster_significance.py` — re-tests script 05's
+  wall-rejection finding with an episode-level cluster bootstrap (touches on
+  the same wall level across consecutive days aren't independent draws), to
+  check whether it survives treating ~27–43 independent wall-episodes as the
+  real sample size instead of ~400+ raw touch events.
 - `data/results/*.csv` — every numeric table cited in `RESEARCH_BOOK.md`,
   small and committed, one file per test.
 
@@ -65,6 +70,7 @@ python3 oi_research_book/scripts/02_walls_and_gamma.py
 python3 oi_research_book/scripts/03_pinning_and_walls_reaction.py
 python3 oi_research_book/scripts/04_predictive_ic.py
 python3 oi_research_book/scripts/05_intraday_validation.py  # needs m1/eurusd_m1.parquet too
+python3 oi_research_book/scripts/06_intraday_cluster_significance.py  # depends on 05's output
 ```
 
 Total run time is under two minutes; the raw CSV/cache are gitignored
