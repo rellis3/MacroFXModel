@@ -270,10 +270,36 @@ def _report(results: dict, products: list, views: list, d: Path,
     print(f'\n  {ok_total}/{want} tables captured  (by view: {by_view})')
     print(f'  {smiles}/{len(products)} per-strike smile(s) captured '
           f'(rawIV -> charm/vanna/skew; not counted above)')
+    # AS-OF MAP: which settlement each product's capture is serving, straight from
+    # the vendor's own Change Matrix heading. Its own small file, NOT just a field
+    # inside the timestamped manifest, because every consumer wants "the as-of dates
+    # for this sweep dir" and none of them should have to know which of several
+    # sweep_*.json files is the current one - a --skip-sweep re-ingest, asof_check
+    # and ingest.mjs all just read out/<date>/quikstrike/asof.json.
+    #
+    # MERGE, don't overwrite. Re-running one product (the usual way a bad capture is
+    # fixed) must not blank the other ten's dates and silently turn the staleness
+    # check into "nothing to judge".
+    asof = {p: r['_asOf'] for p, r in results.items() if isinstance(r, dict) and r.get('_asOf')}
+    af = d / 'asof.json'
+    try:
+        prior = json.loads(af.read_text(encoding='utf-8')).get('asOf') or {}
+    except (OSError, json.JSONDecodeError):
+        prior = {}
+    merged = {**prior, **asof}
+    af.write_text(json.dumps(dict(updated=stamp, asOf=merged), indent=2))
+    if asof:
+        books = sorted(set(asof.values()))
+        print(f'  as-of:    {", ".join(books)}  ({len(asof)}/{len(products)} product(s) reported '
+              f'the settlement they are serving)')
+    else:
+        print('  as-of:    none recorded - the chg view was not captured, so staleness '
+              'CANNOT be checked for this sweep')
+
     manifest = d / f'sweep_{stamp}.json'
     manifest.write_text(json.dumps(
         dict(when=stamp, seconds=round(secs), products=products, views=views,
-             captured=ok_total, expected=want, results=results), indent=2))
+             captured=ok_total, expected=want, asOf=merged, results=results), indent=2))
     print(f'  manifest: {manifest.name}')
     print(f'  log:      {log.name}')
 

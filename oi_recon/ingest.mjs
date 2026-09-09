@@ -79,6 +79,21 @@ const stems = [...new Set(readdirSync(dir)
 
 const rd = (stem, box) => { try { return readFileSync(join(dir, `${stem}_${box}.tsv`), 'utf8'); } catch { return ''; } };
 
+// WHICH SETTLEMENT each capture is serving, recorded by the sweep from QuikStrike's
+// own Change Matrix heading. Carried onto the entry as `oiAsOf` so that every
+// downstream consumer — the dashboard badge, the archive, the bot's chain-age gate —
+// can ask "what session is this book from" instead of "when did we save it".
+//
+// Those are different questions, and until now only the second was answerable.
+// 2026-09-09: a capture stamped savedAt 06:17 carried the 04/09 book. Every age
+// check in the system read ~0h old and let it straight through, because they all
+// measure OUR clock. Missing is fine (an older sweep dir, or the chg view failed) —
+// it lands as null and the consumers treat it as "unknown", never as "fresh".
+let asOfMap = {};
+try {
+  asOfMap = JSON.parse(readFileSync(join(dir, 'asof.json'), 'utf8')).asOf || {};
+} catch { /* no asof.json — pre-dates this, or chg wasn't captured */ }
+
 // INHERIT THE PER-PAIR SETTINGS. numLevels and minOI are tuned per instrument in
 // the modal and stored with the entry; defaulting them here silently changes the
 // output. US30 proved it: its whole book is ~50 lots, so the default minOI of 20
@@ -160,10 +175,23 @@ for (const stem of stems.sort()) {
   if (r.inst.dataWarning) console.log(`    ⚠ ${r.inst.dataWarning}`);
   if (!ok) { bad++; continue; }          // never ship a partial entry
   if (ivStat === 'smile') ivSmile++; else if (ivStat === 'term') ivTerm++;
+  // The settlement this book is from (see asOfMap above). Set even when unknown, so
+  // a consumer can distinguish "this entry pre-dates as-of tracking" (undefined)
+  // from "the capture ran and reported no date" (null) — the second is a problem.
+  r.inst.oiAsOf = asOfMap[sym] ?? null;
   payload[sym] = r.inst;
 }
 
 console.log(`\n  ${Object.keys(payload).length} complete · ${bad} skipped`);
+// Say the book date out loud on every run. The whole point of carrying it is that a
+// human (or a grep of this log) can answer "which session did tonight publish?"
+// without opening a TSV — the question nobody could answer for five days.
+{
+  const books = [...new Set(Object.values(payload).map(e => e.oiAsOf).filter(Boolean))].sort();
+  const unknown = Object.values(payload).filter(e => !e.oiAsOf).length;
+  console.log(`  book as-of: ${books.length ? books.join(', ') : 'UNKNOWN'}`
+    + (unknown ? ` · ${unknown} entry/entries carry no as-of date` : ''));
+}
 console.log(`  IV coverage: ${ivSmile} smile (charm/vanna) · ${ivTerm} term-only (exp-move) · `
   + `${Object.keys(payload).length - ivSmile - ivTerm} none`);
 // Loud when NO pair carries a smile: charm/vanna will be blank everywhere and that

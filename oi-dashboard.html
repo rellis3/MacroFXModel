@@ -783,6 +783,45 @@ function ageOf(e){
   return {h, cls: h<12?'':(h<36?'old':'old'), txt: h<1?Math.round(h*60)+'m':Math.round(h)+'h'};
 }
 
+// WHICH SESSION'S BOOK is on screen — the tile that would have made a five-day
+// staleness obvious in one glance.
+//
+// "Saved 3h ago" answers when WE wrote the entry, and that is not the same question
+// as which settlement the numbers are from. On 2026-09-09 both were true at once:
+// saved at 06:17 that morning, holding the 04/09 book. Everything on this page —
+// walls, max pain, GEX — was four sessions out of date behind a badge that said
+// three hours. `oiAsOf` is the exchange's own answer, carried through from the
+// capture (oi_recon/asof_check.py), so the page can state it rather than imply it.
+//
+// Judged in WEEKDAYS against the save date, not hours: a Monday morning entry
+// legitimately holds Friday's book, and an hours-based rule would flag every Monday
+// while missing a Wednesday holding Friday. 2+ weekdays behind is a real gap. The
+// nightly gate is the authority on this (it can see both of the vendor's views, and
+// refuses to publish); this tile is so a human never has to take the pipeline's word.
+function bookTile(e){
+  const asOf = e?.oiAsOf;
+  if(asOf === undefined) return '';                    // entry pre-dates as-of tracking
+  if(!asOf) return `<div><div class="k">Book as-of</div><div class="v old" style="font-size:13px">unknown</div>
+      <div class="n">capture reported no settlement date</div></div>`;
+  const [y,m,d] = String(asOf).split('-').map(Number);
+  const book = new Date(Date.UTC(y, m-1, d));
+  // Compare against the day we SAVED, not against now — an entry read at midnight
+  // must not start flagging itself just because the clock rolled over.
+  const savedMs = e.savedAtMs || Date.now();
+  const sd = new Date(savedMs);
+  const saved = new Date(Date.UTC(sd.getFullYear(), sd.getMonth(), sd.getDate()));
+  let lag = 0;
+  for(let t = book.getTime(); t < saved.getTime(); ){
+    t += 864e5;
+    const wd = new Date(t).getUTCDay();
+    if(wd >= 1 && wd <= 5) lag++;
+  }
+  const stale = lag >= 2;
+  return `<div><div class="k">Book as-of</div>
+      <div class="v${stale?' old':''}" style="font-size:13px">${esc(asOf)}</div>
+      <div class="n">${stale ? `⚠ ${lag} sessions behind the save` : 'the settlement these levels are from'}</div></div>`;
+}
+
 function renderRail(){
   const keys=Object.keys(STORE);
   document.getElementById('rail').innerHTML = keys.map(k=>{
@@ -965,6 +1004,7 @@ function priceBar(e){
       <div class="n">${Number.isFinite(e.dte)?e.dte+' DTE':'no DTE'} · ${fOI(e.primaryExpiry?.nearOI)} near-money</div></div>
     <div><div class="k">Saved</div><div class="v" style="font-size:13px">${esc((e.savedAt||'—').split(', ')[1]||e.savedAt||'—')}</div>
       <div class="n">${esc((e.savedAt||'').split(',')[0]||'')}</div></div>
+    ${bookTile(e)}
   </div>`;
 }
 

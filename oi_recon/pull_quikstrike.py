@@ -47,6 +47,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
 from recon import _launch, outdir, safe_name, shape, shape_line, grade, grade_line  # noqa: E402
+from asof_check import ASOF_RE as _ASOF_RE  # noqa: E402
 
 WRAPPER = ('https://www.cmegroup.com/tools-information/quikstrike/'
            'open-interest-heatmap.html')
@@ -583,6 +584,24 @@ VIEW_TITLE = {
 }
 
 
+def _asof_from_label(label: str) -> str | None:
+    """The settlement date an OI Change Matrix heading names, as YYYY-MM-DD.
+
+        'EUR/USD (EUU|6E) Open Interest Change Matrix (08/09/2026 vs 04/09/2026)'
+                                                       ^^^^^^^^^^ this one
+
+    dd/mm/yyyy, not mm/dd: confirmed by headings no month could produce
+    ('31/08/2026'). Returns None rather than guessing when the heading has no date -
+    only the chg view carries one, and a caller must be able to tell "no date here"
+    from "a date I misread". The regex lives in asof_check, which is the module that
+    reasons about these dates; this is just the read.
+    """
+    m = _ASOF_RE.search(label or '')
+    if not m:
+        return None
+    return f'{m.group(3)}-{m.group(2)}-{m.group(1)}'
+
+
 def _view_label(frame) -> str:
     """The tool's own view heading, e.g. 'Gold (OG|GC) Open Interest Matrix'.
 
@@ -1010,6 +1029,25 @@ def pull_product(ctx, page, product: str | None, views: list,
             print(f'  {key:<8} ! could not switch to this view - skipping it')
             _dump_frame(fr, f'what the frame actually contains ({key})')
             continue
+        # AS-OF: which SETTLEMENT this capture is serving. The OI Change Matrix
+        # heading names it outright - "... (08/09/2026 vs 04/09/2026)" - and it is
+        # the only place the vendor states it. Read it HERE, while the view is
+        # confirmed loaded: the heading is not in the TSV, so once this frame moves
+        # on the date is gone and no downstream stage can recover it.
+        #
+        # Worth the four lines because its absence cost a fortnight. On 2026-09-09
+        # every matrix was still serving 04/09 while the run reported 44/44 captured
+        # and VERDICT OK - the date was printed to the log below and then discarded,
+        # so nothing that consumed the data could tell. asof_check.py compares it
+        # against the settles view; ingest stamps it onto the store entry.
+        if key == 'chg':
+            _asof = _asof_from_label(_view_label(fr))
+            if _asof:
+                results['_asOf'] = _asof
+                print(f'  {key:<8} as-of   -> {_asof}  (the settlement this book is from)')
+            else:
+                print(f'  {key:<8} as-of   -> NOT FOUND in the heading '
+                      f'- staleness cannot be checked for this product')
         if all_strikes:
             got = _set_select_by_option(fr, '(All)')
             if got:

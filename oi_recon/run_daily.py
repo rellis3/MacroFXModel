@@ -154,12 +154,47 @@ def journal(entry):
         pass          # never let bookkeeping fail the run
 
 
+def _verdict(stages, key, age, failed, a) -> None:
+    """Print the verdict, journal the run, and exit with a code the scheduler reads.
+
+    Its own function because the as-of gate can end the run early (refusing to
+    publish a stale book), and an early exit that printed a DIFFERENT summary — or
+    none — would be the one night the log cannot explain itself. run_daily.bat greps
+    these exact lines into the Telegram heartbeat, so there is only one place they
+    are allowed to be produced.
+    """
+    print(f'\n=== VERDICT ===\n')
+    for k, v in stages.items():
+        print(f'  {k:<9} {v}')
+    print(f'\n  target    {key}{"" if a.write else "  (DRY RUN - nothing published)"}')
+    if age is not None:
+        print(f'  pastes    newest manual paste is {age}d old'
+              + (f'  -> compare is advisory' if age > STALE_PASTE_DAYS else ''))
+
+    ok = not failed
+    journal({
+        'ts': datetime.now(timezone.utc).isoformat(timespec='seconds'),
+        'day': date.today().isoformat(), 'ok': ok, 'target': key,
+        'pasteAgeDays': age, 'failed': failed, 'stages': stages,
+    })
+
+    if failed:
+        print(f'\n  VERDICT   NOT OK - {", ".join(failed)} fell short')
+        print(f'  Detail is in {SWEEP_DIR}\\sweep_*.log')
+        sys.exit(1)
+    print('\n  VERDICT   OK')
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description='Daily OI: capture, build, compare.')
     ap.add_argument('--write', action='store_true', help='publish to KV')
     ap.add_argument('--live', action='store_true',
                     help='force oi_store, overriding the oi_auto_target toggle (one-off runs)')
     ap.add_argument('--skip-sweep', action='store_true', help='reuse today\'s captures')
+    ap.add_argument('--ingest-stale', action='store_true',
+                    help='publish even when the capture is serving an old settlement '
+                         '(the as-of gate normally refuses). Deliberate override only: '
+                         'the bots read whatever this publishes.')
     # The per-strike IV smile (-> charm/vanna/skew) is ON, as a SECOND PHASE.
     #
     # The first attempt interleaved it per product and had to drop the session
@@ -199,8 +234,43 @@ def main() -> None:
         if rc:
             failed.append('capture')
 
+    # 1b. AS-OF — is this capture serving the session it claims to be?
+    #
+    # BEFORE INGEST, and fatal, unlike every other check here. The rest of the
+    # pipeline diagnoses a bad night after the fact; this one has to stop a bad
+    # night from reaching `oi_store`, because once a stale book is published the
+    # bots trade it within minutes and the archive files it as a real observation.
+    #
+    # It refuses on the vendor's own evidence: the OI matrices' as-of date against
+    # the settles view's, both read from the same session (asof_check.py explains
+    # why that comparison needs no holiday calendar and a clock comparison would).
+    # 2026-09-09 is the case it exists for — 44/44 captured, 11/11 ingested,
+    # VERDICT OK, on a book two business days old, published live, traded on.
+    rc, out = run([PY, 'asof_check.py', '--sweep', str(SWEEP_DIR)], 'asof')
+    stages['asof'] = grab(out, 'book') or grab(out, 'NOT CHECKED') or 'no summary line'
+    asof_stale = bool(rc)
+    if asof_stale:
+        failed.append('asof')
+
     # 2. INGEST - always runs, so a partial capture is still diagnosed.
     # No --key unless forced: ingest.mjs reads the oi_auto_target setting itself.
+    #
+    # ...EXCEPT on a stale book. Diagnosing after publishing is no use when
+    # publishing IS the damage: the whole point of the as-of gate is that the
+    # capture never becomes the bots' input. Skipping also leaves `savedAt`
+    # standing still, which is what makes the OI-chain age gate the bot already has
+    # start working correctly — it ages out and blocks instead of reading a fresh
+    # save time over a dead book. The capture stays on disk, so a re-ingest after
+    # the matrices publish is `run_daily.py --skip-sweep` (or --ingest-stale to
+    # override this deliberately).
+    if asof_stale and not a.ingest_stale:
+        stages['ingest'] = ('SKIPPED - the capture is serving an old settlement; '
+                            'refusing to publish it (--ingest-stale overrides)')
+        key = '(nothing published)'
+        stages['expect'] = 'skipped (ingest refused)'
+        stages['compare'] = 'skipped (ingest refused)'
+        _verdict(stages, key, None, failed, a)
+        return
     cmd = ['node', 'ingest.mjs', '--dir', str(SWEEP_DIR)]
     if a.live:
         cmd += ['--key', 'oi_store']
@@ -253,26 +323,7 @@ def main() -> None:
         else:
             failed.append('compare')
 
-    print(f'\n=== VERDICT ===\n')
-    for k, v in stages.items():
-        print(f'  {k:<9} {v}')
-    print(f'\n  target    {key}{"" if a.write else "  (DRY RUN - nothing published)"}')
-    if age is not None:
-        print(f'  pastes    newest manual paste is {age}d old'
-              + (f'  -> compare is advisory' if age > STALE_PASTE_DAYS else ''))
-
-    ok = not failed
-    journal({
-        'ts': datetime.now(timezone.utc).isoformat(timespec='seconds'),
-        'day': date.today().isoformat(), 'ok': ok, 'target': key,
-        'pasteAgeDays': age, 'failed': failed, 'stages': stages,
-    })
-
-    if failed:
-        print(f'\n  VERDICT   NOT OK - {", ".join(failed)} fell short')
-        print(f'  Detail is in {SWEEP_DIR}\\sweep_*.log')
-        sys.exit(1)
-    print('\n  VERDICT   OK')
+    _verdict(stages, key, age, failed, a)
 
 
 if __name__ == '__main__':
