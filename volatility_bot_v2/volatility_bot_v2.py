@@ -541,7 +541,15 @@ def run(base_url: str, force_live: bool) -> None:
         decision_events: list[dict] = list((kv.get_json("volatility_bot_v2_decision_log") or {}).get("events") or [])
     except Exception:
         decision_events = []
-    DECISION_LOG_MAX_EVENTS = 5000
+    # 5000 (the original cap) only retained ~9 days at this bot's real event
+    # rate -- a live-vs-backtest audit this session needed 85 "entered"
+    # records spanning 9 days and only found them because none had rolled off
+    # yet; the cap was dominated by pair_blocked/rejected noise (85 of 5000
+    # retained events were actual entries). Measured real size: ~177 bytes/
+    # event, so 50,000 is ~8.9MB -- comfortably under typical KV value limits
+    # (Cloudflare KV's is 25MB) -- for ~90 days of retention, a real margin
+    # of safety over the 9 days that already wasn't enough.
+    DECISION_LOG_MAX_EVENTS = 50000
 
     def _record_decision(pair: str, status: str, *, side: str | None = None, rung: str | None = None,
                           zone_id: str | None = None, decision: str | None = None, margin: int | None = None,
