@@ -715,6 +715,35 @@
   .move-row .mv-arrow.flat{color:var(--text3)} .move-row .mv-arrow.neu{color:var(--text2)}
   .move-row .mv-blip{margin-left:2px;color:var(--amber);font-size:10.5px;cursor:help}
   .move-row .mv-span{margin-left:3px;color:var(--text3);font-size:9px;cursor:help;white-space:nowrap}
+  .fals{margin-top:12px;border-top:1px solid var(--border);padding-top:9px}
+  .fals-h{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--text3);
+    margin-bottom:5px;cursor:help}
+  .fals-l{margin:0;padding-left:17px;font-size:11.5px;line-height:1.6;color:var(--text2)}
+  .fals-l li{margin-bottom:3px}
+  .fals-l li::marker{color:var(--text3)}
+  .rg-head{font-size:13.5px;line-height:1.6;margin-bottom:4px}
+  .rg-sub{font-size:11.5px;color:var(--text3);line-height:1.55;margin-bottom:10px}
+  .rg-rows{display:flex;flex-direction:column;gap:1px}
+  .rg-row{display:grid;grid-template-columns:76px 1fr 54px 62px auto;gap:8px;align-items:baseline;
+    font-size:11.5px;padding:3px 4px;border-radius:4px;cursor:help;font-variant-numeric:tabular-nums}
+  .rg-row:hover{background:var(--card2)}
+  .rg-row .rg-pair{font-weight:700;color:var(--text)}
+  .rg-row .rg-verdict.bull{color:var(--bull)} .rg-row .rg-verdict.bear{color:var(--bear)}
+  .rg-row .rg-verdict.warn{color:var(--amber)} .rg-row .rg-verdict.neu{color:var(--text3)}
+  .rg-row .rg-num{text-align:right}
+  .rg-row .rg-n{font-size:10px;text-align:right;white-space:nowrap}
+  .rg-foot{font-size:10.5px;color:var(--text3);line-height:1.5;margin-top:9px;
+    border-top:1px solid var(--border);padding-top:7px}
+  .wa-note{font-size:11.5px;color:var(--text3);margin-bottom:10px;line-height:1.5}
+  .wa-day{margin-bottom:10px}
+  .wa-daylbl{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);
+    border-bottom:1px solid var(--border);padding-bottom:3px;margin-bottom:4px}
+  .wa-row{display:grid;grid-template-columns:52px 38px 1fr auto;gap:8px;align-items:baseline;
+    font-size:11.5px;padding:2px 0}
+  .wa-row .wa-time{color:var(--text3);font-variant-numeric:tabular-nums}
+  .wa-row .wa-ccy{font-weight:700;color:var(--text2)}
+  .wa-row .wa-ev{color:var(--text);line-height:1.35}
+  .wa-past{cursor:help;letter-spacing:2px;font-size:10px;white-space:nowrap}
   .qtile-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
   .qtile{display:flex;flex-direction:column;gap:2px;text-decoration:none;color:inherit;border:1px solid var(--border);
     border-radius:10px;padding:10px 11px;cursor:pointer;transition:border-color .12s,background .12s}
@@ -790,6 +819,10 @@
       <div class="summary" id="summary" style="display:none"></div>
 
       <div class="news" id="newsPlay" style="display:none"></div>
+
+      <div class="mread" id="weekAhead" style="display:none"></div>
+
+      <div class="mread" id="regimePanel" style="display:none"></div>
 
       <div class="ctl">
         <button class="fchip on" data-f="all" onclick="setFilter('all')">All</button>
@@ -888,6 +921,13 @@
   </div>
   </div>
   <div class="dr-pane" id="drPane-macro" role="tabpanel" aria-labelledby="drTab-macro" hidden>
+  <div class="dr-sec" id="drAttribSec" data-seckey="attrib" style="display:none">
+    <h3 class="help" title="Splits today's actual move into the part explained by each currency's own broad behaviour and the part that is this pair's alone. Exact by construction — the three parts sum to the whole move. The point is to tell you WHICH VIEW you are holding: a dollar view, a euro view, or a EUR/USD view.">
+      <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">&#9662;</span>What moved this today</span>
+      <span class="chip neu" style="font-size:9px">measured &middot; exact split</span>
+    </h3>
+    <div class="dr-sec-body"><div id="drAttrib"></div></div>
+  </div>
   <div class="dr-sec" id="drRatesSec" data-seckey="rates" style="display:none">
     <h3 class="help" title="How the DE–US yield spread relates to this pair right now. CONTEXT only — measured over 22yr, the yield confirms moves but does NOT forecast direction. Use it to gauge whether the current move is rates-backed, not to pick a direction."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Rates context (yield spread)</span></h3>
     <div class="dr-sec-body"><div id="drRates"><span class="muted">loading…</span></div></div>
@@ -1198,6 +1238,9 @@ let macroScorecard = null; // /api/macro-scorecard — cross-engine fundamental 
 let creditQuality = null; // /api/credit-quality — Baa10Y−Aaa10Y quality-spread z-score (credit-curve SHAPE, distinct from the HY-level credit gate)
 let yieldSpreadPlan = null; // /api/yield-spread/plan — today's spread-z per pair from the VALIDATED yield-spread engine (6 pairs only, see js/zscoreSpreadEngine.js ZSCORE_PAIRS); feeds the Market Outlook's one OOS-validated leg
 let cbHistory = null; // { fomc, ecb, boe, boj } — multi-meeting hawkish-score history per central bank. DESCRIPTIVE CONTEXT ONLY — never a Market Outlook driver (see js/outlookEngine.js describeCbTrend's header: this repo already banked a null on hawkish-score momentum predicting price, CB_SENTIMENT_PRICE_TEST.md)
+let regimeFx = null;     // /api/macro-regime-fx — what FX has historically done in the macro
+                         // conditions holding right now (8y FRED, OOS-split, no p-values —
+                         // overlapping forward windows make them meaningless; see the engine).
 let econSurprise = null;  // /api/econ-surprise — REAL surprise index: each release standardised
                          // against its own series' historical surprise dispersion and decayed.
                          // Distinct from `ism` below, which is an activity LEVEL and was being
@@ -1566,6 +1609,7 @@ async function loadGate() {
   loadCommodityDrivers().then(() => render()).catch(() => {});   // WTI → CAD driver chip
   jget('/api/gpr').then(r => { if (r?.ok) { gpr = r; render(); } }).catch(() => {});   // geopolitical risk line
   jget('/api/econ-surprise').then(r => { if (r?.ok) { econSurprise = r; render(); } }).catch(() => {});   // actual-vs-consensus surprise per currency
+  jget('/api/macro-regime-fx').then(r => { if (r?.ok) { regimeFx = r; render(); } }).catch(() => {});   // regime-conditional FX base rates
   renderGate(); renderRiskFlags(); renderMacroMoved(); renderNewsPlay(); renderSummary(); render();
 }
 
@@ -2286,6 +2330,407 @@ function currencyStrengthReturns(rs) {
   return { scores, r2: r2 == null ? null : +r2.toFixed(2), nPairs: obs.length, obs };
 }
 
+// ── What would change this read ──────────────────────────────────────────────
+// The page states conclusions and never states what would overturn them, which is the
+// difference between holding a view and holding a bias. Every line here is built from a
+// threshold that ALREADY decides something on this page — the same numbers the risk
+// verdict, the credit gate, the correlation regime and the cost gate switch on — so a
+// falsifier can never drift away from the read it is supposed to falsify.
+//
+// Written as observable events, not feelings: each one names a series and a level you
+// could check, so you find out you were wrong from the data rather than from the P&L.
+function falsifiersGlobal(rs, risk, csr) {
+  const out = [];
+  const vix = fred?.vix?.value, hy = fred?.hy?.value;
+
+  // Risk mood — the exact cut-points riskLight()/equitiesRisk() share.
+  if (vix != null) {
+    out.push(risk.cls === 'off'
+      ? `The defensive read breaks if <b>VIX drops back under ${RISK_LEVELS.stress.vix}</b> (now ${fmtN(vix, 1)}) and index breadth turns positive.`
+      : `The calm read breaks if <b>VIX pushes through ${RISK_LEVELS.stress.vix}</b> (now ${fmtN(vix, 1)}) or HY spreads clear ${RISK_LEVELS.stress.hy}%.`);
+  }
+  // Credit — the leading gate, quoted at its own trigger.
+  const cg = creditGate();
+  if (cg && hy != null) {
+    out.push(cg.gate === 'RISK-OFF'
+      ? `The credit warning clears if <b>HY OAS stops widening</b> — a negative weekly change from ${fmtN(hy, 2)}% would do it.`
+      : `Credit turns from support to warning if <b>HY OAS widens past ${RISK_LEVELS.stress.hy}%</b> (now ${fmtN(hy, 2)}%) or its weekly change turns sharply positive.`);
+  }
+  // The currency-theme claim, falsified by its own fit statistic.
+  if (csr?.r2 != null) {
+    out.push(csr.r2 >= 0.3
+      ? `The "one currency is driving the board" framing fails if the <b>cross-pair fit R² drops under 0.30</b> (now ${csr.r2.toFixed(2)}) — pairs would then be moving on their own stories.`
+      : `The "pairs are moving independently" framing fails if the <b>cross-pair fit R² rises back over 0.30</b> (now ${csr.r2.toFixed(2)}).`);
+  }
+  // The rates story — which component is driving it.
+  const rd = ratesDecomp();
+  if (rd && rd.dominant !== 'flat') {
+    out.push(rd.dominant === 'real'
+      ? `The real-rate reading flips to an inflation story if <b>breakevens start out-moving TIPS</b> (today real ${rd.real >= 0 ? '+' : ''}${rd.real}bp vs breakeven ${rd.bei >= 0 ? '+' : ''}${rd.bei}bp).`
+      : `The inflation reading flips to a growth/policy story if <b>TIPS start out-moving breakevens</b> (today real ${rd.real >= 0 ? '+' : ''}${rd.real}bp vs breakeven ${rd.bei >= 0 ? '+' : ''}${rd.bei}bp).`);
+  }
+  // Correlation, because it governs sizing rather than direction.
+  const cr = correlationRegime();
+  if (cr && cr.state !== 'NORMAL') {
+    out.push(cr.state === 'HIGH'
+      ? `Treating today's setups as one position stops being necessary once <b>mean |ρ| falls back toward its own normal</b> (now ${cr.mean.toFixed(2)}${cr.z != null ? `, z ${cr.z >= 0 ? '+' : ''}${cr.z.toFixed(2)}` : ''}).`
+      : `The extra diversification disappears if <b>mean |ρ| climbs back to its normal</b> (now ${cr.mean.toFixed(2)}).`);
+  }
+  // And the honest one: a read built on a feed that has stopped arriving.
+  const pf = priceFreshness();
+  if (pf?.stale) out.push(`<b class="neg">Everything above is being measured against a price feed that stopped ${pf.ageS}s ago</b> — refresh before acting on any of it.`);
+  return out;
+}
+function falsifierHtml(rs, risk, csr) {
+  const items = falsifiersGlobal(rs, risk, csr);
+  if (!items.length) return '';
+  return `<div class="fals"><div class="fals-h help" title="Each line names a specific, checkable observation that would overturn the read above it — taken from the very thresholds this page already switches on, so the two can never drift apart. Knowing your own invalidation in advance is the habit that separates a view from a bias.">What would change this read</div>`
+    + `<ul class="fals-l">${items.map(x => `<li>${x}</li>`).join('')}</ul></div>`;
+}
+
+// ── Seasonality: turn of month, and the day of the week ──────────────────────
+// Month-end rebalancing is a genuinely mechanical FX flow — funds adjust hedges on
+// foreign holdings as the month closes — so it is worth MEASURING rather than assuming.
+// The baseline is always shown next to it: a "turn-of-month effect" that matches every
+// other day is the nothing it looks like once the two are side by side.
+function seasonalityFor(pairName) {
+  const cal = regimeFx?.calendar;
+  const t = cal?.turnOfMonth?.[pairName];
+  if (!t || !t.turn?.enough || !t.rest?.enough) return null;
+  return { edgeBp: t.edgeBp, turn: t.turn, rest: t.rest };
+}
+function seasonalityLine() {
+  const cal = regimeFx?.calendar;
+  if (!cal?.turnOfMonth) return '';
+  const rows = Object.entries(cal.turnOfMonth)
+    .filter(([, v]) => v.turn?.enough && v.rest?.enough && v.edgeBp != null);
+  if (!rows.length) return '';
+  // Only worth a line at all if some pair shows a difference big enough to notice
+  // against a typical daily move; otherwise saying nothing is the honest output.
+  const notable = rows.filter(([, v]) => Math.abs(v.edgeBp) >= 3)
+    .sort((a, b) => Math.abs(b[1].edgeBp) - Math.abs(a[1].edgeBp)).slice(0, 3);
+  const { fromEnd } = { fromEnd: null };
+  const dom = new Date().getUTCDate();
+  const inTurn = dom <= 4 || dom >= 26;   // approximate — the study itself uses trading days
+  const tip = `Measured on ${rows.length} pairs over the same 8 years as the regime study: the average NEXT-DAY move on the three trading days either side of a month boundary, minus the average on every other day. `
+    + `Shown in basis points of daily return. The baseline is the comparison — an effect only exists to the extent it differs from an ordinary day. Overlapping windows do not apply here (one-day returns), but these are still small numbers on noisy data: treat as context for timing, never as a trade.`;
+  if (!notable.length) {
+    return `<div class="riskverdict" style="margin-top:3px" title="${esc0(tip)}">Turn of month: <b class="tone mix" style="font-weight:800">no measurable edge</b><span class="muted"> · across ${rows.length} pairs the month-boundary days look like every other day — a useful null, and the reason this is shown rather than assumed</span></div>`;
+  }
+  return `<div class="riskverdict" style="margin-top:3px" title="${esc0(tip)}">Turn of month${inTurn ? ' <b>(we are in it)</b>' : ''}: <b class="tone ${inTurn ? 'off' : 'mix'}" style="font-weight:800">${notable.length} pair${notable.length === 1 ? '' : 's'} show a tilt</b>`
+    + `<span class="muted"> · ${notable.map(([p, v]) => `${dispName(p)} ${v.edgeBp > 0 ? '+' : ''}${v.edgeBp}bp/day vs baseline`).join(' · ')}${inTurn ? ' — and today falls in that window' : ' — not in the window today'}</span></div>`;
+}
+
+// ── Precedent: what usually happens next, in conditions like today's ─────────
+// The page's other reads describe the present. This is the only one that says what
+// FOLLOWED, historically, from a present that looked like this — which is what turns a
+// dashboard into something you learn from.
+//
+// Everything shown here is a BASE RATE, not a forecast, and it is presented with the
+// three things a base rate needs to be honest: the sample size behind it, the
+// independent sample size (forward windows overlap heavily), and whether the effect
+// held up in the half of history it was not discovered in.
+function regimeRowFor(pairName, horizon) {
+  const st = regimeFx?.study, key = regimeFx?.now?.key;
+  if (!st?.ok || !key) return null;
+  return st.regimes?.[key]?.[pairName]?.[horizon] ?? null;
+}
+function _regimeVerdict(row) {
+  if (!row?.all?.enough) return { word: 'too few days', cls: 'neu' };
+  if (row.unstable) return { word: 'did not hold up', cls: 'warn' };
+  const m = row.all.mean;
+  if (m == null || Math.abs(m) < 0.05) return { word: 'no clear tendency', cls: 'neu' };
+  return { word: m > 0 ? 'drifted higher' : 'drifted lower', cls: m > 0 ? 'bull' : 'bear' };
+}
+function renderRegimePanel() {
+  const el = $('regimePanel');
+  if (!el) return;
+  const st = regimeFx?.study, now = regimeFx?.now;
+  if (!st?.ok || !now?.key) { el.style.display = 'none'; return; }
+  const nDays = st.counts?.[now.key] ?? 0;
+  const H = 20;
+  const rows = (st.pairs || []).map(pair => ({ pair, row: st.regimes?.[now.key]?.[pair]?.[H] ?? null }))
+    .filter(x => x.row);
+  el.style.display = 'block';
+  const body = rows.map(({ pair, row }) => {
+    const v = _regimeVerdict(row);
+    const a = row.all;
+    const tip = `${pair} over the ${H} trading days after a day like today, across ${a.n} historical days `
+      + `(only about ${a.nEffective} of them independent — a 20-day return measured on consecutive days reuses 19 of its 20 days, which is why no p-value is shown anywhere here). `
+      + `Mean ${a.mean != null ? a.mean + '%' : 'n/a'}, median ${a.median != null ? a.median + '%' : 'n/a'}, higher ${a.hitRate != null ? a.hitRate + '%' : 'n/a'} of the time. `
+      + `Earlier half of history: ${row.is.mean != null ? row.is.mean + '%' : 'n/a'} · later half: ${row.oos.mean != null ? row.oos.mean + '%' : 'n/a'}.`
+      + (row.unstable ? ' THE SIGN FLIPPED between the two halves — whatever the pooled average says, this has not shown a durable effect.' : '')
+      + ' A base rate, not a forecast.';
+    return `<div class="rg-row" title="${esc0(tip)}">
+      <span class="rg-pair">${dispName(pair)}</span>
+      <span class="rg-verdict ${v.cls}">${v.word}</span>
+      <span class="rg-num">${a.mean != null ? (a.mean > 0 ? '+' : '') + a.mean + '%' : '—'}</span>
+      <span class="rg-num muted">${a.hitRate != null ? a.hitRate + '% up' : ''}</span>
+      <span class="rg-n muted">n=${a.n}${a.nEffective ? ` (~${a.nEffective} indep.)` : ''}${row.unstable ? ' ⚠' : ''}</span>
+    </div>`;
+  }).join('');
+  const stable = rows.filter(x => x.row.all.enough && !x.row.unstable).length;
+  el.innerHTML = `<div class="sec-hd-row"><span class="sec-title">Precedent — what followed days like today</span>${secChev('regimePanel')}</div>`
+    + secBody('regimePanel', `
+      <div class="rg-head">Today is <b>${esc0(now.describe)}</b>.</div>
+      <div class="rg-sub">That combination has occurred on <b>${nDays}</b> days since ${esc0(st.dates?.from ?? '')}. Below is what each pair did over the <b>${H} trading days after</b> those days — a historical base rate, <b>not a forecast</b>. Hover any row for its sample size and whether the effect survived into the later half of history.</div>
+      <div class="rg-rows">${body || '<div class="muted">No pair has enough history in this regime yet.</div>'}</div>
+      <div class="rg-foot">${stable} of ${rows.length} pairs show a reading that held its sign across both halves of history. Rows marked ⚠ flipped — treat those as noise however large the average looks. Forward windows overlap, so no significance test is offered: judge on the independent sample size, the split, and the size of the effect.</div>`);
+}
+
+// ── The week ahead ───────────────────────────────────────────────────────────
+// /api/events has always returned the WHOLE WEEK; this page filtered it to today and
+// threw the rest away. A daily brief that cannot say "CPI Thursday, and the last three
+// came in hot" makes you plan one day at a time.
+//
+// Each row carries that release's own recent prints from the surprise store, so an
+// event reads as a running story rather than a name and a time.
+function weekAheadRows(maxDays = 7) {
+  if (!Array.isArray(events)) return [];
+  const now = Date.now();
+  const horizon = now + maxDays * 864e5;
+  const rows = events
+    .map(e => ({ ...e, ms: new Date(e.time).getTime() }))
+    .filter(e => !isNaN(e.ms) && e.ms > now && e.ms <= horizon)
+    .filter(e => (e.impact ?? '').toLowerCase() === 'high')
+    .filter(e => GATE_COUNTRIES.has(e.country))
+    .sort((a, b) => a.ms - b.ms);
+  const hist = econSurprise?.series ?? {};
+  const keyOf = e => `${String(e.country).toUpperCase()}|${String(e.event).trim().toLowerCase()}`;
+  return rows.map(e => ({ ...e, ccy: CC_TO_CCY[e.country] ?? e.country, past: hist[keyOf(e)] ?? [] }));
+}
+function renderWeekAhead() {
+  const el = $('weekAhead');
+  if (!el) return;
+  const rows = weekAheadRows();
+  // Today's events already have their own panel; this is about what is COMING.
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const future = rows.filter(e => new Date(e.ms).toISOString().slice(0, 10) !== todayKey);
+  if (!future.length) { el.style.display = 'none'; return; }
+  const dayFmt = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', weekday: 'short', day: 'numeric' });
+  const byDay = {};
+  for (const e of future) (byDay[dayFmt.format(new Date(e.ms))] ??= []).push(e);
+  const pastTag = p => {
+    if (!p.length) return '<span class="muted" style="font-size:9.5px">no history stored yet</span>';
+    // Newest first, so the run reads left-to-right as most-recent-back.
+    const marks = p.map(x => x.beat === 'above' ? '<b class="pos">▲</b>' : x.beat === 'below' ? '<b class="neg">▼</b>' : '<span class="muted">=</span>').join(' ');
+    const detail = p.map(x => `${(x.time || '').slice(0, 10)}: ${x.actual} vs ${x.estimate ?? '—'} est`).join(' · ');
+    return `<span class="wa-past" title="${esc0('The last ' + p.length + ' prints of this same release, newest first. ' + detail)}">${marks}</span>`;
+  };
+  el.style.display = 'block';
+  el.innerHTML = `<div class="sec-hd-row"><span class="sec-title">The week ahead</span>${secChev('weekAhead')}</div>`
+    + secBody('weekAhead', `<div class="wa-note">High-impact releases still to come, with how the <b>last few prints of that same release</b> landed against forecast (▲ above · ▼ below · = in line). A run of beats or misses is the context that makes the next one readable.</div>`
+      + Object.entries(byDay).map(([day, evs]) => `
+        <div class="wa-day"><div class="wa-daylbl">${esc0(day)}</div>
+          ${evs.map(e => `<div class="wa-row">
+            <span class="wa-time">${evtTime(e)}</span>
+            <span class="wa-ccy">${esc0(e.ccy)}</span>
+            <span class="wa-ev">${esc0(e.event)}</span>
+            ${pastTag(e.past)}
+          </div>`).join('')}
+        </div>`).join(''));
+}
+
+// ── Curve slope per currency ─────────────────────────────────────────────────
+// Both legs were already loaded for all seven non-NZD currencies (CCY_FRED10Y and
+// CCY_FRED_SHORT), and only the US ever got a slope. The slope is a different fact
+// from the level: the LEVEL says what a currency pays, the SLOPE says what the market
+// expects to happen to that. A steepening curve prices growth or inflation ahead; an
+// inverted one prices cuts, i.e. trouble. For FX the slope DIFFERENTIAL between two
+// economies is the classic read, and it was one subtraction away.
+//
+// Cadence caveat, stated rather than hidden: the US legs are daily series, the others
+// OECD monthly with a publication lag, so a cross-currency slope comparison is only
+// honest as a "where do these sit" read, never as "what changed today".
+function curveFor(ccy) {
+  const lKey = CCY_FRED10Y[ccy], sKey = CCY_FRED_SHORT[ccy];
+  const l = lKey ? fred?.[lKey]?.value : null, sh = sKey ? fred?.[sKey]?.value : null;
+  if (l == null || sh == null) return null;
+  const slope = +(l - sh).toFixed(2);
+  const shape = slope > 0.5 ? 'steep' : slope > 0.1 ? 'positive' : slope > -0.1 ? 'flat' : 'inverted';
+  return { slope, bps: Math.round(slope * 100), long: l, short: sh, shape,
+           asOf: fred?.[lKey]?.asOf ?? null, shortAsOf: fred?.[sKey]?.asOf ?? null };
+}
+const CURVE_MEANING = {
+  steep: 'a steep curve — the market is pricing growth and/or inflation ahead, and banks lend more freely into it',
+  positive: 'a normally-sloped curve — no strong message either way',
+  flat: 'a flat curve — the market sees little growth or policy change coming',
+  inverted: 'an INVERTED curve — short rates above long ones, which is the market pricing rate cuts, i.e. expecting trouble rather than growth',
+};
+function curveHtml(ccy) {
+  const c = curveFor(ccy);
+  if (!c) return `<div class="muted">No curve for ${ccy} — needs both a long and a short series${ccy === 'NZD' ? ' (neither is wired for NZ)' : ''}.</div>`;
+  const cls = c.shape === 'inverted' ? 'bear' : c.shape === 'steep' ? 'bull' : 'neu';
+  const stamp = c.asOf ? ` <span class="dim-age">as of ${esc0(c.asOf)}</span>` : '';
+  return `<div style="margin-bottom:6px"><span class="chip ${cls}">${c.shape.toUpperCase()} · ${c.bps > 0 ? '+' : ''}${c.bps}bp</span>${stamp}</div>`
+    + `<div class="ccy-explain">The 10-year pays <b>${c.long.toFixed(2)}%</b> and the short end <b>${c.short.toFixed(2)}%</b>, so the curve is <b>${c.bps > 0 ? '+' : ''}${c.bps}bp</b> — ${CURVE_MEANING[c.shape]}. `
+    + `The <i>level</i> above says what this currency pays you; the slope says what the market thinks happens to that next.</div>`;
+}
+// Slope DIFFERENTIAL for a pair — the cross-currency version, which is the one that
+// actually bears on FX. Context only; nothing here is backtested.
+function curveDiffFor(name) {
+  const cc = PAIR_CCY[name];
+  if (!cc) return null;
+  const b = curveFor(cc[0]), q = curveFor(cc[1]);
+  if (!b || !q) return null;
+  return { base: cc[0], quote: cc[1], baseBps: b.bps, quoteBps: q.bps, diffBps: b.bps - q.bps,
+           baseShape: b.shape, quoteShape: q.shape };
+}
+
+// ── Positioning vs price — the divergence that actually matters ──────────────
+// COT is shown as a level and a percentile, which answers "is the crowd stretched".
+// The read that changes a decision is the CROSS: the crowd is stretched one way AND
+// price has stopped going that way. A crowded bet still working is momentum; a crowded
+// bet that has stalled or turned is fuel, because the people who have to get out are
+// all on the same side. Both halves were already in memory and nothing crossed them.
+//
+// Deliberately NOT a signal: this is a well-known practitioner setup with no backtest
+// in this repo, and it is labelled as a warning about the shape of the risk, not a call.
+const COT_CROWD_PCTILE = 85;    // |percentile| beyond this counts as stretched
+function divergenceFor(r) {
+  const ct = r.ct ?? cotFor(r.name);
+  if (!ct || ct.pctile == null || !ct.dir) return null;
+  const stretchedLong = ct.pctile >= COT_CROWD_PCTILE;
+  const stretchedShort = ct.pctile <= (100 - COT_CROWD_PCTILE);
+  if (!stretchedLong && !stretchedShort) return null;
+  // Price side: the MEASURED move, not a model lean — the question is literally
+  // "has price kept going the way the crowd is positioned".
+  const dc = moveDecompFor(r.name);
+  const move = dc?.ret ?? null;
+  if (move == null) return null;
+  const crowdSide = stretchedLong ? 1 : -1;          // +1 = crowd is long the pair
+  const priceSide = Math.abs(move) < 0.08 ? 0 : (move > 0 ? 1 : -1);
+  const state = priceSide === 0 ? 'STALLED' : (priceSide === crowdSide ? 'CONFIRMED' : 'DIVERGING');
+  return { state, crowdSide, pctile: Math.round(ct.pctile), move, dir: ct.dir, derived: !!ct.derived };
+}
+function divergenceChip(r) {
+  const d = divergenceFor(r);
+  if (!d || d.state === 'CONFIRMED') return '';     // a crowded bet still working is just momentum
+  const cls = d.state === 'DIVERGING' ? 'bear' : 'warn';
+  const crowdWord = d.crowdSide > 0 ? 'long' : 'short';
+  const tip = `The crowd (large speculators, CFTC weekly) is at the ${d.pctile}th percentile ${crowdWord} this pair`
+    + `${d.derived ? ', derived from both legs since this cross has no direct contract' : ''} — and today price has `
+    + (d.state === 'STALLED' ? 'gone essentially nowhere' : `moved the OTHER way (${d.move >= 0 ? '+' : ''}${d.move} of a normal day's range)`)
+    + `. A crowded position that has stopped paying is the setup for a squeeze: the people who need to get out are all on one side. `
+    + `This is a warning about the SHAPE of the risk, not a signal — it is a practitioner pattern with no backtest here, and COT is a few days lagged.`;
+  return `<span class="chip ${cls}" title="${esc0(tip)}">⇄ crowd ${crowdWord}, price ${d.state === 'STALLED' ? 'stalled' : 'against'}</span>`;
+}
+
+// ── The rates move, decomposed ───────────────────────────────────────────────
+// nominal = real + breakeven, so a nominal yield move splits exactly into a REAL
+// (growth/policy) repricing and an INFLATION-EXPECTATIONS repricing. They are the same
+// headline with opposite implications: real yields up is a genuine headwind for gold
+// and risk; breakevens up with real yields flat is an inflation scare, which gold
+// historically likes. All three series (DGS10, DFII10, T10YIE) were already loaded and
+// shown as three unrelated rows that never spoke to each other.
+function ratesDecomp() {
+  const by = _macroMovedByKey();
+  const nom = by.us10y?.deltas?.[1], real = by.tips?.deltas?.[1], bei = by.bei?.deltas?.[1];
+  if (nom == null && real == null && bei == null) return null;
+  // Deltas are already in bps for these rate rows.
+  const known = [real, bei].filter(v => v != null);
+  if (!known.length) return null;
+  const total = nom != null ? nom : (real ?? 0) + (bei ?? 0);
+  const realPart = real ?? (nom != null && bei != null ? nom - bei : null);
+  const beiPart = bei ?? (nom != null && real != null ? nom - real : null);
+  if (realPart == null || beiPart == null) return null;
+  const mag = Math.abs(realPart) + Math.abs(beiPart);
+  const dominant = mag === 0 ? 'flat' : (Math.abs(realPart) >= Math.abs(beiPart) ? 'real' : 'inflation');
+  return { total: Math.round(total), real: Math.round(realPart), bei: Math.round(beiPart),
+           dominant, realShare: mag > 0 ? Math.round(100 * Math.abs(realPart) / mag) : null };
+}
+function ratesDecompLine() {
+  const d = ratesDecomp();
+  if (!d) return '';
+  const sgn = v => `${v > 0 ? '+' : ''}${v}bp`;
+  const read = d.dominant === 'flat'
+    ? 'Yields are going nowhere in either component.'
+    : d.dominant === 'real'
+      ? (d.real > 0
+          ? 'This is a <b>real-yield</b> move — the market repricing growth or policy, not inflation. That is the version that is a genuine headwind for gold and long-duration risk assets, and typically dollar-supportive.'
+          : 'This is a <b>real-yield</b> move lower — easier policy or weaker growth being priced, not disinflation. Typically supportive for gold and long-duration risk, and a dollar headwind.')
+      : (d.bei > 0
+          ? 'This is an <b>inflation-expectations</b> move — breakevens, not real rates. Nominal yields rising for this reason is a much softer headwind for risk than a real-rate rise, and gold has historically tolerated or liked it.'
+          : 'This is <b>disinflation</b> being priced — breakevens falling while real rates hold. Nominal yields falling for this reason is not the same as an easing impulse.');
+  const tip = `The 10-year nominal yield is the real (inflation-adjusted) yield plus expected inflation, so a move in it splits exactly into those two parts: `
+    + `real ${sgn(d.real)} (DFII10, TIPS) and breakeven ${sgn(d.bei)} (T10YIE). Same headline number, opposite meanings — this is the distinction that decides whether a yield rise is bad for gold or not. Context, not a signal.`;
+  return `<div class="riskverdict" style="margin-top:3px" title="${esc0(tip)}">Rates, split: <b class="tone ${d.dominant === 'real' ? (d.real > 0 ? 'off' : 'on') : 'mix'}" style="font-weight:800">${d.dominant === 'flat' ? 'flat' : d.dominant === 'real' ? 'real-rate driven' : 'inflation-driven'}</b>`
+    + `<span class="muted"> · 10Y ${sgn(d.total)} = real ${sgn(d.real)} + breakeven ${sgn(d.bei)} — ${read}</span></div>`;
+}
+
+// ── Move attribution ─────────────────────────────────────────────────────────
+// The cross-sectional fit already produces, for every pair, the residual between its
+// ACTUAL move and the move a pure currency story predicts. That number was computed
+// and thrown away — and it is the one that answers the question a trader most needs
+// answered before choosing an instrument: do I have a dollar view, a euro view, or a
+// EUR/USD view?
+//
+// Attribution is exact by construction, since fit = strength(base) - strength(quote):
+//     actual move = [ base's own strength ] + [ minus quote's strength ] + [ residual ]
+// The residual is what this pair did that NO currency story explains — pair-specific
+// flow, a local story, or noise. A pair that is mostly residual is a poor way to
+// express a macro view, however good the macro view is.
+function moveDecompFor(name, rs) {
+  const csr = currencyStrengthMeasured(rs ?? allRows());
+  const o = csr?.obs?.find(x => x.name === name);
+  if (!o) return null;
+  const byCcy = Object.fromEntries((csr.scores || []).map(x => [x.ccy, x.score]));
+  const baseC = byCcy[o.base] ?? 0, quoteC = byCcy[o.quote] ?? 0;
+  const resid = o.resid ?? (o.ret - (baseC - quoteC));
+  // Shares of the total ABSOLUTE contribution, so three parts that partly cancel still
+  // sum to 100% and a pair can honestly read as "80% dollar, and the euro leg fought it".
+  const mag = Math.abs(baseC) + Math.abs(quoteC) + Math.abs(resid);
+  const share = v => mag > 0 ? Math.round(100 * Math.abs(v) / mag) : null;
+  return {
+    ret: +o.ret.toFixed(2), fit: +(baseC - quoteC).toFixed(2), resid: +resid.toFixed(2),
+    base: { ccy: o.base, contrib: +baseC.toFixed(2), share: share(baseC) },
+    quote: { ccy: o.quote, contrib: +(-quoteC).toFixed(2), share: share(quoteC) },
+    idio: { contrib: +resid.toFixed(2), share: share(resid) },
+    r2: csr.r2,
+  };
+}
+
+// One plain sentence, because the point is teaching which view you actually hold.
+function moveDecompSentence(dc) {
+  if (!dc) return '';
+  const parts = [
+    { label: dc.base.ccy, share: dc.base.share, contrib: dc.base.contrib },
+    { label: dc.quote.ccy, share: dc.quote.share, contrib: dc.quote.contrib },
+  ].sort((a, b) => (b.share ?? 0) - (a.share ?? 0));
+  const lead = parts[0];
+  const dirWord = v => v > 0 ? 'pushing it up' : v < 0 ? 'pulling it down' : 'neutral';
+  if (dc.idio.share != null && dc.idio.share >= 50) {
+    return `Most of today's move here (<b>${dc.idio.share}%</b>) is <b>pair-specific</b> — it isn't explained by either currency's broader behaviour, so this is a ${dispCcyPair(dc)} story rather than a macro one. A macro view is better expressed somewhere else.`;
+  }
+  return `Today's move is mostly the <b>${ccyFull(lead.label)}</b> (${lead.share}% of it, ${dirWord(lead.contrib)}), with <b>${dc.idio.share}%</b> pair-specific. `
+    + (dc.idio.share <= 25
+        ? `That makes this a clean way to express a ${ccyShort(lead.label)} view.`
+        : `A meaningful slice is this pair's own story, so it tracks the ${ccyShort(lead.label)} theme only loosely.`);
+}
+function dispCcyPair(dc) { return `${dc.base.ccy}/${dc.quote.ccy}`; }
+
+function moveDecompChip(r) {
+  const dc = moveDecompFor(r.name);
+  if (!dc || dc.idio.share == null) return '';
+  const drivers = [
+    { ccy: dc.base.ccy, share: dc.base.share, contrib: dc.base.contrib },
+    { ccy: dc.quote.ccy, share: dc.quote.share, contrib: dc.quote.contrib },
+  ].sort((a, b) => (b.share ?? 0) - (a.share ?? 0));
+  const lead = drivers[0];
+  const pairLed = dc.idio.share >= 50;
+  const cls = pairLed ? 'warn' : 'neu';
+  const face = pairLed ? `◑ pair-specific ${dc.idio.share}%` : `◑ ${lead.ccy}-led ${lead.share}%`;
+  const tip = `Where today's move actually came from, split exactly: ${dc.base.ccy} leg ${dc.base.contrib >= 0 ? '+' : ''}${dc.base.contrib}, `
+    + `${dc.quote.ccy} leg ${dc.quote.contrib >= 0 ? '+' : ''}${dc.quote.contrib}, pair-specific ${dc.idio.contrib >= 0 ? '+' : ''}${dc.idio.contrib} `
+    + `(units = expected day ranges; total move ${dc.ret >= 0 ? '+' : ''}${dc.ret}). `
+    + `The pair-specific part is what no currency story explains. `
+    + (pairLed
+        ? 'Most of this move is that residual, so this instrument is a poor way to express a macro view right now.'
+        : `Mostly a ${lead.ccy} story, so this is a reasonable instrument for a ${lead.ccy} view.`)
+    + (dc.r2 != null ? ` Board-wide fit R² ${dc.r2.toFixed(2)}.` : '');
+  return `<span class="chip ${cls}" title="${esc0(tip)}">${face}</span>`;
+}
+
 // Cached per render pass -- Market Read, the risk verdict, Concentration and the
 // currency drawer all want the same fit, and it should be solved once.
 let _csrCache = { at: 0, val: null };
@@ -2674,10 +3119,13 @@ function renderMarketRead() {
         ${risk.liquidity ? `<div class="riskverdict" style="margin-top:3px" title="Fed (WALCL−TGA−RRP) nets directly (all USD); ECB/BoJ balance sheets are scored independently in their own currency and combined by sign agreement, never summed cross-currency. ${risk.liquidity.legs.map(l => `${l.label}: ${l.score > 0 ? '+' : ''}${l.score}`).join(' · ')}. Context, not a backtested rule — see how many of the 3 central banks agree, not just the composite number.">Liquidity: <b class="tone ${risk.liquidity.direction === 'LONG' ? 'on' : risk.liquidity.direction === 'SHORT' ? 'off' : 'mix'}" style="font-weight:800">${risk.liquidity.direction === 'LONG' ? 'expanding' : risk.liquidity.direction === 'SHORT' ? 'contracting' : 'mixed'}</b><span class="muted"> · ${risk.liquidity.agree}/${risk.liquidity.total} central banks agree${risk.liquidity.vixNote && risk.liquidity.vixNote.read !== 'flat' ? ` · ${risk.liquidity.vixNote.read === 'diverging' ? 'diverging from VIX — worth watching' : 'confirmed by VIX'}` : ''}</span></div>` : ''}
         ${risk.creditQ ? `<div class="riskverdict" style="margin-top:3px" title="Baa10Y−Aaa10Y investment-grade quality spread, z-scored against its own history — a different axis than the HY-level Credit line above (junk-bond spreads). Widening = investors demanding more premium for lower-quality investment-grade debt, an early credit-curve-shape tell. Context, not a backtested rule.">Credit quality (Baa−Aaa): <b class="tone ${risk.creditQ.z > 0.5 ? 'off' : risk.creditQ.z < -0.5 ? 'on' : 'mix'}" style="font-weight:800">${risk.creditQ.z > 0.5 ? 'widening' : risk.creditQ.z < -0.5 ? 'tightening' : 'steady'}</b><span class="muted"> · z ${risk.creditQ.z >= 0 ? '+' : ''}${risk.creditQ.z}</span></div>` : ''}
         ${risk.realYield ? `<div class="riskverdict" style="margin-top:3px" title="10Y TIPS yield (DFII10) — the market's own real, inflation-adjusted rate; a direct FRED read, not derived. Rising real yields are typically a headwind for risk assets/gold; falling is supportive. Breakeven inflation (10Y, T10YIE) shown alongside as inflation-expectation context. Context, not a backtested rule.">Real yield (10Y TIPS): <b class="tone ${risk.realYield.prev != null ? (risk.realYield.level > risk.realYield.prev ? 'off' : risk.realYield.level < risk.realYield.prev ? 'on' : 'mix') : 'mix'}" style="font-weight:800">${risk.realYield.prev != null ? (risk.realYield.level > risk.realYield.prev ? 'rising' : risk.realYield.level < risk.realYield.prev ? 'falling' : 'flat') : 'steady'}</b><span class="muted"> · ${fmtN(risk.realYield.level, 2)}%${risk.realYield.bei != null ? ` · breakeven ${fmtN(risk.realYield.bei, 2)}%` : ''}</span></div>` : ''}
+        ${ratesDecompLine()}
+        ${seasonalityLine()}
         ${correlationRegimeLine()}
         ${risk.gpr ? `<div class="riskverdict" style="margin-top:3px" title="Caldara &amp; Iacoviello's Geopolitical Risk Index (Federal Reserve Board) — counts geopolitical-tension language across 10 major newspapers. The source republishes this file weekly (Mondays), not daily, so freshness is checked against that cadence, not a daily one. Shown as a 30-day smoothed level, z-scored against its own trailing 2-year history. Genuinely global and currency-agnostic — not derived from anything else on this page. Context, not a backtested rule.">Geopolitical risk: ${risk.gpr.stale ? `<b class="tone off" style="font-weight:800">⚠ stale</b><span class="muted"> · last update ${risk.gpr.asOfDate} (${risk.gpr.daysStale}d ago) — the weekly pull may have failed, check /api/gpr/refresh-status</span>` : `<b class="tone ${risk.gpr.z > 0.75 ? 'off' : risk.gpr.z < -0.5 ? 'on' : 'mix'}" style="font-weight:800">${risk.gpr.z > 0.75 ? 'elevated' : risk.gpr.z < -0.5 ? 'subdued' : 'normal'}</b><span class="muted"> · z ${risk.gpr.z >= 0 ? '+' : ''}${risk.gpr.z} · ${risk.gpr.trend}${risk.gpr.asOfDate ? ` · as of ${risk.gpr.asOfDate}` : ''}</span>`}</div>` : ''}
       </div>
     </div>
+    ${falsifierHtml(rs, risk, csrMR)}
     <div class="mread-watch">
       <span class="wk">Watch</span>
       ${nextEv ? `<span>${nextEv}</span>` : '<span class="muted">no high-impact event imminent</span>'}
@@ -3277,6 +3725,10 @@ function openCcyDrawer(ccy) {
     <div class="dr-sec">
       <h3 class="help" title="10-year government bond yield — the classic carry-trade input. Not the policy rate itself, and not a timing signal on its own.">Rate & carry</h3>
       ${carryHtml}
+    </div>
+    <div class="dr-sec">
+      <h3 class="help" title="The gap between this currency's long and short rates. The LEVEL above says what it pays you to hold; the SLOPE says what the market expects to happen to that. Inverted (short above long) is the market pricing rate cuts — historically a recession tell, not a strength signal. Context, not a backtested rule.">Yield curve shape</h3>
+      ${curveHtml(ccy)}
     </div>
     <div class="dr-sec">
       <h3 class="help" title="What this currency's central bank has actually been saying across its last few meetings, plus what is still scheduled for this economy today. DESCRIPTIVE — hawkish-score momentum was tested against forward price in this repo and banked as a null, so it is never a directional reason here.">Policy tone &amp; calendar</h3>
@@ -4803,7 +5255,7 @@ function analogShapeHtml(name) {
 // want while reading the detail. Shared rather than copied, so the two can't drift.
 function pairChipsHtml(r) {
   const d = r.d;
-  return `${directionChip(r)} ${biasLine(r)} ${r.agr?.chip ?? ''}${costChip(r)}${r.isProx ? `<span class="chip warn" title="Live price is right at one of the key levels now — this is a decision moment. Click the card to score it.">⚑ ${r.near.tag} ${r.near.pips.toFixed(0)}${d.ac === 'fx' ? 'p' : 'pt'} away</span>` : ''}${r.ct?.level === 'EXTREME' ? `<span class="chip warn" title="${r.ct.derived ? `Both legs of this cross are stretched the same way in CFTC positioning (base Z ${r.ct.baseRead?.z ?? '—'}, quote Z ${r.ct.quoteRead?.z ?? '—'}) — a reinforcing double-extreme, derived from each currency's own contract since this cross has no direct CFTC future.` : `The crowd (big speculators, from weekly CFTC data) is very heavily positioned ${r.ct.dir} — about ${r.ct.pct.toFixed(0)}% of the market.`} Crowded one-way bets can snap back hard (a 'squeeze'), so it's a warning against joining late.">⚠ COT ${r.ct.dir} extreme${r.ct.derived ? ' (derived)' : ''}</span>` : ''}${r.oi && !r.oi.stale && r.oi.regime ? `<span class="chip ${r.oi.regime === 'PIN' ? 'range' : 'bear'}" title="${r.oi.regime === 'PIN' ? "From options positioning: price is likely to stay STUCK near here today and drift back to the middle — favours fading the edges, not chasing." : "From options positioning: a move could ACCELERATE today — higher chance of a sharp break, so breakouts are more likely to run."}">◎ ${r.oi.regime}</span>` : ''}${outlookChip(r)}${mveChip(r)}${commodityChip(r)}${sessionResearchChip(r)}`;
+  return `${directionChip(r)} ${biasLine(r)} ${r.agr?.chip ?? ''}${costChip(r)}${r.isProx ? `<span class="chip warn" title="Live price is right at one of the key levels now — this is a decision moment. Click the card to score it.">⚑ ${r.near.tag} ${r.near.pips.toFixed(0)}${d.ac === 'fx' ? 'p' : 'pt'} away</span>` : ''}${r.ct?.level === 'EXTREME' ? `<span class="chip warn" title="${r.ct.derived ? `Both legs of this cross are stretched the same way in CFTC positioning (base Z ${r.ct.baseRead?.z ?? '—'}, quote Z ${r.ct.quoteRead?.z ?? '—'}) — a reinforcing double-extreme, derived from each currency's own contract since this cross has no direct CFTC future.` : `The crowd (big speculators, from weekly CFTC data) is very heavily positioned ${r.ct.dir} — about ${r.ct.pct.toFixed(0)}% of the market.`} Crowded one-way bets can snap back hard (a 'squeeze'), so it's a warning against joining late.">⚠ COT ${r.ct.dir} extreme${r.ct.derived ? ' (derived)' : ''}</span>` : ''}${r.oi && !r.oi.stale && r.oi.regime ? `<span class="chip ${r.oi.regime === 'PIN' ? 'range' : 'bear'}" title="${r.oi.regime === 'PIN' ? "From options positioning: price is likely to stay STUCK near here today and drift back to the middle — favours fading the edges, not chasing." : "From options positioning: a move could ACCELERATE today — higher chance of a sharp break, so breakouts are more likely to run."}">◎ ${r.oi.regime}</span>` : ''}${moveDecompChip(r)}${divergenceChip(r)}${outlookChip(r)}${mveChip(r)}${commodityChip(r)}${sessionResearchChip(r)}`;
 }
 
 function pairStripsHtml(r) {
@@ -5225,6 +5677,8 @@ function render() {
   renderConcentration();
   renderWhenToWatch();
   renderMacro();
+  renderWeekAhead();
+  renderRegimePanel();
   const rs = sortRows(rows());
   $('grid').style.display = 'none';
   $('tview').style.display = 'none';
@@ -5429,6 +5883,41 @@ async function openDrawer(name) {
   loadDrawerHits(name, d).catch(() => { $('drHitsSec').style.display = 'none'; });
   // Synchronous — every input is already in memory, so there is nothing to await.
   try { renderDrawerFlow(r); } catch (e) { console.error('[flow]', e); }
+  try { renderDrawerAttrib(r); } catch (e) { $('drAttribSec').style.display = 'none'; }
+}
+
+// Macro tab: where today's move came from, and how the two curves compare.
+function renderDrawerAttrib(r) {
+  const sec = $('drAttribSec'), box = $('drAttrib');
+  const dc = moveDecompFor(r.name);
+  const cd = curveDiffFor(r.name);
+  if (!dc && !cd) { sec.style.display = 'none'; return; }
+  sec.style.display = '';
+  let html = '';
+  if (dc) {
+    const bar = (label, v, share, cls) => {
+      const w = Math.min(100, (share ?? 0));
+      return `<div class="ccy-legrow"><span class="lp">${esc0(label)}</span>`
+        + `<span class="dim-age">${share == null ? '' : share + '%'}</span>`
+        + `<span class="lv ${cls}">${v >= 0 ? '+' : ''}${v}</span></div>`
+        + `<div class="meter" style="height:5px;margin:-1px 0 5px"><div class="fill" style="width:${w}%"></div></div>`;
+    };
+    html += `<div class="ccy-explain">${moveDecompSentence(dc)}</div>`
+      + `<div class="ccy-legs" style="margin-top:8px">`
+      + bar(`${dc.base.ccy} leg`, dc.base.contrib, dc.base.share, dc.base.contrib >= 0 ? 'bull' : 'bear')
+      + bar(`${dc.quote.ccy} leg`, dc.quote.contrib, dc.quote.share, dc.quote.contrib >= 0 ? 'bull' : 'bear')
+      + bar('This pair only', dc.idio.contrib, dc.idio.share, 'neu')
+      + `</div>`
+      + `<div class="muted" style="font-size:10.5px;margin-top:4px">Total move ${dc.ret >= 0 ? '+' : ''}${dc.ret} expected day ranges${dc.r2 != null ? ` · board-wide fit R² ${dc.r2.toFixed(2)}${dc.r2 < 0.3 ? ' — weak, so read the split loosely today' : ''}` : ''}. Units are day-ranges, so the three parts add to the whole.</div>`;
+  }
+  if (cd) {
+    const lead = cd.diffBps > 0 ? cd.base : cd.quote;
+    html += `<div class="ccy-explain" style="margin-top:12px"><b>Curve shapes:</b> ${cd.base} ${cd.baseBps > 0 ? '+' : ''}${cd.baseBps}bp (${cd.baseShape}) vs ${cd.quote} ${cd.quoteBps > 0 ? '+' : ''}${cd.quoteBps}bp (${cd.quoteShape}) — a <b>${cd.diffBps > 0 ? '+' : ''}${cd.diffBps}bp</b> differential in favour of <b>${lead}</b>. `
+      + `A steeper curve prices more growth or inflation ahead; an inverted one prices cuts. `
+      + `${cd.baseShape === 'inverted' || cd.quoteShape === 'inverted' ? `Note ${cd.baseShape === 'inverted' ? cd.base : cd.quote} is inverted — the market is pricing that economy into cuts. ` : ''}`
+      + `Non-US legs are OECD monthly series with a publication lag, so read this as where the curves SIT, not what changed today.</div>`;
+  }
+  box.innerHTML = html;
 }
 
 // ── Flow tab ─────────────────────────────────────────────────────────────────
@@ -7631,6 +8120,56 @@ function assembleSnapshot(r) {
       note: 'DESCRIPTIVE ONLY. This repo pre-registered and ran the test on whether hawkish-score momentum predicts forward price and banked a clean null on both cells (CB_SENTIMENT_PRICE_TEST.md). Do not use as a directional reason.' };
   }
 
+  // Where today's move actually came from — which view this instrument expresses.
+  const dcAI = moveDecompFor(r.name, rowsAI);
+  if (dcAI) {
+    s.moveAttribution = {
+      totalDayRanges: dcAI.ret,
+      [dcAI.base.ccy + 'Leg']: dcAI.base.contrib, [dcAI.quote.ccy + 'Leg']: dcAI.quote.contrib,
+      pairSpecific: dcAI.idio.contrib, pairSpecificSharePct: dcAI.idio.share,
+      note: 'Exact split of today\u2019s move: base-currency leg + quote-currency leg + a pair-specific residual no currency story explains. If pairSpecificSharePct is high this instrument is a POOR way to express a macro view, however good the view. Units are expected day ranges.',
+    };
+  }
+  // Crowded positioning that has stopped paying — the shape of a squeeze.
+  const dvAI = divergenceFor(r);
+  if (dvAI && dvAI.state !== 'CONFIRMED') {
+    s.positioningDivergence = { state: dvAI.state, cotPercentile: dvAI.pctile,
+      crowdSide: dvAI.crowdSide > 0 ? 'long' : 'short', todayMoveDayRanges: dvAI.move, derived: dvAI.derived,
+      note: 'The crowd is stretched one way and price has stopped going that way. A practitioner pattern with NO backtest in this repo and COT is days lagged — describe it as a risk shape, never as a signal.' };
+  }
+  // The rates move split into its two components, which mean opposite things.
+  const rdAI = ratesDecomp();
+  if (rdAI) {
+    s.ratesDecomposition = { nominalBp: rdAI.total, realBp: rdAI.real, breakevenBp: rdAI.bei, dominant: rdAI.dominant,
+      note: 'Nominal = real + breakeven, so this split is exact. A real-rate rise is a genuine headwind for gold and long-duration risk; the same nominal rise driven by breakevens is an inflation repricing and much softer. Do not describe a yield move without saying which one it is.' };
+  }
+  // Curve shapes for both legs.
+  const cdAI = curveDiffFor(r.name);
+  if (cdAI) {
+    s.curveShapes = { ...cdAI,
+      note: 'Slope = 10y minus the short rate, in bp. Inverted means the market is pricing cuts, i.e. trouble, not strength. Non-US legs are OECD monthly with a lag, so this is where the curves SIT, not what changed today.' };
+  }
+  // Precedent — what actually followed days like today.
+  const rg20 = regimeRowFor(r.name, 20), rg5 = regimeRowFor(r.name, 5);
+  if (regimeFx?.now?.key && (rg20 || rg5)) {
+    const pack = (row, h) => row && {
+      horizonDays: h, meanPct: row.all.mean, medianPct: row.all.median, hitRatePct: row.all.hitRate,
+      n: row.all.n, nIndependent: row.all.nEffective, enoughSample: row.all.enough,
+      earlierHalfMeanPct: row.is.mean, laterHalfMeanPct: row.oos.mean, signFlippedBetweenHalves: row.unstable,
+    };
+    s.regimePrecedent = {
+      regime: regimeFx.now.describe, regimeKey: regimeFx.now.key,
+      daysInThisRegime: regimeFx.study?.counts?.[regimeFx.now.key] ?? null,
+      h5: pack(rg5, 5), h20: pack(rg20, 20),
+      note: 'BASE RATE, not a forecast: what this pair did after historical days with the same real-yield direction, credit direction and curve shape. Forward windows overlap heavily so NO p-value exists and none should be implied — judge on nIndependent, the size of the effect, and whether the sign held across both halves. If signFlippedBetweenHalves is true, treat it as noise however large the mean.',
+    };
+  }
+  // Month-boundary flow, with its baseline.
+  const seAI = seasonalityFor(r.name);
+  if (seAI) {
+    s.turnOfMonth = { edgeVsBaselineBp: seAI.edgeBp, turnDays: seAI.turn.n, otherDays: seAI.rest.n,
+      note: 'Average next-day move on the three trading days either side of a month boundary MINUS the average on all other days. The baseline subtraction is the point — a raw month-end number that matches an ordinary day is not an effect. Timing context only.' };
+  }
   // Macro-change rows now carry the horizon each window ACTUALLY spans. The US
   // tenors were monthly-average series read on [1,5,20] observation offsets, so
   // "US 10Y 1d" was a one-month move; they are daily series now, and any window a

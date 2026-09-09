@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  parseCalNumber, seriesKey, polarityFor, scoreReleases, buildSurpriseIndex, mergeReleases, DEFAULTS,
+  parseCalNumber, seriesKey, polarityFor, scoreReleases, buildSurpriseIndex, mergeReleases, seriesHistory, DEFAULTS,
 } from './econSurprise.js';
 
 const DAY = 864e5;
@@ -132,5 +132,34 @@ test('econSurprise', async t => {
   await t.test('defaults are sane', () => {
     assert.ok(DEFAULTS.halfLifeDays > 0 && DEFAULTS.maxAgeDays > DEFAULTS.halfLifeDays);
     assert.ok(DEFAULTS.minSeriesObs >= 3 && DEFAULTS.minCcyObs >= 3);
+  });
+});
+
+test('seriesHistory', async t => {
+  await t.test('returns the newest prints per series, newest first', () => {
+    const evs = series({ n: 8, startDaysAgo: 200, stepDays: 20 });
+    const h = seriesHistory(evs, { now: NOW, perSeries: 3 });
+    const k = Object.keys(h)[0];
+    assert.equal(h[k].length, 3);
+    assert.ok(h[k][0].ms > h[k][1].ms, 'newest first');
+  });
+  await t.test('labels each print against its own consensus', () => {
+    const evs = series({ n: 8, est: 200, lastActual: 400 });
+    const h = seriesHistory(evs, { now: NOW });
+    const k = Object.keys(h)[0];
+    assert.equal(h[k][0].beat, 'above');
+  });
+  await t.test('unprinted releases never appear', () => {
+    const evs = series({ n: 8 }).map((e, i) => i === 7 ? { ...e, actual: null } : e);
+    const h = seriesHistory(evs, { now: NOW });
+    assert.ok(Object.values(h)[0].every(r => r.actual != null));
+  });
+  await t.test('a series with no dispersion still reports beats, just no z', () => {
+    // 3 prints is under minSeriesObs, so nothing standardises — but the beat is real.
+    const evs = series({ n: 3, est: 200, lastActual: 260, spread: 0 });
+    const h = seriesHistory(evs, { now: NOW });
+    const rows = Object.values(h)[0];
+    assert.equal(rows[0].beat, 'above');
+    assert.equal(rows[0].z, null);
   });
 });

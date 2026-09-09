@@ -47,6 +47,8 @@ const KV_FILE   = path.join(DATA_DIR, 'kv.json');
 //    surprise_index, events_*  re-fetched from Finnhub on next page load
 const _CF_EXACT = new Set([
   'tg_config', 'ai_alert_cfg',
+  'macro_regime_fx_v1',      // 8y regime-conditional FX study — ~11 sequential FRED calls to
+                             // rebuild, and the answer only changes by one day at a time.
   'econ_surprise_v1',        // rolling store of PRINTED economic releases (actual vs consensus).
                              // The calendar feed only ever exposes one week, so the surprise
                              // index is ACCUMULATED — a lost store is months of history that

@@ -994,7 +994,7 @@ export default {
             // quietly cap it at two days of history and the index would never leave its
             // "still collecting" state. Allow-listed in kv.js too — that is a SEPARATE
             // gate, and passing only one of them fails silently rather than with a 403.
-            'econ_surprise_v1',
+            'econ_surprise_v1', 'macro_regime_fx_v1',
             'oi_store', 'journal_store', 'journal_replay_store', 'journal_running_totals',
             'tg_config', 'ai_alert_cfg', 'caps',
             'cot_data', 'cot_urls', 'cot_url',

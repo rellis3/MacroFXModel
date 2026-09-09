@@ -1,0 +1,80 @@
+HL Early-Reaction Tradeable Study — checkpoint-entry backtest, real per-pair cost + concurrency cap
+
+=== EURUSD ===
+  2757 sessions, 2952 eligible touches (p50/p75, >=1 checkpoint), split 2022-04-21
+=== GBPUSD ===
+  2757 sessions, 2879 eligible touches (p50/p75, >=1 checkpoint), split 2022-05-18
+=== USDJPY ===
+  2757 sessions, 2655 eligible touches (p50/p75, >=1 checkpoint), split 2022-03-28
+=== AUDUSD ===
+  2757 sessions, 3112 eligible touches (p50/p75, >=1 checkpoint), split 2022-06-13
+=== USDCHF ===
+  2757 sessions, 3168 eligible touches (p50/p75, >=1 checkpoint), split 2022-02-28
+=== EURAUD ===
+  2757 sessions, 3487 eligible touches (p50/p75, >=1 checkpoint), split 2022-07-06
+=== EURCHF ===
+  2757 sessions, 4197 eligible touches (p50/p75, >=1 checkpoint), split 2022-07-26
+=== AUDJPY ===
+  2757 sessions, 3700 eligible touches (p50/p75, >=1 checkpoint), split 2022-07-05
+=== CADJPY ===
+  2757 sessions, 2892 eligible touches (p50/p75, >=1 checkpoint), split 2022-08-10
+=== CHFJPY ===
+  2757 sessions, 3516 eligible touches (p50/p75, >=1 checkpoint), split 2022-03-01
+=== GOLD ===
+  2744 sessions, 1872 eligible touches (p50/p75, >=1 checkpoint), split 2022-09-23
+=== NQ ===
+  2747 sessions, 1871 eligible touches (p50/p75, >=1 checkpoint), split 2022-02-24
+=== SPX ===
+  1293 sessions, 874 eligible touches (p50/p75, >=1 checkpoint), split 2024-08-05
+=== DOW ===
+  1293 sessions, 817 eligible touches (p50/p75, >=1 checkpoint), split 2024-07-18
+=== US2000 ===
+  2747 sessions, 1804 eligible touches (p50/p75, >=1 checkpoint), split 2022-01-24
+=== DE30 ===
+  2702 sessions, 1645 eligible touches (p50/p75, >=1 checkpoint), split 2022-01-27
+=== UK100 ===
+  2687 sessions, 1618 eligible touches (p50/p75, >=1 checkpoint), split 2022-02-14
+
+Pooled: 17 pairs, 43059 eligible touches total (17269 OOS).
+
+
+================ CHECKPOINT = 5min ================
+  band <15%     bet=continuation n= 7219  winRate= 79.2%  PF=1.709  sharpe= 7.643
+  band 15-35%   bet=continuation n= 4291  winRate= 56.2%  PF=1.019  sharpe= 0.219
+  band >60%     bet=reversal     n=  939  winRate= 66.2%  PF=0.815  sharpe=-0.982
+  band 35-60%      SKIPPED (not traded) — n=2348 touches would have been eligible
+  BANDED RULE (combined, excl. middle) n=12449  winRate= 70.3%  PF=1.358  sharpe= 5.847
+  UNCONDITIONAL (all bands, always continuation) n=11763  winRate=   67%  PF=1.383  sharpe=  6.05
+  MARGIN (banded − unconditional): sharpe=-0.203  PF=-0.025
+
+
+================ CHECKPOINT = 15min ================
+  band <15%     bet=continuation n= 5528  winRate= 83.4%  PF=1.844  sharpe=  7.35
+  band 15-35%   bet=continuation n= 3978  winRate= 63.2%  PF=1.168  sharpe= 1.711
+  band >60%     bet=reversal     n= 1512  winRate= 69.7%  PF=0.856  sharpe=-0.939
+  band 35-60%      SKIPPED (not traded) — n=2713 touches would have been eligible
+  BANDED RULE (combined, excl. middle) n=11018  winRate= 74.2%  PF=1.402  sharpe=  5.88
+  UNCONDITIONAL (all bands, always continuation) n=10433  winRate=   67%  PF=1.396  sharpe= 5.732
+  MARGIN (banded − unconditional): sharpe=0.148  PF=0.006
+
+
+================ CHECKPOINT = 30min ================
+  band <15%     bet=continuation n= 3993  winRate= 86.3%  PF=2.143  sharpe= 7.639
+  band 15-35%   bet=continuation n= 3352  winRate= 67.9%  PF=1.165  sharpe= 1.496
+  band >60%     bet=reversal     n= 1702  winRate= 69.5%  PF=1.033  sharpe= 0.206
+  band 35-60%      SKIPPED (not traded) — n=2557 touches would have been eligible
+  BANDED RULE (combined, excl. middle) n= 9047  winRate= 76.3%  PF=1.449  sharpe= 5.697
+  UNCONDITIONAL (all bands, always continuation) n= 8758  winRate= 66.8%  PF=1.344  sharpe= 4.558
+  MARGIN (banded − unconditional): sharpe=1.139  PF=0.105
+
+
+================ CHECKPOINT = 60min ================
+  band <15%     bet=continuation n= 2337  winRate= 89.3%  PF=2.495  sharpe= 6.622
+  band 15-35%   bet=continuation n= 2479  winRate= 74.6%  PF=1.482  sharpe= 3.338
+  band >60%     bet=reversal     n= 1564  winRate=   69%  PF=1.228  sharpe= 1.282
+  band 35-60%      SKIPPED (not traded) — n=1998 touches would have been eligible
+  BANDED RULE (combined, excl. middle) n= 6380  winRate= 78.6%  PF= 1.67  sharpe= 6.556
+  UNCONDITIONAL (all bands, always continuation) n= 6454  winRate= 66.1%  PF=1.284  sharpe= 3.307
+  MARGIN (banded − unconditional): sharpe=3.249  PF=0.386
+
+Wrote full detail to C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\output/hl_early_reaction_tradeable_study.json

@@ -212,6 +212,43 @@ export function buildSurpriseIndex(events = [], opts = {}) {
 }
 
 /**
+ * Per-series recent history: the last N printed releases of each series, newest first.
+ *
+ * A daily brief that can say "CPI is due Thursday" but not "and the last three came in
+ * hot, hot, in line" is missing the half that makes the event readable. The store
+ * already holds this; it was only ever aggregated into a per-currency score.
+ *
+ * `z` is present only where the series cleared the standardisation bar — a raw beat
+ * with no dispersion behind it is reported as a beat, not as a sigma.
+ */
+export function seriesHistory(events = [], opts = {}) {
+  const o = { ...DEFAULTS, ...opts };
+  const n = o.perSeries ?? 4;
+  const { scored } = scoreReleases(events, o);
+  const zBy = new Map();
+  for (const r of scored) zBy.set(`${r.series}|${r.ms}`, r.z);
+
+  const bySeries = new Map();
+  for (const ev of events) {
+    if (!ev || ev.ms == null || ev.actual == null || ev.actual === '') continue;
+    const k = seriesKey(ev);
+    if (!bySeries.has(k)) bySeries.set(k, []);
+    const est = parseCalNumber(ev.estimate), act = parseCalNumber(ev.actual);
+    bySeries.get(k).push({
+      time: ev.time ?? null, ms: ev.ms, actual: ev.actual, estimate: ev.estimate,
+      beat: (act != null && est != null) ? (act > est ? 'above' : act < est ? 'below' : 'inline') : null,
+      z: zBy.get(`${k}|${ev.ms}`) ?? null,
+    });
+  }
+  const out = {};
+  for (const [k, rows] of bySeries) {
+    rows.sort((a, b) => b.ms - a.ms);
+    out[k] = rows.slice(0, n);
+  }
+  return out;
+}
+
+/**
  * Merge freshly-fetched calendar rows into a stored release history, de-duplicated.
  *
  * The calendar feed only ever exposes ONE WEEK, so a surprise index has to be

@@ -129,7 +129,8 @@ import { runCreditLeadLag as _runCreditLeadLag, alignByDate as _alignByDate } fr
 import { compareForecastLines as _compareForecastLines } from './js/forecastDriftCompare.js';
 import { buildEventWindows as _buildEventWindows } from './js/eventGateCore.js';
 import { fetchWeekEvents as _fetchWeekEvents } from './js/econCalendar.js';
-import { buildSurpriseIndex as _buildSurpriseIndex, mergeReleases as _mergeReleases } from './js/econSurprise.js';   // real economic-surprise index (actual vs consensus), accumulated week by week
+import { buildSurpriseIndex as _buildSurpriseIndex, mergeReleases as _mergeReleases, seriesHistory as _seriesHistory } from './js/econSurprise.js';   // real economic-surprise index (actual vs consensus), accumulated week by week
+import { buildRegimeStudy as _buildRegimeStudy, buildCalendarStudy as _buildCalendarStudy, currentRegime as _currentRegime, describeRegime as _describeRegime } from './js/macroRegimeFx.js';   // what FX has historically done in the macro conditions holding right now
 import { buildMacroChanges as _buildMacroChanges, MACRO_CHANGE_SPEC as _MACRO_CHANGE_SPEC, seriesDeltas as _seriesDeltas } from './js/macroChange.js';
 import { macroContext as _macroContext, macroContextByDate as _macroContextByDate, MACRO_FRED_SERIES as _MACRO_FRED_SERIES, riskSensFor as _riskSensFor } from './js/macroCore.js';
 import { analyzePair as _mcondAnalyzePair, summarizeRows as _mcondSummarize, verdict as _mcondVerdict } from './js/macroConditionerEngine.js';
@@ -2738,6 +2739,32 @@ MACRO CHANGE WINDOWS (each row now reports the horizon it ACTUALLY spans)
 ${(s.macroChangeWindows || []).length ? s.macroChangeWindows.map(x => `  ${x.label} ${x.last}: 1d ${x.d1 ?? 'n/a'}${x.unit} · 5d ${x.d5 ?? 'n/a'}${x.unit} · 20d ${x.d20 ?? 'n/a'}${x.unit}${x.actualSpanDays ? `  [real spans: ${Object.entries(x.actualSpanDays).filter(([, v]) => v != null).map(([w, v]) => `${w}d→${v}d`).join(', ') || 'as labelled'}]` : ''}${x.seriesCadenceDays ? ` (series prints every ~${x.seriesCadenceDays}d)` : ''}`).join('\n') + `
 A window shown as n/a is one this series' print cadence cannot answer — that is deliberate, not missing data. Do NOT substitute a longer window for a shorter one.` : '  Not available'}
 
+WHERE TODAY'S MOVE CAME FROM (exact split — this decides WHICH VIEW the instrument expresses)
+${s.moveAttribution ? Object.entries(s.moveAttribution).filter(([k]) => k !== 'note').map(([k, v]) => `  ${k}: ${v}`).join('\n') + `
+${s.moveAttribution.note}${s.moveAttribution.pairSpecificSharePct >= 50 ? `
+IMPORTANT: most of this move is pair-specific, so do NOT frame it as a macro/currency story — say plainly that a macro view is better expressed elsewhere.` : ''}` : '  Not available'}
+
+POSITIONING vs PRICE
+${s.positioningDivergence ? `${s.positioningDivergence.state}: the crowd is ${s.positioningDivergence.crowdSide} at the ${s.positioningDivergence.cotPercentile}th percentile and today price ${s.positioningDivergence.state === 'STALLED' ? 'has gone nowhere' : 'moved the other way'} (${s.positioningDivergence.todayMoveDayRanges} day-ranges)${s.positioningDivergence.derived ? ', derived from both legs' : ''}.
+${s.positioningDivergence.note}` : '  No crowded-and-stalled condition — nothing to report here.'}
+
+THE RATES MOVE, DECOMPOSED (never describe a yield move without saying which component drove it)
+${s.ratesDecomposition ? `10Y nominal ${s.ratesDecomposition.nominalBp >= 0 ? '+' : ''}${s.ratesDecomposition.nominalBp}bp = real ${s.ratesDecomposition.realBp >= 0 ? '+' : ''}${s.ratesDecomposition.realBp}bp + breakeven ${s.ratesDecomposition.breakevenBp >= 0 ? '+' : ''}${s.ratesDecomposition.breakevenBp}bp  ->  ${s.ratesDecomposition.dominant}-driven
+${s.ratesDecomposition.note}` : '  Not available'}
+
+YIELD CURVE SHAPES, BOTH LEGS
+${s.curveShapes ? `${s.curveShapes.base} ${s.curveShapes.baseBps >= 0 ? '+' : ''}${s.curveShapes.baseBps}bp (${s.curveShapes.baseShape})  vs  ${s.curveShapes.quote} ${s.curveShapes.quoteBps >= 0 ? '+' : ''}${s.curveShapes.quoteBps}bp (${s.curveShapes.quoteShape})  ->  differential ${s.curveShapes.diffBps >= 0 ? '+' : ''}${s.curveShapes.diffBps}bp
+${s.curveShapes.note}` : '  Not available'}
+
+PRECEDENT — WHAT FOLLOWED HISTORICAL DAYS LIKE THIS ONE
+${s.regimePrecedent ? `Today's macro conditions: ${s.regimePrecedent.regime}. That combination has occurred on ${s.regimePrecedent.daysInThisRegime ?? '?'} days.
+${[s.regimePrecedent.h5, s.regimePrecedent.h20].filter(Boolean).map(x => `  ${x.horizonDays}d after: mean ${x.meanPct ?? 'n/a'}%, median ${x.medianPct ?? 'n/a'}%, higher ${x.hitRatePct ?? 'n/a'}% of the time · n=${x.n} (only ~${x.nIndependent} independent) · earlier half ${x.earlierHalfMeanPct ?? 'n/a'}% vs later half ${x.laterHalfMeanPct ?? 'n/a'}%${x.signFlippedBetweenHalves ? '  ** SIGN FLIPPED BETWEEN HALVES — treat as noise **' : ''}${x.enoughSample ? '' : '  ** below minimum sample — counts only **'}`).join('\n')}
+${s.regimePrecedent.note}` : '  Not available'}
+
+TURN-OF-MONTH FLOW
+${s.turnOfMonth ? `Month-boundary days move ${s.turnOfMonth.edgeVsBaselineBp >= 0 ? '+' : ''}${s.turnOfMonth.edgeVsBaselineBp}bp/day differently from ordinary days (${s.turnOfMonth.turnDays} vs ${s.turnOfMonth.otherDays} days).
+${s.turnOfMonth.note}` : '  No measurable month-boundary tilt for this pair — that null is itself worth knowing.'}
+
 === END SNAPSHOT ===
 
 You are a professional FX/futures prop desk analyst — but you are briefing a SHARP TRADER WHO IS NOT AN OPTIONS/QUANT SPECIALIST. Your job is a specific, calibrated, and PLAINLY-WRITTEN brief: grounded in the numbers, readable by a human, and honest about how much weight each signal actually deserves. Not generic observations — and not a wall of desk jargon that only a gamma trader could parse.
@@ -2772,6 +2799,11 @@ Rules for your response:
 21. MEASURED BEATS MODELLED, AND SAY WHICH YOU MEAN. Where the snapshot gives both a measured quantity and a model read of the same thing, lead with the measured one and label it. Specifically: when CURRENCY STRENGTH, MEASURED reports a fit R² below ~0.3, do NOT frame the pair as "strong X versus weak Y" — the board is not moving as a currency story that day, and saying otherwise invents a theme the data rejects. When it is high, naming the theme is well-supported and worth leading with.
 22. TREAT NULL AS UNKNOWN, NEVER AS ZERO OR NEUTRAL. Several sections deliberately report null rather than a number when their own sample or cadence cannot support one — the economic-surprise index while it is still collecting history, a macro edge with too few shared dimensions, a macro-change window a series' print cadence cannot answer. A null there is a statement that the question cannot be answered yet, not a reading of "no change". Do not average it in, and do not describe it as balanced or neutral.
 23. CORRELATION REGIME CHANGES SIZE, NOT DIRECTION. If it reports HIGH, note in the brief that concurrent setups across the board are effectively one position and that historical hedges will hedge less than their history suggests. Never convert it into a directional argument for this pair.
+
+24. NAME WHICH VIEW THE INSTRUMENT EXPRESSES. Use WHERE TODAY'S MOVE CAME FROM to tell the reader whether they are taking a base-currency view, a quote-currency view, or a bet on this specific pair. When the pair-specific share is high, say outright that a macro thesis is better expressed in a different instrument and name the cleaner leg if the data supports one. This is the single most useful sentence you can give someone choosing between correlated setups.
+25. A YIELD MOVE IS NEVER JUST A YIELD MOVE. If you mention rates at all, say whether the move was real-rate driven (growth/policy repricing — a genuine headwind for gold and long-duration risk) or breakeven driven (an inflation repricing, much softer). The decomposition is exact and provided; describing a nominal move without it is the error this section exists to prevent.
+26. PRECEDENT IS A BASE RATE, NOT A FORECAST, AND ITS SAMPLE IS THE STORY. When you cite the regime precedent, give the effect AND its independent sample size in the same breath, and never attach a confidence or probability to it beyond the stated hit rate. If signFlippedBetweenHalves is set, you must either omit the row or state plainly that it did not hold up — presenting it as an edge is a fabrication. Never write a p-value or the word "significant": forward windows overlap and no valid test is available here.
+27. AN HONEST NULL IS A RESULT. Where a section reports no measurable effect — a flat turn-of-month, a regime with too few days, an absent divergence — that is worth one clause, not silence and not a hedge. It tells the reader there is nothing to trade there, which is information.
 
 Respond with a single valid JSON object. No markdown. No text outside the JSON. Field string values 1-2 sentences max EXCEPT "brief" which is 3-5 short paragraphs. Max 3 items per arrays.
 convictionScore MUST be an integer from 0 to 10 only (0=no conviction, 5=moderate, 10=maximum). Do not use any other scale.
@@ -11826,6 +11858,96 @@ async function _fetchSpreads(symbols) {
   return { ok: true, pairs };
 }
 
+// -- Macro-regime-conditional FX base rates ------------------------------------
+// The page can say what the world looks like and where price is; it could not say what
+// usually HAPPENS NEXT when the world looks like this, so every macro read on it was an
+// assertion with no precedent behind it. macro-regime-conditional/README.md already
+// frames this for equities; this is the FX version, built to the same standard.
+//
+// FRED is the only source here on purpose: it is free, revision-stamped, and already
+// the backbone of every macro read on this page. The FX legs come from the DEX* daily
+// spot series, whose conventions are MIXED — DEXUSEU is USD per EUR (so it is EUR/USD
+// as-is) while DEXJPUS is JPY per USD (USD/JPY as-is). Getting that wrong inverts every
+// result, so the orientation is spelled out per series below rather than inferred.
+const _REGIME_KV = 'macro_regime_fx_v1';
+const _REGIME_TTL_MS = 24 * 60 * 60_000;
+const _REGIME_MACRO = { real: 'DFII10', credit: 'BAMLH0A0HYM2', ten: 'DGS10', two: 'DGS2' };
+// name -> [series, orientation note]. All are quoted so a RISING value = the pair up.
+const _REGIME_FX = {
+  EURUSD: 'DEXUSEU',   // USD per EUR  -> already EUR/USD
+  GBPUSD: 'DEXUSUK',   // USD per GBP  -> already GBP/USD
+  AUDUSD: 'DEXUSAL',   // USD per AUD  -> already AUD/USD
+  NZDUSD: 'DEXUSNZ',   // USD per NZD  -> already NZD/USD
+  USDJPY: 'DEXJPUS',   // JPY per USD  -> already USD/JPY
+  USDCAD: 'DEXCAUS',   // CAD per USD  -> already USD/CAD
+  USDCHF: 'DEXSZUS',   // CHF per USD  -> already USD/CHF
+};
+
+async function _fredSeries(id, from) {
+  const url = `https://api.stlouisfed.org/fred/series/observations?series_id=${id}` +
+    `&api_key=${process.env.FRED_KEY}&file_type=json&observation_start=${from}`;
+  const r = await fetch(url, { signal: AbortSignal.timeout(20_000) });
+  if (!r.ok) throw new Error(`FRED ${id} HTTP ${r.status}`);
+  const d = await r.json();
+  return (d.observations || [])
+    .filter(o => o.value && o.value !== '.')
+    .map(o => ({ date: o.date, value: parseFloat(o.value) }))
+    .filter(o => Number.isFinite(o.value));
+}
+
+let _regimeRunning = false;
+async function _refreshRegimeStudy() {
+  if (!process.env.FRED_KEY) throw new Error('FRED_KEY not set');
+  if (_regimeRunning) return null;
+  _regimeRunning = true;
+  try {
+    // 8 years: enough for a few hundred observations per regime while staying inside
+    // one policy era's worth of market structure. Sequential with a gap, same courtesy
+    // the dashboard refresh already shows FRED (a burst of parallel calls is what gets
+    // this key 403'd).
+    const from = new Date(Date.now() - 8 * 365 * 864e5).toISOString().slice(0, 10);
+    const macro = {}, fx = {};
+    for (const [k, id] of Object.entries(_REGIME_MACRO)) {
+      macro[k] = await _fredSeries(id, from).catch(e => { console.warn('[regime-fx]', id, e.message); return []; });
+      await new Promise(r => setTimeout(r, 600));
+    }
+    for (const [pair, id] of Object.entries(_REGIME_FX)) {
+      fx[pair] = await _fredSeries(id, from).catch(e => { console.warn('[regime-fx]', id, e.message); return []; });
+      await new Promise(r => setTimeout(r, 600));
+    }
+    const study = _buildRegimeStudy(macro, fx);
+    const calendar = _buildCalendarStudy(fx);
+    const now = _currentRegime(macro);
+    const payload = { ok: true, study, calendar, now, builtAt: Date.now() };
+    await kv.put(_REGIME_KV, JSON.stringify({ data: payload, timestamp: Date.now() }));
+    console.log(`[regime-fx] built — ${study.pairs?.length ?? 0} pairs, ${Object.keys(study.counts || {}).length} regimes, ${study.dates?.n ?? 0} days, now=${now?.key ?? 'n/a'}`);
+    return payload;
+  } finally { _regimeRunning = false; }
+}
+
+app.get('/api/macro-regime-fx', async (_req, res) => {
+  try {
+    const raw = await kv.get(_REGIME_KV).catch(() => null);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      const data = parsed?.data ?? parsed;
+      if (data?.builtAt && Date.now() - data.builtAt < _REGIME_TTL_MS) return res.json({ ...data, cached: true });
+    }
+    const fresh = await _refreshRegimeStudy();
+    if (fresh) return res.json({ ...fresh, cached: false });
+    // A build is already running (first hit after boot) — say so rather than block.
+    res.json({ ok: false, reason: 'study building — retry shortly', building: true });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/macro-regime-fx/refresh', async (_req, res) => {
+  try { const p2 = await _refreshRegimeStudy(); res.json(p2 ? { ok: true, builtAt: p2.builtAt } : { ok: false, reason: 'already running' }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// Daily rebuild — the underlying series are daily and one more day changes nothing
+// abruptly, so this is a cheap keep-warm rather than a schedule anything depends on.
+setTimeout(() => { _refreshRegimeStudy().catch(e => console.warn('[regime-fx] initial build skipped:', e.message)); }, 120_000);
+setInterval(() => { _refreshRegimeStudy().catch(e => console.warn('[regime-fx] rebuild failed:', e.message)); }, _REGIME_TTL_MS);
+
 // -- Economic surprise index (actual vs consensus, per currency) ---------------
 // today.html's "Growth surprise by currency" bars never measured surprise: they
 // plot ismEngine's `activity` composite, which is a LEVEL. And /api/surprise, the
@@ -11870,7 +11992,10 @@ app.get('/api/econ-surprise', async (_req, res) => {
   try {
     const rows = await _readSurpriseStore();
     const idx = _buildSurpriseIndex(rows);
-    res.json({ ok: true, storedReleases: rows.length, ...idx, generatedAt: new Date().toISOString() });
+    // Per-series recent prints, so the calendar can show what the LAST few of each
+    // release actually did rather than only naming the next one.
+    const series = _seriesHistory(rows, { perSeries: 4 });
+    res.json({ ok: true, storedReleases: rows.length, ...idx, series, generatedAt: new Date().toISOString() });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 app.post('/api/econ-surprise/refresh', async (_req, res) => {
