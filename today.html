@@ -1254,6 +1254,10 @@ let econSurprise = null;  // /api/econ-surprise — REAL surprise index: each re
 // Atlas distances kept being computed off a frozen number.
 let lastPriceAt = 0;
 let lastPriceSrc = null;     // 'stream' | 'poll' — which path delivered it
+// WHY the feed is quiet, not just that it is. "No live price" and "the poll answered
+// but had nothing in it" and "the stream never connected" are three different faults
+// with three different fixes, and a single ⚠ told them apart from nothing.
+let priceFeed = { tries: 0, lastTryAt: 0, lastErr: null, lastCount: null, sse: 'idle' };
 const PRICE_STALE_MS = 120_000;   // past this, stop treating the price as live
 let spreads = null;      // /api/spreads — LIVE dealing spread per instrument, batched + 20s-cached
                          // server-side. The page previously carried no execution-cost read at
@@ -2378,7 +2382,12 @@ function falsifiersGlobal(rs, risk, csr) {
   }
   // And the honest one: a read built on a feed that has stopped arriving.
   const pf = priceFreshness();
-  if (pf?.stale) out.push(`<b class="neg">Everything above is being measured against a price feed that stopped ${pf.ageS}s ago</b> — refresh before acting on any of it.`);
+  if (pf?.stale) {
+    const mins = v => v == null ? 'an unknown time' : v < 90 ? `${v}s` : `${Math.round(v / 60)} minutes`;
+    out.push(pf.state === 'live'
+      ? `<b class="neg">Everything above is measured against a price feed that stopped ${mins(pf.ageS)} ago</b> — refresh before acting on any of it.`
+      : `<b class="neg">There is no live price feed — every level distance above is measured against the server's snapshot from ${mins(pf.snapAgeS)} ago</b>${pf.why ? ` (${pf.why})` : ''}. The prices on the cards are real but they are not updating.`);
+  }
   return out;
 }
 function falsifierHtml(rs, risk, csr) {
@@ -4045,20 +4054,32 @@ function livePriceFor(d) {
 }
 
 async function pollPrices() {
+  // The attempt is recorded BEFORE the early return. Bailing out on an empty payload
+  // without recording anything made "the endpoint answered with nothing" look exactly
+  // like "the endpoint was never called" — and the second is a much bigger problem.
+  priceFeed.tries++; priceFeed.lastTryAt = Date.now();
   try {
     const r = await jget('/api/hedge-signals/prices');
-    if (!r?.prices) return;
+    const n = r?.prices ? Object.keys(r.prices).length : 0;
+    priceFeed.lastCount = n;
+    priceFeed.lastErr = r?.prices ? (n ? null : 'endpoint answered with an empty price set') : 'response had no prices field';
+    if (!n) return;
     livePrices = r.prices;
-    lastPriceAt = Date.now(); lastPriceSrc = 'poll';
-    invalidateRows();
+    lastPriceAt = Date.now(); lastPriceSrc = 'poll'; priceFeed.lastErr = null;
     let changed = false;
     for (const d of Object.values(brief?.instruments ?? {})) {
       const p = livePriceFor(d);
       if (p != null && p !== d.current_price) { d.current_price = p; changed = true; }
       if (p != null && d.sym === _atlasSym) updateAtlasDistances(d.sym, p);
     }
+    invalidateRows();   // after the mutation — see the note in the stream handler
     if (changed) { renderSummary(); render(); }
-  } catch (e) {}
+  } catch (e) {
+    // Swallowed before, so a 404 or a network failure was indistinguishable from a
+    // quiet market. Kept non-fatal, but no longer invisible.
+    priceFeed.lastErr = e?.message || 'request failed';
+  }
+  renderHeader();
 }
 
 // ── Live price stream (SSE) — ALL instruments over ONE connection ───────────
@@ -4092,12 +4113,20 @@ function _openTodaySse(syms) {
     src.onmessage = evt => {
       try {
         const d = JSON.parse(evt.data);
+        // The proxy now forwards an upstream refusal as a frame instead of just
+        // closing — without this the page retries forever and never learns why.
+        if (d.streamError) {
+          priceFeed.sse = 'refused';
+          priceFeed.lastErr = `price stream refused: ${d.streamError}`;
+          try { renderHeader(); } catch (e) {}
+          return;
+        }
         if (d.price == null || !d.instrument) return;
         _todaySseDelay = 3000;
         // Stamped on ARRIVAL. Stamping only when the price differs would make a quiet
         // market read as a dead feed, which is the confusion this exists to remove.
         lastPriceAt = Date.now(); lastPriceSrc = 'stream';
-        invalidateRows();
+        priceFeed.sse = 'open'; priceFeed.lastErr = null;
         if (!livePrices) livePrices = {};
         livePrices[d.instrument] = { price: d.price };
         updateAtlasDistances(d.instrument, d.price);
@@ -4106,6 +4135,11 @@ function _openTodaySse(syms) {
           if (inst.sym !== d.instrument) continue;
           if (inst.current_price !== d.price) { inst.current_price = d.price; changed = true; }
         }
+        // Invalidate AFTER the mutation, not before. Bumping the epoch first leaves a
+        // window in which anything calling allRows() re-caches the OLD price under the
+        // NEW epoch — after which render() serves that stale cache and the board sits
+        // frozen while data is still arriving. Same reason the poll below does it last.
+        invalidateRows();
         const now = Date.now();
         if (changed && now - _lastSseRender >= TODAY_SSE_RENDER_MS) {
           _lastSseRender = now;
@@ -4114,6 +4148,11 @@ function _openTodaySse(syms) {
       } catch (e) {}
     };
     src.onerror = () => {
+      // Only downgrade to 'error' if we were never actually refused — a refusal
+      // carries a real reason and must not be overwritten by the generic close that
+      // always follows it.
+      if (priceFeed.sse !== 'refused') priceFeed.sse = 'error';
+      try { renderHeader(); } catch (e) {}
       try { src.close(); } catch (e) {}
       if (_todaySse !== src) return;
       _todaySse = null;
@@ -4148,10 +4187,32 @@ function marketIsOpen() {
   if (day === 5) return h < 22;                     // Friday: NY closes ~22:00 London
   return true;
 }
+// How old the SERVER's snapshot price is — the number the cards actually display when
+// no live tick has arrived. This is the honest answer to "what am I looking at": the
+// brief carries a real price, fetched server-side when it was built, and the page has
+// always rendered it identically to a streaming one.
+function briefPriceAgeS() {
+  const t = Date.parse(session?.fetched_at ?? brief?.computed_at ?? '');
+  return Number.isFinite(t) ? Math.round((Date.now() - t) / 1000) : null;
+}
+// state: 'live' | 'snapshot' | 'none'
 function priceFreshness() {
-  if (!lastPriceAt) return null;
+  const snapAgeS = briefPriceAgeS();
+  const havePrices = Object.values(brief?.instruments ?? {}).some(d => d?.current_price != null);
+  if (!lastPriceAt) {
+    return {
+      state: havePrices ? 'snapshot' : 'none', ageS: null, snapAgeS, src: null,
+      // A snapshot is only a FAULT once it is old enough to mislead during market hours.
+      stale: marketIsOpen() && (!havePrices || (snapAgeS != null && snapAgeS > PRICE_STALE_MS / 1000)),
+      why: priceFeed.lastErr
+        ?? (priceFeed.sse === 'refused' ? 'the price stream was refused upstream' : null)
+        ?? (priceFeed.sse === 'error' ? 'the price stream could not connect' : null)
+        ?? (priceFeed.tries === 0 ? 'no price request has completed yet' : null),
+    };
+  }
   const ageS = Math.round((Date.now() - lastPriceAt) / 1000);
-  return { ageS, src: lastPriceSrc, stale: marketIsOpen() && (Date.now() - lastPriceAt) > PRICE_STALE_MS };
+  return { state: 'live', ageS, snapAgeS, src: lastPriceSrc,
+           stale: marketIsOpen() && (Date.now() - lastPriceAt) > PRICE_STALE_MS, why: null };
 }
 
 // ── Execution cost — the live dealing spread, and what it eats ───────────────
@@ -4755,8 +4816,9 @@ function _buildRows() {
       const used  = (s?.hl != null && hlMed) ? s.hl / hlMed : null;   // fraction of median H-L consumed
       const trending = d.regime?.label === 'TREND';
       const near = nearestLevel(d);
-      // ⚑ says "price is AT a level right now — this is a decision moment". On a frozen
-      // feed that claim is about where price WAS, which is worse than saying nothing.
+      // ⚑ says "price is AT a level right now — this is a decision moment". Against a
+      // frozen feed OR an ageing server snapshot that claim is about where price WAS,
+      // which is worse than saying nothing.
       const isProx = !priceStale && near != null && near.pips <= (PROX_LIMIT[d.ac] ?? 12);
       const agr = agreement({ d, s });
       const ct = cotFor(name);
@@ -4824,15 +4886,30 @@ function renderHeader() {
   // The PRICE feed's own age, separate from the session endpoint's fetch time — which
   // keeps ticking from a different source whether or not prices are still arriving.
   const pf = priceFreshness();
-  if (pf) stamps.push(pf.stale ? `⚠ price feed ${pf.ageS}s old` : `price ${pf.ageS < 5 ? 'live' : pf.ageS + 's'}`);
-  else stamps.push('⚠ no live price yet');
+  const ageTxt = n => n == null ? 'unknown age' : n < 90 ? `${n}s` : n < 5400 ? `${Math.round(n / 60)}m` : `${(n / 3600).toFixed(1)}h`;
+  if (pf.state === 'live') {
+    stamps.push(pf.stale ? `⚠ price feed ${ageTxt(pf.ageS)} old` : `price ${pf.ageS < 5 ? 'live' : ageTxt(pf.ageS)} (${pf.src})`);
+  } else if (pf.state === 'snapshot') {
+    // The cards ARE showing prices — they are just the server's snapshot, not a live
+    // feed. Saying "no live price" while numbers sit on every card reads as a bug.
+    stamps.push(`${pf.stale ? '⚠ ' : ''}prices from brief snapshot, ${ageTxt(pf.snapAgeS)} old — no live feed`);
+  } else {
+    stamps.push('⚠ no price data at all');
+  }
   if (brief.has_hit_rates && brief.hit_rates_age) stamps.push(`hit-rates ${new Date(brief.hit_rates_age).toLocaleDateString()}`);
   // Carried-forward instruments (their data source was down at forecast time)
   const nStale = Object.values(brief.instruments ?? {}).filter(d => d?.stale).length;
   if (nStale) stamps.push(`⟳ ${nStale} instrument${nStale === 1 ? '' : 's'} on a carried forecast`);
   const hs = $('hdrStamp');
   hs.textContent = stamps.join(' · ');
-  hs.classList.toggle('stamp-stale', !!(pf?.stale) || !pf);
+  hs.classList.toggle('stamp-stale', !!pf.stale);
+  hs.title = pf.state === 'live'
+    ? `Live prices are arriving via the ${pf.src === 'stream' ? 'streaming connection' : '30-second poll'}; last tick ${ageTxt(pf.ageS)} ago.`
+    : pf.state === 'snapshot'
+      ? `The prices on the cards are REAL but they are the server's snapshot from when the brief was built — not a live feed, so they are not updating.`
+        + `${pf.why ? ` Reason the live feed is quiet: ${pf.why}.` : ''}`
+        + ` Level distances, range-used and the ⚑ at-a-level flag are all measured against that snapshot, so treat them as of ${ageTxt(pf.snapAgeS)} ago.`
+      : 'No instrument on the board has a price at all — the brief itself has not loaded prices.';
 }
 
 function renderSummary() {
@@ -5665,6 +5742,9 @@ function renderSidebar() {
 }
 
 function render() {
+  // renderHeader was only reached on the 60s interval, so the price badge could sit a
+  // full minute behind the very feed it reports on. It is cheap; run it with the rest.
+  try { if (brief) renderHeader(); } catch (e) {}
   renderStatRow();
   renderMarketRead();
   renderOutlookPanel();

@@ -12709,7 +12709,23 @@ app.get('/api/oanda_stream', async (req, res) => {
 
   const request  = new Request(`http://localhost${req.originalUrl}`, { method: 'GET' });
   const response = await worker.fetch(request, cfEnv, {});
-  if (!response.ok || !response.body) { res.end(); return; }
+  if (!response.ok || !response.body) {
+    // This used to be a bare res.end(). Because flushHeaders() has already sent a 200,
+    // the browser's EventSource believes it CONNECTED and then saw the stream close —
+    // so it retries forever with backoff and the page can never learn that OANDA
+    // refused, or why. Every upstream failure was therefore indistinguishable from a
+    // quiet market. Forward the reason as one SSE frame before hanging up.
+    let why = `upstream ${response.status}`;
+    try {
+      const body = await response.text();
+      const j = JSON.parse(body);
+      if (j?.error) why = j.error;
+      else if (body) why = body.slice(0, 200);
+    } catch { /* non-JSON body — the status alone is still better than silence */ }
+    try { res.write(`data: ${JSON.stringify({ streamError: why, status: response.status })}\n\n`); } catch {}
+    res.end();
+    return;
+  }
 
   const reader  = response.body.getReader();
   const cleanup = () => reader.cancel().catch(() => {});
