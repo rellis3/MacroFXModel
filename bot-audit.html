@@ -395,7 +395,19 @@ function renderBacktestPanel() {
     // permanent fact about our plumbing and nothing to chase; "unavailable" is a
     // fault that can be fixed, and saying "not wired" for it sends the reader
     // looking for the wrong problem entirely.
-    const body = BT?.wired
+    const body = BT?.scaleImplausible
+      ? `<b>Reference rejected for ${esc(botLabel)} — its own numbers aren't believable.</b>
+         The backtest builds fine (config: ${esc(BT.configLabel || 'production')}) but reports
+         <b>Sharpe ${BT.refSharpe ?? '?'}</b>, <b>CAGR ${BT.refCagr != null ? BT.refCagr.toLocaleString('en-GB') + '%' : '?'}</b>,
+         median day <b>${BT.medianDaily >= 0 ? '+' : ''}${BT.medianDaily}%</b>.
+         <br><br>Laying a real book against a reference orders of magnitude above it pins live to the zero line and reports
+         P0 forever — which would look like a finding about the bot and is actually a finding about the reference. So the
+         overlay refuses, on the same rule that keeps unverified backtests off this page.
+         <br><br><b>What still works against this backtest:</b> everything scale-free — trade counts per day, win rate, exit
+         mix, hold time, MFE/MAE in pips. Those don't inflate, which is exactly why the Fib Atlas
+         frequency card on bot-config already uses this same backtest for daily trade counts and is trustworthy.
+         The equity comparison needs a reference whose absolute level survives inspection.`
+      : BT?.wired
       ? `<b>Backtest unavailable for ${esc(botLabel)}.</b> ${esc(BT?.reason || BT?.error || 'The build returned nothing.')}
          <br><br>This bot IS wired to a backtest — the fetch or the build failed, so it is worth retrying. A 404 usually means
          the stored vote-trade blobs are unreachable (no R2 credentials on this host, or a cold cache).`

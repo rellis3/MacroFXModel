@@ -64,6 +64,19 @@ export function mountBotAuditRoutes(app, express, { fibAtlasPairs = [], buildFib
       // Production config, resolved from the live path's own frozen constants.
       // `throttleOn`/`maxHeatPct` mirror the hedge-only concurrency the
       // reference in js/bot-config.js was computed under.
+      // The frozen "best config" — asia-fib-atlas-vote-portfolio.html's
+      // loadBestConfigBtn, which is the authority on what production runs.
+      //
+      // `perDirection: true` and `riskPct: 0.5` are NOT optional detail. The
+      // pair maxConcurrent=1 + perDirection=true is what that page calls
+      // "hedge-only": a genuine hedge may open opposite an existing position,
+      // but same-direction pyramiding is blocked. With perDirection left false
+      // (the parameter's own default) two adjacent rungs touched minutes apart
+      // in ONE continuation both survive the cap and both get chandelier-
+      // extended to the SAME move — 27.1% of total win PnL on a live pull was
+      // exactly those duplicates (LEGO_MODULES.md, 2026-08-31 correction).
+      // Heat cap and drawdown throttle stay OFF: re-tested on both ladders and
+      // found not to improve OOS drawdown at any setting.
       const config = {
         pairs: fibAtlasPairs,
         ladders: ['asia', 'monday'],
@@ -73,7 +86,8 @@ export function mountBotAuditRoutes(app, express, { fibAtlasPairs = [], buildFib
         maxGapMin: FIB_ATLAS_MAX_GAP_MIN,
         continuationExit: 'chandelier',
         maxConcurrent: 1,
-        riskPct: 1,
+        perDirection: true,
+        riskPct: 0.5,
         targetVol: 10,
       };
 
@@ -96,6 +110,43 @@ export function mountBotAuditRoutes(app, express, { fibAtlasPairs = [], buildFib
 
       if (daily.length < 30) {
         return res.json({ ok: true, bot, available: false, wired: true, reason: `Backtest returned only ${daily.length} days — too few to overlay.` });
+      }
+
+      // ── Scale-plausibility guard ────────────────────────────────────────────
+      // An equity overlay is only meaningful if the reference's ABSOLUTE level
+      // can be trusted, and this one's cannot: the Fib Atlas vote portfolio
+      // reports Sharpe ~18 and a median day of +2.5%, and the page that owns the
+      // config says so itself — "absolute Sharpe/PF/CAGR figures behind this are
+      // still almost certainly inflated versus real live expectancy, trust the
+      // DIRECTION not the specific numbers" (asia-fib-atlas-vote-portfolio.html,
+      // loadBestConfigBtn).
+      //
+      // Laying a real book against a reference three orders of magnitude above
+      // it pins live to the zero line and reports P0 forever. That is not a
+      // finding about the bot, it is a finding about the reference — and a chart
+      // that presents it as the former is worse than no chart, which is the same
+      // rule (LIVE_BACKTEST_ALIGNMENT.md T2) that keeps unverified backtests off
+      // this page in the first place. It applies to our own numbers too.
+      //
+      // Kept as a THRESHOLD rather than a hardcoded exclusion so it also catches
+      // the next reference someone wires up. Behavioural comparisons (trade
+      // counts, win rate, exit mix, hold time) are immune to this and stay valid
+      // — see FA_DAILY_TRADE_REFERENCE in js/bot-config.js, which uses this very
+      // backtest for daily trade COUNTS precisely because counts don't inflate.
+      const sorted = daily.map(d => d.ret).sort((a, b) => a - b);
+      const medianDaily = sorted[Math.floor(sorted.length / 2)];
+      const refSharpe = Number(built.stats?.sharpe);
+      const IMPLAUSIBLE_SHARPE = 5;      // no real book sustains this
+      const IMPLAUSIBLE_MEDIAN = 1.0;    // percent, per day
+      if (Math.abs(medianDaily) > IMPLAUSIBLE_MEDIAN || (Number.isFinite(refSharpe) && refSharpe > IMPLAUSIBLE_SHARPE)) {
+        return res.json({
+          ok: true, bot, available: false, wired: true, scaleImplausible: true,
+          refSharpe: Number.isFinite(refSharpe) ? +refSharpe.toFixed(2) : null,
+          medianDaily: +medianDaily.toFixed(3),
+          refCagr: Number.isFinite(Number(built.stats?.cagr)) ? +Number(built.stats.cagr).toFixed(0) : null,
+          configLabel: `${config.pairs.length} pairs · both ladders · margin≥${config.minMargin} · hedge-only · ${config.riskPct}% risk`,
+          reason: `The reference backtest's own headline is not physically plausible — Sharpe ${Number.isFinite(refSharpe) ? refSharpe.toFixed(1) : '?'}, median day ${medianDaily >= 0 ? '+' : ''}${medianDaily.toFixed(2)}%. Its absolute level cannot anchor a live comparison.`,
+        });
       }
 
       res.json({
