@@ -6039,15 +6039,58 @@ app.get('/api/ppi/refresh-status', async (_req, res) => {
   const raw = await kv.get(_PPI_KV).catch(() => null);
   res.json({ ok: true, running: _ppiRunning, last: raw ? JSON.parse(raw) : null });
 });
-let _ppiLastRun = null;
-setInterval(() => {
+// PPI refresh — "once per calendar day" systematically MISSED THE RELEASE.
+//
+// The old guard was `if (_ppiLastRun === today) return`. On a server that has been up
+// since overnight, the single daily fetch happens in the early hours — hours BEFORE
+// BLS publishes at 08:30 ET — and then the guard blocks every further attempt until
+// tomorrow. So on the one day a month the number actually changes, the page showed the
+// previous month's print all day. Observed 2026-09-10: the August print landed at
+// 13:30 UK and the page still read 2026-07-01; it only refreshed at 14:40 because an
+// unrelated deploy restarted the process and reset the flag. That is luck, not design.
+//
+// Now: keep polling until the DATA ITSELF advances, then back off. The stored latest
+// observation date is the state that matters, not a wall-clock "did we run today".
+let _ppiLastObs = null;      // newest observation date we have actually seen
+let _ppiLastPoll = 0;
+async function _ppiTick() {
   if (!process.env.FRED_KEY || _ppiRunning) return;
-  const today = new Date().toISOString().slice(0, 10);
-  if (_ppiLastRun === today) return;
-  _ppiLastRun = today;
+  const now = Date.now();
+  // Seed from KV on first tick after a restart so a redeploy does not forget what it
+  // already had and re-poll aggressively for a month.
+  if (_ppiLastObs === null) {
+    try {
+      const raw = await kv.get(_PPI_KV);
+      _ppiLastObs = raw ? (JSON.parse(raw)?.byCcy?.USD?.headline?.latestDate ?? null) : null;
+    } catch { _ppiLastObs = null; }
+  }
+  // How overdue is the print? PPI is monthly and lands mid-month for the prior month,
+  // so anything past ~40 days means the next release is due or already out.
+  const obsMs = _ppiLastObs ? Date.parse(_ppiLastObs + 'T00:00:00Z') : NaN;
+  const ageDays = Number.isFinite(obsMs) ? (now - obsMs) / 864e5 : Infinity;
+  // 35 days, not 40: PPI for month M lands mid-M+1, so from ~day 35 the next print
+  // could be out at any time and it is worth looking. This is the POLLING threshold —
+  // deliberately eager, and deliberately NOT the same number as the warning the page
+  // shows the reader, because "worth checking" and "something is wrong" are different
+  // claims. A 40-day-old print on the 10th of the month is entirely normal.
+  const chasing = ageDays > 35;
+  const interval = chasing ? 20 * 60_000 : 6 * 3600_000;
+  if (now - _ppiLastPoll < interval) return;
+  _ppiLastPoll = now;
   _ppiRunning = true;
-  _buildPpiScores().catch(() => {}).finally(() => { _ppiRunning = false; });
-}, 20 * 60_000);
+  try {
+    await _buildPpiScores();
+    const raw = await kv.get(_PPI_KV).catch(() => null);
+    const obs = raw ? (JSON.parse(raw)?.byCcy?.USD?.headline?.latestDate ?? null) : null;
+    if (obs && obs !== _ppiLastObs) {
+      console.log(`[ppi] new print landed: ${_ppiLastObs ?? 'none'} -> ${obs}`);
+      _ppiLastObs = obs;
+    }
+  } catch (e) { console.warn('[ppi] refresh failed:', e.message); }
+  finally { _ppiRunning = false; }
+}
+setInterval(() => { _ppiTick().catch(() => {}); }, 10 * 60_000);
+setTimeout(() => { _ppiTick().catch(() => {}); }, 45_000);
 
 // ── Yield Curve Engine (see js/yieldCurveEngine.js) ─────────────────────────
 // Entirely derived — no new data source, both legs are series already

@@ -83,7 +83,7 @@
   <div class="card">
     <h2>USD pipeline pressure read</h2>
     <div id="body" class="empty">Loading…</div>
-    <div class="note">USD-only, deliberately: PPIFIS (BLS's headline PPI print) and PPIFES (core, ex food &amp; energy) are real, live, monthly index levels on FRED. Every non-US OECD PPI series checked was confirmed real but frozen — no new observations since roughly December 2022 — even though the national statistical offices themselves are still publishing PPI live through 2026. Building the other 7 currencies against those stale IDs would silently present 3+-year-old data as current, so this stays USD-only until a live source is found. PPI leads CPI: it captures pipeline/input cost pressure before it passes through to consumer prices, so a PPI acceleration with CPI still calm is an early-warning signal. "Trend" z-scores the latest YoY print against its own trailing history. Refreshes automatically once/day; source is FRED (needs FRED_KEY on the server).</div>
+    <div class="note">USD-only, deliberately: PPIFIS (BLS's headline PPI print) and PPIFES (core, ex food &amp; energy) are real, live, monthly index levels on FRED. Every non-US OECD PPI series checked was confirmed real but frozen — no new observations since roughly December 2022 — even though the national statistical offices themselves are still publishing PPI live through 2026. Building the other 7 currencies against those stale IDs would silently present 3+-year-old data as current, so this stays USD-only until a live source is found. PPI leads CPI: it captures pipeline/input cost pressure before it passes through to consumer prices, so a PPI acceleration with CPI still calm is an early-warning signal. "Trend" z-scores the latest YoY print against its own trailing history. Refresh policy: polls every 20 minutes while a new print is overdue (more than ~40 days since the last observation) and every 6 hours otherwise, stopping as soon as the observation date advances — a fixed once-a-day schedule used to fire in the early hours and therefore miss the 08:30 ET release entirely, showing the previous month all day. Source is FRED (needs FRED_KEY on the server); note the date on the print itself, not the "checked" time, is what tells you how current this is.</div>
   </div>
 </div>
 
@@ -124,7 +124,27 @@ async function load() {
     $('body').innerHTML = `<div class="empty">${esc(r.error || 'No data yet')} — click Refresh (needs FRED_KEY configured on the server).</div>`;
     return;
   }
-  $('lastCheck').textContent = `Generated ${new Date(r.generatedAt).toLocaleString()}`;
+  // "Generated" is when we last ASKED FRED — it says nothing about how old the number
+  // is. A reader glancing at a fresh-looking timestamp above a two-month-old print is
+  // being told the opposite of the truth, so the DATA age leads and the fetch time
+  // follows. PPI is monthly and lands mid-month for the prior month, so a print older
+  // than ~40 days means the next one is due or already out and we have not got it.
+  const obs = r?.byCcy?.USD?.headline?.latestDate ?? null;
+  const obsMs = obs ? Date.parse(obs + 'T00:00:00Z') : NaN;
+  const ageDays = Number.isFinite(obsMs) ? Math.floor((Date.now() - obsMs) / 864e5) : null;
+  // 62 days = a full print missing. PPI for month M publishes mid-M+1, so a gap of
+  // 40-ish days is the normal state for most of a month and warning on it would cry
+  // wolf roughly half the time. Only flag when we are genuinely a release behind.
+  const overdue = ageDays != null && ageDays > 62;
+  const el = $('lastCheck');
+  el.innerHTML = (ageDays != null
+      ? `<b${overdue ? ' style="color:#f59e0b"' : ''}>${overdue ? '⚠ ' : ''}Data: ${obs} (${ageDays}d old)</b> · `
+      : '')
+    + `checked ${new Date(r.generatedAt).toLocaleString()}`;
+  el.title = ageDays == null ? ''
+    : overdue
+      ? `The newest PPI observation on FRED is for ${obs}, ${ageDays} days ago — that is a full release behind. PPI is monthly and publishes mid-month for the PRIOR month, so a gap this size means a print has landed that we do not have. The server polls every 20 minutes once a new one is plausibly due, and stops as soon as the observation date advances. "Checked" is only when we last asked FRED — it is not how current the number is.`
+      : `Newest PPI observation is for ${obs}, ${ageDays} days ago — normal for a monthly series. "Checked" is when we last asked FRED, not how current the number is.`;
   $('body').innerHTML = r.byCcy?.USD ? `<div class="grid">${renderCcy('USD', r.byCcy.USD)}</div>` : `<div class="empty">No USD data yet — click Refresh.</div>`;
 }
 
