@@ -1,4 +1,4 @@
-# EUR/USD Options Positioning — Research Book (v1.4)
+# EUR/USD Options Positioning — Research Book (v1.5)
 
 **Data:** CME EUR/USD FX options, R2 `OI Data/EUR_USD.csv` (Databento-style
 per-strike daily export), 2020‑09‑04 → 2026‑09‑04, joined to
@@ -11,7 +11,8 @@ Re-run `scripts/00_audit.py` → `01_build_daily_dataset.py` →
 `04_predictive_ic.py` → `05_intraday_validation.py` →
 `06_intraday_cluster_significance.py` → `07_export_bot_chain.py` →
 `08_bot_backtest_zones.mjs` → `09_bot_backtest_execute.py` →
-`10_real_maxpain_test.py` in order to reproduce every table (see `README.md`).
+`10_real_maxpain_test.py` → `11_feature_discovery.py` in order to reproduce
+every table (see `README.md`).
 
 **v1.1 change:** added Part 9b, an intraday validation pass using real R2
 minute candles instead of daily OHLC. It fixes a same-day lookahead wrinkle
@@ -56,6 +57,19 @@ attempt gave a nonsensical result and was itself the reason to check with a
 better method rather than report it). Also states plainly what `settlement`
 and `volume` currently do in this pipeline: loaded, audited — and used in
 zero calculations.
+
+**v1.5 change:** adds Part 14, a scoped feature-discovery pass ahead of
+building the break-vs-reject classifier (the queued next step). Volume/OI
+quadrant and prior momentum came back clean nulls. A session effect that
+looked real (p=0.005) turned out to be a volatility confound — Asia's high
+reject rate was because Asia touches are disproportionately low-volatility,
+not because Asia behaves differently — caught the same way Part 7's pinning
+confound was caught, by controlling for the thing that could explain it away
+before trusting the headline number. That confound-hunt surfaced a real
+feature that wasn't even a candidate before: pre-touch (causal) volatility
+itself predicts the outcome (r=−0.093, p=0.007 at 15min). A separate ΔOI
+extremity feature passed one confound check and is flagged for the
+classifier; its tail bucket didn't and is flagged as not yet trustworthy.
 
 **Scope of this v1.** The brief that motivated this book listed 36 research
 sections and 18 closing questions. Doing all 36 with genuine statistical care
@@ -888,6 +902,83 @@ by anyone who wants to re-check it.)
 
 ---
 
+## Part 14 — Feature discovery for the break-vs-reject classifier
+
+Before building an actual classifier on the ~800 validated touch events
+(the next queued step after this book), a scoped set of candidate features
+was tested — not the full 165-question conditional-analysis programme this
+could theoretically expand into, but the handful directly load-bearing for
+picking real features over guessed ones. Two are null, one looked real and
+wasn't, and one real feature came out of debunking it.
+
+**`11_feature_discovery.py`, run on the 843 touch events from Part 9b/12,
+enriched with `surface_near.parquet` (volume/OI-change at the touched
+strike) and real M1 data (session, momentum, and a genuinely causal
+pre-touch volatility measure — strictly the 60 minutes *before* each touch,
+never its own outcome window).**
+
+**Null, dropped:**
+- **Volume/OI quadrant** (high/low volume × rising/falling OI at the touched
+  strike) — p=0.97 at 15min, p=0.89 at 60min. All four quadrants reject
+  ~59–67% regardless. Closes the audit's flagged gap (`volume` had never
+  been used anywhere in this book) with an honest answer: no signal from
+  this framing.
+- **Prior momentum** (60/240min return before the touch) — clean null as a
+  standalone predictor (r=0.001–0.044, all p>0.2, both horizons). Confirms
+  the wall-touch effect isn't secretly a repackaged momentum signal.
+
+**Looked real, wasn't — a debunked confound, same shape as Part 7's pinning
+trap:** Session split at 15min looked genuine (Asia 77.2% reject vs. NY
+60.6%, p=0.0046). But stratifying by a **causal pre-touch volatility
+tercile** (computed strictly from the 60 minutes before each touch, never
+looking into the outcome) shows why: 84% of Asia touches (77 of 92) fall in
+the lowest-volatility tercile, and *within* each vol tercile Asia's reject
+rate is not consistently higher than London/NY at all (33–82%, no
+pattern). **Asia doesn't have special wall behaviour — Asia is just quiet,
+and quiet markets mechanically "stay on the same side" more often,
+regardless of walls.** Session is dropped as a feature.
+
+**The real feature this confound-hunt surfaced:** pre-touch volatility
+itself predicts the outcome — lower vol before a touch → higher reject rate
+(r=−0.093, p=0.007 at 15min; low/mid/high vol terciles: 71.6% / 66.2% /
+58.7% reject). Null at 60min (p=0.38), consistent with everything else in
+this book decaying by that horizon. **This wasn't on the original candidate
+list — it's what was actually driving the session result.** Goes into the
+classifier.
+
+**Promising, flagged as thin, not yet trusted:** ΔOI percentile at the
+touched strike shows a real-looking non-monotonic pattern (below-p75:
+64.5%/57.1% reject at 15/60min; p75–p90: jumps to 75.4%/71.1%; above-p90:
+drops back to 58.3%/59.5%), significant at both horizons (p=0.024, p=0.017).
+The p75–p90 "moderate elevation" bump **survives stratification by vol
+tercile** (elevated in all three: 77.8% vs. 72.4% low-vol, 83.0% vs. 63.2%
+mid-vol, 64.1% vs. 56.9% high-vol) — a real first confound check passed.
+But the above-p90 bucket is thin (n=84 total, split unevenly 10 call/74 put)
+and its "drops back down" reading doesn't replicate consistently once
+vol-stratified (42.9% low-vol, 60.0% mid-vol, 62.5% high-vol — no clean
+pattern). **Verdict: the p75–p90 elevation is a legitimate candidate
+feature; the above-p90 reversal is not yet reliable enough to act on** —
+needs a bigger sample (multi-pair pooling, queued roadmap item 3) before
+trusting the tail.
+
+**Explicitly not done, not skipped silently:** DTE-conditional touch
+behaviour (does the effect vary by proximity to expiry?) needs the DTE of
+the specific touched wall's own expiry, which isn't in any committed/local
+file — only the near-dated *aggregate* surface (mixing up to 2 expiries) is
+available without re-running `01_build_daily_dataset.py` against the raw R2
+CSV. Queued for whenever R2 access is available again. Also explicitly
+**not** run: a calendar/day-of-week/week-of-month/month sweep — a real
+multiple-testing trap (many buckets, low prior, easy to find noise) that
+isn't needed to build the classifier.
+
+**Feature set going into the classifier:** pre-touch volatility (validated)
++ ΔOI percentile, p75–p90 tier only (passed one confound check, flagged as
+needing more data) + the wall side (call/put, already known to differ) +
+horizon (≤60min only — the effect is gone by 240min throughout this book).
+Session and volume/OI quadrant are excluded, not omitted by oversight.
+
+---
+
 ## Appendix — reproduction
 
 ```
@@ -902,6 +993,7 @@ python3 oi_research_book/scripts/07_export_bot_chain.py      # depends on 01's c
 node    oi_research_book/scripts/08_bot_backtest_zones.mjs   # calls the REAL js/oi.js + js/oiZones.js
 python3 oi_research_book/scripts/09_bot_backtest_execute.py  # needs m1/eurusd_m1.parquet again
 python3 oi_research_book/scripts/10_real_maxpain_test.py     # depends on 01's surface_near.parquet
+python3 oi_research_book/scripts/11_feature_discovery.py     # depends on 05's touch events + surface_near.parquet + m1/eurusd_m1.parquet
 ```
 
 Raw R2 inputs (`OI Data/EUR_USD.csv`, ~227MB; `m1/eurusd_d1.parquet`, ~175KB;

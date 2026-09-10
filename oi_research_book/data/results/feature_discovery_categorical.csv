@@ -1,0 +1,7 @@
+check,horizon_min,p_chi2,n_total,reject_pct[high_vol_falling_oi],reject_pct[high_vol_rising_oi],reject_pct[low_vol_falling_oi],reject_pct[low_vol_rising_oi],n[high_vol_falling_oi],n[high_vol_rising_oi],n[low_vol_falling_oi],n[low_vol_rising_oi],reject_pct[below_p75],reject_pct[p75_p90],reject_pct[above_p90],n[below_p75],n[p75_p90],n[above_p90],reject_pct[asia],reject_pct[london],reject_pct[ny],n[asia],n[london],n[ny]
+volume_oi_quadrant,15,0.967769763222533,837,65.15151515151516,65.15837104072398,67.03296703296702,64.83050847457628,198.0,221.0,182.0,236.0,,,,,,,,,,,,
+volume_oi_quadrant,60,0.892717627957741,828,61.02564102564103,59.44700460829493,57.14285714285714,59.82905982905983,195.0,217.0,182.0,234.0,,,,,,,,,,,,
+oi_chg_percentile,15,0.023674214364355295,837,,,,,,,,,64.50079239302694,75.40983606557377,58.333333333333336,631.0,122.0,84.0,,,,,,
+oi_chg_percentile,60,0.01694149332133878,828,,,,,,,,,57.14285714285714,71.07438016528926,59.523809523809526,623.0,121.0,84.0,,,,,,
+session,15,0.00457033492091491,837,,,,,,,,,,,,,,,77.17391304347827,68.02325581395348,60.59850374064838,92.0,344.0,401.0
+session,60,0.25272921067665965,828,,,,,,,,,,,,,,,67.3913043478261,58.720930232558146,58.16326530612245,92.0,344.0,392.0

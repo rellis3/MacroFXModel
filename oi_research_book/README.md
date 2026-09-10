@@ -62,6 +62,13 @@ alongside the one real positive finding.
   calculated max pain (a genuinely different number, using the exact formula
   `js/oi.js`'s production `oiCalcMaxPain` uses, cross-checked against it
   first). See `RESEARCH_BOOK.md` Part 7b / Part 13.
+- `scripts/11_feature_discovery.py` — scoped feature-discovery pass ahead of
+  the break-vs-reject classifier: volume/OI quadrant and momentum came back
+  null; a session effect that looked real turned out to be a volatility
+  confound (Asia touches are disproportionately low-vol, not specially
+  behaved) — caught the same way as Part 7's pinning confound, and the
+  confound-hunt surfaced a real feature (pre-touch causal volatility) that
+  wasn't even a candidate before. See `RESEARCH_BOOK.md` Part 14.
 - `data/results/*.csv` — every numeric table cited in `RESEARCH_BOOK.md`,
   small and committed, one file per test.
 
@@ -103,6 +110,7 @@ python3 oi_research_book/scripts/07_export_bot_chain.py     # depends on 01's co
 node    oi_research_book/scripts/08_bot_backtest_zones.mjs  # calls the real js/oi.js + js/oiZones.js — needs Node, run from the repo root
 python3 oi_research_book/scripts/09_bot_backtest_execute.py # needs m1/eurusd_m1.parquet again
 python3 oi_research_book/scripts/10_real_maxpain_test.py    # depends on 01's surface_near.parquet
+python3 oi_research_book/scripts/11_feature_discovery.py    # depends on 05's touch events + surface_near.parquet + m1/eurusd_m1.parquet
 ```
 
 Total run time is under two minutes; the raw CSV/cache are gitignored
