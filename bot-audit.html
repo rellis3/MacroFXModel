@@ -93,6 +93,19 @@
   .heat td.na { color:var(--dim2); background:var(--panel2); }
   .heat th { text-align:center; }
 
+  /* ── distributions tab ── */
+  .dstwrap { display:grid; grid-template-columns:minmax(220px,1fr) minmax(360px,2.2fr) minmax(150px,.7fr); gap:14px; align-items:start; }
+  @media (max-width:1100px) { .dstwrap { grid-template-columns:1fr; } }
+  .dstlist .mgrp { color:var(--dim2); font-size:9.5px; letter-spacing:.08em; font-family:var(--mono);
+                   padding:10px 12px 4px; text-transform:uppercase; }
+  .mrow { display:flex; justify-content:space-between; gap:10px; padding:3px 12px; font-size:11.5px;
+          font-family:var(--mono); cursor:pointer; border-left:2px solid transparent; }
+  .mrow:hover { background:var(--panel2); }
+  .mrow.on { background:var(--panel2); border-left-color:var(--accent); color:var(--fg); }
+  .mrow.off { cursor:default; color:var(--dim2); }
+  .mrow.off:hover { background:none; }
+  .dstpct table td { padding:2px 4px; border:none; font-size:11.5px; }
+
   /* ── notes ── */
   .note { background:var(--panel2); border:1px solid var(--line);
           border-left:3px solid var(--accent); border-radius:6px;
@@ -160,6 +173,7 @@ import {
   monthlyReturns, rollingReturn, groupBy, excursions, exitMix, summarize,
   botsMissingCommission, bootstrapNote, MIN_N_RATIOS,
   cumFromDaily, liveGrowthPct, growthCone, conePercentile, clipDaily,
+  distributions, DIST_METRICS, METRIC_READING,
 } from './js/botAuditEngine.js';
 
 const BOTS = window.POS_BOTS || [];
@@ -547,6 +561,10 @@ function renderOvw(S, C, G) {
     b ? tile('Max Drawdown', `<span class="neg">${pct(b.maxDDPct)}</span>`, `${money(f.maxDDAbs)} peak-to-trough`)
       : tile('Max Drawdown', `<span class="neg">${money(f.maxDDAbs)}</span>`, 'set Capital for %'),
     b ? tile('Calmar', num(b.calmar), 'CAGR ÷ |maxDD|', thin) : tile('Calmar', '—', 'needs Capital', lock),
+    b ? tile('Return / Year', `<span class="${cls(b.cagr)}">${pct(b.cagr)}</span>`, 'annualised, compounded', thin)
+      : tile('Return / Year', '—', 'needs Capital', lock),
+    b ? tile('Volatility (ann)', pct(b.volAnn), 'daily sd × √252', thin)
+      : tile('Volatility (ann)', '—', 'needs Capital', lock),
     tile('Win Rate', (f.winRate * 100).toFixed(1) + '%', `${Math.round(f.winRate * f.trades)}W / ${f.trades - Math.round(f.winRate * f.trades)}L`, thin),
     tile('Profit Factor', num(f.profitFactor), `payoff ${num(f.payoff)}`, thin),
     b ? tile('Time in DD', b.timeInDDPct.toFixed(1) + '%', `${f.tradingDays} calendar days`) : tile('Time in DD', '—', 'needs Capital', lock),
@@ -634,39 +652,107 @@ function renderSys(C, G) {
     }).join('') + `</tbody></table></div></div>`;
 }
 
+let DST_METRIC = 'sharpe';
+window.setDstMetric = k => { DST_METRIC = k; renderDst(_LAST_S); };
+let _LAST_S = null;
+
 function renderDst(S) {
+  _LAST_S = S;
   const el = $('dst');
-  if (!S.n) { el.innerHTML = `<div class="empty">No trades.</div>`; return; }
-  const b = S.bootstrap;
-  const rank = (arr, v) => arr.length ? Math.round(arr.filter(x => x < v).length / arr.length * 100) : null;
+  if (!S || !S.n) { el.innerHTML = `<div class="empty">No trades.</div>`; return; }
+
+  const D = distributions(TRADES, { capital: cap(), gross: GROSS, runs: 800 });
+  if (!D) { el.innerHTML = `<div class="empty">No trades.</div>`; return; }
+
+  // Fall back to a metric that actually resolved — with no capital declared the
+  // scale-bound ones are withheld, and landing on a blank panel would look like
+  // a bug rather than the deliberate refusal it is.
+  let sel = DST_METRIC;
+  if (!D.metrics[sel]?.available) sel = DIST_METRICS.find(m => D.metrics[m.key]?.available)?.key || 'sharpe';
+  const meta = DIST_METRICS.find(m => m.key === sel);
+  const x = D.metrics[sel];
+
+  const fmtV = (v, m) => {
+    if (v == null || !isFinite(v)) return '—';
+    if (m.fmt === 'money')  return money(v, 2);
+    if (m.fmt === 'pct')    return pct(v);
+    if (m.fmt === 'pctRaw') return v.toFixed(1) + '%';
+    return v.toFixed(3);
+  };
+
+  // Metric list, grouped the way the risk/return/trade split actually divides:
+  // what you earned, what it cost you in ride, and what one trade looks like.
+  const groups = ['Return', 'Risk', 'Trade'];
+  const list = groups.map(g => {
+    const rows = DIST_METRICS.filter(m => m.group === g).map(m => {
+      const d = D.metrics[m.key];
+      const on = m.key === sel;
+      if (!d?.available) {
+        return `<div class="mrow off" title="Withheld: needs a declared capital base."><span>${esc(m.label)}</span><span style="color:var(--dim2)">—</span></div>`;
+      }
+      const good = m.low ? d.realised >= 0 : d.realised > 0;
+      return `<div class="mrow${on ? ' on' : ''}" onclick="setDstMetric('${m.key}')">
+        <span>${esc(m.label)}</span><span class="${m.fmt === 'num' ? '' : (good ? 'pos' : 'neg')}">${fmtV(d.realised, m)}</span></div>`;
+    }).join('');
+    return `<div class="mgrp">${g.toUpperCase()} — RESAMPLED DISTRIBUTION</div>${rows}`;
+  }).join('');
+
+  const pr = x?.available ? x.p : null;
+  const pctRows = pr ? [1, 5, 10, 25, 50, 75, 90, 95, 99].map(k =>
+    `<tr><td class="l" style="color:${k === 50 ? 'var(--fg)' : 'var(--dim)'}">P${k}</td><td>${fmtV(pr[k], meta)}</td></tr>`).join('') : '';
+
+  // Where the realised figure sits, said in words. A rank near P50 means the
+  // statistic is stable under resampling; a rank in the tail means this single
+  // realised path is not a reliable estimate of it.
+  const rankWord = !x?.available ? ''
+    : x.rank <= 10 || x.rank >= 90
+      ? `<b class="neg">P${x.rank} — in the tail.</b> This realised value is not a reliable estimate of the metric: a different draw of the same trades would most likely have produced something quite different.`
+      : `<b>P${x.rank} — mid-distribution.</b> Close to what this return stream typically produces, so the realised figure is representative rather than a fluke of ordering.`;
 
   el.innerHTML = `
   <div class="note warn"><b>Read this before reading the chart.</b> ${esc(bootstrapNote)}</div>
-  <div class="panel"><div class="ph"><span class="badge">BOOT</span>Bootstrap of this book<span class="rt">1,000 resamples · seeded, reproducible</span></div><div class="pb">
-    <table style="max-width:700px"><thead><tr><th class="l">Statistic</th><th>Low</th><th>Mid</th><th>High</th><th>Realised</th></tr></thead><tbody>
-      <tr><td class="l">Total P&amp;L <span style="color:var(--dim2)">(P5/P50/P95)</span></td><td>${money(b.total.p5, 0)}</td><td>${money(b.total.p50, 0)}</td><td>${money(b.total.p95, 0)}</td><td class="${cls(S.scaleFree.totalPnl)}"><b>${money(S.scaleFree.totalPnl, 0)}</b></td></tr>
-      <tr><td class="l">Sharpe <span style="color:var(--dim2)">(P5/P50/P95)</span></td><td>${num(b.sharpe.p5)}</td><td>${num(b.sharpe.p50)}</td><td>${num(b.sharpe.p95)}</td><td><b>${num(S.scaleFree.sharpe)}</b></td></tr>
-      <tr title="Drawdown percentiles run the other way: a HIGHER percentile is a DEEPER drawdown, so these are P50/P95/P99 of the worst-case, not a P5-P95 band."><td class="l">Max drawdown <span style="color:var(--dim2)">(P50/P95/P99 — deeper →)</span></td><td class="neg">${money(b.mcMaxDD.p50, 0)}</td><td class="neg">${money(b.mcMaxDD.p95, 0)}</td><td class="neg">${money(b.mcMaxDD.p99, 0)}</td><td class="neg"><b>${money(S.scaleFree.maxDDAbs, 0)}</b></td></tr>
-    </tbody></table>
-    <div class="rd" style="margin-top:8px;color:var(--dim2)">The first two rows are a P5–P95 confidence band. The drawdown row is not — its percentiles deepen left to right, so "High" there is the near-worst ordering, not the best case.</div>
-    <div class="rd" style="margin-top:12px">
-      <b>P(profitable) across resamples: ${(b.pPositive * 100).toFixed(1)}%</b> — in ${(b.pPositive * 100).toFixed(1)}% of 1,000 resampled books of the same trades, the total came out positive.
+  <div class="dstwrap">
+    <div class="panel dstlist"><div class="ph"><span class="badge">MET</span>Metrics<span class="rt">realised</span></div>
+      <div class="pb" style="padding:6px 0">${list}</div></div>
+
+    <div class="panel"><div class="ph"><span class="badge">SHAPE</span>${esc(meta?.label || sel)} — resampled shape
+      <span class="rt">${D.runs.toLocaleString('en-GB')} resamples · ${meta?.basis === 'day' ? D.days + ' days' : D.n + ' trades'} · seeded</span></div>
+      <div class="pb">${x?.available ? histogram(x.values, x.realised, {}) : `<div class="empty">Withheld — this metric needs a declared capital base.</div>`}</div></div>
+
+    <div class="panel dstpct"><div class="ph"><span class="badge">PCTL</span>Percentiles</div>
+      <div class="pb" style="padding:6px 10px">
+        <table><tbody>
+          <tr><td class="l" style="color:var(--fg)"><b>Realised</b></td><td><b>${fmtV(x?.realised, meta)}</b></td></tr>
+          <tr><td class="l">Mean</td><td>${fmtV(x?.mean, meta)}</td></tr>
+          <tr><td class="l">Std dev</td><td>${x?.available ? fmtV(x.sd, meta) : '—'}</td></tr>
+          <tr><td class="l">Rank</td><td style="color:var(--warn)"><b>${x?.available ? 'P' + x.rank : '—'}</b></td></tr>
+          ${pctRows}
+        </tbody></table>
+      </div></div>
+  </div>
+
+  <div class="panel"><div class="ph"><span class="badge">READ</span>Reading — ${esc(meta?.label || sel)}</div><div class="pb">
+    <div class="rd"><b>${esc(meta?.label || sel)}.</b> ${esc(METRIC_READING[sel] || '')}
+    <br><br><b>How to read the rank.</b> ${rankWord}
+    ${meta?.basis === 'day'
+      ? ' Resampled by <b>trading day</b>, because this is a property of the daily return stream — resampling individual trades would destroy the calendar that defines it (six trades in one day is one day of risk, not six).'
+      : ' Resampled by <b>closed trade</b>, because the trade is the unit this metric is built from.'}
     </div>
   </div></div>
 
-  <div class="panel"><div class="ph"><span class="badge">DDMC</span>Drawdown you could have had<span class="rt">same trades, different order</span></div><div class="pb">
-    <div class="rd">The realised max drawdown of <b>${money(S.scaleFree.maxDDAbs, 0)}</b> is <b>one ordering</b> of these trades. Reshuffling the same trades gives a median worst drawdown of ${money(b.mcMaxDD.p50, 0)}, and a near-worst (P99) of <b>${money(b.mcMaxDD.p99, 0)}</b>. If the P99 figure is one you could not have sat through, the book is riskier than its history looks — the losses simply have not arrived back-to-back yet.</div>
-  </div></div>
-
-  <div class="panel"><div class="ph"><span class="badge">READ</span>What is missing here</div><div class="pb"><div class="rd">
-    The panel this page is modelled on shows <b>realised vs expected</b> — where the live Sharpe sits inside the distribution its backtest predicted. That comparison is not available yet, and inventing it would be worse than leaving it out:
+  <div class="panel"><div class="ph"><span class="badge">GAP</span>What is missing here</div><div class="pb"><div class="rd">
+    The terminal this is modelled on ranks a realised figure inside the distribution its <b>backtest</b> predicted. This ranks it
+    inside its own book's resamples, which answers a narrower question — is this figure stable, or an artefact of one draw.
+    Two things block the other comparison, both in <code>MD files/LIVE_BACKTEST_ALIGNMENT.md</code>:
     <ul style="margin:8px 0 0;padding-left:18px">
-      <li>No bot has a frozen <code>expect_&lt;bot&gt;</code> artifact — nothing recorded what its backtest expected before it went live.</li>
-      <li>Live trades carry no stop distance, so they cannot be expressed in R, so they cannot be ranked against a backtest measured in R.</li>
+      <li>No bot has a frozen <code>expect_&lt;bot&gt;</code> — nothing recorded what its backtest expected before it went live.</li>
+      <li>Live trades carry no stop distance, so they cannot be expressed in R and ranked against a backtest measured in R.</li>
     </ul>
-    Both are steps 3 and 5 in <code>MD files/LIVE_BACKTEST_ALIGNMENT.md</code>. Until they land, this tab answers the narrower question only: how much of the headline is luck of the draw.
+    And as the Backtest overlay now reports, the one reference that IS wired fails a plausibility check on its own numbers —
+    so the missing piece is a trustworthy expectation, not a missing chart.
   </div></div></div>`;
 }
+
 
 function renderExc(G) {
   const el = $('exc');

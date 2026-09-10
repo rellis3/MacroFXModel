@@ -5,6 +5,7 @@ import {
   dailySeries, dailyEquity, monthlyReturns, rollingReturn, groupBy,
   excursions, exitMix, summarize, MIN_N_RATIOS,
   cumFromDaily, liveGrowthPct, growthCone, conePercentile, clipDaily,
+  distributions, DIST_METRICS, METRIC_READING,
 } from './botAuditEngine.js';
 
 let fail = 0;
@@ -231,6 +232,54 @@ console.log('\nbacktest overlay');
   const daily = [{ date: '2026-08-30', ret: 1 }, { date: '2026-09-01', ret: 2 }, { date: '2026-09-05', ret: 3 }];
   ok('clipDaily keeps the window', clipDaily(daily, '2026-09-01', '2026-09-04').length === 1);
   ok('clipDaily is inclusive at both ends', clipDaily(daily, '2026-08-30', '2026-09-05').length === 3);
+}
+
+
+console.log('\ndistribution battery');
+{
+  const rows = [];
+  let sd = 5; const rr = () => (sd = (sd * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+  for (let i = 0; i < 160; i++) {
+    const d = new Date(Date.UTC(2026, 2, 2) + i * 86400000);
+    if (d.getUTCDay() % 6 === 0) continue;
+    rows.push(tr(d.toISOString().slice(0, 10), rr() > .44 ? 10 + rr() * 50 : -(8 + rr() * 40), { commission: -1, swap: -0.2 }));
+  }
+  const { trades } = normalizeTrades(rows);
+  const D = distributions(trades, { capital: 100000, runs: 300 });
+
+  ok('one entry per declared metric', Object.keys(D.metrics).length === DIST_METRICS.length);
+  ok('reports the run count', D.runs === 300);
+  ok('percentiles ordered', DIST_METRICS.every(m => {
+    const x = D.metrics[m.key];
+    return !x.available || (x.p[1] <= x.p[50] && x.p[50] <= x.p[99]);
+  }));
+  ok('rank is 0-100', DIST_METRICS.every(m => !D.metrics[m.key].available || (D.metrics[m.key].rank >= 0 && D.metrics[m.key].rank <= 100)));
+  // A realised figure resampled from its own book should land near the middle.
+  // Far from P50 would mean the resampling is not centred on the sample.
+  ok('realised win rate sits mid-distribution', Math.abs(D.metrics.winRate.rank - 50) < 25, `P${D.metrics.winRate.rank}`);
+  ok('realised sharpe sits mid-distribution',   Math.abs(D.metrics.sharpe.rank - 50) < 30, `P${D.metrics.sharpe.rank}`);
+  ok('every metric carries a plain-English reading', DIST_METRICS.every(m => typeof METRIC_READING[m.key] === 'string' && METRIC_READING[m.key].length > 20));
+
+  // Seeded: the same book must reproduce the same bands, or a "rank" that
+  // changes on refresh is not something anyone can act on.
+  const again = distributions(trades, { capital: 100000, runs: 300 });
+  ok('deterministic across runs', again.metrics.sharpe.rank === D.metrics.sharpe.rank
+    && near(again.metrics.maxDD.mean, D.metrics.maxDD.mean, 1e-9));
+
+  // The capital gate reaches here too — no denominator, no scale-bound metric.
+  const noCap = distributions(trades, { capital: 0, runs: 100 });
+  ok('capital-bound metrics withheld without capital',
+     !noCap.metrics.cagr.available && !noCap.metrics.volAnn.available && !noCap.metrics.returnPct.available);
+  ok('scale-free metrics survive without capital',
+     noCap.metrics.sharpe.available && noCap.metrics.winRate.available && noCap.metrics.maxDD.available);
+
+  // Basis matters: win rate is a property of TRADES, Sharpe of DAYS. If both
+  // were resampled the same way the day-based spread would be wrong.
+  ok('trade-basis and day-basis metrics both populated',
+     D.metrics.profitFactor.values.length > 0 && D.metrics.dailyHitRate.values.length > 0);
+  ok('drawdown is negative or zero', D.metrics.maxDD.realised <= 0);
+  ok('time in drawdown is a percentage', D.metrics.timeInDD.realised >= 0 && D.metrics.timeInDD.realised <= 100);
+  ok('empty book returns null', distributions([], {}) === null);
 }
 
 console.log(fail ? `\n${fail} FAILED\n` : '\nAll passed\n');

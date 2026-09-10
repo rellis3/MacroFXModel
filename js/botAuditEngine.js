@@ -32,7 +32,7 @@
 
 import { backtestStats, portfolioStats } from './backtestStats.js';
 import { profitFactor, sortinoRatio } from './metricsCore.js';
-import { mean, stdev } from './statsCore.js';
+import { mean, stdev, mulberry32 } from './statsCore.js';
 
 // ── Costs ────────────────────────────────────────────────────────────────────
 
@@ -488,4 +488,181 @@ export function conePercentile(rets, N, liveCum) {
 /** Backtest daily rows clipped to a calendar window — the "same dates" mode. */
 export function clipDaily(daily, fromIso, toIso) {
   return daily.filter(d => d.date >= fromIso && d.date <= toIso);
+}
+
+// ── Distribution battery ─────────────────────────────────────────────────────
+//
+// One resampled distribution per metric, so a realised figure can be read
+// against the spread of figures the same book would have produced under a
+// different draw. Mirrors the layout of the reference terminal's distributions
+// tab: return metrics, risk metrics, trade metrics, each with realised value,
+// mean, sd and percentile rank.
+//
+// TWO RESAMPLING BASES, and mixing them up would be a real error:
+//   • basis 'trade' — resample CLOSED TRADES with replacement. Right for win
+//     rate, profit factor, expectancy, avg win/loss: each trade is the unit.
+//   • basis 'day'   — resample TRADING DAYS with replacement. Right for Sharpe,
+//     volatility, drawdown, hit rate: those are properties of the daily return
+//     stream, and resampling trades would silently destroy the calendar that
+//     defines them (six trades on one day is one day of risk, not six).
+//
+// Path-dependent metrics (max drawdown, time in drawdown, avg drawdown) are
+// computed on each resampled SEQUENCE, so their spread reflects ordering luck
+// as well as sample luck — which is the whole point of showing them.
+//
+// What this is NOT: the reference terminal ranks a realised figure inside the
+// distribution its MODEL predicted. This ranks it inside its own book's
+// resamples. See `bootstrapNote` — the distinction is on the page, not just here.
+
+export const DIST_METRICS = [
+  { key: 'totalPnl',     group: 'Return', label: 'Total P&L',        fmt: 'money', basis: 'trade' },
+  { key: 'returnPct',    group: 'Return', label: 'Total Return',     fmt: 'pct',   basis: 'day',   cap: true },
+  { key: 'cagr',         group: 'Return', label: 'Return / Year',    fmt: 'pct',   basis: 'day',   cap: true },
+  { key: 'sharpe',       group: 'Return', label: 'Sharpe (ann)',     fmt: 'num',   basis: 'day' },
+  { key: 'sortino',      group: 'Return', label: 'Sortino (ann)',    fmt: 'num',   basis: 'day' },
+  { key: 'calmar',       group: 'Return', label: 'Calmar',           fmt: 'num',   basis: 'day',   cap: true },
+
+  { key: 'volAnn',       group: 'Risk',   label: 'Volatility (ann)', fmt: 'pct',   basis: 'day',   cap: true },
+  { key: 'maxDD',        group: 'Risk',   label: 'Max Drawdown',     fmt: 'money', basis: 'day',   low: true },
+  { key: 'avgDD',        group: 'Risk',   label: 'Avg Drawdown',     fmt: 'money', basis: 'day',   low: true },
+  { key: 'timeInDD',     group: 'Risk',   label: 'Time in Drawdown', fmt: 'pctRaw', basis: 'day',  low: true },
+  { key: 'worstDay',     group: 'Risk',   label: 'Worst Day',        fmt: 'money', basis: 'day',   low: true },
+  { key: 'bestDay',      group: 'Risk',   label: 'Best Day',         fmt: 'money', basis: 'day' },
+  { key: 'dailyHitRate', group: 'Risk',   label: 'Daily Hit Rate',   fmt: 'pctRaw', basis: 'day' },
+
+  { key: 'winRate',      group: 'Trade',  label: 'Win Rate',         fmt: 'pctRaw', basis: 'trade' },
+  { key: 'profitFactor', group: 'Trade',  label: 'Profit Factor',    fmt: 'num',   basis: 'trade' },
+  { key: 'expectancy',   group: 'Trade',  label: 'Expectancy / Trade', fmt: 'money', basis: 'trade' },
+  { key: 'avgWin',       group: 'Trade',  label: 'Avg Win',          fmt: 'money', basis: 'trade' },
+  { key: 'avgLoss',      group: 'Trade',  label: 'Avg Loss',         fmt: 'money', basis: 'trade', low: true },
+  { key: 'largestLoss',  group: 'Trade',  label: 'Largest Loss',     fmt: 'money', basis: 'trade', low: true },
+];
+
+// Plain-English definition + how to read the rank, per metric. Shown in the
+// reading pane so a number is never presented without saying what it means —
+// the reference terminal does this and it is the difference between a dashboard
+// and a report.
+export const METRIC_READING = {
+  totalPnl:     'Sum of every closed trade, after swap and commission. The account-currency result, not a rate.',
+  returnPct:    'Total P&L as a percent of the capital you declared. Moves inversely with that figure — it is an assumption, not a measurement.',
+  cagr:         'The annualised growth rate implied by the window, compounded. Over a few months this extrapolates a short run to a year, so it swings hard.',
+  sharpe:       'Mean daily P&L divided by its standard deviation, annualised by √252. Scale-free: identical whether measured in dollars or percent of a fixed notional.',
+  sortino:      'Sharpe but penalising only downside deviation. Higher than Sharpe means the volatility is mostly upside.',
+  calmar:       'Annualised return divided by the worst peak-to-trough drawdown. How much return each unit of pain bought.',
+  volAnn:       'Standard deviation of daily returns, annualised. The width of the ride, not its direction.',
+  maxDD:        'Deepest peak-to-trough fall in account currency, on the daily equity curve including flat days.',
+  avgDD:        'Mean depth across every day spent below a prior peak. A shallow average with a deep max is one bad episode; a deep average is a book that lives underwater.',
+  timeInDD:     'Percent of calendar days below a prior peak. High is normal for an active book — being at a new high is the exception, not the rule.',
+  worstDay:     'The single worst trading day in the window.',
+  bestDay:      'The single best trading day in the window.',
+  dailyHitRate: 'Percent of ACTIVE days that finished positive. Different from win rate: a day is a day regardless of how many trades ran in it.',
+  winRate:      'Percent of closed trades finishing positive AFTER costs. A trade that made money gross and lost it to commission counts as a loss here.',
+  profitFactor: 'Gross profit divided by gross loss. Below 1.0 is a losing book; 1.0 is break-even before you have paid for your time.',
+  expectancy:   'Average net result per trade. The number to multiply by expected trade count when projecting.',
+  avgWin:       'Mean net result of winning trades.',
+  avgLoss:      'Mean net result of losing trades. Compare to Avg Win: the ratio is the payoff the win rate has to clear.',
+  largestLoss:  'The single worst closed trade. If it dwarfs Avg Loss, the stop is not doing what it is supposed to.',
+};
+
+function ddStatsOf(pnls) {
+  let eq = 0, peak = 0, maxDD = 0, sumDD = 0, daysDown = 0;
+  for (const p of pnls) {
+    eq += p;
+    if (eq > peak) peak = eq;
+    const dd = eq - peak;
+    if (dd < maxDD) maxDD = dd;
+    if (dd < -1e-9) { daysDown++; sumDD += dd; }
+  }
+  return { maxDD, avgDD: pnls.length ? sumDD / pnls.length : 0, timeInDD: pnls.length ? daysDown / pnls.length * 100 : 0 };
+}
+
+/** Every metric for ONE sample (a trade list and its day list). */
+function metricsOf(tradePnls, dayPnls, capital, years) {
+  const wins = tradePnls.filter(x => x > 0), losses = tradePnls.filter(x => x < 0);
+  const gp = wins.reduce((s, x) => s + x, 0), gl = -losses.reduce((s, x) => s + x, 0);
+  const total = tradePnls.reduce((s, x) => s + x, 0);
+  const dm = dayPnls.length ? dayPnls.reduce((s, x) => s + x, 0) / dayPnls.length : 0;
+  const dsd = dayPnls.length > 1
+    ? Math.sqrt(dayPnls.reduce((s, x) => s + (x - dm) ** 2, 0) / dayPnls.length) : 0;
+  const down = dayPnls.filter(x => x < 0);
+  const dsd_ = down.length ? Math.sqrt(down.reduce((s, x) => s + x * x, 0) / dayPnls.length) : 0;
+  const dd = ddStatsOf(dayPnls);
+  const dayTotal = dayPnls.reduce((s, x) => s + x, 0);
+  const retPct = capital > 0 ? dayTotal / capital * 100 : null;
+  // Compounded CAGR on the declared base — same convention as the headline.
+  let cagr = null;
+  if (capital > 0 && years > 0) {
+    let eq = 1;
+    for (const p of dayPnls) eq *= (1 + p / capital);
+    cagr = (Math.pow(Math.max(1e-9, eq), 1 / years) - 1) * 100;
+  }
+  const maxDDPct = capital > 0 ? dd.maxDD / capital * 100 : null;
+  return {
+    totalPnl: total,
+    returnPct: retPct,
+    cagr,
+    sharpe: dsd > 1e-12 ? dm / dsd * Math.sqrt(252) : 0,
+    sortino: dsd_ > 1e-12 ? dm / dsd_ * Math.sqrt(252) : 0,
+    calmar: (cagr != null && maxDDPct != null && maxDDPct < -1e-9) ? cagr / Math.abs(maxDDPct) : null,
+    volAnn: capital > 0 ? dsd / capital * 100 * Math.sqrt(252) : null,
+    maxDD: dd.maxDD,
+    avgDD: dd.avgDD,
+    timeInDD: dd.timeInDD,
+    worstDay: dayPnls.length ? Math.min(...dayPnls) : 0,
+    bestDay: dayPnls.length ? Math.max(...dayPnls) : 0,
+    // Hit rate over ACTIVE days only — the definition the reading pane states.
+    // `dayPnls` is calendar-filled (flat days included) because drawdown and
+    // time-in-drawdown need every day; counting those flat days here instead
+    // would report "days the book won" as a fraction of days it mostly did not
+    // trade, which for a selective bot reads as a terrible hit rate and is
+    // really just a measure of how often it stands aside.
+    dailyHitRate: (() => {
+      const act = dayPnls.filter(x => Math.abs(x) > 1e-9);
+      return act.length ? act.filter(x => x > 0).length / act.length * 100 : 0;
+    })(),
+    winRate: tradePnls.length ? wins.length / tradePnls.length * 100 : 0,
+    profitFactor: gl > 1e-9 ? gp / gl : (gp > 0 ? 99 : 0),
+    expectancy: tradePnls.length ? total / tradePnls.length : 0,
+    avgWin: wins.length ? gp / wins.length : 0,
+    avgLoss: losses.length ? -gl / losses.length : 0,
+    largestLoss: losses.length ? Math.min(...losses) : 0,
+  };
+}
+
+/**
+ * Realised value plus a resampled distribution for every metric.
+ * `runs` resamples of the trade list (trade-basis metrics) and of the day list
+ * (day-basis metrics), drawn independently and seeded so the same book always
+ * reproduces the same bands.
+ */
+export function distributions(trades, { capital = 0, gross = false, runs = 800, seed = 0x9e3779b9 } = {}) {
+  if (!trades.length) return null;
+  const tradePnls = trades.map(t => netOf(t, { gross }));
+  const daily = dailySeries(trades, { gross });
+  const dEq = dailyEquity(daily, capital);
+  const dayPnls = dEq.map(d => d.pnl);
+  const years = dEq.length / 252;
+
+  const realised = metricsOf(tradePnls, dayPnls, capital, years);
+  const rng = mulberry32(seed >>> 0);
+  const draw = arr => { const o = new Array(arr.length); for (let i = 0; i < arr.length; i++) o[i] = arr[(rng() * arr.length) | 0]; return o; };
+
+  const samples = [];
+  for (let i = 0; i < runs; i++) samples.push(metricsOf(draw(tradePnls), draw(dayPnls), capital, years));
+
+  const out = {};
+  for (const m of DIST_METRICS) {
+    const vals = samples.map(s => s[m.key]).filter(v => v != null && isFinite(v)).sort((a, b) => a - b);
+    const r = realised[m.key];
+    if (!vals.length || r == null || !isFinite(r)) { out[m.key] = { realised: r, values: [], available: false }; continue; }
+    const mean_ = vals.reduce((s, x) => s + x, 0) / vals.length;
+    const sd = Math.sqrt(vals.reduce((s, x) => s + (x - mean_) ** 2, 0) / vals.length);
+    const at = p => vals[Math.min(vals.length - 1, Math.floor(p / 100 * vals.length))];
+    out[m.key] = {
+      available: true, realised: r, values: vals, mean: mean_, sd,
+      rank: Math.round(vals.filter(v => v < r).length / vals.length * 100),
+      p: { 1: at(1), 5: at(5), 10: at(10), 25: at(25), 50: at(50), 75: at(75), 90: at(90), 95: at(95), 99: at(99) },
+    };
+  }
+  return { runs, metrics: out, n: trades.length, days: dEq.length };
 }
