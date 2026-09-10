@@ -408,8 +408,27 @@ export function computeOutlook(inputs = {}, horizonKey = 'weekly') {
     confidence = Math.round(clip(conf, 5, 95));
   }
 
+  // A floored confidence is not a measurement, it is the clamp.
+  //
+  // `confidence` bottoms out at 5 by construction, so "NEUTRAL @ 5% confidence with
+  // zero of five drivers in agreement" was rendering the LOWEST POSSIBLE output of the
+  // scale as though it were a finding — a label and a percentage that look like a
+  // reading and contain none. When nothing agrees, the honest output is that there is
+  // no read, and consumers should say so rather than print a bias with a number beside
+  // it. The bias/confidence fields are left untouched for backwards compatibility;
+  // `noRead` is the flag every renderer should check first.
+  const noRead = !bias
+    || directional.length === 0
+    || agree === 0
+    || (confidence != null && confidence <= 10);
+  const noReadWhy = !bias ? 'no directional driver produced a bias'
+    : directional.length === 0 ? 'no driver carried a direction'
+    : agree === 0 ? `none of the ${directional.length} directional drivers agree with each other`
+    : 'confidence is at the floor of the scale, which is the clamp rather than a measurement';
+
   return {
     horizonKey, horizonLabel: horizon.label, bias, biasScore, confidence,
+    noRead, noReadWhy,
     agree, total: directional.length, drivers, eventRisk,
     disclaimer: 'CONTEXT composite, not a validated predictive signal — see MD files/CLAUDE.md. The yield-spread leg (when present) is the one component with a real OOS result behind it.',
   };

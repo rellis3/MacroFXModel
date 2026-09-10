@@ -2423,8 +2423,9 @@ function tradeGate(r) {
     if (!o?.bias) continue;
     const dirs = (o.drivers ?? []).filter(x => Number.isFinite(x.score) && x.score !== 0);
     const up = dirs.filter(x => x.score > 0).length, dn = dirs.filter(x => x.score < 0).length;
-    outlookAgree[hz] = { bias: o.bias, up, dn, total: dirs.length, confidence: o.confidence ?? null };
-    if (Math.max(up, dn) >= 2 && o.bias !== 'NEUTRAL') {
+    outlookAgree[hz] = { bias: o.noRead ? 'NO READ' : o.bias, up, dn, total: dirs.length,
+                        confidence: o.confidence ?? null, noRead: !!o.noRead };
+    if (!o.noRead && Math.max(up, dn) >= 2 && o.bias !== 'NEUTRAL') {
       agreeing.push({ what: `${hz} outlook`, side: up > dn ? 'up' : 'down', detail: `${Math.max(up, dn)}/${dirs.length} drivers` });
     }
   }
@@ -5176,7 +5177,7 @@ function renderDrawerOutlook(r) {
     if (!p) return `<div style="flex:1;min-width:260px"><h4 style="margin:0 0 6px">${o.horizonLabel}</h4><div class="muted">Not enough data for a read.</div></div>`;
     return `<div style="flex:1;min-width:260px">
       <h4 style="margin:0 0 6px">${o.horizonLabel}</h4>
-      <span class="chip ${cls}" style="font-size:13px;padding:5px 10px">${o.bias} · ${o.confidence}% confidence</span>
+      <span class="chip ${o.noRead ? 'neu' : cls}" style="font-size:13px;padding:5px 10px" title="${o.noRead ? esc0(`No read: ${o.noReadWhy}. The confidence scale bottoms out at 5%, so a reading there is the clamp, not a measurement.`) : ''}">${o.noRead ? 'NO READ' : `${o.bias} · ${o.confidence}% confidence`}</span>
       <div style="margin-top:6px;font-size:12.5px;line-height:1.5;color:var(--text2)">${p.headline}</div>
       ${sec('▲', 'POINTING UP', 'var(--bull)', p.upDrivers.length ? bulletList(p.upDrivers) : null)}
       ${sec('▼', 'POINTING DOWN', 'var(--bear)', p.downDrivers.length ? bulletList(p.downDrivers) : null)}
@@ -5207,6 +5208,9 @@ function outlookChip(r) {
   const cls = o.bias === 'BULLISH' ? 'bull' : o.bias === 'BEARISH' ? 'bear' : 'neu';
   const driverTxt = o.drivers.map(d => `${d.label} (${d.status}): ${d.detail}`).join(' | ');
   const evTxt = o.eventRisk.highCount ? ` ${o.eventRisk.highCount} high-impact event(s) inside this window — could overturn the read.` : '';
+  // A bias at the confidence floor with nothing agreeing is not worth a chip on a
+  // 25-card grid — it reads as a signal at a glance and is the opposite of one.
+  if (o.noRead) return '';
   return `<span class="chip ${cls}" title="${o.horizonLabel} Outlook — CONTEXT composite, not a validated predictive signal (the yield-spread leg, when present, is the one exception — see its own tag below). ${driverTxt}.${evTxt}">🔭 ${o.horizonLabel} ${o.bias.toLowerCase()} · ${o.confidence}%</span>`;
 }
 // ── Direction tag ────────────────────────────────────────────────────────────
@@ -9010,6 +9014,10 @@ function assembleSnapshot(r) {
   const both = pairOutlookBoth(r);
   const trimOutlook = o => o && o.bias ? {
     bias: o.bias, biasScore: o.biasScore, confidence: o.confidence,
+    // noRead means the composite produced nothing: no driver agreed, or confidence sat
+    // at the clamp floor. Narrating it as a NEUTRAL view with a percentage attached
+    // dresses the scale's minimum as a finding.
+    noRead: o.noRead, noReadWhy: o.noReadWhy,
     agree: o.agree, total: o.total,
     drivers: o.drivers.map(d => ({ label: d.label, status: d.status, detail: d.detail })),
     eventRisk: o.eventRisk,
