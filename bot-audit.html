@@ -93,6 +93,57 @@
   .heat td.na { color:var(--dim2); background:var(--panel2); }
   .heat th { text-align:center; }
 
+
+  /* ── terminal chrome ── */
+  body { padding-bottom:30px; }
+  .cmdline { display:flex; align-items:center; gap:8px; padding:7px 16px;
+             background:#0c1017; border-bottom:1px solid var(--line); }
+  .cmdline .prompt { color:var(--accent); font-family:var(--mono); font-size:12px; font-weight:700;
+                     letter-spacing:.04em; white-space:nowrap; }
+  .cmdline input { flex:1; background:transparent; border:none; color:var(--fg);
+                   font-family:var(--mono); font-size:12px; padding:3px 0; outline:none; }
+  .cmdline input::placeholder { color:#3f4859; }
+  .cmdline .go { background:var(--panel2); border:1px solid var(--line2); color:var(--dim);
+                 border-radius:3px; padding:3px 10px; font-size:10.5px; font-family:var(--mono);
+                 letter-spacing:.08em; cursor:pointer; }
+  .cmdline .go:hover { border-color:var(--accent); color:var(--accent); }
+  .cmdhint { color:var(--bad); font-family:var(--mono); font-size:11px; white-space:nowrap; }
+
+  /* Cost-mode banner — his FTMO COST-ADJUSTED VIEW bar. A view this different
+     from the default must announce itself across the whole width, not hide in
+     a toggle's active state. */
+  .modebar { display:none; text-align:center; font-family:var(--mono); font-size:11px;
+             letter-spacing:.14em; font-weight:700; padding:4px; text-transform:uppercase; }
+  .modebar.on { display:block; }
+  .modebar.gross { background:#3a1414; color:#ff8a8a; border-bottom:1px solid #6b1f1f; }
+
+  /* Panel corner ticks — cheap, and the single strongest cue that a panel is an
+     instrument readout rather than a card. */
+  .panel { position:relative; }
+  .panel::after, .panel::before { content:''; position:absolute; width:7px; height:7px; pointer-events:none; }
+  .panel::before { right:0; bottom:0; border-right:1px solid var(--line2); border-bottom:1px solid var(--line2); }
+  .panel::after  { left:0;  bottom:0; border-left:1px solid var(--line2);  border-bottom:1px solid var(--line2); }
+
+  /* ── crosshair ── */
+  .chart { position:relative; cursor:crosshair; }
+  .xhair { position:absolute; top:6px; width:1px; background:#6b7688; pointer-events:none;
+           display:none; z-index:2; }
+  .xdot  { position:absolute; width:7px; height:7px; margin:-4px 0 0 -4px; border-radius:50%;
+           border:1.5px solid var(--bg); pointer-events:none; display:none; z-index:3; }
+  .xbox  { position:absolute; top:2px; background:#11151d; border:1px solid var(--line2);
+           color:var(--fg); font-family:var(--mono); font-size:10.5px; padding:1px 6px;
+           white-space:nowrap; pointer-events:none; display:none; z-index:4; }
+  .xdate { position:absolute; bottom:1px; background:#11151d; border:1px solid var(--line2);
+           color:var(--dim); font-family:var(--mono); font-size:10px; padding:1px 6px;
+           white-space:nowrap; pointer-events:none; display:none; z-index:4; }
+
+  /* ── keyboard hint rail ── */
+  .rail { position:fixed; left:0; right:0; bottom:0; background:#0c1017;
+          border-top:1px solid var(--line); color:var(--dim2); font-family:var(--mono);
+          font-size:10px; padding:5px 16px; display:flex; gap:16px; flex-wrap:wrap; z-index:50; }
+  .rail b { color:var(--dim); font-weight:600; }
+  .rail .sp { flex:1; }
+
   /* ── distributions tab ── */
   .dstwrap { display:grid; grid-template-columns:minmax(220px,1fr) minmax(360px,2.2fr) minmax(150px,.7fr); gap:14px; align-items:start; }
   @media (max-width:1100px) { .dstwrap { grid-template-columns:1fr; } }
@@ -120,6 +171,15 @@
 </style>
 </head>
 <body>
+
+<div class="cmdline">
+  <span class="prompt">B.AUDIT&gt;</span>
+  <input id="cmd" autocomplete="off" spellcheck="false"
+         placeholder="command or metric — try DST, SHARPE, MAXDD, 1Y, GROSS, FIB ATLAS">
+  <span id="cmdErr" class="cmdhint"></span>
+  <button class="go" onclick="runCmd()">GO</button>
+</div>
+<div id="modebar" class="modebar gross">Gross view — costs removed · not what the account received</div>
 
 <div class="cmd">
   <strong style="font-family:var(--mono);color:var(--accent)">BOT.AUDIT</strong>
@@ -233,7 +293,13 @@ window.reload = async function reload() {
   render();
 };
 
-window.setGross = g => { GROSS = g; $('btnNet').classList.toggle('on', !g); $('btnGross').classList.toggle('warnon', g); render(); };
+window.setGross = g => {
+  GROSS = g;
+  $('btnNet').classList.toggle('on', !g);
+  $('btnGross').classList.toggle('warnon', g);
+  $('modebar').classList.toggle('on', g);
+  render();
+};
 window.tab = p => {
   document.querySelectorAll('.pane').forEach(el => el.classList.toggle('active', el.id === p));
   document.querySelectorAll('.tab').forEach(el => el.classList.toggle('active', el.dataset.p === p));
@@ -281,7 +347,17 @@ function lineChart(pts, { h = 190, fill = null, stroke = '#3fd07a', zero = false
   const first = pts.find(p => p.v != null), last = [...pts].reverse().find(p => p.v != null);
   const xlab = `<text x="${pad.l}" y="${h - 6}" fill="#5a6474" font-size="10" font-family="monospace">${first?.k ?? ''}</text>`
              + `<text x="${W - pad.r}" y="${h - 6}" fill="#5a6474" font-size="10" text-anchor="end" font-family="monospace">${last?.k ?? ''}</text>`;
-  return `<svg viewBox="0 0 ${W} ${h}" preserveAspectRatio="none" style="height:${h}px">${ticks}${area}<path d="${d}" fill="none" stroke="${stroke}" stroke-width="1.6"/>${xlab}</svg>`;
+  return { svg: `<svg viewBox="0 0 ${W} ${h}" preserveAspectRatio="none" style="height:${h}px">${ticks}${area}<path d="${d}" fill="none" stroke="${stroke}" stroke-width="1.6"/>${xlab}</svg>`,
+           lo, hi, fmt, stroke };
+}
+
+/** lineChart returns its scale so the crosshair can place a dot; this wraps the
+ *  two together and is what every caller actually renders. */
+function chartOf(pts, opts) {
+  const r = lineChart(pts, opts);
+  if (typeof r === 'string') return r;              // the "not enough points" case
+  const frame = chartFrame(r.svg, pts, r.fmt, r.stroke);
+  return frame.replace('class="chart"', `class="chart" data-lo="${r.lo}" data-hi="${r.hi}"`);
 }
 
 function histogram(vals, realised, { h = 170, bins = 34 }) {
@@ -306,6 +382,132 @@ function histogram(vals, realised, { h = 170, bins = 34 }) {
        + `<text x="${pad.l}" y="${h - 6}" fill="#5a6474" font-size="10" font-family="monospace">${lo.toFixed(2)}</text>`
        + `<text x="${W - pad.r}" y="${h - 6}" fill="#5a6474" font-size="10" text-anchor="end" font-family="monospace">${hi.toFixed(2)}</text></svg>`;
 }
+
+// ── crosshair ────────────────────────────────────────────────────────────────
+//
+// Charts are stretched SVG (viewBox 0 0 1000 h, preserveAspectRatio="none"), so
+// a pixel position maps back to a data index through the SAME padding the chart
+// drew with. PAD is shared with lineChart/overlayChart rather than repeated —
+// two copies would drift the moment either chart's margins changed and the
+// readout would silently point at the wrong bar.
+const PAD = { l: 58, r: 10 };
+const CHARTS = new Map();          // frame id -> { pts, fmt, colour }
+let _chartSeq = 0;
+
+/** Wrap a chart SVG so it can carry a crosshair. `pts` is [{k,v}] — k the label
+ *  (a date, or "day 12"), v the value shown in the readout. */
+function chartFrame(svg, pts, fmt, colour = '#3fd07a') {
+  const id = 'ch' + (++_chartSeq);
+  CHARTS.set(id, { pts, fmt, colour });
+  return `<div class="chart" data-ch="${id}">${svg}
+    <div class="xhair"></div><div class="xdot"></div><div class="xbox"></div><div class="xdate"></div></div>`;
+}
+
+function moveXhair(frame, clientX) {
+  const c = CHARTS.get(frame.dataset.ch);
+  if (!c || !c.pts.length) return;
+  const svg = frame.querySelector('svg');
+  if (!svg) return;
+  const r = frame.getBoundingClientRect();
+  const h = svg.getBoundingClientRect().height;
+  const inner = 1000 - PAD.l - PAD.r;
+  // pixel -> viewBox x -> fraction along the plotted area
+  const vx = (clientX - r.left) / r.width * 1000;
+  const f = Math.min(1, Math.max(0, (vx - PAD.l) / inner));
+  const i = Math.round(f * (c.pts.length - 1));
+  const pt = c.pts[i];
+  if (!pt) return;
+  const px = (PAD.l + (i / Math.max(1, c.pts.length - 1)) * inner) / 1000 * r.width;
+
+  const hair = frame.querySelector('.xhair');
+  const dot  = frame.querySelector('.xdot');
+  const box  = frame.querySelector('.xbox');
+  const date = frame.querySelector('.xdate');
+  hair.style.display = 'block'; hair.style.left = px + 'px'; hair.style.height = (h - 26) + 'px';
+
+  // The dot needs the value's y, which means re-deriving the chart's own scale.
+  // Stored on the frame at render time by the chart functions.
+  const lo = +frame.dataset.lo, hi = +frame.dataset.hi, top = 10, bot = 20;
+  if (pt.v != null && isFinite(pt.v) && isFinite(lo) && isFinite(hi) && hi > lo) {
+    const y = (top + (1 - (pt.v - lo) / (hi - lo)) * (h - top - bot));
+    dot.style.display = 'block'; dot.style.left = px + 'px'; dot.style.top = y + 'px';
+    dot.style.background = c.colour;
+  } else dot.style.display = 'none';
+
+  box.style.display = 'block';
+  box.textContent = pt.v == null || !isFinite(pt.v) ? '—' : c.fmt(pt.v);
+  box.style.left = Math.min(r.width - box.offsetWidth - 4, Math.max(0, px + 6)) + 'px';
+  date.style.display = 'block';
+  date.textContent = pt.k ?? '';
+  date.style.left = Math.min(r.width - date.offsetWidth - 4, Math.max(0, px - date.offsetWidth / 2)) + 'px';
+}
+
+document.addEventListener('mousemove', e => {
+  const frame = e.target.closest?.('.chart');
+  if (frame) moveXhair(frame, e.clientX);
+});
+document.addEventListener('mouseout', e => {
+  const frame = e.target.closest?.('.chart');
+  if (frame && !frame.contains(e.relatedTarget)) {
+    frame.querySelectorAll('.xhair,.xdot,.xbox,.xdate').forEach(el => { el.style.display = 'none'; });
+  }
+});
+
+// ── command line ─────────────────────────────────────────────────────────────
+//
+// Accepts what the reference terminal's does: a tab code, a metric name, a
+// period, or a cost mode — one box instead of hunting for the right control.
+// Unrecognised input says so rather than failing silently.
+const TAB_CODES = { ovw: 'ovw', overview: 'ovw', sys: 'sys', bots: 'sys', 'per-bot': 'sys',
+                    dst: 'dst', dist: 'dst', distributions: 'dst', exc: 'exc', excursions: 'exc',
+                    cst: 'cst', costs: 'cst', trd: 'trd', trades: 'trd' };
+const PERIODS = { all: '365', '1y': '365', '365': '365', '6m': '180', '180': '180',
+                  '3m': '90', '90': '90', '30d': '30', '30': '30', '1m': '30' };
+
+window.runCmd = function () {
+  const raw = ($('cmd').value || '').trim();
+  if (!raw) return;
+  const q = raw.toLowerCase();
+  const err = m => { $('cmdErr').textContent = m; setTimeout(() => { $('cmdErr').textContent = ''; }, 2600); };
+
+  if (TAB_CODES[q]) { tab(TAB_CODES[q]); $('cmd').value = ''; return; }
+  if (PERIODS[q])   { $('selRange').value = PERIODS[q]; $('cmd').value = ''; reload(); return; }
+  if (q === 'gross' || q === 'net') { setGross(q === 'gross'); $('cmd').value = ''; return; }
+  if (q === 'bt' || q === 'backtest') { toggleBacktest(); $('cmd').value = ''; return; }
+
+  // a metric -> jump to distributions with it selected
+  const norm = t => t.toLowerCase().replace(/[^a-z]/g, '');
+  const m = DIST_METRICS.find(x => norm(x.label) === norm(q) || norm(x.key) === norm(q))
+         || DIST_METRICS.find(x => norm(x.label).startsWith(norm(q)) || norm(x.key).startsWith(norm(q)));
+  if (m) { tab('dst'); setDstMetric(m.key); $('cmd').value = ''; return; }
+
+  // a bot
+  const b = BOTS.find(x => norm(x.label) === norm(q)) || BOTS.find(x => norm(x.label).startsWith(norm(q)));
+  if (b) { $('selBot').value = b.key; $('selBot').dispatchEvent(new Event('change')); $('cmd').value = ''; return; }
+  if (q === 'all' || q === 'portfolio') { $('selBot').value = '__all'; $('selBot').dispatchEvent(new Event('change')); $('cmd').value = ''; return; }
+
+  err(`? ${raw}`);
+};
+
+document.addEventListener('keydown', e => {
+  const typing = e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT';
+  if (e.key === 'Enter' && e.target.id === 'cmd') { runCmd(); return; }
+  if (e.key === 'Escape') { $('cmd').value = ''; $('cmd').blur(); return; }
+  if (typing) return;
+  if (e.key === '/') { e.preventDefault(); $('cmd').focus(); return; }
+  const tabs = ['ovw', 'sys', 'dst', 'exc', 'cst', 'trd'];
+  if (/^[1-6]$/.test(e.key)) { tab(tabs[+e.key - 1]); return; }
+  if (e.key === 'g') { setGross(!GROSS); return; }
+  if (e.key === 'b') { toggleBacktest(); return; }
+  if (e.key === 'r') { reload(); return; }
+  if (e.key === '[' || e.key === ']') {
+    const avail = DIST_METRICS.filter(m => _LAST_DIST?.metrics[m.key]?.available);
+    if (!avail.length) return;
+    const i = avail.findIndex(m => m.key === DST_METRIC);
+    const next = avail[(i + (e.key === ']' ? 1 : -1) + avail.length) % avail.length];
+    tab('dst'); setDstMetric(next.key);
+  }
+});
 
 // ── backtest overlay ─────────────────────────────────────────────────────────
 
@@ -348,7 +550,7 @@ async function loadBacktest() {
  * which is the whole point: five years next to three months renders live as a
  * two-pixel wiggle at the right-hand edge and shows nothing.
  */
-function overlayChart({ bands = [], lines = [], n, h = 260, xFirst = '', xLast = '' }) {
+function overlayChart({ bands = [], lines = [], n, h = 260, xFirst = '', xLast = '', xLabels = [] }) {
   const all = [];
   for (const b of bands) all.push(...b.lo.filter(isFinite), ...b.hi.filter(isFinite));
   for (const l of lines) all.push(...l.v.filter(v => v != null && isFinite(v)));
@@ -388,7 +590,13 @@ function overlayChart({ bands = [], lines = [], n, h = 260, xFirst = '', xLast =
 
   const xl = `<text x="${pad.l}" y="${h - 6}" fill="#5a6474" font-size="10" font-family="monospace">${esc(xFirst)}</text>`
            + `<text x="${W - pad.r}" y="${h - 6}" fill="#5a6474" font-size="10" text-anchor="end" font-family="monospace">${esc(xLast)}</text>`;
-  return `<svg viewBox="0 0 ${W} ${h}" preserveAspectRatio="none" style="height:${h}px">${grid}${zero}${bandPaths}${linePaths}${xl}</svg>`;
+  const live = lines[lines.length - 1];
+  const pts = (live?.v || []).map((v, i) => ({ k: xLabels[i] ?? `${i + 1}`, v }));
+  const dp2 = autoDp(span);
+  const frame = chartFrame(
+    `<svg viewBox="0 0 ${W} ${h}" preserveAspectRatio="none" style="height:${h}px">${grid}${zero}${bandPaths}${linePaths}${xl}</svg>`,
+    pts, v => v.toFixed(dp2) + '%', live?.stroke || '#3fd07a');
+  return frame.replace('class="chart"', `class="chart" data-lo="${lo}" data-hi="${hi}"`);
 }
 
 const swatch = (c, label, dash) =>
@@ -461,6 +669,7 @@ function renderBacktestPanel() {
     const rank = conePercentile(rets, N, liveEnd);
     body = overlayChart({
       n: nn, xFirst: 'day 1', xLast: `day ${nn}`,
+      xLabels: Array.from({ length: nn }, (_, i) => `day ${i + 1}`),
       bands: [
         { lo: cone.map(c => c.p5),  hi: cone.map(c => c.p95), fill: 'rgba(94,176,255,.10)' },
         { lo: cone.map(c => c.p25), hi: cone.map(c => c.p75), fill: 'rgba(94,176,255,.16)' },
@@ -493,7 +702,7 @@ function renderBacktestPanel() {
       let carried = null;
       const btV = live.map(p => { if (byDate.has(p.date)) carried = byDate.get(p.date); return carried; });
       body = overlayChart({
-        n: N, xFirst: first, xLast: last,
+        n: N, xFirst: first, xLast: last, xLabels: live.map(p => p.date),
         lines: [
           { v: btV,   stroke: '#5eb0ff', dash: '5 4', w: 1.6 },
           { v: liveV, stroke: '#3fd07a', w: 2.2 },
@@ -539,6 +748,8 @@ function render() {
   renderCst(G);
   renderTrd();
   renderBacktestPanel();
+  const rs = $('railState');
+  if (rs) rs.textContent = `${$('selBot').selectedOptions[0]?.text || ''} · ${GROSS ? 'GROSS' : 'NET'} · ${TRADES.length} trades`;
 }
 
 function tile(k, v, sub, klass = '') {
@@ -588,12 +799,12 @@ function renderOvw(S, C, G) {
 
   el.innerHTML = notes.join('') + `<div class="tiles">${tiles}</div>` + `
     <div class="panel"><div class="ph"><span class="badge">EQ</span>Equity curve — by trade<span class="rt">${eq.length} trades · ${C > 0 ? 'from $' + C.toLocaleString('en-GB') : 'cumulative P&L from 0'}</span></div>
-      <div class="pb">${lineChart(eq.map(p => ({ k: p.day, v: p.equity })), { fill: 'rgba(63,208,122,.10)', stroke: '#3fd07a', zero: C === 0, money: true })}</div></div>
+      <div class="pb">${chartOf(eq.map(p => ({ k: p.day, v: p.equity })), { fill: 'rgba(63,208,122,.10)', stroke: '#3fd07a', zero: C === 0, money: true })}</div></div>
     <div id="btPanel"></div>
     <div class="panel"><div class="ph"><span class="badge">DD</span>Drawdown from peak<span class="rt">max ${C > 0 ? pct(S.scaleBound.maxDDPct) : money(S.scaleFree.maxDDAbs)}</span></div>
-      <div class="pb">${lineChart(dEq.map(p => ({ k: p.date, v: C > 0 ? p.ddPct : p.ddAbs })), { fill: 'rgba(242,85,90,.13)', stroke: '#f2555a', zero: true, pct: C > 0, money: C === 0 })}</div></div>
+      <div class="pb">${chartOf(dEq.map(p => ({ k: p.date, v: C > 0 ? p.ddPct : p.ddAbs })), { fill: 'rgba(242,85,90,.13)', stroke: '#f2555a', zero: true, pct: C > 0, money: C === 0 })}</div></div>
     <div class="panel"><div class="ph"><span class="badge">R${rollWin}</span>Rolling ${rollWin}-day return<span class="rt">${C > 0 ? '% of capital' : 'dollars'}</span></div>
-      <div class="pb">${lineChart(roll.map(p => ({ k: p.date, v: p.value })), { stroke: '#5eb0ff', zero: true, pct: C > 0, money: C === 0 })}</div></div>
+      <div class="pb">${chartOf(roll.map(p => ({ k: p.date, v: p.value })), { stroke: '#5eb0ff', zero: true, pct: C > 0, money: C === 0 })}</div></div>
     <div class="panel"><div class="ph"><span class="badge">MRET</span>Monthly returns<span class="rt">${mg.pct ? '% of capital' : 'dollars — set Capital for %'}</span></div>
       <div class="pb">${heat(mg)}</div></div>`;
 }
@@ -653,6 +864,7 @@ function renderSys(C, G) {
 }
 
 let DST_METRIC = 'sharpe';
+let _LAST_DIST = null;
 window.setDstMetric = k => { DST_METRIC = k; renderDst(_LAST_S); };
 let _LAST_S = null;
 
@@ -662,6 +874,7 @@ function renderDst(S) {
   if (!S || !S.n) { el.innerHTML = `<div class="empty">No trades.</div>`; return; }
 
   const D = distributions(TRADES, { capital: cap(), gross: GROSS, runs: 800 });
+  _LAST_DIST = D;
   if (!D) { el.innerHTML = `<div class="empty">No trades.</div>`; return; }
 
   // Fall back to a metric that actually resolved — with no capital declared the
@@ -861,5 +1074,16 @@ function renderTrd() {
   reload();
 })();
 </script>
+<div class="rail">
+  <span><b>1-6</b> tab</span>
+  <span><b>/</b> command</span>
+  <span><b>g</b> gross/net</span>
+  <span><b>b</b> backtest</span>
+  <span><b>[ ]</b> metric</span>
+  <span><b>r</b> reload</span>
+  <span><b>esc</b> clear</span>
+  <span class="sp"></span>
+  <span id="railState"></span>
+</div>
 </body>
 </html>
