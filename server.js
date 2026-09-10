@@ -130,6 +130,7 @@ import { compareForecastLines as _compareForecastLines } from './js/forecastDrif
 import { buildEventWindows as _buildEventWindows } from './js/eventGateCore.js';
 import { fetchWeekEvents as _fetchWeekEvents } from './js/econCalendar.js';
 import { buildSurpriseIndex as _buildSurpriseIndex, mergeReleases as _mergeReleases, seriesHistory as _seriesHistory } from './js/econSurprise.js';   // real economic-surprise index (actual vs consensus), accumulated week by week
+import { createReleasePoller as _createReleasePoller, latestObservationDate as _latestObs, isLate as _releaseIsLate } from './js/releasePoller.js';   // poll until the DATA advances; a once-a-day schedule misses the release
 import { buildRegimeStudy as _buildRegimeStudy, buildCalendarStudy as _buildCalendarStudy, currentRegime as _currentRegime, describeRegime as _describeRegime, buildEventStudy as _buildEventStudy } from './js/macroRegimeFx.js';   // what FX has historically done in the macro conditions holding right now, and on release days
 import { buildMacroChanges as _buildMacroChanges, MACRO_CHANGE_SPEC as _MACRO_CHANGE_SPEC, seriesDeltas as _seriesDeltas } from './js/macroChange.js';
 import { macroContext as _macroContext, macroContextByDate as _macroContextByDate, MACRO_FRED_SERIES as _MACRO_FRED_SERIES, riskSensFor as _riskSensFor } from './js/macroCore.js';
@@ -5541,15 +5542,19 @@ app.get('/api/labor-market/refresh-status', async (_req, res) => {
   const raw = await kv.get(_LABOR_MARKET_KV).catch(() => null);
   res.json({ ok: true, running: _laborMarketRunning, last: raw ? JSON.parse(raw) : null });
 });
-let _laborMarketLastRun = null;
-setInterval(() => {
-  if (!process.env.FRED_KEY || _laborMarketRunning) return;
-  const today = new Date().toISOString().slice(0, 10);
-  if (_laborMarketLastRun === today) return;
-  _laborMarketLastRun = today;
-  _laborMarketRunning = true;
-  _buildLaborMarketScores().catch(() => {}).finally(() => { _laborMarketRunning = false; });
-}, 20 * 60_000);
+// laborMarket — poll until the OBSERVATION advances (js/releasePoller.js).
+// Replaces `if (_laborMarketLastRun === today) return`: one fetch per calendar day, taken
+// by whichever tick fired first after midnight — hours before the release — after
+// which the flag blocked every retry until tomorrow. On the one day the number
+// changes, the page served the previous print all day.
+const _laborMarketPoller = _createReleasePoller({
+  name: 'laborMarket', dueAfterDays: 35,   // monthly cadence
+  build: async () => { _laborMarketRunning = true; try { await _buildLaborMarketScores(); } finally { _laborMarketRunning = false; } },
+  read: async () => { const r = await kv.get(_LABOR_MARKET_KV).catch(() => null); return r ? JSON.parse(r) : null; },
+  log: m => console.log(m),
+});
+setInterval(() => { if (process.env.FRED_KEY) _laborMarketPoller.tick().catch(() => {}); }, 10 * 60_000);
+setTimeout(() => { if (process.env.FRED_KEY) _laborMarketPoller.tick().catch(() => {}); }, 60 * 1000);
 
 // ── CPI / Inflation Numeric-Composition Engine ──────────────────────────────
 // Same shape as the Labor Market engine above: pure numeric score built from
@@ -5594,15 +5599,19 @@ app.get('/api/cpi/refresh-status', async (_req, res) => {
   const raw = await kv.get(_CPI_KV).catch(() => null);
   res.json({ ok: true, running: _cpiRunning, last: raw ? JSON.parse(raw) : null });
 });
-let _cpiLastRun = null;
-setInterval(() => {
-  if (!process.env.FRED_KEY || _cpiRunning) return;
-  const today = new Date().toISOString().slice(0, 10);
-  if (_cpiLastRun === today) return;
-  _cpiLastRun = today;
-  _cpiRunning = true;
-  _buildCpiScores().catch(() => {}).finally(() => { _cpiRunning = false; });
-}, 20 * 60_000);
+// cpi — poll until the OBSERVATION advances (js/releasePoller.js).
+// Replaces `if (_cpiLastRun === today) return`: one fetch per calendar day, taken
+// by whichever tick fired first after midnight — hours before the release — after
+// which the flag blocked every retry until tomorrow. On the one day the number
+// changes, the page served the previous print all day.
+const _cpiPoller = _createReleasePoller({
+  name: 'cpi', dueAfterDays: 35,   // monthly cadence
+  build: async () => { _cpiRunning = true; try { await _buildCpiScores(); } finally { _cpiRunning = false; } },
+  read: async () => { const r = await kv.get(_CPI_KV).catch(() => null); return r ? JSON.parse(r) : null; },
+  log: m => console.log(m),
+});
+setInterval(() => { if (process.env.FRED_KEY) _cpiPoller.tick().catch(() => {}); }, 10 * 60_000);
+setTimeout(() => { if (process.env.FRED_KEY) _cpiPoller.tick().catch(() => {}); }, 67 * 1000);
 
 // ── GDP / Growth Numeric-Composition Engine ─────────────────────────────────
 // Same shape again: pure numeric score from FRED series (js/gdpEngine.js),
@@ -5647,15 +5656,19 @@ app.get('/api/gdp/refresh-status', async (_req, res) => {
   const raw = await kv.get(_GDP_KV).catch(() => null);
   res.json({ ok: true, running: _gdpRunning, last: raw ? JSON.parse(raw) : null });
 });
-let _gdpLastRun = null;
-setInterval(() => {
-  if (!process.env.FRED_KEY || _gdpRunning) return;
-  const today = new Date().toISOString().slice(0, 10);
-  if (_gdpLastRun === today) return;
-  _gdpLastRun = today;
-  _gdpRunning = true;
-  _buildGdpScores().catch(() => {}).finally(() => { _gdpRunning = false; });
-}, 20 * 60_000);
+// gdp — poll until the OBSERVATION advances (js/releasePoller.js).
+// Replaces `if (_gdpLastRun === today) return`: one fetch per calendar day, taken
+// by whichever tick fired first after midnight — hours before the release — after
+// which the flag blocked every retry until tomorrow. On the one day the number
+// changes, the page served the previous print all day.
+const _gdpPoller = _createReleasePoller({
+  name: 'gdp', dueAfterDays: 100,   // quarterly cadence
+  build: async () => { _gdpRunning = true; try { await _buildGdpScores(); } finally { _gdpRunning = false; } },
+  read: async () => { const r = await kv.get(_GDP_KV).catch(() => null); return r ? JSON.parse(r) : null; },
+  log: m => console.log(m),
+});
+setInterval(() => { if (process.env.FRED_KEY) _gdpPoller.tick().catch(() => {}); }, 10 * 60_000);
+setTimeout(() => { if (process.env.FRED_KEY) _gdpPoller.tick().catch(() => {}); }, 74 * 1000);
 
 // ── Business Activity Engine (ISM backlog item — see js/ismEngine.js) ──────
 // Third numeric-composition module. The actual ISM Manufacturing/Services
@@ -5700,15 +5713,19 @@ app.get('/api/ism/refresh-status', async (_req, res) => {
   const raw = await kv.get(_ISM_KV).catch(() => null);
   res.json({ ok: true, running: _ismRunning, last: raw ? JSON.parse(raw) : null });
 });
-let _ismLastRun = null;
-setInterval(() => {
-  if (!process.env.FRED_KEY || _ismRunning) return;
-  const today = new Date().toISOString().slice(0, 10);
-  if (_ismLastRun === today) return;
-  _ismLastRun = today;
-  _ismRunning = true;
-  _buildIsmScores().catch(() => {}).finally(() => { _ismRunning = false; });
-}, 20 * 60_000);
+// ism — poll until the OBSERVATION advances (js/releasePoller.js).
+// Replaces `if (_ismLastRun === today) return`: one fetch per calendar day, taken
+// by whichever tick fired first after midnight — hours before the release — after
+// which the flag blocked every retry until tomorrow. On the one day the number
+// changes, the page served the previous print all day.
+const _ismPoller = _createReleasePoller({
+  name: 'ism', dueAfterDays: 35,   // monthly cadence
+  build: async () => { _ismRunning = true; try { await _buildIsmScores(); } finally { _ismRunning = false; } },
+  read: async () => { const r = await kv.get(_ISM_KV).catch(() => null); return r ? JSON.parse(r) : null; },
+  log: m => console.log(m),
+});
+setInterval(() => { if (process.env.FRED_KEY) _ismPoller.tick().catch(() => {}); }, 10 * 60_000);
+setTimeout(() => { if (process.env.FRED_KEY) _ismPoller.tick().catch(() => {}); }, 81 * 1000);
 
 // ── Geopolitical Risk Index (Caldara & Iacoviello, Fed Board) — see js/gprEngine.js ──
 // The ONE macro series on this dashboard that isn't on FRED — a genuinely
@@ -5777,15 +5794,19 @@ app.get('/api/gpr/refresh-status', async (_req, res) => {
   const raw = await kv.get(_GPR_KV).catch(() => null);
   res.json({ ok: true, running: _gprRunning, last: raw ? JSON.parse(raw) : null });
 });
-let _gprLastRun = null;
-setInterval(() => {
-  if (_gprRunning) return;
-  const today = new Date().toISOString().slice(0, 10);
-  if (_gprLastRun === today) return;
-  _gprLastRun = today;
-  _gprRunning = true;
-  _buildGprScore().catch(() => {}).finally(() => { _gprRunning = false; });
-}, 20 * 60_000);
+// gpr — poll until the OBSERVATION advances (js/releasePoller.js).
+// Replaces `if (_gprLastRun === today) return`: one fetch per calendar day, taken
+// by whichever tick fired first after midnight — hours before the release — after
+// which the flag blocked every retry until tomorrow. On the one day the number
+// changes, the page served the previous print all day.
+const _gprPoller = _createReleasePoller({
+  name: 'gpr', dueAfterDays: 8,   // weekly cadence
+  build: async () => { _gprRunning = true; try { await _buildGprScores(); } finally { _gprRunning = false; } },
+  read: async () => { const r = await kv.get(_GPR_KV).catch(() => null); return r ? JSON.parse(r) : null; },
+  log: m => console.log(m),
+});
+setInterval(() => { if (process.env.FRED_KEY) _gprPoller.tick().catch(() => {}); }, 10 * 60_000);
+setTimeout(() => { if (process.env.FRED_KEY) _gprPoller.tick().catch(() => {}); }, 88 * 1000);
 
 // ── Retail Sales Numeric-Composition Engine (see js/retailSalesEngine.js) ──
 // Same shape again: pure numeric score from FRED series, not a text-reading
@@ -5830,15 +5851,19 @@ app.get('/api/retail-sales/refresh-status', async (_req, res) => {
   const raw = await kv.get(_RETAIL_SALES_KV).catch(() => null);
   res.json({ ok: true, running: _retailSalesRunning, last: raw ? JSON.parse(raw) : null });
 });
-let _retailSalesLastRun = null;
-setInterval(() => {
-  if (!process.env.FRED_KEY || _retailSalesRunning) return;
-  const today = new Date().toISOString().slice(0, 10);
-  if (_retailSalesLastRun === today) return;
-  _retailSalesLastRun = today;
-  _retailSalesRunning = true;
-  _buildRetailSalesScores().catch(() => {}).finally(() => { _retailSalesRunning = false; });
-}, 20 * 60_000);
+// retailSales — poll until the OBSERVATION advances (js/releasePoller.js).
+// Replaces `if (_retailSalesLastRun === today) return`: one fetch per calendar day, taken
+// by whichever tick fired first after midnight — hours before the release — after
+// which the flag blocked every retry until tomorrow. On the one day the number
+// changes, the page served the previous print all day.
+const _retailSalesPoller = _createReleasePoller({
+  name: 'retailSales', dueAfterDays: 35,   // monthly cadence
+  build: async () => { _retailSalesRunning = true; try { await _buildRetailSalesScores(); } finally { _retailSalesRunning = false; } },
+  read: async () => { const r = await kv.get(_RETAIL_SALES_KV).catch(() => null); return r ? JSON.parse(r) : null; },
+  log: m => console.log(m),
+});
+setInterval(() => { if (process.env.FRED_KEY) _retailSalesPoller.tick().catch(() => {}); }, 10 * 60_000);
+setTimeout(() => { if (process.env.FRED_KEY) _retailSalesPoller.tick().catch(() => {}); }, 95 * 1000);
 
 // ── Trade Balance Numeric-Composition Engine (see js/tradeBalanceEngine.js) ─
 // Same shape again: pure numeric score from FRED series. Z-scores the raw
@@ -5881,15 +5906,19 @@ app.get('/api/trade-balance/refresh-status', async (_req, res) => {
   const raw = await kv.get(_TRADE_BALANCE_KV).catch(() => null);
   res.json({ ok: true, running: _tradeBalanceRunning, last: raw ? JSON.parse(raw) : null });
 });
-let _tradeBalanceLastRun = null;
-setInterval(() => {
-  if (!process.env.FRED_KEY || _tradeBalanceRunning) return;
-  const today = new Date().toISOString().slice(0, 10);
-  if (_tradeBalanceLastRun === today) return;
-  _tradeBalanceLastRun = today;
-  _tradeBalanceRunning = true;
-  _buildTradeBalanceScores().catch(() => {}).finally(() => { _tradeBalanceRunning = false; });
-}, 20 * 60_000);
+// tradeBalance — poll until the OBSERVATION advances (js/releasePoller.js).
+// Replaces `if (_tradeBalanceLastRun === today) return`: one fetch per calendar day, taken
+// by whichever tick fired first after midnight — hours before the release — after
+// which the flag blocked every retry until tomorrow. On the one day the number
+// changes, the page served the previous print all day.
+const _tradeBalancePoller = _createReleasePoller({
+  name: 'tradeBalance', dueAfterDays: 35,   // monthly cadence
+  build: async () => { _tradeBalanceRunning = true; try { await _buildTradeBalanceScores(); } finally { _tradeBalanceRunning = false; } },
+  read: async () => { const r = await kv.get(_TRADE_BALANCE_KV).catch(() => null); return r ? JSON.parse(r) : null; },
+  log: m => console.log(m),
+});
+setInterval(() => { if (process.env.FRED_KEY) _tradeBalancePoller.tick().catch(() => {}); }, 10 * 60_000);
+setTimeout(() => { if (process.env.FRED_KEY) _tradeBalancePoller.tick().catch(() => {}); }, 102 * 1000);
 
 // ── Real Yield Differential Engine (see js/realYieldEngine.js) ─────────────
 // Entirely derived — no new data source, combines the 10Y yield (already
@@ -5934,15 +5963,19 @@ app.get('/api/real-yield/refresh-status', async (_req, res) => {
   const raw = await kv.get(_REAL_YIELD_KV).catch(() => null);
   res.json({ ok: true, running: _realYieldRunning, last: raw ? JSON.parse(raw) : null });
 });
-let _realYieldLastRun = null;
-setInterval(() => {
-  if (!process.env.FRED_KEY || _realYieldRunning) return;
-  const today = new Date().toISOString().slice(0, 10);
-  if (_realYieldLastRun === today) return;
-  _realYieldLastRun = today;
-  _realYieldRunning = true;
-  _buildRealYieldScores().catch(() => {}).finally(() => { _realYieldRunning = false; });
-}, 20 * 60_000);
+// realYield — poll until the OBSERVATION advances (js/releasePoller.js).
+// Replaces `if (_realYieldLastRun === today) return`: one fetch per calendar day, taken
+// by whichever tick fired first after midnight — hours before the release — after
+// which the flag blocked every retry until tomorrow. On the one day the number
+// changes, the page served the previous print all day.
+const _realYieldPoller = _createReleasePoller({
+  name: 'realYield', dueAfterDays: 1,   // daily cadence
+  build: async () => { _realYieldRunning = true; try { await _buildRealYieldScores(); } finally { _realYieldRunning = false; } },
+  read: async () => { const r = await kv.get(_REAL_YIELD_KV).catch(() => null); return r ? JSON.parse(r) : null; },
+  log: m => console.log(m),
+});
+setInterval(() => { if (process.env.FRED_KEY) _realYieldPoller.tick().catch(() => {}); }, 10 * 60_000);
+setTimeout(() => { if (process.env.FRED_KEY) _realYieldPoller.tick().catch(() => {}); }, 109 * 1000);
 
 // ── Rate ("Carry") Differential Engine (see js/rateDiffEngine.js) ──────────
 // Entirely derived — no new data source, reuses YIELD_CURVE_UNIVERSE's own
@@ -5988,15 +6021,19 @@ app.get('/api/rate-diff/refresh-status', async (_req, res) => {
   const raw = await kv.get(_RATE_DIFF_KV).catch(() => null);
   res.json({ ok: true, running: _rateDiffRunning, last: raw ? JSON.parse(raw) : null });
 });
-let _rateDiffLastRun = null;
-setInterval(() => {
-  if (!process.env.FRED_KEY || _rateDiffRunning) return;
-  const today = new Date().toISOString().slice(0, 10);
-  if (_rateDiffLastRun === today) return;
-  _rateDiffLastRun = today;
-  _rateDiffRunning = true;
-  _buildRateDiffScores().catch(() => {}).finally(() => { _rateDiffRunning = false; });
-}, 20 * 60_000);
+// rateDiff — poll until the OBSERVATION advances (js/releasePoller.js).
+// Replaces `if (_rateDiffLastRun === today) return`: one fetch per calendar day, taken
+// by whichever tick fired first after midnight — hours before the release — after
+// which the flag blocked every retry until tomorrow. On the one day the number
+// changes, the page served the previous print all day.
+const _rateDiffPoller = _createReleasePoller({
+  name: 'rateDiff', dueAfterDays: 1,   // daily cadence
+  build: async () => { _rateDiffRunning = true; try { await _buildRateDiffScores(); } finally { _rateDiffRunning = false; } },
+  read: async () => { const r = await kv.get(_RATE_DIFF_KV).catch(() => null); return r ? JSON.parse(r) : null; },
+  log: m => console.log(m),
+});
+setInterval(() => { if (process.env.FRED_KEY) _rateDiffPoller.tick().catch(() => {}); }, 10 * 60_000);
+setTimeout(() => { if (process.env.FRED_KEY) _rateDiffPoller.tick().catch(() => {}); }, 116 * 1000);
 
 // ── PPI / Pipeline Inflation Engine (see js/ppiEngine.js) ──────────────────
 // USD-only, deliberately — the non-US OECD PPI family on FRED was
@@ -6134,15 +6171,17 @@ app.get('/api/yield-curve/refresh-status', async (_req, res) => {
   const raw = await kv.get(_YIELD_CURVE_KV).catch(() => null);
   res.json({ ok: true, running: _yieldCurveRunning, last: raw ? JSON.parse(raw) : null });
 });
-let _yieldCurveLastRun = null;
-setInterval(() => {
-  if (!process.env.FRED_KEY || _yieldCurveRunning) return;
-  const today = new Date().toISOString().slice(0, 10);
-  if (_yieldCurveLastRun === today) return;
-  _yieldCurveLastRun = today;
-  _yieldCurveRunning = true;
-  _buildYieldCurveScores().catch(() => {}).finally(() => { _yieldCurveRunning = false; });
-}, 20 * 60_000);
+// yieldCurve — poll until the OBSERVATION advances (js/releasePoller.js), same fix as the
+// other macro feeds: a once-per-calendar-day fetch lands before the release and then
+// blocks every retry until tomorrow.
+const _yieldCurvePoller = _createReleasePoller({
+  name: 'yieldCurve', dueAfterDays: 1,   // derived from daily rates
+  build: async () => { _yieldCurveRunning = true; try { await _buildYieldCurveScores(); } finally { _yieldCurveRunning = false; } },
+  read: async () => { const r = await kv.get(_YIELD_CURVE_KV).catch(() => null); return r ? JSON.parse(r) : null; },
+  log: m => console.log(m),
+});
+setInterval(() => { if (process.env.FRED_KEY) _yieldCurvePoller.tick().catch(() => {}); }, 10 * 60_000);
+setTimeout(() => { if (process.env.FRED_KEY) _yieldCurvePoller.tick().catch(() => {}); }, 130 * 1000);
 
 // ── Consumer Confidence Engine (see js/consumerConfidenceEngine.js) ─────────
 // Demand-side mirror of the ISM/business-confidence engine — one series per
@@ -6185,15 +6224,17 @@ app.get('/api/consumer-confidence/refresh-status', async (_req, res) => {
   const raw = await kv.get(_CONSUMER_CONFIDENCE_KV).catch(() => null);
   res.json({ ok: true, running: _consumerConfidenceRunning, last: raw ? JSON.parse(raw) : null });
 });
-let _consumerConfidenceLastRun = null;
-setInterval(() => {
-  if (!process.env.FRED_KEY || _consumerConfidenceRunning) return;
-  const today = new Date().toISOString().slice(0, 10);
-  if (_consumerConfidenceLastRun === today) return;
-  _consumerConfidenceLastRun = today;
-  _consumerConfidenceRunning = true;
-  _buildConsumerConfidenceScores().catch(() => {}).finally(() => { _consumerConfidenceRunning = false; });
-}, 20 * 60_000);
+// consumerConfidence — poll until the OBSERVATION advances (js/releasePoller.js), same fix as the
+// other macro feeds: a once-per-calendar-day fetch lands before the release and then
+// blocks every retry until tomorrow.
+const _consumerConfidencePoller = _createReleasePoller({
+  name: 'consumerConfidence', dueAfterDays: 35,   // monthly
+  build: async () => { _consumerConfidenceRunning = true; try { await _buildConsumerConfidenceScores(); } finally { _consumerConfidenceRunning = false; } },
+  read: async () => { const r = await kv.get(_CONSUMER_CONFIDENCE_KV).catch(() => null); return r ? JSON.parse(r) : null; },
+  log: m => console.log(m),
+});
+setInterval(() => { if (process.env.FRED_KEY) _consumerConfidencePoller.tick().catch(() => {}); }, 10 * 60_000);
+setTimeout(() => { if (process.env.FRED_KEY) _consumerConfidencePoller.tick().catch(() => {}); }, 137 * 1000);
 
 // ── Macro Scorecard (see js/macroScorecardEngine.js) ────────────────────────
 // The one place that reads across EVERY other engine's already-cached KV
@@ -10434,15 +10475,17 @@ app.get('/api/credit-quality/refresh-status', async (_req, res) => {
   const raw = await kv.get(_CREDIT_QUALITY_KV).catch(() => null);
   res.json({ ok: true, running: _creditQualityRunning, last: raw ? JSON.parse(raw) : null });
 });
-let _creditQualityLastRun = null;
-setInterval(() => {
-  if (!process.env.FRED_KEY || _creditQualityRunning) return;
-  const today = new Date().toISOString().slice(0, 10);
-  if (_creditQualityLastRun === today) return;
-  _creditQualityLastRun = today;
-  _creditQualityRunning = true;
-  _buildCreditQualityRead().catch(() => {}).finally(() => { _creditQualityRunning = false; });
-}, 20 * 60_000);
+// creditQuality — poll until the OBSERVATION advances (js/releasePoller.js), same fix as the
+// other macro feeds: a once-per-calendar-day fetch lands before the release and then
+// blocks every retry until tomorrow.
+const _creditQualityPoller = _createReleasePoller({
+  name: 'creditQuality', dueAfterDays: 1,   // daily
+  build: async () => { _creditQualityRunning = true; try { await _buildCreditQualityRead(); } finally { _creditQualityRunning = false; } },
+  read: async () => { const r = await kv.get(_CREDIT_QUALITY_KV).catch(() => null); return r ? JSON.parse(r) : null; },
+  log: m => console.log(m),
+});
+setInterval(() => { if (process.env.FRED_KEY) _creditQualityPoller.tick().catch(() => {}); }, 10 * 60_000);
+setTimeout(() => { if (process.env.FRED_KEY) _creditQualityPoller.tick().catch(() => {}); }, 144 * 1000);
 
 // ── /api/fx-carry — the HONEST FX carry factor ───────────────────────────────
 // Long high-rate currencies, short low-rate ones vs USD, inverse-vol sized,
