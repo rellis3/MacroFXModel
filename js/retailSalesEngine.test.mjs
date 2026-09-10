@@ -88,9 +88,35 @@ console.log('[RETAIL_SALES_UNIVERSE sanity]');
 {
   ok('covers all 8 currencies', ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'NZD'].every(c => RETAIL_SALES_UNIVERSE[c]));
   ok('USD has headline + exAutos, both index-level $ series', RETAIL_SALES_UNIVERSE.USD.headline.isIndex && RETAIL_SALES_UNIVERSE.USD.exAutos.isIndex);
-  ok('non-USD currencies have only headline (no exAutos)', Object.entries(RETAIL_SALES_UNIVERSE).filter(([c]) => c !== 'USD').every(([, cfg]) => Object.keys(cfg).length === 1 && cfg.headline));
-  ok('all 7 non-USD headline entries are pre-computed YoY (not index) and quarterly', Object.entries(RETAIL_SALES_UNIVERSE).filter(([c]) => c !== 'USD').every(([, cfg]) => !cfg.headline.isIndex && cfg.headline.quarterly));
-  ok('all 7 non-USD entries use the uniform SLRTTO01 Q659S family', Object.entries(RETAIL_SALES_UNIVERSE).filter(([c]) => c !== 'USD').every(([, cfg]) => /^SLRTTO01[A-Z]{2}Q659S$/.test(cfg.headline.series)));
+  // Same invariant cpiEngine now holds: a currency has either a live series or a
+  // documented discontinuation, never neither and never both. CAD's source stopped
+  // in 2022 and AUD's in 2025, and no live total-retail-trade replacement exists on
+  // FRED -- the current-looking candidates (CANSLRTCR03GPSAM / AUSSLRTCR03GPSAM) are
+  // passenger CAR REGISTRATIONS, which would have shipped car sales as retail sales.
+  ok('every currency has either a headline series or a documented discontinuation',
+     Object.values(RETAIL_SALES_UNIVERSE).every(c => c.headline || c.discontinued));
+  ok('no currency has both', Object.values(RETAIL_SALES_UNIVERSE).every(c => !(c.headline && c.discontinued)));
+  ok('every discontinuation records when, what and why',
+     Object.values(RETAIL_SALES_UNIVERSE).filter(c => c.discontinued)
+       .every(c => c.discontinued.since && c.discontinued.was && c.discontinued.reason));
+  ok('exAutos stays USD-only',
+     Object.entries(RETAIL_SALES_UNIVERSE).filter(([, c]) => c.exAutos).map(([k]) => k).join() === 'USD');
+  ok('a discontinued currency scores nothing but explains itself', (() => {
+    const r = retailSalesCompositeScore({}, RETAIL_SALES_UNIVERSE.CAD);
+    return r.spending === null && r.discontinued?.since === '2022-01';
+  })());
+  // Only the currencies that still HAVE a headline — CAD and AUD are discontinued.
+  ok('every live non-USD headline is pre-computed YoY (not index) and quarterly',
+     Object.entries(RETAIL_SALES_UNIVERSE)
+       .filter(([c, cfg]) => c !== 'USD' && cfg.headline)
+       .every(([, cfg]) => !cfg.headline.isIndex && cfg.headline.quarterly));
+  ok('every live non-USD entry uses the uniform SLRTTO01 Q659S family',
+     Object.entries(RETAIL_SALES_UNIVERSE)
+       .filter(([c, cfg]) => c !== 'USD' && cfg.headline)
+       .every(([, cfg]) => /^SLRTTO01[A-Z]{2}Q659S$/.test(cfg.headline.series)));
+  ok('and the discontinued ones name the SLRTTO01 series they lost',
+     Object.values(RETAIL_SALES_UNIVERSE).filter(c => c.discontinued)
+       .every(c => /^SLRTTO01[A-Z]{2}Q659S$/.test(c.discontinued.was)));
 }
 
 if (failures) { console.error(`\n${failures} FAILURE(S)`); process.exit(1); }

@@ -321,9 +321,21 @@ console.log('[LABOR_UNIVERSE / SECTOR_UNIVERSE]');
   ok('covers all 8 currencies from ECON_UNIVERSE', Object.keys(LABOR_UNIVERSE).length === 8, Object.keys(LABOR_UNIVERSE).join(','));
   ok('SECTOR_UNIVERSE has 10 supersectors, all unique series IDs', Object.keys(SECTOR_UNIVERSE).length === 10
     && new Set(Object.values(SECTOR_UNIVERSE)).size === 10, Object.values(SECTOR_UNIVERSE).join(','));
-  ok('CHF uses SECO registered unemployment, not the OECD-harmonized rate', LABOR_UNIVERSE.CHF.unemployment.series === 'LMUNRLTTCHM647S', LABOR_UNIVERSE.CHF.unemployment.series);
+  // SECO's registered series (LMUNRLTTCHM647S) was the better FX read and is what
+  // this used until it DIED on FRED -- last observation 2023-12-01. The OECD monthly
+  // default it was chosen over (LRHUTTTTCHM156S) turns out not to exist on FRED at
+  // all. LRHUTTTTCHQ156S is the only live option, and it is genuinely quarterly
+  // (observations spaced Jan/Apr/Jul/Oct) despite its FRED title saying "Monthly".
+  ok('CHF uses the live OECD harmonised rate, the dead SECO series having stopped in 2023',
+     LABOR_UNIVERSE.CHF.unemployment.series === 'LRHUTTTTCHQ156S', LABOR_UNIVERSE.CHF.unemployment.series);
+  ok('and is flagged quarterly so the staleness budget ages it correctly',
+     LABOR_UNIVERSE.CHF.unemployment.quarterly === true);
   ok('CHF still unemployment-only (one factor) — no confirmed wage series exists', Object.keys(LABOR_UNIVERSE.CHF).length === 1);
-  ok('CHF is labeled as a level, not a % rate', UNEMPLOYMENT_UNIT_LABEL.CHF !== '%', UNEMPLOYMENT_UNIT_LABEL.CHF);
+  // The unit changed WITH the series: SECO's was a registered-unemployment LEVEL in
+  // persons, the OECD replacement is a % rate. Mislabelling this would put
+  // "thousands" under a number that reads 5.07.
+  ok('CHF is now labelled a % rate, matching the series it actually uses',
+     UNEMPLOYMENT_UNIT_LABEL.CHF === '%', UNEMPLOYMENT_UNIT_LABEL.CHF);
   ok('every other currency defaults to %', Object.entries(UNEMPLOYMENT_UNIT_LABEL).filter(([c]) => c !== 'CHF').every(([, u]) => u === '%'));
 
   const upgraded = ['EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'NZD'];

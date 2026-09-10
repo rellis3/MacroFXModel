@@ -107,12 +107,21 @@ LABOR_UNIVERSE.CAD.wages = { series: 'LCEAMN01CAM659S', isIndex: false };
 // series is used, and no confirmed headline wage series was found either
 // (2026-08-08 search), so CHF stays unemployment-only, just the better
 // series.
-// NOTE units: this is a REGISTERED-UNEMPLOYMENT LEVEL (persons), not a %
-// rate like every other currency's series — the scoring math doesn't care
-// (unemploymentTrendScore works relative to a series' own history either
-// way), but the UI needs UNEMPLOYMENT_UNIT_LABEL below to label it correctly
-// rather than assume "%" like everywhere else.
-LABOR_UNIVERSE.CHF = { unemployment: { series: 'LMUNRLTTCHM647S' } };
+// SUPERSEDED 2026-09-10: LMUNRLTTCHM647S is DEAD on FRED, last observation
+// 2023-12-01, so the reasoning above (prefer SECO's registered print, which is
+// what FX desks actually watch) no longer has a live series behind it. Neither
+// does the OECD monthly default named above — LRHUTTTTCHM156S does not exist on
+// FRED at all, which a full sweep of all 104 macro series turned up.
+//
+// What IS live is LRHUTTTTCHQ156S (OECD harmonised rate, current to 2026-01).
+// It is genuinely QUARTERLY despite the "Monthly Unemployment Rate" in its FRED
+// title — the observations are spaced Jan/Apr/Jul/Oct — so it is flagged as such
+// and the cadence-aware staleness budget ages it correctly rather than marking a
+// healthy print stale.
+//
+// This is a downgrade in cadence and in FX relevance, taken because the
+// alternative was continuing to score a print from December 2023.
+LABOR_UNIVERSE.CHF = { unemployment: { series: 'LRHUTTTTCHQ156S', quarterly: true } };
 
 // NZD — quarterly across the board (unemployment, participation, wages),
 // consistent with NZ's CPI/GDP data also being quarterly-only at the
@@ -126,7 +135,7 @@ LABOR_UNIVERSE.NZD.participation = { series: 'LRAC64TTNZQ156S', quarterly: true 
 LABOR_UNIVERSE.NZD.wages = { series: 'LCEAMN01NZQ659S', isIndex: false, quarterly: true };
 
 export const UNEMPLOYMENT_UNIT_LABEL = Object.fromEntries(Object.keys(LABOR_UNIVERSE).map(ccy => [ccy, '%']));
-UNEMPLOYMENT_UNIT_LABEL.CHF = 'registered (thousands)';
+UNEMPLOYMENT_UNIT_LABEL.CHF = '%';   // OECD harmonised RATE now, not SECO's registered level
 
 // BLS's CES supersector employment series — the industry breakdown behind the
 // headline payroll number (table B-1 of the Employment Situation release).

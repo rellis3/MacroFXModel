@@ -27,7 +27,7 @@ export const ECON_UNIVERSE = {
   CAD: { lagDays: ECON_LAG_FOREIGN, rate: 'IRSTCI01CAM156N', y10: 'IRLTLT01CAM156N', unemp: 'LRHUTTTTCAM156S' },
   // CHF rate was IRSTCI01CHM156N (OECD call money) -- DISCONTINUED on FRED, last obs
   // 2024-03-01. Same swap js/zscoreSpreadEngine.js made and validated in July 2026.
-  CHF: { lagDays: ECON_LAG_FOREIGN, rate: 'IR3TIB01CHM156N', y10: 'IRLTLT01CHM156N', unemp: 'LRHUTTTTCHM156S' },
+  CHF: { lagDays: ECON_LAG_FOREIGN, rate: 'IR3TIB01CHM156N', y10: 'IRLTLT01CHM156N', unemp: 'LRHUTTTTCHQ156S' },
   // unemp corrected 2026-08-08: LRHUTTTTNZM156S (the nominally-monthly "M"
   // variant) could not be confirmed to exist via web search across repeated
   // targeted queries — New Zealand's Household Labour Force Survey is

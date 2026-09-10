@@ -6398,7 +6398,7 @@ async function _buildMacroScorecard() {
   // other is "this is not coming back without a new data source". Collected here so
   // the UI and the prompts can say which.
   const discontinued = {};
-  for (const [dim, byC] of [['cpi', cpi]]) {
+  for (const [dim, byC] of [['cpi', cpi], ['retailSales', retail]]) {
     for (const [ccy, row] of Object.entries(byC || {})) {
       if (row?.discontinued) (discontinued[dim] ||= {})[ccy] = row.discontinued;
     }

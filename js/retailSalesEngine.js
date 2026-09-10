@@ -36,8 +36,15 @@ export const RETAIL_SALES_UNIVERSE = {
   EUR: { headline: { series: 'SLRTTO01DEQ659S', isIndex: false, quarterly: true } },
   GBP: { headline: { series: 'SLRTTO01GBQ659S', isIndex: false, quarterly: true } },
   JPY: { headline: { series: 'SLRTTO01JPQ659S', isIndex: false, quarterly: true } },
-  AUD: { headline: { series: 'SLRTTO01AUQ659S', isIndex: false, quarterly: true } },
-  CAD: { headline: { series: 'SLRTTO01CAQ659S', isIndex: false, quarterly: true } },
+  // No live source. SLRTTO01AUQ659S stopped 2025-04. Searched: the AUSSART*
+  // family is dead too (2023-11 / 2010-10), and AUSSLRTCR03GPSAM -- which IS
+  // current -- is passenger CAR REGISTRATIONS, not retail trade. Using it would
+  // have shipped car sales labelled as retail sales.
+  AUD: { discontinued: { since: '2025-04', was: 'SLRTTO01AUQ659S', reason: 'OECD MEI mirror discontinued; no live total-retail-trade series on FRED' } },
+  // No live source. SLRTTO01CAQ659S stopped 2022-01 -- the longest-dead series in
+  // the whole macro section. CANSART* is dead too; CANSLRTCR03GPSAM is car
+  // registrations, same trap as AUD above.
+  CAD: { discontinued: { since: '2022-01', was: 'SLRTTO01CAQ659S', reason: 'OECD MEI mirror discontinued; no live total-retail-trade series on FRED' } },
   CHF: { headline: { series: 'SLRTTO01CHQ659S', isIndex: false, quarterly: true } },
   NZD: { headline: { series: 'SLRTTO01NZQ659S', isIndex: false, quarterly: true } },
 };
@@ -104,6 +111,11 @@ export function retailSalesScore(obsMap, meta) {
 // reported standalone, same "report it, don't blend it" treatment CPI
 // gives core.
 export function retailSalesCompositeScore(data = {}, universe = {}) {
+  // A stopped source reports WHY it has no score, so the page can say "discontinued"
+  // rather than implying the print is merely late. Same contract as cpiScore.
+  if (universe.discontinued) {
+    return { dims: {}, spending: null, coverage: [], cadence: null, discontinued: universe.discontinued };
+  }
   const dims = {};
   if (data.headline) dims.headline = retailSalesScore(data.headline, universe.headline);
   if (data.exAutos) dims.exAutos = retailSalesScore(data.exAutos, universe.exAutos);
@@ -120,6 +132,9 @@ export function retailSalesCompositeScore(data = {}, universe = {}) {
 export async function fetchRetailSalesData(ccy, fredKey, fromDate = '2000-01-01') {
   const cfg = RETAIL_SALES_UNIVERSE[ccy];
   if (!cfg) throw new Error(`No retail sales series configured for ${ccy}`);
+  // Nothing to fetch for a discontinued currency, and asking anyway would spend a
+  // FRED call re-downloading a print from 2022. Same treatment as js/cpiEngine.js.
+  if (cfg.discontinued) return { data: {}, availability: [{ discontinued: cfg.discontinued }] };
   const data = {}, availability = [];
   await Promise.all(Object.entries(cfg).map(async ([factor, meta]) => {
     try {
