@@ -49,7 +49,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { loadM1ForPair } from '../js/volBacktestM1Engine.js';
 import { atlasWalk } from '../js/levelAtlasEngine.js';
-import { buildAtlasBook } from '../js/levelAtlasReport.js';
+import { buildAtlasBook, splitAt } from '../js/levelAtlasReport.js';
 import { voteDecision, priceBarrierTrade, applyConcurrencyCap } from '../js/levelAtlasVoteReview.js';
 import { summarizeTrades } from '../js/metricsCore.js';
 import { costForPair } from '../js/perLineStrategy.js';
@@ -91,8 +91,30 @@ async function processPair(pair) {
 
   const { touches } = atlasWalk(packed, { instrument: sym, assetClass, rearmFracs: [REARM], pendingRearmFrac: REARM });
   if (!touches?.length) { console.log('  no touches'); return null; }
-  const book = buildAtlasBook(touches, { rearmFrac: REARM });
-  if (!book) { console.log('  no book'); return null; }
+
+  // TWO books, because the production one leaks (2026-09-10).
+  //
+  // LEAKY = what runOne/the live page actually build: buildAtlasBook over ALL
+  // touches. Its annotateHolds sets holdsOOS by requiring the dimension's lift
+  // to have the SAME SIGN and enough magnitude in the OOS segment, and
+  // matchLiveContext (js/levelAtlasReport.js:364) then counts ONLY holdsOOS
+  // dimensions. So the vote's constituents are selected BECAUSE they worked in
+  // the test period, and the "OOS" backtest scores them on that same period.
+  // That is a look-ahead leak at the feature-selection layer -- one level deeper
+  // than the outcome:'neither' population bug fixed in 5d5966f.
+  //
+  // HONEST = the book built from IS touches ONLY. buildAtlasBook splits whatever
+  // it is handed, so giving it just the in-sample block makes holdsOOS a genuine
+  // validation check on a slice INSIDE training, leaving the real OOS untouched.
+  // Then the same vote is evaluated on the real OOS. Any edge that survives here
+  // is a real edge; any edge that only exists in LEAKY was never there.
+  const allAtRearm = touches.filter(t => t.rearmFrac === REARM);
+  const { split: realSplit } = splitAt(allAtRearm);
+  const isOnly = allAtRearm.filter(t => t.date < realSplit);
+  const leakyBook = buildAtlasBook(touches, { rearmFrac: REARM });
+  const honestBook = buildAtlasBook(isOnly, { rearmFrac: REARM });
+  if (!leakyBook || !honestBook) { console.log('  no book'); return null; }
+  const book = leakyBook;
 
   // ── Population audit. The HL post-mortem's lesson was that the fake edge
   // lived in what got silently excluded, so every gate is counted, not just
@@ -100,12 +122,15 @@ async function processPair(pair) {
   const audit = { allTouches: touches.length, atRearm: 0, oos: 0, afterRungExcl: 0, votable: 0, margin1: 0, margin2: 0, margin3: 0, priceable: 0, timedOut: 0 };
   const rng = mulberry32(0xa71a5 ^ [...pair].reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 11));
 
-  const admitted = [];   // touches the vote gate (margin>=1) admits, with their vote
+  const admitted = [];   // touches the LEAKY vote gate admits
+  const admittedH = [];  // same touches under the HONEST book's vote
   const allOos = [];     // every priceable OOS touch, vote or not
   for (const t of touches) {
     if (t.rearmFrac !== REARM) continue;
     audit.atRearm++;
-    if (!(t.date >= book.splitDate)) continue;
+    // The REAL split, identical for both books, so leaky and honest are scored
+    // on exactly the same trades and the difference is only the book.
+    if (!(t.date >= realSplit)) continue;
     audit.oos++;
     if (EXCLUDE_RUNGS.includes(t.rung)) continue;
     audit.afterRungExcl++;
@@ -123,7 +148,10 @@ async function processPair(pair) {
       if (vd.margin >= 3) audit.margin3++;
       admitted.push({ t, vd });
     }
+    const vdH = voteDecision(honestBook, t);
+    if (vdH && vdH.margin >= 1) admittedH.push({ t, vd: vdH });
   }
+  audit.honestVoted = admittedH.length;
   if (!admitted.length) { console.log('  no admitted touches'); return null; }
 
   // ── Build one trade list per policy, all priced by the same production fn.
@@ -151,8 +179,11 @@ async function processPair(pair) {
     'always follow': build(admitted, () => 'follow'),
     'always fade': build(admitted, () => 'fade'),
     'coin flip': build(admitted, () => (rng() < 0.5 ? 'fade' : 'follow')),
-    'NO GATE vote-dir': build(allOos.filter(r => r.vd), (t, vd) => vd.decision),
     'NO GATE always fade': build(allOos, () => 'fade'),
+    'HONEST vote (m>=1)': build(admittedH, (t, vd) => vd.decision),
+    'HONEST vote (m>=2)': build(admittedH.filter(r => r.vd.margin >= 2), (t, vd) => vd.decision),
+    'HONEST vote (m>=3)': build(admittedH.filter(r => r.vd.margin >= 3), (t, vd) => vd.decision),
+    'HONEST anti-vote': build(admittedH, (t, vd) => (vd.decision === 'fade' ? 'follow' : 'fade')),
   };
   for (const [k, v] of Object.entries(policies)) record(k, v);
 
@@ -193,8 +224,12 @@ async function main() {
   for (const k of ['vote (m>=1)', 'vote (m>=2)', 'vote (m>=3)', 'anti-vote', 'always follow', 'always fade', 'coin flip']) {
     console.log(row(k, pooled[k]));
   }
-  console.log('-- no margin gate at all (selection test) ' + '-'.repeat(39));
-  for (const k of ['NO GATE vote-dir', 'NO GATE always fade']) console.log(row(k, pooled[k]));
+  console.log('-- no margin gate (baseline) ' + '-'.repeat(52));
+  console.log(row('NO GATE always fade', pooled['NO GATE always fade']));
+  console.log('-- SAME trades, but the book built from IS ONLY (no OOS leak) ' + '-'.repeat(20));
+  for (const k of ['HONEST vote (m>=1)', 'HONEST vote (m>=2)', 'HONEST vote (m>=3)', 'HONEST anti-vote']) {
+    console.log(row(k, pooled[k]));
+  }
 
   console.log('\nHOW TO READ IT');
   console.log('  The vote earns its place only if "vote (m>=1)" beats the better of always-follow /');
