@@ -78,6 +78,17 @@ alongside the one real positive finding.
   (OOS AUC below 0.5). Traced to only 13–18 independent test/val episodes,
   not a modelling flaw. See `RESEARCH_BOOK.md` Part 15 — don't ship this
   classifier; multi-pair pooling is what actually unblocks it.
+- `scripts/pair_config.py` — per-pair contract multiplier, CME-inversion
+  flag, and pip size, pulled from the real production registries
+  (`js/oi.js`, `oi-dashboard.html`), not guessed. Every multi-pair-aware
+  script imports from here.
+- `scripts/13_pool_multi_pair.py` — pools wall-touch episodes across every
+  pair that's been through `01`→`05`→`06` and re-runs Part 9b/12's exact
+  episode-cluster bootstrap on the combined set, reporting both the pooled
+  result and a per-pair breakdown. Skips any pair missing its files with a
+  clear message. See `RESEARCH_BOOK.md` Part 16 — infrastructure built and
+  verified with synthetic data; no real multi-pair result yet (R2 access
+  needed, not available on this machine).
 - `data/results/*.csv` — every numeric table cited in `RESEARCH_BOOK.md`,
   small and committed, one file per test.
 
@@ -120,7 +131,40 @@ node    oi_research_book/scripts/08_bot_backtest_zones.mjs  # calls the real js/
 python3 oi_research_book/scripts/09_bot_backtest_execute.py # needs m1/eurusd_m1.parquet again
 python3 oi_research_book/scripts/10_real_maxpain_test.py    # depends on 01's surface_near.parquet
 python3 oi_research_book/scripts/11_feature_discovery.py    # depends on 05's touch events + surface_near.parquet + m1/eurusd_m1.parquet
+python3 oi_research_book/scripts/12_break_reject_classifier.py  # depends on 11's enriched touches
 ```
+
+## Multi-pair pooling (roadmap item 3, infrastructure ready — see Part 16)
+
+`01`, `05`, and `06` take a pair code as an extra argument and read/write
+pair-suffixed filenames for anything other than `EUR_USD` (which keeps its
+original, already-committed filenames unchanged). Per-pair facts (contract
+multiplier, whether CME quotes that pair's strikes inverted, pip size) live
+in `pair_config.py`, pulled from the real production registries
+(`js/oi.js`'s `oiContractSize()`/`futuresIsInverted()`,
+`oi-dashboard.html`'s `pip()`) — add a new pair there before running it.
+
+For each additional pair (needs its raw CSV + D1/M1 parquet pulled from R2
+the same way as EUR/USD above, just a different `OI Data/<PAIR>.csv` and
+`m1/<pair>_{d1,m1}.parquet`):
+
+```bash
+python3 oi_research_book/scripts/01_build_daily_dataset.py /tmp/<PAIR>.csv /tmp/<pair>_d1.parquet <PAIR>
+python3 oi_research_book/scripts/05_intraday_validation.py /tmp/<pair>_m1.parquet <PAIR>
+python3 oi_research_book/scripts/06_intraday_cluster_significance.py <PAIR>
+```
+
+Then pool everything that's been run:
+
+```bash
+python3 oi_research_book/scripts/13_pool_multi_pair.py   # no args = every pair in pair_config.PAIR_CONFIG
+```
+
+It skips any pair missing its files with a clear message rather than
+failing, so it's safe to run after each pair as they're added one at a
+time. Reports the pooled cluster-bootstrap result **and** a per-pair
+breakdown — check the per-pair numbers before trusting the pooled one, in
+case pooling is averaging over a pair where the effect doesn't replicate.
 
 Total run time is under two minutes; the raw CSV/cache are gitignored
 (reproducible from R2, not worth committing at ~290MB combined). Scripts

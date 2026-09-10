@@ -28,13 +28,18 @@ import sys
 import numpy as np
 import pandas as pd
 from scipy.stats import norm
+from pair_config import cfg, suffix
+
+PAIR = sys.argv[3] if len(sys.argv) > 3 else "EUR_USD"
+_CFG = cfg(PAIR)
+_SUFFIX = suffix(PAIR)
 
 RAW = sys.argv[1] if len(sys.argv) > 1 else "EUR_USD.csv"
 D1 = sys.argv[2] if len(sys.argv) > 2 else "eurusd_d1.parquet"
 OUTDIR = "oi_research_book/data"
 FFILL_LIMIT = 5          # consecutive missing trade-dates we'll carry OI forward across
 NEAR_DTE_MAX = 45        # calendar days
-CONTRACT_MULT = 125_000  # EUR/USD CME FX option notional (matches js/oi.js)
+CONTRACT_MULT = _CFG["contract_mult"]
 RV_WINDOW = 20           # trading days, close-to-close realized vol window
 
 
@@ -50,6 +55,14 @@ def load_raw():
                       parse_dates=["date", "expiry"], dtype=dtypes)
     df["date"] = pd.to_datetime(df["date"]).dt.tz_localize(None)
     df["expiry"] = pd.to_datetime(df["expiry"]).dt.tz_convert("UTC").dt.tz_localize(None)
+    if _CFG["inverted"]:
+        # CME quotes USD/JPY, USD/CAD, USD/CHF options in foreign-per-USD terms
+        # (matching futuresIsInverted() in js/oi.js) -- the reciprocal of the
+        # OANDA convention every D1/M1 file and this book's pip-distance logic
+        # assumes. Invert here, once, before anything downstream treats
+        # "strike" and "spot" as comparable numbers.
+        print(f"  {PAIR} is CME-inverted -- inverting raw strikes to OANDA convention", flush=True)
+        df["strike"] = 1.0 / df["strike"]
     return df
 
 
@@ -101,6 +114,18 @@ def build_surface(df, d1, near_only, tag):
 
     d = d.merge(d1[["date", "close", "rv20_ann"]], on="date", how="inner")
     d = d.rename(columns={"close": "spot"})
+    # Sanity check (same convention server.js already uses to catch stale/
+    # mis-scaled OI live): if strikes don't bracket spot at all, the raw file
+    # or the inversion above is wrong for this pair -- fail loudly here
+    # rather than silently building a surface on nonsense levels.
+    lo, hi = d["strike"].quantile(0.01), d["strike"].quantile(0.99)
+    spot_med = d["spot"].median()
+    if not (lo * 0.5 <= spot_med <= hi * 2.0):
+        raise SystemExit(
+            f"[{PAIR}/{tag}] strikes (1st-99th pct {lo:.5f}-{hi:.5f}) don't bracket "
+            f"spot (median {spot_med:.5f}) even loosely -- PAIR_CONFIG's 'inverted' "
+            f"flag or price_file is very likely wrong for this pair. Refusing to "
+            f"build a surface on this before it's fixed.")
     t_years = (d["expiry"] - d["date"]).dt.days / 365.0
     sigma = d["rv20_ann"].fillna(d["rv20_ann"].median())
     d["gamma"] = bs_gamma(d["spot"].values, d["strike"].values, sigma.values, t_years.values)
@@ -131,8 +156,8 @@ def build_surface(df, d1, near_only, tag):
     }).reset_index()
     surf["total_oi"] = surf["call_oi"] + surf["put_oi"]
     surf["net_gex"] = surf["call_gex"] + surf["put_gex"]  # C is +, P is - by construction above
-    surf.to_parquet(f"{OUTDIR}/surface_{tag}.parquet", index=False)
-    print(f"  wrote surface_{tag}.parquet: {surf.shape}")
+    surf.to_parquet(f"{OUTDIR}/surface_{tag}{_SUFFIX}.parquet", index=False)
+    print(f"  wrote surface_{tag}{_SUFFIX}.parquet: {surf.shape}")
     return surf
 
 
@@ -243,8 +268,8 @@ def build_wall_summary(surf, d1, tag):
         })
     out = pd.DataFrame(rows).sort_values("date").reset_index(drop=True)
     out["pc_oi_ratio"] = out["total_put_oi"] / out["total_call_oi"].replace(0, np.nan)
-    out.to_parquet(f"{OUTDIR}/wall_summary_{tag}.parquet", index=False)
-    print(f"  wrote wall_summary_{tag}.parquet: {out.shape}")
+    out.to_parquet(f"{OUTDIR}/wall_summary_{tag}{_SUFFIX}.parquet", index=False)
+    print(f"  wrote wall_summary_{tag}{_SUFFIX}.parquet: {out.shape}")
     return out
 
 
@@ -254,8 +279,8 @@ def main():
     df = forward_fill_oi(df)
     os.makedirs(f"{OUTDIR}/cache", exist_ok=True)
     cache_cols = ["date", "expiry", "strike", "right", "effective_oi", "oi_chg_computed", "volume"]
-    df[cache_cols].to_parquet(f"{OUTDIR}/cache/contract_level_ffilled.parquet", index=False)
-    print(f"  wrote cache/contract_level_ffilled.parquet: {df[cache_cols].shape} (gitignored, reused by 03_pinning.py)")
+    df[cache_cols].to_parquet(f"{OUTDIR}/cache/contract_level_ffilled{_SUFFIX}.parquet", index=False)
+    print(f"  wrote cache/contract_level_ffilled{_SUFFIX}.parquet: {df[cache_cols].shape} (gitignored)")
 
     d1 = load_price()
 
@@ -263,8 +288,8 @@ def main():
         surf = build_surface(df, d1, near_only, tag)
         wall = build_wall_summary(surf, d1, tag)
         merged = wall.merge(d1, on="date", how="left")
-        merged.to_parquet(f"{OUTDIR}/daily_master_{tag}.parquet", index=False)
-        print(f"  wrote daily_master_{tag}.parquet: {merged.shape}")
+        merged.to_parquet(f"{OUTDIR}/daily_master_{tag}{_SUFFIX}.parquet", index=False)
+        print(f"  wrote daily_master_{tag}{_SUFFIX}.parquet: {merged.shape}")
 
     print("Done.")
 

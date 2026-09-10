@@ -1,4 +1,4 @@
-# EUR/USD Options Positioning — Research Book (v1.6)
+# EUR/USD Options Positioning — Research Book (v1.7)
 
 **Data:** CME EUR/USD FX options, R2 `OI Data/EUR_USD.csv` (Databento-style
 per-strike daily export), 2020‑09‑04 → 2026‑09‑04, joined to
@@ -13,7 +13,10 @@ Re-run `scripts/00_audit.py` → `01_build_daily_dataset.py` →
 `08_bot_backtest_zones.mjs` → `09_bot_backtest_execute.py` →
 `10_real_maxpain_test.py` → `11_feature_discovery.py` →
 `12_break_reject_classifier.py` in order to reproduce every table (see
-`README.md`).
+`README.md`). `13_pool_multi_pair.py` (Part 16) needs at least one
+additional pair run through `01`→`05`→`06` with its own pair code first —
+not run as part of this default chain since only EUR/USD data has actually
+been pulled so far.
 
 **v1.1 change:** added Part 9b, an intraday validation pass using real R2
 minute candles instead of daily OHLC. It fixes a same-day lookahead wrinkle
@@ -85,6 +88,19 @@ unexplained. Conclusion: don't ship this classifier; the unconditioned
 finding already live on the dashboard remains the state of the art until
 multi-pair pooling (roadmap item 3, now promoted) supplies enough
 independent episodes to validate a conditional model honestly.
+
+**v1.7 change:** built and verified the multi-pair infrastructure roadmap
+item 3 needs (Part 16) — every script generalized to take a pair code, per-
+pair contract multiplier/CME-inversion/pip-size pulled from the real
+production registries (not guessed), and a new pooling script that reports
+per-pair results alongside the pooled one so averaging can't hide a pair
+where the effect doesn't replicate. Verified three ways: byte-identical
+regression on EUR/USD's existing results, correct strike inversion on a
+synthetic CME-inverted pair, and correct cross-pair pooling mechanics.
+**No real multi-pair result yet** — R2 credentials aren't available on this
+machine (checked thoroughly), so this is infrastructure ready to run, not a
+finding. Honest on purpose: better to ship verified infrastructure and say
+so than a result built on data that was never actually pulled.
 
 **Scope of this v1.** The brief that motivated this book listed 36 research
 sections and 18 closing questions. Doing all 36 with genuine statistical care
@@ -1065,6 +1081,93 @@ result ran into, not a flaw in the modelling approach. R2 already holds the
 same schema for 6 more pairs — pooling them is the direct way to get enough
 independent wall-episodes to validate a conditional classifier honestly,
 rather than the only options being "ship an untested model" or "stop here."
+
+---
+
+## Part 16 — Multi-pair infrastructure (roadmap item 3, in progress)
+
+Every script through Part 15 hardcoded EUR/USD's paths, filenames, contract
+multiplier, and pip size. Pooling the other 6 pairs already sitting in R2
+needed that generalized first — done here, and verified carefully, because
+getting a currency pair's own quoting convention wrong is exactly the kind
+of silent, hard-to-notice bug this book has tried to catch everywhere else.
+
+**What changed.** `01_build_daily_dataset.py`, `05_intraday_validation.py`,
+and `06_intraday_cluster_significance.py` now take a pair code (`GBP_USD`,
+`USD_JPY`, ...) and read/write pair-suffixed filenames — **except**
+`EUR_USD`, which keeps its original, already-committed filenames exactly as
+they were, so nothing already published moves. A new
+`13_pool_multi_pair.py` pools wall-touch episodes across every pair that's
+been through the pipeline and re-runs Part 9b/12's exact episode-cluster
+bootstrap on the combined set — reporting both the pooled result (the
+actual payoff: more independent episodes than one pair can supply) and a
+**per-pair breakdown**, so pooling can never quietly average away a pair
+where the effect doesn't hold. A new `pair_config.py` centralizes the
+per-pair facts, pulled from the real production registries rather than
+guessed:
+
+- **Contract multiplier** — `js/oi.js`'s `oiContractSize()` treats every FX
+  pair as 125,000 (only indices/gold differ; `NAS100_USD` → 20 via its
+  `isNQ()` check). Matched exactly rather than using the textbook
+  per-currency CME contract sizes (GBP futures are actually 62,500, JPY
+  12,500,000, etc.) — the point is testing what the live system actually
+  assumes, per Part 0, not a more "correct" number nobody's trading off.
+- **CME strike inversion** — `js/oi.js`'s `futuresIsInverted()` is the
+  authoritative list: CME quotes `USD/JPY`, `USD/CAD`, and `USD/CHF`
+  options in foreign-per-USD terms, the reciprocal of the OANDA convention
+  every D1/M1 price file and this book's pip-distance logic assumes. Get
+  this wrong and every wall/gamma/pin number for those 3 pairs would be
+  silently comparing incompatible units. A sanity check (same convention
+  `server.js` already uses live to catch stale/mis-scaled OI) now fails
+  loudly if strikes don't bracket spot even loosely, rather than building a
+  surface on nonsense levels.
+- **Pip size** — `oi-dashboard.html`'s own `pip()` function: JPY pairs use
+  0.01, not EUR/USD's 0.0001. The touch-detection buffer (2 pips) and
+  rearm margin (5 pips) were hardcoded in EUR/USD's units; a JPY touch
+  would previously have used a buffer 100x too tight.
+
+**Verification, not just a refactor and a hope.** Every change was checked
+two ways before being trusted:
+1. **Backward-compatible for EUR/USD.** Re-ran `05` and `06` with their
+   default (no-argument) invocation against the real, already-committed
+   EUR/USD data — `intraday_touch_events.csv` came back **byte-identical**;
+   `intraday_touch_summary.csv` and `intraday_gamma_regime_daily.csv`
+   differed only at the 16th–17th significant digit (floating-point noise
+   from a different BLAS backend on this machine, not a logic change).
+2. **Correct for a CME-inverted pair.** Built a synthetic USD/JPY chain
+   with known OANDA-convention strikes (148–152, spot 150), fed it through
+   the real CME-inverted raw format, and confirmed the pipeline's inverted
+   walls landed back at 148–152 — not at the raw reciprocal scale
+   (~0.0067). The sanity check passed silently, as it should when the
+   pair config is right.
+3. **Cross-pair pooling mechanics.** Ran `13_pool_multi_pair.py` on
+   EUR/USD alone first (a "pool of one" reproduces Part 9b/12's numbers
+   exactly, confirming the pooling logic reduces correctly to the
+   single-pair case), then added the synthetic USD/JPY pair — episode
+   counts and event counts increased by exactly the synthetic contribution,
+   with no ID collisions between pairs' episodes.
+
+**What's still blocked, and why this stopped here rather than faking a
+result:** actually pulling `AUD_USD.csv`, `GBP_USD.csv`, `USD_CAD.csv`,
+`USD_CHF.csv`, `USD_JPY.csv`, `NAS100_USD.csv` from R2 needs credentials
+this local machine doesn't have (checked thoroughly — no env vars, no
+`.env` file, no AWS-style credentials file). The infrastructure above is
+built, verified with synthetic data standing in for the real thing, and
+ready to run the moment R2 access is available (the cloud sandbox session
+that originally built this book had it provisioned automatically) — but no
+real multi-pair result is claimed here, because there isn't one yet.
+
+**To finish this once R2 access is available**, per pair:
+```
+python3 oi_research_book/scripts/01_build_daily_dataset.py <PAIR>.csv <pair>_d1.parquet <PAIR>
+python3 oi_research_book/scripts/05_intraday_validation.py <pair>_m1.parquet <PAIR>
+python3 oi_research_book/scripts/06_intraday_cluster_significance.py <PAIR>
+```
+then `python3 oi_research_book/scripts/13_pool_multi_pair.py` (no
+arguments pools every pair with completed files). `NAS100_USD` will also
+need its D1/M1 price files confirmed present in R2's `m1/` folder — not
+verified from here, since that pair wasn't in the original FX-focused scope
+this book was built around.
 
 ---
 

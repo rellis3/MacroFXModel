@@ -17,8 +17,20 @@ independent.
 
 Output: oi_research_book/data/results/intraday_cluster_bootstrap.csv
 """
+import os
+import sys
 import numpy as np
 import pandas as pd
+
+# Self-register this file's own directory on sys.path before importing
+# pair_config -- this module is loaded two different ways elsewhere in this
+# book: `python 06_intraday_cluster_significance.py` (sys.path[0] is set
+# automatically) AND `importlib.util.spec_from_file_location(...)` from
+# 12_break_reject_classifier.py (which does NOT get that for free -- it only
+# works today because that caller happens to sys.path.insert first; don't
+# depend on every future importer remembering to do the same).
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from pair_config import suffix
 
 DATA = "oi_research_book/data"
 RES = f"{DATA}/results"
@@ -26,8 +38,13 @@ N_BOOT = 5000
 RNG = np.random.default_rng(20260909)
 
 
-def load_lagged_levels():
-    d = pd.read_parquet(f"{DATA}/daily_master_all.parquet").sort_values("date").reset_index(drop=True)
+def load_lagged_levels(pair="EUR_USD"):
+    """pair is an explicit argument, not read from sys.argv here -- this
+    function is imported directly by 11_feature_discovery.py and
+    12_break_reject_classifier.py (via importlib), which must control which
+    pair's levels they get regardless of their own CLI args, not inherit
+    whatever happens to be in sys.argv at import time."""
+    d = pd.read_parquet(f"{DATA}/daily_master_all{suffix(pair)}.parquet").sort_values("date").reset_index(drop=True)
     d["date"] = pd.to_datetime(d["date"]).dt.tz_localize(None)
     lagged = d[["date", "call_wall_a", "put_wall_a"]].copy()
     lagged["call_wall_a"] = lagged["call_wall_a"].shift(1)
@@ -78,11 +95,13 @@ def cluster_bootstrap_break_rate(events_side, episode_ids, n_boot=N_BOOT):
 
 
 def main():
-    levels = load_lagged_levels()
+    pair = sys.argv[1] if len(sys.argv) > 1 else "EUR_USD"
+    _suffix = suffix(pair)
+    levels = load_lagged_levels(pair)
     ep_call = assign_episodes(levels, "call_wall_a")
     ep_put = assign_episodes(levels, "put_wall_a")
 
-    events = pd.read_csv(f"{RES}/intraday_touch_events.csv", parse_dates=["date"])
+    events = pd.read_csv(f"{RES}/intraday_touch_events{_suffix}.csv", parse_dates=["date"])
     events["date"] = events["date"].dt.tz_localize(None) if events["date"].dt.tz is not None else events["date"]
 
     call_events = events[events.side == "call"].merge(ep_call, on="date", how="left")
@@ -90,7 +109,7 @@ def main():
 
     horizons = [15, 60, 240]
     rows = []
-    naive = pd.read_csv(f"{RES}/intraday_touch_summary.csv")
+    naive = pd.read_csv(f"{RES}/intraday_touch_summary{_suffix}.csv")
 
     for side, ev in [("call", call_events), ("put", put_events)]:
         for h in horizons:
@@ -109,7 +128,7 @@ def main():
          "boot_mean_pct", "boot_ci_lo_pct", "boot_ci_hi_pct",
          "naive_binomial_p", "cluster_bootstrap_p_vs_50pct"]
     ]
-    out.to_csv(f"{RES}/intraday_cluster_bootstrap.csv", index=False)
+    out.to_csv(f"{RES}/intraday_cluster_bootstrap{_suffix}.csv", index=False)
     print("\n=== Episode-clustered bootstrap test: does the wall-rejection effect survive treating "
           "correlated touches (same wall level, consecutive days) as ONE cluster, not N independent events? ===")
     print(out.to_string(index=False))

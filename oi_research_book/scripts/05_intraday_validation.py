@@ -23,13 +23,19 @@ import sys
 import numpy as np
 import pandas as pd
 from scipy import stats
+from pair_config import cfg, suffix
+
+PAIR = sys.argv[2] if len(sys.argv) > 2 else "EUR_USD"
+_CFG = cfg(PAIR)
+_SUFFIX = suffix(PAIR)
+_PIP = _CFG["pip_size"]
 
 DATA = "oi_research_book/data"
 RES = f"{DATA}/results"
-M1_PATH = sys.argv[1] if len(sys.argv) > 1 else "VolRangeForecaster/data/m1/eurusd_m1.parquet"
+M1_PATH = sys.argv[1] if len(sys.argv) > 1 else f"VolRangeForecaster/data/m1/{_CFG['price_file']}_m1.parquet"
 
-TOUCH_BUFFER = 0.0002   # ~2 pips: how close counts as "touching" the level
-REARM_MARGIN = 0.0005   # ~5 pips: how far price must retreat before the next touch on the same level can count
+TOUCH_BUFFER = 2 * _PIP    # how close counts as "touching" the level -- was hardcoded to
+REARM_MARGIN = 5 * _PIP    # EUR/USD's 0.0001 pip; JPY pairs use 0.01, indices use 1
 HORIZONS_MIN = [15, 60, 240, 1440]  # 1440min = "by end of the next full day" ceiling
 
 
@@ -42,7 +48,7 @@ def load_m1(path):
 
 
 def load_lagged_levels():
-    d = pd.read_parquet(f"{DATA}/daily_master_all.parquet").sort_values("date").reset_index(drop=True)
+    d = pd.read_parquet(f"{DATA}/daily_master_all{_SUFFIX}.parquet").sort_values("date").reset_index(drop=True)
     d["date"] = pd.to_datetime(d["date"]).dt.tz_localize(None)
     keep = ["date", "call_wall_a", "put_wall_a", "gamma_flip", "call_wall_a_oi", "put_wall_a_oi"]
     lagged = d[keep].copy()
@@ -169,7 +175,7 @@ def gamma_regime_intraday(m1, levels):
             "n_bars": len(g),
         })
     daily = pd.DataFrame(rows)
-    daily.to_csv(f"{RES}/intraday_gamma_regime_daily.csv", index=False)
+    daily.to_csv(f"{RES}/intraday_gamma_regime_daily{_SUFFIX}.csv", index=False)
 
     summary = daily.groupby("regime").agg(
         n_days=("date", "count"),
@@ -180,7 +186,7 @@ def gamma_regime_intraday(m1, levels):
     below = daily.loc[daily.regime == "below_flip", "intraday_range_pct"]
     _, p = stats.mannwhitneyu(above, below, alternative="two-sided")
     summary["mannwhitney_p_range_above_vs_below"] = p
-    summary.to_csv(f"{RES}/intraday_gamma_regime_summary.csv", index=False)
+    summary.to_csv(f"{RES}/intraday_gamma_regime_summary{_SUFFIX}.csv", index=False)
     print("\n=== Intraday-derived gamma-flip regime test (T-1 flip, per-day intraday range) ===")
     print(summary.to_string(index=False))
     return daily, summary
@@ -199,7 +205,7 @@ def wall_strength_vs_intraday_outcome(events, levels, horizon=60):
             n_break = (gt[f"outcome_{horizon}m"] == "break").sum()
             rows.append({"side": side, "oi_tercile": t, "n_events": n, "pct_break": n_break / n * 100 if n else np.nan})
     out = pd.DataFrame(rows)
-    out.to_csv(f"{RES}/intraday_wall_strength_vs_outcome.csv", index=False)
+    out.to_csv(f"{RES}/intraday_wall_strength_vs_outcome{_SUFFIX}.csv", index=False)
     print(f"\n=== Wall-OI-strength tercile vs {horizon}-min break rate (intraday events) ===")
     print(out.to_string(index=False))
     return out
@@ -214,13 +220,13 @@ def main():
     call_events = detect_touch_events(m1, levels, "call_wall_a", "call")
     put_events = detect_touch_events(m1, levels, "put_wall_a", "put")
     events = pd.concat([call_events, put_events], ignore_index=True)
-    events.to_csv(f"{RES}/intraday_touch_events.csv", index=False)
+    events.to_csv(f"{RES}/intraday_touch_events{_SUFFIX}.csv", index=False)
     print(f"\nDetected {len(call_events):,} call-wall touch events and {len(put_events):,} put-wall touch events "
           f"(vs. 35 and 39 same-day-close 'break' counts derived from daily bars in Part 8).")
 
     summary = summarize(events)
     summary = binomial_test_vs_half(summary)
-    summary.to_csv(f"{RES}/intraday_touch_summary.csv", index=False)
+    summary.to_csv(f"{RES}/intraday_touch_summary{_SUFFIX}.csv", index=False)
     print("\n=== Intraday wall-touch outcomes by horizon (T-1 known level, real minute-bar classification) ===")
     print(summary.to_string(index=False))
 
