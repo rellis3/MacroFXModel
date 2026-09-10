@@ -7,6 +7,27 @@ Usage:
     python3 scripts/fetch_m1_oanda.py gold nq           # specific instruments only
     python3 scripts/fetch_m1_oanda.py --years 3         # limit history (default 5)
     python3 scripts/fetch_m1_oanda.py --no-upload       # write parquet locally only
+    python3 scripts/fetch_m1_oanda.py --price M         # mid only (the pre-2026-09 schema)
+
+## BID/ASK (`--price BAM`, the default)
+
+Oanda returns bid, ask and mid OHLC in ONE request for the same cost as mid alone,
+and until 2026-09 every call in this repo asked for `price=M` and threw the other
+two away. That left the whole codebase with no measured spread anywhere - so every
+cost assumption in every backtest was a guess, including the two conclusions that
+rest entirely on a cost threshold (the spread/ATR > 0.15 execution gate, and
+"VWAP extension is 3-8x under cost"). Those can now be recomputed from data.
+
+Stored as eight extra columns AFTER `time`, never before it. The JS reader is
+POSITIONAL - js/volBacktestM1Engine.js takes row[0..3] as OHLC and row[5] as the
+timestamp - so appending is invisible to every existing consumer, while inserting
+anything ahead of row[5] would silently reinterpret prices as dates. Measured cost
+on real EURUSD M1: +91% file size (2.5 GB store -> 4.8 GB).
+
+Spread is NOT derivable from the mid columns. Oanda's mid OHLC is not the exact
+midpoint of the bid and ask OHLC (measured deviation up to 3.5e-5 on highs, since
+the mid high and the ask high occur at different instants), so the bid/ask columns
+are stored raw rather than reconstructed from a spread delta.
 
 Requires:
     pip install requests pyarrow boto3
@@ -89,15 +110,24 @@ def oanda_headers():
     return {"Authorization": f"Bearer {OANDA_KEY}"}
 
 
-def fetch_chunk(instrument: str, from_dt: datetime, count: int = BARS_PER_REQUEST) -> list:
-    """Fetch up to `count` M1 bars starting from from_dt. Returns list of dicts."""
+def fetch_chunk(instrument: str, from_dt: datetime, count: int = BARS_PER_REQUEST,
+                price: str = "BAM") -> list:
+    """Fetch up to `count` M1 bars starting from from_dt. Returns list of dicts.
+
+    `price` is passed to Oanda verbatim: 'BAM' asks for bid+ask+mid in one response,
+    'M' for mid only. A bar is kept only if every REQUESTED component is present -
+    a partial candle would otherwise write zeros into the bid/ask columns and read
+    downstream as a zero spread, which is the most expensive possible wrong answer
+    for cost modelling.
+    """
     url = f"{OANDA_BASE}/v3/instruments/{instrument}/candles"
     params = {
         "granularity": "M1",
         "count":       count,
-        "price":       "M",
+        "price":       price,
         "from":        from_dt.strftime("%Y-%m-%dT%H:%M:%S.000000000Z"),
     }
+    want = [{"B": "bid", "A": "ask", "M": "mid"}[ch] for ch in price]
     for attempt in range(4):
         try:
             r = requests.get(url, headers=oanda_headers(), params=params, timeout=30)
@@ -111,8 +141,11 @@ def fetch_chunk(instrument: str, from_dt: datetime, count: int = BARS_PER_REQUES
                 return None  # fatal, skip this instrument
             r.raise_for_status()
             candles = r.json().get("candles", [])
-            return [
-                {
+            out = []
+            for c in candles:
+                if not c.get("complete", True) or not all(c.get(w) for w in want):
+                    continue
+                bar = {
                     "open":   float(c["mid"]["o"]),
                     "high":   float(c["mid"]["h"]),
                     "low":    float(c["mid"]["l"]),
@@ -122,9 +155,12 @@ def fetch_chunk(instrument: str, from_dt: datetime, count: int = BARS_PER_REQUES
                         c["time"].replace("Z", "+00:00").replace(".000000000", "")
                     ).replace(tzinfo=None),  # store as naive UTC
                 }
-                for c in candles
-                if c.get("complete", True) and c.get("mid")
-            ]
+                for side in ("bid", "ask"):
+                    if side in want:
+                        for k in "ohlc":
+                            bar[f"{side}_{k}"] = float(c[side][k])
+                out.append(bar)
+            return out
         except requests.RequestException as e:
             wait = 2 ** attempt
             print(f"  Attempt {attempt+1} failed: {e}  - retrying in {wait}s")
@@ -132,7 +168,7 @@ def fetch_chunk(instrument: str, from_dt: datetime, count: int = BARS_PER_REQUES
     raise RuntimeError(f"Failed to fetch {instrument} after 4 attempts")
 
 
-def fetch_all(instrument: str, years: int = 5) -> list | None:
+def fetch_all(instrument: str, years: int = 5, price: str = "BAM") -> list | None:
     """Paginate Oanda M1 history going back `years` years. Returns list of bar dicts."""
     all_bars = []
     start  = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=365 * years)
@@ -140,7 +176,7 @@ def fetch_all(instrument: str, years: int = 5) -> list | None:
     now    = datetime.now(timezone.utc).replace(tzinfo=None)
 
     while cursor < now:
-        chunk = fetch_chunk(instrument, cursor)
+        chunk = fetch_chunk(instrument, cursor, price=price)
         if chunk is None:
             return None  # fatal instrument error
         if not chunk:
@@ -167,6 +203,11 @@ def write_parquet(bars: list, path: Path):
     """
     Write parquet in the schema the M1 engine expects (hyparquet column order):
       row[0]=open  row[1]=high  row[2]=low  row[3]=close  row[4]=volume  row[5]=time
+
+    Bid/ask, when present, are appended as row[6..13] — STRICTLY after `time`.
+    js/volBacktestM1Engine.js indexes this file positionally, so row[5] must stay
+    the timestamp for every reader that predates these columns; anything inserted
+    before it would be read as a price or a date without erroring.
     """
     # Deduplicate and sort by time
     seen = set()
@@ -178,6 +219,11 @@ def write_parquet(bars: list, path: Path):
             unique.append(b)
     unique.sort(key=lambda b: b["time"])
 
+    # Which bid/ask columns this batch actually carries (driven by --price, and by
+    # what Oanda returned — never assumed).
+    extra = [c for c in (f"{s}_{k}" for s in ("bid", "ask") for k in "ohlc")
+             if unique and c in unique[0]]
+
     schema = pa.schema([
         pa.field("open",   pa.float64()),
         pa.field("high",   pa.float64()),
@@ -185,6 +231,7 @@ def write_parquet(bars: list, path: Path):
         pa.field("close",  pa.float64()),
         pa.field("volume", pa.int64()),
         pa.field("time",   pa.timestamp("us")),
+        *[pa.field(c, pa.float64()) for c in extra],
     ])
     # Build epoch-microsecond timestamps for pyarrow (no pandas needed)
     epoch = datetime(1970, 1, 1)
@@ -198,10 +245,12 @@ def write_parquet(bars: list, path: Path):
             "close":  pa.array([b["close"]  for b in unique], type=pa.float64()),
             "volume": pa.array([b["volume"] for b in unique], type=pa.int64()),
             "time":   pa.array(ts_us, type=pa.timestamp("us")),
+            **{c: pa.array([b[c] for b in unique], type=pa.float64()) for c in extra},
         },
         schema=schema,
     )
     pq.write_table(table, str(path), compression="snappy")
+    return extra
 
 
 def upload_to_r2(local_path: Path, key: str):
@@ -216,7 +265,7 @@ def upload_to_r2(local_path: Path, key: str):
     s3.upload_file(str(local_path), R2_BUCKET, key)
 
 
-def process(pair_key: str, cfg: dict, years: int, upload: bool):
+def process(pair_key: str, cfg: dict, years: int, upload: bool, price: str = "BAM"):
     oanda_sym  = cfg["oanda"]
     desc       = cfg["desc"]
     filename   = f"{pair_key}_m1.parquet"
@@ -228,7 +277,7 @@ def process(pair_key: str, cfg: dict, years: int, upload: bool):
     print(f"{'='*60}")
     print(f"  Fetching {years}yr M1 history from Oanda...")
 
-    bars = fetch_all(oanda_sym, years=years)
+    bars = fetch_all(oanda_sym, years=years, price=price)
 
     if bars is None:
         print(f"  SKIPPED - instrument unavailable on Oanda")
@@ -244,9 +293,22 @@ def process(pair_key: str, cfg: dict, years: int, upload: bool):
     print(f"  {len(bars):,} bars  |  {t_first.date()} -> {t_last.date()}  ({span_days} days)")
 
     OUTDIR.mkdir(parents=True, exist_ok=True)
-    write_parquet(bars, local_path)
+    extra = write_parquet(bars, local_path)
     file_mb = local_path.stat().st_size / 1e6
-    print(f"  Wrote {local_path.name}  ({file_mb:.1f} MB)")
+    print(f"  Wrote {local_path.name}  ({file_mb:.1f} MB)"
+          + (f"  [+{len(extra)} bid/ask cols]" if extra else "  [mid only]"))
+    if extra:
+        # Reported in BASIS POINTS OF PRICE, deliberately not pips. A pip table here
+        # would need a per-instrument decimal place for FX vs JPY crosses vs gold vs
+        # indices, and this repo already carries a live gold pip 10x disagreement
+        # between js/utils.js and the canonical value. bps needs no table and cannot
+        # drift; convert to pips at the point of use, where the pip size is known.
+        sp = sorted(b["ask_c"] - b["bid_c"] for b in bars)
+        mid = sorted(b["close"] for b in bars)[len(bars) // 2]
+        bp = lambda v: v / mid * 10_000
+        print(f"  Spread at close: median {bp(sp[len(sp)//2]):.2f} bps  "
+              f"p90 {bp(sp[int(0.9*len(sp))]):.2f}  max {bp(sp[-1]):.2f}  "
+              f"(of price; median mid {mid:g})")
 
     if upload:
         if not R2_SECRET_KEY:
@@ -280,6 +342,9 @@ def main():
     parser.add_argument("pairs", nargs="*", help="Instrument keys to fetch (default: all)")
     parser.add_argument("--years",     type=int,  default=5,    help="Years of history (default 5)")
     parser.add_argument("--no-upload", action="store_true",     help="Skip R2 upload")
+    parser.add_argument("--price", default="BAM", choices=["BAM", "M"],
+                        help="BAM (default) stores bid+ask+mid; M is the mid-only "
+                             "pre-2026-09 schema. Same request cost either way.")
     parser.add_argument("--list",      action="store_true",
                         help="Print INSTRUMENTS as JSON and exit — no OANDA_KEY required. "
                              "Lets a caller (e.g. the dashboard's fetch-trigger UI) introspect "
@@ -307,7 +372,8 @@ def main():
 
     for pair_key in selected:
         try:
-            ok = process(pair_key, INSTRUMENTS[pair_key], args.years, upload=not args.no_upload)
+            ok = process(pair_key, INSTRUMENTS[pair_key], args.years,
+                         upload=not args.no_upload, price=args.price)
         except Exception as e:
             print(f"  ERROR: {e}")
             ok = False
