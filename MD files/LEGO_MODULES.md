@@ -6933,3 +6933,51 @@ years of historical trades already in the file.
 
 Validated: `node --check` on `fib_atlas_check_raw_m1.mjs`; read-only M1
 fetches only (`loadM1ForPair`), no writes, no regeneration.
+
+#### Backtest Data Refresh button — lets the owner trigger the real fix from their phone (2026-09-10)
+
+Owner's own next question: since this sandbox and even the Railway app's own
+URL are both unreachable from here (confirmed — `curl` to both
+`macrofxmodel-production.up.railway.app` and OANDA's API return a hard
+`CONNECT tunnel failed, response 403` at the proxy level, not an
+app-level error), can the OANDA gap-fill be done at all? Yes — just not
+from this session. The owner's own phone browser already reaches the live
+Railway app fine (it's what they've been using all session), and Railway
+already has real `OANDA_KEY` access — the missing piece was just a UI
+control to fire it.
+
+Added a **"Backtest Data Refresh"** card to `bot-config.html`'s Fib Atlas
+tab (right after the Pairs card): a pairs textbox (pre-filled with the 11
+pairs found stale on 2026-09-08 — gbpaud, euraud, nzdjpy, usdcad, usdchf,
+eurgbp, audjpy, audnzd, audcad, cadjpy, gold) and a "Regenerate" button.
+Zero new backend — it POSTs to the EXISTING `/api/asia-fib-atlas/run` and
+`/api/monday-fib-atlas/run` job endpoints (`js/asiaFibAtlasRoutes.js`/
+`js/mondayFibAtlasRoutes.js`'s `startRunJob`, the same `runOne()` the
+nightly `reference-engine-rebuild` job already calls — imported behavior,
+not new logic), then polls both jobs' `/status/:jobId` every 3s and
+streams the log into a scrollable status box (`faRunBacktestRefresh`,
+`_faPollJob` in `js/bot-config.js`).
+
+Whether this actually fixes the data depends entirely on WHERE the button
+is clicked from: on Railway (the live site) it will really gap-fill from
+OANDA, same as the nightly job; from a dev sandbox loading the same HTML
+it would silently repeat the 2026-09-08 incident (see above) since the
+endpoints exist in both places but OANDA only answers on Railway. The
+function's own comment flags this explicitly — the job's HTTP response
+looks identical either way, so the only real check is going back to the
+backtest page afterward and confirming each pair's `generatedAt`/last-trade
+date actually caught up.
+
+**Not yet done** (flagged, not built this entry): the actual click/run
+itself — needs the owner to do it from their own browser, since this
+session structurally cannot reach either OANDA or the Railway app to verify
+end-to-end. Also not yet done: the root-cause code fix (previous entry,
+point 2) so a partial gap-fill errors instead of silently persisting.
+
+Validated: `node --check js/bot-config.js` clean; new HTML element IDs
+(`faRefreshPairs`, `faRefreshStatus`) and the `onclick="faRunBacktestRefresh()"`
+button match the JS exactly; `faRunBacktestRefresh`/`_faPollJob` reuse the
+existing async-job endpoint contract (`{ok, jobId}` on POST, `{ok, status,
+log}` on GET status) already used elsewhere on this page — no new route
+shape invented. No live-Railway verification possible from here (see
+above) — needs a real click from the live site to confirm end-to-end.

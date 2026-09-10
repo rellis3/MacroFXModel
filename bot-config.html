@@ -4355,6 +4355,25 @@ python fib_atlas_bot/fib_atlas_bot.py --live --url &lt;dashboard-url&gt;</pre>
       <div id="faPairChecks" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:6px 10px;font-size:12px"></div>
     </div>
 
+    <!-- Backtest data refresh — 2026-09-10, owner ask after finding 11/16 pairs'
+         stored backtest data (asia-fib-atlas/{pair}-votetrades.json) was stale
+         by 19 days to 4 months (see LEGO_MODULES.md's 2026-09-08 entries). The
+         gap-fill needs real OANDA access, which only exists on Railway (not
+         the dev sandbox) — this button runs the SAME runOne() the nightly
+         reference-engine-rebuild job uses, via the existing /api/asia-fib-atlas/run
+         and /api/monday-fib-atlas/run job endpoints, triggered from wherever
+         this page is actually loaded (i.e. Railway, when viewing the live site). -->
+    <div class="card">
+      <div class="card-title">Backtest Data Refresh</div>
+      <div class="bot-banner-sub" style="margin-bottom:8px">Re-walks a pair's stored backtest trades (both ladders) against fresh OANDA M1 — only works when this page is loaded from the live Railway site (needs real OANDA access). Use after spotting stale data on the <a href="asia-fib-atlas-vote-portfolio.html" style="color:#a78bfa">backtest page</a> (check each pair's "generatedAt"/last trade date).</div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
+        <input type="text" id="faRefreshPairs" value="gbpaud, euraud, nzdjpy, usdcad, usdchf, eurgbp, audjpy, audnzd, audcad, cadjpy, gold" style="flex:1;min-width:220px;background:var(--s3);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 10px;font-size:12px" placeholder="comma-separated pairs">
+        <button type="button" onclick="faRunBacktestRefresh()" style="background:#a78bfa;border:none;border-radius:6px;color:#1a1033;font-weight:700;padding:6px 14px;font-size:12px;cursor:pointer">Regenerate</button>
+      </div>
+      <div class="bot-banner-sub" style="margin-bottom:6px">Pre-filled with the 11 pairs found stale on 2026-09-08. Each pair re-walks its full history (2016→now) on both ladders — can take several minutes per pair; this runs in the background, safe to navigate away and come back.</div>
+      <div id="faRefreshStatus" style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);white-space:pre-wrap;max-height:240px;overflow-y:auto;background:var(--s3);border:1px solid var(--border);border-radius:6px;padding:8px 10px;display:none"></div>
+    </div>
+
     <div class="grid">
       <!-- ── Controls ─────────────────────────────────────────────────────── -->
       <div class="card">
