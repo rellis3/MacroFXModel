@@ -79,7 +79,12 @@ INSTRUMENTS = {
     # Additional indices
     "dow":     {"oanda": "US30_USD",    "class": "index",     "desc": "Dow Jones 30"},
     "spx":     {"oanda": "SPX500_USD",  "class": "index",     "desc": "S&P 500"},
-    "dax":     {"oanda": "DE30_USD",    "class": "index",     "desc": "DAX 40"},
+    # DE30_USD does not exist on Oanda and never did — this entry fetched nothing
+    # from the day it was written (a 400 that `process` reports as "unavailable" and
+    # moves past). The real symbol is DE30_EUR, confirmed against the account's own
+    # /v3/accounts/{id}/instruments list. `de30` below is the same instrument under
+    # the filename the M1 store already uses.
+    "dax":     {"oanda": "DE30_EUR",    "class": "index",     "desc": "DAX 40"},
     "uk100":   {"oanda": "UK100_GBP",   "class": "index",     "desc": "FTSE 100"},
 
     # Additional commodities
@@ -98,6 +103,55 @@ INSTRUMENTS = {
     "usdsgd":  {"oanda": "USD_SGD",      "class": "fx",        "desc": "USD/SGD"},
     "usdhkd":  {"oanda": "USD_HKD",      "class": "fx",        "desc": "USD/HKD"},
     "eursek":  {"oanda": "EUR_SEK",      "class": "fx",        "desc": "EUR/SEK"},
+
+    # ── The 26 majors/crosses and index keys the M1 store already holds ──────────
+    # These were bootstrapped from a Google Drive bundle (scripts/download_m1_parquets.sh)
+    # and were never in this table, so this script could not refresh them. That did
+    # not matter while everything was mid-only — it matters now, because bid/ask can
+    # only reach a file this script writes, and these are exactly the instruments the
+    # spread work is about. eurusd, gbpusd, usdjpy and the crosses would otherwise
+    # have stayed mid-only forever while the "new" columns landed on USD/HKD.
+    #
+    # Every symbol below was checked against the account's own instrument list before
+    # being added — none is guessed from the filename.
+    "eurusd":  {"oanda": "EUR_USD",      "class": "fx",        "desc": "EUR/USD"},
+    "gbpusd":  {"oanda": "GBP_USD",      "class": "fx",        "desc": "GBP/USD"},
+    "usdjpy":  {"oanda": "USD_JPY",      "class": "fx",        "desc": "USD/JPY"},
+    "audusd":  {"oanda": "AUD_USD",      "class": "fx",        "desc": "AUD/USD"},
+    "nzdusd":  {"oanda": "NZD_USD",      "class": "fx",        "desc": "NZD/USD"},
+    "usdcad":  {"oanda": "USD_CAD",      "class": "fx",        "desc": "USD/CAD"},
+    "usdchf":  {"oanda": "USD_CHF",      "class": "fx",        "desc": "USD/CHF"},
+    "eurgbp":  {"oanda": "EUR_GBP",      "class": "fx",        "desc": "EUR/GBP"},
+    "eurjpy":  {"oanda": "EUR_JPY",      "class": "fx",        "desc": "EUR/JPY"},
+    "euraud":  {"oanda": "EUR_AUD",      "class": "fx",        "desc": "EUR/AUD"},
+    "eurcad":  {"oanda": "EUR_CAD",      "class": "fx",        "desc": "EUR/CAD"},
+    "eurchf":  {"oanda": "EUR_CHF",      "class": "fx",        "desc": "EUR/CHF"},
+    "eurnzd":  {"oanda": "EUR_NZD",      "class": "fx",        "desc": "EUR/NZD"},
+    "gbpjpy":  {"oanda": "GBP_JPY",      "class": "fx",        "desc": "GBP/JPY"},
+    "gbpaud":  {"oanda": "GBP_AUD",      "class": "fx",        "desc": "GBP/AUD"},
+    "gbpcad":  {"oanda": "GBP_CAD",      "class": "fx",        "desc": "GBP/CAD"},
+    "gbpchf":  {"oanda": "GBP_CHF",      "class": "fx",        "desc": "GBP/CHF"},
+    "gbpnzd":  {"oanda": "GBP_NZD",      "class": "fx",        "desc": "GBP/NZD"},
+    "audjpy":  {"oanda": "AUD_JPY",      "class": "fx",        "desc": "AUD/JPY"},
+    "audcad":  {"oanda": "AUD_CAD",      "class": "fx",        "desc": "AUD/CAD"},
+    "audchf":  {"oanda": "AUD_CHF",      "class": "fx",        "desc": "AUD/CHF"},
+    "audnzd":  {"oanda": "AUD_NZD",      "class": "fx",        "desc": "AUD/NZD"},
+    "nzdcad":  {"oanda": "NZD_CAD",      "class": "fx",        "desc": "NZD/CAD"},
+    "nzdjpy":  {"oanda": "NZD_JPY",      "class": "fx",        "desc": "NZD/JPY"},
+    "cadchf":  {"oanda": "CAD_CHF",      "class": "fx",        "desc": "CAD/CHF"},
+    "cadjpy":  {"oanda": "CAD_JPY",      "class": "fx",        "desc": "CAD/JPY"},
+    "chfjpy":  {"oanda": "CHF_JPY",      "class": "fx",        "desc": "CHF/JPY"},
+    "us2000":  {"oanda": "US2000_USD",   "class": "index",     "desc": "Russell 2000"},
+
+    # ── Alias keys: same Oanda instrument, second filename the store already uses ──
+    # Not duplicates to clean up — different consumers read different filenames, and
+    # deleting either would break one of them. `process` fetches a symbol ONCE and
+    # writes every key that maps to it, so an alias costs a file, not a download.
+    "xauusd":     {"oanda": "XAU_USD",    "class": "commodity", "desc": "Gold (alias of gold)"},
+    "nas100_usd": {"oanda": "NAS100_USD", "class": "index",     "desc": "Nasdaq 100 (alias of nq)"},
+    "spx500":     {"oanda": "SPX500_USD", "class": "index",     "desc": "S&P 500 (alias of spx)"},
+    "us30":       {"oanda": "US30_USD",   "class": "index",     "desc": "Dow 30 (alias of dow)"},
+    "de30":       {"oanda": "DE30_EUR",   "class": "index",     "desc": "DAX 40 (alias of dax)"},
 }
 
 OUTDIR = Path(__file__).parent.parent / "VolRangeForecaster" / "data" / "m1"
@@ -265,15 +319,23 @@ def upload_to_r2(local_path: Path, key: str):
     s3.upload_file(str(local_path), R2_BUCKET, key)
 
 
-def process(pair_key: str, cfg: dict, years: int, upload: bool, price: str = "BAM"):
+def process(pair_keys, cfg: dict, years: float, upload: bool, price: str = "BAM"):
+    """Fetch one Oanda instrument ONCE and write it to every pairKey that maps to it.
+
+    Several store filenames are the same instrument under a different name (gold and
+    xauusd, nq and nas100_usd, spx and spx500, dow and us30, dax and de30). Fetching
+    per KEY would download five extra multi-year M1 histories — hours of requests —
+    to produce byte-identical files, so the unit of work is the SYMBOL and the keys
+    are just the filenames it lands in.
+    """
+    if isinstance(pair_keys, str):
+        pair_keys = [pair_keys]
     oanda_sym  = cfg["oanda"]
     desc       = cfg["desc"]
-    filename   = f"{pair_key}_m1.parquet"
-    local_path = OUTDIR / filename
-    r2_key     = f"{R2_PREFIX}/{filename}"
+    names      = ", ".join(f"{k}_m1.parquet" for k in pair_keys)
 
     print(f"\n{'='*60}")
-    print(f"  {desc} ({oanda_sym})  ->  {filename}")
+    print(f"  {desc} ({oanda_sym})  ->  {names}")
     print(f"{'='*60}")
     print(f"  Fetching {years}yr M1 history from Oanda...")
 
@@ -293,10 +355,12 @@ def process(pair_key: str, cfg: dict, years: int, upload: bool, price: str = "BA
     print(f"  {len(bars):,} bars  |  {t_first.date()} -> {t_last.date()}  ({span_days} days)")
 
     OUTDIR.mkdir(parents=True, exist_ok=True)
-    extra = write_parquet(bars, local_path)
-    file_mb = local_path.stat().st_size / 1e6
-    print(f"  Wrote {local_path.name}  ({file_mb:.1f} MB)"
-          + (f"  [+{len(extra)} bid/ask cols]" if extra else "  [mid only]"))
+    for pair_key in pair_keys:
+        local_path = OUTDIR / f"{pair_key}_m1.parquet"
+        extra = write_parquet(bars, local_path)
+        file_mb = local_path.stat().st_size / 1e6
+        print(f"  Wrote {local_path.name}  ({file_mb:.1f} MB)"
+              + (f"  [+{len(extra)} bid/ask cols]" if extra else "  [mid only]"))
     if extra:
         # Reported in BASIS POINTS OF PRICE, deliberately not pips. A pip table here
         # would need a per-instrument decimal place for FX vs JPY crosses vs gold vs
@@ -314,8 +378,10 @@ def process(pair_key: str, cfg: dict, years: int, upload: bool, price: str = "BA
         if not R2_SECRET_KEY:
             print("  R2_SECRET_KEY not set - skipping upload")
         else:
-            print(f"  Uploading to R2  ->  {r2_key}...")
-            upload_to_r2(local_path, r2_key)
+            for pair_key in pair_keys:
+                r2_key = f"{R2_PREFIX}/{pair_key}_m1.parquet"
+                print(f"  Uploading to R2  ->  {r2_key}...")
+                upload_to_r2(OUTDIR / f"{pair_key}_m1.parquet", r2_key)
             print(f"  Upload complete")
 
     return True
@@ -338,9 +404,14 @@ def update_r2_download_script(new_pairs: list[str]):
 
 
 def main():
+    global OUTDIR
     parser = argparse.ArgumentParser(description="Fetch M1 parquets from Oanda and upload to R2")
     parser.add_argument("pairs", nargs="*", help="Instrument keys to fetch (default: all)")
-    parser.add_argument("--years",     type=int,  default=5,    help="Years of history (default 5)")
+    parser.add_argument("--years",     type=float, default=5,   help="Years of history (default 5; fractional ok)")
+    parser.add_argument("--out", default=str(OUTDIR),
+                        help="output dir (default the live M1 store). Point a short "
+                             "--years run somewhere else — writing 5 days over a 5-year "
+                             "file destroys it, the write is a REPLACE not a merge.")
     parser.add_argument("--no-upload", action="store_true",     help="Skip R2 upload")
     parser.add_argument("--price", default="BAM", choices=["BAM", "M"],
                         help="BAM (default) stores bid+ask+mid; M is the mid-only "
@@ -356,6 +427,8 @@ def main():
         print(json.dumps(INSTRUMENTS))
         return
 
+    OUTDIR = Path(args.out)
+
     selected = [p.lower() for p in args.pairs] if args.pairs else list(INSTRUMENTS.keys())
     unknown  = [p for p in selected if p not in INSTRUMENTS]
     if unknown:
@@ -370,14 +443,23 @@ def main():
     succeeded = []
     failed    = []
 
-    for pair_key in selected:
+    # One fetch per Oanda SYMBOL, not per key — see process()'s docstring.
+    groups: dict[str, list[str]] = {}
+    for k in selected:
+        groups.setdefault(INSTRUMENTS[k]["oanda"], []).append(k)
+    dupes = {s: ks for s, ks in groups.items() if len(ks) > 1}
+    if dupes:
+        print("  sharing one download across alias keys: "
+              + "; ".join(f"{s} -> {', '.join(ks)}" for s, ks in dupes.items()))
+
+    for sym, keys in groups.items():
         try:
-            ok = process(pair_key, INSTRUMENTS[pair_key], args.years,
+            ok = process(keys, INSTRUMENTS[keys[0]], args.years,
                          upload=not args.no_upload, price=args.price)
         except Exception as e:
             print(f"  ERROR: {e}")
             ok = False
-        (succeeded if ok else failed).append(pair_key)
+        (succeeded if ok else failed).extend(keys)
 
     print(f"\n{'='*60}")
     print(f"Done: {len(succeeded)} succeeded, {len(failed)} failed")

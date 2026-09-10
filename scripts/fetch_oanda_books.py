@@ -44,12 +44,15 @@ them anyway.
 ## Cost, measured (not estimated)
 
 All figures below are MEASURED on real written months, not estimated. Wall-clock is
-the binding constraint; disk turns out to be almost free, because the bucket price
-ladder repeats identically in every snapshot and compresses to 0.454 bytes/row:
+the binding constraint; disk is cheap, because the bucket price ladder repeats
+identically in every snapshot and compresses to ~2 bytes/row:
 
-    3 years  ~946,000 requests   ~2.0B rows   ~0.9 GB   ~6.5 hours
-    1 year   ~315,000 requests   ~0.7B rows   ~0.3 GB   ~2.2 hours
-    1 month, 1 instrument, 1 book   1,557 req   0.9M rows   0.4 MB   44 seconds
+    3 years  ~946,000 requests   ~2.0B rows   ~4 GB     ~6.5 hours
+    1 year   ~315,000 requests   ~0.7B rows   ~1.4 GB   ~2.2 hours
+    1 month, EUR_USD order book (the largest): 1,557 req, 10.4M rows, 21 MB, 1 min
+
+Peak memory is ~470 MB regardless of run length — the month is streamed to disk in
+~2M-row groups rather than accumulated (see MonthWriter).
 
 Throughput is ~43 req/s at 8 workers over a pooled connection, and does not improve
 with more workers.
@@ -190,33 +193,88 @@ def fetch_snapshot(instrument: str, book: str, t: datetime, tries: int = 4):
     return None
 
 
-def write_month(rows: list, path: Path, instrument: str, book: str) -> int:
-    """Atomically write one month. Returns bytes written.
+SCHEMA = pa.schema(
+    [pa.field("time", pa.timestamp("s")), pa.field("ref", pa.float32()),
+     pa.field("price", pa.float32()), pa.field("long", pa.float32()),
+     pa.field("short", pa.float32())])
 
-    Written to a temp name and renamed, so an interrupted run can never leave a
-    half-month behind that the resume logic would then trust and skip. Month
-    granularity is the unit of work precisely so an interrupt costs minutes, not
-    hours — see the resume note in main().
+_EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
+
+
+class MonthWriter:
+    """Streams one month to parquet, a row group per snapshot.
+
+    The obvious version — accumulate the month in a list and build one table at the
+    end — costs about 2 GB of RAM for a single EUR_USD order-book month: 1,557
+    snapshots x 6,713 buckets is 10.4 million rows, and as Python tuples that is far
+    more memory than the 4 MB of parquet it compresses to. Measured live at 851 MB
+    and climbing before this was rewritten.
+
+    Writing incrementally keeps the peak at one snapshot (a few thousand rows) no
+    matter how long the run is, which is what makes an unattended multi-hour backfill
+    safe to leave alongside whatever else is on the machine.
+
+    Still atomic: written to `.parquet.tmp` and renamed only on close(), so an
+    interrupted run leaves no half-month for the resume logic to mistake for a
+    finished one.
     """
-    if not rows:
-        return 0
-    path.parent.mkdir(parents=True, exist_ok=True)
-    epoch = datetime(1970, 1, 1, tzinfo=timezone.utc)
-    table = pa.table(
-        {
-            "time":  pa.array([int((r[0] - epoch).total_seconds()) for r in rows], pa.timestamp("s")),
-            "ref":   pa.array([r[1] for r in rows], pa.float32()),
-            "price": pa.array([r[2] for r in rows], pa.float32()),
-            "long":  pa.array([r[3] for r in rows], pa.float32()),
-            "short": pa.array([r[4] for r in rows], pa.float32()),
-        },
-        metadata={b"instrument": instrument.encode(), b"book": book.encode(),
-                  b"source": b"oanda-v20", b"env": OANDA_ENV.encode()},
-    )
-    tmp = path.with_suffix(".parquet.tmp")
-    pq.write_table(table, str(tmp), compression="zstd")
-    tmp.replace(path)
-    return path.stat().st_size
+
+    ROWS_PER_GROUP = 2_000_000
+
+    def __init__(self, path: Path, instrument: str, book: str):
+        self.path = path
+        self.tmp = path.with_suffix(".parquet.tmp")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        self.schema = SCHEMA.with_metadata(
+            {b"instrument": instrument.encode(), b"book": book.encode(),
+             b"source": b"oanda-v20", b"env": OANDA_ENV.encode()})
+        self.writer = None
+        self.rows = 0
+        self._t, self._ref, self._px, self._l, self._s = [], [], [], [], []
+
+    def add(self, t: datetime, ref: float, buckets: list) -> None:
+        if not buckets:
+            return
+        secs = int((t - _EPOCH).total_seconds())
+        n = len(buckets)
+        self._t.extend([secs] * n)
+        self._ref.extend([ref] * n)
+        self._px.extend(b[0] for b in buckets)
+        self._l.extend(b[1] for b in buckets)
+        self._s.extend(b[2] for b in buckets)
+        self.rows += n
+        if len(self._t) >= self.ROWS_PER_GROUP:
+            self._flush()
+
+    def _flush(self) -> None:
+        """One row group per ~2M rows, NOT one per snapshot.
+
+        Row-group size is the whole size/memory trade-off here. A group per snapshot
+        keeps memory at a few MB but costs 6.2 bytes/row, because parquet's dictionary
+        and RLE encodings reset at every group and the bucket price ladder — identical
+        in every snapshot, and the one thing that compresses spectacularly — never gets
+        to repeat within a group. Batching to ~2M rows lets the ladder repeat hundreds
+        of times per group and brings it back near the 0.45 bytes/row a single-group
+        file achieves, while holding peak memory to a few hundred MB.
+        """
+        if not self._t:
+            return
+        if self.writer is None:
+            self.writer = pq.ParquetWriter(str(self.tmp), self.schema, compression="zstd")
+        self.writer.write_batch(pa.record_batch(
+            [pa.array(self._t, pa.timestamp("s")), pa.array(self._ref, pa.float32()),
+             pa.array(self._px, pa.float32()), pa.array(self._l, pa.float32()),
+             pa.array(self._s, pa.float32())], schema=self.schema))
+        self._t, self._ref, self._px, self._l, self._s = [], [], [], [], []
+
+    def close(self) -> int:
+        """-> bytes written (0 if the month produced nothing, and no file is left)."""
+        self._flush()
+        if self.writer is None:
+            return 0
+        self.writer.close()
+        self.tmp.replace(self.path)
+        return self.path.stat().st_size
 
 
 def months_between(start: datetime, end: datetime):
@@ -238,16 +296,20 @@ def do_month(instrument: str, book: str, y: int, m: int, lo: datetime, hi: datet
     times = list(snapshot_times(lo, hi, keep_weekends))
     if not times:
         return 0, 0, 0
-    rows, misses = [], 0
+    misses = 0
+    path = OUTDIR / book / instrument / f"{y:04d}-{m:02d}.parquet"
+    w = MonthWriter(path, instrument, book)
+    # ex.map preserves input order and yields lazily, so snapshots are written in
+    # chronological order and only a few are ever in flight — the whole point of
+    # streaming here (see MonthWriter). Do NOT collect these into a list first.
     with ThreadPoolExecutor(max_workers=workers) as ex:
         for t, res in zip(times, ex.map(lambda t: fetch_snapshot(instrument, book, t), times)):
             if res is None:
                 misses += 1
                 continue
             ref, buckets = res
-            rows.extend((t, ref, p, lng, sh) for p, lng, sh in buckets)
-    path = OUTDIR / book / instrument / f"{y:04d}-{m:02d}.parquet"
-    return write_month(rows, path, instrument, book), len(rows), misses
+            w.add(t, ref, buckets)
+    return w.close(), w.rows, misses
 
 
 def probe(instrument: str, book: str) -> bool:
@@ -326,12 +388,15 @@ def main() -> None:
                     continue
                 nb = len(r.json()[BOOKS[bk]]["buckets"])
                 rows = nb * n_snap
-                # 0.454 bytes/row, MEASURED on a real written month (EUR_USD position,
-                # 923,800 rows -> 419,667 bytes). Far below the naive 5-float estimate
-                # because the bucket price ladder is identical in every snapshot, so
-                # zstd + parquet dictionary/RLE encode the repeat almost for free. Do
-                # not "correct" this upward from first principles — it is a file size.
-                by = rows * 0.454
+                # 1.99 bytes/row, MEASURED on a real written month (EUR_USD order,
+                # 10,387,037 rows -> 20,666,080 bytes, 11 row groups). Far below the
+                # naive 5-float estimate because the bucket price ladder is identical
+                # in every snapshot and RLE/dictionary encode the repeat almost for
+                # free. It is sensitive to MonthWriter.ROWS_PER_GROUP — a row group
+                # per snapshot measured 6.2 — so re-measure if that changes rather
+                # than reasoning about it. Do not "correct" it upward from first
+                # principles; it is a file size.
+                by = rows * 1.99
                 tot_rows += rows
                 tot_bytes += by
                 print(f"    {inst:9} {bk:9}  {nb:6,} buckets  ->  {rows:14,} rows  {by/1e9:6.2f} GB")
