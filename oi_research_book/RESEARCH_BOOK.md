@@ -1,4 +1,4 @@
-# EUR/USD Options Positioning — Research Book (v1.5)
+# EUR/USD Options Positioning — Research Book (v1.6)
 
 **Data:** CME EUR/USD FX options, R2 `OI Data/EUR_USD.csv` (Databento-style
 per-strike daily export), 2020‑09‑04 → 2026‑09‑04, joined to
@@ -11,8 +11,9 @@ Re-run `scripts/00_audit.py` → `01_build_daily_dataset.py` →
 `04_predictive_ic.py` → `05_intraday_validation.py` →
 `06_intraday_cluster_significance.py` → `07_export_bot_chain.py` →
 `08_bot_backtest_zones.mjs` → `09_bot_backtest_execute.py` →
-`10_real_maxpain_test.py` → `11_feature_discovery.py` in order to reproduce
-every table (see `README.md`).
+`10_real_maxpain_test.py` → `11_feature_discovery.py` →
+`12_break_reject_classifier.py` in order to reproduce every table (see
+`README.md`).
 
 **v1.1 change:** added Part 9b, an intraday validation pass using real R2
 minute candles instead of daily OHLC. It fixes a same-day lookahead wrinkle
@@ -70,6 +71,20 @@ feature that wasn't even a candidate before: pre-touch (causal) volatility
 itself predicts the outcome (r=−0.093, p=0.007 at 15min). A separate ΔOI
 extremity feature passed one confound check and is flagged for the
 classifier; its tail bucket didn't and is flagged as not yet trustworthy.
+
+**v1.6 change:** built the break-vs-reject classifier (Part 15) queued off
+Part 14's vetted features — and it doesn't beat the plain side-specific base
+rate out of sample, in either a 3-feature or a 1-feature version. The
+feature that passed Part 14's confound check (OI-change p75–p90 tier) still
+fails outright when actually asked to generalize forward (OOS AUC below
+0.5) — the same in-sample/OOS reversal pattern Part 9 already flagged,
+caught a second time in a feature that had already survived one round of
+scrutiny. Traced to a real structural cause (only 13–18 independent
+wall-episodes in validation/test, not a modelling flaw) rather than left
+unexplained. Conclusion: don't ship this classifier; the unconditioned
+finding already live on the dashboard remains the state of the art until
+multi-pair pooling (roadmap item 3, now promoted) supplies enough
+independent episodes to validate a conditional model honestly.
 
 **Scope of this v1.** The brief that motivated this book listed 36 research
 sections and 18 closing questions. Doing all 36 with genuine statistical care
@@ -979,6 +994,80 @@ Session and volume/OI quadrant are excluded, not omitted by oversight.
 
 ---
 
+## Part 15 — Building the break-vs-reject classifier: a negative result, honestly reached
+
+The queued next step after Part 14's feature discovery. The honest headline:
+**the classifier does not beat the simplest possible baseline out of sample,
+in any parameterization tried** — and the likely reason is identified, not
+just shrugged at.
+
+**Method (`12_break_reject_classifier.py`).** A deliberately small logistic
+regression (3 terms: wall side, standardized pre-touch volatility, the
+validated OI-change p75–p90 indicator) predicting reject-vs-break at 15 and
+60 minutes, chronologically split 60/20/20 (never randomly — a random split
+would leak touches from the same wall-episode across train and test).
+Every OOS number is checked two ways: touch-level metrics, and an
+episode-level cluster bootstrap on the test period (resampling whole
+wall-episodes, not touches — the same discipline `06_intraday_cluster_
+significance.py` already applied to the underlying finding). The comparison
+that matters throughout: does conditioning on these features beat just using
+the side's own historical reject rate, with nothing else?
+
+**The sample-size problem, stated up front because it explains everything
+after it:** the chronological split leaves only **42 independent
+wall-episodes in training, 13 in validation, 18 in test.** That is thin for
+even a 3-parameter model — a genuine structural constraint, not a modelling
+choice.
+
+**3-feature model — in-sample looks fine, OOS does not:**
+
+| Horizon | `is_p75_90` coef (in-sample) | OOS episode-bootstrap: P(model doesn't beat baseline) |
+|---|---|---|
+| 15min | +0.72, p=0.010 | **87.1%** |
+| 60min | +0.72, p=0.007 | **100.0%** — mean Brier gap 95% CI entirely negative (model is worse) |
+
+`pre_vol_60m`, significant as a *standalone* univariate predictor in Part 14
+(p=0.007), is no longer independently significant once jointly fit with the
+other two terms (p=0.11–0.43) — some of its signal is being absorbed
+elsewhere in the small model, itself a sign of a model working near its
+statistical limits on this sample.
+
+**Simplicity check: does dropping to the ONE feature that looked
+strongest do any better?** No — and this is the more important result,
+because it rules out "too many parameters" as the explanation:
+
+| Horizon | 1-feature in-sample p | OOS Brier (model vs. baseline) | OOS AUC |
+|---|---|---|---|
+| 15min | 0.0099 | 0.217 vs. **0.212** (worse) | **0.483** (below 0.5) |
+| 60min | 0.0079 | 0.235 vs. **0.230** (worse) | **0.490** (below 0.5) |
+
+Even the single feature with the cleanest in-sample p-value and a confound
+check already passed (Part 14) **fails outright when actually asked to
+generalize forward** — an OOS AUC below 0.5 means its ranking is slightly
+worse than a coin flip. This is the same "beautiful in-sample, gone
+out-of-sample" pattern Part 9 flagged as the clearest lesson in this entire
+book, now caught a second time, in a feature that had already survived one
+round of scrutiny.
+
+**Verdict: don't ship this classifier.** Conditioning wall-touch predictions
+on volatility or OI-change tier, with the sample currently available, adds
+no demonstrated value over the plain side-specific base rate — which is
+exactly what's already live on `oi-dashboard.html`'s wall-touch read (Part
+9b/12's original finding, unconditioned). Building more model on top of it
+right now would be adding false precision, not real information. The
+honest, well-earned conclusion is that this was correctly identified as
+sample-size-limited *before* being deployed, not after — the entire reason
+to build it carefully with episode-aware OOS validation in the first place.
+
+**What actually unblocks this: roadmap item 3 (multi-pair pooling), now
+promoted.** 42/13/18 independent episodes on one pair is the wall this
+result ran into, not a flaw in the modelling approach. R2 already holds the
+same schema for 6 more pairs — pooling them is the direct way to get enough
+independent wall-episodes to validate a conditional classifier honestly,
+rather than the only options being "ship an untested model" or "stop here."
+
+---
+
 ## Appendix — reproduction
 
 ```
@@ -994,6 +1083,7 @@ node    oi_research_book/scripts/08_bot_backtest_zones.mjs   # calls the REAL js
 python3 oi_research_book/scripts/09_bot_backtest_execute.py  # needs m1/eurusd_m1.parquet again
 python3 oi_research_book/scripts/10_real_maxpain_test.py     # depends on 01's surface_near.parquet
 python3 oi_research_book/scripts/11_feature_discovery.py     # depends on 05's touch events + surface_near.parquet + m1/eurusd_m1.parquet
+python3 oi_research_book/scripts/12_break_reject_classifier.py  # depends on 11's enriched touches
 ```
 
 Raw R2 inputs (`OI Data/EUR_USD.csv`, ~227MB; `m1/eurusd_d1.parquet`, ~175KB;

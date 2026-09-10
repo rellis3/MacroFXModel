@@ -69,6 +69,15 @@ alongside the one real positive finding.
   behaved) — caught the same way as Part 7's pinning confound, and the
   confound-hunt surfaced a real feature (pre-touch causal volatility) that
   wasn't even a candidate before. See `RESEARCH_BOOK.md` Part 14.
+- `scripts/12_break_reject_classifier.py` — a deliberately small logistic
+  regression on Part 14's vetted features, chronologically split, evaluated
+  both at touch level and with an episode-level cluster bootstrap. Negative
+  result, honestly reached: doesn't beat the plain side-specific base rate
+  out of sample, in either a 3-feature or a 1-feature version — even the
+  feature that passed Part 14's confound check fails to generalize forward
+  (OOS AUC below 0.5). Traced to only 13–18 independent test/val episodes,
+  not a modelling flaw. See `RESEARCH_BOOK.md` Part 15 — don't ship this
+  classifier; multi-pair pooling is what actually unblocks it.
 - `data/results/*.csv` — every numeric table cited in `RESEARCH_BOOK.md`,
   small and committed, one file per test.
 
