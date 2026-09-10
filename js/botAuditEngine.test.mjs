@@ -4,6 +4,7 @@ import {
   netOf, costOf, botsMissingCommission, normalizeTrades, equityByTrade,
   dailySeries, dailyEquity, monthlyReturns, rollingReturn, groupBy,
   excursions, exitMix, summarize, MIN_N_RATIOS,
+  cumFromDaily, liveGrowthPct, growthCone, conePercentile, clipDaily,
 } from './botAuditEngine.js';
 
 let fail = 0;
@@ -183,6 +184,53 @@ console.log('\nsummarize');
 }
 {
   ok('empty book returns n=0 without throwing', summarize([], {}).n === 0);
+}
+
+
+console.log('\nbacktest overlay');
+{
+  ok('cumFromDaily compounds', near(cumFromDaily([10, 10])[1], 21, 1e-9));
+  ok('cumFromDaily first point', near(cumFromDaily([5, -5])[0], 5, 1e-9));
+  ok('a gain then an equal loss is NOT flat (compounding)', near(cumFromDaily([10, -10])[1], -1, 1e-9));
+}
+{
+  const d  = dailySeries(normalizeTrades([tr('2026-09-01', 100), tr('2026-09-02', -50)]).trades);
+  const de = dailyEquity(d, 10000);
+  const g  = liveGrowthPct(de, 10000);
+  ok('live growth is % of capital from 0', near(g[0].cum, 1) && near(g[1].cum, 0.5));
+  ok('no capital -> no overlay series (never a fake denominator)', liveGrowthPct(de, 0).length === 0);
+}
+{
+  // Deterministic ladder: every day +1%. Every window of a given length gives
+  // the same compounded return, so the cone must collapse to a line.
+  const flat = new Array(50).fill(1);
+  const cone = growthCone(flat, 5);
+  ok('one cone row per horizon', cone.length === 5);
+  ok('constant series -> zero-width cone', near(cone[4].p5, cone[4].p95, 1e-9));
+  ok('cone value = compounded horizon return', near(cone[4].p50, (Math.pow(1.01, 5) - 1) * 100, 1e-9));
+  ok('window count shrinks as horizon grows', cone[0].n > cone[4].n);
+  ok('horizon clamps to series length', growthCone(flat, 500).length === 50);
+  ok('empty series -> empty cone', growthCone([], 10).length === 0);
+}
+{
+  let s2 = 7; const rnd = () => ((s2 = (s2 * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff - 0.5) * 4;
+  const rets = Array.from({ length: 400 }, rnd);
+  const cone = growthCone(rets, 60);
+  ok('percentiles ordered at every horizon', cone.every(r => r.p5 <= r.p50 && r.p50 <= r.p95));
+  ok('cone widens with horizon', (cone[59].p95 - cone[59].p5) > (cone[4].p95 - cone[4].p5));
+}
+{
+  const flat = new Array(40).fill(1);
+  const exact = (Math.pow(1.01, 10) - 1) * 100;
+  ok('beating every window ranks 100', conePercentile(flat, 10, exact + 5).pct === 100);
+  ok('lagging every window ranks 0',   conePercentile(flat, 10, exact - 5).pct === 0);
+  ok('reports how many windows backed it', conePercentile(flat, 10, 0).windows === 31);
+  ok('unknown ranks null, NOT 50', conePercentile([], 10, 5) === null && conePercentile(flat, 10, null) === null);
+}
+{
+  const daily = [{ date: '2026-08-30', ret: 1 }, { date: '2026-09-01', ret: 2 }, { date: '2026-09-05', ret: 3 }];
+  ok('clipDaily keeps the window', clipDaily(daily, '2026-09-01', '2026-09-04').length === 1);
+  ok('clipDaily is inclusive at both ends', clipDaily(daily, '2026-08-30', '2026-09-05').length === 3);
 }
 
 console.log(fail ? `\n${fail} FAILED\n` : '\nAll passed\n');

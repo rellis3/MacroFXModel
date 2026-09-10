@@ -127,6 +127,13 @@
   <label title="Declared notional behind this book. Not read from the account — bots share MT5 accounts, so a per-bot denominator has to be declared. Stored in this browser only.">Capital $</label>
   <input type="number" id="inCap" placeholder="none" min="0" step="1000">
   <button onclick="reload()">↺ Reload</button>
+  <button id="btnBt" onclick="toggleBacktest()" title="Overlay this bot's backtest. Fetched on demand — the portfolio build reads stored trade blobs from R2 and is far too expensive to pay on every page load.">+ Backtest</button>
+  <span id="btModeWrap" style="display:none">
+    <div class="seg">
+      <button id="btModeCone" class="on" onclick="setBtMode('cone')" title="Every window of this length in the backtest, as a percentile envelope, with live inside it. The honest comparison at short samples.">Cone</button>
+      <button id="btModeDates" onclick="setBtMode('dates')" title="The backtest over exactly these calendar dates. One window out of hundreds — read it as an anecdote, not a verdict.">Same dates</button>
+    </div>
+  </span>
   <div class="spacer"></div>
   <span id="status" class="mono" style="color:var(--dim);font-size:11px"></span>
 </div>
@@ -152,12 +159,17 @@ import {
   netOf, costOf, normalizeTrades, dailySeries, dailyEquity, equityByTrade,
   monthlyReturns, rollingReturn, groupBy, excursions, exitMix, summarize,
   botsMissingCommission, bootstrapNote, MIN_N_RATIOS,
+  cumFromDaily, liveGrowthPct, growthCone, conePercentile, clipDaily,
 } from './js/botAuditEngine.js';
 
 const BOTS = window.POS_BOTS || [];
 const botOf = k => BOTS.find(b => b.key === k) || { key: k, label: k, color: '#9ba3bf', paper: false };
 
 let RAW = [], TRADES = [], GROSS = false, NORM = null;
+// Backtest overlay state. `BT_CACHE` is keyed by bot so flipping the toggle off
+// and on, or switching bots and back, never re-pays the R2 cost.
+let BT_ON = false, BT_MODE = 'cone', BT = null, BT_LOADING = false;
+const BT_CACHE = new Map();
 const $ = id => document.getElementById(id);
 const cap = () => Math.max(0, +($('inCap').value || 0));
 
@@ -281,6 +293,204 @@ function histogram(vals, realised, { h = 170, bins = 34 }) {
        + `<text x="${W - pad.r}" y="${h - 6}" fill="#5a6474" font-size="10" text-anchor="end" font-family="monospace">${hi.toFixed(2)}</text></svg>`;
 }
 
+// ── backtest overlay ─────────────────────────────────────────────────────────
+
+window.toggleBacktest = async function () {
+  BT_ON = !BT_ON;
+  $('btnBt').classList.toggle('on', BT_ON);
+  $('btnBt').textContent = BT_ON ? '− Backtest' : '+ Backtest';
+  $('btModeWrap').style.display = BT_ON ? '' : 'none';
+  if (BT_ON) await loadBacktest();
+  renderBacktestPanel();
+};
+
+window.setBtMode = m => {
+  BT_MODE = m;
+  $('btModeCone').classList.toggle('on', m === 'cone');
+  $('btModeDates').classList.toggle('on', m === 'dates');
+  renderBacktestPanel();
+};
+
+async function loadBacktest() {
+  const bot = $('selBot').value;
+  if (BT_CACHE.has(bot)) { BT = BT_CACHE.get(bot); return; }
+  BT_LOADING = true; renderBacktestPanel();
+  try {
+    const r = await fetch(`/api/bot-audit/backtest-curve?bot=${encodeURIComponent(bot)}`);
+    BT = await r.json();
+  } catch (e) {
+    BT = { ok: false, available: false, reason: 'Request failed: ' + e.message };
+  }
+  BT_CACHE.set(bot, BT);
+  BT_LOADING = false;
+}
+
+/**
+ * One chart, several stacked bands plus several lines on a shared y-scale.
+ * Bands are painted first so the lines sit on top of them.
+ *
+ * The x-axis is ALWAYS the live window — either day-1..day-N (cone) or the live
+ * calendar span (same dates). It never stretches to the backtest's own history,
+ * which is the whole point: five years next to three months renders live as a
+ * two-pixel wiggle at the right-hand edge and shows nothing.
+ */
+function overlayChart({ bands = [], lines = [], n, h = 260, xFirst = '', xLast = '' }) {
+  const all = [];
+  for (const b of bands) all.push(...b.lo.filter(isFinite), ...b.hi.filter(isFinite));
+  for (const l of lines) all.push(...l.v.filter(v => v != null && isFinite(v)));
+  if (all.length < 2 || n < 2) return `<div class="empty">Not enough overlapping data to plot.</div>`;
+  let lo = Math.min(...all, 0), hi = Math.max(...all, 0);
+  if (hi === lo) { hi += 1; lo -= 1; }
+  const span = hi - lo, W = 1000, pad = { l: 58, r: 10, t: 10, b: 20 };
+  const x = i => pad.l + (i / (n - 1)) * (W - pad.l - pad.r);
+  const y = v => pad.t + (1 - (v - lo) / span) * (h - pad.t - pad.b);
+  const dp = autoDp(span);
+
+  const grid = [0, .25, .5, .75, 1].map(f => {
+    const v = lo + span * f, yy = y(v);
+    return `<line x1="${pad.l}" x2="${W - pad.r}" y1="${yy.toFixed(1)}" y2="${yy.toFixed(1)}" stroke="#232a38"/>`
+         + `<text x="${pad.l - 6}" y="${(yy + 3.5).toFixed(1)}" fill="#5a6474" font-size="10" text-anchor="end" font-family="monospace">${v.toFixed(dp)}%</text>`;
+  }).join('');
+  const zeroY = y(0);
+  const zero = `<line x1="${pad.l}" x2="${W - pad.r}" y1="${zeroY.toFixed(1)}" y2="${zeroY.toFixed(1)}" stroke="#3a4356" stroke-dasharray="3 3"/>`;
+
+  const bandPaths = bands.map(b => {
+    let up = '', dn = '';
+    for (let i = 0; i < n; i++) { if (isFinite(b.hi[i])) up += (up ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(b.hi[i]).toFixed(1) + ' '; }
+    for (let i = n - 1; i >= 0; i--) { if (isFinite(b.lo[i])) dn += 'L' + x(i).toFixed(1) + ' ' + y(b.lo[i]).toFixed(1) + ' '; }
+    return up && dn ? `<path d="${up}${dn}Z" fill="${b.fill}" stroke="none"/>` : '';
+  }).join('');
+
+  const linePaths = lines.map(l => {
+    let d = '', started = false;
+    for (let i = 0; i < n; i++) {
+      const v = l.v[i];
+      if (v == null || !isFinite(v)) continue;
+      d += (started ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1) + ' ';
+      started = true;
+    }
+    return d ? `<path d="${d}" fill="none" stroke="${l.stroke}" stroke-width="${l.w || 1.8}"${l.dash ? ` stroke-dasharray="${l.dash}"` : ''}/>` : '';
+  }).join('');
+
+  const xl = `<text x="${pad.l}" y="${h - 6}" fill="#5a6474" font-size="10" font-family="monospace">${esc(xFirst)}</text>`
+           + `<text x="${W - pad.r}" y="${h - 6}" fill="#5a6474" font-size="10" text-anchor="end" font-family="monospace">${esc(xLast)}</text>`;
+  return `<svg viewBox="0 0 ${W} ${h}" preserveAspectRatio="none" style="height:${h}px">${grid}${zero}${bandPaths}${linePaths}${xl}</svg>`;
+}
+
+const swatch = (c, label, dash) =>
+  `<span style="display:inline-flex;align-items:center;gap:5px;margin-right:14px;color:var(--dim);font-size:11px">`
+  + `<span style="display:inline-block;width:16px;height:0;border-top:2px ${dash ? 'dashed' : 'solid'} ${c}"></span>${label}</span>`;
+
+function renderBacktestPanel() {
+  const host = $('btPanel');
+  if (!host) return;
+  if (!BT_ON) { host.innerHTML = ''; return; }
+  if (BT_LOADING) { host.innerHTML = `<div class="panel"><div class="pb"><div class="empty">Loading backtest…</div></div></div>`; return; }
+
+  const sel = $('selBot').value;
+  const botLabel = (sel === '__all' || sel === '__allinc') ? 'this selection' : botOf(sel).label;
+
+  if (!BT || !BT.available) {
+    // Two different situations that must not read the same. "Not wired" is a
+    // permanent fact about our plumbing and nothing to chase; "unavailable" is a
+    // fault that can be fixed, and saying "not wired" for it sends the reader
+    // looking for the wrong problem entirely.
+    const body = BT?.wired
+      ? `<b>Backtest unavailable for ${esc(botLabel)}.</b> ${esc(BT?.reason || BT?.error || 'The build returned nothing.')}
+         <br><br>This bot IS wired to a backtest — the fetch or the build failed, so it is worth retrying. A 404 usually means
+         the stored vote-trade blobs are unreachable (no R2 credentials on this host, or a cold cache).`
+      : `<b>Not wired for ${esc(botLabel)}.</b> ${esc(BT?.reason || BT?.error || 'No backtest available.')}
+         <br><br>Left blank on purpose rather than drawn from whatever backtest happens to exist: an overlay built from a
+         different config than production runs looks authoritative and misleads in both directions
+         (<code>LIVE_BACKTEST_ALIGNMENT.md</code> T2).`;
+    host.innerHTML = `<div class="panel"><div class="ph"><span class="badge">BT</span>Backtest overlay</div><div class="pb">
+      <div class="note warn" style="margin:0">${body}</div></div></div>`;
+    return;
+  }
+
+  const C = cap();
+  if (!(C > 0)) {
+    host.innerHTML = `<div class="panel"><div class="ph"><span class="badge">BT</span>Backtest overlay</div><div class="pb">
+      <div class="note warn" style="margin:0"><b>Set Capital to overlay the backtest.</b> The backtest is a percent return on
+      NAV; the live book is dollars. With no declared capital there is no shared axis — and two series on independent scales
+      can be made to agree or disagree at will, so this refuses rather than guesses.</div></div></div>`;
+    return;
+  }
+
+  const S = summarize(TRADES, { capital: C, gross: GROSS, bootRuns: 100, mcRuns: 100 });
+  if (!S.n) { host.innerHTML = ''; return; }
+  const live = liveGrowthPct(S.series.dailyEquity, C);
+  if (live.length < 2) { host.innerHTML = ''; return; }
+
+  const rets  = BT.daily.map(d => d.ret);
+  const N     = live.length;
+  const liveV = live.map(p => p.cum);
+  const first = live[0].date, last = live[live.length - 1].date;
+  const liveEnd = liveV[liveV.length - 1];
+
+  let body, caption;
+  if (BT_MODE === 'cone') {
+    const cone = growthCone(rets, N);
+    const nn   = Math.min(N, cone.length);
+    const rank = conePercentile(rets, N, liveEnd);
+    body = overlayChart({
+      n: nn, xFirst: 'day 1', xLast: `day ${nn}`,
+      bands: [
+        { lo: cone.map(c => c.p5),  hi: cone.map(c => c.p95), fill: 'rgba(94,176,255,.10)' },
+        { lo: cone.map(c => c.p25), hi: cone.map(c => c.p75), fill: 'rgba(94,176,255,.16)' },
+      ],
+      lines: [
+        { v: cone.map(c => c.p50), stroke: '#5eb0ff', dash: '5 4', w: 1.4 },
+        { v: liveV.slice(0, nn),   stroke: '#3fd07a', w: 2.2 },
+      ],
+    });
+    caption = `<div class="rd" style="margin-top:10px">
+      ${swatch('#3fd07a', 'live')}${swatch('#5eb0ff', 'backtest median', true)}
+      <span style="color:var(--dim);font-size:11px">
+        <span style="display:inline-block;width:16px;height:8px;background:rgba(94,176,255,.16);margin-right:5px"></span>P25–P75 &nbsp;
+        <span style="display:inline-block;width:16px;height:8px;background:rgba(94,176,255,.10);margin-right:5px"></span>P5–P95</span>
+      <br><br>Every <b>${nn}-day</b> window in the backtest, compounded from 0 and stacked into a percentile envelope.
+      ${rank ? `Live's ${nn}-day result of <b>${pct(liveEnd)}</b> sits at <b>P${rank.pct}</b> of <b>${rank.windows.toLocaleString('en-GB')}</b> such windows.` : ''}
+      Inside P25–P75 is behaving normally for a window this short; outside P5–P95 is worth investigating.
+      <b>This is not a verdict on edge</b> — it says whether live sits inside the range this strategy naturally produces over ${nn} days.</div>`;
+  } else {
+    const clipped = clipDaily(BT.daily, first, last);
+    if (clipped.length < 2) {
+      body = `<div class="empty">The backtest covers ${esc(BT.from)} → ${esc(BT.to)} and does not overlap the live window (${esc(first)} → ${esc(last)}).</div>`;
+      caption = '';
+    } else {
+      // Both series are indexed on the LIVE calendar, so the axis is the live
+      // window and the backtest's longer history cannot squash it.
+      const byDate = new Map();
+      let eq = 1;
+      for (const d of clipped) { eq *= (1 + d.ret / 100); byDate.set(d.date, (eq - 1) * 100); }
+      let carried = null;
+      const btV = live.map(p => { if (byDate.has(p.date)) carried = byDate.get(p.date); return carried; });
+      body = overlayChart({
+        n: N, xFirst: first, xLast: last,
+        lines: [
+          { v: btV,   stroke: '#5eb0ff', dash: '5 4', w: 1.6 },
+          { v: liveV, stroke: '#3fd07a', w: 2.2 },
+        ],
+      });
+      const btEnd = btV[btV.length - 1];
+      caption = `<div class="rd" style="margin-top:10px">
+        ${swatch('#3fd07a', 'live')}${swatch('#5eb0ff', 'backtest, same dates', true)}
+        <br><br>The backtest over <b>exactly these ${clipped.length} trading days</b>, rebased to 0 at the window start:
+        backtest <b>${btEnd == null ? '—' : pct(btEnd)}</b> vs live <b>${pct(liveEnd)}</b>.
+        <b class="neg">Read this as an anecdote, not a verdict.</b> It is one window out of the hundreds in the cone view, and
+        which one you get is mostly decided by when the bot happened to be switched on.</div>`;
+    }
+  }
+
+  host.innerHTML = `<div class="panel"><div class="ph"><span class="badge">BT</span>Equity vs backtest
+    <span class="rt">${esc(BT.source)} · ${esc(BT.from)} → ${esc(BT.to)} · ${BT.days.toLocaleString('en-GB')} days</span></div>
+    <div class="pb">${body}${caption}
+    <div class="rd" style="margin-top:10px;color:var(--dim2);font-size:11px;border-top:1px solid var(--line);padding-top:8px">
+      Config pinned to production: ${esc(BT.configLabel)}. Resolved server-side from the same frozen constants the live path
+      uses, so it cannot drift from what the bot actually runs.</div></div></div>`;
+}
+
 // ── render ───────────────────────────────────────────────────────────────────
 function activeTrades() {
   const sel = $('selBot').value;
@@ -302,6 +512,7 @@ function render() {
   renderExc(G);
   renderCst(G);
   renderTrd();
+  renderBacktestPanel();
 }
 
 function tile(k, v, sub, klass = '') {
@@ -348,6 +559,7 @@ function renderOvw(S, C, G) {
   el.innerHTML = notes.join('') + `<div class="tiles">${tiles}</div>` + `
     <div class="panel"><div class="ph"><span class="badge">EQ</span>Equity curve — by trade<span class="rt">${eq.length} trades · ${C > 0 ? 'from $' + C.toLocaleString('en-GB') : 'cumulative P&L from 0'}</span></div>
       <div class="pb">${lineChart(eq.map(p => ({ k: p.day, v: p.equity })), { fill: 'rgba(63,208,122,.10)', stroke: '#3fd07a', zero: C === 0, money: true })}</div></div>
+    <div id="btPanel"></div>
     <div class="panel"><div class="ph"><span class="badge">DD</span>Drawdown from peak<span class="rt">max ${C > 0 ? pct(S.scaleBound.maxDDPct) : money(S.scaleFree.maxDDAbs)}</span></div>
       <div class="pb">${lineChart(dEq.map(p => ({ k: p.date, v: C > 0 ? p.ddPct : p.ddAbs })), { fill: 'rgba(242,85,90,.13)', stroke: '#f2555a', zero: true, pct: C > 0, money: C === 0 })}</div></div>
     <div class="panel"><div class="ph"><span class="badge">R${rollWin}</span>Rolling ${rollWin}-day return<span class="rt">${C > 0 ? '% of capital' : 'dollars'}</span></div>
@@ -541,7 +753,12 @@ function renderTrd() {
     const b = localStorage.getItem('botAuditBot'); if (b) sel.value = b;
   } catch (e) {}
   $('inCap').addEventListener('change', () => { try { localStorage.setItem('botAuditCap', $('inCap').value); } catch (e) {} render(); });
-  sel.addEventListener('change', () => { try { localStorage.setItem('botAuditBot', sel.value); } catch (e) {} render(); });
+  sel.addEventListener('change', async () => {
+    try { localStorage.setItem('botAuditBot', sel.value); } catch (e) {}
+    BT = null;                        // a different bot means a different backtest
+    if (BT_ON) await loadBacktest();
+    render();
+  });
   $('selRange').addEventListener('change', reload);
   reload();
 })();

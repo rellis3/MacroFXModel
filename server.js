@@ -73,6 +73,7 @@ import { mountLevelAtlasRoutes, startRunJob as _startLevelAtlasRunJob } from './
 import { mountSessionPathRoutes, startRunJob as _startSessionPathRunJob } from './js/sessionPathRoutes.js';
 import { mountSessionHandoffRoutes, startRunJob as _startSessionHandoffRunJob } from './js/sessionHandoffRoutes.js';
 import { mountAsiaFibAtlasRoutes, startRunJob as _startAsiaFibAtlasRunJob, asiaLivePlanZones, asiaAllLines, liveCache as _faAsiaLiveCache, liveWarming as _faAsiaLiveWarming, saveAllLiveSnapshots as _faAsiaSaveAllLiveSnapshots } from './js/asiaFibAtlasRoutes.js';
+import { mountBotAuditRoutes } from './js/botAuditRoutes.js';
 import { mountMondayFibAtlasRoutes, startRunJob as _startMondayFibAtlasRunJob, mondayLivePlanZones, mondayAllLines, liveCache as _faMondayLiveCache, liveWarming as _faMondayLiveWarming, saveAllLiveSnapshots as _faMondaySaveAllLiveSnapshots } from './js/mondayFibAtlasRoutes.js';
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
 import {
@@ -20966,6 +20967,37 @@ mountAsiaFibAtlasRoutes(app, express);
 // ── Monday Fib Atlas — the weekly-ladder sibling, vote-backtest-only scope
 // (see js/mondayFibAtlasEngine.js's header for why it's leaner than Asia's).
 mountMondayFibAtlasRoutes(app, express);
+
+// ── Bot Audit — the backtest reference behind bot-audit.html's overlay.
+// The pair universe is passed in rather than re-declared: FIB_ATLAS_DEFAULT_PAIRS
+// is already the canonical list (asia-fib-atlas-vote-portfolio.html and
+// js/bot-config.js keep hand-synced copies), and a fourth copy inside the routes
+// module would be one more thing to forget. `buildFibAtlasCurve` reaches the
+// existing combined-ladder handler over loopback instead of re-implementing its
+// per-(pair,ladder) R2 prefetch + cache — that handler is ~60 lines of subtle
+// caching this route has no business duplicating, and the config it is called
+// with is assembled in ONE place (botAuditRoutes) from production's own frozen
+// constants.
+mountBotAuditRoutes(app, express, {
+  fibAtlasPairs: FIB_ATLAS_DEFAULT_PAIRS,
+  buildFibAtlasCurve: async (cfg) => {
+    const q = new URLSearchParams({
+      pairs: cfg.pairs.join(','),
+      ladders: cfg.ladders.join(','),
+      minMargin: String(cfg.minMargin),
+      minCostRatio: String(cfg.minCostRatio),
+      stopTightenFrac: String(cfg.stopTightenFrac),
+      maxGapMin: String(cfg.maxGapMin),
+      continuationExit: String(cfg.continuationExit),
+      maxConcurrent: String(cfg.maxConcurrent),
+      riskPct: String(cfg.riskPct),
+      targetVol: String(cfg.targetVol),
+    });
+    const r = await fetch(`http://127.0.0.1:${PORT}/api/asia-fib-atlas/vote-portfolio-combined?${q}`);
+    if (!r.ok) return { error: `vote-portfolio-combined returned HTTP ${r.status}` };
+    return await r.json();
+  },
+});
 
 // Report M1 cache status and Drive IDs for download instructions
 app.get('/api/vol-backtest/m1-status', (_req, res) => {

@@ -402,3 +402,90 @@ export const bootstrapNote =
   'this sample and ordering, NOT whether the bot is beating its backtest. Ranking live against a ' +
   'frozen backtest expectation needs expect_<bot> + a stop distance per live trade ' +
   '(MD files/LIVE_BACKTEST_ALIGNMENT.md §4.3).';
+
+// ── Backtest overlay ─────────────────────────────────────────────────────────
+//
+// THE OVERLAY'S OWN UNIT PROBLEM. A backtest curve is a % return on NAV; the
+// live book is dollars. They cannot share an axis until a capital base is
+// declared, so every function here works in PERCENT and the UI refuses the
+// overlay entirely when capital is unset. Twin axes would "work" and would be
+// a lie — two series scaled independently can be made to agree or disagree at
+// will.
+
+/** Compound a daily %-return series into a cumulative %-growth curve from 0. */
+export function cumFromDaily(rets) {
+  let eq = 1;
+  return rets.map(r => { eq *= (1 + r / 100); return (eq - 1) * 100; });
+}
+
+/** Live book as cumulative % of declared capital, one point per calendar day. */
+export function liveGrowthPct(dEq, capital) {
+  if (!(capital > 0) || !dEq.length) return [];
+  const base = dEq[0].equity - dEq[0].pnl;      // equity before the first day's P&L
+  return dEq.map((d, k) => ({ k, date: d.date, cum: (d.equity - base) / capital * 100 }));
+}
+
+/**
+ * The cone: for each horizon k = 1..N, the distribution of k-day cumulative
+ * returns taken over EVERY k-day window in the backtest. Plotting the
+ * percentiles against k gives a widening envelope, and the live curve laid
+ * inside it answers the only question worth asking at three months of data —
+ * *is this inside the range of outcomes this strategy produces over a window
+ * this short?*
+ *
+ * This is deliberately NOT "the backtest clipped to the live dates". That
+ * comparison uses one arbitrary window out of hundreds and is dominated by
+ * which quarter the bot happened to be switched on in. Both are offered in the
+ * UI; this is the default because the other one invites a conclusion the
+ * sample cannot support.
+ *
+ * O(N × days). At N=90 over ~1,300 days that is ~120k multiply-adds — fine in
+ * a browser, and it never touches the network twice.
+ */
+export function growthCone(rets, N, pcts = [5, 25, 50, 75, 95]) {
+  const out = [];
+  if (!rets.length || N < 1) return out;
+  const horizon = Math.min(N, rets.length);
+  // Rolling compounded growth for each start offset, extended one day at a time
+  // so each horizon reuses the previous one's work rather than recomputing.
+  let running = rets.map(r => 1 + r / 100);
+  for (let k = 1; k <= horizon; k++) {
+    const vals = [];
+    for (let i = 0; i + k <= rets.length; i++) vals.push((running[i] - 1) * 100);
+    vals.sort((a, b) => a - b);
+    const at = p => vals.length ? vals[Math.min(vals.length - 1, Math.floor(p / 100 * vals.length))] : 0;
+    const row = { k, n: vals.length };
+    for (const p of pcts) row['p' + p] = at(p);
+    out.push(row);
+    // extend every window by one more day for the next horizon
+    if (k < horizon) {
+      const next = new Array(Math.max(0, rets.length - k));
+      for (let i = 0; i + k < rets.length; i++) next[i] = running[i] * (1 + rets[i + k] / 100);
+      running = next;
+    }
+  }
+  return out;
+}
+
+/**
+ * Where the live result sits inside the cone at its final horizon, as a
+ * percentile. Returns null when there is nothing to rank against — never 50 as
+ * a stand-in, which would read as "perfectly average" rather than "unknown".
+ */
+export function conePercentile(rets, N, liveCum) {
+  if (!rets.length || !(N >= 1) || liveCum == null || !isFinite(liveCum)) return null;
+  const k = Math.min(N, rets.length);
+  const vals = [];
+  for (let i = 0; i + k <= rets.length; i++) {
+    let eq = 1;
+    for (let j = 0; j < k; j++) eq *= (1 + rets[i + j] / 100);
+    vals.push((eq - 1) * 100);
+  }
+  if (!vals.length) return null;
+  return { pct: Math.round(vals.filter(v => v < liveCum).length / vals.length * 100), windows: vals.length, horizon: k };
+}
+
+/** Backtest daily rows clipped to a calendar window — the "same dates" mode. */
+export function clipDaily(daily, fromIso, toIso) {
+  return daily.filter(d => d.date >= fromIso && d.date <= toIso);
+}
