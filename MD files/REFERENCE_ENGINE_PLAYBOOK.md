@@ -261,6 +261,43 @@ letting an artifact through. A boring, well-understood 5-10pp effect that
 survives scrutiny is worth more than an exciting 50pp one that hasn't been
 interrogated.
 
+### 6.7 Silently dropping an unresolved case biases the survivors, not just the sample size
+A two-barrier race (target vs. stop) sometimes doesn't resolve before the
+walk's own boundary (session end, data end). Filtering `outcome !==
+'neither'` before scoring feels like ordinary hygiene — "only look at cases
+where we know what happened" — but it is a look-ahead selection filter: you
+cannot know AT ENTRY TIME whether a given race will have time to resolve, so
+excluding the ones that didn't biases the surviving sample toward whichever
+barrier sits closer (a shorter race is more likely to finish in the window
+you happened to walk). This is a DIFFERENT failure than §6.1's future-data
+leakage — nothing from the future leaks into a row's fields, an entire class
+of ROW disappears instead, which is easier to miss because the code runs
+clean and the output looks plausible.
+
+Caught twice, independently, in this project on 2026-09-09, in two unrelated
+engines built by two different sessions — same filter, same bug. The HL
+early-reaction signal's entire reported edge (Sharpe 5.36) was this filter:
+once unresolved touches were priced instead of dropped, "continues MORE than
+fair odds" became a coin flip (`js/hlSignalCore.js`'s header has the full
+account). The CORE vote-margin engine had it too — 31.4% of all OOS touches
+across 17 pairs were silently excluded. There the edge survived (Sharpe
+3.63→3.09), but **max drawdown got WORSE, not better, once corrected
+(-26.38%→-38.11%)** — proof this isn't just "a smaller number," it can
+invert which direction a risk metric moves, because the dropped population
+skews toward the less-clean outcomes.
+
+**The check that catches this, which nothing else does**: for any walk that
+races to a resolution, explicitly count and log how many cases in the
+candidate population DIDN'T resolve before the boundary, as a percentage —
+not just how many did. If that count is filtered out downstream, ask where
+it went and what happens to a live position in the same situation (a real
+bot doesn't get to un-open an unresolved trade — it EOD-closes it, lets it
+ride, or something else, but SOME real thing happens; the backtest has to
+model that same thing, not silently exclude the case). Reviewing whether a
+backtest's *headline numbers* look sane will never catch this — the numbers
+look completely fine. Only reviewing the backtest's *population accounting*
+does.
+
 ---
 
 ## 7. When the unit itself needs to change (session-level, not touch-level)

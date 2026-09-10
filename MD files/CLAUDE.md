@@ -234,6 +234,22 @@ Apply these to any new signal, Python throwaway or JS engine alike.
   that mean/std — it says nothing about whether the signal generalizes to data
   it hasn't seen. It's a legitimate expectation-setting tool; label it as that,
   not as robustness evidence.
+- **Count what got silently dropped, not just what survived.** Any walk that
+  races an event to a resolution (target vs. stop, hit vs. no-hit) will have
+  cases that don't resolve before the walk's own boundary. Filtering those out
+  before scoring feels like hygiene but is a look-ahead selection bias — you
+  can't know at entry time whether a race will have time to finish, so
+  excluding the ones that didn't biases the survivors toward whichever
+  outcome sits closer. Caught twice independently on 2026-09-09 in two
+  unrelated engines: it faked a Sharpe of 5.36 into looking like a real edge
+  in one (real answer: a coin flip), and in the other the edge survived but
+  max drawdown got WORSE once fixed (-26.38%→-38.11%), not just smaller — the
+  headline numbers looked completely sane both times, so reviewing *outputs*
+  never catches this, only reviewing *population accounting* does (log what %
+  of the candidate population didn't resolve, and price it somehow — mark to
+  the boundary, let it ride, whatever a live position would actually do —
+  rather than dropping it). Full account + the exact check to run:
+  `MD files/REFERENCE_ENGINE_PLAYBOOK.md` §6.7.
 
 ---
 
