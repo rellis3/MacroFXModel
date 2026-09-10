@@ -514,6 +514,11 @@
   /* ── Currency drawer ─────────────────────────────────────── */
   .ccy-explain{font-size:12.5px;line-height:1.55;color:var(--text2);margin-bottom:10px}
   .ccy-legs{margin-top:8px;border-top:1px solid var(--border);padding-top:8px}
+  .fac-head{display:grid;grid-template-columns:1fr auto 46px;gap:8px;align-items:baseline;font-size:11px;margin:9px 0 3px;letter-spacing:.03em;text-transform:uppercase;color:var(--text3)}
+  .fac-head .fv{text-align:right;grid-column:3;font-size:12px;font-variant-numeric:tabular-nums;text-transform:none;letter-spacing:0}
+  .fac-head .fv.bull{color:var(--bull)} .fac-head .fv.bear{color:var(--bear)} .fac-head .fv.neu{color:var(--text3)}
+  .fac-head .fcov{font-size:9.5px;color:var(--text3);text-transform:none;letter-spacing:0;cursor:help}
+  .ccy-legs .ccy-legrow{padding-left:9px;border-left:2px solid var(--border)}
   /* 3 tracks: label · optional freshness note · value. The middle track collapses
      to 0 when a row has no age note, so pair legs (which pass only 2 children)
      lay out exactly as before. */
@@ -3969,7 +3974,9 @@ function fundamentalsHtml(ccy) {
   // the scorecard page now: struck through, aged, and labelled excluded.
   const staleBy = Object.fromEntries((row.stale || []).map(st => [st.dim, st]));
   const ages = row.ageDays || {};
-  const dimRows = Object.keys(CCY_DIM_LABEL).map(dim => {
+  // One dimension row, unchanged in substance -- what changed is that these are now
+  // nested under the FACTOR they measure rather than listed as twelve equal peers.
+  const dimRow = dim => {
     const v = dims[dim];
     if (v === undefined) return ''; // this currency has no such dimension at all (e.g. AUD has no cbSentiment)
     const st = staleBy[dim];
@@ -3979,7 +3986,31 @@ function fundamentalsHtml(ccy) {
       ? `<span class="dim-age bad" title="Newest data ${st.asOf} — past the ${st.maxAgeDays}d freshness budget for this release, so it is EXCLUDED from the composite above. The number is still shown so a dropped dimension doesn't look like a rendering fault.">${ccyDimAgeTxt(st.ageDays)} · excluded</span>`
       : ages[dim] != null ? `<span class="dim-age">${ccyDimAgeTxt(ages[dim])}</span>` : '';
     return `<div class="ccy-legrow"><a class="lp" href="${ccyDimHref(dim, ccy)}" style="color:inherit">${CCY_DIM_LABEL[dim]}</a>${note}<span class="lv ${cls}">${valTxt}</span></div>`;
+  };
+  // Grouped by factor, because a flat list of twelve invites reading it as twelve
+  // equal votes -- exactly the arithmetic the factor layer removed. Three of these
+  // rows measure rates and two measure inflation; a flat list hid that.
+  const FAC_DIMS = {
+    rates: ['rateDiff', 'realYield', 'yieldCurve'], inflation: ['cpi', 'ppi'],
+    growth: ['gdp', 'ism'], labour: ['laborMarket'],
+    demand: ['retailSales', 'consumerConfidence'], external: ['tradeBalance'],
+  };
+  const facs = row.factors ?? {};
+  const dimRows = Object.entries(FAC_DIMS).map(([key, ds]) => {
+    const inner = ds.map(dimRow).join('');
+    if (!inner) return '';
+    const f = facs[key];
+    const fv = f?.score;
+    const fcls = fv == null ? 'neu' : fv > 0 ? 'bull' : fv < 0 ? 'bear' : 'neu';
+    const cov = f && f.of > 1
+      ? `<span class="fcov" title="${f.dims?.length ?? 0} of ${f.of} series behind this factor are fresh enough to score${f.excludedStale?.length ? '; ' + f.excludedStale.join(', ') + ' excluded as stale' : ''}. A factor resting on one of three possible series is a weaker statement than one resting on all three.">${f.dims?.length ?? 0}/${f.of}</span>` : '';
+    return `<div class="fac-head"><span>${f?.label ?? key}</span>${cov}<span class="fv ${fcls}">${fv == null ? '&mdash;' : (fv > 0 ? '+' : '') + fv}</span></div>${inner}`;
   }).join('');
+  // cbSentiment belongs to no factor and never enters the score -- shown apart so
+  // that is visible rather than merely true.
+  const cbRow = dims.cbSentiment !== undefined
+    ? `<div class="fac-head"><span>Not scored</span><span class="fcov" title="Hawkish-score momentum was pre-registered, tested against forward price and banked a clean null (MD files/CB_SENTIMENT_PRICE_TEST.md). It stays here as a record of what was said and is deliberately excluded from every factor and from the composite.">descriptive</span><span class="fv neu">&mdash;</span></div>${dimRow('cbSentiment')}`
+    : '';
   const nStale = (row.stale || []).length;
   const stalePill = nStale
     ? ` <span class="chip warn" style="font-size:9px" title="${(row.stale || []).map(st => (CCY_DIM_LABEL[st.dim] || st.dim) + ': newest data ' + st.asOf).join(' · ')}">${nStale} stale · excluded</span>` : '';
@@ -3987,8 +4018,9 @@ function fundamentalsHtml(ccy) {
   const chipWord = row.composite == null ? 'No coverage yet' : row.composite > 0.25 ? 'Fundamentally strong' : row.composite < -0.25 ? 'Fundamentally weak' : 'Fundamentally neutral';
   return `
     <div style="margin-bottom:8px"><span class="chip ${chipCls}">${chipWord}${row.composite != null ? ` · ${row.composite > 0 ? '+' : ''}${row.composite}` : ''}</span>${stalePill}</div>
-    <div class="ccy-explain">Averages whatever's covered across ${row.coverage.length} of 12 real economic dimensions (missing data is left out, not treated as neutral)${nStale ? `, with <b>${nStale}</b> dropped as too old to score — struck through below` : ''} — the same read as the <a href="macro-scorecard.html">Macro Scorecard</a>, unlike "Today's flow" above which is price/positioning, not fundamentals.</div>
-    <div class="ccy-legs" style="margin-top:8px">${dimRows || '<div class="muted">No dimensions covered yet.</div>'}</div>`;
+    ${row.dominant ? `<div style="margin-bottom:8px;font-size:12.5px;line-height:1.55">Mostly a <b>${row.dominant.label.toLowerCase()}</b> story: that factor reads ${row.dominant.score > 0 ? '+' : ''}${row.dominant.score}, further from neutral than any other.</div>` : ''}
+    <div class="ccy-explain">Groups ${row.coverage.length} covered dimensions into <b>${row.factorsScored} of ${row.factorsTotal} factors</b>, then averages the factors equally${nStale ? `, with <b>${nStale}</b> dimensions dropped as too old to score — struck through below` : ''}. <span class="muted">Grouping first is the point: three of these dimensions measure rates and two measure inflation, so a flat average over all twelve would hand rates triple weight and inflation double without anyone having chosen that.${row.dimMeanComposite != null && row.composite != null && Math.abs(row.dimMeanComposite - row.composite) >= 0.1 ? ` The old flat average read ${row.dimMeanComposite > 0 ? '+' : ''}${row.dimMeanComposite}; the difference is that accidental weighting, now removed.` : ''}</span> Missing data is left out, never treated as neutral. Same read as the <a href="macro-scorecard.html">Macro Scorecard</a>; unlike "Today's flow" above, which is price/positioning rather than fundamentals.</div>
+    <div class="ccy-legs" style="margin-top:8px">${dimRows ? dimRows + cbRow : '<div class="muted">No dimensions covered yet.</div>'}</div>`;
 }
 // Policy tone + this currency's own calendar.
 //
@@ -4083,8 +4115,31 @@ function assembleCcySnapshot(ccy) {
       rank: (csr.scores.findIndex(x => x.ccy === ccy) + 1) || null, of: csr.scores.length } : null,
     lean: det.score, leanN: det.n,
     legs: det.legs.map(l => ({ pair: l.pair, read: `${l.pairSig >= 0 ? '+' : ''}${l.pairSig.toFixed(2)} (${l.isBase ? `${ccy} is the base` : `${ccy} is the quote`})` })),
-    macro: macroRow ? { composite: macroRow.composite, coverage: macroRow.coverage?.length ?? 0,
-      stale: (macroRow.stale || []).length, dims: macroRow.dims ?? {} } : null,
+    macro: macroRow ? {
+      composite: macroRow.composite, coverage: macroRow.coverage?.length ?? 0,
+      stale: (macroRow.stale || []).length, dims: macroRow.dims ?? {},
+      // The factor view, which is the one worth WRITING from. `composite` is now the
+      // equal-weighted mean of these, not a flat mean over dimensions -- three of the
+      // dimensions measure rates and two measure inflation, so averaging them flat
+      // handed rates triple weight by accident. `dimMeanComposite` is that old number,
+      // kept only so a large gap between the two can be pointed at.
+      factors: Object.fromEntries(Object.entries(macroRow.factors ?? {})
+        .filter(([, f]) => f.score != null)
+        .map(([k, f]) => [k, { label: f.label, score: f.score, backedBy: f.dims, of: f.of,
+                               excludedStale: f.excludedStale }])),
+      factorsScored: macroRow.factorsScored, factorsTotal: macroRow.factorsTotal,
+      dominant: macroRow.dominant ? { factor: macroRow.dominant.label, score: macroRow.dominant.score } : null,
+      dimMeanComposite: macroRow.dimMeanComposite ?? null,
+    } : null,
+    // What is separating the whole board today, so a currency read can be placed
+    // against it: being strong on the factor nobody disagrees about is a much weaker
+    // statement than being strong on the one currencies are actually spread across.
+    boardDriver: macroScorecard?.driver && macroScorecard.driver.spread != null
+      ? { factor: macroScorecard.driver.label, spread: macroScorecard.driver.spread,
+          high: macroScorecard.driver.high, low: macroScorecard.driver.low,
+          thisCcyRank: (macroScorecard.driver.ranked || []).findIndex(x => x.ccy === ccy) + 1 || null,
+          of: (macroScorecard.driver.ranked || []).length }
+      : null,
     surprise: sr ? { score: sr.score, n: sr.n, nSeries: sr.nSeries, pending: sr.pending,
       assumed: sr.assumed, top: (sr.top || []).slice(0, 3) } : null,
     rates: (det.carry || cv) ? {
@@ -4511,11 +4566,29 @@ function buildMacro() {
   // real fundamental evidence — this is additive, not a replacement.
   if (macroScorecard?.ranked?.length) {
     const rows = macroScorecard.ranked
-      .map(r => `<b>${r.ccy}</b> ${r.composite > 0 ? '+' : ''}${r.composite} <span class="muted">(${r.coverage.length}/11)</span>`)
-      .join(' &nbsp;·&nbsp; ');
-    const body = `Beyond rates and risk mood, this project scores each currency across up to 11 real economic dimensions — inflation, growth, labor market, business activity, retail sales, trade balance, real yield, yield curve, consumer confidence, PPI (USD) and central-bank tone — and ranks them strongest to weakest:<br><div style="margin-top:6px;font-size:12px;line-height:1.8">${rows}</div>`;
+      .map(r => {
+        const d = r.dominant;
+        return `<b>${r.ccy}</b> ${r.composite > 0 ? '+' : ''}${r.composite}` +
+          (d ? ` <span class="muted">(${r.factorsScored}/${r.factorsTotal} factors, led by ${d.label.toLowerCase()} ${d.score > 0 ? '+' : ''}${d.score})</span>`
+             : ` <span class="muted">(${r.factorsScored}/${r.factorsTotal} factors)</span>`);
+      })
+      .join('<br>');
+    // The DRIVER is the teaching line. A composite tells you who is strong; the
+    // widest-spread factor tells you what the board is actually sorted on today,
+    // which is the thing worth carrying into every pair below.
+    const drv = macroScorecard.driver;
+    const drvLine = drv && drv.spread != null
+      ? `<div style="margin-top:8px;padding:7px 9px;border-left:3px solid var(--accent,#6cf);background:rgba(120,200,255,.06);font-size:12px;line-height:1.6">
+           <b>What's separating the board today: ${drv.label.toLowerCase()}.</b>
+           ${drv.high} sits highest on it and ${drv.low} lowest, a spread of ${drv.spread} — wider than any other factor.
+           <span class="muted">Dispersion, not prediction: a factor everyone agrees on can't separate currencies however extreme its level, and a wide one isn't a forecast that it will move price. It's where the macro disagreement currently sits, so it's the lens to read the pairs through.</span>
+         </div>`
+      : '';
+    const body = `Beyond rates and risk mood, this project scores each currency on real economic data — then groups the dimensions into <b>six factors</b> (rates &amp; policy, inflation, growth, labour market, domestic demand, external balance) and weights those equally.
+      <span class="muted">Why grouping matters: three of the dimensions measure rates and two measure inflation, so a flat average across dimensions quietly gives rates triple weight and inflation double — not because anyone decided that, but because more series happen to point at them.</span>
+      <div style="margin-top:6px;font-size:12px;line-height:1.9">${rows}</div>${drvLine}`;
     const so = macroScorecard.pair
-      ? `The clearest fundamental read today: this favours <b>${macroScorecard.pair.long}</b> over <b>${macroScorecard.pair.short}</b> (composite gap ${macroScorecard.pair.gap}).`
+      ? `The clearest fundamental read today: this favours <b>${macroScorecard.pair.long}</b> over <b>${macroScorecard.pair.short}</b> (composite gap ${macroScorecard.pair.gap}, scored on ${macroScorecard.pair.longFactors} and ${macroScorecard.pair.shortFactors} of 6 factors)${drv && drv.spread != null ? `, and the gap is mostly a <b>${drv.label.toLowerCase()}</b> story` : ''}.${(macroScorecard.pair.setAside || []).length ? ` <span class="muted">${macroScorecard.pair.setAside.join(', ')} ${macroScorecard.pair.setAside.length === 1 ? 'is' : 'are'} set aside for this pairing — too few factors covered to compare against a fully scored currency, since a thin read swings further from neutral simply for having less behind it. Still ranked above.</span>` : ''}`
       : `No standout pairing today — composite scores are bunched too close together to lean hard either way on fundamentals alone.`;
     threads.push({ ic: '🏆', t: 'The Macro Scorecard — full fundamental ranking', body, so: so + ` <a href="macro-scorecard.html" style="font-size:11px">See the full per-currency breakdown →</a>` });
   }
@@ -4923,6 +4996,38 @@ function cotFor(name) {
 // (how many dimensions actually matched) is reported so the card can say when the
 // overlap is too thin to mean anything.
 const MACRO_EDGE_MIN_DIMS = 4;
+// Which factor each dimension measures. This MIRRORS FACTORS in
+// js/macroScorecardEngine.js -- the server sends `factors` per currency, but the
+// pair-level diff needs the mapping to group the shared dims itself, since a
+// factor either side has stale must drop out of the PAIR read even when it scored
+// fine on its own row.
+const MACRO_FACTOR_OF = {
+  rateDiff: 'rates', realYield: 'rates', yieldCurve: 'rates',
+  cpi: 'inflation', ppi: 'inflation',
+  gdp: 'growth', ism: 'growth',
+  laborMarket: 'labour',
+  retailSales: 'demand', consumerConfidence: 'demand',
+  tradeBalance: 'external',
+};
+const MACRO_FACTOR_LABEL = {
+  rates: 'rates & policy', inflation: 'inflation', growth: 'growth',
+  labour: 'labour market', demand: 'domestic demand', external: 'external balance',
+};
+const MACRO_EDGE_MIN_FACTORS = 2;
+
+// The pair-level fundamental gap -- differenced FACTOR by factor, not dimension by
+// dimension.
+//
+// The previous version averaged the per-dimension differences, which handed rates
+// three votes (rateDiff, realYield, yieldCurve) and inflation two (cpi, ppi) purely
+// because more series happen to point at them. On a pair where rates diverge one way
+// and everything else the other, that arithmetic decided the sign on its own -- and
+// nobody had chosen it. Grouping first makes the weighting a stated decision (equal
+// per factor) instead of a side-effect of the data catalogue.
+//
+// Still CONTEXT, never a signal: this repo has banked macro-as-signal as a null five
+// times over. The job here is to EXPLAIN the fundamental gap and name which factor
+// carries it, not to predict the next move.
 function macroEdgeFor(cc) {
   if (!cc || !macroScorecard?.ranked) return null;
   const [base, quote] = cc;
@@ -4931,17 +5036,36 @@ function macroEdgeFor(cc) {
   if (!b || !q) return null;
   const bStale = new Set((b.stale || []).map(x => x.dim));
   const qStale = new Set((q.stale || []).map(x => x.dim));
-  const diffs = [], dims = [];
+  const byFactor = {}, dims = [];
   for (const dim of Object.keys(b.dims ?? {})) {
+    const f = MACRO_FACTOR_OF[dim];
+    if (!f) continue;                                        // cbSentiment -- banked null, never scores
     const bv = b.dims[dim], qv = q.dims?.[dim];
-    if (bv == null || qv == null) continue;                 // one side has no read
+    if (bv == null || qv == null) continue;                  // one side has no read
     if (bStale.has(dim) || qStale.has(dim)) continue;        // too old to score, either side
-    diffs.push((bv - qv) / 2);
+    (byFactor[f] ||= []).push({ dim, diff: (bv - qv) / 2 });
     dims.push(dim);
   }
-  if (diffs.length < MACRO_EDGE_MIN_DIMS) return { score: null, n: diffs.length, dims };
-  const score = Math.max(-1, Math.min(1, diffs.reduce((a, x) => a + x, 0) / diffs.length));
-  return { score: +score.toFixed(2), n: diffs.length, dims };
+  // Each factor scores the mean of ITS shared dims, then factors are averaged equally.
+  const factors = Object.entries(byFactor).map(([key, xs]) => ({
+    key, label: MACRO_FACTOR_LABEL[key] || key,
+    diff: +(xs.reduce((a, x) => a + x.diff, 0) / xs.length).toFixed(2),
+    dims: xs.map(x => x.dim),
+  })).sort((a, b2) => Math.abs(b2.diff) - Math.abs(a.diff));
+  const nF = factors.length;
+  if (dims.length < MACRO_EDGE_MIN_DIMS || nF < MACRO_EDGE_MIN_FACTORS) {
+    return { score: null, n: dims.length, dims, factors, nFactors: nF, driver: factors[0] ?? null };
+  }
+  const score = Math.max(-1, Math.min(1, factors.reduce((a, f) => a + f.diff, 0) / nF));
+  return {
+    score: +score.toFixed(2), n: dims.length, dims,
+    factors, nFactors: nF,
+    // The factor carrying the gap, and whether the rest agree with it -- a +0.3 that
+    // every factor contributes to is a different statement from a +0.3 that one
+    // factor drags across three that disagree.
+    driver: factors[0] ?? null,
+    agree: nF ? factors.filter(f => Math.sign(f.diff) === Math.sign(score) && f.diff !== 0).length : 0,
+  };
 }
 
 // As-of lookup into an ascending [{date,value}] series -- the newest observation on
@@ -5026,7 +5150,7 @@ function pairSignalComposite(r) {
   return window.pairCompositeBrick.pairComposite({
     technical: { score: pairSignal(r), label: "Today's flow (technical)" },
     cot: { score: r.ct?.bias ?? null, label: 'Positioning (COT)' },
-    macro: { score: me?.score ?? null, label: 'Fundamentals (' + (me?.n ?? 0) + ' shared dims)' },
+    macro: { score: me?.score ?? null, label: 'Fundamentals (' + (me?.nFactors ?? 0) + ' factors, ' + (me?.n ?? 0) + ' shared dims)' },
     carry: { score: ce?.score ?? null, label: ce?.label ?? 'Carry' },
   });
 }
@@ -8713,10 +8837,17 @@ function assembleSnapshot(r) {
     const b = macroScorecard.ranked.find(x => x.ccy === base);
     const q = macroScorecard.ranked.find(x => x.ccy === quote);
     if (b || q) {
-      s.macroScorecard = {
-        [base]: b ? { composite: b.composite, coverage: b.coverage, dims: b.dims } : null,
-        [quote]: q ? { composite: q.composite, coverage: q.coverage, dims: q.dims } : null,
-      };
+      // Sent as factors + dimensions, not just a composite: the prompt is asked to say
+      // WHICH factor carries a currency's score, and it cannot do that from one number.
+      const pack = r2 => r2 ? {
+        composite: r2.composite, coverage: r2.coverage, dims: r2.dims,
+        factors: Object.fromEntries(Object.entries(r2.factors ?? {})
+          .filter(([, f]) => f.score != null)
+          .map(([k, f]) => [k, { label: f.label, score: f.score, backedBy: f.dims, of: f.of }])),
+        factorsScored: r2.factorsScored, factorsTotal: r2.factorsTotal,
+        dominant: r2.dominant ? { factor: r2.dominant.label, score: r2.dominant.score } : null,
+      } : null;
+      s.macroScorecard = { [base]: pack(b), [quote]: pack(q) };
     }
   }
   // Composite signal (js/pairCompositeEngine.js) — same read as the card's
@@ -8750,7 +8881,14 @@ function assembleSnapshot(r) {
   const meAI = macroEdgeFor(cc2);
   if (meAI) {
     s.macroEdge = { score: meAI.score, sharedDims: meAI.n, dims: meAI.dims,
-      note: 'Per-dimension differencing over the dimensions BOTH currencies cover and neither has stale. Previously this was (base composite - quote composite), which differenced two means taken over different-sized dimension sets. score is null when fewer than 4 dimensions match.' };
+      nFactors: meAI.nFactors,
+      // Per-factor gaps, largest first. This is the part worth TEACHING from: the
+      // headline number is far less interesting than which factor carries it and
+      // whether the others agree.
+      byFactor: (meAI.factors || []).map(f => ({ factor: f.label, diff: f.diff, dims: f.dims })),
+      driver: meAI.driver ? { factor: meAI.driver.label, diff: meAI.driver.diff } : null,
+      factorsAgreeing: meAI.agree ?? null,
+      note: 'Differenced FACTOR by factor over the dimensions BOTH currencies cover and neither has stale, then averaged equally across factors. Grouping first matters: differencing raw dimensions gave rates three votes (rateDiff/realYield/yieldCurve) and inflation two (cpi/ppi) purely because more series measure them, so on a pair where rates diverge one way and everything else the other, that accident decided the sign. score is null when fewer than 4 dimensions or fewer than 2 factors match. CONTEXT, never a signal - macro-as-signal is a banked null in this project five times over; use this to EXPLAIN the fundamental gap and say which factor carries it, and say plainly when the factors disagree with each other.' };
   }
   const ceAI = carryEdgeFor(r, cc2);
   if (ceAI) {

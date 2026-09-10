@@ -106,7 +106,7 @@ import { fetchTradeBalanceData, tradeBalanceScore, TRADE_BALANCE_UNIVERSE } from
 import { fetchRealYieldData, realYieldScore, REAL_YIELD_UNIVERSE } from './js/realYieldEngine.js';
 import { fetchRateDiffData, rateDiffScore, RATE_DIFF_UNIVERSE } from './js/rateDiffEngine.js';
 import { fetchPpiData, ppiCompositeScore, PPI_UNIVERSE } from './js/ppiEngine.js';
-import { buildScorecard as buildMacroScorecard, topBottomPair as macroTopBottomPair } from './js/macroScorecardEngine.js';
+import { buildScorecard as buildMacroScorecard, topBottomPair as macroTopBottomPair, factorBoard as macroFactorBoard } from './js/macroScorecardEngine.js';
 import { fetchYieldCurveData, yieldCurveScore, YIELD_CURVE_UNIVERSE } from './js/yieldCurveEngine.js';
 import { fetchConsumerConfidenceData, consumerConfidenceCompositeScore, CONFIDENCE_UNIVERSE } from './js/consumerConfidenceEngine.js';
 import { FOMC_MEETINGS, pendingAsOf as fomcPendingAsOf } from './js/fomcCalendar.js';
@@ -2600,9 +2600,11 @@ ${s.cotMarket ? `CROSS-MARKET POSITIONING (${s.cotMarket.n} instruments, report 
 Extremes: ${s.cotMarket.extremes.length ? s.cotMarket.extremes.map(e => `${e.sym} ${e.pct}th (${e.side})`).join('  ·  ') : 'none at the 10th/90th percentile'}
 By group (median crowding percentile): ${s.cotMarket.byGroup.map(g => `${g.group} ${g.medPct ?? 'N/A'}`).join('  ·  ')}` : ''}
 
-MACRO SCORECARD (11-dimension real-economy composite per currency — CPI, GDP, business activity, labor market, retail sales, trade balance, real yield, yield curve, consumer confidence, PPI (USD only), central-bank tone — whatever's actually covered for that currency, averaged; missing dims are left out, not treated as neutral)
+MACRO SCORECARD (real-economy composite per currency: dimensions grouped into six EQUALLY-WEIGHTED factors -- rates & policy (rate differential, real yield, yield curve), inflation (CPI, PPI), growth (GDP, business activity), labour market, domestic demand (retail sales, consumer confidence), external balance (trade balance). Grouping first matters: three dimensions measure rates and two measure inflation, so averaging dimensions flat would give rates triple weight by accident. Missing and stale dims are left out, not treated as neutral. Central-bank tone is in no factor and scores nothing -- banked null against forward price.)
 ${s.macroScorecard ? Object.entries(s.macroScorecard).map(([ccy, row]) => row
-    ? `${ccy}: composite ${row.composite != null ? (row.composite >= 0 ? '+' : '') + row.composite : 'N/A'} (${row.coverage.length}/11 dims covered)${Object.entries(row.dims || {}).filter(([, v]) => v != null).map(([k, v]) => `  ${k} ${v >= 0 ? '+' : ''}${v}`).join('')}`
+    ? `${ccy}: composite ${row.composite != null ? (row.composite >= 0 ? '+' : '') + row.composite : 'N/A'} [${row.factorsScored}/${row.factorsTotal} factors]${row.dominant ? `, led by ${row.dominant.factor.toLowerCase()} ${row.dominant.score >= 0 ? '+' : ''}${row.dominant.score}` : ''}
+    factors: ${Object.values(row.factors || {}).map(f => `${f.label} ${f.score >= 0 ? '+' : ''}${f.score}${f.of > 1 ? ` (${(f.backedBy || []).length}/${f.of} fresh)` : ''}`).join(', ') || '(none scored)'}
+    dimensions:${Object.entries(row.dims || {}).filter(([, v]) => v != null).map(([k, v]) => `  ${k} ${v >= 0 ? '+' : ''}${v}`).join('')}`
     : `${ccy}: no coverage yet`).join('\n') : '  Not available'}
 
 COMPOSITE SIGNAL (this dashboard's own combined read — averages whichever of technical regime, COT positioning, the Macro Scorecard, and carry are covered for this pair into one direction; arithmetic agreement across already-built signals, NOT a backtested rule — weight it as one more input, not a verdict)
@@ -2725,8 +2727,10 @@ ${s.econSurprise ? Object.entries(s.econSurprise).filter(([k]) => k !== 'note').
   ? `  ${ccy}: ${v.score == null ? `still collecting (${v.nReleases} scored, ${v.pendingForScore} more needed) — treat as UNKNOWN, not zero` : `${v.score >= 0 ? '+' : ''}${v.score} typical surprises (${v.nReleases} releases, ${v.nSeries} series)${v.assumedPolarityShare >= 0.5 ? ` — CAUTION: ${Math.round(v.assumedPolarityShare * 100)}% of these have an inferred higher-is-better sign` : ''}${(v.top || []).length ? `; driven by ${v.top.map(t => `${t.event} ${t.actual} vs ${t.estimate} est`).join(', ')}` : ''}`}`
   : `  ${ccy}: no coverage`).join('\n') + `\n${s.econSurprise.note}` : '  Not available'}
 
-MACRO SCORECARD EDGE (per-dimension, over dimensions BOTH legs actually cover)
-${s.macroEdge ? `Score: ${s.macroEdge.score ?? 'null — too few shared dimensions to compare'}  |  shared dimensions: ${s.macroEdge.sharedDims}${(s.macroEdge.dims || []).length ? ` (${s.macroEdge.dims.join(', ')})` : ''}
+MACRO SCORECARD EDGE (the two legs differenced FACTOR by factor, over the dimensions BOTH currencies cover and neither has stale, then averaged equally across factors. Report which factor carries the gap and whether the others agree with it -- a +0.3 every factor contributes to is a different statement from a +0.3 one factor drags across three that disagree, and the headline number cannot tell them apart. CONTEXT only, never a signal.)
+${s.macroEdge ? `Score: ${s.macroEdge.score ?? 'null -- too few shared dimensions or factors to compare'}  |  factors compared: ${s.macroEdge.nFactors ?? 0}  |  shared dimensions: ${s.macroEdge.sharedDims}
+Per factor (base minus quote, largest first): ${(s.macroEdge.byFactor || []).map(f => `${f.factor} ${f.diff >= 0 ? '+' : ''}${f.diff} [${(f.dims || []).join(', ')}]`).join('  ·  ') || 'none'}
+${s.macroEdge.driver ? `The gap is carried by ${s.macroEdge.driver.factor} (${s.macroEdge.driver.diff >= 0 ? '+' : ''}${s.macroEdge.driver.diff})${s.macroEdge.factorsAgreeing != null && s.macroEdge.nFactors ? `, and ${s.macroEdge.factorsAgreeing} of ${s.macroEdge.nFactors} factors point the same way as the overall score` : ''}.` : ''}
 ${s.macroEdge.note}` : '  Not available'}
 
 CARRY EDGE
@@ -3012,9 +3016,16 @@ ${s.lean != null ? `${s.lean >= 0 ? '+' : ''}${s.lean} across ${s.leanN ?? '?'} 
 PER-PAIR LEGS (which instruments are pulling this currency, and how hard)
 ${(s.legs || []).length ? s.legs.map(l => `  ${l.pair}: ${l.read}`).join('\n') : '  Not available'}
 
-FUNDAMENTALS (Macro Scorecard, per dimension; stale dimensions are EXCLUDED from the composite)
-${s.macro ? `Composite ${s.macro.composite ?? 'n/a'} across ${s.macro.coverage ?? 0} covered dimensions${s.macro.stale ? ` (${s.macro.stale} excluded as too old to score)` : ''}.
+FUNDAMENTALS (Macro Scorecard). Dimensions are grouped into six EQUALLY-WEIGHTED factors -- rates & policy (rate differential, real yield, yield curve), inflation (CPI, PPI), growth (GDP, business activity), labour market, domestic demand (retail sales, consumer confidence), external balance (trade balance) -- and the composite is the mean of the factors that scored. Grouping first is deliberate: three dimensions measure rates and two measure inflation, so a flat average across dimensions would give rates triple weight purely because more series point at it. Stale and missing dimensions are EXCLUDED, never counted as neutral.
+${s.macro ? `Composite ${s.macro.composite ?? 'n/a'} from ${s.macro.factorsScored ?? 0}/${s.macro.factorsTotal ?? 6} factors, over ${s.macro.coverage ?? 0} covered dimensions${s.macro.stale ? ` (${s.macro.stale} excluded as too old to score)` : ''}.${s.macro.dominant ? ` Dominant factor: ${s.macro.dominant.factor.toLowerCase()} ${s.macro.dominant.score > 0 ? '+' : ''}${s.macro.dominant.score}.` : ''}${s.macro.dimMeanComposite != null && s.macro.composite != null && Math.abs(s.macro.dimMeanComposite - s.macro.composite) >= 0.1 ? ` (A flat average over dimensions would have read ${s.macro.dimMeanComposite > 0 ? '+' : ''}${s.macro.dimMeanComposite}; the difference is the accidental weighting this grouping removes -- worth mentioning only if it changes the story.)` : ''}
+By factor:
+${Object.values(s.macro.factors || {}).map(f => `  ${f.label}: ${f.score > 0 ? '+' : ''}${f.score}${f.of > 1 ? ` (${(f.backedBy || []).length}/${f.of} series fresh${(f.excludedStale || []).length ? `, ${f.excludedStale.join(' + ')} too old` : ''})` : ''}`).join('\n') || '  (none scored)'}
+By dimension:
 ${Object.entries(s.macro.dims || {}).filter(([, v]) => v != null).map(([k, v]) => `  ${k}: ${v > 0 ? '+' : ''}${v}`).join('\n')}` : '  Not available'}
+
+WHAT IS SEPARATING THE FX BOARD TODAY (the factor with the widest spread across currencies)
+${s.boardDriver ? `${s.boardDriver.factor} -- ${s.boardDriver.high} highest, ${s.boardDriver.low} lowest, spread ${s.boardDriver.spread}. This currency ranks ${s.boardDriver.thisCcyRank ?? 'n/a'} of ${s.boardDriver.of} on it.
+This is DISPERSION, not prediction. A factor every currency agrees on cannot separate them however extreme its level, and a wide spread is not a forecast that it will move price. Use it to judge how much this currency's own read actually matters right now: leading a factor nobody disagrees about is a far weaker statement than leading the one currencies are genuinely spread across, and those two look identical in a composite score.` : '  Not available'}
 
 ECONOMIC SURPRISE (actual vs CONSENSUS -- what markets reprice on, distinct from the level of activity)
 ${s.surprise ? (s.surprise.score == null
@@ -3554,20 +3565,44 @@ async function _buildMorningBrief() {
   // line per currency so the brief can ground its FX/dollar read in this
   // project's own composite scores instead of flying blind on them.
   const scorecard = await _buildMacroScorecard().catch(() => null);
+  // The composite is now a FACTOR roll-up, not a flat mean over dimensions, and the
+  // prompt has to see the factors or it will keep narrating a single number it cannot
+  // decompose. Three dimensions measure rates and two measure inflation, so the old
+  // flat mean quietly gave rates triple weight -- the factor lines below are what make
+  // "the dollar is strong ON RATES, weak on growth" writable rather than guessable.
+  const _sgn = n => (n > 0 ? '+' : '') + n;
   const scorecardLines = scorecard?.ranked?.length
     ? scorecard.ranked.map((r, i) => {
-        // Yield curve and consumer confidence are folded into the composite
-        // like every other dim, but their raw value was previously invisible
-        // to the model — only the dim NAME showed up in coverage.join(), never
-        // the actual slope/inversion or confidence reading. Surface both
-        // explicitly since they're the newest, otherwise-invisible additions.
-        const extra = [];
-        if (r.dims?.yieldCurve != null) extra.push(`curve ${r.dims.yieldCurve >= 0 ? '+' : ''}${r.dims.yieldCurve}`);
-        if (r.dims?.consumerConfidence != null) extra.push(`confidence ${r.dims.consumerConfidence >= 0 ? '+' : ''}${r.dims.consumerConfidence}`);
-        const extraTxt = extra.length ? `  [${extra.join(', ')}]` : '';
-        return `${i + 1}. ${r.ccy} ${r.composite > 0 ? '+' : ''}${r.composite} (${r.coverage.length}/11 dims covered: ${r.coverage.join(', ')})${extraTxt}`;
+        const facs = Object.values(r.factors ?? {})
+          .filter(f => f.score != null)
+          .sort((a, b) => Math.abs(b.score) - Math.abs(a.score))
+          .map(f => `${f.label} ${_sgn(f.score)}${f.of > 1 ? ` (${f.dims.length}/${f.of} series fresh)` : ''}`)
+          .join(', ');
+        const dom = r.dominant ? `  -- led by ${r.dominant.label.toLowerCase()}` : '';
+        // The underlying dimensions WITH their values. Previously only the dimension
+        // NAMES reached the prompt (coverage.join()), so the model could see that a
+        // yield-curve read existed but never whether the curve was inverted. Stale
+        // dimensions are omitted here exactly as they are omitted from the factors.
+        const stale = new Set((r.stale || []).map(x => x.dim));
+        const dimTxt = Object.entries(r.dims ?? {})
+          .filter(([k, v]) => v != null && !stale.has(k))
+          .map(([k, v]) => `${k} ${_sgn(v)}`).join(', ');
+        const staleTxt = (r.stale || []).length
+          ? `  [excluded as stale: ${(r.stale || []).map(x => `${x.dim} (${x.asOf})`).join(', ')}]` : '';
+        return `${i + 1}. ${r.ccy} ${_sgn(r.composite)} [${r.factorsScored}/${r.factorsTotal} factors]${dom}\n     factors: ${facs || '(none scored)'}\n     dimensions: ${dimTxt || '(none)'}${staleTxt}`;
       }).join('\n')
-      + (scorecard.pair ? `\nStrongest-vs-weakest pairing: ${scorecard.pair.long} vs ${scorecard.pair.short} (composite gap ${scorecard.pair.gap})` : '\nNo confident strongest-vs-weakest pairing — composite spreads are too tight today.')
+      + (scorecard.pair
+          ? `\nStrongest-vs-weakest pairing: ${scorecard.pair.long} vs ${scorecard.pair.short} (composite gap ${scorecard.pair.gap}, scored on ${scorecard.pair.longFactors} and ${scorecard.pair.shortFactors} of 6 factors)`
+            + ((scorecard.pair.setAside || []).length
+                ? `\n  Set aside for this pairing: ${scorecard.pair.setAside.join(', ')} -- fewer than ${scorecard.pair.minFactors} factors covered. A currency scored on one or two factors is not comparable to one scored on six: with fewer factors each surviving one dominates, so a thin read swings further from neutral simply for having less behind it, and the extremes of the ranking are exactly where thin rows land. They still appear in the ranking above; do not present one as the strongest or weakest currency.` : '')
+          : '\nNo confident strongest-vs-weakest pairing -- composite spreads are too tight today.')
+      + (scorecard.driver?.spread != null
+          ? `\nWHAT IS SEPARATING THE BOARD: ${scorecard.driver.label.toLowerCase()} -- ${scorecard.driver.high} highest, ${scorecard.driver.low} lowest, spread ${scorecard.driver.spread}, wider than any other factor. Factor spreads today: `
+            + Object.values(scorecard.factors ?? {}).filter(f => f.spread != null)
+                .sort((a, b) => b.spread - a.spread)
+                .map(f => `${f.label.toLowerCase()} ${f.spread}`).join(', ')
+            + `. This is DISPERSION, not prediction: a factor every currency agrees on cannot separate them however extreme its level, and a wide spread is not a forecast that it will move price. Use it to explain WHY the ranking looks the way it does.`
+          : '')
     : null;
   const events = await _fetchTodayEvents().catch(() => []);
   const bigEvents = events
@@ -3589,7 +3624,7 @@ NEVER name a specific central-bank official (Fed Chair, FOMC governor, ECB/BoE/B
 ${macro}
 ${fc?.meta?.news_flag ? `Scheduled risk event today: ${fc.meta.news_flag}` : ''}
 ${macroChanges?.text ? `\n=== WHAT MOVED (change vs prior day / 1w / 1m — USE THIS to say what's shifting, not just the level) ===\n${macroChanges.text}` : ''}
-${scorecardLines ? `\n=== MACRO SCORECARD — this project's own cross-engine composite ranking, strongest to weakest (each currency's score averages whatever of central-bank sentiment/CPI/GDP/business-activity/labor-market/retail-sales/trade-balance/real-yield/yield-curve/consumer-confidence/PPI(USD) is currently covered for it, up to 11 dims, each already on a -1..+1 scale — bracketed [curve/confidence] figures below are those two dims' raw reading, not folded blindly into the average) ===\n${scorecardLines}\nUse this to ground the dollar/FX-complex section in this project's OWN scoring, not just generic yield/DXY levels — e.g. if USD ranks near the top with wide coverage, that's a real evidenced reason to lean dollar-supportive, not just a vibe. A curve reading near 0 or negative means the curve is flat/inverted for that currency — worth naming directly if it's driving the score. Don't overstate a thin-coverage score (few dims covered) with the same confidence as a well-covered one — say so if leaning on a partial read.` : ''}
+${scorecardLines ? `\n=== MACRO SCORECARD -- this project's own cross-engine ranking, strongest to weakest ===\nEach currency is scored on real economic data, then the dimensions are GROUPED INTO SIX FACTORS -- rates & policy (rate differential, real yield, yield curve), inflation (CPI, PPI), growth (GDP, business activity), labour market, domestic demand (retail sales, consumer confidence), external balance (trade balance) -- and the factors are averaged with EQUAL WEIGHT. That grouping is the point: three dimensions measure rates and two measure inflation, so a flat average across dimensions would hand rates triple weight and inflation double, purely because more series happen to point at them. Every score is already on a -1..+1 scale; missing or stale dimensions are left out, never treated as neutral. Central-bank tone is shown per currency elsewhere but is deliberately in NO factor and scores nothing -- hawkish-score momentum was tested against forward price here and banked a clean null.\n${scorecardLines}\nHOW TO USE IT. Ground the dollar/FX-complex section in this project's own scoring rather than generic yield/DXY levels, and go one level deeper than the headline number: say WHICH FACTOR is carrying a currency's score, because "USD is strong on rates but weak on growth" is a teachable, falsifiable statement and "USD scores +0.4" is not. Lean hardest on the WHAT IS SEPARATING THE BOARD line -- that is the factor currencies are actually spread across today, and a currency being strong on a factor everyone agrees about tells you far less than one leading the factor in dispute. Name the disagreements too: a composite where every factor points the same way is a much stronger read than one where growth and inflation pull opposite ways and net out near zero, and those two look identical in the headline number. A curve reading near 0 or negative means that currency's curve is flat or inverted -- name it directly if rates is the factor driving the score. Do not give a thin read the confidence of a well-covered one: [n/6 factors] and the per-factor "(x/y series fresh)" counts say how much is actually behind each number, and any dimension listed as excluded-as-stale is genuinely absent, not neutral. Finally, this whole composite is CONTEXT, not a signal -- macro-as-signal has been tested and banked as null in this project five times over. Use it to explain why the FX board looks the way it does; never present it as a forecast.` : ''}
 
 === TODAY'S SCHEDULED ECONOMIC EVENTS ===
 ${bigEvents}
@@ -6346,7 +6381,16 @@ async function _buildMacroScorecard() {
   // own `stale` array but the page had no count to show a banner from.
   const { ranked, uncovered, staleDims, staleCount } = buildMacroScorecard(byCcyDims);
   const pair = macroTopBottomPair(ranked);
-  return { ranked, uncovered, staleDims, staleCount, pair, cbSentiment, generatedAt: new Date().toISOString() };
+  // The board one factor at a time. `composite` says who is strong; `board.driver`
+  // says WHAT is separating them, which is the read every downstream consumer
+  // (today.html's three views, and the AI prompts) actually wants and would
+  // otherwise each have to recompute from `ranked[].factors` in its own way.
+  const board = macroFactorBoard(ranked);
+  return {
+    ranked, uncovered, staleDims, staleCount, pair, cbSentiment,
+    factors: board.factors, driver: board.driver,
+    generatedAt: new Date().toISOString(),
+  };
 }
 app.get('/api/macro-scorecard', async (_req, res) => {
   try {

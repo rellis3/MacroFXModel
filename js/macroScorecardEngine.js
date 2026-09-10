@@ -66,6 +66,93 @@ export const MAX_AGE_DAYS = {
 };
 export const DEFAULT_MAX_AGE_DAYS = 120;
 
+// ── Factors: what the dimensions are actually MEASURING ─────────────────────
+// The equal-weight average over dimensions has a flaw that is easy to miss and
+// hard to defend once seen: it weights each FACTOR by how many series happen to
+// measure it, not by any decision.
+//
+// `rateDiff`, `realYield` and `yieldCurve` are three views of rates. `cpi` and
+// `ppi` are two views of inflation. So a flat mean over 12 dimensions silently
+// hands rates ~25% of the score and inflation ~17% — and adding a fourth rates
+// series tomorrow would quietly push rates to a third, with nobody having chosen
+// that. An accidental weighting scheme is worse than a stated one you disagree
+// with, because there is nothing to argue with.
+//
+// Grouping first, then weighting the groups, makes the weighting a decision.
+export const FACTORS = {
+  rates:       { label: 'Rates & policy',   dims: ['rateDiff', 'realYield', 'yieldCurve'] },
+  inflation:   { label: 'Inflation',        dims: ['cpi', 'ppi'] },
+  growth:      { label: 'Growth',           dims: ['gdp', 'ism'] },
+  labour:      { label: 'Labour market',    dims: ['laborMarket'] },
+  demand:      { label: 'Domestic demand',  dims: ['retailSales', 'consumerConfidence'] },
+  external:    { label: 'External balance', dims: ['tradeBalance'] },
+};
+
+// Equal weights, and that IS the considered choice rather than a lazy one.
+//
+// Any other weighting is a claim about what drives FX, and this repo has banked
+// macro-as-signal as a null five times over. A composite that cannot predict has
+// one honest job — EXPLAIN why the market is where it is — and for explanation
+// the least-assumption weighting is the right one. If a weighting is ever changed
+// here it should carry the evidence for it in this comment, not a hunch.
+//
+// `cbSentiment` is deliberately absent from every factor: hawkish-score momentum
+// was pre-registered, tested against forward price and banked null
+// (MD files/CB_SENTIMENT_PRICE_TEST.md). It stays available as a descriptive
+// dimension and never enters a score.
+export const FACTOR_WEIGHTS = {
+  rates: 1, inflation: 1, growth: 1, labour: 1, demand: 1, external: 1,
+};
+export const DIM_TO_FACTOR = Object.fromEntries(
+  Object.entries(FACTORS).flatMap(([f, { dims }]) => dims.map(d => [d, f])));
+
+/**
+ * Roll per-dimension reads up into factors, then into one composite.
+ *
+ * `reads` = { dimKey: {score, stale, ...} } as produced by readDim. A dimension
+ * that is null or stale is EXCLUDED — never averaged in as a zero — so a factor
+ * scores on whatever it genuinely has, and a factor with nothing usable returns
+ * null rather than a confident zero.
+ */
+export function rollUpFactors(reads = {}) {
+  const factors = {};
+  for (const [key, { label, dims }] of Object.entries(FACTORS)) {
+    const used = dims
+      .map(d => ({ dim: d, r: reads[d] }))
+      .filter(x => x.r && x.r.score != null && !x.r.stale);
+    const excluded = dims
+      .map(d => ({ dim: d, r: reads[d] }))
+      .filter(x => x.r && x.r.score != null && x.r.stale)
+      .map(x => x.dim);
+    factors[key] = {
+      label,
+      score: used.length ? round2(used.reduce((a, x) => a + x.r.score, 0) / used.length) : null,
+      dims: used.map(x => x.dim),
+      excludedStale: excluded,
+      // How much of this factor is actually backed by data — a factor resting on
+      // one of three possible series is a weaker statement than one on all three.
+      coverage: dims.length ? +(used.length / dims.length).toFixed(2) : 0,
+      of: dims.length,
+    };
+  }
+  const scored = Object.entries(factors).filter(([, f]) => f.score != null);
+  const wSum = scored.reduce((a, [k]) => a + (FACTOR_WEIGHTS[k] ?? 1), 0);
+  const composite = wSum > 0
+    ? round2(scored.reduce((a, [k, f]) => a + f.score * (FACTOR_WEIGHTS[k] ?? 1), 0) / wSum)
+    : null;
+  return { factors, composite, factorsScored: scored.length, factorsTotal: Object.keys(FACTORS).length };
+}
+
+/** The factor pulling a currency hardest, for the one-line read. */
+export function dominantFactor(factors = {}) {
+  let best = null;
+  for (const [key, f] of Object.entries(factors)) {
+    if (f?.score == null) continue;
+    if (!best || Math.abs(f.score) > Math.abs(best.score)) best = { key, ...f };
+  }
+  return best;
+}
+
 const DAY_MS = 864e5;
 const round2 = v => (v == null ? null : +v.toFixed(2));
 
@@ -101,8 +188,20 @@ export function scorecardForCcy(ccy, dims = {}, now = Date.now()) {
     ? round2(used.reduce((s, [, d]) => s + d.score, 0) / used.length) : null;
   const flat = {}, asOf = {}, ageDays = {};
   for (const [k, d] of read) { flat[k] = d.score; asOf[k] = d.asOf; ageDays[k] = d.ageDays; }
+  // Factor roll-up is now the PRIMARY read; `composite` below is derived from it
+  // rather than from a flat mean over dimensions, so rates no longer gets triple
+  // weight for having three series pointed at it.
+  const reads = Object.fromEntries(read);
+  const { factors, composite: factorComposite, factorsScored, factorsTotal } = rollUpFactors(reads);
   return {
-    ccy, composite,
+    ccy,
+    // The flat-dimension mean is kept as `dimMeanComposite` for continuity with
+    // anything still reading the old number, but `composite` is the factor-weighted
+    // one — that is the field consumers should use, and the two differing is
+    // informative rather than a bug.
+    composite: factorComposite, dimMeanComposite: composite,
+    factors, factorsScored, factorsTotal,
+    dominant: dominantFactor(factors),
     coverage: used.map(([k]) => k),
     dims: flat, asOf, ageDays,
     stale: read.filter(([, d]) => d.stale)
@@ -127,16 +226,76 @@ export function buildScorecard(byCcyDims = {}, now = Date.now()) {
   return { ranked, uncovered, staleDims, staleCount: rows.reduce((n, r) => n + r.stale.length, 0) };
 }
 
+/**
+ * The board seen one factor at a time — which factor is actually SEPARATING
+ * currencies right now.
+ *
+ * The composite answers "who is strong". This answers the more useful question for
+ * a reader trying to understand the day: WHY. If every currency reads about the
+ * same on inflation but rates run from +0.9 to -0.8, then rates is what the FX
+ * board is trading on today and the inflation column is noise, however interesting
+ * the individual prints were.
+ *
+ * `spread` (max - min) is the honest measure of that: a factor everyone agrees on
+ * cannot drive relative value between currencies no matter how extreme its level.
+ * That is a statement about DISPERSION, not about prediction — nothing here claims
+ * the widest factor will move price, only that it is where the macro disagreement
+ * currently sits.
+ *
+ * A factor scored by fewer than two currencies has no spread to speak of and is
+ * returned with `spread: null` rather than a zero, which would rank it as the
+ * calmest factor on the board when in truth it is simply unmeasured.
+ */
+export function factorBoard(ranked = []) {
+  const out = {};
+  for (const [key, { label }] of Object.entries(FACTORS)) {
+    const scored = ranked
+      .map(r => ({ ccy: r.ccy, score: r.factors?.[key]?.score ?? null, coverage: r.factors?.[key]?.coverage ?? 0 }))
+      .filter(x => x.score != null)
+      .sort((a, b) => b.score - a.score);
+    out[key] = {
+      label,
+      ranked: scored,
+      spread: scored.length >= 2 ? round2(scored[0].score - scored.at(-1).score) : null,
+      high: scored[0]?.ccy ?? null,
+      low: scored.length >= 2 ? scored.at(-1).ccy : null,
+      n: scored.length,
+      of: ranked.length,
+    };
+  }
+  // The widest-spread factor, i.e. the axis the board is currently sorted on.
+  const driver = Object.entries(out)
+    .filter(([, f]) => f.spread != null)
+    .sort((a, b) => b[1].spread - a[1].spread)[0] ?? null;
+  return { factors: out, driver: driver ? { key: driver[0], ...driver[1] } : null };
+}
+
 // The single most direct "usable trade view" read: pair the strongest and
 // weakest composite as a long/short idea. Requires the gap to clear a
 // small floor (0.15) so two currencies both reading near-neutral don't
 // get presented as a confident pair — "everything's roughly flat" is a
 // real, valid answer this should be able to give instead of forcing a
 // pair every time.
-export function topBottomPair(ranked = []) {
-  if (ranked.length < 2) return null;
-  const top = ranked[0], bottom = ranked.at(-1);
+// A currency scored on one or two factors is not comparable to one scored on six:
+// with fewer factors each surviving one dominates, so a thin read swings further from
+// neutral for no reason other than having less behind it. Ranking them together is
+// fine -- calling the extremes of a mixed-depth list "the clearest read today" is not,
+// because the extremes are exactly where the thin rows land.
+export const MIN_FACTORS_FOR_PAIR = 3;
+
+export function topBottomPair(ranked = [], { minFactors = MIN_FACTORS_FOR_PAIR } = {}) {
+  const eligible = ranked.filter(r => (r.factorsScored ?? 0) >= minFactors);
+  const setAside = ranked.filter(r => (r.factorsScored ?? 0) < minFactors).map(r => r.ccy);
+  if (eligible.length < 2) return null;
+  const top = eligible[0], bottom = eligible.at(-1);
   const gap = round2(top.composite - bottom.composite);
   if (gap < 0.15) return null;
-  return { long: top.ccy, short: bottom.ccy, gap };
+  return {
+    long: top.ccy, short: bottom.ccy, gap,
+    longFactors: top.factorsScored, shortFactors: bottom.factorsScored,
+    minFactors,
+    // Named rather than silently dropped -- a currency missing from this read for
+    // thin coverage is a fact about the data, not about the currency.
+    setAside,
+  };
 }
