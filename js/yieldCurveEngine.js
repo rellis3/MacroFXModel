@@ -34,7 +34,12 @@ export const YIELD_CURVE_UNIVERSE = {
   JPY: { short: 'IRSTCI01JPM156N', long: 'IRLTLT01JPM156N' },
   AUD: { short: 'IR3TIB01AUM156N', long: 'IRLTLT01AUM156N' },
   CAD: { short: 'IRSTCI01CAM156N', long: 'IRLTLT01CAM156N' },
-  CHF: { short: 'IRSTCI01CHM156N', long: 'IRLTLT01CHM156N' },
+  // Was IRSTCI01CHM156N (OECD call money) -- DISCONTINUED on FRED, last obs 2024-03-01.
+  // Same swap js/zscoreSpreadEngine.js already made in July 2026 and validated; this
+  // call site was missed, so the scorecard's CHF rate legs went on scoring a 2024
+  // print until the staleness gate caught it (33 months old). 3-month interbank,
+  // verified live to 2026-06 on 2026-09-10.
+  CHF: { short: 'IR3TIB01CHM156N', long: 'IRLTLT01CHM156N' },
   NZD: { short: 'IR3TIB01NZM156N', long: 'IRLTLT01NZM156N' },
 };
 

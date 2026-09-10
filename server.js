@@ -29422,7 +29422,7 @@ const _FRED_DASH_SERIES = {
   ca10y: 'IRLTLT01CAM156N', ch10y: 'IRLTLT01CHM156N',
   de_short: 'IRSTCI01DEM156N', gb_short: 'IR3TIB01GBM156N',
   jp_short: 'IRSTCI01JPM156N', au_short: 'IR3TIB01AUM156N',
-  ca_short: 'IRSTCI01CAM156N', ch_short: 'IRSTCI01CHM156N',
+  ca_short: 'IRSTCI01CAM156N', ch_short: 'IR3TIB01CHM156N',
   wti: 'DCOILWTICO', walcl: 'WALCL', tga: 'WTREGEN', rrp: 'RRPONTSYD',
   nzd_usd: 'DEXUSNZ', hy_bb: 'BAMLH0A1HYBB', hy_ccc: 'BAMLH0A3HYC',
 };
@@ -29446,7 +29446,7 @@ const _FREDHISTORY_SERIES = {
   ca10y: 'IRLTLT01CAM156N', ch10y: 'IRLTLT01CHM156N',
   de_short: 'IRSTCI01DEM156N', gb_short: 'IR3TIB01GBM156N',
   jp_short: 'IRSTCI01JPM156N', au_short: 'IR3TIB01AUM156N',
-  ca_short: 'IRSTCI01CAM156N', ch_short: 'IRSTCI01CHM156N',
+  ca_short: 'IRSTCI01CAM156N', ch_short: 'IR3TIB01CHM156N',
 };
 let _fredHistoryRunning = false;
 
