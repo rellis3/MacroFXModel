@@ -55,17 +55,27 @@ const WATCH_DAYS = 200;
 // fileURLToPath, not URL.pathname — the latter yields "/C:/..." on Windows.
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
+const retired = new Set();      // ids that appear only as `was:` in a discontinued record
+
 function collectIds() {
   const ids = new Map();
   for (const name of ENGINES) {
     const p = path.join(root, 'js', `${name}Engine.js`);
     if (!fs.existsSync(p)) continue;
     const src = fs.readFileSync(p, 'utf8');
+    // An id under `was:` is one an engine has ALREADY retired -- it sits in a
+    // `discontinued` record as history. Those are still worth checking (a retired
+    // series that came back to life is worth knowing about) but they are not a
+    // problem, and lumping them in with live breakage buries the ones that matter:
+    // after the CPI and retail retirements every single "DEAD" line was a `was:`.
+    const retiredHere = new Set();
+    for (const m of src.matchAll(/was:\s*'([A-Z][A-Z0-9]{4,21})'/g)) retiredHere.add(m[1]);
     for (const m of src.matchAll(/'([A-Z][A-Z0-9]{4,21})'/g)) {
       const id = m[1];
       if (/^(USD|EUR|GBP|JPY|AUD|CAD|CHF|NZD|USA|DEU|GBR)$/.test(id)) continue;
       if (!ids.has(id)) ids.set(id, new Set());
       ids.get(id).add(name);
+      if (retiredHere.has(id)) retired.add(id);
     }
   }
   return ids;
@@ -122,7 +132,9 @@ await Promise.all(Array.from({ length: CONCURRENCY }, async () => {
 
 const cadence = s => (s == null ? '?' : s > 200 ? 'annual' : s > 45 ? 'quarterly' : s > 10 ? 'monthly' : 'daily/weekly');
 const inconclusive = results.filter(r => r.err === 'THROTTLED' || r.err === 'FETCH_FAIL');
-const dead  = results.filter(r => (r.err && r.err !== 'THROTTLED' && r.err !== 'FETCH_FAIL') || r.ageDays > DEAD_DAYS).sort((a, b) => (b.ageDays ?? 1e9) - (a.ageDays ?? 1e9));
+const allDead = results.filter(r => (r.err && r.err !== 'THROTTLED' && r.err !== 'FETCH_FAIL') || r.ageDays > DEAD_DAYS);
+const retiredDead = allDead.filter(r => retired.has(r.id));      // known, already handled
+const dead  = allDead.filter(r => !retired.has(r.id)).sort((a, b) => (b.ageDays ?? 1e9) - (a.ageDays ?? 1e9));
 const watch = results.filter(r => !r.err && r.ageDays > WATCH_DAYS && r.ageDays <= DEAD_DAYS).sort((a, b) => b.ageDays - a.ageDays);
 
 const mo = d => (d / 30.44).toFixed(0) + 'mo';
@@ -131,14 +143,16 @@ const mo = d => (d / 30.44).toFixed(0) + 'mo';
 // briefly and reported "103 healthy, 0 DEAD" on a run where all 103 were throttled
 // and nothing had been learned about any of them. An audit that cannot reach its
 // source must say so, not report a clean bill of health.
-const healthy = results.filter(r => !r.err && r.ageDays <= WATCH_DAYS);
-console.log(`\n${results.length} series - ${healthy.length} healthy, ${watch.length} to watch, ${dead.length} DEAD, ${inconclusive.length} inconclusive\n`);
+const healthy = results.filter(r => !r.err && r.ageDays <= WATCH_DAYS && !retired.has(r.id));
+console.log(`\n${results.length} series - ${healthy.length} healthy, ${watch.length} to watch, ${dead.length} DEAD IN USE, ${retiredDead.length} already retired, ${inconclusive.length} inconclusive\n`);
 if (inconclusive.length === results.length) {
   console.log('EVERY series was unreachable - FRED is throttling this IP. This run proves');
   console.log('NOTHING about series health. Wait a few minutes and re-run.\n');
 }
+if (retiredDead.length) console.log(`(${retiredDead.length} already-retired series confirmed still dead: ${retiredDead.map(r => r.id).join(', ')})
+`);
 if (dead.length) {
-  console.log('DEAD or missing — these score a frozen print forever and never error:');
+  console.log('DEAD AND STILL IN USE — these score a frozen print forever and never error:');
   for (const r of dead) {
     console.log(`  ${r.id.padEnd(22)} ${(r.err ?? `${mo(r.ageDays)}  last ${r.last}`).padEnd(26)} ${r.engines}`);
   }
