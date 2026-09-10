@@ -1190,6 +1190,43 @@ function _gammaLevels(e, n){
   return { src: day ? ('the '+day.dte+'DTE book') : ((e.dte!=null) ? ('the '+e.dte+'DTE book') : 'the primary book'), rows: pick };
 }
 
+// Live application of oi_research_book/RESEARCH_BOOK.md Part 9b/12's one
+// clustering-verified finding: a real touch of the call/put wall rejects most
+// of the time in the next 15-60 minutes (call ~68%/61%, put ~63%/58%,
+// p<0.01 both sides on 27-43 independent wall-episodes over 6yr EUR/USD),
+// decaying to near-coinflip by 4 hours. TOUCH_PIPS matches the study's own
+// touch-detection buffer (~2 pips) so "AT WALL" here means the same thing it
+// meant in the backtest, not a looser live redefinition of it.
+const TOUCH_PIPS = 2;
+function touchZoneRead(e, S, dist, lvl){
+  const cw = e.callWall, pw = e.putWall;
+  const dCw = Math.abs(dist(cw)), dPw = Math.abs(dist(pw));
+  const atCall = Number.isFinite(dCw) && dCw <= TOUCH_PIPS;
+  const atPut  = Number.isFinite(dPw) && dPw <= TOUCH_PIPS;
+  const NOTE = ' Tested on 6yr EUR/USD CME data — decays fast: by 4 hours the '
+    + 'call-side edge is much weaker and the put-side edge is gone (~48%, a coin '
+    + 'flip). This is a short-horizon read: do not hold a fade on this alone '
+    + 'past about an hour, and it reads today’s live wall rather than the '
+    + 'prior-day-lagged level the backtest used (walls are 88-95% the same '
+    + 'strike day to day, so usually no difference in practice).';
+  if(atCall){
+    return _rd('warn','Live wall-touch read',
+      '🎯 <b>AT CALL WALL</b> ('+lvl(cw)+') — historically rejects <b>~68%</b> of touches within 15min, <b>~61%</b> within 60min',
+      'p&lt;0.01, 27 independent wall-episodes (not just a raw touch count).'+NOTE);
+  }
+  if(atPut){
+    return _rd('warn','Live wall-touch read',
+      '🎯 <b>AT PUT WALL</b> ('+lvl(pw)+') — historically rejects <b>~63%</b> of touches within 15min, <b>~58%</b> within 60min',
+      'p&lt;0.01, 43 independent wall-episodes (not just a raw touch count).'+NOTE);
+  }
+  const nearer = (Number.isFinite(dCw)&&Number.isFinite(dPw)) ? (dCw<dPw?['call wall',dCw,cw]:['put wall',dPw,pw])
+    : Number.isFinite(dCw) ? ['call wall',dCw,cw] : Number.isFinite(dPw) ? ['put wall',dPw,pw] : null;
+  return _rd('off','Live wall-touch read',
+    nearer ? 'Not currently at a wall — nearest is the '+nearer[0]+' ('+lvl(nearer[2])+'), '+Math.round(nearer[1])+'p away'
+           : 'No wall levels stored',
+    nearer ? 'The validated reject-rate below only applies to a real touch (within '+TOUCH_PIPS+'p) — it is not a live read at this distance.' : '');
+}
+
 function todaysRead(e){
   if(!e) return '';
   const S=e.spot, ex=e.exposures||{}, gex=Number.isFinite(ex.gex)?ex.gex:null;
@@ -1317,6 +1354,19 @@ function todaysRead(e){
         : (rr && rr.tilt==='upside')
           ? ' People are also paying more to bet on a <b>rise</b> than to protect against a fall — a mild caution if you are short.'
           : '')));
+
+  // ── live wall-touch read ─────────────────────────────────────────────────────
+  // The one finding in oi_research_book/ that survived its own hardest test (a
+  // clustering-corrected significance check, not just a raw event count — see
+  // RESEARCH_BOOK.md Part 9b/12): a real touch of a wall rejects most of the
+  // time in the next 15-60 minutes, then decays fast. This only fires when
+  // price is CURRENTLY within touch distance right now — it says nothing at
+  // any other distance, which is the whole point of a horizon-specific effect.
+  // The study lagged the wall to the PRIOR day's confirmed level to avoid
+  // lookahead; this reads today's live e.callWall/putWall instead, which
+  // Part 4's own persistence stats (88-95% unchanged day/day) say is almost
+  // always the same strike in practice — noted below rather than hidden.
+  sub.push(touchZoneRead(e, S, dist, lvl));
 
   // ── walls ──────────────────────────────────────────────────────────────────
   const cw=e.callWall, pw=e.putWall;
