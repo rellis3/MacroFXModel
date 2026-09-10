@@ -57,10 +57,15 @@ Peak memory is ~470 MB regardless of run length — the month is streamed to dis
 Throughput is ~43 req/s at 8 workers over a pooled connection, and does not improve
 with more workers.
 
-`--dry-run` prints the real figure for whatever you actually asked for. Note the
-books are WIDE — every bucket is populated, and the ±2% band around spot holds only
-8-31% of the total interest, so trimming to "near spot" would discard most of the
-book. That is why the row counts are what they are.
+`--dry-run` prints the real figure for whatever you actually asked for.
+
+The full ladder is kept because the book really is WIDE, measured on a written month
+(EUR_USD order, 2025-12): +/-0.5% of spot holds 11% of all interest, +/-2% holds 29%,
++/-10% still only 48%. Trimming to "near spot" would throw away most of the positions
+retail is actually carrying — which is the interesting part, since those are the
+underwater holds and the far stops. The ladder's first and last buckets are catch-alls
+(price 0.00000 and 1e10) and hold ~5% between them; they are stored as-is rather than
+dropped, so a consumer can see them and decide.
 
 ## Instruments
 
@@ -107,6 +112,10 @@ BOOKS = {"order": "orderBook", "position": "positionBook"}
 SNAPSHOT_MINUTES = (0, 20, 40)
 
 _print_lock = threading.Lock()
+
+# Snapshots dropped for having no reference price (see fetch_snapshot). Counted so a
+# systematic outage shows up as a number instead of hiding inside 'miss'.
+_REJECTED = 0
 
 # ONE POOLED SESSION FOR THE WHOLE RUN. This is not a micro-optimisation: measured
 # against the live API, a fresh connection per request runs at 0.29 req/s because
@@ -183,13 +192,38 @@ def fetch_snapshot(instrument: str, book: str, t: datetime, tries: int = 4):
             b = r.json().get(BOOKS[book])
             if not b or not b.get("buckets"):
                 return None
-            return (float(b["price"]),
+            # A SNAPSHOT WITH NO REFERENCE PRICE IS DROPPED, NOT PATCHED.
+            # Oanda returns price:"" on roughly 1.4% of snapshots (23 of 1,620 in
+            # EUR_USD 2026-01) with the bucket ladder otherwise intact. Every bucket
+            # price is only meaningful relative to where spot was, so a snapshot
+            # without it cannot be placed on the price axis — defaulting `ref` to 0
+            # or NaN would put 6,500 buckets of real positioning at a fictional
+            # distance from spot and nothing downstream would notice. Counted and
+            # reported per month rather than silently skipped. Recoverable later from
+            # the M1 candles if 1.4% ever turns out to matter.
+            try:
+                ref = float(b.get("price") or "")
+            except (TypeError, ValueError):
+                with _print_lock:
+                    global _REJECTED
+                    _REJECTED += 1
+                return None
+            return (ref,
                     [(float(x["price"]), float(x["longCountPercent"]),
                       float(x["shortCountPercent"])) for x in b["buckets"]])
         except requests.RequestException:
             if attempt == tries - 1:
                 return None
             time.sleep(2 ** attempt)
+        except (ValueError, KeyError, TypeError) as e:
+            # A malformed payload must never kill the run. This one did: an empty
+            # price string raised ValueError out of a worker thread, through
+            # ex.map, and took down a multi-hour backfill four months in, with the
+            # completed months saved only because they are written per month.
+            with _print_lock:
+                print(f"    ! {instrument} {book} {params['time']}: unparseable "
+                      f"payload ({type(e).__name__}: {e}) — snapshot dropped")
+            return None
     return None
 
 
@@ -295,8 +329,9 @@ def do_month(instrument: str, book: str, y: int, m: int, lo: datetime, hi: datet
              workers: int, keep_weekends: bool) -> tuple:
     times = list(snapshot_times(lo, hi, keep_weekends))
     if not times:
-        return 0, 0, 0
-    misses = 0
+        return 0, 0, 0, 0
+    global _REJECTED
+    misses, rej0 = 0, _REJECTED
     path = OUTDIR / book / instrument / f"{y:04d}-{m:02d}.parquet"
     w = MonthWriter(path, instrument, book)
     # ex.map preserves input order and yields lazily, so snapshots are written in
@@ -309,7 +344,7 @@ def do_month(instrument: str, book: str, y: int, m: int, lo: datetime, hi: datet
                 continue
             ref, buckets = res
             w.add(t, ref, buckets)
-    return w.close(), w.rows, misses
+    return w.close(), w.rows, misses, _REJECTED - rej0
 
 
 def probe(instrument: str, book: str) -> bool:
@@ -436,18 +471,20 @@ def main() -> None:
             if path.exists() and not a.force:
                 skipped += 1
                 continue
-            by, nrows, miss = do_month(inst, bk, y, m, lo, hi, a.workers, a.keep_weekends)
+            by, nrows, miss, rej = do_month(inst, bk, y, m, lo, hi, a.workers, a.keep_weekends)
             tot_bytes += by
             tot_rows += nrows
             tot_miss += miss
             done += 1
             el = time.time() - t0
             print(f"  {inst:9} {bk:9} {y:04d}-{m:02d}  {nrows:10,} rows  "
-                  f"{by/1e6:7.1f} MB  {miss:4} miss  [{done} done, {el/60:.1f} min]")
+                  f"{by/1e6:7.1f} MB  {miss:4} miss  {rej:4} no-ref  "
+                  f"[{done} done, {el/60:.1f} min]")
 
     print(f"\n  {done} month(s) written, {skipped} already on disk"
           f"{' (--force to refetch)' if skipped else ''}")
-    print(f"  {tot_rows:,} rows   {tot_bytes/1e9:.2f} GB   {tot_miss:,} snapshot(s) unavailable")
+    print(f"  {tot_rows:,} rows   {tot_bytes/1e9:.2f} GB   {tot_miss:,} snapshot(s) unavailable   "
+          f"{_REJECTED:,} dropped for no reference price")
     print(f"  {(time.time()-t0)/60:.1f} min   ->  {OUTDIR}")
 
 
