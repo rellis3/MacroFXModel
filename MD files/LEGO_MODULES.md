@@ -5849,6 +5849,14 @@ Concrete, evidenced divergences found during the mapping. Each is a latent
 "backtest says X, live does Y" bug. **Documented, not silently auto-fixed** —
 unifying them changes existing numbers, so adopt deliberately with an OOS re-run.
 
+> **The drift underneath all of these:** live and backtest do not share a UNIT.
+> Live trades are recorded in account currency with no stop distance stored;
+> backtests are recorded in R with no currency. So even a perfectly aligned
+> engine produces two books that cannot be put on the same axis. The general
+> contract that fixes it — and the adoption order — is
+> **`LIVE_BACKTEST_ALIGNMENT.md`**. Drift #8 below is the worked instance that
+> proves the shape works.
+
 1. **Gold pip size:** `1.0` (server.js, asiaRangeEngine) vs `0.1` (rangeFibEngine).
    `instrumentRegistry` canon = `1.0`. *(rangeFibEngine's local `PIP_SIZE` left
    untouched for now — changing it shifts that backtest's pip math.)*

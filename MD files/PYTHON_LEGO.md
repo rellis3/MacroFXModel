@@ -339,6 +339,16 @@ its own trades. Field names (`ticket`, `symbol`, `direction`, `lots`,
 `time_close`, `tz_offset_sec`, `comment`) are part of the contract — the
 dashboard reads them by name.
 
+> ⚠ **This list is behind the code, and the dashboard is behind this list.**
+> `pylego/broker/mt5.py:378-402` also emits `mfe_pips`, `mae_pips` and `reason`
+> (sl/tp/manual), which are stored in KV but named nowhere here; and
+> `commission`, which IS named here, is read by nothing — `bot-config.html`
+> computes Net as `profit + swap` (`:8977`, `:8998`). Three more fields
+> (`sl_at_entry`, `tp_at_entry`, `risk_amount`) are needed before a live trade
+> can be expressed in R and compared to any backtest. The full analysis and the
+> adoption order are in **`LIVE_BACKTEST_ALIGNMENT.md`**; that doc's §8 extends
+> the new-bot checklist below.
+
 **`tz_offset_sec` — the row's TIME BASE (required).** MT5's `.time` fields are
 seconds since the epoch on the **broker's wall clock**, not UTC (+3h on the live
 account in summer); `PaperBroker` stamps real UTC. Both shapes land in the same

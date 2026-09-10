@@ -1,0 +1,63 @@
+{
+ "totalTouches": 166876,
+ "totalTouchesLate": 42994,
+ "tradesRemovedByFilter": 8905,
+ "unfilteredStats": {
+  "days": 1172,
+  "sharpe": 3.09,
+  "sortino": 3.54,
+  "psr": 1,
+  "skew": 0.3,
+  "excessKurt": 1.03,
+  "acf1": -0.014,
+  "annVol": 77.28,
+  "cagr": 702.14,
+  "maxDD": -38.11,
+  "calmar": 18.42,
+  "profitFactor": 1.68,
+  "winRate": 56.7,
+  "var95": -6.524,
+  "var99": -10.243,
+  "cvar95": -9.091,
+  "volTarget": {
+   "target": 10,
+   "cagr": 35.45,
+   "maxDD": -5.26,
+   "calmar": 6.74
+  },
+  "tradeCount": 22560,
+  "perTradeWinRate": 55,
+  "perTradeSharpe": 4.098,
+  "years": 4.65,
+  "maxDDNonCompounded": -40.84
+ },
+ "filteredStats": {
+  "days": 1169,
+  "sharpe": 3.14,
+  "sortino": 3.7,
+  "psr": 1,
+  "skew": 0.45,
+  "excessKurt": 1.12,
+  "acf1": -0.014,
+  "annVol": 70.07,
+  "cagr": 603.76,
+  "maxDD": -35.63,
+  "calmar": 16.95,
+  "profitFactor": 1.69,
+  "winRate": 56.7,
+  "var95": -6.02,
+  "var99": -8.964,
+  "cvar95": -7.898,
+  "volTarget": {
+   "target": 10,
+   "cagr": 36.17,
+   "maxDD": -5.77,
+   "calmar": 6.27
+  },
+  "tradeCount": 17098,
+  "perTradeWinRate": 56.3,
+  "perTradeSharpe": 3.995,
+  "years": 4.64,
+  "maxDDNonCompounded": -41.24
+ }
+}

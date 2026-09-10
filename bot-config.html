@@ -5521,14 +5521,15 @@ python YieldSpreadBot/yield_spread_bot.py --live --url &lt;dashboard-url&gt;</pr
               <th>Close</th>
               <th>P&amp;L</th>
               <th>Swap</th>
-              <th>Net</th>
+              <th title="Round-turn commission the broker charged on this trade. Part of the PYTHON_LEGO.md §7 contract and stored in KV since the bots shipped it — but not counted in Net until 2026-09-10, so historical Net figures on this page used to read better than the account did. '—' means the bot does not report it.">Comm</th>
+              <th title="Gross P&amp;L + swap + commission — what the account actually kept.">Net</th>
               <th>Opened</th>
               <th>Closed</th>
               <th>Duration</th>
             </tr>
           </thead>
           <tbody id="histTableBody">
-            <tr><td colspan="15" class="pos-empty">Loading…</td></tr>
+            <tr><td colspan="16" class="pos-empty">Loading…</td></tr>
           </tbody>
           <tfoot id="histTableFoot"></tfoot>
         </table>
@@ -6638,7 +6639,7 @@ function _nqRenderClosed(trades) {
   if (!trades.length) { el.textContent = 'No closed trades today.'; return; }
   let totalPnl = 0;
   const rows = trades.map(t => {
-    const pnl = (t.profit || 0) + (t.swap || 0);
+    const pnl = _tradeNet(t);
     totalPnl += pnl;
     const c = pnl >= 0 ? '#10b981' : '#ef4444';
     return `<tr>
@@ -7828,6 +7829,15 @@ async function loadPositionsTab() {
   });
 
   // Update summary bar
+  //
+  // OPEN positions stay `profit + swap` — deliberately NOT `_tradeNet`. MT5
+  // charges commission on DEALS, so a live position object carries no
+  // commission field to add (`serialize_open_positions`, pylego/broker/mt5.py
+  // :288-315, has none to give). The entry commission has already been paid by
+  // this point and is simply invisible here, so an open book reads slightly
+  // better than it will on close. Don't "fix" this by inventing a number —
+  // the honest version needs `sl_at_entry`/`risk_amount` capture first
+  // (MD files/LIVE_BACKTEST_ALIGNMENT.md §2.2, step 3).
   const summaryEl = document.getElementById('posSummary');
   if (summaryEl) {
     const totalPnl = allPositions.reduce((s, p) => s + (p.profit || 0) + (p.swap || 0), 0);
@@ -8492,6 +8502,30 @@ function _learnTzOffsets(rows) {
   }
 }
 
+// The NET result of one closed trade, after every cost the broker actually
+// charged: gross P&L + swap + COMMISSION.
+//
+// Commission was the silent omission here until 2026-09-10. It is part of the
+// `PYTHON_LEGO.md` §7 wire contract, it is emitted by
+// `pylego/broker/mt5.py:serialize_closed_trades`, and `mergeTradeHistory()`
+// stores the whole row — so it has been sitting in KV all along while every
+// "Net" on this page read `profit + swap` and quietly reported a better result
+// than the account got. Round-turn commission on FX/metals is small per trade
+// and relentless in aggregate, which is exactly the kind of cost that turns a
+// marginal system into a losing one without ever showing up in a headline.
+//
+// One helper, not seven copies (REFERENCE_ENGINE_PLAYBOOK.md §3.4): the drift
+// this replaces was seven separate `profit + swap` expressions that all had to
+// be found by hand. Every new consumer must call this rather than re-add the
+// terms, or the next cost field goes missing the same way.
+//
+// `|| 0` on each term, not a guard on the row: paper rows and older records
+// legitimately carry no commission, and a missing cost is zero, never a reason
+// to drop the trade.
+function _tradeNet(t) {
+  return (t?.profit || 0) + (t?.swap || 0) + (t?.commission || 0);
+}
+
 // Broker-clock epoch -> true UTC epoch. null when the trade has no such stamp.
 function _tradeUtc(t, field) {
   const raw = t?.[field];
@@ -8610,7 +8644,7 @@ function _renderCrossBotAnalysis(trades, container, from, to) {
       const lbl = labelFn ? labelFn(t, k) : k;
       if (!map[k]) map[k] = { label: lbl, count:0, wins:0, net:0, key:k };
       map[k].count++;
-      const net = (t.profit||0)+(t.swap||0);
+      const net = _tradeNet(t);
       if (net > 0) map[k].wins++;
       map[k].net += net;
     });
@@ -8635,7 +8669,7 @@ function _renderCrossBotAnalysis(trades, container, from, to) {
     const k = `${bk}|${sym}`;
     if (!comboMap[k]) comboMap[k] = { bot_key:bk, pair:sym, count:0, wins:0, net:0 };
     comboMap[k].count++;
-    const net = (t.profit||0)+(t.swap||0);
+    const net = _tradeNet(t);
     if (net > 0) comboMap[k].wins++;
     comboMap[k].net += net;
   });
@@ -8647,8 +8681,8 @@ function _renderCrossBotAnalysis(trades, container, from, to) {
   const matrixBots  = [...new Set(combos.map(c => c.bot_key))];
 
   // Overall stats
-  const totalNet = trades.reduce((s,t) => s+(t.profit||0)+(t.swap||0), 0);
-  const totalWins = trades.filter(t => (t.profit||0)+(t.swap||0) > 0).length;
+  const totalNet = trades.reduce((s,t) => s+_tradeNet(t), 0);
+  const totalWins = trades.filter(t => _tradeNet(t) > 0).length;
   const wr = trades.length ? Math.round(totalWins/trades.length*100) : 0;
   const nc = totalNet >= 0 ? 'var(--green)' : 'var(--red)';
 
@@ -8805,7 +8839,7 @@ function renderHistAnalytics(trades) {
       if (k == null) return;
       if (!map[k]) map[k] = { label: k, count: 0, wins: 0, net: 0 };
       map[k].count++;
-      const net = (t.profit || 0) + (t.swap || 0);
+      const net = _tradeNet(t);
       if (net > 0) map[k].wins++;
       map[k].net += net;
     });
@@ -8883,7 +8917,7 @@ function _tdeHistStatTile(trades, tdeBook) {
   for (const t of trades) {
     const s = tdeBook[String(t.position_id ?? t.ticket)];
     if (!s || (s.decision !== 'go' && s.decision !== 'skip')) continue;
-    const win = ((t.profit || 0) + (t.swap || 0)) > 0;
+    const win = _tradeNet(t) > 0;
     if (s.decision === 'go') { go++; if (win) goWin++; }
     else { skip++; if (!win) skipLoss++; }
   }
@@ -8904,7 +8938,7 @@ async function loadHistoryTab() {
   if (!tbody) return;
 
   const { from, to } = _getHistDateRange();
-  tbody.innerHTML = `<tr><td colspan="15" class="pos-empty">Loading…</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="16" class="pos-empty">Loading…</td></tr>`;
   if (stats) stats.innerHTML = '';
   if (tfoot) tfoot.innerHTML = '';
 
@@ -8922,7 +8956,7 @@ async function loadHistoryTab() {
     const j = await r.json();
     trades = (j.trades || []).filter(t => _histActiveBots.has(t.bot_key));
   } catch(e) {
-    tbody.innerHTML = `<tr><td colspan="15" class="pos-empty" style="color:var(--red)">Failed to load history. Check KV connection.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="16" class="pos-empty" style="color:var(--red)">Failed to load history. Check KV connection.</td></tr>`;
     return;
   }
   // Learn each bot's time base from the rows that declare one, so rows written
@@ -8965,26 +8999,39 @@ async function loadHistoryTab() {
   renderCal();
 
   if (!trades.length) {
-    tbody.innerHTML = `<tr><td colspan="15" class="pos-empty">No closed trades found for this date range.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="16" class="pos-empty">No closed trades found for this date range.</td></tr>`;
     if (stats) stats.innerHTML = `<div class="pos-hist-stat"><span class="pos-hist-stat-val">0</span><span class="pos-hist-stat-lbl">Trades</span></div>`;
     renderHistAnalytics([]);
     return;
   }
 
   // Stats
+  // Win rate is measured on NET (after swap + commission), not gross profit —
+  // a trade that made $2 gross and paid $3 in costs lost money, and calling it
+  // a win inflates the headline exactly where the costs bite hardest (small
+  // scalps). This deliberately reads a point or two lower than it used to.
   const totalPnl    = trades.reduce((s, t) => s + (t.profit || 0), 0);
   const totalSwap   = trades.reduce((s, t) => s + (t.swap   || 0), 0);
-  const totalNet    = totalPnl + totalSwap;
+  const totalComm   = trades.reduce((s, t) => s + (t.commission || 0), 0);
+  const totalNet    = totalPnl + totalSwap + totalComm;
+  const totalCost   = totalSwap + totalComm;
   const totalLots   = trades.reduce((s, t) => s + (t.lots   || 0), 0);
-  const winners     = trades.filter(t => (t.profit || 0) > 0).length;
+  const winners     = trades.filter(t => _tradeNet(t) > 0).length;
   const winRate     = trades.length ? Math.round(winners / trades.length * 100) : 0;
   const pnlColor    = totalNet >= 0 ? 'var(--green)' : 'var(--red)';
+  // How much of the gross the costs ate. The headline number this whole page
+  // exists to keep honest: a book that gives back most of its gross is not a
+  // marginal system, it's a broker's income stream.
+  const costPct     = Math.abs(totalPnl) > 1e-9 ? Math.abs(totalCost / totalPnl) * 100 : 0;
+  const costTip     = `Swap $${totalSwap.toFixed(2)} + commission $${totalComm.toFixed(2)}`
+                    + (Math.abs(totalPnl) > 1e-9 ? ` — ${costPct.toFixed(1)}% of gross P&L` : '');
   if (stats) stats.innerHTML = [
     `<div class="pos-hist-stat"><span class="pos-hist-stat-val">${trades.length}</span><span class="pos-hist-stat-lbl">Trades</span></div>`,
     `<div class="pos-hist-stat"><span class="pos-hist-stat-val" style="color:${pnlColor}">${totalNet >= 0 ? '+' : ''}$${totalNet.toFixed(2)}</span><span class="pos-hist-stat-lbl">Net P&L</span></div>`,
     `<div class="pos-hist-stat"><span class="pos-hist-stat-val" style="color:${winRate>=50?'var(--green)':'var(--red)'}">${winRate}%</span><span class="pos-hist-stat-lbl">Win Rate</span></div>`,
     `<div class="pos-hist-stat"><span class="pos-hist-stat-val">${totalLots.toFixed(2)}</span><span class="pos-hist-stat-lbl">Total Lots</span></div>`,
     `<div class="pos-hist-stat"><span class="pos-hist-stat-val" style="color:${totalPnl>=0?'var(--green)':'var(--red)'}">${totalPnl >= 0 ? '+' : ''}$${totalPnl.toFixed(2)}</span><span class="pos-hist-stat-lbl">Gross P&L</span></div>`,
+    `<div class="pos-hist-stat" title="${costTip}"><span class="pos-hist-stat-val" style="color:${totalCost < 0 ? 'var(--red)' : 'var(--text3)'}">${totalCost >= 0 ? '+' : ''}$${totalCost.toFixed(2)}</span><span class="pos-hist-stat-lbl">Costs (swap+comm)</span></div>`,
     `<div class="pos-hist-stat"><span class="pos-hist-stat-val">${winners} / ${trades.length - winners}</span><span class="pos-hist-stat-lbl">W / L</span></div>`,
     _tdeHistStatTile(trades, tdeBook),
   ].join('');
@@ -8995,7 +9042,7 @@ async function loadHistoryTab() {
   // Table rows
   const rows = trades.map((t, idx) => {
     const bot    = _POS_BOTS.find(b => b.key === t.bot_key) || { label: t.bot_key, color:'#aaa', bg:'var(--s2)', bd:'var(--border)', paper:false };
-    const net    = (t.profit || 0) + (t.swap || 0);
+    const net    = _tradeNet(t);
     const pClass = net >= 0 ? 'pos-profit-pos' : 'pos-profit-neg';
     const dClass = t.direction === 'BUY' ? 'pos-buy' : 'pos-sell';
     const uOpen  = _tradeUtc(t, 'time_open');
@@ -9018,6 +9065,7 @@ async function loadHistoryTab() {
       `<td>${closePriceStr}</td>` +
       `<td class="${(t.profit||0) >= 0 ? 'pos-profit-pos' : 'pos-profit-neg'}">${(t.profit||0) >= 0 ? '+' : ''}${(t.profit||0).toFixed(2)}</td>` +
       `<td class="${(t.swap||0) < 0 ? 'pos-profit-neg' : ''}">${(t.swap||0).toFixed(2)}</td>` +
+      `<td class="${(t.commission||0) < 0 ? 'pos-profit-neg' : ''}"${t.commission == null ? ' title="This bot does not report commission — treated as 0, so Net may flatter the trade."' : ''}>${t.commission == null ? '—' : (t.commission||0).toFixed(2)}</td>` +
       `<td class="${pClass}">${net >= 0 ? '+' : ''}${net.toFixed(2)}</td>` +
       `<td style="color:var(--text3);font-size:11px">${_fmtTime(uOpen)}</td>` +
       `<td style="color:var(--text3);font-size:11px">${_fmtTime(uClose)}</td>` +
@@ -9046,6 +9094,7 @@ async function loadHistoryTab() {
     `<td colspan="2"></td>` +
     `<td class="${totalPnl >= 0 ? 'pos-profit-pos' : 'pos-profit-neg'}">${totalPnl >= 0 ? '+' : ''}${totalPnl.toFixed(2)}</td>` +
     `<td class="${totalSwap < 0 ? 'pos-profit-neg' : ''}">${totalSwap.toFixed(2)}</td>` +
+    `<td class="${totalComm < 0 ? 'pos-profit-neg' : ''}">${totalComm.toFixed(2)}</td>` +
     `<td class="${totalNet >= 0 ? 'pos-profit-pos' : 'pos-profit-neg'}">${totalNet >= 0 ? '+' : ''}${totalNet.toFixed(2)}</td>` +
     `<td colspan="3"></td>` +
     `</tr>`;
@@ -9091,7 +9140,7 @@ function renderCal() {
     const botDots = _POS_BOTS.filter(b => !b.paper && dTrades.some(t => t.bot_key === b.key))
       .map(b => `<span class="pos-cal-dot" style="background:${b.color}" title="${b.label}"></span>`).join('');
 
-    const netPnl = dTrades.reduce((s,t) => s + (t.profit||0) + (t.swap||0), 0);
+    const netPnl = dTrades.reduce((s,t) => s + _tradeNet(t), 0);
     const pnlStr = hasTrades ? ` · $${netPnl >= 0 ? '+' : ''}${netPnl.toFixed(0)}` : '';
 
     html += `<div class="pos-cal-day${isToday ? ' today' : ''}${hasTrades ? ' has-trades' : ''}"
@@ -9176,7 +9225,7 @@ async function openTradeChartModal(idx) {
   const bot = _POS_BOTS.find(b => b.key === t.bot_key) || { label: t.bot_key || '—' };
   title.textContent = `${t.symbol || '—'} · ${bot.label}`;
 
-  const net = (t.profit || 0) + (t.swap || 0);
+  const net = _tradeNet(t);
   // TRUE UTC fills. Everything below (window, markers, meta) works off these —
   // the raw t.time_* are on the broker's clock and would place the whole chart
   // hours away from the trade.
