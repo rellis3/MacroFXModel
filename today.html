@@ -2378,6 +2378,79 @@ function currencyStrengthReturns(rs) {
   return { scores, r2: r2 == null ? null : +r2.toFixed(2), nPairs: obs.length, obs };
 }
 
+// ── The no-trade gate, and how wide a stop has to be ─────────────────────────
+// A deployed gold read said, in its own words, "on balance the evidence slightly
+// favours the bullish-gold side structurally" — and then issued a SHORT, with
+// conviction 4/10, both outlook horizons at ZERO of five drivers agreeing, three risk
+// flags lit, and extreme COT crowding it had itself described as "fuel for a fast
+// flush". Rule 18 permits returning no trade; nothing ever forced it. Permission is
+// not a constraint, so this counts the agreeing evidence and hands over a verdict the
+// prompt is not allowed to overrule.
+//
+// It also computes how wide a stop has to be to sit outside the noise. The same read
+// warned "stops need to be outside the noise, not tucked in" and then set one 16 points
+// wide on an instrument whose expected day range is many times that — because the
+// snapshot only ever passed `atrPct`, a PERCENTILE, with no distance attached. You
+// cannot check a stop against a percentile.
+function tradeGate(r) {
+  const d = r.d;
+  const blockers = [], agreeing = [];
+
+  // Hard blockers — any one of these makes a trade proposal indefensible.
+  if (r.cost && !r.cost.tradeable) blockers.push('the instrument is not currently tradeable');
+  if (r.cost && r.cost.gate === 'fail') blockers.push(`spread is ${(r.cost.ofLevel * 100).toFixed(0)}% of the distance to the nearest level — past the point this desk measured the edge gone`);
+  const pf = priceFreshness();
+  if (pf?.stale) blockers.push('the price feed is stale, so every level distance is measured against a frozen number');
+  for (const c of dataConflicts()) blockers.push(`${c.label} disagrees across sources by ${c.diffPct}% and is load-bearing for ${c.loadBearing}`);
+
+  // Agreeing evidence — independent reads pointing the same way.
+  const dir = directionFor(r);
+  if (dir && (dir.direction === 'up' || dir.direction === 'down')) {
+    agreeing.push({ what: 'direction tag', side: dir.direction, detail: `${dir.agree}/${dir.total} of its own drivers` });
+  }
+  const comp = pairSignalComposite(r);
+  if (comp?.direction === 'LONG' || comp?.direction === 'SHORT') {
+    agreeing.push({ what: 'composite', side: comp.direction === 'LONG' ? 'up' : 'down', detail: `${comp.agree}/${comp.total} legs` });
+  }
+  // Outlook drivers actually agreeing, per horizon — the number the gold read had at
+  // zero on BOTH horizons while still proposing a trade.
+  const outlookAgree = {};
+  for (const hz of ['weekly', 'monthly']) {
+    const o = pairOutlook(r, hz);
+    if (!o?.bias) continue;
+    const dirs = (o.drivers ?? []).filter(x => Number.isFinite(x.score) && x.score !== 0);
+    const up = dirs.filter(x => x.score > 0).length, dn = dirs.filter(x => x.score < 0).length;
+    outlookAgree[hz] = { bias: o.bias, up, dn, total: dirs.length, confidence: o.confidence ?? null };
+    if (Math.max(up, dn) >= 2 && o.bias !== 'NEUTRAL') {
+      agreeing.push({ what: `${hz} outlook`, side: up > dn ? 'up' : 'down', detail: `${Math.max(up, dn)}/${dirs.length} drivers` });
+    }
+  }
+  // Do the agreeing reads actually agree with EACH OTHER, or merely each exist?
+  const sides = agreeing.map(a => a.side);
+  const netUp = sides.filter(x => x === 'up').length, netDn = sides.filter(x => x === 'down').length;
+  const consensus = Math.max(netUp, netDn);
+  const conflicted = netUp > 0 && netDn > 0;
+
+  // Stop floor. Expected day range in PRICE terms, so a stop can be checked.
+  const pipSz = _pipSz(d);
+  const rangePts = (r.hlMed != null && d.current_price != null) ? (d.current_price * r.hlMed / 100) : null;
+  const volHot = (d.vol_pct ?? 0) >= 70 || ((d.cone_5d ?? 0) - (d.vol_pct ?? 0)) >= 15;
+  // A quarter of a normal day is the floor in calm conditions; a third when short-window
+  // vol is running hot, because that is exactly when a tight stop gets taken out by noise
+  // that means nothing.
+  const minStopPts = rangePts != null ? +(rangePts * (volHot ? 0.33 : 0.25)).toFixed(d.dp ?? 2) : null;
+
+  const verdict = blockers.length ? 'NO_TRADE'
+    : consensus < 2 ? 'NO_TRADE'
+    : conflicted ? 'LEAN_ONLY'
+    : 'OK';
+  return {
+    verdict, blockers, agreeing, consensus, conflicted, outlookAgree,
+    expectedDayRangePts: rangePts != null ? +rangePts.toFixed(d.dp ?? 2) : null,
+    minStopPts, volElevated: volHot, pipSize: pipSz,
+  };
+}
+
 // ── Data conflicts: when two sources disagree about the same number ──────────
 // A brief once opened with "an oil-driven inflation scare" while this page's own WTI
 // print sat ~10% below what the headlines were quoting. The conflict was noted — at the
@@ -8748,6 +8821,26 @@ function assembleSnapshot(r) {
       residualBp: rdAI.residual, datesAgree: rdAI.datesAgree, identityHolds: rdAI.identityHolds,
       moveExceedsNoise: rdAI.meaningful, dominant: rdAI.dominant, asOf: rdAI.asOf,
       note: 'nominal = real + breakeven is an IDENTITY. If datesAgree is false the three legs printed on different days and the split is meaningless. If identityHolds is false the numbers do not add up and NO driver may be claimed. If moveExceedsNoise is false the move is inside the noise floor (~3bp daily) and there is nothing to attribute — say that plainly instead of narrating rounding. Only when all three are true may you name a driver.',
+    };
+  }
+  // The no-trade gate — a verdict the prompt is not permitted to overrule.
+  const gate = tradeGate(r);
+  s.tradeGate = {
+    verdict: gate.verdict,
+    blockers: gate.blockers,
+    agreeingReads: gate.agreeing.map(a => `${a.what} says ${a.side} (${a.detail})`),
+    consensusCount: gate.consensus, readsConflict: gate.conflicted,
+    outlookDriverAgreement: gate.outlookAgree,
+    note: 'NO_TRADE means direction MUST be "NONE" — either a hard blocker is present or fewer than two independent reads point the same way. LEAN_ONLY means reads point in opposite directions: you may describe a lean but must not propose entry/stop/target. Only OK permits a trade. This is a gate, not advice: a structurally bullish read that proposes a short with zero drivers agreeing is the failure it exists to stop.',
+  };
+  // Stop width in PRICE terms. atrPct is a percentile and cannot be used to judge a
+  // stop distance; this is the distance.
+  if (gate.expectedDayRangePts != null) {
+    s.stopGuidance = {
+      expectedDayRangePts: gate.expectedDayRangePts,
+      minimumSensibleStopPts: gate.minStopPts,
+      shortWindowVolElevated: gate.volElevated,
+      note: 'Any stop tighter than minimumSensibleStopPts sits inside normal daily noise and will be taken out by movement that means nothing. If your structure genuinely implies a tighter stop, say explicitly that it is inside the noise and why you are accepting that — never assert "stops need to be wide" and then set a narrow one.',
     };
   }
   // Cross-source disagreements — these OUTRANK the narrative built on them.
