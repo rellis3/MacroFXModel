@@ -772,6 +772,13 @@ function reachPanel(e, big){
 }
 const norm = x => String(x||'').toLowerCase().replace(/[/_]/g,'');
 
+// Wall persistence (day-count) context for the live wall-touch read. `/api/oi-history`
+// with NO pair filter returns `stability` (oiWallStability's daysPresent/fresh/established
+// per current wall) for every archived pair in one call -- the per-pair-filtered variant
+// of this same endpoint drops `stability` from its response, so this must stay unfiltered.
+// Best-effort: a pair with no archived history yet (or a fetch failure) just gets no
+// day-count, same as it showed before this existed.
+let OI_HIST = {};
 async function load(){
   // /api/oi-store = the KV oi_store with each gexProfile self-healed (rebuilt from the
   // stored raw paste if the localStorage quota-trim shed it), so the OI-by-strike chart
@@ -781,6 +788,21 @@ async function load(){
   if(!r.ok) throw new Error('KV '+r.status);
   const j = await r.json();
   STORE = j.data || j.value || {};
+  try {
+    const hr = await fetch('/api/oi-history',{cache:'no-store'});
+    if(hr.ok) OI_HIST = await hr.json();
+  } catch(e) { /* day-count context is optional, never blocks the main load */ }
+}
+
+// How many consecutive archived days (oi_history) this exact strike has been the
+// call/put wall -- an established level (many days) reads differently from one that
+// appeared overnight. tolPrice mirrors oiWallStability's own matching band.
+function wallDaysPresent(pair, strike, kind){
+  const stab = OI_HIST && OI_HIST.pairs && OI_HIST.pairs[pair] && OI_HIST.pairs[pair].stability;
+  if(!Array.isArray(stab) || !Number.isFinite(strike)) return null;
+  const tol = Math.abs(strike)*0.001;
+  const hit = stab.find(function(w){ return w && w.kind===kind && Number.isFinite(w.strike) && Math.abs(w.strike-strike)<=tol; });
+  return hit ? hit.daysPresent : null;
 }
 
 function ageOf(e){
@@ -1198,6 +1220,19 @@ function _gammaLevels(e, n){
 // touch-detection buffer (~2 pips) so "AT WALL" here means the same thing it
 // meant in the backtest, not a looser live redefinition of it.
 const TOUCH_PIPS = 2;
+// How many consecutive archived days a strike has held as the wall reads as
+// its own signal (Part 4: 88-95% persistence day/day is a population average;
+// THIS wall's own count is the specific instance) -- established (5+) vs.
+// fresh (appeared in the last day or so) is exactly the distinction the
+// research draws between a level the market has actually defended and one
+// that just showed up.
+function daysNote(kind, strike){
+  const d = wallDaysPresent(SYM, strike, kind);
+  if(d==null) return '';
+  return d>=5 ? ' Established: day '+d+' as this wall.'
+       : d<=1 ? ' Fresh: appeared in the last archived day — less track record behind it yet.'
+              : ' Day '+d+' as this wall.';
+}
 function touchZoneRead(e, S, dist, lvl){
   const cw = e.callWall, pw = e.putWall;
   const dCw = Math.abs(dist(cw)), dPw = Math.abs(dist(pw));
@@ -1212,19 +1247,19 @@ function touchZoneRead(e, S, dist, lvl){
   if(atCall){
     return _rd('warn','Live wall-touch read',
       '🎯 <b>AT CALL WALL</b> ('+lvl(cw)+') — historically rejects <b>~68%</b> of touches within 15min, <b>~61%</b> within 60min',
-      'p&lt;0.01, 27 independent wall-episodes (not just a raw touch count).'+NOTE);
+      'p&lt;0.01, 27 independent wall-episodes (not just a raw touch count).'+daysNote('call',cw)+NOTE);
   }
   if(atPut){
     return _rd('warn','Live wall-touch read',
       '🎯 <b>AT PUT WALL</b> ('+lvl(pw)+') — historically rejects <b>~63%</b> of touches within 15min, <b>~58%</b> within 60min',
-      'p&lt;0.01, 43 independent wall-episodes (not just a raw touch count).'+NOTE);
+      'p&lt;0.01, 43 independent wall-episodes (not just a raw touch count).'+daysNote('put',pw)+NOTE);
   }
-  const nearer = (Number.isFinite(dCw)&&Number.isFinite(dPw)) ? (dCw<dPw?['call wall',dCw,cw]:['put wall',dPw,pw])
-    : Number.isFinite(dCw) ? ['call wall',dCw,cw] : Number.isFinite(dPw) ? ['put wall',dPw,pw] : null;
+  const nearer = (Number.isFinite(dCw)&&Number.isFinite(dPw)) ? (dCw<dPw?['call wall',dCw,cw,'call']:['put wall',dPw,pw,'put'])
+    : Number.isFinite(dCw) ? ['call wall',dCw,cw,'call'] : Number.isFinite(dPw) ? ['put wall',dPw,pw,'put'] : null;
   return _rd('off','Live wall-touch read',
     nearer ? 'Not currently at a wall — nearest is the '+nearer[0]+' ('+lvl(nearer[2])+'), '+Math.round(nearer[1])+'p away'
            : 'No wall levels stored',
-    nearer ? 'The validated reject-rate below only applies to a real touch (within '+TOUCH_PIPS+'p) — it is not a live read at this distance.' : '');
+    nearer ? ('The validated reject-rate below only applies to a real touch (within '+TOUCH_PIPS+'p) — it is not a live read at this distance.'+daysNote(nearer[3],nearer[2])) : '');
 }
 
 function todaysRead(e){
