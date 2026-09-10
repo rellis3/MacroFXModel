@@ -57,8 +57,22 @@ alongside the one real positive finding.
   entry, shared stop, TP1/TP2 scale-out to breakeven, mode-specific time
   exit). Found and fixed a real fill-direction bug during development — see
   `RESEARCH_BOOK.md` Part 12 for what it was.
+- `scripts/10_real_maxpain_test.py` — closes a real gap a 2026-09-10 audit
+  found: Part 7's "pinning" test used the biggest-OI strike, never
+  calculated max pain (a genuinely different number, using the exact formula
+  `js/oi.js`'s production `oiCalcMaxPain` uses, cross-checked against it
+  first). See `RESEARCH_BOOK.md` Part 7b / Part 13.
 - `data/results/*.csv` — every numeric table cited in `RESEARCH_BOOK.md`,
   small and committed, one file per test.
+
+**Before extending this further, read `RESEARCH_BOOK.md` Part 13** — a full
+audit of this pipeline against real data (not just re-reading old code and
+assuming it was right), requested explicitly rather than offered. Found and
+fixed the max-pain gap above; found and directly tested a real OI-publish
+timing risk (the headline finding survives it); verified DTE, the gamma
+formula, the GEX sign convention, and strike-to-spot alignment are all
+correct; and states plainly that `settlement` and `volume` are loaded and
+audited but used in zero calculations anywhere in this book.
 
 ## Reproducing
 
@@ -88,6 +102,7 @@ python3 oi_research_book/scripts/06_intraday_cluster_significance.py  # depends 
 python3 oi_research_book/scripts/07_export_bot_chain.py     # depends on 01's contract-level cache
 node    oi_research_book/scripts/08_bot_backtest_zones.mjs  # calls the real js/oi.js + js/oiZones.js — needs Node, run from the repo root
 python3 oi_research_book/scripts/09_bot_backtest_execute.py # needs m1/eurusd_m1.parquet again
+python3 oi_research_book/scripts/10_real_maxpain_test.py    # depends on 01's surface_near.parquet
 ```
 
 Total run time is under two minutes; the raw CSV/cache are gitignored

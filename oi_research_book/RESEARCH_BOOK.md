@@ -1,4 +1,4 @@
-# EUR/USD Options Positioning — Research Book (v1.3)
+# EUR/USD Options Positioning — Research Book (v1.4)
 
 **Data:** CME EUR/USD FX options, R2 `OI Data/EUR_USD.csv` (Databento-style
 per-strike daily export), 2020‑09‑04 → 2026‑09‑04, joined to
@@ -9,8 +9,9 @@ against that data — nothing here is estimated or asserted from memory.
 Re-run `scripts/00_audit.py` → `01_build_daily_dataset.py` →
 `02_walls_and_gamma.py` → `03_pinning_and_walls_reaction.py` →
 `04_predictive_ic.py` → `05_intraday_validation.py` →
-`06_intraday_cluster_significance.py` in order to reproduce every table
-(see `README.md`).
+`06_intraday_cluster_significance.py` → `07_export_bot_chain.py` →
+`08_bot_backtest_zones.mjs` → `09_bot_backtest_execute.py` →
+`10_real_maxpain_test.py` in order to reproduce every table (see `README.md`).
 
 **v1.1 change:** added Part 9b, an intraday validation pass using real R2
 minute candles instead of daily OHLC. It fixes a same-day lookahead wrinkle
@@ -40,6 +41,21 @@ testable with real data instead of an untested assumption. Also documents a
 real fill-direction bug this pass found and fixed in its own execution
 simulator before trusting the result (see Part 12 for what it was and how
 extreme the wrong number looked before the fix).
+
+**v1.4 change:** a full audit of the pipeline and data, requested before
+trusting it enough to build further (Part 13). Found and closed one real
+gap — max pain was never actually tested, only a "biggest OI strike" proxy
+(Part 7b: real max pain checked, comes back an even cleaner null) — and
+found and directly tested one real timing risk (OI's true publish lag is
+later than this book's "T-1" convention assumed; the headline 15–60min
+finding survives a stricter T-2 lag essentially unchanged). Verified
+correct with no changes needed: DTE, the gamma formula, the GEX sign
+convention against the real production code, and strike-to-spot alignment
+(checked empirically for a basis error, found none — a first, cruder check
+attempt gave a nonsensical result and was itself the reason to check with a
+better method rather than report it). Also states plainly what `settlement`
+and `volume` currently do in this pipeline: loaded, audited — and used in
+zero calculations.
 
 **Scope of this v1.** The brief that motivated this book listed 36 research
 sections and 18 closing questions. Doing all 36 with genuine statistical care
@@ -320,6 +336,18 @@ hit, in the wrong direction, is exactly what chance produces at that count —
 
 ## Part 7 — Strike pinning: a result that evaporates under a confound check
 
+**Naming correction (2026-09-10 audit):** everything below tests whether
+price gravitates toward the single strike with the most OI (a "magnet") —
+**not** toward calculated max pain, a genuinely different number (the strike
+minimizing option sellers' total payout, summed across every strike's ITM
+value, not just the biggest single strike). The two coincide only 11% of the
+time (`maxpain_vs_magnet.csv`) — when they differ, the median gap is 1.4% of
+spot, real money on EUR/USD. This section was never mislabeled as "max pain"
+in the closing questions table, but nothing here loudly said the two weren't
+the same thing either, and colloquially they get used interchangeably. See
+the new real-max-pain test immediately after this section, added when an
+audit caught the gap.
+
 For 84 near-dated expiry cycles with ≥200 combined OI five trading days out,
 the strike with the most OI that day ("magnet") was compared to a **matched
 control strike** — the strike below the day's median OI closest in starting
@@ -354,6 +382,37 @@ lower-OI strike as expiry approaches.** This is precisely the kind of finding
 the brief asked for — a chart-level-compelling story that a proper matched
 comparison removes — and a useful teaching example of the trap itself for
 anyone extending this book.
+
+### Part 7b — Testing actual max pain (the gap the naming correction above flags)
+
+`10_real_maxpain_test.py`, added by a 2026-09-10 audit that specifically
+asked "did you calculate max pain, or something else?" — the honest answer
+was "something else," so this closes it. Max pain is computed with the exact
+formula `js/oi.js`'s production `oiCalcMaxPain` uses (cross-checked against
+the real function on 3 synthetic chains before trusting the Python version —
+identical strike picked every time), applied to the near-dated aggregate
+surface (an approximation of a single expiry — a true per-expiry version
+needs the raw contract-level chain, gitignored, requiring R2 access; flagged
+as a follow-up, not done here).
+
+**Distance and predictive test** (`maxpain_vs_magnet.csv`,
+`maxpain_predictive_ic.csv`): max pain sits a median 0.99% of spot away
+(IQR 0.50–1.72%) — a plausible, nearby level. Testing whether distance to it
+predicts next-day reversion, with the same chronological 60/20/20 split and
+Spearman rank-IC used everywhere else in this book:
+
+| Segment | n | Spearman IC | p |
+|---|---|---|---|
+| Full sample | 1,507 | −0.0003 | 0.99 |
+| Train | 904 | +0.0032 | 0.92 |
+| Validation | 301 | −0.0053 | 0.93 |
+| **OOS** | 302 | **−0.0168** | 0.77 |
+
+**Zero signal, at every stage, full stop — an even cleaner null than the
+magnet test's.** This actually strengthens Part 7's conclusion rather than
+undermining it: it isn't that the wrong level was tested and the right one
+would have shown a real effect — the *real* calculated max pain shows
+no reversion pull either, at 1-day-ahead resolution on this proxy chain.
 
 ---
 
@@ -552,7 +611,7 @@ rescue this one; the gamma-flip regime effect still isn't there.**
 | H | Does the gamma proxy explain price behavior? | No detectable regime or crossing effect (Parts 5–6) — but see Part 0: this is a realized-vol proxy, not real dealer gamma. |
 | I | Does the gamma flip separate real regimes? | No, by the |return| test. One untested autocorrelation diagnostic disagreed in sign between the two surfaces — unresolved, not confirmed. |
 | J | Does crossing the flip predict vol expansion? | No — the one nominal p<0.05 result pointed the wrong direction (Part 6). |
-| K | Does price pin near large strikes into expiry? | No, once the initial-distance confound is controlled for (Part 7) — the naive result was an artifact. |
+| K | Does price pin near large strikes into expiry? | No, once the initial-distance confound is controlled for (Part 7) — the naive result was an artifact. **Nor does real calculated max pain** (Part 7b, added by audit) — Spearman IC ≈ 0 in-sample and OOS, an even cleaner null than the magnet test. |
 | L | Do large-OI strikes act as magnets generally? | Not shown; see K. |
 | M | What predicts rejection vs. breakout? | Not modeled as a real classifier yet — but Part 9b shows horizon is the dominant driver (rejection strong at 15-60min, gone by 4h for puts) while OI strength is not; a real classifier is now buildable on ~400 real events/side. |
 | N | Does distance to a wall matter? | Only weakly and inconsistently in the raw daily tercile scan (Part 4); nothing survived the daily-horizon OOS test (Part 9). Not re-tested intraday. |
@@ -735,6 +794,100 @@ untested assumption either way.
 
 ---
 
+## Part 13 — 2026-09-10 pipeline audit: verifying the analysis, not just trusting it
+
+Before building further on this book, its own methodology was audited
+line-by-line and against real data — the user's framing was exactly right:
+"don't assume from past experience that the data analysis was right." Two
+real findings came out of it (one gap closed, one risk tested and cleared);
+everything else checked out. Recorded here so the verification is as
+inspectable as the findings themselves.
+
+**1. Max pain was never actually tested — closed, see Part 7b.** Part 7's
+"pinning" test used the biggest-OI strike ("magnet"), not calculated max
+pain. They coincide only 11% of the time. Real max pain, tested with the
+same rigor, comes back an even cleaner null (Spearman IC ≈ 0, in-sample
+*and* OOS) — this strengthens Part 7's conclusion, it doesn't undercut it.
+
+**2. OI publish timing is later than this book's "T-1" convention assumed —
+tested, and the headline finding survives unchanged.** Every intraday test
+(Parts 9b, 12) lags wall levels by one trading day ("known before the day
+starts"). Independent research (Databento's own worked example querying
+this exact statistics schema, corroborated by CME's public Daily Bulletin
+schedule) shows CME options OI for trading day D is not actually finalized
+until the **Final Daily Bulletin, ~15:00–16:00 UTC on D+1** — not the start
+of D+1 as assumed. That's a real, previously-uncosted lag: for roughly the
+first two-thirds of a UTC trading day, the "T-1" level used here technically
+wasn't yet fully public.
+
+Tested directly rather than left as a caveat: re-running the wall-touch
+detection with a stricter **T-2** lag (verified using this book's own
+already-computed wall-persistence stats: the T-1 vs. T-2 convention actually
+picks a *different* strike on 5.6% of days for calls, 10.0% for puts — real,
+but a minority) barely moves the numbers:
+
+| Side | Horizon | T-1 (original) | T-2 (conservative) |
+|---|---|---|---|
+| Call | 15 min | 68.4% reject, p=5×10⁻¹⁴ | 66.8% reject, p=6×10⁻¹² |
+| Call | 60 min | 60.7% reject, p=1.9×10⁻⁵ | 59.2% reject, p=2.1×10⁻⁴ |
+| Put | 15 min | 62.6% reject, p=2.4×10⁻⁷ | 62.6% reject, p=2.2×10⁻⁷ |
+| Put | 60 min | 58.2% reject, p=9.0×10⁻⁴ | 57.5% reject, p=2.4×10⁻³ |
+
+**The finding is robust to this specific timing risk.** Expected, given
+Part 4's own wall-persistence numbers (88–95% unchanged day-to-day) — a
+level "known" one day later is very likely still the same level — but
+expected is not the same as verified, and now it's verified. (Not
+re-committed as a script here since it reuses `05_intraday_validation.py`'s
+own functions with the lag parameter changed; reproducible in a few lines
+by anyone who wants to re-check it.)
+
+**3. Checked and confirmed correct, no changes needed:**
+
+- **DTE.** `(expiry − date).dt.days`, both sides normalized to UTC-naive
+  before subtracting (the raw file's `date` is a bare calendar date, `expiry`
+  carries a real settlement time, e.g. 14:00/15:00 UTC). Uses calendar days
+  — the same day-count convention `js/oi.js`'s own `OI_GREEK_T` uses — not a
+  bug, a shared simplification. Truncates a few hours of the true
+  time-to-expiry (integer days from a fractional day gap); immaterial.
+- **Gamma formula.** Standard Black-Scholes gamma, verified against the
+  textbook formula by hand — correctly identical for calls and puts (gamma
+  has no directional sign in real option math; only delta differs by side).
+  The `+1 for calls / −1 for puts` in this book's code is applied to the
+  **GEX contribution**, not to gamma itself — a dealer-positioning sign
+  convention, not a math error.
+- **GEX sign convention vs. the real system.** Directly re-checked against
+  the actual `js/oi.js` production source (not re-trusted from an earlier
+  claim): production computes `callGex`/`putGex` both positive and nets them
+  as `callGex − putGex`. This book stores `put_gex` pre-negated and nets by
+  addition — algebraically identical, just a different storage convention.
+  Confirmed by tracing both, not assumed.
+- **Strike-to-spot alignment (no CME-futures basis error).** The raw file
+  has no spot/underlying column — spot is joined from `eurusd_d1.parquet`
+  (OANDA) by calendar date, entirely separate from the option data's own
+  vendor. Checked empirically for a systematic offset (an OI-weighted
+  centroid of near-spot strikes vs. that day's spot, all 1,508 days): median
+  offset **+2.5 pips**, IQR −11.8 to +15.6 pips, no multi-year drift — normal
+  OI-clustering noise, not a meaningful basis error. (A cruder first attempt
+  at this check produced a nonsensical ±100s-of-pips result — a proxy-method
+  artifact, not a real finding; re-verifying with a better method is what
+  caught that it was noise, not signal, which is itself the point of
+  checking rather than assuming.)
+- **What `settlement` and `volume` actually do.** `settlement` (the
+  option's own premium, confirmed via Databento's schema docs — it is not
+  the underlying) is loaded and audited for completeness (Part 1) and
+  **never used in any calculation** — no wall, gamma, or max-pain number in
+  this book is touched by it. `volume` is aggregated into
+  `daily_master_*.parquet`'s `call_vol`/`put_vol` columns and then also
+  **never used in any test** in Parts 2–9. Neither is a bug — real max pain
+  and real gamma are OI-only formulas by definition — but if "using the
+  data" implicitly meant "using every column," these two are the columns
+  still sitting on the shelf. (Already flagged as a roadmap item: real IV
+  from `settlement`, volume-vs-OI open/close classification — this audit
+  just makes explicit that today they are exactly zero-weighted, not
+  partially used.)
+
+---
+
 ## Appendix — reproduction
 
 ```
@@ -748,6 +901,7 @@ python3 oi_research_book/scripts/06_intraday_cluster_significance.py   # depends
 python3 oi_research_book/scripts/07_export_bot_chain.py      # depends on 01's contract-level cache
 node    oi_research_book/scripts/08_bot_backtest_zones.mjs   # calls the REAL js/oi.js + js/oiZones.js
 python3 oi_research_book/scripts/09_bot_backtest_execute.py  # needs m1/eurusd_m1.parquet again
+python3 oi_research_book/scripts/10_real_maxpain_test.py     # depends on 01's surface_near.parquet
 ```
 
 Raw R2 inputs (`OI Data/EUR_USD.csv`, ~227MB; `m1/eurusd_d1.parquet`, ~175KB;
