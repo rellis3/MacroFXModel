@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bot Audit · live performance terminal</title>
+<script src="js/botRegistry.js?v=1"></script>
+<style>
+  :root {
+    --bg:#0a0d13; --panel:#11151d; --panel2:#161b26; --line:#232a38; --line2:#2f394b;
+    --fg:#dfe6f0; --dim:#7c8798; --dim2:#5a6474;
+    --good:#3fd07a; --bad:#f2555a; --warn:#e0a93b; --accent:#5eb0ff; --accent2:#c084fc;
+    --s2:#1a1f2e; --border:#2b3245;
+    --mono:'DM Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg);
+         font:13px/1.5 -apple-system,Segoe UI,Roboto,sans-serif; }
+  a { color:var(--accent); text-decoration:none; }
+  .mono { font-family:var(--mono); font-variant-numeric:tabular-nums; }
+
+  /* ── command bar ── */
+  .cmd { display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+         padding:10px 16px; background:var(--panel); border-bottom:1px solid var(--line); }
+  .cmd label { color:var(--dim); font-size:11px; text-transform:uppercase; letter-spacing:.07em; }
+  select, input { background:var(--bg); color:var(--fg); border:1px solid var(--line2);
+                  border-radius:5px; padding:5px 9px; font-size:12px; font-family:var(--mono); }
+  input[type=number] { width:110px; }
+  button { background:var(--panel2); color:var(--fg); border:1px solid var(--line2);
+           border-radius:5px; padding:5px 11px; cursor:pointer; font-size:12px; }
+  button:hover { border-color:var(--accent); }
+  button.on { background:#0d2b22; border-color:var(--good); color:var(--good); }
+  button.warnon { background:#2c2400; border-color:var(--warn); color:var(--warn); }
+  .seg { display:flex; }
+  .seg button { border-radius:0; margin-left:-1px; }
+  .seg button:first-child { border-radius:5px 0 0 5px; margin-left:0; }
+  .seg button:last-child { border-radius:0 5px 5px 0; }
+  .spacer { flex:1; }
+
+  /* ── tabs ── */
+  .tabs { display:flex; gap:2px; padding:0 16px; background:var(--panel);
+          border-bottom:1px solid var(--line); overflow-x:auto; }
+  .tab { background:none; border:none; border-bottom:2px solid transparent; margin-bottom:-1px;
+         padding:9px 14px; font-size:12px; font-weight:600; color:var(--dim); cursor:pointer;
+         white-space:nowrap; font-family:var(--mono); }
+  .tab:hover { color:var(--fg); }
+  .tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+  .tab .tag { color:var(--dim2); font-size:10px; margin-right:5px; }
+  .pane { display:none; padding:16px; }
+  .pane.active { display:block; }
+
+  /* ── panels ── */
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:8px;
+           margin-bottom:14px; }
+  .ph { display:flex; align-items:center; gap:8px; padding:8px 12px;
+        border-bottom:1px solid var(--line); font-size:11px; font-weight:600;
+        text-transform:uppercase; letter-spacing:.07em; color:var(--dim); font-family:var(--mono); }
+  .ph .badge { background:var(--s2); border:1px solid var(--border); color:var(--accent);
+               border-radius:3px; padding:1px 5px; font-size:10px; letter-spacing:0; }
+  .ph .rt { margin-left:auto; color:var(--dim2); font-weight:400; text-transform:none; letter-spacing:0; }
+  .pb { padding:12px; }
+
+  /* ── metric tiles ── */
+  .tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+           gap:8px; margin-bottom:14px; }
+  .tile { background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:10px 12px; }
+  .tile .k { color:var(--dim); font-size:10px; text-transform:uppercase; letter-spacing:.07em;
+             font-family:var(--mono); }
+  .tile .v { font-size:19px; font-weight:700; margin-top:3px; font-family:var(--mono);
+             font-variant-numeric:tabular-nums; }
+  .tile .s { color:var(--dim2); font-size:10.5px; margin-top:2px; font-family:var(--mono); }
+  .tile.thin .v { color:var(--dim); }
+  .tile.thin::after { content:'thin sample'; display:block; color:var(--warn); font-size:9.5px;
+                      margin-top:3px; font-family:var(--mono); }
+  .tile.locked .v { color:var(--dim2); }
+  .pos { color:var(--good); } .neg { color:var(--bad); } .neu { color:var(--fg); }
+
+  /* ── tables ── */
+  table { width:100%; border-collapse:collapse; font-size:12px; font-family:var(--mono);
+          font-variant-numeric:tabular-nums; }
+  th,td { padding:4px 8px; border-bottom:1px solid var(--line); text-align:right; white-space:nowrap; }
+  th { color:var(--dim); font-weight:600; font-size:10.5px; text-transform:uppercase;
+       letter-spacing:.05em; position:sticky; top:0; background:var(--panel); }
+  th:first-child, td:first-child, th.l, td.l { text-align:left; }
+  tbody tr:hover { background:var(--panel2); }
+  .scroll { max-height:520px; overflow:auto; }
+
+  .chip { display:inline-block; border-radius:3px; padding:1px 6px; font-size:10.5px;
+          font-weight:600; font-family:var(--mono); }
+
+  /* ── heatmap ── */
+  .heat td { text-align:center; font-size:11px; padding:5px 4px; border:1px solid var(--bg); }
+  .heat td.na { color:var(--dim2); background:var(--panel2); }
+  .heat th { text-align:center; }
+
+  /* ── notes ── */
+  .note { background:var(--panel2); border:1px solid var(--line);
+          border-left:3px solid var(--accent); border-radius:6px;
+          padding:10px 13px; font-size:12px; color:var(--dim); margin-bottom:14px; }
+  .note.warn { border-left-color:var(--warn); }
+  .note b, .note strong { color:var(--fg); }
+  .note code { background:var(--bg); padding:1px 4px; border-radius:3px; font-size:11px; }
+  .empty { color:var(--dim); padding:28px 12px; text-align:center; }
+  svg { display:block; width:100%; }
+  .rd { font-size:12px; color:var(--dim); line-height:1.65; }
+  .rd b { color:var(--fg); }
+</style>
+</head>
+<body>
+
+<div class="cmd">
+  <strong style="font-family:var(--mono);color:var(--accent)">BOT.AUDIT</strong>
+  <label>Book</label>
+  <select id="selBot"></select>
+  <label>Range</label>
+  <select id="selRange">
+    <option value="30">30 days</option>
+    <option value="90" selected>90 days</option>
+    <option value="180">180 days</option>
+    <option value="365">1 year</option>
+  </select>
+  <label>Costs</label>
+  <div class="seg">
+    <button id="btnNet"   class="on" onclick="setGross(false)">Net</button>
+    <button id="btnGross" onclick="setGross(true)">Gross</button>
+  </div>
+  <label title="Declared notional behind this book. Not read from the account — bots share MT5 accounts, so a per-bot denominator has to be declared. Stored in this browser only.">Capital $</label>
+  <input type="number" id="inCap" placeholder="none" min="0" step="1000">
+  <button onclick="reload()">↺ Reload</button>
+  <div class="spacer"></div>
+  <span id="status" class="mono" style="color:var(--dim);font-size:11px"></span>
+</div>
+
+<div class="tabs">
+  <button class="tab active" data-p="ovw" onclick="tab('ovw')"><span class="tag">OVW</span>Overview</button>
+  <button class="tab" data-p="sys" onclick="tab('sys')"><span class="tag">SYS</span>Per-Bot</button>
+  <button class="tab" data-p="dst" onclick="tab('dst')"><span class="tag">DST</span>Distributions</button>
+  <button class="tab" data-p="exc" onclick="tab('exc')"><span class="tag">EXC</span>Excursions</button>
+  <button class="tab" data-p="cst" onclick="tab('cst')"><span class="tag">CST</span>Costs</button>
+  <button class="tab" data-p="trd" onclick="tab('trd')"><span class="tag">TRD</span>Trades</button>
+</div>
+
+<div id="ovw" class="pane active"></div>
+<div id="sys" class="pane"></div>
+<div id="dst" class="pane"></div>
+<div id="exc" class="pane"></div>
+<div id="cst" class="pane"></div>
+<div id="trd" class="pane"></div>
+
+<script type="module">
+import {
+  netOf, costOf, normalizeTrades, dailySeries, dailyEquity, equityByTrade,
+  monthlyReturns, rollingReturn, groupBy, excursions, exitMix, summarize,
+  botsMissingCommission, bootstrapNote, MIN_N_RATIOS,
+} from './js/botAuditEngine.js';
+
+const BOTS = window.POS_BOTS || [];
+const botOf = k => BOTS.find(b => b.key === k) || { key: k, label: k, color: '#9ba3bf', paper: false };
+
+let RAW = [], TRADES = [], GROSS = false, NORM = null;
+const $ = id => document.getElementById(id);
+const cap = () => Math.max(0, +($('inCap').value || 0));
+
+// ── formatting ───────────────────────────────────────────────────────────────
+const money = (v, d = 2) => (v >= 0 ? '+' : '−') + '$' + Math.abs(v).toLocaleString('en-GB', { minimumFractionDigits: d, maximumFractionDigits: d });
+const pct   = (v, d = 2) => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(d) + '%';
+const num   = (v, d = 2) => (v == null || !isFinite(v)) ? '—' : v.toFixed(d);
+const cls   = v => v > 0 ? 'pos' : v < 0 ? 'neg' : 'neu';
+const esc   = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+const dur   = s => s == null ? '—' : s < 3600 ? `${Math.round(s/60)}m` : s < 86400 ? `${(s/3600).toFixed(1)}h` : `${(s/86400).toFixed(1)}d`;
+const ukTime = u => { const d = new Date(u * 1000); return d.toLocaleString('en-GB', { timeZone:'Europe/London', year:'2-digit', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', hour12:false }); };
+
+// ── data ─────────────────────────────────────────────────────────────────────
+// /api/trade-history caps at 90 days per call (one KV read per bot × date), so a
+// longer window is fetched as chained 90-day chunks. This is the shape that the
+// rollup key in LIVE_BACKTEST_ALIGNMENT.md §4.2 exists to replace — at 1 year
+// this is 4 calls × 23 bots × 90 days of KV reads, which is slow by design, not
+// by accident.
+async function fetchRange(days) {
+  const chunks = [];
+  let end = new Date();
+  let left = days;
+  while (left > 0) {
+    const span = Math.min(left, 90);
+    const start = new Date(end); start.setUTCDate(start.getUTCDate() - span + 1);
+    chunks.push([start.toISOString().slice(0, 10), end.toISOString().slice(0, 10)]);
+    end = new Date(start); end.setUTCDate(end.getUTCDate() - 1);
+    left -= span;
+  }
+  const out = [];
+  for (let i = 0; i < chunks.length; i++) {
+    const [f, t] = chunks[i];
+    $('status').textContent = `loading ${i + 1}/${chunks.length} · ${f} → ${t}`;
+    try {
+      const r = await fetch(`/api/trade-history?from=${f}&to=${t}`);
+      const j = await r.json();
+      if (j.trades) out.push(...j.trades);
+    } catch (e) { /* a failed chunk is reported below via the count, not swallowed silently */ }
+  }
+  return out;
+}
+
+window.reload = async function reload() {
+  $('status').textContent = 'loading…';
+  RAW = await fetchRange(+$('selRange').value);
+  NORM = normalizeTrades(RAW);
+  render();
+};
+
+window.setGross = g => { GROSS = g; $('btnNet').classList.toggle('on', !g); $('btnGross').classList.toggle('warnon', g); render(); };
+window.tab = p => {
+  document.querySelectorAll('.pane').forEach(el => el.classList.toggle('active', el.id === p));
+  document.querySelectorAll('.tab').forEach(el => el.classList.toggle('active', el.dataset.p === p));
+  try { localStorage.setItem('botAuditTab', p); } catch (e) {}
+};
+
+// ── charts (hand-rolled SVG — no dependency, no CDN) ──────────────────────────
+// Decimals that actually separate the ticks: pick precision from the range the
+// axis covers, not a fixed guess. Without this a low-volatility book renders
+// several identical labels and the axis stops carrying information.
+function autoDp(span) {
+  const s = Math.abs(span);
+  return s >= 200 ? 0 : s >= 20 ? 1 : s >= 2 ? 2 : s >= 0.2 ? 3 : 4;
+}
+function lineChart(pts, { h = 190, fill = null, stroke = '#3fd07a', zero = false, fmt = null, money = false, pct = false }) {
+  const vals = pts.map(p => p.v).filter(v => v != null && isFinite(v));
+  if (vals.length < 2) return `<div class="empty">Not enough points to plot.</div>`;
+  const W = 1000, pad = { l: 58, r: 10, t: 10, b: 20 };
+  let lo = Math.min(...vals), hi = Math.max(...vals);
+  if (zero) { lo = Math.min(lo, 0); hi = Math.max(hi, 0); }
+  if (hi === lo) { hi += 1; lo -= 1; }
+  const span = hi - lo;
+  if (!fmt) {
+    const dp = autoDp(span);
+    fmt = money ? v => '$' + v.toLocaleString('en-GB', { minimumFractionDigits: dp, maximumFractionDigits: dp })
+        : pct   ? v => v.toFixed(dp) + '%'
+        :         v => v.toFixed(dp);
+  }
+  const x = i => pad.l + (i / (pts.length - 1)) * (W - pad.l - pad.r);
+  const y = v => pad.t + (1 - (v - lo) / span) * (h - pad.t - pad.b);
+  let d = '', started = false;
+  pts.forEach((p, i) => {
+    if (p.v == null || !isFinite(p.v)) return;
+    d += (started ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(p.v).toFixed(1) + ' ';
+    started = true;
+  });
+  const base = y(zero ? 0 : lo);
+  const area = fill && started
+    ? `<path d="${d} L${x(pts.length - 1).toFixed(1)} ${base.toFixed(1)} L${x(0).toFixed(1)} ${base.toFixed(1)} Z" fill="${fill}" stroke="none"/>` : '';
+  const ticks = [0, .25, .5, .75, 1].map(f => {
+    const v = lo + span * f, yy = y(v);
+    return `<line x1="${pad.l}" x2="${W - pad.r}" y1="${yy.toFixed(1)}" y2="${yy.toFixed(1)}" stroke="#232a38" stroke-width="1"/>`
+         + `<text x="${pad.l - 6}" y="${(yy + 3.5).toFixed(1)}" fill="#5a6474" font-size="10" text-anchor="end" font-family="monospace">${fmt(v)}</text>`;
+  }).join('');
+  const first = pts.find(p => p.v != null), last = [...pts].reverse().find(p => p.v != null);
+  const xlab = `<text x="${pad.l}" y="${h - 6}" fill="#5a6474" font-size="10" font-family="monospace">${first?.k ?? ''}</text>`
+             + `<text x="${W - pad.r}" y="${h - 6}" fill="#5a6474" font-size="10" text-anchor="end" font-family="monospace">${last?.k ?? ''}</text>`;
+  return `<svg viewBox="0 0 ${W} ${h}" preserveAspectRatio="none" style="height:${h}px">${ticks}${area}<path d="${d}" fill="none" stroke="${stroke}" stroke-width="1.6"/>${xlab}</svg>`;
+}
+
+function histogram(vals, realised, { h = 170, bins = 34 }) {
+  if (!vals.length) return `<div class="empty">No distribution.</div>`;
+  const lo = Math.min(...vals), hi = Math.max(...vals);
+  const w = (hi - lo) / bins || 1;
+  const counts = new Array(bins).fill(0);
+  vals.forEach(v => { const i = Math.min(bins - 1, Math.max(0, Math.floor((v - lo) / w))); counts[i]++; });
+  const mx = Math.max(...counts), W = 1000, pad = { l: 10, r: 10, t: 10, b: 22 };
+  const bw = (W - pad.l - pad.r) / bins;
+  const bars = counts.map((c, i) => {
+    const bh = (c / mx) * (h - pad.t - pad.b);
+    return `<rect x="${(pad.l + i * bw).toFixed(1)}" y="${(h - pad.b - bh).toFixed(1)}" width="${(bw - 1).toFixed(1)}" height="${bh.toFixed(1)}" fill="#2f394b"/>`;
+  }).join('');
+  let mark = '';
+  if (realised != null && isFinite(realised)) {
+    const rx = pad.l + Math.min(1, Math.max(0, (realised - lo) / (hi - lo))) * (W - pad.l - pad.r);
+    mark = `<line x1="${rx.toFixed(1)}" x2="${rx.toFixed(1)}" y1="${pad.t}" y2="${h - pad.b}" stroke="#e0a93b" stroke-width="2"/>`
+         + `<text x="${(rx + 5).toFixed(1)}" y="${pad.t + 11}" fill="#e0a93b" font-size="10" font-family="monospace">realised ${realised.toFixed(2)}</text>`;
+  }
+  return `<svg viewBox="0 0 ${W} ${h}" preserveAspectRatio="none" style="height:${h}px">${bars}${mark}`
+       + `<text x="${pad.l}" y="${h - 6}" fill="#5a6474" font-size="10" font-family="monospace">${lo.toFixed(2)}</text>`
+       + `<text x="${W - pad.r}" y="${h - 6}" fill="#5a6474" font-size="10" text-anchor="end" font-family="monospace">${hi.toFixed(2)}</text></svg>`;
+}
+
+// ── render ───────────────────────────────────────────────────────────────────
+function activeTrades() {
+  const sel = $('selBot').value;
+  const all = NORM ? NORM.trades : [];
+  if (sel === '__all') return all.filter(t => !botOf(t.bot_key).paper);
+  if (sel === '__allinc') return all;
+  return all.filter(t => t.bot_key === sel);
+}
+
+function render() {
+  if (!NORM) return;
+  TRADES = activeTrades();
+  const C = cap(), G = { gross: GROSS };
+  const S = summarize(TRADES, { capital: C, gross: GROSS });
+  $('status').textContent = `${NORM.kept} rows · ${NORM.dupes} dupes dropped · ${NORM.droppedNoClose} no-close · showing ${TRADES.length}`;
+  renderOvw(S, C, G);
+  renderSys(C, G);
+  renderDst(S);
+  renderExc(G);
+  renderCst(G);
+  renderTrd();
+}
+
+function tile(k, v, sub, klass = '') {
+  return `<div class="tile ${klass}"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${sub || ''}</div></div>`;
+}
+
+function renderOvw(S, C, G) {
+  const el = $('ovw');
+  if (!S.n) { el.innerHTML = `<div class="empty">No closed trades in this window for this selection.</div>`; return; }
+  const f = S.scaleFree, b = S.scaleBound;
+  const thin = S.flags.thinSample ? 'thin' : '';
+  const lock = 'locked';
+
+  const tiles = [
+    tile('Net P&amp;L', `<span class="${cls(f.totalPnl)}">${money(f.totalPnl)}</span>`, `${f.trades} trades · ${f.activeDays} active days`),
+    b ? tile('Total Return', `<span class="${cls(b.totalReturnPct)}">${pct(b.totalReturnPct)}</span>`, `on $${C.toLocaleString('en-GB')} declared`)
+      : tile('Total Return', '—', 'set Capital to unlock', lock),
+    tile('Sharpe (ann)', num(f.sharpe), 'daily basis · √252', thin),
+    tile('Sortino (ann)', num(f.sortino), 'downside only', thin),
+    b ? tile('Max Drawdown', `<span class="neg">${pct(b.maxDDPct)}</span>`, `${money(f.maxDDAbs)} peak-to-trough`)
+      : tile('Max Drawdown', `<span class="neg">${money(f.maxDDAbs)}</span>`, 'set Capital for %'),
+    b ? tile('Calmar', num(b.calmar), 'CAGR ÷ |maxDD|', thin) : tile('Calmar', '—', 'needs Capital', lock),
+    tile('Win Rate', (f.winRate * 100).toFixed(1) + '%', `${Math.round(f.winRate * f.trades)}W / ${f.trades - Math.round(f.winRate * f.trades)}L`, thin),
+    tile('Profit Factor', num(f.profitFactor), `payoff ${num(f.payoff)}`, thin),
+    b ? tile('Time in DD', b.timeInDDPct.toFixed(1) + '%', `${f.tradingDays} calendar days`) : tile('Time in DD', '—', 'needs Capital', lock),
+    tile('Expectancy', `<span class="${cls(f.expectancy)}">${money(f.expectancy)}</span>`, 'per trade, after costs'),
+    tile('Costs', `<span class="neg">${money(f.totalCost)}</span>`, f.costPctOfGross != null ? `${f.costPctOfGross.toFixed(1)}% of gross` : 'swap + commission'),
+    tile('Median Hold', dur(f.medHoldSec), `best ${money(f.bestTrade, 0)} / worst ${money(f.worstTrade, 0)}`),
+  ].join('');
+
+  const eq   = S.series.equityByTrade;
+  const dEq  = S.series.dailyEquity;
+  const roll = rollingReturn(dEq, Math.min(63, Math.max(5, Math.floor(dEq.length / 4))), C);
+  const mg   = monthlyReturns(S.series.daily, C);
+  const rollWin = Math.min(63, Math.max(5, Math.floor(dEq.length / 4)));
+
+  const notes = [];
+  if (S.flags.noCapital) notes.push(`<div class="note"><b>No capital declared</b> — return %, CAGR, Calmar, max-DD % and time-in-drawdown are hidden rather than computed against a guessed denominator. Bots share MT5 accounts, so account balance is not a per-bot base; type the notional you consider behind this book into <b>Capital</b> above. It is stored in this browser only, never pushed to config.</div>`);
+  if (S.flags.thinSample) notes.push(`<div class="note warn"><b>Thin sample — ${S.n} trades.</b> Ratio metrics (Sharpe, Sortino, Calmar, PF, win rate) are greyed above because below ~${MIN_N_RATIOS} trades their confidence interval is wider than any difference you would act on. The P&amp;L totals are exact; the ratios are not yet estimates.</div>`);
+  if (GROSS) notes.push(`<div class="note warn"><b>Gross view — costs removed.</b> This is the "before costs" book and is not what the account got. Flip back to Net before drawing any conclusion; the gap between the two views is the cost drag.</div>`);
+  const mc = S.flags.missingCommission;
+  if (mc.length && !GROSS) notes.push(`<div class="note warn"><b>${mc.length} bot${mc.length > 1 ? 's report' : ' reports'} no commission</b> — ${mc.map(k => esc(botOf(k).label)).join(', ')}. Their trades are counted with commission = 0, so this book's Net flatters them by however much they were actually charged.</div>`);
+
+  el.innerHTML = notes.join('') + `<div class="tiles">${tiles}</div>` + `
+    <div class="panel"><div class="ph"><span class="badge">EQ</span>Equity curve — by trade<span class="rt">${eq.length} trades · ${C > 0 ? 'from $' + C.toLocaleString('en-GB') : 'cumulative P&L from 0'}</span></div>
+      <div class="pb">${lineChart(eq.map(p => ({ k: p.day, v: p.equity })), { fill: 'rgba(63,208,122,.10)', stroke: '#3fd07a', zero: C === 0, money: true })}</div></div>
+    <div class="panel"><div class="ph"><span class="badge">DD</span>Drawdown from peak<span class="rt">max ${C > 0 ? pct(S.scaleBound.maxDDPct) : money(S.scaleFree.maxDDAbs)}</span></div>
+      <div class="pb">${lineChart(dEq.map(p => ({ k: p.date, v: C > 0 ? p.ddPct : p.ddAbs })), { fill: 'rgba(242,85,90,.13)', stroke: '#f2555a', zero: true, pct: C > 0, money: C === 0 })}</div></div>
+    <div class="panel"><div class="ph"><span class="badge">R${rollWin}</span>Rolling ${rollWin}-day return<span class="rt">${C > 0 ? '% of capital' : 'dollars'}</span></div>
+      <div class="pb">${lineChart(roll.map(p => ({ k: p.date, v: p.value })), { stroke: '#5eb0ff', zero: true, pct: C > 0, money: C === 0 })}</div></div>
+    <div class="panel"><div class="ph"><span class="badge">MRET</span>Monthly returns<span class="rt">${mg.pct ? '% of capital' : 'dollars — set Capital for %'}</span></div>
+      <div class="pb">${heat(mg)}</div></div>`;
+}
+
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function heat(mg) {
+  if (!mg.years.length) return `<div class="empty">No months.</div>`;
+  const lim = Math.max(Math.abs(mg.min), Math.abs(mg.max)) || 1;
+  const bg = v => {
+    if (v == null) return '';
+    const a = Math.min(1, Math.abs(v) / lim) * 0.62 + 0.08;
+    return `background:rgba(${v >= 0 ? '63,208,122' : '242,85,90'},${a.toFixed(2)})`;
+  };
+  const dp = mg.pct ? (lim >= 20 ? 1 : lim >= 2 ? 2 : 3) : 0;
+  const fmtc = v => v == null ? '·' : mg.pct
+    ? (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(dp)
+    : (v >= 0 ? '+' : '−') + Math.abs(Math.round(v)).toLocaleString('en-GB');
+  return `<table class="heat"><thead><tr><th class="l">Year</th>${MON.map(m => `<th>${m}</th>`).join('')}<th>Year</th></tr></thead><tbody>` +
+    mg.years.map(y => `<tr><td class="l"><b>${y.year}</b></td>` +
+      y.months.map(v => `<td class="${v == null ? 'na' : ''}" style="${bg(v)}">${fmtc(v)}</td>`).join('') +
+      `<td style="${bg(y.total)}"><b>${fmtc(y.total)}</b></td></tr>`).join('') +
+    `</tbody></table>`;
+}
+
+function renderSys(C, G) {
+  const el = $('sys');
+  const all = NORM.trades;
+  if (!all.length) { el.innerHTML = `<div class="empty">No trades.</div>`; return; }
+  const keys = [...new Set(all.map(t => t.bot_key))];
+  const rows = keys.map(k => {
+    const ts = all.filter(t => t.bot_key === k);
+    const s = summarize(ts, { capital: 0, gross: GROSS, bootRuns: 200, mcRuns: 200 });
+    return { k, bot: botOf(k), s };
+  }).sort((a, b) => b.s.scaleFree.totalPnl - a.s.scaleFree.totalPnl);
+
+  el.innerHTML = `<div class="note">Every bot with closed trades in the window, ranked by net P&amp;L. Ratios are greyed where the bot has under ${MIN_N_RATIOS} trades. <b>Paper bots are marked</b> — their P&amp;L is simulated and is excluded from the "All live bots" book on the Overview tab.</div>
+  <div class="panel"><div class="ph"><span class="badge">SYS</span>Per-bot book<span class="rt">${rows.length} bots · ${GROSS ? 'gross' : 'net of costs'}</span></div>
+  <div class="scroll"><table><thead><tr>
+    <th class="l">Bot</th><th>Trades</th><th>Net P&amp;L</th><th>Costs</th><th>Win%</th><th>PF</th>
+    <th>Sharpe</th><th>Expect.</th><th>Max DD $</th><th>Best</th><th>Worst</th><th>Med hold</th></tr></thead><tbody>` +
+    rows.map(r => {
+      const f = r.s.scaleFree, t = r.s.flags.thinSample ? ' style="color:var(--dim)"' : '';
+      return `<tr>
+        <td class="l"><span class="chip" style="background:${r.bot.bg || 'var(--s2)'};border:1px solid ${r.bot.bd || 'var(--border)'};color:${r.bot.color}">${esc(r.bot.label)}</span>${r.bot.paper ? ' <span style="color:var(--dim2);font-size:10px">paper</span>' : ''}</td>
+        <td>${f.trades}</td>
+        <td class="${cls(f.totalPnl)}">${money(f.totalPnl)}</td>
+        <td class="neg">${money(f.totalCost)}</td>
+        <td${t}>${(f.winRate * 100).toFixed(0)}%</td>
+        <td${t}>${num(f.profitFactor)}</td>
+        <td${t}>${num(f.sharpe)}</td>
+        <td class="${cls(f.expectancy)}">${money(f.expectancy)}</td>
+        <td class="neg">${money(f.maxDDAbs, 0)}</td>
+        <td class="pos">${money(f.bestTrade, 0)}</td>
+        <td class="neg">${money(f.worstTrade, 0)}</td>
+        <td>${dur(f.medHoldSec)}</td></tr>`;
+    }).join('') + `</tbody></table></div></div>`;
+}
+
+function renderDst(S) {
+  const el = $('dst');
+  if (!S.n) { el.innerHTML = `<div class="empty">No trades.</div>`; return; }
+  const b = S.bootstrap;
+  const rank = (arr, v) => arr.length ? Math.round(arr.filter(x => x < v).length / arr.length * 100) : null;
+
+  el.innerHTML = `
+  <div class="note warn"><b>Read this before reading the chart.</b> ${esc(bootstrapNote)}</div>
+  <div class="panel"><div class="ph"><span class="badge">BOOT</span>Bootstrap of this book<span class="rt">1,000 resamples · seeded, reproducible</span></div><div class="pb">
+    <table style="max-width:700px"><thead><tr><th class="l">Statistic</th><th>Low</th><th>Mid</th><th>High</th><th>Realised</th></tr></thead><tbody>
+      <tr><td class="l">Total P&amp;L <span style="color:var(--dim2)">(P5/P50/P95)</span></td><td>${money(b.total.p5, 0)}</td><td>${money(b.total.p50, 0)}</td><td>${money(b.total.p95, 0)}</td><td class="${cls(S.scaleFree.totalPnl)}"><b>${money(S.scaleFree.totalPnl, 0)}</b></td></tr>
+      <tr><td class="l">Sharpe <span style="color:var(--dim2)">(P5/P50/P95)</span></td><td>${num(b.sharpe.p5)}</td><td>${num(b.sharpe.p50)}</td><td>${num(b.sharpe.p95)}</td><td><b>${num(S.scaleFree.sharpe)}</b></td></tr>
+      <tr title="Drawdown percentiles run the other way: a HIGHER percentile is a DEEPER drawdown, so these are P50/P95/P99 of the worst-case, not a P5-P95 band."><td class="l">Max drawdown <span style="color:var(--dim2)">(P50/P95/P99 — deeper →)</span></td><td class="neg">${money(b.mcMaxDD.p50, 0)}</td><td class="neg">${money(b.mcMaxDD.p95, 0)}</td><td class="neg">${money(b.mcMaxDD.p99, 0)}</td><td class="neg"><b>${money(S.scaleFree.maxDDAbs, 0)}</b></td></tr>
+    </tbody></table>
+    <div class="rd" style="margin-top:8px;color:var(--dim2)">The first two rows are a P5–P95 confidence band. The drawdown row is not — its percentiles deepen left to right, so "High" there is the near-worst ordering, not the best case.</div>
+    <div class="rd" style="margin-top:12px">
+      <b>P(profitable) across resamples: ${(b.pPositive * 100).toFixed(1)}%</b> — in ${(b.pPositive * 100).toFixed(1)}% of 1,000 resampled books of the same trades, the total came out positive.
+    </div>
+  </div></div>
+
+  <div class="panel"><div class="ph"><span class="badge">DDMC</span>Drawdown you could have had<span class="rt">same trades, different order</span></div><div class="pb">
+    <div class="rd">The realised max drawdown of <b>${money(S.scaleFree.maxDDAbs, 0)}</b> is <b>one ordering</b> of these trades. Reshuffling the same trades gives a median worst drawdown of ${money(b.mcMaxDD.p50, 0)}, and a near-worst (P99) of <b>${money(b.mcMaxDD.p99, 0)}</b>. If the P99 figure is one you could not have sat through, the book is riskier than its history looks — the losses simply have not arrived back-to-back yet.</div>
+  </div></div>
+
+  <div class="panel"><div class="ph"><span class="badge">READ</span>What is missing here</div><div class="pb"><div class="rd">
+    The panel this page is modelled on shows <b>realised vs expected</b> — where the live Sharpe sits inside the distribution its backtest predicted. That comparison is not available yet, and inventing it would be worse than leaving it out:
+    <ul style="margin:8px 0 0;padding-left:18px">
+      <li>No bot has a frozen <code>expect_&lt;bot&gt;</code> artifact — nothing recorded what its backtest expected before it went live.</li>
+      <li>Live trades carry no stop distance, so they cannot be expressed in R, so they cannot be ranked against a backtest measured in R.</li>
+    </ul>
+    Both are steps 3 and 5 in <code>MD files/LIVE_BACKTEST_ALIGNMENT.md</code>. Until they land, this tab answers the narrower question only: how much of the headline is luck of the draw.
+  </div></div></div>`;
+}
+
+function renderExc(G) {
+  const el = $('exc');
+  const x = excursions(TRADES, G);
+  const mix = exitMix(TRADES, G);
+  if (!TRADES.length) { el.innerHTML = `<div class="empty">No trades.</div>`; return; }
+  const covered = x.n, missing = x.missing;
+  el.innerHTML = `
+  <div class="note">MFE/MAE are the best and worst points a trade reached while open, in pips, as reported by the broker path (<code>pylego/broker/mt5.py</code>). They have been stored in KV all along and never rendered anywhere until now. Use them to ask whether the stop and target are where the trade actually lives.</div>
+  ${missing ? `<div class="note warn"><b>${missing} of ${covered + missing} trades carry no excursion data</b> and are excluded here rather than counted as zero — otherwise every median would be dragged toward 0 and the book would look like it never went offside.</div>` : ''}
+  <div class="tiles">
+    ${tile('Median MFE · winners', x.medMfeWin == null ? '—' : x.medMfeWin.toFixed(1) + 'p', 'how far winners ran')}
+    ${tile('Median MAE · winners', x.medMaeWin == null ? '—' : x.medMaeWin.toFixed(1) + 'p', 'heat taken before working')}
+    ${tile('Median MAE · losers', x.medMaeLoss == null ? '—' : x.medMaeLoss.toFixed(1) + 'p', 'how far losers went against')}
+    ${tile('Median MFE · losers', x.medMfeLoss == null ? '—' : x.medMfeLoss.toFixed(1) + 'p', 'profit that was there and left')}
+  </div>
+  <div class="panel"><div class="ph"><span class="badge">CAL</span>Stop &amp; target calibration</div><div class="pb"><div class="rd">
+    ${x.medMaeWin != null && x.medMaeLoss != null
+      ? `Winners took a median <b>${x.medMaeWin.toFixed(1)}p</b> of heat before working; losers went <b>${x.medMaeLoss.toFixed(1)}p</b> against. A stop set inside the winners' heat band is paying to be stopped out of trades that go on to work.`
+      : 'Not enough excursion data to say anything about stop placement.'}
+    ${x.medMfeLoss != null && x.medMfeLoss > 0 ? ` Losers reached a median <b>${x.medMfeLoss.toFixed(1)}p</b> in profit before dying — profit that existed and was given back.` : ''}
+  </div></div></div>
+  <div class="panel"><div class="ph"><span class="badge">EXIT</span>Exit mix<span class="rt">which barrier ended the trade</span></div>
+  <div class="pb"><table style="max-width:640px"><thead><tr><th class="l">Reason</th><th>Trades</th><th>Share</th><th>Win%</th><th>Net</th></tr></thead><tbody>` +
+  (mix.length ? mix.map(r => `<tr><td class="l">${esc(r.key)}</td><td>${r.n}</td><td>${(r.n / TRADES.length * 100).toFixed(0)}%</td><td>${(r.winRate * 100).toFixed(0)}%</td><td class="${cls(r.net)}">${money(r.net, 0)}</td></tr>`).join('')
+            : `<tr><td colspan="5" class="empty">No exit reasons reported.</td></tr>`) +
+  `</tbody></table></div></div>`;
+}
+
+function renderCst(G) {
+  const el = $('cst');
+  if (!TRADES.length) { el.innerHTML = `<div class="empty">No trades.</div>`; return; }
+  const net = summarize(TRADES, { capital: cap(), gross: false, bootRuns: 200, mcRuns: 200 });
+  const grs = summarize(TRADES, { capital: cap(), gross: true,  bootRuns: 200, mcRuns: 200 });
+  const byPair = groupBy(TRADES, t => t.symbol || '?', G);
+  const swap = TRADES.reduce((s, t) => s + (t.swap || 0), 0);
+  const comm = TRADES.reduce((s, t) => s + (t.commission || 0), 0);
+  const flipped = TRADES.filter(t => (t.profit || 0) > 0 && netOf(t) <= 0).length;
+
+  el.innerHTML = `
+  <div class="note">The costed-vs-uncosted comparison. Everything on the left is what the strategy produced; everything on the right is what the account kept. A book whose edge lives inside this gap is not a marginal system — it is a broker's income stream.</div>
+  <div class="panel"><div class="ph"><span class="badge">COST</span>Gross vs net</div><div class="pb">
+  <table style="max-width:760px"><thead><tr><th class="l">Metric</th><th>Gross</th><th>Net</th><th>Cost of trading</th></tr></thead><tbody>
+    <tr><td class="l">Total P&amp;L</td><td class="${cls(grs.scaleFree.totalPnl)}">${money(grs.scaleFree.totalPnl)}</td><td class="${cls(net.scaleFree.totalPnl)}"><b>${money(net.scaleFree.totalPnl)}</b></td><td class="neg">${money(net.scaleFree.totalPnl - grs.scaleFree.totalPnl)}</td></tr>
+    <tr><td class="l">Win rate</td><td>${(grs.scaleFree.winRate * 100).toFixed(1)}%</td><td><b>${(net.scaleFree.winRate * 100).toFixed(1)}%</b></td><td class="neg">${((net.scaleFree.winRate - grs.scaleFree.winRate) * 100).toFixed(1)}pp</td></tr>
+    <tr><td class="l">Profit factor</td><td>${num(grs.scaleFree.profitFactor)}</td><td><b>${num(net.scaleFree.profitFactor)}</b></td><td class="neg">${num(net.scaleFree.profitFactor - grs.scaleFree.profitFactor)}</td></tr>
+    <tr><td class="l">Sharpe (ann)</td><td>${num(grs.scaleFree.sharpe)}</td><td><b>${num(net.scaleFree.sharpe)}</b></td><td class="neg">${num(net.scaleFree.sharpe - grs.scaleFree.sharpe)}</td></tr>
+    <tr><td class="l">Expectancy / trade</td><td class="${cls(grs.scaleFree.expectancy)}">${money(grs.scaleFree.expectancy)}</td><td class="${cls(net.scaleFree.expectancy)}"><b>${money(net.scaleFree.expectancy)}</b></td><td class="neg">${money(net.scaleFree.expectancy - grs.scaleFree.expectancy)}</td></tr>
+  </tbody></table>
+  <div class="rd" style="margin-top:12px">
+    Swap <b>${money(swap)}</b> · commission <b>${money(comm)}</b>${net.scaleFree.costPctOfGross != null ? ` · together <b>${net.scaleFree.costPctOfGross.toFixed(1)}%</b> of gross P&amp;L` : ''}.
+    ${flipped ? `<br><b class="neg">${flipped} trade${flipped > 1 ? 's' : ''} made money gross and lost it after costs</b> — the win-rate gap above is exactly these.` : ''}
+  </div></div></div>
+  <div class="panel"><div class="ph"><span class="badge">PAIR</span>By instrument</div>
+  <div class="scroll"><table><thead><tr><th class="l">Symbol</th><th>Trades</th><th>Net</th><th>Gross</th><th>Costs</th><th>Cost/trade</th><th>Win%</th></tr></thead><tbody>` +
+  byPair.map(r => `<tr><td class="l"><b>${esc(r.key)}</b></td><td>${r.n}</td><td class="${cls(r.net)}">${money(r.net, 0)}</td><td class="${cls(r.gross)}">${money(r.gross, 0)}</td><td class="neg">${money(r.cost, 0)}</td><td class="neg">${money(r.cost / r.n)}</td><td>${(r.winRate * 100).toFixed(0)}%</td></tr>`).join('') +
+  `</tbody></table></div></div>`;
+}
+
+function renderTrd() {
+  const el = $('trd');
+  if (!TRADES.length) { el.innerHTML = `<div class="empty">No trades.</div>`; return; }
+  const rows = [...TRADES].reverse().slice(0, 600);
+  el.innerHTML = `<div class="panel"><div class="ph"><span class="badge">TRD</span>Closed trades<span class="rt">newest first · showing ${rows.length} of ${TRADES.length}</span></div>
+  <div class="scroll"><table><thead><tr>
+    <th class="l">Closed (UK)</th><th class="l">Bot</th><th class="l">Sym</th><th class="l">Dir</th><th>Lots</th>
+    <th>Gross</th><th>Swap</th><th>Comm</th><th>Net</th><th>MFE</th><th>MAE</th><th class="l">Exit</th><th>Held</th></tr></thead><tbody>` +
+  rows.map(t => {
+    const n = netOf(t, { gross: GROSS }), b = botOf(t.bot_key);
+    return `<tr>
+      <td class="l" style="color:var(--dim)">${ukTime(t.utcClose)}</td>
+      <td class="l"><span class="chip" style="background:${b.bg || 'var(--s2)'};border:1px solid ${b.bd || 'var(--border)'};color:${b.color}">${esc(b.label)}</span></td>
+      <td class="l"><b>${esc(t.symbol)}</b></td>
+      <td class="l" style="color:${t.direction === 'BUY' ? 'var(--good)' : 'var(--bad)'}">${esc(t.direction)}</td>
+      <td>${(t.lots || 0).toFixed(2)}</td>
+      <td class="${cls(t.profit || 0)}">${money(t.profit || 0)}</td>
+      <td class="${(t.swap || 0) < 0 ? 'neg' : ''}">${num(t.swap || 0)}</td>
+      <td class="${(t.commission || 0) < 0 ? 'neg' : ''}">${t.commission == null ? '—' : num(t.commission)}</td>
+      <td class="${cls(n)}"><b>${money(n)}</b></td>
+      <td style="color:var(--dim)">${t.mfe_pips == null ? '—' : t.mfe_pips.toFixed(1)}</td>
+      <td style="color:var(--dim)">${t.mae_pips == null ? '—' : t.mae_pips.toFixed(1)}</td>
+      <td class="l" style="color:var(--dim)">${esc(t.reason || '—')}</td>
+      <td style="color:var(--dim)">${dur(t.holdSec)}</td></tr>`;
+  }).join('') + `</tbody></table></div></div>`;
+}
+
+// ── boot ─────────────────────────────────────────────────────────────────────
+(function init() {
+  const sel = $('selBot');
+  sel.innerHTML = `<option value="__all">All live bots (portfolio)</option>`
+    + `<option value="__allinc">All bots incl. paper</option>`
+    + BOTS.map(b => `<option value="${b.key}">${esc(b.label)}${b.paper ? ' · paper' : ''}</option>`).join('');
+  try {
+    const t = localStorage.getItem('botAuditTab'); if (t) window.tab(t);
+    const c = localStorage.getItem('botAuditCap'); if (c) $('inCap').value = c;
+    const b = localStorage.getItem('botAuditBot'); if (b) sel.value = b;
+  } catch (e) {}
+  $('inCap').addEventListener('change', () => { try { localStorage.setItem('botAuditCap', $('inCap').value); } catch (e) {} render(); });
+  sel.addEventListener('change', () => { try { localStorage.setItem('botAuditBot', sel.value); } catch (e) {} render(); });
+  $('selRange').addEventListener('change', reload);
+  reload();
+})();
+</script>
+</body>
+</html>
