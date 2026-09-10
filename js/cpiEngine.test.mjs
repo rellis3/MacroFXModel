@@ -103,11 +103,51 @@ console.log('[levelVsTargetScore / trendScore — score field itself is rounded,
 console.log('[CPI_UNIVERSE sanity]');
 {
   ok('covers all 8 currencies', ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'NZD'].every(c => CPI_UNIVERSE[c]));
-  ok('all 8 have headline coverage', Object.values(CPI_UNIVERSE).every(c => c.headline));
-  ok('GBP and NZD deliberately lack core (unconfirmed series)', !CPI_UNIVERSE.GBP.core && !CPI_UNIVERSE.NZD.core);
+  // The invariant that matters now: a currency either has a live series or a
+  // DOCUMENTED reason it does not. Silently dropping one would leave the page
+  // unable to explain a missing inflation read, which is how the old dead OECD
+  // series went unnoticed for months in the first place.
+  ok('every currency has either a headline series or a documented discontinuation',
+     Object.values(CPI_UNIVERSE).every(c => c.headline || c.discontinued));
+  ok('no currency has both', Object.values(CPI_UNIVERSE).every(c => !(c.headline && c.discontinued)));
+  ok('every discontinuation records when, what and why',
+     Object.values(CPI_UNIVERSE).filter(c => c.discontinued)
+       .every(c => c.discontinued.since && c.discontinued.was && c.discontinued.reason));
+  // Verified against fredgraph 2026-09-10: the whole OECD MEI family froze in
+  // spring 2025 (JPY back in 2021). Eurostat is a different provider, still live.
+  ok('the dead OECD series are gone from the live set',
+     !JSON.stringify(Object.values(CPI_UNIVERSE).map(c => c.headline).filter(Boolean)).includes('CPALTT01'));
   ok('USD headline/core are index-level series', CPI_UNIVERSE.USD.headline.isIndex && CPI_UNIVERSE.USD.core.isIndex);
-  ok('EUR headline/core are pre-computed YoY (not index)', !CPI_UNIVERSE.EUR.headline.isIndex && !CPI_UNIVERSE.EUR.core.isIndex);
-  ok('AUD and NZD headline flagged quarterly', CPI_UNIVERSE.AUD.headline.quarterly && CPI_UNIVERSE.NZD.headline.quarterly);
+  // The Eurostat replacements are INDEX levels (2015=100), unlike the OECD "659N"
+  // series they replace, which were already YoY prints. Getting this flag wrong
+  // would silently score an index level as if it were an inflation rate.
+  ok('EUR/CHF replacements are index levels, so YoY is computed downstream',
+     CPI_UNIVERSE.EUR.headline.isIndex === true && CPI_UNIVERSE.CHF.headline.isIndex === true);
+  ok('core is USD-only (the rest died or were unverified)',
+     Object.entries(CPI_UNIVERSE).filter(([, c]) => c.core).map(([k]) => k).join() === 'USD');
+  // AUD/NZD were the quarterly-at-source entries; both are now discontinued, so the
+  // cadence flag has no live user. The mechanism still has to work, because the
+  // scorecard's staleness budget depends on it -- a quarterly series judged against
+  // a monthly budget gets marked stale while perfectly healthy.
+  ok('every live headline declares a cadence the scorecard can use',
+     Object.values(CPI_UNIVERSE).filter(c => c.headline)
+       .every(c => c.headline.quarterly === undefined || typeof c.headline.quarterly === 'boolean'));
+  ok('cpiScore reports monthly cadence for the live entries',
+     cpiScore({}, CPI_UNIVERSE.EUR).cadence === 'monthly');
+  ok('and would report quarterly if a headline were flagged so',
+     cpiScore({}, { headline: { series: 'X', quarterly: true } }).cadence === 'quarterly');
+}
+
+console.log('[a discontinued source reports WHY, rather than going quiet]');
+{
+  const r = cpiScore({}, CPI_UNIVERSE.JPY);
+  ok('scores nothing', r.pressure === null && r.coverage.length === 0);
+  ok('but says the source stopped, and when', r.discontinued?.since === '2021-06', r.discontinued?.since);
+  ok('and names the series it replaced', r.discontinued?.was === 'CPALTT01JPM659N');
+  // Without this a dead source is indistinguishable from a fetch that failed today,
+  // and the page keeps implying the print is merely late.
+  const live = cpiScore({}, CPI_UNIVERSE.EUR);
+  ok('a live currency with no data yet carries no discontinued marker', live.discontinued === undefined);
 }
 
 if (failures) { console.error(`\n${failures} FAILURE(S)`); process.exit(1); }

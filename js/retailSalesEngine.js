@@ -107,7 +107,11 @@ export function retailSalesCompositeScore(data = {}, universe = {}) {
   const dims = {};
   if (data.headline) dims.headline = retailSalesScore(data.headline, universe.headline);
   if (data.exAutos) dims.exAutos = retailSalesScore(data.exAutos, universe.exAutos);
-  return { dims, spending: dims.headline?.score ?? null, coverage: Object.keys(dims) };
+  return { dims, spending: dims.headline?.score ?? null, coverage: Object.keys(dims),
+    // Cadence travels with the score so the scorecard can age it correctly: the
+    // 7 non-US series are QUARTERLY, and judging them against a monthly budget
+    // marked live data stale for 5 of 7 currencies.
+    cadence: universe.headline?.quarterly ? 'quarterly' : 'monthly' };
 }
 
 // Fetch every configured series for one currency. Never throws on a single

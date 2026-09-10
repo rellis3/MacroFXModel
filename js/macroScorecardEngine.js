@@ -66,6 +66,31 @@ export const MAX_AGE_DAYS = {
 };
 export const DEFAULT_MAX_AGE_DAYS = 120;
 
+// Budgets by CADENCE, which override the per-dimension ones above whenever the
+// engine tells us how often its series actually publishes.
+//
+// The per-dimension table cannot be right on its own, because most dimensions mix
+// cadences ACROSS currencies: retail sales is monthly for the US and quarterly for
+// the other seven; labour mixes monthly unemployment with quarterly wages; business
+// confidence is quarterly for AUD/NZD and monthly for the rest. A single number per
+// dimension has to be either too tight for the quarterly members or too loose for
+// the monthly ones, and it was set from the monthly assumption -- so on 2026-09-10
+// the live board flagged 25 currency-dimensions stale, of which roughly half were
+// healthy quarterly prints being judged against a ~150-day budget. GBP retail sales
+// published for Q2 on 2026-04-01 is 162 days old in September and completely
+// normal; it was being struck through and dropped from the composite.
+//
+// A quarterly series read late in the following quarter is legitimately ~250 days
+// old, so 300 is the first threshold that clears the slowest honest case. It still
+// catches the genuinely dead: CAD retail sales stopped in 2022 (56 months) and JPY
+// CPI in 2021 (63 months) are nowhere near it.
+export const MAX_AGE_BY_CADENCE = {
+  daily: 10,
+  weekly: 30,
+  monthly: 130,
+  quarterly: 300,
+};
+
 // ── Factors: what the dimensions are actually MEASURING ─────────────────────
 // The equal-weight average over dimensions has a flaw that is easy to miss and
 // hard to defend once seen: it weights each FACTOR by how many series happen to
@@ -168,8 +193,14 @@ export function readDim(key, v, now = Date.now()) {
   const t = v.asOf ? Date.parse(v.asOf) : NaN;
   if (!Number.isFinite(t)) return { score, asOf: v.asOf ?? null, ageDays: null, stale: false };
   const ageDays = Math.floor((now - t) / DAY_MS);
-  const maxAgeDays = MAX_AGE_DAYS[key] ?? DEFAULT_MAX_AGE_DAYS;
-  return { score, asOf: v.asOf, ageDays, maxAgeDays, stale: ageDays > maxAgeDays };
+  // Cadence wins when the engine reports it, because it describes THIS currency's
+  // series rather than the dimension's most common cadence across currencies.
+  const maxAgeDays = (v.cadence && MAX_AGE_BY_CADENCE[v.cadence])
+    ?? MAX_AGE_DAYS[key] ?? DEFAULT_MAX_AGE_DAYS;
+  return {
+    score, asOf: v.asOf, ageDays, maxAgeDays, cadence: v.cadence ?? null,
+    stale: ageDays > maxAgeDays,
+  };
 }
 
 // One currency's composite: `dims` = plain object of {dimKey: score|null},

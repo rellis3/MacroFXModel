@@ -3,6 +3,7 @@
 import {
   CCYS, scorecardForCcy, buildScorecard, topBottomPair,
   rollUpFactors, dominantFactor, factorBoard, FACTORS, FACTOR_WEIGHTS, MIN_FACTORS_FOR_PAIR,
+  readDim, MAX_AGE_BY_CADENCE,
 } from './macroScorecardEngine.js';
 
 let failures = 0;
@@ -169,6 +170,43 @@ console.log('[topBottomPair - a thin read is not comparable to a deep one]');
   ok('one deep row and one thin -> null, not a lopsided pair', topBottomPair(ranked) === null);
   ok('the floor can be lowered explicitly when a caller means to',
      topBottomPair(ranked, { minFactors: 1 })?.short === 'EUR');
+}
+
+console.log('[staleness is judged by CADENCE, not by dimension]');
+{
+  // THE BUG, measured against the live board on 2026-09-10: 25 currency-dimensions
+  // were flagged stale, and roughly half were healthy QUARTERLY prints judged
+  // against a monthly budget. Most dimensions mix cadences across currencies --
+  // retail sales is monthly for the US and quarterly for the other seven -- so no
+  // single per-dimension number can be right for both.
+  const NOW = Date.parse('2026-09-10T12:00:00Z');
+  const at = (dim, asOf, cadence) => readDim(dim, { score: 0.5, asOf, cadence }, NOW);
+
+  // GBP retail sales published for Q2 on 2026-04-01 is 162 days old in September
+  // and completely normal. It was being struck through and dropped.
+  ok('a normal quarterly print is NOT stale', at('retailSales', '2026-04-01', 'quarterly').stale === false);
+  ok('even a full two quarters back is not stale', at('retailSales', '2026-01-01', 'quarterly').stale === false);
+  ok('the same date WOULD have been stale on the old dimension budget',
+     at('retailSales', '2026-01-01', 'monthly').stale === true);
+
+  // The gate must still do its actual job.
+  ok('a series that stopped in 2022 is still caught', at('retailSales', '2022-01-01', 'quarterly').stale === true);
+  ok('JPY CPI, dead since 2021, is still caught', at('cpi', '2021-06-01', 'monthly').stale === true);
+  ok('a dead MONTHLY series is unaffected by the quarterly widening',
+     at('cpi', '2025-03-01', 'monthly').stale === true);
+  ok('a normal monthly print stays fresh', at('cpi', '2026-07-01', 'monthly').stale === false);
+
+  ok('the cadence budget is reported, not just applied', at('cpi', '2026-07-01', 'monthly').maxAgeDays === MAX_AGE_BY_CADENCE.monthly);
+  ok('and the cadence itself comes back for display', at('cpi', '2026-07-01', 'quarterly').cadence === 'quarterly');
+}
+{
+  const NOW = Date.parse('2026-09-10T12:00:00Z');
+  // No cadence reported -> fall back to the per-dimension budget exactly as before,
+  // so an engine that has not been taught to emit cadence keeps working.
+  const r = readDim('cpi', { score: 0.5, asOf: '2026-07-01' }, NOW);
+  ok('a dim with no cadence falls back to the dimension budget', r.maxAgeDays === 130, r.maxAgeDays);
+  ok('and reports cadence null rather than guessing one', r.cadence === null);
+  ok('a bare number is still trusted and never stale', readDim('cpi', 0.4, NOW).stale === false);
 }
 
 if (failures) { console.error(`\n${failures} FAILURE(S)`); process.exit(1); }

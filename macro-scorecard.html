@@ -64,6 +64,11 @@
   .driverbanner{margin-top:10px;padding:11px 14px;border-radius:6px;font-size:12.5px;line-height:1.65;
     background:rgba(110,180,255,.07);border:1px solid rgba(110,180,255,.28);color:var(--text2)}
   .driverbanner b{color:var(--text)}
+  .discbanner{margin-top:10px;padding:11px 14px;border-radius:6px;font-size:12.5px;line-height:1.6;
+    background:rgba(232,150,60,.07);border:1px solid rgba(232,150,60,.28);color:var(--text2)}
+  .discbanner b{color:var(--text)}
+  .discbanner .discrows{margin-top:6px;font-size:11.5px;color:var(--text3);line-height:1.7}
+  .discbanner .discfoot{margin-top:7px;font-size:11px;color:var(--text3);opacity:.85}
   .gap .aside{display:inline-block;margin-top:5px;font-size:10.5px;color:var(--text3);cursor:help;font-weight:400}
   .driverbanner .spreads{margin-top:6px;font-size:11.5px;color:var(--text3);font-variant-numeric:tabular-nums}
   .breakdown{display:none;padding:4px 4px 14px 34px}
@@ -125,6 +130,7 @@
     <h2>Ranked composite (strongest → weakest)</h2>
     <div id="body" class="empty">Loading…</div>
     <div id="driverWrap"></div>
+    <div id="discWrap"></div>
     <div id="staleWrap"></div>
     <div id="uncoveredWrap"></div>
     <div class="note">Every engine on this dashboard scores its currencies on the same &minus;1..+1 scale. This page groups those dimensions into <b>six factors</b> &mdash; rates &amp; policy (rate differential, real yield, yield curve), inflation (CPI, PPI), growth (GDP, business activity), labour market, domestic demand (retail sales, consumer confidence), external balance (trade balance) &mdash; and averages the <i>factors</i> with equal weight.<br><br><b>Why group first.</b> Three of those dimensions measure rates and two measure inflation. A flat average across all twelve therefore hands rates roughly a quarter of the score and inflation a sixth &mdash; not because anyone decided rates matters three times more than the labour market, but because three series happen to point at it. Adding a fourth rates series tomorrow would quietly push rates to a third of the score with nobody having chosen that. An accidental weighting is worse than a stated one you disagree with, because there is nothing to argue with. Equal weight per factor is the stated choice; if it ever changes it should carry evidence with it.<br><br><b>What it is for.</b> Explanation, not prediction. Macro-as-signal has been tested and banked as null in this project five times over, so this composite is not a forecast &mdash; it is the answer to "why does the FX board look like this today", and the <i>factor</i> lines are where that answer actually lives. Central-bank text sentiment is shown per currency but is in no factor and scores nothing: its momentum was tested against forward price and banked null too.<br><br>Missing data is treated as missing, never as neutral &mdash; a factor with nothing fresh behind it is left out rather than counted as zero, and the <span style="font-variant-numeric:tabular-nums">n/6 factors</span> column says how much of each score is genuinely backed. Click a row to see the factors and the dimensions under them. Reads live off every other engine's already-cached data: refreshing here re-aggregates, it does not re-fetch FRED &mdash; refresh the individual pages for fresh source data.</div>
@@ -270,6 +276,18 @@ async function load() {
         + `<div class="spreads">Factor spreads: ${Object.values(r.factors || {}).filter(f => f.spread != null)
              .sort((a, b) => b.spread - a.spread)
              .map(f => `${esc(f.label.toLowerCase())} <b>${f.spread}</b>`).join(' · ')}</div></div>`
+      : '';
+    // A discontinued source and a merely-late one both show as "no score", but they
+    // mean opposite things: one is "check back tomorrow", the other is "this is not
+    // coming back without a new data source". Say which.
+    const disc = r.discontinued || {};
+    const discRows = Object.entries(disc).flatMap(([dim, byC]) =>
+      Object.entries(byC).map(([ccy, d]) =>
+        `<b>${esc(DIM_LABEL[dim] || dim)}</b> for <b>${esc(ccy)}</b> — stopped ${esc(d.since)} (${esc(d.was)}): ${esc(d.reason)}`));
+    $('discWrap').innerHTML = discRows.length
+      ? `<div class="discbanner"><b>${discRows.length} source${discRows.length === 1 ? '' : 's'} discontinued</b> — not late, gone. These currencies score on their remaining factors; the dimension is not counted as neutral.
+           <div class="discrows">${discRows.map(x => '• ' + x).join('<br>')}</div>
+           <div class="discfoot">Restoring these means going outside FRED (ONS, StatCan, ABS, Stats NZ, e-Stat all publish CPI APIs) — a separate build, not a series-ID swap.</div></div>`
       : '';
     const nStale = r.staleCount || 0;
     $('staleWrap').innerHTML = nStale

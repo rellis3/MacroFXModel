@@ -3597,6 +3597,12 @@ async function _buildMorningBrief() {
             + ((scorecard.pair.setAside || []).length
                 ? `\n  Set aside for this pairing: ${scorecard.pair.setAside.join(', ')} -- fewer than ${scorecard.pair.minFactors} factors covered. A currency scored on one or two factors is not comparable to one scored on six: with fewer factors each surviving one dominates, so a thin read swings further from neutral simply for having less behind it, and the extremes of the ranking are exactly where thin rows land. They still appear in the ranking above; do not present one as the strongest or weakest currency.` : '')
           : '\nNo confident strongest-vs-weakest pairing -- composite spreads are too tight today.')
+      + (Object.keys(scorecard.discontinued || {}).length
+          ? `\nDISCONTINUED SOURCES (not late -- gone; do not describe these as awaiting a release): `
+            + Object.entries(scorecard.discontinued).flatMap(([dim, byC]) =>
+                Object.entries(byC).map(([ccy, d]) => `${dim} for ${ccy} stopped ${d.since} (${d.reason})`)).join('; ')
+            + `. Those currencies score on their remaining factors. If you mention that a currency has no inflation read, say the source was discontinued rather than implying the print is merely late.`
+          : '')
       + (scorecard.driver?.spread != null
           ? `\nWHAT IS SEPARATING THE BOARD: ${scorecard.driver.label.toLowerCase()} -- ${scorecard.driver.high} highest, ${scorecard.driver.low} lowest, spread ${scorecard.driver.spread}, wider than any other factor. Factor spreads today: `
             + Object.values(scorecard.factors ?? {}).filter(f => f.spread != null)
@@ -6330,7 +6336,13 @@ function _newestDataDate(node, depth = 0) {
 
 // Pair a dimension's score with the date it was computed from, in the shape
 // js/macroScorecardEngine.js's readDim() age-checks.
-const _dim = (score, node) => (score == null ? null : { score, asOf: _newestDataDate(node) });
+// `cadence` is threaded through from the engine because the scorecard's staleness
+// budget depends on it: most dimensions mix monthly and quarterly series ACROSS
+// currencies, so a per-dimension budget marks healthy quarterly prints stale. Without
+// this pass-through the engines' new cadence field would never reach readDim and the
+// budgets would silently stay cadence-blind.
+const _dim = (score, node) =>
+  (score == null ? null : { score, asOf: _newestDataDate(node), cadence: node?.cadence ?? null });
 
 async function _buildMacroScorecard() {
   const [cpiRaw, gdpRaw, ismRaw, laborRaw, retailRaw, tradeRaw, realYieldRaw, ppiRaw, yieldCurveRaw, confidenceRaw, rateDiffRaw, cbSentiment] = await Promise.all([
@@ -6380,6 +6392,18 @@ async function _buildMacroScorecard() {
   // being past their age budget. They must be threaded through explicitly -- this
   // destructure silently dropped them on the first pass, so every row carried its
   // own `stale` array but the page had no count to show a banner from.
+  // Dimensions whose SOURCE has stopped, as opposed to dimensions merely missing
+  // today. These two look identical in the scorecard -- both simply have no score --
+  // but they mean opposite things to a reader: one is "check back tomorrow", the
+  // other is "this is not coming back without a new data source". Collected here so
+  // the UI and the prompts can say which.
+  const discontinued = {};
+  for (const [dim, byC] of [['cpi', cpi]]) {
+    for (const [ccy, row] of Object.entries(byC || {})) {
+      if (row?.discontinued) (discontinued[dim] ||= {})[ccy] = row.discontinued;
+    }
+  }
+
   const { ranked, uncovered, staleDims, staleCount } = buildMacroScorecard(byCcyDims);
   const pair = macroTopBottomPair(ranked);
   // The board one factor at a time. `composite` says who is strong; `board.driver`
@@ -6389,7 +6413,7 @@ async function _buildMacroScorecard() {
   const board = macroFactorBoard(ranked);
   return {
     ranked, uncovered, staleDims, staleCount, pair, cbSentiment,
-    factors: board.factors, driver: board.driver,
+    factors: board.factors, driver: board.driver, discontinued,
     generatedAt: new Date().toISOString(),
   };
 }

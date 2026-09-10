@@ -39,16 +39,72 @@
 // ECON_UNIVERSE's existing EUR-via-Germany convention for rate/y10/unemp.
 import { fetchFredObservations } from './zscoreSpreadEngine.js';
 
+// ── The OECD CPI catalogue on FRED is dead (verified 2026-09-10) ────────────
+//
+// Every CPALTT01*/CPGRLE01* series this engine was built on has stopped. Checked
+// directly against fredgraph, last observation per series:
+//
+//     CPALTT01DEM659N  2025-03      CPALTT01GBM659N  2025-03
+//     CPALTT01CAM659N  2025-03      CPALTT01CHM659N  2025-04
+//     CPALTT01AUQ659N  2025-01      CPALTT01NZQ659N  2023-07
+//     CPALTT01JPM659N  2021-06
+//
+// This is not a fetch bug or a lag. OECD's Main Economic Indicators mirror on FRED
+// was discontinued in spring 2025, and the whole family froze together. The index
+// variants (DEUCPIALLMINMEI etc.), the COICOP 1999 family (JPNCP010000GYM), and the
+// all-items variants (JPNCPALTT01IXNBM) are all frozen on the same dates -- so
+// there is no live OECD-sourced CPI on FRED at any cadence.
+//
+// Searched for replacements per currency. What exists:
+//
+//   EUR, CHF  ->  Eurostat HICP, a DIFFERENT provider that is still publishing
+//                 (both current to 2026-07). Now used below.
+//   GBP       ->  Eurostat dropped the UK after Brexit (CP0000GBM086NEST stops
+//                 2020-11). No live FRED source found.
+//   JPY, CAD, ->  Eurostat is Europe-only (CP0000CAM086NEST / CP0000JPM086NEST do
+//   AUD, NZD      not exist). World Bank FPCPITOTLZG* is ANNUAL and a year stale.
+//                 No live FRED source found.
+//
+// So five currencies have no CPI at all on FRED right now. They are listed below
+// with `discontinued` rather than deleted: the score they used to produce was being
+// computed off prints up to 63 months old, and the honest state is "we do not have
+// this", not "here is a number from 2021". Getting these back means going outside
+// FRED -- ONS, StatCan, ABS, Stats NZ and e-Stat all publish CPI APIs -- which is a
+// separate build, not a series-ID swap.
+//
+// `discontinued` entries are skipped by fetchCpiData and reported so the UI can say
+// WHY a currency has no inflation read, instead of showing a struck-through number
+// that implies the data is merely late and will come back.
 export const CPI_UNIVERSE = {
+  // Live: BLS, index levels, YoY computed downstream.
   USD: { headline: { series: 'CPIAUCSL', isIndex: true }, core: { series: 'CPILFESL', isIndex: true } },
-  EUR: { headline: { series: 'CPALTT01DEM659N', isIndex: false }, core: { series: 'CPGRLE01DEM659N', isIndex: false } },
-  GBP: { headline: { series: 'CPALTT01GBM659N', isIndex: false } },
-  JPY: { headline: { series: 'CPALTT01JPM659N', isIndex: false }, core: { series: 'CPGRLE01JPM659N', isIndex: false } },
-  AUD: { headline: { series: 'CPALTT01AUQ659N', isIndex: false, quarterly: true }, core: { series: 'CPGRLE01AUQ659N', isIndex: false, quarterly: true } },
-  CAD: { headline: { series: 'CPALTT01CAM659N', isIndex: false }, core: { series: 'CPGRLE01CAM659N', isIndex: false } },
-  CHF: { headline: { series: 'CPALTT01CHM659N', isIndex: false }, core: { series: 'CPGRLE01CHM659N', isIndex: false } },
-  NZD: { headline: { series: 'CPALTT01NZQ659N', isIndex: false, quarterly: true } },
+
+  // Live: Eurostat HICP, index 2015=100 (so isIndex, same treatment as USD -- these
+  // are NOT the OECD "659N" pre-computed YoY prints the old entries were).
+  //
+  // Euro-area aggregate rather than Germany, deliberately departing from this repo's
+  // usual EUR-via-Germany convention: the ECB targets euro-area HICP, so for CPI
+  // specifically the aggregate is the number that actually moves the currency. The
+  // Germany-only series (CP0000DEM086NEST) is equally live if that consistency is
+  // ever preferred over correctness here.
+  EUR: { headline: { series: 'CP0000EZ19M086NEST', isIndex: true } },
+  CHF: { headline: { series: 'CP0000CHM086NEST', isIndex: true } },
+
+  // No live FRED source. See the note above.
+  GBP: { discontinued: { since: '2025-03', was: 'CPALTT01GBM659N', reason: 'OECD MEI mirror discontinued; Eurostat dropped the UK post-Brexit' } },
+  CAD: { discontinued: { since: '2025-03', was: 'CPALTT01CAM659N', reason: 'OECD MEI mirror discontinued; Eurostat is Europe-only' } },
+  AUD: { discontinued: { since: '2025-01', was: 'CPALTT01AUQ659N', reason: 'OECD MEI mirror discontinued; Eurostat is Europe-only' } },
+  NZD: { discontinued: { since: '2023-07', was: 'CPALTT01NZQ659N', reason: 'OECD MEI mirror discontinued; Eurostat is Europe-only' } },
+  JPY: { discontinued: { since: '2021-06', was: 'CPALTT01JPM659N', reason: 'OECD MEI mirror discontinued; Eurostat is Europe-only' } },
 };
+
+// Core CPI is now USD-only. The EUR/CHF core series (CPGRLE01*) died with the rest
+// of the OECD family, and the Eurostat core IDs were NOT independently verified --
+// one candidate that appeared to resolve turned out to be fredgraph silently
+// falling back to the headline series when handed an unknown ID, which would have
+// shipped headline inflation mislabelled as core. Left uncovered rather than
+// guessed, the same discipline the rest of this module already follows. Core does
+// not enter `pressure` in any case; it is reported standalone.
 
 // Every central bank in this universe targets inflation at (or very near)
 // 2% — Fed, ECB, BoE, RBA, BoC, SNB, RBNZ all publish a ~2% target. Using
@@ -146,6 +202,15 @@ export function trendScore(obsMap, meta) {
 // hot, stripped of volatile food/energy swings) rather than adding
 // information to "is headline hot."
 export function cpiScore(data = {}, universe = {}) {
+  // A currency whose source series has stopped reports WHY it has no score. Without
+  // this it would be indistinguishable from a fetch that merely failed today, and
+  // the page would keep implying the number is late rather than gone.
+  if (universe.discontinued) {
+    return {
+      dims: {}, pressure: null, coverage: [], cadence: null,
+      discontinued: universe.discontinued,
+    };
+  }
   const dims = {};
   if (data.headline) dims.headlineLevel = levelVsTargetScore(data.headline, universe.headline);
   if (data.headline) dims.headlineTrend = trendScore(data.headline, universe.headline);
@@ -154,7 +219,9 @@ export function cpiScore(data = {}, universe = {}) {
   const pressureInputs = [dims.headlineLevel?.score, dims.headlineTrend?.score].filter(s => s != null);
   const pressure = pressureInputs.length ? +(pressureInputs.reduce((s, v) => s + v, 0) / pressureInputs.length).toFixed(2) : null;
 
-  return { dims, pressure, coverage: Object.keys(dims) };
+  return { dims, pressure, coverage: Object.keys(dims),
+    // AUD and NZD headline CPI is quarterly at source (ABS / Stats NZ).
+    cadence: universe.headline?.quarterly ? 'quarterly' : 'monthly' };
 }
 
 // Fetch every configured series for one currency. Never throws on a single
@@ -163,6 +230,12 @@ export function cpiScore(data = {}, universe = {}) {
 export async function fetchCpiData(ccy, fredKey, fromDate = '2000-01-01') {
   const cfg = CPI_UNIVERSE[ccy];
   if (!cfg) throw new Error(`No CPI series configured for ${ccy}`);
+  // Nothing to fetch for a discontinued currency -- and requesting the dead series
+  // anyway would spend one of this project's scarce FRED calls to re-download a
+  // print from 2021 (synchronised FRED bursts already get 403-throttled here).
+  if (cfg.discontinued) {
+    return { data: {}, availability: [{ discontinued: cfg.discontinued }] };
+  }
   const data = {}, availability = [];
   await Promise.all(Object.entries(cfg).map(async ([factor, meta]) => {
     try {

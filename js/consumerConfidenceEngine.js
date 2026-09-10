@@ -104,7 +104,8 @@ export function confidenceScore(obsMap, quarterly = false) {
 export function consumerConfidenceCompositeScore(ccy, obsMap) {
   if (!obsMap) return { confidence: null, coverage: [] };
   const r = confidenceScore(obsMap, QUARTERLY_CCY.has(ccy));
-  return { ...r, confidence: r.score, coverage: ['confidence'] };
+  return { ...r, confidence: r.score, coverage: ['confidence'],
+    cadence: QUARTERLY_CCY.has(ccy) ? 'quarterly' : 'monthly' };
 }
 
 // Fetch the one configured series for one currency. Never throws — a

@@ -404,7 +404,16 @@ export function laborMarketScore(data = {}, universe = {}) {
     flag = 'participation_trap — unemployment improving but participation falling; the headline rate may be flattering a genuinely softer labor market';
   }
 
-  return { dims, strength, flag, coverage: Object.keys(dims) };
+  // A dimension is only as fresh as its SLOWEST covered series, so a currency whose
+  // labour read mixes monthly unemployment with quarterly wages/participation ages
+  // at the quarterly rate. Judging that mix against a monthly budget marked live
+  // data stale (GBP and NZD both read ~5 months old, which is normal for them).
+  const cadence = Object.keys(dims).some(d => {
+    const key = d.replace(/(Trend|Growth|Level)$/, '');
+    return universe[key]?.quarterly || universe[d]?.quarterly;
+  }) ? 'quarterly' : 'monthly';
+
+  return { dims, strength, flag, coverage: Object.keys(dims), cadence };
 }
 
 // Fetch every configured series for one currency, PLUS (USD only) the

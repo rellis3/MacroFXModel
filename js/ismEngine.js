@@ -132,10 +132,11 @@ export function ismScore(ccy, data = {}) {
     if (data.empireState) dims.empireState = diffusionIndexScore(data.empireState);
     const inputs = [dims.industrialProduction?.score, dims.philFed?.score, dims.empireState?.score].filter(s => s != null);
     const activity = inputs.length ? +(inputs.reduce((s, v) => s + v, 0) / inputs.length).toFixed(2) : null;
-    return { dims, activity, coverage: Object.keys(dims) };
+    return { dims, activity, coverage: Object.keys(dims), cadence: 'monthly' };
   }
   if (data.businessConfidence) dims.businessConfidence = businessConfidenceScore(data.businessConfidence, QUARTERLY_CONFIDENCE.has(ccy));
-  return { dims, activity: dims.businessConfidence?.score ?? null, coverage: Object.keys(dims) };
+  return { dims, activity: dims.businessConfidence?.score ?? null, coverage: Object.keys(dims),
+    cadence: QUARTERLY_CONFIDENCE.has(ccy) ? 'quarterly' : 'monthly' };
 }
 
 // Fetch every configured series for one currency. Never throws on a
