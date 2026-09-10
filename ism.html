@@ -142,7 +142,32 @@ async function load() {
     $('body').innerHTML = `<div class="empty">${esc(r.error || 'No data yet')} — click Refresh (needs FRED_KEY configured on the server).</div>`;
     return;
   }
-  $('lastCheck').textContent = `Generated ${new Date(r.generatedAt).toLocaleString()}`;
+  // The DATA's age leads; the fetch time is demoted to a suffix. `generatedAt` is
+  // always today and is true whether the source published this morning or stopped
+  // years ago, so a fresh-looking timestamp over a frozen print told the reader the
+  // opposite of the truth. Shared helper so all ten macro pages say it the same way
+  // and stay cadence-aware. See js/dataAgeStamp.js.
+  // The DATA's age leads; the fetch time is demoted to a suffix. `generatedAt` is
+  // always today and is true whether the source published this morning or stopped
+  // years ago, so a fresh-looking timestamp over a frozen print told the reader the
+  // opposite of the truth. Shared helper so all ten macro pages say it the same way
+  // and stay cadence-aware. See js/dataAgeStamp.js.
+  //
+  // The payload is stashed and the re-stamp exposed because js/dataAgeStamp.js is an
+  // ES module and therefore DEFERRED: this render usually wins the race, so without
+  // the callback the page would settle on the plain-timestamp fallback and quietly
+  // keep the old, misleading behaviour on every load.
+  window.__lastMacroPayload = r;
+  window.__restamp = () => {
+    const p = window.__lastMacroPayload;
+    if (!p) return;
+    if (window.dataAgeStamp) {
+      window.dataAgeStamp.renderDataAgeStamp($('lastCheck'), p, { dim: 'ism', label: 'business activity', fallbackCadence: 'monthly' });
+    } else {
+      $('lastCheck').textContent = `Generated ${new Date(p.generatedAt).toLocaleString()}`;
+    }
+  };
+  window.__restamp();
   const order = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'NZD'];
   $('body').innerHTML = `<div class="grid">${order.filter(c => r.byCcy?.[c]).map(c => renderCcy(c, r.byCcy[c], c === 'USD')).join('')}</div>`;
 }
@@ -166,6 +191,16 @@ async function refreshNow() {
 }
 
 load();
+</script>
+<!-- Data-age stamp (js/dataAgeStamp.js) — puts the newest OBSERVATION date in
+     the header instead of the fetch time, and distinguishes current / overdue /
+     discontinued. Module shim assigns to window because this page's own script is
+     classic; same pattern as today.html's bricks. -->
+<script type="module">
+  import * as DataAgeStamp from './js/dataAgeStamp.js';
+  window.dataAgeStamp = DataAgeStamp;
+  // Re-stamp if the page already rendered before this module finished loading.
+  try { window.__restamp?.(); } catch (e) {}
 </script>
 </body>
 </html>
