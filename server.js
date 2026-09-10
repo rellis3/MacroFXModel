@@ -3455,6 +3455,70 @@ async function _buildMorningBrief() {
     }
   } catch { /* omitted when either side is unavailable */ }
 
+  // THE BOARD GATE. The per-pair prompt got a binding gate after a gold read proposed a
+  // SHORT while its own analysis favoured the bullish side with zero drivers agreeing.
+  // The brief has exactly the same failure mode and had no gate at all — it once picked
+  // USD/JPY SHORT while citing a base rate that ran the other way on ~7 independent
+  // samples. "Return null if nothing stands out" is permission, not a constraint.
+  //
+  // Built from what is already loaded here, so it costs nothing extra.
+  let boardGate = '';
+  try {
+    const blockers = [], support = [];
+    if (conflictLine.startsWith('DATA CONFLICT')) blockers.push('a load-bearing number disagrees across sources (see DATA CONFLICT above)');
+
+    // Correlation HIGH is a blocker for a SINGLE board trade specifically: when
+    // everything moves together, naming one instrument implies a diversified pick that
+    // does not exist — the honest output is a board-level risk statement, not a trade.
+    try {
+      const raw = fs.existsSync(CORR_HISTORY_PATH) ? JSON.parse(fs.readFileSync(CORR_HISTORY_PATH, 'utf8')) : null;
+      const last = raw?.records?.at(-1)?.corr || {};
+      const vals = Object.values(last).filter(Number.isFinite).map(Math.abs);
+      if (vals.length >= 6) {
+        const mean = vals.reduce((a, x) => a + x, 0) / vals.length;
+        if (mean >= 0.6) blockers.push(`mean absolute correlation is ${mean.toFixed(2)} — the board is one bet today, so a single "best instrument" pick is misleading`);
+      }
+    } catch {}
+
+    // Supporting evidence, each admitted only on its own terms.
+    const sc = await _buildMacroScorecard().catch(() => null);
+    const ranked = sc?.ranked ?? [];
+    if (ranked.length >= 4) {
+      const top = ranked[0], bot = ranked[ranked.length - 1];
+      const gap = (top.composite ?? 0) - (bot.composite ?? 0);
+      // Both legs need real coverage — differencing a 12-dimension composite against a
+      // 5-dimension one is the comparability problem, not a signal.
+      const bothCovered = (top.coverage?.length ?? 0) >= 6 && (bot.coverage?.length ?? 0) >= 6;
+      if (gap >= 0.35 && bothCovered) support.push(`macro scorecard gap ${top.ccy} ${top.composite} vs ${bot.ccy} ${bot.composite} (${gap.toFixed(2)}), both on >=6 dimensions`);
+      else if (gap >= 0.35) support.push(`scorecard gap ${gap.toFixed(2)} but one leg has thin coverage — weak support`);
+    }
+    // Regime precedent counts ONLY where it has the sample and held its sign.
+    try {
+      const rraw = await kv.get(_REGIME_KV).catch(() => null);
+      const rd = rraw ? (JSON.parse(rraw)?.data ?? JSON.parse(rraw)) : null;
+      const key = rd?.now?.key, st = rd?.study;
+      if (key && st?.ok) {
+        const usable = (st.pairs || [])
+          .map(pr => ({ pr, r: st.regimes?.[key]?.[pr]?.[20] }))
+          .filter(x => x.r?.all?.enough && !x.r.unstable && Math.abs(x.r.all.mean ?? 0) >= 0.3);
+        if (usable.length) support.push(`${usable.length} pair(s) with a regime precedent that cleared the sample bar AND held its sign across both halves: ${usable.map(x => `${x.pr} ${x.r.all.mean}%`).join(', ')}`);
+      }
+    } catch {}
+    // Surprise index counts only when it is actually current.
+    try {
+      const rows = await _readSurpriseStore();
+      const idx = _buildSurpriseIndex(rows);
+      const live = Object.entries(idx.byCcy).filter(([, v]) => v.score != null);
+      if (live.length >= 2) support.push(`economic surprise is scoring for ${live.length} currencies`);
+    } catch {}
+
+    const verdict = blockers.length ? 'NO_TRADE' : support.length < 2 ? 'NO_TRADE' : 'OK';
+    boardGate = `BOARD TRADE GATE (binding — see the closing task): ${verdict}\n`
+      + `  Blockers: ${blockers.length ? blockers.join(' | ') : 'none'}\n`
+      + `  Supporting evidence: ${support.length ? support.join(' | ') : 'none'}\n`
+      + `  NO_TRADE means boardTradeOfDay.pair MUST be null — either a blocker fired or fewer than two independent lines of evidence support any pick. Use the rationale to say which. A base rate on a handful of independent samples is NOT supporting evidence, and neither is a scorecard gap between two composites measured over different numbers of dimensions.`;
+  } catch { /* omitted rather than guessed at */ }
+
   const macro = [
     `VIX ${g('vix')} (prev ${gp('vix')})${g('vix3m') != null ? ` · VIX3M ${g('vix3m')} (${g('vix') > g('vix3m') ? 'BACKWARDATED — near-term fear' : 'contango — normal'})` : ''}`,
     `HY credit spread ${g('hy')}% (prev ${gp('hy')}%)`,
@@ -3465,6 +3529,7 @@ async function _buildMorningBrief() {
     `DE10Y ${g('de10y')} · JP10Y ${g('jp10y')} · GB10Y ${g('gb10y')}${fred?.de10y?.asOf ? ` — NOTE: these are OECD MONTHLY series, latest print ${fred.de10y.asOf}; they are not comparable to the daily US tenors above on a same-day basis` : ''}`,
     `Real 10Y (TIPS) ${g('tips')} · WTI ${g('wti')}`,
     conflictLine || null,
+    boardGate || null,
     realYieldWindows || null,
     ratesSplitLine || null,
     surpriseLine || null,
@@ -3536,7 +3601,11 @@ READABILITY IS THE #1 GOAL — write for a sharp trader who is NOT a rates/vol s
 - Be honest about weight: rates/curve, credit spreads and the vol-risk-premium are the evidenced macro reads — lean on them. Don't state technicals or positioning as mechanism-of-fact, and don't manufacture a strong directional call from a quiet, data-light tape — say when it's a lean.
 - NO FOLKLORE-AS-FACT. Options positioning, implied-vol percentiles (EVZ/GVZ/VIX rank), gamma, technical levels and S/R do NOT reliably PREDICT what comes next — they describe where the market is positioned NOW. NEVER claim one "historically precedes", "reliably leads", "tends to precede", or "signals an incoming" move, and never say "the tape wants to" or state "smart money is doing X" as fact. Elevated EVZ means options are priced for a bigger move than realized — say exactly that ("options are braced for movement the tape hasn't delivered"), not that it foreshadows one. Describe positioning; hedge the inference.
 
-Finally, go one level more specific than the USD/EUR/JPY/GBP/Gold/Stocks/Oil reads above: give a board-wide read across ELEVEN instruments — the seven USD-pairs EURUSD, GBPUSD, USDJPY, USDCHF, USDCAD, AUDUSD, NZDUSD, PLUS four risk/commodity instruments this desk also trades: XAUUSD (gold), NAS100, SPX500, WTI. For each FX pair, state a lean — BULLISH/BEARISH toward the pair's BASE currency (the first one — e.g. "BULLISH" on EURUSD means EUR strength/USD weakness), or NEUTRAL — grounded strictly in the macro scorecard composites/deltas, yields and risk mood above. For XAUUSD/NAS100/SPX500/WTI, lean BULLISH/BEARISH/NEUTRAL on the instrument itself, grounded in whatever of the dollar/real-yields (gold), VIX/credit spreads/risk mood (NAS100, SPX500), and the raw WTI level + broad risk mood (WTI — you have no supply/demand-side oil data here, so lean on this one more cautiously and say so) actually supports it. NEUTRAL is the correct answer whenever the data doesn't clearly lean either way; lean less confidently wherever coverage is thin, and say so in the note. Then, from all eleven, name the ONE instrument whose fundamental case is currently clearest — the single best one to have on the watchlist today, FX or not — with a direction and a rationale that cites the SPECIFIC data points behind it (composite scores, deltas, yield/vol readings — not a vibe). This is a macro-fundamentals read, not a price-level or entry/stop/target call (this brief carries no live price data) — if nothing clearly stands out, say so honestly and return "pair":null rather than forcing a pick.
+Finally, go one level more specific than the USD/EUR/JPY/GBP/Gold/Stocks/Oil reads above: give a board-wide read across ELEVEN instruments — the seven USD-pairs EURUSD, GBPUSD, USDJPY, USDCHF, USDCAD, AUDUSD, NZDUSD, PLUS four risk/commodity instruments this desk also trades: XAUUSD (gold), NAS100, SPX500, WTI. For each FX pair, state a lean — BULLISH/BEARISH toward the pair's BASE currency (the first one — e.g. "BULLISH" on EURUSD means EUR strength/USD weakness), or NEUTRAL — grounded strictly in the macro scorecard composites/deltas, yields and risk mood above. For XAUUSD/NAS100/SPX500/WTI, lean BULLISH/BEARISH/NEUTRAL on the instrument itself, grounded in whatever of the dollar/real-yields (gold), VIX/credit spreads/risk mood (NAS100, SPX500), and the raw WTI level + broad risk mood (WTI — you have no supply/demand-side oil data here, so lean on this one more cautiously and say so) actually supports it. NEUTRAL is the correct answer whenever the data doesn't clearly lean either way; lean less confidently wherever coverage is thin, and say so in the note. Then, from all eleven, name the ONE instrument whose fundamental case is currently clearest — the single best one to have on the watchlist today, FX or not — with a direction and a rationale that cites the SPECIFIC data points behind it (composite scores, deltas, yield/vol readings — not a vibe). This is a macro-fundamentals read, not a price-level or entry/stop/target call (this brief carries no live price data).
+
+THE BOARD TRADE GATE IS BINDING, NOT ADVICE. Read the BOARD TRADE GATE line above before you pick anything. If its verdict is NO_TRADE you MUST return "pair":null and use the rationale to say which blocker fired or how little evidence there was — no amount of narrative quality overrides it, and "nothing clears the bar today" is a complete and useful answer. Two things explicitly do NOT count as supporting evidence: a base rate resting on a handful of independent samples (a 61% hit rate on ~7 samples is one observation away from a coin flip), and a scorecard gap between two composites measured over different numbers of dimensions. Never name a pick whose own cited evidence points the other way.
+
+AND SAY WHAT YOU ARE DECLINING TO USE. Where a channel is unusable — a contradicted number, a decomposition that will not close, a base rate too thin to lean on — name it and say you are not building on it. A good per-pair read on this desk did exactly that ("two feeds disagree on WTI, so I'm not building the case on the inflation-breakeven channel today") and it is more useful than silence, because the reader learns which road was closed rather than wondering why it was not taken.
 
 STRUCTURE RULES — this is read every morning before the open, so length is a cost:
 - SAY EACH NUMBER ONCE. Pick the one place a figure actually decides something and put it there. A deployed brief repeated "USD +0.19 across 12 dimensions" four times and "JPY +0.4, curve +0.83" three times; roughly a third of its length was restatement. If a number has already appeared, refer to it in words ("the same scorecard gap") rather than reprinting it.

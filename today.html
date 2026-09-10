@@ -716,6 +716,9 @@
   .move-row .mv-blip{margin-left:2px;color:var(--amber);font-size:10.5px;cursor:help}
   .move-row .mv-span{margin-left:3px;color:var(--text3);font-size:9px;cursor:help;white-space:nowrap}
   /* Verdict — deliberately the heaviest thing in the brief. */
+  .mb-stale{margin-bottom:9px;padding:7px 11px;border-radius:5px;font-size:11.5px;line-height:1.55;
+    color:var(--amber);background:rgba(245,158,11,.09);border:1px solid rgba(245,158,11,.35)}
+  .mb-stale b{color:var(--text)}
   .mb-verdict{display:flex;flex-direction:column;gap:5px;margin-bottom:10px;padding:10px 12px;
     border-left:3px solid var(--blue);background:var(--card2);border-radius:0 6px 6px 0}
   .mb-v{display:grid;grid-template-columns:82px 1fr;gap:9px;align-items:baseline}
@@ -9264,6 +9267,25 @@ function renderMorningBrief(r) {
     el.style.display = 'block'; return;
   }
   const a = r.analysis;
+  // A morning brief read in the afternoon is a different artefact. The generation time
+  // was in the footer, below everything it qualifies — which is the wrong end. A brief
+  // written before London opened is describing a tape that has since had a whole
+  // session to change its mind, and the reader has to know that BEFORE reading it,
+  // not after.
+  const genMs = r.generatedAt ? Date.parse(r.generatedAt) : NaN;
+  const ageH = Number.isFinite(genMs) ? (Date.now() - genMs) / 3.6e6 : null;
+  const sameDay = Number.isFinite(genMs)
+    && new Date(genMs).toDateString() === new Date().toDateString();
+  const stale = ageH != null && (!sameDay || ageH >= 6);
+  const ageTxt = ageH == null ? '' : ageH < 1 ? `${Math.round(ageH * 60)}m old` : ageH < 24 ? `${ageH.toFixed(1)}h old` : `${Math.round(ageH / 24)}d old`;
+  const ageChip = ageH == null ? ''
+    : `<span class="chip ${stale ? 'warn' : 'neu'}" style="font-size:9px" title="${esc(
+        stale
+          ? `Generated ${new Date(genMs).toLocaleString()}${sameDay ? '' : ' — a PREVIOUS day'}. Every level, yield and risk reading in it is from then, not now. Regenerate before acting on any of it.`
+          : `Generated ${new Date(genMs).toLocaleString()}.`)}">${stale ? '⚠ ' : ''}${ageTxt}</span>`;
+  const staleBanner = stale
+    ? `<div class="mb-stale">⚠ This brief was written ${ageTxt}${sameDay ? '' : ', on a previous day'} — the numbers in it are from then. Hit <b>Generate</b> for a current read before acting on anything below.</div>`
+    : '';
   const regChip = /RISK-ON/i.test(a.regime) ? 'range' : /RISK-OFF/i.test(a.regime) ? 'bear' : 'neu';
   const aCls = l => /BULL/i.test(l) ? 'up' : /BEAR/i.test(l) ? 'dn' : 'nu';
   const cell = (lbl, v) => v ? `<div class="mb-cell"><div class="mb-cl">${lbl}</div><div class="mb-cv">${esc(v)}</div></div>` : '';
@@ -9292,8 +9314,9 @@ function renderMorningBrief(r) {
   }
   const meterRow = meters.length ? `<div class="hero-meter-row">${meters.join('')}</div>` : '';
   el.innerHTML =
-    `<div class="mb-hd"><span class="mb-eyebrow">🗞 Morning Brief</span>${a.regime ? `<span class="chip ${regChip}">${esc(a.regime)}</span>` : ''}<span class="chip warn" style="font-size:9px">AI · grounded, not backtested</span>${gen}${secChev('mbrief')}</div>` +
+    `<div class="mb-hd"><span class="mb-eyebrow">🗞 Morning Brief</span>${a.regime ? `<span class="chip ${regChip}">${esc(a.regime)}</span>` : ''}${ageChip}<span class="chip warn" style="font-size:9px">AI · grounded, not backtested</span>${gen}${secChev('mbrief')}</div>` +
     secBody('mbrief',
+      staleBanner +
       // The three-line answer, before anything else. Someone who reads only this and
       // stops should not be misled — which is why it sits above the headline rather
       // than after it, and why the rest of the brief is explicitly optional depth.
