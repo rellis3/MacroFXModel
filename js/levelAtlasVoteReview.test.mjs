@@ -208,6 +208,20 @@ function mkBook(dimSpecs) {
   const highMargin = buildBarrierTrades(touches, book, { rearmFrac: 0.3, minMargin: 2 });
   ok('T6 minMargin filters out lower-margin touches (all these are margin=1)', highMargin.length === 0, highMargin.length);
 
+  // T6c — oosStartDate (2026-09-11 fix): lets a caller pass an HONEST book
+  // (built from in-sample-only touches, so ITS OWN splitDate sits earlier
+  // than the real OOS boundary) while still scoring the REAL out-of-sample
+  // window, instead of the book's own splitDate silently narrowing it.
+  {
+    const bookLateSplit = { ...book, splitDate: '2023-01-01' }; // simulates an honest book with a DIFFERENT (here, later) own split
+    const defaultBehavior = buildBarrierTrades(touches, bookLateSplit, { rearmFrac: 0.3 });
+    ok('T6c no oosStartDate -> falls back to book.splitDate exactly as before (only 2023 touches, 20 of the 40)',
+       defaultBehavior.length === 20, defaultBehavior.length);
+    const overridden = buildBarrierTrades(touches, bookLateSplit, { rearmFrac: 0.3, oosStartDate: '2022-01-01' });
+    ok('T6c oosStartDate overrides the book\'s own splitDate -> back to all 40 touches',
+       overridden.length === 40, overridden.length);
+  }
+
   // T6b — outcome:'neither' touches are KEPT and priced, not dropped (the
   // 2026-09-09 fix). Same book/votes as above, mixed in with real
   // resolutions so the fix is proven alongside the existing behavior, not

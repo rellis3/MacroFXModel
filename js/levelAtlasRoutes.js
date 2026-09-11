@@ -26,7 +26,7 @@
  */
 import { loadM1ForPair } from './volBacktestM1Engine.js';
 import { atlasWalk } from './levelAtlasEngine.js';
-import { buildAtlasBook, buildAtlasCard, sessionTransitionTable, renderBookText, matchLiveContext } from './levelAtlasReport.js';
+import { buildAtlasBook, buildAtlasCard, sessionTransitionTable, renderBookText, matchLiveContext, splitAt } from './levelAtlasReport.js';
 import { buildBarrierTrades, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyFadeStopTightening, applyCurrencyLossGate, priceAtTighterStop, voteDecision, VOTE_TRADES_SCHEMA } from './levelAtlasVoteReview.js';
 import { summarizeTrades, maxDrawdownFromPnls, sharpeStdError, minTrackRecordLength } from './metricsCore.js';
 import { portfolioStats } from './backtestStats.js';
@@ -143,14 +143,28 @@ async function runOne(instrument, { rearmFracs = [0.15, 0.3, 0.5], onLog = () =>
   if (voteBook) {
     try {
       const cost = costForPair(pair, assetClass);
-      const trades = buildBarrierTrades(touches, voteBook, { rearmFrac: DEFAULT_REARM, cost });
+      // HONEST book (2026-09-11 fix — see buildBarrierTrades' own header
+      // for the full account): `voteBook` above is built from ALL touches,
+      // which is correct for the LIVE snapshot below (today is always
+      // genuinely past-relative-to-everything), but wrong for scoring OOS
+      // performance — its own splitDate/holdsOOS gate was allowed to see
+      // the same period this backtest reports on. Build a SEPARATE book
+      // from in-sample touches only, and score the REAL OOS window (this
+      // pair's actual splitDate, not the honest book's own earlier inner
+      // split) against it — analysis/vote_atlas_decomposition.mjs's own
+      // "HONEST" path, now the production default.
+      const atRearm = touches.filter(t => t.rearmFrac === DEFAULT_REARM);
+      const { split: realSplit } = splitAt(atRearm);
+      const isOnly = atRearm.filter(t => t.date < realSplit);
+      const honestBook = buildAtlasBook(isOnly, { rearmFrac: DEFAULT_REARM }) ?? voteBook;
+      const trades = buildBarrierTrades(touches, honestBook, { rearmFrac: DEFAULT_REARM, cost, oosStartDate: realSplit });
       const summaryByMargin = {};
       for (const m of [1, 2, 3, 4]) {
         const sub = trades.filter(t => t.margin >= m);
         summaryByMargin[m] = summarizeTrades(sub.map(t => t.pnlPct), sub.map(t => t.date));
       }
       await putJSON(`${PREFIX}/${pair}-votetrades.json`, {
-        instrument: sym, generatedAt: new Date().toISOString(), cost, splitDate: voteBook.splitDate,
+        instrument: sym, generatedAt: new Date().toISOString(), cost, splitDate: realSplit,
         schema: VOTE_TRADES_SCHEMA, trades, summaryByMargin,
       });
     } catch (e) { onLog(`${sym}: vote-trades build/persist failed (${e.message}) — non-fatal, main book still saved`); }

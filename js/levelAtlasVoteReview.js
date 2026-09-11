@@ -165,7 +165,15 @@ export function reviewVoteBacktest(touches, book, { excludeRungs = ['p90'], rear
 // fixed for the HL early-reaction signal (js/hlSignalCore.js's
 // HL_TOUCH_SCHEMA). js/levelAtlasRoutes.js refuses to serve a schema-1 file
 // rather than silently reproducing the pre-fix (inflated) numbers.
-export const VOTE_TRADES_SCHEMA = 2;
+//
+// Bumped again 2026-09-11: a SECOND, deeper look-ahead leak, in the book
+// itself (buildBarrierTrades' own header, just above, has the full
+// account) — a schema-2 file was scored with a book that was allowed to
+// see the same period it's being reported on. Measured: 73% of the
+// margin>=3 edge was this leak (analysis/vote_atlas_decomposition.mjs).
+// Schema 3 = built from an HONEST (in-sample-only) book via
+// buildBarrierTrades' new `oosStartDate` option.
+export const VOTE_TRADES_SCHEMA = 3;
 
 /**
  * The HONEST version of a traded outcome: a real bracket order, target/stop
@@ -228,17 +236,38 @@ export function priceBarrierTrade(touch, decision, cost = 0) {
  * `minMargin` lets a caller test "would only taking margin>=N clear the bar"
  * without re-deriving the vote from scratch.
  *
+ * `oosStartDate` (2026-09-11 fix) decouples "which date range counts as
+ * OOS" from "which book's own splitDate to trust" — see the header note
+ * below for why this matters. Defaults to `book.splitDate` (old behavior,
+ * unchanged for every existing caller that doesn't pass it).
+ *
  *   buildBarrierTrades(touches, book, opts) -> [{ instrument, date, time, resolveTime,
  *     side, rung, entry, pip, decision, margin, targetPips, stopPips, win, pnlPct }]
  */
-export function buildBarrierTrades(touches, book, { excludeRungs = ['p90'], rearmFrac = 0.3, cost = 0, minMargin = 1 } = {}) {
+export function buildBarrierTrades(touches, book, { excludeRungs = ['p90'], rearmFrac = 0.3, cost = 0, minMargin = 1, oosStartDate = null } = {}) {
   if (!book) return null;
   // outcome:'neither' KEPT, not filtered out — 2026-09-09 fix (see
   // priceBarrierTrade's own header). Dropping it was a look-ahead selection
   // bias: whether a touch's race resolves before the session ends isn't
   // knowable at entry time, so excluding those touches silently biased the
   // backtest population toward races that had time to finish.
-  const oos = touches.filter(t => t.rearmFrac === rearmFrac && t.date >= book.splitDate
+  //
+  // A SECOND, deeper look-ahead leak lives in the BOOK itself, found
+  // 2026-09-10 (js/levelAtlasReport.js's matchLiveContext/annotateHolds):
+  // `book.splitDate` and a book's own `holdsOOS` gate are normally computed
+  // from the SAME population this function then scores as "OOS" -- the
+  // vote's constituent dimensions get selected BECAUSE they worked in the
+  // period being reported on. Measured impact: 73% of the margin>=3 edge
+  // was this leak (analysis/vote_atlas_decomposition.mjs). The fix isn't to
+  // change how a book is built (legitimate for the LIVE bot, which only
+  // ever sees genuinely past data) -- it's that a BACKTEST must never score
+  // a period its own book was allowed to see. `oosStartDate` lets a caller
+  // pass an HONEST book (built from in-sample touches only, so its own
+  // `splitDate` is an earlier, inner split) while still scoring the REAL
+  // out-of-sample window, instead of the book's own (wrong, too-early)
+  // splitDate silently narrowing what counts as "OOS".
+  const splitDate = oosStartDate ?? book.splitDate;
+  const oos = touches.filter(t => t.rearmFrac === rearmFrac && t.date >= splitDate
     && !excludeRungs.includes(t.rung));
   const trades = [];
   for (const t of oos) {
