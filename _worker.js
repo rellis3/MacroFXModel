@@ -66,8 +66,9 @@ function isAllowedKVKey(key) {
     'fib_atlas_bot_config', 'fib_atlas_bot_credentials', 'fib_atlas_bot_status',
     'fib_atlas_bot_plan', 'fib_atlas_bot_state', 'fib_atlas_bot_trade_log', 'fib_atlas_bot_decision_log',
     'pattern_bot_state', 'pattern_bot_status', 'pattern_bot_config',
-    'level_engine_bot_state', 'level_engine_bot_status', 'level_engine_fwd_log']);
-  const PREFIXES = ['ohlc_', 'ohlc5m_', 'ohlc30m_', 'quote_', 'ai_', 'compass_', 'fredhistory_', 'events_', 'event_windows_', 'arima_price_', 'gold_', 'beta_', 'rgv1_', 'rgv2_', 'rgv4_', 'rgv7_', 'trade_hist_', 'confluence_', 'vmlog_', 'oi_raw_'];
+    'level_engine_bot_state', 'level_engine_bot_status', 'level_engine_fwd_log',
+    'bot_allocations']);
+  const PREFIXES = ['expect_', 'ohlc_', 'ohlc5m_', 'ohlc30m_', 'quote_', 'ai_', 'compass_', 'fredhistory_', 'events_', 'event_windows_', 'arima_price_', 'gold_', 'beta_', 'rgv1_', 'rgv2_', 'rgv4_', 'rgv7_', 'trade_hist_', 'confluence_', 'vmlog_', 'oi_raw_'];
   if (EXACT.has(key)) return true;
   return PREFIXES.some(p => key.startsWith(p));
 }
@@ -107,6 +108,65 @@ async function mergeTradeHistory(env, botKey, trades) {
     if (!toAdd.length) return;
     await env.FX_SCORES.put(histKey, JSON.stringify([...existing, ...toAdd]));
   }));
+}
+
+// ── Daily equity rows ────────────────────────────────────────────────────────
+// One row per bot per UTC day in equity_<bot>_<YYYY-MM>, from the balance the
+// bot already reports on every status push. Bots need no change: the server
+// keeps what they were throwing away. Row: { date, balance, equity, allocation,
+// open_positions, peak }.
+//
+// Write discipline: status pushes arrive every ~30s from ~20 bots. Writing the
+// row on each one would be ~60k KV writes a day for a value that only changes
+// when a trade closes. So a row is (re)written only when the balance differs
+// from the last write, or the UTC day has rolled — which is roughly "one write
+// per closed trade, plus one per day", and the in-memory `_eqLast` makes the
+// check free. A restart just costs one extra write per bot.
+//
+// `allocation` is copied ONTO the row at write time rather than looked up when
+// read, so a later re-allocation cannot retroactively rewrite history
+// (LIVE_BACKTEST_ALIGNMENT.md §4.2). `peak` is the running high-water mark
+// across the month's rows plus whatever the prior month ended on.
+const _eqLast = new Map();          // bot -> { date, balance }
+let _allocCache = { at: 0, v: {} };
+
+async function loadAllocations(env) {
+  if (Date.now() - _allocCache.at < 60_000) return _allocCache.v;
+  try {
+    const raw = await env.FX_SCORES.get('bot_allocations');
+    const j = raw ? JSON.parse(raw) : null;
+    _allocCache = { at: Date.now(), v: (j && (j.data ?? j)) || {} };
+  } catch (e) { _allocCache = { at: Date.now(), v: {} }; }
+  return _allocCache.v;
+}
+
+async function recordEquity(env, botKey, status) {
+  if (!env.FX_SCORES) return;
+  const balance = Number(status.balance);
+  const date = new Date().toISOString().slice(0, 10);
+  const last = _eqLast.get(botKey);
+  if (last && last.date === date && Math.abs(last.balance - balance) < 0.005) return;
+  const month = date.slice(0, 7);
+  const key = `equity_${botKey}_${month}`;
+  let rows = [];
+  try { const raw = await env.FX_SCORES.get(key); if (raw) rows = JSON.parse(raw); if (!Array.isArray(rows)) rows = []; } catch (e) { rows = []; }
+  const alloc = await loadAllocations(env);
+  const equity = Number.isFinite(Number(status.equity)) ? Number(status.equity) : null;
+  const openN = Array.isArray(status.mt5_positions) ? status.mt5_positions.length : null;
+  // Prior peak: the month's rows so far, else the row's own balance (a new month
+  // starts its own high-water mark from wherever it opens — the reader stitches
+  // months together and re-derives the true peak across the whole series).
+  const prevPeak = rows.reduce((m, r) => Math.max(m, Number(r.peak) || 0, Number(r.balance) || 0), 0);
+  const row = {
+    date, balance: +balance.toFixed(2), equity: equity == null ? null : +equity.toFixed(2),
+    allocation: Number.isFinite(Number(alloc[botKey])) ? Number(alloc[botKey]) : null,
+    open_positions: openN, peak: +Math.max(prevPeak, balance).toFixed(2), at: Date.now(),
+  };
+  const i = rows.findIndex(r => r.date === date);
+  if (i >= 0) rows[i] = row; else rows.push(row);
+  rows.sort((a, b) => a.date.localeCompare(b.date));
+  await env.FX_SCORES.put(key, JSON.stringify(rows));       // permanent: PERMANENT_PREFIXES has equity_
+  _eqLast.set(botKey, { date, balance });
 }
 
 // ── Equity symbols sourced from OANDA (not TwelveData) ───────────────────────
@@ -1056,6 +1116,8 @@ export default {
             // Irreplaceable primary source — a 48h TTL here would silently
             // delete hand-logged observations that cannot be recomputed.
             'cog_signal_log', 'cog_shadow_log',
+            // The declared per-bot capital base. Hand-entered, irreplaceable.
+            'bot_allocations',
           ]);
           // PERMANENT_KEYS is exact-match, which cannot express a key that
           // rotates (one per day). vmlog_* is the VuManChu forward-validation
@@ -1064,7 +1126,10 @@ export default {
           // which is precisely the failure mode documented in CLAUDE.md.
           // oi_raw_* is the irreplaceable capture: CME serves no options history, so a
           // day lost to the 48h TTL cannot be re-fetched at any price. Permanent.
-          const PERMANENT_PREFIXES = ['vmlog_', 'oi_raw_'];
+          // equity_ / expect_: point-in-time records that cannot be rebuilt (see
+          // kv.js isCfKey for the reasoning). Missing this line = a 48h TTL and
+          // the equity curve deletes itself as it is written.
+          const PERMANENT_PREFIXES = ['vmlog_', 'oi_raw_', 'equity_', 'expect_'];
           const isPermanent = PERMANENT_KEYS.has(key)
             || PERMANENT_PREFIXES.some(p => key.startsWith(p));
           const kvOpts = isPermanent ? {} : { expirationTtl: 172800 }; // 48h
@@ -1077,6 +1142,9 @@ export default {
           const STATUS_KEYS = new Set(['regime_bot_status', 'gold_bot_status', 'gold_v2_status', 'confluence_bot_status', 'regime_bot_v2_status', 'regime_bot_v4_status', 'regime_bot_v7_status', 'dyn_anchor_status', 'macro_equity_bot_status', 'volatility_bot_status', 'volatility_bot_v2_status', 'volatility_ride_status', 'range_line_bot_status', 'oi_bot_status', 'backtestsystem_status', 'yield_spread_status', 'hedge_bot_status', 'position_hedge_bot_status', 'nq_qmr_status', 'spx_qmr_status', 'dow_qmr_status', 'dax_qmr_status', 'fib_atlas_bot_status']);
           if (STATUS_KEYS.has(key) && data?.today_closed_trades?.length) {
             await mergeTradeHistory(env, key, data.today_closed_trades);
+          }
+          if (STATUS_KEYS.has(key) && Number.isFinite(Number(data?.balance))) {
+            await recordEquity(env, key, data);
           }
           return json({ ok: true });
         } catch(e) {
@@ -2362,6 +2430,35 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
           await mergeTradeHistory(env, 'bot_status', body.today_closed_trades);
         }
         return json({ ok: true });
+      }
+
+      // -- /api/bot-audit/equity ----------------------------------
+      // The daily balance/equity/allocation rows recordEquity() keeps, for one
+      // bot over a date range. One KV read per month touched.
+      if (path === '/api/bot-audit/equity' && request.method === 'GET') {
+        if (!env.FX_SCORES) return json({ ok: false, rows: [], reason: 'KV not bound' });
+        const bot = url.searchParams.get('bot') || '';
+        const from = url.searchParams.get('from') || new Date().toISOString().slice(0, 10);
+        const to   = url.searchParams.get('to')   || from;
+        if (!bot) return err('bot required', 400);
+        const months = [];
+        for (let m = from.slice(0, 7); m <= to.slice(0, 7); ) {
+          months.push(m);
+          const [y, mo] = m.split('-').map(Number);
+          m = `${mo === 12 ? y + 1 : y}-${String(mo === 12 ? 1 : mo + 1).padStart(2, '0')}`;
+          if (months.length > 60) break;
+        }
+        const chunks = await Promise.all(months.map(async m => {
+          try { const raw = await env.FX_SCORES.get(`equity_${bot}_${m}`); return raw ? JSON.parse(raw) : []; } catch (e) { return []; }
+        }));
+        const rows = chunks.flat().filter(r => r && r.date >= from && r.date <= to).sort((a, b) => a.date.localeCompare(b.date));
+        return json({ ok: true, bot, from, to, rows });
+      }
+
+      // -- /api/bot-audit/allocations ------------------------------
+      if (path === '/api/bot-audit/allocations' && request.method === 'GET') {
+        if (!env.FX_SCORES) return json({ ok: false, allocations: {} });
+        return json({ ok: true, allocations: await loadAllocations(env) });
       }
 
       // -- /api/trade-history ----------------------------------

@@ -332,6 +332,18 @@ function isCfKey(key) {
   // later — same "point-in-time record, not a rebuildable cache" reasoning
   // as fomc_/vmlog_ above.
   if (key.startsWith('gold_etf_flow_')) return true;
+  // equity_<bot>_<YYYY-MM> — one row per bot per UTC day of balance/equity/
+  // allocation, written by the worker's /api/kv/set status branch. The ONLY
+  // balance history that exists: <bot>_status is overwritten every push and
+  // TTL'd at 48h, so without this the curve is lost as it is made. Cannot be
+  // rebuilt after the fact. expect_<bot> is the frozen backtest expectation a
+  // live book is ranked against; regenerating it after seeing live results
+  // destroys the test, so it is a point-in-time record too. bot_allocations
+  // is the declared per-bot capital base (bots share MT5 accounts, so balance
+  // is not a per-bot denominator). All three: MD files/LIVE_BACKTEST_ALIGNMENT.md.
+  // Must ALSO be permanent in _worker.js (PERMANENT_KEYS / PERMANENT_PREFIXES)
+  // or they silently inherit the 48h TTL — feedback_kv_second_ttl_gate.
+  if (key.startsWith('equity_') || key.startsWith('expect_') || key === 'bot_allocations') return true;
   return _CF_EXACT.has(key) || key.startsWith('journal_') || key.startsWith('ai_');
 }
 

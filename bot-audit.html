@@ -243,7 +243,9 @@
     <button id="btnGross" onclick="setGross(true)">Gross</button>
   </div>
   <label title="Declared notional behind this book. Not read from the account — bots share MT5 accounts, so a per-bot denominator has to be declared. Stored in this browser only.">Capital $</label>
-  <input type="number" id="inCap" placeholder="none" min="0" step="1000">
+  <input type="number" id="inCap" placeholder="none" min="0" step="1000" title="Leave blank to use the declared allocation of the selected bots (⚙). Typing a number overrides it for this browser only.">
+  <button id="allocBtn" onclick="toggleAlloc()" title="Declared capital per bot — the denominator for return %, saved to KV (bot_allocations) and copied onto every daily equity row from then on.">⚙</button>
+  <span id="capSrc" class="mono" style="font-size:10px;color:var(--dim2)"></span>
   <button onclick="reload()">↺ Reload</button>
   <button id="btnBt" onclick="toggleBacktest()" title="Overlay this bot's backtest. Fetched on demand — the portfolio build reads stored trade blobs from R2 and is far too expensive to pay on every page load.">+ Backtest</button>
   <span id="btModeWrap" style="display:none">
@@ -257,6 +259,17 @@
 </div>
 
 <div class="pills" id="botPills"></div>
+<div id="allocPanel" class="panel" style="display:none;margin:10px 16px 0;border-color:var(--warn)">
+  <div class="ph"><span class="badge">ALLOC</span>Declared capital per bot<span class="rt">saved to KV · copied onto each day's equity row from then on</span></div>
+  <div class="pb">
+    <div class="note warn" style="margin:0 0 10px">Why this exists: MacroFX, RegimeV1 and RegimeV2 all trade account 10011001704, so an account balance is not a per-bot
+      denominator. Declare what you consider behind each bot. It is <b>stored on each daily row at write time</b>, so changing it later does not rewrite history.</div>
+    <div id="allocRows" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:6px 18px"></div>
+    <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+      <button onclick="saveAlloc()">Save allocations</button><span id="allocMsg" class="mono" style="font-size:11px;color:var(--dim)"></span>
+    </div>
+  </div>
+</div>
 
 <div class="tabs">
   <button class="tab active" data-p="ovw" onclick="tab('ovw')"><span class="tag">OVW</span>Overview</button>
@@ -317,6 +330,37 @@ let RAW = [], TRADES = [], GROSS = false, NORM = null;
 // old single select could only show one bot or all of them, and "these three"
 // is the question that actually comes up.
 let SEL = new Set();
+// Declared capital per bot (KV: bot_allocations). The capital box, when blank,
+// resolves to the sum over the selected bots — and says so.
+let ALLOC = {};
+async function loadAllocations() {
+  try { const r = await fetch('/api/bot-audit/allocations'); const j = await r.json(); ALLOC = j.allocations || {}; } catch (e) { ALLOC = {}; }
+}
+function allocCapital() {
+  const keys = selectedKeys();
+  const have = keys.filter(k => Number.isFinite(Number(ALLOC[k])) && Number(ALLOC[k]) > 0);
+  return { total: have.reduce((s, k) => s + Number(ALLOC[k]), 0), have: have.length, of: keys.length };
+}
+window.toggleAlloc = () => {
+  const el = $('allocPanel'); const show = el.style.display === 'none';
+  el.style.display = show ? '' : 'none';
+  if (show) {
+    $('allocRows').innerHTML = BOTS.map(b => `<label style="display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:11.5px">
+      <span class="chip" style="background:${b.bg || 'var(--s2)'};border:1px solid ${b.bd || 'var(--border)'};color:${b.color}">${esc(b.label)}</span>
+      <input type="number" data-alloc="${b.key}" value="${Number.isFinite(Number(ALLOC[b.key])) && Number(ALLOC[b.key]) > 0 ? Number(ALLOC[b.key]) : ''}" placeholder="—" min="0" step="1000" style="width:100px"></label>`).join('');
+  }
+};
+window.saveAlloc = async () => {
+  const next = {};
+  document.querySelectorAll('#allocRows input[data-alloc]').forEach(i => { const v = Number(i.value); if (v > 0) next[i.dataset.alloc] = v; });
+  try {
+    const r = await fetch('/api/kv/set', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: 'bot_allocations', data: next, timestamp: Date.now() }) });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    ALLOC = next; $('allocMsg').textContent = 'saved ✓'; setTimeout(() => { $('allocMsg').textContent = ''; }, 2500);
+    ACCT_CACHE.clear();
+    render();
+  } catch (e) { $('allocMsg').textContent = 'save failed: ' + e.message; }
+};
 const liveKeys = () => BOTS.filter(b => !b.paper).map(b => b.key);
 const selectedKeys = () => [...SEL];
 function selectionLabel() {
@@ -359,7 +403,19 @@ function renderPills() {
 let BT_ON = false, BT_MODE = 'cone', BT = null, BT_LOADING = false;
 const BT_CACHE = new Map();
 const $ = id => document.getElementById(id);
-const cap = () => Math.max(0, +($('inCap').value || 0));
+const cap = () => {
+  const typed = +($('inCap').value || 0);
+  if (typed > 0) return typed;
+  return allocCapital().total;
+};
+function describeCapital() {
+  const el = $('capSrc'); if (!el) return;
+  const typed = +($('inCap').value || 0);
+  const a = allocCapital();
+  if (typed > 0) el.textContent = a.total > 0 ? `override · declared would be $${a.total.toLocaleString('en-GB')}` : 'typed override';
+  else if (a.total > 0) el.textContent = `declared · ${a.have}/${a.of} bots · $${a.total.toLocaleString('en-GB')}`;
+  else el.textContent = a.of ? `no allocation declared for ${a.of === 1 ? 'this bot' : 'these bots'} — ⚙` : '';
+}
 
 // ── formatting ───────────────────────────────────────────────────────────────
 const money = (v, d = 2) => (v >= 0 ? '+' : '−') + '$' + Math.abs(v).toLocaleString('en-GB', { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -423,6 +479,7 @@ async function fetchRange(from, to) {
 
 window.reload = async function reload() {
   $('status').textContent = 'loading…';
+  ACCT_CACHE.clear();
   RAW = await fetchRange(RANGE.from, RANGE.to);
   NORM = normalizeTrades(RAW);
   renderPills();
@@ -826,6 +883,47 @@ function renderBacktestPanel() {
       uses, so it cannot drift from what the bot actually runs.</div></div></div>`;
 }
 
+// ── recorded balance (equity_<bot>_<YYYY-MM> rows) ───────────────────────────
+// The balance the bots reported, day by day, as the server has been keeping it
+// since 2026-09-11. Distinct from the trade-reconstructed equity curve above:
+// this is what the ACCOUNT said, including deposits, manual trades and anything
+// else the closed-trade book cannot see. One line per bot, never summed —
+// bots share MT5 accounts, and summing shared balances would count one
+// account three times.
+const ACCT_CACHE = new Map();
+async function renderAcct() {
+  const host = $('acctPanel'); if (!host) return;
+  const keys = selectedKeys();
+  if (!keys.length || !RANGE.from) { host.innerHTML = ''; return; }
+  const sets = await Promise.all(keys.map(async k => {
+    const ck = `${k}|${RANGE.from}|${RANGE.to}`;
+    if (ACCT_CACHE.has(ck)) return ACCT_CACHE.get(ck);
+    try {
+      const r = await fetch(`/api/bot-audit/equity?bot=${encodeURIComponent(k)}&from=${RANGE.from}&to=${RANGE.to}`);
+      const j = await r.json(); const v = { k, rows: j.rows || [] }; ACCT_CACHE.set(ck, v); return v;
+    } catch (e) { return { k, rows: [] }; }
+  }));
+  const withRows = sets.filter(s => s.rows.length >= 2);
+  if (!withRows.length) {
+    const any = sets.some(s => s.rows.length === 1);
+    host.innerHTML = `<div class="panel"><div class="ph"><span class="badge">ACCT</span>Recorded balance</div><div class="pb"><div class="rd" style="color:var(--dim2)">
+      ${any ? 'One day recorded so far — the server started keeping daily balance rows on 2026-09-11; a curve appears from the second day.' :
+              'No recorded balance rows for this selection in range. Rows are written by the server from each bot\'s status push (from 2026-09-11), so a silent bot records nothing.'}</div></div></div>`;
+    return;
+  }
+  host.innerHTML = withRows.map(({ k, rows }) => {
+    const b = botOf(k);
+    const first = rows[0].balance, last = rows[rows.length - 1].balance;
+    const alloc = rows[rows.length - 1].allocation;
+    const peak = Math.max(...rows.map(r => Number(r.peak) || Number(r.balance) || 0));
+    const dd = last - peak;
+    return `<div class="panel"><div class="ph"><span class="badge">ACCT</span>Recorded balance — <span style="color:${b.color}">${esc(b.label)}</span>
+      <span class="rt">${rows.length} days · ${money(last - first)} since ${rows[0].date}${alloc ? ` · declared $${Number(alloc).toLocaleString('en-GB')}` : ''} · from peak ${money(dd, 0)}</span></div>
+      <div class="pb">${lineChart(rows.map(r => ({ k: r.date, v: r.balance })), { h: 150, fill: 'rgba(224,169,59,.08)', stroke: '#e0a93b', money: true })}
+      <div class="rd" style="margin-top:6px;color:var(--dim2);font-size:11px">What the account reported, not what the trade book reconstructs — deposits, manual trades and anything the closed-trade log cannot see are in here. Shared accounts show the same balance under each bot that trades them.</div></div></div>`;
+  }).join('');
+}
+
 // ── render ───────────────────────────────────────────────────────────────────
 function activeTrades() {
   const all = NORM ? NORM.trades : [];
@@ -835,6 +933,7 @@ function activeTrades() {
 function render() {
   if (!NORM) return;
   TRADES = activeTrades();
+  describeCapital();
   const C = cap(), G = { gross: GROSS };
   const S = summarize(TRADES, { capital: C, gross: GROSS });
   $('status').textContent = `${NORM.kept} rows · ${NORM.dupes} dupes dropped · ${NORM.droppedNoClose} no-close · showing ${TRADES.length}`;
@@ -851,6 +950,7 @@ function render() {
   renderCst(G);
   renderTrd();
   renderBacktestPanel();
+  renderAcct();
   const rs = $('railState');
   if (rs) rs.textContent = `${selectionLabel()} · ${RANGE.from} → ${RANGE.to} · ${GROSS ? 'GROSS' : 'NET'} · ${TRADES.length} trades`;
 }
@@ -861,7 +961,7 @@ function tile(k, v, sub, klass = '') {
 
 function renderOvw(S, C, G) {
   const el = $('ovw');
-  if (!S.n) { el.innerHTML = `<div class="empty">No closed trades in this window for this selection.</div>`; return; }
+  if (!S.n) { el.innerHTML = `<div class="empty">No closed trades in this window for this selection.</div><div id="acctPanel"></div>`; return; }
   const f = S.scaleFree, b = S.scaleBound;
   const thin = S.flags.thinSample ? 'thin' : '';
   const lock = 'locked';
@@ -904,6 +1004,7 @@ function renderOvw(S, C, G) {
     <div class="panel"><div class="ph"><span class="badge">EQ</span>Equity curve — by trade<span class="rt">${eq.length} trades · ${C > 0 ? 'from $' + C.toLocaleString('en-GB') : 'cumulative P&L from 0'}</span></div>
       <div class="pb">${lineChart(eq.map(p => ({ k: p.day, v: p.equity })), { fill: 'rgba(63,208,122,.10)', stroke: '#3fd07a', zero: C === 0, money: true })}</div></div>
     <div id="btPanel"></div>
+    <div id="acctPanel"></div>
     <div class="panel"><div class="ph"><span class="badge">DD</span>Drawdown from peak<span class="rt">max ${C > 0 ? pct(S.scaleBound.maxDDPct) : money(S.scaleFree.maxDDAbs)}</span></div>
       <div class="pb">${lineChart(dEq.map(p => ({ k: p.date, v: C > 0 ? p.ddPct : p.ddAbs })), { fill: 'rgba(242,85,90,.13)', stroke: '#f2555a', zero: true, pct: C > 0, money: C === 0 })}</div></div>
     <div class="panel"><div class="ph"><span class="badge">R${rollWin}</span>Rolling ${rollWin}-day return<span class="rt">${C > 0 ? '% of capital' : 'dollars'}</span></div>
@@ -1601,6 +1702,7 @@ function renderTrd() {
     else setPreset(rg?.preset || 90);
   } catch (e) { SEL = new Set(liveKeys()); setPreset(90); }
   renderPills();
+  loadAllocations().then(() => render());
   $('inCap').addEventListener('change', () => { try { localStorage.setItem('botAuditCap', $('inCap').value); } catch (e) {} render(); });
   document.querySelectorAll('#rangeSeg button').forEach(b => b.addEventListener('click', () => { setPreset(+b.dataset.d); if (+b.dataset.d > 0) reload(); }));
   $('dFrom').addEventListener('change', () => { setPreset(0); reload(); });
