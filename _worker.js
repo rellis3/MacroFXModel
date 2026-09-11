@@ -2455,6 +2455,24 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
         return json({ ok: true, bot, from, to, rows });
       }
 
+      // -- /api/bot-audit/expectation ------------------------------
+      // The frozen expect_<bot> artifact (scripts/freeze_expectation.mjs): the
+      // backtest's daily series under production config + a block bootstrap of
+      // every headline metric, stamped with when it was frozen and from which
+      // commit. Read-only here; only the script writes it, and it never
+      // overwrites silently.
+      if (path === '/api/bot-audit/expectation' && request.method === 'GET') {
+        if (!env.FX_SCORES) return json({ ok: false, available: false, reason: 'KV not bound' });
+        const bot = url.searchParams.get('bot') || '';
+        if (!bot) return err('bot required', 400);
+        try {
+          const raw = await env.FX_SCORES.get(`expect_${bot}`);
+          if (!raw) return json({ ok: true, bot, available: false, reason: 'No expectation frozen for this bot. See scripts/freeze_expectation.mjs.' });
+          const j = JSON.parse(raw); const a = j.data ?? j;
+          return json({ ok: true, bot, available: true, expectation: a });
+        } catch (e) { return json({ ok: false, bot, available: false, error: e.message }); }
+      }
+
       // -- /api/bot-audit/allocations ------------------------------
       if (path === '/api/bot-audit/allocations' && request.method === 'GET') {
         if (!env.FX_SCORES) return json({ ok: false, allocations: {} });
