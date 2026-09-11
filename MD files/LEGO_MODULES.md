@@ -6981,3 +6981,49 @@ existing async-job endpoint contract (`{ok, jobId}` on POST, `{ok, status,
 log}` on GET status) already used elsewhere on this page — no new route
 shape invented. No live-Railway verification possible from here (see
 above) — needs a real click from the live site to confirm end-to-end.
+
+#### The silent-gap-fill vulnerability is a SHARED brick, not Fib-Atlas-only — checked against Level/Vote Atlas (2026-09-11)
+
+Owner's own question: does Level/Vote Atlas have the same bug Fib Atlas hit?
+Traced it precisely rather than guessing. The "log a failed chunk and
+`continue` instead of aborting" behavior lives in `js/m1GapFill.js`'s
+`fetchM1Gap` (`catch (e) { onLog(...); continue; }`) — a **shared Tier-1
+brick**, imported by `levelAtlasRoutes.js` (Level/Vote Atlas),
+`asiaFibAtlasRoutes.js`/`mondayFibAtlasRoutes.js` (Fib Atlas), and also
+`sessionPathRoutes.js`, `sessionHandoffRoutes.js`, `rankICLiveEngine.js`,
+`overnightHoldEngine.js`. `loadM1ForPair` itself (`js/volBacktestM1Engine.js`)
+is just the cache read (R2→disk→Drive) and does NOT gap-fill or write back
+to R2 — confirmed no consumer writes the gap-filled result back into the R2
+parquet cache either, so `runOne`'s own attempted regen doesn't corrupt the
+shared cache further; it only affects that call's own derived output file.
+
+**So the vulnerability is codebase-wide — any of those six systems could
+silently persist a truncated backtest file the same way. But checked
+Level Atlas's ACTUAL current data for the same three pairs
+(`level-atlas/{pair}-votetrades.json`) and it is NOT currently affected**:
+
+```
+            Fib Atlas last trade    Level Atlas last trade
+gbpaud      2026-05-21               2026-09-03
+euraud      2026-05-21               2026-09-11 (same day as this check)
+nzdjpy      2026-05-21               2026-09-07
+```
+
+Level Atlas's own regeneration for these three pairs has been running
+successfully and recently (euraud rebuilt the same day this was checked) —
+proof OANDA connectivity for these symbols is fine in general. This points
+away from "these pairs are broken to fetch" and toward "Fib Atlas's own
+nightly run hit a one-off failure around 2026-05-21-22 and was never
+retried" — consistent with, not a new contradiction of, the 2026-09-08
+entries above. Root cause of THAT one-off (why Fib Atlas's job didn't
+recover the way Level Atlas's evidently does) is still unknown — would need
+Railway logs, not available from here.
+
+**Not done**: the root-cause code fix (make a partial gap-fill abort/flag
+instead of silently persisting) — this would protect all six consumers of
+`js/m1GapFill.js` at once, not just Fib Atlas, but hasn't been built yet;
+offered to the owner, awaiting direction.
+
+Validated: `node --check` on `level_atlas_check_coverage.mjs`; read-only R2
+fetches only (`getJSON` against `level-atlas/{pair}-votetrades.json`), no
+writes, no regeneration.
