@@ -2508,6 +2508,46 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
         return json({ ok: true, trades, from, to });
       }
 
+      // -- /api/trade-history/annotate --------------------------
+      // Merge fields INTO existing closed-trade rows, matched by position_id.
+      // Used by scripts/backfill_sl_at_entry.py to attach the entry stop and R
+      // to rows written before 2026-09-11. Never creates rows, never overwrites
+      // a field the row already has a non-null value for — a row the live path
+      // stamped with sl_source='order' is not downgraded by a later backfill
+      // that could only find 'first_seen'. Reports what it touched.
+      // Body: { bot_key, from, to, annotations: [{ position_id, ...fields }] }
+      if (path === '/api/trade-history/annotate' && request.method === 'POST') {
+        if (!env.FX_SCORES) return json({ ok: false, reason: 'KV not bound' });
+        try {
+          const body = await request.json();
+          const { bot_key: botKey, from, to } = body;
+          const ann = Array.isArray(body.annotations) ? body.annotations : [];
+          if (!botKey || !from || !to || !ann.length) return err('bot_key, from, to and a non-empty annotations[] are required', 400);
+          const ALLOWED = new Set(['sl_at_entry', 'tp_at_entry', 'sl_source', 'r']);
+          const byId = new Map(ann.filter(a => a && a.position_id != null).map(a => [String(a.position_id), a]));
+          const dates = [];
+          for (let d = new Date(from + 'T00:00:00Z'); d <= new Date(to + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + 1)) dates.push(d.toISOString().slice(0, 10));
+          if (dates.length > 400) return err('range too large (max 400 days)', 400);
+          let matched = 0, updated = 0, kept = 0, days = 0;
+          for (const dt of dates) {
+            const key = `trade_hist_${botKey}_${dt}`;
+            let rows; try { const raw = await env.FX_SCORES.get(key); if (!raw) continue; rows = JSON.parse(raw); } catch (e) { continue; }
+            let touched = false;
+            for (const row of rows) {
+              const a = byId.get(String(row.position_id)); if (!a) continue;
+              matched++;
+              for (const f of ALLOWED) {
+                if (a[f] === undefined) continue;
+                if (row[f] != null) { kept++; continue; }        // never overwrite a known value
+                row[f] = a[f]; touched = true; updated++;
+              }
+            }
+            if (touched) { await env.FX_SCORES.put(key, JSON.stringify(rows)); days++; }
+          }
+          return json({ ok: true, bot_key: botKey, matched, fields_updated: updated, fields_kept: kept, days_written: days });
+        } catch (e) { return json({ ok: false, reason: e.message }); }
+      }
+
       // -- /api/trade-history/backfill --------------------------
       // One-off historical backfill: merges externally-supplied closed trades
       // (e.g. pulled from MT5 deal history by a local script) into

@@ -200,8 +200,8 @@ authorised deployment.
 | 2 Surface `mfe_pips` / `mae_pips` / `reason` | ✅ `bot-audit.html` Excursions |
 | 3 Capture `sl_at_entry` / `tp_at_entry` / `r` | ✅ `pylego/broker/stops.py`, all five serialisers, §7 updated |
 | 4 Allocation + daily `equity_<bot>_<YYYY-MM>` | ✅ server-side in `_worker.js` (`recordEquity`), `bot_allocations` KV, three gates |
-| 5 Freeze `expect_<bot>` | plumbing built; **nothing frozen** — the one wired backtest fails plausibility (`FIB_ATLAS_BACKTEST_VS_LIVE.md`) |
-| 6 Backfill R from `history_orders_get` | `scripts/backfill_sl_at_entry.py` |
+| 5 Freeze `expect_<bot>` | ✅ `scripts/freeze_expectation.mjs` + `/api/bot-audit/expectation`; page badges/cone/DST-expected wired. **Nothing frozen yet** — the one wired backtest fails plausibility (`FIB_ATLAS_BACKTEST_VS_LIVE.md`) and the script refuses it |
+| 6 Backfill R from `history_orders_get` | ✅ `scripts/backfill_sl_at_entry.py` + `/api/trade-history/annotate` (merge-only, never overwrites a known value, reports recovery rate). **Not yet run** — needs the MT5 host |
 
 ## 6. Adoption order
 
