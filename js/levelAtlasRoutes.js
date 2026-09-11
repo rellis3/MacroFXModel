@@ -595,10 +595,10 @@ export function mountLevelAtlasRoutes(app, express) {
       // assuming "R2 = newest" fixes this in both directions.
       const stored = pickFresher(await getJSON(`${PREFIX}/${pair}-votetrades.json`), loadLocalVoteTrades(pair));
       if (!stored) return res.status(404).json({ ok: false, error: `no vote-backtest data for ${req.params.instrument} yet` });
-      // A schema-1 file is not just old, it is SILENTLY BIASED — see
+      // A stale-schema file is not just old, it is SILENTLY BIASED — see
       // VOTE_TRADES_SCHEMA's own doc (js/levelAtlasVoteReview.js).
       if ((stored.schema ?? 1) < VOTE_TRADES_SCHEMA) {
-        return res.status(409).json({ ok: false, error: `${req.params.instrument} still has a schema-1 votetrades file, which silently EXCLUDES every unresolved touch and would reproduce withdrawn pre-2026-09-09 numbers. Rebuild with: POST /api/level-atlas/run` });
+        return res.status(409).json({ ok: false, error: `${req.params.instrument} still has a schema-${stored.schema ?? 1} votetrades file (current is ${VOTE_TRADES_SCHEMA}) — either the outcome:'neither' exclusion or the book-construction look-ahead leak, both withdrawn pre-2026-09-11 numbers. Rebuild with: POST /api/level-atlas/run` });
       }
       const minMargin = req.query.minMargin ? Number(req.query.minMargin) : 1;
       const trades = stored.trades.filter(t => t.margin >= minMargin);
@@ -821,7 +821,7 @@ export function mountLevelAtlasRoutes(app, express) {
       if (!Object.keys(perPairTradesRaw).length) {
         if (staleSchema.length) {
           return res.status(409).json({ ok: false, staleSchema,
-            error: `${staleSchema.join(', ')} still have schema-1 votetrades files, which silently EXCLUDE every unresolved touch and would reproduce withdrawn pre-2026-09-09 numbers. Rebuild with: POST /api/level-atlas/run` });
+            error: `${staleSchema.join(', ')} still have a stale-schema votetrades file (current is ${VOTE_TRADES_SCHEMA}) — either the outcome:'neither' exclusion or the book-construction look-ahead leak, both withdrawn pre-2026-09-11 numbers. Rebuild with: POST /api/level-atlas/run` });
         }
         return res.status(404).json({ ok: false, error: `no vote-backtest data for any of: ${pairs.join(',')}`, missing });
       }
