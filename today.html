@@ -6878,15 +6878,35 @@ async function renderDrawerCrowd(r) {
     `<div class="csrow"><span class="ccy">L/S</span><span class="track"><span class="mid"></span>` +
     `<div class="${longPct >= shortPct ? 'barp' : 'barn'}" style="width:${Math.min(50, Math.abs(longPct - shortPct) / 2)}%"></div>` +
     `</span><span class="val">${longPct >= shortPct ? '+' : '-'}${Math.abs(longPct - shortPct)}</span></div>` +
+    // Pain and pollution -- the two things the bare long/short split cannot say.
+    // "Crowded" only matters if the crowd is losing; a crowded side sitting in
+    // profit has no reason to be forced out. And the stale share says how much of
+    // this book is abandoned history that had to be windowed out to get a number
+    // that means anything (the old route did not window it, and read every
+    // instrument as 100% long).
+    (b.pain ? (() => {
+      const uw = side === 'long' ? b.pain.longsUnderwaterPct : b.pain.shortsUnderwaterPct;
+      const hurting = uw != null && uw >= 60;
+      return `<div class="ccy-legs" style="margin-top:8px">` +
+        `<div class="ccy-legrow"><span class="lp">Longs underwater</span><span class="lv ${(b.pain.longsUnderwaterPct ?? 0) >= 60 ? 'bear' : 'neu'}">${b.pain.longsUnderwaterPct ?? '—'}%</span></div>` +
+        `<div class="ccy-legrow"><span class="lp">Shorts underwater</span><span class="lv ${(b.pain.shortsUnderwaterPct ?? 0) >= 60 ? 'bear' : 'neu'}">${b.pain.shortsUnderwaterPct ?? '—'}%</span></div>` +
+        (b.staleShare != null ? `<div class="ccy-legrow"><span class="lp" title="Share of all positions sitting more than 10% from spot — opened long ago and never closed. Excluded from the crowding figure above; the old route counted them and read every market as 100% long.">Abandoned positions (excluded)</span><span class="lv neu">${b.staleShare}%</span></div>` : '') +
+        `</div>` +
+        (lopsided && hurting
+          ? `<div class="ccy-explain" style="margin-top:8px">Retail is <b>heavily ${side}</b> and <b>${uw}% of that side is underwater</b>. That is the combination behind squeezes: a crowd that would have to be forced out, already losing. Read as a <b>contrarian</b> warning about who gets stopped, not as a direction call.</div>`
+          : lopsided
+            ? `<div class="ccy-explain" style="margin-top:8px">Retail is <b>heavily ${side}</b> but mostly <b>in profit</b> (${uw ?? '?'}% underwater). A crowded side that is winning has no reason to be forced out yet, so this is a weaker contrarian setup than the split alone suggests.</div>`
+            : `<div class="ccy-explain" style="margin-top:8px">Retail is fairly balanced near spot, so there is no crowding story to read either way.</div>`);
+    })() :
     `<div class="ccy-explain" style="margin-top:8px">` +
     (lopsided
       ? `Retail is <b>heavily ${side}</b> here. The crowd is usually most one-sided at the worst moments, so this is read as a <b>contrarian</b> warning rather than confirmation — it is a statement about who would have to be forced out, not about direction.`
       : `Retail is fairly balanced, so there is no crowding story to read either way.`) +
-    `</div>` +
+    `</div>`) +
     (disagree
       ? `<div class="ccy-explain" style="margin-top:6px"><b>Retail and the professionals disagree:</b> the live retail book is ${side} while large speculators are net ${esc0(ct.dir)} in the weekly CFTC data. Two positioning measures at different frequencies pointing opposite ways is the more interesting state — it usually means the recent move has been fought by one of them.</div>`
       : '') +
-    `<div class="muted" style="font-size:10.5px;margin-top:6px">Broker order/position book — one broker's clients, not the whole market, and no backtest behind this read.</div>`;
+    `<div class="muted" style="font-size:10.5px;margin-top:6px">OANDA position book — head counts of one broker's retail clients (not notional, not the market, not COT), a standing book on a 20-minute grid up to 20 min stale${b.time ? `, snapshot ${esc0(String(b.time).slice(11, 16))} UTC` : ''}. Crowding is measured within &plusmn;10% of spot. No backtest behind this read.</div>`;
 }
 
 // ── Forecast Path drawer section — the cone engine's calibrated 4h claims ─────

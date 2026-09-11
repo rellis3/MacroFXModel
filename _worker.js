@@ -4,6 +4,10 @@
 // All routes return JSON. NEVER returns HTML.
 // ============================================================
 
+// Position-book maths lives in its own tested module. The inline version here
+// counted BUCKETS rather than positions and read every instrument as 100% long.
+import { summarisePositionBook } from './js/positionBookMetrics.js';
+
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -712,20 +716,24 @@ export default {
           const bookData = await bookRes.json();
           const pb = bookData.positionBook;
           if (!pb?.buckets?.length) return json({ miss: true, reason: 'No buckets' });
-          const currentPrice = parseFloat(pb.price);
-          let longDom = 0, shortDom = 0;
-          for (const b of pb.buckets) {
-            const lp = parseFloat(b.longCountPercent)  || 0;
-            const sp = parseFloat(b.shortCountPercent) || 0;
-            if (lp > sp + 0.1) longDom++;
-            else if (sp > lp + 0.1) shortDom++;
-          }
-          const total = longDom + shortDom || 1;
-          const longPct  = Math.round(longDom  / total * 100);
-          const shortPct = 100 - longPct;
+          // Position SHARE near spot, with the abandoned tail windowed out and its
+          // size reported. The previous code here counted buckets where long > short:
+          // on 2026-09-11 EUR_USD, XAU_USD, USD_JPY, GBP_USD and AUD_USD all returned
+          // longPct 100 / "bullish" -- because buckets far from spot hold years-old
+          // longs nobody closed, and there are hundreds of them. It measured how much
+          // dead history a book had, not sentiment. See js/positionBookMetrics.js.
+          const m = summarisePositionBook(pb);
+          if (!m) return json({ miss: true, reason: 'No usable buckets' });
           return json({
-            currentPrice, longPct, shortPct,
-            sentiment: longPct > 60 ? 'bullish' : shortPct > 60 ? 'bearish' : 'neutral',
+            // Same three fields the drawer already reads, now with real numbers.
+            currentPrice: m.spot, longPct: m.longPct, shortPct: m.shortPct,
+            // Old labels mapped for anything still switching on them; `sentiment`
+            // below is the honest one.
+            sentiment: m.sentiment === 'crowded long' ? 'bullish' : m.sentiment === 'crowded short' ? 'bearish' : 'neutral',
+            crowding: m.sentiment,
+            near: m.near, all: m.all, staleShare: m.staleShare, usedWindow: m.usedWindow,
+            pain: m.pain, overhead: m.overhead,
+            time: m.time, caveats: m.caveats,
           });
         } catch(e) {
           return json({ miss: true, reason: e.message });
@@ -1228,7 +1236,7 @@ export default {
           jp_short: 'IRSTCI01JPM156N',
           au_short: 'IR3TIB01AUM156N',
           ca_short: 'IRSTCI01CAM156N',
-          ch_short: 'IRSTCI01CHM156N',
+          ch_short: 'IR3TIB01CHM156N',   // was IRSTCI01CHM156N -- discontinued 2024-03; same swap as js/zscoreSpreadEngine.js
           // Global Liquidity engine series (global-liquidity.html / globalLiquidityEngine.js)
           walcl:      'WALCL',          // Fed total assets
           tga:        'WTREGEN',        // Treasury General Account (drains)
