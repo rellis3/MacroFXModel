@@ -49,6 +49,10 @@ const _CF_EXACT = new Set([
   'tg_config', 'ai_alert_cfg',
   'macro_regime_fx_v1',      // 8y regime-conditional FX study — ~11 sequential FRED calls to
                              // rebuild, and the answer only changes by one day at a time.
+  'oanda_book_history_v1',   // OANDA position-book aggregates: 20-min rows for 14 days, daily beyond.
+                             // The live poll computed and discarded these for years; this is the only
+                             // record. Backfillable from OANDA in principle (~9h), so less precious than
+                             // the scorecard history, but still not something to lose to a TTL.
   'macro_scorecard_history_v1', // one row per day of the Macro Scorecard's composite + factor scores.
                              // The scorecard persists nothing itself, so this is the ONLY time
                              // series of it; a lost store is months of daily history that cannot

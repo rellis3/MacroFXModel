@@ -108,6 +108,8 @@ import { fetchRealYieldData, realYieldScore, REAL_YIELD_UNIVERSE } from './js/re
 import { fetchRateDiffData, rateDiffScore, RATE_DIFF_UNIVERSE } from './js/rateDiffEngine.js';
 import { fetchPpiData, ppiCompositeScore, PPI_UNIVERSE } from './js/ppiEngine.js';
 import { buildScorecard as buildMacroScorecard, topBottomPair as macroTopBottomPair, factorBoard as macroFactorBoard } from './js/macroScorecardEngine.js';
+import { summarisePositionBook as _summariseBook } from './js/positionBookMetrics.js';
+import { BOOK_HISTORY_KV, BOOK_INSTRUMENTS, fineRow as _bookFineRow, parseStore as _bookParse, upsertFine as _bookUpsert, rollDaily as _bookRoll, changeOver as _bookChange, approxBytes as _bookBytes } from './js/positionBookHistory.js';
 import { SCORECARD_HISTORY_KV, rowFromScorecard as _scRow, upsertRow as _scUpsert, parseStore as _scParse, seriesFor as _scSeries } from './js/scorecardHistory.js';   // one row per day of what the scorecard said
 import { fetchYieldCurveData, yieldCurveScore, YIELD_CURVE_UNIVERSE } from './js/yieldCurveEngine.js';
 import { fetchConsumerConfidenceData, consumerConfidenceCompositeScore, CONFIDENCE_UNIVERSE } from './js/consumerConfidenceEngine.js';
@@ -6418,6 +6420,73 @@ async function _buildMacroScorecard() {
     generatedAt: new Date().toISOString(),
   };
 }
+// ── OANDA position-book history — record the aggregates the live poll used to throw away ─
+// One fetch per instrument on a schedule, summarised through the SAME module the
+// /api/oanda_book route uses (js/positionBookMetrics.js), and kept at 20-minute
+// resolution for two weeks and daily beyond. Same read-modify-write rules as the
+// scorecard and surprise stores: getStrict, refuse to write over a corrupt value,
+// write only when something new landed.
+//
+// The poll runs every 10 minutes against a 20-minute grid that lags 0-20 minutes,
+// so the same snapshot usually comes back twice; the store keys by snapshot time
+// and keeps it once. 16 requests per 10 minutes is well inside OANDA's limits.
+let _bookHistRunning = false;
+async function _fetchBookSnapshot(instrument) {
+  const base = process.env.OANDA_ENV === 'practice' ? 'https://api-fxpractice.oanda.com' : 'https://api-fxtrade.oanda.com';
+  const r = await fetch(`${base}/v3/instruments/${encodeURIComponent(instrument)}/positionBook`,
+    { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(15_000) });
+  if (!r.ok) throw new Error(`OANDA ${r.status}`);
+  return (await r.json()).positionBook;
+}
+async function _recordBookHistory() {
+  if (!process.env.OANDA_KEY) return { skipped: 'no OANDA_KEY' };
+  if (_bookHistRunning) return { skipped: 'running' };
+  _bookHistRunning = true;
+  try {
+    const raw = await kv.getStrict(BOOK_HISTORY_KV);
+    const store = _bookParse(raw);
+    if (store === null) throw new Error(`${BOOK_HISTORY_KV} is unparseable (${String(raw).length} bytes) — refusing to overwrite`);
+    let appended = 0, failed = 0, changed = false;
+    // Sequential with a short gap rather than Promise.all -- sixteen at once is the
+    // shape of burst this project has been throttled for elsewhere.
+    for (const inst of BOOK_INSTRUMENTS) {
+      try {
+        const m = _summariseBook(await _fetchBookSnapshot(inst));
+        const r = _bookUpsert(store, inst, _bookFineRow(m));
+        if (r.changed) { changed = true; if (r.reason === 'appended') appended++; }
+      } catch (e) { failed++; }
+      await new Promise(r => setTimeout(r, 400));
+    }
+    if (_bookRoll(store).changed) changed = true;
+    if (changed) {
+      await kv.put(BOOK_HISTORY_KV, JSON.stringify(store));
+      console.log(`[book-history] +${appended} snapshots${failed ? `, ${failed} failed` : ''}, ${(_bookBytes(store) / 1e6).toFixed(2)} MB`);
+    }
+    return { appended, failed, changed };
+  } finally { _bookHistRunning = false; }
+}
+setInterval(() => _recordBookHistory().catch(e => console.error('[book-history]', e.message)), 10 * 60_000);
+
+app.get('/api/oanda-book/history', async (req, res) => {
+  try {
+    const store = _bookParse(await kv.getStrict(BOOK_HISTORY_KV));
+    if (!store) return res.status(500).json({ ok: false, error: 'store unparseable' });
+    const inst = String(req.query.instrument || '').toUpperCase().replace('/', '_');
+    if (inst) {
+      const x = store.byInstrument[inst];
+      if (!x) return res.json({ ok: true, instrument: inst, cols: store.cols, dcols: store.dcols, fine: [], daily: [], change: {} });
+      return res.json({ ok: true, instrument: inst, cols: store.cols, dcols: store.dcols, fine: x.fine, daily: x.daily,
+        change: { h24: _bookChange(store, inst, 24), d7: _bookChange(store, inst, 24 * 7), d30: _bookChange(store, inst, 24 * 30) } });
+    }
+    res.json({ ok: true, instruments: Object.fromEntries(Object.entries(store.byInstrument).map(([k, v]) =>
+      [k, { fine: v.fine.length, daily: v.daily.length, latest: v.fine.at(-1) ?? null, change24h: _bookChange(store, k, 24) }])) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/oanda-book/history/record', async (_req, res) => {
+  try { res.json({ ok: true, ...(await _recordBookHistory()) }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 // ── Scorecard history — one row per day, so the composite can one day be tested ─
 // The scorecard is rebuilt on every request and persisted nowhere, so no time series
 // of it has ever existed. This records the end-of-day state (idempotent by UTC day;
@@ -29680,6 +29749,7 @@ _backfillSurpriseStore()
 // scorecard build reads only cached engine KV, but the engines it reads may still be
 // seeding.
 setTimeout(() => _recordScorecardHistory().catch(e => console.error('[scorecard-history] first run failed (store left untouched):', e.message)), 3 * 60_000);
+setTimeout(() => _recordBookHistory().catch(e => console.error('[book-history] first run failed (store left untouched):', e.message)), 4 * 60_000);
 await reloadConfig();
 await reloadLevels();
 _restoreVolatilityV2Config().catch(e => console.error('[VOLATILITY-V2] config repair error:', e.message));

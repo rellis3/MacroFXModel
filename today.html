@@ -2821,6 +2821,9 @@ async function loadCrowdFor(sym) {
   if (_crowd[sym]) return _crowd[sym];
   const out = {};
   try { const b = await jget('/api/oanda_book?symbol=' + encodeURIComponent(sym)); if (b && !b.miss) out.book = b; } catch {}
+  // Change over time, from the recorded series (js/positionBookHistory.js). Empty
+  // until the poller has run for a while; the drawer says so rather than guessing.
+  try { const h = await jget('/api/oanda-book/history?instrument=' + encodeURIComponent(sym)); if (h?.ok) out.hist = h; } catch {}
   _crowd[sym] = out;
   return out;
 }
@@ -6878,6 +6881,20 @@ async function renderDrawerCrowd(r) {
     `<div class="csrow"><span class="ccy">L/S</span><span class="track"><span class="mid"></span>` +
     `<div class="${longPct >= shortPct ? 'barp' : 'barn'}" style="width:${Math.min(50, Math.abs(longPct - shortPct) / 2)}%"></div>` +
     `</span><span class="val">${longPct >= shortPct ? '+' : '-'}${Math.abs(longPct - shortPct)}</span></div>` +
+    // Change over time. A crowding figure on its own is a level; what a reader can
+    // actually use is whether the crowd is piling in or getting out. Each delta is
+    // in points of long-share, and null when the record does not reach back far
+    // enough -- that is said, not shown as 0.
+    (() => {
+      const ch = c?.hist?.change;
+      if (!ch) return '';
+      const cell = (label, x) => x
+        ? `<span class="chip ${Math.abs(x.delta) >= 5 ? (x.delta > 0 ? 'bull' : 'bear') : 'neu'}" title="Long share was ${x.then}% ${label} ago (${new Date(x.at).toISOString().slice(0, 16).replace('T', ' ')} UTC), now ${x.now}%. From the ${x.source === 'fine' ? '20-minute' : 'daily'} record.">${label}: ${x.delta > 0 ? '+' : ''}${x.delta}pt</span>`
+        : `<span class="chip neu" title="The recorded series does not yet reach back ${label}. It started on 2026-09-11; this fills in as it runs.">${label}: no record yet</span>`;
+      const n = c.hist.fine?.length ?? 0;
+      return `<div style="margin:8px 0 2px;display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="muted" style="font-size:10.5px">Crowd moving?</span>${cell('24h', ch.h24)}${cell('7d', ch.d7)}${cell('30d', ch.d30)}` +
+        `<span class="muted" style="font-size:10px">${n} snapshot${n === 1 ? '' : 's'} recorded</span></div>`;
+    })() +
     // Pain and pollution -- the two things the bare long/short split cannot say.
     // "Crowded" only matters if the crowd is losing; a crowded side sitting in
     // profit has no reason to be forced out. And the stale share says how much of
