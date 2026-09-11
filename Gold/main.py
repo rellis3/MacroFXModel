@@ -50,6 +50,7 @@ import requests
 from dotenv import load_dotenv
 
 from pylego.broker.clock import ServerClock, closes_on_utc_day, history_window   # broker-clock offset — MT5 stamps aren't UTC
+from pylego.broker.stops import stop_fields          # entry stop + R on every closed row
 
 from utils.sl_tp_engine import SLTPEngine
 from utils.state_reader import fetch_quote, DASHBOARD_URL
@@ -341,6 +342,10 @@ def _serialize_closed_trades(magic: int) -> list:
                 'time_close':  int(last_out.time),
                 'tz_offset_sec': _tz_offset_sec(),
                 'comment':     str(ind.comment if ind else last_out.comment or ''),
+                # Entry-time stop + result in R, via the shared brick
+                # (pylego/broker/stops.py) — same implementation Mt5Broker uses,
+                # so the five serialisers cannot disagree on what "entry stop" is.
+                **stop_fields(mt5, pid, open_price, round(float(last_out.price), 5), direction == 'BUY'),
             })
         return sorted(result, key=lambda t: t['time_close'])
     except Exception:

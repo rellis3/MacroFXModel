@@ -339,15 +339,21 @@ its own trades. Field names (`ticket`, `symbol`, `direction`, `lots`,
 `time_close`, `tz_offset_sec`, `comment`) are part of the contract — the
 dashboard reads them by name.
 
-> ⚠ **This list is behind the code, and the dashboard is behind this list.**
-> `pylego/broker/mt5.py:378-402` also emits `mfe_pips`, `mae_pips` and `reason`
-> (sl/tp/manual), which are stored in KV but named nowhere here; and
-> `commission`, which IS named here, is read by nothing — `bot-config.html`
-> computes Net as `profit + swap` (`:8977`, `:8998`). Three more fields
-> (`sl_at_entry`, `tp_at_entry`, `risk_amount`) are needed before a live trade
-> can be expressed in R and compared to any backtest. The full analysis and the
-> adoption order are in **`LIVE_BACKTEST_ALIGNMENT.md`**; that doc's §8 extends
-> the new-bot checklist below.
+**Closed-trade rows also carry (2026-09-11, all five serialisers):**
+
+| field | from | meaning |
+|---|---|---|
+| `mfe_pips` `mae_pips` | M1 path (pylego broker only) | best / worst excursion while open |
+| `reason` | deal reason code | `sl` / `tp` / `manual` — which barrier ended it |
+| `sl_at_entry` `tp_at_entry` | the position's **earliest order** (`history_orders_get(position=)`) | the stop and target the trade was OPENED with — deals carry no stop, orders do, and trailing (`TRADE_ACTION_SLTP`) creates no order, so the first order is unpolluted |
+| `sl_source` | `'order'` / `'first_seen'` / `null` | `'first_seen'` = the entry order was naked and this is the first stop the process witnessed on the open position; `null` = unknown, and `r` is null with it |
+| `r` | `(exit − entry) ÷ (entry − stop)`, signed | the result in R — a pure PRICE ratio, no pip size or contract size, so it cannot inherit the pip drift |
+
+Open-position rows also carry `sl` / `tp` — the **current** stop (a trail moves it), `null` when unset, never `0.0`.
+
+All of these come from **one brick**, `pylego/broker/stops.py` (`stop_fields`), called by `Mt5Broker.serialize_closed_trades` and by the four legacy serialisers (Gold, GoldV2, ConfluenceBot, backtestSystem). Do not re-derive the entry stop anywhere else. `r` is what makes a live trade comparable to a backtest at all — before this date no live row carried a stop, so none could be expressed in R. Rows written before 2026-09-11 have `r: null`; `scripts/backfill_sl_at_entry.py` recovers what MT5 order history still holds. The full analysis is **`LIVE_BACKTEST_ALIGNMENT.md`**; that doc's §8 extends the new-bot checklist below.
+
+> ⚠ `commission` IS named in this contract and, until 2026-09-10, was read by nothing — `bot-config.html` computed Net as `profit + swap`. Fixed; every Net on the dashboard now includes it.
 
 **`tz_offset_sec` — the row's TIME BASE (required).** MT5's `.time` fields are
 seconds since the epoch on the **broker's wall clock**, not UTC (+3h on the live

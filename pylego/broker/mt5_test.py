@@ -331,6 +331,117 @@ def test_unavailable_broker_is_safe():
         assert b.connect('1', 'pw', 'srv') is False
 
 
+# ── sl_at_entry / r (2026-09-11) ─────────────────────────────────────────────
+
+class FakeMt5WithOrders(FakeMt5):
+    """FakeMt5 plus order history, keyed by position id."""
+    def __init__(self, *a, orders=None, **kw):
+        super().__init__(*a, **kw)
+        self._orders = orders or {}
+    def history_orders_get(self, position=None, **kw):
+        return list(self._orders.get(position, []))
+
+
+def _deals_for(pid, direction, open_px, close_px, now):
+    d_in = SimpleNamespace(magic=MAGIC, position_id=pid, entry=0, type=0 if direction == 'BUY' else 1,
+                           price=open_px, time=now - 900, symbol='EURUSD', volume=0.5, profit=0,
+                           swap=0, commission=0, comment='open')
+    d_out = SimpleNamespace(magic=MAGIC, position_id=pid, entry=1, type=1 if direction == 'BUY' else 0,
+                            price=close_px, time=now, symbol='EURUSD', volume=0.5, profit=25.0,
+                            swap=-0.2, commission=-1.0, comment='close')
+    return [d_in, d_out]
+
+
+def test_closed_row_carries_entry_stop_from_order_history():
+    now = int(time.time())
+    entry_order = SimpleNamespace(sl=1.0950, tp=1.1100, time_setup=now - 900, type=0)
+    fake = FakeMt5WithOrders(deals=_deals_for(7, 'BUY', 1.1000, 1.1050, now), orders={7: [entry_order]})
+    r = _broker(fake).serialize_closed_trades()[0]
+    assert r['sl_at_entry'] == 1.095 and r['tp_at_entry'] == 1.11, r
+    assert r['sl_source'] == 'order'
+    # BUY: entry 1.1000, stop 1.0950 (risk 0.0050), exit 1.1050 (move +0.0050) -> +1.0R
+    assert r['r'] == 1.0, r['r']
+
+
+def test_r_is_signed_by_direction():
+    now = int(time.time())
+    # SELL: entry 1.1000, stop 1.1020 (risk 0.0020), exit 1.1010 -> move against by 0.0010 -> -0.5R
+    entry_order = SimpleNamespace(sl=1.1020, tp=0, time_setup=now - 900, type=1)
+    fake = FakeMt5WithOrders(deals=_deals_for(8, 'SELL', 1.1000, 1.1010, now), orders={8: [entry_order]})
+    r = _broker(fake).serialize_closed_trades()[0]
+    assert r['r'] == -0.5, r['r']
+    assert r['tp_at_entry'] is None          # tp=0 on the order means "no target", not 0.0
+
+
+def test_entry_order_is_the_EARLIEST_order_not_the_last():
+    # Trailing does not create orders, but a partial close or a re-entry can.
+    # The entry stop is the FIRST order's, whatever came after.
+    now = int(time.time())
+    first = SimpleNamespace(sl=1.0900, tp=0, time_setup=now - 900, type=0)
+    later = SimpleNamespace(sl=1.1040, tp=0, time_setup=now - 100, type=1)   # a close order
+    fake = FakeMt5WithOrders(deals=_deals_for(9, 'BUY', 1.1000, 1.1050, now), orders={9: [later, first]})
+    r = _broker(fake).serialize_closed_trades()[0]
+    assert r['sl_at_entry'] == 1.09, r
+
+
+def test_naked_entry_falls_back_to_first_seen_stop():
+    # Entry order had sl=0 (bot sets the stop by modify). The broker saw the
+    # position open earlier with sl=1.0980 — that is the best available entry stop.
+    now = int(time.time())
+    naked = SimpleNamespace(sl=0, tp=0, time_setup=now - 900, type=0)
+    fake = FakeMt5WithOrders(deals=_deals_for(10, 'BUY', 1.1000, 1.1050, now), orders={10: [naked]},
+                             positions=[SimpleNamespace(ticket=10, symbol='EURUSD', type=0, volume=0.5,
+                                                        price_open=1.1, price_current=1.1, profit=0, swap=0,
+                                                        time=now - 900, comment='', magic=MAGIC, sl=1.0980, tp=1.1200)])
+    b = _broker(fake)
+    b.serialize_open_positions()             # first sight -> cache
+    r = b.serialize_closed_trades()[0]
+    assert r['sl_at_entry'] == 1.098 and r['sl_source'] == 'first_seen', r
+    assert r['r'] == 2.5                      # move 0.0050 / risk 0.0020
+
+
+def test_no_stop_anywhere_is_null_never_a_guess():
+    now = int(time.time())
+    fake = FakeMt5WithOrders(deals=_deals_for(11, 'BUY', 1.1000, 1.1050, now), orders={})
+    r = _broker(fake).serialize_closed_trades()[0]
+    assert r['sl_at_entry'] is None and r['tp_at_entry'] is None and r['sl_source'] is None and r['r'] is None, r
+
+
+def test_fake_without_order_history_at_all_still_serialises():
+    # The plain FakeMt5 has no history_orders_get. That must degrade to nulls,
+    # not blank the whole status payload.
+    now = int(time.time())
+    r = _broker(FakeMt5(deals=_deals_for(12, 'BUY', 1.1000, 1.1050, now))).serialize_closed_trades()[0]
+    assert r['position_id'] == 12 and r['r'] is None
+
+
+def test_open_positions_carry_current_stop():
+    now = 1700000000
+    pos = SimpleNamespace(ticket=1, symbol='EURUSD', type=0, volume=0.5, price_open=1.1, price_current=1.1,
+                          profit=0, swap=0, time=now, comment='', magic=MAGIC, sl=1.0950, tp=1.1100)
+    fake = FakeMt5(positions=[pos], tick=SimpleNamespace(bid=1.1, ask=1.1001, time=now))
+    row = _broker(fake).serialize_open_positions()[0]
+    assert row['sl'] == 1.095 and row['tp'] == 1.11, row
+
+
+def test_open_position_with_no_stop_reports_none_not_zero():
+    now = 1700000000
+    pos = SimpleNamespace(ticket=2, symbol='EURUSD', type=0, volume=0.5, price_open=1.1, price_current=1.1,
+                          profit=0, swap=0, time=now, comment='', magic=MAGIC, sl=0.0, tp=0.0)
+    fake = FakeMt5(positions=[pos], tick=SimpleNamespace(bid=1.1, ask=1.1001, time=now))
+    row = _broker(fake).serialize_open_positions()[0]
+    assert row['sl'] is None and row['tp'] is None, row
+
+
+def test_r_multiple_edge_cases():
+    f = Mt5Broker._r_multiple
+    assert f(1.1, 1.105, 1.095, True) == 1.0
+    assert f(1.1, 1.095, 1.105, False) == 1.0       # short that reached +1R
+    assert f(1.1, 1.105, 1.1, True) is None         # stop on entry -> undefined
+    assert f(None, 1.1, 1.09, True) is None
+    assert f(1.1, 1.1, 1.09, True) == 0.0
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     for t in tests:

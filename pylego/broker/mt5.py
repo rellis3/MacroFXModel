@@ -28,6 +28,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Callable
 
 from pylego.broker.clock import ServerClock, closes_on_utc_day, history_window
+from pylego.broker.stops import stop_fields, r_multiple as _r_multiple_impl
 
 # MT5's DEAL_REASON_* enum (stable per the MetaTrader5 API, not exposed on
 # every mocked/fake `mt5` module in tests, so hardcoded rather than read off
@@ -63,6 +64,12 @@ class Mt5Broker:
         self.log = log or logging.getLogger("pylego.broker.mt5")
         self.deviation = deviation
         self._exc_cache: dict[int, tuple] = {}  # position_id -> (mfe_pips, mae_pips)
+        # ticket -> (sl, tp) the FIRST time this process saw the position open.
+        # Fallback for `_entry_stop` when the entry order carried no stop (a bot
+        # that sets SL by modify after a naked market order): the earliest stop
+        # we witnessed is the closest thing to the entry stop we can get. Lost on
+        # restart, which is why the order-history path is tried first.
+        self._first_sltp: dict[int, tuple] = {}
         # Short machine-readable reason for the LAST enter() call that returned
         # None/-1 -- enter()'s return type (int|None) is a shared contract every
         # other bot already depends on, so this is a side-channel attribute
@@ -247,6 +254,15 @@ class Mt5Broker:
         info = self.mt5.account_info()
         return info.balance if info else None
 
+    def _entry_stop_fallback(self, pid):
+        """The (sl, tp) this process first saw on the open position, if any —
+        the fallback `stop_fields` uses when the entry order was placed naked."""
+        return self._first_sltp.get(int(pid))
+
+    @staticmethod
+    def _r_multiple(open_price, close_price, sl, is_long):
+        return _r_multiple_impl(open_price, close_price, sl, is_long)
+
     def _excursion_pips(self, pid, symbol, time_open, time_close, is_long, open_price):
         """Best-effort MFE/MAE (pips) for a CLOSED position, reconstructed from the
         M1 high/low path between open and close (MT5 deal history has no
@@ -285,6 +301,19 @@ class Mt5Broker:
         return res
 
     # ── Position serialisers (feed the dashboard positions tab — §7) ─────────
+    def _remember_first_sltp(self, positions):
+        """Record each ticket's sl/tp the first time it is seen open (see
+        `_entry_stop`). Pass-through, so it can sit inside the serialiser."""
+        for p in positions:
+            try:
+                t = int(p.ticket)
+                if t not in self._first_sltp:
+                    self._first_sltp[t] = (float(getattr(p, 'sl', 0) or 0) or None,
+                                           float(getattr(p, 'tp', 0) or 0) or None)
+            except Exception:
+                pass
+        return positions
+
     def serialize_open_positions(self) -> list:
         """Live open positions for this bot's magic. Field set is part of the
         dashboard contract (PYTHON_LEGO.md §7)."""
@@ -308,9 +337,14 @@ class Mt5Broker:
                     # instant instead of assuming a base — pylego/broker/clock.py.
                     'tz_offset_sec': tz_off,
                     'comment':    str(p.comment or ''),
+                    # CURRENT stop/target (trails move it). The entry-time stop
+                    # is recovered on close by `_entry_stop`; this is what the
+                    # position is protected by right now.
+                    'sl':         (round(float(p.sl), 5) if getattr(p, 'sl', 0) else None),
+                    'tp':         (round(float(p.tp), 5) if getattr(p, 'tp', 0) else None),
                 }
-                for p in (self.mt5.positions_get() or [])
-                if p.magic == self.magic
+                for p in self._remember_first_sltp(
+                    [q for q in (self.mt5.positions_get() or []) if q.magic == self.magic])
             ]
         except Exception:
             return []
@@ -375,6 +409,11 @@ class Mt5Broker:
                 mfe_pips, mae_pips = self._excursion_pips(
                     pid, last_out.symbol, time_open, int(last_out.time),
                     direction == 'BUY', open_price)
+                close_px = round(float(last_out.price), 5)
+                # Entry-time stop + R, via the shared brick (pylego/broker/stops.py)
+                # so this and the four legacy serialisers cannot disagree on it.
+                stops = stop_fields(mt5, pid, open_price, close_px, direction == 'BUY',
+                                    fallback_sltp=self._entry_stop_fallback(pid))
                 result.append({
                     'position_id': pid,
                     'symbol':      last_out.symbol,
@@ -400,6 +439,11 @@ class Mt5Broker:
                     # check_barriers), so a caller (e.g. a close-alert formatter)
                     # never needs a broker-specific branch to say which barrier hit.
                     'reason':      _deal_close_reason(last_out),
+                    # The stop and target the trade was OPENED with, and the
+                    # result in R. These are what make a live trade comparable
+                    # to a backtest at all — before 2026-09-11 no live row
+                    # carried a stop, so none could be expressed in R.
+                    **stops,       # sl_at_entry · tp_at_entry · sl_source · r
                 })
             return sorted(result, key=lambda t: t['time_close'])
         except Exception:

@@ -14,6 +14,7 @@ if _root not in sys.path:
 from pylego.instruments import (pip_sizes_for,   # noqa: E402  (shared pip table — single source of truth)
                                 pip_size as _registry_pip_size)
 from pylego.broker.clock import ServerClock      # noqa: E402  (broker-clock offset — MT5 stamps aren't UTC)
+from pylego.broker.stops import stop_fields          # entry stop + R on every closed row
 
 try:
     import MetaTrader5 as mt5
@@ -348,6 +349,10 @@ def serialize_closed_trades(magic: int = 20260099) -> list:
                 'time_close':    int(last_out.time),
                 'tz_offset_sec': off,
                 'comment':       str((ind.comment if ind else last_out.comment) or ''),
+                # Entry-time stop + result in R, via the shared brick
+                # (pylego/broker/stops.py) — same implementation Mt5Broker uses,
+                # so the five serialisers cannot disagree on what "entry stop" is.
+                **stop_fields(mt5, pid, open_price, round(float(last_out.price), 5), direction == 'BUY'),
             })
         return sorted(result, key=lambda t: t['time_close'])
     except Exception as exc:

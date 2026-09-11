@@ -67,6 +67,7 @@ from modules.exits import plan_exits
 from journal import GoldV2Journal
 from pylego import events as EV      # event-blackout brick (KV event_windows_v1)
 from pylego.broker.clock import ServerClock, closes_on_utc_day, history_window   # broker-clock offset — MT5 stamps aren't UTC
+from pylego.broker.stops import stop_fields          # entry stop + R on every closed row
 
 load_dotenv()
 
@@ -621,6 +622,10 @@ def _serialize_closed_trades(magic: int) -> list:
                 'time_close':  int(last_out.time),
                 'tz_offset_sec': _tz_offset_sec(),
                 'comment':     str(ind.comment if ind else last_out.comment or ''),
+                # Entry-time stop + result in R, via the shared brick
+                # (pylego/broker/stops.py) — same implementation Mt5Broker uses,
+                # so the five serialisers cannot disagree on what "entry stop" is.
+                **stop_fields(mt5, pid, open_price, round(float(last_out.price), 5), direction == 'BUY'),
             })
         return sorted(result, key=lambda t: t['time_close'])
     except Exception:
