@@ -192,6 +192,17 @@ authorised deployment.
 
 ---
 
+## 5b. Status — 2026-09-11
+
+| Step | State |
+|---|---|
+| 1 Read the costs we already store | ✅ commission in Net (2026-09-10) |
+| 2 Surface `mfe_pips` / `mae_pips` / `reason` | ✅ `bot-audit.html` Excursions |
+| 3 Capture `sl_at_entry` / `tp_at_entry` / `r` | ✅ `pylego/broker/stops.py`, all five serialisers, §7 updated |
+| 4 Allocation + daily `equity_<bot>_<YYYY-MM>` | ✅ server-side in `_worker.js` (`recordEquity`), `bot_allocations` KV, three gates |
+| 5 Freeze `expect_<bot>` | plumbing built; **nothing frozen** — the one wired backtest fails plausibility (`FIB_ATLAS_BACKTEST_VS_LIVE.md`) |
+| 6 Backfill R from `history_orders_get` | `scripts/backfill_sl_at_entry.py` |
+
 ## 6. Adoption order
 
 Each step is independently useful; stop anywhere.
