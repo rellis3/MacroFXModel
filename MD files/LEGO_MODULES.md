@@ -7027,3 +7027,81 @@ offered to the owner, awaiting direction.
 Validated: `node --check` on `level_atlas_check_coverage.mjs`; read-only R2
 fetches only (`getJSON` against `level-atlas/{pair}-votetrades.json`), no
 writes, no regeneration.
+
+#### Fib-Atlas-scoped fix for the silent-gap-fill-regression vulnerability (2026-09-11)
+
+Direct owner instruction: build the fix, but scoped ONLY to Fib Atlas (Asia
++ Monday — same bot/system, both ladders hit the same class of bug), and
+explicitly **do not touch** the shared `js/m1GapFill.js` brick or
+`js/levelAtlasRoutes.js` (Level/Vote Atlas) — "if you cant just fix this
+side dont change anything yet." The clean scoped-only fix below was
+achievable, so it was built.
+
+**What changed** — `runOne` in `js/asiaFibAtlasRoutes.js` and
+`js/mondayFibAtlasRoutes.js` only. `js/m1GapFill.js`'s `gapFillPacked` /
+`fetchM1Gap` are called exactly as before, unmodified — only the `onLog`
+callback passed into that existing call is now a wrapper that also counts
+failed-chunk log lines:
+
+1. **`gapFillChunkFailures`** — an `onLog` wrapper
+   (`countGapFillFailures`) that pattern-matches `m1 gap chunk .* failed:`
+   (the exact string `js/m1GapFill.js`'s `fetchM1Gap` catch block already
+   logs) and increments a counter, alongside still forwarding every line to
+   the real `onLog` so status output/logging is unchanged. Zero shared-brick
+   changes — this only observes the existing log stream at Fib Atlas's own
+   call site.
+2. **`dataAsOf`** — the ISO timestamp of the packed M1's actual last bar,
+   computed once after the gap-fill attempt. The honest complement to
+   `generatedAt` (when the job ran): `generatedAt` is always "now" even on a
+   totally failed gap-fill, which is exactly how the 2026-09-08 incident
+   went unnoticed — a fresh timestamp on stale data. Added to BOTH persisted
+   blobs (`{pair}-votetrades.json` and `{pair}.json`), alongside
+   `gapFillIncomplete` (`gapFillChunkFailures > 0`) and
+   `gapFillChunkFailures` itself, so any consumer (the reconciliation
+   script, the blotter, a future dashboard badge) can tell "job ran
+   recently" apart from "data is actually current" without guessing.
+3. **`guardAgainstRegression(key, label)`** — before each `putJSON`, reads
+   the ALREADY-PERSISTED blob at that key (`getJSON`, read-only) and
+   compares its stored `dataAsOf` against this run's own `dataAsOf`. Only
+   engages when THIS run's gap-fill had failures (`gapFillChunkFailures >
+   0`) — a clean run's `dataAsOf` is trusted outright even if, oddly, older
+   (e.g. a quiet weekend with no new bars yet is not a regression). If the
+   new run would be older than what's already stored, the `putJSON` is
+   **skipped** (old, better data is left in place) and a clear line is
+   `onLog`'d naming both dates — this is the exact 2026-09-08 incident
+   scenario, now blocked instead of silently persisted. Deliberately
+   compares only against the existing blob's own `dataAsOf` field (not a
+   guess at trade-row date shapes inside `trades[]`, which would need
+   reading `js/asiaFibAtlasVoteReview.js`'s trade object contract to get
+   right) — a blob persisted before this fix shipped has no `dataAsOf` yet
+   and is let through once un-guarded; every run after that has a real
+   prior value to protect.
+4. **Live-plan seed gated on the same guard.** Both files also seed the
+   live bot's actual trading plan (`mergeIntoFibAtlasPlan`) straight from
+   the same in-memory `book`/`live` object used for the main-book persist.
+   If the book persist above was skipped as a regression, the plan seed is
+   now skipped too (with its own `onLog` line) — a regressed run must not
+   still push its equally-regressed zones into the plan the live bot
+   actually trades off, even though that persist step is technically
+   separate from the `putJSON` calls the guard directly wraps.
+
+**Deliberately not done** (kept in scope): no change to `js/m1GapFill.js`'s
+per-chunk catch/continue behavior itself, and no change to
+`js/levelAtlasRoutes.js`. Both remain exactly as they were — Level/Vote
+Atlas is untouched by this fix, and the underlying shared-brick
+vulnerability documented in the entry above still exists for its other four
+consumers (`sessionPathRoutes.js`, `sessionHandoffRoutes.js`,
+`rankICLiveEngine.js`, `overnightHoldEngine.js`) and for Level Atlas itself,
+should it ever hit a bad-enough run. A true root-cause fix (abort/flag in
+the shared brick) would protect all six at once but was explicitly declined
+for this task.
+
+Validated: `node --check` on both files. A synthetic dry-run
+(`scratchpad/guard_dryrun.mjs`, not committed — pure decision-table logic,
+no real data/network needed) exercised the guard against 5 cases: a clean
+run with older data (allowed — not a regression), a failed-chunk run
+reproducing the exact 2026-09-08 incident shape (blocked), a failed-chunk
+run that still improves on stored data (allowed), a failed-chunk run
+against a pre-fix blob with no `dataAsOf` yet (allowed once, nothing to
+compare against), and a first-ever run with no existing blob (allowed). All
+5 passed.
