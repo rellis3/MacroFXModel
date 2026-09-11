@@ -1092,3 +1092,59 @@ export function projectPaths(dayPnls, { horizon = 30, runs = 2000, capital = 0, 
     fan, sampleDays: n,
   };
 }
+
+// ── Expectation: horizon-matched window distributions ────────────────────────
+//
+// The frozen expect_<bot> artifact holds the backtest's daily returns. To rank
+// a live window of N days fairly, every headline metric is computed over EVERY
+// N-day window of that series, and the live figure is placed inside that
+// distribution. A 3-month live Sharpe against a 5-year backtest Sharpe is a
+// category error; against the spread of 3-month Sharpes the backtest itself
+// produced, it is the right question. Same construction as `growthCone`, for
+// the tiles instead of the curve.
+//
+// Lightweight per-window maths (mean/sd/compound/drawdown in one pass) rather
+// than portfolioStats(), because ~1,200 windows × a full stats battery is
+// seconds in a browser and this runs on every render.
+
+export function windowDist(rets, N) {
+  const out = { n: 0, horizon: Math.min(N, rets.length), totalReturn: [], cagr: [], sharpe: [], sortino: [], maxDD: [], volAnn: [], calmar: [] };
+  const k = out.horizon;
+  if (!rets.length || k < 5) return out;
+  for (let i = 0; i + k <= rets.length; i++) {
+    let eq = 1, peak = 1, dd = 0, sum = 0, dsq = 0;
+    for (let j = i; j < i + k; j++) {
+      const r = rets[j];
+      sum += r;
+      if (r < 0) dsq += r * r;
+      eq *= (1 + r / 100); if (eq > peak) peak = eq;
+      const d = eq / peak - 1; if (d < dd) dd = d;
+    }
+    const m = sum / k;
+    // Two-pass variance: the one-pass form (Σr²/k − m²) leaves ~1e-17 of
+    // cancellation residue on a constant series, which then divides into a
+    // Sharpe of 10^8 instead of the guarded 0.
+    let ss = 0; for (let j = i; j < i + k; j++) { const d = rets[j] - m; ss += d * d; }
+    const sd = Math.sqrt(ss / k);
+    const dsd = Math.sqrt(dsq / k);
+    const total = (eq - 1) * 100, years = k / 252;
+    const cagr = (Math.pow(Math.max(1e-9, eq), 1 / years) - 1) * 100;
+    const maxDD = dd * 100;
+    out.totalReturn.push(total); out.cagr.push(cagr);
+    out.sharpe.push(sd > 1e-12 ? m / sd * Math.sqrt(252) : 0);
+    out.sortino.push(dsd > 1e-12 ? m / dsd * Math.sqrt(252) : 0);
+    out.maxDD.push(maxDD); out.volAnn.push(sd * Math.sqrt(252));
+    out.calmar.push(maxDD < -1e-9 ? cagr / Math.abs(maxDD) : 0);
+  }
+  out.n = out.sharpe.length;
+  return out;
+}
+
+/** Percentile rank of `v` in `arr` (0-100), and the P5/P50/P95 of `arr`.
+ *  null when there is nothing to rank against — never 50 as a stand-in. */
+export function rankAgainst(arr, v) {
+  if (!arr || !arr.length || v == null || !isFinite(v)) return null;
+  const s = [...arr].sort((a, b) => a - b);
+  const at = p => s[Math.min(s.length - 1, Math.floor(p / 100 * s.length))];
+  return { rank: Math.round(s.filter(x => x < v).length / s.length * 100), p5: at(5), p50: at(50), p95: at(95), n: s.length };
+}

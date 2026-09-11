@@ -9,6 +9,7 @@ import {
   rollingEdge, breakdowns, hourWeekdayGrid, ukClock,
   dailyByGroup, correlationMatrix, effectiveBets, coincidentLoss, worstJointDays, symEigen,
   legsOf, netLegs, openAt, exposureSeries, drawdownEpisodes, concentration, projectPaths,
+  windowDist, rankAgainst,
 } from './botAuditEngine.js';
 
 let fail = 0;
@@ -483,6 +484,29 @@ console.log('\nprojection');
   ok('too few days -> null', projectPaths([1, 2, 3], { capital: 1000 }) === null);
   const P2 = projectPaths(up, { horizon: 30, runs: 300, capital: 10000 });
   ok('deterministic', P2.pPass === P.pPass && P2.finalPct.p50 === P.finalPct.p50);
+}
+
+
+console.log('\nexpectation windows');
+{
+  const flat = new Array(300).fill(0.1);                  // +0.1% every day
+  const w = windowDist(flat, 60);
+  ok('one entry per 60-day window', w.n === 241 && w.horizon === 60);
+  ok('constant series -> zero sd -> sharpe 0 (guarded), no NaN', w.sharpe.every(v => v === 0));
+  ok('total return of a 60-day window', near(w.totalReturn[0], (Math.pow(1.001, 60) - 1) * 100, 1e-9));
+  ok('no drawdown on a monotone series', w.maxDD.every(v => v === 0));
+  ok('too short a horizon -> empty', windowDist(flat, 3).n === 0);
+  ok('horizon clamps to series length', windowDist(flat.slice(0, 30), 90).horizon === 30);
+
+  let s4 = 9; const r4 = () => ((s4 = (s4 * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff - 0.5) * 2;
+  const noisy = Array.from({ length: 500 }, r4);
+  const wn = windowDist(noisy, 63);
+  ok('drawdowns negative on a noisy series', wn.maxDD.every(v => v <= 0) && wn.maxDD.some(v => v < -1));
+  ok('calmar defined where drawdown is', wn.calmar.length === wn.n);
+  const rk = rankAgainst(wn.sharpe, 99);
+  ok('a sharpe of 99 ranks P100 with P5/P50/P95 reported', rk.rank === 100 && rk.p5 <= rk.p50 && rk.p50 <= rk.p95 && rk.n === wn.n);
+  ok('the median itself ranks ~P50', Math.abs(rankAgainst(wn.sharpe, rk.p50).rank - 50) <= 2);
+  ok('nothing to rank against -> null, never 50', rankAgainst([], 1) === null && rankAgainst(wn.sharpe, null) === null);
 }
 
 console.log(fail ? `\n${fail} FAILED\n` : '\nAll passed\n');

@@ -73,6 +73,12 @@
   .tile.thin::after { content:'thin sample'; display:block; color:var(--warn); font-size:9.5px;
                       margin-top:3px; font-family:var(--mono); }
   .tile.locked .v { color:var(--dim2); }
+  .tile .pb { display:flex; gap:6px; align-items:center; margin-top:4px; font-family:var(--mono); font-size:10px; }
+  .tile .pb .pk { border:1px solid; border-radius:3px; padding:0 4px; font-weight:700; }
+  .tile .pb .pk.mid { color:var(--warn); border-color:var(--warn); }
+  .tile .pb .pk.lo  { color:var(--bad);  border-color:var(--bad); }
+  .tile .pb .pk.hi  { color:var(--good); border-color:var(--good); }
+  .tile .pb .ex { color:var(--dim2); }
   .pos { color:var(--good); } .neg { color:var(--bad); } .neu { color:var(--fg); }
 
   /* ── tables ── */
@@ -309,6 +315,7 @@ import {
   rollingEdge, breakdowns, hourWeekdayGrid, MIN_N_CELL, DOW,
   dailyByGroup, correlationMatrix, effectiveBets, coincidentLoss, worstJointDays, MIN_BOTH_ACTIVE,
   netLegs, exposureSeries, drawdownEpisodes, concentration, projectPaths,
+  windowDist, rankAgainst,
 } from './js/botAuditEngine.js';
 import { instrument as _instrument } from './js/instrumentRegistry.js';
 import { histVaR, histCVaR } from './js/metricsCore.js';
@@ -377,6 +384,7 @@ async function setSel(keys) {
   try { localStorage.setItem('botAuditSel', JSON.stringify(selectedKeys())); } catch (e) {}
   renderPills();
   BT = null;                                   // a different book means a different backtest
+  await loadExpectation();
   if (BT_ON) await loadBacktest();
   render();
 }
@@ -401,6 +409,51 @@ function renderPills() {
 // Backtest overlay state. `BT_CACHE` is keyed by bot so flipping the toggle off
 // and on, or switching bots and back, never re-pays the R2 cost.
 let BT_ON = false, BT_MODE = 'cone', BT = null, BT_LOADING = false;
+// The frozen expectation for the selected bot (expect_<bot>), when exactly one
+// bot is selected and one has been frozen. Source of the tile badges, the cone,
+// and the Distributions tab's "expected" mode. Null otherwise — every consumer
+// falls back to own-sample behaviour and says so.
+let EXPECT = null, EXPECT_BOT = null;
+const EXPECT_CACHE = new Map();
+async function loadExpectation() {
+  const keys = selectedKeys();
+  if (keys.length !== 1) { EXPECT = null; EXPECT_BOT = null; return; }
+  const bot = keys[0];
+  if (EXPECT_CACHE.has(bot)) { EXPECT = EXPECT_CACHE.get(bot); EXPECT_BOT = bot; return; }
+  try {
+    const r = await fetch(`/api/bot-audit/expectation?bot=${encodeURIComponent(bot)}`);
+    const j = await r.json();
+    EXPECT = j.available ? j.expectation : null;
+  } catch (e) { EXPECT = null; }
+  EXPECT_CACHE.set(bot, EXPECT); EXPECT_BOT = bot;
+}
+// Horizon-matched distributions for the current live window length, memoised
+// per (bot, N) — windowDist is O(windows × N) and every tile asks for it.
+const WD_CACHE = new Map();
+function expectWindows(N) {
+  if (!EXPECT) return null;
+  const k = `${EXPECT_BOT}|${EXPECT.frozen_at}|${N}`;
+  if (!WD_CACHE.has(k)) WD_CACHE.set(k, windowDist(EXPECT.daily.map(d => d.ret), N));
+  return WD_CACHE.get(k);
+}
+// The badge: P## exp X. Rank of the realised figure inside the distribution of
+// that metric over backtest windows of the same length; X is that
+// distribution's median. Null (no badge) when there is no expectation or the
+// metric is not comparable.
+function badge(metricKey, realised, fmt, { invert = false } = {}) {
+  const N = _LAST_S?.series?.dailyEquity?.length || 0;
+  const wd = expectWindows(N);
+  if (!wd || !wd[metricKey]?.length || realised == null || !isFinite(realised)) return '';
+  const rk = rankAgainst(wd[metricKey], realised);
+  if (!rk) return '';
+  // Colour by whether the tail is the BAD one. Default: high rank good (return,
+  // Sharpe). maxDD is negative so a deeper drawdown ranks LOW — the default
+  // already reads it right. Volatility is the odd one: lower is better, so
+  // `invert` swaps the tails rather than flagging a calm book as a failure.
+  const lowTail = rk.rank <= 10, highTail = rk.rank >= 90;
+  const tier = !lowTail && !highTail ? 'mid' : (lowTail !== invert ? 'lo' : 'hi');
+  return `<div class="pb" title="Realised sits at P${rk.rank} of ${rk.n} backtest windows of ${wd.horizon} days · P5 ${fmt(rk.p5)} · P50 ${fmt(rk.p50)} · P95 ${fmt(rk.p95)}"><span class="pk ${tier}">P${rk.rank}</span><span class="ex">exp ${fmt(rk.p50)}</span></div>`;
+}
 const BT_CACHE = new Map();
 const $ = id => document.getElementById(id);
 const cap = () => {
@@ -483,6 +536,7 @@ window.reload = async function reload() {
   RAW = await fetchRange(RANGE.from, RANGE.to);
   NORM = normalizeTrades(RAW);
   renderPills();
+  await loadExpectation();
   render();
 };
 
@@ -707,6 +761,14 @@ window.setBtMode = m => {
 
 async function loadBacktest() {
   const keys = selectedKeys();
+  // A frozen expectation IS the reference. Prefer it to a fresh build: the
+  // fresh build is whatever the backtest says today, the frozen one is what it
+  // said before the live data existed — and only the second is a fair test.
+  if (keys.length === 1 && EXPECT) {
+    BT = { ok: true, bot: keys[0], available: true, frozen: true, source: `frozen expectation · ${String(EXPECT.frozen_at).slice(0, 10)}`,
+           configLabel: EXPECT.configLabel, from: EXPECT.window?.from, to: EXPECT.window?.to, days: EXPECT.daily.length, daily: EXPECT.daily };
+    return;
+  }
   if (keys.length !== 1) {
     BT = { ok: true, available: false, reason: `A backtest corresponds to ONE strategy — select a single bot to overlay it (currently ${keys.length}).` };
     return;
@@ -936,6 +998,7 @@ function render() {
   describeCapital();
   const C = cap(), G = { gross: GROSS };
   const S = summarize(TRADES, { capital: C, gross: GROSS });
+  _LAST_S = S;
   $('status').textContent = `${NORM.kept} rows · ${NORM.dupes} dupes dropped · ${NORM.droppedNoClose} no-close · showing ${TRADES.length}`;
   renderOvw(S, C, G);
   renderEdg(G);
@@ -955,8 +1018,8 @@ function render() {
   if (rs) rs.textContent = `${selectionLabel()} · ${RANGE.from} → ${RANGE.to} · ${GROSS ? 'GROSS' : 'NET'} · ${TRADES.length} trades`;
 }
 
-function tile(k, v, sub, klass = '') {
-  return `<div class="tile ${klass}"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${sub || ''}</div></div>`;
+function tile(k, v, sub, klass = '', bdg = '') {
+  return `<div class="tile ${klass}"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${sub || ''}</div>${bdg}</div>`;
 }
 
 function renderOvw(S, C, G) {
@@ -968,16 +1031,16 @@ function renderOvw(S, C, G) {
 
   const tiles = [
     tile('Net P&amp;L', `<span class="${cls(f.totalPnl)}">${money(f.totalPnl)}</span>`, `${f.trades} trades · ${f.activeDays} active days`),
-    b ? tile('Total Return', `<span class="${cls(b.totalReturnPct)}">${pct(b.totalReturnPct)}</span>`, `on $${C.toLocaleString('en-GB')} declared`)
+    b ? tile('Total Return', `<span class="${cls(b.totalReturnPct)}">${pct(b.totalReturnPct)}</span>`, `on $${C.toLocaleString('en-GB')} declared`, '', badge('totalReturn', b.totalReturnPct, v => pct(v, 1)))
       : tile('Total Return', '—', 'set Capital to unlock', lock),
-    tile('Sharpe (ann)', num(f.sharpe), 'daily basis · √252', thin),
-    tile('Sortino (ann)', num(f.sortino), 'downside only', thin),
-    b ? tile('Max Drawdown', `<span class="neg">${pct(b.maxDDPct)}</span>`, `${money(f.maxDDAbs)} peak-to-trough`)
+    tile('Sharpe (ann)', num(f.sharpe), 'daily basis · √252', thin, badge('sharpe', f.sharpe, v => v.toFixed(2))),
+    tile('Sortino (ann)', num(f.sortino), 'downside only', thin, badge('sortino', f.sortino, v => v.toFixed(2))),
+    b ? tile('Max Drawdown', `<span class="neg">${pct(b.maxDDPct)}</span>`, `${money(f.maxDDAbs)} peak-to-trough`, '', badge('maxDD', b.maxDDPct, v => pct(v, 1)))
       : tile('Max Drawdown', `<span class="neg">${money(f.maxDDAbs)}</span>`, 'set Capital for %'),
-    b ? tile('Calmar', num(b.calmar), 'CAGR ÷ |maxDD|', thin) : tile('Calmar', '—', 'needs Capital', lock),
-    b ? tile('Return / Year', `<span class="${cls(b.cagr)}">${pct(b.cagr)}</span>`, 'annualised, compounded', thin)
+    b ? tile('Calmar', num(b.calmar), 'CAGR ÷ |maxDD|', thin, badge('calmar', b.calmar, v => v.toFixed(2))) : tile('Calmar', '—', 'needs Capital', lock),
+    b ? tile('Return / Year', `<span class="${cls(b.cagr)}">${pct(b.cagr)}</span>`, 'annualised, compounded', thin, badge('cagr', b.cagr, v => pct(v, 1)))
       : tile('Return / Year', '—', 'needs Capital', lock),
-    b ? tile('Volatility (ann)', pct(b.volAnn), 'daily sd × √252', thin)
+    b ? tile('Volatility (ann)', pct(b.volAnn), 'daily sd × √252', thin, badge('volAnn', b.volAnn, v => pct(v, 1), { invert: true }))
       : tile('Volatility (ann)', '—', 'needs Capital', lock),
     tile('Win Rate', (f.winRate * 100).toFixed(1) + '%', `${Math.round(f.winRate * f.trades)}W / ${f.trades - Math.round(f.winRate * f.trades)}L`, thin),
     tile('Profit Factor', num(f.profitFactor), `payoff ${num(f.payoff)}`, thin),
@@ -994,6 +1057,8 @@ function renderOvw(S, C, G) {
   const rollWin = Math.min(63, Math.max(5, Math.floor(dEq.length / 4)));
 
   const notes = [];
+  if (EXPECT) notes.push(`<div class="note" style="border-left-color:var(--accent2)"><b>Expectation frozen ${esc(String(EXPECT.frozen_at).slice(0, 10))}</b> — ${esc(EXPECT.configLabel || EXPECT.source || '')} · ${EXPECT.window?.days?.toLocaleString('en-GB')} backtest days · commit ${esc(EXPECT.engine_commit || '?')}. Tile badges rank each live figure inside the distribution of that metric over backtest windows of the <b>same length as this live window</b> (${S.series.dailyEquity.length} days). P10 or below is the adverse tail.</div>`);
+  else if (selectedKeys().length === 1) notes.push(`<div class="note" style="border-left-color:var(--dim2);color:var(--dim2)">No frozen expectation for ${esc(botOf(selectedKeys()[0]).label)} — the <code>P## exp</code> badges need one (<code>scripts/freeze_expectation.mjs</code>), and it will only freeze a backtest that passes the plausibility guard.</div>`);
   if (S.flags.noCapital) notes.push(`<div class="note"><b>No capital declared</b> — return %, CAGR, Calmar, max-DD % and time-in-drawdown are hidden rather than computed against a guessed denominator. Bots share MT5 accounts, so account balance is not a per-bot base; type the notional you consider behind this book into <b>Capital</b> above. It is stored in this browser only, never pushed to config.</div>`);
   if (S.flags.thinSample) notes.push(`<div class="note warn"><b>Thin sample — ${S.n} trades.</b> Ratio metrics (Sharpe, Sortino, Calmar, PF, win rate) are greyed above because below ~${MIN_N_RATIOS} trades their confidence interval is wider than any difference you would act on. The P&amp;L totals are exact; the ratios are not yet estimates.</div>`);
   if (GROSS) notes.push(`<div class="note warn"><b>Gross view — costs removed.</b> This is the "before costs" book and is not what the account got. Flip back to Net before drawing any conclusion; the gap between the two views is the cost drag.</div>`);
@@ -1501,6 +1566,8 @@ function renderPrj(C, G) {
 
 let DST_METRIC = 'sharpe';
 let _LAST_DIST = null;
+let DST_MODE = 'own';               // 'own' = bootstrap of this book · 'expected' = frozen backtest windows
+window.setDstMode = m => { DST_MODE = m; renderDst(_LAST_S); };
 window.setDstMetric = k => { DST_METRIC = k; renderDst(_LAST_S); };
 let _LAST_S = null;
 
@@ -1519,7 +1586,30 @@ function renderDst(S) {
   let sel = DST_METRIC;
   if (!D.metrics[sel]?.available) sel = DIST_METRICS.find(m => D.metrics[m.key]?.available)?.key || 'sharpe';
   const meta = DIST_METRICS.find(m => m.key === sel);
-  const x = D.metrics[sel];
+  let x = D.metrics[sel];
+
+  // Expected mode: the distribution comes from the frozen backtest's windows of
+  // the live length, not from resampling the live book. Only metrics with a
+  // counterpart in the artifact; the rest fall back to own-sample and say so.
+  const EXP_MAP = { returnPct: 'totalReturn', cagr: 'cagr', sharpe: 'sharpe', sortino: 'sortino', maxDD: 'maxDD', volAnn: 'volAnn', calmar: 'calmar' };
+  const N = S.series.dailyEquity.length;
+  const wd = DST_MODE === 'expected' ? expectWindows(N) : null;
+  let expectedUsed = false;
+  if (wd && EXP_MAP[sel] && wd[EXP_MAP[sel]]?.length && x?.available) {
+    let vals = wd[EXP_MAP[sel]].slice();
+    let realised = x.realised;
+    // DST's maxDD is dollars; the artifact's is % — put both on dollars.
+    if (sel === 'maxDD') { const C = cap(); if (!(C > 0)) vals = null; else vals = vals.map(v => v / 100 * C); }
+    if (vals) {
+      vals.sort((a, b) => a - b);
+      const at = p => vals[Math.min(vals.length - 1, Math.floor(p / 100 * vals.length))];
+      const mean_ = vals.reduce((s2, v) => s2 + v, 0) / vals.length, sd = Math.sqrt(vals.reduce((s2, v) => s2 + (v - mean_) ** 2, 0) / vals.length);
+      x = { available: true, realised, values: vals, mean: mean_, sd, rank: Math.round(vals.filter(v => v < realised).length / vals.length * 100),
+            p: { 1: at(1), 5: at(5), 10: at(10), 25: at(25), 50: at(50), 75: at(75), 90: at(90), 95: at(95), 99: at(99) } };
+      expectedUsed = true;
+    }
+  }
+  const modeSel = `<div class="seg" style="margin-left:auto"><button class="${DST_MODE === 'own' ? 'on' : ''}" onclick="setDstMode('own')" title="Resample this book's own trades/days">Own sample</button><button class="${DST_MODE === 'expected' ? 'on' : ''}" onclick="setDstMode('expected')" ${EXPECT ? '' : 'disabled title="No frozen expectation for this selection"'} title="Backtest windows of the live length, from the frozen expectation">Expected</button></div>`;
 
   const fmtV = (v, m) => {
     if (v == null || !isFinite(v)) return '—';
@@ -1558,14 +1648,19 @@ function renderDst(S) {
       ? `<b class="neg">P${x.rank} — in the tail.</b> This realised value is not a reliable estimate of the metric: a different draw of the same trades would most likely have produced something quite different.`
       : `<b>P${x.rank} — mid-distribution.</b> Close to what this return stream typically produces, so the realised figure is representative rather than a fluke of ordering.`;
 
+  const modeNote = expectedUsed
+    ? `<div class="note" style="border-left-color:var(--accent2)"><b>Expected mode.</b> The distribution is every ${wd.horizon}-day window of the frozen backtest (${wd.n.toLocaleString('en-GB')} windows, frozen ${esc(String(EXPECT.frozen_at).slice(0, 10))}), and the marker is the live book. <b>This is the comparison the reference terminal makes</b>: is live inside what the backtest said to expect over a window this long.</div>`
+    : DST_MODE === 'expected'
+      ? `<div class="note warn"><b>Expected mode has no counterpart for ${esc(meta?.label || sel)}</b>${EXPECT ? ' (or needs Capital)' : ' — no frozen expectation for this selection'} — showing the own-sample bootstrap instead. ${esc(bootstrapNote)}</div>`
+      : `<div class="note warn"><b>Read this before reading the chart.</b> ${esc(bootstrapNote)}</div>`;
   el.innerHTML = `
-  <div class="note warn"><b>Read this before reading the chart.</b> ${esc(bootstrapNote)}</div>
+  ${modeNote}
   <div class="dstwrap">
     <div class="panel dstlist"><div class="ph"><span class="badge">MET</span>Metrics<span class="rt">realised</span></div>
       <div class="pb" style="padding:6px 0">${list}</div></div>
 
-    <div class="panel"><div class="ph"><span class="badge">SHAPE</span>${esc(meta?.label || sel)} — resampled shape
-      <span class="rt">${D.runs.toLocaleString('en-GB')} resamples · ${meta?.basis === 'day' ? D.days + ' days' : D.n + ' trades'} · seeded</span></div>
+    <div class="panel"><div class="ph"><span class="badge">SHAPE</span>${esc(meta?.label || sel)} — ${expectedUsed ? 'expected shape' : 'resampled shape'}
+      <span class="rt">${expectedUsed ? `${wd.n.toLocaleString('en-GB')} backtest windows · ${wd.horizon}d` : `${D.runs.toLocaleString('en-GB')} resamples · ${meta?.basis === 'day' ? D.days + ' days' : D.n + ' trades'} · seeded`}</span>${modeSel}</div>
       <div class="pb">${x?.available ? histogram(x.values, x.realised, {}) : `<div class="empty">Withheld — this metric needs a declared capital base.</div>`}</div></div>
 
     <div class="panel dstpct"><div class="ph"><span class="badge">PCTL</span>Percentiles</div>
@@ -1589,16 +1684,14 @@ function renderDst(S) {
     </div>
   </div></div>
 
-  <div class="panel"><div class="ph"><span class="badge">GAP</span>What is missing here</div><div class="pb"><div class="rd">
-    The terminal this is modelled on ranks a realised figure inside the distribution its <b>backtest</b> predicted. This ranks it
-    inside its own book's resamples, which answers a narrower question — is this figure stable, or an artefact of one draw.
-    Two things block the other comparison, both in <code>MD files/LIVE_BACKTEST_ALIGNMENT.md</code>:
-    <ul style="margin:8px 0 0;padding-left:18px">
-      <li>No bot has a frozen <code>expect_&lt;bot&gt;</code> — nothing recorded what its backtest expected before it went live.</li>
-      <li>Live trades carry no stop distance, so they cannot be expressed in R and ranked against a backtest measured in R.</li>
-    </ul>
-    And as the Backtest overlay now reports, the one reference that IS wired fails a plausibility check on its own numbers —
-    so the missing piece is a trustworthy expectation, not a missing chart.
+  <div class="panel"><div class="ph"><span class="badge">GAP</span>Own sample vs expected</div><div class="pb"><div class="rd">
+    <b>Own sample</b> resamples this book against itself: is the figure stable, or an artefact of one draw. <b>Expected</b> ranks it
+    inside the frozen backtest's windows of the same length: is live doing what the backtest said it would. The second is the
+    comparison the reference terminal makes, and it needs an <code>expect_&lt;bot&gt;</code> artifact
+    (<code>scripts/freeze_expectation.mjs</code>) — which only freezes a backtest that passes the plausibility guard.
+    ${EXPECT ? '' : 'None is frozen for this selection yet; see <code>MD files/FIB_ATLAS_BACKTEST_VS_LIVE.md</code> for why the first candidate was refused.'}
+    Since 2026-09-11 every live row also carries its stop and result in R (<code>pylego/broker/stops.py</code>), so trade-level
+    comparisons in R become possible as those rows accumulate.
   </div></div></div>`;
 }
 
