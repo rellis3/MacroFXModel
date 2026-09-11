@@ -108,6 +108,7 @@ import { fetchRealYieldData, realYieldScore, REAL_YIELD_UNIVERSE } from './js/re
 import { fetchRateDiffData, rateDiffScore, RATE_DIFF_UNIVERSE } from './js/rateDiffEngine.js';
 import { fetchPpiData, ppiCompositeScore, PPI_UNIVERSE } from './js/ppiEngine.js';
 import { buildScorecard as buildMacroScorecard, topBottomPair as macroTopBottomPair, factorBoard as macroFactorBoard } from './js/macroScorecardEngine.js';
+import { SCORECARD_HISTORY_KV, rowFromScorecard as _scRow, upsertRow as _scUpsert, parseStore as _scParse, seriesFor as _scSeries } from './js/scorecardHistory.js';   // one row per day of what the scorecard said
 import { fetchYieldCurveData, yieldCurveScore, YIELD_CURVE_UNIVERSE } from './js/yieldCurveEngine.js';
 import { fetchConsumerConfidenceData, consumerConfidenceCompositeScore, CONFIDENCE_UNIVERSE } from './js/consumerConfidenceEngine.js';
 import { FOMC_MEETINGS, pendingAsOf as fomcPendingAsOf } from './js/fomcCalendar.js';
@@ -6417,6 +6418,53 @@ async function _buildMacroScorecard() {
     generatedAt: new Date().toISOString(),
   };
 }
+// ── Scorecard history — one row per day, so the composite can one day be tested ─
+// The scorecard is rebuilt on every request and persisted nowhere, so no time series
+// of it has ever existed. This records the end-of-day state (idempotent by UTC day;
+// a later run on the same day replaces the earlier row, since engines refresh
+// through the day). Same read-modify-write discipline as econ_surprise_v1: getStrict
+// so a swallowed read cannot wipe the store, refuse to write over a value that fails
+// to parse, and write only when the day's row actually changed.
+let _scHistRunning = false;
+async function _recordScorecardHistory() {
+  if (_scHistRunning) return { skipped: 'running' };
+  _scHistRunning = true;
+  try {
+    const sc = await _buildMacroScorecard();
+    const raw = await kv.getStrict(SCORECARD_HISTORY_KV);   // 404 -> null; a real failure THROWS
+    const stored = _scParse(raw);
+    if (stored === null) {
+      // Corrupt is not empty. Writing here would replace whatever is there with one
+      // row, which is how oi_history once lost 25 days.
+      throw new Error(`${SCORECARD_HISTORY_KV} is unparseable (${String(raw).length} bytes) — refusing to overwrite`);
+    }
+    const { rows, changed, action, dropped } = _scUpsert(stored, _scRow(sc));
+    if (changed) {
+      await kv.put(SCORECARD_HISTORY_KV, JSON.stringify({ rows, updatedAt: Date.now() }));
+      console.log(`[scorecard-history] ${action}: ${rows.length} days stored${dropped ? ` (-${dropped} aged out)` : ''}`);
+    }
+    return { action, days: rows.length };
+  } finally { _scHistRunning = false; }
+}
+// Every 2h. The row is replaced if the day's state moved, so the last run before
+// midnight UTC is what the series keeps. First run is deferred until after kv.load()
+// (see the boot section) — scheduling it here would race the store replacement.
+setInterval(() => _recordScorecardHistory().catch(e => console.error('[scorecard-history]', e.message)), 2 * 3600_000);
+
+app.get('/api/macro-scorecard/history', async (req, res) => {
+  try {
+    const rows = _scParse(await kv.getStrict(SCORECARD_HISTORY_KV)) ?? [];
+    const ccy = String(req.query.ccy || '').toUpperCase();
+    const field = String(req.query.field || 'c');
+    if (ccy) return res.json({ ok: true, ccy, field, series: _scSeries(rows, ccy, field), days: rows.length });
+    res.json({ ok: true, days: rows.length, from: rows[0]?.d ?? null, to: rows.at(-1)?.d ?? null, rows });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/macro-scorecard/history/record', async (_req, res) => {
+  try { res.json({ ok: true, ...(await _recordScorecardHistory()) }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 app.get('/api/macro-scorecard', async (_req, res) => {
   try {
     const data = await _buildMacroScorecard();
@@ -29627,6 +29675,11 @@ await kv.load();
 _backfillSurpriseStore()
   .then(() => _refreshSurpriseStore())
   .catch(e => console.error('[surprise] initial load failed (store left untouched):', e.message));
+// First scorecard-history row. After kv.load() for the same reason as the surprise
+// store above, and delayed so it does not join the boot-time FRED burst — the
+// scorecard build reads only cached engine KV, but the engines it reads may still be
+// seeding.
+setTimeout(() => _recordScorecardHistory().catch(e => console.error('[scorecard-history] first run failed (store left untouched):', e.message)), 3 * 60_000);
 await reloadConfig();
 await reloadLevels();
 _restoreVolatilityV2Config().catch(e => console.error('[VOLATILITY-V2] config repair error:', e.message));

@@ -984,6 +984,10 @@ export default {
             // expectation claimed - it must survive, unlike oi_store_py which is a
             // deliberately expiring shadow.
             'oi_expect_log',
+            // macro_scorecard_history_v1 is the only time series of the scorecard's
+            // composite — one row per day, accumulated, not re-derivable. Missing it
+            // here means a silent 48h TTL and the record resets every two days.
+            'macro_scorecard_history_v1',
             // oi_auto_target decides whether the nightly sweep feeds the live bots. If it
             // expired it would silently revert to the shadow default, and a fortnight of
             // intended-live captures would land nowhere the bots read.
