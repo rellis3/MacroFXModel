@@ -2561,6 +2561,12 @@ Retail long: ${s.retailLongPct ?? 'N/A'}%  |  Short: ${s.retailShortPct ?? 'N/A'
 Avg price of retail longs: ${s.avgLongPrice ?? 'N/A'}  |  Avg price of retail shorts: ${s.avgShortPrice ?? 'N/A'}
 Contrarian signal vs macro bias: ${s.retailContrarian ? 'YES - retail crowd opposes macro direction (supportive for trade)' : s.retailSentiment === 'BALANCED' ? 'Crowd is balanced - neutral' : 'NO - retail crowd agrees with macro direction (crowding risk)'}
 
+OANDA POSITION BOOK (one broker's retail clients, head counts; crowding within 10% of spot; CONTEXT only)
+${s.oandaBook ? `Retail long ${s.oandaBook.longPct}% / short ${s.oandaBook.shortPct}%  ->  ${s.oandaBook.crowding ?? 'n/a'}${s.oandaBook.excludedFarFromSpotPct != null ? `  (${s.oandaBook.excludedFarFromSpotPct}% of positions sit >10% from spot and are excluded)` : ''}
+PAIN: ${s.oandaBook.longsUnderwaterPct ?? 'n/a'}% of longs underwater, ${s.oandaBook.shortsUnderwaterPct ?? 'n/a'}% of shorts underwater${s.oandaBook.change ? `  |  long-share change: ${Object.entries(s.oandaBook.change).map(([k, v]) => `${k} ${v > 0 ? '+' : ''}${v}pt`).join(', ')}` : '  |  no change-over-time record yet'}
+${s.oandaBook.note}
+HOW TO USE IT: lead with PAIN, not the split. Retail is structurally long-biased on almost every instrument, so "62% long" alone says little; "shorts 90% underwater" says a crowd is already losing and would be forced out on a further move, which is a volatility statement. Do not present fading the crowd as a directional edge -- it is not independent of momentum here. Where the book and the CFTC positioning disagree, say so; that divergence is the more interesting state.` : '  Not available for this instrument (OANDA publishes a book for 16 instruments: majors, JPY/CHF/AUD crosses, gold, silver -- no indices or other CFDs)'}
+
 CALIBRATED INTRADAY FORECAST (Forecast Path engine — RANGE / TIMING / RISK ONLY, NOT DIRECTION)
 ${s.forecastPath ? `4h P75 range: ±${s.forecastPath.p75RangePct}%  (${s.forecastPath.p75Lo ?? '?'} – ${s.forecastPath.p75Hi ?? '?'})  — where price can plausibly reach over the next ~4h
 Today vs day-open cone: ${s.forecastPath.surprisePct != null ? `${s.forecastPath.surprisePct}th percentile (z ${s.forecastPath.surpriseZ})` : 'n/a'}  — how unusual today's move already is

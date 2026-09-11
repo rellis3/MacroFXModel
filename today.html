@@ -8913,6 +8913,28 @@ function assembleSnapshot(r) {
     };
   }
 
+  // OANDA POSITION BOOK. today.html's pair prompt has never carried a retail read --
+  // the Myfxbook fields in the prompt template are set only by js/ai.js on
+  // index.html, so from here that section has always rendered N/A. This is the
+  // first time the AI sees retail positioning for a pair from this page, and it is
+  // the CORRECTED metric (js/positionBookMetrics.js): the previous route read every
+  // instrument as 100% long. The pain figures are the part worth reasoning from --
+  // crowded AND underwater is squeeze fuel; crowded and in profit is not.
+  const bk = _crowd[r.d.sym]?.book;
+  if (bk && bk.longPct != null) {
+    s.oandaBook = {
+      longPct: bk.longPct, shortPct: bk.shortPct, crowding: bk.crowding ?? null,
+      longsUnderwaterPct: bk.pain?.longsUnderwaterPct ?? null,
+      shortsUnderwaterPct: bk.pain?.shortsUnderwaterPct ?? null,
+      excludedFarFromSpotPct: bk.staleShare ?? null,
+      change: _crowd[r.d.sym]?.hist?.change
+        ? Object.fromEntries(Object.entries(_crowd[r.d.sym].hist.change).filter(([, v]) => v).map(([k, v]) => [k, v.delta]))
+        : null,
+      snapshotUtc: bk.time ?? null,
+      note: 'OANDA retail clients only: head counts, not notional; not the market, not COT. Standing book on a 20-minute grid, up to 20 min stale. Crowding measured within 10% of spot. CONTEXT, untested against forward returns. Retail on FX tends to mirror momentum, so "fade the crowd" is not independent of trend-following, which is a banked null here; the more useful read is PAIN -- a crowded side that is mostly underwater is the fuel for a squeeze, and that is a statement about who gets forced out and how fast, not about direction.',
+    };
+  }
+
   // The composite's two rebuilt legs, with their provenance.
   const cc2 = PAIR_CCY[r.name];
   const meAI = macroEdgeFor(cc2);
@@ -9236,6 +9258,10 @@ async function analysePair() {
   }
   box.innerHTML = '<span class="muted">Generating a full fundamental read — ~15s…</span>';
   try {
+    // The position book is fetched lazily by the drawer's Crowd tab; make sure it is
+    // in hand before the snapshot is built, so the prompt sees it whether or not
+    // that tab was opened. Cheap (cached after first load) and failure-tolerant.
+    await loadCrowdFor(r.d.sym).catch(() => null);
     const snapshot = assembleSnapshot(r);
     const resp = await fetch('/api/analysis', {
       method: 'POST', headers: { 'content-type': 'application/json' },
