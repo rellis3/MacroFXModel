@@ -109,12 +109,51 @@ export async function runOne(instrument, { onLog = () => {} } = {}) {
   // Top up to "now" from OANDA — same brick Level Atlas's own runOne uses —
   // so the live ladder reflects today's actual session, not whenever the
   // parquet snapshot was last synced.
+  //
+  // gapFillChunkFailures (2026-09-11, Fib-Atlas-only fix — see
+  // LEGO_MODULES.md's 2026-09-08/11 incident entries): `gapFillPacked`
+  // (js/m1GapFill.js, shared with Level Atlas and others — NOT modified
+  // here) logs a failed chunk and continues rather than aborting, so a
+  // partial OANDA outage previously produced a silently-truncated result
+  // indistinguishable from a fully current one. Counting failures via this
+  // onLog wrapper — Fib Atlas's own call site only, no shared-brick change
+  // — lets the persist step below refuse to pass off a truncated run as
+  // current.
+  let gapFillChunkFailures = 0;
+  const countGapFillFailures = m => { if (/^m1 gap chunk .* failed:/.test(m)) gapFillChunkFailures++; onLog(m); };
   if (process.env.OANDA_KEY) {
     try {
       const before = packed.n;
-      packed = await gapFillPacked(packed, oandaSymbol(pair), fetchM1Range, { nowSec: Math.floor(Date.now() / 1000), onLog });
+      packed = await gapFillPacked(packed, oandaSymbol(pair), fetchM1Range, { nowSec: Math.floor(Date.now() / 1000), onLog: countGapFillFailures });
       if (packed.n > before) onLog(`${sym}: gap-filled +${(packed.n - before).toLocaleString()} bars to now`);
-    } catch (e) { onLog(`${sym}: gap-fill failed (${e.message}) — using stored M1`); }
+    } catch (e) { onLog(`${sym}: gap-fill failed (${e.message}) — using stored M1`); gapFillChunkFailures++; }
+  }
+  // The honest complement to `generatedAt` below (when the JOB ran) — this
+  // is what the DATA actually covers. A consumer that only checks
+  // `generatedAt` is exactly how the 2026-09-08 incident went unnoticed for
+  // 3.5 months; `dataAsOf` lets the blotter/reconciliation tooling tell the
+  // two apart instead of trusting a fresh timestamp on stale data.
+  const dataAsOf = packed.n ? new Date(packed.times[packed.n - 1] * 1000).toISOString() : null;
+  // Don't-regress guard (2026-09-11, companion to dataAsOf above) — only
+  // engages when THIS run's own gap-fill had trouble (gapFillChunkFailures>0,
+  // the exact 2026-09-08-incident condition: a partial OANDA outage mid-run).
+  // A clean run's dataAsOf is trusted outright and never blocked here.
+  // Compares against the ALREADY-PERSISTED blob's own `dataAsOf` field only
+  // (not a guess at trade-row date fields, which would need reading
+  // js/asiaFibAtlasVoteReview.js's trade shape to get right) — so a blob
+  // persisted before this fix shipped (no `dataAsOf` yet) has nothing to
+  // compare against and is let through once; every run after that has a
+  // real prior `dataAsOf` to protect.
+  async function guardAgainstRegression(key, label) {
+    if (!gapFillChunkFailures || !dataAsOf) return true;
+    let existing;
+    try { existing = await getJSON(key); } catch (e) { return true; }
+    const existingAsOf = existing?.dataAsOf ?? null;
+    if (existingAsOf && dataAsOf < existingAsOf) {
+      onLog(`${sym}: gap-fill had ${gapFillChunkFailures} failed chunk(s) this run and the result (data through ${dataAsOf}) is OLDER than what's already stored for ${label} (through ${existingAsOf}) — skipping persist to avoid regressing it`);
+      return false;
+    }
+    return true;
   }
   const assetClass = assetClassFor(pair);
   const ivByDate = await loadIvByDate(pair);
@@ -208,16 +247,21 @@ export async function runOne(instrument, { onLog = () => {} } = {}) {
       }));
     } catch (e) { onLog(`${sym}: extended (let-ride) vote-trades build failed (${e.message}) — non-fatal, baseline still saved`); }
 
-    await putJSON(`${PREFIX}/${pair}-votetrades.json`, {
-      instrument: sym, generatedAt: new Date().toISOString(), cost, splitDate: book.splitDate,
-      trades: trailedTrades,   // margin>=1 superset — the page filters down to margin=2 client-side
-      summaryByMargin,
-      // "Let-ride" extended-resolution variant (2026-08-31, see the walk
-      // call above) — null when the extended build failed, so a read-time
-      // consumer must fall back to `trades` rather than assume presence.
-      extTrades: extTradesOut, extSummaryByMargin,
-      extendResolutionDays: EXTEND_RESOLUTION_DAYS, nextSessionBuildHrs: NEXT_SESSION_BUILD_HRS,
-    });
+    const voteKey = `${PREFIX}/${pair}-votetrades.json`;
+    if (await guardAgainstRegression(voteKey, 'vote-trades')) {
+      await putJSON(voteKey, {
+        instrument: sym, generatedAt: new Date().toISOString(), dataAsOf,
+        gapFillIncomplete: gapFillChunkFailures > 0, gapFillChunkFailures,
+        cost, splitDate: book.splitDate,
+        trades: trailedTrades,   // margin>=1 superset — the page filters down to margin=2 client-side
+        summaryByMargin,
+        // "Let-ride" extended-resolution variant (2026-08-31, see the walk
+        // call above) — null when the extended build failed, so a read-time
+        // consumer must fall back to `trades` rather than assume presence.
+        extTrades: extTradesOut, extSummaryByMargin,
+        extendResolutionDays: EXTEND_RESOLUTION_DAYS, nextSessionBuildHrs: NEXT_SESSION_BUILD_HRS,
+      });
+    }
   } catch (e) { onLog(`${sym}: vote-trades build/persist failed (${e.message}) — non-fatal, main book still saved`); }
 
   // Live ladder off the SAME gap-filled packed data (no second M1 load),
@@ -227,7 +271,8 @@ export async function runOne(instrument, { onLog = () => {} } = {}) {
   const scoredLadder = scoreLadder(book, ladder);
 
   const result = {
-    instrument: sym, assetClass, coverage, generatedAt: new Date().toISOString(),
+    instrument: sym, assetClass, coverage, generatedAt: new Date().toISOString(), dataAsOf,
+    gapFillIncomplete: gapFillChunkFailures > 0, gapFillChunkFailures,
     rearmFrac: DEFAULT_REARM, book,
     // Surfaced (2026-08-27) so a caller (scripts/backfill_fib_atlas_vote_trades.mjs)
     // can report real vote-trade counts/Sharpe without a second R2 round-trip —
@@ -238,21 +283,32 @@ export async function runOne(instrument, { onLog = () => {} } = {}) {
     // Raw touches NOT persisted — same reasoning as Level Atlas's own runOne:
     // the aggregated book is the product, re-run to regenerate them.
   };
-  await putJSON(`${PREFIX}/${pair}.json`, result);
+  const bookKey = `${PREFIX}/${pair}.json`;
+  const bookPersisted = await guardAgainstRegression(bookKey, 'main book');
+  if (bookPersisted) {
+    await putJSON(bookKey, result);
+  }
 
   // Seed the bot's live plan straight from this freshly-built book+ladder —
   // no live-cache round-trip needed, see mergeIntoFibAtlasPlan's own doc.
   // Best-effort: a failure here never fails the run itself (the book/live
   // JSON just persisted above is the real product; this is a downstream
-  // convenience for the bot's own plan).
-  try {
-    const cost = costForPair(pair, assetClass);
-    const zones = zonesFromLiveAndBook(result.live, book, cost);
-    await mergeIntoFibAtlasPlan(`${pair}|asia`, {
-      pair, ladder: 'asia', spot: currentPrice, date: liveDate, zones, zoneCount: zones.length,
-      updatedAt: new Date().toISOString(), source: 'nightly-rebuild',
-    });
-  } catch (e) { onLog(`${sym}: plan seed failed (${e.message}) — non-fatal, book/live still saved`); }
+  // convenience for the bot's own plan). Gated on the same guard as the book
+  // persist above (2026-09-11) — a regressed run that skipped persisting the
+  // book must not still push its (equally regressed) zones into the LIVE
+  // bot's own trading plan, which is what actually places orders.
+  if (bookPersisted) {
+    try {
+      const cost = costForPair(pair, assetClass);
+      const zones = zonesFromLiveAndBook(result.live, book, cost);
+      await mergeIntoFibAtlasPlan(`${pair}|asia`, {
+        pair, ladder: 'asia', spot: currentPrice, date: liveDate, zones, zoneCount: zones.length,
+        updatedAt: new Date().toISOString(), source: 'nightly-rebuild',
+      });
+    } catch (e) { onLog(`${sym}: plan seed failed (${e.message}) — non-fatal, book/live still saved`); }
+  } else {
+    onLog(`${sym}: plan seed skipped — book persist was skipped as a regression, live plan left untouched`);
+  }
 
   return result;
 }

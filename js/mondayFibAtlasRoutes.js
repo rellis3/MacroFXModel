@@ -67,12 +67,38 @@ export async function runOne(instrument, { onLog = () => {} } = {}) {
   onLog(`${sym}: loading M1…`);
   let packed = await loadM1ForPair(pair);
   if (!packed?.n) throw new Error(`no M1 data for ${sym}`);
+  // gapFillChunkFailures/dataAsOf/guardAgainstRegression (2026-09-11,
+  // Fib-Atlas-only fix — Monday's own copy of the same fix applied to
+  // asiaFibAtlasRoutes.js's runOne; see that file's identical comment and
+  // LEGO_MODULES.md's 2026-09-08/11 incident entries for the full
+  // reasoning). `gapFillPacked` (js/m1GapFill.js, shared with Level Atlas
+  // and others — NOT modified here) logs a failed chunk and continues
+  // rather than aborting, so a partial OANDA outage previously produced a
+  // silently-truncated result indistinguishable from a fully current one.
+  let gapFillChunkFailures = 0;
+  const countGapFillFailures = m => { if (/^m1 gap chunk .* failed:/.test(m)) gapFillChunkFailures++; onLog(m); };
   if (process.env.OANDA_KEY) {
     try {
       const before = packed.n;
-      packed = await gapFillPacked(packed, oandaSymbol(pair), fetchM1Range, { nowSec: Math.floor(Date.now() / 1000), onLog });
+      packed = await gapFillPacked(packed, oandaSymbol(pair), fetchM1Range, { nowSec: Math.floor(Date.now() / 1000), onLog: countGapFillFailures });
       if (packed.n > before) onLog(`${sym}: gap-filled +${(packed.n - before).toLocaleString()} bars to now`);
-    } catch (e) { onLog(`${sym}: gap-fill failed (${e.message}) — using stored M1`); }
+    } catch (e) { onLog(`${sym}: gap-fill failed (${e.message}) — using stored M1`); gapFillChunkFailures++; }
+  }
+  const dataAsOf = packed.n ? new Date(packed.times[packed.n - 1] * 1000).toISOString() : null;
+  // Don't-regress guard — see asiaFibAtlasRoutes.js's runOne for the full
+  // doc. Only engages when THIS run's gap-fill had trouble, and only
+  // compares against an already-persisted blob's own `dataAsOf` field (no
+  // guess at trade-row date shapes).
+  async function guardAgainstRegression(key, label) {
+    if (!gapFillChunkFailures || !dataAsOf) return true;
+    let existing;
+    try { existing = await getJSON(key); } catch (e) { return true; }
+    const existingAsOf = existing?.dataAsOf ?? null;
+    if (existingAsOf && dataAsOf < existingAsOf) {
+      onLog(`${sym}: gap-fill had ${gapFillChunkFailures} failed chunk(s) this run and the result (data through ${dataAsOf}) is OLDER than what's already stored for ${label} (through ${existingAsOf}) — skipping persist to avoid regressing it`);
+      return false;
+    }
+    return true;
   }
   const assetClass = assetClassFor(pair);
   onLog(`${sym}: ${packed.n.toLocaleString()} M1 bars, assetClass ${assetClass} — walking the Monday ladder…`);
@@ -143,13 +169,17 @@ export async function runOne(instrument, { onLog = () => {} } = {}) {
   } catch (e) { onLog(`${sym}: extended (let-ride) vote-trades build failed (${e.message}) — non-fatal, baseline still saved`); }
 
   const voteResult = {
-    instrument: sym, assetClass, coverage, generatedAt: new Date().toISOString(),
+    instrument: sym, assetClass, coverage, generatedAt: new Date().toISOString(), dataAsOf,
+    gapFillIncomplete: gapFillChunkFailures > 0, gapFillChunkFailures,
     cost, splitDate: book.splitDate,
     trades: trailedTrades,
     summaryByMargin,
     extTrades: extTradesOut, extSummaryByMargin, extendResolutionDays: EXTEND_RESOLUTION_DAYS,
   };
-  await putJSON(`${PREFIX}/${pair}-votetrades.json`, voteResult);
+  const voteKey = `${PREFIX}/${pair}-votetrades.json`;
+  if (await guardAgainstRegression(voteKey, 'vote-trades')) {
+    await putJSON(voteKey, voteResult);
+  }
 
   // Live ladder off the SAME gap-filled packed data (no second M1 load),
   // scored against the book just built — persisted separately so `/live` can
@@ -158,21 +188,33 @@ export async function runOne(instrument, { onLog = () => {} } = {}) {
   const live = mondayFibAtlasLiveLadder(packed, { instrument: sym, assetClass, rearmFrac: DEFAULT_REARM });
   const scoredLadder = scoreLadder(book, live.ladder);
   const bookResult = {
-    instrument: sym, assetClass, coverage, generatedAt: new Date().toISOString(),
+    instrument: sym, assetClass, coverage, generatedAt: new Date().toISOString(), dataAsOf,
+    gapFillIncomplete: gapFillChunkFailures > 0, gapFillChunkFailures,
     rearmFrac: DEFAULT_REARM, book,
     live: { date: live.date, currentPrice: live.currentPrice, sessionHandoff: live.sessionHandoff, boundary: live.boundary, ladder: scoredLadder },
   };
-  await putJSON(`${PREFIX}/${pair}.json`, bookResult);
+  const bookKey = `${PREFIX}/${pair}.json`;
+  const bookPersisted = await guardAgainstRegression(bookKey, 'main book');
+  if (bookPersisted) {
+    await putJSON(bookKey, bookResult);
+  }
 
   // Seed the bot's live plan straight from this freshly-built book+ladder —
   // see asiaFibAtlasRoutes.js's mergeIntoFibAtlasPlan for the full reasoning.
-  try {
-    const zones = zonesFromLiveAndBook(bookResult.live, book, cost);
-    await mergeIntoFibAtlasPlan(`${pair}|monday`, {
-      pair, ladder: 'monday', spot: live.currentPrice, date: live.date, zones, zoneCount: zones.length,
-      updatedAt: new Date().toISOString(), source: 'nightly-rebuild',
-    });
-  } catch (e) { onLog(`${sym}: plan seed failed (${e.message}) — non-fatal, book/live still saved`); }
+  // Gated on the same guard as the book persist above (2026-09-11) — a
+  // regressed run that skipped persisting the book must not still push its
+  // (equally regressed) zones into the LIVE bot's own trading plan.
+  if (bookPersisted) {
+    try {
+      const zones = zonesFromLiveAndBook(bookResult.live, book, cost);
+      await mergeIntoFibAtlasPlan(`${pair}|monday`, {
+        pair, ladder: 'monday', spot: live.currentPrice, date: live.date, zones, zoneCount: zones.length,
+        updatedAt: new Date().toISOString(), source: 'nightly-rebuild',
+      });
+    } catch (e) { onLog(`${sym}: plan seed failed (${e.message}) — non-fatal, book/live still saved`); }
+  } else {
+    onLog(`${sym}: plan seed skipped — book persist was skipped as a regression, live plan left untouched`);
+  }
 
   return { ...voteResult, voteSummaryByMargin: summaryByMargin };
 }
