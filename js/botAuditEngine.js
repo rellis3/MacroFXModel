@@ -241,7 +241,7 @@ export function groupBy(trades, keyFn, { gross = false } = {}) {
     r.gross += (t.profit || 0);
     r.cost += costOf(t);
   }
-  return [...m.values()].map(r => ({ ...r, winRate: r.n ? r.wins / r.n : 0 })).sort((a, b) => b.net - a.net);
+  return [...m.values()].map(r => ({ ...r, winRate: r.n ? r.wins / r.n : 0, expectancy: r.n ? r.net / r.n : 0 })).sort((a, b) => b.net - a.net);
 }
 
 /**
@@ -665,4 +665,124 @@ export function distributions(trades, { capital = 0, gross = false, runs = 800, 
     };
   }
   return { runs, metrics: out, n: trades.length, days: dEq.length };
+}
+
+// ── Rolling edge ─────────────────────────────────────────────────────────────
+//
+// The monitoring question the reference terminal is built around: is the book
+// STILL doing what it did, or has it slid into the adverse tail? A single
+// full-sample win rate cannot answer that — it averages the good months in with
+// the bad. This walks a fixed-size window of trades along the book and reports
+// win rate and expectancy per window.
+//
+// THE BAND. To say whether the latest window is "bad" you need to know what a
+// window of that size from THIS book normally looks like. So the band is built
+// by drawing `window` trades at random (with replacement) from the whole book,
+// `runs` times, and taking percentiles of each draw's win rate and expectancy.
+// A latest window below P5 is in the tail of what this book produces — which is
+// a reason to look, not a proof the edge is gone. It cannot see regime change,
+// only that the recent run is unusual relative to the book's own history.
+//
+// Why resample rather than use the actual rolling windows as the reference:
+// the latest window IS one of those, so ranking it against them is circular.
+
+export function rollingEdge(trades, { window = 20, gross = false, runs = 600, seed = 0x9e3779b9 } = {}) {
+  const pnls = trades.map(t => netOf(t, { gross }));
+  const n = pnls.length;
+  if (n < window || window < 2) return { window, n, enough: false, rows: [], full: null, band: null, last: null };
+
+  const rows = [];
+  let wins = 0, sum = 0;
+  for (let i = 0; i < n; i++) {
+    if (pnls[i] > 0) wins++;
+    sum += pnls[i];
+    if (i >= window) { if (pnls[i - window] > 0) wins--; sum -= pnls[i - window]; }
+    if (i >= window - 1) rows.push({ i, day: trades[i].day, winRate: wins / window * 100, expectancy: sum / window });
+  }
+  // `sum` is the LAST window's total by now, so the full-sample figures come from
+  // the whole array, not from it.
+  const full = { winRate: pnls.filter(x => x > 0).length / n * 100, expectancy: pnls.reduce((s, x) => s + x, 0) / n };
+
+  const rng = mulberry32(seed >>> 0);
+  const wr = new Array(runs), ex = new Array(runs);
+  for (let r = 0; r < runs; r++) {
+    let w = 0, s = 0;
+    for (let k = 0; k < window; k++) { const v = pnls[(rng() * n) | 0]; if (v > 0) w++; s += v; }
+    wr[r] = w / window * 100; ex[r] = s / window;
+  }
+  wr.sort((a, b) => a - b); ex.sort((a, b) => a - b);
+  const at = (arr, p) => arr[Math.min(arr.length - 1, Math.floor(p / 100 * arr.length))];
+  const band = {
+    winRate:    { p5: at(wr, 5), p25: at(wr, 25), p50: at(wr, 50), p75: at(wr, 75), p95: at(wr, 95) },
+    expectancy: { p5: at(ex, 5), p25: at(ex, 25), p50: at(ex, 50), p75: at(ex, 75), p95: at(ex, 95) },
+  };
+  const last = rows[rows.length - 1];
+  const rankIn = (arr, v) => Math.round(arr.filter(x => x < v).length / arr.length * 100);
+  const read = last ? {
+    winRateRank: rankIn(wr, last.winRate),
+    expectancyRank: rankIn(ex, last.expectancy),
+  } : null;
+  return { window, n, enough: true, rows, full, band, last, read };
+}
+
+// ── Breakdowns ───────────────────────────────────────────────────────────────
+
+const UK_HOUR_DT = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', hour12: false, weekday: 'short' });
+/** UK wall-clock hour (0-23) and weekday (0=Mon..6=Sun) of a true-UTC epoch. */
+export function ukClock(utcSec) {
+  const p = Object.fromEntries(UK_HOUR_DT.formatToParts(new Date(utcSec * 1000)).map(x => [x.type, x.value]));
+  const dow = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].indexOf(p.weekday);
+  return { hour: parseInt(p.hour, 10) % 24, dow: dow < 0 ? 0 : dow };
+}
+
+export const SESSIONS = [
+  { key: 'asia',    label: 'Asia (00–08 UK)',    from: 0,  to: 8 },
+  { key: 'london',  label: 'London (08–13 UK)',  from: 8,  to: 13 },
+  { key: 'overlap', label: 'LN/NY (13–18 UK)',   from: 13, to: 18 },
+  { key: 'ny',      label: 'NY (18–22 UK)',      from: 18, to: 22 },
+  { key: 'off',     label: 'Off-hours (22–24 UK)', from: 22, to: 24 },
+];
+export const sessionOf = h => SESSIONS.find(s => h >= s.from && h < s.to) || SESSIONS[SESSIONS.length - 1];
+export const DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+/** Rows with fewer trades than this are shown but greyed — a 3-trade cell that
+ *  reads 100% is noise wearing a number. */
+export const MIN_N_CELL = 10;
+
+/**
+ * Every slice of the book that a trader actually asks about. All keyed on the
+ * OPEN time in UK wall-clock — the moment the decision was made — not the close.
+ */
+export function breakdowns(trades, { gross = false } = {}) {
+  const opened = trades.filter(t => t.utcOpen);
+  const g = (src, fn) => groupBy(src, fn, { gross });
+  const bySession = g(opened, t => sessionOf(ukClock(t.utcOpen).hour).label)
+    .sort((a, b) => SESSIONS.findIndex(s => s.label === a.key) - SESSIONS.findIndex(s => s.label === b.key));
+  const byDow = g(opened, t => DOW[ukClock(t.utcOpen).dow])
+    .sort((a, b) => DOW.indexOf(a.key) - DOW.indexOf(b.key));
+  const byHour = g(opened, t => String(ukClock(t.utcOpen).hour).padStart(2, '0') + ':00')
+    .sort((a, b) => a.key.localeCompare(b.key));
+  return {
+    byPair:    g(trades, t => t.symbol || '?'),
+    bySession, byDow, byHour,
+    byDir:     g(trades, t => t.direction || '?'),
+    byBotPair: g(trades, t => `${t.bot_key}|${t.symbol || '?'}`),
+    noOpenTime: trades.length - opened.length,
+  };
+}
+
+/** 7 × 24 grid of {n, wins, net} by UK weekday × UK hour of OPEN. */
+export function hourWeekdayGrid(trades, { gross = false } = {}) {
+  const grid = Array.from({ length: 7 }, () => Array.from({ length: 24 }, () => ({ n: 0, wins: 0, net: 0 })));
+  let skipped = 0;
+  for (const t of trades) {
+    if (!t.utcOpen) { skipped++; continue; }
+    const { hour, dow } = ukClock(t.utcOpen);
+    const c = grid[dow][hour];
+    const v = netOf(t, { gross });
+    c.n++; c.net += v; if (v > 0) c.wins++;
+  }
+  let maxAbs = 0;
+  for (const row of grid) for (const c of row) maxAbs = Math.max(maxAbs, Math.abs(c.net));
+  return { grid, maxAbs, skipped, days: DOW };
 }

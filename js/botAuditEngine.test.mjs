@@ -6,6 +6,7 @@ import {
   excursions, exitMix, summarize, MIN_N_RATIOS,
   cumFromDaily, liveGrowthPct, growthCone, conePercentile, clipDaily,
   distributions, DIST_METRICS, METRIC_READING,
+  rollingEdge, breakdowns, hourWeekdayGrid, ukClock,
 } from './botAuditEngine.js';
 
 let fail = 0;
@@ -280,6 +281,76 @@ console.log('\ndistribution battery');
   ok('drawdown is negative or zero', D.metrics.maxDD.realised <= 0);
   ok('time in drawdown is a percentage', D.metrics.timeInDD.realised >= 0 && D.metrics.timeInDD.realised <= 100);
   ok('empty book returns null', distributions([], {}) === null);
+}
+
+
+console.log('\nrolling edge');
+{
+  // 30 trades: first 20 all winners (+10), last 10 all losers (-10). The final
+  // 20-window holds 10W/10L = 50%, the full sample is 20/30 = 66.7%.
+  const rows = [];
+  for (let i = 0; i < 30; i++) {
+    const d = new Date(Date.UTC(2026, 0, 5) + i * 86400000);
+    rows.push(tr(d.toISOString().slice(0, 10), i < 20 ? 10 : -10));
+  }
+  const { trades } = normalizeTrades(rows);
+  const e = rollingEdge(trades, { window: 20, runs: 300 });
+  ok('enough trades for the window', e.enough === true);
+  ok('one row per completed window', e.rows.length === 11);
+  ok('first window is all winners', near(e.rows[0].winRate, 100));
+  ok('last window is 50/50', near(e.last.winRate, 50));
+  ok('full-sample win rate is 66.7%', near(e.full.winRate, 200 / 3, 1e-6));
+  ok('full-sample expectancy from whole book, not last window', near(e.full.expectancy, (200 - 100) / 30, 1e-9));
+  ok('last-window expectancy is 0', near(e.last.expectancy, 0));
+  ok('band percentiles ordered', e.band.winRate.p5 <= e.band.winRate.p50 && e.band.winRate.p50 <= e.band.winRate.p95);
+  ok('a 50% window ranks LOW against a 67% book', e.read.winRateRank < 30, `P${e.read.winRateRank}`);
+  ok('too few trades -> enough:false, no throw', rollingEdge(trades.slice(0, 5), { window: 20 }).enough === false);
+  const again = rollingEdge(trades, { window: 20, runs: 300 });
+  ok('deterministic band', near(again.band.winRate.p5, e.band.winRate.p5, 1e-12));
+}
+
+console.log('\nbreakdowns');
+{
+  // Opens at fixed UTC hours in mid-summer (BST, UTC+1) so UK clock = UTC + 1.
+  const at = (dateIso, hourUtc, profit, extra = {}) => {
+    const t = tr(dateIso, profit, extra);
+    t.time_open = Math.floor(new Date(`${dateIso}T${String(hourUtc).padStart(2, '0')}:00:00Z`).getTime() / 1000);
+    t.time_close = t.time_open + 3600;
+    return t;
+  };
+  const { trades } = normalizeTrades([
+    at('2026-07-06', 2, 10, { sym: 'EURUSD', direction: 'BUY' }),    // Mon 03:00 UK -> Asia
+    at('2026-07-07', 8, -5, { sym: 'EURUSD', direction: 'SELL' }),   // Tue 09:00 UK -> London
+    at('2026-07-08', 13, 20, { sym: 'XAUUSD', direction: 'BUY' }),   // Wed 14:00 UK -> LN/NY
+    at('2026-07-10', 20, -8, { sym: 'XAUUSD', direction: 'BUY' }),   // Fri 21:00 UK -> NY
+  ]);
+  const b = breakdowns(trades);
+  ok('sessions bucketed on UK open hour', b.bySession.map(r => r.key).join('|') === 'Asia (00–08 UK)|London (08–13 UK)|LN/NY (13–18 UK)|NY (18–22 UK)');
+  ok('sessions in chronological order, not by P&L', b.bySession[0].key.startsWith('Asia'));
+  ok('weekday bucketed', b.byDow.map(r => r.key).join('|') === 'Mon|Tue|Wed|Fri');
+  ok('hour bucketed and sorted', b.byHour[0].key === '03:00' && b.byHour[3].key === '21:00');
+  ok('direction split', b.byDir.find(r => r.key === 'BUY').n === 3 && b.byDir.find(r => r.key === 'SELL').n === 1);
+  ok('bot×pair key', b.byBotPair.some(r => r.key === 'bot_status|XAUUSD' && r.n === 2));
+  ok('expectancy on every row', b.byPair.every(r => typeof r.expectancy === 'number'));
+  ok('EURUSD expectancy = net/n', near(b.byPair.find(r => r.key === 'EURUSD').expectancy, 2.5));
+  ok('reports rows with no open time', b.noOpenTime === 0);
+
+  const g = hourWeekdayGrid(trades);
+  ok('grid is 7×24', g.grid.length === 7 && g.grid.every(r => r.length === 24));
+  ok('Mon 03:00 UK holds the first trade', g.grid[0][3].n === 1 && near(g.grid[0][3].net, 10));
+  ok('Fri 21:00 UK holds the last', g.grid[4][21].n === 1 && near(g.grid[4][21].net, -8));
+  ok('maxAbs is the biggest cell', near(g.maxAbs, 20));
+  ok('nothing skipped when all have open times', g.skipped === 0);
+
+  const noOpen = { ...trades[0], utcOpen: null };
+  ok('missing open time is counted, not zeroed into 00:00 Monday', hourWeekdayGrid([noOpen]).skipped === 1 && hourWeekdayGrid([noOpen]).grid[0][0].n === 0);
+}
+{
+  ok('ukClock: BST summer 12:00Z -> 13 UK', ukClock(Math.floor(Date.UTC(2026, 6, 1, 12) / 1000)).hour === 13);
+  ok('ukClock: GMT winter 12:00Z -> 12 UK', ukClock(Math.floor(Date.UTC(2026, 0, 14, 12) / 1000)).hour === 12);
+  ok('ukClock: Monday index 0', ukClock(Math.floor(Date.UTC(2026, 6, 6, 12) / 1000)).dow === 0);
+  ok('ukClock: Sunday index 6', ukClock(Math.floor(Date.UTC(2026, 6, 5, 12) / 1000)).dow === 6);
+  ok('ukClock: 23:30Z summer rolls to next UK day', ukClock(Math.floor(Date.UTC(2026, 6, 6, 23, 30) / 1000)).dow === 1);
 }
 
 console.log(fail ? `\n${fail} FAILED\n` : '\nAll passed\n');

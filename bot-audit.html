@@ -163,6 +163,16 @@
   .rail b { color:var(--dim); font-weight:600; }
   .rail .sp { flex:1; }
 
+  /* ── breakdowns ── */
+  .hw td { text-align:center; padding:0; height:22px; min-width:26px; border:1px solid var(--bg); font-size:9.5px; font-family:var(--mono); }
+  .hw th { font-size:9.5px; padding:2px 0; text-align:center; }
+  .hw th.l, .hw td.l { text-align:left; padding-left:6px; min-width:34px; }
+  .hw td.z { color:var(--dim2); }
+  .brkgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(360px,1fr)); gap:14px; }
+  .brkgrid table td.thin, .brkgrid table tr.thin td { color:var(--dim2); }
+  .brkgrid table tr.thin td.l::after { content:' ·thin'; font-size:9px; color:var(--warn); }
+  .win { display:inline-block; min-width:38px; }
+
   /* ── distributions tab ── */
   .dstwrap { display:grid; grid-template-columns:minmax(220px,1fr) minmax(360px,2.2fr) minmax(150px,.7fr); gap:14px; align-items:start; }
   @media (max-width:1100px) { .dstwrap { grid-template-columns:1fr; } }
@@ -234,6 +244,8 @@
 
 <div class="tabs">
   <button class="tab active" data-p="ovw" onclick="tab('ovw')"><span class="tag">OVW</span>Overview</button>
+  <button class="tab" data-p="edg" onclick="tab('edg')"><span class="tag">EDG</span>Edge</button>
+  <button class="tab" data-p="brk" onclick="tab('brk')"><span class="tag">BRK</span>Breakdowns</button>
   <button class="tab" data-p="sys" onclick="tab('sys')"><span class="tag">SYS</span>Per-Bot</button>
   <button class="tab" data-p="dst" onclick="tab('dst')"><span class="tag">DST</span>Distributions</button>
   <button class="tab" data-p="exc" onclick="tab('exc')"><span class="tag">EXC</span>Excursions</button>
@@ -242,6 +254,8 @@
 </div>
 
 <div id="ovw" class="pane active"></div>
+<div id="edg" class="pane"></div>
+<div id="brk" class="pane"></div>
 <div id="sys" class="pane"></div>
 <div id="dst" class="pane"></div>
 <div id="exc" class="pane"></div>
@@ -255,6 +269,7 @@ import {
   botsMissingCommission, bootstrapNote, MIN_N_RATIOS,
   cumFromDaily, liveGrowthPct, growthCone, conePercentile, clipDaily,
   distributions, DIST_METRICS, METRIC_READING,
+  rollingEdge, breakdowns, hourWeekdayGrid, MIN_N_CELL, DOW,
 } from './js/botAuditEngine.js';
 
 const BOTS = window.POS_BOTS || [];
@@ -527,7 +542,7 @@ document.addEventListener('mouseout', e => {
 // Accepts what the reference terminal's does: a tab code, a metric name, a
 // period, or a cost mode — one box instead of hunting for the right control.
 // Unrecognised input says so rather than failing silently.
-const TAB_CODES = { ovw: 'ovw', overview: 'ovw', sys: 'sys', bots: 'sys', 'per-bot': 'sys',
+const TAB_CODES = { ovw: 'ovw', overview: 'ovw', edg: 'edg', edge: 'edg', decay: 'edg', brk: 'brk', breakdowns: 'brk', breakdown: 'brk', sys: 'sys', bots: 'sys', 'per-bot': 'sys',
                     dst: 'dst', dist: 'dst', distributions: 'dst', exc: 'exc', excursions: 'exc',
                     cst: 'cst', costs: 'cst', trd: 'trd', trades: 'trd' };
 const PERIODS = { all: '365', '1y': '365', '365': '365', '6m': '180', '180': '180',
@@ -564,8 +579,8 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { $('cmd').value = ''; $('cmd').blur(); return; }
   if (typing) return;
   if (e.key === '/') { e.preventDefault(); $('cmd').focus(); return; }
-  const tabs = ['ovw', 'sys', 'dst', 'exc', 'cst', 'trd'];
-  if (/^[1-6]$/.test(e.key)) { tab(tabs[+e.key - 1]); return; }
+  const tabs = ['ovw', 'edg', 'brk', 'sys', 'dst', 'exc', 'cst', 'trd'];
+  if (/^[1-8]$/.test(e.key)) { tab(tabs[+e.key - 1]); return; }
   if (e.key === 'g') { setGross(!GROSS); return; }
   if (e.key === 'b') { toggleBacktest(); return; }
   if (e.key === 'r') { reload(); return; }
@@ -624,12 +639,12 @@ async function loadBacktest() {
  * which is the whole point: five years next to three months renders live as a
  * two-pixel wiggle at the right-hand edge and shows nothing.
  */
-function overlayChart({ bands = [], lines = [], n, h = 260, xFirst = '', xLast = '', xLabels = [] }) {
+function overlayChart({ bands = [], lines = [], n, h = 260, xFirst = '', xLast = '', xLabels = [], zero = true, unit = '%' }) {
   const all = [];
   for (const b of bands) all.push(...b.lo.filter(isFinite), ...b.hi.filter(isFinite));
   for (const l of lines) all.push(...l.v.filter(v => v != null && isFinite(v)));
   if (all.length < 2 || n < 2) return `<div class="empty">Not enough overlapping data to plot.</div>`;
-  const { lo, hi } = scaleOf(all, { zero: true });
+  const { lo, hi } = scaleOf(all, { zero });
   const x = i => (i / (n - 1)) * W, y = v => (1 - (v - lo) / (hi - lo)) * h;
   const bandPaths = bands.map(b => {
     let up = '', dn = '';
@@ -641,11 +656,11 @@ function overlayChart({ bands = [], lines = [], n, h = 260, xFirst = '', xLast =
     const d = pathOf(l.v.slice(0, n), x, y);
     return d ? `<path d="${d}" fill="none" stroke="${l.stroke}" stroke-width="${l.w || 1.8}"${l.dash ? ` stroke-dasharray="${l.dash}"` : ''} vector-effect="non-scaling-stroke"/>` : '';
   }).join('');
-  const svg = `<svg viewBox="0 0 ${W} ${h}" preserveAspectRatio="none">${gridSvg(h, lo, hi, true)}${bandPaths}${linePaths}</svg>`;
+  const svg = `<svg viewBox="0 0 ${W} ${h}" preserveAspectRatio="none">${gridSvg(h, lo, hi, zero)}${bandPaths}${linePaths}</svg>`;
   const live = lines[lines.length - 1];
   const pts = (live?.v || []).slice(0, n).map((v, i) => ({ k: xLabels[i] ?? `${i + 1}`, v }));
   const dp = autoDp(hi - lo);
-  return frame({ svg, h, lo, hi, fmt: v => v.toFixed(dp) + '%', xFirst, xLast, pts, colour: live?.stroke || '#3fd07a' });
+  return frame({ svg, h, lo, hi, fmt: v => v.toFixed(dp) + unit, xFirst, xLast, pts, colour: live?.stroke || '#3fd07a' });
 }
 
 const swatch = (c, label, dash) =>
@@ -787,6 +802,8 @@ function render() {
   const S = summarize(TRADES, { capital: C, gross: GROSS });
   $('status').textContent = `${NORM.kept} rows · ${NORM.dupes} dupes dropped · ${NORM.droppedNoClose} no-close · showing ${TRADES.length}`;
   renderOvw(S, C, G);
+  renderEdg(G);
+  renderBrk(G);
   renderSys(C, G);
   renderDst(S);
   renderExc(G);
@@ -872,6 +889,146 @@ function heat(mg) {
       y.months.map(v => `<td class="${v == null ? 'na' : ''}" style="${bg(v)}">${fmtc(v)}</td>`).join('') +
       `<td style="${bg(y.total)}"><b>${fmtc(y.total)}</b></td></tr>`).join('') +
     `</tbody></table>`;
+}
+
+// ── EDG · rolling edge ───────────────────────────────────────────────────────
+let EDGE_WIN = 20;
+window.setEdgeWin = w => { EDGE_WIN = w; try { localStorage.setItem('botAuditEdgeWin', String(w)); } catch (e) {} renderEdg({ gross: GROSS }); };
+
+function renderEdg(G) {
+  const el = $('edg');
+  if (!TRADES.length) { el.innerHTML = `<div class="empty">No trades.</div>`; return; }
+  const e = rollingEdge(TRADES, { window: EDGE_WIN, gross: GROSS });
+  const winSel = `<div class="seg" style="margin-left:auto">${[10, 20, 30, 50].map(w =>
+    `<button class="${w === EDGE_WIN ? 'on' : ''}" onclick="setEdgeWin(${w})">${w}</button>`).join('')}</div>`;
+
+  if (!e.enough) {
+    el.innerHTML = `<div class="panel"><div class="ph"><span class="badge">EDG</span>Rolling edge${winSel}</div><div class="pb">
+      <div class="empty">${TRADES.length} trades in range — a ${EDGE_WIN}-trade window needs at least ${EDGE_WIN}. Widen the range or shorten the window.</div></div></div>`;
+    return;
+  }
+
+  const n = e.rows.length;
+  const labels = e.rows.map(r => r.day);
+  const bandLines = (b, series, full, fmt) => overlayChart({
+    n, xFirst: labels[0], xLast: labels[n - 1], xLabels: labels, zero: false,
+    bands: [
+      { lo: new Array(n).fill(b.p5),  hi: new Array(n).fill(b.p95), fill: 'rgba(94,176,255,.08)' },
+      { lo: new Array(n).fill(b.p25), hi: new Array(n).fill(b.p75), fill: 'rgba(94,176,255,.14)' },
+    ],
+    lines: [
+      { v: new Array(n).fill(full), stroke: '#5eb0ff', dash: '5 4', w: 1.3 },
+      { v: series, stroke: '#3fd07a', w: 2 },
+    ],
+  });
+
+  // overlayChart formats in %; expectancy is dollars, so give it its own frame.
+  const wrChart = bandLines(e.band.winRate, e.rows.map(r => r.winRate), e.full.winRate);
+  const exPts = e.rows.map(r => ({ k: r.day, v: r.expectancy }));
+  const exChart = lineChart(exPts, { stroke: '#3fd07a', zero: true, money: true, h: 200 });
+
+  const rk = e.read;
+  const verdict = (rank, label) => rank <= 5
+    ? `<b class="neg">P${rank} — below the 5th percentile.</b> The last ${EDGE_WIN} trades' ${label} is in the adverse tail of what a random ${EDGE_WIN}-trade draw from this book produces. That is a reason to look, not proof the edge is gone.`
+    : rank >= 95
+    ? `<b class="pos">P${rank} — above the 95th percentile.</b> The last ${EDGE_WIN} trades ran hot relative to the book. Enjoy it; do not size up on it.`
+    : rank <= 25 || rank >= 75
+    ? `<b>P${rank}</b> — a touch ${rank < 50 ? 'below' : 'above'} typical for a ${EDGE_WIN}-trade window from this book. Normal variation.`
+    : `<b>P${rank}</b> — squarely in the middle of what this book produces over ${EDGE_WIN} trades. Business as usual.`;
+
+  const worst = e.rows.reduce((a, r) => r.winRate < a.winRate ? r : a, e.rows[0]);
+  const best  = e.rows.reduce((a, r) => r.winRate > a.winRate ? r : a, e.rows[0]);
+
+  el.innerHTML = `
+  <div class="note">The monitoring question: <b>is the book still doing what it did?</b> A ${EDGE_WIN}-trade window walks along the book;
+    the shaded band is what a random ${EDGE_WIN}-trade draw from this same book produces (P5–P95 light, P25–P75 dark), and the dashed line
+    is the full-sample figure. A latest window in the lower tail is the earliest, cleanest sign of trouble this data can give —
+    earlier than P&amp;L, which is noise at these sample sizes.</div>
+
+  <div class="tiles">
+    ${tile('Last ' + EDGE_WIN + ' · win rate', `<span class="${e.last.winRate >= e.full.winRate ? 'pos' : 'neg'}">${e.last.winRate.toFixed(0)}%</span>`, `book ${e.full.winRate.toFixed(1)}% · rank P${rk.winRateRank}`)}
+    ${tile('Last ' + EDGE_WIN + ' · expectancy', `<span class="${cls(e.last.expectancy)}">${money(e.last.expectancy)}</span>`, `book ${money(e.full.expectancy)} · rank P${rk.expectancyRank}`)}
+    ${tile('Band · win rate', `${e.band.winRate.p5.toFixed(0)}–${e.band.winRate.p95.toFixed(0)}%`, 'P5–P95 of a random window')}
+    ${tile('Band · expectancy', `${money(e.band.expectancy.p5, 0)} … ${money(e.band.expectancy.p95, 0)}`, 'P5–P95 of a random window')}
+    ${tile('Worst window', `<span class="neg">${worst.winRate.toFixed(0)}%</span>`, `ending ${worst.day}`)}
+    ${tile('Best window', `<span class="pos">${best.winRate.toFixed(0)}%</span>`, `ending ${best.day}`)}
+  </div>
+
+  <div class="panel"><div class="ph"><span class="badge">RWR</span>Rolling ${EDGE_WIN}-trade win rate<span class="rt">${n} windows · x = date the window closed</span>${winSel}</div>
+    <div class="pb">${wrChart}
+    <div class="rd" style="margin-top:8px">${swatch('#3fd07a', 'rolling')}${swatch('#5eb0ff', 'full sample', true)}
+      <span style="color:var(--dim);font-size:11px"><span style="display:inline-block;width:16px;height:8px;background:rgba(94,176,255,.14);margin-right:5px"></span>P25–P75 &nbsp;
+      <span style="display:inline-block;width:16px;height:8px;background:rgba(94,176,255,.08);margin-right:5px"></span>P5–P95</span></div></div></div>
+
+  <div class="panel"><div class="ph"><span class="badge">REX</span>Rolling ${EDGE_WIN}-trade expectancy<span class="rt">per trade, after costs · band ${money(e.band.expectancy.p5, 0)} … ${money(e.band.expectancy.p95, 0)}</span></div>
+    <div class="pb">${exChart}</div></div>
+
+  <div class="panel"><div class="ph"><span class="badge">READ</span>Reading</div><div class="pb"><div class="rd">
+    <b>Win rate.</b> ${verdict(rk.winRateRank, 'win rate')}<br><br>
+    <b>Expectancy.</b> ${verdict(rk.expectancyRank, 'expectancy')}<br><br>
+    <b>What this cannot see.</b> The band is drawn from the book's own history, so a slow regime change that has already lasted most of
+    the sample is <i>inside</i> the band by construction. It catches a recent run that is unusual against the whole; it does not catch
+    "the whole has quietly become worse". For that you need the backtest expectation this page still lacks
+    (<code>LIVE_BACKTEST_ALIGNMENT.md</code> §4.3).
+  </div></div></div>`;
+}
+
+// ── BRK · breakdowns ─────────────────────────────────────────────────────────
+function renderBrk(G) {
+  const el = $('brk');
+  if (!TRADES.length) { el.innerHTML = `<div class="empty">No trades.</div>`; return; }
+  const B = breakdowns(TRADES, G);
+  const H = hourWeekdayGrid(TRADES, G);
+
+  // hour × weekday heatmap — the most actionable single picture this data draws
+  const lim = H.maxAbs || 1;
+  const bg = c => {
+    if (!c.n) return '';
+    const a = Math.min(1, Math.abs(c.net) / lim) * 0.7 + 0.1;
+    return `background:rgba(${c.net >= 0 ? '63,208,122' : '242,85,90'},${a.toFixed(2)})`;
+  };
+  const cellTxt = c => !c.n ? '·' : (Math.abs(c.net) >= 1000 ? (c.net / 1000).toFixed(1) + 'k' : Math.round(c.net));
+  const heatHtml = `<div style="overflow-x:auto"><table class="hw"><thead><tr><th class="l">UK</th>${Array.from({ length: 24 }, (_, h) => `<th>${String(h).padStart(2, '0')}</th>`).join('')}<th>Day</th></tr></thead><tbody>` +
+    H.grid.map((row, d) => {
+      const dayNet = row.reduce((s, c) => s + c.net, 0), dayN = row.reduce((s, c) => s + c.n, 0);
+      return `<tr><td class="l"><b>${DOW[d]}</b></td>` + row.map((c, h) =>
+        `<td class="${c.n ? '' : 'z'}" style="${bg(c)}" title="${DOW[d]} ${String(h).padStart(2, '0')}:00 UK · ${c.n} trade${c.n === 1 ? '' : 's'}${c.n ? ` · ${Math.round(c.wins / c.n * 100)}% win · ${money(c.net)}` : ''}">${cellTxt(c)}</td>`).join('') +
+        `<td style="${bg({ n: dayN, net: dayNet })}" title="${dayN} trades"><b>${cellTxt({ n: dayN, net: dayNet })}</b></td></tr>`;
+    }).join('') + `</tbody></table></div>`;
+
+  const table = (rows, title, labelFn = k => k) => {
+    if (!rows.length) return '';
+    return `<div class="panel"><div class="ph"><span class="badge">${title.slice(0, 4).toUpperCase()}</span>${title}<span class="rt">${rows.length} groups</span></div>
+      <div class="scroll" style="max-height:420px"><table><thead><tr><th class="l">Group</th><th>n</th><th>Win%</th><th>Expect.</th><th>Net</th><th>Costs</th></tr></thead><tbody>` +
+      rows.map(r => `<tr class="${r.n < MIN_N_CELL ? 'thin' : ''}">
+        <td class="l">${labelFn(r.key)}</td><td>${r.n}</td>
+        <td><span class="win">${(r.winRate * 100).toFixed(0)}%</span></td>
+        <td class="${r.n < MIN_N_CELL ? '' : cls(r.expectancy)}">${money(r.expectancy)}</td>
+        <td class="${r.n < MIN_N_CELL ? '' : cls(r.net)}">${money(r.net, 0)}</td>
+        <td class="neg">${money(r.cost, 0)}</td></tr>`).join('') +
+      `</tbody></table></div></div>`;
+  };
+  const botPairLabel = k => { const [b, sym] = k.split('|'); const bot = botOf(b);
+    return `<span class="chip" style="background:${bot.bg || 'var(--s2)'};border:1px solid ${bot.bd || 'var(--border)'};color:${bot.color}">${esc(bot.label)}</span> ${esc(sym)}`; };
+
+  el.innerHTML = `
+  <div class="note">Every slice keyed on the <b>open</b> time in UK wall-clock — the moment the decision was made. Rows under ${MIN_N_CELL} trades are
+    shown but greyed and marked <span style="color:var(--warn)">·thin</span>: a 3-trade cell that reads 100% is noise wearing a number.
+    ${B.noOpenTime ? `<b class="neg">${B.noOpenTime} trade${B.noOpenTime > 1 ? 's have' : ' has'} no open time</b> and are excluded from the time-based slices only.` : ''}
+    ${GROSS ? '<b class="neg">Gross view — costs removed.</b>' : ''}</div>
+
+  <div class="panel"><div class="ph"><span class="badge">HXD</span>P&amp;L by hour × weekday<span class="rt">UK open hour · ${TRADES.length - H.skipped} trades · hover a cell</span></div>
+    <div class="pb">${heatHtml}
+    <div class="rd" style="margin-top:8px;color:var(--dim2);font-size:11px">Green earns, red loses, intensity is size relative to the biggest cell. The right-hand column is the day's total. Read rows for "which day", columns for "which hour", and the intersection for the thing to actually change.</div></div></div>
+
+  <div class="brkgrid">
+    ${table(B.bySession, 'By session')}
+    ${table(B.byDow, 'By weekday')}
+    ${table(B.byHour, 'By hour (UK open)')}
+    ${table(B.byDir, 'By direction')}
+    ${table(B.byPair, 'By instrument')}
+    ${table(B.byBotPair, 'By bot × instrument', botPairLabel)}
+  </div>`;
 }
 
 function renderSys(C, G) {
@@ -1102,6 +1259,7 @@ function renderTrd() {
   try {
     const t = localStorage.getItem('botAuditTab'); if (t) window.tab(t);
     const c = localStorage.getItem('botAuditCap'); if (c) $('inCap').value = c;
+    const ew = +localStorage.getItem('botAuditEdgeWin'); if ([10, 20, 30, 50].includes(ew)) EDGE_WIN = ew;
     const sv = JSON.parse(localStorage.getItem('botAuditSel') || 'null');
     SEL = new Set(Array.isArray(sv) && sv.length ? sv.filter(k => BOTS.some(b => b.key === k)) : liveKeys());
     const rg = JSON.parse(localStorage.getItem('botAuditRange') || 'null');
@@ -1117,7 +1275,7 @@ function renderTrd() {
 })();
 </script>
 <div class="rail">
-  <span><b>1-6</b> tab</span>
+  <span><b>1-8</b> tab</span>
   <span><b>/</b> command</span>
   <span><b>g</b> gross/net</span>
   <span><b>b</b> backtest</span>
