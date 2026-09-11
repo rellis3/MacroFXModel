@@ -173,6 +173,22 @@
   .brkgrid table tr.thin td.l::after { content:' ·thin'; font-size:9px; color:var(--warn); }
   .win { display:inline-block; min-width:38px; }
 
+  /* ── correlation matrix ── */
+  .mx td { text-align:center; padding:3px 4px; min-width:44px; border:1px solid var(--bg); font-size:10.5px; }
+  .mx th { font-size:9.5px; text-align:center; padding:3px 2px; max-width:64px; overflow:hidden; text-overflow:ellipsis; }
+  .mx th.l, .mx td.l { text-align:left; padding-left:6px; white-space:nowrap; }
+  .mx td.thin { color:var(--dim2); }
+  .mx td.diag { color:var(--dim2); background:var(--panel2); }
+  .bars .bar { display:grid; grid-template-columns:120px 1fr 90px; gap:8px; align-items:center; font-family:var(--mono); font-size:11px; padding:2px 0; }
+  .bars .trk { position:relative; height:10px; background:var(--panel2); border-radius:2px; }
+  .bars .fill { position:absolute; top:0; bottom:0; border-radius:2px; }
+  .legs { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:10px; }
+  .legs .panel { margin:0; }
+  .legs .ph { font-size:10px; }
+  .prjin { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .prjin label { color:var(--dim); font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; }
+  .prjin input { width:64px; }
+
   /* ── distributions tab ── */
   .dstwrap { display:grid; grid-template-columns:minmax(220px,1fr) minmax(360px,2.2fr) minmax(150px,.7fr); gap:14px; align-items:start; }
   @media (max-width:1100px) { .dstwrap { grid-template-columns:1fr; } }
@@ -247,6 +263,10 @@
   <button class="tab" data-p="edg" onclick="tab('edg')"><span class="tag">EDG</span>Edge</button>
   <button class="tab" data-p="brk" onclick="tab('brk')"><span class="tag">BRK</span>Breakdowns</button>
   <button class="tab" data-p="sys" onclick="tab('sys')"><span class="tag">SYS</span>Per-Bot</button>
+  <button class="tab" data-p="leg" onclick="tab('leg')"><span class="tag">LEG</span>Legs</button>
+  <button class="tab" data-p="mtx" onclick="tab('mtx')"><span class="tag">MTX</span>Correlation</button>
+  <button class="tab" data-p="rsk" onclick="tab('rsk')"><span class="tag">RSK</span>Risk</button>
+  <button class="tab" data-p="prj" onclick="tab('prj')"><span class="tag">PRJ</span>Projection</button>
   <button class="tab" data-p="dst" onclick="tab('dst')"><span class="tag">DST</span>Distributions</button>
   <button class="tab" data-p="exc" onclick="tab('exc')"><span class="tag">EXC</span>Excursions</button>
   <button class="tab" data-p="cst" onclick="tab('cst')"><span class="tag">CST</span>Costs</button>
@@ -257,6 +277,10 @@
 <div id="edg" class="pane"></div>
 <div id="brk" class="pane"></div>
 <div id="sys" class="pane"></div>
+<div id="leg" class="pane"></div>
+<div id="mtx" class="pane"></div>
+<div id="rsk" class="pane"></div>
+<div id="prj" class="pane"></div>
 <div id="dst" class="pane"></div>
 <div id="exc" class="pane"></div>
 <div id="cst" class="pane"></div>
@@ -270,7 +294,20 @@ import {
   cumFromDaily, liveGrowthPct, growthCone, conePercentile, clipDaily,
   distributions, DIST_METRICS, METRIC_READING,
   rollingEdge, breakdowns, hourWeekdayGrid, MIN_N_CELL, DOW,
+  dailyByGroup, correlationMatrix, effectiveBets, coincidentLoss, worstJointDays, MIN_BOTH_ACTIVE,
+  netLegs, exposureSeries, drawdownEpisodes, concentration, projectPaths,
 } from './js/botAuditEngine.js';
+import { instrument as _instrument } from './js/instrumentRegistry.js';
+import { histVaR, histCVaR } from './js/metricsCore.js';
+
+// MT5 symbols often carry a broker suffix ("XAUUSD.x", "NAS100.x"). Strip it
+// before the registry lookup; if that still fails, the leg engine files the
+// symbol as its own unknown leg rather than guessing.
+const resolveInstrument = sym => {
+  const raw = String(sym || '');
+  try { return _instrument(raw); } catch (e) {}
+  return _instrument(raw.replace(/[._][A-Za-z0-9]+$/, ''));
+};
 
 const BOTS = window.POS_BOTS || [];
 const botOf = k => BOTS.find(b => b.key === k) || { key: k, label: k, color: '#9ba3bf', paper: false };
@@ -542,7 +579,7 @@ document.addEventListener('mouseout', e => {
 // Accepts what the reference terminal's does: a tab code, a metric name, a
 // period, or a cost mode — one box instead of hunting for the right control.
 // Unrecognised input says so rather than failing silently.
-const TAB_CODES = { ovw: 'ovw', overview: 'ovw', edg: 'edg', edge: 'edg', decay: 'edg', brk: 'brk', breakdowns: 'brk', breakdown: 'brk', sys: 'sys', bots: 'sys', 'per-bot': 'sys',
+const TAB_CODES = { ovw: 'ovw', overview: 'ovw', edg: 'edg', edge: 'edg', decay: 'edg', brk: 'brk', breakdowns: 'brk', breakdown: 'brk', leg: 'leg', legs: 'leg', mtx: 'mtx', correlation: 'mtx', corr: 'mtx', exposure: 'mtx', rsk: 'rsk', risk: 'rsk', prj: 'prj', projection: 'prj', ftmo: 'prj', sys: 'sys', bots: 'sys', 'per-bot': 'sys',
                     dst: 'dst', dist: 'dst', distributions: 'dst', exc: 'exc', excursions: 'exc',
                     cst: 'cst', costs: 'cst', trd: 'trd', trades: 'trd' };
 const PERIODS = { all: '365', '1y': '365', '365': '365', '6m': '180', '180': '180',
@@ -579,8 +616,8 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { $('cmd').value = ''; $('cmd').blur(); return; }
   if (typing) return;
   if (e.key === '/') { e.preventDefault(); $('cmd').focus(); return; }
-  const tabs = ['ovw', 'edg', 'brk', 'sys', 'dst', 'exc', 'cst', 'trd'];
-  if (/^[1-8]$/.test(e.key)) { tab(tabs[+e.key - 1]); return; }
+  const tabs = ['ovw', 'edg', 'brk', 'sys', 'leg', 'mtx', 'rsk', 'prj', 'dst', 'exc'];
+  if (/^[0-9]$/.test(e.key)) { tab(tabs[e.key === '0' ? 9 : +e.key - 1]); return; }
   if (e.key === 'g') { setGross(!GROSS); return; }
   if (e.key === 'b') { toggleBacktest(); return; }
   if (e.key === 'r') { reload(); return; }
@@ -805,6 +842,10 @@ function render() {
   renderEdg(G);
   renderBrk(G);
   renderSys(C, G);
+  renderLeg(C, G);
+  renderMtx(G);
+  renderRsk(C, G);
+  renderPrj(C, G);
   renderDst(S);
   renderExc(G);
   renderCst(G);
@@ -1065,6 +1106,298 @@ function renderSys(C, G) {
     }).join('') + `</tbody></table></div></div>`;
 }
 
+// ── shared: correlation heat colour ─────────────────────────────────────────
+// Red = moves TOGETHER (the concentration risk), green = moves against, grey
+// near zero. Correlation is not "good when high" here — the question this tab
+// asks is how many independent bets the book holds, and red is fewer.
+function rhoCell(r) {
+  if (r == null || !isFinite(r)) return { style: '', txt: '—' };
+  const a = Math.min(1, Math.abs(r)) * 0.7 + (Math.abs(r) > 0.1 ? 0.08 : 0);
+  const col = r > 0.1 ? '242,85,90' : r < -0.1 ? '63,208,122' : '90,100,120';
+  return { style: `background:rgba(${col},${a.toFixed(2)})`, txt: r.toFixed(2) };
+}
+function matrixTable(C, labelFn, { showBoth = true } = {}) {
+  const k = C.keys;
+  if (k.length < 2) return `<div class="empty">Need at least two groups with trades in the range.</div>`;
+  return `<div style="overflow-x:auto"><table class="mx"><thead><tr><th class="l"></th>${k.map(x => `<th title="${esc(labelFn(x))}">${esc(labelFn(x))}</th>`).join('')}</tr></thead><tbody>` +
+    k.map((a, i) => `<tr><td class="l"><b>${esc(labelFn(a))}</b></td>` + k.map((b, j) => {
+      if (i === j) return `<td class="diag">1</td>`;
+      const c = rhoCell(C.rho[i][j]); const thin = C.both[i][j] < MIN_BOTH_ACTIVE;
+      return `<td class="${thin ? 'thin' : ''}" style="${thin ? '' : c.style}" title="${esc(labelFn(a))} × ${esc(labelFn(b))} · ρ ${c.txt} · both active ${C.both[i][j]} days${thin ? ' · thin: under ' + MIN_BOTH_ACTIVE : ''}">${c.txt}${showBoth && thin ? `<div style="font-size:8.5px">${C.both[i][j]}d</div>` : ''}</td>`;
+    }).join('') + '</tr>').join('') + `</tbody></table></div>`;
+}
+
+// ── LEG · per-instrument legs ────────────────────────────────────────────────
+function renderLeg(C, G) {
+  const el = $('leg');
+  if (!TRADES.length) { el.innerHTML = `<div class="empty">No trades.</div>`; return; }
+  const syms = [...new Set(TRADES.map(t => t.symbol || '?'))];
+  const total = TRADES.reduce((s, t) => s + netOf(t, G), 0);
+  const rows = syms.map(sym => {
+    const ts = TRADES.filter(t => (t.symbol || '?') === sym);
+    const S = summarize(ts, { capital: 0, gross: GROSS, bootRuns: 60, mcRuns: 60 });
+    return { sym, ts, S, share: Math.abs(total) > 1e-9 ? S.scaleFree.totalPnl / total * 100 : null };
+  }).sort((a, b) => b.S.scaleFree.totalPnl - a.S.scaleFree.totalPnl);
+  const lim = Math.max(...rows.map(r => Math.abs(r.S.scaleFree.totalPnl)), 1);
+
+  const bars = rows.map(r => {
+    const v = r.S.scaleFree.totalPnl, w = Math.abs(v) / lim * 50;
+    return `<div class="bar"><span>${esc(r.sym)}</span><div class="trk"><div class="fill" style="${v >= 0 ? `left:50%;width:${w}%;background:var(--good)` : `right:50%;width:${w}%;background:var(--bad)`}"></div></div><span class="${cls(v)}" style="text-align:right">${money(v, 0)}</span></div>`;
+  }).join('');
+
+  const mini = rows.map(r => {
+    const eq = r.S.series.equityByTrade;
+    const f = r.S.scaleFree;
+    return `<div class="panel"><div class="ph"><span class="badge">${esc(r.sym).slice(0, 6)}</span>${esc(r.sym)}<span class="rt">${f.trades} · <span class="${cls(f.totalPnl)}">${money(f.totalPnl, 0)}</span></span></div>
+      <div class="pb" style="padding:6px 8px 4px">${lineChart(eq.map(p => ({ k: p.day, v: p.equity })), { h: 70, fill: f.totalPnl >= 0 ? 'rgba(63,208,122,.10)' : 'rgba(242,85,90,.10)', stroke: f.totalPnl >= 0 ? '#3fd07a' : '#f2555a', zero: true, money: true })}
+      <div class="rd" style="font-size:10.5px;margin-top:2px;display:flex;gap:10px;flex-wrap:wrap"><span>win ${(f.winRate * 100).toFixed(0)}%</span><span>PF ${num(f.profitFactor)}</span><span class="${f.trades < MIN_N_RATIOS ? '' : ''}">Sharpe ${num(f.sharpe)}</span><span>DD ${money(f.maxDDAbs, 0)}</span></div></div></div>`;
+  }).join('');
+
+  const dbg = dailyByGroup(TRADES, t => t.symbol || '?', G);
+  const corr = correlationMatrix(dbg);
+
+  el.innerHTML = `
+  <div class="note">A <b>leg</b> here is an instrument stream across the selected bots — the asset the book is actually exposed to, regardless of which
+    strategy put it on. Contribution shows who is carrying the result; the correlation matrix shows whether the legs are really different bets
+    or the same trade in several tickers.</div>
+  <div class="panel"><div class="ph"><span class="badge">CTB</span>Contribution to net<span class="rt">${syms.length} legs · total ${money(total, 0)}</span></div>
+    <div class="pb bars">${bars}</div></div>
+  <div class="panel"><div class="ph"><span class="badge">LEGS</span>Per-leg book</div>
+    <div class="scroll"><table><thead><tr><th class="l">Leg</th><th>n</th><th>Net</th><th>Share</th><th>Win%</th><th>PF</th><th>Expect.</th><th>Sharpe</th><th>Max DD $</th><th>Costs</th></tr></thead><tbody>` +
+    rows.map(r => { const f = r.S.scaleFree, thin = f.trades < MIN_N_RATIOS ? ' style="color:var(--dim)"' : '';
+      return `<tr><td class="l"><b>${esc(r.sym)}</b></td><td>${f.trades}</td><td class="${cls(f.totalPnl)}">${money(f.totalPnl, 0)}</td>
+        <td>${r.share == null ? '—' : r.share.toFixed(0) + '%'}</td><td${thin}>${(f.winRate * 100).toFixed(0)}%</td><td${thin}>${num(f.profitFactor)}</td>
+        <td class="${cls(f.expectancy)}">${money(f.expectancy)}</td><td${thin}>${num(f.sharpe)}</td><td class="neg">${money(f.maxDDAbs, 0)}</td><td class="neg">${money(f.totalCost, 0)}</td></tr>`; }).join('') +
+    `</tbody></table></div></div>
+  <div class="legs" style="margin-bottom:14px">${mini}</div>
+  <div class="panel"><div class="ph"><span class="badge">LMX</span>Leg correlation — daily P&amp;L<span class="rt">${corr.days} weekdays · red = moves together</span></div>
+    <div class="pb">${matrixTable(corr, x => x)}</div></div>`;
+}
+
+// ── MTX · cross-bot correlation + exposure ───────────────────────────────────
+let LIVE_EXPO = null, LIVE_EXPO_AT = null;
+window.loadLiveExposure = async function () {
+  const keys = selectedKeys();
+  $('liveExpoBtn').textContent = 'loading…';
+  const results = await Promise.all(keys.map(async k => {
+    try {
+      const r = await fetch(`/api/kv/get?key=${encodeURIComponent(k)}`);
+      const j = await r.json();
+      if (!r.ok || j.miss || !j.data) return { k, positions: [], missing: true };
+      return { k, positions: (j.data.mt5_positions || []).map(p => ({ ...p, bot_key: k })), missing: false, ts: j.timestamp };
+    } catch (e) { return { k, positions: [], missing: true }; }
+  }));
+  LIVE_EXPO = results; LIVE_EXPO_AT = new Date();
+  renderMtx({ gross: GROSS });
+};
+
+function renderMtx(G) {
+  const el = $('mtx');
+  if (!TRADES.length) { el.innerHTML = `<div class="empty">No trades.</div>`; return; }
+  const dbg = dailyByGroup(TRADES, t => t.bot_key, G);
+  const corr = correlationMatrix(dbg);
+  const eff = effectiveBets(dbg, corr);
+  const cl = coincidentLoss(dbg);
+  const wj = worstJointDays(dbg, 6);
+  const ex = exposureSeries(TRADES, resolveInstrument);
+  const lbl = k => botOf(k).label;
+
+  const tiles = `<div class="tiles">
+    ${tile('Bots in book', String(eff.n), `${corr.days} weekdays`)}
+    ${tile('Effective bets', eff.nEff == null ? '—' : eff.nEff.toFixed(2), 'participation ratio of eigenvalues', eff.n < 2 ? 'locked' : '')}
+    ${tile('Diversification ratio', eff.divRatio == null ? '—' : eff.divRatio.toFixed(2), `1 = one trade · √${eff.n} = independent`, eff.n < 2 ? 'locked' : '')}
+    ${tile('Top factor share', eff.topShare == null ? '—' : (eff.topShare * 100).toFixed(0) + '%', 'of variance in one direction', eff.n < 2 ? 'locked' : '')}
+    ${tile('Max concurrent', String(ex.maxConcurrent), 'open positions at a day end')}
+  </div>`;
+
+  // coincident-loss table (ordered pairs)
+  const clTable = corr.keys.length < 2 ? '' : `<div class="panel"><div class="ph"><span class="badge">COL</span>When this one loses, does that one?<span class="rt">P(column lost | row lost) · days both active</span></div>
+    <div class="pb"><div style="overflow-x:auto"><table class="mx"><thead><tr><th class="l">row lost →</th>${corr.keys.map(k => `<th>${esc(lbl(k))}</th>`).join('')}</tr></thead><tbody>` +
+    corr.keys.map((a, i) => `<tr><td class="l"><b>${esc(lbl(a))}</b></td>` + corr.keys.map((b, j) => {
+      if (i === j) return `<td class="diag">·</td>`;
+      const c = cl[i][j];
+      if (!c) return `<td class="thin" title="fewer than 5 days where ${esc(lbl(a))} lost while ${esc(lbl(b))} was active">—</td>`;
+      const al = Math.min(1, c.p) * 0.7 + 0.08;
+      return `<td style="background:rgba(242,85,90,${(c.p > 0.5 ? al : al * 0.4).toFixed(2)})" title="${c.n} days ${esc(lbl(a))} lost; ${esc(lbl(b))} also lost ${(c.p * 100).toFixed(0)}% of them">${(c.p * 100).toFixed(0)}%<div style="font-size:8.5px;color:var(--dim)">${c.n}d</div></td>`;
+    }).join('') + '</tr>').join('') + `</tbody></table></div></div></div>`;
+
+  const worst = wj.length ? `<div class="panel"><div class="ph"><span class="badge">WJD</span>Worst joint days<span class="rt">most bots losing at once</span></div>
+    <div class="pb"><table style="max-width:560px"><thead><tr><th class="l">Day</th><th>Losing</th><th>Active</th><th>Book net</th></tr></thead><tbody>` +
+    wj.map(r => `<tr><td class="l">${r.day}</td><td class="neg">${r.losers}</td><td>${r.active}</td><td class="${cls(r.net)}">${money(r.net, 0)}</td></tr>`).join('') + `</tbody></table></div></div>` : '';
+
+  // exposure chart: one line per leg, lots, over the book's calendar
+  const LEGCOL = ['#5eb0ff', '#3fd07a', '#e0a93b', '#c084fc', '#f2555a', '#4dd0e1', '#f472b6', '#a3e635', '#fb923c', '#94a3b8'];
+  const legOrder = [...ex.legs].sort((a, b) => Math.max(...ex.series[b].map(Math.abs)) - Math.max(...ex.series[a].map(Math.abs))).slice(0, 10);
+  const expoChart = legOrder.length ? overlayChart({
+    n: ex.days.length, xFirst: ex.days[0], xLast: ex.days[ex.days.length - 1], xLabels: ex.days, zero: true, unit: ' lots', h: 220,
+    lines: legOrder.map((c, i) => ({ v: ex.series[c], stroke: LEGCOL[i % LEGCOL.length], w: 1.5 })),
+  }) : `<div class="empty">No positions carried over a day end.</div>`;
+  const legend = legOrder.map((c, i) => swatch(LEGCOL[i % LEGCOL.length], c)).join('');
+
+  // end-of-range legs
+  const last = ex.days.length ? legOrder.map(c => ({ ccy: c, lots: ex.series[c][ex.days.length - 1] })).filter(l => Math.abs(l.lots) > 1e-9) : [];
+
+  // live snapshot
+  let liveHtml = '';
+  if (LIVE_EXPO) {
+    const pos = LIVE_EXPO.flatMap(r => r.positions);
+    const missing = LIVE_EXPO.filter(r => r.missing).map(r => lbl(r.k));
+    const legs = netLegs(pos, resolveInstrument);
+    liveHtml = `<div class="rd" style="margin-top:10px"><b>Live, ${LIVE_EXPO_AT.toLocaleTimeString('en-GB')}</b> — ${pos.length} open position${pos.length === 1 ? '' : 's'} across ${LIVE_EXPO.length - missing.length} reporting bot${LIVE_EXPO.length - missing.length === 1 ? '' : 's'}.
+      ${missing.length ? `<span class="neg">No status for: ${missing.map(esc).join(', ')}</span> (silent &gt;48h or never pushed).` : ''}
+      ${legs.length ? `<table style="max-width:520px;margin-top:6px"><thead><tr><th class="l">Leg</th><th>Net lots</th><th>Positions</th><th class="l">Kind</th></tr></thead><tbody>` +
+        legs.map(l => `<tr><td class="l"><b>${esc(l.ccy)}</b></td><td class="${cls(l.lots)}">${l.lots >= 0 ? '+' : ''}${l.lots.toFixed(2)}</td><td>${l.positions}</td><td class="l" style="color:var(--dim)">${esc(l.kind)}</td></tr>`).join('') + `</tbody></table>` : '<br>Flat.'}</div>`;
+  }
+
+  el.innerHTML = `
+  <div class="note">The honest version of the hedging question, in two halves. <b>Correlation</b>: do the selected bots make and lose money on the same days —
+    if so, the book holds fewer independent bets than it has bots. <b>Exposure</b>: what the book is net long and short of, by currency leg, day by day.
+    Legs are in <b>lots, not money</b>: within FX a lot is 100k of base everywhere, so FX legs compare; gold and indices are their own legs with no
+    invented USD notional (this repo has a live 10× drift on exactly that kind of constant).</div>
+  ${tiles}
+  <div class="panel"><div class="ph"><span class="badge">MTX</span>Bot correlation — daily P&amp;L<span class="rt">${corr.days} weekdays · zero-filled · red = moves together · grey = under ${MIN_BOTH_ACTIVE} days both active</span></div>
+    <div class="pb">${matrixTable(corr, lbl)}
+    <div class="rd" style="margin-top:8px;color:var(--dim2);font-size:11px">Effective bets ${eff.nEff == null ? '—' : eff.nEff.toFixed(2)} of ${eff.n}: the participation ratio of the correlation eigenvalues — ${eff.n} if every bot were independent, 1 if they were the same trade.
+      Diversification ratio ${eff.divRatio == null ? '—' : eff.divRatio.toFixed(2)}: sum of the bots' own daily volatility ÷ the book's. These disagree when the book is <i>hedged</i> — a bot running against another collapses the second number while the first still counts one factor. Both are right; read them together.</div></div></div>
+  ${clTable}
+  ${worst}
+  <div class="panel"><div class="ph"><span class="badge">EXP</span>Net exposure by leg — end of day<span class="rt">lots · from the closed book's open/close stamps · top ${legOrder.length} legs</span></div>
+    <div class="pb">${expoChart}<div class="rd" style="margin-top:8px">${legend}</div>
+    <div class="rd" style="margin-top:10px"><b>End of range:</b> ${last.length ? last.map(l => `${esc(l.ccy)} <span class="${cls(l.lots)}">${l.lots >= 0 ? '+' : ''}${l.lots.toFixed(2)}</span>`).join(' · ') : 'flat'}.
+      &nbsp; <button id="liveExpoBtn" onclick="loadLiveExposure()" style="font-size:10.5px;padding:2px 9px">${LIVE_EXPO ? '↺ refresh live' : 'Live now →'}</button>
+      <span style="color:var(--dim2);font-size:10.5px"> reads each selected bot's status key for its open positions</span>${liveHtml}</div></div></div>`;
+}
+
+// ── RSK · risk ───────────────────────────────────────────────────────────────
+function renderRsk(C, G) {
+  const el = $('rsk');
+  if (!TRADES.length) { el.innerHTML = `<div class="empty">No trades.</div>`; return; }
+  const S = summarize(TRADES, { capital: C, gross: GROSS, bootRuns: 60, mcRuns: 60 });
+  const dEq = S.series.dailyEquity, dayP = dEq.map(d => d.pnl);
+  const active = dayP.filter(x => Math.abs(x) > 1e-9);
+  const eps = drawdownEpisodes(dEq);
+  const conc = concentration(TRADES, G);
+  const ex = exposureSeries(TRADES, resolveInstrument);
+  const rec = eps.filter(e => e.recovered).map(e => e.days).sort((a, b) => a - b);
+  const medRec = rec.length ? rec[Math.floor(rec.length / 2)] : null;
+  const longest = eps.length ? Math.max(...eps.map(e => e.days)) : 0;
+  const v95 = histVaR(active, 0.95), c95 = histCVaR(active, 0.95), v99 = histVaR(active, 0.99);
+  const pctOf = v => C > 0 ? ` · ${(v / C * 100).toFixed(2)}%` : '';
+
+  el.innerHTML = `
+  <div class="note">What the book can do to you. Drawdowns as <b>episodes</b> (how deep, how long, did it come back), tail loss on an active day,
+    and <b>concentration</b> — how much of the result rides on a handful of trades. MAE/MFE — whether the stops are placed where trades actually live — is on the
+    <a href="#" onclick="tab('exc');return false">Excursions</a> tab.</div>
+  <div class="tiles">
+    ${tile('Daily VaR 95', `<span class="neg">${money(v95)}</span>`, `active days${pctOf(v95)}`, active.length < MIN_N_RATIOS ? 'thin' : '')}
+    ${tile('Daily CVaR 95', `<span class="neg">${money(c95)}</span>`, 'mean of the worst 5%', active.length < MIN_N_RATIOS ? 'thin' : '')}
+    ${tile('Daily VaR 99', `<span class="neg">${money(v99)}</span>`, `active days${pctOf(v99)}`, active.length < 100 ? 'thin' : '')}
+    ${tile('Worst day', `<span class="neg">${money(Math.min(0, ...dayP))}</span>`, dEq.length ? dEq.reduce((a, d) => d.pnl < a.pnl ? d : a, dEq[0]).date : '')}
+    ${tile('Max drawdown', `<span class="neg">${money(S.scaleFree.maxDDAbs)}</span>`, S.scaleBound ? pct(S.scaleBound.maxDDPct) + ' of capital' : 'set Capital for %')}
+    ${tile('Drawdown episodes', String(eps.length), `${eps.filter(e => !e.recovered).length} still open`)}
+    ${tile('Longest episode', longest ? longest + 'd' : '—', 'calendar days under water')}
+    ${tile('Median recovery', medRec == null ? '—' : medRec + 'd', `${rec.length} recovered`)}
+    ${tile('Max concurrent', String(ex.maxConcurrent), 'positions at a day end')}
+  </div>
+  <div class="panel"><div class="ph"><span class="badge">DDE</span>Drawdown episodes<span class="rt">deepest first</span></div>
+    <div class="scroll" style="max-height:360px"><table><thead><tr><th class="l">Start</th><th class="l">Trough</th><th class="l">Recovered</th><th>Depth</th><th>Depth %</th><th>Days</th></tr></thead><tbody>` +
+    (eps.length ? eps.map(e => `<tr><td class="l">${e.start}</td><td class="l">${e.trough}</td><td class="l" style="color:${e.recovered ? 'var(--dim)' : 'var(--warn)'}">${e.recovered ? e.end : 'open'}</td>
+      <td class="neg">${money(e.depth, 0)}</td><td class="neg">${e.depthPct == null ? '—' : e.depthPct.toFixed(2) + '%'}</td><td>${e.days}</td></tr>`).join('') : `<tr><td colspan="6" class="empty">Never below a prior peak.</td></tr>`) +
+    `</tbody></table></div></div>
+  <div class="panel"><div class="ph"><span class="badge">CONC</span>Concentration<span class="rt">how much rides on a few trades</span></div>
+    <div class="pb"><div class="tiles" style="margin-bottom:10px">
+      ${tile('Top trade', conc.top1Share == null ? '—' : (conc.top1Share * 100).toFixed(0) + '%', 'of gross profit')}
+      ${tile('Top 5 trades', conc.top5Share == null ? '—' : (conc.top5Share * 100).toFixed(0) + '%', 'of gross profit')}
+      ${tile('Top 10 trades', conc.top10Share == null ? '—' : (conc.top10Share * 100).toFixed(0) + '%', 'of gross profit')}
+      ${tile('Net without top 5', `<span class="${cls(conc.withoutTop5)}">${money(conc.withoutTop5, 0)}</span>`, `book ${money(conc.total, 0)}`)}
+      ${tile('Net without top 10', `<span class="${cls(conc.withoutTop10)}">${money(conc.withoutTop10, 0)}</span>`, 'take the best ten away')}
+      ${tile('Tail ratio', conc.tailRatio == null ? '—' : conc.tailRatio.toFixed(2), 'avg top decile ÷ |avg bottom decile|')}
+    </div>
+    <div class="rd">${conc.withoutTop5 < 0 && conc.total > 0
+      ? `<b class="neg">Remove the five best trades and the book is negative.</b> The result is a handful of outliers, not a repeatable edge — every one of those five has to happen again.`
+      : conc.top5Share != null && conc.top5Share > 0.5
+      ? `<b class="neg">Five trades carry over half the gross profit.</b> Fragile: a couple of them not recurring changes the picture.`
+      : `Gross profit is spread across many trades — the result does not depend on a few lucky ones. That is what a repeatable edge looks like.`}</div></div></div>`;
+}
+
+// ── PRJ · projection ─────────────────────────────────────────────────────────
+let PRJ = { horizon: 30, target: 10, maxDD: 10, daily: 5 };
+window.setPrj = () => {
+  PRJ = { horizon: +$('prjH').value || 30, target: +$('prjT').value || 10, maxDD: +$('prjD').value || 10, daily: +$('prjL').value || 5 };
+  try { localStorage.setItem('botAuditPrj', JSON.stringify(PRJ)); } catch (e) {}
+  renderPrj(cap(), { gross: GROSS });
+};
+
+function renderPrj(C, G) {
+  const el = $('prj');
+  const inputs = `<div class="prjin">
+    <label>Horizon (days)</label><input type="number" id="prjH" value="${PRJ.horizon}" min="5" max="250" onchange="setPrj()">
+    <label>Target %</label><input type="number" id="prjT" value="${PRJ.target}" step="1" onchange="setPrj()">
+    <label>Max DD %</label><input type="number" id="prjD" value="${PRJ.maxDD}" step="1" onchange="setPrj()">
+    <label>Daily loss %</label><input type="number" id="prjL" value="${PRJ.daily}" step="1" onchange="setPrj()">
+    <span style="color:var(--dim2);font-size:10.5px">defaults are FTMO-style: +10% target · −10% max · −5% in a day</span></div>`;
+  if (!TRADES.length) { el.innerHTML = `<div class="empty">No trades.</div>`; return; }
+  if (!(C > 0)) {
+    el.innerHTML = `<div class="panel"><div class="ph"><span class="badge">PRJ</span>Projection</div><div class="pb">${inputs}
+      <div class="note warn" style="margin:12px 0 0"><b>Set Capital to project.</b> The rules are percentages of an account; without a declared base there is nothing to test them against.</div></div></div>`;
+    return;
+  }
+  const S = summarize(TRADES, { capital: C, gross: GROSS, bootRuns: 60, mcRuns: 60 });
+  const dayP = S.series.dailyEquity.map(d => d.pnl);
+  const P = projectPaths(dayP, { horizon: PRJ.horizon, runs: 2000, capital: C, targetPct: PRJ.target, maxDDPct: PRJ.maxDD, dailyLossPct: PRJ.daily });
+  if (!P) { el.innerHTML = `<div class="panel"><div class="pb">${inputs}<div class="empty">Need at least 10 trading days in range.</div></div></div>`; return; }
+
+  const n = P.fan.length;
+  // Scale to the FAN. A rule line far outside it (a ±10% rule against a book
+  // that moves ±0.5% in a month) would flatten the fan to a hairline and hide
+  // the only thing worth looking at — so a rule is drawn only when it sits
+  // within 3× the fan's own reach, and is otherwise named in the caption.
+  const fanHi = Math.max(...P.fan.map(f => f.p95)) / C * 100, fanLo = Math.min(...P.fan.map(f => f.p5)) / C * 100;
+  const reach = Math.max(Math.abs(fanHi), Math.abs(fanLo), 1e-6);
+  const showT = PRJ.target <= reach * 3, showD = PRJ.maxDD <= reach * 3;
+  const ruleLines = [];
+  if (showT) ruleLines.push({ v: new Array(n).fill(PRJ.target), stroke: '#3fd07a', dash: '4 4', w: 1.2 });
+  if (showD) ruleLines.push({ v: new Array(n).fill(-PRJ.maxDD), stroke: '#f2555a', dash: '4 4', w: 1.2 });
+  const chart = overlayChart({
+    n, xFirst: 'day 0', xLast: `day ${P.horizon}`, xLabels: P.fan.map(f => `day ${f.d}`), zero: true, unit: '%', h: 260,
+    bands: [
+      { lo: P.fan.map(f => f.p5 / C * 100),  hi: P.fan.map(f => f.p95 / C * 100), fill: 'rgba(94,176,255,.10)' },
+      { lo: P.fan.map(f => f.p25 / C * 100), hi: P.fan.map(f => f.p75 / C * 100), fill: 'rgba(94,176,255,.16)' },
+    ],
+    lines: [...ruleLines, { v: P.fan.map(f => f.p50 / C * 100), stroke: '#5eb0ff', w: 2 }],
+  });
+  const offScale = [!showT ? `target +${PRJ.target}%` : null, !showD ? `max DD −${PRJ.maxDD}%` : null].filter(Boolean);
+  const thin = P.sampleDays < 40;
+  const pc = v => (v * 100).toFixed(0) + '%';
+
+  el.innerHTML = `
+  <div class="note ${thin ? 'warn' : ''}">Monte Carlo of the <b>next ${P.horizon} trading days</b>, each day drawn at random from this book's own ${P.sampleDays} daily results, tested
+    against prop-firm rules. It answers <b>"if the next ${P.horizon} days look like the last ${P.sampleDays}, how often does this pass"</b> — not "what will happen".
+    It assumes the future is a reshuffle of the past, which is exactly what a regime change breaks.
+    ${thin ? `<br><b class="neg">${P.sampleDays} days is a thin sample to draw from</b> — the distribution being resampled is itself uncertain. Treat the probabilities as rough.` : ''}</div>
+  <div class="panel"><div class="ph"><span class="badge">RULES</span>Challenge rules</div><div class="pb">${inputs}</div></div>
+  <div class="tiles">
+    ${tile('P(pass)', `<span class="${P.pPass >= 0.5 ? 'pos' : 'neu'}">${pc(P.pPass)}</span>`, `hit +${PRJ.target}% first`, thin ? 'thin' : '')}
+    ${tile('P(bust · drawdown)', `<span class="neg">${pc(P.pBustDD)}</span>`, `−${PRJ.maxDD}% from start`, thin ? 'thin' : '')}
+    ${tile('P(bust · daily)', `<span class="neg">${pc(P.pBustDaily)}</span>`, `one day ≤ −${PRJ.daily}%`, thin ? 'thin' : '')}
+    ${tile('P(neither)', pc(P.pNeither), `still running after ${P.horizon}d`)}
+    ${tile('Median days to pass', P.medianDaysToPass == null ? '—' : String(P.medianDaysToPass), 'of the paths that passed')}
+    ${tile('Final P&L · P5 / P50 / P95', `${pct(P.finalPct.p5, 1)} / ${pct(P.finalPct.p50, 1)} / ${pct(P.finalPct.p95, 1)}`, `after ${P.horizon} days, no stopping`)}
+  </div>
+  <div class="panel"><div class="ph"><span class="badge">FAN</span>Equity fan — % of capital<span class="rt">${P.runs.toLocaleString('en-GB')} paths · P5–P95 light · P25–P75 dark · median solid</span></div>
+    <div class="pb">${chart}<div class="rd" style="margin-top:8px">${swatch('#5eb0ff', 'median path')}${showT ? swatch('#3fd07a', 'target', true) : ''}${showD ? swatch('#f2555a', 'max drawdown', true) : ''}
+      ${offScale.length ? `<span style="color:var(--warn);font-size:11px">Off the chart: ${offScale.join(' · ')} — the fan reaches ${pct(fanLo, 1)} to ${pct(fanHi, 1)} in ${P.horizon} days, so the rules are ${(Math.min(PRJ.target, PRJ.maxDD) / reach).toFixed(0)}× further than the book has ever gone in that time. That gap is the finding.</span>` : ''}</div></div></div>
+  <div class="panel"><div class="ph"><span class="badge">READ</span>Reading</div><div class="pb"><div class="rd">
+    ${P.pBustDaily > P.pBustDD
+      ? `<b>The daily-loss rule is the binding constraint</b>, not the overall drawdown: ${pc(P.pBustDaily)} of paths die on a single bad day versus ${pc(P.pBustDD)} on cumulative drawdown. Sizing down would help more than tightening stops.`
+      : P.pBustDD > 0.2
+      ? `<b>Cumulative drawdown is the binding constraint</b> at ${pc(P.pBustDD)}. The book grinds lower rather than blowing up in a day.`
+      : `Neither rule bites often; the question is time — ${pc(P.pNeither)} of paths are still running unresolved after ${P.horizon} days.`}
+    <br><br><b>What this cannot tell you.</b> The paths are drawn from ${P.sampleDays} days of one book in one regime. A change in volatility, spreads or the strategy's
+    own behaviour is invisible here until it has already happened. This is a sizing tool, not a forecast.
+  </div></div></div>`;
+}
+
 let DST_METRIC = 'sharpe';
 let _LAST_DIST = null;
 window.setDstMetric = k => { DST_METRIC = k; renderDst(_LAST_S); };
@@ -1260,6 +1593,7 @@ function renderTrd() {
     const t = localStorage.getItem('botAuditTab'); if (t) window.tab(t);
     const c = localStorage.getItem('botAuditCap'); if (c) $('inCap').value = c;
     const ew = +localStorage.getItem('botAuditEdgeWin'); if ([10, 20, 30, 50].includes(ew)) EDGE_WIN = ew;
+    const pj = JSON.parse(localStorage.getItem('botAuditPrj') || 'null'); if (pj && pj.horizon) PRJ = pj;
     const sv = JSON.parse(localStorage.getItem('botAuditSel') || 'null');
     SEL = new Set(Array.isArray(sv) && sv.length ? sv.filter(k => BOTS.some(b => b.key === k)) : liveKeys());
     const rg = JSON.parse(localStorage.getItem('botAuditRange') || 'null');
@@ -1275,7 +1609,7 @@ function renderTrd() {
 })();
 </script>
 <div class="rail">
-  <span><b>1-8</b> tab</span>
+  <span><b>1-9 0</b> tab</span>
   <span><b>/</b> command</span>
   <span><b>g</b> gross/net</span>
   <span><b>b</b> backtest</span>

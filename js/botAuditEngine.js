@@ -786,3 +786,309 @@ export function hourWeekdayGrid(trades, { gross = false } = {}) {
   for (const row of grid) for (const c of row) maxAbs = Math.max(maxAbs, Math.abs(c.net));
   return { grid, maxAbs, skipped, days: DOW };
 }
+
+// ── Portfolio structure: correlation, effective bets, exposure ───────────────
+
+/** Weekday ISO dates from `from` to `to` inclusive — the calendar a daily P&L
+ *  stream is laid on. Weekends are excluded so a flat Saturday is not counted
+ *  as a zero-return day. */
+export function weekdays(from, to) {
+  const out = [];
+  let cur = from;
+  while (cur <= to) {
+    const d = new Date(cur + 'T00:00:00Z');
+    if (d.getUTCDay() !== 0 && d.getUTCDay() !== 6) out.push(cur);
+    d.setUTCDate(d.getUTCDate() + 1); cur = d.toISOString().slice(0, 10);
+  }
+  return out;
+}
+
+/**
+ * One daily P&L stream per group (bot, instrument, …) on a SHARED weekday
+ * calendar, zero-filled. Zero-filling is correct for portfolio purposes: a day
+ * a bot did not trade contributed exactly nothing to the book's variance that
+ * day. `activeDays` per group records how many days actually had a trade, so a
+ * correlation between two groups that were rarely both active can be flagged.
+ */
+export function dailyByGroup(trades, keyFn, { gross = false } = {}) {
+  if (!trades.length) return { keys: [], days: [], series: {}, activeDays: {} };
+  const days = weekdays(trades[0].day, trades[trades.length - 1].day);
+  const idx = new Map(days.map((d, i) => [d, i]));
+  const series = {}, activeDays = {};
+  for (const t of trades) {
+    const k = keyFn(t); if (k == null) continue;
+    if (!series[k]) { series[k] = new Array(days.length).fill(0); activeDays[k] = new Set(); }
+    const i = idx.get(t.day);
+    if (i == null) continue;        // a close on a weekend lands nowhere — rare, reported by caller if it matters
+    series[k][i] += netOf(t, { gross });
+    activeDays[k].add(t.day);
+  }
+  const keys = Object.keys(series);
+  const act = {}; for (const k of keys) act[k] = activeDays[k].size;
+  return { keys, days, series, activeDays: act };
+}
+
+function pearson(a, b) {
+  const n = a.length; if (n < 2) return null;
+  let ma = 0, mb = 0; for (let i = 0; i < n; i++) { ma += a[i]; mb += b[i]; } ma /= n; mb /= n;
+  let sab = 0, saa = 0, sbb = 0;
+  for (let i = 0; i < n; i++) { const da = a[i] - ma, db = b[i] - mb; sab += da * db; saa += da * da; sbb += db * db; }
+  if (saa < 1e-18 || sbb < 1e-18) return null;
+  return sab / Math.sqrt(saa * sbb);
+}
+
+/** Minimum days on which BOTH groups traded before a correlation is shown. */
+export const MIN_BOTH_ACTIVE = 15;
+
+/**
+ * Pearson correlation of daily P&L between every pair of groups, plus the days
+ * both were active. A pair with too few jointly-active days is still computed
+ * but flagged `thin` — two bots that almost never trade on the same day can
+ * show a strong correlation driven by three coincidences.
+ */
+export function correlationMatrix(dbg) {
+  const { keys, series, days } = dbg;
+  const n = keys.length;
+  const rho = keys.map(() => new Array(n).fill(1));
+  const both = keys.map(() => new Array(n).fill(0));
+  for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+    const a = series[keys[i]], b = series[keys[j]];
+    let nb = 0; for (let d = 0; d < days.length; d++) if (a[d] !== 0 && b[d] !== 0) nb++;
+    const r = pearson(a, b);
+    rho[i][j] = rho[j][i] = r;
+    both[i][j] = both[j][i] = nb;
+  }
+  return { keys, rho, both, days: days.length };
+}
+
+/** Eigenvalues of a symmetric matrix by cyclic Jacobi rotation. Small n only —
+ *  we have at most ~23 bots. Nulls (undefined correlations) are treated as 0. */
+export function symEigen(M) {
+  const n = M.length;
+  const A = M.map(r => r.map(v => (v == null || !isFinite(v)) ? 0 : v));
+  for (let sweep = 0; sweep < 100; sweep++) {
+    let off = 0;
+    for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) off += A[i][j] * A[i][j];
+    if (off < 1e-14) break;
+    for (let p = 0; p < n; p++) for (let q = p + 1; q < n; q++) {
+      if (Math.abs(A[p][q]) < 1e-15) continue;
+      const theta = (A[q][q] - A[p][p]) / (2 * A[p][q]);
+      const t = Math.sign(theta || 1) / (Math.abs(theta) + Math.sqrt(theta * theta + 1));
+      const c = 1 / Math.sqrt(t * t + 1), s = t * c;
+      for (let k = 0; k < n; k++) {
+        const akp = A[k][p], akq = A[k][q];
+        A[k][p] = c * akp - s * akq; A[k][q] = s * akp + c * akq;
+      }
+      for (let k = 0; k < n; k++) {
+        const apk = A[p][k], aqk = A[q][k];
+        A[p][k] = c * apk - s * aqk; A[q][k] = s * apk + c * aqk;
+      }
+    }
+  }
+  return A.map((r, i) => r[i]).sort((a, b) => b - a);
+}
+
+/**
+ * How many INDEPENDENT bets the book really holds.
+ *   nEff      — participation ratio of the correlation eigenvalues, (Σλ)²/Σλ².
+ *               N for uncorrelated groups, 1 for perfectly correlated.
+ *   divRatio  — Σ(individual daily sd) / portfolio daily sd. 1 when everything
+ *               moves together, √N when independent.
+ * Both are given because they fail differently: nEff ignores sizing, divRatio
+ * is dominated by whichever group is biggest.
+ */
+export function effectiveBets(dbg, corr) {
+  const { keys, series, days } = dbg;
+  const n = keys.length;
+  if (!n) return { n: 0, nEff: null, divRatio: null, eigen: [] };
+  const eigen = symEigen(corr.rho);
+  const sum = eigen.reduce((s, x) => s + x, 0), sumSq = eigen.reduce((s, x) => s + x * x, 0);
+  const nEff = sumSq > 1e-12 ? (sum * sum) / sumSq : null;
+  const sd = a => { const m = a.reduce((s, x) => s + x, 0) / a.length; return Math.sqrt(a.reduce((s, x) => s + (x - m) ** 2, 0) / a.length); };
+  const port = new Array(days.length).fill(0);
+  for (const k of keys) for (let d = 0; d < days.length; d++) port[d] += series[k][d];
+  const sumSd = keys.reduce((s, k) => s + sd(series[k]), 0), portSd = sd(port);
+  return { n, nEff, divRatio: portSd > 1e-12 ? sumSd / portSd : null, eigen, topShare: sum > 0 ? eigen[0] / sum : null };
+}
+
+/** P(B lost | A lost), per ordered pair, on days both were active. The question
+ *  a correlation coefficient blurs: when this one bleeds, does that one too? */
+export function coincidentLoss(dbg) {
+  const { keys, series, days } = dbg;
+  const n = keys.length, out = keys.map(() => new Array(n).fill(null));
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+    if (i === j) continue;
+    let aLoss = 0, bothLoss = 0;
+    for (let d = 0; d < days.length; d++) {
+      if (series[keys[i]][d] < 0 && series[keys[j]][d] !== 0) { aLoss++; if (series[keys[j]][d] < 0) bothLoss++; }
+    }
+    out[i][j] = aLoss >= 5 ? { p: bothLoss / aLoss, n: aLoss } : null;
+  }
+  return out;
+}
+
+/** Worst joint days: the days with the most groups losing at once. */
+export function worstJointDays(dbg, top = 5) {
+  const { keys, series, days } = dbg;
+  return days.map((d, i) => {
+    let losers = 0, active = 0, net = 0;
+    for (const k of keys) { const v = series[k][i]; if (v !== 0) active++; if (v < 0) losers++; net += v; }
+    return { day: d, losers, active, net };
+  }).filter(r => r.active > 0).sort((a, b) => b.losers - a.losers || a.net - b.net).slice(0, top);
+}
+
+// ── Currency legs ────────────────────────────────────────────────────────────
+//
+// UNITS ARE LOTS, NOT NOTIONAL, ON PURPOSE. Converting lots to money needs a
+// per-instrument contract size, and this repo has a documented live drift on
+// exactly that kind of constant (Gold pip 0.1 vs 1.0 — a 10× error that
+// reached KV). Within FX a lot is 100k of base everywhere, so FX legs are
+// comparable with each other in lots. A non-FX instrument (gold, an index) is
+// its own leg with NO counter-currency leg added: its USD notional per lot is
+// unknowable here, and inventing it would put a number on the USD line that
+// looks like the others and is not.
+
+export function legsOf(symbol, direction, lots, resolve) {
+  const sign = direction === 'BUY' ? 1 : direction === 'SELL' ? -1 : 0;
+  if (!sign || !lots) return [];
+  let ins = null;
+  try { ins = resolve(symbol); } catch (e) { ins = null; }
+  if (!ins) return [{ ccy: String(symbol || '?').toUpperCase(), lots: sign * lots, kind: 'unknown' }];
+  if (ins.assetClass === 'fx') {
+    const [base, quote] = String(ins.display).split('/');
+    return [{ ccy: base, lots: sign * lots, kind: 'fx' }, { ccy: quote, lots: -sign * lots, kind: 'fx' }];
+  }
+  const name = String(ins.display).split(/[\/_]/)[0];
+  return [{ ccy: name, lots: sign * lots, kind: ins.assetClass }];
+}
+
+/** Positions open at instant `utc` (open ≤ utc < close), from the closed book. */
+export function openAt(trades, utc) {
+  return trades.filter(t => t.utcOpen != null && t.utcOpen <= utc && t.utcClose > utc);
+}
+
+/** Net lots per leg for a set of positions. */
+export function netLegs(positions, resolve) {
+  const m = new Map();
+  for (const p of positions) {
+    for (const l of legsOf(p.symbol, p.direction, p.lots || 0, resolve)) {
+      const cur = m.get(l.ccy) || { ccy: l.ccy, lots: 0, kind: l.kind, positions: 0 };
+      cur.lots += l.lots; cur.positions++;
+      m.set(l.ccy, cur);
+    }
+  }
+  return [...m.values()].sort((a, b) => Math.abs(b.lots) - Math.abs(a.lots));
+}
+
+/** Net legs at the end of each weekday in the book — the exposure the book
+ *  carried overnight, day by day. Also the open-position count. */
+export function exposureSeries(trades, resolve) {
+  if (!trades.length) return { days: [], legs: [], series: {}, concurrency: [] };
+  const days = weekdays(trades[0].day, trades[trades.length - 1].day);
+  const legSet = new Set(), rows = [], concurrency = [];
+  for (const d of days) {
+    const eod = Math.floor(new Date(d + 'T23:59:59Z').getTime() / 1000);
+    const open = openAt(trades, eod);
+    const legs = netLegs(open, resolve);
+    legs.forEach(l => legSet.add(l.ccy));
+    rows.push(new Map(legs.map(l => [l.ccy, l.lots])));
+    concurrency.push({ day: d, open: open.length });
+  }
+  const legs = [...legSet];
+  const series = {};
+  for (const c of legs) series[c] = rows.map(r => r.get(c) || 0);
+  return { days, legs, series, concurrency, maxConcurrent: Math.max(0, ...concurrency.map(c => c.open)) };
+}
+
+// ── Risk ─────────────────────────────────────────────────────────────────────
+
+/** Drawdown episodes on a daily equity path: depth, length, recovery time. */
+export function drawdownEpisodes(dEq) {
+  const eps = [];
+  let inDD = false, start = null, trough = 0, troughDay = null, peakEq = 0;
+  for (let i = 0; i < dEq.length; i++) {
+    const d = dEq[i];
+    if (d.ddAbs < -1e-9) {
+      if (!inDD) { inDD = true; start = d.date; trough = d.ddAbs; troughDay = d.date; peakEq = d.peak; }
+      else if (d.ddAbs < trough) { trough = d.ddAbs; troughDay = d.date; }
+    } else if (inDD) {
+      eps.push({ start, trough: troughDay, end: d.date, depth: trough, depthPct: peakEq > 0 ? trough / peakEq * 100 : null,
+                 days: Math.round((new Date(d.date) - new Date(start)) / 86400000), recovered: true });
+      inDD = false;
+    }
+  }
+  if (inDD) eps.push({ start, trough: troughDay, end: null, depth: trough, depthPct: peakEq > 0 ? trough / peakEq * 100 : null,
+                       days: Math.round((new Date(dEq[dEq.length - 1].date) - new Date(start)) / 86400000), recovered: false });
+  return eps.sort((a, b) => a.depth - b.depth);
+}
+
+/** Concentration: how much of the result rides on a handful of trades. */
+export function concentration(trades, { gross = false } = {}) {
+  const pnls = trades.map(t => netOf(t, { gross })).sort((a, b) => b - a);
+  const n = pnls.length;
+  if (!n) return null;
+  const total = pnls.reduce((s, x) => s + x, 0);
+  const grossProfit = pnls.filter(x => x > 0).reduce((s, x) => s + x, 0);
+  const top = k => pnls.slice(0, Math.min(k, n)).reduce((s, x) => s + x, 0);
+  const without = k => total - top(k);
+  const q = Math.max(1, Math.floor(n * 0.1));
+  const topDecile = pnls.slice(0, q).reduce((s, x) => s + x, 0) / q;
+  const botDecile = pnls.slice(-q).reduce((s, x) => s + x, 0) / q;
+  return {
+    n, total, grossProfit,
+    top1Share:  grossProfit > 0 ? top(1) / grossProfit : null,
+    top5Share:  grossProfit > 0 ? top(5) / grossProfit : null,
+    top10Share: grossProfit > 0 ? top(10) / grossProfit : null,
+    withoutTop5: without(5), withoutTop10: without(10),
+    tailRatio: botDecile < 0 ? topDecile / -botDecile : null,
+  };
+}
+
+// ── Projection ───────────────────────────────────────────────────────────────
+//
+// Monte Carlo of the NEXT `horizon` trading days by resampling this book's own
+// daily P&L with replacement, tested against prop-firm style rules: a profit
+// target, a max drawdown from the starting balance, a max daily loss. Days are
+// the unit, not trades, because the rules are stated per day and a day's
+// concurrency is already baked into its P&L.
+//
+// What this is: "if the next N days are drawn from the same distribution as
+// the last M, how often does this book pass". What it is NOT: a forecast. It
+// assumes the future is a reshuffle of the past, which is precisely the thing a
+// regime change breaks. The UI gates it on sample size and says so.
+
+export function projectPaths(dayPnls, { horizon = 30, runs = 2000, capital = 0, targetPct = 10, maxDDPct = 10, dailyLossPct = 5, seed = 0x9e3779b9 } = {}) {
+  const n = dayPnls.length;
+  if (n < 10 || !(capital > 0)) return null;
+  const rng = mulberry32(seed >>> 0);
+  const target = capital * targetPct / 100, maxDD = capital * maxDDPct / 100, dailyLoss = capital * dailyLossPct / 100;
+  const finals = new Array(runs);
+  const pathsAt = Array.from({ length: horizon + 1 }, () => []);   // equity distribution at each day
+  let pass = 0, bustDD = 0, bustDaily = 0, neither = 0;
+  const passDays = [];
+  for (let r = 0; r < runs; r++) {
+    let eq = 0, peak = 0, outcome = null;
+    pathsAt[0].push(0);
+    for (let d = 1; d <= horizon; d++) {
+      const v = dayPnls[(rng() * n) | 0];
+      eq += v; if (eq > peak) peak = eq;
+      pathsAt[d].push(eq);
+      if (outcome) continue;
+      if (v <= -dailyLoss)   { outcome = 'daily'; bustDaily++; continue; }
+      if (eq <= -maxDD)      { outcome = 'dd';    bustDD++;    continue; }   // FTMO-style: absolute, from start
+      if (eq >= target)      { outcome = 'pass';  pass++; passDays.push(d); continue; }
+    }
+    if (!outcome) neither++;
+    finals[r] = eq;
+  }
+  const pct = (arr, p) => { const s = [...arr].sort((a, b) => a - b); return s[Math.min(s.length - 1, Math.floor(p / 100 * s.length))]; };
+  const fan = pathsAt.map((arr, d) => ({ d, p5: pct(arr, 5), p25: pct(arr, 25), p50: pct(arr, 50), p75: pct(arr, 75), p95: pct(arr, 95) }));
+  passDays.sort((a, b) => a - b);
+  return {
+    runs, horizon, capital, rules: { targetPct, maxDDPct, dailyLossPct },
+    pPass: pass / runs, pBustDD: bustDD / runs, pBustDaily: bustDaily / runs, pNeither: neither / runs,
+    medianDaysToPass: passDays.length ? passDays[Math.floor(passDays.length / 2)] : null,
+    finalPct: { p5: pct(finals, 5) / capital * 100, p50: pct(finals, 50) / capital * 100, p95: pct(finals, 95) / capital * 100 },
+    fan, sampleDays: n,
+  };
+}

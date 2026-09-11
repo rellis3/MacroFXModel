@@ -7,6 +7,8 @@ import {
   cumFromDaily, liveGrowthPct, growthCone, conePercentile, clipDaily,
   distributions, DIST_METRICS, METRIC_READING,
   rollingEdge, breakdowns, hourWeekdayGrid, ukClock,
+  dailyByGroup, correlationMatrix, effectiveBets, coincidentLoss, worstJointDays, symEigen,
+  legsOf, netLegs, openAt, exposureSeries, drawdownEpisodes, concentration, projectPaths,
 } from './botAuditEngine.js';
 
 let fail = 0;
@@ -351,6 +353,136 @@ console.log('\nbreakdowns');
   ok('ukClock: Monday index 0', ukClock(Math.floor(Date.UTC(2026, 6, 6, 12) / 1000)).dow === 0);
   ok('ukClock: Sunday index 6', ukClock(Math.floor(Date.UTC(2026, 6, 5, 12) / 1000)).dow === 6);
   ok('ukClock: 23:30Z summer rolls to next UK day', ukClock(Math.floor(Date.UTC(2026, 6, 6, 23, 30) / 1000)).dow === 1);
+}
+
+
+console.log('\nportfolio structure');
+{
+  // Two bots: A and B move TOGETHER on every day; C moves opposite to A.
+  const rows = [];
+  for (let i = 0; i < 40; i++) {
+    const d = new Date(Date.UTC(2026, 2, 2) + i * 86400000);
+    if (d.getUTCDay() % 6 === 0) continue;
+    const iso = d.toISOString().slice(0, 10), v = (i % 3 === 0 ? -20 : 15) + (i % 5);
+    rows.push(tr(iso, v, { bot: 'A' }), tr(iso, v * 0.8, { bot: 'B' }), tr(iso, -v, { bot: 'C' }));
+  }
+  const { trades } = normalizeTrades(rows);
+  const dbg = dailyByGroup(trades, t => t.bot_key);
+  ok('one series per group on a shared calendar', dbg.keys.length === 3 && Object.values(dbg.series).every(s => s.length === dbg.days.length));
+  ok('calendar has no weekends', dbg.days.every(d => { const w = new Date(d + 'T00:00:00Z').getUTCDay(); return w !== 0 && w !== 6; }));
+  ok('active days counted', dbg.activeDays.A === dbg.days.length);
+  const C = correlationMatrix(dbg);
+  const ix = k => C.keys.indexOf(k);
+  ok('A~B strongly positive', C.rho[ix('A')][ix('B')] > 0.95, C.rho[ix('A')][ix('B')].toFixed(3));
+  ok('A~C strongly negative', C.rho[ix('A')][ix('C')] < -0.95, C.rho[ix('A')][ix('C')].toFixed(3));
+  ok('diagonal is 1', C.rho[0][0] === 1);
+  ok('both-active days recorded', C.both[ix('A')][ix('B')] === dbg.days.length);
+  const E = effectiveBets(dbg, C);
+  ok('three perfectly dependent streams -> ~1 effective bet', E.nEff < 1.2, E.nEff.toFixed(2));
+  // C is −A, so the PORTFOLIO barely moves while each leg moves a lot: the
+  // diversification ratio is HIGH here (hedged) even though nEff says one
+  // factor. Both numbers are right; they answer different questions.
+  ok('hedged book: divRatio high while nEff ~1', E.divRatio > 3 && E.nEff < 1.2, `div ${E.divRatio?.toFixed(2)} nEff ${E.nEff.toFixed(2)}`);
+  const cl = coincidentLoss(dbg);
+  ok('P(B loses | A loses) = 1 when they move together', cl[ix('A')][ix('B')].p === 1);
+  ok('P(C loses | A loses) = 0 when opposite', cl[ix('A')][ix('C')].p === 0);
+  const wj = worstJointDays(dbg, 3);
+  ok('worst joint day found', wj.length === 3 && wj[0].losers >= 1);
+}
+{
+  // Independent streams -> nEff near N.
+  const rows = []; let s3 = 11; const r3 = () => ((s3 = (s3 * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff - 0.5) * 40;
+  for (let i = 0; i < 300; i++) {
+    const d = new Date(Date.UTC(2025, 0, 6) + i * 86400000);
+    if (d.getUTCDay() % 6 === 0) continue;
+    const iso = d.toISOString().slice(0, 10);
+    for (const b of ['X', 'Y', 'Z', 'W']) rows.push(tr(iso, r3(), { bot: b }));
+  }
+  const { trades } = normalizeTrades(rows);
+  const dbg = dailyByGroup(trades, t => t.bot_key);
+  const E = effectiveBets(dbg, correlationMatrix(dbg));
+  ok('four independent streams -> nEff near 4', E.nEff > 3.4, E.nEff.toFixed(2));
+  ok('divRatio near 2 (=√4) for independent', E.divRatio > 1.7 && E.divRatio < 2.3, E.divRatio.toFixed(2));
+}
+{
+  const I = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+  ok('eigen of identity = 1,1,1', symEigen(I).every(v => near(v, 1, 1e-9)));
+  const P = [[1, 1, 1], [1, 1, 1], [1, 1, 1]];
+  const e = symEigen(P);
+  ok('eigen of all-ones = 3,0,0', near(e[0], 3, 1e-9) && near(e[1], 0, 1e-9) && near(e[2], 0, 1e-9));
+  ok('nulls treated as 0, no throw', symEigen([[1, null], [null, 1]]).length === 2);
+}
+
+console.log('\ncurrency legs');
+{
+  const reg = sym => ({ EURUSD: { assetClass: 'fx', display: 'EUR/USD' }, USDJPY: { assetClass: 'fx', display: 'USD/JPY' },
+                        XAUUSD: { assetClass: 'commodity', display: 'XAU/USD' }, NAS100: { assetClass: 'index', display: 'NAS100_USD' } })[sym] || (() => { throw new Error('unknown'); })();
+  const L = legsOf('EURUSD', 'BUY', 0.5, reg);
+  ok('long EURUSD = +EUR, −USD', L.find(l => l.ccy === 'EUR').lots === 0.5 && L.find(l => l.ccy === 'USD').lots === -0.5);
+  const S = legsOf('USDJPY', 'SELL', 0.2, reg);
+  ok('short USDJPY = −USD, +JPY', S.find(l => l.ccy === 'USD').lots === -0.2 && S.find(l => l.ccy === 'JPY').lots === 0.2);
+  const G = legsOf('XAUUSD', 'BUY', 1, reg);
+  ok('gold is ONE leg, no invented USD notional', G.length === 1 && G[0].ccy === 'XAU' && G[0].kind === 'commodity');
+  const N = legsOf('NAS100', 'SELL', 2, reg);
+  ok('index is one leg, named', N.length === 1 && N[0].ccy === 'NAS100' && N[0].lots === -2);
+  ok('unknown symbol -> own leg flagged unknown, no throw', legsOf('WIBBLE', 'BUY', 1, reg)[0].kind === 'unknown');
+  ok('zero lots -> no legs', legsOf('EURUSD', 'BUY', 0, reg).length === 0);
+
+  // Long EURUSD + short USDJPY: USD legs cancel? No — both are SHORT USD. +EUR, −USD ×2, +JPY.
+  const net = netLegs([{ symbol: 'EURUSD', direction: 'BUY', lots: 0.5 }, { symbol: 'USDJPY', direction: 'SELL', lots: 0.5 }], reg);
+  ok('USD leg nets across pairs', near(net.find(l => l.ccy === 'USD').lots, -1.0));
+  ok('a real hedge nets to zero', near(netLegs([{ symbol: 'EURUSD', direction: 'BUY', lots: 1 }, { symbol: 'EURUSD', direction: 'SELL', lots: 1 }], reg).find(l => l.ccy === 'EUR').lots, 0));
+
+  const mk = (openIso, closeIso, sym, dir, lots) => ({ symbol: sym, direction: dir, lots,
+    utcOpen: Math.floor(new Date(openIso).getTime() / 1000), utcClose: Math.floor(new Date(closeIso).getTime() / 1000),
+    day: closeIso.slice(0, 10) });
+  const book = [mk('2026-06-01T08:00Z', '2026-06-03T16:00Z', 'EURUSD', 'BUY', 1), mk('2026-06-02T08:00Z', '2026-06-02T12:00Z', 'XAUUSD', 'SELL', 0.3)];
+  book.sort((a, b) => a.utcClose - b.utcClose);
+  const at = Math.floor(new Date('2026-06-02T10:00Z').getTime() / 1000);
+  ok('openAt finds both positions mid-day 2', openAt(book, at).length === 2);
+  ok('openAt excludes closed at boundary', openAt(book, Math.floor(new Date('2026-06-02T12:00Z').getTime() / 1000)).length === 1);
+  const ex = exposureSeries(book, reg);
+  ok('exposure series has EUR/USD legs', ex.legs.includes('EUR') && ex.legs.includes('USD'));
+  ok('day-1 EOD carries +1 EUR', near(ex.series.EUR[0], 1));
+  ok('max concurrent = 1 at EOD (gold closed intraday)', ex.maxConcurrent === 1);
+}
+
+console.log('\nrisk');
+{
+  const { trades } = normalizeTrades([
+    tr('2026-09-01', 100), tr('2026-09-02', -40), tr('2026-09-03', -30), tr('2026-09-04', 80), tr('2026-09-07', -10),
+  ]);
+  const dEq = dailyEquity(dailySeries(trades), 1000);
+  const eps = drawdownEpisodes(dEq);
+  ok('two episodes found', eps.length === 2, String(eps.length));
+  ok('deepest first', eps[0].depth <= eps[1].depth);
+  ok('first episode −70 over 2 days, recovered', near(eps[0].depth, -70) && eps[0].recovered === true);
+  ok('open episode flagged not recovered', eps[1].recovered === false && eps[1].end === null);
+  ok('depth % against the peak', near(eps[0].depthPct, -70 / 1100 * 100));
+
+  const c = concentration(trades);
+  ok('top-1 share of gross profit', near(c.top1Share, 100 / 180));
+  ok('without top 5 = total minus top 5 (all five here -> 0)', near(c.withoutTop5, 0));
+  ok('tail ratio positive', c.tailRatio > 0);
+}
+
+console.log('\nprojection');
+{
+  const up = new Array(60).fill(50);         // +$50 every day
+  const P = projectPaths(up, { horizon: 30, runs: 300, capital: 10000, targetPct: 10, maxDDPct: 10, dailyLossPct: 5 });
+  ok('a book that only wins passes with certainty', P.pPass === 1 && P.pBustDD === 0);
+  ok('passes on day 20 exactly (1000/50)', P.medianDaysToPass === 20);
+  const down = new Array(60).fill(-600);
+  const Q = projectPaths(down, { horizon: 30, runs: 300, capital: 10000, targetPct: 10, maxDDPct: 10, dailyLossPct: 5 });
+  ok('a −6%/day book busts on the DAILY rule first', Q.pBustDaily === 1 && Q.pBustDD === 0);
+  const slow = new Array(60).fill(-300);
+  const R = projectPaths(slow, { horizon: 30, runs: 300, capital: 10000, targetPct: 10, maxDDPct: 10, dailyLossPct: 5 });
+  ok('a −3%/day book busts on the DRAWDOWN rule', R.pBustDD === 1 && R.pBustDaily === 0);
+  ok('fan has horizon+1 rows, ordered', P.fan.length === 31 && P.fan.every(f => f.p5 <= f.p50 && f.p50 <= f.p95));
+  ok('no capital -> null, never a fake denominator', projectPaths(up, { capital: 0 }) === null);
+  ok('too few days -> null', projectPaths([1, 2, 3], { capital: 1000 }) === null);
+  const P2 = projectPaths(up, { horizon: 30, runs: 300, capital: 10000 });
+  ok('deterministic', P2.pPass === P.pPass && P2.finalPct.p50 === P.finalPct.p50);
 }
 
 console.log(fail ? `\n${fail} FAILED\n` : '\nAll passed\n');
