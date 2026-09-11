@@ -173,7 +173,16 @@ export function reviewVoteBacktest(touches, book, { excludeRungs = ['p90'], rear
 // margin>=3 edge was this leak (analysis/vote_atlas_decomposition.mjs).
 // Schema 3 = built from an HONEST (in-sample-only) book via
 // buildBarrierTrades' new `oosStartDate` option.
-export const VOTE_TRADES_SCHEMA = 3;
+//
+// Bumped again 2026-09-11 (same day, different bug): schema-3 files were
+// built from WHATEVER history a gap-fill happened to assemble, not a
+// deliberately chosen window — an empty R2 cache on several pairs
+// (gold/eurusd/gbpusd/audusd/de30) silently backfilled to 1970, blending
+// 20+ years of a structurally different market era into the same book and
+// cost model. Schema 4 = js/levelAtlasRoutes.js's runOne bounds the M1
+// series to LOOKBACK_DAYS (10 years) before walking, regardless of how far
+// back the underlying data happens to reach.
+export const VOTE_TRADES_SCHEMA = 4;
 
 /**
  * The HONEST version of a traded outcome: a real bracket order, target/stop

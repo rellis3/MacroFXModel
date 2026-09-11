@@ -89,6 +89,13 @@ export function pickFresher(r2Data, localData) {
 
 export const PREFIX = 'level-atlas';
 export const DEFAULT_REARM = 0.3;
+// 2026-09-11 — see runOne's own comment for why this exists. 10 years:
+// roughly what every pair's M1 already spanned before an accidental full
+// backfill (see the same commit) dragged some pairs back to 1970 — long
+// enough for real margin>=3 sample sizes (thousands of trades per pair over
+// the pre-backfill window), recent enough to stay inside one market era
+// rather than blending in 20+ years of structurally different liquidity.
+export const LOOKBACK_DAYS = Math.round(365.25 * 10);
 
 const jobs = new Map();
 function purgeStale() {
@@ -113,6 +120,16 @@ async function runOne(instrument, { rearmFracs = [0.15, 0.3, 0.5], onLog = () =>
       if (packed.n > before) onLog(`${sym}: gap-filled +${(packed.n - before).toLocaleString()} bars to now`);
     } catch (e) { onLog(`${sym}: gap-fill failed (${e.message}) — using stored M1`); }
   }
+  // 2026-09-11: deliberately bounded, not "however far back the R2 snapshot or
+  // an OANDA gap-fill happens to reach". A gap-fill against a genuinely empty
+  // R2 cache (found this session on gold/eurusd/gbpusd/audusd/de30) silently
+  // backfills to 1970 — dragging 20+ extra years of a structurally different
+  // market era (wider spreads, pre-ECN liquidity) into the SAME book and cost
+  // model validated on the last ~10 years, with no one having chosen that on
+  // purpose. `boundPacked` (already used for the live-context cache, same
+  // brick) trims the FINAL series regardless of how it got assembled, so the
+  // walk always covers the same, deliberate window.
+  packed = boundPacked(packed, LOOKBACK_DAYS);
   const assetClass = assetClassFor(pair);
   onLog(`${sym}: ${packed.n.toLocaleString()} M1 bars, assetClass ${assetClass} — walking the ladder…`);
   const { touches, pending, coverage } = atlasWalk(packed, { instrument: sym, assetClass, rearmFracs, pendingRearmFrac: DEFAULT_REARM });

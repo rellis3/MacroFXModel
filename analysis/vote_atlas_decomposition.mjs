@@ -54,6 +54,7 @@ import { voteDecision, priceBarrierTrade, applyConcurrencyCap } from '../js/leve
 import { summarizeTrades } from '../js/metricsCore.js';
 import { costForPair } from '../js/perLineStrategy.js';
 import { assetClassFor } from '../js/forecastAnalyserStore.js';
+import { boundPacked, LOOKBACK_DAYS } from '../js/levelAtlasRoutes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUT_DIR = path.join(__dirname, 'output');
@@ -86,6 +87,13 @@ async function processPair(pair) {
   let packed;
   try { packed = await loadM1ForPair(pair); } catch (e) { console.log(`  M1 load failed: ${e.message}`); return null; }
   if (!packed?.n) { console.log('  no M1 data'); return null; }
+  // SAME deliberate bound js/levelAtlasRoutes.js's runOne now applies —
+  // 2026-09-11, see that file's own comment. Without this, a locally-cached
+  // R2 snapshot that happens to reach back decades (found this session on
+  // several pairs) silently tests a different, much longer window than
+  // production actually scores, which is exactly what produced a false
+  // "re-verification" earlier today.
+  packed = boundPacked(packed, LOOKBACK_DAYS);
   const assetClass = assetClassFor(pair);
   const cost = costForPair(pair, assetClass);
 
