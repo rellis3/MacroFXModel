@@ -4762,10 +4762,64 @@ async function loadFaDecisionLog() {
   } catch (e) { body.innerHTML = `<tr><td colspan="9" style="padding:14px;text-align:center;color:var(--text3)">${e.message}</td></tr>`; }
 }
 
+// Backtest data refresh (2026-09-10) — fires the SAME runOne() the nightly
+// reference-engine-rebuild job uses, via the existing async-job endpoints
+// (/api/asia-fib-atlas/run, /api/monday-fib-atlas/run — POST returns a
+// jobId, GET .../status/:jobId polls). Only does anything useful when this
+// page is actually loaded from Railway (real OANDA access) — from the dev
+// sandbox these same endpoints exist but the M1 gap-fill inside runOne
+// silently falls back to whatever's already cached (see LEGO_MODULES.md's
+// 2026-09-08 incident) rather than erroring, so there's no reliable way to
+// detect "wrong environment" from the response alone; the log lines
+// (streamed below) show real gap-filled bar counts when it's working.
+async function _faPollJob(base, jobId, onLog) {
+  for (;;) {
+    const r = await fetch(`${base}/status/${jobId}`);
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'status check failed');
+    onLog(j.log || []);
+    if (j.status === 'done' || j.status === 'error') return j;
+    await new Promise(res => setTimeout(res, 3000));
+  }
+}
+async function faRunBacktestRefresh() {
+  const input = document.getElementById('faRefreshPairs');
+  const statusEl = document.getElementById('faRefreshStatus');
+  const pairs = (input?.value || '').split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
+  if (!pairs.length) { alert('Enter at least one pair'); return; }
+  statusEl.style.display = 'block';
+  statusEl.textContent = `Starting regeneration for ${pairs.join(', ')} (both ladders)…\n`;
+  const seenAsia = new Set(), seenMonday = new Set();
+  const append = (label, lines) => {
+    for (const line of lines) {
+      const key = `${label}:${line}`;
+      if ((label === 'asia' ? seenAsia : seenMonday).has(key)) continue;
+      (label === 'asia' ? seenAsia : seenMonday).add(key);
+      statusEl.textContent += `[${label}] ${line}\n`;
+      statusEl.scrollTop = statusEl.scrollHeight;
+    }
+  };
+  try {
+    const [asiaStart, mondayStart] = await Promise.all([
+      fetch('/api/asia-fib-atlas/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ instruments: pairs }) }).then(r => r.json()),
+      fetch('/api/monday-fib-atlas/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ instruments: pairs }) }).then(r => r.json()),
+    ]);
+    if (!asiaStart.ok || !mondayStart.ok) throw new Error('failed to start job(s)');
+    const [asiaResult, mondayResult] = await Promise.all([
+      _faPollJob('/api/asia-fib-atlas', asiaStart.jobId, lines => append('asia', lines)),
+      _faPollJob('/api/monday-fib-atlas', mondayStart.jobId, lines => append('monday', lines)),
+    ]);
+    statusEl.textContent += `\nDone — asia: ${asiaResult.status}, monday: ${mondayResult.status}. Check the backtest page's "generatedAt"/last-trade-date to confirm it actually caught up (this sandbox-vs-Railway environment can't be distinguished from the response alone — see this function's own comment).`;
+  } catch (e) {
+    statusEl.textContent += `\nFAILED: ${e.message}`;
+  }
+}
+
 window.saveFaConfig = saveFaConfig; window.resetFaDefaults = resetFaDefaults;
 window.saveFaCreds = saveFaCreds; window.loadFaLiveStatus = loadFaLiveStatus;
 window.loadFaDecisionLog = loadFaDecisionLog; window.loadFaAllLines = loadFaAllLines;
 window.faDecShiftDay = faDecShiftDay; window.faDecClearDate = faDecClearDate;
+window.faRunBacktestRefresh = faRunBacktestRefresh;
 window.testFaTelegram = testFaTelegram;
 window.faSelectAllPairs = faSelectAllPairs; window.faSelectRecommendedPairs = faSelectRecommendedPairs;
 

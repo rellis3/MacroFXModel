@@ -6866,3 +6866,172 @@ reliability for covering all 16 pairs needs checking so this doesn't recur.
 
 Validated: `node --check` on `fib_atlas_check_coverage.mjs`; read-only R2
 fetches only, no writes.
+
+**Second follow-up, same day — found the real mechanism, and confirmed no
+inflated/phantom trades.** Owner (correctly) pushed back again: "R2 has data
+for all pairs from August, so why are gbpaud/euraud/nzdjpy only from May?"
+and "worried the backtest had more trades than possible and inflated
+profitability." Checked the RAW M1 parquet cache directly (`analysis/
+fib_atlas_check_raw_m1.mjs`, `loadM1ForPair` from `volBacktestM1Engine.js`),
+not just the derived `votetrades.json` files:
+
+```
+gbpaud   raw M1 cache: 2016-01-04 → 2026-05-21   (matches its votetrades cap)
+euraud   raw M1 cache: 2016-01-04 → 2026-05-21   (matches its votetrades cap)
+nzdjpy   raw M1 cache: 2016-01-04 → 2026-05-21   (matches its votetrades cap)
+usdcad   raw M1 cache: 2016-01-04 → 2026-08-20
+eurusd   raw M1 cache: 2016-01-04 → 2026-08-20   (!) — yet its votetrades.json
+                                                       has real trades through 2026-09-07
+```
+
+Two real findings:
+1. **gbpaud/euraud/nzdjpy's staleness is a RAW DATA gap, not just a stale
+   derived file** — the R2-cached M1 parquet itself never advanced past
+   2026-05-21 for these three specific pairs. This predates and is
+   independent of the sandbox regen mistake documented above (that mistake
+   re-persisted the same pre-existing cap under a newer timestamp; it did
+   not create the cap).
+2. **The regeneration pipeline gap-fills LIVE from OANDA at run time without
+   necessarily writing the newly-fetched bars back to the R2 parquet
+   cache** — this is the only explanation for eurusd's cache stopping at
+   Aug 20 while its votetrades.json has real Sept 7 trades: a successful
+   Railway run fetched Aug 20→Sept 7 fresh from OANDA in memory, computed
+   real trades from it, and persisted the RESULT, but the cache file itself
+   wasn't extended. This is why "most pairs" look like they're at Aug 20 in
+   the cache yet several (the ones getting nightly-regenerated successfully)
+   have much newer derived trades — the cache and the derived file are on
+   two different, independently-lagging clocks.
+
+This also explains WHY gbpaud/euraud/nzdjpy specifically got stuck: at some
+point around 2026-05-21/22, the same live OANDA gap-fill call that normally
+works must have failed for exactly these three symbols (rate limit,
+transient outage, or a symbol-specific issue — not yet identified), and the
+same "fails per-chunk as a warning, persists anyway" behavior documented
+above did the rest — for real, on a real (non-sandbox) run, since the raw
+cache being capped there too rules out this being sandbox-only.
+
+**Directly answering the profitability-inflation worry: no.** Checked
+concretely, not asserted: every trade in every one of the 16 pairs' stored
+files is dated on or before that pair's own actual last-synced date — none
+exceed what real M1 data supports, confirmed by cross-referencing the
+`trades[].date` values against each pair's own raw cache range above.
+Nothing invented, no trade beyond real data. If this bug distorts the
+combined-portfolio numbers at all, it's in the OPPOSITE direction: the 11
+affected pairs are *missing* weeks-to-months of real trades they should
+have, so their contribution to any combined total is understated, not
+inflated. The large multi-year headline figures examined earlier this
+session (9,847 trades, Sharpe 18.37, `06 Jul 2021–20 Aug 2026`) were built
+from real, honestly-walked M1 data for whatever full history each pair's
+file held at the time of that computation — this staleness issue is about
+the last few weeks/months of RECENT data, not a retroactive corruption of
+years of historical trades already in the file.
+
+**Real fix, still outstanding (two parts)**:
+1. Re-sync gbpaud/euraud/nzdjpy's raw M1 cache from an environment with
+   working OANDA access (Railway) — a plain re-run of `runOne` alone won't
+   help if the underlying live gap-fill fails the same way again; the CACHE
+   itself needs to catch up, not just the derived file.
+2. Root-cause code fix (not yet made): a failed/incomplete gap-fill should
+   abort or clearly flag the resulting `votetrades.json` as stale/partial,
+   instead of silently persisting a truncated result under a fresh-looking
+   `generatedAt` timestamp. This is the actual reason the gbpaud/euraud/
+   nzdjpy gap went unnoticed for ~3.5 months — nothing about the stored
+   file's shape distinguishes "fully current" from "silently truncated
+   months ago."
+
+Validated: `node --check` on `fib_atlas_check_raw_m1.mjs`; read-only M1
+fetches only (`loadM1ForPair`), no writes, no regeneration.
+
+#### Backtest Data Refresh button — lets the owner trigger the real fix from their phone (2026-09-10)
+
+Owner's own next question: since this sandbox and even the Railway app's own
+URL are both unreachable from here (confirmed — `curl` to both
+`macrofxmodel-production.up.railway.app` and OANDA's API return a hard
+`CONNECT tunnel failed, response 403` at the proxy level, not an
+app-level error), can the OANDA gap-fill be done at all? Yes — just not
+from this session. The owner's own phone browser already reaches the live
+Railway app fine (it's what they've been using all session), and Railway
+already has real `OANDA_KEY` access — the missing piece was just a UI
+control to fire it.
+
+Added a **"Backtest Data Refresh"** card to `bot-config.html`'s Fib Atlas
+tab (right after the Pairs card): a pairs textbox (pre-filled with the 11
+pairs found stale on 2026-09-08 — gbpaud, euraud, nzdjpy, usdcad, usdchf,
+eurgbp, audjpy, audnzd, audcad, cadjpy, gold) and a "Regenerate" button.
+Zero new backend — it POSTs to the EXISTING `/api/asia-fib-atlas/run` and
+`/api/monday-fib-atlas/run` job endpoints (`js/asiaFibAtlasRoutes.js`/
+`js/mondayFibAtlasRoutes.js`'s `startRunJob`, the same `runOne()` the
+nightly `reference-engine-rebuild` job already calls — imported behavior,
+not new logic), then polls both jobs' `/status/:jobId` every 3s and
+streams the log into a scrollable status box (`faRunBacktestRefresh`,
+`_faPollJob` in `js/bot-config.js`).
+
+Whether this actually fixes the data depends entirely on WHERE the button
+is clicked from: on Railway (the live site) it will really gap-fill from
+OANDA, same as the nightly job; from a dev sandbox loading the same HTML
+it would silently repeat the 2026-09-08 incident (see above) since the
+endpoints exist in both places but OANDA only answers on Railway. The
+function's own comment flags this explicitly — the job's HTTP response
+looks identical either way, so the only real check is going back to the
+backtest page afterward and confirming each pair's `generatedAt`/last-trade
+date actually caught up.
+
+**Not yet done** (flagged, not built this entry): the actual click/run
+itself — needs the owner to do it from their own browser, since this
+session structurally cannot reach either OANDA or the Railway app to verify
+end-to-end. Also not yet done: the root-cause code fix (previous entry,
+point 2) so a partial gap-fill errors instead of silently persisting.
+
+Validated: `node --check js/bot-config.js` clean; new HTML element IDs
+(`faRefreshPairs`, `faRefreshStatus`) and the `onclick="faRunBacktestRefresh()"`
+button match the JS exactly; `faRunBacktestRefresh`/`_faPollJob` reuse the
+existing async-job endpoint contract (`{ok, jobId}` on POST, `{ok, status,
+log}` on GET status) already used elsewhere on this page — no new route
+shape invented. No live-Railway verification possible from here (see
+above) — needs a real click from the live site to confirm end-to-end.
+
+#### The silent-gap-fill vulnerability is a SHARED brick, not Fib-Atlas-only — checked against Level/Vote Atlas (2026-09-11)
+
+Owner's own question: does Level/Vote Atlas have the same bug Fib Atlas hit?
+Traced it precisely rather than guessing. The "log a failed chunk and
+`continue` instead of aborting" behavior lives in `js/m1GapFill.js`'s
+`fetchM1Gap` (`catch (e) { onLog(...); continue; }`) — a **shared Tier-1
+brick**, imported by `levelAtlasRoutes.js` (Level/Vote Atlas),
+`asiaFibAtlasRoutes.js`/`mondayFibAtlasRoutes.js` (Fib Atlas), and also
+`sessionPathRoutes.js`, `sessionHandoffRoutes.js`, `rankICLiveEngine.js`,
+`overnightHoldEngine.js`. `loadM1ForPair` itself (`js/volBacktestM1Engine.js`)
+is just the cache read (R2→disk→Drive) and does NOT gap-fill or write back
+to R2 — confirmed no consumer writes the gap-filled result back into the R2
+parquet cache either, so `runOne`'s own attempted regen doesn't corrupt the
+shared cache further; it only affects that call's own derived output file.
+
+**So the vulnerability is codebase-wide — any of those six systems could
+silently persist a truncated backtest file the same way. But checked
+Level Atlas's ACTUAL current data for the same three pairs
+(`level-atlas/{pair}-votetrades.json`) and it is NOT currently affected**:
+
+```
+            Fib Atlas last trade    Level Atlas last trade
+gbpaud      2026-05-21               2026-09-03
+euraud      2026-05-21               2026-09-11 (same day as this check)
+nzdjpy      2026-05-21               2026-09-07
+```
+
+Level Atlas's own regeneration for these three pairs has been running
+successfully and recently (euraud rebuilt the same day this was checked) —
+proof OANDA connectivity for these symbols is fine in general. This points
+away from "these pairs are broken to fetch" and toward "Fib Atlas's own
+nightly run hit a one-off failure around 2026-05-21-22 and was never
+retried" — consistent with, not a new contradiction of, the 2026-09-08
+entries above. Root cause of THAT one-off (why Fib Atlas's job didn't
+recover the way Level Atlas's evidently does) is still unknown — would need
+Railway logs, not available from here.
+
+**Not done**: the root-cause code fix (make a partial gap-fill abort/flag
+instead of silently persisting) — this would protect all six consumers of
+`js/m1GapFill.js` at once, not just Fib Atlas, but hasn't been built yet;
+offered to the owner, awaiting direction.
+
+Validated: `node --check` on `level_atlas_check_coverage.mjs`; read-only R2
+fetches only (`getJSON` against `level-atlas/{pair}-votetrades.json`), no
+writes, no regeneration.
