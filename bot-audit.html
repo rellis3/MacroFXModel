@@ -61,7 +61,7 @@
   .pb { padding:12px; }
 
   /* ── metric tiles ── */
-  .tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  .tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(175px,1fr));
            gap:8px; margin-bottom:14px; }
   .tile { background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:10px 12px; }
   .tile .k { color:var(--dim); font-size:10px; text-transform:uppercase; letter-spacing:.07em;
@@ -124,18 +124,37 @@
   .panel::before { right:0; bottom:0; border-right:1px solid var(--line2); border-bottom:1px solid var(--line2); }
   .panel::after  { left:0;  bottom:0; border-left:1px solid var(--line2);  border-bottom:1px solid var(--line2); }
 
-  /* ── crosshair ── */
-  .chart { position:relative; cursor:crosshair; }
-  .xhair { position:absolute; top:6px; width:1px; background:#6b7688; pointer-events:none;
-           display:none; z-index:2; }
+  /* ── chart frame: HTML gutters around a stretched SVG plot ── */
+  .chart { position:relative; padding-left:62px; cursor:crosshair; }
+  .chart.nogut { padding-left:0; cursor:default; }
+  .plot { position:relative; }
+  .plot svg { display:block; width:100%; height:100%; }
+  .ylab { position:absolute; left:0; width:56px; text-align:right; font-family:var(--mono); font-size:10px;
+          color:#5a6474; transform:translateY(-50%); pointer-events:none; white-space:nowrap; }
+  .xlab { position:absolute; bottom:3px; font-family:var(--mono); font-size:10px; color:#5a6474; pointer-events:none; }
+  .xlab.l { left:62px; } .chart.nogut .xlab.l { left:0; } .xlab.r { right:0; }
+  .xhair { position:absolute; top:0; bottom:0; width:1px; background:#6b7688; pointer-events:none; display:none; z-index:2; }
   .xdot  { position:absolute; width:7px; height:7px; margin:-4px 0 0 -4px; border-radius:50%;
            border:1.5px solid var(--bg); pointer-events:none; display:none; z-index:3; }
-  .xbox  { position:absolute; top:2px; background:#11151d; border:1px solid var(--line2);
-           color:var(--fg); font-family:var(--mono); font-size:10.5px; padding:1px 6px;
-           white-space:nowrap; pointer-events:none; display:none; z-index:4; }
-  .xdate { position:absolute; bottom:1px; background:#11151d; border:1px solid var(--line2);
-           color:var(--dim); font-family:var(--mono); font-size:10px; padding:1px 6px;
-           white-space:nowrap; pointer-events:none; display:none; z-index:4; }
+  .xbox  { position:absolute; top:2px; background:#11151d; border:1px solid var(--line2); color:var(--fg);
+           font-family:var(--mono); font-size:10.5px; padding:1px 6px; white-space:nowrap; pointer-events:none; display:none; z-index:4; }
+  .xdate { position:absolute; bottom:1px; background:#11151d; border:1px solid var(--line2); color:var(--dim);
+           font-family:var(--mono); font-size:10px; padding:1px 6px; white-space:nowrap; pointer-events:none; display:none; z-index:4; }
+  .hmark { position:absolute; top:0; bottom:0; width:2px; background:#e0a93b; pointer-events:none; }
+  .hmarklab { position:absolute; top:4px; font-family:var(--mono); font-size:10px; color:#e0a93b; white-space:nowrap; pointer-events:none; }
+
+  /* ── bot pills ── */
+  .pills { display:flex; flex-wrap:wrap; gap:5px; padding:6px 16px; background:var(--panel);
+           border-bottom:1px solid var(--line); align-items:center; }
+  .pill { border:1px solid; border-radius:12px; padding:2px 9px; font-family:var(--mono); font-size:10.5px;
+          cursor:pointer; opacity:.32; user-select:none; white-space:nowrap; }
+  .pill.on { opacity:1; }
+  .pill .n { opacity:.7; margin-left:4px; }
+  .pill.paper { border-style:dashed; }
+  .pills .quick { background:none; border:1px solid var(--line2); color:var(--dim); border-radius:4px;
+                  padding:2px 8px; font-size:10px; font-family:var(--mono); }
+  input[type=date] { padding:3px 6px; font-size:11px; }
+  .seg button.on { background:#0d2b22; border-color:var(--good); color:var(--good); }
 
   /* ── keyboard hint rail ── */
   .rail { position:fixed; left:0; right:0; bottom:0; background:#0c1017;
@@ -184,14 +203,14 @@
 <div class="cmd">
   <strong style="font-family:var(--mono);color:var(--accent)">BOT.AUDIT</strong>
   <label>Book</label>
-  <select id="selBot"></select>
+  <span id="selCount" class="mono" style="font-size:11px;color:var(--accent);min-width:110px"></span>
   <label>Range</label>
-  <select id="selRange">
-    <option value="30">30 days</option>
-    <option value="90" selected>90 days</option>
-    <option value="180">180 days</option>
-    <option value="365">1 year</option>
-  </select>
+  <div class="seg" id="rangeSeg">
+    <button data-d="30">30D</button><button data-d="90" class="on">90D</button><button data-d="180">6M</button><button data-d="365">1Y</button><button data-d="0">Custom</button>
+  </div>
+  <span id="customRange" style="display:none;align-items:center;gap:4px">
+    <input type="date" id="dFrom"> <span style="color:var(--dim)">→</span> <input type="date" id="dTo">
+  </span>
   <label>Costs</label>
   <div class="seg">
     <button id="btnNet"   class="on" onclick="setGross(false)">Net</button>
@@ -210,6 +229,8 @@
   <div class="spacer"></div>
   <span id="status" class="mono" style="color:var(--dim);font-size:11px"></span>
 </div>
+
+<div class="pills" id="botPills"></div>
 
 <div class="tabs">
   <button class="tab active" data-p="ovw" onclick="tab('ovw')"><span class="tag">OVW</span>Overview</button>
@@ -240,6 +261,47 @@ const BOTS = window.POS_BOTS || [];
 const botOf = k => BOTS.find(b => b.key === k) || { key: k, label: k, color: '#9ba3bf', paper: false };
 
 let RAW = [], TRADES = [], GROSS = false, NORM = null;
+// Which bots are in the book. A Set, so any combination is a portfolio — the
+// old single select could only show one bot or all of them, and "these three"
+// is the question that actually comes up.
+let SEL = new Set();
+const liveKeys = () => BOTS.filter(b => !b.paper).map(b => b.key);
+const selectedKeys = () => [...SEL];
+function selectionLabel() {
+  const k = selectedKeys();
+  if (!k.length) return 'nothing selected';
+  if (k.length === 1) return botOf(k[0]).label;
+  const live = liveKeys();
+  if (k.length === live.length && k.every(x => live.includes(x))) return 'All live bots';
+  if (k.length === BOTS.length) return 'All bots';
+  return `${k.length} bots`;
+}
+async function setSel(keys) {
+  SEL = new Set(keys);
+  try { localStorage.setItem('botAuditSel', JSON.stringify(selectedKeys())); } catch (e) {}
+  renderPills();
+  BT = null;                                   // a different book means a different backtest
+  if (BT_ON) await loadBacktest();
+  render();
+}
+window.togglePill = k => { const n = new Set(SEL); n.has(k) ? n.delete(k) : n.add(k); setSel([...n]); };
+window.quickSel = which => setSel(which === 'live' ? liveKeys() : which === 'all' ? BOTS.map(b => b.key) : []);
+
+function renderPills() {
+  const host = $('botPills');
+  if (!host) return;
+  const counts = new Map();
+  for (const t of (NORM?.trades || [])) counts.set(t.bot_key, (counts.get(t.bot_key) || 0) + 1);
+  host.innerHTML = `<button class="quick" onclick="quickSel('live')">live</button>`
+    + `<button class="quick" onclick="quickSel('all')">all</button>`
+    + `<button class="quick" onclick="quickSel('none')">none</button>`
+    + BOTS.map(b => {
+      const n = counts.get(b.key) || 0;
+      return `<span class="pill${SEL.has(b.key) ? ' on' : ''}${b.paper ? ' paper' : ''}" onclick="togglePill('${b.key}')"
+        style="border-color:${b.bd || b.color};color:${b.color};background:${b.bg || 'transparent'}" title="${b.paper ? 'paper — simulated P&L' : 'live'}${n ? ` · ${n} trades in range` : ' · no trades in range'}">${esc(b.label)}<span class="n">${n || '·'}</span></span>`;
+    }).join('');
+  const sc = $('selCount'); if (sc) sc.textContent = selectionLabel();
+}
 // Backtest overlay state. `BT_CACHE` is keyed by bot so flipping the toggle off
 // and on, or switching bots and back, never re-pays the R2 cost.
 let BT_ON = false, BT_MODE = 'cone', BT = null, BT_LOADING = false;
@@ -262,16 +324,37 @@ const ukTime = u => { const d = new Date(u * 1000); return d.toLocaleString('en-
 // rollup key in LIVE_BACKTEST_ALIGNMENT.md §4.2 exists to replace — at 1 year
 // this is 4 calls × 23 bots × 90 days of KV reads, which is slow by design, not
 // by accident.
-async function fetchRange(days) {
+// Range is a [from, to] pair. Presets compute it from today; custom sets it
+// directly. Either way it is fetched as chained 90-day chunks, which is the
+// shape /api/trade-history's one-KV-read-per-(bot × date) design forces.
+let RANGE = { from: null, to: null, preset: 90 };
+const isoDay = d => d.toISOString().slice(0, 10);
+const addDays = (iso, k) => { const d = new Date(iso + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + k); return isoDay(d); };
+
+function setPreset(days) {
+  RANGE.preset = days;
+  document.querySelectorAll('#rangeSeg button').forEach(b => b.classList.toggle('on', +b.dataset.d === days));
+  $('customRange').style.display = days === 0 ? 'inline-flex' : 'none';
+  if (days > 0) {
+    RANGE.to = isoDay(new Date());
+    RANGE.from = addDays(RANGE.to, -(days - 1));
+    $('dFrom').value = RANGE.from; $('dTo').value = RANGE.to;
+  } else {
+    RANGE.from = $('dFrom').value || RANGE.from || addDays(isoDay(new Date()), -89);
+    RANGE.to   = $('dTo').value   || RANGE.to   || isoDay(new Date());
+    $('dFrom').value = RANGE.from; $('dTo').value = RANGE.to;
+  }
+  try { localStorage.setItem('botAuditRange', JSON.stringify(RANGE)); } catch (e) {}
+}
+
+async function fetchRange(from, to) {
+  if (!from || !to || from > to) return [];
   const chunks = [];
-  let end = new Date();
-  let left = days;
-  while (left > 0) {
-    const span = Math.min(left, 90);
-    const start = new Date(end); start.setUTCDate(start.getUTCDate() - span + 1);
-    chunks.push([start.toISOString().slice(0, 10), end.toISOString().slice(0, 10)]);
-    end = new Date(start); end.setUTCDate(end.getUTCDate() - 1);
-    left -= span;
+  let end = to;
+  while (end >= from) {
+    const start = addDays(end, -89) < from ? from : addDays(end, -89);
+    chunks.push([start, end]);
+    end = addDays(start, -1);
   }
   const out = [];
   for (let i = 0; i < chunks.length; i++) {
@@ -281,15 +364,16 @@ async function fetchRange(days) {
       const r = await fetch(`/api/trade-history?from=${f}&to=${t}`);
       const j = await r.json();
       if (j.trades) out.push(...j.trades);
-    } catch (e) { /* a failed chunk is reported below via the count, not swallowed silently */ }
+    } catch (e) { /* a failed chunk shows up as a short row count, not a silent gap */ }
   }
   return out;
 }
 
 window.reload = async function reload() {
   $('status').textContent = 'loading…';
-  RAW = await fetchRange(+$('selRange').value);
+  RAW = await fetchRange(RANGE.from, RANGE.to);
   NORM = normalizeTrades(RAW);
+  renderPills();
   render();
 };
 
@@ -307,150 +391,135 @@ window.tab = p => {
 };
 
 // ── charts (hand-rolled SVG — no dependency, no CDN) ──────────────────────────
-// Decimals that actually separate the ticks: pick precision from the range the
-// axis covers, not a fixed guess. Without this a low-volatility book renders
-// several identical labels and the axis stops carrying information.
+//
+// LAYOUT RULE: the SVG covers the PLOT AREA ONLY and is stretched to fill it
+// (preserveAspectRatio="none"). Every piece of text — axis ticks, date labels,
+// the crosshair readout — is HTML positioned around it. Text inside a stretched
+// SVG stretches with it, which on a wide monitor turned "$8,998" into something
+// twice as wide as it was tall. Paths carry vector-effect="non-scaling-stroke"
+// so line weight does not scale either. Nothing here measures the container,
+// so there is no resize handling to get wrong.
+const W   = 1000;                      // viewBox width — arbitrary, it is stretched
+const GUT = { l: 62, b: 20 };          // px gutters that hold the HTML labels
+const CHARTS = new Map();              // frame id -> { pts, fmt, colour, lo, hi, h }
+let _chartSeq = 0;
+
+// Decimals that actually separate the ticks: precision follows the span the
+// axis covers. Without this a low-volatility book prints identical labels.
 function autoDp(span) {
-  const s = Math.abs(span);
-  return s >= 200 ? 0 : s >= 20 ? 1 : s >= 2 ? 2 : s >= 0.2 ? 3 : 4;
+  const x = Math.abs(span);
+  return x >= 200 ? 0 : x >= 20 ? 1 : x >= 2 ? 2 : x >= 0.2 ? 3 : 4;
 }
-function lineChart(pts, { h = 190, fill = null, stroke = '#3fd07a', zero = false, fmt = null, money = false, pct = false }) {
-  const vals = pts.map(p => p.v).filter(v => v != null && isFinite(v));
-  if (vals.length < 2) return `<div class="empty">Not enough points to plot.</div>`;
-  const W = 1000, pad = { l: 58, r: 10, t: 10, b: 20 };
+
+// Y scale with headroom so a series never sits on the frame edge.
+function scaleOf(vals, { zero = false, padFrac = 0.06 } = {}) {
   let lo = Math.min(...vals), hi = Math.max(...vals);
   if (zero) { lo = Math.min(lo, 0); hi = Math.max(hi, 0); }
   if (hi === lo) { hi += 1; lo -= 1; }
-  const span = hi - lo;
-  if (!fmt) {
-    const dp = autoDp(span);
-    fmt = money ? v => '$' + v.toLocaleString('en-GB', { minimumFractionDigits: dp, maximumFractionDigits: dp })
-        : pct   ? v => v.toFixed(dp) + '%'
-        :         v => v.toFixed(dp);
-  }
-  const x = i => pad.l + (i / (pts.length - 1)) * (W - pad.l - pad.r);
-  const y = v => pad.t + (1 - (v - lo) / span) * (h - pad.t - pad.b);
-  let d = '', started = false;
-  pts.forEach((p, i) => {
-    if (p.v == null || !isFinite(p.v)) return;
-    d += (started ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(p.v).toFixed(1) + ' ';
-    started = true;
-  });
-  const base = y(zero ? 0 : lo);
-  const area = fill && started
-    ? `<path d="${d} L${x(pts.length - 1).toFixed(1)} ${base.toFixed(1)} L${x(0).toFixed(1)} ${base.toFixed(1)} Z" fill="${fill}" stroke="none"/>` : '';
-  const ticks = [0, .25, .5, .75, 1].map(f => {
-    const v = lo + span * f, yy = y(v);
-    return `<line x1="${pad.l}" x2="${W - pad.r}" y1="${yy.toFixed(1)}" y2="${yy.toFixed(1)}" stroke="#232a38" stroke-width="1"/>`
-         + `<text x="${pad.l - 6}" y="${(yy + 3.5).toFixed(1)}" fill="#5a6474" font-size="10" text-anchor="end" font-family="monospace">${fmt(v)}</text>`;
+  const pad = (hi - lo) * padFrac;
+  return { lo: lo - pad, hi: hi + pad };
+}
+
+function fmtFor({ fmt, money, pct }, span) {
+  if (fmt) return fmt;
+  const dp = autoDp(span);
+  if (money) return v => '$' + v.toLocaleString('en-GB', { minimumFractionDigits: dp, maximumFractionDigits: dp });
+  if (pct)   return v => v.toFixed(dp) + '%';
+  return v => v.toFixed(dp);
+}
+
+/** The frame every chart renders into. Registers the series for the crosshair. */
+function frame({ svg, h, lo, hi, fmt, ticks = true, gut = true, xFirst = '', xLast = '', pts = [], colour = '#3fd07a', extra = '' }) {
+  const id = 'ch' + (++_chartSeq);
+  CHARTS.set(id, { pts, fmt, colour, lo, hi, h });
+  const y = v => (1 - (v - lo) / (hi - lo)) * h;
+  const yl = ticks ? [0, .25, .5, .75, 1].map(f => {
+    const v = lo + (hi - lo) * f;
+    return `<div class="ylab" style="top:${y(v).toFixed(1)}px">${fmt(v)}</div>`;
+  }).join('') : '';
+  return `<div class="chart${gut ? '' : ' nogut'}" data-ch="${id}" style="height:${h + GUT.b}px">${yl}
+    <div class="plot" style="height:${h}px">${svg}${extra}<div class="xhair"></div><div class="xdot"></div><div class="xbox"></div></div>
+    <div class="xlab l">${esc(xFirst)}</div><div class="xlab r">${esc(xLast)}</div><div class="xdate"></div></div>`;
+}
+
+const gridSvg = (h, lo, hi, zero) => {
+  const y = v => (1 - (v - lo) / (hi - lo)) * h;
+  let g = [0, .25, .5, .75, 1].map(f => {
+    const yy = y(lo + (hi - lo) * f);
+    return `<line x1="0" x2="${W}" y1="${yy.toFixed(1)}" y2="${yy.toFixed(1)}" stroke="#232a38" vector-effect="non-scaling-stroke"/>`;
   }).join('');
+  if (zero && lo < 0 && hi > 0) g += `<line x1="0" x2="${W}" y1="${y(0).toFixed(1)}" y2="${y(0).toFixed(1)}" stroke="#3a4356" stroke-dasharray="3 3" vector-effect="non-scaling-stroke"/>`;
+  return g;
+};
+const pathOf = (vals, x, y) => {
+  let d = '', on = false;
+  vals.forEach((v, i) => { if (v == null || !isFinite(v)) return; d += (on ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1) + ' '; on = true; });
+  return d;
+};
+
+function lineChart(pts, { h = 190, fill = null, stroke = '#3fd07a', zero = false, fmt = null, money = false, pct = false } = {}) {
+  const vals = pts.map(p => p.v).filter(v => v != null && isFinite(v));
+  if (vals.length < 2) return `<div class="empty">Not enough points to plot.</div>`;
+  const { lo, hi } = scaleOf(vals, { zero });
+  const f = fmtFor({ fmt, money, pct }, hi - lo);
+  const n = pts.length, x = i => (i / (n - 1)) * W, y = v => (1 - (v - lo) / (hi - lo)) * h;
+  const d = pathOf(pts.map(p => p.v), x, y);
+  const base = y(zero && lo < 0 && hi > 0 ? 0 : lo);
+  const area = fill && d ? `<path d="${d} L${W} ${base.toFixed(1)} L0 ${base.toFixed(1)} Z" fill="${fill}" stroke="none"/>` : '';
+  const svg = `<svg viewBox="0 0 ${W} ${h}" preserveAspectRatio="none">${gridSvg(h, lo, hi, zero)}${area}<path d="${d}" fill="none" stroke="${stroke}" stroke-width="1.6" vector-effect="non-scaling-stroke"/></svg>`;
   const first = pts.find(p => p.v != null), last = [...pts].reverse().find(p => p.v != null);
-  const xlab = `<text x="${pad.l}" y="${h - 6}" fill="#5a6474" font-size="10" font-family="monospace">${first?.k ?? ''}</text>`
-             + `<text x="${W - pad.r}" y="${h - 6}" fill="#5a6474" font-size="10" text-anchor="end" font-family="monospace">${last?.k ?? ''}</text>`;
-  return { svg: `<svg viewBox="0 0 ${W} ${h}" preserveAspectRatio="none" style="height:${h}px">${ticks}${area}<path d="${d}" fill="none" stroke="${stroke}" stroke-width="1.6"/>${xlab}</svg>`,
-           lo, hi, fmt, stroke };
+  return frame({ svg, h, lo, hi, fmt: f, xFirst: first?.k ?? '', xLast: last?.k ?? '', pts, colour: stroke });
 }
 
-/** lineChart returns its scale so the crosshair can place a dot; this wraps the
- *  two together and is what every caller actually renders. */
-function chartOf(pts, opts) {
-  const r = lineChart(pts, opts);
-  if (typeof r === 'string') return r;              // the "not enough points" case
-  const frame = chartFrame(r.svg, pts, r.fmt, r.stroke);
-  return frame.replace('class="chart"', `class="chart" data-lo="${r.lo}" data-hi="${r.hi}"`);
-}
-
-function histogram(vals, realised, { h = 170, bins = 34 }) {
+function histogram(vals, realised, { h = 170, bins = 34 } = {}) {
   if (!vals.length) return `<div class="empty">No distribution.</div>`;
-  const lo = Math.min(...vals), hi = Math.max(...vals);
-  const w = (hi - lo) / bins || 1;
+  const lo = Math.min(...vals), hi = Math.max(...vals), w = (hi - lo) / bins || 1;
   const counts = new Array(bins).fill(0);
-  vals.forEach(v => { const i = Math.min(bins - 1, Math.max(0, Math.floor((v - lo) / w))); counts[i]++; });
-  const mx = Math.max(...counts), W = 1000, pad = { l: 10, r: 10, t: 10, b: 22 };
-  const bw = (W - pad.l - pad.r) / bins;
+  vals.forEach(v => { counts[Math.min(bins - 1, Math.max(0, Math.floor((v - lo) / w)))]++; });
+  const mx = Math.max(...counts), bw = W / bins;
   const bars = counts.map((c, i) => {
-    const bh = (c / mx) * (h - pad.t - pad.b);
-    return `<rect x="${(pad.l + i * bw).toFixed(1)}" y="${(h - pad.b - bh).toFixed(1)}" width="${(bw - 1).toFixed(1)}" height="${bh.toFixed(1)}" fill="#2f394b"/>`;
+    const bh = (c / mx) * h;
+    return `<rect x="${(i * bw).toFixed(1)}" y="${(h - bh).toFixed(1)}" width="${(bw * 0.92).toFixed(1)}" height="${bh.toFixed(1)}" fill="#2f394b"/>`;
   }).join('');
-  let mark = '';
+  let extra = '';
   if (realised != null && isFinite(realised)) {
-    const rx = pad.l + Math.min(1, Math.max(0, (realised - lo) / (hi - lo))) * (W - pad.l - pad.r);
-    mark = `<line x1="${rx.toFixed(1)}" x2="${rx.toFixed(1)}" y1="${pad.t}" y2="${h - pad.b}" stroke="#e0a93b" stroke-width="2"/>`
-         + `<text x="${(rx + 5).toFixed(1)}" y="${pad.t + 11}" fill="#e0a93b" font-size="10" font-family="monospace">realised ${realised.toFixed(2)}</text>`;
+    const fx = Math.min(1, Math.max(0, (realised - lo) / (hi - lo || 1))) * 100;
+    extra = `<div class="hmark" style="left:${fx.toFixed(2)}%"></div>`
+          + `<div class="hmarklab" style="left:calc(${fx.toFixed(2)}% + 5px)">realised ${realised.toFixed(2)}</div>`;
   }
-  return `<svg viewBox="0 0 ${W} ${h}" preserveAspectRatio="none" style="height:${h}px">${bars}${mark}`
-       + `<text x="${pad.l}" y="${h - 6}" fill="#5a6474" font-size="10" font-family="monospace">${lo.toFixed(2)}</text>`
-       + `<text x="${W - pad.r}" y="${h - 6}" fill="#5a6474" font-size="10" text-anchor="end" font-family="monospace">${hi.toFixed(2)}</text></svg>`;
+  const dp = autoDp(hi - lo);
+  return frame({ svg: `<svg viewBox="0 0 ${W} ${h}" preserveAspectRatio="none">${bars}</svg>`, h, lo, hi,
+                 fmt: v => v.toFixed(dp), ticks: false, gut: false, xFirst: lo.toFixed(dp), xLast: hi.toFixed(dp), pts: [], extra });
 }
 
 // ── crosshair ────────────────────────────────────────────────────────────────
-//
-// Charts are stretched SVG (viewBox 0 0 1000 h, preserveAspectRatio="none"), so
-// a pixel position maps back to a data index through the SAME padding the chart
-// drew with. PAD is shared with lineChart/overlayChart rather than repeated —
-// two copies would drift the moment either chart's margins changed and the
-// readout would silently point at the wrong bar.
-const PAD = { l: 58, r: 10 };
-const CHARTS = new Map();          // frame id -> { pts, fmt, colour }
-let _chartSeq = 0;
-
-/** Wrap a chart SVG so it can carry a crosshair. `pts` is [{k,v}] — k the label
- *  (a date, or "day 12"), v the value shown in the readout. */
-function chartFrame(svg, pts, fmt, colour = '#3fd07a') {
-  const id = 'ch' + (++_chartSeq);
-  CHARTS.set(id, { pts, fmt, colour });
-  return `<div class="chart" data-ch="${id}">${svg}
-    <div class="xhair"></div><div class="xdot"></div><div class="xbox"></div><div class="xdate"></div></div>`;
-}
-
-function moveXhair(frame, clientX) {
-  const c = CHARTS.get(frame.dataset.ch);
+// Pixel -> index is a plain fraction of the plot's own width, because the plot
+// has no internal margins any more — the gutters are HTML outside it.
+function moveXhair(fr, clientX) {
+  const c = CHARTS.get(fr.dataset.ch);
   if (!c || !c.pts.length) return;
-  const svg = frame.querySelector('svg');
-  if (!svg) return;
-  const r = frame.getBoundingClientRect();
-  const h = svg.getBoundingClientRect().height;
-  const inner = 1000 - PAD.l - PAD.r;
-  // pixel -> viewBox x -> fraction along the plotted area
-  const vx = (clientX - r.left) / r.width * 1000;
-  const f = Math.min(1, Math.max(0, (vx - PAD.l) / inner));
-  const i = Math.round(f * (c.pts.length - 1));
-  const pt = c.pts[i];
+  const plot = fr.querySelector('.plot'), r = plot.getBoundingClientRect();
+  const n = c.pts.length;
+  const f = Math.min(1, Math.max(0, (clientX - r.left) / r.width));
+  const i = Math.round(f * (n - 1)), pt = c.pts[i];
   if (!pt) return;
-  const px = (PAD.l + (i / Math.max(1, c.pts.length - 1)) * inner) / 1000 * r.width;
-
-  const hair = frame.querySelector('.xhair');
-  const dot  = frame.querySelector('.xdot');
-  const box  = frame.querySelector('.xbox');
-  const date = frame.querySelector('.xdate');
-  hair.style.display = 'block'; hair.style.left = px + 'px'; hair.style.height = (h - 26) + 'px';
-
-  // The dot needs the value's y, which means re-deriving the chart's own scale.
-  // Stored on the frame at render time by the chart functions.
-  const lo = +frame.dataset.lo, hi = +frame.dataset.hi, top = 10, bot = 20;
-  if (pt.v != null && isFinite(pt.v) && isFinite(lo) && isFinite(hi) && hi > lo) {
-    const y = (top + (1 - (pt.v - lo) / (hi - lo)) * (h - top - bot));
-    dot.style.display = 'block'; dot.style.left = px + 'px'; dot.style.top = y + 'px';
-    dot.style.background = c.colour;
-  } else dot.style.display = 'none';
-
-  box.style.display = 'block';
-  box.textContent = pt.v == null || !isFinite(pt.v) ? '—' : c.fmt(pt.v);
-  box.style.left = Math.min(r.width - box.offsetWidth - 4, Math.max(0, px + 6)) + 'px';
-  date.style.display = 'block';
-  date.textContent = pt.k ?? '';
-  date.style.left = Math.min(r.width - date.offsetWidth - 4, Math.max(0, px - date.offsetWidth / 2)) + 'px';
+  const px = (i / Math.max(1, n - 1)) * r.width;
+  const hair = fr.querySelector('.xhair'), dot = fr.querySelector('.xdot'), box = fr.querySelector('.xbox'), date = fr.querySelector('.xdate');
+  hair.style.display = 'block'; hair.style.left = px + 'px';
+  if (pt.v != null && isFinite(pt.v)) {
+    dot.style.display = 'block'; dot.style.left = px + 'px';
+    dot.style.top = ((1 - (pt.v - c.lo) / (c.hi - c.lo)) * c.h) + 'px'; dot.style.background = c.colour;
+    box.style.display = 'block'; box.textContent = c.fmt(pt.v);
+    box.style.left = Math.min(r.width - box.offsetWidth - 2, Math.max(0, px + 8)) + 'px';
+  } else { dot.style.display = 'none'; box.style.display = 'none'; }
+  date.style.display = 'block'; date.textContent = pt.k ?? '';
+  const gut = fr.classList.contains('nogut') ? 0 : GUT.l;
+  date.style.left = (gut + Math.min(r.width - date.offsetWidth, Math.max(0, px - date.offsetWidth / 2))) + 'px';
 }
-
-document.addEventListener('mousemove', e => {
-  const frame = e.target.closest?.('.chart');
-  if (frame) moveXhair(frame, e.clientX);
-});
+document.addEventListener('mousemove', e => { const fr = e.target.closest?.('.chart'); if (fr) moveXhair(fr, e.clientX); });
 document.addEventListener('mouseout', e => {
-  const frame = e.target.closest?.('.chart');
-  if (frame && !frame.contains(e.relatedTarget)) {
-    frame.querySelectorAll('.xhair,.xdot,.xbox,.xdate').forEach(el => { el.style.display = 'none'; });
-  }
+  const fr = e.target.closest?.('.chart');
+  if (fr && !fr.contains(e.relatedTarget)) fr.querySelectorAll('.xhair,.xdot,.xbox,.xdate').forEach(el => { el.style.display = 'none'; });
 });
 
 // ── command line ─────────────────────────────────────────────────────────────
@@ -471,7 +540,7 @@ window.runCmd = function () {
   const err = m => { $('cmdErr').textContent = m; setTimeout(() => { $('cmdErr').textContent = ''; }, 2600); };
 
   if (TAB_CODES[q]) { tab(TAB_CODES[q]); $('cmd').value = ''; return; }
-  if (PERIODS[q])   { $('selRange').value = PERIODS[q]; $('cmd').value = ''; reload(); return; }
+  if (PERIODS[q])   { setPreset(+PERIODS[q]); $('cmd').value = ''; reload(); return; }
   if (q === 'gross' || q === 'net') { setGross(q === 'gross'); $('cmd').value = ''; return; }
   if (q === 'bt' || q === 'backtest') { toggleBacktest(); $('cmd').value = ''; return; }
 
@@ -483,8 +552,8 @@ window.runCmd = function () {
 
   // a bot
   const b = BOTS.find(x => norm(x.label) === norm(q)) || BOTS.find(x => norm(x.label).startsWith(norm(q)));
-  if (b) { $('selBot').value = b.key; $('selBot').dispatchEvent(new Event('change')); $('cmd').value = ''; return; }
-  if (q === 'all' || q === 'portfolio') { $('selBot').value = '__all'; $('selBot').dispatchEvent(new Event('change')); $('cmd').value = ''; return; }
+  if (b) { setSel([b.key]); $('cmd').value = ''; return; }
+  if (q === 'all' || q === 'portfolio' || q === 'live') { quickSel('live'); $('cmd').value = ''; return; }
 
   err(`? ${raw}`);
 };
@@ -528,7 +597,12 @@ window.setBtMode = m => {
 };
 
 async function loadBacktest() {
-  const bot = $('selBot').value;
+  const keys = selectedKeys();
+  if (keys.length !== 1) {
+    BT = { ok: true, available: false, reason: `A backtest corresponds to ONE strategy — select a single bot to overlay it (currently ${keys.length}).` };
+    return;
+  }
+  const bot = keys[0];
   if (BT_CACHE.has(bot)) { BT = BT_CACHE.get(bot); return; }
   BT_LOADING = true; renderBacktestPanel();
   try {
@@ -555,48 +629,23 @@ function overlayChart({ bands = [], lines = [], n, h = 260, xFirst = '', xLast =
   for (const b of bands) all.push(...b.lo.filter(isFinite), ...b.hi.filter(isFinite));
   for (const l of lines) all.push(...l.v.filter(v => v != null && isFinite(v)));
   if (all.length < 2 || n < 2) return `<div class="empty">Not enough overlapping data to plot.</div>`;
-  let lo = Math.min(...all, 0), hi = Math.max(...all, 0);
-  if (hi === lo) { hi += 1; lo -= 1; }
-  const span = hi - lo, W = 1000, pad = { l: 58, r: 10, t: 10, b: 20 };
-  const x = i => pad.l + (i / (n - 1)) * (W - pad.l - pad.r);
-  const y = v => pad.t + (1 - (v - lo) / span) * (h - pad.t - pad.b);
-  const dp = autoDp(span);
-
-  const grid = [0, .25, .5, .75, 1].map(f => {
-    const v = lo + span * f, yy = y(v);
-    return `<line x1="${pad.l}" x2="${W - pad.r}" y1="${yy.toFixed(1)}" y2="${yy.toFixed(1)}" stroke="#232a38"/>`
-         + `<text x="${pad.l - 6}" y="${(yy + 3.5).toFixed(1)}" fill="#5a6474" font-size="10" text-anchor="end" font-family="monospace">${v.toFixed(dp)}%</text>`;
-  }).join('');
-  const zeroY = y(0);
-  const zero = `<line x1="${pad.l}" x2="${W - pad.r}" y1="${zeroY.toFixed(1)}" y2="${zeroY.toFixed(1)}" stroke="#3a4356" stroke-dasharray="3 3"/>`;
-
+  const { lo, hi } = scaleOf(all, { zero: true });
+  const x = i => (i / (n - 1)) * W, y = v => (1 - (v - lo) / (hi - lo)) * h;
   const bandPaths = bands.map(b => {
     let up = '', dn = '';
-    for (let i = 0; i < n; i++) { if (isFinite(b.hi[i])) up += (up ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(b.hi[i]).toFixed(1) + ' '; }
-    for (let i = n - 1; i >= 0; i--) { if (isFinite(b.lo[i])) dn += 'L' + x(i).toFixed(1) + ' ' + y(b.lo[i]).toFixed(1) + ' '; }
+    for (let i = 0; i < n; i++) if (isFinite(b.hi[i])) up += (up ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(b.hi[i]).toFixed(1) + ' ';
+    for (let i = n - 1; i >= 0; i--) if (isFinite(b.lo[i])) dn += 'L' + x(i).toFixed(1) + ' ' + y(b.lo[i]).toFixed(1) + ' ';
     return up && dn ? `<path d="${up}${dn}Z" fill="${b.fill}" stroke="none"/>` : '';
   }).join('');
-
   const linePaths = lines.map(l => {
-    let d = '', started = false;
-    for (let i = 0; i < n; i++) {
-      const v = l.v[i];
-      if (v == null || !isFinite(v)) continue;
-      d += (started ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1) + ' ';
-      started = true;
-    }
-    return d ? `<path d="${d}" fill="none" stroke="${l.stroke}" stroke-width="${l.w || 1.8}"${l.dash ? ` stroke-dasharray="${l.dash}"` : ''}/>` : '';
+    const d = pathOf(l.v.slice(0, n), x, y);
+    return d ? `<path d="${d}" fill="none" stroke="${l.stroke}" stroke-width="${l.w || 1.8}"${l.dash ? ` stroke-dasharray="${l.dash}"` : ''} vector-effect="non-scaling-stroke"/>` : '';
   }).join('');
-
-  const xl = `<text x="${pad.l}" y="${h - 6}" fill="#5a6474" font-size="10" font-family="monospace">${esc(xFirst)}</text>`
-           + `<text x="${W - pad.r}" y="${h - 6}" fill="#5a6474" font-size="10" text-anchor="end" font-family="monospace">${esc(xLast)}</text>`;
+  const svg = `<svg viewBox="0 0 ${W} ${h}" preserveAspectRatio="none">${gridSvg(h, lo, hi, true)}${bandPaths}${linePaths}</svg>`;
   const live = lines[lines.length - 1];
-  const pts = (live?.v || []).map((v, i) => ({ k: xLabels[i] ?? `${i + 1}`, v }));
-  const dp2 = autoDp(span);
-  const frame = chartFrame(
-    `<svg viewBox="0 0 ${W} ${h}" preserveAspectRatio="none" style="height:${h}px">${grid}${zero}${bandPaths}${linePaths}${xl}</svg>`,
-    pts, v => v.toFixed(dp2) + '%', live?.stroke || '#3fd07a');
-  return frame.replace('class="chart"', `class="chart" data-lo="${lo}" data-hi="${hi}"`);
+  const pts = (live?.v || []).slice(0, n).map((v, i) => ({ k: xLabels[i] ?? `${i + 1}`, v }));
+  const dp = autoDp(hi - lo);
+  return frame({ svg, h, lo, hi, fmt: v => v.toFixed(dp) + '%', xFirst, xLast, pts, colour: live?.stroke || '#3fd07a' });
 }
 
 const swatch = (c, label, dash) =>
@@ -609,8 +658,7 @@ function renderBacktestPanel() {
   if (!BT_ON) { host.innerHTML = ''; return; }
   if (BT_LOADING) { host.innerHTML = `<div class="panel"><div class="pb"><div class="empty">Loading backtest…</div></div></div>`; return; }
 
-  const sel = $('selBot').value;
-  const botLabel = (sel === '__all' || sel === '__allinc') ? 'this selection' : botOf(sel).label;
+  const botLabel = selectionLabel();
 
   if (!BT || !BT.available) {
     // Two different situations that must not read the same. "Not wired" is a
@@ -728,11 +776,8 @@ function renderBacktestPanel() {
 
 // ── render ───────────────────────────────────────────────────────────────────
 function activeTrades() {
-  const sel = $('selBot').value;
   const all = NORM ? NORM.trades : [];
-  if (sel === '__all') return all.filter(t => !botOf(t.bot_key).paper);
-  if (sel === '__allinc') return all;
-  return all.filter(t => t.bot_key === sel);
+  return all.filter(t => SEL.has(t.bot_key));
 }
 
 function render() {
@@ -749,7 +794,7 @@ function render() {
   renderTrd();
   renderBacktestPanel();
   const rs = $('railState');
-  if (rs) rs.textContent = `${$('selBot').selectedOptions[0]?.text || ''} · ${GROSS ? 'GROSS' : 'NET'} · ${TRADES.length} trades`;
+  if (rs) rs.textContent = `${selectionLabel()} · ${RANGE.from} → ${RANGE.to} · ${GROSS ? 'GROSS' : 'NET'} · ${TRADES.length} trades`;
 }
 
 function tile(k, v, sub, klass = '') {
@@ -799,13 +844,13 @@ function renderOvw(S, C, G) {
 
   el.innerHTML = notes.join('') + `<div class="tiles">${tiles}</div>` + `
     <div class="panel"><div class="ph"><span class="badge">EQ</span>Equity curve — by trade<span class="rt">${eq.length} trades · ${C > 0 ? 'from $' + C.toLocaleString('en-GB') : 'cumulative P&L from 0'}</span></div>
-      <div class="pb">${chartOf(eq.map(p => ({ k: p.day, v: p.equity })), { fill: 'rgba(63,208,122,.10)', stroke: '#3fd07a', zero: C === 0, money: true })}</div></div>
+      <div class="pb">${lineChart(eq.map(p => ({ k: p.day, v: p.equity })), { fill: 'rgba(63,208,122,.10)', stroke: '#3fd07a', zero: C === 0, money: true })}</div></div>
     <div id="btPanel"></div>
     <div class="panel"><div class="ph"><span class="badge">DD</span>Drawdown from peak<span class="rt">max ${C > 0 ? pct(S.scaleBound.maxDDPct) : money(S.scaleFree.maxDDAbs)}</span></div>
-      <div class="pb">${chartOf(dEq.map(p => ({ k: p.date, v: C > 0 ? p.ddPct : p.ddAbs })), { fill: 'rgba(242,85,90,.13)', stroke: '#f2555a', zero: true, pct: C > 0, money: C === 0 })}</div></div>
+      <div class="pb">${lineChart(dEq.map(p => ({ k: p.date, v: C > 0 ? p.ddPct : p.ddAbs })), { fill: 'rgba(242,85,90,.13)', stroke: '#f2555a', zero: true, pct: C > 0, money: C === 0 })}</div></div>
     <div class="panel"><div class="ph"><span class="badge">R${rollWin}</span>Rolling ${rollWin}-day return<span class="rt">${C > 0 ? '% of capital' : 'dollars'}</span></div>
-      <div class="pb">${chartOf(roll.map(p => ({ k: p.date, v: p.value })), { stroke: '#5eb0ff', zero: true, pct: C > 0, money: C === 0 })}</div></div>
-    <div class="panel"><div class="ph"><span class="badge">MRET</span>Monthly returns<span class="rt">${mg.pct ? '% of capital' : 'dollars — set Capital for %'}</span></div>
+      <div class="pb">${lineChart(roll.map(p => ({ k: p.date, v: p.value })), { stroke: '#5eb0ff', zero: true, pct: C > 0, money: C === 0 })}</div></div>
+    <div class="panel"><div class="ph"><span class="badge">MRET</span>Monthly returns<span class="rt">${mg.pct ? '% of capital' : '$ P&L — set Capital for %'}</span></div>
       <div class="pb">${heat(mg)}</div></div>`;
 }
 
@@ -821,7 +866,7 @@ function heat(mg) {
   const dp = mg.pct ? (lim >= 20 ? 1 : lim >= 2 ? 2 : 3) : 0;
   const fmtc = v => v == null ? '·' : mg.pct
     ? (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(dp)
-    : (v >= 0 ? '+' : '−') + Math.abs(Math.round(v)).toLocaleString('en-GB');
+    : (v >= 0 ? '+' : '−') + '$' + Math.abs(Math.round(v)).toLocaleString('en-GB');
   return `<table class="heat"><thead><tr><th class="l">Year</th>${MON.map(m => `<th>${m}</th>`).join('')}<th>Year</th></tr></thead><tbody>` +
     mg.years.map(y => `<tr><td class="l"><b>${y.year}</b></td>` +
       y.months.map(v => `<td class="${v == null ? 'na' : ''}" style="${bg(v)}">${fmtc(v)}</td>`).join('') +
@@ -1054,23 +1099,20 @@ function renderTrd() {
 
 // ── boot ─────────────────────────────────────────────────────────────────────
 (function init() {
-  const sel = $('selBot');
-  sel.innerHTML = `<option value="__all">All live bots (portfolio)</option>`
-    + `<option value="__allinc">All bots incl. paper</option>`
-    + BOTS.map(b => `<option value="${b.key}">${esc(b.label)}${b.paper ? ' · paper' : ''}</option>`).join('');
   try {
     const t = localStorage.getItem('botAuditTab'); if (t) window.tab(t);
     const c = localStorage.getItem('botAuditCap'); if (c) $('inCap').value = c;
-    const b = localStorage.getItem('botAuditBot'); if (b) sel.value = b;
-  } catch (e) {}
+    const sv = JSON.parse(localStorage.getItem('botAuditSel') || 'null');
+    SEL = new Set(Array.isArray(sv) && sv.length ? sv.filter(k => BOTS.some(b => b.key === k)) : liveKeys());
+    const rg = JSON.parse(localStorage.getItem('botAuditRange') || 'null');
+    if (rg && rg.preset === 0 && rg.from && rg.to) { $('dFrom').value = rg.from; $('dTo').value = rg.to; setPreset(0); }
+    else setPreset(rg?.preset || 90);
+  } catch (e) { SEL = new Set(liveKeys()); setPreset(90); }
+  renderPills();
   $('inCap').addEventListener('change', () => { try { localStorage.setItem('botAuditCap', $('inCap').value); } catch (e) {} render(); });
-  sel.addEventListener('change', async () => {
-    try { localStorage.setItem('botAuditBot', sel.value); } catch (e) {}
-    BT = null;                        // a different bot means a different backtest
-    if (BT_ON) await loadBacktest();
-    render();
-  });
-  $('selRange').addEventListener('change', reload);
+  document.querySelectorAll('#rangeSeg button').forEach(b => b.addEventListener('click', () => { setPreset(+b.dataset.d); if (+b.dataset.d > 0) reload(); }));
+  $('dFrom').addEventListener('change', () => { setPreset(0); reload(); });
+  $('dTo').addEventListener('change',   () => { setPreset(0); reload(); });
   reload();
 })();
 </script>
