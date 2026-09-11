@@ -238,5 +238,53 @@ function mkBook(dimSpecs) {
     tradesBoundary?.length === 1 && tradesBoundary[0].date === '2022-01-01', JSON.stringify(tradesBoundary));
 }
 
+// ── Mark-to-close for outcome:'neither' (2026-09-11 dropped-touch fix) ─────
+// Previously buildBarrierTrades filtered `outcome !== 'neither'`, silently
+// dropping every touch whose race never resolved by session close — the
+// same look-ahead selection bug levelAtlasVoteReview.js's own
+// priceBarrierTrade/buildBarrierTrades already fixed (commit 5d5966f).
+// These tests pin the mirrored fix here: a 'neither' touch is now marked to
+// market at `touch.sessionClose` instead of being dropped.
+{
+  // T18: an 'above' touch that drifted further OUT by session close is a
+  // 'follow' win / 'fade' loss — sign convention matches asiaFibAtlasWalk's
+  // own fadePips/runPips (`sgn = isAbove ? 1 : -1`).
+  const touchOutAbove = { price: 1.1000, pip: 0.0001, innerDistPips: 10, outerDistPips: 20, outcome: 'neither', side: 'above', sessionClose: 1.1010 };
+  const followOut = priceBarrierTrade(touchOutAbove, 'follow', 0);
+  const fadeOut = priceBarrierTrade(touchOutAbove, 'fade', 0);
+  ok('T18 timed-out (neither) touch that drifted OUT by close: follow wins, fade loses, both priced (not dropped)',
+    followOut?.win === true && followOut.pnlPips === 10 && followOut.timedOut === true &&
+    fadeOut?.win === false && fadeOut.pnlPips === -10 && fadeOut.timedOut === true,
+    JSON.stringify({ followOut, fadeOut }));
+
+  // T19: a 'below' touch drifting further out (price falls) — sign must
+  // flip consistently, not just happen to work for 'above'.
+  const touchOutBelow = { price: 1.1000, pip: 0.0001, innerDistPips: 10, outerDistPips: 20, outcome: 'neither', side: 'below', sessionClose: 1.0990 };
+  const followOutBelow = priceBarrierTrade(touchOutBelow, 'follow', 0);
+  ok('T19 the same OUT-drift on the "below" side prices as an equivalent follow win (sign flips correctly with side)',
+    followOutBelow?.win === true && followOutBelow.pnlPips === 10, JSON.stringify(followOutBelow));
+
+  // T20: missing sessionClose (a touch record built before this fix existed,
+  // or a genuine data gap) must degrade to null, never throw or silently
+  // price off undefined.
+  const touchNoClose = { price: 1.1000, pip: 0.0001, innerDistPips: 10, outerDistPips: 20, outcome: 'neither', side: 'above', sessionClose: null };
+  ok('T20 a neither touch with no sessionClose prices to null, not a throw', priceBarrierTrade(touchNoClose, 'follow', 0) === null);
+
+  // T21: buildBarrierTrades no longer drops outcome:'neither' — it now
+  // appears in the output, and its resolveTime falls back to
+  // sessionCloseTime (both resolveTime/concurrencyResolveTime are null for
+  // an unresolved touch, same as a real trade's own resolution time would be).
+  const book21 = mkBook([['prevOutcomeSameDay', 'out', true], ['sessionHandoff', '2·london-morning', true]]);
+  const touchesWithNeither = [
+    { instrument: 'EURUSD', date: '2022-06-01', time: 1000, resolveTime: null, rearmFrac: 0.3, side: 'above', level: 1.5,
+      price: 1.16863, pip: 0.0001, innerDistPips: 8, outerDistPips: 15, outcome: 'neither', sessionClose: 1.1700, sessionCloseTime: 1050,
+      fadePips: -3, runPips: 6, prevOutcomeSameDay: 'out', sessionHandoff: '2·london-morning', asiaConfPips: 1.2 },
+  ];
+  const tradesWithNeither = buildBarrierTrades(touchesWithNeither, book21, { rearmFrac: 0.3, cost: 0, minMargin: 1 });
+  ok('T21 buildBarrierTrades KEEPS an outcome:neither touch (the dropped-touch fix) and falls back resolveTime to sessionCloseTime',
+    tradesWithNeither?.length === 1 && tradesWithNeither[0].resolveTime === 1050 && tradesWithNeither[0].realResolveTime === 1050,
+    JSON.stringify(tradesWithNeither));
+}
+
 console.log(`\n${failures === 0 ? 'all passed' : failures + ' FAILURES'}`);
 process.exitCode = failures ? 1 : 0;

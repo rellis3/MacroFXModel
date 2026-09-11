@@ -570,6 +570,13 @@ export function asiaFibAtlasWalk(packed, { instrument, assetClass = 'fx', rearmF
     const winEnd = asia.epoch + 24 * 3600;
     const bars = extractBars(packed, winStart, winEnd);
     if (bars.length < 10) continue;
+    // Session-close mark (2026-09-11, see priceBarrierTrade's own doc in
+    // asiaFibAtlasVoteReview.js for the full reasoning) — the real close
+    // price/time at the END of this walk window, same for every touch this
+    // date/side/rung, computed once here rather than per-touch. Lets an
+    // 'outcome:neither' touch be marked to market instead of dropped —
+    // mirrors levelAtlasEngine.js's own atlasWalk field of the same name.
+    const sessionCloseBar = bars[bars.length - 1];
     const winOpen = bars[0].open;   // confluenceFeatures' VWAP/tolerance anchor — see dayOpen/winOpen note above
 
     // Extended-resolution search bars (2026-08-31, see this function's own
@@ -777,6 +784,7 @@ export function asiaFibAtlasWalk(packed, { instrument, assetClass = 'fx', rearmF
               price: +here.toFixed(6), pip,
               dayOpen, asiaHigh: asia.high, asiaLow: asia.low, asiaRange: asia.range,
               time: bar.time, resolveTime, concurrencyResolveTime, outcome, resolveIdx,
+              sessionClose: sessionCloseBar.close, sessionCloseTime: sessionCloseBar.time,
               minsToResolve: minsToResolve != null ? +minsToResolve.toFixed(0) : null,
               pullbackFrac: pullbackFrac != null ? +pullbackFrac.toFixed(3) : null,
               fadePips: +fadePips.toFixed(1), runPips: +runPips.toFixed(1),

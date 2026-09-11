@@ -124,6 +124,9 @@ export function mondayFibAtlasWalk(packed, { instrument, assetClass = 'fx', rear
     const winEnd = mon.epoch + 8 * 86400;
     const bars = extractBars(packed, winStart, winEnd);
     if (bars.length < 10) continue;
+    // Session-close mark (2026-09-11) — see asiaFibAtlasEngine.js's own copy
+    // of this comment / asiaFibAtlasVoteReview.js's priceBarrierTrade doc.
+    const sessionCloseBar = bars[bars.length - 1];
     // Extended-resolution search bars (2026-08-31) -- ONLY the outcome race
     // below reads this. Fetched once per Monday index (shared by every
     // side/rung/rearmFrac combination), not per touch.
@@ -221,6 +224,7 @@ export function mondayFibAtlasWalk(packed, { instrument, assetClass = 'fx', rear
               side, level, rearmFrac,
               price: +here.toFixed(6), pip,
               time: bar.time, resolveTime, concurrencyResolveTime, outcome,
+              sessionClose: sessionCloseBar.close, sessionCloseTime: sessionCloseBar.time,
               minsToResolve: minsToResolve != null ? +minsToResolve.toFixed(0) : null,
               pullbackFrac: pullbackFrac != null ? +pullbackFrac.toFixed(3) : null,
               fadePips: +fadePips.toFixed(1), runPips: +runPips.toFixed(1),

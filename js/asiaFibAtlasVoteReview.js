@@ -86,13 +86,35 @@ export function voteDecision(book, touch) {
  * null here — same structural gap Level Atlas's own p90 has, handled the
  * same way: by the null check, not a hardcoded rung-name exclude list.
  *
- *   priceBarrierTrade(touch, decision, cost) -> { win, pnlPips, pnlPct, targetPips, stopPips } | null
+ * `outcome:'neither'` (the race never resolved by session close) is marked
+ * to market at the session's REAL closing price (`touch.sessionClose`,
+ * always present — asiaFibAtlasWalk/mondayFibAtlasWalk, 2026-09-11) instead
+ * of being dropped — 2026-09-11 fix, mirrors levelAtlasVoteReview.js's own
+ * priceBarrierTrade fix (commit 5d5966f) for the identical bug: silently
+ * dropping an unresolved touch meant the backtest only ever scored races
+ * that had time to finish, biasing the surviving sample toward whichever
+ * barrier sat closer — a look-ahead selection bug, not a data gap (see
+ * MD files/LEGO_MODULES.md's 2026-09-11 entry and the owner's
+ * project_vote_atlas_lookahead_fix memory). `runAtClose`'s sign convention
+ * matches asiaFibAtlasWalk's own `fadePips`/`runPips` (`sgn = isAbove ? 1 :
+ * -1`): positive = price moved further OUT (away from the range) by close.
+ *
+ *   priceBarrierTrade(touch, decision, cost) -> { win, pnlPips, pnlPct, targetPips, stopPips, timedOut? } | null
  */
 export function priceBarrierTrade(touch, decision, cost = 0) {
   const denom = touch.price > 0 ? touch.price : null;
   const targetPips = decision === 'fade' ? touch.innerDistPips : touch.outerDistPips;
   const stopPips = decision === 'fade' ? touch.outerDistPips : touch.innerDistPips;
   if (denom == null || targetPips == null || stopPips == null) return null;
+  if (touch.outcome === 'neither') {
+    if (touch.sessionClose == null || !(touch.pip > 0)) return null;
+    const sgn = touch.side === 'above' ? 1 : -1;
+    const runAtClose = (touch.sessionClose - touch.price) / touch.pip * sgn;
+    const pnlPips = decision === 'follow' ? runAtClose : -runAtClose;
+    const win = pnlPips > 0;
+    const pnlPct = +((pnlPips * touch.pip / denom * 100) - cost).toFixed(4);
+    return { win, pnlPips: +pnlPips.toFixed(1), pnlPct, targetPips, stopPips, timedOut: true };
+  }
   const win = (decision === 'fade' && touch.outcome === 'back') || (decision === 'follow' && touch.outcome === 'out');
   const pnlPips = win ? targetPips : -stopPips;
   const pnlPct = +((pnlPips * touch.pip / denom * 100) - cost).toFixed(4);
@@ -136,7 +158,9 @@ function cachedVote(book, t, voteCache) {
  */
 export function buildBarrierTrades(touches, book, { rearmFrac = 0.3, cost = 0, minMargin = 1, confluenceOnly = false, confluencePipMax = 2, voteCache = null } = {}) {
   if (!book) return null;
-  let oos = touches.filter(t => t.rearmFrac === rearmFrac && t.date >= book.splitDate && t.outcome !== 'neither');
+  // outcome:'neither' KEPT, not filtered out — 2026-09-11 fix (see
+  // priceBarrierTrade's own header above for the full reasoning).
+  let oos = touches.filter(t => t.rearmFrac === rearmFrac && t.date >= book.splitDate);
   if (confluenceOnly) oos = oos.filter(t => t.asiaConfPips != null && t.asiaConfPips <= confluencePipMax);
 
   const trades = [];
@@ -159,7 +183,15 @@ export function buildBarrierTrades(touches, book, { rearmFrac = 0.3, cost = 0, m
       // keeps the TRUE (possibly multi-day-later) resolution time visible
       // for anyone who wants it, without changing what concurrency sees.
       instrument: t.instrument, date: t.date, time: t.time,
-      resolveTime: t.concurrencyResolveTime ?? t.resolveTime, realResolveTime: t.resolveTime,
+      // `?? t.sessionCloseTime` (2026-09-11): a timed-out ('neither') trade
+      // has null resolveTime/concurrencyResolveTime — several downstream
+      // consumers sort/gate on resolveTime (e.g. applyConcurrencyCap), and a
+      // null there is a bug waiting to happen, not a "no data" case this
+      // trade genuinely lacks (it resolved at session close, same as any
+      // other trade — see priceBarrierTrade's own doc). sessionCloseTime is
+      // always <= the concurrency cap by construction (it's exactly
+      // `winEnd`), so no extra min() needed here.
+      resolveTime: t.concurrencyResolveTime ?? t.resolveTime ?? t.sessionCloseTime, realResolveTime: t.resolveTime ?? t.sessionCloseTime,
       side: t.side, rung: t.level, entry: t.price, pip: t.pip,
       decision: vd.decision, margin: vd.margin,
       targetPips: priced.targetPips, stopPips: priced.stopPips,
