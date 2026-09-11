@@ -9,7 +9,7 @@ import {
   rollingEdge, breakdowns, hourWeekdayGrid, ukClock,
   dailyByGroup, correlationMatrix, effectiveBets, coincidentLoss, worstJointDays, symEigen,
   legsOf, netLegs, openAt, exposureSeries, drawdownEpisodes, concentration, projectPaths,
-  windowDist, rankAgainst,
+  windowDist, rankAgainst, riskPerTrade,
 } from './botAuditEngine.js';
 
 let fail = 0;
@@ -507,6 +507,27 @@ console.log('\nexpectation windows');
   ok('a sharpe of 99 ranks P100 with P5/P50/P95 reported', rk.rank === 100 && rk.p5 <= rk.p50 && rk.p50 <= rk.p95 && rk.n === wn.n);
   ok('the median itself ranks ~P50', Math.abs(rankAgainst(wn.sharpe, rk.p50).rank - 50) <= 2);
   ok('nothing to rank against -> null, never 50', rankAgainst([], 1) === null && rankAgainst(wn.sharpe, null) === null);
+}
+
+
+console.log('\nrisk per trade');
+{
+  // +1R that made $50 => risked $50. -1R that lost $50 => risked $50. +2R for $100 => $50.
+  const { trades } = normalizeTrades([
+    tr('2026-09-01',  50, { r: 1.0 }), tr('2026-09-02', -50, { r: -1.0 }), tr('2026-09-03', 100, { r: 2.0 }),
+    tr('2026-09-04',  20, { r: 0.5 }),                       // $40 risked
+    tr('2026-09-05',  30),                                    // no R
+    tr('2026-09-06',   0, { r: 0 }),                          // R = 0, no denominator
+    tr('2026-09-07', -10, { r: 0.5 }),                        // profit and R disagree in sign
+  ]);
+  const k = riskPerTrade(trades, { capital: 10000 });
+  ok('usable rows counted', k.n === 4);
+  ok('no-R, zero-R and inconsistent all REPORTED', k.noR === 1 && k.zeroR === 1 && k.inconsistent === 1);
+  ok('median risk amount', near(k.medianAmount, 50));
+  ok('as % of capital', near(k.medianPct, 0.5));
+  ok('spread p90/p10', k.spread > 1 && k.spread < 1.6, String(k.spread));
+  ok('no capital -> amounts but no %', riskPerTrade(trades).medianPct === null && riskPerTrade(trades).medianAmount === 50);
+  ok('empty -> n 0, nulls, no throw', riskPerTrade([]).n === 0 && riskPerTrade([]).medianAmount === null);
 }
 
 console.log(fail ? `\n${fail} FAILED\n` : '\nAll passed\n');

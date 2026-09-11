@@ -1148,3 +1148,46 @@ export function rankAgainst(arr, v) {
   const at = p => s[Math.min(s.length - 1, Math.floor(p / 100 * s.length))];
   return { rank: Math.round(s.filter(x => x < v).length / s.length * 100), p5: at(5), p50: at(50), p95: at(95), n: s.length };
 }
+
+// ── Realised risk per trade ──────────────────────────────────────────────────
+//
+// The bridge between R and %: per trade, profit = R × risk_amount, so
+// risk_amount = gross profit ÷ R. No point-value table, no contract size —
+// which is why `risk_amount` was never captured at source (this repo has a
+// documented 10× drift on exactly that kind of constant). With R now on every
+// row it falls out of the data.
+//
+// What it answers: is the bot risking what it is supposed to? A bot "losing
+// 0.26R a trade" is a strategy problem; a bot risking 3% when it should risk
+// 0.5% is a sizing bug that LOOKS like one. Without this they are
+// indistinguishable. The spread (p10–p90) matters as much as the median: a
+// fixed-fraction sizer should be tight; a wide spread is sizing drift.
+//
+// Uses GROSS profit (the MT5 profit field, before swap/commission) because R is
+// a pure price ratio and costs are not in it. Trades with R = 0 have no
+// denominator; trades where profit and R disagree in sign (a partial close, a
+// bad price) are counted as inconsistent, never silently dropped.
+
+export function riskPerTrade(trades, { capital = 0 } = {}) {
+  const amounts = [], rows = [];
+  let noR = 0, zeroR = 0, inconsistent = 0;
+  for (const t of trades) {
+    const r = t.r, p = t.profit;
+    if (r == null || !isFinite(r) || p == null) { noR++; continue; }
+    if (Math.abs(r) < 1e-9) { zeroR++; continue; }
+    const amt = p / r;
+    if (!(amt > 0)) { inconsistent++; continue; }
+    amounts.push(amt); rows.push({ t, riskAmount: amt, riskPct: capital > 0 ? amt / capital * 100 : null });
+  }
+  const s = [...amounts].sort((a, b) => a - b);
+  const at = q => s.length ? s[Math.min(s.length - 1, Math.floor(q * s.length))] : null;
+  const med = s.length ? (s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2) : null;
+  const pct = v => (v == null || !(capital > 0)) ? null : v / capital * 100;
+  return {
+    n: s.length, noR, zeroR, inconsistent, rows,
+    medianAmount: med, p10Amount: at(0.10), p90Amount: at(0.90),
+    medianPct: pct(med), p10Pct: pct(at(0.10)), p90Pct: pct(at(0.90)),
+    // spread ratio: p90/p10. ~1 = fixed-fraction sizing; >3 = all over the place.
+    spread: at(0.10) > 0 ? at(0.90) / at(0.10) : null,
+  };
+}

@@ -315,7 +315,7 @@ import {
   rollingEdge, breakdowns, hourWeekdayGrid, MIN_N_CELL, DOW,
   dailyByGroup, correlationMatrix, effectiveBets, coincidentLoss, worstJointDays, MIN_BOTH_ACTIVE,
   netLegs, exposureSeries, drawdownEpisodes, concentration, projectPaths,
-  windowDist, rankAgainst,
+  windowDist, rankAgainst, riskPerTrade,
 } from './js/botAuditEngine.js';
 import { instrument as _instrument } from './js/instrumentRegistry.js';
 import { histVaR, histCVaR } from './js/metricsCore.js';
@@ -1048,6 +1048,14 @@ function renderOvw(S, C, G) {
     tile('Expectancy', `<span class="${cls(f.expectancy)}">${money(f.expectancy)}</span>`, 'per trade, after costs'),
     tile('Costs', `<span class="neg">${money(f.totalCost)}</span>`, f.costPctOfGross != null ? `${f.costPctOfGross.toFixed(1)}% of gross` : 'swap + commission'),
     tile('Median Hold', dur(f.medHoldSec), `best ${money(f.bestTrade, 0)} / worst ${money(f.worstTrade, 0)}`),
+    (() => {
+      const k = riskPerTrade(TRADES, { capital: C });
+      if (!k.n) return tile('Risk / trade', '—', k.noR === TRADES.length ? 'no rows carry R yet' : 'no usable R', 'locked');
+      const v = k.medianPct != null ? k.medianPct.toFixed(2) + '%' : money(k.medianAmount, 0);
+      const rng = k.medianPct != null ? `${k.p10Pct.toFixed(2)}–${k.p90Pct.toFixed(2)}%` : `${money(k.p10Amount, 0)}–${money(k.p90Amount, 0)}`;
+      const wide = k.spread != null && k.spread > 3;
+      return tile('Risk / trade', `<span class="${wide ? 'neg' : ''}">${v}</span>`, `p10–p90 ${rng} · ${k.n} with R${wide ? ' · sizing drifts' : ''}${k.inconsistent ? ` · ${k.inconsistent} inconsistent` : ''}`, '', '');
+    })(),
   ].join('');
 
   const eq   = S.series.equityByTrade;
@@ -1253,9 +1261,13 @@ function renderSys(C, G) {
   <div class="panel"><div class="ph"><span class="badge">SYS</span>Per-bot book<span class="rt">${rows.length} bots · ${GROSS ? 'gross' : 'net of costs'}</span></div>
   <div class="scroll"><table><thead><tr>
     <th class="l">Bot</th><th>Trades</th><th>Net P&amp;L</th><th>Costs</th><th>Win%</th><th>PF</th>
-    <th>Sharpe</th><th>Expect.</th><th>Max DD $</th><th>Best</th><th>Worst</th><th>Med hold</th></tr></thead><tbody>` +
+    <th>Sharpe</th><th>Expect.</th><th title="Realised risk per trade, from R and $ profit (median · p90/p10 spread). Wide spread = sizing drift.">Risk/tr</th><th>Max DD $</th><th>Best</th><th>Worst</th><th>Med hold</th></tr></thead><tbody>` +
     rows.map(r => {
       const f = r.s.scaleFree, t = r.s.flags.thinSample ? ' style="color:var(--dim)"' : '';
+      const alloc = Number(ALLOC[r.k]) > 0 ? Number(ALLOC[r.k]) : 0;
+      const k = riskPerTrade(all.filter(x => x.bot_key === r.k), { capital: alloc });
+      const riskCell = !k.n ? '<td style="color:var(--dim2)">—</td>'
+        : `<td class="${k.spread > 3 ? 'neg' : ''}" title="${k.n} trades with R · p10 ${k.medianPct != null ? k.p10Pct.toFixed(2) + '%' : money(k.p10Amount, 0)} · p90 ${k.medianPct != null ? k.p90Pct.toFixed(2) + '%' : money(k.p90Amount, 0)}${alloc ? '' : ' · declare an allocation for %'}">${k.medianPct != null ? k.medianPct.toFixed(2) + '%' : money(k.medianAmount, 0)}<span style="color:var(--dim2);font-size:9.5px"> ×${k.spread != null ? k.spread.toFixed(1) : '—'}</span></td>`;
       return `<tr>
         <td class="l"><span class="chip" style="background:${r.bot.bg || 'var(--s2)'};border:1px solid ${r.bot.bd || 'var(--border)'};color:${r.bot.color}">${esc(r.bot.label)}</span>${r.bot.paper ? ' <span style="color:var(--dim2);font-size:10px">paper</span>' : ''}</td>
         <td>${f.trades}</td>
@@ -1265,6 +1277,7 @@ function renderSys(C, G) {
         <td${t}>${num(f.profitFactor)}</td>
         <td${t}>${num(f.sharpe)}</td>
         <td class="${cls(f.expectancy)}">${money(f.expectancy)}</td>
+        ${riskCell}
         <td class="neg">${money(f.maxDDAbs, 0)}</td>
         <td class="pos">${money(f.bestTrade, 0)}</td>
         <td class="neg">${money(f.worstTrade, 0)}</td>
@@ -1761,7 +1774,7 @@ function renderTrd() {
   el.innerHTML = `<div class="panel"><div class="ph"><span class="badge">TRD</span>Closed trades<span class="rt">newest first · showing ${rows.length} of ${TRADES.length}</span></div>
   <div class="scroll"><table><thead><tr>
     <th class="l">Closed (UK)</th><th class="l">Bot</th><th class="l">Sym</th><th class="l">Dir</th><th>Lots</th>
-    <th>Gross</th><th>Swap</th><th>Comm</th><th>Net</th><th>MFE</th><th>MAE</th><th class="l">Exit</th><th>Held</th></tr></thead><tbody>` +
+    <th>Gross</th><th>Swap</th><th>Comm</th><th>Net</th><th title="Result in R: (exit − entry) ÷ (entry − stop). From pylego/broker/stops.py.">R</th><th title="Gross profit ÷ R — what was actually at risk on this trade.">Risk $</th><th>MFE</th><th>MAE</th><th class="l">Exit</th><th>Held</th></tr></thead><tbody>` +
   rows.map(t => {
     const n = netOf(t, { gross: GROSS }), b = botOf(t.bot_key);
     return `<tr>
@@ -1774,6 +1787,8 @@ function renderTrd() {
       <td class="${(t.swap || 0) < 0 ? 'neg' : ''}">${num(t.swap || 0)}</td>
       <td class="${(t.commission || 0) < 0 ? 'neg' : ''}">${t.commission == null ? '—' : num(t.commission)}</td>
       <td class="${cls(n)}"><b>${money(n)}</b></td>
+      <td class="${t.r == null ? '' : cls(t.r)}" title="${t.sl_at_entry != null ? `stop at entry ${t.sl_at_entry} (${esc(t.sl_source || '')})` : 'no entry stop on this row'}">${t.r == null ? '—' : (t.r >= 0 ? '+' : '') + t.r.toFixed(2)}</td>
+      <td style="color:var(--dim)">${(t.r != null && Math.abs(t.r) > 1e-9 && (t.profit || 0) / t.r > 0) ? '$' + Math.round((t.profit || 0) / t.r).toLocaleString('en-GB') : '—'}</td>
       <td style="color:var(--dim)">${t.mfe_pips == null ? '—' : t.mfe_pips.toFixed(1)}</td>
       <td style="color:var(--dim)">${t.mae_pips == null ? '—' : t.mae_pips.toFixed(1)}</td>
       <td class="l" style="color:var(--dim)">${esc(t.reason || '—')}</td>
