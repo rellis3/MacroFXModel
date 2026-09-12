@@ -968,7 +968,15 @@
   </div>
   <div class="dr-pane" id="drPane-day" role="tabpanel" aria-labelledby="drTab-day" hidden>
 <div class="dr-sec" id="drTapeSec" data-seckey="tape" style="display:none">
-      <h3 class="help" title="How fast price has moved over the last 15 minutes, placed against this pair's own history for this time of day, and what that pace has historically meant for the NEXT HOUR's range. Speed persists: a slow tape tends to stay slow for an hour and a fast one to stay fast. That is a statement about range, never direction. It was found by testing a claim about levels — slow arrivals dwell on the level — and discovering they dwell just as much at random non-level prices, so the read belongs to every bar of the day, not only the moments price meets a line.">
+      <h3 class="help" title="WHAT IT MEASURES. How fast price moved over the last 15 minutes, in ATR per minute, ranked against five years of this market at this same time of day and cut into fifths: DRIFT · slow · mid · quick · FAST. Compared within the session because fast in the NY overlap is roughly double fast in Asia.
+
+HOW TO READ IT. Speed persists — a slow tape tends to stay slow for the next hour, a fast one to stay fast (68 of 68 market×session cells, no exceptions). So the word tells you what kind of hour you are about to trade.
+• DRIFT: the next hour has usually stayed within 0.1 ATR of here ~80% of the time and ranged narrower than a typical hour. A hold, not a move. Good for patience; bad for anything that needs price to travel.
+• FAST: the next hour ranges wider than a typical hour — but usually narrower than the hour just gone, because the burst is behind you.
+• mid: an ordinary hour; it does not even earn a chip on the card.
+Read it next to range used: DRIFT with 85% of the day used is a day that is finished; FAST with 20% used is one that is just getting going.
+
+WHAT IT IS NOT. Not direction — every sentence it produces is about range. Not about levels — this began as a claim that price arriving slowly at a level sits on the level; tested against random non-level prices, it sits just as much anywhere, so the read applies to every minute of the day, not only the moments price meets a line. Not a signal — context for sizing and expectations, like the vol percentile.">
         <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">&#9662;</span><i class="ev v" title="validated — an out-of-sample result stands behind it">✓</i>The tape, right now &mdash; what kind of hour is this?</span>
         <span class="chip neu" style="font-size:9px">range context &middot; not direction</span>
       </h3>
@@ -2905,7 +2913,7 @@ function tapeSpeedChip(r) {
   // tails change what a reader should expect from the next hour.
   if (t.quintile === 2 || t.quintile === 3 || t.quintile === 4) return '';
   const fast = t.quintile === 5;
-  return `<span class="chip ${fast ? 'warn' : 'range'}" title="${esc0(t.read)} Speed ${t.speed.toExponential(2)} ATR/min (${t.ptsPerMin > 0 ? '+' : ''}${t.ptsPerMin.toFixed(3)} pts/min over the last 15 min). ${esc0(t.caveat)}">${fast ? '⚡' : '〰'} tape ${t.label}</span>`;
+  return `<span class="chip ${fast ? 'warn' : 'range'}" title="${esc0(t.read)} ${fast ? 'The next hour is still likely wide, but the biggest part of the move has usually happened — the burst is behind you.' : 'A hold, not a move: waiting for a breakout here has usually meant waiting a while.'} Speed ${t.speed.toExponential(2)} ATR/min (${t.ptsPerMin > 0 ? '+' : ''}${t.ptsPerMin.toFixed(3)} pts/min over the last 15 min). ${esc0(t.caveat)}">${fast ? '⚡' : '〰'} tape ${t.label}</span>`;
 }
 
 // ── The crowd, at a higher frequency than COT ────────────────────────────────
@@ -7248,6 +7256,7 @@ async function renderDrawerTape(sym) {
     (t.stale ? `<div class="chip warn" style="margin-bottom:8px">Stale &mdash; last completed bar was ${age >= 120 ? Math.round(age / 60) + 'h' : age + 'm'} ago (market closed or feed paused). The read below describes the LAST hour that traded, not now.</div>` : '') +
     `<div class="ccy-explain">${esc0(t.read)}</div>` +
     (rows ? `<div class="ccy-legs" style="margin-top:8px"><div class="fac-head"><span>This band, five paces of arrival</span><span class="fcov">n=${band.n.toLocaleString()}</span><span class="fv neu">next hr</span></div>${rows}</div>` : '') +
+    `<div class="ccy-explain" style="margin-top:10px"><b>How to use it.</b> DRIFT and you are waiting for a breakout: you are probably waiting a while — size for a range or come back later. FAST and you are about to chase: the next hour is still wide, but the biggest part has likely happened. Read it with the range used: DRIFT at 85% used is a day that is finished; FAST at 20% used is one that is just getting going. It never says which way.</div>` +
     `<div class="muted" style="font-size:10.5px;margin-top:8px">${esc0(t.caveat)} Built from ${t.coverage?.sessions?.toLocaleString() ?? '?'} sessions (${t.coverage?.from ?? '?'} &rarr; ${t.coverage?.to ?? '?'}), sampled every 5 minutes. A typical ${t.bandLabel.split(' ')[0]} hour on this pair ranges ${band?.medianNextRangeAtr ?? '?'} ATR.</div>`;
 }
 
