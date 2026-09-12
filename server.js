@@ -27305,35 +27305,33 @@ async function getM1Cached(pair) {
 // LEGO_MODULES.md), so any trade dated more recently than the last backfill
 // has no archived data at all, which is what "no candle data for
 // <recent dates>" actually means (not a timezone/broker-time offset).
-// Deliberately TAIL-ONLY and capped at OANDA_M1_GAP_CAP_MIN (≈2.4 days) —
-// this fills exactly the small, recent gap a chart-on-click ever needs
-// (loadTradeChart's window is one trade ± 4h), never substitutes for R2 on
-// a wide historical window: OANDA's candles endpoint silently truncates
-// past ~5000 bars per request, so blindly falling back for an
-// archive-missing PAIR (not just a missing recent tail) over a multi-year
-// backtest window would return a truncated, wrong-looking chart instead of
-// an honest "no data" — the cap keeps this fallback to cases where it's
-// actually correct.
-const OANDA_M1_GAP_CAP_MIN = 3500;
+//
+// CORRECTED 2026-09-12: this used to be a single, un-chunked OANDA request,
+// capped at OANDA_M1_GAP_CAP_MIN (≈2.4 days) specifically because OANDA's
+// candles endpoint silently truncates past ~5000 bars per request — a wider
+// gap would have come back as a truncated, wrong-looking chart instead of an
+// honest "no data". Now reuses `fetchM1Gap` (js/m1GapFill.js) — the SAME
+// chunked + retried gap-fill the live plan producer and vote-atlas
+// regeneration already trust, fixed this same night for a different silent-
+// gap bug — which pages the request into ≤5000-bar chunks itself, so the
+// truncation risk this cap existed to avoid is already handled at the
+// fetcher level. The archive itself was found to be over three weeks stale
+// (2026-08-20) while auditing this exact path, hence the much larger cap
+// below: a real, deliberate ceiling against an accidental multi-year
+// request, not a workaround for an unchunked fetcher.
+const OANDA_M1_GAP_CAP_MIN = 45 * 24 * 60; // 45 days
 
 async function fetchOandaM1Candles(pairKey, fromTs, toTs) {
   if (!process.env.OANDA_KEY) return [];
   let osym;
   try { osym = oandaSymbol(pairKey); } catch { return []; }
-  const url = `${_oandaBaseMe()}/v3/instruments/${encodeURIComponent(osym)}/candles`
-    + `?granularity=M1&price=M&from=${encodeURIComponent(new Date(fromTs * 1000).toISOString())}`
-    + `&to=${encodeURIComponent(new Date(toTs * 1000).toISOString())}`;
-  try {
-    const r = await fetch(url, { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(15_000) });
-    if (!r.ok) return [];
-    const j = await r.json();
-    return (j.candles ?? [])
-      .filter(c => c.complete !== false && c.mid)
-      .map(c => ({ time: c.time.slice(0, 19), open: +c.mid.o, high: +c.mid.h, low: +c.mid.l, close: +c.mid.c }));
-  } catch (e) {
-    console.warn(`[candles] OANDA gap-fill failed for ${pairKey}: ${e.message}`);
-    return [];
+  const bars = await _fetchM1Gap(osym, fromTs, toTs, _btFetchM1Range, {
+    onLog: m => console.log(`[candles] ${pairKey}: ${m}`),
+  });
+  if (bars.gaps?.length) {
+    console.warn(`[candles] ${pairKey}: ${bars.gaps.length} window(s) never fetched after retries — chart may have real holes`);
   }
+  return bars.map(b => ({ time: new Date(b.time * 1000).toISOString().substring(0, 19), open: b.open, high: b.high, low: b.low, close: b.close }));
 }
 
 // Shared window-builder for both candle routes below — archive slice +
