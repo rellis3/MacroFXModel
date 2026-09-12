@@ -33,8 +33,9 @@
  * reading straight from the local `VolRangeForecaster/data/m1/` cache,
  * which has the correct 6-column schema.
  *
- *   node scripts/run_session_window_comparison.mjs [pairs...]
- *     (default: eurusd gbpusd usdjpy gold)
+ *   node scripts/run_session_window_comparison.mjs [pairs...] [--variants=key,key]
+ *     (default pairs: eurusd gbpusd usdjpy gold; default variants: all 6)
+ *     (--all26 expands pairs to every locally-cached pair)
  */
 import { loadM1ForPairLocal } from '../js/localM1Loader.js';
 import { asiaFibAtlasWalk } from '../js/asiaFibAtlasEngine.js';
@@ -42,11 +43,24 @@ import { buildAsiaFibAtlasBook } from '../js/asiaFibAtlasReport.js';
 import { runBarrierWalkForward } from '../js/asiaFibAtlasVoteReview.js';
 import { applyConcurrencyCap } from '../js/levelAtlasVoteReview.js';
 import { costForPair } from '../js/perLineStrategy.js';
-import { writeFileSync } from 'fs';
+import { writeFileSync, readFileSync, existsSync } from 'fs';
+
+const ALL_26_PAIRS = ['eurusd', 'gbpusd', 'usdjpy', 'audusd', 'nzdusd', 'usdcad', 'usdchf',
+  'eurjpy', 'eurgbp', 'euraud', 'eurcad', 'eurchf', 'eurnzd', 'gbpjpy', 'gbpaud', 'gbpcad',
+  'gbpchf', 'gbpnzd', 'audjpy', 'audnzd', 'audcad', 'audchf', 'cadjpy', 'chfjpy', 'nzdjpy', 'gold'];
 
 const args = process.argv.slice(2);
+const variantsArg = args.find(a => a.startsWith('--variants='));
+const wantedVariantKeys = variantsArg ? new Set(variantsArg.split('=')[1].split(',')) : null;
+const all26 = args.includes('--all26');
 const pairs = args.filter(a => !a.startsWith('-'));
-const list = pairs.length ? pairs : ['eurusd', 'gbpusd', 'usdjpy', 'gold'];
+const list = all26 ? ALL_26_PAIRS : (pairs.length ? pairs : ['eurusd', 'gbpusd', 'usdjpy', 'gold']);
+
+// Merge into any PRE-EXISTING results JSON (e.g. a prior 4-pair/6-variant run)
+// rather than clobbering it, so a follow-up "run variant X on more pairs"
+// pass extends the same file instead of losing earlier coverage.
+const outPath = new URL('../analysis/session_window_comparison_results.json', import.meta.url);
+const existingResults = existsSync(outPath) ? JSON.parse(readFileSync(outPath, 'utf8')) : null;
 
 // ── Session-window variants — same engine, different range-building window ──
 // All hours are LONDON-LOCAL (DST-aware, same convention asiaFibAtlasEngine
@@ -68,7 +82,7 @@ const VARIANTS = [
     note: 'London/NY overlap ("best liquidity") window as the RANGE source' },
   { key: 'control', label: 'Control 10:00-14:00', startHour: 10, hrs: 4,
     note: 'arbitrary mid-session window, no session-boundary rationale — a control group' },
-];
+].filter(v => !wantedVariantKeys || wantedVariantKeys.has(v.key));
 
 // The two grid cells worth reporting per variant (mirrors
 // scripts/run_asia_fib_atlas_vote_backtest.mjs's own grid): the unfiltered
@@ -90,7 +104,12 @@ function linRegSlope(ys) {
   return sxx > 1e-9 ? sxy / sxx : null;
 }
 
-const results = {};   // variantKey -> pair -> gridLabel -> { overall, byYear, tradesUsed }
+// variantKey -> pair -> gridLabel -> { overall, byYear, tradesUsed }. Seeded
+// from any prior run's results (see existingResults above) so a follow-up
+// pass over a different variant/pair subset ADDS to the file instead of
+// dropping earlier coverage; each (variant, pair) this run actually computes
+// overwrites its own prior entry, nothing else is touched.
+const results = existingResults ? structuredClone(existingResults.results ?? {}) : {};
 
 for (const pair of list) {
   const t0 = Date.now();
@@ -154,13 +173,22 @@ for (const pair of list) {
   }
 }
 
-const outPath = new URL('../analysis/session_window_comparison_results.json', import.meta.url);
-writeFileSync(outPath, JSON.stringify({ generatedAt: new Date().toISOString(), pairs: list, variants: VARIANTS, grid: GRID, results }, null, 2));
+// Merge pairs/variants metadata (union, not overwrite) so a follow-up run
+// over a different subset doesn't erase what an earlier run already covered.
+const mergedPairs = [...new Set([...(existingResults?.pairs ?? []), ...list])];
+const mergedVariantsByKey = new Map((existingResults?.variants ?? []).map(v => [v.key, v]));
+for (const v of VARIANTS) mergedVariantsByKey.set(v.key, v);
+const mergedVariants = [...mergedVariantsByKey.values()];
+
+writeFileSync(outPath, JSON.stringify({ generatedAt: new Date().toISOString(), pairs: mergedPairs, variants: mergedVariants, grid: GRID, results }, null, 2));
 console.log(`\n\nResults written to ${outPath.pathname}`);
 
 // ── Pooled cross-pair summary per variant × grid cell ────────────────────────
+// Iterates every variant with data in the MERGED results (not just the ones
+// this invocation computed), so a follow-up "just run morning+control on 26
+// pairs" pass still prints a full picture alongside earlier variants/pairs.
 console.log('\n\n================ POOLED CROSS-PAIR SUMMARY (per variant) ================');
-for (const v of VARIANTS) {
+for (const v of mergedVariants) {
   const perPair = results[v.key] ?? {};
   console.log(`\n--- ${v.label} (${v.note}) ---`);
   for (const g of GRID) {
