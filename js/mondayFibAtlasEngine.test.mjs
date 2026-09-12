@@ -201,11 +201,25 @@ t('mondayFibAtlasLiveLadder: rung price uses the SAME formula as the walk itself
   assert.ok(Math.abs(r.price - expected) < 1e-6, `price ${r.price} != mon.low+range*2 (${expected})`);
 });
 
-t('mondayFibAtlasLiveLadder: sessionHandoff on every rung matches sessionHandoffPhase(latest bar hour) — one live signal, not per-rung drift', () => {
-  const live = mondayFibAtlasLiveLadder(P, { instrument: 'EURUSD', assetClass: 'fx' });
+t('mondayFibAtlasLiveLadder: sessionHandoff on every rung matches sessionHandoffPhase(nowSec) — one live signal, not per-rung drift', () => {
+  const live = mondayFibAtlasLiveLadder(P, { instrument: 'EURUSD', assetClass: 'fx', nowSec: P.times[P.n - 1] });
   const hourUtc = new Date(P.times[P.n - 1] * 1000).getUTCHours();
   const expected = sessionHandoffPhase(hourUtc);
   for (const r of live.ladder) assert.equal(r.sessionHandoff, expected);
+});
+
+t('mondayFibAtlasLiveLadder: sessionHandoff is anchored to real wall-clock time (nowSec), NOT the cached packed series\' own last bar — 2026-09-12 fix, see asiaFibAtlasEngine.js\'s identical fix', () => {
+  const staleLastBarHour = new Date(P.times[P.n - 1] * 1000).getUTCHours();
+  const freshNowSec = P.times[P.n - 1] + 8 * 3600;   // 8h later — guaranteed a different sessionHandoffPhase bucket
+  const freshHour = new Date(freshNowSec * 1000).getUTCHours();
+  const live = mondayFibAtlasLiveLadder(P, { instrument: 'EURUSD', assetClass: 'fx', nowSec: freshNowSec });
+  assert.equal(live.sessionHandoff, sessionHandoffPhase(freshHour));
+  assert.notEqual(sessionHandoffPhase(freshHour), sessionHandoffPhase(staleLastBarHour), 'test setup must actually cross a bucket boundary');
+});
+
+t('mondayFibAtlasLiveLadder: omitting nowSec defaults to true wall-clock time, not the packed series\' last bar', () => {
+  const live = mondayFibAtlasLiveLadder(P, { instrument: 'EURUSD', assetClass: 'fx' });
+  assert.equal(live.sessionHandoff, sessionHandoffPhase(new Date().getUTCHours()));
 });
 
 t('mondayFibAtlasLiveLadder: a rung already resolved earlier THIS reference week carries prevOutcomeSameDay/touchedToday forward; an unresolved (neither) or a DIFFERENT week does not', () => {

@@ -904,7 +904,22 @@ export function asiaFibAtlasLiveLadder(packed, opts = {}) {
 
   const lastBarTime = packed.times[packed.n - 1];
   const currentPrice = packed.closes[packed.n - 1];
-  const hourUtc = new Date(lastBarTime * 1000).getUTCHours();
+  // sessionHandoff anchor (2026-09-12, owner-flagged live/backtest
+  // reconciliation gap): asiaFibAtlasWalk's OWN sessionHandoff (below,
+  // ~line 766) is derived from the REAL bar time of each specific
+  // historical touch. This live equivalent used to derive it from
+  // `lastBarTime` instead — the latest bar in whatever M1 series happened
+  // to be cached, which can lag genuine "now" under a cold-start, a gap-fill
+  // hiccup, or ordinary server load, without that lag being visible anywhere
+  // (the exact "stale data silently masquerading as current" failure mode
+  // documented elsewhere this session for the R2 M1 cache itself). A rung
+  // that's actually crossed right now should get the phase for right now,
+  // not for whenever the cache last happened to update — using true
+  // wall-clock time (injectable via `opts.nowSec` for deterministic tests)
+  // makes this immune to M1 staleness entirely, closing the gap that made
+  // live decisions unverifiable against the offline reference engine.
+  const nowSec = opts.nowSec ?? Math.floor(Date.now() / 1000);
+  const hourUtc = new Date(nowSec * 1000).getUTCHours();
   const currentSessionHandoff = sessionHandoffPhase(hourUtc);
   const pip = pipSize(instrument ?? '');
 

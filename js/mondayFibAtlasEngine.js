@@ -287,7 +287,13 @@ export function mondayFibAtlasLiveLadder(packed, opts = {}) {
 
   const lastBarTime = packed.times[packed.n - 1];
   const currentPrice = packed.closes[packed.n - 1];
-  const hourUtc = new Date(lastBarTime * 1000).getUTCHours();
+  // sessionHandoff anchor (2026-09-12) — see asiaFibAtlasEngine.js's own
+  // identical fix/doc: derive from true wall-clock time (injectable via
+  // `opts.nowSec` for deterministic tests), not `lastBarTime`, so a stale
+  // cached M1 series can't silently shift which phase a live rung is scored
+  // against relative to the real moment of its crossing.
+  const nowSec = opts.nowSec ?? Math.floor(Date.now() / 1000);
+  const hourUtc = new Date(nowSec * 1000).getUTCHours();
   const currentSessionHandoff = sessionHandoffPhase(hourUtc);
   const pip = pipSize(instrument ?? '');
 

@@ -7113,3 +7113,92 @@ run that still improves on stored data (allowed), a failed-chunk run
 against a pre-fix blob with no `dataAsOf` yet (allowed once, nothing to
 compare against), and a first-ever run with no existing blob (allowed). All
 5 passed.
+
+#### Live-vs-backtest reconciliation hunt: found and fixed a real sessionHandoff divergence (2026-09-12)
+
+Owner's ask, after the 2026-09-11/12 dropped-touch and gapFillWarnings work
+above landed: run the live demo bot's real trades against the (now-fixed)
+offline backtest and find out why they don't agree. Built two pieces of
+infrastructure for this (both additive, no shared-brick changes):
+
+1. **`analysis/fib_atlas_live_vs_backtest_reconcile_http.mjs`** — an
+   HTTP-only variant of the existing `fib_atlas_live_vs_backtest_reconcile.mjs`
+   for an environment with network access to the live app but no local
+   R2/OANDA credentials (e.g. this session's Windows PC, once Remote
+   Control access was granted): reads backtest trades through the
+   already-deployed `vote-trades` route instead of `getJSON` against R2
+   directly, no local `runOne` call needed.
+2. **`POST /api/{asia|monday}-fib-atlas/diag-frozen-split`** (async, same
+   job pattern as `/run` — a synchronous first attempt genuinely timed out:
+   eurusd/gbpusd/audusd/gold's R2 raw M1 cache is apparently empty, not
+   just stale, forcing a ~7-8M-bar OANDA refetch on every call for those
+   4 pairs specifically, a separate infra gap worth investigating
+   someday). Given `{pair, checks: [{targetDate, side, rung, nearTime}]}`,
+   re-walks the pair fresh and scores the SAME real touch against a book
+   built only from touches dated before its own date ("frozen", what a
+   same-night regen would have produced) alongside today's fully
+   retrospective book — `nearTime` (the real trade's own `time_open`)
+   disambiguates which specific touch a real trade matches, since a rung
+   can re-arm and touch several times in one session (found the hard way:
+   USDCHF's above|2 rung touched 5 separate times on 2026-09-04 alone).
+
+Along the way, also found and fixed an unrelated bug the reconciliation
+surfaced: `server.js`'s `_parseFibAtlasDedupeTag()` parsed a trade's rung
+out of its `FA[<dedupeTag>]` comment with an integer-only regex (`-?\d+`),
+but rungs are fib multiples and routinely fractional (`-0.5`, `1.25`,
+`2.5`, ...) — 67 of the first 106 real closed trades checked (63%) had
+silently decoded to `ladder:null/side:null/rung:null` as a result, which
+alone accounted for most of the reconciliation's early "no backtest match"
+count before this was found. Fixed with `(?:\.\d+)?` making the fractional
+part optional; verified against every real fractional-rung comment
+observed. `server.js` change only, nothing else touched.
+
+**Finding, from 5 real decision mismatches surfaced by the reconciliation
+script** (after fixing the regex bug above so trades actually decode):
+testing each one with `diag-frozen-split` showed the "frozen at trade-time" book
+and "today's" book AGREEING with each other in 3/5 cases — ruling out
+walk-forward drift (the book's `splitAt`-derived IS/OOS boundary moving
+forward as the pool grows, `js/levelAtlasReport.js`, NOT touched) as the
+explanation, since a frozen book already agreed with today's. Both also
+disagreed with what the live bot actually did in all 3 cases. Traced this
+to a genuine, confirmed root cause: **`sessionHandoff`, one of Fib Atlas's
+only two `VOTE_DIMS`, was computed two structurally different ways.**
+`asiaFibAtlasWalk`/`mondayFibAtlasWalk` derive it from the REAL M1 bar of
+each specific historical touch (`asiaFibAtlasEngine.js:750`,
+`mondayFibAtlasEngine.js:~200`). `asiaFibAtlasLiveLadder`/
+`mondayFibAtlasLiveLadder` used to derive it from `packed.times[packed.n-1]`
+— whatever the LATEST bar in the cached M1 series happened to be —
+applied UNIFORMLY to every rung on the live ladder regardless of which one
+was actually about to fire. Since the live cache can lag genuine "now" under
+a cold-start, a gap-fill hiccup, or ordinary load (the exact "stale data
+silently masquerading as current" failure mode that runs through this
+entire session's other findings), a rung crossed at the real current moment
+could get scored against an EARLIER `sessionHandoff` bucket than it should
+— flipping `voteDecision`'s vote for that touch with zero difference in the
+underlying trading logic.
+
+**Fix** (`js/asiaFibAtlasEngine.js`, `js/mondayFibAtlasEngine.js` — both
+Fib-Atlas-only, `sessionHandoffPhase` itself untouched, no Vote/Level Atlas
+file touched): `asiaFibAtlasLiveLadder`/`mondayFibAtlasLiveLadder` now
+derive `sessionHandoff`'s hour from true wall-clock time
+(`opts.nowSec ?? Math.floor(Date.now()/1000)`, injectable for deterministic
+tests) instead of the cached packed series' own last bar — immune to M1
+staleness by construction, and now asking the SAME question ("what phase is
+it at the real moment of this crossing") the historical walk always asked,
+instead of "what phase was it whenever the cache last happened to update."
+Owner's own framing, verbatim: "why can't they be the same, otherwise I can
+never validate if backtest meets reality" — this closes that gap at the
+root rather than working around it.
+
+**Two mismatches (of the 5) showed a different, NOT-yet-explained pattern**:
+a fresh re-walk gave NO valid vote at all (both dimensions failed to hold,
+`voteDecision` returns null) where the originally-stored regen HAD a real
+decision for the same touch — most likely OANDA returning very slightly
+revised M1 bars on refetch, shifting a borderline feature bucket, but not
+confirmed. Flagged, not chased further this session.
+
+Validated: `node --check` on both engine files; both engines' own test
+suites still pass (42/42 asia — 2 new tests added pinning wall-clock
+anchoring and staleness-immunity, both pre-existing sessionHandoff
+assertions updated to pass `nowSec` explicitly for determinism rather than
+relying on the packed series' own last bar; 22/22 monday, same pattern).

@@ -630,11 +630,30 @@ t('asiaFibAtlasLiveLadder: rung price uses the SAME formula as the walk itself (
   assert.ok(Math.abs(r.price - expected) < 1e-6, `price ${r.price} != asia.low+range*2 (${expected})`);
 });
 
-t('asiaFibAtlasLiveLadder: sessionHandoff on every rung matches sessionHandoffPhase(latest bar hour) — one live signal, not per-rung drift', () => {
-  const { sessionHandoff, ladder } = asiaFibAtlasLiveLadder(P, { instrument: 'EURUSD', assetClass: 'fx' });
+t('asiaFibAtlasLiveLadder: sessionHandoff on every rung matches sessionHandoffPhase(nowSec) — one live signal, not per-rung drift', () => {
+  const { sessionHandoff, ladder } = asiaFibAtlasLiveLadder(P, { instrument: 'EURUSD', assetClass: 'fx', nowSec: P.times[P.n - 1] });
   const expected = sessionHandoffPhase(new Date(P.times[P.n - 1] * 1000).getUTCHours());
   assert.equal(sessionHandoff, expected);
   assert.ok(ladder.every(r => r.sessionHandoff === sessionHandoff), 'every rung must carry the SAME current sessionHandoff');
+});
+
+t('asiaFibAtlasLiveLadder: sessionHandoff is anchored to real wall-clock time (nowSec), NOT the cached packed series\' own last bar — 2026-09-12 fix, closing the live/backtest reconciliation gap a stale M1 cache used to create silently', () => {
+  // A stale `packed` (last bar hours behind "now") must not drag
+  // sessionHandoff back with it — that was the exact bug (asiaFibAtlasEngine.js's
+  // own historical touches derive this from the REAL bar of each touch;
+  // this live equivalent used to derive it from whatever happened to be
+  // cached, which can lag genuine now under a cold-start or gap-fill hiccup).
+  const staleLastBarHour = new Date(P.times[P.n - 1] * 1000).getUTCHours();
+  const freshNowSec = P.times[P.n - 1] + 8 * 3600;   // 8h later — guaranteed a different sessionHandoffPhase bucket
+  const freshHour = new Date(freshNowSec * 1000).getUTCHours();
+  const { sessionHandoff } = asiaFibAtlasLiveLadder(P, { instrument: 'EURUSD', assetClass: 'fx', nowSec: freshNowSec });
+  assert.equal(sessionHandoff, sessionHandoffPhase(freshHour));
+  assert.notEqual(sessionHandoffPhase(freshHour), sessionHandoffPhase(staleLastBarHour), 'test setup must actually cross a bucket boundary');
+});
+
+t('asiaFibAtlasLiveLadder: omitting nowSec defaults to true wall-clock time, not the packed series\' last bar', () => {
+  const { sessionHandoff } = asiaFibAtlasLiveLadder(P, { instrument: 'EURUSD', assetClass: 'fx' });
+  assert.equal(sessionHandoff, sessionHandoffPhase(new Date().getUTCHours()));
 });
 
 t('asiaFibAtlasLiveLadder: sessionHandoffPhase covers every hour 0-23 with exactly one bucket, boundaries at 5/7/12/16', () => {
@@ -656,7 +675,7 @@ t('asiaFibAtlasLiveLadder: sessionHandoffPhase covers every hour 0-23 with exact
 t('asiaFibAtlasLiveLadder: a rung touched-and-RESOLVED earlier today carries prevOutcomeSameDay forward; an unresolved (neither) touch does not', () => {
   const { touches, date } = asiaFibAtlasLiveToday(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFrac: 0.3 });
   const resolved = touches.find(t2 => t2.outcome === 'out' || t2.outcome === 'back');
-  const { ladder } = asiaFibAtlasLiveLadder(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFrac: 0.3 });
+  const { ladder } = asiaFibAtlasLiveLadder(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFrac: 0.3, nowSec: P.times[P.n - 1] });
   if (resolved) {
     // "Last resolved touch today at this exact rung" — a rung can be
     // touched more than once in a day (re-arm), so pick the SAME record the
