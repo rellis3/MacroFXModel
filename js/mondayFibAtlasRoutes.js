@@ -71,16 +71,18 @@ export async function runOne(instrument, { onLog = () => {} } = {}) {
   // Fib-Atlas-only fix — Monday's own copy of the same fix applied to
   // asiaFibAtlasRoutes.js's runOne; see that file's identical comment and
   // LEGO_MODULES.md's 2026-09-08/11 incident entries for the full
-  // reasoning). `gapFillPacked` (js/m1GapFill.js, shared with Level Atlas
-  // and others — NOT modified here) logs a failed chunk and continues
-  // rather than aborting, so a partial OANDA outage previously produced a
-  // silently-truncated result indistinguishable from a fully current one.
+  // reasoning; upgraded 2026-09-12 after js/m1GapFill.js's own root-cause
+  // fix — see that file's own comment). `gapFillPacked` (js/m1GapFill.js,
+  // shared with Level Atlas and others — NOT modified here) now retries a
+  // failing chunk with backoff and attaches a structured
+  // `packed.gapFillWarnings` array only once retries are truly exhausted —
+  // read directly instead of regex-scraping onLog text.
   let gapFillChunkFailures = 0;
-  const countGapFillFailures = m => { if (/^m1 gap chunk .* failed:/.test(m)) gapFillChunkFailures++; onLog(m); };
   if (process.env.OANDA_KEY) {
     try {
       const before = packed.n;
-      packed = await gapFillPacked(packed, oandaSymbol(pair), fetchM1Range, { nowSec: Math.floor(Date.now() / 1000), onLog: countGapFillFailures });
+      packed = await gapFillPacked(packed, oandaSymbol(pair), fetchM1Range, { nowSec: Math.floor(Date.now() / 1000), onLog });
+      gapFillChunkFailures = packed.gapFillWarnings?.length ?? 0;
       if (packed.n > before) onLog(`${sym}: gap-filled +${(packed.n - before).toLocaleString()} bars to now`);
     } catch (e) { onLog(`${sym}: gap-fill failed (${e.message}) — using stored M1`); gapFillChunkFailures++; }
   }
