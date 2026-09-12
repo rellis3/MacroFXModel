@@ -194,6 +194,31 @@
   .pc-name{font-size:13.5px;font-weight:700;color:var(--text2);letter-spacing:.01em}
   .pc-price{font-size:19px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--text)}
   .pc-top .push{margin-left:auto;display:flex;gap:5px}
+  /* Evidence glyphs — a separate axis from direction colour, so kept monochrome.
+     ✓ validated (OOS result behind it) · ~ context · ? unvalidated · ∅ null */
+  .ev{display:inline-flex;align-items:center;justify-content:center;width:12px;height:12px;border-radius:50%;font-size:8.5px;font-weight:800;margin-left:3px;vertical-align:middle;flex:none;line-height:1}
+  .ev.v{background:var(--blue);color:#fff}
+  .ev.c{border:1.5px solid var(--text3);color:var(--text3)}
+  .ev.u{border:1.5px dashed var(--text3);color:var(--text3)}
+  .ev.n{background:var(--neu-bg);color:var(--text3);text-decoration:line-through}
+  .ev.ai{border:1.5px solid var(--purple);color:var(--purple);font-size:7px}
+  /* Card tiers: the day → the lean → the clock. Five chips at most. */
+  .tier{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-height:20px}
+  .tier .lbl{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);width:38px;flex:none}
+  .tier .rmw{flex:1;min-width:150px}
+  .tier .rmw .rmap{margin:0}
+  .tier .daytxt{font-size:10.5px;color:var(--text2);white-space:nowrap}
+  .tier .quiet{color:var(--text3);font-size:11px}
+  .pcard{gap:6px}
+  /* Research shelf: collapsed, labelled, never beside the calibrated material. */
+  .dr-shelf>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;padding:10px 0;color:var(--text2)}
+  .dr-shelf>summary::-webkit-details-marker{display:none}
+  .dr-shelf>summary .n{color:var(--text3);font-weight:500;font-size:11px}
+  .dr-shelf[open]>summary{border-bottom:1px solid var(--border);margin-bottom:8px}
+  .dr-shelf .dr-sec{border-left:2px solid var(--border);padding-left:10px}
+  .dr-now{font-size:14px;line-height:1.6;max-width:66ch;margin:4px 0 12px}
+  .dr-now b{font-weight:700}
+  .dr-tab .q{display:block;font-size:9px;font-weight:500;color:var(--text3);letter-spacing:.02em;line-height:1.2}
   .chip{display:inline-flex;align-items:center;gap:4px;border-radius:5px;padding:1.5px 7px;
         font-size:10.5px;font-weight:700;letter-spacing:.02em;white-space:nowrap}
   .chip.bull{background:var(--bull-bg);color:var(--bull)}
@@ -910,29 +935,18 @@
   <!-- Headline: the plain-English translation of every signal on this pair —
        the thing worth seeing before anything else. -->
   <div class="dr-tabs" role="tablist" aria-label="Pair detail sections">
-    <button class="dr-tab" role="tab" id="drTab-read" aria-controls="drPane-read" aria-selected="false" onclick="setDrTab('read')">Read<span class="dr-tab-n" id="drTabN-read"></span></button>
-    <button class="dr-tab" role="tab" id="drTab-macro" aria-controls="drPane-macro" aria-selected="false" onclick="setDrTab('macro')">Macro<span class="dr-tab-n" id="drTabN-macro"></span></button>
-    <button class="dr-tab" role="tab" id="drTab-flow" aria-controls="drPane-flow" aria-selected="false" onclick="setDrTab('flow')">Flow<span class="dr-tab-n" id="drTabN-flow"></span></button>
-    <button class="dr-tab" role="tab" id="drTab-levels" aria-controls="drPane-levels" aria-selected="false" onclick="setDrTab('levels')">Levels<span class="dr-tab-n" id="drTabN-levels"></span></button>
-    <button class="dr-tab" role="tab" id="drTab-vol" aria-controls="drPane-vol" aria-selected="false" onclick="setDrTab('vol')">Vol &amp; Path<span class="dr-tab-n" id="drTabN-vol"></span></button>
-    <button class="dr-tab" role="tab" id="drTab-systems" aria-controls="drPane-systems" aria-selected="false" onclick="setDrTab('systems')">Systems<span class="dr-tab-n" id="drTabN-systems"></span></button>
+    <button class="dr-tab" role="tab" id="drTab-now" aria-controls="drPane-now" aria-selected="false" onclick="setDrTab('now')">Now<span class="dr-tab-n" id="drTabN-now"></span><span class="q">one breath</span></button>
+    <button class="dr-tab" role="tab" id="drTab-day" aria-controls="drPane-day" aria-selected="false" onclick="setDrTab('day')">The day<span class="dr-tab-n" id="drTabN-day"></span><span class="q">what kind of hour?</span></button>
+    <button class="dr-tab" role="tab" id="drTab-levels" aria-controls="drPane-levels" aria-selected="false" onclick="setDrTab('levels')">Levels<span class="dr-tab-n" id="drTabN-levels"></span><span class="q">where, and what happens there?</span></button>
+    <button class="dr-tab" role="tab" id="drTab-lean" aria-controls="drPane-lean" aria-selected="false" onclick="setDrTab('lean')">Lean & flow<span class="dr-tab-n" id="drTabN-lean"></span><span class="q">which way, who is positioned?</span></button>
+    <button class="dr-tab" role="tab" id="drTab-why" aria-controls="drPane-why" aria-selected="false" onclick="setDrTab('why')">Why<span class="dr-tab-n" id="drTabN-why"></span><span class="q">the macro backdrop</span></button>
+    <button class="dr-tab" role="tab" id="drTab-analysis" aria-controls="drPane-analysis" aria-selected="false" onclick="setDrTab('analysis')">Analysis<span class="dr-tab-n" id="drTabN-analysis"></span><span class="q">synthesis</span></button>
+    <button class="dr-tab" role="tab" id="drTab-research" aria-controls="drPane-research" aria-selected="false" onclick="setDrTab('research')">Research<span class="dr-tab-n" id="drTabN-research"></span><span class="q">unvalidated & null</span></button>
   </div>
-  <div class="dr-pane" id="drPane-read" role="tabpanel" aria-labelledby="drTab-read" hidden>
-    <div class="dr-sec dr-summary" id="drSummarySec" data-seckey="summary">
-      <h3 class="help" title="The same summary the card shows in the grid — direction tag, every chip, the range map and the ladder. Repeated here because opening this drawer covers the card it came from.">
-        <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>At a glance</span>
-      </h3>
-      <div class="dr-sec-body"><div id="drSummary"></div></div>
-    </div>
-  <div class="dr-sec" id="drOutlookSec" data-seckey="outlook">
-    <h3 class="help" title="A labelled 5-day / 20-day directional read, built from signals this page already computes for this pair (technical/COT/macro/carry composite, COT positioning, the vol-regime building/cooling read) plus the yield-spread z-score family where this pair has one. CONTEXT composite, NOT a new backtested signal — the yield-spread leg (when shown) is the one component here with a real OOS result behind it; everything else is arithmetic agreement across reads already on this card.">
-      <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>🔭 Market Outlook — 5-Day &amp; 20-Day</span>
-      <span class="chip warn" style="font-size:9px">context composite</span>
-    </h3>
-    <div class="dr-sec-body"><div id="drOutlook"></div></div>
-  </div>
-  <div class="dr-sec" id="drChartSec" data-seckey="chart">
-    <h3><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Today vs forecast — M5</span> <span class="muted" id="drChartNote"></span><button class="chart-resize" id="drChartResetBtn" onclick="resetDrawerChartZoom()" title="Reset zoom/pan back to auto-fit">⟲</button><button class="chart-resize" id="drChartBtn" onclick="resizeDrawerChart()" title="Taller / shorter chart">⤢</button></h3>
+  <div class="dr-pane" id="drPane-now" role="tabpanel" aria-labelledby="drTab-now" hidden>
+  <div class="dr-now" id="drNow"></div>
+<div class="dr-sec" id="drChartSec" data-seckey="chart">
+    <h3><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span><i class="ev v" title="validated — an out-of-sample result stands behind it">✓</i>Today vs forecast — M5</span> <span class="muted" id="drChartNote"></span><button class="chart-resize" id="drChartResetBtn" onclick="resetDrawerChartZoom()" title="Reset zoom/pan back to auto-fit">⟲</button><button class="chart-resize" id="drChartBtn" onclick="resizeDrawerChart()" title="Taller / shorter chart">⤢</button></h3>
     <div class="dr-sec-body">
       <div id="drChart"></div>
       <div class="legend">
@@ -943,79 +957,173 @@
       </div>
     </div>
   </div>
-  <div class="dr-sec" id="drAnalysisSec" data-seckey="analysis" style="display:none">
-    <h3 class="help" title="A full fundamental read of this pair, generated by AI from the macro, yield, options, positioning and event data. AI OPINION — a reasoned synthesis, NOT a backtested signal."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Full analysis</span> <span class="chip warn" style="font-size:9px">AI · not backtested</span> <button id="drAnalyseBtn" class="ai-btn" onclick="analysePair()">🧠 Analyse</button> <span id="drAnalysisToggle" class="ai-toggle"></span></h3>
-    <div class="dr-sec-body"><div id="drAnalysis"></div></div>
   </div>
-  <div class="dr-sec" id="drAtlasSec" data-seckey="atlas" style="display:none">
-    <h3 class="help" title="What history says happens when price is exactly where it is right now, relative to today's forecast ladder. Built from a decade of real M1 touches at this rung — every context reading shown here (session, approach speed, yesterday's close, implied vol, etc.) held up on OUT-OF-SAMPLE data before being allowed to appear; anything that didn't survive that check is left out rather than shown as a maybe. Not a signal, not a prediction — a base rate."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Level Atlas — what history says from here</span> <span class="chip neu" style="font-size:9px">OOS-checked</span></h3>
+  <div class="dr-pane" id="drPane-day" role="tabpanel" aria-labelledby="drTab-day" hidden>
+<div class="dr-sec" id="drTapeSec" data-seckey="tape" style="display:none">
+      <h3 class="help" title="How fast price has moved over the last 15 minutes, placed against this pair's own history for this time of day, and what that pace has historically meant for the NEXT HOUR's range. Speed persists: a slow tape tends to stay slow for an hour and a fast one to stay fast. That is a statement about range, never direction. It was found by testing a claim about levels — slow arrivals dwell on the level — and discovering they dwell just as much at random non-level prices, so the read belongs to every bar of the day, not only the moments price meets a line.">
+        <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">&#9662;</span><i class="ev v" title="validated — an out-of-sample result stands behind it">✓</i>The tape, right now &mdash; what kind of hour is this?</span>
+        <span class="chip neu" style="font-size:9px">range context &middot; not direction</span>
+      </h3>
+      <div class="dr-sec-body"><div id="drTape"><span class="muted">loading&hellip;</span></div></div>
+    </div>
+<div class="dr-sec" id="drConeSec" data-seckey="cone" style="display:none">
+    <h3 class="help" title="The volatility cone: where this market's CURRENT volatility ranks inside its own history, over four lookback windows. Each dot is a percentile (0 = quietest it's been, 100 = wildest). Dots sliding RIGHT as the window shortens = vol is building; sliding LEFT = cooling off. Context for sizing and stop width — not a direction signal."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span><i class="ev c" title="context — measured, not predictive">~</i>Volatility cone — is vol building or cooling?</span></h3>
+    <div class="dr-sec-body"><div id="drCone"></div></div>
+  </div>
+<div class="dr-sec" id="drIvRvSec" data-seckey="ivrv" style="display:none">
+      <h3 class="help" title="Realised volatility is what this market HAS done (close-to-close, annualised). Implied is what the options market is CHARGING for the next 30 days. The gap between them is a risk premium, not a direction — a high IV-RV spread says options are expensive relative to recent movement, which is context for sizing and for whether to buy or sell premium, never a buy/sell signal on the underlying.">
+        <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span><i class="ev c" title="context — measured, not predictive">~</i>Realised vs implied volatility</span>
+        <span class="chip neu" style="font-size:9px">context · not a signal</span>
+      </h3>
+      <div class="dr-sec-body"><div id="drIvRv"><span class="muted">loading…</span></div></div>
+    </div>
+<div class="dr-sec" id="drSessPathSec" data-seckey="sesspath" style="display:none">
+    <h3 class="help" title="Given how TODAY has already moved toward a forecast band, what does history say about the odds the FULL SESSION goes on to reach it? Different question from the Read tab (which is about a specific line touch): this is whole-session shape — still extending, pulled back, or fully reversed from its own peak so far — each checked out-of-sample before being shown. Not a signal, a base rate.">
+      <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span><i class="ev v" title="validated — an out-of-sample result stands behind it">✓</i>Session Path — where's today headed?</span>
+      <span class="chip neu" style="font-size:9px">OOS-checked</span>
+    </h3>
+    <div class="hint" style="margin:2px 0 6px">Not a trade call — a gauge. Checks how far today has already pushed toward each remaining target, and whether history says a day shaped like this reaches it more or less often than usual. If it's already spiked and given the move back, that lowers the odds of it running further today — it doesn't tell you to open a new trade either way.</div>
+    <div class="dr-sec-body"><div id="drSessPath"><span class="muted">loading…</span></div></div>
+  </div>
+<div class="dr-sec" id="drHandoffSec" data-seckey="handoff" style="display:none">
+    <h3 class="help" title="Session-to-session, not touch/band level: given how the most recently CLOSED session (Asia/London/NY) behaved, what does history say about the session that's about to happen? Two SEPARATE questions checked out-of-sample: does the move CONTINUE in the same direction (checked across 5 instruments: a clean coin-flip — an honest null, shown as such) and is the NEXT session likely to be volatile (a real, consistent effect — a wild close tends to hand off into another wild session).">
+      <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span><i class="ev v" title="validated — an out-of-sample result stands behind it">✓</i>Session Handoff — what did the last session hand off?</span>
+      <span class="chip neu" style="font-size:9px">OOS-checked</span>
+    </h3>
+    <div class="hint" style="margin:2px 0 6px">Not a trade call. "Does it continue" is usually close to a coin flip on its own — shown honestly, not hidden. "Next session wild?" is the more reliable read: a volatile close tends to hand off into another volatile session, which matters for how wide to expect the next few hours to be, not which direction to take.</div>
+    <div class="dr-sec-body"><div id="drHandoff"><span class="muted">loading…</span></div></div>
+  </div>
+<div class="dr-sec" id="drPathSec" data-seckey="path" style="display:none">
+    <h3 class="help" title="The Forecast Path engine's CALIBRATED intraday claims (event-aware, session-shaped σ — the claims are graded against history on that page, not asserted). Range and timing context, NOT direction: its own calibration shows the direction call is a coin flip."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span><i class="ev v" title="validated — an out-of-sample result stands behind it">✓</i>📐 Forecast Path — calibrated 4h claims</span></h3>
+    <div class="dr-sec-body"><div id="drPath"></div></div>
+  </div>
+  </div>
+  <div class="dr-pane" id="drPane-levels" role="tabpanel" aria-labelledby="drTab-levels" hidden>
+  <div class="dr-sec" id="drLadderSec" data-seckey="ladder">
+    <h3 class="help" title="The forecast's distances from today's open laid out as prices, with how often each is touched and when. Distances, not support and resistance.">
+      <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Ladder — forecast rungs and hit rates</span><i class="ev v" title="validated — the rungs are calibrated; hit rates are measured">✓</i>
+      <span class="chip neu" style="font-size:9px">calibrated · measured</span>
+    </h3>
+    <div class="dr-sec-body"><div id="drLadder"></div></div>
+  </div>
+<div class="dr-sec" id="drAtlasSec" data-seckey="atlas" style="display:none">
+    <h3 class="help" title="What history says happens when price is exactly where it is right now, relative to today's forecast ladder. Built from a decade of real M1 touches at this rung — every context reading shown here (session, approach speed, yesterday's close, implied vol, etc.) held up on OUT-OF-SAMPLE data before being allowed to appear; anything that didn't survive that check is left out rather than shown as a maybe. Not a signal, not a prediction — a base rate."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span><i class="ev c" title="context — measured, not predictive">~</i>Level Atlas — what history says from here</span> <span class="chip neu" style="font-size:9px">OOS-checked</span></h3>
     <div class="hint" style="margin:2px 0 6px">Not a trade call — a base rate. "Touched" below already happened today (context only); "👉 Approaching" is the untouched line still ahead, live right now — that's the one to watch.</div>
     <div class="dr-sec-body"><div id="drAtlas"></div></div>
   </div>
-  <div class="dr-sec" id="drThesisSec" data-seckey="thesis" style="display:none">
-    <h3 class="help" title="The working trade idea for this pair, and — from every signal we compute — what BACKS it versus what ARGUES AGAINST it. A consistency check to frame the trade, not a prediction. Read down: thesis → what supports → what challenges → then the levels below."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>The trade thesis — what supports it, what challenges it</span></h3>
-    <div class="dr-sec-body"><div id="drThesis"></div></div>
-  </div>
-  <div class="dr-sec" id="drStorySec" data-seckey="story">
-    <h3><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>The story</span></h3>
-    <div class="dr-sec-body"><div class="story" id="drStory"><span class="muted">loading…</span></div></div>
-  </div>
-  <div class="dr-sec" id="drNewsSec" data-seckey="news" style="display:none">
-    <h3 class="help" title="Scheduled economic events that move THIS pair — the calendar filtered to its own two economies, soonest first. High-impact events can spike the range well beyond the forecast, so many traders wait until they're out."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Today's news for this pair</span></h3>
-    <div class="dr-sec-body"><div id="drNews"></div></div>
-  </div>
-  </div>
-  <div class="dr-pane" id="drPane-macro" role="tabpanel" aria-labelledby="drTab-macro" hidden>
-  <div class="dr-sec" id="drAttribSec" data-seckey="attrib" style="display:none">
-    <h3 class="help" title="Splits today's actual move into the part explained by each currency's own broad behaviour and the part that is this pair's alone. Exact by construction — the three parts sum to the whole move. The point is to tell you WHICH VIEW you are holding: a dollar view, a euro view, or a EUR/USD view.">
-      <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">&#9662;</span>What moved this today</span>
-      <span class="chip neu" style="font-size:9px">measured &middot; exact split</span>
+<div class="dr-sec" id="drVoteSec" data-seckey="vote" style="display:none">
+    <h3 class="help" title="What the Level Atlas vote-margin decision currently reads for each untouched line ahead: FADE bets on retracement, CONTINUE bets on breaking through, based on how many of the line's own live context readings (session, approach speed, candle rejection, etc.) agree. This is the SAME decision volatility_bot_v2 trades live off — a rolling read off the current bar, not a locked-in forecast, so it can still shift before price actually reaches the line.">
+      <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span><i class="ev c" title="context — measured, not predictive">~</i>Live Vote Decision — what would happen at each line</span>
+      <span class="chip neu" style="font-size:9px">live · can shift before touch</span>
     </h3>
-    <div class="dr-sec-body"><div id="drAttrib"></div></div>
+    <div class="hint" style="margin:2px 0 6px">Not a locked-in call — a live read. Recomputed from the current bar's own context every few seconds; "bot would trade this" means the margin already clears volatility_bot_v2's own live threshold (≥3).</div>
+    <div class="dr-sec-body"><div id="drVote"><span class="muted">loading…</span></div></div>
   </div>
-  <div class="dr-sec" id="drRatesSec" data-seckey="rates" style="display:none">
-    <h3 class="help" title="How the DE–US yield spread relates to this pair right now. CONTEXT only — measured over 22yr, the yield confirms moves but does NOT forecast direction. Use it to gauge whether the current move is rates-backed, not to pick a direction."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Rates context (yield spread)</span></h3>
-    <div class="dr-sec-body"><div id="drRates"><span class="muted">loading…</span></div></div>
+<div class="dr-sec" id="drVoteAnalysisSec" data-seckey="voteanalysis" style="display:none">
+    <h3 class="help" title="What history actually shows for this pair at the bot's own trading threshold (margin≥3), plus a real structural finding measured across all 17 live-traded pairs: once a rung gets touched during the Asia session, does the SAME move tend to keep going (reach the next rung out) or reverse (tag the other side)? Answered from a real re-walk of the touch data, not a live guess — see the card for sample sizes.">
+      <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span><i class="ev c" title="context — measured, not predictive">~</i>Vote Atlas — what history shows</span>
+      <span class="chip neu" style="font-size:9px">measured, not live</span>
+    </h3>
+    <div class="dr-sec-body"><div id="drVoteAnalysis"><span class="muted">loading…</span></div></div>
   </div>
-  <div class="dr-sec" id="drCorrSec" data-seckey="corr" style="display:none">
-    <h3 class="help" title="How this market has moved RELATIVE to others over the last ~10 trading days, and its sensitivity (beta) to the dollar, rates and risk. CONTEXT only, and backward-looking: correlations are regime-dependent and in a real risk-off they snap toward 1, so a historical 'hedge' can stop hedging exactly when you need it. Not a signal — use it to avoid doubling up the same bet and to know what really drives this pair."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Correlations, hedges &amp; beta</span></h3>
-    <div class="dr-sec-body"><div id="drCorr"><span class="muted">loading…</span></div></div>
-  </div>
-  </div>
-  <div class="dr-pane" id="drPane-flow" role="tabpanel" aria-labelledby="drTab-flow" hidden>
-    <div class="dr-sec" id="drOiSec" data-seckey="oiboard" style="display:none">
+<div class="dr-sec" id="drOiSec" data-seckey="oiboard" style="display:none">
       <h3 class="help" title="The CME options board for this pair: where the biggest open interest sits (walls), where the most contracts expire worthless (max pain), and which way dealer hedging pushes price (gamma). A wall is a price level a lot of money is already positioned around — it tends to act as a magnet or a barrier, not a guarantee. Real data, forward test still collecting: treat it as WHERE the positioning is, not a prediction of where price goes.">
-        <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">&#9662;</span>Options board &mdash; walls, max pain, gamma</span>
+        <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">&#9662;</span><i class="ev c" title="context — measured, not predictive">~</i>Options board &mdash; walls, max pain, gamma</span>
         <span class="chip neu" style="font-size:9px">real data &middot; forward test collecting</span>
       </h3>
       <div class="dr-sec-body"><div id="drOiBoard"><span class="muted">loading&hellip;</span></div></div>
     </div>
-    <div class="dr-sec" id="drOiChgSec" data-seckey="oichange" style="display:none">
-      <h3 class="help" title="What changed in the options book since the previous capture: which walls got BUILT (new money arriving) versus COVERED (positions closing). A wall that is growing is being defended; one that is fading has stopped mattering. Day-over-day only exists because the snapshots are archived nightly — CME publishes no options history.">
-        <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">&#9662;</span>What changed since yesterday</span>
-      </h3>
-      <div class="dr-sec-body"><div id="drOiChg"></div></div>
-    </div>
-    <div class="dr-sec" id="drCotSec" data-seckey="cotdetail" style="display:none">
+<div class="dr-sec" id="drExhSec" data-seckey="exh" style="display:none">
+    <h3 class="help" title="Where the day TURNS, as opposed to how far it travels. Fitted on ~10 years of London-anchored days: every reversal is measured as its distance from the session open in units of forecast sigma, then split by session, by which turn of the day it was, and by side. Rungs are anchored to the open, so they become real prices at midnight. A rung is a ZONE not a price — the turn distance is a wide distribution, and the coverage column is there so you can see whether the fit still holds out-of-sample.">
+      <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span><i class="ev c" title="context — measured, not predictive">~</i>Turn zones — where the day reverses</span>
+      <span class="chip neu" style="font-size:9px">descriptive · zones not prices</span>
+    </h3>
+    <div class="dr-sec-body"><div id="drExh"><span class="muted">loading…</span></div></div>
+  </div>
+  </div>
+  <div class="dr-pane" id="drPane-lean" role="tabpanel" aria-labelledby="drTab-lean" hidden>
+<div class="dr-sec" id="drOutlookSec" data-seckey="outlook">
+    <h3 class="help" title="A labelled 5-day / 20-day directional read, built from signals this page already computes for this pair (technical/COT/macro/carry composite, COT positioning, the vol-regime building/cooling read) plus the yield-spread z-score family where this pair has one. CONTEXT composite, NOT a new backtested signal — the yield-spread leg (when shown) is the one component here with a real OOS result behind it; everything else is arithmetic agreement across reads already on this card.">
+      <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span><i class="ev c" title="context — measured, not predictive">~</i>🔭 Market Outlook — 5-Day &amp; 20-Day</span>
+      <span class="chip warn" style="font-size:9px">context composite</span>
+    </h3>
+    <div class="dr-sec-body"><div id="drOutlook"></div></div>
+  </div>
+<div class="dr-sec" id="drCotSec" data-seckey="cotdetail" style="display:none">
       <h3 class="help" title="Weekly CFTC Commitments of Traders: how large speculators are positioned in this pair's futures, how stretched that is against its own history, and which way it moved this week. This is who is ALREADY positioned, not who is buying now — a crowded one-way bet raises the odds of a snap-back if it is wrong. Crosses have no single CFTC contract, so their read is derived from both legs.">
-        <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">&#9662;</span>Positioning &mdash; COT detail</span>
+        <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">&#9662;</span><i class="ev c" title="context — measured, not predictive">~</i>Positioning &mdash; COT detail</span>
         <span class="chip neu" style="font-size:9px">real data &middot; weekly, lagged</span>
       </h3>
       <div class="dr-sec-body"><div id="drCotDetail"></div></div>
     </div>
-    <div class="dr-sec" id="drCrowdSec" data-seckey="crowd" style="display:none">
+<div class="dr-sec" id="drCrowdSec" data-seckey="crowd" style="display:none">
       <h3 class="help" title="Where retail money is actually sitting right now, from the broker's own order and position book. COT is a weekly report published days late; this is live. The two disagreeing is itself the read — and retail positioning is most often used as a CONTRARIAN indicator, because the crowd is heaviest at the wrong moments. Real data, no backtest here.">
-        <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">&#9662;</span>The crowd, right now</span>
+        <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">&#9662;</span><i class="ev c" title="context — measured, not predictive">~</i>The crowd, right now</span>
         <span class="chip neu" style="font-size:9px">live &middot; contrarian context</span>
       </h3>
       <div class="dr-sec-body"><div id="drCrowd"><span class="muted">loading&hellip;</span></div></div>
     </div>
-    <div class="dr-pending" id="drFlowPending" style="display:none"><b>No flow data for this instrument</b><p>Neither an options board nor a CFTC contract is wired for it.</p><p class="dr-pending-links"><a href="oi-dashboard.html" target="_blank">OI dashboard &rarr;</a> &middot; <a href="cot-extremes.html" target="_blank">COT extremes &rarr;</a></p></div>
+<div class="dr-sec" id="drOiChgSec" data-seckey="oichange" style="display:none">
+      <h3 class="help" title="What changed in the options book since the previous capture: which walls got BUILT (new money arriving) versus COVERED (positions closing). A wall that is growing is being defended; one that is fading has stopped mattering. Day-over-day only exists because the snapshots are archived nightly — CME publishes no options history.">
+        <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">&#9662;</span><i class="ev c" title="context — measured, not predictive">~</i>What changed since yesterday</span>
+      </h3>
+      <div class="dr-sec-body"><div id="drOiChg"></div></div>
+    </div>
+<div class="dr-sec" id="drAttribSec" data-seckey="attrib" style="display:none">
+    <h3 class="help" title="Splits today's actual move into the part explained by each currency's own broad behaviour and the part that is this pair's alone. Exact by construction — the three parts sum to the whole move. The point is to tell you WHICH VIEW you are holding: a dollar view, a euro view, or a EUR/USD view.">
+      <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">&#9662;</span><i class="ev c" title="context — measured, not predictive">~</i>What moved this today</span>
+      <span class="chip neu" style="font-size:9px">measured &middot; exact split</span>
+    </h3>
+    <div class="dr-sec-body"><div id="drAttrib"></div></div>
   </div>
-  <div class="dr-pane" id="drPane-levels" role="tabpanel" aria-labelledby="drTab-levels" hidden>
-  <div class="dr-sec" id="drTdeSec" data-seckey="tde">
+  <div class="dr-sec" id="drAllReadsSec" data-seckey="allreads">
+    <h3 class="help" title="Every chip the card used to show, in one row. The card now keeps five at most — the day, the lean, its best supporter, its worst threat, the clock — and the rest live here so nothing is lost, only demoted.">
+      <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>All reads, at once</span><i class="ev c" title="context — mixed evidence; each chip carries its own">~</i>
+    </h3>
+    <div class="dr-sec-body"><div id="drAllReads"></div></div>
+  </div>
+<div class="dr-pending" id="drFlowPending" style="display:none"><b>No flow data for this instrument</b><p>Neither an options board nor a CFTC contract is wired for it.</p><p class="dr-pending-links"><a href="oi-dashboard.html" target="_blank">OI dashboard &rarr;</a> &middot; <a href="cot-extremes.html" target="_blank">COT extremes &rarr;</a></p></div>
+  </div>
+  <div class="dr-pane" id="drPane-why" role="tabpanel" aria-labelledby="drTab-why" hidden>
+  <div class="dr-sec" id="drFactorSec" data-seckey="factor" style="display:none">
+    <h3 class="help" title="The base currency's factor scores minus the quote's, factor by factor, then averaged equally. Says which factor carries the fundamental case and whether the others agree. Explanation, never prediction — macro as a signal is a banked null here.">
+      <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Fundamental gap — the factor read</span><i class="ev c" title="context — explanation, not prediction">~</i>
+      <span class="chip neu" style="font-size:9px">context · not a signal</span>
+    </h3>
+    <div class="dr-sec-body"><div id="drFactor"></div></div>
+  </div>
+<div class="dr-sec" id="drRatesSec" data-seckey="rates" style="display:none">
+    <h3 class="help" title="How the DE–US yield spread relates to this pair right now. CONTEXT only — measured over 22yr, the yield confirms moves but does NOT forecast direction. Use it to gauge whether the current move is rates-backed, not to pick a direction."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span><i class="ev v" title="validated — an out-of-sample result stands behind it">✓</i>Rates context (yield spread)</span></h3>
+    <div class="dr-sec-body"><div id="drRates"><span class="muted">loading…</span></div></div>
+  </div>
+<div class="dr-sec" id="drCorrSec" data-seckey="corr" style="display:none">
+    <h3 class="help" title="How this market has moved RELATIVE to others over the last ~10 trading days, and its sensitivity (beta) to the dollar, rates and risk. CONTEXT only, and backward-looking: correlations are regime-dependent and in a real risk-off they snap toward 1, so a historical 'hedge' can stop hedging exactly when you need it. Not a signal — use it to avoid doubling up the same bet and to know what really drives this pair."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span><i class="ev c" title="context — measured, not predictive">~</i>Correlations, hedges &amp; beta</span></h3>
+    <div class="dr-sec-body"><div id="drCorr"><span class="muted">loading…</span></div></div>
+  </div>
+<div class="dr-sec" id="drStorySec" data-seckey="story">
+    <h3><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span><i class="ev c" title="context — measured, not predictive">~</i>The story</span></h3>
+    <div class="dr-sec-body"><div class="story" id="drStory"><span class="muted">loading…</span></div></div>
+  </div>
+<div class="dr-sec" id="drNewsSec" data-seckey="news" style="display:none">
+    <h3 class="help" title="Scheduled economic events that move THIS pair — the calendar filtered to its own two economies, soonest first. High-impact events can spike the range well beyond the forecast, so many traders wait until they're out."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span><i class="ev c" title="context — measured, not predictive">~</i>Today's news for this pair</span></h3>
+    <div class="dr-sec-body"><div id="drNews"></div></div>
+  </div>
+  </div>
+  <div class="dr-pane" id="drPane-analysis" role="tabpanel" aria-labelledby="drTab-analysis" hidden>
+<div class="dr-sec" id="drAnalysisSec" data-seckey="analysis" style="display:none">
+    <h3 class="help" title="A full fundamental read of this pair, generated by AI from the macro, yield, options, positioning and event data. AI OPINION — a reasoned synthesis, NOT a backtested signal."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span><i class="ev ai" title="AI opinion — reads the snapshot, not a measurement">AI</i>Full analysis</span> <span class="chip warn" style="font-size:9px">AI · not backtested</span> <button id="drAnalyseBtn" class="ai-btn" onclick="analysePair()">🧠 Analyse</button> <span id="drAnalysisToggle" class="ai-toggle"></span></h3>
+    <div class="dr-sec-body"><div id="drAnalysis"></div></div>
+  </div>
+<div class="dr-sec" id="drThesisSec" data-seckey="thesis" style="display:none">
+    <h3 class="help" title="The working trade idea for this pair, and — from every signal we compute — what BACKS it versus what ARGUES AGAINST it. A consistency check to frame the trade, not a prediction. Read down: thesis → what supports → what challenges → then the levels below."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span><i class="ev ai" title="AI opinion — reads the snapshot, not a measurement">AI</i>The trade thesis — what supports it, what challenges it</span></h3>
+    <div class="dr-sec-body"><div id="drThesis"></div></div>
+  </div>
+  </div>
+  <div class="dr-pane" id="drPane-research" role="tabpanel" aria-labelledby="drTab-research" hidden>
+  <details class="dr-shelf"><summary>▸ Research shelf <span class="n">unvalidated and null modules · collapsed · none carries weight on the card</span></summary>
+<div class="dr-sec" id="drTdeSec" data-seckey="tde">
     <h3 class="help" title="A model that scores a trade at a level: given where price is, it says go or skip, how likely it is to work, and how big to go. Click a zone below then 'Decide' to try it. Honest ceiling: OOS calibration collapses to one ~55%-realized bucket — it barely separates good setups from bad ones. The one part of this research that DID show a real, OOS, cross-pair-consistent edge (fading WITH the prevailing USD trend, not against it) isn't wired into the score below — see the USD-trend banner on the Continuation vs Fade page for that piece.">
-      <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Decision Engine snapshot</span>
+      <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span><i class="ev u" title="unvalidated — a heuristic, not yet tested">?</i>Decision Engine snapshot</span>
       <span class="chip warn" title="Honest health warning: this model's numbers are a hand-set starting guess, NOT yet proven on real outcomes. Treat it as a second opinion, not gospel.">UNCALIBRATED PRIOR</span>
     </h3>
     <div class="dr-sec-body">
@@ -1035,22 +1143,9 @@
       <div class="err" id="drTdeErr" style="margin-top:6px"></div>
     </div>
   </div>
-  <div class="dr-sec" id="drHitsSec" data-seckey="hits" style="display:none">
-    <h3 class="help" title="For each forecast line (O-H/O-L median & 75th), how far price fades back from the line and how often it blows straight through — split by which tap it is (1st / 2nd / 3rd+). A rising blow-through% by the 3rd tap means the line has stopped holding: fade the 1st touch, stand aside by the 3rd.">
-      <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Line fade by hit</span> <span class="muted" id="drHitsNote"></span>
-      <span style="float:right;font-weight:400;font-size:12px">
-        <button class="hits-tgl" id="drHitsDaily" onclick="setHitsHorizon('daily')">Daily</button><button class="hits-tgl" id="drHitsWeekly" onclick="setHitsHorizon('weekly')">Weekly</button>
-        <select id="drHitsRegime" onchange="renderDrawerHits()" style="margin-left:8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:5px;padding:2px 4px"></select>
-      </span>
-    </h3>
-    <div class="dr-sec-body">
-      <div id="drHits"><span class="muted">loading…</span></div>
-      <div class="muted" id="drHitsTakeaway" style="margin-top:6px"></div>
-    </div>
-  </div>
-  <div class="dr-sec" id="drLevelsSec" data-seckey="levels">
+<div class="dr-sec" id="drLevelsSec" data-seckey="levels">
     <h3 class="help" title="The live bot's own price-level book, star-rated by structural confluence (tight fib, cross-session agreement, density, pivot match). Hand-set additive rating — NOT fitted, and not yet checked against real outcomes (a falsification tool exists — rank-ic.html's 'Live entry scores' — but no recorded verdict yet). Treat stars as 'more structural agreement here', not 'proven higher win rate'.">
-      <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Bot level book (stars)</span>
+      <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span><i class="ev u" title="unvalidated — a heuristic, not yet tested">?</i>Bot level book (stars)</span>
       <span class="chip warn" style="font-size:9px">unvalidated heuristic</span>
     </h3>
     <div class="dr-sec-body">
@@ -1063,85 +1158,41 @@
       <div class="muted" id="drLevelsNote"></div>
     </div>
   </div>
-  <div class="dr-sec" id="drExhSec" data-seckey="exh" style="display:none">
-    <h3 class="help" title="Where the day TURNS, as opposed to how far it travels. Fitted on ~10 years of London-anchored days: every reversal is measured as its distance from the session open in units of forecast sigma, then split by session, by which turn of the day it was, and by side. Rungs are anchored to the open, so they become real prices at midnight. A rung is a ZONE not a price — the turn distance is a wide distribution, and the coverage column is there so you can see whether the fit still holds out-of-sample.">
-      <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Turn zones — where the day reverses</span>
-      <span class="chip neu" style="font-size:9px">descriptive · zones not prices</span>
+<div class="dr-sec" id="drHitsSec" data-seckey="hits" style="display:none">
+    <h3 class="help" title="For each forecast line (O-H/O-L median & 75th), how far price fades back from the line and how often it blows straight through — split by which tap it is (1st / 2nd / 3rd+). A rising blow-through% by the 3rd tap means the line has stopped holding: fade the 1st touch, stand aside by the 3rd.">
+      <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span><i class="ev n" title="null — tested, and nothing was found">∅</i>Line fade by hit</span> <span class="muted" id="drHitsNote"></span>
+      <span style="float:right;font-weight:400;font-size:12px">
+        <button class="hits-tgl" id="drHitsDaily" onclick="setHitsHorizon('daily')">Daily</button><button class="hits-tgl" id="drHitsWeekly" onclick="setHitsHorizon('weekly')">Weekly</button>
+        <select id="drHitsRegime" onchange="renderDrawerHits()" style="margin-left:8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:5px;padding:2px 4px"></select>
+      </span>
     </h3>
-    <div class="dr-sec-body"><div id="drExh"><span class="muted">loading…</span></div></div>
-  </div>
-  </div>
-  <div class="dr-pane" id="drPane-vol" role="tabpanel" aria-labelledby="drTab-vol" hidden>
-    <div class="dr-sec" id="drTapeSec" data-seckey="tape" style="display:none">
-      <h3 class="help" title="How fast price has moved over the last 15 minutes, placed against this pair's own history for this time of day, and what that pace has historically meant for the NEXT HOUR's range. Speed persists: a slow tape tends to stay slow for an hour and a fast one to stay fast. That is a statement about range, never direction. It was found by testing a claim about levels — slow arrivals dwell on the level — and discovering they dwell just as much at random non-level prices, so the read belongs to every bar of the day, not only the moments price meets a line.">
-        <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">&#9662;</span>The tape, right now &mdash; what kind of hour is this?</span>
-        <span class="chip neu" style="font-size:9px">range context &middot; not direction</span>
-      </h3>
-      <div class="dr-sec-body"><div id="drTape"><span class="muted">loading&hellip;</span></div></div>
+    <div class="dr-sec-body">
+      <div id="drHits"><span class="muted">loading…</span></div>
+      <div class="muted" id="drHitsTakeaway" style="margin-top:6px"></div>
     </div>
-    <div class="dr-sec" id="drIvRvSec" data-seckey="ivrv" style="display:none">
-      <h3 class="help" title="Realised volatility is what this market HAS done (close-to-close, annualised). Implied is what the options market is CHARGING for the next 30 days. The gap between them is a risk premium, not a direction — a high IV-RV spread says options are expensive relative to recent movement, which is context for sizing and for whether to buy or sell premium, never a buy/sell signal on the underlying.">
-        <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Realised vs implied volatility</span>
-        <span class="chip neu" style="font-size:9px">context · not a signal</span>
-      </h3>
-      <div class="dr-sec-body"><div id="drIvRv"><span class="muted">loading…</span></div></div>
-    </div>
-  <div class="dr-sec" id="drConeSec" data-seckey="cone" style="display:none">
-    <h3 class="help" title="The volatility cone: where this market's CURRENT volatility ranks inside its own history, over four lookback windows. Each dot is a percentile (0 = quietest it's been, 100 = wildest). Dots sliding RIGHT as the window shortens = vol is building; sliding LEFT = cooling off. Context for sizing and stop width — not a direction signal."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Volatility cone — is vol building or cooling?</span></h3>
-    <div class="dr-sec-body"><div id="drCone"></div></div>
   </div>
-  <div class="dr-sec" id="drVoteSec" data-seckey="vote" style="display:none">
-    <h3 class="help" title="What the Level Atlas vote-margin decision currently reads for each untouched line ahead: FADE bets on retracement, CONTINUE bets on breaking through, based on how many of the line's own live context readings (session, approach speed, candle rejection, etc.) agree. This is the SAME decision volatility_bot_v2 trades live off — a rolling read off the current bar, not a locked-in forecast, so it can still shift before price actually reaches the line.">
-      <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Live Vote Decision — what would happen at each line</span>
-      <span class="chip neu" style="font-size:9px">live · can shift before touch</span>
-    </h3>
-    <div class="hint" style="margin:2px 0 6px">Not a locked-in call — a live read. Recomputed from the current bar's own context every few seconds; "bot would trade this" means the margin already clears volatility_bot_v2's own live threshold (≥3).</div>
-    <div class="dr-sec-body"><div id="drVote"><span class="muted">loading…</span></div></div>
-  </div>
-  <div class="dr-sec" id="drVoteAnalysisSec" data-seckey="voteanalysis" style="display:none">
-    <h3 class="help" title="What history actually shows for this pair at the bot's own trading threshold (margin≥3), plus a real structural finding measured across all 17 live-traded pairs: once a rung gets touched during the Asia session, does the SAME move tend to keep going (reach the next rung out) or reverse (tag the other side)? Answered from a real re-walk of the touch data, not a live guess — see the card for sample sizes.">
-      <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Vote Atlas — what history shows</span>
-      <span class="chip neu" style="font-size:9px">measured, not live</span>
-    </h3>
-    <div class="dr-sec-body"><div id="drVoteAnalysis"><span class="muted">loading…</span></div></div>
-  </div>
-  <div class="dr-sec" id="drPathSec" data-seckey="path" style="display:none">
-    <h3 class="help" title="The Forecast Path engine's CALIBRATED intraday claims (event-aware, session-shaped σ — the claims are graded against history on that page, not asserted). Range and timing context, NOT direction: its own calibration shows the direction call is a coin flip."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>📐 Forecast Path — calibrated 4h claims</span></h3>
-    <div class="dr-sec-body"><div id="drPath"></div></div>
-  </div>
-  <div class="dr-sec" id="drSessPathSec" data-seckey="sesspath" style="display:none">
-    <h3 class="help" title="Given how TODAY has already moved toward a forecast band, what does history say about the odds the FULL SESSION goes on to reach it? Different question from the Read tab (which is about a specific line touch): this is whole-session shape — still extending, pulled back, or fully reversed from its own peak so far — each checked out-of-sample before being shown. Not a signal, a base rate.">
-      <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Session Path — where's today headed?</span>
-      <span class="chip neu" style="font-size:9px">OOS-checked</span>
-    </h3>
-    <div class="hint" style="margin:2px 0 6px">Not a trade call — a gauge. Checks how far today has already pushed toward each remaining target, and whether history says a day shaped like this reaches it more or less often than usual. If it's already spiked and given the move back, that lowers the odds of it running further today — it doesn't tell you to open a new trade either way.</div>
-    <div class="dr-sec-body"><div id="drSessPath"><span class="muted">loading…</span></div></div>
-  </div>
-  <div class="dr-sec" id="drHandoffSec" data-seckey="handoff" style="display:none">
-    <h3 class="help" title="Session-to-session, not touch/band level: given how the most recently CLOSED session (Asia/London/NY) behaved, what does history say about the session that's about to happen? Two SEPARATE questions checked out-of-sample: does the move CONTINUE in the same direction (checked across 5 instruments: a clean coin-flip — an honest null, shown as such) and is the NEXT session likely to be volatile (a real, consistent effect — a wild close tends to hand off into another wild session).">
-      <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Session Handoff — what did the last session hand off?</span>
-      <span class="chip neu" style="font-size:9px">OOS-checked</span>
-    </h3>
-    <div class="hint" style="margin:2px 0 6px">Not a trade call. "Does it continue" is usually close to a coin flip on its own — shown honestly, not hidden. "Next session wild?" is the more reliable read: a volatile close tends to hand off into another volatile session, which matters for how wide to expect the next few hours to be, not which direction to take.</div>
-    <div class="dr-sec-body"><div id="drHandoff"><span class="muted">loading…</span></div></div>
-  </div>
-  <div class="dr-sec" id="drVmSec" data-seckey="vumanchu" style="display:none">
+<div class="dr-sec" id="drVmSec" data-seckey="vumanchu" style="display:none">
     <h3 class="help" title="VuManChu (WaveTrend/Cipher-B) — a momentum oscillator, same family as RSI/Stochastic: it measures the speed of recent price swings and flags overbought/oversold or bullish/bearish crosses. Same server-rendered pane vumanchu-chart.html and the Telegram alerts use — one image, never redrawn twice.">
-      <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>VuManChu — momentum</span>
+      <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span><i class="ev n" title="null — tested, and nothing was found">∅</i>VuManChu — momentum</span>
       <span class="chip neu" style="font-size:9px">context · not a signal</span>
     </h3>
     <div class="dr-sec-body"><div id="drVm"><span class="muted">loading…</span></div></div>
   </div>
-  </div>
-  <div class="dr-pane" id="drPane-systems" role="tabpanel" aria-labelledby="drTab-systems" hidden>
-    <div class="dr-sec" id="drVoteStateSec" data-seckey="votestate">
+<div class="dr-sec" id="drVoteStateSec" data-seckey="votestate">
       <h3 class="help" title="Everything the Vote Atlas bot (volatility_bot_v2) currently knows about this pair, beyond the armed zones already shown on the Vol &amp; Path tab: whether it's actually enabled to trade, its configured spread cap, today's entered/skipped/rejected decisions with reasons, and any live/closed position.">
-        <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Vote Atlas — bot state</span>
+        <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span><i class="ev c" title="context — measured, not predictive">~</i>Vote Atlas — bot state</span>
         <span class="chip neu" style="font-size:9px">volatility_bot_v2</span>
       </h3>
       <div class="dr-sec-body"><div id="drVoteState"><span class="muted">loading…</span></div></div>
     </div>
-    <div class="dr-pending"><b>Other live systems</b><p>Vote Atlas is the only bot wired into this tab so far. Full config for it, and every other bot, still lives on the config page.</p><p class="dr-pending-links"><a href="bot-config.html" target="_blank">Bot config &rarr;</a> &middot; <a href="forward-track.html" target="_blank">Forward track &rarr;</a></p></div>
+  <div class="dr-sec" id="drAnalogSec" data-seckey="analog" style="display:none">
+    <h3 class="help" title="Which N-touch pattern is currently forming for this pair and the measured played-out rate for that category. Research, not a signal.">
+      <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Structural motif</span><i class="ev u" title="unvalidated — research, not a signal">?</i>
+      <span class="chip neu" style="font-size:9px">research</span>
+    </h3>
+    <div class="dr-sec-body"><div id="drAnalog"></div></div>
+  </div>
+  </details>
   </div>
 </div>
 
@@ -5720,7 +5771,7 @@ function meterHtml(r) {
 // travelled today shaded in — so you read at a glance how much of the expected
 // day-range is used and whether price is stretched to one side. Superset of the
 // old "range used" bar; falls back to it if levels/open aren't available yet.
-function rangeMapHtml(r) {
+function rangeMapHtml(r, { bare = false } = {}) {
   const d = r.d, L = d.levels || {}, s = r.s;
   const open = d.session_open ?? s?.anchor_open ?? null;
   const px   = d.current_price;
@@ -5743,6 +5794,7 @@ function rangeMapHtml(r) {
     .map(([lbl, p, cls]) => `<div class="rt ${cls}" style="left:${X(p)}%"><span>${lbl}</span></div>`).join('');
   const marker = `<div class="now ${dir}" style="left:${X(px)}%" title="Now ${fmtN(px, d.dp)} · ${fromOpen >= 0 ? '+' : ''}${fromOpen.toFixed(2)}% from the London-midnight open"></div>`;
   const tip = `How price is moving through the day versus its expected volatility. Ticks = the forecast cone (typical & 75th-percentile up/down moves from the London-midnight open). Shaded band = the range actually travelled so far. Triangle = price now. Band filling the cone and price at one edge = stretched; small band near the middle = quiet.`;
+  if (bare) return `<div class="rmap" title="${tip}">${band}${ticks}${marker}</div>`;
   return `<div class="rmap-lbl"><span class="help" title="${tip}">Range map — price vs forecast cone</span>
       <b>${usedPct != null ? usedPct + '% range used · ' : ''}${fromOpen >= 0 ? '+' : ''}${fromOpen.toFixed(2)}% from open</b></div>
     <div class="rmap">${band}${ticks}${marker}</div>`;
@@ -6045,30 +6097,125 @@ function analogShapeHtml(name) {
 // same summary at the top: once the overlay opens, the card behind it is hidden,
 // and with it every chip, the range map and the ladder — the exact context you
 // want while reading the detail. Shared rather than copied, so the two can't drift.
-function pairChipsHtml(r) {
+// ── The card, in three tiers ─────────────────────────────────────────────────
+// The day (range) first, because it is the page's best-evidenced material; then
+// the lean with ONE supporter and ONE threat, chosen by a fixed priority; then the
+// clock. Five chips at most. Everything the card used to show is still computed
+// and shown in the drawer's "All reads" section -- demoted, not lost. Sixteen
+// co-equal chips on a 330px card was legible to nobody.
+const _EV = (g, t) => `<i class="ev ${g}" title="${t}">${{ v: '✓', c: '~', u: '?', n: '∅' }[g]}</i>`;
+const _EV_T = { v: 'validated — an out-of-sample result stands behind it', c: 'context — measured, not predictive', u: 'unvalidated', n: 'null — tested, nothing found' };
+const _stampChip = (html, g) => html ? html.replace(/<\/span>\s*$/, _EV(g, _EV_T[g]) + '</span>') : '';
+
+// Threat: the single read most likely to stop the trade, in the order it should.
+function _threatChip(r) {
+  const c = r.cost;
+  if (c && (!c.tradeable || c.gate === 'fail' || c.gate === 'bad')) return _stampChip(costChip(r), 'v');
+  if (r.isProx) return _stampChip(`<span class="chip warn" title="Live price is right at one of the key levels now — this is a decision moment. Click the card to score it.">⚑ ${r.near.tag} ${r.near.pips.toFixed(0)}${r.d.ac === 'fx' ? 'p' : 'pt'} away</span>`, 'c');
+  if (r.ct?.level === 'EXTREME') return _stampChip(`<span class="chip warn" title="${r.ct.derived ? `Both legs of this cross are stretched the same way in CFTC positioning — a reinforcing double-extreme, derived from each currency's own contract.` : `Large speculators are very heavily positioned ${r.ct.dir} — about ${r.ct.pct.toFixed(0)}% of the market.`} Crowded one-way bets can snap back hard, so this is a warning against joining late, not a reason to fade.">⚠ COT ${r.ct.dir} extreme${r.ct.derived ? ' (derived)' : ''}</span>`, 'c');
+  const bk = _crowd[r.d.sym]?.book;
+  if (bk?.pain) {
+    const side = bk.longPct >= 50 ? 'long' : 'short';
+    const uw = side === 'long' ? bk.pain.longsUnderwaterPct : bk.pain.shortsUnderwaterPct;
+    const heavy = Math.max(bk.longPct, bk.shortPct ?? 0) >= 60;
+    if (heavy && uw != null && uw >= 60) return _stampChip(`<span class="chip warn" title="OANDA book: ${bk.longPct}% long near spot and ${uw}% of the ${side} side is underwater. Crowded and losing is squeeze fuel — a statement about who gets forced out, not about direction.">⚠ ${side}s ${Math.round(uw)}% underwater</span>`, 'c');
+  }
+  const dv = divergenceChip(r); if (dv) return _stampChip(dv, 'c');
+  const iv = ivRvChip(r); if (iv && /rich/.test(iv)) return _stampChip(iv, 'c');
+  if (c && c.gate === 'warn') return _stampChip(costChip(r), 'v');
+  return '';
+}
+// Support: the single read that most backs the lean.
+function _supportChip(r) {
+  for (const [html, g] of [[r.agr?.chip ?? '', 'c'], [outlookChip(r), 'c'], [moveDecompChip(r), 'c'], [sessionResearchChip(r), 'c'],
+                           [r.oi && !r.oi.stale && r.oi.regime ? `<span class="chip ${r.oi.regime === 'PIN' ? 'range' : 'bear'}" title="${r.oi.regime === 'PIN' ? 'From options positioning: price is likely to stay stuck near here today — favours fading the edges.' : 'From options positioning: a move could accelerate today — breakouts are more likely to run.'}">◎ ${r.oi.regime}</span>` : '', 'c'],
+                           [mveChip(r), 'c'], [commodityChip(r), 'c']]) {
+    if (html) return _stampChip(html, g);
+  }
+  return '';
+}
+function _dayTier(r) {
+  const d = r.d, volPct = d.vol_pct, rangePts = d.levels?.hl_med?.range_pts;
+  const coneGap = (d.cone_5d != null && volPct != null) ? d.cone_5d - volPct : null;
+  const cone = coneGap == null ? '' : coneGap >= 15 ? `<span class="chip warn" title="Volatility is BUILDING — the last week's σ ranks ${d.cone_5d}th vs ${volPct}th over the last year. Moves may get bigger from here.">σ↑${_EV('c', _EV_T.c)}</span>`
+    : coneGap <= -15 ? `<span class="chip dim" title="Volatility is COOLING — the last week's σ ranks ${d.cone_5d}th vs ${volPct}th over the last year.">σ↓${_EV('c', _EV_T.c)}</span>` : '';
+  const txt = `<span class="daytxt" title="Range used: how much of today's expected range price has already travelled. Expected range and vol percentile from the calibrated forecast.">${r.used != null ? Math.round(100 * r.used) + '% used' : ''}${rangePts != null ? ` · exp ${rangePts}${d.ac === 'fx' ? 'p' : 'pt'}` : ''}${volPct != null ? ` · σ P${volPct}` : ''}${_EV('v', _EV_T.v)}</span>`;
+  return `<div class="tier"><span class="lbl">day</span><span class="rmw">${rangeMapHtml(r, { bare: true })}</span>${txt}${cone}${tapeSpeedChip(r)}</div>`;
+}
+function _leanTier(r) {
+  const dir = _stampChip(directionChip(r), 'c') || `<span class="chip neu">— no lean</span>`;
+  return `<div class="tier"><span class="lbl">lean</span>${dir}${_supportChip(r)}${_threatChip(r)}</div>`;
+}
+function _clockTier(r) {
   const d = r.d;
-  return `${directionChip(r)} ${biasLine(r)} ${r.agr?.chip ?? ''}${costChip(r)}${r.isProx ? `<span class="chip warn" title="Live price is right at one of the key levels now — this is a decision moment. Click the card to score it.">⚑ ${r.near.tag} ${r.near.pips.toFixed(0)}${d.ac === 'fx' ? 'p' : 'pt'} away</span>` : ''}${r.ct?.level === 'EXTREME' ? `<span class="chip warn" title="${r.ct.derived ? `Both legs of this cross are stretched the same way in CFTC positioning (base Z ${r.ct.baseRead?.z ?? '—'}, quote Z ${r.ct.quoteRead?.z ?? '—'}) — a reinforcing double-extreme, derived from each currency's own contract since this cross has no direct CFTC future.` : `The crowd (big speculators, from weekly CFTC data) is very heavily positioned ${r.ct.dir} — about ${r.ct.pct.toFixed(0)}% of the market.`} Crowded one-way bets can snap back hard (a 'squeeze'), so it's a warning against joining late.">⚠ COT ${r.ct.dir} extreme${r.ct.derived ? ' (derived)' : ''}</span>` : ''}${r.oi && !r.oi.stale && r.oi.regime ? `<span class="chip ${r.oi.regime === 'PIN' ? 'range' : 'bear'}" title="${r.oi.regime === 'PIN' ? "From options positioning: price is likely to stay STUCK near here today and drift back to the middle — favours fading the edges, not chasing." : "From options positioning: a move could ACCELERATE today — higher chance of a sharp break, so breakouts are more likely to run."}">◎ ${r.oi.regime}</span>` : ''}${moveDecompChip(r)}${divergenceChip(r)}${ivRvChip(r)}${tapeSpeedChip(r)}${outlookChip(r)}${mveChip(r)}${commodityChip(r)}${sessionResearchChip(r)}`;
+  const news = d.news_flag ? `<span class="chip warn" title="A major scheduled release today (${d.news_flag}). Expected ranges are scaled ×${d.news_mult}.">⚠ ${d.news_flag} ×${d.news_mult}</span>` : '';
+  const ev = (() => { const e = nextPairEvent(r.name); if (!e) return ''; const hi = (e.impact ?? '').toLowerCase() === 'high'; if ((e.ms - Date.now()) > 14 * 3600e3) return ''; const nm = (e.event ?? '').length > 24 ? e.event.slice(0, 22) + '…' : (e.event ?? ''); return `<span class="chip ${hi ? 'warn' : 'neu'}" title="Next scheduled event that moves ${dispName(r.name)}: ${e.event} (${e.country}, ${e.impact}) at ${evtTime(e)} UK.">⏰ ${nm} ${evtTime(e)}</span>`; })();
+  return `<div class="tier"><span class="lbl">clock</span>${news}${ev}${(!news && !ev) ? '<span class="quiet">nothing scheduled in the next 14h</span>' : ''}</div>`;
+}
+function pairChipsHtml(r) { return _dayTier(r) + _leanTier(r) + _clockTier(r); }
+// The old single row -- every chip, unranked -- for the drawer's "All reads".
+function allReadsHtml(r) {
+  const d = r.d;
+  const row = `${directionChip(r)} ${biasLine(r)} ${r.agr?.chip ?? ''}${costChip(r)}${r.isProx ? `<span class="chip warn">⚑ ${r.near.tag} ${r.near.pips.toFixed(0)}${d.ac === 'fx' ? 'p' : 'pt'} away</span>` : ''}${r.ct?.level === 'EXTREME' ? `<span class="chip warn">⚠ COT ${r.ct.dir} extreme${r.ct.derived ? ' (derived)' : ''}</span>` : ''}${r.oi && !r.oi.stale && r.oi.regime ? `<span class="chip ${r.oi.regime === 'PIN' ? 'range' : 'bear'}">◎ ${r.oi.regime}</span>` : ''}${moveDecompChip(r)}${divergenceChip(r)}${ivRvChip(r)}${tapeSpeedChip(r)}${outlookChip(r)}${mveChip(r)}${commodityChip(r)}${sessionResearchChip(r)}`;
+  return `<div style="display:flex;flex-wrap:wrap;gap:4px">${row}</div>`;   // turn zones have their own full section under Levels
+}
+function pairStripsHtml(r) { return ''; }   // strips now live in the drawer (ladder → Levels, motif → Research)
+
+// ── "Now": one paragraph, from values the page already computes ──────────────
+// Order matters and is the same every time -- the hour, the day so far, the lean
+// and what argues with it, then the clock -- so a reader learns the shape and can
+// skim it. Every clause is guarded: a missing input drops its sentence rather than
+// inventing one.
+function nowParagraph(r) {
+  const d = r.d, out = [];
+  const t = _tape[d.sym];
+  if (t?.ok && !t.stale) {
+    const vs = t.nextRangeVsTypical, vl = t.volRatio;
+    out.push(`<b>${t.bandLabel.split(' ')[0]}${t.bandLabel.includes('overlap') ? ' overlap' : ''}, tape ${t.label}</b> (${t.pctile} for this hour): the next hour has historically stayed put ${Math.round(t.dwell * 100)}% of the time, ranging ${vs == null ? 'about' : vs >= 1.15 ? 'wider than' : vs <= 0.87 ? 'narrower than' : 'about'} a typical hour${vl != null ? (vl <= 0.9 ? ' and calmer than the hour just gone' : vl >= 1.05 ? ' and a little wider than the last' : '') : ''}.`);
+  } else if (t?.stale) {
+    out.push(`<b>Market closed</b> — the tape read is from the last hour that traded.`);
+  }
+  const rangePts = d.levels?.hl_med?.range_pts;
+  if (r.used != null) {
+    const used = Math.round(100 * r.used);
+    const where = (d.current_price != null && d.session_open != null) ? (d.current_price > d.session_open ? 'above' : 'below') : null;
+    out.push(`<b>${used}% of the expected day range used</b>${rangePts ? ` (${rangePts}${d.ac === 'fx' ? 'p' : 'pt'})` : ''}${where ? `, price ${where} the open` : ''}${used >= 80 ? ' — the day has largely happened' : used <= 25 ? ' — the day has barely started' : ''}.`);
+  }
+  const dt = directionFor(r);
+  if (dt && dt.direction !== 'flat') {
+    const word = { up: 'Lean up', down: 'Lean down', mixed: 'Mixed' }[dt.direction];
+    const comp = pairSignalComposite(r);
+    const agr = (comp && comp.total >= 2) ? ` on ${comp.agree} of ${comp.total}` : '';
+    let s = `<b>${word}${agr}</b>`;
+    const args = [];
+    if (r.ct?.level === 'EXTREME') args.push(`large speculators are at an extreme ${r.ct.dir}`);
+    const bk = _crowd[d.sym]?.book;
+    if (bk?.pain) { const side = bk.longPct >= 50 ? 'long' : 'short'; const uw = side === 'long' ? bk.pain.longsUnderwaterPct : bk.pain.shortsUnderwaterPct; if (uw != null && uw >= 60 && Math.max(bk.longPct, bk.shortPct ?? 0) >= 60) args.push(`the retail book is ${bk.longPct}% long and <b>${Math.round(uw)}% of ${side}s are underwater</b> — whoever is forced out here is ${side}`); }
+    if (r.oi && !r.oi.stale && r.oi.regime) args.push(`options say <b>${r.oi.regime}</b>`);
+    if (args.length) s += (dt.direction === 'mixed' ? '. ' : ', but ') + args.join('; ');
+    out.push(s + '.');
+  }
+  const c = r.cost;
+  if (c && (!c.tradeable || c.gate === 'fail' || c.gate === 'bad')) out.push(`And the thing that settles it: <b>spread is ${c.pips}${_unit(d)}${c.ofLevel != null ? `, ${(c.ofLevel * 100).toFixed(0)}% of the move to the nearest level` : ''}</b> — past the point where cost outruns edge. Nothing here is worth paying that to trade.`);
+  const e = nextPairEvent(r.name);
+  if (d.news_flag) out.push(`${d.news_flag} today scales the range ×${d.news_mult} until it clears.`);
+  else if (e && (e.ms - Date.now()) <= 14 * 3600e3) out.push(`${e.event} at ${evtTime(e)} UK.`);
+  return out.join(' ') || '<span class="muted">Not enough loaded yet to compose a read.</span>';
 }
 
-function pairStripsHtml(r) {
-  const d = r.d;
-  const volPct = d.vol_pct;
-  const volCls = volPct >= 80 ? 'warn' : volPct <= 20 ? 'dim' : 'neu';
-  const rangePts = d.levels?.hl_med?.range_pts;
-  const coneGap = (d.cone_5d != null && volPct != null) ? d.cone_5d - volPct : null;
-  const coneChip = coneGap == null ? ''
-    : coneGap >= 15 ? `<span class="chip warn" title="Volatility is BUILDING — the last week's σ ranks ${d.cone_5d}th in its 5-day window vs ${volPct}th over the last year. Moves may get bigger from here; size and stops should respect that.">σ↑ building</span>`
-    : coneGap <= -15 ? `<span class="chip dim" title="Volatility is COOLING — the last week's σ ranks ${d.cone_5d}th vs ${volPct}th over the last year. A compression stretch; ranges may run smaller than the year suggests.">σ↓ cooling</span>`
-    : '';
-  return `${analogShapeHtml(r.name)}
-    ${rangeMapHtml(r)}
-    ${ladderHtml(r)}
-    ${exhStripHtml(r)}
-    <div class="pc-foot"><span class="chip ${volCls}" title="How big this market's swings tend to be. 'P${volPct ?? '?'}' compares today to its own history: ${volPct != null ? (volPct >= 80 ? `calmer than only ${volPct}% of days — unusually jumpy right now, use wider stops` : volPct <= 20 ? `calmer than ${100 - volPct}% of days — an unusually quiet stretch` : `middle of its normal range`) : 'unknown'}.">σ ${fmtN(d.vol_annual, 1)}% · vol ${volPct != null ? 'P' + volPct : '–'}</span>${coneChip}
-      ${rangePts != null ? `<span class="vol help" title="On an average day this market travels about ${rangePts} ${d.ac === 'fx' ? 'pips' : 'points'} from its high to its low. Use it to size stops and targets.">expected day range <b>${rangePts}${d.ac === 'fx' ? 'p' : 'pt'}</b> (med)</span>` : ''}
-      ${d.news_flag ? `<span class="chip warn" title="A major scheduled news event today (${d.news_flag}). Big news moves markets fast — expected ranges are scaled up ×${d.news_mult}. Consider waiting until it's out.">⚠ ${d.news_flag} ×${d.news_mult}</span>` : ''}
-      ${(() => { const e = nextPairEvent(r.name); if (!e) return ''; const hi = (e.impact ?? '').toLowerCase() === 'high'; if ((e.ms - Date.now()) > 14 * 3600e3) return ''; const nm = (e.event ?? '').length > 22 ? e.event.slice(0, 20) + '…' : (e.event ?? ''); return `<span class="chip ${hi ? 'warn' : 'neu'}" title="Next scheduled event that moves ${dispName(r.name)}: ${e.event} (${e.country}, ${e.impact}) at ${evtTime(e)} UK.${hi ? ' High impact — the range can blow past the forecast; many wait until it clears.' : ''}">⏰ ${nm} ${evtTime(e)}</span>`; })()}
-    </div>`;
+// ── Why tab: the pair's fundamental gap, factor by factor ────────────────────
+function renderDrawerFactor(r) {
+  const sec = $('drFactorSec'), box = $('drFactor');
+  const cc = PAIR_CCY[r.name];
+  const me = cc ? macroEdgeFor(cc) : null;
+  if (!me || !me.factors?.length) { sec.style.display = 'none'; return; }
+  sec.style.display = '';
+  const rows = me.factors.map(f => `<div class="ccy-legrow"><span class="lp">${esc0(f.label)}<span class="dim-age">${f.dims.join(', ')}</span></span><span class="lv ${f.diff > 0 ? 'bull' : f.diff < 0 ? 'bear' : 'neu'}">${f.diff > 0 ? '+' : ''}${f.diff}</span></div>`).join('');
+  const b = macroScorecard?.ranked?.find(x => x.ccy === cc[0]), q = macroScorecard?.ranked?.find(x => x.ccy === cc[1]);
+  const drv = macroScorecard?.driver;
+  box.innerHTML = `<div class="ccy-legs">${rows}</div>
+    <div class="ccy-explain" style="margin-top:8px">${cc[0]} ${b?.composite != null ? (b.composite > 0 ? '+' : '') + b.composite : '—'}${b?.dominant ? ` (led by ${b.dominant.label.toLowerCase()})` : ''} vs ${cc[1]} ${q?.composite != null ? (q.composite > 0 ? '+' : '') + q.composite : '—'}${q?.dominant ? ` (led by ${q.dominant.label.toLowerCase()})` : ''}. Net gap <b>${me.score != null ? (me.score > 0 ? '+' : '') + me.score : 'null'}</b>${me.nFactors ? ` with <b>${me.agree ?? '?'} of ${me.nFactors}</b> factors agreeing` : ''}${me.driver ? ` — carried by <b>${me.driver.label}</b>` : ''}.${drv?.spread != null ? ` What is separating the whole board today: <b>${drv.label.toLowerCase()}</b> (spread ${drv.spread}).` : ''}</div>
+    <div class="muted" style="font-size:10.5px;margin-top:6px">Base minus quote, factor by factor, averaged equally. A gap every factor contributes to is a story; one factor dragging across four that disagree is a coin toss with a narrative. Explanation, never prediction.</div>`;
 }
 
 function cardHtml(r) {
@@ -6550,11 +6697,11 @@ let drChart = null, drSeries = null, drName = null;
 // Display-only grouping over the same sections. Every loader still fires on
 // open regardless of which tab is showing (see openDrawer), so switching tabs
 // never triggers a fetch and a hidden pane is never stale — it is just hidden.
-const DR_TABS = ['read', 'macro', 'flow', 'levels', 'vol', 'systems'];
-let _drTab = (() => { try { return localStorage.getItem('dr_tab') || 'read'; } catch { return 'read'; } })();
+const DR_TABS = ['now', 'day', 'levels', 'lean', 'why', 'analysis', 'research'];   // by question, not by data source
+let _drTab = (() => { try { return localStorage.getItem('dr_tab') || 'now'; } catch { return 'now'; } })();
 
 function setDrTab(key) {
-  if (!DR_TABS.includes(key)) key = 'read';
+  if (!DR_TABS.includes(key)) key = 'now';   // an old stored 'read' lands here too
   _drTab = key;
   try { localStorage.setItem('dr_tab', key); } catch {}
   for (const k of DR_TABS) {
@@ -6567,7 +6714,7 @@ function setDrTab(key) {
   // the 0 → real width transition when this pane un-hides. What it does NOT
   // restore is the visible logical range, so the cone's right-hand padding is
   // lost — re-apply it a frame after the pane is laid out.
-  if (key === 'read' && drChart) requestAnimationFrame(() => { try { padDrawerRange(); } catch {} });
+  if (key === 'now' && drChart) requestAnimationFrame(() => { try { padDrawerRange(); } catch {} });
 }
 
 // A section hides itself (style.display='none') when its loader fails or the
@@ -6577,7 +6724,7 @@ function refreshDrTabStates() {
   for (const k of DR_TABS) {
     const pane = $(`drPane-${k}`), tab = $(`drTab-${k}`);
     if (!pane || !tab) continue;
-    const secs = [...pane.querySelectorAll(':scope > .dr-sec')];
+    const secs = [...pane.querySelectorAll('.dr-sec')];   // descendants: the Research shelf nests its sections in <details>
     if (!secs.length) continue;                       // placeholder pane — leave alone
     const live = secs.filter(s => s.style.display !== 'none');
     tab.classList.toggle('empty', live.length === 0);
@@ -6635,9 +6782,15 @@ async function openDrawer(name) {
   $('ovl').classList.add('open');
   $('drawer').classList.add('open');
   applyDrSecStates();
-  // Same summary the card shows — the card is behind the overlay now.
-  try { $('drSummary').innerHTML = pairChipsHtml(r) + pairStripsHtml(r); }
-  catch (e) { $('drSummarySec').style.display = 'none'; }
+  // The drawer opens on one paragraph, composed from values the page already has --
+  // not the card again. The material the card no longer shows lands in its tab.
+  try { $('drNow').innerHTML = nowParagraph(r); } catch (e) { $('drNow').innerHTML = ''; console.error('[now]', e); }
+  try { $('drLadder').innerHTML = ladderHtml(r) || '<span class="muted">No ladder for this instrument yet.</span>'; } catch (e) { $('drLadderSec').style.display = 'none'; }
+  try { $('drAllReads').innerHTML = allReadsHtml(r); } catch (e) { $('drAllReadsSec').style.display = 'none'; }
+  try { renderDrawerFactor(r); } catch (e) { $('drFactorSec').style.display = 'none'; }
+  try { const a = analogShapeHtml(r.name); if (a) { $('drAnalog').innerHTML = a; $('drAnalogSec').style.display = ''; } } catch (e) {}
+  // The book loads lazily; once it is in, the Now paragraph can say who is underwater.
+  loadCrowdFor(r.d.sym).then(() => { try { $('drNow').innerHTML = nowParagraph(r); } catch {} }).catch(() => {});
   try { renderDrawerOutlook(r); } catch (e) { $('drOutlookSec').style.display = 'none'; }
   setDrTab(_drTab);
   // Sections hide themselves as their loaders resolve or fail, so tab states
