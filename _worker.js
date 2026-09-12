@@ -1118,6 +1118,19 @@ export default {
             'cog_signal_log', 'cog_shadow_log',
             // The declared per-bot capital base. Hand-entered, irreplaceable.
             'bot_allocations',
+            // levelEngine/live_watch.py's forward-track log (touch alerts + resolved
+            // outcomes — the live validation record for robustness_check.py/
+            // confluence_velocity.py) and its one-shot dedup state. Both were in
+            // isAllowedKVKey's EXACT set and level_engine_fwd_log was in kv.js's
+            // _CF_EXACT, but neither was here — level_engine_fwd_log got a 48h TTL
+            // on every write (only saved from expiring by the bot's own ~60s poll
+            // continuously refreshing it) and level_engine_bot_state wasn't in
+            // _CF_EXACT at all, so it lived only in the ephemeral file store. A
+            // same-day server bounce lost the dedup state while the log survived,
+            // so the bot re-detected an already-logged/resolved touch as "new" and
+            // re-sent its Telegram result — the "same message every few minutes on
+            // a quiet Saturday" bug (found 2026-09-12).
+            'level_engine_fwd_log', 'level_engine_bot_state',
           ]);
           // PERMANENT_KEYS is exact-match, which cannot express a key that
           // rotates (one per day). vmlog_* is the VuManChu forward-validation
