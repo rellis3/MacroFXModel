@@ -291,6 +291,19 @@ function asiaVolBucketAt(asiaSessions, idx, lookback = 20) {
  *   asiaFibAtlasWalk(packed, { instrument, assetClass })
  *     -> { touches: [...], pending: [...], coverage: {from,to,sessions,estimator} }
  *
+ * `startHour` (2026-09-12, default 0 — fully backward compatible): which
+ * London-local hour the range window itself starts at, threaded straight
+ * into `sessionRanges.buildAsiaSessions`. Everything below this point
+ * (walk-window bounds, the "valid until the next occurrence of the same
+ * window" lifetime, the confluence-vs-previous-cycle track, the vote/barrier
+ * pricing) is written in terms of `asia.epoch` and `asiaHrs`, never a
+ * hardcoded midnight, so it generalizes unchanged to a London-session range
+ * (startHour=7), an NY-session range (startHour=13), or any other window —
+ * see `scripts/run_session_window_comparison.mjs` for the actual comparison
+ * this enables. The variable/field names below still say "asia" throughout
+ * (the strategy's own vocabulary), but they describe THIS call's window,
+ * whatever startHour it was given.
+ *
  * `extendResolutionDays` (2026-08-31, default 0 = off, fully backward
  * compatible): the outcome race below is normally bounded to the SAME
  * calendar day (Asia-close -> midnight local) -- a touch that hits neither
@@ -319,7 +332,7 @@ function asiaVolBucketAt(asiaSessions, idx, lookback = 20) {
  */
 export function asiaFibAtlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = REARM_FRACS,
                                             minLookback = 60, htfMinBars, structural = true, confLookback = 5,
-                                            asiaHrs = 6, pendingRearmFrac = null, liveWindowDays = null,
+                                            asiaHrs = 6, startHour = 0, pendingRearmFrac = null, liveWindowDays = null,
                                             ivByDate = null, macroEvents = null,
                                             extendResolutionDays = 0, nextSessionBuildHrs = 6 } = {}) {
   const sym = String(instrument).toUpperCase();
@@ -341,7 +354,7 @@ export function asiaFibAtlasWalk(packed, { instrument, assetClass = 'fx', rearmF
   const normalDistPrice = threshPips * pip;
   const tightDistPrice = normalDistPrice * 0.10;   // matches Pine's default 10% "tight" fraction
 
-  const asiaSessions = buildAsiaSessions(packed, 'london', asiaHrs, 5);
+  const asiaSessions = buildAsiaSessions(packed, 'london', asiaHrs, 5, startHour);
   const mondayRanges = buildMondayRanges(packed, 'london');
   if (asiaSessions.length <= minLookback) return { touches: [], pending: [], coverage: null };
 
@@ -898,7 +911,8 @@ export function asiaFibAtlasLiveLadder(packed, opts = {}) {
   if (!packed?.n) return { date: null, currentPrice: null, sessionHandoff: null, boundary: null, ladder: [] };
 
   const asiaHrs = opts.asiaHrs ?? 6;
-  const asiaSessions = buildAsiaSessions(packed, 'london', asiaHrs, 5);
+  const startHour = opts.startHour ?? 0;
+  const asiaSessions = buildAsiaSessions(packed, 'london', asiaHrs, 5, startHour);
   const asia = asiaSessions.at(-1);
   if (!asia) return { date: null, currentPrice: null, sessionHandoff: null, boundary: null, ladder: [] };
 
