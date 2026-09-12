@@ -1072,6 +1072,13 @@
   </div>
   </div>
   <div class="dr-pane" id="drPane-vol" role="tabpanel" aria-labelledby="drTab-vol" hidden>
+    <div class="dr-sec" id="drTapeSec" data-seckey="tape" style="display:none">
+      <h3 class="help" title="How fast price has moved over the last 15 minutes, placed against this pair's own history for this time of day, and what that pace has historically meant for the NEXT HOUR's range. Speed persists: a slow tape tends to stay slow for an hour and a fast one to stay fast. That is a statement about range, never direction. It was found by testing a claim about levels — slow arrivals dwell on the level — and discovering they dwell just as much at random non-level prices, so the read belongs to every bar of the day, not only the moments price meets a line.">
+        <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">&#9662;</span>The tape, right now &mdash; what kind of hour is this?</span>
+        <span class="chip neu" style="font-size:9px">range context &middot; not direction</span>
+      </h3>
+      <div class="dr-sec-body"><div id="drTape"><span class="muted">loading&hellip;</span></div></div>
+    </div>
     <div class="dr-sec" id="drIvRvSec" data-seckey="ivrv" style="display:none">
       <h3 class="help" title="Realised volatility is what this market HAS done (close-to-close, annualised). Implied is what the options market is CHARGING for the next 30 days. The gap between them is a risk premium, not a direction — a high IV-RV spread says options are expensive relative to recent movement, which is context for sizing and for whether to buy or sell premium, never a buy/sell signal on the underlying.">
         <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Realised vs implied volatility</span>
@@ -2810,6 +2817,36 @@ function ivRvChip(r) {
         : 'Options look CHEAP relative to realised movement: the market is charging less than this pair has actually been delivering. Breakout risk is under-priced.')
     + ' A price, not a forecast — it says nothing about direction.';
   return `<span class="chip ${rich ? 'warn' : 'neu'}" title="${esc0(tip)}">σ ${rich ? 'rich' : 'cheap'} ${v.ratio}×</span>`;
+}
+
+// ── Tape speed: what kind of hour is this? ───────────────────────────────────
+// 15-minute speed in ATR/min against this pair's own history in the current
+// session band, and what that pace has historically meant for the NEXT HOUR's
+// range. Range, never direction. This came out of testing an "approach speed"
+// claim about levels (analysis/approach_speed_control_study.mjs, 2026-09-12): slow
+// arrivals do dwell -- but just as much at random non-level prices, so the effect
+// is speed persistence and belongs to every bar, not to the moments price meets a
+// line. Which is better for this page: it is a read of the tape available all day.
+let _tape = {};
+async function loadTapeSpeedAll() {
+  const syms = [...new Set(Object.values(brief?.instruments ?? {}).map(d => d.sym).filter(Boolean))];
+  if (!syms.length) return;
+  const out = {};
+  await Promise.all(syms.map(async sym => {
+    try { const j = await jget('/api/tape-speed?symbol=' + encodeURIComponent(sym)); if (j?.ok) out[sym] = j; } catch {}
+  }));
+  if (Object.keys(out).length) { _tape = out; invalidateRows(); render(); }
+}
+// Re-read every 2 minutes while the page is open -- the read changes with the tape.
+setInterval(() => { if (document.visibilityState === 'visible') loadTapeSpeedAll().catch(() => {}); }, 120_000);
+function tapeSpeedChip(r) {
+  const t = _tape[r.d?.sym];
+  if (!t) return '';
+  // The middle three quintiles are "an ordinary hour" and earn no chip; only the
+  // tails change what a reader should expect from the next hour.
+  if (t.quintile === 2 || t.quintile === 3 || t.quintile === 4) return '';
+  const fast = t.quintile === 5;
+  return `<span class="chip ${fast ? 'warn' : 'range'}" title="${esc0(t.read)} Speed ${t.speed.toExponential(2)} ATR/min (${t.ptsPerMin > 0 ? '+' : ''}${t.ptsPerMin.toFixed(3)} pts/min over the last 15 min). ${esc0(t.caveat)}">${fast ? '⚡' : '〰'} tape ${t.label}</span>`;
 }
 
 // ── The crowd, at a higher frequency than COT ────────────────────────────────
@@ -6010,7 +6047,7 @@ function analogShapeHtml(name) {
 // want while reading the detail. Shared rather than copied, so the two can't drift.
 function pairChipsHtml(r) {
   const d = r.d;
-  return `${directionChip(r)} ${biasLine(r)} ${r.agr?.chip ?? ''}${costChip(r)}${r.isProx ? `<span class="chip warn" title="Live price is right at one of the key levels now — this is a decision moment. Click the card to score it.">⚑ ${r.near.tag} ${r.near.pips.toFixed(0)}${d.ac === 'fx' ? 'p' : 'pt'} away</span>` : ''}${r.ct?.level === 'EXTREME' ? `<span class="chip warn" title="${r.ct.derived ? `Both legs of this cross are stretched the same way in CFTC positioning (base Z ${r.ct.baseRead?.z ?? '—'}, quote Z ${r.ct.quoteRead?.z ?? '—'}) — a reinforcing double-extreme, derived from each currency's own contract since this cross has no direct CFTC future.` : `The crowd (big speculators, from weekly CFTC data) is very heavily positioned ${r.ct.dir} — about ${r.ct.pct.toFixed(0)}% of the market.`} Crowded one-way bets can snap back hard (a 'squeeze'), so it's a warning against joining late.">⚠ COT ${r.ct.dir} extreme${r.ct.derived ? ' (derived)' : ''}</span>` : ''}${r.oi && !r.oi.stale && r.oi.regime ? `<span class="chip ${r.oi.regime === 'PIN' ? 'range' : 'bear'}" title="${r.oi.regime === 'PIN' ? "From options positioning: price is likely to stay STUCK near here today and drift back to the middle — favours fading the edges, not chasing." : "From options positioning: a move could ACCELERATE today — higher chance of a sharp break, so breakouts are more likely to run."}">◎ ${r.oi.regime}</span>` : ''}${moveDecompChip(r)}${divergenceChip(r)}${ivRvChip(r)}${outlookChip(r)}${mveChip(r)}${commodityChip(r)}${sessionResearchChip(r)}`;
+  return `${directionChip(r)} ${biasLine(r)} ${r.agr?.chip ?? ''}${costChip(r)}${r.isProx ? `<span class="chip warn" title="Live price is right at one of the key levels now — this is a decision moment. Click the card to score it.">⚑ ${r.near.tag} ${r.near.pips.toFixed(0)}${d.ac === 'fx' ? 'p' : 'pt'} away</span>` : ''}${r.ct?.level === 'EXTREME' ? `<span class="chip warn" title="${r.ct.derived ? `Both legs of this cross are stretched the same way in CFTC positioning (base Z ${r.ct.baseRead?.z ?? '—'}, quote Z ${r.ct.quoteRead?.z ?? '—'}) — a reinforcing double-extreme, derived from each currency's own contract since this cross has no direct CFTC future.` : `The crowd (big speculators, from weekly CFTC data) is very heavily positioned ${r.ct.dir} — about ${r.ct.pct.toFixed(0)}% of the market.`} Crowded one-way bets can snap back hard (a 'squeeze'), so it's a warning against joining late.">⚠ COT ${r.ct.dir} extreme${r.ct.derived ? ' (derived)' : ''}</span>` : ''}${r.oi && !r.oi.stale && r.oi.regime ? `<span class="chip ${r.oi.regime === 'PIN' ? 'range' : 'bear'}" title="${r.oi.regime === 'PIN' ? "From options positioning: price is likely to stay STUCK near here today and drift back to the middle — favours fading the edges, not chasing." : "From options positioning: a move could ACCELERATE today — higher chance of a sharp break, so breakouts are more likely to run."}">◎ ${r.oi.regime}</span>` : ''}${moveDecompChip(r)}${divergenceChip(r)}${ivRvChip(r)}${tapeSpeedChip(r)}${outlookChip(r)}${mveChip(r)}${commodityChip(r)}${sessionResearchChip(r)}`;
 }
 
 function pairStripsHtml(r) {
@@ -6629,6 +6666,7 @@ async function openDrawer(name) {
   _drPathP = jget(`/api/forecast-path/summary?pairs=${encodeURIComponent(name.toLowerCase())}`).catch(() => null);
   loadDrawerPath(name).catch(() => { $('drPathSec').style.display = 'none'; });
   loadDrawerIvRv(name, d.sym).catch(() => { $('drIvRvSec').style.display = 'none'; });
+  renderDrawerTape(d.sym).catch(() => { $('drTapeSec').style.display = 'none'; });
   loadDrawerTde(name).catch(e => { $('drTdeErr').textContent = e.message; });
   loadDrawerLevels(name, d.sym).catch(() => {});
   loadDrawerRates(d.sym).catch(() => { $('drRatesSec').style.display = 'none'; });
@@ -6992,6 +7030,37 @@ async function overlayDrawerCone(name) {
 // for gold, VXN for NAS100, VIX for the other US indices). Every FX cross has
 // no implied series at all and the endpoint says so — that case renders an
 // explanation rather than an empty chart.
+// The tape section. One live read plus the full quintile table for this band, so
+// the reader can see WHERE today's pace sits and what each pace has meant -- the
+// "show your working" that makes the one-line read believable.
+async function renderDrawerTape(sym) {
+  const sec = $('drTapeSec'), box = $('drTape');
+  if (!sec) return;
+  let t = _tape[sym];
+  if (!t) { try { const j = await jget('/api/tape-speed?symbol=' + encodeURIComponent(sym)); if (j?.ok) { t = j; _tape[sym] = j; } } catch {} }
+  if (!t) { sec.style.display = 'none'; return; }
+  sec.style.display = '';
+  const P = window.tapeSpeedBrick?.TAPE_SPEED_PARAMS?.[t.key];
+  const band = P?.bands?.[t.band];
+  const fast = t.quintile === 5, slow = t.quintile === 1;
+  const cls = fast ? 'warn' : slow ? 'range' : 'neu';
+  const age = Math.round((Date.now() - Date.parse(t.asOf)) / 60000);
+  const rows = band ? band.quintiles.map((q, i) => {
+    const here = i + 1 === t.quintile;
+    const lo = i === 0 ? 0 : band.cuts[i - 1], hi = i === 4 ? null : band.cuts[i];
+    return `<div class="ccy-legrow" style="${here ? 'background:rgba(120,200,255,.08);border-radius:4px' : ''}">` +
+      `<span class="lp"><b style="color:${i === 4 ? 'var(--amber)' : i === 0 ? 'var(--bull)' : 'inherit'}">${['DRIFT', 'slow', 'mid', 'quick', 'FAST'][i]}</b> ${here ? '&larr; now' : ''}<span class="dim-age">${hi == null ? '&gt;' + lo.toExponential(1) : lo.toExponential(1) + '&ndash;' + hi.toExponential(1)} ATR/min</span></span>` +
+      `<span class="dim-age" title="Share of the next hour price stayed within 0.10 ATR of where it was">dwell ${Math.round(q.dwell * 100)}%</span>` +
+      `<span class="lv ${q.nextRangeAtr > band.medianNextRangeAtr * 1.15 ? 'bear' : q.nextRangeAtr < band.medianNextRangeAtr * 0.87 ? 'bull' : 'neu'}" title="Median range of the next hour, in ATR; ${q.volRatio}x the previous hour">${q.nextRangeAtr} ATR</span></div>`;
+  }).join('') : '';
+  box.innerHTML =
+    `<div style="margin-bottom:8px"><span class="chip ${cls}">${fast ? '&#9889; ' : slow ? '&#12316; ' : ''}${t.label} &middot; ${t.pctile}</span> ` +
+    `<span class="dim-age">${t.bandLabel} &middot; ${(t.ptsPerMin > 0 ? '+' : '') + t.ptsPerMin.toFixed(3)} pts/min &middot; as of ${String(t.asOf).slice(11, 16)} UTC${age > 3 ? ` (${age}m ago)` : ''}</span></div>` +
+    `<div class="ccy-explain">${esc0(t.read)}</div>` +
+    (rows ? `<div class="ccy-legs" style="margin-top:8px"><div class="fac-head"><span>This band, five paces of arrival</span><span class="fcov">n=${band.n.toLocaleString()}</span><span class="fv neu">next hr</span></div>${rows}</div>` : '') +
+    `<div class="muted" style="font-size:10.5px;margin-top:8px">${esc0(t.caveat)} Built from ${t.coverage?.sessions?.toLocaleString() ?? '?'} sessions (${t.coverage?.from ?? '?'} &rarr; ${t.coverage?.to ?? '?'}), sampled every 5 minutes. A typical ${t.bandLabel.split(' ')[0]} hour on this pair ranges ${band?.medianNextRangeAtr ?? '?'} ATR.</div>`;
+}
+
 async function loadDrawerIvRv(name, sym) {
   const sec = $('drIvRvSec'), box = $('drIvRv');
   const CA = window.crossAssetBrick;
@@ -8913,6 +8982,20 @@ function assembleSnapshot(r) {
     };
   }
 
+  // TAPE SPEED. What kind of hour this is, from this pair's own history. Range
+  // context only; the note carries the finding so the model does not reach for the
+  // "level" story that the control study ruled out.
+  const tp = _tape[r.d.sym];
+  if (tp?.ok) {
+    s.tapeSpeed = {
+      label: tp.label, pctile: tp.pctile, band: tp.bandLabel, speedAtrPerMin: +tp.speed.toExponential(2),
+      ptsPerMin: +tp.ptsPerMin.toFixed(3), asOf: tp.asOf,
+      nextHour: { dwellPct: Math.round(tp.dwell * 100), medianRangeAtr: tp.nextRangeAtr, vsTypicalHour: tp.nextRangeVsTypical, vsLastHour: tp.volRatio, n: tp.n },
+      read: tp.read,
+      note: 'Speed persists: a slow tape tends to stay slow for the next hour and a fast one to stay fast. This is a statement about the RANGE of the next hour and about how much price is likely to stay put, never about direction. It is unconditional on levels -- tested 2026-09-12 against paired random non-level prices on 4 instruments x 4 session bands and the effect is the same away from levels as at them, so do not describe it as price "respecting" or "sitting on" a level. Use it to frame what kind of hour this is (quiet-and-stuck vs moving) and how wide the next hour is likely to be relative to a typical one and to the last one.',
+    };
+  }
+
   // OANDA POSITION BOOK. today.html's pair prompt has never carried a retail read --
   // the Myfxbook fields in the prompt template are set only by js/ai.js on
   // index.html, so from here that section has always rendered N/A. This is the
@@ -9568,7 +9651,7 @@ async function generateMorningBrief() {
 }
 
 // ── Boot + refresh cadence ────────────────────────────────────────────────────
-loadAll().then(() => { pollPrices(); startLivePriceStream(); loadSpreads(); loadIvRvAll(); });
+loadAll().then(() => { pollPrices(); startLivePriceStream(); loadSpreads(); loadIvRvAll(); loadTapeSpeedAll(); });
 loadGate();
 loadMorningBrief();
 setInterval(loadGate, 60 * 60_000);            // calendar + risk state, hourly
@@ -9614,6 +9697,14 @@ setInterval(() => { jget('/api/vol-forecast').then(f => { if (f?.instruments) { 
   import * as PairComposite from './js/pairCompositeEngine.js';
   window.pairCompositeBrick = PairComposite;
   try { window.render?.(); } catch (e) {}
+</script>
+<!-- Tape-speed brick (js/tapeSpeedEngine.js + the generated js/tapeSpeedParams.js):
+     the drawer shows the full quintile table for the current band so the one-line
+     read can be checked against the history it came from. -->
+<script type="module">
+  import * as Tape from './js/tapeSpeedEngine.js';
+  import { TAPE_SPEED_PARAMS } from './js/tapeSpeedParams.js';
+  window.tapeSpeedBrick = { ...Tape, TAPE_SPEED_PARAMS };
 </script>
 <!-- Direction tag (js/directionTag.js) — the plain "is price aiming up or
      down?" mark on each card. Only the DESCRIPTIVE reads (HTF trend, today's

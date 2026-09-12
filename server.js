@@ -108,6 +108,7 @@ import { fetchRealYieldData, realYieldScore, REAL_YIELD_UNIVERSE } from './js/re
 import { fetchRateDiffData, rateDiffScore, RATE_DIFF_UNIVERSE } from './js/rateDiffEngine.js';
 import { fetchPpiData, ppiCompositeScore, PPI_UNIVERSE } from './js/ppiEngine.js';
 import { buildScorecard as buildMacroScorecard, topBottomPair as macroTopBottomPair, factorBoard as macroFactorBoard } from './js/macroScorecardEngine.js';
+import { classifyTapeSpeed as _classifyTape, describeTapeSpeed as _describeTape, speedFromCloses as _tapeSpeed, atr14 as _tapeAtr, paramsKeyFor as _tapeKey } from './js/tapeSpeedEngine.js';
 import { summarisePositionBook as _summariseBook } from './js/positionBookMetrics.js';
 import { BOOK_HISTORY_KV, BOOK_INSTRUMENTS, fineRow as _bookFineRow, parseStore as _bookParse, upsertFine as _bookUpsert, rollDaily as _bookRoll, changeOver as _bookChange, approxBytes as _bookBytes } from './js/positionBookHistory.js';
 import { SCORECARD_HISTORY_KV, rowFromScorecard as _scRow, upsertRow as _scUpsert, parseStore as _scParse, seriesFor as _scSeries } from './js/scorecardHistory.js';   // one row per day of what the scorecard said
@@ -2560,6 +2561,11 @@ RETAIL CROWD POSITIONING (Myfxbook community)
 Retail long: ${s.retailLongPct ?? 'N/A'}%  |  Short: ${s.retailShortPct ?? 'N/A'}%  |  Crowding: ${s.retailCrowding ?? 'N/A'}
 Avg price of retail longs: ${s.avgLongPrice ?? 'N/A'}  |  Avg price of retail shorts: ${s.avgShortPrice ?? 'N/A'}
 Contrarian signal vs macro bias: ${s.retailContrarian ? 'YES - retail crowd opposes macro direction (supportive for trade)' : s.retailSentiment === 'BALANCED' ? 'Crowd is balanced - neutral' : 'NO - retail crowd agrees with macro direction (crowding risk)'}
+
+TAPE SPEED (15-minute speed against this pair's own history for this session band; RANGE context for the next hour, never direction)
+${s.tapeSpeed ? `${s.tapeSpeed.label} (${s.tapeSpeed.pctile} for ${s.tapeSpeed.band}) -- ${s.tapeSpeed.ptsPerMin >= 0 ? '+' : ''}${s.tapeSpeed.ptsPerMin} pts/min over the last 15 min, as of ${s.tapeSpeed.asOf}
+Next hour at this pace, historically: stayed within 0.1 ATR of here ${s.tapeSpeed.nextHour.dwellPct}% of the time; median range ${s.tapeSpeed.nextHour.medianRangeAtr} ATR (${s.tapeSpeed.nextHour.vsTypicalHour}x a typical hour in this band, ${s.tapeSpeed.nextHour.vsLastHour}x the hour just gone); n=${s.tapeSpeed.nextHour.n}
+${s.tapeSpeed.note}` : '  Not available'}
 
 OANDA POSITION BOOK (one broker's retail clients, head counts; crowding within 10% of spot; CONTEXT only)
 ${s.oandaBook ? `Retail long ${s.oandaBook.longPct}% / short ${s.oandaBook.shortPct}%  ->  ${s.oandaBook.crowding ?? 'n/a'}${s.oandaBook.excludedFarFromSpotPct != null ? `  (${s.oandaBook.excludedFarFromSpotPct}% of positions sit >10% from spot and are excluded)` : ''}
@@ -6426,6 +6432,61 @@ async function _buildMacroScorecard() {
     generatedAt: new Date().toISOString(),
   };
 }
+// ── Tape speed — how fast price is moving right now, against this pair's own history ─
+// 15-minute speed in ATR/min, cut into quintiles within the current session band,
+// with what that pace has historically meant for the NEXT HOUR's range (not
+// direction). Unconditional on levels by design: analysis/approach_speed_control_
+// study.mjs (2026-09-12) showed the "slow arrival dwells on the level" effect is
+// speed persistence and appears identically at random non-level prices.
+//
+// Two OANDA calls per symbol (M1 x 20, D x 16), cached 60s -- the read only changes
+// once a minute anyway.
+const _tapeCache = new Map();
+async function _fetchOandaCandles(instrument, gran, count) {
+  const base = _oandaBaseMe();
+  const align = gran === 'D' ? '&alignmentTimezone=Europe%2FLondon&dailyAlignment=0' : '';
+  const r = await fetch(`${base}/v3/instruments/${encodeURIComponent(instrument)}/candles?granularity=${gran}&count=${count}&price=M${align}`,
+    { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(10_000) });
+  if (!r.ok) throw new Error(`OANDA ${gran} ${r.status}`);
+  return ((await r.json()).candles ?? []).filter(c => c.mid).map(c => ({
+    time: c.time, complete: c.complete !== false,
+    open: +c.mid.o, high: +c.mid.h, low: +c.mid.l, close: +c.mid.c,
+  }));
+}
+async function _tapeSpeedFor(symbol) {
+  const instrument = _liqGateOandaSym(String(symbol).replace('/', '_'));
+  const hit = _tapeCache.get(instrument);
+  if (hit && Date.now() - hit.at < 60_000) return hit.v;
+  if (!process.env.OANDA_KEY) return { miss: true, reason: 'OANDA_KEY not set' };
+  if (!_tapeKey(instrument)) return { miss: true, reason: 'no tape-speed table for this instrument' };
+  const [m1, d] = await Promise.all([_fetchOandaCandles(instrument, 'M1', 20), _fetchOandaCandles(instrument, 'D', 16)]);
+  // Completed bars only: the live bar's close is still moving.
+  const closes = m1.filter(b => b.complete).map(b => b.close);
+  const atr = _tapeAtr(d.filter(b => b.complete));
+  const sp = _tapeSpeed(closes, atr);
+  const last = m1.filter(b => b.complete).at(-1);
+  if (!sp || !last) return { miss: true, reason: 'not enough completed bars' };
+  const hourUtc = new Date(last.time).getUTCHours();
+  const c = _classifyTape(instrument, hourUtc, sp.speed);
+  if (!c) return { miss: true, reason: 'no table for this band' };
+  const v = {
+    ok: true, symbol: instrument, asOf: last.time, price: last.close, atr,
+    speed: sp.speed, signedSpeed: sp.signed, move15m: sp.move,
+    // Signed as points per minute too, for the card.
+    ptsPerMin: sp.signed * atr,
+    ...c, read: _describeTape(c),
+    caveat: 'Range context for the next hour from this pair\'s own history; says nothing about direction. Speed persists -- that is the whole finding -- and the effect is the same away from levels as at them.',
+  };
+  _tapeCache.set(instrument, { at: Date.now(), v });
+  return v;
+}
+app.get('/api/tape-speed', async (req, res) => {
+  const symbol = req.query.symbol;
+  if (!symbol) return res.status(400).json({ error: 'symbol required' });
+  try { res.json(await _tapeSpeedFor(symbol)); }
+  catch (e) { res.json({ miss: true, reason: e.message }); }
+});
+
 // ── OANDA position-book history — record the aggregates the live poll used to throw away ─
 // One fetch per instrument on a schedule, summarised through the SAME module the
 // /api/oanda_book route uses (js/positionBookMetrics.js), and kept at 20-minute
