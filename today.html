@@ -434,7 +434,14 @@
           opacity:0;pointer-events:none;transition:opacity .18s ease, transform .18s ease;overflow-y:auto;padding:16px 20px}
   .drawer.open{opacity:1;transform:translate(-50%,-50%) scale(1);pointer-events:auto}
   .dr-top{position:sticky;top:-16px;background:var(--bg);padding:10px 0 8px;margin:-16px 0 12px;z-index:5;
-          display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border)}
+          display:flex;align-items:center;gap:12px;flex-wrap:wrap;border-bottom:1px solid var(--border)}
+  /* The status line: the card's three tiers in one row, always visible while any
+     tab scrolls. Same functions as the card, so the two cannot disagree. */
+  .dr-status{flex-basis:100%;display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-height:20px;font-size:11px;color:var(--text2)}
+  .dr-status .px{font-weight:700;color:var(--text);font-variant-numeric:tabular-nums}
+  .dr-status .chg{font-variant-numeric:tabular-nums}
+  .dr-status .chg.up{color:var(--bull)} .dr-status .chg.dn{color:var(--bear)}
+  .dr-status .sep{color:var(--border2);margin:0 2px}
   .dr-top h2{font-size:18px;font-weight:700}
   .dr-close{margin-left:auto;background:var(--card2);border:1px solid var(--border);color:var(--text2);
             border-radius:6px;padding:4px 12px;font-size:13px}
@@ -497,7 +504,7 @@
      by default — no grouping and no way to jump to the part you want. Same
      sections, same ids, same lazy loaders; only the container changed. The tab
      strip sticks under .dr-top so it stays reachable while a pane scrolls. */
-  .dr-tabs{position:sticky;top:34px;z-index:4;display:flex;gap:2px;margin:0 -20px 14px;padding:0 20px;
+  .dr-tabs{position:sticky;top:60px;z-index:4;display:flex;gap:2px;margin:0 -20px 14px;padding:0 20px;
            background:var(--bg);border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:thin}
   .dr-tab{background:transparent;border:0;border-bottom:2px solid transparent;color:var(--text3);
           font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
@@ -930,6 +937,7 @@
     <span class="chip neu" id="drRegime"></span>
     <span class="chip neu" id="drArima" style="display:none"></span>
     <button class="dr-close" onclick="closeDrawer()">✕ Close</button>
+    <div class="dr-status" id="drStatus"></div>
   </div>
 
   <!-- Headline: the plain-English translation of every signal on this pair —
@@ -6153,6 +6161,30 @@ function _clockTier(r) {
   return `<div class="tier"><span class="lbl">clock</span>${news}${ev}${(!news && !ev) ? '<span class="quiet">nothing scheduled in the next 14h</span>' : ''}</div>`;
 }
 function pairChipsHtml(r) { return _dayTier(r) + _leanTier(r) + _clockTier(r); }
+
+// ── The drawer's status line: the three tiers in one row, always visible ─────
+// Six slots, most conditional, so it usually shows four or five: price and change
+// from the open · the lean with its agreement · range used of expected · the tape
+// (tails only) · the one threat · the clock. Same functions as the card.
+function drStatusHtml(r) {
+  const d = r.d, bits = [];
+  if (d.current_price != null) {
+    const chg = (d.session_open > 0) ? (d.current_price / d.session_open - 1) * 100 : null;
+    bits.push(`<span class="px" title="Live price">${fmtN(d.current_price, d.dp)}</span>` +
+      (chg != null ? `<span class="chg ${chg > 0.02 ? 'up' : chg < -0.02 ? 'dn' : ''}" title="Change from today's open (${fmtN(d.session_open, d.dp)})">${chg > 0 ? '+' : ''}${chg.toFixed(2)}%</span>` : ''));
+  }
+  const dir = _stampChip(directionChip(r), 'c'); if (dir) bits.push(dir);
+  const rangePts = d.levels?.hl_med?.range_pts;
+  if (r.used != null || rangePts != null) {
+    bits.push(`<span title="How much of today's expected range price has already travelled${d.vol_pct != null ? ` · volatility ranks P${d.vol_pct} against the last year` : ''}. Calibrated forecast.">${r.used != null ? Math.round(100 * r.used) + '%' : '?'}${rangePts != null ? ` of ${rangePts}${d.ac === 'fx' ? 'p' : 'pt'}` : ' used'}${_EV('v', _EV_T.v)}</span>`);
+  }
+  const tape = tapeSpeedChip(r); if (tape) bits.push(tape);
+  const threat = _threatChip(r); if (threat) bits.push(threat);
+  const e = nextPairEvent(r.name);
+  if (d.news_flag) bits.push(`<span class="chip warn" title="Major scheduled release today; expected range scaled ×${d.news_mult}.">⚠ ${d.news_flag} ×${d.news_mult}</span>`);
+  else if (e && (e.ms - Date.now()) <= 6 * 3600e3 && (e.impact ?? '').toLowerCase() === 'high') bits.push(`<span class="chip warn" title="${e.event} (${e.country}) at ${evtTime(e)} UK.">⏰ ${(e.event ?? '').length > 18 ? e.event.slice(0, 16) + '…' : e.event} ${evtTime(e)}</span>`);
+  return bits.join('<span class="sep">·</span>');
+}
 // The old single row -- every chip, unranked -- for the drawer's "All reads".
 function allReadsHtml(r) {
   const d = r.d;
@@ -6784,13 +6816,17 @@ async function openDrawer(name) {
   applyDrSecStates();
   // The drawer opens on one paragraph, composed from values the page already has --
   // not the card again. The material the card no longer shows lands in its tab.
+  try { $('drStatus').innerHTML = drStatusHtml(r); } catch (e) { $('drStatus').innerHTML = ''; console.error('[status]', e); }
+  // The tab strip pins directly under the header. The header's height depends on
+  // whether the status line wrapped, so measure it rather than hard-code it.
+  requestAnimationFrame(() => { try { $('drawer').querySelector('.dr-tabs').style.top = (Math.max(34, $('drawer').querySelector('.dr-top').offsetHeight) - 16) + 'px'; } catch {} });
   try { $('drNow').innerHTML = nowParagraph(r); } catch (e) { $('drNow').innerHTML = ''; console.error('[now]', e); }
   try { $('drLadder').innerHTML = ladderHtml(r) || '<span class="muted">No ladder for this instrument yet.</span>'; } catch (e) { $('drLadderSec').style.display = 'none'; }
   try { $('drAllReads').innerHTML = allReadsHtml(r); } catch (e) { $('drAllReadsSec').style.display = 'none'; }
   try { renderDrawerFactor(r); } catch (e) { $('drFactorSec').style.display = 'none'; }
   try { const a = analogShapeHtml(r.name); if (a) { $('drAnalog').innerHTML = a; $('drAnalogSec').style.display = ''; } } catch (e) {}
   // The book loads lazily; once it is in, the Now paragraph can say who is underwater.
-  loadCrowdFor(r.d.sym).then(() => { try { $('drNow').innerHTML = nowParagraph(r); } catch {} }).catch(() => {});
+  loadCrowdFor(r.d.sym).then(() => { try { $('drNow').innerHTML = nowParagraph(r); $('drStatus').innerHTML = drStatusHtml(r); } catch {} }).catch(() => {});
   try { renderDrawerOutlook(r); } catch (e) { $('drOutlookSec').style.display = 'none'; }
   setDrTab(_drTab);
   // Sections hide themselves as their loaders resolve or fail, so tab states
