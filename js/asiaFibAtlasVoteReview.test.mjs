@@ -284,6 +284,23 @@ function mkBook(dimSpecs) {
   ok('T21 buildBarrierTrades KEEPS an outcome:neither touch (the dropped-touch fix) and falls back resolveTime to sessionCloseTime',
     tradesWithNeither?.length === 1 && tradesWithNeither[0].resolveTime === 1050 && tradesWithNeither[0].realResolveTime === 1050,
     JSON.stringify(tradesWithNeither));
+
+  // T22 (2026-09-12): the output row must carry `timedOut: true` for this
+  // trade. priceBarrierTrade computes it correctly, but an earlier version
+  // of this fix never copied it onto the trade row buildBarrierTrades
+  // builds — every consumer (portfolio pages, the live/backtest
+  // reconciliation script) had no way to tell a mark-to-close trade from a
+  // genuinely resolved one. A resolved (outcome:'out') trade in the SAME
+  // batch must NOT carry timedOut:true, proving the flag is real signal,
+  // not a constant.
+  const touchesMixed = [...touchesWithNeither,
+    { instrument: 'EURUSD', date: '2022-06-01', time: 2000, resolveTime: 2100, rearmFrac: 0.3, side: 'above', level: 1.5,
+      price: 1.17, pip: 0.0001, innerDistPips: 8, outerDistPips: 15, outcome: 'out', fadePips: 2, runPips: 15,
+      prevOutcomeSameDay: 'out', sessionHandoff: '2·london-morning', asiaConfPips: 1.2 }];
+  const tradesMixed = buildBarrierTrades(touchesMixed, book21, { rearmFrac: 0.3, cost: 0, minMargin: 1 });
+  ok('T22 the trade row carries timedOut:true for a mark-to-close trade, and false for a resolved one in the same batch',
+    tradesMixed?.length === 2 && tradesMixed[0].timedOut === true && tradesMixed[1].timedOut === false,
+    JSON.stringify(tradesMixed));
 }
 
 console.log(`\n${failures === 0 ? 'all passed' : failures + ' FAILURES'}`);

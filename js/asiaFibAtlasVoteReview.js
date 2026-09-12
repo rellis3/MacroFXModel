@@ -199,6 +199,12 @@ export function buildBarrierTrades(touches, book, { rearmFrac = 0.3, cost = 0, m
       mfePct: denom ? +(mfePips * t.pip / denom * 100).toFixed(4) : null,
       maePct: denom ? +(Math.abs(maePips) * t.pip / denom * 100).toFixed(4) : null,
       win: priced.win, pnlPct: priced.pnlPct,
+      // Surfaced (2026-09-12) — priceBarrierTrade computes this correctly
+      // for a mark-to-close trade but buildBarrierTrades never copied it
+      // onto the output row, so every consumer of this trade list (the
+      // portfolio pages, the reconciliation script) had no way to tell a
+      // genuinely resolved trade from one priced off session close.
+      timedOut: priced.timedOut ?? false,
       asiaConfPips: t.asiaConfPips ?? null,
       // Whiplash gap-since-this-rung's-own-last-touch (2026-09-04) — carried
       // straight through from the touch record (asiaFibAtlasWalk/
