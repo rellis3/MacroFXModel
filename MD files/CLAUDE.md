@@ -559,6 +559,28 @@ on this URL, not from here. When a task needs that check, ask the owner to
 confirm the Railway deploy has picked up the latest `main` (Railway redeploys on
 push, but there can be a lag) before treating a live-path test as conclusive.
 
+### Live-vs-backtest parity is currently real, not assumed — keep it that way
+
+`server.js`'s `_refreshVolatilityV2Plan`/`_volatilityV2PriceZone` (the live
+Vote Atlas bot's actual trade-decision path) import and call the SAME
+functions the backtest uses directly — `voteDecision`, `priceBarrierTrade`,
+`buildLadder`, `forecastSigma`, `costForPair`, `rungLevelsForLadder` (all
+aliased `_la*`/`_bt*` in server.js), not a reimplementation. Verified
+2026-09-12: 98/98 real historical trades matched an independent recomputation
+from scratch. This is a property of the CURRENT code, not a structural
+guarantee — it silently breaks again the moment a future change edits one of
+these functions' *callers* directly (e.g. "just tweak the price formula
+inline in the plan producer real quick") instead of the shared module, or
+adds a second, parallel implementation instead of importing the real one —
+exactly the pattern that already cost real debugging time twice this project
+(`fetchOandaM1Candles`'s un-chunked reimplementation of gap-fill logic; the
+2026-08-30 config drift between the live bot and the validated backtest
+values). **Before editing `voteDecision`/`priceBarrierTrade`/any function on
+this list, or before writing new pricing/decision logic anywhere in the live
+plan-producer path, stop and flag it to the owner as a parity risk** rather
+than silently proceeding — a second implementation of the same logic is the
+failure mode here, not a typo.
+
 ### Build: Dockerfile, not Nixpacks (2026-08-17)
 
 This service builds from the root **`Dockerfile`** (`railway.json`'s
