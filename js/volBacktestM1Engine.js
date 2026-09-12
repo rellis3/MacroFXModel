@@ -21,6 +21,19 @@ import {
   ewmaVarSeries, hvVarSeries, yzVolSeries, garchSigmas, classifyRegime, ASSET_PARAMS,
   BM_P50, BM_P75, HN_P50, HN_P75, fetchD1, INSTRUMENTS,
 } from './volBacktestEngine.js';
+import { getJSON as _r2GetTailJSON } from './r2Store.js';
+import { mergeBarsIntoPacked as _mergeM1Tail } from './m1GapFill.js';
+
+// The R2 parquet archive this whole file reads is a manually re-backfilled
+// snapshot with NO scheduled refresh (found 2026-09-12 while chasing a
+// candle-chart bug — the archive was over 3 weeks stale). `M1_TAIL_PREFIX`
+// is where a nightly job (server.js's own nightly-append job, added the same
+// day) appends each day's new candles as a small, growing JSON bars array —
+// NOT a parquet rewrite (hyparquet, the reader used here, has no write
+// support; adding a parquet-write dependency was a bigger, riskier change
+// than this). See loadM1ForPair's own tail-merge step below for the read
+// side of this.
+export const M1_TAIL_PREFIX = 'm1-tail';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -1441,25 +1454,47 @@ export async function loadM1ForPair(pairKey, m1Dir = BT_M1_DIR) {
   };
 
   // 1. R2
+  let packed = null;
   let r2Error = null;
   try {
     const r2ab = await fetchFromR2(pairKey);
-    if (r2ab) return pack(await readM1Parquet(r2ab));
+    if (r2ab) packed = pack(await readM1Parquet(r2ab));
   } catch (err) {
     r2Error = err?.message ?? String(err);
     console.warn(`[M1] R2 failed for ${pairKey}: ${r2Error}`);
   }
 
   // 2. Local disk
-  const m1File = path.join(m1Dir, `${pairKey}_m1.parquet`);
-  if (existsSync(m1File)) return pack(await readM1Parquet(m1File));
+  if (!packed) {
+    const m1File = path.join(m1Dir, `${pairKey}_m1.parquet`);
+    if (existsSync(m1File)) packed = pack(await readM1Parquet(m1File));
+  }
 
   // 3. Google Drive (slow on first load, then saved to disk)
-  const driveAb = await fetchFromDrive(pairKey, m1Dir);
-  if (driveAb) return pack(await readM1Parquet(driveAb));
+  if (!packed) {
+    const driveAb = await fetchFromDrive(pairKey, m1Dir);
+    if (driveAb) packed = pack(await readM1Parquet(driveAb));
+  }
 
-  if (r2Error) throw new Error(`R2 error: ${r2Error}`);
-  return null;
+  if (!packed) {
+    if (r2Error) throw new Error(`R2 error: ${r2Error}`);
+    return null;
+  }
+
+  // Nightly tail top-up (2026-09-12) -- see M1_TAIL_PREFIX's own doc above.
+  // Deliberately fault-tolerant: ANY failure here (missing tail, R2 down,
+  // malformed data) silently falls back to the base archive UNCHANGED --
+  // every existing caller of this function gets EXACTLY what it always got
+  // if the tail doesn't exist or can't be read, which is the common case
+  // until the nightly job has run at least once for a given pair.
+  try {
+    const tail = await _r2GetTailJSON(`${M1_TAIL_PREFIX}/${pairKey}.json`);
+    if (tail?.bars?.length) packed = _mergeM1Tail(packed, tail.bars);
+  } catch (e) {
+    console.warn(`[M1] tail merge failed for ${pairKey}: ${e.message} — using base archive only`);
+  }
+
+  return packed;
 }
 
 export async function runFullLevelAnalysis(opts = {}, instruments = INSTRUMENTS, m1Dir = BT_M1_DIR, onProgress = null) {

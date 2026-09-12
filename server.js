@@ -142,7 +142,7 @@ import { macroContext as _macroContext, macroContextByDate as _macroContextByDat
 import { analyzePair as _mcondAnalyzePair, summarizeRows as _mcondSummarize, verdict as _mcondVerdict } from './js/macroConditionerEngine.js';
 import { creditGate as _creditGateBrick } from './js/creditCore.js';
 import { creditRegime as _creditRegime } from './js/creditHmm.js';
-import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2, fetchFromR2 as gliFetchFromR2 } from './js/volBacktestM1Engine.js';
+import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2, fetchFromR2 as gliFetchFromR2, M1_TAIL_PREFIX as _M1_TAIL_PREFIX } from './js/volBacktestM1Engine.js';
 import { resampleBars as plResampleBars, runPatternScan, annotateHtfAlignment as plAnnotateHtfAlignment, confidenceBucketStats as plConfidenceBucketStats, classifySwingStructure as plClassifySwingStructure } from './js/patternEngine.js';
 import { loadTradeLabBars, loadFullArchivePacked } from './js/tradeLabDataSource.js';
 import { findImpulseRetracements } from './js/impulseRetracementGeometry.js';
@@ -30182,6 +30182,57 @@ const REFERENCE_ENGINE_PAIRS = [
   'EURAUD', 'EURCAD', 'EURNZD', 'GBPAUD', 'GBPCAD', 'AUDCAD', 'NZDCAD', 'NZDJPY',
   'CHFJPY', 'BTCUSD',
 ];
+// Nightly M1 tail append (2026-09-12) — fills the gap _scheduleDailyLondon's
+// own reference-engine-rebuild inherits every night: the R2 parquet archive
+// `loadM1ForPair` reads is a manually re-backfilled snapshot with NO
+// scheduled refresh (found while chasing a candle-chart bug — the archive
+// was over 3 weeks stale). Runs at 00:15 London, 15 minutes BEFORE the
+// 00:30 reference-engine-rebuild below, so that rebuild's own M1 reads
+// already see today's freshly-appended bars. Reuses `fetchM1Gap`
+// (js/m1GapFill.js, fixed the same night with retries + proper chunking)
+// and writes to `M1_TAIL_PREFIX` — a small, growing JSON bars array
+// `loadM1ForPair` merges on top of the base parquet at read time, NOT a
+// parquet rewrite (hyparquet, the reader this file uses, has no write
+// support). Known, deliberate scope limit: the tail file only ever grows;
+// nothing periodically rolls it into a fresh parquet and resets it, so it
+// will need a manual consolidation eventually (same manual-backfill
+// discipline the base archive already has, just less often).
+if (process.env.OANDA_KEY) {
+  _scheduleDailyLondon(0, 15, async () => {
+    let enabled = process.env.M1_NIGHTLY_APPEND !== '0';   // env opt-OUT, defaults on
+    try {
+      const raw = await kv.get('caps');
+      if (raw) { const c = JSON.parse(raw); if (typeof c.m1NightlyAppend === 'boolean') enabled = c.m1NightlyAppend; }
+    } catch (e) { console.error('[m1-nightly-append] caps read failed:', e.message); }
+    if (!enabled) { console.log('[m1-nightly-append] nightly tick — disabled (Caps.m1NightlyAppend=false or M1_NIGHTLY_APPEND=0)'); return; }
+    console.log(`[m1-nightly-append] nightly tick firing — ${REFERENCE_ENGINE_PAIRS.length} instruments`);
+    const nowSec = Math.floor(Date.now() / 1000);
+    let appended = 0, skipped = 0, failed = 0;
+    for (const sym of REFERENCE_ENGINE_PAIRS) {
+      const pair = sym.toLowerCase();
+      try {
+        let osym; try { osym = oandaSymbol(pair); } catch { skipped++; continue; }
+        const base = await loadM1ForPair(pair); // base parquet + any existing tail, so "last known point" already accounts for prior nights' appends
+        if (!base?.n) { skipped++; continue; }
+        const lastSec = base.times[base.n - 1];
+        if (nowSec - lastSec < 3600) { skipped++; continue; } // already current within an hour — nothing to do
+        const bars = await _fetchM1Gap(osym, lastSec + 60, nowSec, _btFetchM1Range, { onLog: m => console.log(`[m1-nightly-append] ${sym}: ${m}`) });
+        if (!bars.length) { skipped++; continue; }
+        if (bars.gaps?.length) console.warn(`[m1-nightly-append] ${sym}: ${bars.gaps.length} window(s) never fetched after retries — appending what did succeed`);
+        const existing = (await _r2GetJSON(`${_M1_TAIL_PREFIX}/${pair}.json`)) ?? { bars: [] };
+        const combined = existing.bars.concat(bars.map(b => ({ time: b.time, open: b.open, high: b.high, low: b.low, close: b.close, volume: b.volume ?? 0 })));
+        await _r2PutJSON(`${_M1_TAIL_PREFIX}/${pair}.json`, { bars: combined, updatedAt: new Date().toISOString() });
+        appended++;
+      } catch (e) {
+        failed++;
+        console.error(`[m1-nightly-append] ${sym} failed:`, e.message);
+      }
+    }
+    console.log(`[m1-nightly-append] done: ${appended} appended, ${skipped} skipped (already current/no OANDA symbol), ${failed} failed`);
+  });
+  console.log('[m1-nightly-append] nightly tick armed at 00:15 London (tops up the M1 archive tail so it never goes stale — gated by Caps.m1NightlyAppend or M1_NIGHTLY_APPEND=0 to disable)');
+}
+
 if (process.env.OANDA_KEY) {
   _scheduleDailyLondon(0, 30, async () => {
     let enabled = process.env.REFERENCE_ENGINE_REBUILD !== '0';   // env opt-OUT, defaults on
