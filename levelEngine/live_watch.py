@@ -212,6 +212,23 @@ def detect(state, log, alerts_sent):
     bars = today_bars()
     if bars is None or bars['high'].size < 2:
         return
+
+    # NQ/CME Globex is closed weekends (and other gaps) -- when the live feed
+    # has printed no NEW 1m bar since the last successful scan, `bars` is the
+    # exact same frozen snapshot as last cycle. Re-running _first_touch against
+    # it can't find a genuinely NEW touch, only re-discover the SAME one --
+    # and since fired_key below is keyed on today_str (the real wall-clock
+    # date, which keeps advancing even while the feed is frozen), a stale
+    # touch gets treated as "unseen" again every time the calendar day rolls
+    # over, re-appending a duplicate pending record that resolve() then
+    # immediately re-resolves (already past its horizon) and re-Telegrams.
+    # Skipping detection entirely on a frozen feed is the direct fix for
+    # that -- not just a race against the dedup-state persistence bug below.
+    latest_bar_time = int(bars['time'][-1])
+    if state.get('last_bar_time') == latest_bar_time:
+        return
+    state['last_bar_time'] = latest_bar_time
+
     today_str = datetime.now(timezone.utc).strftime('%Y-%m-%d')
 
     for calc in CALC_MODULES:

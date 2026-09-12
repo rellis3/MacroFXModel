@@ -276,6 +276,18 @@ const _CF_EXACT = new Set([
                               // record for the two candidates robustness_check.py/confluence_velocity.py
                               // found but couldn't fully confirm retrospectively; losing it on a redeploy
                               // would silently reset that forward test to zero.
+  'level_engine_bot_state',   // levelEngine/live_watch.py one-shot dedup state (which signal:calc:day
+                              // combos have already fired) — same "*_bot_state, survives BOT restarts,
+                              // keep across redeploys so a bounce can't double-fire" class as
+                              // oi_bot_state/fib_atlas_bot_state/volatility_bot_v2_state. Was missing here
+                              // (only level_engine_fwd_log was persistent), so this key silently lived in
+                              // the ephemeral file store: a same-day server bounce/restart lost the dedup
+                              // memory while the forward-track log survived, so detect() re-appended a
+                              // "new" pending record for a touch it had already logged (and already
+                              // resolved) and resolve() immediately re-sent the same no_react/continuation/
+                              // reversion Telegram result — the exact "same message every few minutes on a
+                              // quiet Saturday" bug (found 2026-09-12; the frozen-feed staleness guard in
+                              // live_watch.py's detect() is the other half of the fix).
 ]);
 function isCfKey(key) {
   // kv_probe_* are throwaway keys the /api/kv-health round-trip writes to TEST the
