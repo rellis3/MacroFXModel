@@ -651,6 +651,57 @@ export function mountAsiaFibAtlasRoutes(app, express) {
     res.json({ ok: true, ...job });
   });
 
+  // POST /api/asia-fib-atlas/diag-frozen-split { pair, checks: [{targetDate, side, rung}, ...] }
+  //   -> { ok, pair, results: [{targetDate, side, rung, frozenSplitDate, frozenDecision,
+  //        frozenMargin, todaySplitDate, todayDecision, todayMargin}] }
+  //
+  // Diagnostic (2026-09-12, live-vs-backtest reconciliation hunt — see
+  // LEGO_MODULES.md) for a specific question: is a decision mismatch between
+  // what the live bot did and what a freshly-regenerated backtest says
+  // caused by an actual code difference, or by `splitAt` (levelAtlasReport.js,
+  // shared with Level/Vote Atlas — NOT touched here) recomputing its IS/OOS
+  // boundary as a 60%-of-the-whole-pool FRACTION on every call rather than a
+  // frozen date? As the pool grows day by day, that boundary moves forward,
+  // so a touch's vote can legitimately change between "the book as it stood
+  // the night before this touch" and "today's fully-retrospective book" with
+  // zero code difference. This scores the SAME real touch against BOTH:
+  // `frozenBook` built only from touches dated before the touch's own date
+  // (what a same-night regen would have produced) and `liveBook` (today's
+  // full retrospective book, the SAME thing every other route reads). If
+  // frozenDecision matches what the live bot actually did but todayDecision
+  // doesn't, that confirms the split-drift explanation over a code bug.
+  // Read-only: no persistence, no plan seeding, safe to call any time.
+  app.post('/api/asia-fib-atlas/diag-frozen-split', express.json({ limit: '8kb' }), async (req, res) => {
+    try {
+      const { pair: pairRaw, checks } = req.body ?? {};
+      const pair = String(pairRaw || '').toLowerCase();
+      const sym = pair.toUpperCase();
+      const packed = await loadM1ForPair(pair);
+      if (!packed?.n) return res.status(404).json({ ok: false, error: `no M1 for ${sym}` });
+      const assetClass = assetClassFor(pair);
+      const ivByDate = await loadIvByDate(pair);
+      const macroEvents = majorEventEpochs();
+      const { touches } = asiaFibAtlasWalk(packed, { instrument: sym, assetClass, rearmFracs: [DEFAULT_REARM], ivByDate, macroEvents });
+      const pool = touches.filter(t => t.rearmFrac === DEFAULT_REARM);
+      const liveBook = buildAsiaFibAtlasBook(touches, { rearmFrac: DEFAULT_REARM });
+      const results = [];
+      for (const c of (Array.isArray(checks) ? checks : [])) {
+        const touch = pool.find(t => t.date === c.targetDate && t.side === c.side && t.level === c.rung);
+        if (!touch) { results.push({ ...c, error: 'touch not found in this pair\'s walk' }); continue; }
+        const frozenPool = touches.filter(t => t.date < c.targetDate);
+        const frozenBook = frozenPool.length ? buildAsiaFibAtlasBook(frozenPool, { rearmFrac: DEFAULT_REARM }) : null;
+        const frozenVd = frozenBook ? voteDecision(frozenBook, touch) : null;
+        const liveVd = voteDecision(liveBook, touch);
+        results.push({
+          ...c,
+          frozenSplitDate: frozenBook?.splitDate ?? null, frozenDecision: frozenVd?.decision ?? null, frozenMargin: frozenVd?.margin ?? null,
+          todaySplitDate: liveBook?.splitDate ?? null, todayDecision: liveVd?.decision ?? null, todayMargin: liveVd?.margin ?? null,
+        });
+      }
+      res.json({ ok: true, pair: sym, results });
+    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  });
+
   // GET /api/asia-fib-atlas/live/EURUSD — the last /run's stored ladder,
   // straight from R2. No M1 load, no walk.
   app.get('/api/asia-fib-atlas/live/:instrument', async (req, res) => {

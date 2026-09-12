@@ -466,6 +466,40 @@ export function mountMondayFibAtlasRoutes(app, express) {
     res.json({ ok: true, ...job });
   });
 
+  // POST /api/monday-fib-atlas/diag-frozen-split — Monday's own copy of
+  // asiaFibAtlasRoutes.js's identical route; see that one's own doc for the
+  // full reasoning (splitAt's 60%-of-pool boundary moves forward as the
+  // touch pool grows, so a fresh regen's book isn't the same book a same-
+  // night regen would have produced for an older touch). Read-only.
+  app.post('/api/monday-fib-atlas/diag-frozen-split', express.json({ limit: '8kb' }), async (req, res) => {
+    try {
+      const { pair: pairRaw, checks } = req.body ?? {};
+      const pair = String(pairRaw || '').toLowerCase();
+      const sym = pair.toUpperCase();
+      const packed = await loadM1ForPair(pair);
+      if (!packed?.n) return res.status(404).json({ ok: false, error: `no M1 for ${sym}` });
+      const assetClass = assetClassFor(pair);
+      const { touches } = mondayFibAtlasWalk(packed, { instrument: sym, assetClass, rearmFracs: [DEFAULT_REARM] });
+      const pool = touches.filter(t => t.rearmFrac === DEFAULT_REARM);
+      const liveBook = buildAsiaFibAtlasBook(touches, { rearmFrac: DEFAULT_REARM });
+      const results = [];
+      for (const c of (Array.isArray(checks) ? checks : [])) {
+        const touch = pool.find(t => t.date === c.targetDate && t.side === c.side && t.level === c.rung);
+        if (!touch) { results.push({ ...c, error: 'touch not found in this pair\'s walk' }); continue; }
+        const frozenPool = touches.filter(t => t.date < c.targetDate);
+        const frozenBook = frozenPool.length ? buildAsiaFibAtlasBook(frozenPool, { rearmFrac: DEFAULT_REARM }) : null;
+        const frozenVd = frozenBook ? voteDecision(frozenBook, touch) : null;
+        const liveVd = voteDecision(liveBook, touch);
+        results.push({
+          ...c,
+          frozenSplitDate: frozenBook?.splitDate ?? null, frozenDecision: frozenVd?.decision ?? null, frozenMargin: frozenVd?.margin ?? null,
+          todaySplitDate: liveBook?.splitDate ?? null, todayDecision: liveVd?.decision ?? null, todayMargin: liveVd?.margin ?? null,
+        });
+      }
+      res.json({ ok: true, pair: sym, results });
+    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  });
+
   // GET /api/monday-fib-atlas/live/EURUSD — the last /run's stored ladder,
   // straight from R2. No M1 load, no walk.
   app.get('/api/monday-fib-atlas/live/:instrument', async (req, res) => {
