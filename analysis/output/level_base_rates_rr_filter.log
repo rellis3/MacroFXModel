@@ -1,0 +1,82 @@
+EURUSD: loading M1...
+  IS 3049, OOS 2148
+GBPUSD: loading M1...
+  IS 3128, OOS 2098
+USDJPY: loading M1...
+  IS 3002, OOS 2102
+AUDUSD: loading M1...
+  IS 3220, OOS 2183
+USDCHF: loading M1...
+  IS 3190, OOS 2192
+EURAUD: loading M1...
+  IS 3175, OOS 2108
+EURCHF: loading M1...
+  IS 3172, OOS 2123
+AUDJPY: loading M1...
+  IS 3112, OOS 2103
+CADJPY: loading M1...
+  IS 3107, OOS 2154
+CHFJPY: loading M1...
+  IS 2997, OOS 2167
+GOLD: loading M1...
+  IS 3166, OOS 2123
+NQ: loading M1...
+  IS 3088, OOS 2023
+SPX: loading M1...
+  IS 1576, OOS 999
+DOW: loading M1...
+  IS 1563, OOS 1015
+US2000: loading M1...
+  IS 3039, OOS 2056
+DE30: loading M1...
+  IS 2999, OOS 1969
+UK100: loading M1...
+  IS 2920, OOS 1966
+
+Total: IS 49503, OOS 33529
+
+rr=target:stop distribution (OOS): p10=0.718 p25=0.765 p50=0.822 p75=0.87 p90=0.912
+fraction with rr>=1: 0.9%  by decision:
+  follow: p50=0.798, fraction>=1: 0.0%
+  fade: p50=0.858, fraction>=1: 2.6%
+
+==============================================================================================
+R:R GEOMETRY FILTER — target:stop known at entry, no fitting, no outcome data used
+==============================================================================================
+policy                             n     win%    meanPct      PF   sharpe   t-stat
+IS  all (no filter)           49503    52.1   -0.0143   0.90   -3.06  t-8.47
+OOS all (no filter)           33529    52.4   -0.0125   0.92   -3.11  t-6.55
+
+IS  rr>=1                       560    52.9   +0.0045   1.06    0.24   t0.57
+OOS rr>=1                       312    47.8   -0.0134   0.87   -0.56  t-1.09
+
+IS  rr>=1.5                       0   [thin]
+OOS rr>=1.5                       0   [thin]
+
+IS  rr>=2                         0   [thin]
+OOS rr>=2                         0   [thin]
+
+--- OOS, rr>=1.0, by decision ---
+follow rr>=1                      0   [thin]
+fade rr>=1                      312    47.8   -0.0134   0.87   -0.56  t-1.09
+
+--- per pair (OOS, rr>=1.0) ---
+EURUSD                            3   [thin]
+GBPUSD                            0   [thin]
+USDJPY                            0   [thin]
+AUDUSD                            5   [thin]
+USDCHF                           21   [thin]
+EURAUD                           16   [thin]
+EURCHF                          105    47.6   -0.0119   0.83   -0.48  t-0.90
+AUDJPY                            0   [thin]
+CADJPY                            0   [thin]
+CHFJPY                            0   [thin]
+GOLD                              0   [thin]
+NQ                               45    55.6   -0.0049   0.97   -0.05  t-0.09
+SPX                               0   [thin]
+DOW                               0   [thin]
+US2000                            0   [thin]
+DE30                              4   [thin]
+UK100                           113    43.4   -0.0215   0.81   -0.52  t-1.00
+
+Wrote C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\output/level_base_rates_rr_filter.json

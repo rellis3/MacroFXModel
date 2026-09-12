@@ -1,0 +1,69 @@
+{
+ "baseIS": {
+  "n": 60656,
+  "mean": -0.01753731700079104,
+  "se": 0.0014099796990252066
+ },
+ "baseOOS": {
+  "n": 40788,
+  "mean": -0.016956531332744624,
+  "se": 0.0015943073537581136
+ },
+ "findings": [
+  {
+   "dim": "approachVel",
+   "bucket": "3·spike",
+   "nIS": 3454,
+   "meanIS": -0.0051,
+   "nOOS": 2759,
+   "meanOOS": 0.0086,
+   "deltaOOS": 0.0256,
+   "tOOS": 1.23,
+   "absoluteOOS": "POSITIVE"
+  },
+  {
+   "dim": "wtSlow",
+   "bucket": "1·counter",
+   "nIS": 748,
+   "meanIS": 0.0052,
+   "nOOS": 528,
+   "meanOOS": 0.0067,
+   "deltaOOS": 0.0236,
+   "tOOS": 0.34,
+   "absoluteOOS": "POSITIVE"
+  },
+  {
+   "dim": "wtState",
+   "bucket": "2·neutral",
+   "nIS": 26523,
+   "meanIS": -0.0234,
+   "nOOS": 17783,
+   "meanOOS": -0.0224,
+   "deltaOOS": -0.0055,
+   "tOOS": -9.78,
+   "absoluteOOS": "still negative"
+  },
+  {
+   "dim": "prevCloseLoc",
+   "bucket": "3·beyond-p75-up",
+   "nIS": 8367,
+   "meanIS": -0.0254,
+   "nOOS": 6015,
+   "meanOOS": -0.0249,
+   "deltaOOS": -0.008,
+   "tOOS": -5.86,
+   "absoluteOOS": "still negative"
+  },
+  {
+   "dim": "wtMtf",
+   "bucket": "1·against",
+   "nIS": 543,
+   "meanIS": -0.0454,
+   "nOOS": 432,
+   "meanOOS": -0.032,
+   "deltaOOS": -0.0151,
+   "tOOS": -1.85,
+   "absoluteOOS": "still negative"
+  }
+ ]
+}

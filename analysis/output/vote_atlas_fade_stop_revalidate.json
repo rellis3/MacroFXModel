@@ -1,0 +1,189 @@
+[
+ {
+  "pair": "EURUSD",
+  "nIS": 868,
+  "nOOS": 372,
+  "isStopPips": 15.7,
+  "isPercentile": 90,
+  "oosSharpeBefore": 1.62,
+  "oosSharpeAfter": 1.45,
+  "oosRatioBefore": 0.8598570069535023,
+  "oosRatioAfter": 0.984539147079572
+ },
+ {
+  "pair": "GBPUSD",
+  "nIS": 510,
+  "nOOS": 220,
+  "isStopPips": 21.4,
+  "isPercentile": 95,
+  "oosSharpeBefore": 1.541,
+  "oosSharpeAfter": 2.257,
+  "oosRatioBefore": 1.1353234628046995,
+  "oosRatioAfter": 1.330017099225842
+ },
+ {
+  "pair": "USDJPY",
+  "nIS": 601,
+  "nOOS": 258,
+  "isStopPips": 34.4,
+  "isPercentile": 95,
+  "oosSharpeBefore": -0.352,
+  "oosSharpeAfter": 0.148,
+  "oosRatioBefore": 0.8548948139350134,
+  "oosRatioAfter": 0.9647029753251308
+ },
+ {
+  "pair": "AUDUSD",
+  "nIS": 735,
+  "nOOS": 316,
+  "isStopPips": 7.7,
+  "isPercentile": 75,
+  "oosSharpeBefore": 2.767,
+  "oosSharpeAfter": 2.263,
+  "oosRatioBefore": 0.9179716606918896,
+  "oosRatioAfter": 1.4546234957016506
+ },
+ {
+  "pair": "USDCHF",
+  "nIS": 499,
+  "nOOS": 215,
+  "isStopPips": 17.6,
+  "isPercentile": 95,
+  "oosSharpeBefore": 2.345,
+  "oosSharpeAfter": 1.865,
+  "oosRatioBefore": 1.1205102932063375,
+  "oosRatioAfter": 1.084418856076666
+ },
+ {
+  "pair": "EURAUD",
+  "nIS": 662,
+  "nOOS": 284,
+  "isStopPips": 22.1,
+  "isPercentile": 90,
+  "oosSharpeBefore": -0.486,
+  "oosSharpeAfter": 0.159,
+  "oosRatioBefore": 0.7834506201683575,
+  "oosRatioAfter": 0.9542660413904986
+ },
+ {
+  "pair": "EURCHF",
+  "nIS": 576,
+  "nOOS": 248,
+  "isStopPips": 13.2,
+  "isPercentile": 95,
+  "oosSharpeBefore": -1.007,
+  "oosSharpeAfter": -0.57,
+  "oosRatioBefore": 0.6242287737183626,
+  "oosRatioAfter": 0.6752925897082099
+ },
+ {
+  "pair": "AUDJPY",
+  "nIS": 697,
+  "nOOS": 300,
+  "isStopPips": 6.6,
+  "isPercentile": 50,
+  "oosSharpeBefore": -0.403,
+  "oosSharpeAfter": -1.012,
+  "oosRatioBefore": 0.7663451066209274,
+  "oosRatioAfter": 2.036312645687646
+ },
+ {
+  "pair": "CADJPY",
+  "nIS": 598,
+  "nOOS": 257,
+  "isStopPips": 20.9,
+  "isPercentile": 90,
+  "oosSharpeBefore": 0.312,
+  "oosSharpeAfter": -0.976,
+  "oosRatioBefore": 0.9139923353504134,
+  "oosRatioAfter": 0.9800973599617783
+ },
+ {
+  "pair": "CHFJPY",
+  "nIS": 439,
+  "nOOS": 189,
+  "isStopPips": 7.1,
+  "isPercentile": 50,
+  "oosSharpeBefore": 0.206,
+  "oosSharpeAfter": 0.706,
+  "oosRatioBefore": 0.563046669213601,
+  "oosRatioAfter": 2.4123229792564627
+ },
+ {
+  "pair": "GOLD",
+  "nIS": 588,
+  "nOOS": 253,
+  "isStopPips": 7.1,
+  "isPercentile": 95,
+  "oosSharpeBefore": 0.251,
+  "oosSharpeAfter": 1.335,
+  "oosRatioBefore": 0.9416897587931279,
+  "oosRatioAfter": 2.32773699249424
+ },
+ {
+  "pair": "NQ",
+  "nIS": 421,
+  "nOOS": 181,
+  "isStopPips": 77.8,
+  "isPercentile": 95,
+  "oosSharpeBefore": 0.977,
+  "oosSharpeAfter": 0.763,
+  "oosRatioBefore": 0.9815166435282345,
+  "oosRatioAfter": 1.334456094739047
+ },
+ {
+  "pair": "SPX",
+  "nIS": 196,
+  "nOOS": 85,
+  "isStopPips": 21.8,
+  "isPercentile": 95,
+  "oosSharpeBefore": 4.076,
+  "oosSharpeAfter": 3.369,
+  "oosRatioBefore": 1.1035771054147663,
+  "oosRatioAfter": 1.2533223824965787
+ },
+ {
+  "pair": "DOW",
+  "nIS": 170,
+  "nOOS": 73,
+  "isStopPips": 141.5,
+  "isPercentile": 95,
+  "oosSharpeBefore": 3.719,
+  "oosSharpeAfter": 1.921,
+  "oosRatioBefore": 1.462945718798031,
+  "oosRatioAfter": 1.5869422740115116
+ },
+ {
+  "pair": "US2000",
+  "nIS": 364,
+  "nOOS": 156,
+  "isStopPips": 7.6,
+  "isPercentile": 90,
+  "oosSharpeBefore": 1.457,
+  "oosSharpeAfter": 1.266,
+  "oosRatioBefore": 0.9022223665685173,
+  "oosRatioAfter": 1.3666869927301417
+ },
+ {
+  "pair": "DE30",
+  "nIS": 735,
+  "nOOS": 315,
+  "isStopPips": 12,
+  "isPercentile": 50,
+  "oosSharpeBefore": 0.92,
+  "oosSharpeAfter": 0.554,
+  "oosRatioBefore": 0.8909582172450873,
+  "oosRatioAfter": 5.676625018957011
+ },
+ {
+  "pair": "UK100",
+  "nIS": 521,
+  "nOOS": 224,
+  "isStopPips": 24.2,
+  "isPercentile": 95,
+  "oosSharpeBefore": -1.193,
+  "oosSharpeAfter": -0.584,
+  "oosRatioBefore": 0.7174506692298107,
+  "oosRatioAfter": 0.9255571966627129
+ }
+]

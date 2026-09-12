@@ -1,0 +1,20 @@
+{
+ "totalOosTouches": 63081,
+ "totalTrades": 33529,
+ "overall": {
+  "trades": 33529,
+  "tradesPerYr": 7564.2,
+  "winRate": 52.4,
+  "profitFactor": 0.916,
+  "expectancy": -0.0125,
+  "sharpe": -3.113,
+  "sharpeSE": 0.475,
+  "minTrackYears": null,
+  "maxDD": -420.077,
+  "totalPnl": -418.076,
+  "skew": -0.32,
+  "excessKurt": 1.332,
+  "var95": -0.5686,
+  "cvar95": -0.7765
+ }
+}

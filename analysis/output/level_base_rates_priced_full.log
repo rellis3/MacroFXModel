@@ -1,0 +1,67 @@
+EURUSD: loading M1...
+  3896 OOS touches -> 3453 priced (p50/p75 only) -> 2148 after concurrency cap
+GBPUSD: loading M1...
+  3963 OOS touches -> 3448 priced (p50/p75 only) -> 2098 after concurrency cap
+USDJPY: loading M1...
+  3864 OOS touches -> 3371 priced (p50/p75 only) -> 2102 after concurrency cap
+AUDUSD: loading M1...
+  4137 OOS touches -> 3636 priced (p50/p75 only) -> 2183 after concurrency cap
+USDCHF: loading M1...
+  4195 OOS touches -> 3657 priced (p50/p75 only) -> 2192 after concurrency cap
+EURAUD: loading M1...
+  4139 OOS touches -> 3600 priced (p50/p75 only) -> 2108 after concurrency cap
+EURCHF: loading M1...
+  4315 OOS touches -> 3794 priced (p50/p75 only) -> 2123 after concurrency cap
+AUDJPY: loading M1...
+  3984 OOS touches -> 3533 priced (p50/p75 only) -> 2103 after concurrency cap
+CADJPY: loading M1...
+  3970 OOS touches -> 3468 priced (p50/p75 only) -> 2154 after concurrency cap
+CHFJPY: loading M1...
+  4122 OOS touches -> 3621 priced (p50/p75 only) -> 2167 after concurrency cap
+GOLD: loading M1...
+  3992 OOS touches -> 3505 priced (p50/p75 only) -> 2123 after concurrency cap
+NQ: loading M1...
+  3628 OOS touches -> 3190 priced (p50/p75 only) -> 2023 after concurrency cap
+SPX: loading M1...
+  1870 OOS touches -> 1627 priced (p50/p75 only) -> 999 after concurrency cap
+DOW: loading M1...
+  1859 OOS touches -> 1643 priced (p50/p75 only) -> 1015 after concurrency cap
+US2000: loading M1...
+  3735 OOS touches -> 3269 priced (p50/p75 only) -> 2056 after concurrency cap
+DE30: loading M1...
+  3728 OOS touches -> 3348 priced (p50/p75 only) -> 1969 after concurrency cap
+UK100: loading M1...
+  3684 OOS touches -> 3220 priced (p50/p75 only) -> 1966 after concurrency cap
+
+Total OOS touches: 63081, priced+capped trades: 33529
+
+==========================================================================================
+LEVEL BASE RATE RULE, PRICED — p50=follow, p75=fade, no vote, no context, real cost
+==========================================================================================
+policy                             n     win%    meanPct      PF   sharpe   t-stat
+ALL (p50+p75 combined)        33529    52.4   -0.0125   0.92   -3.11  t-6.55
+p50 only (continuation)       21689    52.7   -0.0130   0.92   -2.53  t-5.33
+p75 only (fade)               11840    51.8   -0.0116   0.92   -1.81  t-3.81
+up side only                  16686    52.5   -0.0117   0.92   -2.15  t-4.53
+down side only                16843    52.3   -0.0132   0.92   -2.25  t-4.74
+
+--- per pair ---
+EURUSD                         2148    53.8   -0.0041   0.96   -0.44  t-0.88
+GBPUSD                         2098    52.3   -0.0138   0.87   -1.38  t-2.74
+USDJPY                         2102    51.9   -0.0100   0.93   -0.79  t-1.62
+AUDUSD                         2183    54.7   -0.0018   0.99   -0.15  t-0.30
+USDCHF                         2192    51.1   -0.0134   0.87   -1.41  t-2.84
+EURAUD                         2108    49.6   -0.0235   0.78   -2.59  t-5.11
+EURCHF                         2123    49.9   -0.0177   0.77   -2.72  t-5.41
+AUDJPY                         2103    53.4   -0.0144   0.90   -1.10  t-2.16
+CADJPY                         2154    51.8   -0.0140   0.89   -1.20  t-2.39
+CHFJPY                         2167    52.1   -0.0117   0.90   -1.07  t-2.26
+GOLD                           2123    53.3   -0.0086   0.96   -0.40  t-0.79
+NQ                             2023    52.0   -0.0182   0.93   -0.75  t-1.47
+SPX                             999    53.4   -0.0065   0.96   -0.35  t-0.49
+DOW                            1015    52.4   -0.0154   0.92   -0.89  t-1.22
+US2000                         2056    53.2   -0.0094   0.97   -0.35  t-0.70
+DE30                           1969    54.4   -0.0071   0.96   -0.41  t-0.78
+UK100                          1966    51.5   -0.0219   0.86   -1.45  t-2.89
+
+Wrote C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\output/level_base_rates_priced.json

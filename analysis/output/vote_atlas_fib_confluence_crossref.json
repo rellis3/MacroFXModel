@@ -1,0 +1,36 @@
+{
+ "totalTrades": 26866,
+ "withGrid": 26800,
+ "near": {
+  "trades": 11385,
+  "tradesPerYr": 2570.1,
+  "winRate": 56.1,
+  "profitFactor": 1.212,
+  "expectancy": 0.027,
+  "sharpe": 3.847,
+  "sharpeSE": 0.476,
+  "minTrackYears": 0.2,
+  "maxDD": -16.467,
+  "totalPnl": 307.272,
+  "skew": -0.175,
+  "excessKurt": 2.251,
+  "var95": -0.5446,
+  "cvar95": -0.7513
+ },
+ "notNear": {
+  "trades": 15481,
+  "tradesPerYr": 3492.5,
+  "winRate": 55.9,
+  "profitFactor": 1.209,
+  "expectancy": 0.0232,
+  "sharpe": 4.598,
+  "sharpeSE": 0.476,
+  "minTrackYears": 0.1,
+  "maxDD": -14.276,
+  "totalPnl": 359.704,
+  "skew": -0.11,
+  "excessKurt": 1.091,
+  "var95": -0.4355,
+  "cvar95": -0.5985
+ }
+}

@@ -1,0 +1,18 @@
+EURUSD: loading M1...
+  1566 trades (post cap)
+GOLD: loading M1...
+  1787 trades (post cap)
+
+--- IS-fit candidates chosen per pair/decision ---
+  EURUSD fade    target=17.9(p60) stop=28(p90) discSharpe=1.24 n=850/362
+  EURUSD follow  target=17.9(p40) stop=26.2(p70) discSharpe=0.65 n=246/108
+  GOLD fade    target=3.5(p40) stop=6.8(p70) discSharpe=0.04 n=593/234
+  GOLD follow  target=8.8(p60) stop=13.6(p90) discSharpe=1.94 n=657/303
+
+================================================================================
+HELD-OUT COMPARISON (same trades, same time window, same portfolio pipeline)
+================================================================================
+BASELINE (ladder rung target/stop): Sharpe 1.91  CAGR 36.4%  maxDD -7.3%
+NEW (empirical MFE/MAE target/stop): Sharpe 1.18  CAGR 6.6%  maxDD -3.9%
+
+Wrote C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\output/vote_atlas_empirical_exit_redesign.json

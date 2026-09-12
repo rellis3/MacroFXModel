@@ -1,0 +1,46 @@
+{
+ "kellyFade": 0.08557610962267956,
+ "kellyFollow": 0.056340678618448145,
+ "results": {
+  "BASELINE": {
+   "sharpe": 3.09,
+   "cagr": 702.14,
+   "maxDD": -38.11,
+   "calmar": 18.42,
+   "cagrNC": 238.49,
+   "maxDDNC": -40.84,
+   "calmarNC": 5.84,
+   "avgRiskPctUsed": 1
+  },
+  "EDGE_WEIGHTED": {
+   "sharpe": 3.19,
+   "cagr": 730.77,
+   "maxDD": -38.17,
+   "calmar": 19.15,
+   "cagrNC": 240.76,
+   "maxDDNC": -41.68,
+   "calmarNC": 5.78,
+   "avgRiskPctUsed": 1
+  },
+  "MARGIN_SCALED": {
+   "sharpe": 3.5,
+   "cagr": 1080.74,
+   "maxDD": -35.49,
+   "calmar": 30.45,
+   "cagrNC": 279.41,
+   "maxDDNC": -37.37,
+   "calmarNC": 7.48,
+   "avgRiskPctUsed": 1
+  },
+  "COMBINED": {
+   "sharpe": 3.65,
+   "cagr": 1141.1,
+   "maxDD": -36.63,
+   "calmar": 31.15,
+   "cagrNC": 282.74,
+   "maxDDNC": -38.94,
+   "calmarNC": 7.26,
+   "avgRiskPctUsed": 1
+  }
+ }
+}

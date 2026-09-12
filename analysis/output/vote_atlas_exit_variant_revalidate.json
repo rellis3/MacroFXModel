@@ -1,0 +1,31 @@
+{
+ "baselineStats": {
+  "days": 1134,
+  "sharpe": 3.78,
+  "sortino": 4.7,
+  "psr": 1,
+  "skew": 1.13,
+  "excessKurt": 10.94,
+  "acf1": 0.005,
+  "annVol": 39.19,
+  "cagr": 306.75,
+  "maxDD": -18.86,
+  "calmar": 16.27,
+  "profitFactor": 2.06,
+  "winRate": 58.9,
+  "var95": -2.623,
+  "var99": -5.054,
+  "cvar95": -4.194,
+  "volTarget": {
+   "target": 10,
+   "cagr": 45.2,
+   "maxDD": -5.1,
+   "calmar": 8.87
+  }
+ },
+ "trailFracsTested": [
+  1,
+  1.5,
+  2
+ ]
+}

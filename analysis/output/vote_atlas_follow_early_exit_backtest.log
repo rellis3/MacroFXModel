@@ -1,0 +1,66 @@
+EURUSD: loading M1...
+  1595 trades walked
+GBPUSD: loading M1...
+  1840 trades walked
+USDJPY: loading M1...
+  1575 trades walked
+AUDUSD: loading M1...
+  1823 trades walked
+USDCHF: loading M1...
+  2009 trades walked
+EURAUD: loading M1...
+  2013 trades walked
+EURCHF: loading M1...
+  2148 trades walked
+AUDJPY: loading M1...
+  1843 trades walked
+CADJPY: loading M1...
+  1911 trades walked
+CHFJPY: loading M1...
+  1744 trades walked
+GOLD: loading M1...
+  1810 trades walked
+NQ: loading M1...
+  1518 trades walked
+SPX: loading M1...
+  563 trades walked
+DOW: loading M1...
+  418 trades walked
+US2000: loading M1...
+  1399 trades walked
+DE30: loading M1...
+  1725 trades walked
+UK100: loading M1...
+  1559 trades walked
+
+26902 total trades with real M1 paths walked.
+
+IS/OOS split: 2025-04-29
+
+──── IN-SAMPLE (fit) ────
+variant         trades  winRate   sharpe      sharpeCI95       CAGR     maxDD      PF    avgLoss     avgWin
+baseline         17803    50.1%     3.03    [1.92, 4.14]    249.51%   -23.95%    1.15    -0.325%     0.371%
+follow th=0.9    17835    48.6%     2.26    [1.15, 3.37]    140.14%   -32.97%     1.1    -0.317%      0.37%
+follow th=0.75   17911    46.2%     1.74    [0.63, 2.85]     85.18%   -39.86%    1.08    -0.295%      0.37%
+follow th=0.6    17965    42.9%     0.84   [-0.26, 1.94]     27.36%   -42.98%    1.04    -0.267%     0.368%
+follow th=0.5    18004    40.1%     0.09   [-1.01, 1.19]      -2.5%   -52.89%       1    -0.244%     0.366%
+follow th=0.4    18023    36.9%    -0.74   [-1.84, 0.36]    -23.51%   -67.98%    0.97    -0.218%     0.363%
+follow th=0.3    18028    32.9%    -2.14  [-3.25, -1.03]    -46.03%   -86.76%    0.92     -0.19%     0.357%
+follow th=0.2    18028    28.4%    -3.46  [-4.58, -2.34]    -59.56%   -94.34%    0.87    -0.159%     0.348%
+follow th=0.1    18028    22.5%    -5.42  [-6.56, -4.28]    -72.34%   -98.27%    0.77    -0.125%     0.333%
+
+No threshold cleared the pre-stated bar -- none frozen for OOS.
+
+──── OUT-OF-SAMPLE (threshold frozen from IS, applied unchanged) ────
+variant         trades  winRate   sharpe      sharpeCI95       CAGR     maxDD      PF    avgLoss     avgWin
+baseline (live)    8653    51.2%     3.43    [1.72, 5.14]    290.12%   -16.01%    1.14    -0.324%     0.354%
+
+(full OOS grid, for context:)
+follow th=0.9     8663    50.1%     3.02    [1.32, 4.72]    219.25%   -14.92%    1.12    -0.315%     0.353%
+follow th=0.75    8690    47.7%     2.39    [0.69, 4.09]    140.94%      -15%     1.1    -0.294%     0.354%
+follow th=0.6     8727    44.1%     0.98   [-0.71, 2.67]      34.2%   -25.44%    1.04    -0.267%     0.351%
+follow th=0.5     8737    41.5%     0.25   [-1.44, 1.94]      2.91%   -27.79%    1.01    -0.245%      0.35%
+follow th=0.4     8744    38.4%    -0.56   [-2.25, 1.13]    -20.77%   -38.66%    0.98     -0.22%     0.347%
+follow th=0.3     8745    34.7%    -1.69      [-3.38, 0]     -40.4%   -55.77%    0.94    -0.193%     0.342%
+follow th=0.2     8745    30.3%    -2.94  [-4.64, -1.24]     -54.6%   -68.08%     0.9    -0.162%     0.333%
+follow th=0.1     8745    24.4%    -5.46   [-7.2, -3.72]    -72.45%   -83.11%     0.8    -0.128%     0.315%

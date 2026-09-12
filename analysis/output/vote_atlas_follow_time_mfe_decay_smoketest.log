@@ -1,0 +1,37 @@
+EURUSD: loading M1...
+  1595 trades, 355 follow tracked
+GOLD: loading M1...
+  1810 trades, 969 follow tracked
+
+3405 baseline trades, 1324 follow trades with bar-tracked progress.
+
+==========================================================================================
+STAGE A: FOLLOW trades still <0.25R MFE at checkpoint N -- eventual outcome vs exiting now
+==========================================================================================
+bars           n   stalled%  eventualWin%   EV(continue)R   currentR(exit now)
+5           1122      84.7%         59.2%           0.087               -0.021
+10          1034      78.1%         58.1%           0.063               -0.040
+20           934      70.5%         56.7%           0.036               -0.050
+30           863      65.2%         55.7%           0.016               -0.061
+
+IS/OOS split: 2025-06-05
+
+──── IN-SAMPLE (fit) ────
+variant           trades  winRate   sharpe      sharpeCI95       CAGR     maxDD      PF
+baseline            2313      48%     1.67    [0.47, 2.87]     23.17%    -9.07%    1.16
+exit@bar5           2313    38.4%     0.32   [-0.87, 1.51]      2.54%   -10.96%    1.03
+exit@bar10          2313    40.2%     0.58   [-0.61, 1.77]      5.25%   -10.51%    1.06
+exit@bar20          2313    41.9%     1.21    [0.01, 2.41]     12.91%   -10.32%    1.13
+exit@bar30          2313    42.5%     1.28    [0.08, 2.48]     14.14%    -9.34%    1.13
+
+No checkpoint cleared the pre-stated bar -- none frozen for OOS.
+
+──── OUT-OF-SAMPLE (checkpoint frozen from IS, applied unchanged) ────
+variant           trades  winRate   sharpe      sharpeCI95       CAGR     maxDD      PF
+baseline (live)     1059    51.6%     3.27    [1.42, 5.12]     55.29%    -5.66%    1.33
+
+(full OOS grid, for context:)
+exit@bar5           1059    41.5%     1.98    [0.15, 3.81]     20.77%    -3.91%    1.22
+exit@bar10          1059    42.6%     2.06    [0.23, 3.89]     22.25%    -4.26%    1.21
+exit@bar20          1059    42.1%     1.62   [-0.21, 3.45]        18%     -5.5%    1.16
+exit@bar30          1059    43.6%     1.93     [0.1, 3.76]      22.8%    -4.85%    1.19

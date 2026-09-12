@@ -1,0 +1,36 @@
+{
+ "fadeStop": 13.3,
+ "followStop": 39.9,
+ "baseline": {
+  "trades": 33529,
+  "tradesPerYr": 7564.2,
+  "winRate": 52.4,
+  "profitFactor": 0.916,
+  "expectancy": -0.0125,
+  "sharpe": -3.113,
+  "sharpeSE": 0.475,
+  "minTrackYears": null,
+  "maxDD": -420.077,
+  "totalPnl": -418.076,
+  "skew": -0.32,
+  "excessKurt": 1.332,
+  "var95": -0.5686,
+  "cvar95": -0.7765
+ },
+ "tightened": {
+  "trades": 33529,
+  "tradesPerYr": 7564.2,
+  "winRate": 43.4,
+  "profitFactor": 0.92,
+  "expectancy": -0.0094,
+  "sharpe": -2.907,
+  "sharpeSE": 0.475,
+  "minTrackYears": null,
+  "maxDD": -317.436,
+  "totalPnl": -314.236,
+  "skew": 0.063,
+  "excessKurt": 1.688,
+  "var95": -0.4127,
+  "cvar95": -0.6023
+ }
+}

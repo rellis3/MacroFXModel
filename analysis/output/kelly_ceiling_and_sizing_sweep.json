@@ -1,0 +1,132 @@
+{
+ "n": 22560,
+ "winRate": 0.5497783687943263,
+ "avgWinR": 0.7610488686390494,
+ "avgLossR": 0.820135379851746,
+ "meanR": 0.049165517046811345,
+ "varR": 0.7355404716899174,
+ "kellyContinuous": 0.06684270810259113,
+ "kellyBinary": 0.07877030348813063,
+ "sweepResults": [
+  {
+   "riskPct": 0.25,
+   "sharpe": 3.09,
+   "cagr": 78.07,
+   "maxDD": -10.11,
+   "calmar": 7.72,
+   "cagrNonCompounded": 59.62,
+   "maxDDNonCompounded": -10.21,
+   "calmarNonCompounded": 5.84
+  },
+  {
+   "riskPct": 0.5,
+   "sharpe": 3.09,
+   "cagr": 205.25,
+   "maxDD": -19.91,
+   "calmar": 10.31,
+   "cagrNonCompounded": 119.25,
+   "maxDDNonCompounded": -20.42,
+   "calmarNonCompounded": 5.84
+  },
+  {
+   "riskPct": 0.75,
+   "sharpe": 3.09,
+   "cagr": 404.05,
+   "maxDD": -29.28,
+   "calmar": 13.8,
+   "cagrNonCompounded": 178.87,
+   "maxDDNonCompounded": -30.63,
+   "calmarNonCompounded": 5.84
+  },
+  {
+   "riskPct": 1,
+   "sharpe": 3.09,
+   "cagr": 702.14,
+   "maxDD": -38.11,
+   "calmar": 18.42,
+   "cagrNonCompounded": 238.49,
+   "maxDDNonCompounded": -40.84,
+   "calmarNonCompounded": 5.84
+  },
+  {
+   "riskPct": 1.5,
+   "sharpe": 3.09,
+   "cagr": 1720.29,
+   "maxDD": -53.9,
+   "calmar": 31.92,
+   "cagrNonCompounded": 357.74,
+   "maxDDNonCompounded": -61.26,
+   "calmarNonCompounded": 5.84
+  },
+  {
+   "riskPct": 2,
+   "sharpe": 3.09,
+   "cagr": 3471.06,
+   "maxDD": -66.93,
+   "calmar": 51.86,
+   "cagrNonCompounded": 476.98,
+   "maxDDNonCompounded": -81.68,
+   "calmarNonCompounded": 5.84
+  },
+  {
+   "riskPct": 3,
+   "sharpe": 3.09,
+   "cagr": 8715.64,
+   "maxDD": -86.27,
+   "calmar": 101.02,
+   "cagrNonCompounded": 715.47,
+   "maxDDNonCompounded": -122.53,
+   "calmarNonCompounded": 5.84
+  },
+  {
+   "riskPct": 4,
+   "sharpe": 3.09,
+   "cagr": 11403.03,
+   "maxDD": -96.85,
+   "calmar": 117.74,
+   "cagrNonCompounded": 953.97,
+   "maxDDNonCompounded": -163.37,
+   "calmarNonCompounded": 5.84
+  },
+  {
+   "riskPct": 5,
+   "sharpe": 3.09,
+   "cagr": 6609.01,
+   "maxDD": -99.91,
+   "calmar": 66.15,
+   "cagrNonCompounded": 1192.46,
+   "maxDDNonCompounded": -204.21,
+   "calmarNonCompounded": 5.84
+  },
+  {
+   "riskPct": 6.68,
+   "sharpe": 3.09,
+   "cagr": -98.84,
+   "maxDD": -304.39,
+   "calmar": -0.32,
+   "cagrNonCompounded": 1593.12,
+   "maxDDNonCompounded": -272.83,
+   "calmarNonCompounded": 5.84
+  },
+  {
+   "riskPct": 8.36,
+   "sharpe": 3.09,
+   "cagr": -94.64,
+   "maxDD": -100,
+   "calmar": -0.95,
+   "cagrNonCompounded": 1993.79,
+   "maxDDNonCompounded": -341.44,
+   "calmarNonCompounded": 5.84
+  },
+  {
+   "riskPct": 10.03,
+   "sharpe": 3.09,
+   "cagr": -98.84,
+   "maxDD": -218.93,
+   "calmar": -0.45,
+   "cagrNonCompounded": 2392.07,
+   "maxDDNonCompounded": -409.65,
+   "calmarNonCompounded": 5.84
+  }
+ ]
+}

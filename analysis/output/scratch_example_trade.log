@@ -1,0 +1,71 @@
+realSplit=2022-07-22, 522 margin>=5 trades
+
+{
+  "instrument": "EURUSD",
+  "date": "2022-08-02",
+  "time": 1659460560,
+  "resolveTime": 1659481140,
+  "side": "down",
+  "rung": "p75",
+  "session": "NY",
+  "entry": 1.018441,
+  "pip": 0.0001,
+  "decision": "fade",
+  "margin": 6,
+  "targetPips": 33.9,
+  "stopPips": 39,
+  "mfePips": 5.2,
+  "maePips": 21.3,
+  "mfePct": 0.0507,
+  "maePct": 0.2076,
+  "win": false,
+  "pnlPct": -0.2049,
+  "timedOut": true
+}
+---
+{
+  "instrument": "EURUSD",
+  "date": "2022-08-05",
+  "time": 1659722880,
+  "resolveTime": 1659733080,
+  "side": "down",
+  "rung": "p75",
+  "session": "NY",
+  "entry": 1.017524,
+  "pip": 0.0001,
+  "decision": "fade",
+  "margin": 7,
+  "targetPips": 31.8,
+  "stopPips": 35.9,
+  "mfePips": 9.9,
+  "maePips": 2.9,
+  "mfePct": 0.0966,
+  "maePct": 0.0283,
+  "win": true,
+  "pnlPct": 0.0521,
+  "timedOut": true
+}
+---
+{
+  "instrument": "EURUSD",
+  "date": "2022-08-23",
+  "time": 1661262300,
+  "resolveTime": 1661263200,
+  "side": "up",
+  "rung": "p50",
+  "session": "NY",
+  "entry": 0.997502,
+  "pip": 0.0001,
+  "decision": "fade",
+  "margin": 5,
+  "targetPips": 31.8,
+  "stopPips": 26.8,
+  "mfePips": 5.7,
+  "maePips": 37,
+  "mfePct": 0.0573,
+  "maePct": 0.3721,
+  "win": false,
+  "pnlPct": -0.2775,
+  "timedOut": false
+}
+---

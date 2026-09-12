@@ -1,0 +1,64 @@
+EURUSD:
+  10359 touches -> 4147 OOS -> 3658 non-p90 -> 3658 priceable -> 3317 voted (m2 2593, m3 1776); timedOut 27%
+GBPUSD:
+  10429 touches -> 4174 OOS -> 3641 non-p90 -> 3641 priceable -> 3340 voted (m2 2759, m3 2056); timedOut 27%
+USDJPY:
+  10197 touches -> 4082 OOS -> 3551 non-p90 -> 3551 priceable -> 3303 voted (m2 2764, m3 2195); timedOut 28%
+AUDUSD:
+  11010 touches -> 4404 OOS -> 3866 non-p90 -> 3866 priceable -> 3481 voted (m2 2685, m3 1878); timedOut 28%
+USDCHF:
+  11173 touches -> 4472 OOS -> 3907 non-p90 -> 3907 priceable -> 3572 voted (m2 2970, m3 2295); timedOut 29%
+EURAUD:
+  11101 touches -> 4444 OOS -> 3865 non-p90 -> 3865 priceable -> 3593 voted (m2 2982, m3 2227); timedOut 26%
+EURCHF:
+  11490 touches -> 4603 OOS -> 4038 non-p90 -> 4038 priceable -> 3769 voted (m2 3104, m3 2356); timedOut 30%
+AUDJPY:
+  10676 touches -> 4271 OOS -> 3791 non-p90 -> 3791 priceable -> 3474 voted (m2 2930, m3 2269); timedOut 27%
+CADJPY:
+  10491 touches -> 4199 OOS -> 3660 non-p90 -> 3660 priceable -> 3402 voted (m2 2829, m3 2199); timedOut 29%
+CHFJPY:
+  10858 touches -> 4345 OOS -> 3806 non-p90 -> 3806 priceable -> 3487 voted (m2 2847, m3 2167); timedOut 30%
+GOLD:
+  10556 touches -> 4223 OOS -> 3704 non-p90 -> 3704 priceable -> 3393 voted (m2 2717, m3 1889); timedOut 24%
+NQ:
+  9656 touches -> 3863 OOS -> 3407 non-p90 -> 3407 priceable -> 2973 voted (m2 2120, m3 1380); timedOut 25%
+SPX:
+  4665 touches -> 1870 OOS -> 1627 non-p90 -> 1627 priceable -> 1435 voted (m2 1082, m3 719); timedOut 25%
+DOW:
+  4645 touches -> 1859 OOS -> 1643 non-p90 -> 1643 priceable -> 1413 voted (m2 981, m3 608); timedOut 28%
+US2000:
+  9922 touches -> 3975 OOS -> 3485 non-p90 -> 3485 priceable -> 3101 voted (m2 2374, m3 1607); timedOut 28%
+DE30:
+  9819 touches -> 3928 OOS -> 3534 non-p90 -> 3534 priceable -> 3196 voted (m2 2533, m3 1944); timedOut 27%
+UK100:
+  9829 touches -> 3932 OOS -> 3445 non-p90 -> 3445 priceable -> 3244 voted (m2 2768, m3 2126); timedOut 27%
+
+========================================================================================
+VOTE ATLAS DECOMPOSITION — 17 instruments, rearm 0.3, real per-pair cost,
+per-pair concurrency cap 1, unresolved touches marked out at the session close (post-fix).
+========================================================================================
+policy                      n    win%   meanPct     PF  sharpe   t-stat  timedOut
+-- on the touches the vote gate ADMITS (direction test) -------------------------
+vote (m>=1)             33573    51.9   -0.0002   1.00   -0.05  t-0.11       24%
+vote (m>=2)             28897    53.3   +0.0091   1.07    2.10   t4.47       25%
+vote (m>=3)             22560    55.0   +0.0194   1.15    4.10   t8.74       27%
+anti-vote               33573    45.8   -0.0266   0.83   -6.52 t-13.89       24%
+always follow           33573    50.2   -0.0131   0.91   -3.21  t-6.84       24%
+always fade             33573    47.5   -0.0137   0.91   -3.35  t-7.15       24%
+coin flip               33573    48.6   -0.0148   0.90   -3.62  t-7.73       24%
+-- no margin gate (baseline) ----------------------------------------------------
+NO GATE always fade     35456    47.6   -0.0126   0.92   -3.15  t-6.72       24%
+-- SAME trades, but the book built from IS ONLY (no OOS leak) --------------------
+HONEST vote (m>=1)      33285    51.0   -0.0077   0.95   -1.89  t-4.02       24%
+HONEST vote (m>=2)      28014    51.9   -0.0025   0.98   -0.56  t-1.20       25%
+HONEST vote (m>=3)      21753    53.1   +0.0052   1.04    1.06   t2.26       27%
+HONEST anti-vote        33285    46.8   -0.0191   0.88   -4.65  t-9.92       24%
+
+HOW TO READ IT
+  The vote earns its place only if "vote (m>=1)" beats the better of always-follow /
+  always-fade on the SAME touches. If it merely beats the coin flip, that is the
+  geometry, not the signal. If "anti-vote" wins, the vote is backwards.
+  If "NO GATE vote-dir" matches "vote (m>=1)", the margin gate only shrinks the sample.
+  Margin 1/2/3 should order monotonically if margin is really conviction.
+
+Wrote C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\output/vote_atlas_decomposition.json

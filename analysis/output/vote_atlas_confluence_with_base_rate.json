@@ -1,0 +1,50 @@
+{
+ "all": {
+  "trades": 26866,
+  "tradesPerYr": 6061,
+  "winRate": 56,
+  "profitFactor": 1.211,
+  "expectancy": 0.0248,
+  "sharpe": 5.965,
+  "sharpeSE": 0.476,
+  "minTrackYears": 0.1,
+  "maxDD": -16.467,
+  "totalPnl": 666.977,
+  "skew": -0.145,
+  "excessKurt": 1.929,
+  "var95": -0.4822,
+  "cvar95": -0.6729
+ },
+ "agrees": {
+  "trades": 14848,
+  "tradesPerYr": 3349.7,
+  "winRate": 59.3,
+  "profitFactor": 1.217,
+  "expectancy": 0.0263,
+  "sharpe": 4.663,
+  "sharpeSE": 0.476,
+  "minTrackYears": 0.1,
+  "maxDD": -15.582,
+  "totalPnl": 390.008,
+  "skew": -0.476,
+  "excessKurt": 1.878,
+  "var95": -0.5082,
+  "cvar95": -0.7116
+ },
+ "disagrees": {
+  "trades": 12018,
+  "tradesPerYr": 2713,
+  "winRate": 51.8,
+  "profitFactor": 1.201,
+  "expectancy": 0.023,
+  "sharpe": 3.733,
+  "sharpeSE": 0.476,
+  "minTrackYears": 0.2,
+  "maxDD": -14.619,
+  "totalPnl": 276.968,
+  "skew": 0.281,
+  "excessKurt": 2.011,
+  "var95": -0.4511,
+  "cvar95": -0.6196
+ }
+}

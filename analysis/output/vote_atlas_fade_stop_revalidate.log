@@ -1,0 +1,59 @@
+EURUSD: loading M1...
+  3114 real-OOS trades, 1240 fade @ margin>=3
+GBPUSD: loading M1...
+  3142 real-OOS trades, 730 fade @ margin>=3
+USDJPY: loading M1...
+  3007 real-OOS trades, 859 fade @ margin>=3
+AUDUSD: loading M1...
+  3323 real-OOS trades, 1051 fade @ margin>=3
+USDCHF: loading M1...
+  3333 real-OOS trades, 714 fade @ margin>=3
+EURAUD: loading M1...
+  3275 real-OOS trades, 946 fade @ margin>=3
+EURCHF: loading M1...
+  3522 real-OOS trades, 824 fade @ margin>=3
+AUDJPY: loading M1...
+  3213 real-OOS trades, 997 fade @ margin>=3
+CADJPY: loading M1...
+  3145 real-OOS trades, 855 fade @ margin>=3
+CHFJPY: loading M1...
+  3243 real-OOS trades, 628 fade @ margin>=3
+GOLD: loading M1...
+  3156 real-OOS trades, 841 fade @ margin>=3
+NQ: loading M1...
+  2817 real-OOS trades, 602 fade @ margin>=3
+SPX: loading M1...
+  1392 real-OOS trades, 281 fade @ margin>=3
+DOW: loading M1...
+  1291 real-OOS trades, 243 fade @ margin>=3
+US2000: loading M1...
+  2836 real-OOS trades, 520 fade @ margin>=3
+DE30: loading M1...
+  2971 real-OOS trades, 1050 fade @ margin>=3
+UK100: loading M1...
+  2878 real-OOS trades, 745 fade @ margin>=3
+
+Fade-stop OOS re-validation (fixed data), 17 pairs.
+
+  EURUSD   IS stop=15.7(p90) n=868/372  OOS Sharpe 1.62->1.45 (-0.17)  OOS ratio 0.86->0.98
+  GBPUSD   IS stop=21.4(p95) n=510/220  OOS Sharpe 1.54->2.26 (+0.72)  OOS ratio 1.14->1.33
+  USDJPY   IS stop=34.4(p95) n=601/258  OOS Sharpe -0.35->0.15 (+0.50)  OOS ratio 0.85->0.96
+  AUDUSD   IS stop=7.7(p75) n=735/316  OOS Sharpe 2.77->2.26 (-0.50)  OOS ratio 0.92->1.45
+  USDCHF   IS stop=17.6(p95) n=499/215  OOS Sharpe 2.35->1.86 (-0.48)  OOS ratio 1.12->1.08
+  EURAUD   IS stop=22.1(p90) n=662/284  OOS Sharpe -0.49->0.16 (+0.65)  OOS ratio 0.78->0.95
+  EURCHF   IS stop=13.2(p95) n=576/248  OOS Sharpe -1.01->-0.57 (+0.44)  OOS ratio 0.62->0.68
+  AUDJPY   IS stop=6.6(p50) n=697/300  OOS Sharpe -0.40->-1.01 (-0.61)  OOS ratio 0.77->2.04
+  CADJPY   IS stop=20.9(p90) n=598/257  OOS Sharpe 0.31->-0.98 (-1.29)  OOS ratio 0.91->0.98
+  CHFJPY   IS stop=7.1(p50) n=439/189  OOS Sharpe 0.21->0.71 (+0.50)  OOS ratio 0.56->2.41
+  GOLD     IS stop=7.1(p95) n=588/253  OOS Sharpe 0.25->1.33 (+1.08)  OOS ratio 0.94->2.33
+  NQ       IS stop=77.8(p95) n=421/181  OOS Sharpe 0.98->0.76 (-0.21)  OOS ratio 0.98->1.33
+  SPX      IS stop=21.8(p95) n=196/85  OOS Sharpe 4.08->3.37 (-0.71)  OOS ratio 1.10->1.25
+  DOW      IS stop=141.5(p95) n=170/73  OOS Sharpe 3.72->1.92 (-1.80)  OOS ratio 1.46->1.59
+  US2000   IS stop=7.6(p90) n=364/156  OOS Sharpe 1.46->1.27 (-0.19)  OOS ratio 0.90->1.37
+  DE30     IS stop=12(p50) n=735/315  OOS Sharpe 0.92->0.55 (-0.37)  OOS ratio 0.89->5.68
+  UK100    IS stop=24.2(p95) n=521/224  OOS Sharpe -1.19->-0.58 (+0.61)  OOS ratio 0.72->0.93
+
+7 of 17 pairs (41%) improved OOS Sharpe using an IS-only-chosen stop.
+Average OOS Sharpe lift: -0.108
+
+Wrote C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\output/vote_atlas_fade_stop_revalidate.json

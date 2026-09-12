@@ -1,0 +1,85 @@
+EURUSD: loading M1...
+  1566 trades, 1566 had a reinforced grid that day, 511 landed near one
+GBPUSD: loading M1...
+  1801 trades, 1801 had a reinforced grid that day, 432 landed near one
+USDJPY: loading M1...
+  1544 trades, 1544 had a reinforced grid that day, 112 landed near one
+AUDUSD: loading M1...
+  1766 trades, 1766 had a reinforced grid that day, 546 landed near one
+USDCHF: loading M1...
+  1957 trades, 1953 had a reinforced grid that day, 845 landed near one
+EURAUD: loading M1...
+  1965 trades, 1965 had a reinforced grid that day, 160 landed near one
+EURCHF: loading M1...
+  2064 trades, 2064 had a reinforced grid that day, 1393 landed near one
+AUDJPY: loading M1...
+  1797 trades, 1797 had a reinforced grid that day, 267 landed near one
+CADJPY: loading M1...
+  1881 trades, 1881 had a reinforced grid that day, 347 landed near one
+CHFJPY: loading M1...
+  1704 trades, 1704 had a reinforced grid that day, 131 landed near one
+GOLD: loading M1...
+  1787 trades, 1787 had a reinforced grid that day, 1785 landed near one
+NQ: loading M1...
+  1490 trades, 1459 had a reinforced grid that day, 55 landed near one
+SPX: loading M1...
+  552 trades, 552 had a reinforced grid that day, 215 landed near one
+DOW: loading M1...
+  412 trades, 381 had a reinforced grid that day, 8 landed near one
+US2000: loading M1...
+  1381 trades, 1381 had a reinforced grid that day, 1381 landed near one
+DE30: loading M1...
+  1677 trades, 1677 had a reinforced grid that day, 1675 landed near one
+UK100: loading M1...
+  1522 trades, 1522 had a reinforced grid that day, 1522 landed near one
+
+Total: 26866 trades, 26800 had a reinforced grid that day (99.8%), 11385 near
+
+==============================================================================================
+DOES PROXIMITY TO A REINFORCED FIB ATLAS LEVEL PREDICT TRADE QUALITY?
+==============================================================================================
+policy                                 n     win%    meanPct      PF   sharpe   t-stat
+ALL (current live trades)         26866    56.0   +0.0248   1.21    5.96  t12.56
+NEAR a reinforced Fib level       11385    56.1   +0.0270   1.21    3.85   t8.10
+NOT near (or no grid that day)    15481    55.9   +0.0232   1.21    4.60   t9.68
+  ...of which: had grid, but far  15415    55.9   +0.0229   1.21    4.59   t9.66
+
+--- per pair ---
+EURUSD near                         511    58.1   +0.0204   1.34    1.41   t2.84
+EURUSD not-near                    1055    54.7   +0.0125   1.15    0.97   t1.97
+GBPUSD near                         432    52.8   +0.0036   1.04    0.21   t0.40
+GBPUSD not-near                    1369    55.7   +0.0176   1.20    1.42   t2.82
+USDJPY near                         112    62.5   +0.0298   1.34    0.66   t1.33
+USDJPY not-near                    1432    55.2   +0.0289   1.27    1.95   t4.00
+AUDUSD near                         546    60.8   +0.0368   1.44    1.91   t3.76
+AUDUSD not-near                    1220    59.4   +0.0367   1.37    2.45   t4.83
+USDCHF near                         845    57.5   +0.0119   1.15    0.89   t1.79
+USDCHF not-near                    1112    57.8   +0.0189   1.21    1.40   t2.81
+EURAUD near                         160    53.1   -0.0004   0.99   -0.01  t-0.03
+EURAUD not-near                    1805    53.5   -0.0050   0.94   -0.53  t-1.04
+EURCHF near                        1393    55.6   +0.0016   1.03    0.22   t0.44
+EURCHF not-near                     671    55.4   +0.0032   1.04    0.25   t0.49
+AUDJPY near                         267    57.7   +0.0115   1.11    0.39   t0.76
+AUDJPY not-near                    1530    53.9   +0.0152   1.13    1.02   t2.02
+CADJPY near                         347    56.8   +0.0191   1.22    0.80   t1.58
+CADJPY not-near                    1534    55.1   +0.0140   1.12    1.02   t2.04
+CHFJPY near                         131    52.7   +0.0069   1.07    0.17   t0.35
+CHFJPY not-near                    1573    58.9   +0.0253   1.29    2.06   t4.34
+GOLD near                          1785    55.6   +0.0391   1.22    1.78   t3.49
+GOLD not-near                         2   [thin]
+NQ near                              55    41.8   -0.0435   0.80   -0.41  t-0.74
+NQ not-near                        1435    54.8   +0.0496   1.23    1.73   t3.39
+SPX near                            215    60.0   +0.0582   1.56    2.10   t2.89
+SPX not-near                        337    56.7   +0.0868   1.51    2.42   t3.28
+DOW near                              8   [thin]
+DOW not-near                        404    60.1   +0.0925   1.75    3.45   t4.75
+US2000 near                        1381    57.1   +0.0625   1.28    2.03   t4.02
+US2000 not-near                       0   [thin]
+DE30 near                          1675    53.7   +0.0205   1.14    1.19   t2.27
+DE30 not-near                         2   [thin]
+UK100 near                         1522    56.1   +0.0318   1.25    1.96   t3.91
+UK100 not-near                        0   [thin]
+
+Of 12 pairs with enough data in both buckets: near-better in 5, not-near-better in 7
+
+Wrote C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\output/vote_atlas_fib_confluence_crossref.json

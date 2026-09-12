@@ -1,0 +1,32 @@
+EURUSD: loading M1...
+  1595 real-OOS margin>=3 trades -> 1566 after concurrency cap
+GOLD: loading M1...
+  1810 real-OOS margin>=3 trades -> 1787 after concurrency cap
+
+BASELINE (fixed rung, current live config): Sharpe 1.81  CAGR 26.4%  maxDD -8.0%
+
+================================================================================
+trailFrac = 1
+================================================================================
+  matched 3353, unmatched 0 (0.0%), max cross-check diff 0.3104pp
+  CHAND (trail from bar 0, capped at TP): Sharpe 1.33  CAGR 14.6%  maxDD -6.8%
+  RIDE  (trail from bar 0, no TP cap):     Sharpe 1.10  CAGR 15.6%  maxDD -8.3%
+  BERIDE (fixed to TP, then BE+trail):     Sharpe 1.51  CAGR 27.5%  maxDD -11.4%
+
+================================================================================
+trailFrac = 1.5
+================================================================================
+  matched 3353, unmatched 0 (0.0%), max cross-check diff 0.3104pp
+  CHAND (trail from bar 0, capped at TP): Sharpe 1.69  CAGR 23.0%  maxDD -8.1%
+  RIDE  (trail from bar 0, no TP cap):     Sharpe 1.33  CAGR 27.6%  maxDD -14.2%
+  BERIDE (fixed to TP, then BE+trail):     Sharpe 1.45  CAGR 31.9%  maxDD -14.4%
+
+================================================================================
+trailFrac = 2
+================================================================================
+  matched 3353, unmatched 0 (0.0%), max cross-check diff 0.3104pp
+  CHAND (trail from bar 0, capped at TP): Sharpe 1.79  CAGR 25.9%  maxDD -8.0%
+  RIDE  (trail from bar 0, no TP cap):     Sharpe 1.50  CAGR 39.3%  maxDD -15.7%
+  BERIDE (fixed to TP, then BE+trail):     Sharpe 1.59  CAGR 37.6%  maxDD -16.2%
+
+Wrote C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\output/vote_atlas_exit_variant_revalidate.json

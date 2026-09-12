@@ -1,0 +1,78 @@
+EURUSD: loading M1...
+  1566 trades (post cap)
+GBPUSD: loading M1...
+  1801 trades (post cap)
+USDJPY: loading M1...
+  1544 trades (post cap)
+AUDUSD: loading M1...
+  1766 trades (post cap)
+USDCHF: loading M1...
+  1957 trades (post cap)
+EURAUD: loading M1...
+  1965 trades (post cap)
+EURCHF: loading M1...
+  2064 trades (post cap)
+AUDJPY: loading M1...
+  1797 trades (post cap)
+CADJPY: loading M1...
+  1881 trades (post cap)
+CHFJPY: loading M1...
+  1704 trades (post cap)
+GOLD: loading M1...
+  1787 trades (post cap)
+NQ: loading M1...
+  1490 trades (post cap)
+SPX: loading M1...
+  552 trades (post cap)
+DOW: loading M1...
+  412 trades (post cap)
+US2000: loading M1...
+  1381 trades (post cap)
+DE30: loading M1...
+  1677 trades (post cap)
+UK100: loading M1...
+  1522 trades (post cap)
+
+--- IS-fit candidates chosen per pair/decision ---
+  EURUSD fade    target=17.9(p60) stop=28(p90) discSharpe=1.24 n=850/362
+  EURUSD follow  target=17.9(p40) stop=26.2(p70) discSharpe=0.65 n=246/108
+  GBPUSD fade    target=19.6(p60) stop=31.8(p90) discSharpe=1.02 n=487/213
+  GBPUSD follow  target=23.3(p50) stop=30(p70) discSharpe=0.36 n=773/328
+  USDJPY fade    target=23.4(p50) stop=49.1(p90) discSharpe=0.86 n=591/252
+  USDJPY follow  target=45.3(p60) stop=46.3(p70) discSharpe=2.47 n=489/212
+  AUDUSD fade    target=12(p50) stop=22.5(p90) discSharpe=1.52 n=698/303
+  AUDUSD follow  target=16.5(p50) stop=27.3(p90) discSharpe=3.00 n=538/227
+  USDCHF fade    target=15.1(p60) stop=21.2(p90) discSharpe=1.32 n=467/217
+  USDCHF follow  target=16.4(p50) stop=31.3(p90) discSharpe=1.32 n=902/371
+  EURAUD fade    target=25(p60) stop=38.9(p90) discSharpe=0.62 n=628/292
+  EURAUD follow  target=31.8(p60) stop=54.8(p90) discSharpe=-1.15 n=747/298
+  EURCHF fade    target=9.7(p50) stop=17.5(p90) discSharpe=0.91 n=516/259
+  EURCHF follow  target=13.5(p50) stop=16.1(p70) discSharpe=0.10 n=928/361
+  AUDJPY fade    target=12.7(p40) stop=36.4(p90) discSharpe=-0.61 n=686/286
+  AUDJPY follow  target=28.7(p60) stop=46(p90) discSharpe=2.30 n=571/254
+  CADJPY fade    target=22.5(p60) stop=36.4(p90) discSharpe=0.36 n=607/228
+  CADJPY follow  target=30.9(p60) stop=43.6(p90) discSharpe=0.50 n=709/337
+  CHFJPY fade    target=19.9(p40) stop=41.5(p90) discSharpe=1.91 n=410/189
+  CHFJPY follow  target=40.1(p60) stop=58.6(p90) discSharpe=1.87 n=782/323
+  GOLD fade    target=3.5(p40) stop=6.8(p70) discSharpe=0.04 n=593/234
+  GOLD follow  target=8.8(p60) stop=13.6(p90) discSharpe=1.94 n=657/303
+  NQ fade    target=73.1(p60) stop=68.2(p70) discSharpe=1.87 n=418/164
+  NQ follow  target=59.9(p40) stop=133.3(p90) discSharpe=0.42 n=625/283
+  SPX fade    target=15.3(p50) stop=33.4(p90) discSharpe=0.87 n=182/90
+  SPX follow  target=19.2(p50) stop=33.6(p90) discSharpe=1.76 n=204/76
+  DOW fade    target=156.2(p60) stop=169.4(p90) discSharpe=2.56 n=167/74
+  DOW follow  target=153(p60) stop=203.4(p90) discSharpe=2.54 n=121/50
+  US2000 fade    target=9(p60) stop=12.2(p90) discSharpe=2.23 n=362/154
+  US2000 follow  target=10.4(p60) stop=19(p90) discSharpe=0.67 n=604/261
+  DE30 fade    target=24.9(p40) stop=31.2(p50) discSharpe=-0.68 n=710/297
+  DE30 follow  target=63.2(p60) stop=61(p70) discSharpe=2.42 n=463/207
+  UK100 fade    target=18.9(p60) stop=26.6(p90) discSharpe=0.21 n=472/255
+  UK100 follow  target=22.4(p50) stop=25(p70) discSharpe=2.08 n=593/202
+
+================================================================================
+HELD-OUT COMPARISON (same trades, same time window, same portfolio pipeline)
+================================================================================
+BASELINE (ladder rung target/stop): Sharpe 3.64  CAGR 212.5%  maxDD -17.9%
+NEW (empirical MFE/MAE target/stop): Sharpe 2.98  CAGR 93.4%  maxDD -7.8%
+
+Wrote C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\output/vote_atlas_empirical_exit_redesign.json

@@ -1,0 +1,73 @@
+EURUSD: loading M1...
+  IS 3049, OOS 2148
+GBPUSD: loading M1...
+  IS 3128, OOS 2098
+USDJPY: loading M1...
+  IS 3002, OOS 2102
+AUDUSD: loading M1...
+  IS 3220, OOS 2183
+USDCHF: loading M1...
+  IS 3190, OOS 2192
+EURAUD: loading M1...
+  IS 3175, OOS 2108
+EURCHF: loading M1...
+  IS 3172, OOS 2123
+AUDJPY: loading M1...
+  IS 3112, OOS 2103
+CADJPY: loading M1...
+  IS 3107, OOS 2154
+CHFJPY: loading M1...
+  IS 2997, OOS 2167
+GOLD: loading M1...
+  IS 3166, OOS 2123
+NQ: loading M1...
+  IS 3088, OOS 2023
+SPX: loading M1...
+  IS 1576, OOS 999
+DOW: loading M1...
+  IS 1563, OOS 1015
+US2000: loading M1...
+  IS 3039, OOS 2056
+DE30: loading M1...
+  IS 2999, OOS 1969
+UK100: loading M1...
+  IS 2920, OOS 1966
+
+Total: IS 49503, OOS 33529
+
+IS stop-study fit (best stopPips per decision, by IS Sharpe):
+  follow: stopPips=39.9 (p95, IS sharpe=-1.79)
+  fade: stopPips=13.3 (p75, IS sharpe=-1.37)
+
+==============================================================================================
+BASELINE (fixed rung target/stop) vs STOP-TIGHTENED (IS-fit, frozen, applied real OOS)
+==============================================================================================
+policy                                 n     win%    meanPct      PF   sharpe   t-stat
+BASELINE all                      33529    52.4   -0.0125   0.92   -3.11  t-6.55
+BASELINE follow (p50)             21689    52.7   -0.0130   0.92   -2.53  t-5.33
+BASELINE fade (p75)               11840    51.8   -0.0116   0.92   -1.81  t-3.81
+
+TIGHTENED all                     33529    43.4   -0.0094   0.92   -2.91  t-6.12
+TIGHTENED follow (p50)            21689    47.8   -0.0124   0.91   -2.81  t-5.92
+TIGHTENED fade (p75)              11840    35.4   -0.0039   0.96   -0.90  t-1.90
+
+--- per pair (TIGHTENED, all) ---
+EURUSD                             2148    49.2   -0.0035   0.96   -0.42  t-0.84
+GBPUSD                             2098    45.6   -0.0118   0.87   -1.43  t-2.85
+USDJPY                             2102    40.4   -0.0071   0.93   -0.72  t-1.48
+AUDUSD                             2183    52.2   -0.0002   1.00   -0.02  t-0.04
+USDCHF                             2192    47.9   -0.0129   0.87   -1.48  t-2.98
+EURAUD                             2108    41.3   -0.0175   0.79   -2.41  t-4.77
+EURCHF                             2123    48.5   -0.0129   0.81   -2.15  t-4.28
+AUDJPY                             2103    46.2   -0.0122   0.90   -1.11  t-2.19
+CADJPY                             2154    44.8   -0.0112   0.90   -1.12  t-2.22
+CHFJPY                             2167    40.6   -0.0074   0.92   -0.87  t-1.83
+GOLD                               2123    51.5   +0.0003   1.00    0.01   t0.03
+NQ                                 2023    24.5   -0.0107   0.91   -0.86  t-1.68
+SPX                                 999    47.0   -0.0115   0.93   -0.74  t-1.02
+DOW                                1015    15.5   -0.0116   0.79   -1.92  t-2.65
+US2000                             2056    51.8   -0.0145   0.95   -0.56  t-1.10
+DE30                               1969    31.3   -0.0018   0.98   -0.18  t-0.35
+UK100                              1966    45.7   -0.0155   0.89   -1.21  t-2.41
+
+Wrote C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\output/level_base_rates_exit_variants.json

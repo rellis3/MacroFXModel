@@ -1,0 +1,67 @@
+EURUSD: loading M1...
+  1595 trades, 355 follow tracked
+GBPUSD: loading M1...
+  1840 trades, 1110 follow tracked
+USDJPY: loading M1...
+  1575 trades, 716 follow tracked
+AUDUSD: loading M1...
+  1823 trades, 772 follow tracked
+USDCHF: loading M1...
+  2009 trades, 1295 follow tracked
+EURAUD: loading M1...
+  2013 trades, 1067 follow tracked
+EURCHF: loading M1...
+  2148 trades, 1324 follow tracked
+AUDJPY: loading M1...
+  1843 trades, 846 follow tracked
+CADJPY: loading M1...
+  1911 trades, 1056 follow tracked
+CHFJPY: loading M1...
+  1744 trades, 1116 follow tracked
+GOLD: loading M1...
+  1810 trades, 969 follow tracked
+NQ: loading M1...
+  1518 trades, 916 follow tracked
+SPX: loading M1...
+  563 trades, 282 follow tracked
+DOW: loading M1...
+  418 trades, 175 follow tracked
+US2000: loading M1...
+  1399 trades, 879 follow tracked
+DE30: loading M1...
+  1725 trades, 675 follow tracked
+UK100: loading M1...
+  1559 trades, 814 follow tracked
+
+27493 baseline trades, 14367 follow trades with bar-tracked progress.
+
+==========================================================================================
+STAGE A: FOLLOW trades still <0.25R MFE at checkpoint N -- eventual outcome vs exiting now
+==========================================================================================
+bars           n   stalled%  eventualWin%   EV(continue)R   currentR(exit now)
+5          13010      90.6%         59.2%           0.070                0.003
+10         12514      87.1%         58.7%           0.058               -0.005
+20         12043      83.9%         58.2%           0.047               -0.003
+30         11734      81.7%         57.9%           0.041               -0.004
+
+IS/OOS split: 2025-04-29
+
+──── IN-SAMPLE (fit) ────
+variant           trades  winRate   sharpe      sharpeCI95       CAGR     maxDD      PF
+baseline           18250    50.1%     2.87    [1.76, 3.98]    229.91%    -26.8%    1.14
+exit@bar5          18250    38.6%    -0.84   [-1.94, 0.26]    -24.46%   -70.94%    0.96
+exit@bar10         18250    39.9%    -0.51   [-1.61, 0.59]    -17.75%   -66.47%    0.97
+exit@bar20         18250    41.8%      0.3     [-0.8, 1.4]      4.68%   -43.79%    1.02
+exit@bar30         18250    42.3%     0.64   [-0.46, 1.74]     17.87%    -43.2%    1.03
+
+No checkpoint cleared the pre-stated bar -- none frozen for OOS.
+
+──── OUT-OF-SAMPLE (checkpoint frozen from IS, applied unchanged) ────
+variant           trades  winRate   sharpe      sharpeCI95       CAGR     maxDD      PF
+baseline (live)     8797    51.1%     3.28    [1.57, 4.99]    263.38%   -16.01%    1.13
+
+(full OOS grid, for context:)
+exit@bar5           8797    38.9%    -1.59    [-3.28, 0.1]       -35%   -48.57%    0.94
+exit@bar10          8797    40.1%     -1.1   [-2.79, 0.59]    -28.01%   -42.55%    0.96
+exit@bar20          8797    41.4%    -0.61    [-2.3, 1.08]    -19.91%   -32.99%    0.98
+exit@bar30          8797    42.2%    -0.59    [-2.28, 1.1]    -20.45%   -33.17%    0.98

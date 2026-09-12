@@ -1,0 +1,87 @@
+EURUSD: loading M1...
+  1566 trades
+GBPUSD: loading M1...
+  1801 trades
+USDJPY: loading M1...
+  1544 trades
+AUDUSD: loading M1...
+  1766 trades
+USDCHF: loading M1...
+  1957 trades
+EURAUD: loading M1...
+  1965 trades
+EURCHF: loading M1...
+  2064 trades
+AUDJPY: loading M1...
+  1797 trades
+CADJPY: loading M1...
+  1881 trades
+CHFJPY: loading M1...
+  1704 trades
+GOLD: loading M1...
+  1787 trades
+NQ: loading M1...
+  1490 trades
+SPX: loading M1...
+  552 trades
+DOW: loading M1...
+  412 trades
+US2000: loading M1...
+  1381 trades
+DE30: loading M1...
+  1677 trades
+UK100: loading M1...
+  1522 trades
+
+Total: 26866 trades
+
+================================================================================
+MFE STATE -> EVENTUAL OUTCOME (pooled, all decisions)
+================================================================================
+MFE bucket         n        win%    avgFinalR    avgGiveback  medGiveback
+0-0.25R        5390       5.9%      -0.793         0.924       1.117
+0.25-0.5R      4556      25.5%      -0.559         0.926       1.084
+0.5-0.75R      4298      53.8%      -0.146         0.783       0.584
+0.75-1.0R      7176      90.3%       0.567         0.290       0.100
+1.0-1.5R       4906      94.8%       0.939         0.277       0.128
+1.5-2.0R        417      99.0%       1.117         0.537       0.452
+2.0R+           123      97.6%       0.866         1.732       1.522
+
+--- FOLLOW only (n=14153, typical targetR ~0.90) ---
+0-0.25R        2466       0.5%      -1.004         1.122       1.155
+0.25-0.5R      1759       5.5%      -0.901         1.268       1.381
+0.5-0.75R      2173      48.5%      -0.200         0.853       0.751
+0.75-1.0R      5090      92.8%       0.623         0.229       0.092
+1.0-1.5R       2369      95.1%       0.926         0.272       0.142
+1.5-2.0R        206     100.0%       1.018         0.653       0.698
+2.0R+            90     100.0%       0.864         1.816       1.573
+
+--- FADE only (n=12713, typical targetR ~1.11) ---
+0-0.25R        2924      10.4%      -0.616         0.756       0.759
+0.25-0.5R      2797      38.2%      -0.344         0.710       0.565
+0.5-0.75R      2125      59.3%      -0.092         0.711       0.546
+0.75-1.0R      2086      84.5%       0.429         0.440       0.152
+1.0-1.5R       2537      94.6%       0.950         0.282       0.119
+1.5-2.0R        211      98.1%       1.213         0.424       0.359
+2.0R+            33      90.9%       0.871         1.504       1.331
+
+--- per pair: win% at MFE<0.25R vs MFE>=1.0R ---
+  EURUSD   n= 1566  low(n=328): 12.5%   high(n=328): 95.1%
+  GBPUSD   n= 1801  low(n=372): 5.9%   high(n=323): 92.3%
+  USDJPY   n= 1544  low(n=306): 3.9%   high(n=324): 95.1%
+  AUDUSD   n= 1766  low(n=344): 6.7%   high(n=343): 91.8%
+  USDCHF   n= 1957  low(n=399): 3.8%   high(n=357): 96.4%
+  EURAUD   n= 1965  low(n=418): 4.5%   high(n=310): 97.1%
+  EURCHF   n= 2064  low(n=378): 4.2%   high(n=405): 97.3%
+  AUDJPY   n= 1797  low(n=358): 4.2%   high(n=379): 94.5%
+  CADJPY   n= 1881  low(n=385): 5.2%   high(n=360): 97.8%
+  CHFJPY   n= 1704  low(n=314): 5.7%   high(n=271): 97.4%
+  GOLD     n= 1787  low(n=358): 6.1%   high(n=426): 94.8%
+  NQ       n= 1490  low(n=314): 6.4%   high(n=364): 95.3%
+  SPX      n=  552  low(n=96): 5.2%   high(n=147): 93.2%
+  DOW      n=  412  low(n=66): 7.6%   high(n=157): 92.4%
+  US2000   n= 1381  low(n=276): 8.3%   high(n=350): 96.3%
+  DE30     n= 1677  low(n=378): 5.3%   high(n=299): 93.6%
+  UK100    n= 1522  low(n=300): 7.0%   high(n=303): 95.0%
+
+Wrote C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\output/vote_atlas_mfe_giveback_analysis.json

@@ -1,0 +1,25 @@
+EURUSD: loading M1...
+  1566 trades, 1566 had a reinforced grid that day, 511 landed near one
+GOLD: loading M1...
+  1787 trades, 1787 had a reinforced grid that day, 1785 landed near one
+
+Total: 3353 trades, 3353 had a reinforced grid that day (100.0%), 2296 near
+
+==============================================================================================
+DOES PROXIMITY TO A REINFORCED FIB ATLAS LEVEL PREDICT TRADE QUALITY?
+==============================================================================================
+policy                                 n     win%    meanPct      PF   sharpe   t-stat
+ALL (current live trades)          3353    55.7   +0.0279   1.21    2.16   t4.35
+NEAR a reinforced Fib level        2296    56.1   +0.0350   1.23    1.96   t3.95
+NOT near (or no grid that day)     1057    54.7   +0.0124   1.15    0.95   t1.92
+  ...of which: had grid, but far   1057    54.7   +0.0124   1.15    0.95   t1.92
+
+--- per pair ---
+EURUSD near                         511    58.1   +0.0204   1.34    1.41   t2.84
+EURUSD not-near                    1055    54.7   +0.0125   1.15    0.97   t1.97
+GOLD near                          1785    55.6   +0.0391   1.22    1.78   t3.49
+GOLD not-near                         2   [thin]
+
+Of 1 pairs with enough data in both buckets: near-better in 1, not-near-better in 0
+
+Wrote C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\output/vote_atlas_fib_confluence_crossref.json

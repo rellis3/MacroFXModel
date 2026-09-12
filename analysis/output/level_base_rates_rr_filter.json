@@ -1,0 +1,34 @@
+{
+ "baseline": {
+  "trades": 33529,
+  "tradesPerYr": 7564.2,
+  "winRate": 52.4,
+  "profitFactor": 0.916,
+  "expectancy": -0.0125,
+  "sharpe": -3.113,
+  "sharpeSE": 0.475,
+  "minTrackYears": null,
+  "maxDD": -420.077,
+  "totalPnl": -418.076,
+  "skew": -0.32,
+  "excessKurt": 1.332,
+  "var95": -0.5686,
+  "cvar95": -0.7765
+ },
+ "rrGte1": {
+  "trades": 312,
+  "tradesPerYr": 83.4,
+  "winRate": 47.8,
+  "profitFactor": 0.866,
+  "expectancy": -0.0134,
+  "sharpe": -0.565,
+  "sharpeSE": 0.517,
+  "minTrackYears": null,
+  "maxDD": -6.357,
+  "totalPnl": -4.173,
+  "skew": -0.005,
+  "excessKurt": -0.74,
+  "var95": -0.3569,
+  "cvar95": -0.4222
+ }
+}

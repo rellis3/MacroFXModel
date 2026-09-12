@@ -1,0 +1,62 @@
+EURUSD: loading M1...
+  1595 real-OOS margin>=3 trades -> 1566 after concurrency cap
+GBPUSD: loading M1...
+  1840 real-OOS margin>=3 trades -> 1801 after concurrency cap
+USDJPY: loading M1...
+  1575 real-OOS margin>=3 trades -> 1544 after concurrency cap
+AUDUSD: loading M1...
+  1823 real-OOS margin>=3 trades -> 1766 after concurrency cap
+USDCHF: loading M1...
+  2009 real-OOS margin>=3 trades -> 1957 after concurrency cap
+EURAUD: loading M1...
+  2013 real-OOS margin>=3 trades -> 1965 after concurrency cap
+EURCHF: loading M1...
+  2148 real-OOS margin>=3 trades -> 2064 after concurrency cap
+AUDJPY: loading M1...
+  1843 real-OOS margin>=3 trades -> 1797 after concurrency cap
+CADJPY: loading M1...
+  1911 real-OOS margin>=3 trades -> 1881 after concurrency cap
+CHFJPY: loading M1...
+  1744 real-OOS margin>=3 trades -> 1704 after concurrency cap
+GOLD: loading M1...
+  1810 real-OOS margin>=3 trades -> 1787 after concurrency cap
+NQ: loading M1...
+  1518 real-OOS margin>=3 trades -> 1490 after concurrency cap
+SPX: loading M1...
+  563 real-OOS margin>=3 trades -> 552 after concurrency cap
+DOW: loading M1...
+  418 real-OOS margin>=3 trades -> 412 after concurrency cap
+US2000: loading M1...
+  1399 real-OOS margin>=3 trades -> 1381 after concurrency cap
+DE30: loading M1...
+  1725 real-OOS margin>=3 trades -> 1677 after concurrency cap
+UK100: loading M1...
+  1559 real-OOS margin>=3 trades -> 1522 after concurrency cap
+
+BASELINE (fixed rung, current live config): Sharpe 3.78  CAGR 306.8%  maxDD -18.9%
+
+================================================================================
+trailFrac = 1
+================================================================================
+  matched 26866, unmatched 0 (0.0%), max cross-check diff 2.2003pp
+  CHAND (trail from bar 0, capped at TP): Sharpe 2.38  CAGR 103.7%  maxDD -25.8%
+  RIDE  (trail from bar 0, no TP cap):     Sharpe 1.79  CAGR 105.5%  maxDD -33.2%
+  BERIDE (fixed to TP, then BE+trail):     Sharpe 2.63  CAGR 255.3%  maxDD -23.2%
+
+================================================================================
+trailFrac = 1.5
+================================================================================
+  matched 26866, unmatched 0 (0.0%), max cross-check diff 2.2003pp
+  CHAND (trail from bar 0, capped at TP): Sharpe 3.31  CAGR 224.3%  maxDD -19.1%
+  RIDE  (trail from bar 0, no TP cap):     Sharpe 2.33  CAGR 235.8%  maxDD -28.7%
+  BERIDE (fixed to TP, then BE+trail):     Sharpe 2.55  CAGR 278.8%  maxDD -26.2%
+
+================================================================================
+trailFrac = 2
+================================================================================
+  matched 26866, unmatched 0 (0.0%), max cross-check diff 2.2003pp
+  CHAND (trail from bar 0, capped at TP): Sharpe 3.48  CAGR 261.4%  maxDD -18.8%
+  RIDE  (trail from bar 0, no TP cap):     Sharpe 2.21  CAGR 249.4%  maxDD -31.6%
+  BERIDE (fixed to TP, then BE+trail):     Sharpe 2.49  CAGR 280.7%  maxDD -27.9%
+
+Wrote C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\output/vote_atlas_exit_variant_revalidate.json

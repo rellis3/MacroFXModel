@@ -1,0 +1,50 @@
+{
+ "overall": {
+  "winners": {
+   "n": 9456,
+   "meanSizeFactor": 3.5251,
+   "medianSizeFactor": 3.2406
+  },
+  "losers": {
+   "n": 6907,
+   "meanSizeFactor": 3.5719,
+   "medianSizeFactor": 3.2497
+  }
+ },
+ "fade": {
+  "winners": {
+   "n": 2593,
+   "meanSizeFactor": 3.7087,
+   "medianSizeFactor": 3.4402
+  },
+  "losers": {
+   "n": 2024,
+   "meanSizeFactor": 3.7974,
+   "medianSizeFactor": 3.4707
+  }
+ },
+ "follow": {
+  "winners": {
+   "n": 6863,
+   "meanSizeFactor": 3.4558,
+   "medianSizeFactor": 3.2151
+  },
+  "losers": {
+   "n": 4883,
+   "meanSizeFactor": 3.4785,
+   "medianSizeFactor": 3.2063
+  }
+ },
+ "decisionMix": {
+  "fade": {
+   "n": 4617,
+   "meanSizeFactor": 3.7476,
+   "medianSizeFactor": 3.4625
+  },
+  "follow": {
+   "n": 11746,
+   "meanSizeFactor": 3.4652,
+   "medianSizeFactor": 3.2136
+  }
+ }
+}

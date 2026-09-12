@@ -1,0 +1,77 @@
+EURUSD: loading M1...
+  1302 trades
+GBPUSD: loading M1...
+  1472 trades
+USDJPY: loading M1...
+  1559 trades
+AUDUSD: loading M1...
+  1333 trades
+USDCHF: loading M1...
+  1604 trades
+EURAUD: loading M1...
+  1546 trades
+EURCHF: loading M1...
+  1559 trades
+AUDJPY: loading M1...
+  1568 trades
+CADJPY: loading M1...
+  1591 trades
+CHFJPY: loading M1...
+  1540 trades
+GOLD: loading M1...
+  1336 trades
+NQ: loading M1...
+  1049 trades
+SPX: loading M1...
+  536 trades
+DOW: loading M1...
+  464 trades
+US2000: loading M1...
+  1260 trades
+DE30: loading M1...
+  1364 trades
+UK100: loading M1...
+  1477 trades
+
+Total trades: 22560
+
+=== OVERALL: winners vs losers (resolved trades only) ===
+winners: {"n":9456,"meanSizeFactor":3.5251,"medianSizeFactor":3.2406}
+losers:  {"n":6907,"meanSizeFactor":3.5719,"medianSizeFactor":3.2497}
+ratio (winner size / loser size): 0.987  (>1 = winners get BIGGER size, <1 = winners get SMALLER size)
+
+=== FADE only ===
+  winners: {"n":2593,"meanSizeFactor":3.7087,"medianSizeFactor":3.4402}
+  losers:  {"n":2024,"meanSizeFactor":3.7974,"medianSizeFactor":3.4707}
+  ratio: 0.977
+  win rate: 56.2%  avg sizeFactor: 3.7476
+=== FOLLOW only ===
+  winners: {"n":6863,"meanSizeFactor":3.4558,"medianSizeFactor":3.2151}
+  losers:  {"n":4883,"meanSizeFactor":3.4785,"medianSizeFactor":3.2063}
+  ratio: 0.993
+  win rate: 58.4%  avg sizeFactor: 3.4652
+
+=== Decision-type size comparison (the suspected structural mechanism) ===
+FADE:   n=4617  winRate=56.2%  avgSizeFactor=3.7476
+FOLLOW: n=11746  winRate=58.4%  avgSizeFactor=3.4652
+
+=== Per-pair consistency (winner size / loser size ratio) ===
+EURUSD   ratio=1.017  (winners n=577, losers n=333)
+GBPUSD   ratio=0.942  (winners n=632, losers n=427)
+USDJPY   ratio=1.003  (winners n=655, losers n=492)
+AUDUSD   ratio=0.969  (winners n=551, losers n=378)
+USDCHF   ratio=0.999  (winners n=677, losers n=504)
+EURAUD   ratio=0.998  (winners n=671, losers n=494)
+EURCHF   ratio=0.973  (winners n=638, losers n=462)
+AUDJPY   ratio=0.982  (winners n=660, losers n=516)
+CADJPY   ratio=0.969  (winners n=629, losers n=514)
+CHFJPY   ratio=0.996  (winners n=662, losers n=446)
+GOLD     ratio=0.949  (winners n=540, losers n=435)
+NQ       ratio=1.012  (winners n=457, losers n=352)
+SPX      ratio=0.966  (winners n=240, losers n=139)
+DOW      ratio=0.955  (winners n=225, losers n=134)
+US2000   ratio=0.990  (winners n=535, losers n=356)
+DE30     ratio=0.927  (winners n=512, losers n=448)
+UK100    ratio=0.963  (winners n=595, losers n=477)
+
+3 of 17 pairs show winners getting BIGGER size; 14 show winners getting SMALLER size
