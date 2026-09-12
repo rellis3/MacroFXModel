@@ -140,6 +140,62 @@ scale, on both alternative windows tested.
 Full per-pair breakdown (all 26 pairs, both variants, all metrics including
 `minTrackYears`) is in `analysis/session_window_comparison_results.json`.
 
+## Follow-up: what's actually wrong with GBPCAD/GBPNZD/AUDNZD/EURNZD?
+
+Investigated per the CLAUDE.md bug-hunting discipline (audit for a code/data
+bug before declaring a pair a real null) — **this is not a data bug.** Checked
+M1 bar counts, weekday gap patterns, single-bar >1% price jumps, and
+zero-volume bars for all 4 pairs against 4 clean pairs (EURUSD, USDCHF,
+GBPAUD, AUDCHF): counts and gap structure are comparable across the board: no
+missing-data red flag, no corrupted-file signature.
+
+**Cost is a real contributor, but not the root cause.** `js/perLineStrategy.js`'s
+own `PAIR_COST_PCT` table assigns these 4 pairs among the highest round-trip
+costs of any FX cross tested — GBPNZD (0.045%) is the single highest cost in
+the whole 26-pair table, EURNZD (0.038%) is 2nd, GBPCAD (0.032%) ties 3rd,
+AUDNZD (0.030%) ties 4th. But **win rate is cost-INDEPENDENT** (cost only
+scales the size of each win/loss, never flips one into the other), and these
+4 pairs' win rates are genuinely poor on their own terms — 41-62% across all
+3 windows tested, vs. 60-72% for the rest of the universe. GBPCAD's Asia-window
+win rate (42.3%, n=1,419) is the single worst result in the entire sweep. High
+cost makes an already-marginal signal worse, but isn't inventing the problem.
+
+**The direction is consistent across 3 independent windows** (Asia, Morning,
+Control each partition the calendar differently and produce different touch
+sets) **for all 4 pairs, in all 12 (pair × window) cells** — every cell is
+capped-Sharpe-negative. That consistency is itself evidence this is a real,
+pair-specific characteristic rather than one unlucky test configuration —
+though per the house rule below, several of the individual `minTrackYears`
+figures are very high (GBPNZD's Asia-window cell needs 790.6 years to trust,
+AUDNZD's Control cell needs 91.8), meaning several of these NEGATIVE point
+estimates individually carry weak statistical power too. The honest read:
+the *direction* (bad) is well-supported by repetition across windows; the
+exact *magnitude* of how bad, pair by pair, is not something to over-trust
+from any single cell.
+
+**3 of these 4 pairs are ALREADY excluded from live trading**, on
+independent grounds: `server.js`'s `FIB_ATLAS_RECOMMENDED_EXCLUDE` (mirrored
+in `asia-fib-atlas-vote-portfolio.html`'s `ASIA_RECOMMENDED_EXCLUDE`) already
+excludes GBPCAD, GBPNZD, and EURNZD — frozen from
+`analysis/fib_atlas_oos_validate_pair_selection.mjs`'s IS/OOS-validated,
+70/30-split greedy-elimination study. That study asks a DIFFERENT question
+than this one, though — it removes whichever pair contributes most to
+**portfolio-level maxDD** (correlated risk), not whichever pair has the worst
+**standalone** Sharpe/win-rate — so the two lists overlapping on 3/4 pairs is
+a genuine, independent cross-validation of the same conclusion by two
+different methods, not a restatement of the same finding.
+
+**AUDNZD is the one gap: it is NOT in the current live exclusion list**,
+despite showing the same negative-capped-Sharpe, poor-win-rate pattern in
+every window tested here. This is a real, actionable candidate worth the
+owner's own review before adding it to `FIB_ATLAS_RECOMMENDED_EXCLUDE` —
+flagged here, not applied, since (a) it's a live-trading-affecting config
+change, (b) the underlying criterion (standalone edge) differs from what the
+existing exclusion list was validated against (portfolio drawdown
+contribution), so this isn't simply "the same test caught one more," and (c)
+per the caveat above, some of AUDNZD's own cells have weak individual
+statistical power even though the direction repeats three times.
+
 ## The one clean, unambiguous result: don't use the full London or NY session
 
 London (07:00-16:00) is the worst variant on **every single pair** and on
