@@ -12,16 +12,27 @@
  *   dowOf(dateStr)                        → 0=Sun..6=Sat (date-only, tz-agnostic)
  *   isoDate(epochSec)                     → 'YYYY-MM-DD' (UTC)
  *   eachDate(packed, fn)                  → iterate every calendar date in the data
- *   buildAsiaSessions(packed, tz, hrs)    → [{epoch,date,high,low,range}]  (00:00→hrs)
+ *   buildAsiaSessions(packed, tz, hrs, tfMin, startHour)
+ *                                          → [{epoch,date,high,low,range}]  (startHour→startHour+hrs)
  *   buildMondayRanges(packed, tz, tfMin)  → [{epoch,date,high,low,range}]  (full Monday)
  *   prevSession(sessions, dayEpoch)       → most recent session strictly BEFORE dayEpoch
  *   mondayForDay(ranges, dayEpoch)        → this-week's Monday range (or null)
  *   prevMonday(ranges, mondayEpoch)       → the Monday range immediately before
  *
- * A "session" is `{ epoch (UTC sec of local midnight), date ('YYYY-MM-DD'),
- * high, low, range }` where high/low are BODY extremes (see barUtils.bodyRange —
- * closes/opens, wicks ignored), matching the range-extension lesson's
- * "closes = acceptance, not wicks" rule.
+ * A "session" is `{ epoch (UTC sec of the window's own start, local midnight
+ * + startHour), date ('YYYY-MM-DD'), high, low, range }` where high/low are
+ * BODY extremes (see barUtils.bodyRange — closes/opens, wicks ignored),
+ * matching the range-extension lesson's "closes = acceptance, not wicks" rule.
+ *
+ * `startHour` (added 2026-09-12, default 0 — fully backward compatible):
+ * generalizes the window's own start away from local midnight, so the SAME
+ * builder can produce a London-session range (startHour=7), a NY-session
+ * range (startHour=13), or any arbitrary hour, not just the Asia range
+ * (startHour=0, the range-extension lesson's own window). Every downstream
+ * caller that anchors off `session.epoch` (e.g. asiaFibAtlasEngine.js's
+ * `winEnd = asia.epoch + 24*3600`) keeps working unchanged: "valid until the
+ * next calendar day's SAME window" falls out of shifting the epoch itself,
+ * not a second code path.
  */
 
 import { extractBars, bodyRange } from './barUtils.js';
@@ -74,13 +85,16 @@ export function eachDate(packed, fn) {
 
 // ── Session builders ──────────────────────────────────────────────────────────
 
-// One Asia range per calendar date. Window = 00:00 → `asiaHrs` local (default 6h,
-// i.e. 00:00–06:00 London = the range-extension lesson's Asia session). Bodies on
-// 5-minute candles.
-export function buildAsiaSessions(packed, tz = 'utc', asiaHrs = 6, tfMin = 5) {
+// One range per calendar date. Window = `startHour` → `startHour + asiaHrs`
+// local (default startHour=0, asiaHrs=6h, i.e. 00:00–06:00 London = the
+// range-extension lesson's Asia session). Bodies on 5-minute candles.
+// `startHour` (default 0) generalizes the window's start hour so the same
+// builder produces a London (startHour=7), NY (startHour=13), or any other
+// session-window range — see this file's header for the full rationale.
+export function buildAsiaSessions(packed, tz = 'utc', asiaHrs = 6, tfMin = 5, startHour = 0) {
   const out = [];
   eachDate(packed, (ds) => {
-    const start = dayStartEpoch(ds, tz);
+    const start = dayStartEpoch(ds, tz) + startHour * 3600;
     const bars  = extractBars(packed, start, start + asiaHrs * 3600);
     if (bars.length < 10) return;
     const r = bodyRange(bars, tfMin);
