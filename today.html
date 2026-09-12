@@ -2841,7 +2841,7 @@ async function loadTapeSpeedAll() {
 setInterval(() => { if (document.visibilityState === 'visible') loadTapeSpeedAll().catch(() => {}); }, 120_000);
 function tapeSpeedChip(r) {
   const t = _tape[r.d?.sym];
-  if (!t) return '';
+  if (!t || t.stale) return '';    // a weekend's last bar is not "the tape right now"
   // The middle three quintiles are "an ordinary hour" and earn no chip; only the
   // tails change what a reader should expect from the next hour.
   if (t.quintile === 2 || t.quintile === 3 || t.quintile === 4) return '';
@@ -7056,6 +7056,7 @@ async function renderDrawerTape(sym) {
   box.innerHTML =
     `<div style="margin-bottom:8px"><span class="chip ${cls}">${fast ? '&#9889; ' : slow ? '&#12316; ' : ''}${t.label} &middot; ${t.pctile}</span> ` +
     `<span class="dim-age">${t.bandLabel} &middot; ${(t.ptsPerMin > 0 ? '+' : '') + t.ptsPerMin.toFixed(3)} pts/min &middot; as of ${String(t.asOf).slice(11, 16)} UTC${age > 3 ? ` (${age}m ago)` : ''}</span></div>` +
+    (t.stale ? `<div class="chip warn" style="margin-bottom:8px">Stale &mdash; last completed bar was ${age >= 120 ? Math.round(age / 60) + 'h' : age + 'm'} ago (market closed or feed paused). The read below describes the LAST hour that traded, not now.</div>` : '') +
     `<div class="ccy-explain">${esc0(t.read)}</div>` +
     (rows ? `<div class="ccy-legs" style="margin-top:8px"><div class="fac-head"><span>This band, five paces of arrival</span><span class="fcov">n=${band.n.toLocaleString()}</span><span class="fv neu">next hr</span></div>${rows}</div>` : '') +
     `<div class="muted" style="font-size:10.5px;margin-top:8px">${esc0(t.caveat)} Built from ${t.coverage?.sessions?.toLocaleString() ?? '?'} sessions (${t.coverage?.from ?? '?'} &rarr; ${t.coverage?.to ?? '?'}), sampled every 5 minutes. A typical ${t.bandLabel.split(' ')[0]} hour on this pair ranges ${band?.medianNextRangeAtr ?? '?'} ATR.</div>`;

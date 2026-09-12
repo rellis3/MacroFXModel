@@ -6469,8 +6469,15 @@ async function _tapeSpeedFor(symbol) {
   const hourUtc = new Date(last.time).getUTCHours();
   const c = _classifyTape(instrument, hourUtc, sp.speed);
   if (!c) return { miss: true, reason: 'no table for this band' };
+  // A 15-minute speed is a statement about NOW. Over a weekend or a holiday the
+  // last completed bar is hours or days old, and classifying it as the current
+  // tape would show "DRIFT" on every card all weekend. Stale reads are returned
+  // (so the drawer can say when the market last traded) but flagged, and the card
+  // chip does not render them.
+  const ageMin = Math.round((Date.now() - Date.parse(last.time)) / 60_000);
+  const stale = ageMin > 30;
   const v = {
-    ok: true, symbol: instrument, asOf: last.time, price: last.close, atr,
+    ok: true, symbol: instrument, asOf: last.time, price: last.close, atr, ageMin, stale,
     speed: sp.speed, signedSpeed: sp.signed, move15m: sp.move,
     // Signed as points per minute too, for the card.
     ptsPerMin: sp.signed * atr,
