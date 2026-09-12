@@ -250,11 +250,9 @@ named session" so much as **all three build the range over a relatively
 narrow (4-6h) window rather than a full (8-9h) session**, which mechanically
 produces a denser fib ladder and hence more (and more often confluent)
 touches to trade. The genuinely Asia-specific property — thin liquidity,
-minimal news flow while it builds — isn't cleanly separated from "shorter
-window" by this test; a follow-up that holds window LENGTH constant while
-varying only the START hour (e.g. four different 5h windows) would be needed
-to isolate which of the two actually matters. Flagging this honestly rather
-than crediting Asia with more than this test actually shows.
+minimal news flow while it builds — wasn't cleanly separated from "shorter
+window" by this test alone, since every variant above changes BOTH length
+and start hour at once. The isolation follow-up below settles it.
 
 *(Confirmed, with a tighter margin, at 26-pair scale — see "26-pair update"
 below: Asia keeps first place but the gap to Morning narrows further once
@@ -269,6 +267,40 @@ the whole vote/confluence machinery) — but it argues against assuming the
 window could do. If anything ever forces a change of window (e.g. a
 broker/data gap during Asia hours), 08:00-12:00 is a reasonable fallback;
 07:00-16:00 (full London) is not.
+
+### Isolation follow-up: holding window LENGTH fixed, varying only start hour
+
+Four 6h windows (matching Asia's own duration exactly), tiling the full 24h
+day once each — `iso00`=00:00-06:00 (identical to Asia), `iso06`=06:00-12:00,
+`iso12`=12:00-18:00, `iso18`=18:00-00:00 — tested on the same 4-pair sample
+(EURUSD/GBPUSD/USDJPY/GOLD), owner's actual config, capped:
+
+| Window | avg Sharpe (capped) | avg win rate | % years positive |
+|---|---|---|---|
+| 06:00-12:00 | **2.61** | 77.1% | 95% |
+| 00:00-06:00 (Asia) | 2.48 | 74.1% | 100% |
+| 12:00-18:00 | 1.53 | 77.3% | 100% |
+| 18:00-00:00 | 0.79 | 68.6% | 100% |
+
+**With length held constant, start hour clearly still matters — but not in
+the simple "Asia is the uniquely quiet window" story.** 06:00-12:00
+(Asia-close through the London morning — NOT the quietest stretch of the
+day) edges out Asia itself on this sample. The real split is coarser than
+either window individually: **00:00-12:00 (Asia + the window right after it)
+clearly beats 12:00-24:00 (the overlap through the NY afternoon/evening)** —
+2.48-2.61 vs. 0.79-1.53, a much bigger gap than any single-window comparison
+above showed. 18:00-00:00 — despite ALSO being a quiet, thin-liquidity
+stretch (the NY afternoon lull into the pre-Asia dead zone) — is the worst
+performer of the four, which rules out "any quiet window works" as the
+explanation just as clearly as it rules out "Asia specifically." The
+first half of the London trading day behaving differently from the second
+half (for THIS strategy's reversion/continuation vote) looks like the real
+structural variable, not session-naming or raw quietness. This was tested
+on 4 pairs only — worth confirming at 26-pair scale before leaning on the
+06:00-12:00 result specifically, given how close it sits to Asia's own
+figure on this sample size. Full detail in
+`analysis/session_window_comparison_results.json` under the `iso00`/`iso06`/
+`iso12`/`iso18` keys.
 
 ## A side-finding that did NOT survive the 26-pair re-test — retracted
 
