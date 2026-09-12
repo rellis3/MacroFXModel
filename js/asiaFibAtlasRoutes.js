@@ -695,14 +695,23 @@ export function mountAsiaFibAtlasRoutes(app, express) {
       const liveBook = buildAsiaFibAtlasBook(touches, { rearmFrac: DEFAULT_REARM });
       const results = [];
       for (const c of (Array.isArray(checks) ? checks : [])) {
-        const touch = pool.find(t => t.date === c.targetDate && t.side === c.side && t.level === c.rung);
+        // A rung can re-arm and get touched multiple times in one session —
+        // `nearTime` (the real trade's own time_open, epoch seconds)
+        // disambiguates which specific touch a real trade matches, same as
+        // the reconciliation script's own matchBacktest closest-by-time
+        // logic. Without it (nearTime omitted) this just takes the first
+        // touch of the day, which silently picks the WRONG one whenever a
+        // rung fires more than once.
+        const candidates = pool.filter(t => t.date === c.targetDate && t.side === c.side && t.level === c.rung);
+        const touch = candidates.length <= 1 || c.nearTime == null ? candidates[0]
+          : candidates.reduce((best, t) => Math.abs((t.time ?? 0) - c.nearTime) < Math.abs((best.time ?? 0) - c.nearTime) ? t : best);
         if (!touch) { results.push({ ...c, error: 'touch not found in this pair\'s walk' }); continue; }
         const frozenPool = touches.filter(t => t.date < c.targetDate);
         const frozenBook = frozenPool.length ? buildAsiaFibAtlasBook(frozenPool, { rearmFrac: DEFAULT_REARM }) : null;
         const frozenVd = frozenBook ? voteDecision(frozenBook, touch) : null;
         const liveVd = voteDecision(liveBook, touch);
         results.push({
-          ...c,
+          ...c, candidateCount: candidates.length, matchedTouchTime: touch.time,
           frozenSplitDate: frozenBook?.splitDate ?? null, frozenDecision: frozenVd?.decision ?? null, frozenMargin: frozenVd?.margin ?? null,
           todaySplitDate: liveBook?.splitDate ?? null, todayDecision: liveVd?.decision ?? null, todayMargin: liveVd?.margin ?? null,
         });
