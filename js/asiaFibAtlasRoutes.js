@@ -653,9 +653,9 @@ export function mountAsiaFibAtlasRoutes(app, express) {
     res.json({ ok: true, ...job });
   });
 
-  // POST /api/asia-fib-atlas/diag-frozen-split { pair, checks: [{targetDate, side, rung}, ...] }
-  //   -> { ok, pair, results: [{targetDate, side, rung, frozenSplitDate, frozenDecision,
-  //        frozenMargin, todaySplitDate, todayDecision, todayMargin}] }
+  // POST /api/asia-fib-atlas/diag-frozen-split { pair, checks: [{targetDate, side, rung, nearTime}, ...] }
+  //   -> { ok, jobId }  — poll via the SAME /status/:jobId as /run (shares
+  //   the `jobs` Map); job.result -> { pair, results: [...] } when done.
   //
   // Diagnostic (2026-09-12, live-vs-backtest reconciliation hunt — see
   // LEGO_MODULES.md) for a specific question: is a decision mismatch between
@@ -669,55 +669,71 @@ export function mountAsiaFibAtlasRoutes(app, express) {
   // zero code difference. This scores the SAME real touch against BOTH:
   // `frozenBook` built only from touches dated before the touch's own date
   // (what a same-night regen would have produced) and `liveBook` (today's
-  // full retrospective book, the SAME thing every other route reads). If
-  // frozenDecision matches what the live bot actually did but todayDecision
-  // doesn't, that confirms the split-drift explanation over a code bug.
-  // Read-only: no persistence, no plan seeding, safe to call any time.
-  app.post('/api/asia-fib-atlas/diag-frozen-split', express.json({ limit: '8kb' }), async (req, res) => {
-    try {
-      const { pair: pairRaw, checks } = req.body ?? {};
-      const pair = String(pairRaw || '').toLowerCase();
-      const sym = pair.toUpperCase();
-      let packed = await loadM1ForPair(pair);
-      if (!packed?.n) return res.status(404).json({ ok: false, error: `no M1 for ${sym}` });
-      // Same top-up runOne does — without it this only sees R2's raw (often
-      // weeks-stale) parquet cache and silently never reaches recent dates,
-      // making every check report "touch not found" instead of a real answer.
-      if (process.env.OANDA_KEY) {
-        try { packed = await gapFillPacked(packed, oandaSymbol(pair), fetchM1Range, { nowSec: Math.floor(Date.now() / 1000), onLog: () => {} }); }
-        catch (e) { /* best-effort — checks against whatever range is available still run */ }
+  // full retrospective book, the SAME thing every other route reads).
+  //
+  // Async (2026-09-12, same job pattern as /run) — a synchronous version of
+  // this route was tried first and hit real, reproducible timeouts:
+  // eurusd/gbpusd/audusd/gold's R2 raw M1 cache is apparently empty (not
+  // just stale), so `loadM1ForPair` forces a full ~7-8 million bar OANDA
+  // refetch on EVERY call, easily exceeding Railway's own request timeout.
+  // Making this a background job like /run sidesteps that entirely, and
+  // means this diagnostic is durable enough to reuse for future periodic
+  // reconciliation runs, not just this one investigation.
+  app.post('/api/asia-fib-atlas/diag-frozen-split', express.json({ limit: '8kb' }), (req, res) => {
+    purgeStale();
+    const { pair: pairRaw, checks } = req.body ?? {};
+    const jobId = `diagfa_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const startedAt = Date.now();
+    const log = [];
+    jobs.set(jobId, { status: 'running', startedAt, log });
+    (async () => {
+      try {
+        const pair = String(pairRaw || '').toLowerCase();
+        const sym = pair.toUpperCase();
+        let packed = await loadM1ForPair(pair);
+        if (!packed?.n) throw new Error(`no M1 for ${sym}`);
+        // Same top-up runOne does — without it this only sees R2's raw
+        // (often weeks-stale, sometimes fully empty) parquet cache and
+        // silently never reaches recent dates.
+        if (process.env.OANDA_KEY) {
+          try { packed = await gapFillPacked(packed, oandaSymbol(pair), fetchM1Range, { nowSec: Math.floor(Date.now() / 1000), onLog: m => log.push(m) }); }
+          catch (e) { log.push(`gap-fill failed: ${e.message} — using whatever M1 is available`); }
+        }
+        const assetClass = assetClassFor(pair);
+        const ivByDate = await loadIvByDate(pair);
+        const macroEvents = majorEventEpochs();
+        const { touches } = asiaFibAtlasWalk(packed, { instrument: sym, assetClass, rearmFracs: [DEFAULT_REARM], ivByDate, macroEvents });
+        const pool = touches.filter(t => t.rearmFrac === DEFAULT_REARM);
+        const liveBook = buildAsiaFibAtlasBook(touches, { rearmFrac: DEFAULT_REARM });
+        const results = [];
+        for (const c of (Array.isArray(checks) ? checks : [])) {
+          // A rung can re-arm and get touched multiple times in one session —
+          // `nearTime` (the real trade's own time_open, epoch seconds)
+          // disambiguates which specific touch a real trade matches, same as
+          // the reconciliation script's own matchBacktest closest-by-time
+          // logic. Without it (nearTime omitted) this just takes the first
+          // touch of the day, which silently picks the WRONG one whenever a
+          // rung fires more than once.
+          const candidates = pool.filter(t => t.date === c.targetDate && t.side === c.side && t.level === c.rung);
+          const touch = candidates.length <= 1 || c.nearTime == null ? candidates[0]
+            : candidates.reduce((best, t) => Math.abs((t.time ?? 0) - c.nearTime) < Math.abs((best.time ?? 0) - c.nearTime) ? t : best);
+          if (!touch) { results.push({ ...c, error: 'touch not found in this pair\'s walk' }); continue; }
+          const frozenPool = touches.filter(t => t.date < c.targetDate);
+          const frozenBook = frozenPool.length ? buildAsiaFibAtlasBook(frozenPool, { rearmFrac: DEFAULT_REARM }) : null;
+          const frozenVd = frozenBook ? voteDecision(frozenBook, touch) : null;
+          const liveVd = voteDecision(liveBook, touch);
+          results.push({
+            ...c, candidateCount: candidates.length, matchedTouchTime: touch.time,
+            frozenSplitDate: frozenBook?.splitDate ?? null, frozenDecision: frozenVd?.decision ?? null, frozenMargin: frozenVd?.margin ?? null,
+            todaySplitDate: liveBook?.splitDate ?? null, todayDecision: liveVd?.decision ?? null, todayMargin: liveVd?.margin ?? null,
+          });
+        }
+        jobs.set(jobId, { status: 'done', startedAt, log, result: { pair: sym, results } });
+      } catch (e) {
+        jobs.set(jobId, { status: 'error', startedAt, log, error: e.message });
       }
-      const assetClass = assetClassFor(pair);
-      const ivByDate = await loadIvByDate(pair);
-      const macroEvents = majorEventEpochs();
-      const { touches } = asiaFibAtlasWalk(packed, { instrument: sym, assetClass, rearmFracs: [DEFAULT_REARM], ivByDate, macroEvents });
-      const pool = touches.filter(t => t.rearmFrac === DEFAULT_REARM);
-      const liveBook = buildAsiaFibAtlasBook(touches, { rearmFrac: DEFAULT_REARM });
-      const results = [];
-      for (const c of (Array.isArray(checks) ? checks : [])) {
-        // A rung can re-arm and get touched multiple times in one session —
-        // `nearTime` (the real trade's own time_open, epoch seconds)
-        // disambiguates which specific touch a real trade matches, same as
-        // the reconciliation script's own matchBacktest closest-by-time
-        // logic. Without it (nearTime omitted) this just takes the first
-        // touch of the day, which silently picks the WRONG one whenever a
-        // rung fires more than once.
-        const candidates = pool.filter(t => t.date === c.targetDate && t.side === c.side && t.level === c.rung);
-        const touch = candidates.length <= 1 || c.nearTime == null ? candidates[0]
-          : candidates.reduce((best, t) => Math.abs((t.time ?? 0) - c.nearTime) < Math.abs((best.time ?? 0) - c.nearTime) ? t : best);
-        if (!touch) { results.push({ ...c, error: 'touch not found in this pair\'s walk' }); continue; }
-        const frozenPool = touches.filter(t => t.date < c.targetDate);
-        const frozenBook = frozenPool.length ? buildAsiaFibAtlasBook(frozenPool, { rearmFrac: DEFAULT_REARM }) : null;
-        const frozenVd = frozenBook ? voteDecision(frozenBook, touch) : null;
-        const liveVd = voteDecision(liveBook, touch);
-        results.push({
-          ...c, candidateCount: candidates.length, matchedTouchTime: touch.time,
-          frozenSplitDate: frozenBook?.splitDate ?? null, frozenDecision: frozenVd?.decision ?? null, frozenMargin: frozenVd?.margin ?? null,
-          todaySplitDate: liveBook?.splitDate ?? null, todayDecision: liveVd?.decision ?? null, todayMargin: liveVd?.margin ?? null,
-        });
-      }
-      res.json({ ok: true, pair: sym, results });
-    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+    })();
+    res.json({ ok: true, jobId });
   });
 
   // GET /api/asia-fib-atlas/live/EURUSD — the last /run's stored ladder,

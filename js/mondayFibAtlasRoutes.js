@@ -470,47 +470,56 @@ export function mountMondayFibAtlasRoutes(app, express) {
 
   // POST /api/monday-fib-atlas/diag-frozen-split — Monday's own copy of
   // asiaFibAtlasRoutes.js's identical route; see that one's own doc for the
-  // full reasoning (splitAt's 60%-of-pool boundary moves forward as the
-  // touch pool grows, so a fresh regen's book isn't the same book a same-
-  // night regen would have produced for an older touch). Read-only.
-  app.post('/api/monday-fib-atlas/diag-frozen-split', express.json({ limit: '8kb' }), async (req, res) => {
-    try {
-      const { pair: pairRaw, checks } = req.body ?? {};
-      const pair = String(pairRaw || '').toLowerCase();
-      const sym = pair.toUpperCase();
-      let packed = await loadM1ForPair(pair);
-      if (!packed?.n) return res.status(404).json({ ok: false, error: `no M1 for ${sym}` });
-      // Same top-up runOne does — without it this only sees R2's raw (often
-      // weeks-stale) parquet cache and silently never reaches recent dates.
-      if (process.env.OANDA_KEY) {
-        try { packed = await gapFillPacked(packed, oandaSymbol(pair), fetchM1Range, { nowSec: Math.floor(Date.now() / 1000), onLog: () => {} }); }
-        catch (e) { /* best-effort — checks against whatever range is available still run */ }
+  // full reasoning and for why this is async (same /run job pattern,
+  // sharing this file's own `jobs` Map — poll via /status/:jobId).
+  app.post('/api/monday-fib-atlas/diag-frozen-split', express.json({ limit: '8kb' }), (req, res) => {
+    purgeStale();
+    const { pair: pairRaw, checks } = req.body ?? {};
+    const jobId = `diagmfa_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const startedAt = Date.now();
+    const log = [];
+    jobs.set(jobId, { status: 'running', startedAt, log });
+    (async () => {
+      try {
+        const pair = String(pairRaw || '').toLowerCase();
+        const sym = pair.toUpperCase();
+        let packed = await loadM1ForPair(pair);
+        if (!packed?.n) throw new Error(`no M1 for ${sym}`);
+        // Same top-up runOne does — without it this only sees R2's raw
+        // (often weeks-stale, sometimes fully empty) parquet cache.
+        if (process.env.OANDA_KEY) {
+          try { packed = await gapFillPacked(packed, oandaSymbol(pair), fetchM1Range, { nowSec: Math.floor(Date.now() / 1000), onLog: m => log.push(m) }); }
+          catch (e) { log.push(`gap-fill failed: ${e.message} — using whatever M1 is available`); }
+        }
+        const assetClass = assetClassFor(pair);
+        const { touches } = mondayFibAtlasWalk(packed, { instrument: sym, assetClass, rearmFracs: [DEFAULT_REARM] });
+        const pool = touches.filter(t => t.rearmFrac === DEFAULT_REARM);
+        const liveBook = buildAsiaFibAtlasBook(touches, { rearmFrac: DEFAULT_REARM });
+        const results = [];
+        for (const c of (Array.isArray(checks) ? checks : [])) {
+          // See asiaFibAtlasRoutes.js's identical route for why `nearTime`
+          // matters: a rung can re-arm and touch more than once in a
+          // reference week, so date+side+rung alone is ambiguous.
+          const candidates = pool.filter(t => t.date === c.targetDate && t.side === c.side && t.level === c.rung);
+          const touch = candidates.length <= 1 || c.nearTime == null ? candidates[0]
+            : candidates.reduce((best, t) => Math.abs((t.time ?? 0) - c.nearTime) < Math.abs((best.time ?? 0) - c.nearTime) ? t : best);
+          if (!touch) { results.push({ ...c, error: 'touch not found in this pair\'s walk' }); continue; }
+          const frozenPool = touches.filter(t => t.date < c.targetDate);
+          const frozenBook = frozenPool.length ? buildAsiaFibAtlasBook(frozenPool, { rearmFrac: DEFAULT_REARM }) : null;
+          const frozenVd = frozenBook ? voteDecision(frozenBook, touch) : null;
+          const liveVd = voteDecision(liveBook, touch);
+          results.push({
+            ...c, candidateCount: candidates.length, matchedTouchTime: touch.time,
+            frozenSplitDate: frozenBook?.splitDate ?? null, frozenDecision: frozenVd?.decision ?? null, frozenMargin: frozenVd?.margin ?? null,
+            todaySplitDate: liveBook?.splitDate ?? null, todayDecision: liveVd?.decision ?? null, todayMargin: liveVd?.margin ?? null,
+          });
+        }
+        jobs.set(jobId, { status: 'done', startedAt, log, result: { pair: sym, results } });
+      } catch (e) {
+        jobs.set(jobId, { status: 'error', startedAt, log, error: e.message });
       }
-      const assetClass = assetClassFor(pair);
-      const { touches } = mondayFibAtlasWalk(packed, { instrument: sym, assetClass, rearmFracs: [DEFAULT_REARM] });
-      const pool = touches.filter(t => t.rearmFrac === DEFAULT_REARM);
-      const liveBook = buildAsiaFibAtlasBook(touches, { rearmFrac: DEFAULT_REARM });
-      const results = [];
-      for (const c of (Array.isArray(checks) ? checks : [])) {
-        // See asiaFibAtlasRoutes.js's identical route for why `nearTime`
-        // matters: a rung can re-arm and touch more than once in a
-        // reference week, so date+side+rung alone is ambiguous.
-        const candidates = pool.filter(t => t.date === c.targetDate && t.side === c.side && t.level === c.rung);
-        const touch = candidates.length <= 1 || c.nearTime == null ? candidates[0]
-          : candidates.reduce((best, t) => Math.abs((t.time ?? 0) - c.nearTime) < Math.abs((best.time ?? 0) - c.nearTime) ? t : best);
-        if (!touch) { results.push({ ...c, error: 'touch not found in this pair\'s walk' }); continue; }
-        const frozenPool = touches.filter(t => t.date < c.targetDate);
-        const frozenBook = frozenPool.length ? buildAsiaFibAtlasBook(frozenPool, { rearmFrac: DEFAULT_REARM }) : null;
-        const frozenVd = frozenBook ? voteDecision(frozenBook, touch) : null;
-        const liveVd = voteDecision(liveBook, touch);
-        results.push({
-          ...c, candidateCount: candidates.length, matchedTouchTime: touch.time,
-          frozenSplitDate: frozenBook?.splitDate ?? null, frozenDecision: frozenVd?.decision ?? null, frozenMargin: frozenVd?.margin ?? null,
-          todaySplitDate: liveBook?.splitDate ?? null, todayDecision: liveVd?.decision ?? null, todayMargin: liveVd?.margin ?? null,
-        });
-      }
-      res.json({ ok: true, pair: sym, results });
-    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+    })();
+    res.json({ ok: true, jobId });
   });
 
   // GET /api/monday-fib-atlas/live/EURUSD — the last /run's stored ladder,
