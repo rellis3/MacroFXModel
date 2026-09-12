@@ -1,16 +1,28 @@
 # Session-Window Comparison — Does the Range Need to Come From Asia? (findings)
 
-**TL;DR — Asia (00:00-06:00 London) stays the best-supported single choice, but
-it isn't uniquely magic.** Two other "quiet-ish, narrower-than-a-full-session"
-windows — an ordinary 08:00-12:00 morning and an arbitrary 10:00-14:00 control
-window — perform almost as well, sometimes better per pair. The one thing
-that IS unambiguous: pulling the range from a **full London (07:00-16:00) or
-full New York (13:00-21:00) session is the weakest choice tested, on every
-pair, by every metric, with the thinnest and least statistically trustworthy
-sample.** Tested on **2016-2026 (~10.5y), EURUSD/GBPUSD/USDJPY/GOLD, real M1,
-costs on**, using the exact SAME engine (range → fib ladder → 2-pip
-confluence-vs-yesterday → vote-margin barrier trade) the live Fib Atlas
-strategy already runs — only the window that builds the range changes.
+**TL;DR — Asia (00:00-06:00 London) keeps a real edge over the alternatives at
+full 26-pair scale, but the edge is more modest than the initial 4-pair test
+suggested, and it's carried almost entirely by ~22 of the 26 pairs.** Four
+specific pairs — **GBPCAD, GBPNZD, AUDNZD, EURNZD** — are net losers (negative
+capped Sharpe, sub-60% win rate, poor year-to-year consistency) under EVERY
+window tested, Asia included; that's a pair-selection problem, not a
+session-window problem, and it drags every variant's pooled average down.
+Excluding just those 4: **Asia 2.08 > Morning 1.83 > Control 1.38** (pooled
+capped Sharpe, same ranking as the original 4-pair test, closer margins). The
+one thing that IS unambiguous regardless of pair count: pulling the range
+from a **full London (07:00-16:00) or full New York (13:00-21:00) session is
+the weakest choice tested**, with the thinnest and least statistically
+trustworthy sample (only tested on 4 pairs so far — see the 26-pair update
+below for what was and wasn't re-run at full scale).
+
+Tested on **2016-2026 (~10.5y), real M1, costs on**, using the exact SAME
+engine (range → fib ladder → 2-pip confluence-vs-yesterday → vote-margin
+barrier trade) the live Fib Atlas strategy already runs — only the window
+that builds the range changes. Asia/London/NY/Overlap were first tested on
+4 pairs (EURUSD/GBPUSD/USDJPY/GOLD); Morning, Control, and Asia were then
+re-run on the full 26-pair local universe (see "26-pair update" below) —
+**London/NY/Overlap have NOT been re-tested at 26-pair scale**, so treat
+their standing in the tables below as provisional until that's done.
 
 ## What was tested
 
@@ -71,6 +83,63 @@ Per-pair (same config, capped Sharpe) — Asia wins or ties-for-first on 3/4:
 | NY | 1.56 | 0.87 | 1.57 | 1.61 |
 | London | 0.15 | 1.15 (n=10) | 1.45 | 0.64 |
 
+## 26-pair update (2026-09-12): does this hold at full scale?
+
+The table above only tested 4 pairs (majors + gold). Asia, Morning, and
+Control were re-run across all **26** locally-cached pairs to check — London/
+NY/Overlap were NOT re-run at this scale yet (each pair costs ~15-70s/variant;
+re-running everything was out of scope for this pass). Pooled capped Sharpe
+at the owner's actual config, full 26-pair set:
+
+| Variant | avg Sharpe (capped), 26 pairs | avg win rate | % years positive |
+|---|---|---|---|
+| Asia | 1.37 | 72.9% | 89% |
+| Morning 08-12 | 1.21 | 73.1% | 88% |
+| Control 10-14 | 0.87 | 72.4% | 93% |
+
+**The 4-pair headline overstated Asia's margin.** At 26 pairs Asia (1.37) and
+Morning (1.21) are nearly tied — not the 2.48-vs-2.30 gap the small sample
+showed — and every variant's pooled Sharpe and consistency dropped noticeably
+from the 4-pair figures (Asia's own 100%-positive-years fell to 89%). Digging
+into the per-pair numbers explains why: **GBPCAD, GBPNZD, AUDNZD, and EURNZD
+are net losers under every one of the three variants tested** — negative
+capped Sharpe, sub-60% win rates, only 1-3 of 5-6 years positive, all four
+pairs. GBPCAD is the worst single result of the whole exercise: **-6.27
+capped Sharpe, 42% win rate, 1/5 positive years** under Asia. These four pairs
+alone are dragging every pooled average down by roughly the same amount
+regardless of which window builds the range — this reads as a pair-selection
+problem (these specific crosses don't suit this vote/confluence strategy at
+all, on any window), not evidence against any particular session choice.
+
+Excluding just those 4 pairs (22 remaining):
+
+| Variant | avg Sharpe (capped), 22 pairs | avg win rate | % years positive |
+|---|---|---|---|
+| Asia | 2.08 | 67.2% | 98% |
+| Morning 08-12 | 1.83 | 67.2% | 95% |
+| Control 10-14 | 1.38 | 65.8% | 99% |
+
+This matches the original 4-pair ranking (Asia > Morning > Control) and sits
+much closer to those original figures — the broader pair universe doesn't
+overturn the conclusion, it just reveals that 4 specific pairs shouldn't have
+been pooled in unfiltered in the first place. **Practical read: this strategy
+family (any window) should exclude GBPCAD/GBPNZD/AUDNZD/EURNZD, or at minimum
+flag them for separate review, before the Asia-vs-Morning-vs-Control question
+is even asked** — pooling them in is what made the 26-pair numbers look like
+a bigger reversal than the underlying window comparison actually shows.
+
+A second confirmation at 26-pair scale: the **unfiltered** (`margin>=1, any`,
+no 2-pip confluence gate) config's pooled **capped** Sharpe goes **negative**
+for both Morning (-3.76) and Control (-3.84) once all 26 pairs are pooled —
+a sharp reversal from the small 4-pair sample's positive figures (1.22, 2.09).
+This reinforces the report's earlier side-finding: **the 2-pip confluence gate
+is not optional garnish, it's what keeps this strategy family robust once you
+stop hand-picking favorable pairs** — dropping it produces a real net loss at
+scale, on both alternative windows tested.
+
+Full per-pair breakdown (all 26 pairs, both variants, all metrics including
+`minTrackYears`) is in `analysis/session_window_comparison_results.json`.
+
 ## The one clean, unambiguous result: don't use the full London or NY session
 
 London (07:00-16:00) is the worst variant on **every single pair** and on
@@ -111,6 +180,11 @@ window" by this test; a follow-up that holds window LENGTH constant while
 varying only the START hour (e.g. four different 5h windows) would be needed
 to isolate which of the two actually matters. Flagging this honestly rather
 than crediting Asia with more than this test actually shows.
+
+*(Confirmed, with a tighter margin, at 26-pair scale — see "26-pair update"
+below: Asia keeps first place but the gap to Morning narrows further once
+the full pair universe is included, and a handful of specific pairs turn out
+to be dragging every variant's average down together, not just Asia's.)*
 
 **Practical read**: this does not argue for abandoning the Asia range — it
 remains the best-supported, most consistent, largest-sample choice, and it's
