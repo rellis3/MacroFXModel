@@ -75,10 +75,19 @@ DEFAULT_CFG = {
     "risk_pct": 0.5,                # matches the OOS-validated backtest sizing (riskAdjustTrades) --
                                      # was 1.0 until 2026-08-30's live-vs-backtest parity audit found this
                                      # bot had drifted to DOUBLE the validated risk per trade.
-    "max_lot": 2.0,
+    "max_lot": 60.0,                # was 2.0 -- too low to let 1%-risk sizing actually express itself on
+                                     # index-scale point values (verified 2026-09-12: a real live UK100
+                                     # trade at 1% risk / ~27pt stop needed 30 lots; 2.0 would have silently
+                                     # capped it to ~6.7% of the intended risk, not protected anything).
     "max_open": 12,
-    "max_concurrent_per_pair": 1,   # matches the backtest's applyConcurrencyCap(maxConcurrent=1) -- added
-                                     # 2026-08-30, the audit found this bot had NO per-pair cap at all.
+    "max_concurrent_per_pair": 3,   # matches the backtest's applyConcurrencyCap(maxConcurrent=3) -- was 1
+                                     # (added 2026-08-30, the audit found this bot had NO per-pair cap at all)
+                                     # until 2026-09-12: that "1" was itself never re-checked against the
+                                     # current 17-pair, corrected-data population -- isolated live testing
+                                     # found max_concurrent_per_pair=1 alone (everything else off) drops
+                                     # Sharpe from 3.62 to ~1.25 by blocking legitimately-diversified
+                                     # overlapping trades across pairs. See level-atlas-vote-portfolio.html's
+                                     # loadBestConfigBtn for the full isolated-test numbers.
     # RiskGuard — daily/monthly DD lockout + per-pair entry cooldown (blocks NEW
     # entries only; the broker-enforced SL/TP always run).
     "ddlimit": 3.0,
@@ -100,8 +109,16 @@ DEFAULT_CFG = {
     "max_daily_loss_pct": 1.0,
     # Portfolio risk budget: sum of open risk-to-SL (% of balance) across this
     # bot's book, capped BEFORE entry — same concept as oi_bot's max_open_risk_pct.
-    "max_open_risk_pct": 1.0,       # 0 = off -- was 2.0 until 2026-08-30's parity audit found this
-                                     # bot had drifted to DOUBLE the validated 1% account-wide heat cap.
+    "max_open_risk_pct": 0,         # 0 = off -- was 2.0, then 1.0 after 2026-08-30's parity audit found this
+                                     # bot had drifted to DOUBLE the then-believed-validated 1% account-wide
+                                     # heat cap. That "1.0" was itself never re-checked against the current
+                                     # 17-pair, corrected-data population: isolated live testing (2026-09-12)
+                                     # found a 1% cap alone skips 66.5% of ALL trades and collapses Sharpe
+                                     # from 3.62 to ~1.2 -- far worse than believed, and too tight for a
+                                     # 17-pair book at current trade density (each trade risks 0.5%, so a 1%
+                                     # ceiling allows at most ~2 positions open across the WHOLE book at
+                                     # once). See level-atlas-vote-portfolio.html's loadBestConfigBtn for the
+                                     # full isolated-test numbers.
     # Stack guard: refuse a second same-instrument, same-direction entry within
     # stack_guard_pips of one already open (two zones near the same level cluster
     # are one bet, not two).
@@ -127,6 +144,15 @@ DEFAULT_CFG = {
     "throttle_trigger_dd": -8.0,
     "throttle_restore_dd": -2.0,
     "throttle_mult": 0.25,
+    # Manual override (2026-09-12) — the bot-config page's "Reset throttle
+    # now" button (shown when the Risk Systems card reports the throttle
+    # ENGAGED) writes a fresh ISO timestamp here. Edge-triggered, not a
+    # boolean the page would need to clear back to false: the bot compares
+    # this against the LAST timestamp it already acted on (persisted as
+    # throttle_reset_ack in volatility_bot_v2_state) and only resets once
+    # per distinct timestamp, so a stale unchanged value can never re-fire
+    # after a restart.
+    "throttle_reset_at": None,
 
     # End-of-day close — added 2026-08-31 after measuring the actual live-vs-
     # backtest gap this creates: the validated backtest only ever scores a
@@ -503,6 +529,7 @@ def run(base_url: str, force_live: bool) -> None:
         except (TypeError, ValueError):
             pass
     throttle.restore(saved_state.get("throttle"))  # running peak must survive a restart
+    last_throttle_reset_seen = saved_state.get("throttle_reset_ack")  # survives a restart too -- see DEFAULT_CFG's throttle_reset_at doc
     for k, v in (saved_state.get("tg_entry_msgid") or {}).items():
         try:
             tg_entry_msgid[int(k)] = int(v)
@@ -521,6 +548,7 @@ def run(base_url: str, force_live: bool) -> None:
                 "entered": {i: sorted(s.entered) for i, s in sessions.items()},
                 "risk_ledger": {str(k): v for k, v in risk_ledger.items()},
                 "throttle": throttle.snapshot(),
+                "throttle_reset_ack": last_throttle_reset_seen,
                 "tg_entry_msgid": {str(k): v for k, v in tg_entry_msgid.items()},
                 # Capped — a restart-surviving record of "don't re-alert this
                 # close", not a durable trade log (that's *_trade_log already).
@@ -631,6 +659,13 @@ def run(base_url: str, force_live: bool) -> None:
                 guard.sync_cfg(cfg)
                 ccy_gate.max_daily_loss_pct = float(cfg.get("max_daily_loss_pct", 1.0))
                 throttle.sync_cfg(cfg)
+                reset_at = cfg.get("throttle_reset_at")
+                if reset_at and reset_at != last_throttle_reset_seen:
+                    was_throttled = throttle.snapshot().get("throttled")
+                    throttle.reset()
+                    last_throttle_reset_seen = reset_at
+                    log.warning(f"DRAWDOWN THROTTLE: manually reset via bot-config page "
+                                f"(was {'engaged' if was_throttled else 'clear'}) — running peak cleared, full size resumed")
             except Exception as e:
                 log.warning(f"config fetch failed: {e}")
             try:

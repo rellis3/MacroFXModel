@@ -44,7 +44,7 @@ ok('computeGap null when current (within minGapSec)', computeGap(packedEndingAt(
   ok('chunkMinuteRange empty when to<from', chunkMinuteRange(t0, t0 - MIN).length === 0);
 }
 
-// ── fetchM1Gap (injected fetcher, paginated + a failing chunk) ──
+// ── fetchM1Gap (injected fetcher, paginated + a failing chunk, retries off) ──
 {
   const calls = [];
   const fetchCandles = async (sym, fromSec, toSec) => {
@@ -53,9 +53,48 @@ ok('computeGap null when current (within minGapSec)', computeGap(packedEndingAt(
     return [{ time: fromSec, open: 1, high: 1, low: 1, close: 1, volume: 1 },
             { time: fromSec + MIN, open: 1, high: 1, low: 1, close: 1, volume: 1 }];
   };
-  const bars = await fetchM1Gap('EUR_USD', t0, t0 + (10000 - 1) * MIN, fetchCandles, { maxBars: 5000 });
+  const bars = await fetchM1Gap('EUR_USD', t0, t0 + (10000 - 1) * MIN, fetchCandles, { maxBars: 5000, maxRetries: 0 });
   ok('fetchM1Gap paginates (2 chunks attempted)', calls.length === 2);
   ok('fetchM1Gap survives a failing chunk (returns the good one)', bars.length === 2 && bars[0].time === t0);
+  ok('fetchM1Gap reports the unresolved chunk in .gaps, not silently', bars.gaps.length === 1 && bars.gaps[0].fromSec === t0 + 5000 * MIN);
+}
+
+// ── fetchM1Gap retries a TRANSIENT failure and recovers (2026-09-12) ──
+{
+  let attempts = 0;
+  const fetchCandles = async (sym, fromSec) => {
+    attempts++;
+    if (attempts <= 2) throw new Error(`transient ${attempts}`);   // fails twice, then succeeds
+    return [{ time: fromSec, open: 1, high: 1, low: 1, close: 1, volume: 1 }];
+  };
+  const bars = await fetchM1Gap('EUR_USD', t0, t0, fetchCandles, { maxBars: 5000, maxRetries: 3, retryBaseMs: 1 });
+  ok('recovers within the retry budget (3 attempts, succeeded on the 3rd)', attempts === 3);
+  ok('returns the real bar once it recovers, not empty', bars.length === 1);
+  ok('no gap reported once a retry succeeds', bars.gaps.length === 0);
+}
+
+// ── fetchM1Gap exhausts retries on a PERMANENT failure ──
+{
+  let attempts = 0;
+  const fetchCandles = async () => { attempts++; throw new Error('permanent'); };
+  const bars = await fetchM1Gap('EUR_USD', t0, t0, fetchCandles, { maxBars: 5000, maxRetries: 2, retryBaseMs: 1 });
+  ok('makes exactly 1 + maxRetries attempts before giving up', attempts === 3);
+  ok('reports the permanently-failed window in .gaps', bars.gaps.length === 1 && bars.gaps[0].error === 'permanent');
+  ok('returns no bars for the window that never resolved', bars.length === 0);
+}
+
+// ── the final give-up log line must keep matching every EXISTING consumer's
+// own failure-counting regex (asiaFibAtlasRoutes.js / mondayFibAtlasRoutes.js's
+// countGapFillFailures: /^m1 gap chunk .* failed:/) -- a wording change here
+// would silently break that counter without touching a single line in either
+// of those files, exactly the kind of drift this test exists to catch.
+{
+  const COUNTER_REGEX = /^m1 gap chunk .* failed:/;
+  const logs = [];
+  const fetchCandles = async () => { throw new Error('boom'); };
+  await fetchM1Gap('EUR_USD', t0, t0, fetchCandles, { maxRetries: 1, retryBaseMs: 1, onLog: m => logs.push(m) });
+  ok('the final give-up line matches the existing failure-counter regex', logs.some(m => COUNTER_REGEX.test(m)));
+  ok('interim retry lines do NOT match it (retries are not failures yet)', logs.filter(m => COUNTER_REGEX.test(m)).length === 1);
 }
 
 // ── mergeBarsIntoPacked ──
@@ -86,6 +125,20 @@ ok('computeGap null when current (within minGapSec)', computeGap(packedEndingAt(
   ok('gapFillPacked extends the series to now', out.n === 6 && lastPackedEpoch(out) === t0 + 3 * MIN);
   const noop = await gapFillPacked(base, 'EUR_USD', fetchCandles, { nowSec: t0 + 30, minGapSec: 3600 });
   ok('gapFillPacked no-ops when current', noop === base);
+  ok('a fully-successful top-up carries no warnings', out.gapFillWarnings === undefined);
+}
+
+// ── gapFillPacked surfaces a real hole instead of silently returning a
+// same-shaped-but-incomplete series (2026-09-12) ──
+{
+  const base = packedEndingAt(t0, 3);
+  const fetchCandles = async () => { throw new Error('down'); };
+  const logs = [];
+  const out = await gapFillPacked(base, 'EUR_USD', fetchCandles,
+    { nowSec: t0 + 3 * MIN, minGapSec: 60, maxRetries: 1, retryBaseMs: 1, onLog: m => logs.push(m) });
+  ok('still returns the (unextended) base series, not a crash', out.n === 3);
+  ok('gapFillWarnings is attached when a chunk never resolves', out.gapFillWarnings?.length === 1);
+  ok('the loud summary line actually gets logged, not just the per-chunk ones', logs.some(m => m.includes('INCOMPLETE')));
 }
 
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' CHECK(S) FAILED ✗'}`);

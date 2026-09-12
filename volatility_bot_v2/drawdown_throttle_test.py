@@ -70,5 +70,16 @@ ok("restored peak matches", t8.update(9_820) == 1.0)   # -1.8% off restored 10,0
 t9 = DrawdownThrottle()
 ok("restore(None) is a no-op, not a crash", (t9.restore(None), t9.update(10_000))[1] == 1.0)
 
+print("[manual reset() override — bot-config page's 'Reset throttle now' button]")
+t10 = DrawdownThrottle(trigger_dd=-8.0, restore_dd=-2.0, mult=0.25)
+t10.update(10_000)
+t10.update(9_000)  # -10%, triggers, peak=10,000
+ok("triggered before reset", t10.update(9_000) == 0.25)
+t10.reset()
+ok("reset() clears throttled state immediately, no waiting for restore_dd", t10.update(9_000) == 1.0)
+ok("reset() clears the running peak — re-seeds from the NEXT balance given, not the old 10,000", t10.update(9_000) == 1.0)
+t10.update(9_500)  # a real new high above the re-seeded 9,000 peak
+ok("peak re-seeded from post-reset balance, not stuck at the old one", t10.update(8_800) == 1.0)  # -7.4% off 9,500, still under -8% trigger
+
 print(f"\n{'ALL PASSED' if fails == 0 else f'{fails} FAILED'}")
 sys.exit(1 if fails else 0)

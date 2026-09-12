@@ -55,15 +55,15 @@
   <div class="controls">
     <button id="selectAllBtn" type="button" title="Selects all 27 tracked pairs, including the 10 correlated-risk ones excluded by 'Select recommended' below — combining highly-correlated pairs overstates diversification benefit.">Select all</button>
     <button id="selectRecommendedBtn" type="button" title="OOS-validated: this exclusion set was chosen on the first 70% of history and still improved the untouched last 30% (max DD -42.7%→-25.1%, Sharpe 2.36→3.65) — not just an in-sample pick.">Select recommended (excl. 10 correlated-risk pairs)</button>
-    <button id="loadBestConfigBtn" type="button" style="border-color:#38bdf8;color:#38bdf8" title="Applies every lever this session actually validated, tuned for LEAST drawdown: recommended pairs, margin≥3, max concurrent 1, fixed 0.5% risk/trade, 1% portfolio heat cap ON, currency loss gate ON at 1% (OOS-validated on its own), drawdown throttle ON at trigger -8% / restore -2% / ×0.25 (~40% shallower DD both IS and OOS, at a real Sharpe/CAGR cost — genuine insurance, not free), early exit (no re-leverage) ON (the one stop lever with a provably clean mechanism). Turns OFF: Fixed SL fraction and Include p90 (real but not drawdown-favoring), and Fade-stop tightening (never independently cleared of the same leverage-conflation risk that discredited SL fraction).">⚡ Load best config (least drawdown)</button>
+    <button id="loadBestConfigBtn" type="button" style="border-color:#38bdf8;color:#38bdf8" title="CORRECTED 2026-09-12 — the prior version of this button (max concurrent 1 + 1% portfolio heat cap) was never re-checked against the current 17-pair, corrected-data population and turned out to be badly miscalibrated: isolated live testing found the 1% heat cap alone skips 66.5% of ALL trades and collapses Sharpe from 3.62 to ~1.2 (max concurrent 1 alone also drops it to ~1.25) — far worse than this button's own old documentation predicted (it expected ~2.0-2.7, not 0.5). Corrected settings, each verified in isolation against live production data: recommended pairs, margin≥3, max concurrent 3 (NOT 1), fixed 0.5% risk/trade, portfolio heat cap OFF (NOT on — too tight for a 17-pair book at current trade density), currency loss gate ON at 1% (confirmed near-FREE in isolation: Sharpe 3.62→3.62, real tail-risk insurance for no measured cost), drawdown throttle ON at trigger -8% / restore -2% / ×0.25 (~40% shallower DD both IS and OOS, at a real Sharpe/CAGR cost — genuine insurance, not free), early exit (no re-leverage) ON (the one stop lever with a provably clean mechanism). Turns OFF: Fixed SL fraction and Include p90 (real but not drawdown-favoring), and Fade-stop tightening (re-tested 2026-09-12 on the corrected data: only 41% of pairs improved, average OOS Sharpe lift negative).">⚡ Load best config (least drawdown)</button>
   </div>
   <div class="controls" id="pairChecks"></div>
   <div class="controls">
     <label title="Only trades where the vote-margin (supporting minus challenging dimensions) meets this bar are taken. Higher = fewer, higher-conviction trades — this is the primary edge filter everything else builds on top of.">Min margin <select id="marginSel">
       <option value="1">≥1</option><option value="2">≥2</option><option value="3" selected>≥3</option><option value="4">≥4</option>
     </select></label>
-    <label title="How many overlapping open positions ONE pair can hold at once. 1 (strictest) means a new touch on a pair is skipped entirely while an earlier trade on that same pair is still open — higher values let them stack, which increases trade count but also concentration risk per pair.">Max concurrent <select id="capSel">
-      <option value="1" selected>1 (strictest)</option><option value="2">2</option><option value="3">3</option><option value="99">unlimited</option>
+    <label title="How many overlapping open positions ONE pair can hold at once. 1 (strictest) means a new touch on a pair is skipped entirely while an earlier trade on that same pair is still open — higher values let them stack, which increases trade count but also concentration risk per pair. CORRECTED 2026-09-12: defaults to 3, not 1 — isolated live testing found max concurrent=1 alone (everything else off) already drops Sharpe from 3.62 to ~1.25 on the current 17-pair book by blocking legitimately-diversified overlapping trades across pairs.">Max concurrent <select id="capSel">
+      <option value="1">1 (strictest)</option><option value="2">2</option><option value="3" selected>3</option><option value="99">unlimited</option>
     </select></label>
     <label title="When on, up-side and down-side trades on the same pair get SEPARATE concurrency budgets instead of sharing one — lets a pair hold one long AND one short at once rather than the second one blocking the first.">Per-direction budget <input type="checkbox" id="perDirChk"></label>
     <label title="Fixed % risk/trade: every trade risks the SAME % of account off its OWN real stop distance — no capital-split guess needed, forward-implementable as-is (what the live bot actually does). NAV split (legacy): pre-allocates a fixed capital fraction per pair up front and lets each pair's raw price return scale within that slice — kept for comparison only.">Sizing <select id="sizingSel">
@@ -75,7 +75,7 @@
     <label id="riskPctWrap" title="Fixed-risk mode only: the % of account risked on EVERY trade, sized off that trade's own stop distance. Higher = bigger positions, proportionally bigger Sharpe/CAGR/drawdown all at once — this is leverage, not free edge.">Risk % / trade <input type="number" id="riskPctInput" value="1" step="0.1" min="0.1" style="width:60px"></label>
   </div>
   <div class="controls">
-    <label id="heatCapWrap" title="Caps TOTAL simultaneous exposure across ALL pairs combined, on top of each pair's own cap above. Without this, every pair independently risks its full % at once with no shared ceiling — manufacturing diversification benefit no real account actually has. Defaults ON at 1% (realistic) because the uncapped number was found to be inflated 3.6-4.0 Sharpe vs a believable ~2.0-2.7 capped.">Portfolio heat cap <input type="checkbox" id="heatCapChk" checked>
+    <label id="heatCapWrap" title="Caps TOTAL simultaneous exposure across ALL pairs combined, on top of each pair's own cap above. CORRECTED 2026-09-12 — defaults OFF: isolated live testing on the current 17-pair, corrected-data book found a 1% cap skips 66.5% of ALL trades and collapses Sharpe from 3.62 to ~1.2, far worse than this label used to claim (~2.0-2.7). Too tight for a 17-pair book at current trade density, not realistic insurance. Uncheck/check to compare directly — the 'Without cap' column below always shows both side by side.">Portfolio heat cap <input type="checkbox" id="heatCapChk">
       <input type="number" id="maxHeatPctInput" value="1" step="0.5" min="0.5" style="width:55px"></label>
     <label title="Rescales the whole return series to this annualized volatility for the 'Vol Target' row in the stats card — a display/comparison lens, not a change to which trades are taken.">Target annual vol % <input type="number" id="targetVolInput" value="10" step="1" min="1" style="width:55px"></label>
   </div>
@@ -107,11 +107,13 @@
   <strong>NAV split (legacy)</strong> instead pre-allocates a fixed capital fraction per pair (equal or inverse-vol) and lets
   each pair's own raw price-return scale within that slice — kept for comparison, but requires deciding weights up front.
   See <code>MD files/LEGO_MODULES.md</code> for the full methodology and per-pair validation.
-  <strong>Portfolio heat cap now defaults ON at 1%</strong> (2026-08-29) — without it, every pair independently risks its
-  target % SIMULTANEOUSLY with no shared account-wide ceiling, which manufactures diversification benefit no real account
-  actually has (uncapped Sharpe on this book ran 3.6-4.0; a realistic 1% simultaneous-exposure cap brings it to ~2.0-2.7,
-  the range worth trusting). Uncheck it to see the old, inflated uncapped number for comparison — the "Without cap" column
-  below always shows both side by side.
+  <strong>Portfolio heat cap now defaults OFF</strong> (corrected 2026-09-12) — the prior default (ON at 1%, set 2026-08-29)
+  was never re-checked against the current 17-pair, corrected-data population and turned out to be badly miscalibrated:
+  isolated live testing found a 1% cap alone skips 66.5% of ALL trades and collapses Sharpe from 3.62 to ~1.2, far worse
+  than this note used to claim (it predicted ~2.0-2.7). With 17 pairs each risking 0.5%, a 1% total-portfolio ceiling
+  allows at most ~2 positions open across the WHOLE book at once — too tight for this pair count and trade density, not
+  realistic insurance. Check it to see the capped number for direct comparison — the "Without cap" column below always
+  shows both side by side.
 </div>
 
 <div class="card" style="border-color:#7c2d2d;background:linear-gradient(135deg,#2a1414,#0e121b)">
@@ -1628,11 +1630,11 @@ logScaleChk.addEventListener('change', () => { if (lastResponse) render(lastResp
 document.getElementById('loadBestConfigBtn').addEventListener('click', () => {
   pairChecksEl.querySelectorAll('input[type=checkbox]').forEach(el => { el.checked = !CORRELATED_RISK_EXCLUDE.has(el.dataset.pair); });
   marginSel.value = '3';
-  capSel.value = '1';
+  capSel.value = '3';
   perDirChk.checked = false;
   sizingSel.value = 'fixed-risk';
   riskPctInput.value = '0.5';
-  heatCapChk.checked = true;
+  heatCapChk.checked = false;
   maxHeatPctInput.value = '1';
   throttleChk.checked = true;
   triggerDDInput.value = '-8';

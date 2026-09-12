@@ -3678,13 +3678,24 @@ const VB2_INDEX_KEYS = ['nq', 'spx', 'de30', 'dow', 'us2000', 'uk100', 'gold'];
 // -- fixed here, plus four new fields (max_concurrent_per_pair, the four
 // throttle_* fields, early_exit/early_exit_threshold) for levers that were
 // validated in the backtest but had never been implemented live at all.
+//
+// CORRECTED 2026-09-12: max_concurrent_per_pair=1 and max_open_risk_pct=1.0
+// (the values that 2026-08-30 audit synced TO) were themselves never
+// re-checked against the current 17-pair, corrected-data population and
+// turned out to be badly miscalibrated -- isolated live testing found the 1%
+// portfolio heat cap alone skips 66.5% of ALL trades and collapses Sharpe
+// from 3.62 to ~1.2 (max_concurrent_per_pair=1 alone drops it to ~1.25),
+// far worse than believed. See level-atlas-vote-portfolio.html's
+// loadBestConfigBtn for the full isolated-test numbers.
 const VB2_DEFAULTS = {
-  paper_mode: true, kill_switch: false, risk_pct: 0.5, max_lot: 2.0, max_open: 12,
-  max_concurrent_per_pair: 1,
+  paper_mode: true, kill_switch: false, risk_pct: 0.5, max_lot: 60.0, max_open: 12,
+  // max_lot was 2.0 -- too low to let 1%-risk sizing express itself on index-scale point values
+  // (verified 2026-09-12: a real live UK100 trade at 1% risk / ~27pt stop needed 30 lots).
+  max_concurrent_per_pair: 3,
   max_spread_pips: 1.0, tick_secs: 3, status_secs: 30, plan_secs: 45,
   enabled_pairs: [...VB2_DEFAULT_CHECKED],
   ccy_loss_gate: true, max_daily_loss_pct: 1.0,
-  fade_stop_tighten: false, max_open_risk_pct: 1.0,
+  fade_stop_tighten: false, max_open_risk_pct: 0,
   early_exit: true, early_exit_threshold: 0.4,
   p90_enabled: false,
   throttle_enabled: true, throttle_trigger_dd: -8.0, throttle_restore_dd: -2.0, throttle_mult: 0.25,
@@ -3840,6 +3851,25 @@ async function saveVb2Config() {
     if (el) { el.textContent = 'Saved ✓'; el.style.color = '#38bdf8'; setTimeout(() => { el.textContent = ''; }, 3000); }
   } catch (e) { if (el) { el.textContent = `Error: ${e.message}`; el.style.color = 'var(--red)'; } }
 }
+// Manual drawdown-throttle override (2026-09-12) — writes a fresh timestamp
+// the bot compares against the last one it already acted on (edge-triggered,
+// see DEFAULT_CFG's throttle_reset_at doc in volatility_bot_v2.py), so this
+// is safe to click more than once. Reads the CURRENT live config from KV
+// first rather than patching the in-memory _vb2Cfg/form state -- this button
+// can be clicked with unsaved edits sitting in the form, and it must never
+// silently persist those as a side effect of just resetting the throttle.
+async function resetVb2Throttle() {
+  const el = document.getElementById('vb2SaveStatus');
+  if (!confirm('Reset the drawdown throttle now?\n\nThis clears the running peak and restores full position sizing immediately, without waiting for balance to recover. Only do this if the current drawdown is believed stale — it discards real information the throttle was tracking.')) return;
+  if (el) { el.textContent = 'Resetting throttle…'; el.style.color = 'var(--text3)'; }
+  try {
+    const fresh = (await kvGet('volatility_bot_v2_config')) || { ..._vb2Cfg };
+    fresh.throttle_reset_at = new Date().toISOString();
+    await kvSet('volatility_bot_v2_config', fresh);
+    _vb2Cfg = fresh; renderVb2Form();
+    if (el) { el.textContent = 'Throttle reset ✓ (takes effect within one status cycle)'; el.style.color = '#38bdf8'; setTimeout(() => { el.textContent = ''; }, 5000); }
+  } catch (e) { if (el) { el.textContent = `Reset failed: ${e.message}`; el.style.color = 'var(--red)'; } }
+}
 async function testVb2Telegram() {
   const el = document.getElementById('vb2SaveStatus');
   if (el) { el.textContent = 'Sending test…'; el.style.color = 'var(--text3)'; }
@@ -3942,11 +3972,15 @@ async function loadVb2LiveStatus() {
     // config value. All four fields were already computed bot-side (or
     // cheap to add) but never pushed to the dashboard before 2026-08-31.
     const throttleEl = document.getElementById('vb2Throttle');
+    const throttleResetBtn = document.getElementById('vb2ThrottleResetBtn');
     if (throttleEl) {
       const th = st.throttle;
       if (!th || th.peak == null) { throttleEl.textContent = 'no data yet'; throttleEl.style.color = 'var(--text3)'; }
       else if (th.throttled) { throttleEl.textContent = `⚠ ENGAGED — sizing cut (peak ${th.peak.toFixed(2)})`; throttleEl.style.color = 'var(--amber,#e0a93b)'; }
       else { throttleEl.textContent = `clear (peak ${th.peak.toFixed(2)})`; throttleEl.style.color = 'var(--green)'; }
+      // Only surfaced while actually engaged -- resetting a clear throttle is a no-op with no
+      // signal to show for it, so the button would just be confusing clutter the rest of the time.
+      if (throttleResetBtn) throttleResetBtn.style.display = (th && th.throttled) ? '' : 'none';
     }
     const guardEl = document.getElementById('vb2RiskGuard');
     if (guardEl) {
@@ -4103,6 +4137,7 @@ async function loadVb2DecisionLog() {
 }
 
 window.saveVb2Config = saveVb2Config; window.resetVb2Defaults = resetVb2Defaults;
+window.resetVb2Throttle = resetVb2Throttle;
 window.saveVb2Creds = saveVb2Creds; window.loadVb2LiveStatus = loadVb2LiveStatus;
 window.loadVb2AllLines = loadVb2AllLines; window.loadVb2DecisionLog = loadVb2DecisionLog;
 window.vb2DecShiftDay = vb2DecShiftDay; window.vb2DecClearDate = vb2DecClearDate;

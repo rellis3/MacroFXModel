@@ -3842,6 +3842,7 @@ python volatility_bot/volatility_bot.py --live --url &lt;dashboard-url&gt;</pre>
         <div style="border:1px solid var(--border);border-radius:6px;padding:8px 10px" title="Never-resetting running-peak drawdown throttle. Engaged = new position sizes are cut by the configured multiplier until balance recovers to the restore level (not merely off the trigger).">
           <div style="color:var(--text3);margin-bottom:3px">Drawdown throttle</div>
           <div id="vb2Throttle" style="font-weight:600">—</div>
+          <button id="vb2ThrottleResetBtn" type="button" onclick="resetVb2Throttle()" style="display:none;margin-top:6px;font-size:10px;padding:3px 8px;border-color:var(--amber,#e0a93b);color:var(--amber,#e0a93b)" title="Manual override — clears the running peak and throttled state immediately, instead of waiting for balance to recover to the restore level. Only use when the current drawdown is believed stale or you're intentionally restoring full size early; this discards real information the throttle was tracking, it isn't a routine lever.">Reset throttle now</button>
         </div>
         <div style="border:1px solid var(--border);border-radius:6px;padding:8px 10px" title="Daily/monthly drawdown lockout (pylego.risk_guard). Locked = ALL new entries blocked account-wide until the lockout window expires, regardless of pair.">
           <div style="color:var(--text3);margin-bottom:3px">Risk guard</div>

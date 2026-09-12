@@ -71,3 +71,14 @@ class DrawdownThrottle:
             return
         self._peak = snap.get("peak")
         self._throttled = bool(snap.get("throttled"))
+
+    def reset(self) -> None:
+        """Manual operator override (bot-config page's 'Reset throttle now'
+        button) — clears the running peak and throttled state immediately,
+        instead of waiting for balance to recover to restore_dd. The next
+        update() call re-seeds the peak from whatever balance it's given.
+        Use when the current drawdown is believed stale/no-longer-relevant
+        (e.g. after a manual balance adjustment), not as a routine lever —
+        this discards real information the throttle was tracking."""
+        self._peak = None
+        self._throttled = False
