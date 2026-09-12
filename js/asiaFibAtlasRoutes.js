@@ -678,8 +678,15 @@ export function mountAsiaFibAtlasRoutes(app, express) {
       const { pair: pairRaw, checks } = req.body ?? {};
       const pair = String(pairRaw || '').toLowerCase();
       const sym = pair.toUpperCase();
-      const packed = await loadM1ForPair(pair);
+      let packed = await loadM1ForPair(pair);
       if (!packed?.n) return res.status(404).json({ ok: false, error: `no M1 for ${sym}` });
+      // Same top-up runOne does — without it this only sees R2's raw (often
+      // weeks-stale) parquet cache and silently never reaches recent dates,
+      // making every check report "touch not found" instead of a real answer.
+      if (process.env.OANDA_KEY) {
+        try { packed = await gapFillPacked(packed, oandaSymbol(pair), fetchM1Range, { nowSec: Math.floor(Date.now() / 1000), onLog: () => {} }); }
+        catch (e) { /* best-effort — checks against whatever range is available still run */ }
+      }
       const assetClass = assetClassFor(pair);
       const ivByDate = await loadIvByDate(pair);
       const macroEvents = majorEventEpochs();
