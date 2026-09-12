@@ -1,28 +1,25 @@
 # Session-Window Comparison — Does the Range Need to Come From Asia? (findings)
 
-**TL;DR — Asia (00:00-06:00 London) keeps a real edge over the alternatives at
-full 26-pair scale, but the edge is more modest than the initial 4-pair test
-suggested, and it's carried almost entirely by ~22 of the 26 pairs.** Four
-specific pairs — **GBPCAD, GBPNZD, AUDNZD, EURNZD** — are net losers (negative
-capped Sharpe, sub-60% win rate, poor year-to-year consistency) under EVERY
-window tested, Asia included; that's a pair-selection problem, not a
-session-window problem, and it drags every variant's pooled average down.
-Excluding just those 4: **Asia 2.08 > Morning 1.83 > Control 1.38** (pooled
-capped Sharpe, same ranking as the original 4-pair test, closer margins). The
-one thing that IS unambiguous regardless of pair count: pulling the range
-from a **full London (07:00-16:00) or full New York (13:00-21:00) session is
-the weakest choice tested**, with the thinnest and least statistically
-trustworthy sample (only tested on 4 pairs so far — see the 26-pair update
-below for what was and wasn't re-run at full scale).
+**TL;DR — all 6 variants are now tested on the full 26-pair universe. Asia
+(00:00-06:00 London) wins outright, and London (07:00-16:00) loses outright —
+both hold up at every scale tested.** The middle of the pack reorders once you
+move from 4 pairs to 26, though: Morning and Overlap turn out stronger
+relative to NY/Control than the small sample suggested. Four specific pairs —
+**GBPCAD, GBPNZD, AUDNZD, EURNZD** — are net losers (negative capped Sharpe,
+sub-60% win rate, poor year-to-year consistency) under EVERY window tested,
+Asia included; that's a pair-selection problem, not a session-window problem
+(see the dedicated follow-up section below), and it drags every variant's
+pooled average down together. Excluding just those 4 pairs, the full 26-pair,
+6-variant ranking (pooled capped Sharpe, owner's actual config) is:
+
+**Asia 2.08 > Morning 1.83 > Overlap 1.55 > Control 1.38 > NY 1.26 > London 0.83**
 
 Tested on **2016-2026 (~10.5y), real M1, costs on**, using the exact SAME
 engine (range → fib ladder → 2-pip confluence-vs-yesterday → vote-margin
 barrier trade) the live Fib Atlas strategy already runs — only the window
-that builds the range changes. Asia/London/NY/Overlap were first tested on
-4 pairs (EURUSD/GBPUSD/USDJPY/GOLD); Morning, Control, and Asia were then
-re-run on the full 26-pair local universe (see "26-pair update" below) —
-**London/NY/Overlap have NOT been re-tested at 26-pair scale**, so treat
-their standing in the tables below as provisional until that's done.
+that builds the range changes. All 6 variants were first tested on 4 pairs
+(EURUSD/GBPUSD/USDJPY/GOLD, see "Headline" below), then re-run on the full
+26-pair local universe (see "26-pair update" below).
 
 ## What was tested
 
@@ -85,59 +82,77 @@ Per-pair (same config, capped Sharpe) — Asia wins or ties-for-first on 3/4:
 
 ## 26-pair update (2026-09-12): does this hold at full scale?
 
-The table above only tested 4 pairs (majors + gold). Asia, Morning, and
-Control were re-run across all **26** locally-cached pairs to check — London/
-NY/Overlap were NOT re-run at this scale yet (each pair costs ~15-70s/variant;
-re-running everything was out of scope for this pass). Pooled capped Sharpe
-at the owner's actual config, full 26-pair set:
+The table above only tested 4 pairs (majors + gold). **All 6 variants have
+now been re-run across all 26 locally-cached pairs.** Pooled capped Sharpe at
+the owner's actual config, full 26-pair set:
 
 | Variant | avg Sharpe (capped), 26 pairs | avg win rate | % years positive |
 |---|---|---|---|
 | Asia | 1.37 | 72.9% | 89% |
 | Morning 08-12 | 1.21 | 73.1% | 88% |
+| Overlap 13-17 | 1.15 | 75.3% | 89% |
+| NY 13-21 | 1.09 | 75.8% | 88% |
 | Control 10-14 | 0.87 | 72.4% | 93% |
+| London 07-16 | 0.67 | 72.8% | 78% |
 
-**The 4-pair headline overstated Asia's margin.** At 26 pairs Asia (1.37) and
-Morning (1.21) are nearly tied — not the 2.48-vs-2.30 gap the small sample
-showed — and every variant's pooled Sharpe and consistency dropped noticeably
-from the 4-pair figures (Asia's own 100%-positive-years fell to 89%). Digging
-into the per-pair numbers explains why: **GBPCAD, GBPNZD, AUDNZD, and EURNZD
-are net losers under every one of the three variants tested** — negative
-capped Sharpe, sub-60% win rates, only 1-3 of 5-6 years positive, all four
-pairs. GBPCAD is the worst single result of the whole exercise: **-6.27
-capped Sharpe, 42% win rate, 1/5 positive years** under Asia. These four pairs
-alone are dragging every pooled average down by roughly the same amount
-regardless of which window builds the range — this reads as a pair-selection
-problem (these specific crosses don't suit this vote/confluence strategy at
-all, on any window), not evidence against any particular session choice.
+**The 4-pair headline overstated Asia's margin, and reordered the middle of
+the pack.** At 26 pairs Asia (1.37) and Morning (1.21) are much closer than
+the 2.48-vs-2.30 gap the small sample showed, and Overlap/NY — which looked
+clearly behind Control on 4 pairs — are now AHEAD of Control once the full
+universe is included. London stays unambiguously last at every scale tested,
+by every metric, including the worst consistency (78% of years positive, the
+only variant below 86%). Every variant's pooled Sharpe and consistency
+dropped from its own 4-pair figure. Digging into the per-pair numbers
+explains most of the drop: **GBPCAD, GBPNZD, AUDNZD, and EURNZD are net
+losers under every one of the 6 variants tested** — negative capped Sharpe,
+sub-60% win rates, only 1-3 of 5-6 years positive, all four pairs, all six
+windows (see the dedicated follow-up section below for the investigation into
+why). GBPCAD is the worst single result of the whole exercise: **-6.27 capped
+Sharpe, 42% win rate, 1/5 positive years** under Asia. These four pairs alone
+are dragging every pooled average down by roughly the same amount regardless
+of which window builds the range — this reads as a pair-selection problem,
+not evidence against any particular session choice.
 
-Excluding just those 4 pairs (22 remaining):
+Excluding just those 4 pairs (22 remaining), the complete ranking:
 
 | Variant | avg Sharpe (capped), 22 pairs | avg win rate | % years positive |
 |---|---|---|---|
-| Asia | 2.08 | 67.2% | 98% |
+| **Asia** | **2.08** | 67.2% | 98% |
 | Morning 08-12 | 1.83 | 67.2% | 95% |
-| Control 10-14 | 1.38 | 65.8% | 99% |
+| Overlap 13-17 | 1.55 | 67.8% | 94% |
+| Control 10-14 | 1.38 | 65.8% | **99%** |
+| NY 13-21 | 1.26 | 68.7% | 89% |
+| **London 07-16** | **0.83** | 67.2% | **79%** |
 
-This matches the original 4-pair ranking (Asia > Morning > Control) and sits
-much closer to those original figures — the broader pair universe doesn't
-overturn the conclusion, it just reveals that 4 specific pairs shouldn't have
-been pooled in unfiltered in the first place. **Practical read: this strategy
-family (any window) should exclude GBPCAD/GBPNZD/AUDNZD/EURNZD, or at minimum
-flag them for separate review, before the Asia-vs-Morning-vs-Control question
-is even asked** — pooling them in is what made the 26-pair numbers look like
-a bigger reversal than the underlying window comparison actually shows.
+This matches the original 4-pair ranking at the top and bottom (Asia best,
+London worst) and sits much closer to the original 4-pair figures overall —
+the broader pair universe doesn't overturn the headline conclusion, it
+reveals that (a) 4 specific pairs shouldn't have been pooled in unfiltered,
+and (b) the middle-of-the-pack ordering (Morning/Overlap/Control/NY) is
+genuinely closer and noisier than any 4-pair sample could show. **Practical
+read: this strategy family (any window) should exclude
+GBPCAD/GBPNZD/AUDNZD/EURNZD, or at minimum flag them for separate review,
+before the window-choice question is even asked** — pooling them in is what
+made the 26-pair numbers look like a bigger reversal than the underlying
+window comparison actually shows. Asia and Control tie for best consistency
+(98-99% of years positive) even though Control's average return is well
+behind Asia's — a strategy that's slightly-positive almost every year vs. one
+that's solidly positive most years is a real, separate tradeoff worth naming,
+not just collapsing into one Sharpe number.
 
 A second confirmation at 26-pair scale: the **unfiltered** (`margin>=1, any`,
 no 2-pip confluence gate) config's pooled **capped** Sharpe goes **negative**
-for both Morning (-3.76) and Control (-3.84) once all 26 pairs are pooled —
-a sharp reversal from the small 4-pair sample's positive figures (1.22, 2.09).
-This reinforces the report's earlier side-finding: **the 2-pip confluence gate
-is not optional garnish, it's what keeps this strategy family robust once you
-stop hand-picking favorable pairs** — dropping it produces a real net loss at
-scale, on both alternative windows tested.
+for Asia itself (-7.41), Morning (-3.76), Control (-3.84), and Overlap
+(-1.07) once all 26 pairs are pooled — a sharp reversal from the small
+4-pair sample's positive figures for every one of these. Only London (0.52)
+and NY (-0.27, essentially flat) end up close to their 4-pair figures.
+This reinforces the report's earlier side-finding: **the 2-pip confluence
+gate is not optional garnish, it's what keeps this strategy family robust
+once you stop hand-picking favorable pairs** — dropping it produces a real
+net loss at scale for every window that looked good on the small sample,
+Asia included.
 
-Full per-pair breakdown (all 26 pairs, both variants, all metrics including
+Full per-pair breakdown (all 26 pairs, all 6 variants, all metrics including
 `minTrackYears`) is in `analysis/session_window_comparison_results.json`.
 
 ## Follow-up: what's actually wrong with GBPCAD/GBPNZD/AUDNZD/EURNZD?
@@ -220,6 +235,10 @@ apart in price. Price simply revisits a widely-spaced rung far less often
 (EURUSD: 95,980 raw Asia touches over the backtest vs. 5,431 for London — a
 ~18x gap that shows up before any confluence filter is even applied).
 
+*(Confirmed at 26-pair scale — see "26-pair update" above: London stays last
+by both average Sharpe AND consistency, the only variant with a positive-year
+fraction below 86%, at every scale tested.)*
+
 ## The less clean part: Asia isn't uniquely special, "narrow window" might be the real variable
 
 Morning (08:00-12:00) and Control (10:00-14:00) — both arbitrary windows with
@@ -251,23 +270,30 @@ window could do. If anything ever forces a change of window (e.g. a
 broker/data gap during Asia hours), 08:00-12:00 is a reasonable fallback;
 07:00-16:00 (full London) is not.
 
-## A side-finding, explicitly NOT part of the owner's original ask
+## A side-finding that did NOT survive the 26-pair re-test — retracted
 
-Under the **unfiltered** `margin>=1, any` config (no 2-pip confluence gate at
-all), pooled **capped** Sharpe ranks Overlap (13:00-17:00) **highest of the
-whole sweep at 2.96** — actually above Asia's own unfiltered figure of 0.75.
-In other words: Asia's edge in the headline table above comes almost entirely
-FROM the 2-pip confluence gate (0.75 → 2.48, a >3x lift), whereas Overlap's
-edge is present even WITHOUT that gate and barely changes when it's added
-(2.96 → 1.59, actually falls). This suggests the Asia-style "match yesterday's
-same-window ladder within 2 pips" filter is doing real, session-specific work
-for Asia specifically, and is not simply "a good filter in general" — applying
-it to Overlap's raw signal doesn't reproduce the same lift, and may even be
-diluting a different, unfiltered signal that already exists there. This is a
-genuinely different question from the one asked (a differently-tuned Overlap
-strategy, not a besides-Asia range-and-confluence swap) and is reported here
-as an honest side-observation for a SEPARATE follow-up, not blended into the
-verdict above.
+> **CORRECTION (2026-09-12, same day as first written).** This section
+> originally claimed, from the 4-pair sample, that Overlap's UNFILTERED
+> (no confluence gate) pooled capped Sharpe was the best of the whole sweep
+> at 2.96, beating even Asia's own unfiltered 0.75, and framed that as a
+> real, separate signal worth its own follow-up. **That does not hold at
+> 26-pair scale: Overlap's unfiltered pooled capped Sharpe is -1.07 across
+> all 26 pairs** (see "26-pair update" above) — a small-sample artifact, not
+> a real effect. Left visible with this correction rather than silently
+> deleted, per this repo's own house rule on retractions
+> (`MD files/RANGE_EXTENSION_FINDINGS.md`'s own 2026-07-24 correction is the
+> precedent this follows).
+
+What DOES survive at 26-pair scale, and is worth keeping as the honest
+version of this observation: the 2-pip confluence gate's *lift* (unfiltered
+→ gated pooled capped Sharpe) is genuinely uneven across windows —
+Asia -7.41→1.37, Morning -3.76→1.21, Control -3.84→0.87, and Overlap
+-1.07→1.15 all show a large POSITIVE lift from adding the gate, while NY
+(-0.27→1.09) and London (0.52→0.67) show a much smaller one. So the gate
+is doing real, broadly-necessary work everywhere except London/NY, not a
+uniquely-Asia effect as this section first (wrongly) suggested — but there
+is no evidence, at full scale, of an Overlap-specific unfiltered edge to
+chase as its own strategy. That specific follow-up idea is closed.
 
 ## Caveats
 
@@ -280,8 +306,11 @@ verdict above.
   neighbours), single-instrument at a time — not a cross-pair portfolio
   simulation; correlated exposure across pairs at the same clock time isn't
   modeled here.
-- London/NY's own thin samples (10-41 confluence-gated trades/pair) mean
-  their point estimates carry wide uncertainty — the `minTrackYears` figures
+- London/NY's samples are thinner PER PAIR than Asia/Morning/Control's
+  (10-41 confluence-gated trades/pair in the original 4-pair test; the
+  26-pair pooled totals are larger — 1,373 for London, 4,356 for NY — but
+  still the two smallest pooled samples of the 6 variants), so their point
+  estimates carry more uncertainty — the `minTrackYears` figures
   above are the honest way to read them, not the raw Sharpe number alone.
 - **Data source note (unrelated to the trading question, but real):** this
   analysis reads M1 bars from the LOCAL `VolRangeForecaster/data/m1/*.parquet`
