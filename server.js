@@ -16060,7 +16060,13 @@ setTimeout(_volatilityV2AccumulateTradeLog, 35_000);
 // asiaLivePlanZones/mondayLivePlanZones's own tag, `${a|m}_${side[0]}${level}`
 // — into ladder/side/rung at READ time, for `/api/fib-atlas-bot/trade-log` below.
 function _parseFibAtlasDedupeTag(comment) {
-  const m = /FA\[([am])_([ab])(-?\d+)\]/.exec(comment || '');
+  // Rung is a fib multiple (asiaFibAtlasEngine.js's RUNGS_ABOVE/BELOW), so it
+  // is routinely fractional (-0.5, -0.25, 1.25, 1.5, 2.5, ...) -- the
+  // original `-?\d+` (integer-only) silently failed to match any of those,
+  // decoding 63% of real trades (2026-09-12 live/backtest reconciliation
+  // check) to ladder:null/side:null/rung:null. `(?:\.\d+)?` makes the
+  // fractional part optional so integer rungs (FA[a_a2]) still match too.
+  const m = /FA\[([am])_([ab])(-?\d+(?:\.\d+)?)\]/.exec(comment || '');
   if (!m) return { ladder: null, side: null, rung: null };
   return {
     ladder: m[1] === 'a' ? 'asia' : 'monday',
