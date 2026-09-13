@@ -26,6 +26,7 @@ import { harShadowFields, harIvShadowFields } from './forecastExport.js';
 import { IV_INDEX_BY_INSTRUMENT } from './volForecastBench.js';
 import { fetchFredSeries, forwardFillToDates } from './fredFetch.js';
 import { londonMidnightSec } from './volBacktestEngine.js';
+import { pathEfficiency, touchProbability } from './volStateEngine.js';
 
 // HAR-RV shadow forecast (challenger σ through the incumbent band math, stored
 // as `f.har` per instrument — purely additive). Kill switch: VOL_FORECAST_HAR=0.
@@ -705,13 +706,33 @@ export async function getSessionStatus() {
       const bar = await fetchMidnightAnchoredBar(cfg.oandaInstrument);
       const f   = fc.instruments[cfg.name];
       if (!f) return;
+      const sm = computeSessionMetrics(bar, f, bar.bars);
+
+      // Additive volatility-STATE fields (js/volStateEngine.js) — derived from
+      // `sm`'s own remaining-distance fields and the bars already fetched for
+      // reach-time tracking above; nothing here feeds the live bot's plan
+      // (see that module's header contract). `touch_prob` is a closed-form
+      // Brownian approximation, not a backtested claim — treat as a reference
+      // line, not a validated signal, until a tier-style study checks it.
+      const sigmaPct      = f.vol_annual > 0 ? f.vol_annual / Math.sqrt(252) : null;
+      const remainingFrac = bar.bar_count != null ? Math.max(0, (24 - bar.bar_count) / 24) : null;
+      const volState = {
+        path_efficiency: pathEfficiency(bar.bars, bar.open),
+        touch_prob: (sigmaPct > 0 && remainingFrac != null) ? {
+          oc_median: touchProbability(sm.oc_rem, sigmaPct, remainingFrac),
+          oh_median: touchProbability(sm.oh_rem, sigmaPct, remainingFrac),
+          ol_median: touchProbability(sm.ol_rem, sigmaPct, remainingFrac),
+        } : null,
+      };
+
       instruments[cfg.name] = {
-        ...computeSessionMetrics(bar, f, bar.bars),
+        ...sm,
         forecast:    { hl_median: f.hl_median, hl_75: f.hl_75, oc_median: f.oc_median, oc_75: f.oc_75 },
         bar_time:    bar.time,
         anchor_time: bar.anchor_time,
         bar_count:   bar.bar_count,
         complete:    bar.complete,
+        vol_state:   volState,
       };
     } catch (err) {
       instruments[cfg.name] = { error: err.message };
