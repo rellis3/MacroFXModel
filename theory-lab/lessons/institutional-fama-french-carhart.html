@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fama-French &amp; Carhart — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Factor Models / Fama-French &amp; Carhart</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Factor Models 2 of 5</div>
+  <h1 class="tl-title">Fama-French &amp; Carhart: Beyond the Single Factor</h1>
+  <p class="tl-dek">CAPM's single market beta leaves two stubborn, replicated anomalies unexplained: small stocks outperform what their beta predicts, and so do cheap ("value") stocks. Fama and French's fix wasn't a better beta — it was two more zero-cost long-short portfolios added as regressors, and Carhart later bolted on a third for momentum.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — no literal SMB/HML/UMD factor exists anywhere in this repo; the closest real analog, forge/xsect.py's cross-sectional FX momentum/reversion basket, is genuinely built and walk-forward tested, and its honest result is a null</span>
+    <span>~19 min read</span>
+    <span>Prereqs: <a href="institutional-capm.html">CAPM: The Single-Factor Baseline</a>, <a href="interest-rate-parity.html">Interest Rate Parity — Covered vs. Uncovered</a></span>
+  </div>
+
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="institutional-fama-french-carhart-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>CAPM leaves two robust, decades-replicated anomalies on the table: small-cap stocks earn more than their market beta predicts (the <strong>size effect</strong>), and high book-to-market "value" stocks earn more than theirs (the <strong>value effect</strong>). Fama &amp; French (1993) respond not by fixing beta, but by adding two more explanatory regressors — <strong>SMB</strong> and <strong>HML</strong> — each one itself a zero-cost, long-short "factor-mimicking portfolio."</li>
+      <li>The three-factor model: \(R_i - R_f = \alpha + \beta_{MKT}(R_m-R_f) + \beta_{SMB}\,SMB + \beta_{HML}\,HML + \varepsilon\). SMB and HML aren't abstractions — they're built by a specific, mechanical double sort into six value-weighted portfolios, rebalanced annually with a deliberate lag against look-ahead bias.</li>
+      <li>Carhart (1997) adds a fourth factor, <strong>UMD/MOM</strong> — past-12-month winners minus losers, skipping the most recent month — because momentum is a genuinely different, persistent continuation anomaly that value and size don't capture, and is empirically <em>negatively</em> correlated with HML, making it a diversifying addition rather than a redundant one.</li>
+      <li>Fama &amp; French (2015) extend to five factors, adding <strong>RMW</strong> (profitability) and <strong>CMA</strong> (investment), motivated by a dividend-discount-model argument tying expected profitability and investment directly to expected returns. It's the modern academic standard, though 3- and 4-factor versions still get quoted constantly in practice.</li>
+      <li><strong>The FX carry trade, covered in this curriculum's own Interest Rate Parity lesson, is this same story wearing a currency-market costume</strong>: a systematic long-short bet (high-yield currencies vs. low-yield funding currencies) that has paid a persistent average premium, is compensated for a well-documented crash risk, and has direct, published academic analogs to HML, UMD, and even MKT itself in currency markets.</li>
+      <li>This repo has no literal Fama-French implementation — but <code>forge/xsect.py</code> builds and walk-forward tests a genuine cross-sectional long-short FX momentum/reversion basket. Its honest result: a null, OOS t = 0.44, that doesn't even clear its own shuffled-score noise floor.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    <a href="institutional-capm.html">CAPM: The Single-Factor Baseline</a>
+    makes one claim about what drives expected return: exposure to the
+    market, and nothing else. That claim is elegant, and it is
+    empirically incomplete in a specific, well-documented way. Sort stocks
+    by market capitalization and, decade after decade, in market after
+    market, the smallest stocks earn more than CAPM's own beta says they
+    should — a market-cap effect a single beta simply doesn't have room to
+    describe. Sort stocks instead by book value relative to market value
+    and the same thing happens again: stocks priced cheaply relative to
+    their book value ("value" stocks) outperform their CAPM-predicted
+    return, while richly priced "growth" stocks underperform theirs. Both
+    patterns survive controlling for beta. Both are far too large and far
+    too persistent to wave away as noise.
+  </p>
+  <p>
+    Fama and French's 1993 answer is worth sitting with because of what it
+    is <em>not</em>. It is not a claim that CAPM's logic is wrong, and it
+    is not an attempt to build a better estimate of market beta. It is an
+    admission that one factor is not enough to describe the cross-section
+    of expected returns, followed by the most direct fix imaginable:
+    measure the size effect and the value effect directly, as their own
+    zero-cost long-short portfolios, and add them to the regression as two
+    more explanatory variables sitting right next to the market factor.
+    Carhart (1997) later found a third pattern CAPM and the three-factor
+    model both still missed — price momentum — and bolted on a fourth
+    factor the same way. This lesson builds all of it: what SMB, HML, and
+    UMD actually are, exactly how they get constructed from real portfolio
+    sorts (not just symbolically defined), why momentum needed its own
+    factor rather than folding into value, and — the most distinctive
+    piece of this particular lesson — the explicit, well-documented mapping
+    between this entire equity-factor story and the FX carry trade this
+    curriculum's own <a href="interest-rate-parity.html">Interest Rate
+    Parity</a> lesson already walked through.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A factor is just a strategy, measured, then handed to a regression</h3>
+    <p>
+      CAPM's market factor, \(R_m - R_f\), is itself a strategy: buy the
+      whole market, fund it at the risk-free rate, and measure what that
+      round trip returns each period. SMB and HML are built exactly the
+      same way — they are strategies first, factors second. SMB is
+      literally the return of "go long a diversified basket of small
+      stocks, short a diversified basket of large stocks, every period."
+      HML is literally "go long cheap (high book-to-market) stocks, short
+      expensive (low book-to-market) stocks." Neither is an abstract
+      statistical construct dreamed up to make a regression fit better —
+      each is a real, tradeable, self-financing portfolio whose return
+      history is published monthly and has been since 1993.
+    </p>
+    <p>
+      Once you have that return history, using it as a regressor is no
+      different from using the market factor as one: does this particular
+      stock's return move with the small-minus-big spread? With the
+      cheap-minus-expensive spread? A stock with a large positive loading
+      on SMB behaves, in part, like a small-cap stock — regardless of
+      whether it technically is one — and a large positive loading on HML
+      means it behaves, in part, like a value stock. The whole apparatus
+      is "build a portfolio that isolates one specific pattern, then ask
+      every other asset how much of that pattern it secretly contains."
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The three-factor model, precisely</h2>
+  <p>
+    The Fama-French three-factor regression extends CAPM's single-factor
+    regression by adding exactly two more terms on the right-hand side:
+  </p>
+  <div class="tl-math">\[ R_i - R_f = \alpha + \beta_{MKT}(R_m - R_f) + \beta_{SMB}\,SMB + \beta_{HML}\,HML + \varepsilon \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>R_i − R_f</code><span>asset i's excess return over the risk-free rate — the thing being explained</span></div>
+    <div class="tl-eq-chip c2"><code>β_MKT(R_m−R_f)</code><span>the CAPM term, carried over unchanged — exposure to the broad market's excess return</span></div>
+    <div class="tl-eq-chip c3"><code>β_SMB·SMB</code><span>exposure to the size factor's own return, times how much of that pattern this asset carries</span></div>
+    <div class="tl-eq-chip c4"><code>β_HML·HML</code><span>exposure to the value factor's own return, likewise scaled by this asset's own loading</span></div>
+  </div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">α</div>
+      <div class="tl-fp-name">Alpha</div>
+      <div class="tl-fp-desc">Return this asset earns that none of the three factors explain — the object of an active manager's entire pitch</div>
+    </div>
+    <div class="tl-fp green">
+      <div class="tl-fp-term">SMB</div>
+      <div class="tl-fp-name">Small Minus Big</div>
+      <div class="tl-fp-desc">Return of a small-cap portfolio minus a large-cap portfolio — the size factor's own realized return each period</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">HML</div>
+      <div class="tl-fp-name">High Minus Low</div>
+      <div class="tl-fp-desc">Return of a high book-to-market ("value") portfolio minus a low book-to-market ("growth") portfolio</div>
+    </div>
+  </div>
+  <p>
+    Precisely: <strong>SMB</strong> (Small Minus Big) is the realized
+    return, each period, of a portfolio long small-market-capitalization
+    stocks and short large-market-capitalization stocks, sized so the
+    position is self-financing (a genuine zero-cost long-short spread, not
+    a directional long-only tilt). <strong>HML</strong> (High Minus Low) is
+    the realized return of a portfolio long stocks with a
+    <em>high</em> book-to-market ratio — book value of equity divided by
+    market value of equity, so a high ratio means the market is pricing
+    the company cheaply relative to its accounting book value, the classic
+    "value" signature — and short stocks with a <em>low</em> book-to-market
+    ratio, the "growth" stocks the market prices richly relative to book.
+    Both are month-by-month return series in their own right, published
+    and updated continuously, exactly like a market index's own return
+    series.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine two extra thermometers next to the one CAPM already gives you. The first thermometer measures "how much better are small companies doing than big companies right now" — that's SMB. The second measures "how much better are cheap companies doing than expensive companies right now" — that's HML. Instead of guessing whether a specific stock is secretly small-company-flavored or cheap-company-flavored, you just check how much its own returns wiggle in sync with each thermometer. A stock that wiggles a lot with the "small" thermometer gets a big β_SMB, whether or not it's technically a small company.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How the factor portfolios are actually built</h2>
+  <p>
+    It is easy to treat SMB and HML as if they were simply "the size
+    effect" and "the value effect" in the abstract. They are not
+    abstractions — they are the output of a specific, mechanical
+    construction procedure, and the details of that procedure matter
+    enough that skipping them is skipping the actual content of the model.
+    Fama and French's original recipe, still the standard:
+  </p>
+  <div class="tl-steps">
+    <div class="tl-step">
+      <div class="tl-step-num">1</div>
+      <div class="tl-step-body">
+        <h4>Independently sort on two dimensions</h4>
+        <p>Every stock in the universe gets sorted twice, independently: once into 2 <strong>size</strong> buckets by a simple median split (Small / Big), and once into 3 <strong>book-to-market</strong> buckets using a 30/40/30 split (Low / Neutral / High). "Independently" matters — a stock's size bucket has no influence on which B/M bucket it lands in, or vice versa.</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">2</div>
+      <div class="tl-step-body">
+        <h4>Intersect into six portfolios</h4>
+        <p>The two independent sorts intersect into 6 portfolios: Small/Low, Small/Neutral, Small/High, Big/Low, Big/Neutral, Big/High. Each is <strong>value-weighted</strong> internally (larger holdings within the bucket count for more), exactly like a standard market-cap-weighted index would weight its own constituents.</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">3</div>
+      <div class="tl-step-body">
+        <h4>SMB — average the three small, minus the average of the three big</h4>
+        <p>\(SMB = \tfrac{1}{3}(\text{Small/Low}+\text{Small/Neutral}+\text{Small/High}) - \tfrac{1}{3}(\text{Big/Low}+\text{Big/Neutral}+\text{Big/High})\) — averaging across all three B/M buckets on each side is what makes this a clean size spread, purged of any value/growth tilt riding along with it.</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">4</div>
+      <div class="tl-step-body">
+        <h4>HML — average the two high, minus the average of the two low</h4>
+        <p>\(HML = \tfrac{1}{2}(\text{Small/High}+\text{Big/High}) - \tfrac{1}{2}(\text{Small/Low}+\text{Big/Low})\) — averaging across both size buckets on each side likewise purges any size tilt from what's meant to be a clean value spread. The middle "Neutral" B/M bucket is deliberately left out of HML entirely.</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">5</div>
+      <div class="tl-step-body">
+        <h4>Rebalance annually, with a deliberate lag</h4>
+        <p>Portfolios are rebalanced once a year (each June, in the original construction), using accounting book-value data with a built-in lag — book equity is taken from the prior fiscal year-end, not the most recent one — specifically so that no portfolio is ever formed using accounting information that would not genuinely have been public and knowable at the time.</p>
+      </div>
+    </div>
+  </div>
+  <p>
+    That lag is not a minor implementation footnote; it is the exact same
+    discipline this curriculum's own
+    <a href="feature-engineering-leakage-reproducibility.html">Feature
+    Engineering, Leakage &amp; Reproducibility</a> lesson calls
+    point-in-time computability — a feature (here, "which B/M bucket does
+    this stock belong in") must be built only from information that had
+    genuinely already been published at the moment the portfolio is
+    formed. A B/M sort built using book value the market couldn't have
+    known yet is, structurally, the identical look-ahead-bias failure that
+    lesson names directly: a signal quietly reaching forward into
+    information from its own future.
+  </p>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">The Fama-French double sort: six portfolios from two independent splits</div>
+    <svg viewBox="0 0 640 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Grid diagram showing stocks independently sorted into 2 size buckets (Small, Big) by rows and 3 book-to-market buckets (Low, Neutral, High) by columns, forming 6 value-weighted portfolios. An arrow on the right shows SMB as the average of the three Small-row portfolios minus the average of the three Big-row portfolios. An arrow on the bottom shows HML as the average of the two High-column portfolios minus the average of the two Low-column portfolios, with the Neutral column excluded from HML.">
+      <text x="320" y="24" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">Book-to-market sort (30 / 40 / 30 split) →</text>
+      <text x="30" y="150" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace" transform="rotate(-90 30 150)">Size sort (median split) ↓</text>
+
+      <text x="185" y="46" text-anchor="middle" fill="var(--text2)" font-size="11" font-family="'DM Mono',monospace">Low (growth)</text>
+      <text x="320" y="46" text-anchor="middle" fill="var(--text2)" font-size="11" font-family="'DM Mono',monospace">Neutral</text>
+      <text x="455" y="46" text-anchor="middle" fill="var(--text2)" font-size="11" font-family="'DM Mono',monospace">High (value)</text>
+
+      <text x="75" y="105" text-anchor="middle" fill="var(--text2)" font-size="11" font-family="'DM Mono',monospace">Small</text>
+      <text x="75" y="200" text-anchor="middle" fill="var(--text2)" font-size="11" font-family="'DM Mono',monospace">Big</text>
+
+      <rect x="120" y="60" width="130" height="80" rx="8" style="fill:var(--blue-bg);stroke:var(--blue-bd)"/>
+      <text x="185" y="103" text-anchor="middle" fill="var(--text)" font-size="12" font-family="'DM Mono',monospace">Small / Low</text>
+
+      <rect x="255" y="60" width="130" height="80" rx="8" style="fill:var(--s2);stroke:var(--border2)"/>
+      <text x="320" y="103" text-anchor="middle" fill="var(--text)" font-size="12" font-family="'DM Mono',monospace">Small / Neutral</text>
+
+      <rect x="390" y="60" width="130" height="80" rx="8" style="fill:var(--amber-bg);stroke:var(--amber-bd)"/>
+      <text x="455" y="103" text-anchor="middle" fill="var(--text)" font-size="12" font-family="'DM Mono',monospace">Small / High</text>
+
+      <rect x="120" y="155" width="130" height="80" rx="8" style="fill:var(--blue-bg);stroke:var(--blue-bd)"/>
+      <text x="185" y="198" text-anchor="middle" fill="var(--text)" font-size="12" font-family="'DM Mono',monospace">Big / Low</text>
+
+      <rect x="255" y="155" width="130" height="80" rx="8" style="fill:var(--s2);stroke:var(--border2)"/>
+      <text x="320" y="198" text-anchor="middle" fill="var(--text)" font-size="12" font-family="'DM Mono',monospace">Big / Neutral</text>
+
+      <rect x="390" y="155" width="130" height="80" rx="8" style="fill:var(--amber-bg);stroke:var(--amber-bd)"/>
+      <text x="455" y="198" text-anchor="middle" fill="var(--text)" font-size="12" font-family="'DM Mono',monospace">Big / High</text>
+
+      <path d="M535,100 h20" style="stroke:var(--green);stroke-width:2" marker-end="url(#arrhead)"/>
+      <path d="M535,195 h20" style="stroke:var(--green);stroke-width:2" marker-end="url(#arrhead)"/>
+      <text x="600" y="90" text-anchor="middle" fill="var(--green)" font-size="11" font-family="'DM Mono',monospace" font-weight="700">SMB</text>
+      <text x="600" y="150" text-anchor="middle" fill="var(--green)" font-size="10" font-family="'DM Mono',monospace">avg(3 small)</text>
+      <text x="600" y="205" text-anchor="middle" fill="var(--green)" font-size="10" font-family="'DM Mono',monospace">− avg(3 big)</text>
+
+      <path d="M185,255 v20" style="stroke:var(--amber);stroke-width:2" marker-end="url(#arrhead2)"/>
+      <path d="M455,255 v20" style="stroke:var(--amber);stroke-width:2" marker-end="url(#arrhead2)"/>
+      <text x="320" y="300" text-anchor="middle" fill="var(--amber)" font-size="11" font-family="'DM Mono',monospace" font-weight="700">HML</text>
+      <text x="320" y="318" text-anchor="middle" fill="var(--amber)" font-size="10" font-family="'DM Mono',monospace">avg(2 high) − avg(2 low) — Neutral column excluded</text>
+
+      <defs>
+        <marker id="arrhead" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="var(--green)"/></marker>
+        <marker id="arrhead2" markerWidth="8" markerHeight="8" refX="4" refY="6" orient="auto"><path d="M0,0 L8,0 L4,8 z" fill="var(--amber)"/></marker>
+      </defs>
+    </svg>
+    <div class="tl-chart-caption">
+      Two independent sorts (size, then book-to-market) intersect into six
+      value-weighted portfolios. SMB averages across book-to-market
+      (rows), so it isolates a clean size spread; HML averages across size
+      (columns, excluding Neutral), so it isolates a clean value spread —
+      each factor purged of the other dimension's tilt by construction,
+      not by regression.
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>A quant desk evaluates a "small-cap value" manager's alpha claim</h3>
+    <p>
+      A fund manager pitches a track record of beating the S&amp;P 500 by
+      3 percentage points a year, framed as stock-picking skill. Running
+      the manager's monthly returns through a single-factor CAPM
+      regression against the market alone might well show a large,
+      statistically significant alpha — because CAPM has no other
+      variable available to absorb the fact that the fund happens to hold
+      small, cheap stocks as a structural, disclosed tilt, not a
+      security-by-security bet. Running the identical return series
+      through the three-factor regression instead often tells a very
+      different story: large, significant loadings on SMB and HML, and an
+      alpha that shrinks toward zero, or even turns negative, once those
+      two factors are given somewhere to go. The manager wasn't
+      necessarily picking better stocks — the fund was simply, structurally,
+      long the same size and value tilts SMB and HML already measure, and
+      any diversified investor could buy that same tilt directly and far
+      more cheaply than paying an active manager's fee for it.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Carhart's fourth factor — momentum earns its own line</h2>
+  <p>
+    Carhart (1997), studying mutual fund performance persistence, found
+    that a fourth pattern survived even after controlling for market, size,
+    and value exposure: stocks that had performed well over the trailing
+    12 months kept performing well for a while longer, and stocks that had
+    performed poorly kept performing poorly — a continuation effect,
+    <strong>momentum</strong>, entirely distinct from the mean-reverting
+    logic value investing runs on. His fix follows the identical recipe as
+    Fama-French: build a fourth zero-cost long-short portfolio,
+    <strong>UMD</strong> (Up Minus Down, also written <strong>MOM</strong>),
+    and add it as a fourth regressor.
+  </p>
+  <div class="tl-math">\[ R_i - R_f = \alpha + \beta_{MKT}(R_m-R_f) + \beta_{SMB}\,SMB + \beta_{HML}\,HML + \beta_{UMD}\,UMD + \varepsilon \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c4"><code>β_UMD·UMD</code><span>the new term — exposure to a portfolio long past winners, short past losers</span></div>
+  </div>
+  <p>
+    <strong>UMD's own construction, precisely.</strong> Each period, rank
+    stocks by their return over the trailing 12 months — but
+    <em>skipping</em> the most recent month, i.e. using months \(t{-}12\)
+    through \(t{-}2\), not \(t{-}12\) through \(t{-}1\). That one-month
+    skip is deliberate, not an arbitrary implementation detail: it exists
+    specifically to avoid contaminating the momentum signal with
+    short-term reversal — a separate, well-documented pattern in which a
+    stock's return in the immediately preceding month tends to partially
+    reverse over the following month, for reasons unrelated to the
+    multi-month continuation momentum is trying to isolate. Go long the
+    winners (typically the top decile), short the losers (the bottom
+    decile), and UMD's realized return each period is exactly that
+    long-short spread.
+  </p>
+  <p>
+    <strong>Why this needed its own factor, and couldn't just fold into
+    HML.</strong> Momentum is not a slower or noisier version of the value
+    effect — it is a genuinely separate anomaly with its own distinct
+    behavioral or risk-based explanation (continuation from underreaction
+    to news, herding, or a slow diffusion of information, depending on
+    which literature is consulted), and empirically it moves largely
+    independently of, and at times directly <em>against</em>, value. In
+    some periods and some samples, value and momentum have shown a
+    <strong>negative</strong> correlation with each other — a stock
+    screening as attractively cheap (high HML exposure) has, in some
+    stretches, tended to be a recent loser (negative UMD exposure), and
+    vice versa. That negative correlation is not a flaw in either factor;
+    it is precisely what makes holding both together valuable from a
+    diversification standpoint — two factors that don't move in lockstep
+    combine into a smoother combined exposure than either alone, the same
+    logic that makes a two-asset portfolio's variance benefit from low or
+    negative covariance between its holdings.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Value investing is "buy things that got cheap and wait for them to bounce back." Momentum is almost the opposite instinct: "buy things that are already going up, because they tend to keep going up for a while." Those are genuinely different bets, and sometimes they even disagree — a stock can look cheap (a value buy signal) while it's still falling (a momentum sell signal). Carhart's point was: don't force momentum to squeeze into the value factor's box. Give it its own line item, because it's telling you something value and size genuinely can't.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>The five-factor extension, briefly</h2>
+  <p>
+    Fama &amp; French (2015) extended their own model again, adding two
+    more factors motivated by a dividend-discount-model argument rather
+    than a purely empirical anomaly hunt: if a stock's price is the
+    present value of its expected future cash flows, then — holding
+    everything else fixed — a firm expected to be more <em>profitable</em>
+    should command a higher expected return, and a firm expected to
+    <em>invest</em> more aggressively (all else equal) should command a
+    lower one, since aggressive investment today competes with cash that
+    would otherwise be paid out or compounded at the discount rate. That
+    logic motivates two more zero-cost long-short portfolios, built by the
+    same double-sort recipe as SMB and HML:
+  </p>
+  <div class="tl-math">\[ R_i - R_f = \alpha + \beta_{MKT}(R_m-R_f) + \beta_{SMB}\,SMB + \beta_{HML}\,HML + \beta_{RMW}\,RMW + \beta_{CMA}\,CMA + \varepsilon \]</div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">RMW</div>
+      <div class="tl-fp-name">Robust Minus Weak</div>
+      <div class="tl-fp-desc">Return of a portfolio long high-operating-profitability firms, short low-profitability firms</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">CMA</div>
+      <div class="tl-fp-name">Conservative Minus Aggressive</div>
+      <div class="tl-fp-desc">Return of a portfolio long low-investment ("conservative") firms, short high-investment ("aggressive") firms</div>
+    </div>
+  </div>
+  <p>
+    The five-factor model is the modern academic standard, and momentum
+    (UMD) is notably <em>not</em> one of its five — Fama and French have
+    argued momentum sits somewhat apart methodologically from the other
+    four, which is part of why Carhart's four-factor model and Fama-French's
+    own three-factor model both remain in routine practical use alongside
+    the newer five-factor version, chosen based on context rather than one
+    being a strict, universally-agreed replacement for the others. This
+    lesson does not derive the five-factor model's own empirical
+    motivation in the same depth as the three- and four-factor cases above
+    — the mechanical recipe is the same double-sort logic already covered
+    in full, applied to two new characteristics.
+  </p>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>The FX analogy: this curriculum already taught you a factor model</h2>
+  <p>
+    This is the piece of this lesson worth reading twice. This
+    curriculum's own <a href="interest-rate-parity.html">Interest Rate
+    Parity — Covered vs. Uncovered</a> lesson spent an entire lesson on
+    the forward premium puzzle: uncovered interest rate parity predicts
+    that a higher-yielding currency should depreciate, on average, by
+    roughly its rate advantage — and Fama (1984) found the opposite sign,
+    repeatedly, across decades and currency pairs. The FX carry trade —
+    long high-yielding currencies, short low-yielding ("funding")
+    currencies — exists <em>because</em> that prediction fails. That is
+    not a vaguely similar story to Fama-French. It is the identical
+    structure: a real, published, longstanding academic finding that a
+    specific systematic long-short portfolio earns a persistent average
+    return that a simpler baseline model doesn't explain, formalized as
+    its own tradeable, zero-cost factor.
+  </p>
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>Equity factors → currency factors, mapped directly</h4>
+      <p>
+        <strong>MKT → the "dollar factor."</strong> The average return
+        across a broad basket of currency pairs against the US dollar
+        plays a role structurally similar to the equity market factor —
+        a broad, common exposure every individual currency pair carries
+        some loading on. <strong>HML → the FX carry factor.</strong> Long
+        high-interest-rate currencies, short low-interest-rate currencies
+        — this is precisely HML's risk-premium logic transplanted:
+        compensation for bearing some form of risk (debated in the
+        literature between crash risk and consumption risk — see Lustig
+        &amp; Verdelhan (2007) on currency risk premia and consumption
+        growth risk), not a mispricing to be arbitraged away. <strong>UMD
+        → FX momentum, directly</strong>, not just by analogy: Menkhoff,
+        Sarno, Schmeling &amp; Schrimpf (2012) document a genuine,
+        published currency momentum factor built the same way UMD is —
+        rank currencies by trailing return, go long the winners, short the
+        losers. A separate, real-exchange-rate-based FX "value" factor is
+        documented too, completing the mapping.
+      </p>
+    </div>
+    <div class="tl-compare-card purple">
+      <h4>Where the analogy is exact, and where it isn't</h4>
+      <p>
+        The construction logic is identical: rank a universe on some
+        characteristic, go long one end and short the other, measure the
+        spread's own return, and treat that return series as a factor
+        other assets can be regressed against. What differs is the
+        underlying economic story for <em>why</em> each spread earns a
+        premium — HML's value premium is debated as distress risk or
+        behavioral mispricing of growth expectations; the FX carry
+        factor's premium is debated as compensation for crash risk (the
+        Interest Rate Parity lesson's own AUD/JPY unwind scenario is
+        exactly that crash risk realizing) or global consumption risk.
+        Different debates, same underlying methodological move: a
+        systematic long-short spread, formalized as a factor, is not the
+        same claim as "a free lunch."
+      </p>
+    </div>
+  </div>
+
+  <div class="tl-solid amber">
+    <strong>A UIP "failure" and a Fama-French anomaly are the same kind of
+    finding, not a coincidence of vocabulary.</strong> Both are cases where
+    a simple baseline model (CAPM; UIP) makes a clean prediction, a
+    specific systematic long-short portfolio earns a return that
+    prediction doesn't explain, and the honest response in both literatures
+    has been to formalize that portfolio as its own priced factor rather
+    than either dismiss the anomaly or claim it's risk-free. The carry
+    trade being short a fat left tail (this curriculum's own
+    <a href="interest-rate-parity.html">Interest Rate Parity</a> lesson's
+    31 July 2024 AUD/JPY scenario) is the FX-market version of exactly the
+    same warning value investors have heard for decades: a persistent
+    factor premium is compensation for something, and "the model doesn't
+    explain it yet" is not the same claim as "it's free."
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Stock-market researchers noticed that "buy cheap stocks, short expensive ones" made steady extra money that a simple model couldn't explain, so they named that strategy HML and started tracking it like its own asset. Currency researchers noticed the exact same thing happening with interest rates: "buy high-interest currencies, short low-interest currencies" made steady extra money a simple model (UIP) said shouldn't exist. Different market, same discovery, same fix: give the strategy a name, track its own return, and admit it's a real, separate ingredient in what drives returns — one that gets paid, in both cases, for a real risk that occasionally bites hard.</p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">What this repo's own factor construction actually shows</div>
+    <h3>A real, walk-forward-tested FX cross-sectional factor attempt — and its honest null result</h3>
+    <p>
+      This is not a hypothetical extension of the analogy above — this
+      repo genuinely contains the same methodological move, applied and
+      tested. <code>forge/xsect.py</code> builds a cross-sectional
+      long-short basket across a 26-instrument FX (and gold) universe:
+      rank every instrument by its own signed distance from that week's
+      opening price (in ATR units), go long one end of the ranking and
+      short the other, and — critically — the module offers
+      <strong>both a "momentum" sign (follow the leaders) and a
+      "reversion" sign (fade the extremes)</strong> as pre-registered,
+      walk-forward-selected alternatives, exactly the same non-overlapping,
+      cost-net, shuffled-null-tested discipline this curriculum's research
+      process demands. Separately, <code>forge/yield_basket.py</code>
+      builds a genuine interest-rate-differential cross-sectional basket
+      on top of the live YieldSpreadBot engine's own rate-differential
+      z-scores — a real, if not-yet-run (it is blocked on FRED API
+      access), rate-differential-based FX cross-sectional signal.
+    </p>
+    <p>
+      The honest result, walk-forward tested across 6 folds over 10 years
+      and the full 26-instrument universe: <strong>OOS n = 987, mean
+      +0.0081, t = 0.44, hit rate 51.0%</strong> — and a shuffled-score
+      null test (permuting which instrument's score gets used to rank,
+      separately on each date) produced t-statistics ranging from −2.05 to
+      +1.68, a <em>wider</em> range than the real result. The real
+      strategy's t-stat does not clear its own null's noise floor. This is
+      exactly the discipline the FX analogy above is not license to skip:
+      a documented, published academic factor (FX momentum, FX carry)
+      existing in the broader literature is a completely different claim
+      from a specific signal, built and tested on this repo's own data,
+      clearing an honest out-of-sample bar. Here, it didn't.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>Worked example — the extra factors move the prediction</h2>
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>The same stock, predicted by CAPM alone vs. by the four-factor model</h3>
+    <p>
+      Consider a small-cap value stock, Stock Q, over one period in which
+      the market's excess return \((R_m - R_f)\) was 2.0%, SMB was 1.5%,
+      HML was 1.0%, and UMD was 0.5% — all illustrative, made-up figures
+      for one toy period, not fitted to real data.
+    </p>
+    <p>
+      <strong>What CAPM alone would predict.</strong> Suppose a
+      single-factor CAPM regression (the previous lesson's own method) on
+      Stock Q's return history estimates its market beta at
+      \(\beta_{CAPM} = 1.30\) — plausibly higher than its "true" multi-factor
+      market loading, since a single-factor regression has nowhere else to
+      put the part of Stock Q's return that actually comes from its size
+      and value tilts, and that omitted-variable effect tends to load onto
+      the only beta available. CAPM's predicted excess return is just:
+    </p>
+    <div class="tl-math">\[ \hat{R}_{CAPM} = \beta_{CAPM}\,(R_m-R_f) = 1.30 \times 2.0\% = 2.60\% \]</div>
+    <p>
+      <strong>What the four-factor model predicts.</strong> Now suppose the
+      four-factor regression, with SMB and HML given somewhere to absorb
+      Stock Q's size and value tilt, estimates a smaller market loading
+      \(\beta_{MKT}=1.10\), alongside \(\beta_{SMB}=0.80\) (a meaningful
+      small-cap tilt), \(\beta_{HML}=0.60\) (a meaningful value tilt),
+      \(\beta_{UMD}=-0.10\) (a small negative momentum loading — consistent
+      with the value/momentum diversification discussed above), and a
+      small residual alpha \(\alpha = 0.30\%\):
+    </p>
+    <div class="tl-math">\[ \hat{R}_{4F} = 0.30\% + 1.10(2.0\%) + 0.80(1.5\%) + 0.60(1.0\%) + (-0.10)(0.5\%) \]</div>
+    <div class="tl-math">\[ = 0.30\% + 2.20\% + 1.20\% + 0.60\% - 0.05\% = 4.25\% \]</div>
+    <p>
+      <strong>Compare both to what actually happened.</strong> Suppose
+      Stock Q's actual realized excess return that period was
+      <strong>4.10%</strong>. CAPM alone predicted 2.60% — an error of
+      1.50 percentage points, under-predicting badly. The four-factor
+      model predicted 4.25% — an error of just 0.15 percentage points.
+      Nothing here is a live fitted model; it is a constructed illustration
+      of the mechanism the whole lesson describes: the extra factors don't
+      change the underlying return that occurred, they change how much of
+      that return a model can actually explain rather than leave sitting
+      unexplained in a single, overloaded beta.
+    </p>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Recompute the four-factor predicted return, live</h3>
+    <p>
+      Starts on the worked example's exact numbers. Edit any loading or
+      any factor return and the predicted excess return recalculates
+      instantly from \(\hat{R} = \alpha + \beta_{MKT}\,MKT + \beta_{SMB}\,SMB
+      + \beta_{HML}\,HML + \beta_{UMD}\,UMD\).
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>α (%)</span></div>
+        <input type="number" id="ffc-alpha" class="tl-scratch-input" value="0.30" step="0.05">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>β<sub>MKT</sub></span></div>
+        <input type="number" id="ffc-bmkt" class="tl-scratch-input" value="1.10" step="0.05">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>β<sub>SMB</sub></span></div>
+        <input type="number" id="ffc-bsmb" class="tl-scratch-input" value="0.80" step="0.05">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>β<sub>HML</sub></span></div>
+        <input type="number" id="ffc-bhml" class="tl-scratch-input" value="0.60" step="0.05">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>β<sub>UMD</sub></span></div>
+        <input type="number" id="ffc-bumd" class="tl-scratch-input" value="-0.10" step="0.05">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>MKT − RF (%)</span></div>
+        <input type="number" id="ffc-mkt" class="tl-scratch-input" value="2.0" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>SMB (%)</span></div>
+        <input type="number" id="ffc-smb" class="tl-scratch-input" value="1.5" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>HML (%)</span></div>
+        <input type="number" id="ffc-hml" class="tl-scratch-input" value="1.0" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>UMD (%)</span></div>
+        <input type="number" id="ffc-umd" class="tl-scratch-input" value="0.5" step="0.1">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      α term = <b id="ffc-t0">0.30</b>%&emsp;β_MKT·MKT = <b id="ffc-t1">2.20</b>%&emsp;β_SMB·SMB = <b id="ffc-t2">1.20</b>%&emsp;β_HML·HML = <b id="ffc-t3">0.60</b>%&emsp;β_UMD·UMD = <b id="ffc-t4">-0.05</b>%
+    </div>
+    <div class="tl-readout">
+      Predicted excess return R̂ = <b id="ffc-result">4.25</b>%
+      <span id="ffc-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="ffc-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 08</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Multi-factor regressions are the standard tool for performance
+    attribution: given a manager's or a strategy's monthly return series,
+    regress it on MKT, SMB, HML (and UMD, and possibly RMW/CMA), and read
+    the resulting betas as a style profile — how much size tilt, value
+    tilt, and momentum tilt the strategy structurally carries — with
+    whatever alpha survives being the only part of the return actually
+    attributable to something the factors don't already explain. This is
+    exactly the mechanism the quant-desk scenario above walks through, and
+    it's routine due-diligence practice at allocators and fund-of-funds:
+    separating "this manager has genuine skill" from "this manager is
+    quietly just long a well-known, cheaply-replicable factor tilt" is one
+    of the most common uses of this entire model family in institutional
+    practice.
+  </p>
+  <p>
+    Factor investing as a product category — "smart beta" ETFs targeting
+    value, size, quality, or momentum tilts directly and cheaply — is a
+    direct commercial descendant of this research: if SMB, HML, and UMD
+    are genuinely tradeable, persistent premia, a fund can be built to
+    harvest them systematically without claiming any stock-picking skill
+    at all, at a fraction of an active manager's fee. The FX-market
+    equivalent is exactly the systematic carry and momentum overlay
+    strategies described in the Interest Rate Parity lesson's own
+    "How practitioners actually use this" section — long-short baskets
+    across many currency pairs, explicitly built to harvest a documented
+    factor premium rather than to bet on any single pair's direction.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where multi-factor models get misread</h3>
+    <p>
+      <strong>Treating a factor premium as a free lunch.</strong> SMB, HML,
+      UMD, and the FX carry and momentum factors alike are all
+      <em>risk-based or behaviorally-based</em> explanations for a
+      persistent average return, not riskless arbitrage. Value stocks can
+      underperform for years at a stretch (as they conspicuously did
+      through much of the 2010s); the FX carry trade can give back years
+      of accumulated gain in two weeks, as the Interest Rate Parity
+      lesson's own AUD/JPY scenario shows in detail. A factor's long-run
+      average premium and its single-period realized return are not the
+      same promise.
+    </p>
+    <p>
+      <strong>Confusing "explained by known factors" with "no real skill."</strong>
+      A large alpha shrinking toward zero once SMB/HML/UMD are added
+      doesn't necessarily mean the manager did nothing useful — a manager
+      who correctly, deliberately, and persistently tilted toward small
+      value stocks over decades made a real, differentiated, structural
+      bet. What it does mean is that bet is now cheaply replicable, which
+      changes what fee it's reasonable to pay for accessing it — not
+      whether the historical return was real.
+    </p>
+    <p>
+      <strong>Forgetting the look-ahead-bias discipline in the construction
+      itself.</strong> SMB and HML's annual rebalance with a deliberate
+      accounting lag exists for exactly the reason this curriculum's own
+      <a href="feature-engineering-leakage-reproducibility.html">Feature
+      Engineering, Leakage &amp; Reproducibility</a> lesson insists on
+      point-in-time computability: a factor built from book-value data the
+      market couldn't actually have known yet at formation time isn't
+      measuring a tradeable strategy at all — it's measuring an
+      unachievable, leakage-inflated one. The same discipline applies
+      identically to any FX cross-sectional signal, this repo's own
+      <code>forge/xsect.py</code> included.
+    </p>
+    <p>
+      <strong>Treating a documented academic factor as validated on this
+      repo's own data.</strong> The FX carry and momentum factors are
+      real, published, extensively replicated findings in the academic
+      literature (Lustig &amp; Verdelhan, 2007; Menkhoff, Sarno,
+      Schmeling &amp; Schrimpf, 2012). That is a categorically different
+      claim from "a specific factor construction, tested on this repo's
+      own data with its own costs and its own walk-forward split, clears
+      an honest out-of-sample bar" — <code>forge/xsect.py</code>'s own
+      null result above is the concrete, honest illustration of exactly
+      that gap.
+    </p>
+  </div>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(R_i - R_f\)</td><td>Asset \(i\)'s return in excess of the risk-free rate — the regression's dependent variable.</td></tr>
+    <tr><td>\(\alpha\)</td><td>Return unexplained by any of the model's factors — the target of an active manager's skill claim.</td></tr>
+    <tr><td>\(\beta_{MKT}\)</td><td>Loading on the market factor \((R_m-R_f)\), carried over unchanged from CAPM.</td></tr>
+    <tr><td>SMB</td><td>Small Minus Big — the size factor's own realized return: small-cap portfolio minus large-cap portfolio, averaged across all three B/M buckets on each side.</td></tr>
+    <tr><td>HML</td><td>High Minus Low — the value factor's own realized return: high book-to-market portfolio minus low book-to-market portfolio, averaged across both size buckets on each side.</td></tr>
+    <tr><td>UMD / MOM</td><td>Up Minus Down — Carhart's momentum factor: past-12-month winners minus losers, skipping the most recent month.</td></tr>
+    <tr><td>RMW</td><td>Robust Minus Weak — Fama-French (2015)'s profitability factor: high-operating-profitability firms minus low-profitability firms.</td></tr>
+    <tr><td>CMA</td><td>Conservative Minus Aggressive — Fama-French (2015)'s investment factor: low-investment firms minus high-investment firms.</td></tr>
+    <tr><td>\(\varepsilon\)</td><td>Residual — whatever the model's factors, plus alpha, still don't account for.</td></tr>
+  </table></div>
+
+  <div class="tl-section-mark"><span>Section 09</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>CAPM's single beta leaves the size and value effects unexplained.</strong> Fama &amp; French (1993) respond by adding SMB and HML — real, tradeable, zero-cost long-short portfolios — as two more regressors, not by re-estimating beta.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>SMB and HML have a precise, mechanical construction:</strong> independent 2×3 sorts on size (median) and book-to-market (30/40/30) into six value-weighted portfolios, rebalanced annually with a deliberate accounting lag against look-ahead bias.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Carhart (1997) adds UMD/MOM as a genuinely distinct fourth factor</strong> — a persistent continuation effect, empirically diversifying against (sometimes negatively correlated with) HML, not a redundant restatement of value or size.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Fama-French (2015) adds RMW and CMA</strong> via a dividend-discount-model argument; it's the modern academic standard, but 3- and 4-factor versions remain in routine practical use.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The FX carry trade is this same methodological move, in a currency-market costume</strong> — a systematic long-short spread compensated for real, debated risk, with direct published analogs for MKT (the dollar factor), HML (carry), UMD (FX momentum — Menkhoff et al. 2012), and a documented FX value factor too.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>None of this is a claim that a factor-based signal has validated edge on this repo's own data.</strong> This repo's own genuine attempt at an FX cross-sectional momentum/reversion basket (<code>forge/xsect.py</code>) came back a clean null — OOS t=0.44, inside its own shuffled-score noise floor.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 10</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. What two empirical anomalies does CAPM's single market beta leave unexplained, and what was Fama &amp; French's (1993) core methodological response?</summary>
+    <div class="tl-answer">
+      The size effect (small-cap stocks earn more than their CAPM beta
+      predicts) and the value effect (high book-to-market stocks earn more
+      than theirs). Rather than trying to fix or re-estimate beta itself,
+      Fama &amp; French measured each anomaly directly as its own zero-cost,
+      long-short "factor-mimicking portfolio" — SMB for size, HML for
+      value — and added both as additional explanatory regressors
+      alongside the market factor.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Precisely how are the six portfolios that produce SMB and HML actually formed, and how is SMB itself computed from them?</summary>
+    <div class="tl-answer">
+      Two independent sorts: stocks are split into 2 size buckets by a
+      median split (Small/Big) and, separately, into 3 book-to-market
+      buckets using a 30/40/30 split (Low/Neutral/High). The two sorts
+      intersect into 6 value-weighted portfolios. SMB is the average
+      return of the 3 small portfolios (across all three B/M buckets)
+      minus the average return of the 3 big portfolios — averaging across
+      B/M on each side purges any value/growth tilt, isolating a clean
+      size spread.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why did Carhart (1997) give momentum its own fourth factor (UMD) instead of treating it as a variant of HML?</summary>
+    <div class="tl-answer">
+      Momentum — the tendency of past 12-month winners (skipping the most
+      recent month, to avoid short-term reversal contamination) to keep
+      outperforming past losers — is a genuinely distinct, persistent
+      continuation anomaly, not a slower version of the value effect's
+      mean-reversion logic. Empirically, value and momentum have shown
+      periods of negative correlation with each other, making UMD a
+      diversifying addition to the model rather than a redundant one; a
+      stock can screen as cheap (high HML exposure) while still being a
+      recent loser (negative UMD exposure) at the same time.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. What do RMW and CMA stand for in the Fama-French five-factor model, and what economic argument motivates adding them?</summary>
+    <div class="tl-answer">
+      RMW is Robust Minus Weak (a profitability factor: high- minus
+      low-operating-profitability firms); CMA is Conservative Minus
+      Aggressive (an investment factor: low- minus high-investment firms).
+      Both are motivated by a dividend-discount-model argument: holding
+      price fixed, a firm expected to be more profitable should command a
+      higher expected return, and a firm investing more aggressively
+      (competing today's cash against future payouts) should command a
+      lower one. The five-factor model is the modern academic standard,
+      though 3- and 4-factor versions remain widely quoted in practice.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. In what precise sense is the FX carry trade "the same story" as a Fama-French factor, rather than merely a loose analogy?</summary>
+    <div class="tl-answer">
+      Both are cases where a specific, real, systematic long-short
+      portfolio — high-yield currencies minus low-yield funding currencies
+      for carry; small minus big, or high minus low book-to-market for
+      SMB/HML — earns a persistent average return that a simpler baseline
+      model (UIP; CAPM) predicts should not exist, and the honest response
+      in both literatures has been to formalize that spread as its own
+      tradeable, published factor rather than dismiss it or claim it's
+      risk-free. The construction method is identical (rank a universe,
+      go long one end and short the other, track the spread's own
+      return); currency markets even have published, direct analogs to
+      MKT (the dollar factor), HML (the carry factor), and UMD (FX
+      momentum, Menkhoff et al. 2012) specifically.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Does this repo contain a literal Fama-French or Carhart factor implementation? What is the closest real analog, and what did it honestly find?</summary>
+    <div class="tl-answer">
+      No — a repo-wide search finds no SMB, HML, UMD, or Fama/Carhart
+      factor construction anywhere in this codebase; this repo trades FX
+      and gold, not equities, so that absence is expected rather than a
+      gap. The closest real analog is <code>forge/xsect.py</code>, which
+      builds a genuine cross-sectional long-short FX/gold basket (26
+      instruments) with both a "momentum" and a "reversion" sign as
+      pre-registered, walk-forward-tested alternatives — the same
+      methodological move as UMD's construction, applied to a
+      distance-from-weekly-open score rather than trailing return. Its
+      honest result, walk-forward tested over 10 years and 6 folds: OOS
+      t=0.44, mean +0.0081, which does not clear its own shuffled-score
+      null's noise floor (−2.05 to +1.68) — a clean null, not a validated
+      edge. A second module, <code>forge/yield_basket.py</code>, builds a
+      genuine rate-differential-based FX cross-sectional basket but is
+      written and untested, currently blocked on FRED API access.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Eugene F. Fama and Kenneth R. French, <em>"Common Risk Factors in the Returns on Stocks and Bonds,"</em> Journal of Financial Economics, 1993 — the original three-factor paper: the size and value anomalies, and the SMB/HML construction detailed above.</li>
+    <li>Mark M. Carhart, <em>"On Persistence in Mutual Fund Performance,"</em> Journal of Finance, 1997 — the four-factor extension adding UMD/momentum, developed in the context of explaining mutual fund return persistence.</li>
+    <li>Eugene F. Fama and Kenneth R. French, <em>"A Five-Factor Asset Pricing Model,"</em> Journal of Financial Economics, 2015 — adds RMW (profitability) and CMA (investment), motivated by the dividend-discount-model argument summarized above.</li>
+    <li>Lukas Menkhoff, Lucio Sarno, Maik Schmeling, and Andreas Schrimpf, <em>"Currency Momentum Strategies,"</em> Journal of Financial Economics, 2012 — the direct FX-market analog to UMD, cited throughout this lesson's FX analogy section.</li>
+    <li>Hanno Lustig and Adrien Verdelhan, <em>"The Cross Section of Foreign Currency Risk Premia and Consumption Growth Risk,"</em> American Economic Review, 2007 — the consumption-risk explanation for the FX carry factor's premium referenced above, the currency-market counterpart to the value-premium risk debate.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="institutional-capm.html">← CAPM</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="institutional-fama-macbeth.html">Fama-MacBeth →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var DEFAULTS = { alpha: 0.30, bmkt: 1.10, bsmb: 0.80, bhml: 0.60, bumd: -0.10, mkt: 2.0, smb: 1.5, hml: 1.0, umd: 0.5 };
+  var fields = ['alpha', 'bmkt', 'bsmb', 'bhml', 'bumd', 'mkt', 'smb', 'hml', 'umd'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('ffc-' + f); });
+  if (!inputs.alpha) return;
+
+  var t0 = document.getElementById('ffc-t0'), t1 = document.getElementById('ffc-t1'),
+      t2 = document.getElementById('ffc-t2'), t3 = document.getElementById('ffc-t3'),
+      t4 = document.getElementById('ffc-t4');
+  var resultOut = document.getElementById('ffc-result');
+  var note = document.getElementById('ffc-note');
+  var resetBtn = document.getElementById('ffc-reset');
+
+  function fmt(n){ return (n >= 0 ? '' : '') + n.toFixed(2); }
+
+  function recompute(){
+    var v = {};
+    var ok = true;
+    fields.forEach(function(f){
+      var x = parseFloat(inputs[f].value);
+      v[f] = x;
+      if (!isFinite(x)) ok = false;
+    });
+
+    if (!ok) {
+      note.textContent = '(enter a number in every field — blank or non-numeric input can\'t be computed)';
+      t0.textContent = t1.textContent = t2.textContent = t3.textContent = t4.textContent = '—';
+      resultOut.textContent = '—';
+      return;
+    }
+
+    var termAlpha = v.alpha;
+    var termMkt = v.bmkt * v.mkt;
+    var termSmb = v.bsmb * v.smb;
+    var termHml = v.bhml * v.hml;
+    var termUmd = v.bumd * v.umd;
+    var total = termAlpha + termMkt + termSmb + termHml + termUmd;
+
+    note.textContent = '';
+    t0.textContent = fmt(termAlpha);
+    t1.textContent = fmt(termMkt);
+    t2.textContent = fmt(termSmb);
+    t3.textContent = fmt(termHml);
+    t4.textContent = fmt(termUmd);
+    resultOut.textContent = fmt(total);
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+</body>
+</html>

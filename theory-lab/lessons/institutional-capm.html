@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Capital Asset Pricing Model (CAPM) — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Factor Models / CAPM</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Factor Models 1 of 5</div>
+  <h1 class="tl-title">The Capital Asset Pricing Model (CAPM)</h1>
+  <p class="tl-dek">Markowitz proved there's a mathematically best trade-off between risk and return once you know how every asset moves with every other. CAPM asks the next question: if every investor is smart enough to actually hold that best trade-off, what does that force each individual asset's expected return to be? The answer collapses to a single number — beta — and it's the founding idea every other lesson in this new category either extends or was written to fix.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — CAPM's single-market-portfolio pricing model isn't built here, but this repo's own <code>beta_estimator.py</code> runs the identical rolling-OLS beta regression against macro factor proxies for hedging, not pricing</span>
+    <span>~17 min read</span>
+    <span>Prereqs: <a href="primer-correlation-regression.html">Correlation &amp; Linear Regression</a> (beta is exactly that lesson's OLS slope), <a href="markowitz-black-litterman.html">Markowitz &amp; Black-Litterman</a> (CAPM is what falls out once everyone holds the same efficient portfolio)</span>
+  </div>
+
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="institutional-capm-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>CAPM says every asset's expected return is pinned down by exactly one number, its beta: \(E[R_i] = R_f + \beta_i(E[R_m]-R_f)\), where \(\beta_i = \mathrm{Cov}(R_i,R_m)/\mathrm{Var}(R_m)\) — the identical OLS slope formula from the Correlation &amp; Linear Regression primer, just with the market's excess return standing in as "\(X\)".</li>
+      <li>It's the equilibrium consequence of Markowitz's mean-variance framework once every investor shares the same expectations: everyone ends up holding some mix of the risk-free asset and one common risky portfolio, and market-clearing forces that common portfolio to be the market portfolio itself.</li>
+      <li>The <strong>Capital Market Line</strong> (return vs. total risk σ, only efficient portfolios sit on it) and the <strong>Security Market Line</strong> (return vs. beta alone, every correctly-priced asset sits on it) are frequently confused but answer different questions — this lesson keeps them explicitly separate.</li>
+      <li>CAPM's assumptions — single period, identical investor expectations, no taxes or costs, unlimited borrowing/lending at the risk-free rate — are all known to be false. That's not a fatal flaw; it's exactly what makes CAPM a clean, tractable <em>baseline</em> rather than a finished answer.</li>
+      <li>Decades of empirical work (Fama &amp; French, 1992, is the canonical citation) found beta alone leaves a large chunk of the actual cross-section of stock returns unexplained — small-cap and "value" stocks have historically earned more than their beta predicts. That specific, well-documented failure is exactly what the next lesson in this category, Fama-French &amp; Carhart, was built to address.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    This curriculum already has a full lesson on Markowitz mean-variance
+    optimization and its Black-Litterman fix, a lesson on PCA reducing a
+    basket of correlated returns down to a handful of statistical factors,
+    and a lesson on Random Matrix Theory separating genuine factor structure
+    from pure noise in a correlation matrix. What it has never stated, until
+    this lesson, is the single model that historically came <em>first</em>
+    and that every one of those later ideas either builds on or reacts
+    against: the Capital Asset Pricing Model, published independently by
+    William Sharpe (1964) and John Lintner (1965), building directly on
+    Harry Markowitz's 1952 portfolio theory.
+  </p>
+  <p>
+    The gap is worth naming plainly. Markowitz's framework tells you, given a
+    full vector of expected returns and a covariance matrix, how to build the
+    single best portfolio — but it never says where that expected-return
+    vector should come from in the first place. Black-Litterman's answer was
+    "start from what the market's current weights already imply." CAPM asks
+    the more basic version of the same question, one full step further back:
+    if markets are in equilibrium and everyone is a rational mean-variance
+    optimizer holding the same beliefs, what expected return does <em>each
+    individual asset</em> have to offer, in equation form, just to keep
+    supply and demand for every asset in balance? That question — asset
+    pricing, not portfolio construction — is what CAPM answers, and it is the
+    founding, single-factor case of the entire "Factor Models" category this
+    lesson opens: every later lesson here (Fama-French &amp; Carhart, the
+    Fama-MacBeth cross-sectional test, Arbitrage Pricing Theory, Barra-style
+    risk models) is a direct extension of, or a direct empirical rebuttal to,
+    the one-factor model built below.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>If everyone holds the same "best" portfolio, prices have to make that consistent</h3>
+    <p>
+      Markowitz's mean-variance math says: given your beliefs about returns
+      and covariances, there is one specific combination of risky assets —
+      call it the <em>tangency portfolio</em> — that, combined with borrowing
+      or lending at the risk-free rate, gives the best possible risk/return
+      trade-off available. A cautious investor holds mostly the risk-free
+      asset and a little of the tangency portfolio; an aggressive investor
+      borrows at the risk-free rate to hold more than 100% of it. Either way,
+      the <em>risky part</em> of everyone's holdings is the exact same
+      portfolio, just scaled up or down — this is called the
+      <strong>two-fund separation theorem</strong>, and it falls straight out
+      of the shape of the efficient frontier the Markowitz lesson derives.
+    </p>
+    <p>
+      CAPM's single extra assumption is that every investor shares the same
+      beliefs about expected returns and covariances — so everyone computes
+      the <em>identical</em> tangency portfolio. Now ask: if literally every
+      investor in the market holds some scaled version of the same one risky
+      portfolio, and nothing else, what portfolio must that be? It has to be
+      the portfolio of <em>every risky asset in existence, held in
+      proportion to its market value</em> — because that is the only
+      portfolio whose composition is consistent with all the buying and
+      selling clearing at once. If some stock weren't in that common
+      portfolio at its true market-cap weight, nobody would be holding the
+      shares that are actually outstanding, which can't happen in
+      equilibrium. That common, everyone-holds-it-in-proportion portfolio is
+      called the <strong>market portfolio</strong>, and CAPM is simply the
+      arithmetic of what each individual asset's expected return has to be
+      for that to be a stable, self-consistent state of the world.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+  <p>
+    The derivation in full requires more optimization machinery than this
+    lesson re-derives from scratch (it's a constrained-optimization argument
+    over the efficient frontier, the same kind of argument the Markowitz
+    lesson mentions but doesn't spell out either) — but the four logical
+    moves that get you from "everyone optimizes the Markowitz way" to "here
+    is the pricing equation for each asset" are worth stating explicitly,
+    because each one is doing real conceptual work:
+  </p>
+  <div class="tl-steps">
+    <div class="tl-step">
+      <div class="tl-step-num">1</div>
+      <div class="tl-step-body">
+        <h4>Identical beliefs → identical tangency portfolio</h4>
+        <p>If every investor optimizes the same mean-variance problem with the same expected-return vector and the same covariance matrix, every investor's Markowitz optimizer spits out the exact same risky-asset tangency portfolio.</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">2</div>
+      <div class="tl-step-body">
+        <h4>Two-fund separation</h4>
+        <p>Every investor then holds only a personal mix of that one tangency portfolio and the risk-free asset — more risk-free for the cautious, leveraged tangency exposure for the aggressive. Nobody holds any other combination of risky assets.</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">3</div>
+      <div class="tl-step-body">
+        <h4>Market clearing forces that portfolio to BE the market</h4>
+        <p>If every dollar of risky-asset demand in the economy is some scaling of one common portfolio, the only composition consistent with every share of every company actually being held by someone is the market-value-weighted portfolio of all risky assets. The tangency portfolio and the market portfolio become the same object.</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">4</div>
+      <div class="tl-step-body">
+        <h4>Reading off each asset's required return</h4>
+        <p>Since the market portfolio is now known to be mean-variance-efficient, a short piece of algebra on the efficient-frontier condition (holding this portfolio can't be improved by nudging any one asset's weight) reduces directly to the pricing equation below — every asset's risk premium is proportional to its own contribution to the market portfolio's variance.</p>
+      </div>
+    </div>
+  </div>
+
+  <p>
+    <strong>The CAPM equation.</strong> The result of that chain of reasoning
+    is one equation, relating any asset \(i\)'s expected return to the
+    risk-free rate, the market's expected return, and one asset-specific
+    sensitivity coefficient:
+  </p>
+  <div class="tl-math">\[ E[R_i] = R_f + \beta_i\big(E[R_m] - R_f\big) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>R_f</code><span>the risk-free rate — the return you'd earn taking on zero risk</span></div>
+    <div class="tl-eq-chip c2"><code>E[R_m] − R_f</code><span>the market risk premium — the extra return investors demand to hold risky assets at all</span></div>
+    <div class="tl-eq-chip c3"><code>β_i</code><span>asset i's sensitivity to that market risk — the entire cross-sectional prediction lives here</span></div>
+    <div class="tl-eq-chip c4"><code>E[R_i]</code><span>asset i's required, equilibrium expected return</span></div>
+  </div>
+  <p>
+    Read it in plain language: an asset's expected return equals the
+    risk-free rate, plus a piece of the market's own risk premium scaled by
+    how much of that market-wide risk this specific asset is exposed to. An
+    asset with \(\beta_i=0\) (no exposure to market-wide moves at all) should
+    expect to earn exactly the risk-free rate, no more. An asset with
+    \(\beta_i=1\) should expect to earn exactly the market's own return. An
+    asset with \(\beta_i=2\) is twice as exposed to market-wide swings as the
+    market itself, and CAPM says it must be compensated with twice the market
+    risk premium on top of the risk-free rate to be worth holding at all.
+  </p>
+
+  <p>
+    <strong>Beta, defined — and it's not a new formula.</strong> The
+    coefficient doing all the work is:
+  </p>
+  <div class="tl-math">\[ \beta_i = \frac{\mathrm{Cov}(R_i, R_m)}{\mathrm{Var}(R_m)} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Cov(R_i,R_m)</code><span>how much asset i's returns move together with the market's</span></div>
+    <div class="tl-eq-chip c2"><code>Var(R_m)</code><span>how much the market moves on its own</span></div>
+    <div class="tl-eq-chip c3"><code>β_i</code><span>exactly the Correlation &amp; Linear Regression primer's OLS slope, β̂ = Cov(X,Y)/Var(X)</span></div>
+  </div>
+  <p>
+    This is not new machinery bolted onto CAPM — it is <em>literally</em> the
+    ordinary-least-squares slope formula derived in the
+    <a href="primer-correlation-regression.html">Correlation &amp; Linear
+    Regression</a> primer, \(\hat\beta = \mathrm{Cov}(X,Y)/\mathrm{Var}(X)\),
+    applied to one specific, economically meaningful choice of "\(X\)": the
+    market's own excess return. Run the regression
+  </p>
+  <div class="tl-math">\[ R_i - R_f = \alpha_i + \beta_i\,(R_m - R_f) + \epsilon_i \]</div>
+  <p>
+    — asset \(i\)'s excess return regressed on the market's excess return —
+    and the fitted slope \(\hat\beta_i\) coming out of that regression is
+    exactly the CAPM beta used in the pricing equation above. This is why the
+    earlier primer bothered to say, in its own "how practitioners use this"
+    section, that regressing an asset's returns on a benchmark's returns "is
+    literally the CAPM beta" — that line was written for this lesson to cash
+    in. Nothing about the mechanics changes: same covariance-over-variance
+    ratio, same minimize-squared-residuals derivation, same formula. The only
+    thing CAPM adds on top of the regression is an economic claim about what
+    the resulting slope is <em>for</em>: not just a descriptive best-fit
+    line, but the specific quantity that determines how much expected return
+    an asset is entitled to in equilibrium.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Beta answers one question: when the whole market has a good day or a bad day, how much does this one asset tend to move along with it? A beta of 2 means "twice as jumpy as the market" — up more on good market days, down more on bad ones. A beta of 0 means "doesn't care what the market does at all." CAPM's whole idea is: you should only get paid extra, above the safe risk-free rate, for the jumpiness that's tied to the whole market moving — because that's the risk nobody can diversify away by just holding more stuff.</p>
+  </div>
+
+  <h3>The Capital Market Line vs. the Security Market Line</h3>
+  <p>
+    These two lines get confused constantly, including by people who've used
+    both for years, because they both plot "expected return" on the vertical
+    axis — but the horizontal axis, and which portfolios are even allowed to
+    appear on the line, are completely different.
+  </p>
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>Capital Market Line (CML)</h4>
+      <p>
+        Horizontal axis: <strong>total risk</strong>, \(\sigma_p\) (standard
+        deviation). Only <strong>efficient</strong> portfolios sit on it —
+        specifically, combinations of the risk-free asset and the market
+        portfolio, and nothing else:
+      </p>
+      <div class="tl-math" style="font-size:.92em">\[ E[R_p] = R_f + \frac{E[R_m]-R_f}{\sigma_m}\,\sigma_p \]</div>
+      <p>
+        The slope, \((E[R_m]-R_f)/\sigma_m\), is exactly the market
+        portfolio's own Sharpe ratio. An individual mispriced stock, or an
+        inefficiently diversified portfolio, does <strong>not</strong> belong
+        on this line at all — it will plot somewhere to the right of it,
+        carrying risk it isn't being paid for.
+      </p>
+    </div>
+    <div class="tl-compare-card purple">
+      <h4>Security Market Line (SML)</h4>
+      <p>
+        Horizontal axis: <strong>systematic risk only</strong>, \(\beta_i\).
+        <strong>Every correctly-priced asset</strong> sits on this line —
+        efficient portfolios and single, individually risky, badly
+        diversified stocks alike:
+      </p>
+      <div class="tl-math" style="font-size:.92em">\[ E[R_i] = R_f + \beta_i\big(E[R_m]-R_f\big) \]</div>
+      <p>
+        This is the CAPM pricing equation itself, drawn as a line: intercept
+        \(R_f\), slope \(E[R_m]-R_f\). A stock's own idiosyncratic,
+        diversifiable risk plays no role in where it sits on this axis at
+        all — only its beta does. An asset sitting <em>off</em> this line is
+        the entire subject of the empirical-failure section later in this
+        lesson.
+      </p>
+    </div>
+  </div>
+  <p>
+    The clean way to keep them straight: the CML is about the price of
+    <em>total</em> risk, and only rewards the specific portfolios that hold
+    no risk beyond what's compensated (the risk-free asset and the market
+    portfolio, blended). The SML is about the price of <em>one specific
+    slice</em> of risk — the piece correlated with the market — and applies
+    to literally everything, including a single badly-diversified stock that
+    would never itself sit on the CML, because idiosyncratic risk simply
+    doesn't enter the SML's horizontal axis at all.
+  </p>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">The Security Market Line — β on the x-axis, expected return on the y-axis</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Security Market Line chart: a straight line rising from the risk-free rate at beta zero, with three plotted assets — one sitting exactly on the line, one plotted above the line with positive alpha, and one plotted below the line with negative alpha">
+      <line x1="70" y1="260" x2="600" y2="260" style="stroke:var(--border)"/>
+      <line x1="70" y1="260" x2="70" y2="20" style="stroke:var(--border)"/>
+      <text x="335" y="286" text-anchor="middle" fill="var(--text3)" font-size="12" font-family="'DM Mono',monospace">β (systematic risk)</text>
+      <text x="30" y="140" text-anchor="middle" fill="var(--text3)" font-size="12" font-family="'DM Mono',monospace" transform="rotate(-90 30 140)">E[R] (%)</text>
+
+      <line x1="70" y1="230" x2="70" y2="234" style="stroke:var(--border)"/>
+      <text x="70" y="252" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">0</text>
+      <line x1="195" y1="256" x2="195" y2="264" style="stroke:var(--border)"/>
+      <text x="195" y="278" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">0.5</text>
+      <line x1="320" y1="256" x2="320" y2="264" style="stroke:var(--border)"/>
+      <text x="320" y="278" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">1.0</text>
+      <line x1="445" y1="256" x2="445" y2="264" style="stroke:var(--border)"/>
+      <text x="445" y="278" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">1.5</text>
+      <line x1="570" y1="256" x2="570" y2="264" style="stroke:var(--border)"/>
+      <text x="570" y="278" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">2.0</text>
+
+      <line x1="66" y1="230" x2="74" y2="230" style="stroke:var(--border)"/>
+      <text x="58" y="234" text-anchor="end" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">2</text>
+      <line x1="66" y1="155" x2="74" y2="155" style="stroke:var(--border)"/>
+      <text x="58" y="159" text-anchor="end" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">7</text>
+      <line x1="66" y1="80" x2="74" y2="80" style="stroke:var(--border)"/>
+      <text x="58" y="84" text-anchor="end" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">12</text>
+
+      <line x1="70" y1="230" x2="570" y2="80" style="stroke:var(--amber);stroke-width:2.5"/>
+      <text x="580" y="76" fill="var(--amber)" font-size="11" font-family="'DM Mono',monospace">SML</text>
+
+      <circle cx="70" cy="230" r="4" style="fill:var(--text3)"/>
+      <text x="78" y="222" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">R_f = 2%</text>
+
+      <line x1="195" y1="192.5" x2="195" y2="200" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:2,2"/>
+      <circle cx="195" cy="192.5" r="6" style="fill:var(--green);stroke:var(--bg);stroke-width:2"/>
+      <text x="195" y="176" text-anchor="middle" fill="var(--green)" font-size="11" font-family="'DM Mono',monospace" font-weight="700">A</text>
+      <text x="195" y="212" text-anchor="middle" fill="var(--text3)" font-size="9" font-family="'DM Mono',monospace">β=0.5, on the line</text>
+
+      <line x1="270" y1="170" x2="270" y2="206" style="stroke:var(--red);stroke-width:1.5;stroke-dasharray:3,3"/>
+      <circle cx="270" cy="206" r="6" style="fill:var(--red);stroke:var(--bg);stroke-width:2"/>
+      <text x="270" y="224" text-anchor="middle" fill="var(--red)" font-size="11" font-family="'DM Mono',monospace" font-weight="700">C</text>
+      <text x="270" y="160" text-anchor="middle" fill="var(--text3)" font-size="9" font-family="'DM Mono',monospace">β=0.8, below the line</text>
+
+      <line x1="445" y1="117.5" x2="445" y2="57.5" style="stroke:var(--blue);stroke-width:1.5;stroke-dasharray:3,3"/>
+      <circle cx="445" cy="57.5" r="6" style="fill:var(--blue);stroke:var(--bg);stroke-width:2"/>
+      <text x="445" y="45" text-anchor="middle" fill="var(--blue)" font-size="11" font-family="'DM Mono',monospace" font-weight="700">B</text>
+      <text x="445" y="132" text-anchor="middle" fill="var(--text3)" font-size="9" font-family="'DM Mono',monospace">β=1.5, above the line</text>
+    </svg>
+    <div class="tl-chart-caption">
+      Three assets from the worked example below, plotted on the SML built
+      from \(R_f=2\%\) and a 5-point market risk premium. Asset A sits
+      exactly on the line — its realized average return matched CAPM's
+      prediction with zero residual. Asset B sits above the line (a positive
+      alpha — it earned more than its beta alone would justify); Asset C
+      sits below it (a negative alpha). Being off the line either way is
+      exactly the phenomenon the empirical-failure section below is about.
+    </div>
+  </div>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(R_f\)</td><td>The risk-free rate — the return available with zero risk.</td></tr>
+    <tr><td>\(R_m\)</td><td>The market portfolio's return — every risky asset in existence, held at its market-value weight.</td></tr>
+    <tr><td>\(E[R_m]-R_f\)</td><td>The market risk premium — the extra expected return investors demand for holding risky assets over the risk-free asset.</td></tr>
+    <tr><td>\(\beta_i\)</td><td>Asset \(i\)'s sensitivity to market-wide moves; \(\mathrm{Cov}(R_i,R_m)/\mathrm{Var}(R_m)\) — exactly the OLS slope of \(i\)'s excess return regressed on the market's excess return.</td></tr>
+    <tr><td>\(E[R_i]\)</td><td>Asset \(i\)'s CAPM-required expected return — the SML's prediction.</td></tr>
+    <tr><td>\(\alpha_i\)</td><td>The regression intercept in \(R_i-R_f=\alpha_i+\beta_i(R_m-R_f)+\epsilon_i\); realized average return minus CAPM's prediction. CAPM's own theory says this should be zero for every asset — a nonzero \(\alpha_i\) is exactly what the empirical-failure section is about.</td></tr>
+    <tr><td>CML</td><td>Capital Market Line — return vs. total risk σ; only the risk-free asset and the market portfolio (and their blends) belong on it.</td></tr>
+    <tr><td>SML</td><td>Security Market Line — return vs. β alone; every correctly-priced asset, efficient or not, belongs on it.</td></tr>
+  </table></div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>The assumptions — and why stating them plainly matters</h2>
+  <p>
+    CAPM's derivation leans on a short list of assumptions, every one of
+    which is a known, deliberate simplification rather than a claim about
+    how markets actually work:
+  </p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">⏱️</div>
+      <h4>Single period</h4>
+      <p>Investors choose a portfolio once, for one horizon, and hold it — no rebalancing, no multi-period planning, no path-dependence in the decision at all.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🧠</div>
+      <h4>Identical expectations</h4>
+      <p>Every investor agrees, exactly, on every asset's expected return, variance, and covariance with every other asset — the assumption that forces everyone onto the same tangency portfolio in Step 1 above.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">💸</div>
+      <h4>No taxes or transaction costs</h4>
+      <p>Trading is free and instantaneous, and every investor faces identical, frictionless prices — nothing discourages continuously rebalancing toward the market portfolio.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🏦</div>
+      <h4>Unlimited risk-free borrowing/lending</h4>
+      <p>Any investor can borrow or lend as much as they want at the single risk-free rate \(R_f\) — the assumption that makes the two-fund separation theorem's straight-line CML possible at all.</p>
+    </div>
+  </div>
+  <div class="tl-solid amber">
+    <strong>Every one of these is known to be false, and that is the entire
+    point.</strong> Investors disagree constantly about expected returns;
+    trading has real costs; almost nobody can borrow at the risk-free rate,
+    let alone in unlimited size. CAPM is not offered as a photographically
+    accurate description of markets — it is a deliberately stripped-down
+    baseline, built to be the simplest model that still produces a specific,
+    testable, quantitative prediction (the SML) for every asset's expected
+    return. A model this clean being wrong in specific, measurable ways is
+    not a failure of the exercise; it's what makes the wrongness usable —
+    exactly the empirical-failure section below turns that wrongness into
+    the entire research agenda the rest of this category is built on.
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Three assets, one market index, five years of returns</h3>
+    <p>
+      A toy universe: a market index and three assets, five years of
+      (invented, illustrative) annual returns, and a 2% risk-free rate,
+      matching this repo's other worked examples' convention:
+    </p>
+    <div class="tl-symbols"><table>
+      <tr><td>Market (%)</td><td>8&nbsp;&nbsp;&nbsp;&minus;3&nbsp;&nbsp;&nbsp;15&nbsp;&nbsp;&nbsp;6&nbsp;&nbsp;&nbsp;9</td></tr>
+      <tr><td>Asset A (%)</td><td>5&nbsp;&nbsp;&nbsp;&minus;0.5&nbsp;&nbsp;&nbsp;8.5&nbsp;&nbsp;&nbsp;4&nbsp;&nbsp;&nbsp;5.5</td></tr>
+      <tr><td>Asset B (%)</td><td>15&nbsp;&nbsp;&nbsp;&minus;1.5&nbsp;&nbsp;&nbsp;25.5&nbsp;&nbsp;&nbsp;12&nbsp;&nbsp;&nbsp;16.5</td></tr>
+      <tr><td>Asset C (%)</td><td>4.4&nbsp;&nbsp;&nbsp;&minus;4.4&nbsp;&nbsp;&nbsp;10&nbsp;&nbsp;&nbsp;2.8&nbsp;&nbsp;&nbsp;5.2</td></tr>
+    </table></div>
+    <p><strong>Step 1 — the market's own mean and variance.</strong> Mean:
+    \((8-3+15+6+9)/5 = 35/5 = 7\%\). Deviations from that mean:
+    \([1,-10,8,-1,2]\). Variance: \((1+100+64+1+4)/5 = 170/5 = 34\).</p>
+    <p><strong>Step 2 — beta for each asset,</strong> via
+    \(\beta=\mathrm{Cov}(R_i,R_m)/\mathrm{Var}(R_m)\):</p>
+    <div class="tl-math">\[ \beta_A = \frac{17.0}{34} = 0.50 \qquad \beta_B = \frac{51.0}{34} = 1.50 \qquad \beta_C = \frac{27.2}{34} = 0.80 \]</div>
+    <p>
+      (Showing the arithmetic for A: A's mean is \(4.5\%\), deviations
+      \([0.5,-5,4,-0.5,1]\); pairing with the market's deviations
+      \([1,-10,8,-1,2]\) and averaging the products gives
+      \(\mathrm{Cov}(A,R_m)=(0.5+50+32+0.5+2)/5=85/5=17.0\). B and C follow
+      the identical procedure on their own return columns.)
+    </p>
+    <p><strong>Step 3 — CAPM's predicted expected return</strong> for each,
+    using \(R_f=2\%\) and \(E[R_m]-R_f=7-2=5\) points of market risk
+    premium:</p>
+    <div class="tl-math">\[ E[R_A] = 2 + 0.50(5) = 4.5\% \qquad E[R_B] = 2 + 1.50(5) = 9.5\% \qquad E[R_C] = 2 + 0.80(5) = 6.0\% \]</div>
+    <p><strong>Step 4 — compare against each asset's own realized average
+    return</strong> (Asset A: \((5-0.5+8.5+4+5.5)/5=4.5\%\); Asset B:
+    \((15-1.5+25.5+12+16.5)/5=13.5\%\); Asset C:
+    \((4.4-4.4+10+2.8+5.2)/5=3.6\%\)):
+    </p>
+    <div class="tl-symbols"><table>
+      <tr><td>Asset A</td><td>predicted 4.5% · realized 4.5% · <strong>alpha = 0.0%</strong></td></tr>
+      <tr><td>Asset B</td><td>predicted 9.5% · realized 13.5% · <strong>alpha = +4.0%</strong></td></tr>
+      <tr><td>Asset C</td><td>predicted 6.0% · realized 3.6% · <strong>alpha = &minus;2.4%</strong></td></tr>
+    </table></div>
+    <p>
+      Asset A's realized return matched CAPM's prediction exactly — in this
+      toy universe, its returns were built as a pure linear function of the
+      market, so its beta captures everything about it and its alpha is
+      exactly zero. Assets B and C did not: B earned four points more than
+      its beta alone justified, C earned two-and-a-bit points less. That
+      leftover — the residual after beta has done all the explaining it
+      can — is exactly what gets called <strong>alpha</strong> in practice,
+      and it's exactly the quantity a multi-factor model (or a genuinely
+      skilled active manager) is trying to explain or capture on purpose,
+      rather than dismiss as noise.
+    </p>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Edit the return series, watch beta and CAPM's prediction update live</h3>
+    <p>
+      Starts on Asset A's numbers from the worked example above (a perfect,
+      zero-alpha case). Edit any market or asset return, or the risk-free
+      rate, and beta, the CAPM-predicted return, the realized average, and
+      the resulting alpha all recompute instantly from the formulas derived
+      above. Try pasting in Asset B's or Asset C's numbers by hand to
+      reproduce their nonzero alphas.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Risk-free rate \(R_f\) (%)</span></div>
+        <input type="number" id="capm-scratch-rf" class="tl-scratch-input" value="2" step="0.25">
+      </div>
+    </div>
+    <div class="tl-controls">
+      <div class="tl-control"><div class="tl-control-head"><span>Market y1 (%)</span></div><input type="number" id="capm-scratch-m1" class="tl-scratch-input" value="8" step="0.1"></div>
+      <div class="tl-control"><div class="tl-control-head"><span>Market y2 (%)</span></div><input type="number" id="capm-scratch-m2" class="tl-scratch-input" value="-3" step="0.1"></div>
+      <div class="tl-control"><div class="tl-control-head"><span>Market y3 (%)</span></div><input type="number" id="capm-scratch-m3" class="tl-scratch-input" value="15" step="0.1"></div>
+      <div class="tl-control"><div class="tl-control-head"><span>Market y4 (%)</span></div><input type="number" id="capm-scratch-m4" class="tl-scratch-input" value="6" step="0.1"></div>
+      <div class="tl-control"><div class="tl-control-head"><span>Market y5 (%)</span></div><input type="number" id="capm-scratch-m5" class="tl-scratch-input" value="9" step="0.1"></div>
+    </div>
+    <div class="tl-controls">
+      <div class="tl-control"><div class="tl-control-head"><span>Asset y1 (%)</span></div><input type="number" id="capm-scratch-a1" class="tl-scratch-input" value="5" step="0.1"></div>
+      <div class="tl-control"><div class="tl-control-head"><span>Asset y2 (%)</span></div><input type="number" id="capm-scratch-a2" class="tl-scratch-input" value="-0.5" step="0.1"></div>
+      <div class="tl-control"><div class="tl-control-head"><span>Asset y3 (%)</span></div><input type="number" id="capm-scratch-a3" class="tl-scratch-input" value="8.5" step="0.1"></div>
+      <div class="tl-control"><div class="tl-control-head"><span>Asset y4 (%)</span></div><input type="number" id="capm-scratch-a4" class="tl-scratch-input" value="4" step="0.1"></div>
+      <div class="tl-control"><div class="tl-control-head"><span>Asset y5 (%)</span></div><input type="number" id="capm-scratch-a5" class="tl-scratch-input" value="5.5" step="0.1"></div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      E[R_m] = <b id="capm-scratch-em">7.0000%</b>&emsp;Var(R_m) = <b id="capm-scratch-varm">34.0000</b>&emsp;Cov(R_i,R_m) = <b id="capm-scratch-cov">17.0000</b>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      &beta; = <b id="capm-scratch-beta">0.5000</b>&emsp;CAPM predicted E[R_i] = <b id="capm-scratch-pred">4.5000%</b>
+    </div>
+    <div class="tl-readout">
+      Realized average return = <b id="capm-scratch-realized">4.5000%</b>&emsp;alpha = <b id="capm-scratch-alpha">0.0000%</b>
+      <span id="capm-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="capm-scratch-reset" class="tl-scratch-reset-btn">Reset to Asset A's worked-example numbers</button>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>The empirical failure this whole category exists to address</h2>
+  <p>
+    CAPM's own theory predicts that alpha — the SML residual computed above
+    for every asset — should be zero, for every asset, always: beta is
+    supposed to be a complete summary of the risk that matters. In real
+    markets, tested against decades of actual returns, that prediction does
+    not hold up. The canonical empirical citation is Fama &amp; French
+    (1992), <em>"The Cross-Section of Expected Stock Returns"</em>: sorting
+    real stocks by market beta and comparing average returns across those
+    sorted groups showed a strikingly weak relationship between beta and
+    realized return — nowhere near what CAPM's straight-line SML predicts.
+    What the data showed a much stronger relationship with instead: firm
+    size (small-cap stocks earned systematically higher average returns than
+    large-cap stocks of similar beta) and book-to-market ratio ("value"
+    stocks — a high book value relative to market price — earned
+    systematically higher average returns than "growth" stocks of similar
+    beta).
+  </p>
+  <div class="tl-solid red">
+    <strong>State this plainly: CAPM beta alone leaves a real, well-documented
+    amount of the cross-section of average stock returns unexplained.</strong>
+    This isn't a minor statistical footnote — it's one of the most replicated
+    empirical results in all of asset pricing, and it is exactly the finding
+    that redirected decades of subsequent research toward multi-factor
+    models. The toy worked example above, where Assets B and C carried
+    nonzero alpha even in an invented dataset, is a small-scale illustration
+    of precisely this phenomenon playing out for real, at scale, in actual
+    markets.
+  </div>
+  <p>
+    This is exactly the setup for the next lesson in this category. If a
+    single factor (market beta) doesn't fully explain average returns, the
+    natural next move is to add more factors that do — factors built
+    specifically around the size and value anomalies Fama and French found.
+    <strong>Fama-French &amp; Carhart</strong>, next in this series, is the
+    direct empirical response to the exact gap this section just described:
+    it doesn't get derived here, only named as the destination this failure
+    points to.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>CAPM's promise is: tell me one number (beta) and I'll tell you exactly how much extra return you deserve. When people actually checked this promise against real stock returns for decades, beta turned out to be a genuinely useful clue, but not nearly the whole story — smaller companies and "cheap relative to their books" companies kept earning more than their beta said they should, over and over, in sample after sample. That gap between the promise and the reality is exactly why people built bigger models with more clues (more "factors") instead of just the one.</p>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>CAPM as a cost-of-equity input, not a trading signal</h3>
+    <p>
+      CAPM's single most common real-world use isn't picking stocks to trade
+      at all — it's corporate finance: estimating a company's cost of
+      equity, one input into a weighted-average cost of capital (WACC), which
+      in turn is the discount rate used to value a company's future cash
+      flows or judge whether a capital project clears its hurdle rate. A
+      corporate finance team estimates a company's beta (typically via the
+      same OLS regression of the stock's returns on a broad index's returns,
+      over some lookback window), plugs it into the SML equation with a
+      chosen risk-free rate and market risk premium, and reads off a required
+      return — used as "the return equity investors need, given this
+      company's systematic risk," not as a forecast of what the stock will
+      actually do next quarter.
+    </p>
+    <p>
+      For FX specifically, this application doesn't translate cleanly at
+      all: unlike an equity market, there is no single, obvious "market
+      portfolio" of every currency held at its market-value weight — no
+      analogue to a global equity index that every FX investor could be
+      assumed to hold a piece of. The same wrinkle the Markowitz &amp;
+      Black-Litterman lesson flags for reverse-engineering an equilibrium
+      return vector in FX applies here just as directly: CAPM's derivation
+      leans on equities' natural market-cap weighting scheme, and currencies
+      simply don't have an equivalent, off-the-shelf answer to "what is the
+      market portfolio." That's a genuine reason CAPM stays a
+      cross-asset-pricing <em>concept</em> in this curriculum rather than a
+      component this repo's own FX trading logic could adopt directly.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>How practitioners actually use this — and where it goes wrong</h2>
+  <p>
+    Outside of the cost-of-capital use above, CAPM beta shows up constantly
+    as a risk-management and attribution tool even among people who don't
+    believe the SML prices assets correctly: hedge a long equity book's
+    market exposure by shorting an index-tracking instrument sized by the
+    book's aggregate beta; decompose a fund's realized return into a
+    "market-driven" piece (beta times the market's actual return) and an
+    "everything else" piece (alpha), exactly the machinery the Alpha/Beta
+    Separation lesson in this curriculum builds on for performance
+    attribution; screen a universe of candidate stocks quickly by beta as a
+    first-pass proxy for how defensive or aggressive a position would be.
+    None of these uses require believing CAPM prices every asset correctly —
+    beta as a regression-derived sensitivity measure is useful on its own
+    terms, independent of whether the theory built on top of it holds.
+  </p>
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where CAPM gets misread or misapplied</h3>
+    <p>
+      <strong>Confusing the CML and the SML.</strong> This is the single most
+      common conceptual mix-up. Plotting an individual, badly diversified
+      stock against total risk σ and expecting it to sit on the market's
+      efficient-frontier line is simply the wrong chart — that line only
+      ever describes efficient combinations of the risk-free asset and the
+      market portfolio. The SML, plotted against β alone, is the one that
+      makes a pricing claim about every individual asset.
+    </p>
+    <p>
+      <strong>Treating a positive alpha as proof of skill, on sight.</strong>
+      A nonzero alpha in a backtest or a live track record is exactly as
+      ambiguous as it was for the toy Asset B above: it could be genuine,
+      persistent mispricing being captured, or it could be compensation for
+      an entirely different, un-modeled risk factor CAPM's one-factor version
+      simply doesn't include (this is precisely the size and value story
+      Fama-French tells about their own "CAPM alpha") — or it could just be
+      noise in a short sample. A single-factor alpha estimate, by itself,
+      settles none of this.
+    </p>
+    <p>
+      <strong>Using a backward-looking beta as if it were a forward-looking
+      constant.</strong> Beta, estimated by regression over some historical
+      window, drifts — a company's business mix, leverage, or the composition
+      of "the market" itself can all change. The Kalman Filter lesson's
+      time-varying hedge-ratio machinery is the direct fix for exactly this
+      instability, applied to the identical OLS-slope quantity this lesson
+      builds.
+    </p>
+    <p>
+      <strong>Forgetting the assumptions when reaching for the formula.</strong>
+      Every assumption in Section 03 is doing real work in the derivation.
+      Applying the SML to price an asset in a market where investors clearly
+      disagree wildly, or where borrowing at the risk-free rate is simply not
+      available to the investor in question, is applying a model outside the
+      conditions that were used to derive it — a common source of
+      "CAPM doesn't work" complaints that are really "CAPM's assumptions
+      don't hold here" complaints in disguise.
+    </p>
+  </div>
+
+  <div class="tl-solid blue">
+    <strong>Verified against this repo's actual code.</strong> A repo-wide
+    search for CAPM-style "beta" turned up a genuine, working system —
+    <code>bot/modules/beta_estimator.py</code>, <code>portfolio_beta.py</code>,
+    <code>beta_deviation.py</code>, <code>beta_rebalancer.py</code>, and
+    <code>RegimeV2/beta_regime_table.py</code> — that runs the identical
+    rolling-OLS regression this lesson derives, \(y=\alpha+\beta x\), fit via
+    ordinary least squares, and even wraps it in a Kalman filter (the same
+    time-varying-beta idea flagged in the pitfalls above). It is real,
+    working code, but it is not CAPM: instead of one "market portfolio," it
+    regresses each FX pair's returns against three separate macro factor
+    proxies (<code>beta_dxy</code> via inverted EURUSD, <code>beta_rates</code>
+    via USDJPY, <code>beta_vix</code> via inverted USDCHF), and the output
+    feeds a portfolio-level exposure rebalancer, not an expected-return
+    pricing equation. Same regression arithmetic as this lesson's beta;
+    different, multi-factor, hedging-oriented purpose — worth knowing exactly
+    where the line between "this repo's beta" and "CAPM's beta" actually
+    sits, rather than assuming either that nothing like this exists here or
+    that this already <em>is</em> CAPM.
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>CAPM: \(E[R_i]=R_f+\beta_i(E[R_m]-R_f)\), with \(\beta_i=\mathrm{Cov}(R_i,R_m)/\mathrm{Var}(R_m)\).</strong> Beta is exactly the OLS slope of asset \(i\)'s excess return regressed on the market's excess return — the identical formula from the Correlation &amp; Linear Regression primer.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>CAPM is Markowitz's equilibrium consequence.</strong> If every investor optimizes with identical beliefs, everyone holds the same tangency portfolio, and market clearing forces that portfolio to be the market portfolio itself.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The CML (return vs. total risk σ, efficient portfolios only) and the SML (return vs. β alone, every correctly-priced asset) are different lines answering different questions.</strong> Confusing them is the single most common CAPM mix-up.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>CAPM's assumptions — single period, identical expectations, no frictions, unlimited risk-free borrowing — are all known to be false.</strong> That's exactly why it's a tractable baseline, not a finished description of markets.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Decades of empirical work (Fama &amp; French, 1992) show beta alone leaves a real chunk of the cross-section of stock returns unexplained</strong> — small-cap and value stocks earned systematically more than their beta predicted. This specific failure is what the next lesson, Fama-French &amp; Carhart, directly addresses.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Beta is useful independent of whether CAPM's pricing claim holds.</strong> Hedging, exposure decomposition, and attribution all lean on the same OLS-derived sensitivity number without needing the SML itself to be exactly right.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Write the CAPM equation and state, in one sentence, what each term means.</summary>
+    <div class="tl-answer">
+      \(E[R_i] = R_f + \beta_i(E[R_m]-R_f)\). \(R_f\) is the risk-free rate;
+      \(E[R_m]-R_f\) is the market risk premium, the extra return demanded
+      for holding risky assets at all; \(\beta_i\) is asset \(i\)'s
+      sensitivity to market-wide moves, \(\mathrm{Cov}(R_i,R_m)/\mathrm{Var}(R_m)\);
+      and \(E[R_i]\) is the equilibrium expected return the asset must offer
+      to be worth holding given that sensitivity.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why is CAPM's beta described in this lesson as "not a new formula" relative to the Correlation &amp; Linear Regression primer?</summary>
+    <div class="tl-answer">
+      Because \(\beta_i=\mathrm{Cov}(R_i,R_m)/\mathrm{Var}(R_m)\) is exactly
+      the OLS slope formula \(\hat\beta=\mathrm{Cov}(X,Y)/\mathrm{Var}(X)\)
+      derived in that primer, applied to one specific choice of variables:
+      regress asset \(i\)'s excess return (\(Y\)) on the market portfolio's
+      excess return (\(X\)). CAPM adds an economic interpretation on top —
+      that this slope determines the asset's required equilibrium return —
+      but the underlying regression arithmetic is identical, not a separate
+      technique.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. What is the two-fund separation theorem, and what role does it play in getting from Markowitz's framework to CAPM?</summary>
+    <div class="tl-answer">
+      Two-fund separation says that every mean-variance investor, regardless
+      of their personal risk tolerance, holds only a personal mix of one
+      common risky "tangency" portfolio and the risk-free asset — cautious
+      investors hold more risk-free and less tangency exposure, aggressive
+      investors lever up their tangency exposure, but nobody holds any other
+      combination of risky assets. If every investor also shares identical
+      expectations (CAPM's key extra assumption), everyone's tangency
+      portfolio is the same portfolio, and market-clearing then forces that
+      one common portfolio to be the market-value-weighted market portfolio —
+      the step that turns Markowitz's individual-optimization framework into
+      CAPM's economy-wide pricing equation.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. A colleague plots an individual, poorly-diversified stock against total risk (σ) and says it should sit on the Capital Market Line. What's wrong with this?</summary>
+    <div class="tl-answer">
+      The CML only ever describes efficient portfolios — specifically,
+      combinations of the risk-free asset and the market portfolio, plotted
+      against total risk σ. An individual stock carrying idiosyncratic,
+      diversifiable risk that isn't compensated will generally sit to the
+      right of the CML, not on it, because it's paying for risk (its own
+      idiosyncratic variance) the CML doesn't reward. The line that does make
+      a pricing statement about that individual stock is the Security Market
+      Line, plotted against β alone — every correctly-priced asset,
+      diversified or not, belongs on the SML, but only efficient portfolios
+      belong on the CML.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. In the worked example, Asset B had a beta of 1.5 and a realized average return of 13.5%, against a CAPM-predicted 9.5%. What does that 4.0% gap represent, and why does CAPM's own theory say it should be zero?</summary>
+    <div class="tl-answer">
+      That 4.0% gap is Asset B's alpha — the part of its realized average
+      return that beta and the market risk premium alone don't explain.
+      CAPM's theory holds that beta is a <em>complete</em> summary of the
+      priced risk in an asset's returns, so in a world where CAPM held
+      exactly and markets were in the equilibrium the model describes, every
+      asset's expected alpha should be exactly zero — any leftover return is,
+      by the theory's own logic, return the asset shouldn't be earning. A
+      real, persistent nonzero alpha is either genuine mispricing being
+      captured, compensation for a real risk factor the one-factor model
+      simply omits, or noise — which is exactly the ambiguity the empirical
+      failure section and the next lesson in this category exist to resolve.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. What specific empirical finding from Fama &amp; French (1992) motivates the next lesson in this category, and why is it a genuine problem for CAPM rather than a minor footnote?</summary>
+    <div class="tl-answer">
+      Sorting real stocks by market beta and comparing their average returns
+      showed a much weaker relationship than CAPM's SML predicts, while firm
+      size (small-cap stocks) and book-to-market ratio ("value" stocks) both
+      showed a much stronger relationship with average returns than beta did.
+      It's a genuine problem, not a footnote, because it's one of the most
+      replicated results in empirical asset pricing: CAPM's core claim is
+      that beta alone should be a complete summary of priced risk, and
+      decades of out-of-sample evidence across markets and time periods
+      consistently show it isn't. That specific, well-documented gap is what
+      Fama-French &amp; Carhart, the next lesson in this category, was built
+      to directly address by adding size and value factors on top of market
+      beta.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>William F. Sharpe, <em>"Capital Asset Prices: A Theory of Market Equilibrium under Conditions of Risk,"</em> Journal of Finance, 19(3), 1964 — the original CAPM paper, deriving the Security Market Line from mean-variance equilibrium; Sharpe shared the 1990 Nobel Memorial Prize in Economic Sciences in part for this work.</li>
+    <li>John Lintner, <em>"The Valuation of Risk Assets and the Selection of Risky Investments in Stock Portfolios and Capital Budgets,"</em> Review of Economics and Statistics, 47(1), 1965 — an independent derivation of the same equilibrium pricing result, arrived at from a different angle around the same time as Sharpe's.</li>
+    <li>Eugene F. Fama and Kenneth R. French, <em>"The Cross-Section of Expected Stock Returns,"</em> Journal of Finance, 47(2), 1992 — the canonical empirical paper showing market beta alone poorly explains the cross-section of average stock returns, and that size and book-to-market do much better; the direct motivation for the next lesson in this category.</li>
+    <li>Harry Markowitz, <em>"Portfolio Selection,"</em> Journal of Finance, 7(1), 1952 — the mean-variance framework CAPM is built on top of; see this curriculum's own <a href="markowitz-black-litterman.html">Markowitz &amp; Black-Litterman</a> lesson for the full derivation of the efficient frontier and tangency portfolio CAPM assumes.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="../hub.html">← Theory Lab hub</a>
+    <a href="institutional-fama-french-carhart.html">Fama-French &amp; Carhart →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+<script>
+(function(){
+  var rf = document.getElementById('capm-scratch-rf');
+  if (!rf) return;
+  var mFields = ['m1','m2','m3','m4','m5'];
+  var aFields = ['a1','a2','a3','a4','a5'];
+  var mInputs = mFields.map(function(f){ return document.getElementById('capm-scratch-' + f); });
+  var aInputs = aFields.map(function(f){ return document.getElementById('capm-scratch-' + f); });
+
+  var DEFAULTS = { rf: 2, m: [8, -3, 15, 6, 9], a: [5, -0.5, 8.5, 4, 5.5] };
+
+  var emOut = document.getElementById('capm-scratch-em');
+  var varmOut = document.getElementById('capm-scratch-varm');
+  var covOut = document.getElementById('capm-scratch-cov');
+  var betaOut = document.getElementById('capm-scratch-beta');
+  var predOut = document.getElementById('capm-scratch-pred');
+  var realizedOut = document.getElementById('capm-scratch-realized');
+  var alphaOut = document.getElementById('capm-scratch-alpha');
+  var noteOut = document.getElementById('capm-scratch-note');
+  var resetBtn = document.getElementById('capm-scratch-reset');
+
+  function blank(msg){
+    emOut.textContent = varmOut.textContent = covOut.textContent = '—';
+    betaOut.textContent = predOut.textContent = '—';
+    realizedOut.textContent = alphaOut.textContent = '—';
+    noteOut.textContent = msg;
+  }
+
+  function recompute(){
+    var rfv = parseFloat(rf.value);
+    var m = mInputs.map(function(el){ return parseFloat(el.value); });
+    var a = aInputs.map(function(el){ return parseFloat(el.value); });
+
+    if (!isFinite(rfv) || m.some(function(v){ return !isFinite(v); }) || a.some(function(v){ return !isFinite(v); })) {
+      blank('Enter a number in every field — blank or non-numeric input can\'t be computed.');
+      return;
+    }
+
+    var n = m.length;
+    var mMean = m.reduce(function(s,v){ return s+v; }, 0) / n;
+    var aMean = a.reduce(function(s,v){ return s+v; }, 0) / n;
+
+    var cov = 0, varM = 0;
+    for (var i = 0; i < n; i++){
+      var dm = m[i] - mMean, da = a[i] - aMean;
+      cov += dm * da;
+      varM += dm * dm;
+    }
+    cov /= n; varM /= n;
+
+    emOut.textContent = mMean.toFixed(4) + '%';
+    varmOut.textContent = varM.toFixed(4);
+    covOut.textContent = cov.toFixed(4);
+
+    if (varM < 1e-9) {
+      betaOut.textContent = '—';
+      predOut.textContent = '—';
+      realizedOut.textContent = aMean.toFixed(4) + '%';
+      alphaOut.textContent = '—';
+      noteOut.textContent = '(market variance is ~0 — the market barely moved across these observations, so beta is undefined, not just small)';
+      return;
+    }
+
+    var beta = cov / varM;
+    var pred = rfv + beta * (mMean - rfv);
+    var alpha = aMean - pred;
+
+    betaOut.textContent = beta.toFixed(4);
+    predOut.textContent = pred.toFixed(4) + '%';
+    realizedOut.textContent = aMean.toFixed(4) + '%';
+    alphaOut.textContent = (alpha >= 0 ? '+' : '') + alpha.toFixed(4) + '%';
+    noteOut.textContent = '';
+  }
+
+  mInputs.concat(aInputs).concat([rf]).forEach(function(el){ el.addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    rf.value = DEFAULTS.rf;
+    mInputs.forEach(function(el, i){ el.value = DEFAULTS.m[i]; });
+    aInputs.forEach(function(el, i){ el.value = DEFAULTS.a[i]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
+</body>
+</html>

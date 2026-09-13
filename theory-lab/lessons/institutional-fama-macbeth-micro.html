@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fama-MacBeth Regression — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Fama-MacBeth Regression — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer full derivations, live math notation, and a 6-question self-test?<a href="institutional-fama-macbeth.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Factor Models 3 · Factor Models</div>
+      <h1 class="sl-h1">Fama-MacBeth, <em>Pricing the Risk, Not Just the Exposure</em></h1>
+      <p class="sl-lede">A factor-loading regression tells you how exposed an asset is to a risk factor. It never tells you whether the market actually pays anyone for bearing that exposure — or how to get an honest standard error when every asset's return in a given month is pushed around by the same shared shock. Fama and MacBeth's 1973 two-stage procedure answers both, one period at a time.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Two different questions, easy to confuse</h2>
+      <p class="sl-sub">A beta and a risk premium sound similar. They answer completely different things.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Beta — exposure</span>
+          <p>"How much does this asset move per unit move in the factor?" Answered by a single time-series regression, one per asset — exactly what a Fama-French/Carhart factor regression gives you.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag purple">Lambda — price of risk</span>
+          <p>"Does the market actually compensate anyone for that exposure, and by how much per unit?" A beta alone cannot answer this — it needs an entirely separate estimation step, run across assets instead of across time.</p>
+        </div>
+      </div>
+      <div class="sl-quote">A factor with a large, reliable payoff per unit of exposure is worth being exposed to. A factor whose exposure earns nothing on average is not — no matter how cleanly its betas were estimated. This deck is about the second question only.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Stage 1 — measure exposure once, per asset</h2>
+      <p class="sl-sub">One time-series regression per asset, using every period in the sample. Run once; never touched again.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Setup for this deck</div>
+        <div class="sl-row">
+          <div class="sl-box blue">Asset A<br>R_A,t on F_t</div>
+          <div class="sl-arrow">→</div>
+          <div class="sl-box green">β̂_A = 0.7</div>
+        </div>
+        <div class="sl-row">
+          <div class="sl-box blue">Asset B<br>R_B,t on F_t</div>
+          <div class="sl-arrow">→</div>
+          <div class="sl-box green">β̂_B = 1.0</div>
+        </div>
+        <div class="sl-row">
+          <div class="sl-box blue">Asset C<br>R_C,t on F_t</div>
+          <div class="sl-arrow">→</div>
+          <div class="sl-box green">β̂_C = 1.3</div>
+        </div>
+        <div class="sl-verdict">Three FX carry-sorted portfolios, three fixed exposures — estimated once from the full history. Every later step in this deck reuses these exact three numbers and never re-estimates them.</div>
+      </div>
+      <p class="sl-p">This is the identical OLS slope formula the Correlation &amp; Linear Regression lesson derives, β̂ = Cov(X,Y)/Var(X) — here X is the factor's return, Y is one asset's return, and the "sample" being summed over is time. Nothing new is invented in Stage 1; it's just that same regression, run once per asset.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Stage 2 — price it fresh, every single period</h2>
+      <p class="sl-sub">Same three betas, four different months. Step through each month's cross-sectional regression.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="fm-tabs">
+          <button class="sl-tab active" data-panel="fm-t1">Month 1</button>
+          <button class="sl-tab" data-panel="fm-t2">Month 2</button>
+          <button class="sl-tab" data-panel="fm-t3">Month 3</button>
+          <button class="sl-tab" data-panel="fm-t4">Month 4</button>
+        </div>
+        <div class="sl-panel active" id="fm-t1">
+          <div class="sl-row"><div class="sl-box">A: β=0.7, R=1.0%</div><div class="sl-box">B: β=1.0, R=2.0%</div><div class="sl-box">C: β=1.3, R=3.5%</div></div>
+          <div class="sl-verdict">Regress this month's 3 returns on the 3 fixed betas: <strong>λ̂₁ = Cov(β,R)/Var(β) = 0.25/0.06 = 4.1667</strong>. Higher exposure paid off handsomely this month.</div>
+        </div>
+        <div class="sl-panel" id="fm-t2">
+          <div class="sl-row"><div class="sl-box">A: β=0.7, R=−0.5%</div><div class="sl-box">B: β=1.0, R=−1.0%</div><div class="sl-box">C: β=1.3, R=−2.0%</div></div>
+          <div class="sl-verdict">Same three betas, this month's returns: <strong>λ̂₂ = −0.15/0.06 = −2.5000</strong>. Higher exposure was punished this month — a bad month for the factor.</div>
+        </div>
+        <div class="sl-panel" id="fm-t3">
+          <div class="sl-row"><div class="sl-box">A: β=0.7, R=0.8%</div><div class="sl-box">B: β=1.0, R=1.0%</div><div class="sl-box">C: β=1.3, R=1.1%</div></div>
+          <div class="sl-verdict">Returns barely differ across exposures this month: <strong>λ̂₃ = 0.03/0.06 = 0.5000</strong> — a small, nearly flat price of risk.</div>
+        </div>
+        <div class="sl-panel" id="fm-t4">
+          <div class="sl-row"><div class="sl-box">A: β=0.7, R=−1.0%</div><div class="sl-box">B: β=1.0, R=0.0%</div><div class="sl-box">C: β=1.3, R=1.3%</div></div>
+          <div class="sl-verdict">A wide spread again: <strong>λ̂₄ = 0.23/0.06 = 3.8333</strong>.</div>
+        </div>
+        <div class="sl-note">Var(β̂) = 0.06 is fixed across all four months — it only depends on the three (unchanging) betas, not on that month's returns.</div>
+      </div>
+      <p class="sl-p">Four months, four completely separate regressions, four different answers: 4.1667, −2.5000, 0.5000, 3.8333. That spread — a good month, a bad month, a flat month, a good month again — is the entire reason a single pooled number can't be trusted without knowing how much it bounces around.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">The whole assembly line, in one picture</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Visualize it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 680 400" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagram showing Stage 1 as three time-series regressions producing fixed betas, Stage 2 as four cross-sectional regressions producing four lambda estimates, and a final step averaging those four estimates into the reported risk premium with its standard error.">
+            <rect x="15" y="14" width="195" height="56" rx="8" style="fill:var(--blue-bg);stroke:var(--blue);stroke-width:1.5"/>
+            <text x="112" y="36" text-anchor="middle" fill="var(--text)" font-size="12" font-family="'DM Mono',monospace">Asset A: R_A,t on F_t</text>
+            <text x="112" y="52" text-anchor="middle" fill="var(--blue)" font-size="11" font-family="'DM Mono',monospace" font-weight="700">→ β̂_A = 0.7</text>
+            <text x="112" y="65" text-anchor="middle" fill="var(--text3)" font-size="9" font-family="'DM Mono',monospace">time-series OLS, all T periods</text>
+
+            <rect x="242" y="14" width="195" height="56" rx="8" style="fill:var(--blue-bg);stroke:var(--blue);stroke-width:1.5"/>
+            <text x="339" y="36" text-anchor="middle" fill="var(--text)" font-size="12" font-family="'DM Mono',monospace">Asset B: R_B,t on F_t</text>
+            <text x="339" y="52" text-anchor="middle" fill="var(--blue)" font-size="11" font-family="'DM Mono',monospace" font-weight="700">→ β̂_B = 1.0</text>
+            <text x="339" y="65" text-anchor="middle" fill="var(--text3)" font-size="9" font-family="'DM Mono',monospace">time-series OLS, all T periods</text>
+
+            <rect x="469" y="14" width="195" height="56" rx="8" style="fill:var(--blue-bg);stroke:var(--blue);stroke-width:1.5"/>
+            <text x="566" y="36" text-anchor="middle" fill="var(--text)" font-size="12" font-family="'DM Mono',monospace">Asset C: R_C,t on F_t</text>
+            <text x="566" y="52" text-anchor="middle" fill="var(--blue)" font-size="11" font-family="'DM Mono',monospace" font-weight="700">→ β̂_C = 1.3</text>
+            <text x="566" y="65" text-anchor="middle" fill="var(--text3)" font-size="9" font-family="'DM Mono',monospace">time-series OLS, all T periods</text>
+
+            <line x1="112" y1="70" x2="330" y2="112" style="stroke:var(--border2);stroke-width:1.5"/>
+            <line x1="339" y1="70" x2="339" y2="112" style="stroke:var(--border2);stroke-width:1.5"/>
+            <line x1="566" y1="70" x2="348" y2="112" style="stroke:var(--border2);stroke-width:1.5"/>
+
+            <rect x="185" y="112" width="310" height="42" rx="8" style="fill:var(--panel2);stroke:var(--border2);stroke-width:1.5"/>
+            <text x="340" y="130" text-anchor="middle" fill="var(--text)" font-size="12" font-family="'DM Mono',monospace" font-weight="700">Stage 1 output: β̂_A, β̂_B, β̂_C</text>
+            <text x="340" y="146" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">fixed from here on — never re-estimated</text>
+
+            <line x1="260" y1="154" x2="90" y2="192" style="stroke:var(--border2);stroke-width:1.5"/>
+            <line x1="310" y1="154" x2="255" y2="192" style="stroke:var(--border2);stroke-width:1.5"/>
+            <line x1="370" y1="154" x2="425" y2="192" style="stroke:var(--border2);stroke-width:1.5"/>
+            <line x1="420" y1="154" x2="590" y2="192" style="stroke:var(--border2);stroke-width:1.5"/>
+
+            <rect x="10" y="192" width="160" height="50" rx="8" style="fill:var(--purple-bg);stroke:var(--purple);stroke-width:1.5"/>
+            <text x="90" y="212" text-anchor="middle" fill="var(--text)" font-size="11" font-family="'DM Mono',monospace">t=1 cross-section OLS</text>
+            <text x="90" y="228" text-anchor="middle" fill="var(--purple)" font-size="12" font-family="'DM Mono',monospace" font-weight="700">λ̂₁ = 4.1667</text>
+
+            <rect x="175" y="192" width="160" height="50" rx="8" style="fill:var(--purple-bg);stroke:var(--purple);stroke-width:1.5"/>
+            <text x="255" y="212" text-anchor="middle" fill="var(--text)" font-size="11" font-family="'DM Mono',monospace">t=2 cross-section OLS</text>
+            <text x="255" y="228" text-anchor="middle" fill="var(--purple)" font-size="12" font-family="'DM Mono',monospace" font-weight="700">λ̂₂ = −2.5000</text>
+
+            <rect x="340" y="192" width="160" height="50" rx="8" style="fill:var(--purple-bg);stroke:var(--purple);stroke-width:1.5"/>
+            <text x="420" y="212" text-anchor="middle" fill="var(--text)" font-size="11" font-family="'DM Mono',monospace">t=3 cross-section OLS</text>
+            <text x="420" y="228" text-anchor="middle" fill="var(--purple)" font-size="12" font-family="'DM Mono',monospace" font-weight="700">λ̂₃ = 0.5000</text>
+
+            <rect x="505" y="192" width="165" height="50" rx="8" style="fill:var(--purple-bg);stroke:var(--purple);stroke-width:1.5"/>
+            <text x="587" y="212" text-anchor="middle" fill="var(--text)" font-size="11" font-family="'DM Mono',monospace">t=4 cross-section OLS</text>
+            <text x="587" y="228" text-anchor="middle" fill="var(--purple)" font-size="12" font-family="'DM Mono',monospace" font-weight="700">λ̂₄ = 3.8333</text>
+
+            <line x1="90" y1="242" x2="300" y2="292" style="stroke:var(--border2);stroke-width:1.5"/>
+            <line x1="255" y1="242" x2="320" y2="292" style="stroke:var(--border2);stroke-width:1.5"/>
+            <line x1="420" y1="242" x2="360" y2="292" style="stroke:var(--border2);stroke-width:1.5"/>
+            <line x1="587" y1="242" x2="380" y2="292" style="stroke:var(--border2);stroke-width:1.5"/>
+
+            <rect x="170" y="292" width="340" height="72" rx="10" style="fill:var(--green-bg);stroke:var(--green);stroke-width:2"/>
+            <text x="340" y="316" text-anchor="middle" fill="var(--text)" font-size="13" font-family="'DM Mono',monospace" font-weight="700">λ̄ = mean(λ̂_t) = 1.5000</text>
+            <text x="340" y="336" text-anchor="middle" fill="var(--green)" font-size="12" font-family="'DM Mono',monospace">SE(λ̄) = s_λ/√T ≈ 1.5694</text>
+            <text x="340" y="353" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">from the spread of the four λ̂_t's, not pooled residuals</text>
+          </svg>
+        </div>
+        <div class="sl-note">Stage 1 runs once, top row. Stage 2 reruns every period, middle row. The bottom box is the entire final step — a plain average and a plain standard error, computed only from that short row of four numbers.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">The one idea this whole deck exists to teach</h2>
+      <p class="sl-sub">Same 12 numbers (3 assets × 4 months). Two completely different ways to get a standard error from them.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Compare</div>
+        <div class="sl-tabs" id="pool-tabs">
+          <button class="sl-tab active" data-panel="pool-1">Pooled OLS (wrong)</button>
+          <button class="sl-tab" data-panel="pool-2">Fama-MacBeth (right)</button>
+        </div>
+        <div class="sl-panel active" id="pool-1">
+          <div class="sl-row"><div class="sl-box amber">Stack all 12 rows</div><div class="sl-arrow">→</div><div class="sl-box amber">One OLS regression</div><div class="sl-arrow">→</div><div class="sl-box red">SE assumes 12 independent points</div></div>
+          <div class="sl-verdict"><strong>Wrong.</strong> The 3 assets within any one month all lean the same direction — they share that month's shock. There are really only about 4 independent "stories" here, not 12. The reported standard error comes out far too small.</div>
+        </div>
+        <div class="sl-panel" id="pool-2">
+          <div class="sl-row"><div class="sl-box green">4 monthly regressions</div><div class="sl-arrow">→</div><div class="sl-box green">4 λ̂_t values</div><div class="sl-arrow">→</div><div class="sl-box green">SE from their time-series spread</div></div>
+          <div class="sl-verdict"><strong>Right.</strong> Each month is reduced to one number before it ever reaches the averaging step. Whatever correlation existed among the 3 assets within a month is now irrelevant — that month only ever contributes one data point.</div>
+        </div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">The mechanism in one sentence</div>
+        <p>Fama-MacBeth doesn't model or remove the cross-sectional correlation between assets — it makes that correlation irrelevant, by summarizing each period down to one number before it's ever averaged.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">More periods, tighter standard error</h2>
+      <p class="sl-sub">SE(λ̄) = s_λ/√T. Drag the slider and watch the standard error shrink as more periods are added — holding the spread of the λ̂_t's fixed at this deck's own worked value.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Curve of the standard error of the average lambda falling steeply as the number of time periods increases, then flattening, with a marker showing the current number of periods">
+            <line x1="60" y1="220" x2="620" y2="220" style="stroke:var(--border2)"/>
+            <line x1="60" y1="20" x2="60" y2="220" style="stroke:var(--border2)"/>
+            <text x="340" y="245" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">number of periods (T)</text>
+            <text x="26" y="120" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace" transform="rotate(-90 26 120)">SE(λ̄)</text>
+            <path id="se-curve" d="" style="stroke:var(--blue);stroke-width:2.5;fill:none;stroke-linecap:round"/>
+            <line id="se-vline" x1="150" y1="120" x2="150" y2="220" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:3 3;opacity:.6"/>
+            <circle id="se-dot" cx="150" cy="120" r="6" style="fill:var(--blue);stroke:var(--bg);stroke-width:2"/>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Time periods (T)</span><span class="sl-live" id="se-tval">T = 4</span></div>
+        <input type="range" class="sl-slider" id="se-slider" min="2" max="60" step="1" value="4">
+        <div class="sl-note" id="se-readout">Holding s_λ = 3.1388 fixed (this deck's own worked value): SE(λ̄) = 3.1388/√4 ≈ 1.5694</div>
+      </div>
+      <p class="sl-p">This is the entire practical argument for wanting more history in a Fama-MacBeth study: nothing about the estimation procedure itself changes as T grows, but the honest standard error keeps shrinking — exactly the ordinary standard-error-of-a-mean behavior, applied to a time series of period-level risk-premium estimates instead of to raw returns.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">A second catch: the betas themselves are estimates</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📏</div><div><h4>β̂_i isn't the true β_i</h4><p>Stage 1 only ever produces an estimate, fit from a finite time series — it carries its own sampling error, however small.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">↘</div><div><h4>A noisy regressor biases the slope toward zero</h4><p>Using an estimated (not exactly known) β̂_i as Stage 2's regressor is a classical errors-in-variables problem — it attenuates λ̂_t, pulling it toward zero.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔧</div><div><h4>Shanken (1992) is the standard fix</h4><p>Rather than re-deriving it here: Shanken's correction inflates the reported Fama-MacBeth standard errors, to account for the extra uncertainty that Stage 1's estimation error introduces into Stage 2.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧮</div><div><h4>Two separate corrections, not one</h4><p>Shanken fixes the errors-in-variables problem. It does not, by itself, fix autocorrelation in the λ̂_t series across time — that needs its own robust standard error, on top.</p></div></div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>Plain, uncorrected Fama-MacBeth standard errors are typically too optimistic — smaller than they should be — for a reason completely separate from the pooling mistake two sections ago. A result that looks significant with plain standard errors can lose that significance once Shanken's correction is applied.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Compute the average and standard error yourself</h2>
+      <p class="sl-sub">Same four monthly λ̂_t's from Section 3. Change any value and everything recomputes live.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>λ̂₁</label><input type="number" class="sl-input" id="fmc-l1" value="4.1667" step="0.0001"></div>
+          <div class="sl-calc-field"><label>λ̂₂</label><input type="number" class="sl-input" id="fmc-l2" value="-2.5" step="0.0001"></div>
+          <div class="sl-calc-field"><label>λ̂₃</label><input type="number" class="sl-input" id="fmc-l3" value="0.5" step="0.0001"></div>
+          <div class="sl-calc-field"><label>λ̂₄</label><input type="number" class="sl-input" id="fmc-l4" value="3.8333" step="0.0001"></div>
+          <div class="sl-calc-op">→</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">λ̄ (average)</div>
+            <div class="sl-calc-result-val" id="fmc-avg">1.5000</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Valid entries (T) = <b id="fmc-t">4</b></div>
+          <div>s_λ (sample std dev) = <b id="fmc-sd">3.1388</b></div>
+          <div>SE(λ̄) = s_λ/√T = <b id="fmc-se">1.5694</b></div>
+          <div>t = λ̄/SE(λ̄) = <b id="fmc-tstat">0.96</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="fmc-reset">Reset to worked-example numbers</button>
+        <div class="sl-note" id="fmc-note">Blank or non-numeric fields are dropped from T. Fewer than 2 valid entries shows "—" — a standard error needs at least 2 points to measure spread.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">A big-looking premium isn't automatically a real one</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">From the calculator above</div>
+        <p>With only 4 months, λ̄ = 1.50 with SE ≈ 1.57 gives t ≈ 0.96 — nowhere near the conventional |t| &gt; 2 bar. A 1.50%-per-unit average that looks economically large is, honestly reported, statistically indistinguishable from zero with this little data.</p>
+      </div>
+      <p class="sl-p">Real Fama-MacBeth studies lean on decades of monthly data, not four months, precisely because a standard deviation computed from a handful of period estimates is itself extremely noisy. Even a properly-computed, statistically significant λ̄ after both the Shanken and autocorrelation corrections only answers one narrow question: was this specific factor's premium reliably nonzero in this specific historical sample. It says nothing about whether the factor was chosen after looking at the same data, or whether the premium survives out-of-sample and after costs.</p>
+      <div class="sl-quote">A correctly-computed standard error is a statement about the estimator, not a certificate of tradable edge.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Where practitioners actually use this</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📐</div><div><h4>The default way to price a factor</h4><p>Some form of Fama-MacBeth shows up in nearly every asset-pricing paper that estimates a λ, not just a β.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧭</div><div><h4>Shanken-corrected SEs as the reported default</h4><p>Applied work commonly reports the Shanken-corrected standard error alongside the raw one, precisely to avoid overstating significance.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔁</div><div><h4>Newey-West on top, when λ̂_t trends</h4><p>A second, separate robustness layer for autocorrelation in the period-level estimates themselves — the same fix the regression lesson's own pitfalls section covers, applied here to λ̂_t instead of raw residuals.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What does Stage 1 of Fama-MacBeth estimate, and how many times does it run?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Each asset's factor exposure β̂_i, once per asset, using the full time series</button>
+        <button class="sl-quiz-opt">The risk premium λ, once for the whole sample</button>
+        <button class="sl-quiz-opt">A new beta for every single period, recomputed every time</button>
+        <div class="sl-quiz-explain">Stage 1 regresses each asset's own returns on the factor across all T periods, once per asset — producing a fixed β̂_i that Stage 2 then reuses without ever re-estimating it.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>What does Stage 2 estimate, and along which axis of the data does it run?</h4>
+        <button class="sl-quiz-opt" data-correct="true">One λ̂_t per period, regressing that period's returns across assets on the fixed betas</button>
+        <button class="sl-quiz-opt">One β̂_i per asset, regressing across time</button>
+        <button class="sl-quiz-opt">A single number for the entire panel, ignoring time altogether</button>
+        <div class="sl-quiz-explain">Stage 2 fixes a period and regresses across assets — the exact opposite axis from Stage 1, which fixed an asset and regressed across time.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Why does pooling all asset-period observations into one OLS regression understate the true standard error?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Assets in the same period share common shocks, so the observations aren't really independent</button>
+        <button class="sl-quiz-opt">OLS can't be run on panel data at all</button>
+        <button class="sl-quiz-opt">Pooling always produces a biased point estimate, not just a biased standard error</button>
+        <div class="sl-quiz-explain">OLS's standard-error formula assumes independent errors. Assets in the same month share that month's common shock, so a pooled panel has far fewer genuinely independent pieces of information than its raw row count suggests.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>How does Fama-MacBeth's design make that cross-sectional correlation irrelevant to the final standard error?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Each period is reduced to a single λ̂_t before it ever reaches the averaging step</button>
+        <button class="sl-quiz-opt">It explicitly models and subtracts the correlation between every pair of assets</button>
+        <button class="sl-quiz-opt">It only uses one asset per period, avoiding the issue entirely</button>
+        <div class="sl-quiz-explain">Whatever correlation existed among assets within a period is baked into that period's one λ̂_t, but the final inference step only ever sees T period-level numbers — never the raw correlated observations directly.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>What does the Shanken (1992) correction actually change about a Fama-MacBeth result?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It inflates the standard errors, to account for Stage-1 betas being estimates rather than known constants</button>
+        <button class="sl-quiz-opt">It changes the point estimate λ̄ itself to remove attenuation bias</button>
+        <button class="sl-quiz-opt">It replaces Stage 2 with a single pooled regression</button>
+        <div class="sl-quiz-explain">Shanken's correction addresses errors-in-variables by inflating the reported standard errors — it does not touch λ̄ itself, only how confidently that estimate can be reported as statistically significant.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>A beta measures exposure; a Fama-MacBeth λ measures the price the market pays for that exposure — two genuinely separate questions.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Stage 1 estimates each asset's beta once, across time. Stage 2 estimates one λ̂_t per period, across assets, reusing the fixed betas every time.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>The final risk premium is the average of the λ̂_t's; its standard error comes from how much they spread out over time — not from a pooled panel's residuals.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Pooling every asset-period observation into one regression badly understates the standard error, because assets in the same period share common shocks.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Estimated (not true) Stage-1 betas bias λ̂_t toward zero; Shanken's correction inflates the standard errors to account for it.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Tell the difference between "this factor has a well-measured exposure" and "this factor is actually priced" — and know exactly why a single pooled panel regression can't honestly answer the second question. Recognize both the pooling mistake and the errors-in-variables correction by name the next time a factor's risk premium is quoted with a standard error attached.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Arbitrage Pricing Theory</h3>
+        <p>Fama-MacBeth prices whatever factors you hand it. APT asks a deeper question: what has to be true, in a genuinely arbitrage-free market, for any factor structure to price returns at all.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="institutional-apt-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="institutional-fama-macbeth.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // SE-vs-T slider: SE(T) = s_lambda / sqrt(T), fixed s_lambda from the worked example.
+  (function(){
+    var slider = document.getElementById('se-slider');
+    if (!slider) return;
+    var tVal = document.getElementById('se-tval');
+    var dot = document.getElementById('se-dot');
+    var vline = document.getElementById('se-vline');
+    var readout = document.getElementById('se-readout');
+    var curve = document.getElementById('se-curve');
+    var S_LAMBDA = 3.1388;
+    var X0 = 60, X1 = 620, Y0 = 220, YTOP = 20;
+    var T_MIN = 2, T_MAX = 60;
+    var SE_MAX = S_LAMBDA / Math.sqrt(T_MIN); // value at T=2, tallest point on the curve
+
+    function xForT(t){ return X0 + (X1 - X0) * (t - T_MIN) / (T_MAX - T_MIN); }
+    function yForSE(se){
+      var frac = se / SE_MAX; // 1 at T_MIN, shrinking toward 0
+      return Y0 - frac * (Y0 - YTOP);
+    }
+
+    function buildCurve(){
+      var d = '';
+      for (var t = T_MIN; t <= T_MAX; t++){
+        var se = S_LAMBDA / Math.sqrt(t);
+        var x = xForT(t), y = yForSE(se);
+        d += (t === T_MIN ? 'M' : 'L') + x.toFixed(1) + ',' + y.toFixed(1) + ' ';
+      }
+      curve.setAttribute('d', d);
+    }
+
+    function update(){
+      var t = parseInt(slider.value, 10);
+      if (!isFinite(t) || t < T_MIN) t = T_MIN;
+      var se = S_LAMBDA / Math.sqrt(t);
+      var x = xForT(t), y = yForSE(se);
+      dot.setAttribute('cx', x.toFixed(1));
+      dot.setAttribute('cy', y.toFixed(1));
+      vline.setAttribute('x1', x.toFixed(1));
+      vline.setAttribute('x2', x.toFixed(1));
+      vline.setAttribute('y1', y.toFixed(1));
+      tVal.textContent = 'T = ' + t;
+      readout.textContent = 'Holding s_λ = 3.1388 fixed (this deck’s own worked value): SE(λ̄) = 3.1388/√' + t + ' ≈ ' + se.toFixed(4);
+    }
+
+    buildCurve();
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Lambda_t average + standard error calculator, with defensive guards.
+  (function(){
+    var l1 = document.getElementById('fmc-l1');
+    if (!l1) return;
+    var fields = ['l1', 'l2', 'l3', 'l4'];
+    var inputs = { l1: l1, l2: document.getElementById('fmc-l2'), l3: document.getElementById('fmc-l3'), l4: document.getElementById('fmc-l4') };
+    var DEFAULTS = { l1: 4.1667, l2: -2.5, l3: 0.5, l4: 3.8333 };
+    var DEFAULT_NOTE = 'Blank or non-numeric fields are dropped from T. Fewer than 2 valid entries shows "—" — a standard error needs at least 2 points to measure spread.';
+
+    var avgOut = document.getElementById('fmc-avg');
+    var tOut = document.getElementById('fmc-t');
+    var sdOut = document.getElementById('fmc-sd');
+    var seOut = document.getElementById('fmc-se');
+    var tstatOut = document.getElementById('fmc-tstat');
+    var note = document.getElementById('fmc-note');
+    var resetBtn = document.getElementById('fmc-reset');
+
+    function recompute(){
+      var vals = fields
+        .map(function(f){ return parseFloat(inputs[f].value); })
+        .filter(function(v){ return isFinite(v); });
+      var n = vals.length;
+      tOut.textContent = n.toString();
+
+      if (n < 2) {
+        avgOut.textContent = n === 1 ? vals[0].toFixed(4) : '—';
+        sdOut.textContent = '—';
+        seOut.textContent = '—';
+        tstatOut.textContent = '—';
+        note.textContent = 'Need at least 2 valid λ̂_t values to compute a standard error.';
+        return;
+      }
+
+      var avg = vals.reduce(function(a, b){ return a + b; }, 0) / n;
+      var sumSq = vals.reduce(function(a, v){ return a + Math.pow(v - avg, 2); }, 0);
+      var sd = Math.sqrt(sumSq / (n - 1));
+      var se = sd / Math.sqrt(n);
+
+      avgOut.textContent = avg.toFixed(4);
+      sdOut.textContent = sd.toFixed(4);
+
+      if (se === 0) {
+        seOut.textContent = '0.0000';
+        tstatOut.textContent = avg === 0 ? '—' : '±∞';
+        note.textContent = 'Every entry is identical — zero spread means the standard error is exactly zero.';
+        return;
+      }
+
+      seOut.textContent = se.toFixed(4);
+      tstatOut.textContent = (avg / se).toFixed(2);
+      note.textContent = DEFAULT_NOTE;
+    }
+
+    fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>
