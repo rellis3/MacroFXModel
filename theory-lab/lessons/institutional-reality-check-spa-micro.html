@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>White's Reality Check &amp; SPA — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">White's Reality Check &amp; SPA — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer full derivations, live math notation, and a 6-question self-test?<a href="institutional-reality-check-spa.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Backtest &amp; Research Integrity 1 · Backtest &amp; Research Integrity</div>
+      <h1 class="sl-h1">White's Reality Check &amp; Hansen's SPA Test, <em>Bootstrapping the Whole Candidate Set</em></h1>
+      <p class="sl-lede">The Deflated Sharpe Ratio corrects one reported Sharpe using an <em>estimate</em> of how many trials produced it. These two tests skip the estimate — they keep every candidate strategy's full return history and bootstrap the entire panel directly, resampling all of them together and asking how often pure luck alone would produce a "best" result this good.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Same question, a completely different tool</h2>
+      <p class="sl-sub">Both fixes target the exact same danger: the best of many tries looks good even with zero real edge anywhere.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📐</div><div><h4>Deflated Sharpe Ratio</h4><p>Compresses each trial to one Sharpe ratio, then plugs an <em>estimated</em> trial count N and dispersion σ<sub>SR</sub> into an extreme-value-theory formula for what the best-of-N Sharpe should look like by luck.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎲</div><div><h4>White's Reality Check / Hansen's SPA</h4><p>Keeps every candidate's full period-by-period return history and directly <strong>bootstraps the entire panel</strong> — no Gaussian-maximum formula, no separate dispersion estimate. The real data supplies its own distribution.</p></div></div>
+      </div>
+      <div class="sl-quote">Same disease, two honest treatments. This deck covers the bootstrap-the-whole-panel branch — reusing the block bootstrap this curriculum's own Bootstrapping &amp; Monte Carlo lesson already built, now pointed at a <em>maximum across many candidates</em> instead of one series alone.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">The setup: many candidates, one shared clock</h2>
+      <p class="sl-sub">N candidate strategies, T shared time periods, one fixed benchmark.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The statistic</div>
+        <div class="sl-row">
+          <div class="sl-box">d<sub>k,t</sub> = R<sub>k,t</sub> − R<sub>t</sub><sup>bench</sup></div>
+          <div class="sl-arrow">→</div>
+          <div class="sl-box green">V̄ = max<sub>k</sub> mean(d<sub>k</sub>)</div>
+        </div>
+        <div class="sl-verdict">Every candidate's excess return over the SAME benchmark, on the SAME periods. The test statistic is simply whichever candidate's own average excess return is currently the largest.</div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Why not a textbook critical value?</div>
+        <p>Two problems stack up: real returns are usually autocorrelated (breaking the usual √T standard error even for one series), and V̄ is a <strong>maximum across N candidates</strong> that are often cross-correlated too — variations on a theme share the same underlying bets. There's no simple formula for "the max of many dependent things." So instead of a formula, bootstrap it.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">One shared resample, applied to every candidate at once</h2>
+      <p class="sl-sub">The key trick: draw ONE random block-index path, and reuse it across all N candidates in the same replicate.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Visualize it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagram of three candidate strategies' return timelines, each split into the same contiguous blocks. A single random draw of block order is applied identically to all three timelines to build one joint bootstrap resample, preserving both each series' own serial correlation and the correlation across strategies at the same historical moments.">
+            <text x="10" y="18" font-size="11" fill="var(--text3)" font-family="'DM Mono',monospace">original timeline (T periods, shared by all candidates)</text>
+            <g font-family="'DM Mono',monospace" font-size="11">
+              <text x="10" y="45" fill="var(--blue)">A</text>
+              <text x="10" y="80" fill="var(--purple)">B</text>
+              <text x="10" y="115" fill="var(--amber)">C</text>
+            </g>
+            <g>
+              <rect x="40" y="30" width="80" height="24" rx="4" style="fill:var(--blue-bg);stroke:var(--blue)"/>
+              <rect x="124" y="30" width="80" height="24" rx="4" style="fill:var(--panel2);stroke:var(--border2)"/>
+              <rect x="208" y="30" width="80" height="24" rx="4" style="fill:var(--blue-bg);stroke:var(--blue)"/>
+              <rect x="292" y="30" width="80" height="24" rx="4" style="fill:var(--panel2);stroke:var(--border2)"/>
+
+              <rect x="40" y="65" width="80" height="24" rx="4" style="fill:var(--purple-bg);stroke:var(--purple)"/>
+              <rect x="124" y="65" width="80" height="24" rx="4" style="fill:var(--panel2);stroke:var(--border2)"/>
+              <rect x="208" y="65" width="80" height="24" rx="4" style="fill:var(--purple-bg);stroke:var(--purple)"/>
+              <rect x="292" y="65" width="80" height="24" rx="4" style="fill:var(--panel2);stroke:var(--border2)"/>
+
+              <rect x="40" y="100" width="80" height="24" rx="4" style="fill:var(--amber-bg);stroke:var(--amber)"/>
+              <rect x="124" y="100" width="80" height="24" rx="4" style="fill:var(--panel2);stroke:var(--border2)"/>
+              <rect x="208" y="100" width="80" height="24" rx="4" style="fill:var(--amber-bg);stroke:var(--amber)"/>
+              <rect x="292" y="100" width="80" height="24" rx="4" style="fill:var(--panel2);stroke:var(--border2)"/>
+            </g>
+            <text x="80" y="18" font-size="9.5" fill="var(--text3)" text-anchor="middle">block 1</text>
+            <text x="164" y="18" font-size="9.5" fill="var(--text3)" text-anchor="middle">block 2</text>
+            <text x="248" y="18" font-size="9.5" fill="var(--text3)" text-anchor="middle">block 3</text>
+            <text x="332" y="18" font-size="9.5" fill="var(--text3)" text-anchor="middle">block 4</text>
+
+            <path d="M370,72 L410,72" style="stroke:var(--text3);stroke-width:1.5" marker-end="url(#ah)"/>
+            <defs><marker id="ah" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--text3)"/></marker></defs>
+            <text x="390" y="60" font-size="9.5" fill="var(--text3)" text-anchor="middle">one shared draw:<tspan x="390" dy="11">blocks 3,1,4,2</tspan></text>
+
+            <text x="440" y="18" font-size="11" fill="var(--text3)" font-family="'DM Mono',monospace">joint resample — same block order, every candidate</text>
+            <rect x="440" y="30" width="60" height="24" rx="4" style="fill:var(--blue-bg);stroke:var(--blue)"/>
+            <rect x="502" y="30" width="60" height="24" rx="4" style="fill:var(--blue-bg);stroke:var(--blue)"/>
+            <rect x="564" y="30" width="30" height="24" rx="4" style="fill:var(--panel2);stroke:var(--border2)"/>
+            <rect x="440" y="65" width="60" height="24" rx="4" style="fill:var(--purple-bg);stroke:var(--purple)"/>
+            <rect x="502" y="65" width="60" height="24" rx="4" style="fill:var(--purple-bg);stroke:var(--purple)"/>
+            <rect x="564" y="65" width="30" height="24" rx="4" style="fill:var(--panel2);stroke:var(--border2)"/>
+            <rect x="440" y="100" width="60" height="24" rx="4" style="fill:var(--amber-bg);stroke:var(--amber)"/>
+            <rect x="502" y="100" width="60" height="24" rx="4" style="fill:var(--amber-bg);stroke:var(--amber)"/>
+            <rect x="564" y="100" width="30" height="24" rx="4" style="fill:var(--panel2);stroke:var(--border2)"/>
+            <text x="10" y="150" font-size="10.5" fill="var(--text2)" font-family="'DM Sans',sans-serif">Every candidate's blocks are drawn in the SAME order — block 3, then 1, then 4 — for every strategy, every replicate.</text>
+            <text x="10" y="170" font-size="10.5" fill="var(--text2)" font-family="'DM Sans',sans-serif">That preserves each series' own within-block serial correlation AND the cross-candidate correlation at any shared moment.</text>
+          </svg>
+        </div>
+        <div class="sl-note">Compute each candidate's mean on this SAME resample, take the max across candidates — that's one bootstrap replicate of the WRC/SPA statistic. Repeat thousands of times.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">WRC's weak spot: junk candidates widen the null</h2>
+      <p class="sl-sub">Demeaning EVERY candidate at zero gives even the obviously-bad ones an equal shot at "winning" the replay.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">What WRC does</span>
+          <ul>
+            <li>Every one of the N candidates gets recentered at exactly zero before resampling</li>
+            <li>A clearly-dominated candidate still competes for "largest resampled mean" in every replicate</li>
+            <li>More junk candidates in the panel → wider bootstrap null → higher bar for the real winner to clear</li>
+            <li>Correct, but conservative — real statistical power is left on the table</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">What this costs in practice</span>
+          <ul>
+            <li>A real parameter sweep is rarely N equally-plausible candidates</li>
+            <li>Most sweeps are one or two promising ideas plus a long tail of obviously weak variants</li>
+            <li>That long tail is exactly what inflates WRC's null the most</li>
+            <li>Hansen's fix targets this directly — next</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Hansen's fix: studentize, and bench the clear losers</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📏</div><div><h4>Studentize before the max</h4><p>Divide each candidate's mean by its own bootstrap-estimated spread before comparing — puts a jumpy, high-vol candidate and a smooth, low-vol one on equal footing, the same idea a Sharpe ratio applies to a single strategy.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🚫</div><div><h4>Don't recenter a clear loser at zero</h4><p>A candidate whose own studentized statistic is convincingly negative keeps something closer to its own real (bad) performance in the bootstrap world — denying it a chance to drift up and pretend it could have tied for best.</p></div></div>
+      </div>
+      <div class="sl-quote">Judging a footrace where three runners visibly tripped: pretending, in an imagined rerun, that they "might have won" is silly once you've already seen them fall. SPA stops giving obviously-last-place candidates that benefit of the doubt, and puts every remaining runner's time in context of how consistent that runner normally is.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">WRC versus SPA, side by side</h2>
+      <p class="sl-sub">Same bootstrap engine, same null hypothesis — SPA is the field's preferred modern successor, not a rival idea.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Compare</div>
+        <div class="sl-tabs" id="cmp-tabs">
+          <button class="sl-tab active" data-panel="cmp-1">Test statistic</button>
+          <button class="sl-tab" data-panel="cmp-2">Recentering rule</button>
+          <button class="sl-tab" data-panel="cmp-3">Statistical power</button>
+        </div>
+        <div class="sl-panel active" id="cmp-1">
+          <div class="sl-verdict"><strong>WRC:</strong> V̄ = max<sub>k</sub> mean(d<sub>k</sub>) — raw sample means, unadjusted for each candidate's own volatility.</div>
+          <div class="sl-verdict" style="margin-top:8px"><strong>SPA:</strong> Z = max<sub>k</sub> mean(d<sub>k</sub>)/SE<sub>k</sub> — studentized, so a low-vol candidate's edge is judged relative to its own normal wobble, not on raw scale.</div>
+        </div>
+        <div class="sl-panel" id="cmp-2">
+          <div class="sl-verdict"><strong>WRC:</strong> every candidate demeaned to exactly zero before resampling — full benefit of the doubt for everyone, junk included.</div>
+          <div class="sl-verdict" style="margin-top:8px"><strong>SPA:</strong> only candidates that weren't clearly inferior get recentered at zero; a convincingly-bad candidate keeps its own real (negative) mean instead.</div>
+        </div>
+        <div class="sl-panel" id="cmp-3">
+          <div class="sl-verdict"><strong>WRC:</strong> correct, but its null widens — and its power falls — as more obviously-weak candidates are added to the panel.</div>
+          <div class="sl-verdict" style="margin-top:8px"><strong>SPA:</strong> recovers that lost power on the exact same data, since junk candidates can no longer inflate the null — generally the preferred choice today.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">A toy panel: one real edge, one deceptive Sharpe</h2>
+      <p class="sl-sub">Five candidates, 16 periods each, benchmark = 0. Watch what raw Sharpe alone would have you believe.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">A</div><div><h4>Momentum — the real edge</h4><p>mean 0.469, Sharpe 1.19, t = 4.75 — clearly the biggest mean in the panel.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">C</div><div><h4>Carry — the trap</h4><p>mean 0.156 (a third of Momentum's), yet Sharpe 0.93 — second-highest in the panel, purely because its realized variance happened to come out tiny.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">B·D·E</div><div><h4>The rest — plain noise</h4><p>means near zero or negative, Sharpes near zero or negative — no story here, exactly what an edge-free candidate should look like.</p></div></div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">The reveal</div>
+        <p>Bootstrapping this exact panel: Momentum's mean survives comfortably (p ≈ 0.003 under WRC, p ≈ 0.0002 once studentized under SPA). Carry's own mean, tested the identical way, comes back p ≈ 0.24 — nowhere near significant. An eye-catching Sharpe and a statistically real edge are not the same claim.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Run the real bootstrap yourself</h2>
+      <p class="sl-sub">Genuinely computed in your browser, fresh random draws every click — this is the actual test, not an animation.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — click Run as many times as you like</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 190" id="mc-hist-svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Live-updating histogram of the bootstrap replicate distribution for the five-candidate toy panel, with the real observed statistic marked"></svg>
+        </div>
+        <div class="sl-sliderhead"><span>Mean block length</span><span class="sl-live" id="mc-block-val">l = 2</span></div>
+        <input type="range" class="sl-slider" id="mc-block-slider" min="1" max="5" step="1" value="2">
+        <div class="sl-calc-row" style="margin-top:14px">
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Resamples so far</div>
+            <div class="sl-calc-result-val" id="mc-total">0</div>
+          </div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">≥ observed</div>
+            <div class="sl-calc-result-val" id="mc-countge">0</div>
+          </div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">bootstrap p ≈</div>
+            <div class="sl-calc-result-val" id="mc-pvalue">—</div>
+          </div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="mc-run-btn">▶ Run 1,000 more resamples</button>
+        <button type="button" class="sl-reset-btn" id="mc-student-btn">Studentize: OFF (WRC)</button>
+        <button type="button" class="sl-reset-btn" id="mc-reset-btn">↺ Reset tally</button>
+        <div class="sl-note">Observed statistic for Momentum (the real edge): <b id="mc-observed">0.4688</b>. Changing the block length or the studentize toggle resets the running tally, since the null being sampled changes.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">The bootstrap p-value, arithmetically</h2>
+      <p class="sl-sub">Once you have a tally, the p-value itself is one small formula. Try your own counts.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Replicates ≥ observed</label><input type="number" class="sl-input" id="pv-countge" value="14" step="1" min="0"></div>
+          <div class="sl-calc-op">of</div>
+          <div class="sl-calc-field"><label>Total replicates run</label><input type="number" class="sl-input" id="pv-total" value="5000" step="1" min="1"></div>
+          <div class="sl-calc-op">→</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">bootstrap p-value</div>
+            <div class="sl-calc-result-val" id="pv-result">0.0030</div>
+          </div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="pv-reset">Reset to 14 of 5,000</button>
+        <div class="sl-note">p = (1 + count≥observed) / (1 + total) — the Davison–Hinkley "+1" correction, so a p-value is never reported as exactly zero no matter how few (or zero) replicates matched or beat the real statistic. This repo's own block-bootstrap brick (<code>statsCore.js</code>) uses the identical correction.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">The test is only as honest as the candidate set</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Quietly curated candidate set</span>
+          <ul>
+            <li>Run 50 variations, keep the 5 that looked best, discard the other 45</li>
+            <li>Feed WRC/SPA only those 5</li>
+            <li>Test computes a confident-looking p-value</li>
+            <li>Completely uninformative — it answered "best of 5?" not "best of 50?"</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">The honest candidate set</span>
+          <ul>
+            <li>Every variation genuinely tried goes into the panel — junk included</li>
+            <li>The bootstrap null correctly reflects the real scale of the search</li>
+            <li>SPA's inferior-candidate handling keeps the honest panel from losing power</li>
+            <li>The p-value now actually means what it claims to mean</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-quote">No formula can detect a cherry-picked candidate set from the outside — it will happily return a small, confident p-value on the wrong question. This is a discipline problem, identical in spirit to the Deflated Sharpe lesson's warning about undercounting N.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">What this repo actually has — and doesn't</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Verified against this repo's actual code</div>
+        <p>This repo's <code>statsCore.js</code> ships a real, working stationary (Politis–Romano) block bootstrap, reused across <code>backtestStats.js</code>, <code>scripts/freeze_expectation.mjs</code>, <code>js/volReversionCore.js</code>, and <code>analysis/cot_factor/factor_test.py</code>. Every single one of those points the bootstrap at <strong>ONE</strong> series or statistic at a time. The one place this repo corrects for testing several things at once (<code>volReversionCore.js</code>'s best-of-4-horizons check) uses a parametric Bonferroni adjustment, not a bootstrap of a max statistic. And this repo's own honest self-assessment names the sharper version of this exact problem — "best-of-N ranked on the same data... best of ~600 random configs per pair" — as its single biggest unaddressed risk, proposing purged cross-validation plus a deflated-Sharpe adjustment as the fix. No genuine WRC/SPA-style bootstrap of a full candidate panel exists anywhere in this codebase — the building block (the bootstrap itself) is already here; assembling it into this specific test has not been done.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What is White's Reality Check's test statistic?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The largest sample mean excess return among all N candidates</button>
+        <button class="sl-quiz-opt">The average Sharpe ratio across all N candidates</button>
+        <button class="sl-quiz-opt">The number of candidates that beat the benchmark at all</button>
+        <div class="sl-quiz-explain">V̄ = max_k mean(d_k) — the best candidate's own sample mean excess return, taken across every candidate actually run.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Why can't a normal-distribution critical value judge this statistic directly?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Returns are autocorrelated, and the statistic is a max over cross-correlated candidates — no simple formula covers that</button>
+        <button class="sl-quiz-opt">Because Sharpe ratios are always non-negative</button>
+        <button class="sl-quiz-opt">Because there's no such thing as a normal critical value in finance</button>
+        <div class="sl-quiz-explain">Two separate problems: serial correlation breaks a single series' own standard error, and taking a MAX across cross-correlated candidates has no simple closed-form distribution. Bootstrap the real data instead of assuming a shape.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>What specifically does Hansen's SPA test fix about White's Reality Check?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It studentizes each candidate and stops clearly-inferior candidates from padding the bootstrap null</button>
+        <button class="sl-quiz-opt">It replaces the bootstrap with a closed-form normal formula</button>
+        <button class="sl-quiz-opt">It only tests the single best-looking candidate, ignoring the rest</button>
+        <div class="sl-quiz-explain">WRC demeans every candidate at zero, letting obviously-bad ones inflate the null. SPA studentizes by each candidate's own spread and denies a convincingly-inferior candidate the "benefit of the doubt" recentering — recovering statistical power on the same data.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>In the toy panel, why did Carry's impressive-looking Sharpe (0.93) fail a bootstrap test of its own mean?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Its high Sharpe came from unusually low realized variance, not a large mean — the mean itself was unremarkable</button>
+        <button class="sl-quiz-opt">Because Sharpe ratios can never be trusted under any circumstances</button>
+        <button class="sl-quiz-opt">Because it had the most negative mean in the panel</button>
+        <div class="sl-quiz-explain">Carry's mean (0.156) was about a third of the real edge's (0.469) — its high Sharpe was a low-variance artifact of a short sample, exactly the kind of thing five noise-driven candidates can produce purely by chance.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>A researcher tests only the best 5 of 50 variations actually tried. Is the resulting bootstrap p-value trustworthy?</h4>
+        <button class="sl-quiz-opt" data-correct="true">No — the test needs the full, honest candidate set; discarding trials before testing defeats the entire method</button>
+        <button class="sl-quiz-opt">Yes — the bootstrap automatically detects and corrects for hidden trials</button>
+        <button class="sl-quiz-opt">Yes, as long as the block length is chosen correctly</button>
+        <div class="sl-quiz-explain">No formula can detect a curated candidate set from the outside. It will compute a confident-looking answer to the wrong question ("best of 5?" instead of "best of 50?") — a discipline failure, not something the arithmetic can catch.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>WRC and SPA test the full candidate panel's actual return histories directly — a genuine bootstrap in place of the Deflated Sharpe Ratio's estimated trial count and extreme-value-theory formula.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>The test statistic is a maximum across candidates, which is exactly why no textbook single-series critical value applies — a stationary block bootstrap, applied jointly across the whole panel, builds the real null instead.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>WRC is honest but conservative once junk candidates are included; Hansen's SPA studentizes and stops clearly-inferior candidates from padding the null, recovering real power on the same data.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>An impressive raw Sharpe is not the same claim as a statistically real edge — this deck's own toy panel showed a noise strategy's Sharpe nearly matching a real edge's while its mean failed the bootstrap outright.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Both tests are worthless on a dishonestly curated candidate set — the honesty of the candidate list is a discipline problem no formula can rescue after the fact.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Recognize when a "best backtested variant" claim needs a bootstrap test of the whole search, not just a look at the winner's own Sharpe ratio. Understand why WRC and SPA are the same idea at different power levels, not competing methods. Spot a Sharpe ratio that's flattering purely because of low realized variance, and know exactly what test would catch it.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Triple-Barrier &amp; Meta-Labelling</h3>
+        <p>A different piece of backtest-integrity machinery: how to label a trade's outcome honestly when price could hit a profit target, a stop, or a time limit first — and how a second model learns when to trust the first one's signal at all.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="institutional-triple-barrier-labeling-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="institutional-reality-check-spa.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // ---- Genuine, live stationary block bootstrap — fixed 5-candidate toy panel ----
+  (function(){
+    var svg = document.getElementById('mc-hist-svg');
+    if (!svg) return;
+    var blockSlider = document.getElementById('mc-block-slider');
+    var blockVal = document.getElementById('mc-block-val');
+    var runBtn = document.getElementById('mc-run-btn');
+    var studentBtn = document.getElementById('mc-student-btn');
+    var resetBtn = document.getElementById('mc-reset-btn');
+    var totalEl = document.getElementById('mc-total');
+    var countGEEl = document.getElementById('mc-countge');
+    var pvalEl = document.getElementById('mc-pvalue');
+    var observedEl = document.getElementById('mc-observed');
+
+    var SERIES = {
+      A: [0.90, 0.10, 0.70, -0.20, 0.60, 1.00, 0.00, 0.80, 0.30, 0.90, -0.10, 0.70, 0.40, 0.20, 0.90, 0.30],
+      B: [0.30, -0.80, 0.60, -0.40, -0.10, 0.90, -0.60, 0.20, -0.90, 0.50, 0.70, -0.30, -0.50, 0.40, -0.20, 0.10],
+      C: [0.30, 0.00, 0.40, -0.10, 0.20, 0.35, -0.05, 0.25, 0.10, 0.30, -0.15, 0.20, 0.25, 0.05, 0.30, 0.10],
+      D: [-1.20, 1.50, -0.80, 0.90, -1.60, 1.10, -0.40, 1.30, -1.00, 0.60, -1.40, 0.80, -0.60, 1.00, -1.10, 0.70],
+      E: [-0.50, 0.60, -0.90, 0.30, -0.20, -0.70, 0.40, -0.60, 0.10, -0.80, 0.50, -0.30, -0.60, 0.20, -0.40, 0.30]
+    };
+    var keys = Object.keys(SERIES);
+    var T = SERIES.A.length;
+    var CUTOFF = 1;
+
+    function mean(a){ var s = 0; for (var i = 0; i < a.length; i++) s += a[i]; return s / a.length; }
+    function std(a){
+      var m = mean(a), s = 0;
+      for (var i = 0; i < a.length; i++) s += (a[i] - m) * (a[i] - m);
+      return Math.sqrt(s / (a.length - 1));
+    }
+
+    var stats = {}, gCenter = {};
+    keys.forEach(function(k){
+      var m = mean(SERIES[k]), s = std(SERIES[k]), se = s / Math.sqrt(T);
+      stats[k] = { mean: m, std: s, se: se };
+    });
+    keys.forEach(function(k){
+      var st = stats[k];
+      var t = st.mean / st.se;
+      gCenter[k] = (t < -CUTOFF) ? st.mean : 0;
+    });
+
+    var observedWRC = -Infinity, observedWRCKey = null;
+    var observedSPA = -Infinity, observedSPAKey = null;
+    keys.forEach(function(k){
+      var st = stats[k];
+      if (st.mean > observedWRC) { observedWRC = st.mean; observedWRCKey = k; }
+      var t = st.mean / st.se;
+      if (t > observedSPA) { observedSPA = t; observedSPAKey = k; }
+    });
+
+    var studentize = false;
+    var total = 0, countGE = 0;
+    var nBins = 24, binCounts, binLo, binHi;
+
+    function currentObserved(){ return studentize ? observedSPA : observedWRC; }
+    function currentObservedKey(){ return studentize ? observedSPAKey : observedWRCKey; }
+
+    function computeBounds(){
+      var lo = Infinity, hi = -Infinity;
+      keys.forEach(function(k){
+        var arr = SERIES[k], st = stats[k];
+        var loRaw = Math.min.apply(null, arr), hiRaw = Math.max.apply(null, arr);
+        var g = gCenter[k];
+        var loRep, hiRep;
+        if (studentize) {
+          loRep = (loRaw - st.mean + g) / st.se;
+          hiRep = (hiRaw - st.mean + g) / st.se;
+        } else {
+          loRep = loRaw - st.mean;
+          hiRep = hiRaw - st.mean;
+        }
+        if (loRep < lo) lo = loRep;
+        if (hiRep > hi) hi = hiRep;
+      });
+      var pad = (hi - lo) * 0.05;
+      binLo = lo - pad; binHi = hi + pad;
+    }
+
+    function resetTally(){
+      total = 0; countGE = 0;
+      binCounts = new Array(nBins).fill(0);
+      computeBounds();
+      totalEl.textContent = '0';
+      countGEEl.textContent = '0';
+      pvalEl.textContent = '—';
+      observedEl.textContent = currentObserved().toFixed(4) + ' (' + currentObservedKey() + (studentize ? ', studentized' : '') + ')';
+      renderHist();
+    }
+
+    function blockResampleIdx(n, meanBlock){
+      var idxPath = new Array(n);
+      var p = 1 / Math.max(1, meanBlock);
+      var idx = Math.floor(Math.random() * n);
+      for (var i = 0; i < n; i++){
+        idxPath[i] = idx;
+        idx = (Math.random() < p) ? Math.floor(Math.random() * n) : (idx + 1) % n;
+      }
+      return idxPath;
+    }
+
+    function runBatch(n){
+      var obs = currentObserved();
+      var meanBlock = parseInt(blockSlider.value, 10) || 1;
+      for (var b = 0; b < n; b++) {
+        var idxPath = blockResampleIdx(T, meanBlock);
+        var maxRep = -Infinity;
+        for (var i = 0; i < keys.length; i++) {
+          var k = keys[i], arr = SERIES[k], st = stats[k];
+          var s = 0;
+          for (var t = 0; t < T; t++) s += arr[idxPath[t]];
+          var resampMean = s / T;
+          var rep = studentize ? (resampMean - st.mean + gCenter[k]) / st.se : (resampMean - st.mean);
+          if (rep > maxRep) maxRep = rep;
+        }
+        total++;
+        if (maxRep >= obs) countGE++;
+        var binIdx = Math.floor((maxRep - binLo) / (binHi - binLo) * nBins);
+        if (binIdx < 0) binIdx = 0;
+        if (binIdx >= nBins) binIdx = nBins - 1;
+        binCounts[binIdx]++;
+      }
+      totalEl.textContent = total.toLocaleString();
+      countGEEl.textContent = countGE.toLocaleString();
+      pvalEl.textContent = ((countGE + 1) / (total + 1)).toFixed(4);
+      renderHist();
+    }
+
+    function renderHist(){
+      while (svg.firstChild) svg.removeChild(svg.firstChild);
+      var W = 640, H = 190, padL = 40, padB = 22, padT = 12, padR = 12;
+      var plotW = W - padL - padR, plotH = H - padT - padB;
+      var maxCount = Math.max.apply(null, binCounts.concat([1]));
+      var ns = 'http://www.w3.org/2000/svg';
+      function el(tag, attrs){
+        var e = document.createElementNS(ns, tag);
+        for (var a in attrs) e.setAttribute(a, attrs[a]);
+        return e;
+      }
+      svg.appendChild(el('line', { x1: padL, y1: padT, x2: padL, y2: padT + plotH, stroke: 'var(--border2)' }));
+      svg.appendChild(el('line', { x1: padL, y1: padT + plotH, x2: padL + plotW, y2: padT + plotH, stroke: 'var(--border2)' }));
+      var binW = plotW / nBins;
+      for (var i = 0; i < nBins; i++) {
+        var h = total > 0 ? (binCounts[i] / maxCount) * (plotH - 4) : 0;
+        var x = padL + i * binW, y = padT + plotH - h;
+        svg.appendChild(el('rect', { x: x + 1, y: y, width: Math.max(0, binW - 2), height: h, rx: 1, fill: 'var(--blue)', opacity: '0.75' }));
+      }
+      var obs = currentObserved();
+      var frac = Math.max(0, Math.min(1, (obs - binLo) / (binHi - binLo)));
+      var ox = padL + frac * plotW;
+      svg.appendChild(el('line', { x1: ox, y1: padT - 2, x2: ox, y2: padT + plotH, stroke: 'var(--green)', 'stroke-width': '2', 'stroke-dasharray': '4,3' }));
+      var lbl = el('text', { x: ox, y: padT - 4, 'text-anchor': ox > W - 90 ? 'end' : 'middle', fill: 'var(--green)', 'font-size': '10', 'font-weight': '700', 'font-family': "'DM Mono',monospace" });
+      lbl.textContent = 'real = ' + obs.toFixed(3);
+      svg.appendChild(lbl);
+    }
+
+    blockSlider.addEventListener('input', function(){
+      blockVal.textContent = 'l = ' + blockSlider.value;
+      resetTally();
+    });
+    runBtn.addEventListener('click', function(){ runBatch(1000); });
+    studentBtn.addEventListener('click', function(){
+      studentize = !studentize;
+      studentBtn.textContent = studentize ? 'Studentize: ON (SPA)' : 'Studentize: OFF (WRC)';
+      resetTally();
+    });
+    resetBtn.addEventListener('click', resetTally);
+
+    resetTally();
+  })();
+
+  // ---- Bootstrap p-value arithmetic calculator ----
+  (function(){
+    var countEl = document.getElementById('pv-countge');
+    if (!countEl) return;
+    var totalEl = document.getElementById('pv-total');
+    var resultEl = document.getElementById('pv-result');
+    var resetBtn = document.getElementById('pv-reset');
+    var DEFAULTS = { count: 14, total: 5000 };
+
+    function recompute(){
+      var c = parseFloat(countEl.value), t = parseFloat(totalEl.value);
+      if (!isFinite(c) || !isFinite(t) || c < 0 || t < 1 || c > t) {
+        resultEl.textContent = '—';
+        return;
+      }
+      resultEl.textContent = ((c + 1) / (t + 1)).toFixed(4);
+    }
+    [countEl, totalEl].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      countEl.value = DEFAULTS.count; totalEl.value = DEFAULTS.total;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

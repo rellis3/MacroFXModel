@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Triple-Barrier Labelling &amp; Meta-Labelling — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Backtest &amp; Research Integrity / Triple-Barrier &amp; Meta-Labelling</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Backtest &amp; Research Integrity 2 of 2</div>
+  <h1 class="tl-title">Triple-Barrier Labelling &amp; Meta-Labelling</h1>
+  <p class="tl-dek">The obvious way to label training data for a trading model — "was the return over the next fixed N bars positive?" — describes a trade nobody actually places. A real position exits at a stop-loss, a take-profit, or a time limit, whichever comes first, and a label built on the wrong exit teaches a model the wrong payoff shape entirely.</p>
+  <div class="tl-meta">
+    <span class="tl-status course">VERIFIED IN THIS REPO — <code>pylego/barrier_race.py</code>'s <code>_first_touch()</code> is a genuine upper/lower/vertical triple-barrier walker (a first-touch race between a TP price array, an SL price array, and a <code>max_bars_ahead</code> timeout), reused across <code>AnalogML/ml_walkforward.py</code>, the range-line and volatility-bot engines, and <code>Trade_Decision_Engine/backfill.js</code>; <code>bot/modules/ml_confidence.py</code> is a genuine two-stage primary → secondary meta-labelling architecture — direction is inherited from upstream signal modules while a separately-trained XGBoost + LightGBM ensemble predicts a win-probability that only ever scales position size, never blocks a trade outright</span>
+    <span>~18 min read</span>
+    <span>Prereqs: <a href="institutional-reality-check-spa.html">White's Reality Check &amp; Hansen's SPA Test</a>, <a href="feature-engineering-leakage-reproducibility.html">Feature Engineering, Leakage &amp; Reproducibility</a></span>
+  </div>
+
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="institutional-triple-barrier-labeling-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Labeling a bar as "up" or "down" based on the return over the next fixed \(N\) bars ignores the fact that a real position is closed by whichever of a stop-loss, a take-profit, or a time limit is hit first — the label and the actual trade payoff can quietly disagree.</li>
+      <li><strong>Triple-barrier labelling</strong> (López de Prado, 2018) sets three barriers at every entry — an upper take-profit, a lower stop-loss, and a vertical time limit — and walks forward bar by bar; the label is whichever barrier is touched first: \(+1\), \(-1\), or a small/zero label at the time limit.</li>
+      <li>Barrier widths scale with a <strong>volatility estimate</strong> rather than a fixed pip or dollar distance, so the same barrier logic behaves sensibly whether the market is calm or violent — see <a href="garch-volatility.html">GARCH &amp; Volatility Clustering</a> and <a href="institutional-garman-klass-yang-zhang.html">Garman-Klass &amp; Yang-Zhang Volatility Estimators</a>.</li>
+      <li><strong>Meta-labelling</strong> is a second, distinct idea: keep a primary model or rule for direction only — it can be weak and noisy — and train a separate secondary ("meta") model whose only job is predicting the probability that a signal which already fired will actually win, using the same triple-barrier labels restricted to instances where the primary signal fired.</li>
+      <li>Filtering (or sizing) trades by the meta-model's predicted probability raises realized precision on the trades actually taken, at the unavoidable cost of taking fewer of them — and meta-labelling can only filter an existing signal, never manufacture edge that was never there to begin with.</li>
+      <li>This repo's own <code>bot/modules/ml_confidence.py</code> is a genuine instance of this exact pattern, verified line-by-line below — not just a lesson that references the idea in the abstract.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    Every earlier lesson on model validity — <a href="research-pipeline-hypothesis-to-backtest.html">The Research
+    Pipeline</a>, <a href="feature-engineering-leakage-reproducibility.html">Feature Engineering, Leakage &amp;
+    Reproducibility</a>, and <a href="institutional-reality-check-spa.html">White's Reality Check &amp; Hansen's
+    SPA Test</a> — asks some version of "does this backtest reflect something real?" This lesson asks a question
+    that comes <em>before</em> any of those: for a supervised trading model, what exactly is the training label
+    supposed to mean? The most common answer in practice is a <strong>fixed-horizon return label</strong> —
+    pick a lookahead window of \(N\) bars, and label the entry \(+1\) if the price is higher \(N\) bars later,
+    \(-1\) otherwise (or a regression target, the raw \(N\)-bar return itself). It is simple, and it is also a
+    description of a trade nobody trading with any risk control actually places.
+  </p>
+  <p>
+    A real position is not held blindly for exactly \(N\) bars and then closed regardless of what happened in
+    between. It is closed by whichever comes first: price hits a take-profit, price hits a stop-loss, or a
+    maximum holding time is reached. A fixed-horizon label can be flatly wrong about the trade's actual outcome —
+    it might label a bar \(+1\) because the price happened to be higher \(N\) bars later, even though the path
+    getting there blew straight through where a real stop-loss would have sat; conversely it can label a bar
+    \(-1\) even though the path touched a real take-profit well before bar \(N\) and a real position would have
+    already been closed, profitably, long before the horizon the label is measuring. Training a classifier on
+    labels that don't describe the payoff structure of the strategy that will actually use them is a subtle,
+    structural form of the same problem <a href="feature-engineering-leakage-reproducibility.html">Feature
+    Engineering, Leakage &amp; Reproducibility</a> covers for input features: the label itself can silently
+    misrepresent the thing it claims to measure, well before any leakage or multiple-testing question from the
+    lessons around this one even enters the picture.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A label should describe the trade you'd actually place</h3>
+    <p>
+      Imagine grading a trader's decision to enter a position by checking the market price exactly 10 days
+      later, no matter what the trader's own stop-loss or take-profit orders would have done in between. That
+      grade can be completely disconnected from what actually happened to the trader's position — maybe their
+      stop got hit on day 3 and they were flat (and safely out) for the remaining seven days; maybe their
+      take-profit filled on day 2 and they locked in a gain that the day-10 price, by coincidence, later gave
+      back. Either way, "the price 10 days later" is not "what this trade actually earned."
+    </p>
+    <p>
+      Triple-barrier labelling fixes this by defining the label the same way a real trade defines its own exit:
+      walk forward from the entry and stop at the <em>first</em> of three things that happens — hit the profit
+      target, hit the stop, or run out of time. Whatever fires first is the label. It is not a cleverer
+      statistical trick; it is simply asking the label to describe the trade that would actually have been
+      taken, rather than an arbitrary snapshot of price at a fixed distance in the future.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The triple-barrier method, precisely</h2>
+  <p>
+    Fix an entry time \(t_0\) with entry price \(P_0\), and a volatility estimate \(\hat\sigma_{t_0}\) available
+    at (or before) \(t_0\) — a GARCH conditional volatility, an EWMA, a Garman-Klass/Yang-Zhang range estimator,
+    or any other point-in-time volatility measure. Three barriers are set around the entry:
+  </p>
+  <div class="tl-math">\[
+    U = P_0\big(1 + k_u\,\hat\sigma_{t_0}\big), \qquad
+    L = P_0\big(1 - k_l\,\hat\sigma_{t_0}\big), \qquad
+    V = t_0 + h
+  \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>U</code><span>the upper barrier — a take-profit, a multiple \(k_u\) of the volatility estimate above entry</span></div>
+    <div class="tl-eq-chip c2"><code>L</code><span>the lower barrier — a stop-loss, a multiple \(k_l\) of the volatility estimate below entry</span></div>
+    <div class="tl-eq-chip c3"><code>V</code><span>the vertical barrier — a hard time limit, \(h\) bars after entry</span></div>
+    <div class="tl-eq-chip c4"><code>k_u, k_l</code><span>volatility multiples, not necessarily equal — set separately for take-profit and stop-loss</span></div>
+  </div>
+  <p>
+    From \(t_0\), walk forward bar by bar and define the first-touch time \(\tau\) — the first bar at which
+    price reaches \(U\), reaches \(L\), or the vertical barrier \(V\) is reached without either horizontal
+    barrier having fired first:
+  </p>
+  <div class="tl-math">\[
+    \tau = \min\big(\tau_U,\ \tau_L,\ V\big), \qquad
+    y =
+    \begin{cases}
+      +1 & \text{if } \tau = \tau_U \text{ (upper touched first)} \\
+      -1 & \text{if } \tau = \tau_L \text{ (lower touched first)} \\
+      0 \text{ or } r_\tau & \text{if } \tau = V \text{ (time limit reached first)}
+    \end{cases}
+  \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>τ_U, τ_L</code><span>the first bar index at or after \(t_0\) at which price touches \(U\), respectively \(L\)</span></div>
+    <div class="tl-eq-chip c2"><code>y</code><span>the resulting label — the entire point of the exercise</span></div>
+    <div class="tl-eq-chip c3"><code>r_τ</code><span>the small realized return actually banked at the vertical barrier, an alternative to a flat 0 label</span></div>
+  </div>
+  <div class="tl-steps">
+    <div class="tl-step">
+      <div class="tl-step-num">1</div>
+      <div class="tl-step-body">
+        <h4>Pick an entry and a volatility estimate</h4>
+        <p>Entry price \(P_0\) at time \(t_0\), and a volatility estimate \(\hat\sigma_{t_0}\) computed using only information available at or before \(t_0\) — never a look-ahead estimate that peeks past the entry.</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">2</div>
+      <div class="tl-step-body">
+        <h4>Set the three barriers</h4>
+        <p>Upper \(U\) and lower \(L\) as volatility-scaled multiples above and below \(P_0\); vertical \(V\) as a fixed number of bars \(h\) ahead — all three chosen before looking at how the path actually unfolds.</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">3</div>
+      <div class="tl-step-body">
+        <h4>Walk forward, bar by bar</h4>
+        <p>Starting at \(t_0+1\), check each bar's price against \(U\) and \(L\) in the order the bars actually occurred — exactly the path a real open position would have experienced, nothing more.</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">4</div>
+      <div class="tl-step-body">
+        <h4>Stop at the first touch</h4>
+        <p>The moment either \(U\) or \(L\) is reached, stop — that bar is \(\tau\), and the barrier touched decides the label. If neither is reached by \(V\), stop at \(V\) instead.</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">5</div>
+      <div class="tl-step-body">
+        <h4>Assign the label</h4>
+        <p>\(+1\) for an upper touch, \(-1\) for a lower touch, and \(0\) (or the small realized return \(r_\tau\)) for a vertical-barrier timeout — a deliberate design choice for whichever downstream use the label is meant for.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine you're watching a ball roll down a hallway with a finish-line tape stretched high up on the left wall, another stretched low down on the right wall, and a clock on the far wall. You don't care which one the ball is "closest to" after some fixed number of seconds — you just watch, and the very first tape the ball actually touches, or the clock running out first, is what decides the story. That's the whole triple-barrier rule: watch the real path, and stop at whichever of the three things genuinely happens first.</p>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">The classic triple-barrier diagram — entry 1.0850, worked example from Section 03</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Price path chart with a horizontal upper barrier line at 1.0870, a horizontal lower barrier line at 1.0835, a vertical dashed line at bar 10 marking the time limit, and the actual price path from entry at bar 0 rising and touching the upper barrier at bar 7, marked with a dot labeled plus one.">
+      <line x1="60" y1="20" x2="60" y2="260" style="stroke:var(--border)"/>
+      <line x1="60" y1="260" x2="610" y2="260" style="stroke:var(--border)"/>
+      <text x="335" y="284" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">bars since entry</text>
+      <text x="26" y="140" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace" transform="rotate(-90 26 140)">price</text>
+
+      <line x1="60" y1="68" x2="610" y2="68" style="stroke:var(--green);stroke-width:1.5;stroke-dasharray:6 4"/>
+      <text x="614" y="72" fill="var(--green)" font-size="11" font-family="'DM Mono',monospace">U = 1.0870 (TP)</text>
+
+      <line x1="60" y1="228" x2="610" y2="228" style="stroke:var(--red);stroke-width:1.5;stroke-dasharray:6 4"/>
+      <text x="614" y="232" fill="var(--red)" font-size="11" font-family="'DM Mono',monospace">L = 1.0835 (SL)</text>
+
+      <line x1="590" y1="20" x2="590" y2="260" style="stroke:var(--amber);stroke-width:1.5;stroke-dasharray:3 4"/>
+      <text x="590" y="14" text-anchor="middle" fill="var(--amber)" font-size="10" font-family="'DM Mono',monospace">V = bar 10 (moot — already exited)</text>
+
+      <path d="M70,159 L122,136 L174,168 L226,127 L278,104 L330,159 L382,90 L434,58" style="stroke:var(--blue);stroke-width:2.5;fill:none;stroke-linecap:round"/>
+      <circle cx="70" cy="159" r="4.5" fill="var(--blue)"/>
+      <text x="70" y="178" text-anchor="middle" fill="var(--blue)" font-size="10" font-family="'DM Mono',monospace">entry (bar 0)</text>
+
+      <circle cx="434" cy="58" r="6" style="fill:var(--green);stroke:var(--bg);stroke-width:2"/>
+      <text x="434" y="44" text-anchor="middle" fill="var(--green)" font-size="11" font-family="'DM Mono',monospace" font-weight="700">+1 — upper touched, bar 7</text>
+    </svg>
+    <div class="tl-chart-caption">
+      The price path (blue) climbs and wobbles for six bars, staying well clear of both barriers, then closes
+      above the upper barrier at bar 7 — the walk stops there. The vertical barrier at bar 10 is drawn for
+      reference but never comes into play: the horizontal touch happened first.
+    </div>
+  </div>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(P_0\)</td><td>Entry price at time \(t_0\).</td></tr>
+    <tr><td>\(\hat\sigma_{t_0}\)</td><td>Volatility estimate available at or before entry — GARCH, EWMA, or a range-based (Garman-Klass/Yang-Zhang) estimator.</td></tr>
+    <tr><td>\(U, L\)</td><td>Upper (take-profit) and lower (stop-loss) barriers, each a volatility multiple above/below \(P_0\).</td></tr>
+    <tr><td>\(k_u, k_l\)</td><td>Volatility multiples setting the width of the upper and lower barriers — need not be equal.</td></tr>
+    <tr><td>\(V\)</td><td>Vertical barrier — the entry time plus a fixed maximum holding period \(h\).</td></tr>
+    <tr><td>\(\tau\)</td><td>First-touch time — the earliest bar at which any one of the three barriers is reached.</td></tr>
+    <tr><td>\(y\)</td><td>The resulting label: \(+1\), \(-1\), or a time-limit outcome (0 or the realized return \(r_\tau\)).</td></tr>
+  </table></div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>Worked example: walking one entry to its label</h2>
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Entry 1.0850, upper 1.0870, lower 1.0835, vertical 10 bars</h3>
+    <p>
+      A volatility estimate of \(\hat\sigma_{t_0}=5\) pips per bar (0.0005), with \(k_u=4\) and \(k_l=3\), gives
+      \(U = 1.0850 + 4(0.0005) = 1.0870\) and \(L = 1.0850 - 3(0.0005) = 1.0835\) — an asymmetric barrier, a
+      wider take-profit than stop-loss, a deliberate and common design choice, not a requirement of the method.
+      A toy 7-bar price path (illustrative, not real market data):
+    </p>
+    <div class="tl-math">
+      <pre style="margin:0;text-align:left;font-family:'DM Mono',monospace;font-size:12.5px;color:var(--text2);white-space:pre-wrap;line-height:1.7">Bar    Price     vs. U=1.0870   vs. L=1.0835
+0      1.0850    entry           entry
+1      1.0855    below           above
+2      1.0848    below           above
+3      1.0857    below           above
+4      1.0862    below           above
+5      1.0850    below           above
+6      1.0865    below           above
+7      1.0872    TOUCHED ←       (never touched)</pre>
+    </div>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>Check the lower barrier across every bar first</h4>
+          <p>The lowest price reached in bars 1–7 is 1.0848 at bar 2 — still 13 pips clear of \(L=1.0835\). The lower barrier is never touched on this path.</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>Check the upper barrier, bar by bar, in order</h4>
+          <p>Price stays below 1.0870 through bar 6 (highest so far: 1.0865). At bar 7, price reaches 1.0872 — at or above \(U=1.0870\) for the first time.</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>Compare against the vertical barrier</h4>
+          <p>The vertical barrier sits at bar 10. Bar 7 is well before bar 10, so the horizontal touch wins the race — the vertical barrier never comes into play on this path.</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">4</div>
+        <div class="tl-step-body">
+          <h4>Assign the label</h4>
+          <p>\(\tau = 7\), and the barrier touched at \(\tau\) is the upper one — the label is \(y=+1\). Had the path instead first dipped to 1.0834 at some bar before bar 7, the lower barrier would have fired first and the label would be \(-1\), regardless of anything the price did afterward.</p>
+        </div>
+      </div>
+    </div>
+    <p>
+      Notice what the label does <em>not</em> depend on: it does not care what price does at bar 8, 9, or 10 —
+      those bars are irrelevant once bar 7 resolves the trade, exactly as they would be irrelevant to a real
+      position that had already been closed by its take-profit order.
+    </p>
+  </div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Try it — drag the barrier widths and holding time against a fixed synthetic path</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Interactive triple-barrier chart on a fixed 20-bar synthetic price path, with sliders controlling the upper barrier width, lower barrier width, and vertical barrier length, redrawing live which barrier is touched first" id="tb-live-svg">
+      <line x1="60" y1="20" x2="60" y2="260" style="stroke:var(--border)"/>
+      <line x1="60" y1="260" x2="610" y2="260" style="stroke:var(--border)"/>
+      <text x="335" y="284" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">bars since entry (fixed path, 20 bars)</text>
+      <g id="tb-live-static"></g>
+      <g id="tb-live-dynamic"></g>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Upper barrier width \(k_u \times \hat\sigma\)</span><span class="tl-live" id="tb-ku-val">4.0 × σ (20.0 pips)</span></div>
+        <input type="range" id="tb-ku-slider" min="0.5" max="8" step="0.5" value="4">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Lower barrier width \(k_l \times \hat\sigma\)</span><span class="tl-live" id="tb-kl-val">3.0 × σ (15.0 pips)</span></div>
+        <input type="range" id="tb-kl-slider" min="0.5" max="8" step="0.5" value="3">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Vertical barrier \(h\) (bars)</span><span class="tl-live" id="tb-h-val">10 bars</span></div>
+        <input type="range" id="tb-h-slider" min="1" max="20" step="1" value="10">
+      </div>
+    </div>
+    <div class="tl-readout" id="tb-live-readout">computing…</div>
+    <div class="tl-chart-caption">
+      Entry 1.0850, \(\hat\sigma=5\) pips/bar, fixed synthetic path (deterministic — every reload draws the same
+      20 bars). This is a different, longer path than the 7-bar worked example above, chosen specifically so the
+      three sliders each visibly change the outcome: try dragging the lower barrier width down toward 2× — the
+      path dips to −14 pips at bar 5, so a 2×σ (−10 pip) stop gets hit before the 4×σ take-profit ever would.
+    </div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Meta-labelling: a second, separate idea</h2>
+  <p>
+    Triple-barrier labelling answers "how should one entry's outcome be labeled?" Meta-labelling answers a
+    completely different question: given a signal that already fired, <strong>should this specific trade be
+    taken at all, or how big should it be?</strong> The two ideas compose — meta-labelling is trained on triple-barrier
+    labels — but they solve different problems, and it is worth being precise about the split.
+  </p>
+  <div class="tl-compare">
+    <div class="tl-compare-card amber">
+      <h4>The primary model — direction only</h4>
+      <p>
+        Some rule or model decides long, short, or no signal. It can be a simple technical rule, a hand-built
+        heuristic, an existing rule-based system, or even a genuinely weak, noisy model — meta-labelling's whole
+        value proposition is that the primary signal does <strong>not</strong> need to be good on its own. Its
+        only job is to fire on candidate opportunities and get direction right often enough to be worth
+        filtering, not to already be a profitable, standalone strategy.
+      </p>
+    </div>
+    <div class="tl-compare-card blue">
+      <h4>The secondary ("meta") model — confidence only</h4>
+      <p>
+        A separate model, trained only on the instances where the primary signal actually fired, predicts the
+        probability that <em>this specific trade</em> hits its take-profit before its stop-loss — using the
+        exact same triple-barrier labels from Sections 02–03, restricted to primary-signal instances. It never
+        proposes direction; direction was already decided. Its one output is a probability, used to filter
+        low-confidence signals below some threshold and/or size positions larger when confidence is higher.
+      </p>
+    </div>
+  </div>
+  <p>
+    Why this split is powerful rather than just a re-organization of the same problem: "find a model that
+    identifies genuine alpha from raw market data" is a hard, mostly-unsolved problem. "Given that a specific
+    signal already flagged this instance as a candidate, is it more or less likely than the average flagged
+    instance to actually win?" is a narrower, easier, and completely separable problem — the meta-model is
+    never asked to find opportunities from scratch, only to rank ones a primary source has already surfaced.
+    A primary signal that is barely better than a coin flip on its own can still hand the meta-model real,
+    exploitable structure to separate winners from losers within its own flagged instances — turning a signal
+    that alone couldn't be traded profitably into a usable, filtered system.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine a friend who is a mediocre stock picker — right about 52% of the time, not good enough to trust blindly. But suppose you also notice that whenever your friend sounds especially confident, they're right much more often than when they sound unsure. You wouldn't ask your friend to become a better stock picker; you'd just start only listening when they sound confident, and ignoring them the rest of the time. The friend is the primary signal. Learning when to trust their confidence is the meta-model. Neither job requires the other to become good at picking stocks from scratch.</p>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Ten fired signals, a meta-model's confidence, and the real outcome</h3>
+    <p>
+      A primary signal fired 10 times historically. Each row is one fired instance's triple-barrier outcome
+      (\(+1\) = upper touched first, \(-1\) = lower touched first) and the meta-model's predicted win-probability
+      for that instance, computed independently of the outcome and only afterward compared against it:
+    </p>
+    <div class="tl-math">
+      <pre style="margin:0;text-align:left;font-family:'DM Mono',monospace;font-size:12.5px;color:var(--text2);white-space:pre-wrap;line-height:1.7">Signal   Meta-prob p   Outcome   Above 0.60?
+1        0.82          +1        yes
+2        0.71          +1        yes
+3        0.65          +1        yes
+4        0.61          -1        yes
+5        0.58          +1        —
+6        0.54          -1        —
+7        0.47          -1        —
+8        0.39          +1        —
+9        0.33          -1        —
+10       0.22          -1        —</pre>
+    </div>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>Raw win rate — take every signal the primary model fired</h4>
+          <p>Wins: signals 1, 2, 3, 5, 8 — five wins out of ten signals taken. Raw win rate = 5/10 = <strong>50.0%</strong>, right at coin-flip — exactly the kind of primary signal meta-labelling is meant to work with.</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>Filtered win rate — only take signals with meta-probability above 0.60</h4>
+          <p>Four signals clear the threshold (0.82, 0.71, 0.65, 0.61). Three of those four win (signals 1, 2, 3); signal 4 loses despite clearing the threshold. Filtered win rate = 3/4 = <strong>75.0%</strong>.</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>State the tradeoff plainly</h4>
+          <p>Precision on the trades actually taken rose from 50.0% to 75.0% — but the number of trades taken fell from 10 to 4, a 60% reduction in trade count. The meta-model did not create six new winners; it identified which four of the original ten were the better bets and left the rest on the table.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Recompute the filtered win rate at any threshold, live</h3>
+    <p>
+      Same ten signals as above. Drag the threshold and watch how many signals clear it and what their combined
+      win rate becomes.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Meta-probability threshold</span><span class="tl-live" id="ml-thresh-val">0.60</span></div>
+        <input type="range" id="ml-thresh-slider" min="0" max="1" step="0.01" value="0.6">
+      </div>
+    </div>
+    <div class="tl-readout" id="ml-thresh-readout">
+      Signals above threshold: <b id="ml-thresh-n">4</b> of 10 &emsp; Wins among them: <b id="ml-thresh-w">3</b> &emsp; Filtered win rate: <b id="ml-thresh-wr">75.0%</b>
+    </div>
+    <div class="tl-chart-caption" id="ml-thresh-note">Raw (unfiltered) win rate across all 10 signals: 50.0% — compare against the filtered rate above as the threshold moves.</div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Where this quietly goes wrong</h2>
+  <p>
+    Triple-barrier and meta-labelling are both, at their core, disciplined ways of asking "what would a real
+    trade have actually experienced?" — which means both inherit, rather than avoid, the leakage discipline this
+    curriculum already builds elsewhere. Two failure modes are specific enough to this lesson's material to name
+    directly.
+  </p>
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Look-ahead in the label itself, and asking meta-labelling to do the impossible</h3>
+    <p>
+      <strong>The volatility estimate that sets barrier widths must itself be point-in-time.</strong> This is the
+      exact same discipline <a href="feature-engineering-leakage-reproducibility.html">Feature Engineering,
+      Leakage &amp; Reproducibility</a> spends an entire lesson on: a barrier width computed from a
+      full-sample or centered volatility estimate — one that implicitly uses information from after the entry —
+      leaks knowledge of how volatile the future actually turned out to be into where the barriers get placed
+      <em>today</em>. The path-walking step itself is inherently leakage-safe (it only ever uses real future
+      prices exactly as a live position would experience them, in order); the risk sits entirely in how
+      \(\hat\sigma_{t_0}\) gets computed before the walk begins.
+    </p>
+    <p>
+      <strong>Meta-labelling can only improve precision — it cannot manufacture alpha from nothing.</strong>
+      Meta-labelling's entire mechanism is filtering an existing set of flagged instances into a higher-precision
+      subset. If the primary signal genuinely carries zero information content — its fired instances are, in
+      truth, indistinguishable from random entries — there is no real structure in the "win vs. lose" pattern
+      of those instances for a meta-model to find. A meta-model trained against pure noise can and will still
+      report an apparently improved in-sample win rate at some threshold (with only 10 or even a few hundred
+      instances, a model can always find <em>some</em> historical split that separates them), but that split is
+      fit to the specific noise realization in the training sample, not a genuine relationship — it collapses
+      out-of-sample. This is precisely the honest-backtest discipline of
+      <a href="institutional-reality-check-spa.html">White's Reality Check &amp; Hansen's SPA Test</a>, applied
+      one layer deeper: an apparent improvement from filtering needs the same genuine out-of-sample scrutiny as
+      any other backtested result, not a free pass because "meta-labelling" is the mechanism doing the filtering.
+    </p>
+  </div>
+
+  <div class="tl-box repo">
+    <div class="tl-icon-badge green">✅</div>
+    <div class="tl-box-label">Verified against this repo's actual code</div>
+    <h3>A genuine two-stage primary → secondary architecture, and a genuine triple-barrier walker — both real, both worth reading precisely</h3>
+    <p>
+      <strong>Triple-barrier labeling:</strong> <code>pylego/barrier_race.py</code>'s <code>_first_touch()</code>
+      walks a running cumulative max of highs and cumulative min of lows forward from an entry bar, finds the
+      first bar index at which a take-profit price is touched (<code>tp_arr</code>) and the first at which a
+      stop-loss price is touched (<code>sl_arr</code>), and returns whichever comes first — falling back to
+      <code>'timeout'</code> at <code>max_bars_ahead</code> (the vertical barrier) if neither fires — exactly
+      the upper/lower/vertical first-touch race this lesson derives. It is not a one-off: <code>race_trades()</code>
+      and <code>race_grid()</code> both call it, and it is reused by <code>AnalogML/ml_walkforward.py</code>
+      (whose own docstring calls it "pylego.barrier_race's triple barrier"), the Volatility Bot's
+      <code>check_barriers()</code> in <code>pylego/broker/paper.py</code>, <code>pylego/strategy/volatility.py</code>'s
+      <code>trade_spec()</code>, and the range-line/Asia-range engines in <code>js/rangeLineAnalyser.js</code> and
+      <code>js/asiaRangeEngine.js</code>.
+    </p>
+    <p>
+      <strong>Meta-labelling:</strong> <code>bot/modules/ml_confidence.py</code>'s <code>MLConfidenceModule</code>
+      is a genuine two-stage architecture, not just similar vocabulary. Direction is <strong>inherited</strong>
+      from upstream primary modules — <code>_inherited_direction()</code> reads whichever of <code>gold_macro</code>,
+      <code>macro_regime</code>, or <code>vol_gate</code> already produced a LONG/SHORT signal — and a
+      <strong>separately-trained</strong> secondary ensemble (an averaged XGBoost + LightGBM pair, trained by
+      <code>bot/scripts/train_gold_model.py</code> on closed-trade <code>outcome_hit_tp</code> /
+      <code>outcome_hit_sl</code> columns — the same triple-barrier-style "which barrier fired" framing this
+      lesson builds from scratch) predicts a win-probability used only to scale position size. The module's own
+      docstring names this explicitly ("meta-labelling confidence layer," citing what it calls "the Chapter 17
+      meta-labelling pattern" — worth a note: in the actual López de Prado (2018) text, triple-barrier labeling
+      and meta-labelling are Chapters 3–4, cited in Further Reading below; the module's own comment may simply be
+      referencing a different internal chapter numbering). One honest divergence from the textbook version
+      covered in this lesson: this implementation is deliberately more conservative than a pure filter —
+      <code>passed</code> is hard-coded <code>True</code> and the module documents itself as "advisory-only... it
+      NEVER blocks a trade," only ever scaling size <em>down</em> (never up) when the predicted win-probability
+      sits below 0.5, down to a floor of 0.4×. Classic meta-labelling can also skip a low-confidence trade
+      outright; this module chooses to size it down instead and never skip it — a real, named design decision,
+      not an oversight.
+    </p>
+  </div>
+
+  <p>
+    A last note, since this is the final lesson of this category. This lesson's labeling discipline and the
+    previous lesson's statistical honesty — <a href="institutional-reality-check-spa.html">White's Reality Check
+    &amp; Hansen's SPA Test</a> — are answers to the same underlying question, asked at two different points in
+    the research process. That lesson asks whether an apparent backtested edge, once you account for having
+    tried many strategies, actually reflects something real rather than the best-looking result of a big enough
+    search. This lesson asks whether the training label a model learned from ever described a real, tradable
+    payoff in the first place. Both exist because a backtest can look convincing for reasons that have nothing
+    to do with a genuine, persistent market relationship — one from testing too many things, the other from
+    measuring the wrong thing to begin with.
+  </p>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A fixed-horizon return label describes a trade nobody with real risk controls actually places.</strong> A real position exits at whichever of a stop-loss, take-profit, or time limit comes first — not at a fixed bar count regardless of path.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Triple-barrier labelling sets an upper, lower, and vertical barrier and labels by whichever is touched first</strong> — walking the real forward path exactly as a live position would experience it.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Barrier widths scale with a point-in-time volatility estimate,</strong> not a fixed pip/dollar distance, so the same barrier logic adapts sensibly across calm and violent regimes.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Meta-labelling separates "which direction" from "how confident,"</strong> letting a weak, noisy primary signal be filtered or sized by a secondary model trained only on the same triple-barrier labels, restricted to fired instances.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Filtering by meta-probability raises precision by taking fewer trades — it is a tradeoff, not a free lunch,</strong> and it can only rank an existing signal's instances, never manufacture edge from a signal with zero real information content.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This repo genuinely implements both ideas</strong> — <code>pylego/barrier_race.py</code>'s first-touch walker and <code>bot/modules/ml_confidence.py</code>'s primary→secondary architecture — worth reading directly, not taking on faith.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why can a fixed-horizon return label (e.g., "return over the next 20 bars") disagree with what a real trading position actually earned?</summary>
+    <div class="tl-answer">
+      A real position with risk controls is closed by whichever of a stop-loss, a take-profit, or a maximum
+      holding time is reached first — not held blindly for a fixed number of bars regardless of the path in
+      between. The price 20 bars later can be higher even though the path first blew through where a real
+      stop-loss would have closed the position, and it can be lower even though the path first touched a real
+      take-profit well before bar 20. The fixed-horizon label measures a snapshot; a real position's outcome is
+      determined by the first barrier its own exit rules would have hit.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. State the triple-barrier labeling rule precisely: what determines the label, and what are the three possible outcomes?</summary>
+    <div class="tl-answer">
+      Set an upper barrier \(U\) (take-profit), a lower barrier \(L\) (stop-loss), and a vertical barrier \(V\)
+      (a time limit \(h\) bars after entry). Walk forward from entry; the label is \(+1\) if \(U\) is touched
+      first, \(-1\) if \(L\) is touched first, and either \(0\) or the small realized return \(r_\tau\) if the
+      vertical barrier \(V\) is reached without either horizontal barrier having fired first. The label is
+      decided entirely by which of the three is touched earliest — a genuine race, not a comparison of all
+      three at some fixed later point.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why scale the upper and lower barrier widths to a volatility estimate rather than using a fixed pip or dollar distance for every entry?</summary>
+    <div class="tl-answer">
+      A fixed-width barrier doesn't adapt to changing volatility regimes: the same 20-pip stop that is
+      comfortably wide during a calm period can be trivially touched by ordinary noise during a volatile one,
+      and the same 20-pip target that's easily reached in a volatile period can be unrealistically far in a
+      calm one. Scaling both barriers to a volatility estimate — a GARCH conditional variance, or a
+      Garman-Klass/Yang-Zhang range-based estimate — keeps the barrier's real difficulty roughly comparable
+      across regimes, which keeps the resulting labels meaningfully comparable across time as well.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. In meta-labelling, what exactly is the primary model's job, and what exactly is the secondary (meta) model's job? Why does splitting the problem this way help?</summary>
+    <div class="tl-answer">
+      The primary model or rule decides direction only — long, short, or no signal — and can be weak or noisy;
+      it does not need to be profitable on its own. The secondary (meta) model is trained only on instances
+      where the primary signal fired, using the same triple-barrier labels, and predicts the probability that
+      this specific fired instance wins. Splitting the problem helps because "find genuine alpha from raw
+      market data" is a hard, largely unsolved problem, while "given that a signal already flagged this
+      instance, is it more or less likely than average to win?" is a narrower, separable, and often much easier
+      problem — the meta-model never has to find opportunities from scratch, only rank ones already surfaced.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. In the worked example, filtering the 10 fired signals to only those with meta-probability above 0.60 raised the win rate from 50.0% to 75.0%, while taking only 4 of the original 10 signals. What does this demonstrate, and what is the necessary tradeoff?</summary>
+    <div class="tl-answer">
+      It demonstrates that the meta-model's predicted probability carried real information about which fired
+      signals were more likely to win — filtering on it genuinely raised the precision of the trades actually
+      taken. The necessary tradeoff is trade count: raising precision this way removed six of the ten original
+      opportunities entirely. The meta-model did not create new winners out of the discarded six; it separated
+      the original ten into a smaller, higher-quality subset and a larger, lower-quality one that gets skipped.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Suppose a primary signal's fired instances are, in truth, no better than random entries — literally zero information content. Can a meta-model still produce a genuinely profitable filtered subset out-of-sample?</summary>
+    <div class="tl-answer">
+      No. Meta-labelling can only filter and re-rank structure that already exists in the primary signal's fired
+      instances; it cannot manufacture information that isn't there. A meta-model trained against a primary
+      signal with zero real information content can still report an apparently improved in-sample win rate at
+      some threshold — with a finite, often small sample, some split that looks like it separates winners from
+      losers can usually be found — but that split fits the specific noise realization in the training sample,
+      not a genuine relationship, and it will not survive genuine out-of-sample testing.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Marcos López de Prado, <em>Advances in Financial Machine Learning</em>, Wiley, 2018 — Chapter 3, "Labeling," is the primary source for triple-barrier labeling; Chapter 4, "Sample Weights," covers meta-labelling directly.</li>
+    <li>Marcos López de Prado, <em>Advances in Financial Machine Learning</em>, Wiley, 2018 — Chapter 5, "Fractionally Differentiated Features," is a natural companion for building the features a meta-model consumes without destroying the memory the triple-barrier label depends on.</li>
+    <li><a href="research-pipeline-hypothesis-to-backtest.html">The Research Pipeline: Hypothesis to Honest Backtest</a> — the discipline that governs how any labeling scheme, including this one, should be validated before being trusted.</li>
+    <li><a href="feature-engineering-leakage-reproducibility.html">Feature Engineering, Leakage &amp; Reproducibility</a> — the point-in-time discipline this lesson's volatility-estimate warning depends on directly.</li>
+    <li><a href="institutional-reality-check-spa.html">White's Reality Check &amp; Hansen's SPA Test</a> — the statistical honesty this lesson's meta-labelling pitfall leans on when judging whether a filtered improvement is real.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="institutional-reality-check-spa.html">← White's Reality Check &amp; Hansen's SPA Test</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="institutional-trade-classification.html">Trade Classification →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+<script>
+(function(){
+  // ── Live triple-barrier widget: fixed deterministic 20-bar synthetic path ──
+  (function(){
+    var kuSlider = document.getElementById('tb-ku-slider');
+    if (!kuSlider) return;
+    var klSlider = document.getElementById('tb-kl-slider');
+    var hSlider  = document.getElementById('tb-h-slider');
+    var kuVal = document.getElementById('tb-ku-val');
+    var klVal = document.getElementById('tb-kl-val');
+    var hVal  = document.getElementById('tb-h-val');
+    var readout = document.getElementById('tb-live-readout');
+    var staticG = document.getElementById('tb-live-static');
+    var dynamicG = document.getElementById('tb-live-dynamic');
+
+    var ENTRY = 1.0850;
+    var PIP = 0.0001;
+    var SIGMA_PIPS = 5;
+    // Fixed, deterministic offsets in pips from entry, bar 0..20 (bar 0 = entry).
+    var OFFSETS = [0, 3, -4, 2, -9, -14, -7, -11, -3, 5, 9, 14, 10, 18, 22, 28, 24, 30, 26, 33, 29];
+    var N = OFFSETS.length - 1; // 20 bars
+
+    // Plot geometry: x over bars 0..20, y over a fixed pip range so barrier
+    // lines drawn at any slider setting stay legible.
+    var X0 = 70, X1 = 590, Y0 = 260, Y1 = 20;
+    var PIP_MIN = -30, PIP_MAX = 40; // fixed vertical scale, pips relative to entry
+    function xOf(bar){ return X0 + (bar / N) * (X1 - X0); }
+    function yOf(pips){
+      var frac = (pips - PIP_MIN) / (PIP_MAX - PIP_MIN);
+      return Y0 - frac * (Y0 - Y1);
+    }
+
+    function svgEl(tag, attrs){
+      var el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+      for (var k in attrs) el.setAttribute(k, attrs[k]);
+      return el;
+    }
+
+    function drawStatic(){
+      staticG.innerHTML = '';
+      var pathD = 'M' + xOf(0) + ',' + yOf(OFFSETS[0]);
+      for (var i = 1; i <= N; i++) pathD += ' L' + xOf(i) + ',' + yOf(OFFSETS[i]);
+      staticG.appendChild(svgEl('path', {
+        d: pathD, style: 'stroke:var(--text3);stroke-width:2;fill:none;stroke-linecap:round;opacity:.55'
+      }));
+      staticG.appendChild(svgEl('circle', { cx: xOf(0), cy: yOf(0), r: 4.5, fill: 'var(--blue)' }));
+      var entryLabel = svgEl('text', {
+        x: xOf(0), y: yOf(0) - 12, 'text-anchor': 'middle', fill: 'var(--blue)',
+        'font-size': '10', 'font-family': "'DM Mono',monospace"
+      });
+      entryLabel.textContent = 'entry 1.0850';
+      staticG.appendChild(entryLabel);
+    }
+
+    function fmtPrice(pips){ return (ENTRY + pips * PIP).toFixed(4); }
+
+    function recompute(){
+      var ku = parseFloat(kuSlider.value);
+      var kl = parseFloat(klSlider.value);
+      var h  = parseInt(hSlider.value, 10);
+
+      dynamicG.innerHTML = '';
+
+      if (!isFinite(ku) || !isFinite(kl) || !isFinite(h) || ku <= 0 || kl <= 0 || h <= 0) {
+        readout.textContent = 'Barrier widths and holding time must be positive numbers — enter a value greater than zero for each.';
+        kuVal.textContent = '—'; klVal.textContent = '—'; hVal.textContent = '—';
+        return;
+      }
+
+      var upperPips = ku * SIGMA_PIPS;
+      var lowerPips = -kl * SIGMA_PIPS;
+      var hClamped = Math.min(h, N);
+
+      kuVal.textContent = ku.toFixed(1) + ' × σ (' + upperPips.toFixed(1) + ' pips)';
+      klVal.textContent = kl.toFixed(1) + ' × σ (' + (kl * SIGMA_PIPS).toFixed(1) + ' pips)';
+      hVal.textContent = h + (h > N ? ' bars (clamped to path length, ' + N + ')' : ' bars');
+
+      // Barrier lines.
+      dynamicG.appendChild(svgEl('line', {
+        x1: X0, x2: X1, y1: yOf(upperPips), y2: yOf(upperPips),
+        style: 'stroke:var(--green);stroke-width:1.5;stroke-dasharray:6 4'
+      }));
+      var uLabel = svgEl('text', {
+        x: X1 + 4, y: yOf(upperPips) + 4, fill: 'var(--green)', 'font-size': '10', 'font-family': "'DM Mono',monospace"
+      });
+      uLabel.textContent = 'U ' + fmtPrice(upperPips);
+      dynamicG.appendChild(uLabel);
+
+      dynamicG.appendChild(svgEl('line', {
+        x1: X0, x2: X1, y1: yOf(lowerPips), y2: yOf(lowerPips),
+        style: 'stroke:var(--red);stroke-width:1.5;stroke-dasharray:6 4'
+      }));
+      var lLabel = svgEl('text', {
+        x: X1 + 4, y: yOf(lowerPips) + 4, fill: 'var(--red)', 'font-size': '10', 'font-family': "'DM Mono',monospace"
+      });
+      lLabel.textContent = 'L ' + fmtPrice(lowerPips);
+      dynamicG.appendChild(lLabel);
+
+      dynamicG.appendChild(svgEl('line', {
+        x1: xOf(hClamped), x2: xOf(hClamped), y1: Y1, y2: Y0,
+        style: 'stroke:var(--amber);stroke-width:1.5;stroke-dasharray:3 4'
+      }));
+
+      // Walk forward bar by bar looking for first touch.
+      var touchBar = null, touchType = null;
+      for (var b = 1; b <= hClamped; b++) {
+        if (OFFSETS[b] >= upperPips) { touchBar = b; touchType = 'upper'; break; }
+        if (OFFSETS[b] <= lowerPips) { touchBar = b; touchType = 'lower'; break; }
+      }
+
+      // Draw the live path up to the resolution bar (or the full clamped window).
+      var endBar = touchBar !== null ? touchBar : hClamped;
+      var pathD = 'M' + xOf(0) + ',' + yOf(OFFSETS[0]);
+      for (var i = 1; i <= endBar; i++) pathD += ' L' + xOf(i) + ',' + yOf(OFFSETS[i]);
+      dynamicG.appendChild(svgEl('path', {
+        d: pathD, style: 'stroke:var(--blue);stroke-width:2.5;fill:none;stroke-linecap:round'
+      }));
+
+      if (touchBar !== null) {
+        var color = touchType === 'upper' ? 'var(--green)' : 'var(--red)';
+        dynamicG.appendChild(svgEl('circle', {
+          cx: xOf(touchBar), cy: yOf(OFFSETS[touchBar]), r: 6,
+          style: 'fill:' + color + ';stroke:var(--bg);stroke-width:2'
+        }));
+        var label = touchType === 'upper' ? '+1 — upper touched' : '-1 — lower touched';
+        readout.innerHTML = '<b style="color:' + color + '">' + label + '</b> at bar ' + touchBar +
+          ' (price ' + fmtPrice(OFFSETS[touchBar]) + ') — vertical barrier at bar ' + hClamped + ' never reached.';
+      } else {
+        var finalPips = OFFSETS[hClamped];
+        readout.innerHTML = '<b style="color:var(--amber)">Vertical barrier reached</b> at bar ' + hClamped +
+          ' without touching either horizontal barrier — label = 0 (or the realized return, ' +
+          (finalPips >= 0 ? '+' : '') + finalPips.toFixed(1) + ' pips, ' + fmtPrice(finalPips) + ').';
+      }
+    }
+
+    drawStatic();
+    [kuSlider, klSlider, hSlider].forEach(function(el){ el.addEventListener('input', recompute); });
+    recompute();
+  })();
+
+  // ── Meta-labelling threshold calculator ──
+  (function(){
+    var slider = document.getElementById('ml-thresh-slider');
+    if (!slider) return;
+    var val = document.getElementById('ml-thresh-val');
+    var nOut = document.getElementById('ml-thresh-n');
+    var wOut = document.getElementById('ml-thresh-w');
+    var wrOut = document.getElementById('ml-thresh-wr');
+    var readout = document.getElementById('ml-thresh-readout');
+
+    var PROBS    = [0.82, 0.71, 0.65, 0.61, 0.58, 0.54, 0.47, 0.39, 0.33, 0.22];
+    var OUTCOMES = [1,    1,    1,    -1,   1,    -1,   -1,   1,    -1,   -1];
+
+    function recompute(){
+      var t = parseFloat(slider.value);
+      if (!isFinite(t)) { readout.textContent = 'Enter a threshold between 0 and 1.'; return; }
+      val.textContent = t.toFixed(2);
+
+      var n = 0, w = 0;
+      for (var i = 0; i < PROBS.length; i++) {
+        if (PROBS[i] > t) {
+          n++;
+          if (OUTCOMES[i] === 1) w++;
+        }
+      }
+      nOut.textContent = n;
+      if (n === 0) {
+        wOut.textContent = '—';
+        wrOut.textContent = 'n/a — no signals clear this threshold';
+      } else {
+        wOut.textContent = w;
+        wrOut.textContent = (100 * w / n).toFixed(1) + '%';
+      }
+    }
+
+    slider.addEventListener('input', recompute);
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

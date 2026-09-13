@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Probability of Informed Trading (PIN) — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Market Microstructure Extensions / PIN</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Market Microstructure Extensions 4 of 5</div>
+  <h1 class="tl-title">The Probability of Informed Trading (PIN)</h1>
+  <p class="tl-dek">Glosten-Milgrom explains, one trade at a time, why an informed order moves the quote. PIN takes the same informed-vs-noise structure and turns it into an actual number — fit by maximum likelihood to nothing more than how many buys and sells a stock saw each day — and it is the structural model that VPIN was later built to approximate in real time.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — no PIN/EKOP estimation exists anywhere in this repo (verified below)</span>
+    <span>~18 min read</span>
+    <span>Prereqs: <a href="institutional-glosten-milgrom.html">Glosten-Milgrom</a> (the adverse-selection theory PIN estimates), <a href="vpin-order-flow-toxicity.html">Order Flow Toxicity &amp; VPIN</a> (the real-time approximation PIN inspired)</span>
+  </div>
+
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="institutional-pin-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>PIN (Easley, Kiefer, O'Hara &amp; Paperman, 1996) fits a structural model of trading to the daily <strong>counts</strong> of buyer- and seller-initiated trades in a stock — not individual trade-by-trade quote-setting like Glosten-Milgrom, and not a tick-by-tick real-time computation like VPIN.</li>
+      <li>The model: on any day, an information event occurs with probability \(\alpha\) — bad news with probability \(\delta\), good news with probability \(1-\delta\). On event days, informed traders arrive at Poisson rate \(\mu\) and trade in the direction of the news. Every day, regardless of an event, uninformed buyers and sellers each arrive at Poisson rate \(\varepsilon\).</li>
+      <li>Maximum likelihood, fit to a stock's own history of daily \((B_t, S_t)\) buy/sell counts, recovers estimates \(\hat\alpha, \hat\delta, \hat\mu, \hat\varepsilon\) — and PIN itself is simply \(\text{PIN} = \dfrac{\hat\alpha\hat\mu}{\hat\alpha\hat\mu + 2\hat\varepsilon}\): the expected rate of informed trade arrivals, over the expected rate of <em>all</em> trade arrivals.</li>
+      <li>\(\delta\) — which direction the news points — never appears in that formula. PIN measures how much of order flow is information-driven at all, not which way it's likely to push price.</li>
+      <li>VPIN exists precisely because this MLE approach is too slow and data-hungry to run live; it trades PIN's theoretical rigor for a continuously-updating volume-bucket approximation of the same underlying idea.</li>
+      <li>PIN is a widely-cited but genuinely contested measure — Duarte &amp; Young (2009) argue a real part of what it measures is ordinary illiquidity-driven imbalance, not private information, and this lesson treats that critique as seriously as the original model.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    <a href="institutional-glosten-milgrom.html">Glosten-Milgrom</a>, elsewhere
+    in this category, derives the bid-ask spread from a single Bayesian idea:
+    a market maker facing an anonymous order cannot tell whether it comes from
+    someone who knows the asset is mispriced or someone trading for
+    unrelated, "noise" reasons, and the spread is exactly the compensation
+    needed for that uncertainty. That model is built one trade at a time — the
+    market maker updates a belief after every single order and re-quotes.
+    It is a beautiful theory of <em>why</em> adverse selection produces a
+    spread. It says almost nothing, on its own, about how a researcher would
+    actually go measure "how informed is the flow in this specific stock,
+    this specific quarter" from real trade data.
+  </p>
+  <p>
+    PIN is the answer to that measurement problem. Instead of modeling each
+    trade's effect on the quote, it fits a similar sequential-trade structure
+    to something far coarser and easier to observe: the <strong>daily count</strong>
+    of buyer-initiated trades and seller-initiated trades in a stock, over
+    many days. Those daily buy/sell counts themselves have to come from
+    somewhere — a trade-by-trade classification scheme (the Lee-Ready tick
+    rule and its relatives, covered in this category's
+    <a href="institutional-trade-classification.html">Trade Classification</a>
+    lesson) is what turns a raw tape of prints into the \((B_t, S_t)\) counts
+    PIN's likelihood actually consumes. Get the classification step wrong and
+    every PIN estimate built on top of it inherits that error — the two
+    lessons are genuinely a pipeline, not two independent topics.
+  </p>
+  <p>
+    PIN also has a second, later relative worth placing correctly up front:
+    <a href="vpin-order-flow-toxicity.html">VPIN</a>, covered elsewhere in
+    this curriculum, was built specifically because PIN's maximum-likelihood
+    approach is too slow to compute in anything close to real time. This
+    lesson is the structural model VPIN approximates — read it, and the VPIN
+    lesson's own framing of itself as "a computable, real-time proxy for the
+    informed-trading share \(\alpha\)" reads as a precise, honest description
+    of the actual relationship between the two, not a loose analogy.
+  </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🔗</div>
+      <h4>Builds on Glosten-Milgrom</h4>
+      <p>Same informed-vs-noise split, same Bayesian machinery underneath — PIN is the empirical estimation technique fit to daily trade counts, not a new theory of the spread.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🔢</div>
+      <h4>Consumes Trade Classification's output</h4>
+      <p>PIN's likelihood is a function of daily buy/sell counts. Where those counts come from — tick rules, quote-based classifiers — is this category's Trade Classification lesson, not this one.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">⏱️</div>
+      <h4>The slow, rigorous cousin of VPIN</h4>
+      <p>PIN needs many days of history and a numerical MLE fit. VPIN sacrifices exactly that rigor for a number that updates every volume bucket.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">⚖️</div>
+      <h4>Contested, not settled</h4>
+      <p>PIN is one of the most-cited empirical microstructure measures ever published — and a serious academic critique argues part of what it captures isn't information at all.</p>
+    </div>
+  </div>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Not "was this trade informed" — "how much of today's flow probably was"</h3>
+    <p>
+      Imagine a stock where, most days, roughly the same modest number of
+      people buy and roughly the same modest number sell — nothing special is
+      happening, trading is just the ordinary background churn of people who
+      need to rebalance, hedge, or trade for liquidity reasons unrelated to
+      the stock's true value. Call these uninformed traders; they show up on
+      <em>every</em> day, buy side and sell side both, at some steady rate.
+    </p>
+    <p>
+      Now suppose that on some days — not most, but some — a piece of private
+      information arrives: maybe an analyst, an insider, or a fast, skilled
+      researcher learns something about the company that the market doesn't
+      yet reflect. On those days, and only those days, a separate pool of
+      informed traders shows up too, and every one of them trades in the same
+      direction: if the news is good, they buy; if it's bad, they sell. From
+      the outside, a researcher watching only the daily buy and sell counts
+      can't see "an information event happened" directly — but they can see
+      its fingerprint: on event days, the count of trades on one side balloons
+      relative to the other, in a way ordinary two-sided noise trading almost
+      never produces on its own. PIN is the technique for turning "how often,
+      and how strongly, do I see that fingerprint in this stock's trading
+      history" into a single estimated number: the fraction of all trading in
+      this stock, over this period, that is expected to come from someone who
+      knew something the rest of the market didn't.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+  <p>
+    PIN is built on a specific generative story about how a single trading
+    day's buy and sell counts come about — the model due to Easley, Kiefer,
+    O'Hara &amp; Paperman (1996), often abbreviated EKOP after its authors.
+    Every trading day is treated as one independent draw from this story.
+  </p>
+
+  <h3>1. Does an information event happen today?</h3>
+  <p>
+    At the start of each day \(t\), nature flips a coin: with probability
+    \(\alpha\), an information event occurs — some piece of private
+    information about the asset's true value becomes available to a subset of
+    traders. With probability \(1-\alpha\), nothing happens; it's an ordinary
+    day. This draw is independent across days.
+  </p>
+  <div class="tl-math">\[ \Pr(\text{event on day } t) = \alpha, \qquad \Pr(\text{no event}) = 1-\alpha \]</div>
+
+  <h3>2. If an event happens, which direction is it?</h3>
+  <p>
+    Conditional on an event occurring, it is <strong>bad news</strong> with
+    probability \(\delta\) or <strong>good news</strong> with probability
+    \(1-\delta\). Bad news means the asset's fundamental value is now lower
+    than the market currently believes; good news means it's higher.
+  </p>
+  <div class="tl-math">\[ \Pr(\text{bad} \mid \text{event}) = \delta, \qquad \Pr(\text{good} \mid \text{event}) = 1-\delta \]</div>
+
+  <h3>3. Who actually shows up to trade, and when</h3>
+  <p>
+    Two separate populations of traders arrive over the course of the day,
+    each modeled as a Poisson arrival process:
+  </p>
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>Uninformed (noise) traders</h4>
+      <p>
+        Arrive <strong>every single day</strong>, event or not — uninformed
+        buyers at Poisson rate \(\varepsilon_b\) and uninformed sellers at
+        Poisson rate \(\varepsilon_s\). The original EKOP model assumes
+        \(\varepsilon_b = \varepsilon_s = \varepsilon\) for tractability (a
+        symmetric noise-trading baseline); later extensions relax this to let
+        buy-side and sell-side noise flow differ.
+      </p>
+    </div>
+    <div class="tl-compare-card purple">
+      <h4>Informed traders</h4>
+      <p>
+        Arrive <strong>only on event days</strong>, at Poisson rate \(\mu\),
+        and trade exclusively in the direction the news points: on a
+        good-news event day they buy; on a bad-news event day they sell. On a
+        no-event day, no informed traders show up at all — the day's flow is
+        entirely the uninformed baseline.
+      </p>
+    </div>
+  </div>
+  <p>
+    Put together, there are exactly three possible "day types," each with its
+    own expected rate of daily buys \(B\) and sells \(S\):
+  </p>
+  <div class="tl-symbols"><table>
+    <tr><td>No event <br>(prob \(1-\alpha\))</td><td>Buys \(\sim\text{Poisson}(\varepsilon)\), sells \(\sim\text{Poisson}(\varepsilon)\) — uninformed flow only, both sides.</td></tr>
+    <tr><td>Bad-news event <br>(prob \(\alpha\delta\))</td><td>Buys \(\sim\text{Poisson}(\varepsilon)\), sells \(\sim\text{Poisson}(\mu+\varepsilon)\) — informed sellers pile onto the uninformed sell rate.</td></tr>
+    <tr><td>Good-news event <br>(prob \(\alpha(1-\delta)\))</td><td>Buys \(\sim\text{Poisson}(\mu+\varepsilon)\), sells \(\sim\text{Poisson}(\varepsilon)\) — informed buyers pile onto the uninformed buy rate.</td></tr>
+  </table></div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Picture a lemonade stand's regular customers showing up every day at roughly the same pace, buy side and sell side both. Now imagine that on some days — but not every day — a group of kids who heard a storm is coming (bad for lemonade) all show up at once to sell their own stands' extra lemons, or a group who heard a heatwave is coming all show up to buy extra. Most days it's just the regulars. Some days, a whole extra crowd piles onto one side only, because they know something the regulars don't yet.</p>
+  </div>
+
+  <h3>4. The likelihood — a mixture across the three day types</h3>
+  <p>
+    A researcher never observes which of the three day types actually
+    happened on any given day \(t\) — only the realized counts \((B_t, S_t)\).
+    The day's likelihood contribution is therefore a probability-weighted
+    <strong>mixture</strong> across all three possibilities, each weighted by
+    how likely that day type was and how likely it was to produce exactly
+    this \((B_t, S_t)\) pair, using the Poisson probability mass function
+    \(f(k;\lambda) = e^{-\lambda}\lambda^k/k!\):
+  </p>
+  <div class="tl-math">
+    \[
+    \begin{aligned}
+    L(\theta \mid B_t, S_t) \;=\; &(1-\alpha)\,f(B_t;\varepsilon)\,f(S_t;\varepsilon) \\
+    + \;&\alpha\delta\,f(B_t;\varepsilon)\,f(S_t;\mu+\varepsilon) \\
+    + \;&\alpha(1-\delta)\,f(B_t;\mu+\varepsilon)\,f(S_t;\varepsilon)
+    \end{aligned}
+    \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>θ</code><span>the parameter vector being estimated: (α, δ, μ, ε)</span></div>
+    <div class="tl-eq-chip c2"><code>f(k;λ)</code><span>the Poisson probability of observing exactly k arrivals when the true rate is λ</span></div>
+    <div class="tl-eq-chip c3"><code>(1−α)·f(B;ε)·f(S;ε)</code><span>the no-event term — both sides drawn from the uninformed rate alone</span></div>
+    <div class="tl-eq-chip c4"><code>αδ, α(1−δ)</code><span>the bad-news and good-news event terms — one side's rate jumps to μ+ε</span></div>
+  </div>
+  <p>
+    Assuming trading days are independent of one another (a simplifying
+    assumption, not a claim the market has no memory), the full-sample
+    log-likelihood over \(T\) days is just the sum of each day's log
+    contribution:
+  </p>
+  <div class="tl-math">\[ \ln L(\theta \mid \{B_t,S_t\}_{t=1}^{T}) = \sum_{t=1}^{T} \ln L(\theta \mid B_t, S_t) \]</div>
+  <p>
+    Maximizing this expression numerically over \(\theta = (\alpha,\delta,\mu,\varepsilon)\)
+    — there is no closed-form solution, so this is done with a numerical
+    optimizer — yields the maximum-likelihood estimates
+    \(\hat\alpha, \hat\delta, \hat\mu, \hat\varepsilon\). This is genuinely
+    not something to reimplement from scratch in a browser widget: real PIN
+    estimation needs many days of trade-classified data and a careful
+    numerical optimization (with known issues around local optima and
+    boundary solutions that later methodological papers address directly).
+    The worked example and calculator below start from the far side of that
+    step — parameter values <em>as if</em> already estimated — and show
+    exactly what to do with them.
+  </p>
+
+  <h3>5. PIN itself — the formula</h3>
+  <p>
+    Once \(\hat\alpha, \hat\mu, \hat\varepsilon\) are in hand (notice:
+    \(\hat\delta\) is about to visibly drop out), PIN is defined as:
+  </p>
+  <div class="tl-math">\[ \text{PIN} = \frac{\alpha\mu}{\alpha\mu + 2\varepsilon} \]</div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">αμ</div>
+      <div class="tl-fp-name">Expected informed arrival rate</div>
+      <div class="tl-fp-desc">Probability an event occurs (α), times the informed arrival rate conditional on one occurring (μ) — the expected number of informed trades per day, averaged over event and non-event days alike</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">2ε</div>
+      <div class="tl-fp-name">Expected uninformed arrival rate</div>
+      <div class="tl-fp-desc">Uninformed buyers arrive at rate ε and uninformed sellers at rate ε, every single day — total uninformed arrivals per day is ε + ε = 2ε</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">PIN</div>
+      <div class="tl-fp-name">The result</div>
+      <div class="tl-fp-desc">Expected informed arrivals, divided by expected total (informed + uninformed) arrivals — the fraction of a day's expected order flow that's expected to come from someone trading on private information</div>
+    </div>
+  </div>
+  <p>
+    Read the formula exactly as it's built: the numerator is a <em>rate</em>
+    (expected informed trades per day), and the denominator is the same rate
+    plus the expected uninformed rate — so PIN is simply "informed share of
+    total expected trading volume," expressed as a probability between 0 and
+    1. A stock trading almost entirely on noise (\(\alpha\) near 0, or
+    \(\mu\) small relative to \(\varepsilon\)) has PIN near 0; a stock where
+    informed arrivals dominate whenever an event occurs, and events are
+    frequent, has PIN closer to 1.
+  </p>
+
+  <div class="tl-solid amber">
+    <strong>Notice what is not in that formula: \(\delta\).</strong> \(\delta\)
+    governs which <em>direction</em> an information event points — bad news
+    versus good news — and it genuinely matters for the expected
+    <em>imbalance</em> and sign of trading on an event day. But PIN is built
+    to answer a direction-agnostic question: <em>overall, how much of this
+    stock's trading is driven by private information at all</em> — regardless
+    of whether that information happens to be bullish or bearish. A stock
+    where every single event is bad news (\(\delta=1\)) and one where every
+    event is good news (\(\delta=0\)) can have <em>identical</em> PIN values,
+    provided \(\alpha\), \(\mu\), and \(\varepsilon\) are the same — because
+    in both cases, exactly the same fraction of expected order flow is
+    information-driven either way. \(\delta\) shapes what informed trading
+    <em>looks like</em>; PIN measures only how much of it there is.
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>PIN answers "how often is someone at this lemonade stand trading because they know something the others don't" — not "was it usually good news or bad news when that happened." Whether the secret info was good or bad doesn't change how big a deal it is that secret info was driving trades at all.</p>
+  </div>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(\alpha\)</td><td>Probability an information event occurs on a given trading day.</td></tr>
+    <tr><td>\(\delta\)</td><td>Conditional on an event, probability it is bad news (vs. \(1-\delta\) for good news). Does not appear in the PIN formula.</td></tr>
+    <tr><td>\(\mu\)</td><td>Poisson arrival rate of informed traders, conditional on an event occurring.</td></tr>
+    <tr><td>\(\varepsilon\) (or \(\varepsilon_b,\varepsilon_s\))</td><td>Poisson arrival rate of uninformed buyers and sellers, every day regardless of an event; the original model sets \(\varepsilon_b=\varepsilon_s=\varepsilon\).</td></tr>
+    <tr><td>\(B_t, S_t\)</td><td>Observed count of buyer- and seller-initiated trades on day \(t\), from a trade-classification scheme.</td></tr>
+    <tr><td>\(T\)</td><td>Number of trading days in the estimation sample.</td></tr>
+    <tr><td>\(\theta\)</td><td>The full parameter vector \((\alpha,\delta,\mu,\varepsilon)\) being fit by maximum likelihood.</td></tr>
+    <tr><td>PIN</td><td>\(\alpha\mu/(\alpha\mu+2\varepsilon)\) — the estimated probability that a randomly chosen trade in this stock, this period, is informed.</td></tr>
+  </table></div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>Worked example, and the calculator</h2>
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Computing PIN from already-fitted parameters</h3>
+    <p>
+      Full MLE estimation of \((\alpha,\delta,\mu,\varepsilon)\) from raw
+      daily buy/sell counts is a genuine numerical-optimization exercise, not
+      something to hand-compute or reimplement here from scratch. So this
+      example does what any practitioner does downstream of that step: it
+      starts from plausible, already-estimated parameter values — as if
+      recovered by MLE on some stock's trade-classified history — and
+      computes PIN directly from the closed-form ratio.
+    </p>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>Start from the fitted parameters</h4>
+          <p>
+            Suppose MLE on this stock's daily buy/sell counts returned
+            \(\hat\alpha = 0.25\) (an information event on roughly 1 trading
+            day in 4), \(\hat\mu = 150\) informed trades per day on an event
+            day, and \(\hat\varepsilon = 100\) uninformed trades per day, per
+            side. (\(\hat\delta\) was also estimated — say 0.55, slightly more
+            bad-news events than good — but as established above, it plays no
+            role in what comes next.)
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>Compute the expected informed arrival rate</h4>
+          <div class="tl-math">\[ \hat\alpha\hat\mu = 0.25 \times 150 = 37.5 \text{ informed trades/day, expected} \]</div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>Compute the expected uninformed arrival rate</h4>
+          <div class="tl-math">\[ 2\hat\varepsilon = 2 \times 100 = 200 \text{ uninformed trades/day, expected} \]</div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">4</div>
+        <div class="tl-step-body">
+          <h4>Divide informed by total</h4>
+          <div class="tl-math">\[ \text{PIN} = \frac{37.5}{37.5 + 200} = \frac{37.5}{237.5} \approx 0.158 \]</div>
+          <p>
+            About 15.8% of this stock's expected daily order flow, over the
+            period this was fit on, is estimated to come from informed
+            traders — a moderate reading; real published PIN estimates across
+            U.S. equities have historically ranged roughly from the
+            high-single-digits to over 30%, varying a great deal by stock
+            size and liquidity.
+          </p>
+        </div>
+      </div>
+    </div>
+    <p>
+      <strong>What the underlying daily count data would plausibly have
+      looked like.</strong> Without implementing the likelihood itself: days
+      that were actually no-event days would tend to show buy and sell counts
+      sitting close together, both hovering near \(\hat\varepsilon=100\) —
+      ordinary two-sided noise. Days that were actually information events
+      would tend to show one side spiking well above the other — on a
+      bad-news day, sells running up around \(\hat\mu+\hat\varepsilon=250\)
+      while buys stay near 100; on a good-news day, the mirror image. It is
+      exactly this recurring pattern — most days roughly balanced, a
+      minority of days sharply lopsided in one direction or the other — that
+      the MLE fit is using to back out how often (\(\alpha\)), how strongly
+      (\(\mu\)), and against what baseline (\(\varepsilon\)) that lopsidedness
+      occurs.
+    </p>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">The PIN day-type tree, feeding into the formula</div>
+    <svg viewBox="0 0 1080 500" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Tree diagram. A root node, trading day t, branches into two: no event with probability one minus alpha, and information event with probability alpha. The no-event branch leads to a leaf showing uninformed buyers and sellers both arriving at rate epsilon. The information-event branch splits further into bad news with probability delta, leading to a leaf with buys at rate epsilon and sells at rate mu plus epsilon, and good news with probability one minus delta, leading to a leaf with buys at rate mu plus epsilon and sells at rate epsilon. All three leaves converge into a box showing the PIN formula: alpha times mu, divided by alpha times mu plus two epsilon.">
+      <rect x="370" y="14" width="200" height="50" rx="8" style="fill:var(--blue-bg);stroke:var(--blue-bd)"/>
+      <text x="470" y="35" text-anchor="middle" fill="var(--text)" font-size="13" font-family="'DM Mono',monospace">Trading day t</text>
+      <text x="470" y="52" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">begins</text>
+
+      <line x1="430" y1="64" x2="200" y2="110" style="stroke:var(--border2);stroke-width:1.5"/>
+      <text x="290" y="92" text-anchor="middle" fill="var(--text2)" font-size="11" font-family="'DM Mono',monospace">1 − α</text>
+      <line x1="520" y1="64" x2="735" y2="110" style="stroke:var(--border2);stroke-width:1.5"/>
+      <text x="650" y="92" text-anchor="middle" fill="var(--purple)" font-size="11" font-family="'DM Mono',monospace">α</text>
+
+      <rect x="100" y="110" width="200" height="46" rx="8" style="fill:var(--panel2,var(--s1));stroke:var(--border2)"/>
+      <text x="200" y="132" text-anchor="middle" fill="var(--text)" font-size="12" font-family="'DM Mono',monospace">No event</text>
+      <text x="200" y="148" text-anchor="middle" fill="var(--text3)" font-size="9" font-family="'DM Mono',monospace">nothing new today</text>
+
+      <rect x="605" y="110" width="260" height="46" rx="8" style="fill:var(--purple-bg);stroke:var(--purple-bd)"/>
+      <text x="735" y="132" text-anchor="middle" fill="var(--text)" font-size="12" font-family="'DM Mono',monospace">Information event</text>
+      <text x="735" y="148" text-anchor="middle" fill="var(--purple)" font-size="9" font-family="'DM Mono',monospace">private info released</text>
+
+      <line x1="200" y1="156" x2="200" y2="210" style="stroke:var(--border2);stroke-width:1.5"/>
+      <line x1="700" y1="156" x2="570" y2="210" style="stroke:var(--red);stroke-width:1.5"/>
+      <text x="605" y="188" text-anchor="middle" fill="var(--red)" font-size="11" font-family="'DM Mono',monospace">δ</text>
+      <line x1="770" y1="156" x2="900" y2="210" style="stroke:var(--green);stroke-width:1.5"/>
+      <text x="865" y="188" text-anchor="middle" fill="var(--green)" font-size="11" font-family="'DM Mono',monospace">1 − δ</text>
+
+      <rect x="50" y="210" width="300" height="76" rx="8" style="fill:var(--blue-bg);stroke:var(--blue-bd)"/>
+      <text x="200" y="234" text-anchor="middle" fill="var(--text)" font-size="12" font-family="'DM Mono',monospace" font-weight="700">Uninformed flow only</text>
+      <text x="200" y="252" text-anchor="middle" fill="var(--text2)" font-size="11" font-family="'DM Mono',monospace">buys ~ Poisson(ε)</text>
+      <text x="200" y="268" text-anchor="middle" fill="var(--text2)" font-size="11" font-family="'DM Mono',monospace">sells ~ Poisson(ε)</text>
+
+      <rect x="430" y="210" width="280" height="76" rx="8" style="fill:var(--red-bg);stroke:var(--red-bd)"/>
+      <text x="570" y="230" text-anchor="middle" fill="var(--red)" font-size="11" font-family="'DM Mono',monospace" font-weight="700">Bad news — informed sell</text>
+      <text x="570" y="250" text-anchor="middle" fill="var(--text2)" font-size="11" font-family="'DM Mono',monospace">buys ~ Poisson(ε)</text>
+      <text x="570" y="266" text-anchor="middle" fill="var(--text2)" font-size="11" font-family="'DM Mono',monospace">sells ~ Poisson(μ+ε)</text>
+
+      <rect x="760" y="210" width="280" height="76" rx="8" style="fill:var(--green-bg);stroke:var(--green-bd)"/>
+      <text x="900" y="230" text-anchor="middle" fill="var(--green)" font-size="11" font-family="'DM Mono',monospace" font-weight="700">Good news — informed buy</text>
+      <text x="900" y="250" text-anchor="middle" fill="var(--text2)" font-size="11" font-family="'DM Mono',monospace">buys ~ Poisson(μ+ε)</text>
+      <text x="900" y="266" text-anchor="middle" fill="var(--text2)" font-size="11" font-family="'DM Mono',monospace">sells ~ Poisson(ε)</text>
+
+      <line x1="200" y1="286" x2="430" y2="392" style="stroke:var(--border2);stroke-width:1.3;opacity:.7"/>
+      <line x1="570" y1="286" x2="520" y2="392" style="stroke:var(--border2);stroke-width:1.3;opacity:.7"/>
+      <line x1="900" y1="286" x2="610" y2="392" style="stroke:var(--border2);stroke-width:1.3;opacity:.7"/>
+
+      <rect x="350" y="392" width="340" height="76" rx="10" style="fill:var(--amber-bg);stroke:var(--amber-bd);stroke-width:2"/>
+      <text x="520" y="424" text-anchor="middle" fill="var(--amber)" font-size="16" font-family="'DM Mono',monospace" font-weight="700">PIN = αμ / (αμ + 2ε)</text>
+      <text x="520" y="446" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">(note: δ never enters this formula)</text>
+    </svg>
+    <div class="tl-chart-caption">
+      Every day is one draw down this tree; the three leaves are the three
+      possible "day types" whose Poisson arrival rates feed into the
+      likelihood in Section 02. Once the model is fit and \(\alpha,\mu,
+      \varepsilon\) are in hand, PIN itself needs nothing further from the
+      tree except those three numbers — \(\delta\), which only decided which
+      of the two event branches fired, drops out entirely.
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Compute PIN live from α, μ and ε</h3>
+    <p>
+      Starts on the worked example's own numbers (\(\alpha=0.25\),
+      \(\mu=150\), \(\varepsilon=100\) → PIN ≈ 0.158). Notice \(\delta\) has no
+      input field here at all — it genuinely does not enter the PIN formula,
+      for exactly the reason explained above.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Event probability α</span></div>
+        <input type="number" id="pin-scratch-alpha" class="tl-scratch-input" value="0.25" step="0.01" min="0" max="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Informed arrival rate μ (trades/day)</span></div>
+        <input type="number" id="pin-scratch-mu" class="tl-scratch-input" value="150" step="1" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Uninformed arrival rate ε (per side, trades/day)</span></div>
+        <input type="number" id="pin-scratch-eps" class="tl-scratch-input" value="100" step="1" min="0">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      αμ = <b id="pin-scratch-am">37.50</b>&emsp;2ε = <b id="pin-scratch-2e">200.00</b>
+    </div>
+    <div class="tl-readout">
+      PIN = αμ / (αμ + 2ε) = <b id="pin-scratch-pin">0.158</b>
+      <span id="pin-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="pin-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>PIN versus VPIN — the same idea, two very different tools</h2>
+  <p>
+    Easley, López de Prado &amp; O'Hara are explicit, in the paper that
+    introduced VPIN, about exactly why it exists: PIN's own maximum-likelihood
+    approach — a numerical fit to daily buy/sell counts, needing a real
+    history of days to estimate anything at all — is fundamentally unsuited
+    to answering "how informed does the order flow look <em>right now</em>,"
+    the question a trading or risk desk actually needs answered intraday.
+    VPIN was built as a deliberately cruder, but continuously-computable,
+    stand-in for the same underlying concept.
+  </p>
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>PIN (Easley, Kiefer, O'Hara &amp; Paperman, 1996)</h4>
+      <p>
+        A genuine structural model with an explicit likelihood, fit by MLE to
+        many days of buy/sell trade counts. Produces one number per stock per
+        estimation period, grounded in an actual probabilistic model of
+        informed and uninformed arrivals — theoretically rigorous, but slow:
+        it needs a real sample of trading days and a numerical optimization,
+        and cannot update intraday.
+      </p>
+    </div>
+    <div class="tl-compare-card purple">
+      <h4>VPIN (Easley, López de Prado &amp; O'Hara, 2012)</h4>
+      <p>
+        No likelihood, no MLE, no daily counts. Buckets the tape by traded
+        volume instead of time, classifies each bucket's buy/sell split with
+        Bulk Volume Classification (a normal-CDF function of the bucket's
+        price move — a statistical proxy, not a real per-trade tag), and
+        averages the resulting imbalance over a rolling window. Updates
+        continuously, at the direct cost of the theoretical grounding PIN has.
+      </p>
+    </div>
+  </div>
+  <p>
+    The lineage is honest and direct, not a loose family resemblance: VPIN's
+    entire reason for existing is to approximate the same "share of order
+    flow that looks informed" question PIN already answers rigorously but
+    slowly — trading some of PIN's structural correctness for the practical
+    real-time computability a desk actually needs. Treat VPIN as PIN's
+    fast, approximate cousin, not as a newer, strictly better replacement for
+    it; each is the right tool for a different job, and neither one has
+    quietly superseded the other in the literature.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>PIN is like carefully counting a month's worth of receipts at the end of the month to work out exactly how often a store gets robbed versus just has ordinary slow days — thorough, but you only find out at month's end. VPIN is like a guard glancing at the register every few minutes and guessing, from how fast money's moving in or out, whether something's off right now — faster, but a rougher guess than the careful monthly count.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>How practitioners actually use this, and where it's genuinely contested</h2>
+  <p>
+    Where it has been computed, PIN has mostly been used as a cross-sectional
+    or panel research tool rather than a live trading signal: comparing PIN
+    across stocks to ask whether more "informationally risky" names trade
+    at a discount, whether PIN predicts future liquidity or spreads, or
+    whether it correlates with corporate-event calendars (earnings, M&amp;A
+    rumors) in the way the model's own story would predict. It has never been
+    a practical intraday tool in the way VPIN was designed to be — that gap is
+    the entire reason VPIN exists, as Section 04 lays out.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls — and a genuine, unresolved academic dispute</div>
+    <h3>PIN is widely cited, not universally settled</h3>
+    <p>
+      <strong>The Duarte &amp; Young (2009) critique.</strong> One of the most
+      serious challenges to PIN in the literature argues that a meaningful
+      part of what standard PIN estimates actually reflects is <em>ordinary,
+      illiquidity-driven order-flow imbalance</em> — the everyday reality that
+      buy and sell orders in a given stock rarely arrive in perfectly equal
+      numbers, for reasons having nothing to do with anyone possessing private
+      information — rather than genuine adverse selection. Duarte &amp;
+      Young propose an extended decomposition that separates PIN into a pure
+      adverse-selection component and a distinct, symmetric order-flow-
+      imbalance component, and find empirically that a substantial share of
+      what the original PIN measure "prices" in asset-pricing tests loads
+      onto the symmetric-imbalance piece, not the adverse-selection piece
+      the model is meant to isolate.
+    </p>
+    <p>
+      <strong>The honest upshot.</strong> Treat "this stock's PIN is high" the
+      way this whole curriculum treats any single contested empirical measure
+      — a real, well-defined number that the original model interprets one
+      specific way, alongside a serious published argument that some of what
+      it's picking up is a different phenomenon entirely. This is an active
+      area of methodological debate in market microstructure, not a finished,
+      uncontroversial tool with a single agreed-upon interpretation.
+    </p>
+    <p>
+      <strong>MLE estimation pitfalls, more mechanically.</strong> Even setting
+      the Duarte &amp; Young critique aside, the underlying likelihood is
+      known to be numerically delicate — multiple local optima, and boundary
+      solutions where an optimizer drives \(\hat\varepsilon\) or \(\hat\alpha\)
+      toward degenerate values, are documented issues that later
+      methodological papers (factorized-likelihood reformulations, in
+      particular) exist specifically to address. A PIN estimate is only as
+      trustworthy as the optimization that produced it.
+    </p>
+    <p>
+      <strong>Garbage classification in, garbage PIN out.</strong> Because
+      PIN's entire input is a pair of daily counts \((B_t,S_t)\), any
+      systematic bias in the underlying trade-classification scheme — see
+      <a href="institutional-trade-classification.html">Trade
+      Classification</a> — propagates directly into the fitted parameters and
+      the final PIN number. PIN cannot self-correct a classification error;
+      it treats whatever counts it's handed as ground truth.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>PIN is an estimation technique, not a new theory of the spread.</strong> It fits Glosten-Milgrom-style informed/noise trading to daily buy/sell counts via maximum likelihood — Glosten-Milgrom explains the mechanism; PIN measures it.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The model has exactly four parameters — α, δ, μ, ε</strong> — fit by maximizing a mixture-of-Poissons likelihood across the three possible day types (no event, bad-news event, good-news event).</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>PIN = αμ / (αμ + 2ε):</strong> expected informed arrival rate, divided by expected total (informed + uninformed) arrival rate — the fraction of order flow expected to be information-driven.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>δ does not appear in the PIN formula.</strong> It governs the direction of an information event, not how often trading is information-driven overall — a distinction the formula itself makes precisely.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>VPIN exists because PIN's MLE approach can't run in real time.</strong> VPIN trades PIN's theoretical rigor for a continuously-updating, volume-bucketed approximation of the same underlying question.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>PIN is not a settled, uncontroversial measure.</strong> Duarte &amp; Young (2009) argue a real share of what it estimates is ordinary illiquidity-driven imbalance, not genuine private information — an active, unresolved methodological dispute, not a footnote.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. In the PIN model, on a day when no information event occurs, what generates the observed buy and sell counts?</summary>
+    <div class="tl-answer">
+      Only the uninformed (noise) trader arrival processes — buys drawn from
+      \(\text{Poisson}(\varepsilon)\) and sells drawn from
+      \(\text{Poisson}(\varepsilon)\). Informed traders, by construction, only
+      arrive on event days; a no-event day's flow is entirely the ordinary
+      uninformed baseline on both sides.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. A stock's fitted parameters are α = 0.20, μ = 120, and ε = 80. What is its PIN?</summary>
+    <div class="tl-answer">
+      \(\text{PIN} = \dfrac{\alpha\mu}{\alpha\mu+2\varepsilon} =
+      \dfrac{0.20\times120}{0.20\times120 + 2\times80} =
+      \dfrac{24}{24+160} = \dfrac{24}{184} \approx 0.130\). About 13.0% of
+      this stock's expected order flow is estimated to be information-driven.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why does δ — the probability an event is bad news rather than good news — not appear anywhere in the PIN formula?</summary>
+    <div class="tl-answer">
+      PIN is built to answer "what fraction of expected order flow is
+      information-driven, overall" — a question that doesn't care which
+      direction any given piece of information points. δ instead governs the
+      expected <em>imbalance and direction</em> of trading on an event day
+      (more bad-news events tilts expected flow toward net selling on event
+      days), which is a separate question from how <em>often</em>, and how
+      <em>intensely</em> (via α and μ), information-driven trading occurs at
+      all. Two stocks with identical α, μ, and ε but very different δ would
+      have identical PIN values.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Why was VPIN developed, given that PIN already existed?</summary>
+    <div class="tl-answer">
+      PIN's maximum-likelihood estimation needs a real historical sample of
+      daily buy/sell counts and a numerical optimization — it cannot be
+      computed instantaneously or updated intraday, making it unsuitable for
+      a desk that needs to know "how informed does flow look right now."
+      VPIN was built specifically as a continuously-computable substitute:
+      it replaces PIN's MLE with equal-volume bucketing and Bulk Volume
+      Classification, trading theoretical rigor for real-time computability
+      while targeting the same underlying "how much of current flow looks
+      informed" concept.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. What does the Duarte &amp; Young (2009) critique argue about standard PIN estimates?</summary>
+    <div class="tl-answer">
+      That a meaningful share of what a standard PIN estimate captures is
+      actually ordinary, illiquidity-driven order-flow imbalance — buy and
+      sell orders simply arriving in unequal numbers for reasons unrelated to
+      anyone holding private information — rather than genuine adverse
+      selection. They propose a decomposition separating a pure
+      adverse-selection component from a symmetric order-flow-imbalance
+      component, and find empirically that much of what PIN "prices" in
+      asset-pricing tests loads onto the symmetric-imbalance piece, not the
+      adverse-selection piece the original model is meant to isolate.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. What raw input does PIN's likelihood function actually require, and where would it come from in practice?</summary>
+    <div class="tl-answer">
+      The daily counts of buyer-initiated and seller-initiated trades,
+      \(B_t\) and \(S_t\), for each day \(t\) in the estimation sample — not
+      individual trade-by-trade quote data the way Glosten-Milgrom's model is
+      framed, and not intraday volume buckets the way VPIN works. In
+      practice, those daily counts have to be produced first by a
+      trade-classification scheme (e.g. the Lee-Ready tick rule, covered in
+      this category's Trade Classification lesson) applied to the raw tape —
+      PIN itself takes those classified counts as a given input, not
+      something it derives.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>David Easley, Nicholas M. Kiefer, Maureen O'Hara &amp; Joseph B. Paperman, "Liquidity, Information, and Infrequently Traded Stocks," <em>Journal of Finance</em>, 51(4), 1996 — the original PIN paper: the sequential-trade model, its likelihood, and MLE estimation from daily buy/sell counts.</li>
+    <li>Jefferson Duarte &amp; Lance Young, "Why is PIN Priced?," <em>Journal of Financial Economics</em>, 91(2), 2009 — the central critique covered in this lesson's pitfall box: decomposes PIN into adverse-selection and symmetric-order-flow-imbalance components, and argues much of what PIN "prices" is the latter, not genuine information risk.</li>
+    <li>David Easley, Marcos M. López de Prado &amp; Maureen O'Hara, "Flow Toxicity and Liquidity in a High-Frequency World," <em>Review of Financial Studies</em>, 25(5), 2012 — the paper introducing VPIN, explicit about building it as a real-time-computable substitute for PIN's own informed-trading estimate.</li>
+    <li>David Easley, Nicholas M. Kiefer &amp; Maureen O'Hara, "One Day in the Life of a Very Common Stock," <em>Review of Financial Studies</em>, 10(3), 1997 — a companion paper applying the same sequential-trade framework to a single stock's trading day in detail.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="institutional-glosten-milgrom.html">← Glosten-Milgrom</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="institutional-order-flow-imbalance.html">Order Flow Imbalance &amp; the Microprice →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+<script>
+(function(){
+  var DEFAULTS = { alpha: 0.25, mu: 150, eps: 100 };
+  var fields = ['alpha', 'mu', 'eps'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('pin-scratch-' + f); });
+  if (!inputs.alpha) return;
+
+  var amOut = document.getElementById('pin-scratch-am');
+  var twoEOut = document.getElementById('pin-scratch-2e');
+  var pinOut = document.getElementById('pin-scratch-pin');
+  var note = document.getElementById('pin-scratch-note');
+  var resetBtn = document.getElementById('pin-scratch-reset');
+
+  function recompute(){
+    var alpha = parseFloat(inputs.alpha.value);
+    var mu = parseFloat(inputs.mu.value);
+    var eps = parseFloat(inputs.eps.value);
+
+    if (![alpha, mu, eps].every(isFinite)) {
+      note.textContent = '(enter a number in every field)';
+      amOut.textContent = '—';
+      twoEOut.textContent = '—';
+      pinOut.textContent = '—';
+      return;
+    }
+    if (alpha < 0 || mu < 0 || eps < 0) {
+      note.textContent = '(α, μ and ε are probabilities/rates — none can be negative)';
+      amOut.textContent = '—';
+      twoEOut.textContent = '—';
+      pinOut.textContent = '—';
+      return;
+    }
+
+    var am = alpha * mu;
+    var twoE = 2 * eps;
+    var denom = am + twoE;
+
+    amOut.textContent = am.toFixed(2);
+    twoEOut.textContent = twoE.toFixed(2);
+
+    if (denom === 0) {
+      note.textContent = '(αμ + 2ε = 0 — no trading of any kind is implied, so PIN is undefined)';
+      pinOut.textContent = '—';
+      return;
+    }
+
+    var pin = am / denom;
+    pinOut.textContent = pin.toFixed(3);
+    note.textContent = (alpha > 1) ? '(note: α is a probability — values above 1 aren\'t meaningful, though the formula still computes)' : '';
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    inputs.alpha.value = DEFAULTS.alpha;
+    inputs.mu.value = DEFAULTS.mu;
+    inputs.eps.value = DEFAULTS.eps;
+    recompute();
+  });
+  recompute();
+})();
+</script>
+</body>
+</html>

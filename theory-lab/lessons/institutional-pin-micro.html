@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Probability of Informed Trading — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Probability of Informed Trading — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer full derivations, the MLE likelihood, and a 6-question self-test?<a href="institutional-pin.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Market Microstructure Extensions 4 · Market Microstructure Extensions</div>
+      <h1 class="sl-h1">PIN, <em>Turning Adverse Selection Into a Single Number</em></h1>
+      <p class="sl-lede">Glosten-Milgrom explains, one trade at a time, why an informed order moves the quote. PIN takes that same informed-vs-noise structure and fits it — by maximum likelihood, to nothing more than a stock's daily buy and sell counts — into one estimated probability: how much of this stock's trading, this period, is expected to come from someone who knew something the market didn't yet. It's also the slow, rigorous model VPIN was built to approximate in real time.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Two populations of traders, one stock</h2>
+      <p class="sl-sub">Everything PIN estimates comes down to who shows up to trade, and when.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🔁</div><div><h4>Uninformed traders — every day</h4><p>Buyers arrive at Poisson rate ε, sellers at Poisson rate ε, on every single trading day, event or not. This is the ordinary background churn of trading unrelated to private information.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>Informed traders — event days only</h4><p>Arrive at Poisson rate μ, but only on days when a private information event has occurred — and they all trade the same direction the news points.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎲</div><div><h4>Whether an event happens is random</h4><p>Probability α on any given day, independent across days. Most days, for most stocks, no event occurs at all.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">↕</div><div><h4>Which direction, if one does</h4><p>Conditional on an event, bad news with probability δ, good news with probability 1−δ. This decides which side the informed crowd trades on.</p></div></div>
+      </div>
+      <div class="sl-quote">A researcher never sees "an event happened" directly — only the day's total buy and sell counts. PIN is the technique for reading that fingerprint back out of the counts alone.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">The day-type tree</h2>
+      <p class="sl-sub">Every trading day is one draw down this tree. Three possible outcomes, three different expected arrival rates.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The whole model, drawn</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 1080 500" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Tree diagram. A root node, trading day t, branches into two: no event with probability one minus alpha, and information event with probability alpha. The no-event branch leads to a leaf showing uninformed buyers and sellers both arriving at rate epsilon. The information-event branch splits further into bad news with probability delta, leading to a leaf with buys at rate epsilon and sells at rate mu plus epsilon, and good news with probability one minus delta, leading to a leaf with buys at rate mu plus epsilon and sells at rate epsilon. All three leaves converge into a box showing the PIN formula: alpha times mu, divided by alpha times mu plus two epsilon.">
+            <rect x="370" y="14" width="200" height="50" rx="8" style="fill:var(--blue-bg);stroke:var(--blue-bd)"/>
+            <text x="470" y="35" text-anchor="middle" fill="var(--text)" font-size="13" font-family="'DM Mono',monospace">Trading day t</text>
+            <text x="470" y="52" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">begins</text>
+
+            <line x1="430" y1="64" x2="200" y2="110" style="stroke:var(--border2);stroke-width:1.5"/>
+            <text x="290" y="92" text-anchor="middle" fill="var(--text2)" font-size="11" font-family="'DM Mono',monospace">1 − α</text>
+            <line x1="520" y1="64" x2="735" y2="110" style="stroke:var(--border2);stroke-width:1.5"/>
+            <text x="650" y="92" text-anchor="middle" fill="var(--purple)" font-size="11" font-family="'DM Mono',monospace">α</text>
+
+            <rect x="100" y="110" width="200" height="46" rx="8" style="fill:var(--panel2);stroke:var(--border2)"/>
+            <text x="200" y="132" text-anchor="middle" fill="var(--text)" font-size="12" font-family="'DM Mono',monospace">No event</text>
+            <text x="200" y="148" text-anchor="middle" fill="var(--text3)" font-size="9" font-family="'DM Mono',monospace">nothing new today</text>
+
+            <rect x="605" y="110" width="260" height="46" rx="8" style="fill:var(--purple-bg);stroke:var(--purple-bd)"/>
+            <text x="735" y="132" text-anchor="middle" fill="var(--text)" font-size="12" font-family="'DM Mono',monospace">Information event</text>
+            <text x="735" y="148" text-anchor="middle" fill="var(--purple)" font-size="9" font-family="'DM Mono',monospace">private info released</text>
+
+            <line x1="200" y1="156" x2="200" y2="210" style="stroke:var(--border2);stroke-width:1.5"/>
+            <line x1="700" y1="156" x2="570" y2="210" style="stroke:var(--red);stroke-width:1.5"/>
+            <text x="605" y="188" text-anchor="middle" fill="var(--red)" font-size="11" font-family="'DM Mono',monospace">δ</text>
+            <line x1="770" y1="156" x2="900" y2="210" style="stroke:var(--green);stroke-width:1.5"/>
+            <text x="865" y="188" text-anchor="middle" fill="var(--green)" font-size="11" font-family="'DM Mono',monospace">1 − δ</text>
+
+            <rect x="50" y="210" width="300" height="76" rx="8" style="fill:var(--blue-bg);stroke:var(--blue-bd)"/>
+            <text x="200" y="234" text-anchor="middle" fill="var(--text)" font-size="12" font-family="'DM Mono',monospace" font-weight="700">Uninformed flow only</text>
+            <text x="200" y="252" text-anchor="middle" fill="var(--text2)" font-size="11" font-family="'DM Mono',monospace">buys ~ Poisson(ε)</text>
+            <text x="200" y="268" text-anchor="middle" fill="var(--text2)" font-size="11" font-family="'DM Mono',monospace">sells ~ Poisson(ε)</text>
+
+            <rect x="430" y="210" width="280" height="76" rx="8" style="fill:var(--red-bg);stroke:var(--red-bd)"/>
+            <text x="570" y="230" text-anchor="middle" fill="var(--red)" font-size="11" font-family="'DM Mono',monospace" font-weight="700">Bad news — informed sell</text>
+            <text x="570" y="250" text-anchor="middle" fill="var(--text2)" font-size="11" font-family="'DM Mono',monospace">buys ~ Poisson(ε)</text>
+            <text x="570" y="266" text-anchor="middle" fill="var(--text2)" font-size="11" font-family="'DM Mono',monospace">sells ~ Poisson(μ+ε)</text>
+
+            <rect x="760" y="210" width="280" height="76" rx="8" style="fill:var(--green-bg);stroke:var(--green-bd)"/>
+            <text x="900" y="230" text-anchor="middle" fill="var(--green)" font-size="11" font-family="'DM Mono',monospace" font-weight="700">Good news — informed buy</text>
+            <text x="900" y="250" text-anchor="middle" fill="var(--text2)" font-size="11" font-family="'DM Mono',monospace">buys ~ Poisson(μ+ε)</text>
+            <text x="900" y="266" text-anchor="middle" fill="var(--text2)" font-size="11" font-family="'DM Mono',monospace">sells ~ Poisson(ε)</text>
+
+            <line x1="200" y1="286" x2="430" y2="392" style="stroke:var(--border2);stroke-width:1.3;opacity:.7"/>
+            <line x1="570" y1="286" x2="520" y2="392" style="stroke:var(--border2);stroke-width:1.3;opacity:.7"/>
+            <line x1="900" y1="286" x2="610" y2="392" style="stroke:var(--border2);stroke-width:1.3;opacity:.7"/>
+
+            <rect x="350" y="392" width="340" height="76" rx="10" style="fill:var(--amber-bg);stroke:var(--amber-bd);stroke-width:2"/>
+            <text x="520" y="424" text-anchor="middle" fill="var(--amber)" font-size="16" font-family="'DM Mono',monospace" font-weight="700">PIN = αμ / (αμ + 2ε)</text>
+            <text x="520" y="446" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">(δ never enters this formula)</text>
+          </svg>
+        </div>
+        <div class="sl-note">The three leaves are the three possible day types feeding a mixture-of-Poissons likelihood; PIN itself, once fit, only needs the numbers from two of the four parameters shown here plus α — δ drops out entirely, which the next few sections explain.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Fitting it — a mixture likelihood, maximized</h2>
+      <p class="sl-sub">A researcher never sees which branch of the tree fired on a given day — only that day's (B, S) counts.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">Σ</div><div><h4>Each day is a weighted mixture</h4><p>A day's likelihood is (1−α)·[both sides at rate ε] + αδ·[sells jump to μ+ε] + α(1−δ)·[buys jump to μ+ε] — every branch of the tree, weighted by how likely it was.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📅</div><div><h4>Multiply across many days</h4><p>Assuming days are independent, the full-sample log-likelihood is just the sum of each day's log-likelihood, over the whole estimation window.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🖥️</div><div><h4>Maximize numerically</h4><p>No closed form exists for α, δ, μ, ε — a numerical optimizer searches for the parameter values that make the observed daily counts most probable.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚠️</div><div><h4>Not a browser-widget exercise</h4><p>Real PIN estimation needs many days of trade-classified data and a careful optimization — known to have local-optima and boundary-solution issues. This deck starts from already-fitted numbers instead.</p></div></div>
+      </div>
+      <div class="sl-quote">Where do the daily (B, S) counts themselves come from? A trade-classification scheme applied to the raw tape — covered in this category's own Trade Classification lesson. PIN's likelihood takes those counts as a given input, not something it derives.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Unpacking PIN = αμ / (αμ + 2ε)</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">↑</div><div><h4>αμ — expected informed arrivals</h4><p>Probability an event occurs (α), times the informed arrival rate conditional on one occurring (μ). This is a rate: expected informed trades per day.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">↕</div><div><h4>2ε — expected uninformed arrivals</h4><p>Uninformed buyers at rate ε plus uninformed sellers at rate ε, every day — total uninformed arrivals per day is ε + ε.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">%</div><div><h4>PIN — the ratio</h4><p>Expected informed arrivals divided by expected total arrivals — the fraction of a day's order flow expected to come from someone trading on private information.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">0–1</div><div><h4>Bounded like a probability</h4><p>PIN near 0 means flow is almost entirely noise; PIN closer to 1 means informed arrivals dominate whenever an event fires, and events are frequent.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Why δ is nowhere in that formula</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">The distinction that matters</div>
+        <p>δ governs which <strong>direction</strong> an information event points — bad news versus good news. PIN is built to answer a direction-agnostic question: overall, how much of this stock's trading is information-driven <em>at all</em>, regardless of which way that information points. Two stocks with identical α, μ and ε but completely different δ — one always bad news, one always good — have <strong>identical</strong> PIN values.</p>
+      </div>
+      <p class="sl-p">δ shapes what informed trading <em>looks like</em> on an event day — net buying pressure or net selling pressure. It says nothing about how <em>often</em> (α), or how <em>intensely</em> (μ, against baseline ε), information-driven trading occurs — and PIN measures exactly that second question, not the first.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Worked example: from fitted numbers to PIN</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Already-fitted parameters</div>
+        <div class="sl-row">
+          <div class="sl-box">α = 0.25</div>
+          <div class="sl-box">μ = 150/day</div>
+          <div class="sl-box">ε = 100/day</div>
+        </div>
+        <div class="sl-verdict">
+          Expected informed arrivals: αμ = 0.25 × 150 = <strong>37.5/day</strong>.
+          Expected uninformed arrivals: 2ε = 2 × 100 = <strong>200/day</strong>.
+          PIN = 37.5 / (37.5 + 200) = 37.5 / 237.5 ≈ <strong>0.158</strong>.
+        </div>
+        <div class="sl-note">About 15.8% of this stock's expected daily order flow is estimated to be information-driven. On days that were actually no-event days, buy and sell counts would tend to sit close together near 100 each; on actual event days, one side would spike toward ~250 while the other stays near 100 — exactly the lopsided fingerprint an MLE fit uses to back out α, μ and ε in the first place.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Drag α — watch the informed share move</h2>
+      <p class="sl-sub">μ = 150/day and ε = 100/day held fixed. Only the event probability α changes.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart with two bars: expected informed arrivals per day, alpha times mu, and expected uninformed arrivals per day, two epsilon. A slider controls alpha, redrawing the informed bar and a PIN readout live.">
+            <line x1="60" y1="200" x2="600" y2="200" style="stroke:var(--border2);stroke-width:1"/>
+            <text x="26" y="120" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace" transform="rotate(-90 26 120)">expected trades/day</text>
+
+            <rect x="150" y="20" width="110" height="180" style="fill:var(--panel2)" opacity=".35"/>
+            <rect id="pinbar-un" x="150" y="20" width="110" height="180" style="fill:var(--amber);opacity:.55"/>
+            <text x="205" y="14" text-anchor="middle" fill="var(--amber)" font-size="11" font-family="'DM Mono',monospace">uninformed (2ε)</text>
+            <text id="pinbar-un-val" x="205" y="215" text-anchor="middle" fill="var(--text2)" font-size="12" font-family="'DM Mono',monospace">200.0</text>
+
+            <rect x="380" y="196" width="110" height="4" style="fill:var(--panel2)" opacity=".35"/>
+            <rect id="pinbar-inf" x="380" y="196" width="110" height="4" style="fill:var(--blue)"/>
+            <text x="435" y="14" text-anchor="middle" fill="var(--blue)" font-size="11" font-family="'DM Mono',monospace">informed (αμ)</text>
+            <text id="pinbar-inf-val" x="435" y="215" text-anchor="middle" fill="var(--text2)" font-size="12" font-family="'DM Mono',monospace">37.5</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Event probability α</span><span class="sl-live" id="pinslide-aval">α = 0.25</span></div>
+        <input type="range" class="sl-slider" id="pinslide-slider" min="0" max="100" step="1" value="25">
+        <div class="sl-note" id="pinslide-readout">PIN = αμ / (αμ + 2ε) ≈ 0.158</div>
+      </div>
+      <p class="sl-p">Push α toward 1 — events happen almost every day — and the informed bar keeps growing while the uninformed bar never moves, since ε is unrelated to how often events occur. PIN climbs toward 1 right alongside it.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Compute PIN yourself</h2>
+      <p class="sl-sub">PIN = αμ / (αμ + 2ε). No δ field — it genuinely doesn't belong in this formula.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>α</label><input type="number" class="sl-input" id="pincalc-alpha" value="0.25" step="0.01" min="0"></div>
+          <div class="sl-calc-op">×</div>
+          <div class="sl-calc-field"><label>μ</label><input type="number" class="sl-input" id="pincalc-mu" value="150" step="1" min="0"></div>
+          <div class="sl-calc-op">÷ ( ... + 2×</div>
+          <div class="sl-calc-field"><label>ε</label><input type="number" class="sl-input" id="pincalc-eps" value="100" step="1" min="0"></div>
+          <div class="sl-calc-op">)</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">PIN</div>
+            <div class="sl-calc-result-val" id="pincalc-result">0.158</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>αμ = <b id="pincalc-am">37.50</b></div>
+          <div>2ε = <b id="pincalc-2e">200.00</b></div>
+          <div>PIN = <b id="pincalc-result2">0.158</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="pincalc-reset">Reset to worked-example numbers</button>
+        <div class="sl-note" id="pincalc-note">Negative rates, or αμ + 2ε = 0 (no trading implied at all), show "—" instead of breaking the formula.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">PIN vs. VPIN</h2>
+      <p class="sl-sub">The same underlying question, two very different tools for answering it.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Compare</div>
+        <div class="sl-tabs" id="pinvpin-tabs">
+          <button class="sl-tab active" data-panel="pv-1">PIN</button>
+          <button class="sl-tab" data-panel="pv-2">VPIN</button>
+        </div>
+        <div class="sl-panel active" id="pv-1">
+          <div class="sl-row">
+            <div class="sl-box">Daily buy/sell counts</div>
+            <div class="sl-arrow">→</div>
+            <div class="sl-box amber">MLE fit (α, δ, μ, ε)</div>
+            <div class="sl-arrow">→</div>
+            <div class="sl-box green">PIN</div>
+          </div>
+          <div class="sl-verdict">A genuine structural model with an explicit likelihood, fit to many days of history by numerical maximum likelihood. Theoretically rigorous — and slow. Cannot update intraday.</div>
+        </div>
+        <div class="sl-panel" id="pv-2">
+          <div class="sl-row">
+            <div class="sl-box">Equal-volume buckets</div>
+            <div class="sl-arrow">→</div>
+            <div class="sl-box amber">Bulk Volume Classification</div>
+            <div class="sl-arrow">→</div>
+            <div class="sl-box green">VPIN</div>
+          </div>
+          <div class="sl-verdict">No likelihood, no MLE. Classifies each volume bucket's buy/sell split from its price move alone, then averages the imbalance over a rolling window. Updates continuously — at the cost of PIN's theoretical grounding.</div>
+        </div>
+      </div>
+      <div class="sl-quote">Easley, López de Prado &amp; O'Hara are explicit about the lineage: VPIN exists because PIN's own MLE approach is too slow and data-hungry to compute in anything close to real time. It's PIN's fast, approximate cousin — not a newer replacement for it.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Not a settled measure — a real academic dispute</h2>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">The Duarte &amp; Young (2009) critique</div>
+        <p>A meaningful share of what standard PIN estimates capture, they argue, is ordinary <strong>illiquidity-driven order-flow imbalance</strong> — buy and sell orders simply arriving unevenly for reasons having nothing to do with private information — not genuine adverse selection. Their proposed decomposition splits PIN into a pure adverse-selection piece and a symmetric-imbalance piece, and finds much of what PIN "prices" empirically loads onto the latter.</p>
+      </div>
+      <p class="sl-p">Treat "this stock's PIN is high" the way this curriculum treats any contested measure: a real, well-defined number under one specific interpretation, alongside a serious published argument that part of what it captures is a different phenomenon entirely. Widely cited is not the same claim as universally settled.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Also worth knowing</div>
+        <p>PIN's likelihood is numerically delicate — local optima and boundary solutions are documented issues. And because PIN's only input is classified daily counts, any bias in the underlying trade-classification scheme propagates straight into the final PIN number.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>On a day with no information event, what generates the buy and sell counts?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Only the uninformed arrival processes, both sides at rate ε</button>
+        <button class="sl-quiz-opt">Informed traders, at a reduced rate</button>
+        <button class="sl-quiz-opt">Nothing — a no-event day has zero trades by construction</button>
+        <div class="sl-quiz-explain">Informed traders only ever arrive on event days. A no-event day's flow is entirely the ordinary uninformed baseline, buys and sells both drawn from Poisson(ε).</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>α = 0.20, μ = 120, ε = 80. What is PIN?</h4>
+        <button class="sl-quiz-opt" data-correct="true">≈ 0.130</button>
+        <button class="sl-quiz-opt">≈ 0.300</button>
+        <button class="sl-quiz-opt">≈ 0.750</button>
+        <div class="sl-quiz-explain">αμ = 24, 2ε = 160. PIN = 24 / (24+160) = 24/184 ≈ 0.130.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Why doesn't δ appear in the PIN formula?</h4>
+        <button class="sl-quiz-opt" data-correct="true">PIN measures how much trading is information-driven overall, not which direction the information points</button>
+        <button class="sl-quiz-opt">δ is mathematically identical to α, so including it would be redundant</button>
+        <button class="sl-quiz-opt">δ was dropped from later versions of the model for simplicity</button>
+        <div class="sl-quiz-explain">δ governs the expected imbalance/direction on an event day (bad vs. good news). PIN answers a direction-agnostic question about the overall rate of information-driven trading — two stocks with identical α, μ, ε but different δ have identical PIN.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Why was VPIN built, given that PIN already existed?</h4>
+        <button class="sl-quiz-opt" data-correct="true">PIN's MLE fit needs a real historical sample and can't update in real time; VPIN trades that rigor for continuous computability</button>
+        <button class="sl-quiz-opt">PIN was found to be mathematically incorrect and VPIN fixed the error</button>
+        <button class="sl-quiz-opt">VPIN measures a completely unrelated concept</button>
+        <div class="sl-quiz-explain">VPIN is explicitly framed by its own authors as a real-time-computable substitute for PIN's informed-trading estimate — same underlying question, deliberately cruder but continuously updating answer.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>What does the Duarte &amp; Young (2009) critique argue?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Part of what PIN measures is ordinary illiquidity-driven imbalance, not genuine private information</button>
+        <button class="sl-quiz-opt">PIN always overestimates informed trading by exactly a factor of two</button>
+        <button class="sl-quiz-opt">PIN cannot be estimated for any stock trading below $10</button>
+        <div class="sl-quiz-explain">They decompose PIN into a pure adverse-selection component and a symmetric order-flow-imbalance component, and find much of what standard PIN "prices" loads onto the latter — a real, unresolved methodological dispute.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>PIN estimates Glosten-Milgrom's informed-vs-noise split by maximum likelihood, fit to daily buy/sell counts — an estimation technique, not a new theory of the spread.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Four parameters — α, δ, μ, ε — fit to a mixture-of-Poissons likelihood across three day types: no event, bad-news event, good-news event.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>PIN = αμ / (αμ + 2ε): expected informed arrival rate over expected total arrival rate.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>δ never enters the formula — it decides direction, not overall informed-trading rate.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>VPIN exists because PIN's MLE can't run live — same question, a faster and cruder answer.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Duarte &amp; Young (2009): a real, unresolved critique — some of what PIN measures may be ordinary imbalance, not information.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Read the PIN formula and know exactly what each piece — and each conspicuously absent piece — means. Place PIN correctly relative to Glosten-Milgrom (the theory it estimates) and VPIN (the real-time approximation it inspired). Treat a published PIN number the way any contested empirical measure deserves: taken seriously, not taken as settled.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Order Flow Imbalance &amp; the Microprice</h3>
+        <p>From a whole day's informed-trading estimate to the order book's next tick: a live, top-of-book imbalance signal built for a completely different timescale.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="institutional-order-flow-imbalance-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="institutional-pin.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Slider: drag alpha, watch the informed bar and PIN readout move live.
+  (function(){
+    var slider = document.getElementById('pinslide-slider');
+    if (!slider) return;
+    var aVal = document.getElementById('pinslide-aval');
+    var infBar = document.getElementById('pinbar-inf');
+    var infVal = document.getElementById('pinbar-inf-val');
+    var readout = document.getElementById('pinslide-readout');
+    var MU = 150, EPS = 100;
+    var BAR_X = 380, BAR_BOTTOM = 200, MAX_H = 180;
+    // Scale so the informed bar (alpha*mu, max alpha=1 -> 150) is visually
+    // comparable to the fixed uninformed bar (2*eps = 200): use the same
+    // pixel-per-unit scale, capped at MAX_H.
+    var PX_PER_UNIT = MAX_H / 200; // matches uninformed bar's own scale (200 units -> 180px)
+
+    function update(){
+      var alpha = parseInt(slider.value, 10) / 100;
+      aVal.textContent = 'α = ' + alpha.toFixed(2);
+      var informed = alpha * MU;
+      var h = Math.min(MAX_H, informed * PX_PER_UNIT);
+      infBar.setAttribute('height', h.toFixed(1));
+      infBar.setAttribute('y', (BAR_BOTTOM - h).toFixed(1));
+      infVal.textContent = informed.toFixed(1);
+      var denom = informed + 2 * EPS;
+      var pin = denom > 0 ? informed / denom : 0;
+      readout.textContent = 'PIN = αμ / (αμ + 2ε) ≈ ' + pin.toFixed(3);
+    }
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Calculator: PIN = alpha*mu / (alpha*mu + 2*eps), with guards.
+  (function(){
+    var alpha = document.getElementById('pincalc-alpha');
+    if (!alpha) return;
+    var mu = document.getElementById('pincalc-mu'), eps = document.getElementById('pincalc-eps');
+    var amOut = document.getElementById('pincalc-am'), twoEOut = document.getElementById('pincalc-2e');
+    var result = document.getElementById('pincalc-result'), result2 = document.getElementById('pincalc-result2');
+    var note = document.getElementById('pincalc-note');
+    var resetBtn = document.getElementById('pincalc-reset');
+    var DEFAULTS = { alpha: 0.25, mu: 150, eps: 100 };
+    var DEFAULT_NOTE = 'Negative rates, or αμ + 2ε = 0 (no trading implied at all), show "—" instead of breaking the formula.';
+
+    function setBlank(msg){
+      amOut.textContent = '—'; twoEOut.textContent = '—';
+      result.textContent = '—'; result2.textContent = '—';
+      note.textContent = msg;
+    }
+
+    function recompute(){
+      var a = parseFloat(alpha.value), m = parseFloat(mu.value), e = parseFloat(eps.value);
+      if (![a, m, e].every(isFinite)) {
+        setBlank('Enter a number in every field — blank or non-numeric input can\'t be computed.');
+        return;
+      }
+      if (a < 0 || m < 0 || e < 0) {
+        setBlank('α, μ and ε are probabilities/rates — none can be negative.');
+        return;
+      }
+      var am = a * m, twoE = 2 * e;
+      amOut.textContent = am.toFixed(2);
+      twoEOut.textContent = twoE.toFixed(2);
+      var denom = am + twoE;
+      if (denom === 0) {
+        result.textContent = '—'; result2.textContent = '—';
+        note.textContent = 'αμ + 2ε = 0 — no trading of any kind is implied, so PIN is undefined.';
+        return;
+      }
+      var pin = am / denom;
+      result.textContent = pin.toFixed(3);
+      result2.textContent = pin.toFixed(3);
+      note.textContent = (a > 1) ? 'Note: α is a probability — values above 1 aren\'t meaningful, though the formula still computes.' : DEFAULT_NOTE;
+    }
+
+    [alpha, mu, eps].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      alpha.value = DEFAULTS.alpha; mu.value = DEFAULTS.mu; eps.value = DEFAULTS.eps;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>
