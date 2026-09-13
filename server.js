@@ -6595,13 +6595,16 @@ app.get('/api/oanda-book/history', async (req, res) => {
 });
 // Backfill import: daily rows computed on a desk machine by scripts/push_book_history.mjs
 // from OANDA's historical snapshots, using the same metric module as the live route.
-// Authenticated with KV_WRITE_SECRET (refused outright when unset -- no anonymous
-// writes to a durable store). A day the live recorder already holds with more than
-// one snapshot behind it is never overwritten: recorded history beats backfill.
+//
+// Auth follows the platform's convention, not a stricter one of its own: the write
+// is gated by WHAT it may touch (this one key, merge-only, never a live-recorded
+// day) rather than by a secret. KV_WRITE_SECRET is OPT-IN here exactly as it is
+// for /api/kv/set -- enforced when configured, otherwise open, because
+// _worker.js:1021 records what enforcing a missing secret does: it silently
+// bricks every Save on the site. The first version of this route did that.
 app.post('/api/oanda-book/history/import', express.json({ limit: '2mb' }), async (req, res) => {
-  const secret = process.env.KV_WRITE_SECRET;
-  if (!secret) return res.status(503).json({ ok: false, error: 'KV_WRITE_SECRET not set on the server; imports are disabled' });
-  if (req.get('X-Auth-Token') !== secret) return res.status(403).json({ ok: false, error: 'bad token' });
+  const secret = process.env.KV_WRITE_SECRET || '';
+  if (secret && req.get('X-Auth-Token') !== secret) return res.status(401).json({ ok: false, error: 'X-Auth-Token required' });
   try {
     const inst = String(req.body?.instrument || '').toUpperCase();
     const daily = Array.isArray(req.body?.daily) ? req.body.daily : [];

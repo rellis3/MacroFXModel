@@ -7,7 +7,7 @@
  *       --books position --from 2017-05 --daily 07:00 --ndjson backfill/books_daily.ndjson
  *
  *   # 2. summarise with the SAME metric the live route uses, and push
- *   KV_WRITE_SECRET=... node scripts/push_book_history.mjs backfill/books_daily.ndjson \
+ *   node scripts/push_book_history.mjs backfill/books_daily.ndjson \
  *       --server https://macrofxmodel-production.up.railway.app
  *
  * WHY THIS SHAPE. The fetcher runs on a desk machine with the OANDA key; the server
@@ -27,9 +27,9 @@ import { summarisePositionBook } from '../js/positionBookMetrics.js';
 const args = process.argv.slice(2);
 const file = args.find(a => !a.startsWith('--'));
 const server = (args[args.indexOf('--server') + 1] || process.env.SERVER || 'https://macrofxmodel-production.up.railway.app').replace(/\/$/, '');
-const secret = process.env.KV_WRITE_SECRET;
+// Optional, like everywhere else on the platform: sent when set, omitted when not.
+const secret = process.env.KV_WRITE_SECRET || '';
 if (!file) { console.error('usage: node scripts/push_book_history.mjs <ndjson> [--server URL]'); process.exit(2); }
-if (!secret) { console.error('KV_WRITE_SECRET is required (the server refuses unauthenticated writes)'); process.exit(2); }
 
 const dayOf = iso => iso.slice(0, 10);
 const byInst = {};   // instrument -> day -> [summaries]
@@ -67,7 +67,7 @@ for (const [inst, rows] of Object.entries(rowsByInst)) {
   for (let i = 0; i < rows.length; i += 400) {
     const chunk = rows.slice(i, i + 400);
     const r = await fetch(`${server}/api/oanda-book/history/import`, {
-      method: 'POST', headers: { 'content-type': 'application/json', 'X-Auth-Token': secret },
+      method: 'POST', headers: { 'content-type': 'application/json', ...(secret ? { 'X-Auth-Token': secret } : {}) },
       body: JSON.stringify({ instrument: inst, daily: chunk }),
     }).then(x => x.json()).catch(e => ({ ok: false, error: e.message }));
     if (!r.ok) { console.error(`  ${inst}: FAILED ${r.error}`); process.exit(1); }
