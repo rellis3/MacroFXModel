@@ -158,7 +158,25 @@ def is_market_shut(t: datetime) -> bool:
     return False
 
 
+# One snapshot per trading day, at a fixed UTC time (grid-aligned), when DAILY_AT is
+# set. The full 20-minute grid is ~315k requests a year across 16 instruments;
+# a first study of positioning vs the next day's range needs one read per day,
+# taken BEFORE the day it is scored against -- 07:00 UTC, ahead of London, is the
+# default the study uses. ~9k requests for four instruments since 2017.
+DAILY_AT = None   # (hour, minute) or None
+NDJSON_OUT = None  # open file handle when --ndjson is given
+
+
 def snapshot_times(start: datetime, end: datetime, keep_weekends: bool):
+    if DAILY_AT:
+        hh, mm = DAILY_AT
+        d = start.replace(hour=0, minute=0, second=0, microsecond=0)
+        while d < end:
+            s = d.replace(hour=hh, minute=mm)
+            if start <= s < end and (keep_weekends or not is_market_shut(s)):
+                yield s
+            d += timedelta(days=1)
+        return
     t = start.replace(minute=0, second=0, microsecond=0)
     while t < end:
         for m in SNAPSHOT_MINUTES:
@@ -344,6 +362,12 @@ def do_month(instrument: str, book: str, y: int, m: int, lo: datetime, hi: datet
                 continue
             ref, buckets = res
             w.add(t, ref, buckets)
+            if NDJSON_OUT and ref:
+                # Only buckets within 12% of spot: that is all the crowding metric
+                # reads, and it keeps a five-year daily file to a few MB.
+                near = [(p, l, sh) for (p, l, sh) in buckets if abs(p - ref) / ref <= 0.12]
+                NDJSON_OUT.write(json.dumps({"instrument": instrument, "book": book,
+                    "time": t.strftime("%Y-%m-%dT%H:%M:%SZ"), "price": ref, "buckets": near}) + chr(10))
     return w.close(), w.rows, misses, _REJECTED - rej0
 
 
@@ -371,6 +395,8 @@ def main() -> None:
     ap.add_argument("--keep-weekends", action="store_true",
                     help="store the frozen Sat/Sun snapshots too (see module docstring)")
     ap.add_argument("--dry-run", action="store_true", help="project cost, fetch nothing")
+    ap.add_argument("--daily", metavar="HH:MM", help="one snapshot per trading day at this UTC time (e.g. 07:00) instead of the 20-minute grid")
+    ap.add_argument("--ndjson", metavar="PATH", help="also append near-spot buckets per snapshot as NDJSON, for scripts/push_book_history.mjs")
     ap.add_argument("--force", action="store_true", help="refetch months already on disk")
     a = ap.parse_args()
 
@@ -384,6 +410,14 @@ def main() -> None:
     if a.workers > 12:
         print(f"  note: --workers {a.workers} measured SLOWER than 8 (Oanda throttles "
               f"these endpoints); 8 is the tested optimum")
+    global DAILY_AT, NDJSON_OUT
+    if a.daily:
+        hh, mm = (int(x) for x in a.daily.split(":"))
+        if mm not in SNAPSHOT_MINUTES:
+            raise SystemExit(f"--daily minute must be one of {SNAPSHOT_MINUTES} (Oanda's grid)")
+        DAILY_AT = (hh, mm)
+    if a.ndjson:
+        NDJSON_OUT = open(a.ndjson, "a", encoding="utf-8")
     init_session(a.workers)
 
     now = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)

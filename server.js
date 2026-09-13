@@ -6593,6 +6593,38 @@ app.get('/api/oanda-book/history', async (req, res) => {
       [k, { fine: v.fine.length, daily: v.daily.length, latest: v.fine.at(-1) ?? null, change24h: _bookChange(store, k, 24) }])) });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
+// Backfill import: daily rows computed on a desk machine by scripts/push_book_history.mjs
+// from OANDA's historical snapshots, using the same metric module as the live route.
+// Authenticated with KV_WRITE_SECRET (refused outright when unset -- no anonymous
+// writes to a durable store). A day the live recorder already holds with more than
+// one snapshot behind it is never overwritten: recorded history beats backfill.
+app.post('/api/oanda-book/history/import', express.json({ limit: '2mb' }), async (req, res) => {
+  const secret = process.env.KV_WRITE_SECRET;
+  if (!secret) return res.status(503).json({ ok: false, error: 'KV_WRITE_SECRET not set on the server; imports are disabled' });
+  if (req.get('X-Auth-Token') !== secret) return res.status(403).json({ ok: false, error: 'bad token' });
+  try {
+    const inst = String(req.body?.instrument || '').toUpperCase();
+    const daily = Array.isArray(req.body?.daily) ? req.body.daily : [];
+    if (!BOOK_INSTRUMENTS.includes(inst)) return res.status(400).json({ ok: false, error: `unknown instrument ${inst}` });
+    if (!daily.length) return res.status(400).json({ ok: false, error: 'daily[] required' });
+    const raw = await kv.getStrict(BOOK_HISTORY_KV);
+    const store = _bookParse(raw);
+    if (store === null) throw new Error(`${BOOK_HISTORY_KV} is unparseable — refusing to overwrite`);
+    const x = (store.byInstrument[inst] ||= { fine: [], daily: [] });
+    const have = new Map(x.daily.map(r => [r[0], r]));
+    let added = 0, skipped = 0;
+    for (const row of daily) {
+      if (!Array.isArray(row) || !/^\d{4}-\d{2}-\d{2}$/.test(row[0])) continue;
+      const cur = have.get(row[0]);
+      if (cur && (cur[9] ?? 0) > 1) { skipped++; continue; }   // live-recorded, keep it
+      have.set(row[0], row); added++;
+    }
+    x.daily = [...have.values()].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+    if (x.daily.length > 5 * 366) x.daily = x.daily.slice(x.daily.length - 5 * 366);
+    if (added) await kv.put(BOOK_HISTORY_KV, JSON.stringify(store));
+    res.json({ ok: true, instrument: inst, added, skipped, days: x.daily.length });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 app.post('/api/oanda-book/history/record', async (_req, res) => {
   try { res.json({ ok: true, ...(await _recordBookHistory()) }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
