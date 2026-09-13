@@ -6169,13 +6169,11 @@ function _threatChip(r) {
   if (c && (!c.tradeable || c.gate === 'fail' || c.gate === 'bad')) return _stampChip(costChip(r), 'v');
   if (r.isProx) return _stampChip(`<span class="chip warn" title="Live price is right at one of the key levels now — this is a decision moment. Click the card to score it.">⚑ ${r.near.tag} ${r.near.pips.toFixed(0)}${r.d.ac === 'fx' ? 'p' : 'pt'} away</span>`, 'c');
   if (r.ct?.level === 'EXTREME') return _stampChip(`<span class="chip warn" title="${r.ct.derived ? `Both legs of this cross are stretched the same way in CFTC positioning — a reinforcing double-extreme, derived from each currency's own contract.` : `Large speculators are very heavily positioned ${r.ct.dir} — about ${r.ct.pct.toFixed(0)}% of the market.`} Crowded one-way bets can snap back hard, so this is a warning against joining late, not a reason to fade.">⚠ COT ${r.ct.dir} extreme${r.ct.derived ? ' (derived)' : ''}</span>`, 'c');
-  const bk = _crowd[r.d.sym]?.book;
-  if (bk?.pain) {
-    const side = bk.longPct >= 50 ? 'long' : 'short';
-    const uw = side === 'long' ? bk.pain.longsUnderwaterPct : bk.pain.shortsUnderwaterPct;
-    const heavy = Math.max(bk.longPct, bk.shortPct ?? 0) >= 60;
-    if (heavy && uw != null && uw >= 60) return _stampChip(`<span class="chip warn" title="OANDA book: ${bk.longPct}% long near spot and ${uw}% of the ${side} side is underwater. Crowded and losing is squeeze fuel — a statement about who gets forced out, not about direction.">⚠ ${side}s ${Math.round(uw)}% underwater</span>`, 'c');
-  }
+  // Retail pain is NOT in the threat priority any more. It was, as "squeeze fuel",
+  // until it was tested (analysis/squeeze_vol_study.mjs, 2026-09-13): crowded-and-
+  // underwater days were not wider than matched days on any of four instruments,
+  // and the move went neither with nor against the crowd. It stays in the drawer as
+  // a fact about who is losing today; a tested null does not earn a card slot.
   const dv = divergenceChip(r); if (dv) return _stampChip(dv, 'c');
   const iv = ivRvChip(r); if (iv && /rich/.test(iv)) return _stampChip(iv, 'c');
   if (c && c.gate === 'warn') return _stampChip(costChip(r), 'v');
@@ -6221,8 +6219,6 @@ function _threatKind(r) {
   if (c && (!c.tradeable || c.gate === 'fail' || c.gate === 'bad')) return 'cost';
   if (r.isProx) return 'prox';
   if (r.ct?.level === 'EXTREME') return 'cot';
-  const bk = _crowd[r.d.sym]?.book;
-  if (bk?.pain) { const side = bk.longPct >= 50 ? 'long' : 'short'; const uw = side === 'long' ? bk.pain.longsUnderwaterPct : bk.pain.shortsUnderwaterPct; if (Math.max(bk.longPct, bk.shortPct ?? 0) >= 60 && uw >= 60) return 'pain'; }
   if (divergenceChip(r)) return 'divergence';
   if (/rich/.test(ivRvChip(r) || '')) return 'ivrv';
   if (c && c.gate === 'warn') return 'cost-warn';
@@ -7254,7 +7250,7 @@ async function renderDrawerCrowd(r) {
         (b.staleShare != null ? `<div class="ccy-legrow"><span class="lp" title="Share of all positions sitting more than 10% from spot, excluded from the crowding figure above. Some are years-old positions nobody closed; in a fast-trending market (gold has roughly doubled) many are recent and very much alive, just far from today's price — so this is 'far from spot', not 'abandoned'. Either way they say little about who is crowded NOW. The old route counted them and read every market as 100% long.">Far from spot (excluded)</span><span class="lv neu">${b.staleShare}%</span></div>` : '') +
         `</div>` +
         (lopsided && hurting
-          ? `<div class="ccy-explain" style="margin-top:8px">Retail is <b>heavily ${side}</b> and <b>${uw}% of that side is underwater</b>. That is the combination behind squeezes: a crowd that would have to be forced out, already losing. Read as a <b>contrarian</b> warning about who gets stopped, not as a direction call.</div>`
+          ? `<div class="ccy-explain" style="margin-top:8px">Retail is <b>heavily ${side}</b> and <b>${uw}% of that side is underwater</b>. That says who is losing today. It was tested as "squeeze fuel" and found to predict nothing — such days were no wider than matched days on four instruments over nine years, and the move went neither with nor against the crowd. A fact about the crowd, not a forecast.</div>`
           : lopsided
             ? `<div class="ccy-explain" style="margin-top:8px">Retail is <b>heavily ${side}</b> but mostly <b>in profit</b> (${uw ?? '?'}% underwater). A crowded side that is winning has no reason to be forced out yet, so this is a weaker contrarian setup than the split alone suggests.</div>`
             : `<div class="ccy-explain" style="margin-top:8px">Retail is fairly balanced near spot, so there is no crowding story to read either way.</div>`);
@@ -9398,7 +9394,7 @@ function assembleSnapshot(r) {
         ? Object.fromEntries(Object.entries(_crowd[r.d.sym].hist.change).filter(([, v]) => v).map(([k, v]) => [k, v.delta]))
         : null,
       snapshotUtc: bk.time ?? null,
-      note: 'OANDA retail clients only: head counts, not notional; not the market, not COT. Standing book on a 20-minute grid, up to 20 min stale. Crowding measured within 10% of spot. CONTEXT, untested against forward returns. Retail on FX tends to mirror momentum, so "fade the crowd" is not independent of trend-following, which is a banked null here; the more useful read is PAIN -- a crowded side that is mostly underwater is the fuel for a squeeze, and that is a statement about who gets forced out and how fast, not about direction.',
+      note: 'OANDA retail clients only: head counts, not notional; not the market, not COT. Standing book on a 20-minute grid, up to 20 min stale. Crowding measured within 10% of spot. CONTEXT, untested against forward returns. Retail on FX tends to mirror momentum, so "fade the crowd" is not independent of trend-following, which is a banked null here; PAIN says who is losing today and nothing more: tested 2026-09-13 on nine years of daily snapshots, days when the crowded side was mostly underwater were NOT wider than matched days on any of four instruments, and the move went neither with nor against the crowd. Describe the book as a fact about the crowd; never as fuel, a setup, or a forecast.',
     };
   }
 

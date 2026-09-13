@@ -146,7 +146,7 @@ function run(days, { crowd, pain, from }, rng) {
   return {
     nDays: all.length, nSetup: setups.length, nPaired: pairs.length, setupRate: +(setups.length / Math.max(1, all.length)).toFixed(3),
     h24: { meanDiffAtr: t24.mean != null ? +t24.mean.toFixed(3) : null, t: t24.t != null ? +t24.t.toFixed(2) : null, ci95: [ci24.lo != null ? +ci24.lo.toFixed(3) : null, ci24.hi != null ? +ci24.hi.toFixed(3) : null],
-           setupMean: +mean(pairs.map(p => p.setup.r24)).toFixed(3), controlMean: +mean(pairs.map(p => p.control.r24)).toFixed(3), clear: ci24.lo != null && (ci24.lo > 0 ? 'above' : ci24.hi < 0 ? 'below' : 'no') },
+           setupMean: pairs.length ? +mean(pairs.map(p => p.setup.r24)).toFixed(3) : null, controlMean: pairs.length ? +mean(pairs.map(p => p.control.r24)).toFixed(3) : null, clear: ci24.lo != null ? (ci24.lo > 0 ? 'above' : ci24.hi < 0 ? 'below' : 'no') : 'no' },
     h5:  { meanDiffAtr: t5.mean != null ? +t5.mean.toFixed(3) : null, t: t5.t != null ? +t5.t.toFixed(2) : null, n: t5.n },
     exploratory_direction: { meanAgainstCrowdAtr: against.length ? +mean(against).toFixed(3) : null, n: against.length, note: 'not scored; would have to survive a momentum control on its own' },
   };
@@ -164,6 +164,11 @@ async function main() {
     if (!book[inst]) { console.log(`${inst}: no book data`); continue; }
     const prices = await loadPrices(pair);
     const days = Object.entries(book[inst]).map(([d, b]) => { const p = prices.get(d); return p ? { d, week: isoWeek(d), ...b, ...p } : null; }).filter(Boolean).sort((a, b) => a.d < b.d ? -1 : 1);
+    // Diagnostics first: how many days joined, and the distribution of crowd and pain,
+    // so an empty cell is explained rather than crashed on.
+    const joined = days.length, withOut = days.filter(x => x.r24 != null && x.volPct != null && x.mom != null).length;
+    const crowds = days.map(x => x.crowd).sort((a, b) => a - b), pains = days.map(x => x.pain).sort((a, b) => a - b);
+    console.log(`${inst}: ${joined} book days joined to prices (${Object.keys(book[inst]).length} in book), ${withOut} with full outcomes; crowd p50/p90 ${quantile(crowds, .5)?.toFixed(1)}/${quantile(crowds, .9)?.toFixed(1)}, pain p50/p90 ${quantile(pains, .5)?.toFixed(1)}/${quantile(pains, .9)?.toFixed(1)}`);
     const rng = mulberry32(0x5EED ^ inst.length);
     const main_ = run(days, { crowd: CROWD, pain: PAIN }, rng);
     const r1 = run(days, { crowd: CROWD, pain: PAIN, from: '2021-09-01' }, mulberry32(1));
