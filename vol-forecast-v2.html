@@ -417,6 +417,14 @@
 .vf-ccy-pill.neut { opacity: .55; }
 .vf-ccy-score { font-size: 9px; font-weight: 400; opacity: .75; }
 
+/* Volatility-state strip (additive — new panel, does not touch the CCY strip
+   above or any per-pair chart). Reuses the CCY strip's container/label
+   classes; only the pill color variants are new. */
+.vf-vol-pill { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-family: 'DM Mono', monospace; font-weight: 600; padding: 3px 8px; border-radius: 4px; border: 1px solid var(--border); background: var(--s2); color: var(--text2); white-space: nowrap; cursor: help; }
+.vf-vol-pill.expand   { background: var(--amber-bg, #92400e18); border-color: var(--amber-bd, #92400e55); color: var(--amber, #fbbf24); }
+.vf-vol-pill.compress { background: var(--blue-bg, #1e3a8a18);  border-color: var(--blue-bd, #1e3a8a55);  color: var(--blue, #60a5fa); }
+.vf-vol-pill.neut     { opacity: .6; }
+
 .vf-levels-view { margin-top: 14px; background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--r); overflow: hidden; }
 .vf-levels-nav { display: flex; align-items: center; gap: 10px; padding: 9px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
 .vf-levels-title { font-size: 11px; font-family: 'DM Mono', monospace; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--text2); }
@@ -846,6 +854,15 @@
   <span class="vf-ccy-label">Currency Strength</span>
   <span id="vfCcyPills">—</span>
   <span style="font-size:9px;font-family:'DM Mono',monospace;color:var(--text3);margin-left:auto" id="vfCcyNote"></span>
+</div>
+
+<!-- VOLATILITY STATE STRIP (additive — reads only new vol_accel/term_structure/
+     vol_state fields already carried on the existing forecast+session payloads;
+     does not read from or alter the per-pair cards/charts above) -->
+<div class="vf-ccy-strip" id="vfVolStateStrip" style="display:none">
+  <span class="vf-ccy-label">Volatility State</span>
+  <span id="vfVolStatePills">—</span>
+  <span style="font-size:9px;font-family:'DM Mono',monospace;color:var(--text3);margin-left:auto">Hover a pair for detail · touch % is theoretical, not backtested</span>
 </div>
 
 <!-- WEEKLY PANEL -->
@@ -1630,6 +1647,7 @@ function _reloadForecastView(date) {
     }
     if (levelsViewActive) renderLevelsTable();
     renderCurrencyStrength(currentWeekly);
+    renderVolStatePanel(forecast, session);   // additive — see fn header
     // renderV2Grid already calls loadAllM5Charts — no duplicate call needed
     return forecast;
   });
@@ -2889,6 +2907,56 @@ function renderCurrencyStrength(weeklyData) {
   if (note) note.textContent=`WTD pair consensus · ${weeklyData.week_label??''}`;
   const strip=document.getElementById('vfCcyStrip');
   if (strip) strip.style.display='';
+}
+
+// ── Volatility State (additive, 2026-09-13) ─────────────────────────────
+// Reads js/volStateEngine.js's fields, which already ride along on the
+// existing forecast/session payloads (vol_accel/term_structure per
+// instrument on `forecastData.instruments[name]`; vol_state.path_efficiency/
+// vol_state.touch_prob per instrument on `sessionData.instruments[name]`).
+// Purely additive: does not read `f`/`s` fields any other renderer depends
+// on, does not touch buildV2Card or the per-pair chart/archive code, and
+// silently no-ops if a pair lacks the new fields (older cached forecasts).
+function renderVolStatePanel(forecastData, sessionData) {
+  const strip = document.getElementById('vfVolStateStrip');
+  const container = document.getElementById('vfVolStatePills');
+  if (!strip || !container) return;
+  if (!forecastData?.instruments) { strip.style.display = 'none'; return; }
+
+  const sessInst = sessionData?.instruments ?? {};
+  const pct = v => v == null ? null : Math.round(v * 100);
+
+  const chips = Object.entries(forecastData.instruments).map(([name, f]) => {
+    if (!f || f.error) return '';
+    const ts = f.term_structure ?? null;
+    const va = f.vol_accel ?? null;
+    if (!ts && !va) return '';   // no volStateEngine fields on this forecast (e.g. stale cache) — skip, don't render blanks
+
+    const vs      = sessInst[name]?.vol_state ?? {};
+    const effPct  = pct(vs.path_efficiency?.efficiency);
+    const touchPct = pct(vs.touch_prob?.oc_median);
+
+    const tsLabel = ts?.label ?? 'insufficient_data';
+    const tsCls   = tsLabel === 'expanding' ? 'expand' : tsLabel === 'compressing' ? 'compress' : 'neut';
+    const tsTxt   = tsLabel === 'expanding' ? 'EXP' : tsLabel === 'compressing' ? 'COMP' : '–';
+    const vaArrow = (va?.label === 'accelerating' || va?.label === 'rising')   ? '▲'
+                  : (va?.label === 'decelerating' || va?.label === 'falling') ? '▼' : '·';
+
+    const title = [
+      `${name} — volatility state (descriptive, additive; not used by the live bot)`,
+      `Term structure: ${tsLabel}${ts?.slope != null ? ` (5d-vs-long slope ${ts.slope})` : ''}`,
+      `Vol acceleration: ${va?.label ?? 'n/a'}${va?.d1 != null ? ` (ΔVol ${(va.d1*100).toFixed(1)}%)` : ''}`,
+      `Path efficiency today: ${effPct != null ? effPct + '%' : '—'} (100% = straight trend, 0% = round-trip back to open)`,
+      `Touch prob. to O-C median, remainder of session: ${touchPct != null ? touchPct + '%' : '—'} — theoretical Brownian estimate, NOT a backtested signal`,
+    ].join('\n');
+
+    return `<span class="vf-vol-pill ${tsCls}" title="${title.replace(/"/g,'&quot;')}">${name} ${tsTxt}${vaArrow}`
+         + `${effPct != null ? ` · eff ${effPct}%` : ''}${touchPct != null ? ` · P${touchPct}%` : ''}</span>`;
+  }).filter(Boolean).join('');
+
+  if (!chips) { strip.style.display = 'none'; return; }
+  container.innerHTML = chips;
+  strip.style.display = '';
 }
 
 // ── Levels View ────────────────────────────────────────────────────────────────
