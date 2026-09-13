@@ -45,6 +45,29 @@
 .jd-ladder i { flex: 1; border-radius: 1px; background: var(--blue); opacity: .30; min-height: 2px; display: block; }
 .jd-ladder i.hi { opacity: .85; }
 
+/* Live block */
+.jd-livebar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; font-size: 11.5px; color: var(--text3); }
+.jd-livebar label { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; }
+.jd-livebar select, .jd-livebar button { font-family: 'DM Mono', monospace; font-size: 11px; background: var(--s2); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 5px 9px; }
+.jd-livebar button { cursor: pointer; }
+.jd-livebar button:hover { border-color: var(--blue); color: var(--blue); }
+.jd-livegrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 12px; }
+.jd-tile { background: var(--s2); border: 1px solid var(--border); border-radius: var(--rm, 8px); padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; }
+.jd-tile .jd-k { font-size: 9.5px; font-family: 'DM Mono', monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--text3); }
+.jd-tile .jd-v { font-size: 21px; font-weight: 600; color: var(--text); font-family: 'DM Mono', monospace; }
+.jd-tile .jd-x { font-size: 10.5px; color: var(--text3); }
+/* Where today sits on this checkpoint's own percentile scale */
+.jd-scale { position: relative; height: 30px; background: var(--s2); border: 1px solid var(--border); border-radius: 6px; margin: 4px 0 10px; overflow: hidden; }
+.jd-scale .tick { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--border); }
+.jd-scale .tick span { position: absolute; top: 2px; left: 3px; font-size: 8.5px; font-family: 'DM Mono', monospace; color: var(--text3); }
+.jd-scale .now { position: absolute; top: -1px; bottom: -1px; width: 3px; background: var(--blue); }
+.jd-scale .now.hot { background: var(--amber); }
+.jd-scale .now.extreme { background: var(--red); }
+.jd-jumps { display: flex; flex-wrap: wrap; gap: 6px; }
+.jd-jump { font-family: 'DM Mono', monospace; font-size: 10.5px; padding: 3px 8px; border-radius: 4px; border: 1px solid var(--border); background: var(--s2); color: var(--text2); }
+.jd-jump.up { border-color: var(--green-bd); color: var(--green); }
+.jd-jump.down { border-color: var(--red-bd); color: var(--red); }
+
 /* Verdict cards — the study's own conclusions, carried as data */
 .jd-verdicts { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px; }
 .jd-card { background: var(--s2); border: 1px solid var(--border); border-radius: var(--rm, 8px); padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
@@ -83,6 +106,7 @@
   </div>
 
   <div class="jd-jumpnav">
+    <a href="#jd-live">Today So Far</a>
     <a href="#jd-what">What This Measures</a>
     <a href="#jd-dist">Per-Pair Yardstick</a>
     <a href="#jd-verdicts">What Held, What Didn&rsquo;t</a>
@@ -98,6 +122,23 @@
     <a href="volatility-intelligence.html" style="color:var(--blue)">Vol Intelligence</a>.
     <span id="jdStatusLine" style="color:var(--text3)"></span>
   </div>
+
+  <section class="jd-section" id="jd-live">
+    <h2>Today so far <span class="jd-q">live &middot; one OANDA call</span></h2>
+    <p class="jd-section-note">
+      The session-so-far jump share, scored against the distribution for <b>this point in the day</b> —
+      not against a full-day percentile. That distinction matters: an hour into the session the historical
+      p90 is around <b>50%</b>, versus ~17% by the close, because a single release dominates a short window
+      far more than a whole session. Scoring 09:00 against a full-day ruler would cry wolf every morning.
+    </p>
+    <div class="jd-livebar">
+      <label for="jdPair">Instrument</label>
+      <select id="jdPair"></select>
+      <button id="jdRefresh" type="button">Refresh</button>
+      <span id="jdLiveMeta"></span>
+    </div>
+    <div id="jdLive"><div class="jd-empty">Pick an instrument and refresh.</div></div>
+  </section>
 
   <section class="jd-section" id="jd-what">
     <h2>What this measures <span class="jd-q">bipower variation</span></h2>
@@ -231,6 +272,67 @@ function renderVerdicts(data) {
     </div>`).join('');
 }
 
+// ── live: today so far ──────────────────────────────────────────────────────
+const BAND_CLASS = { 'extreme': 'extreme', 'very high': 'hot', 'high': 'hot' };
+
+function renderLive(d) {
+  const el = $('jdLive');
+  if (!d.ok) {
+    el.innerHTML = `<div class="jd-empty">Unavailable: ${d.error || 'unknown'}` +
+      `${d.hint ? ' — ' + d.hint : ''}</div>`;
+    return;
+  }
+  const t = d.time_of_day;
+  const share = d.jump_share_pct;
+  // Place today's reading on THIS checkpoint's own percentile axis. Axis runs to p99
+  // (or today's value if it is beyond), so "off the end" reads as off the end.
+  // headroom past p99 so the p99 tick is not flush against the clipped edge
+  const max = Math.max(t ? t.p99 : 40, share, 1) * 1.12;
+  const pos = v => Math.min(100, Math.max(0, (v / max) * 100));
+  const ticks = t ? ['p50', 'p75', 'p90', 'p95', 'p99'].map(k =>
+    `<div class="tick" style="left:${pos(t[k])}%"><span>${k}</span></div>`).join('') : '';
+  const cls = t ? (BAND_CLASS[t.band] || '') : '';
+
+  el.innerHTML = `
+    <div class="jd-livegrid">
+      <div class="jd-tile"><div class="jd-k">Jump share, session so far</div>
+        <div class="jd-v">${share == null ? '—' : share.toFixed(1) + '%'}</div>
+        <div class="jd-x">of realised variance</div></div>
+      <div class="jd-tile"><div class="jd-k">vs this time of day</div>
+        <div class="jd-v" style="font-size:15px">${t ? t.band : 'session too young'}</div>
+        <div class="jd-x">${t ? `p90 ${t.p90.toFixed(1)}% · p99 ${t.p99.toFixed(1)}%` : 'no checkpoint reached yet'}</div></div>
+      <div class="jd-tile"><div class="jd-k">Jumps detected</div>
+        <div class="jd-v">${d.n_jumps}</div>
+        <div class="jd-x">Lee-Mykland, 1%/day false-positive</div></div>
+      <div class="jd-tile"><div class="jd-k">Session elapsed</div>
+        <div class="jd-v" style="font-size:15px">${Math.floor(d.session_minutes / 60)}h ${d.session_minutes % 60}m</div>
+        <div class="jd-x">${d.returns_seen} five-minute returns</div></div>
+    </div>
+    <div class="jd-scale">${ticks}<div class="now ${cls}" style="left:${pos(share)}%"></div></div>
+    ${d.jumps.length
+      ? `<div class="jd-jumps">` + d.jumps.map(j =>
+          `<span class="jd-jump ${j.direction}">${j.utc} UTC · ${j.ret_pct > 0 ? '+' : ''}${j.ret_pct}%</span>`).join('') + `</div>`
+      : `<div class="jd-empty">No discrete jumps detected in this session yet.</div>`}
+    <div class="jd-foot">Session ${d.session_date} · as of ${(d.as_of_utc || '').slice(11, 16)} UTC · ` +
+      `${d.diurnal_adjusted ? 'diurnally adjusted' : 'NOT diurnally adjusted (table missing)'} · ` +
+      `threshold ${d.lm_threshold}. ${d.contract}</div>`;
+}
+
+async function loadLive() {
+  const pair = $('jdPair').value;
+  if (!pair) return;
+  $('jdLiveMeta').textContent = 'loading…';
+  try {
+    const r = await fetch(`/api/jump-diffusion/live?pair=${encodeURIComponent(pair)}`);
+    const d = await r.json();
+    renderLive(d);
+    $('jdLiveMeta').textContent = d.ok ? `one OANDA M5 call · ${d.returns_seen} returns today` : '';
+  } catch (e) {
+    $('jdLive').innerHTML = `<div class="jd-empty">Fetch failed: ${e.message}</div>`;
+    $('jdLiveMeta').textContent = '';
+  }
+}
+
 async function load() {
   try {
     const res = await fetch('/api/jump-diffusion/state');
@@ -248,6 +350,14 @@ async function load() {
     $('jdStatusLine').textContent = ` ${n} instruments · precomputed offline, served from disk.`;
     renderDist(data);
     renderVerdicts(data);
+    // populate the live picker from the instruments the frozen table actually covers
+    const sel = $('jdPair');
+    sel.innerHTML = Object.keys(data.instruments || {}).sort()
+      .map(p => `<option value="${p}">${p.toUpperCase()}</option>`).join('');
+    if ([...sel.options].some(o => o.value === 'eurusd')) sel.value = 'eurusd';
+    sel.addEventListener('change', loadLive);
+    $('jdRefresh').addEventListener('click', loadLive);
+    loadLive();
     const m = data.method || {};
     $('jdMethodFoot').innerHTML =
       `Method — ${m.sampling || ''}. ${m.estimator || ''}. ` +

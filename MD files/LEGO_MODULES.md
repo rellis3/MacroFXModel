@@ -7391,3 +7391,52 @@ Linked from `vol-forecast-v2.html`'s tool row and cross-linked from
 
 **Status: ✅ registered · forecast question closed (3/3 null) · measurement shipped as
 descriptive state · one unconfirmed control-arm lead (intraday RV as a forecast input).**
+
+### 1av. Live jump/diffusion read — one REST call, a time-of-day ruler, and a JS↔Python parity contract (2026-09-13)
+
+**Brick:** `js/jumpDiffusionCore.js` (Tier 1, pure — no fetch/fs/clock, browser-safe).
+**Tests:** `js/jumpDiffusionCore.test.mjs` (14). **Contract:** `volatilityExhaustion/
+crosscheck_jump.py` + `.mjs`. **Table:** `export_intraday_percentiles.py` →
+`data/jump_intraday.json`. **Endpoint:** `/api/jump-diffusion/live`.
+
+Makes §1au's page answer "how is today arriving", not just "what is normal".
+
+**No streaming feed, deliberately.** The decomposition runs on 5-min returns and one
+`count=2000` OANDA M5 call covers ~7 days. That span is a CORRECTNESS requirement, not a
+convenience: the Lee-Mykland local-vol window is 270 bars against a ~288-bar session, so a
+per-day window never fills and the detector is blind for ~11 hours (§1at's bug). Reuses
+`fetchIntradayOnce` from `js/oandaIntraday.js` rather than a new fetch path.
+
+**The time-of-day ruler is the substantive piece.** A part-day jump share is not comparable
+to a full-day percentile — noisier AND biased high, since one release dominates a short
+window far more than a session. Measured: **EURUSD p90 is 50.3% one hour in vs 21.6% at the
+close.** Scoring a morning read against the full-day ruler would cry wolf daily. The table
+holds, per 30-min checkpoint, the distribution of open→checkpoint share, plus the frozen
+48-bucket diurnal curve the detector divides by (fitted offline, **never refit live** — one
+session cannot estimate it and a live fit would drift from the research).
+
+**Generate-don't-port, asserted.** Study is Python, live read is JS. `crosscheck_jump.py`
+requires RV, BV, jump fraction, Gumbel threshold, every local-sigma value, every
+deseasonalised return and the exact detected-index set to agree to **1e-12** — same
+contract `crosscheck_sigma.mjs` gives σ. Passes at max |Δ| = 0.
+
+**Three bugs caught by the tests, worth recording because none was visible in output that
+looked plausible:**
+1. **The crosscheck itself was wrong first** — JS computed local sigma on raw returns,
+   Python on deseasonalised. Two different quantities. The matching jump indices were the
+   tell that the implementation was fine and the test was not.
+2. **`_londonParts` takes MILLISECONDS** (it hands its argument to `Intl`), and OANDA bar
+   times are epoch **seconds** — the first draft dated every bar to 1970 and folded the
+   whole multi-day window into "today".
+3. **Uniform synthetic noise cannot test a detector.** It is bounded at ~1.73 sd against a
+   5.4 sd threshold, so the diurnal-trap test passed by never firing. Now Box-Muller
+   Gaussian.
+
+**End-to-end on a real release:** replaying EURUSD 2024-02-02 (payrolls) to 15:00 UTC gives
+a 37.8% session share with jumps at exactly **13:30 and 13:35 UTC**, scored **"very high"**
+against that checkpoint (p95 24.8 / p99 43.2) where the full-day p90 of 16.4% would have
+said "extreme" — the calibration argument, demonstrated.
+
+**Status: ✅ registered · parity contract passing · 14 unit tests · descriptive only.**
+Says what today IS, never what tomorrow will be (§1as/§1at/§1au: three failed forecast
+tests). Not imported by `volatilityBotPlan.js` / `volatilityBotProducer.js`.
