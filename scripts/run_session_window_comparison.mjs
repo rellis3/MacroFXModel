@@ -82,6 +82,22 @@ const VARIANTS = [
     note: 'London/NY overlap ("best liquidity") window as the RANGE source' },
   { key: 'control', label: 'Control 10:00-14:00', startHour: 10, hrs: 4,
     note: 'arbitrary mid-session window, no session-boundary rationale — a control group' },
+  // ── Fixed-LENGTH, varying-START-HOUR isolation set (2026-09-12) ───────────
+  // Every variant above changes BOTH window length and start hour at once,
+  // so "Asia wins" was never cleanly separable from "Asia happens to be the
+  // narrowest window tested". These four hold length fixed at Asia's own 6h
+  // and tile the full 24h day once each (00/06/12/18) — 'iso00' is IDENTICAL
+  // to 'asia' above (same startHour/hrs), included under its own key so a
+  // `--variants=iso00,iso06,iso12,iso18` run reports all four side by side
+  // without needing to cross-reference the 'asia' row separately.
+  { key: 'iso00', label: 'Iso 00:00-06:00 (=Asia)', startHour: 0, hrs: 6,
+    note: 'length-matched isolation set: same window as Asia, included for a same-run side-by-side' },
+  { key: 'iso06', label: 'Iso 06:00-12:00', startHour: 6, hrs: 6,
+    note: 'length-matched isolation set: Asia-close/London-open, still fairly quiet' },
+  { key: 'iso12', label: 'Iso 12:00-18:00', startHour: 12, hrs: 6,
+    note: 'length-matched isolation set: London/NY overlap into NY afternoon, busiest 6h of the day' },
+  { key: 'iso18', label: 'Iso 18:00-00:00', startHour: 18, hrs: 6,
+    note: 'length-matched isolation set: NY afternoon into pre-Asia, quiet again' },
 ].filter(v => !wantedVariantKeys || wantedVariantKeys.has(v.key));
 
 // The two grid cells worth reporting per variant (mirrors
