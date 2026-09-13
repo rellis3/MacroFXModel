@@ -3870,6 +3870,32 @@ async function resetVb2Throttle() {
     if (el) { el.textContent = 'Throttle reset ✓ (takes effect within one status cycle)'; el.style.color = '#38bdf8'; setTimeout(() => { el.textContent = ''; }, 5000); }
   } catch (e) { if (el) { el.textContent = `Reset failed: ${e.message}`; el.style.color = 'var(--red)'; } }
 }
+// Live vs backtest drift history -- server.js's own weekly job
+// (_volatilityV2WeeklyDriftAudit) writes this, this just renders it. A red
+// row (real mismatches) is fundamentally different from an amber one (thin
+// margin/no vote is expected and doesn't mean anything is wrong by itself,
+// see the tooltip on the card) -- keep that distinction visible, not just a
+// single pass/fail color.
+async function loadVb2DriftHistory() {
+  const body = document.getElementById('vb2DriftBody');
+  if (!body) return;
+  try {
+    const history = await kvGet('volatility_bot_v2_drift_history');
+    if (!history?.length) return; // keep the static "no audit yet" placeholder already in the markup
+    const rows = [...history].reverse(); // newest first
+    body.innerHTML = rows.map(w => {
+      const hasMismatch = (w.directionMismatches ?? 0) > 0;
+      const rateColor = hasMismatch ? 'var(--red)' : (w.matchRate == null ? 'var(--text3)' : 'var(--green)');
+      return `<tr>
+        <td style="padding:5px 10px;text-align:left">${w.weekEnding ?? '—'}</td>
+        <td style="padding:5px 10px;text-align:right">${w.checkedWithVote ?? '—'}</td>
+        <td style="padding:5px 10px;text-align:right;color:${rateColor};font-weight:600">${w.matchRate != null ? w.matchRate + '%' : '—'}</td>
+        <td style="padding:5px 10px;text-align:right;color:${hasMismatch ? 'var(--red)' : 'var(--text3)'}">${w.directionMismatches ?? 0}</td>
+        <td style="padding:5px 10px;text-align:right;color:var(--text3)">${w.thinMarginOrNoVote ?? '—'}</td>
+      </tr>`;
+    }).join('');
+  } catch (e) { body.innerHTML = `<tr><td colspan="5" style="padding:12px;text-align:center;color:var(--red)">${e.message}</td></tr>`; }
+}
 async function testVb2Telegram() {
   const el = document.getElementById('vb2SaveStatus');
   if (el) { el.textContent = 'Sending test…'; el.style.color = 'var(--text3)'; }
@@ -4038,6 +4064,7 @@ async function loadVb2LiveStatus() {
   } catch (e) { if (ageEl) { ageEl.textContent = e.message; } }
   loadVb2AllLines();
   loadVb2DecisionLog();
+  loadVb2DriftHistory();
 }
 
 // Unfiltered companion to the table above: EVERY currently-armed or
