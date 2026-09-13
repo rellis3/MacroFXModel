@@ -986,6 +986,14 @@ WHAT IT IS NOT. Not direction — every sentence it produces is about range. Not
     <h3 class="help" title="The volatility cone: where this market's CURRENT volatility ranks inside its own history, over four lookback windows. Each dot is a percentile (0 = quietest it's been, 100 = wildest). Dots sliding RIGHT as the window shortens = vol is building; sliding LEFT = cooling off. Context for sizing and stop width — not a direction signal."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span><i class="ev c" title="context — measured, not predictive">~</i>Volatility cone — is vol building or cooling?</span></h3>
     <div class="dr-sec-body"><div id="drCone"></div></div>
   </div>
+<div class="dr-sec" id="drCostCarrySec" data-seckey="costcarry" style="display:none">
+    <h3 class="help" title="Cost ratio: today's live spread divided by this pair's expected daily range — a pair whose spread eats 8% of its typical day is a different instrument to trade than one where it's 0.5%, regardless of the setup. Carry-to-vol (FX pairs only): the annualised policy-rate differential between the two currencies, divided by annualised volatility — a fat rate differential on a wild pair is a worse risk-adjusted trade than a smaller one on a calm pair."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span><i class="ev c" title="context — measured, not predictive">~</i>Cost & carry — is this pair worth trading right now?</span></h3>
+    <div class="dr-sec-body"><div id="drCostCarry"></div></div>
+  </div>
+<div class="dr-sec" id="drTimeBudgetSec" data-seckey="timebudget" style="display:none">
+    <h3 class="help" title="Median/P75 time (as a fraction of the trading day) a driftless model expects price to take reaching the O-C median target, given today's σ and however much distance remains right now — closed-form Brownian math, NOT backtested, a reference line only. If more time has elapsed than the median first-passage time predicts and the level still hasn't been reached, the trade thesis may be running behind schedule on timing grounds, independent of P&amp;L."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span><i class="ev c" title="context — measured, not predictive">~</i>Time budget — on schedule or running long?</span></h3>
+    <div class="dr-sec-body"><div id="drTimeBudget"></div></div>
+  </div>
 <div class="dr-sec" id="drIvRvSec" data-seckey="ivrv" style="display:none">
       <h3 class="help" title="Realised volatility is what this market HAS done (close-to-close, annualised). Implied is what the options market is CHARGING for the next 30 days. The gap between them is a risk premium, not a direction — a high IV-RV spread says options are expensive relative to recent movement, which is context for sizing and for whether to buy or sell premium, never a buy/sell signal on the underlying.">
         <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span><i class="ev c" title="context — measured, not predictive">~</i>Realised vs implied volatility</span>
@@ -1367,6 +1375,10 @@ let gpr = null;          // /api/gpr — Geopolitical Risk Index (Caldara & Iaco
 let macroMoved = null;   // /api/macro-changes — per-series 1d/5d/20d change rows (what moved)
 let riskFlags = null;    // /api/risk-flags — cross-asset risk-flag composite (zoom 0)
 let cvol = null;         // /api/cvol — EVZ/GVZ implied vol levels + 5y percentiles
+let volIntel = null;     // /api/vol-forecast/intelligence — cost ratio, time-to-touch, carry-to-vol,
+                          // cross-asset vol ranking (js/volStateEngine.js). term_structure/vol_accel/
+                          // range_efficiency/realised_skew already ride on `forecast` itself — this is
+                          // only the fields that need the cross-cutting spreads/oi_store/rate_diff joins.
 let macroScorecard = null; // /api/macro-scorecard — cross-engine fundamental composite per currency (CPI/GDP/labor/etc)
 let creditQuality = null; // /api/credit-quality — Baa10Y−Aaa10Y quality-spread z-score (credit-curve SHAPE, distinct from the HY-level credit gate)
 let yieldSpreadPlan = null; // /api/yield-spread/plan — today's spread-z per pair from the VALIDATED yield-spread engine (6 pairs only, see js/zscoreSpreadEngine.js ZSCORE_PAIRS); feeds the Market Outlook's one OOS-validated leg
@@ -1684,7 +1696,7 @@ async function loadAll(manual) {
 const GATE_COUNTRIES = new Set(['US', 'EU', 'DE', 'GB', 'JP', 'CH', 'AU', 'CA', 'NZ', 'CN']);
 
 async function loadGate() {
-  const [ev, fr, ss, ct, oi, oiT, wk, ha, rf, cv, oh, mc, msc, cq, ysp, fomcH, ecbH, boeH, bojH, gef] = await Promise.all([
+  const [ev, fr, ss, ct, oi, oiT, wk, ha, rf, cv, oh, mc, msc, cq, ysp, fomcH, ecbH, boeH, bojH, gef, vi] = await Promise.all([
     jget('/api/events').catch(() => null),
     jget('/api/fred').catch(() => null),
     jget('/api/session-stats').catch(() => null),
@@ -1713,6 +1725,10 @@ async function loadGate() {
     // history exists to fetch directly). UNVERIFIED IN SANDBOX like every
     // OANDA/Yahoo-dependent feature; needs a live Railway check.
     jget('/api/gold-etf-flow').catch(() => null),
+    // Cost ratio, time-to-touch, carry-to-vol, cross-asset vol ranking —
+    // js/volStateEngine.js's cross-cutting fields, via the endpoint built for
+    // volatility-intelligence.html. 60s-cached server-side.
+    jget('/api/vol-forecast/intelligence').catch(() => null),
   ]);
   invalidateRows();   // every assignment below feeds a row field (cot, oi, spreads…)
   if (Array.isArray(ev)) events = ev;
@@ -1728,6 +1744,7 @@ async function loadGate() {
   if (ha?.last_corr || ha?.last_betas) hedgeAlerts = ha;
   if (rf?.ok) riskFlags = rf;
   if (cv?.ok) cvol = cv;
+  if (vi?.ok) volIntel = vi;
   if (mc?.ok && mc.rows) macroMoved = mc.rows;
   if (msc?.ok) macroScorecard = msc;
   if (cq?.ok) creditQuality = cq;
@@ -1780,7 +1797,23 @@ function renderRiskFlags() {
     const cmp = rlz != null ? (iv >= rlz ? 'options paying up' : 'options cheap') : '';
     return `<div class="rs-iv" title="${label} 1-month implied volatility from CBOE — what the options market charges, at the ${pc}th percentile of the last 5 years.${rlz != null ? ` Our realized/forecast σ is ${rlz.toFixed(1)}% annualised.` : ''} A price, not a forecast."><span>${esc0(label)} IV</span><b>${iv} · P${pc != null ? Math.round(pc) : '?'}${cmp ? ` · ${cmp}` : ''}</b></div>`;
   };
-  el.innerHTML = levelHtml + flagRows + ivRow('EVZCLS', 'EUR', 'EURUSD') + ivRow('GVZCLS', 'Gold', 'GOLD');
+  // Cross-asset vol ranking (js/volStateEngine.js, via volIntel) — is vol
+  // elevated broadly right now (systemic) or isolated to one asset class?
+  // A companion read to the credit/rates/macro flags above, not a duplicate
+  // of them — those are stress flags, this is a pure vol-percentile compare
+  // across every FX/commodity/index pair the forecaster covers.
+  const volRankHtml = (() => {
+    const rk = volIntel?.cross_asset_vol_ranking;
+    if (!Array.isArray(rk) || rk.length < 2) return '';
+    const hot = rk[0], cold = rk[rk.length - 1];
+    const elevated = rk.filter(x => x.vol_pct >= 75).length;
+    const summary = `<div class="rs-iv" title="How many of the ${rk.length} pairs the forecaster covers are currently in their own top-quartile (75th+ percentile) volatility, right now. A high count here — vol elevated broadly, not just in one pair — is a different market than one wild pair with everything else calm."><span>Vol elevated (75th+pct)</span><b>${elevated}/${rk.length}</b></div>`;
+    const hotRow = `<div class="rs-iv" title="${hot.name} is currently the highest-ranked instrument by its own 252-day volatility percentile — the hottest pair right now, relative to ITS OWN history (not compared across pairs directly)."><span>Hottest</span><b>${hot.name} · P${hot.vol_pct}</b></div>`;
+    const coldRow = `<div class="rs-iv" title="${cold.name} is currently the lowest-ranked instrument by its own 252-day volatility percentile — the quietest pair right now, relative to ITS OWN history."><span>Quietest</span><b>${cold.name} · P${cold.vol_pct}</b></div>`;
+    return summary + hotRow + coldRow;
+  })();
+
+  el.innerHTML = levelHtml + flagRows + ivRow('EVZCLS', 'EUR', 'EURUSD') + ivRow('GVZCLS', 'Gold', 'GOLD') + volRankHtml;
 }
 
 // ── What moved — per-series macro change (today / 1w / 1m) ────────────────────
@@ -6930,6 +6963,8 @@ async function openDrawer(name) {
     });
   loadDrawerStory(r, barsP).catch(e => { $('drStory').innerHTML = `<span class="muted">story unavailable: ${e.message}</span>`; });
   try { renderDrawerCone(r); } catch { $('drConeSec').style.display = 'none'; }
+  try { renderDrawerCostCarry(r); } catch { $('drCostCarrySec').style.display = 'none'; }
+  try { renderDrawerTimeBudget(r); } catch { $('drTimeBudgetSec').style.display = 'none'; }
   try { loadDrawerVumanchu(r); } catch { $('drVmSec').style.display = 'none'; }
   _startSessPathPolling(r);
   _startHandoffPolling(r);
@@ -7828,9 +7863,18 @@ function renderDrawerCone(r) {
   const ivPct = iv ? cvol?.pct?.[iv[0]] : null;
   const ivLevel = iv ? cvol?.levels?.[iv[0]] : null;
 
+  // Two more regime-state chips (js/volStateEngine.js) — already riding on
+  // `fc` itself (computeForecast() attaches them, no new fetch), same
+  // "quiet/wild" family as the σ-expanding/contracting verdict above, so
+  // they join it in the same chip row rather than getting their own section.
+  const re = fc.range_efficiency;
+  const reChip = (!re || re.label === 'insufficient_data') ? '' : `<span class="chip ${re.label === 'trending' ? 'warn' : re.label === 'choppy' ? 'dim' : 'neu'}" title="Close-to-close vol vs range-based (Parkinson) vol, ratio ${re.ratio}. TRENDING means day-to-day moves aren't fully contained within any single session's own range (often gap-driven); CHOPPY means big intraday ranges but little net progress.">${re.label === 'trending' ? 'TRENDING' : re.label === 'choppy' ? 'CHOPPY' : 'NEUTRAL SHAPE'}</span>`;
+  const sk = fc.realised_skew;
+  const skChip = (!sk || sk.label === 'insufficient_data') ? '' : `<span class="chip ${sk.label === 'downside-heavy' ? 'warn' : sk.label === 'upside-heavy' ? 'neu' : 'dim'}" title="Downside vs upside move magnitude, ratio ${sk.ratio}. This pair's down days tend to run ${sk.label === 'downside-heavy' ? 'BIGGER than its up days' : sk.label === 'upside-heavy' ? 'SMALLER than its up days' : 'about the same size as its up days'} — a symmetric cone can be the wrong shape for a skewed pair.">${sk.label === 'downside-heavy' ? '▼ FALLS FASTER' : sk.label === 'upside-heavy' ? '▲ RISES FASTER' : 'SYMMETRIC'}</span>`;
+
   el.innerHTML =
     `<div class="cone-verdict">
-       <span class="chip ${verdict[1]}" title="${verdict[2]}">${verdict[0]}</span>
+       <span class="chip ${verdict[1]}" title="${verdict[2]}">${verdict[0]}</span>${reChip}${skChip}
        <span class="muted">σ ${fc.vol_annual != null ? fc.vol_annual.toFixed(1) + '% annualised' : ''}${fc.vol_vov_label ? ` · swings themselves: ${fc.vol_vov_label.toLowerCase()}` : ''}</span>
      </div>` +
     row('last week (5d)',     fc.cone_5d,  'Where the current σ ranks against the last 5 trading days.') +
@@ -7839,6 +7883,73 @@ function renderDrawerCone(r) {
     row('last year (252d)',   fc.vol_pct,  'Where the current σ ranks against the last year — the long-run anchor.') +
     (ivPct != null ? row(iv[1], ivPct, `What the OPTIONS market charges for 1-month protection (CBOE index at ${ivLevel}), ranked against its own last 5 years. Options paying above the realized rows = the market expects more movement than it's getting.`) : '') +
     `<div class="cone-axis"><span>quiet ←</span><span>its own normal</span><span>→ wild</span></div>`;
+  sec.style.display = '';
+}
+
+// ── Cost & carry — spread vs today's budget, and (FX only) carry-to-vol ─────
+// Reads `volIntel` (/api/vol-forecast/intelligence), fetched ONCE globally
+// alongside forecast/session/riskFlags — no new fetch per drawer open, this
+// is a synchronous read of data already in memory by the time the drawer
+// opens. js/volStateEngine.js's costRatio()/carryToVol(); descriptive state,
+// not a signal, same framing as the cone above.
+function renderDrawerCostCarry(r) {
+  const sec = $('drCostCarrySec'), el = $('drCostCarry');
+  const vi = volIntel?.instruments?.[r.name];
+  if (!vi || (vi.cost_ratio == null && vi.carry_to_vol == null)) { sec.style.display = 'none'; return; }
+
+  let html = '';
+  if (vi.cost_ratio != null) {
+    const pct = vi.cost_ratio * 100;
+    const verdict = pct < 3 ? ['CHEAP', 'bull'] : pct < 8 ? ['NORMAL', 'neu'] : ['EXPENSIVE', 'bear'];
+    const dotPos = Math.min(100, pct * 6);
+    html += `<div class="cone-verdict">
+       <span class="chip ${verdict[1]}" title="Live spread (${vi.spread_pips ?? '?'} pips) ÷ today's expected daily range (${pct.toFixed(2)}%). Under ~3% is cheap, over ~8% starts eating meaningfully into the setup before it's even right.">${verdict[0]} TO TRADE</span>
+       <span class="muted">spread ${vi.spread_pips ?? '?'} pips · ${pct.toFixed(2)}% of today's σ</span>
+     </div>
+     <div class="cone-row" title="Spread as a % of today's expected daily range — lower is cheaper.">
+       <span class="cone-lbl">cost ratio</span>
+       <span class="cone-track"><span class="cone-dot ${pct >= 8 ? 'hot' : pct <= 3 ? 'cold' : ''}" style="left:${dotPos}%"></span></span>
+       <span class="cone-val">${pct.toFixed(2)}%</span></div>`;
+  }
+  if (vi.carry_to_vol != null) {
+    const cv = vi.carry_to_vol, positive = cv >= 0;
+    html += `<div class="cone-row" title="Annualised policy-rate differential (${vi.carry_pct != null ? (vi.carry_pct >= 0 ? '+' : '') + vi.carry_pct + 'pp' : '?'}) ÷ annualised vol — risk-adjusted carry. ${positive ? 'Positive: being long this pair earns carry.' : 'Negative: being long this pair pays carry.'}">
+       <span class="cone-lbl">carry-to-vol</span>
+       <span class="chip ${positive ? 'bull' : 'bear'}" style="margin-left:auto">${positive ? '+' : ''}${cv.toFixed(2)}</span></div>`;
+  } else if (vi.assetClass !== 'fx') {
+    html += `<div class="muted" style="font-size:11px;padding:4px 0">No currency-pair carry leg for this instrument.</div>`;
+  }
+  el.innerHTML = html;
+  sec.style.display = '';
+}
+
+// ── Time budget — on schedule or running long, vs a closed-form median ──────
+// Reads the SAME `volIntel` object — time_to_touch is js/volStateEngine.js's
+// medianTimeToTouch(), a Brownian first-passage-time quantile, NOT a
+// backtested claim. Driftless first-passage time has no finite MEAN, which
+// is why this is a median/P75, not an average.
+function renderDrawerTimeBudget(r) {
+  const sec = $('drTimeBudgetSec'), el = $('drTimeBudget');
+  const vi = volIntel?.instruments?.[r.name];
+  const tt = vi?.time_to_touch, sess = vi?.session;
+  if (!tt || sess?.bar_count == null || tt.medianFrac == null) { sec.style.display = 'none'; return; }
+
+  const elapsedH = sess.bar_count;
+  const medianH  = tt.medianFrac * 24;
+  const p75H     = tt.p75Frac != null ? tt.p75Frac * 24 : null;
+  const stale    = elapsedH > medianH;
+  const pctOfMedian = Math.min(150, (elapsedH / medianH) * 100);
+  const verdict  = stale ? ['RUNNING LONG', 'warn'] : ['ON SCHEDULE', 'bull'];
+
+  el.innerHTML = `
+    <div class="cone-verdict">
+      <span class="chip ${verdict[1]}" title="Elapsed time (${elapsedH.toFixed(1)}h) vs the median first-passage time (${medianH.toFixed(1)}h) a driftless model expects for reaching the O-C median target, given today's remaining distance and σ. This is a reference line, not a backtested claim.">${verdict[0]}</span>
+      <span class="muted">${elapsedH.toFixed(1)}h elapsed · median ~${medianH.toFixed(1)}h · P75 ~${p75H != null ? p75H.toFixed(1) : '?'}h</span>
+    </div>
+    <div class="cone-row" title="Elapsed time as a % of the median expected time-to-touch. Past 100% = running longer than a driftless model's median path would.">
+      <span class="cone-lbl">time used</span>
+      <span class="cone-track"><span class="cone-dot ${pctOfMedian >= 100 ? 'hot' : ''}" style="left:${Math.min(100, pctOfMedian)}%"></span></span>
+      <span class="cone-val">${Math.round(pctOfMedian)}%</span></div>`;
   sec.style.display = '';
 }
 
