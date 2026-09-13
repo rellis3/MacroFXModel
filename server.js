@@ -15306,6 +15306,9 @@ const OI_BOT_CFG_DEFAULTS = {
   reactNodes: null,                  // per-type react-entry weights {walls,gammaFlip,gexFlip,vannaFlip,volMagnets}
   volMagnetMinShare: 0.25,           // a magnet needs ≥ this share of the strongest magnet's volume to be a node
   holdScore: true,                   // wall hold-score (react-vs-blow-through) stamped on zones, sizes fades
+  maxSizeFactor: 2.0,                // aggregate cap on the FINAL sizeFactor (every multiplier applied) —
+                                     // without it max_lot silently became the real sizing model on any
+                                     // zone whose favourable reads compounded past it. 0 = uncapped.
 };
 // Find a pair's row in `oi_history`. The archive is keyed by oi_store's pair NAMES
 // ('XAU/USD', 'NAS100_USD') while every caller here holds a registry KEY from resolveKey

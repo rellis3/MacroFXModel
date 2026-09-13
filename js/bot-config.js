@@ -5040,7 +5040,7 @@ const OI_DEFAULTS = {
   fx_enabled: false, fx_pairs: [],
   // strategy — 2026-08 quant-review additions (see MD files/OI_BOT_QUANT_REVIEW_2026-08.md)
   slBufferRefFrac: 0.10, breakRefFrac: 0.15, extendedRefFrac: 0.25,   // distances = max(pips, frac × refMove)
-  minRR: 0.8, gexNeutralBand: 0.25, convictionSizing: true, holdScore: true,
+  minRR: 0.8, gexNeutralBand: 0.25, convictionSizing: true, holdScore: true, maxSizeFactor: 2.0,
   subTierTrade: false, subTierSize: 0.4, minZoneSpacing: 0.05, volMagnetMinShare: 0.25,
   reactNodes: { walls: 1.0, gammaFlip: 0.8, gexFlip: 0.8, vannaFlip: 0.6, volMagnets: 0.6 },
   // execution (the bot)
@@ -5085,6 +5085,7 @@ function renderOiForm() {
   set('oi_gex_neutral_band', _oiCfg.gexNeutralBand ?? OI_DEFAULTS.gexNeutralBand);
   chk('oi_conviction_sizing', _oiCfg.convictionSizing ?? true);
   chk('oi_hold_score', _oiCfg.holdScore ?? true);
+  set('oi_max_size_factor', _oiCfg.maxSizeFactor ?? OI_DEFAULTS.maxSizeFactor);
   set('oi_min_zone_spacing', _oiCfg.minZoneSpacing ?? OI_DEFAULTS.minZoneSpacing);
   chk('oi_sub_tier_trade', _oiCfg.subTierTrade ?? false);
   set('oi_sub_tier_size', _oiCfg.subTierSize ?? OI_DEFAULTS.subTierSize);
@@ -5161,6 +5162,7 @@ function readOiForm() {
   _oiCfg.gexNeutralBand = num('oi_gex_neutral_band', OI_DEFAULTS.gexNeutralBand);
   _oiCfg.convictionSizing = !!document.getElementById('oi_conviction_sizing')?.checked;
   _oiCfg.holdScore = !!document.getElementById('oi_hold_score')?.checked;
+  _oiCfg.maxSizeFactor = num('oi_max_size_factor', OI_DEFAULTS.maxSizeFactor);
   _oiCfg.minZoneSpacing = num('oi_min_zone_spacing', OI_DEFAULTS.minZoneSpacing);
   _oiCfg.subTierTrade = !!document.getElementById('oi_sub_tier_trade')?.checked;
   _oiCfg.subTierSize = num('oi_sub_tier_size', OI_DEFAULTS.subTierSize);

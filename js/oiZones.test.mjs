@@ -558,8 +558,12 @@ console.log('[Local-regime gate — judge a wall by the gamma band AT ITS OWN PR
   // short-gamma band — fading it is the wrong side; the 4100 put wall is in the PIN band.
   const inst = { ...base, exposures: { gex: 5000 }, refMove: { move: 150 },
     gexFlips: [{ price: 4250, dir: 'long->short' }] };
-  const off = buildOIZones(inst, 4200, cfg);
-  const on = buildOIZones(inst, 4200, { ...cfg, localRegime: true });
+  // maxSizeFactor disabled here: this test isolates the local-regime TRIM, and the
+  // fixture's base sizeFactor lands just above the default 2.0 cap, which would
+  // otherwise clamp the OFF baseline and break the exact ×0.5 comparison below —
+  // that clamping behavior has its own dedicated tests further down.
+  const off = buildOIZones(inst, 4200, { ...cfg, maxSizeFactor: 0 });
+  const on = buildOIZones(inst, 4200, { ...cfg, maxSizeFactor: 0, localRegime: true });
   const sellOff = off.find(x => x.side === 'sell' && x.level === 4300);
   const sellOn = on.find(x => x.side === 'sell' && x.level === 4300);
   const buyOn = on.find(x => x.side === 'buy' && x.level === 4100);
@@ -573,7 +577,7 @@ console.log('[Local-regime gate — judge a wall by the gamma band AT ITS OWN PR
   // "local pin confirmed" on a check that never ran. The producer nulled gexFlips on the
   // day-expiry path, so this was the ONLY case that ever reached production.
   const noFlips = { ...base, exposures: { gex: 5000 }, refMove: { move: 150 }, gexFlips: [] };
-  const nf = buildOIZones(noFlips, 4200, { ...cfg, localRegime: true }).find(x => x.side === 'sell' && x.level === 4300);
+  const nf = buildOIZones(noFlips, 4200, { ...cfg, maxSizeFactor: 0, localRegime: true }).find(x => x.side === 'sell' && x.level === 4300);
   ok('no crossings → NO false "confirmed"', nf && !/local pin confirmed/.test(nf.rationale), nf?.rationale);
   ok('no crossings → says it could not resolve', nf && /local regime unresolved/.test(nf.rationale), nf?.rationale);
   ok('no crossings → size untouched (no phantom trim)', nf && Math.abs(nf.sizeFactor - sellOff.sizeFactor) < 1e-9, `${sellOff.sizeFactor} vs ${nf?.sizeFactor}`);
@@ -628,6 +632,47 @@ console.log('[minStopAbs — absolute stop floor, price units]');
   ok('minStopAbs omitted entirely → identical to old behaviour (default 0)',
     JSON.stringify(buildOIZones(pin, 4200, { ...cfg, refMove: 82.6, slBufferRefFrac: 0.10 }))
     === JSON.stringify(small));
+}
+
+console.log('[Aggregate sizeFactor cap — max_lot must not silently become the sizing model]');
+{
+  // Stack every favourable multiplier at once: strong+concentrated+durable wall
+  // (sizeFactor() itself already caps this trio at 2.0), a high hold-score (positive
+  // per-strike GEX → ~1.3× via holdScore), high GEX conviction (~1.2×), and a vanna
+  // headwind on a FADE (a boost — see the vanna block above: tail===isFollow gives
+  // the boost, and isFollow is false for a fade, so headwind is the boosting state,
+  // not tailwind). Pre-cap this compounds to ~2.0×1.15×1.3×1.2 ≈ 3.6× — exactly the
+  // live pattern that put 24% of real trades on the max_lot ceiling (2026-09-13).
+  const gp = v => [{ strike: 4200, netGex: 1000 }, { strike: 4300, netGex: v }];
+  const stacked = { ...base, exposures: { gex: 5000 }, gexProfile: gp(2000),
+    callWalls: [{ strike: 4300, oi: 9000, tier: 'strong', mult: 3.2, persistence: 8 }] };
+  const uncapped = buildOIZones(stacked, 4200,
+    { ...cfg, gexMedianAbs: 4200, vannaState: { state: 'headwind', firing: true }, maxSizeFactor: 0 })
+    .find(x => x.side === 'sell');
+  ok('uncontrolled, the stack compounds well past a sane single-trade multiple',
+    uncapped.sizeFactor > 2.5, `${uncapped.sizeFactor}`);
+  const capped = buildOIZones(stacked, 4200,
+    { ...cfg, gexMedianAbs: 4200, vannaState: { state: 'headwind', firing: true } })   // default maxSizeFactor 2.0
+    .find(x => x.side === 'sell');
+  ok('default cap (2.0×) clamps the same stacked zone', capped.sizeFactor === 2, `${capped.sizeFactor}`);
+  ok('the clamp is disclosed in the rationale, with the pre-cap value',
+    capped.rationale.includes(`sizeFactor capped ${uncapped.sizeFactor}× → 2×`), capped.rationale);
+  // An ordinary (moderate tier, dispersed, unremarkable multiple) zone must be
+  // completely unaffected — note even `base`'s plain strong+concentrated wall
+  // isn't a fair "ordinary" control here: hold-score's mult-only component (no
+  // gexProfile/change/persistence pasted) alone nudges a strong wall just past
+  // 2.0, which is itself part of why the cap needs to exist at all.
+  const ordinary = { maxPain: 4200, exposures: { gex: 5000 }, concentration: { read: 'dispersed' },
+    callWalls: [{ strike: 4300, oi: 5000, tier: 'moderate', mult: 2.0 }],
+    putWalls: [{ strike: 4100, oi: 5000, tier: 'moderate', mult: 2.0 }] };
+  const plain = buildOIZones(ordinary, 4200, { ...cfg, minTier: 'moderate' }).find(x => x.side === 'sell');
+  ok('an ordinary zone under the cap is untouched (no rationale note, no size change)',
+    plain.sizeFactor < 2 && !/sizeFactor capped/.test(plain.rationale), `${plain.sizeFactor}`);
+  // A custom, tighter cap is honoured too.
+  const tight = buildOIZones(stacked, 4200,
+    { ...cfg, gexMedianAbs: 4200, vannaState: { state: 'headwind', firing: true }, maxSizeFactor: 1.5 })
+    .find(x => x.side === 'sell');
+  ok('a custom maxSizeFactor is honoured', tight.sizeFactor === 1.5, `${tight.sizeFactor}`);
 }
 
 console.log('[Guards]');

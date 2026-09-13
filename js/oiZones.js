@@ -299,6 +299,18 @@ export function buildOIZones(inst, price, cfg = {}) {
                                    // oi_hold_calibration once the forward-test has enough trades)
     collectDrops = null,           // array to receive {level, mode, side, reason} for every zone the
                                    // planner dropped (minRR / spacing) — so a blank reads as intended
+    // ── aggregate sizeFactor ceiling (2026-09) ──────────────────────────────
+    // sizeFactor(w) below caps the tier×concentration×durability×nearFlip product
+    // at 2.0 — but everything add() layers on AFTER that (vanna ≤1.15, hold-score
+    // ≤1.3, GEX conviction ≤1.2) multiplies on top with no re-clamp, so a zone
+    // that stacks several favourable reads can compound to ~3.6× before max_lot
+    // ever engages. Live evidence (2026-09-13, 224 trades): 24% of ALL fills sat
+    // at the exact max_lot ceiling — a quarter of "sizing" was max_lot doing the
+    // job the sizeFactor model exists to do, not genuine graduated conviction.
+    // This caps the FINAL sizeFactor (every multiplier applied) so max_lot goes
+    // back to being an emergency backstop, not the modal outcome. 0 = uncapped
+    // (the old behaviour).
+    maxSizeFactor = 2.0,
   } = cfg;
 
   const gex = inst.exposures?.gex ?? inst.gex ?? 0;
@@ -559,6 +571,14 @@ export function buildOIZones(inst, price, cfg = {}) {
         // Say so rather than passing silently: the gate was asked for and could not run.
         rationale = `${rationale} · local regime unresolved (no gamma crossing in range)`;
       }
+    }
+    // Aggregate ceiling — applied LAST, after every multiplier above, so it caps
+    // what the zone actually ends up at rather than any one component. Without
+    // this, max_lot silently became the real sizing model on any zone whose
+    // favourable reads compounded past it (see the cfg-param note above).
+    if (maxSizeFactor > 0 && sizeFactor > maxSizeFactor) {
+      rationale = `${rationale} · sizeFactor capped ${sizeFactor}× → ${maxSizeFactor}×`;
+      sizeFactor = maxSizeFactor;
     }
     zones.push({ ...z, sizeFactor, entry: +z.entry.toFixed(6), sl: +z.sl.toFixed(6),
       tp1: tp1 != null ? +tp1.toFixed(6) : null, tp2: tp2 != null ? +tp2.toFixed(6) : null,
