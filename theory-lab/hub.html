@@ -893,6 +893,35 @@
   </div>
   <!-- INSTITUTIONAL:END -->
 
+  <!-- INSTITUTIONAL:START -->
+  <div class="tl-cat" data-level="advanced">
+    <h2>29 · Volatility Estimation &amp; Jump Detection</h2>
+    <div class="tl-cat-sub">The estimators and tests underneath this repo's own volatility machinery — range-based OHLC estimators, realized-volatility forecasting, and the two-stage toolkit (bipower variation, then Lee-Mykland) for separating jumps from ordinary diffusion.</div>
+    <div class="tl-grid">
+      <a class="tl-card" href="lessons/institutional-garman-klass-yang-zhang.html" data-slug="institutional-garman-klass-yang-zhang" data-full="lessons/institutional-garman-klass-yang-zhang.html" data-micro="lessons/institutional-garman-klass-yang-zhang-micro.html">
+        <div class="tl-card-toprow"><div class="tl-card-num">Volatility Estimation &amp; Jump Detection 1</div><span class="tl-pill amber tl-diff-pill">Advanced</span><span class="tl-card-micro-badge" title="A visual guide (slide deck) is available for this lesson">⚡</span></div>
+        <h3>Garman-Klass &amp; Yang-Zhang: OHLC Volatility Estimators</h3>
+        <p>Range-based estimators that use the full day's open/high/low/close instead of just one price — confirmed as this repo's actual production volatility inputs, not a textbook exercise.</p>
+      </a>
+      <a class="tl-card" href="lessons/institutional-har-rv.html" data-slug="institutional-har-rv" data-full="lessons/institutional-har-rv.html" data-micro="lessons/institutional-har-rv-micro.html">
+        <div class="tl-card-toprow"><div class="tl-card-num">Volatility Estimation &amp; Jump Detection 2</div><span class="tl-pill amber tl-diff-pill">Advanced</span><span class="tl-card-micro-badge" title="A visual guide (slide deck) is available for this lesson">⚡</span></div>
+        <h3>HAR-RV: Forecasting Realized Volatility (Corsi)</h3>
+        <p>A simple daily/weekly/monthly OLS regression that approximates long-memory volatility behavior — live in this repo's own multi-model vol-forecast "horse race."</p>
+      </a>
+      <a class="tl-card" href="lessons/institutional-bipower-variation.html" data-slug="institutional-bipower-variation" data-full="lessons/institutional-bipower-variation.html" data-micro="lessons/institutional-bipower-variation-micro.html">
+        <div class="tl-card-toprow"><div class="tl-card-num">Volatility Estimation &amp; Jump Detection 3</div><span class="tl-pill amber tl-diff-pill">Advanced</span><span class="tl-card-micro-badge" title="A visual guide (slide deck) is available for this lesson">⚡</span></div>
+        <h3>Bipower Variation: Decomposing Continuous vs. Jump Variation</h3>
+        <p>Why summing adjacent absolute returns instead of squares isolates the continuous part of variance from jumps — validated on real data, with an honest null result on its forecasting payoff.</p>
+      </a>
+      <a class="tl-card" href="lessons/institutional-jump-detection-tests.html" data-slug="institutional-jump-detection-tests" data-full="lessons/institutional-jump-detection-tests.html" data-micro="lessons/institutional-jump-detection-tests-micro.html">
+        <div class="tl-card-toprow"><div class="tl-card-num">Volatility Estimation &amp; Jump Detection 4 (final)</div><span class="tl-pill amber tl-diff-pill">Advanced</span><span class="tl-card-micro-badge" title="A visual guide (slide deck) is available for this lesson">⚡</span></div>
+        <h3>Lee-Mykland &amp; Boudt-Croux-Laurent: Detecting Individual Jumps</h3>
+        <p>Pinning down which specific return was a jump, and correcting for the intraday U-shape so open/close volatility doesn't get mistaken for one — both genuinely implemented in this repo.</p>
+      </a>
+    </div>
+  </div>
+  <!-- INSTITUTIONAL:END -->
+
 </div>
 <script>
 (function(){

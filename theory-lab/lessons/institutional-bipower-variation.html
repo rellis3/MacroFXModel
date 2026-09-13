@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bipower Variation — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Volatility Estimation &amp; Jump Detection / Bipower Variation</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Volatility Estimation &amp; Jump Detection 3 of 4</div>
+  <h1 class="tl-title">Bipower Variation</h1>
+  <p class="tl-dek">Realized variance can't tell a smooth, ordinary trading day from one violent NFP-print second — it just adds up every squared return and calls the total "volatility." Bipower variation is the trick that splits that number back into the part that was really diffusion and the part that was really a jump.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT, WITH A REAL MEASUREMENT IN THIS REPO — the estimator is built and validated on real market data (<code>volatilityExhaustion/vol_exhaustion_lib.py</code>); using the jump/continuous split to improve a live volatility forecast tested NULL</span>
+    <span>~17 min read</span>
+    <span>Prereqs: <a href="institutional-har-rv.html">HAR-RV: Forecasting Realized Volatility</a>, <a href="merton-jump-diffusion.html">The Merton Jump-Diffusion Model</a></span>
+  </div>
+
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="institutional-bipower-variation-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li><strong>Realized variance (RV)</strong> — the sum of squared high-frequency returns — consistently estimates the <em>total</em> quadratic variation of a price path: the continuous, diffusive wiggling <em>plus</em> whatever discrete jumps happened along the way. It cannot, by itself, tell you how much of the total came from which source.</li>
+      <li><strong>Bipower variation (BV)</strong>, Barndorff-Nielsen &amp; Shephard (2004), replaces squares with a product of adjacent absolute returns: \(BV = \frac{\pi}{2}\sum |r_i||r_{i-1}|\). A genuine jump is large in one return but (under standard assumptions) doesn't drag its neighbor along with it — so it contributes \(r_i^2\) (large) to RV but only \(|r_i||r_{i-1}|\) (large times ordinary) to BV. BV is asymptotically robust to jumps; RV is not.</li>
+      <li>The \(\pi/2\) is not decoration: for a standard normal \(Z\), \(E[|Z|]=\sqrt{2/\pi}\), so \(E[|Z|]^2 = 2/\pi\) — the \(\pi/2\) scaling is exactly the correction that makes BV a consistent estimator of the same continuous integrated variance RV would estimate if there were no jumps at all.</li>
+      <li>The gap \(J = \max(RV - BV, 0)\) is the estimated jump contribution to that period's total variance — a single, aggregate, whole-session number. It says <em>how much</em> of the day was jump-driven, not <em>which</em> return was the jump; that finer question is the next lesson's job.</li>
+      <li>This exact math is already implemented and run on real FX/gold data in this repo (<code>bipower()</code>/<code>jump_fraction()</code> in <code>volatilityExhaustion/vol_exhaustion_lib.py</code>). The measurement itself checks out against known scheduled-news events. Using it to sharpen a live volatility <em>forecast</em>, however, was tested and came back null — a distinction this lesson keeps sharp throughout.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    <a href="institutional-har-rv.html">HAR-RV</a> and every realized-variance
+    estimator like it start from the same building block: chop a trading
+    session into many small intraday intervals, take the log return over
+    each one, square it, and add them all up.
+  </p>
+  <div class="tl-math">\[ RV = \sum_{i=1}^{n} r_i^2 \]</div>
+  <p>
+    This quantity has a genuinely elegant theoretical property: as the
+    sampling interval shrinks toward zero, RV converges to the
+    <strong>quadratic variation</strong> of the underlying price process over
+    that period — the true, model-free notion of "how much variance actually
+    happened." That's a real and useful result. It is also, by itself,
+    silent on a question that matters enormously in practice: <em>where did
+    that variance come from?</em> A price process that jumps — a scheduled
+    release, a flash crash, a stop cascade — has quadratic variation from two
+    genuinely different sources stacked together: the ordinary continuous
+    diffusion that runs all the time, and the discrete jump component that
+    fires rarely and violently. RV sums squared returns without asking which
+    source produced any particular one. A single 40-pip, one-minute NFP spike
+    and forty consecutive 1-pip diffusive wiggles that happen to add up to
+    the same total sum-of-squares are, to plain RV, indistinguishable
+    numbers.
+  </p>
+  <p>
+    That conflation is not a rounding error — it is a real, economically
+    important distinction. Continuous diffusive variance is what you'd use
+    to size a position expecting to hold through ordinary intraday noise;
+    jump variance is compensation for a genuinely different kind of risk,
+    the kind option desks price separately as "event vol" (see
+    <a href="merton-jump-diffusion.html">The Merton Jump-Diffusion Model</a>).
+    A volatility forecast that can't distinguish the two is implicitly
+    treating a day that ground steadily higher and a day that sat still
+    until one CPI print blew through the range as the same kind of day,
+    just because their RV numbers matched. Bipower variation exists to undo
+    exactly that conflation — to split one number, RV, back into an estimate
+    of its two structurally different pieces.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>One number, two very different stories, added together</h3>
+    <p>
+      Imagine measuring how far a hiker traveled over a day using only their
+      total elevation gain. A hiker who climbed one long, steady, moderate
+      slope all afternoon and a hiker who mostly walked flat ground but fell
+      into one deep, sudden ravine can post the identical total number. The
+      total alone can't tell you which happened — and knowing which
+      happened matters enormously for judging how tired that hiker actually
+      is, versus how unlucky.
+    </p>
+    <p>
+      RV is that total-elevation number for a return series. Bipower
+      variation is the trick that separates "walked a long steady slope"
+      (continuous diffusion) from "fell into one ravine" (a jump), using
+      only the same return data RV already has — no extra information, no
+      separate options market, no news feed. It just asks a smarter question
+      of the same numbers: does each large move drag its very next
+      neighbor along with it, or does it stand alone?
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+  <p>
+    Barndorff-Nielsen &amp; Shephard's fix keeps the same idea as RV — sum
+    something across all the intraday returns in a period — but replaces
+    the square of a single return with the <strong>product of two adjacent
+    absolute returns</strong>:
+  </p>
+  <div class="tl-math">\[ BV = \frac{\pi}{2}\sum_{i=2}^{n} |r_i|\,|r_{i-1}| \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>|r_i||r_{i-1}|</code><span>the product of two consecutive absolute returns — not one return squared</span></div>
+    <div class="tl-eq-chip c2"><code>π/2</code><span>the exact scaling constant that corrects for this product's expectation under pure diffusion</span></div>
+    <div class="tl-eq-chip c3"><code>n</code><span>the number of intraday returns sampled over the period</span></div>
+  </div>
+  <p>
+    <strong>Why pairing adjacent returns kills a jump's contribution.</strong>
+    Under the standard jump-diffusion assumptions this lesson's math relies
+    on — finitely many jumps over any finite period, each one landing in a
+    single return interval — a jump shows up as one anomalously large
+    \(r_i\), full stop. It does not, by construction, make the
+    <em>immediately adjacent</em> return \(r_{i-1}\) or \(r_{i+1}\) unusually
+    large too; those neighbors are still ordinary draws from the continuous
+    diffusion, unaffected by whatever caused the jump one interval away.
+    That single structural fact is the entire mechanism:
+  </p>
+  <div class="tl-compare">
+    <div class="tl-compare-card red">
+      <h4>What a jump does to RV</h4>
+      <p>
+        A jump return \(r_j\) contributes \(r_j^2\) to the sum — the full
+        squared size of the jump, undiminished. If the jump is 40 times the
+        size of an ordinary return, it contributes roughly \(40^2 = 1{,}600\)
+        times an ordinary return's contribution, all by itself. RV has no
+        mechanism to discount this.
+      </p>
+    </div>
+    <div class="tl-compare-card green">
+      <h4>What the same jump does to BV</h4>
+      <p>
+        The jump return \(r_j\) enters BV twice — paired with \(r_{j-1}\)
+        and with \(r_{j+1}\) — as \(|r_j||r_{j-1}|\) and \(|r_j||r_{j+1}|\).
+        Since the neighbors are ordinary, non-jump returns, each product is
+        "large times ordinary," not "large times large." A 40x jump paired
+        with an ordinary-sized neighbor contributes roughly 40 times an
+        ordinary term, not 1,600 — and that contribution vanishes relative
+        to the sum as the sampling interval shrinks and \(n\) grows, while a
+        genuine jump's contribution to RV never does.
+      </p>
+    </div>
+  </div>
+  <p>
+    That asymmetry — quadratic in RV, linear in BV — is precisely why BV is
+    <strong>asymptotically robust to (finite-activity) jumps while RV is
+    not</strong>. In the absence of any jumps at all, both RV and BV
+    consistently estimate the exact same quantity: the continuous integrated
+    variance of the diffusion. They only start to disagree, and disagree in
+    a very specific, interpretable direction, when a real jump is present in
+    the sample.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Picture your class lined up by height, and one kid is secretly standing on a chair. Squaring-and-summing (RV) measures each kid's own height twice and adds it up — the kid on the chair counts double, hugely inflating the total. Bipower variation instead multiplies each kid's height by the kid standing right next to them. The kid on the chair still looks tall, but the kid next to them is standing on the floor like everyone else — so that one weird measurement only gets counted as "tall times normal," not "tall times tall." One trick catches the fake height fully; the other barely notices it.</p>
+  </div>
+
+  <h3>Where the π/2 actually comes from</h3>
+  <p>
+    This is not an arbitrary calibration constant — it falls directly out of
+    the properties of the normal distribution, and it's worth deriving
+    plainly rather than waving at. Over a short interval \(\Delta\) of pure
+    diffusion with volatility \(\sigma\), an ordinary return is
+    approximately \(r \sim \mathcal{N}(0, \sigma^2 \Delta)\), which can be
+    written \(r = \sigma\sqrt{\Delta}\,Z\) for a standard normal \(Z\). The
+    absolute value of a standard normal has a known, exact expectation:
+  </p>
+  <div class="tl-math">\[ E[|Z|] = \sqrt{\frac{2}{\pi}} \quad\Longrightarrow\quad E[|Z|]^2 = \frac{2}{\pi} \]</div>
+  <p>
+    Two <em>independent</em> adjacent returns \(r_i = \sigma\sqrt{\Delta}\,Z_i\)
+    and \(r_{i-1} = \sigma\sqrt{\Delta}\,Z_{i-1}\) therefore have
+  </p>
+  <div class="tl-math">\[ E\big[|r_i|\,|r_{i-1}|\big] = \sigma^2\Delta \cdot E[|Z_i|]\,E[|Z_{i-1}|] = \sigma^2\Delta \cdot \frac{2}{\pi} \]</div>
+  <p>
+    Summed over \(n\) such pairs across a period of total length
+    \(T = n\Delta\), the raw (unscaled) sum of adjacent-absolute-return
+    products has expectation \(\frac{2}{\pi}\sigma^2 T\) — short of the true
+    integrated variance \(\sigma^2 T\) by exactly the factor \(2/\pi\).
+    Multiplying by \(\pi/2\) is precisely the correction that cancels that
+    shortfall, so that in the no-jump case, \(E[BV] = \sigma^2 T\), matching
+    \(E[RV]\) exactly. The constant is not a tuning knob; it is the unique
+    scaling factor that makes BV unbiased for the same target RV already
+    estimates.
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(RV\)</td><td>Realized variance — \(\sum r_i^2\); consistently estimates <em>total</em> quadratic variation (continuous + jump).</td></tr>
+    <tr><td>\(BV\)</td><td>Bipower variation — \(\frac{\pi}{2}\sum|r_i||r_{i-1}|\); consistently estimates only the <em>continuous</em> integrated variance, robust to finite-activity jumps.</td></tr>
+    <tr><td>\(J\)</td><td>Estimated jump variation — \(\max(RV-BV,\,0)\); the gap between the two, floored at zero.</td></tr>
+    <tr><td>\(r_i\)</td><td>The \(i\)-th intraday log return over the sampling interval.</td></tr>
+    <tr><td>\(n\)</td><td>Number of intraday returns sampled in the period (e.g. ~390 for 1-minute bars over a 6.5-hour session).</td></tr>
+    <tr><td>\(Z\)</td><td>A standard normal random variable; \(E[|Z|]=\sqrt{2/\pi}\) is the identity the \(\pi/2\) constant corrects for.</td></tr>
+    <tr><td>jump fraction</td><td>\(J/RV\) — the share of the period's total realized variance attributed to jumps, between 0 and 1.</td></tr>
+  </table></div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>The jump estimate — and what it does and doesn't tell you</h2>
+  <p>
+    With RV estimating the total and BV estimating only the continuous part,
+    the difference between them is the natural estimator of the jump
+    contribution:
+  </p>
+  <div class="tl-math">\[ J = \max(RV - BV,\ 0) \]</div>
+  <p>
+    The \(\max(\cdot, 0)\) floor is not cosmetic. In any finite sample, RV
+    and BV are both noisy estimates of quantities that are exactly equal
+    when there truly are no jumps — so on a genuinely quiet day, sampling
+    noise alone can push the raw difference \(RV - BV\) slightly negative
+    even though the "true" jump contribution is zero. A negative estimated
+    jump size is nonsensical (variance can't be negative), so it gets
+    floored at zero rather than reported as a small negative number that
+    would only mislead.
+  </p>
+  <div class="tl-solid blue">
+    <strong>What \(J\) is: a whole-period, aggregate split.</strong> \(J\)
+    (and the normalized jump fraction \(J/RV\)) answers "of this session's
+    total realized variance, how much came from jump activity versus
+    ordinary diffusion?" — a single number per period (a day, in most
+    applications). It does <strong>not</strong> tell you which specific
+    intraday return, or which specific minute, was the jump. Identifying
+    the exact timing and size of individual jump events is a genuinely
+    different, sharper question — the subject of the next lesson,
+    Lee-Mykland and Boudt-Croux-Laurent jump detection, which scales each
+    individual return by a local, trailing bipower-based volatility estimate
+    and tests it against a statistical threshold, return by return rather
+    than session by session.
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>A worked example: one big jump inside a quiet session</h2>
+  <p>
+    Fifteen synthetic one-minute log returns for a single trading session,
+    in basis points, with one deliberately oversized return injected at
+    minute 9 to represent a scheduled-release jump. Recomputed exactly with
+    the formulas above (not rounded to look tidy):
+  </p>
+  <div class="tl-symbols"><table>
+    <tr><td>bar</td><td>1&emsp;2&emsp;3&emsp;4&emsp;5&emsp;6&emsp;7&emsp;8&emsp;<strong>9</strong>&emsp;10&emsp;11&emsp;12&emsp;13&emsp;14&emsp;15</td></tr>
+    <tr><td>r (bp)</td><td>+1.2&emsp;−0.8&emsp;+1.5&emsp;−1.1&emsp;+0.9&emsp;−1.3&emsp;+1.0&emsp;−0.7&emsp;<strong>+46.0</strong>&emsp;−0.9&emsp;+1.1&emsp;−1.4&emsp;+0.8&emsp;−1.0&emsp;+1.3</td></tr>
+  </table></div>
+  <p>
+    Fourteen of the fifteen returns are ordinary background noise, roughly
+    ±0.7 to ±1.5bp — the kind of wiggle you'd expect on any quiet minute.
+    The ninth return, +46.0bp, stands in for a genuine scheduled-release
+    jump: about 30-65 times the size of its neighbors, landing in a single
+    interval with no lead-up.
+  </p>
+  <div class="tl-steps">
+    <div class="tl-step">
+      <div class="tl-step-num">1</div>
+      <div class="tl-step-body">
+        <h4>Sum the squares — RV</h4>
+        <p>
+          \(RV = \sum r_i^2 = 0.00002133\) (in decimal-return units). The
+          single jump bar alone contributes \(0.0046^2 = 0.00002116\) — fully
+          <strong>99.2%</strong> of the entire session's RV comes from that
+          one 1-minute return.
+        </p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">2</div>
+      <div class="tl-step-body">
+        <h4>Sum the adjacent products, scale by π/2 — BV</h4>
+        <p>
+          \(BV = \frac{\pi}{2}\sum|r_i||r_{i-1}| = 0.00000137\). The jump bar
+          still shows up — paired with bar 8 and bar 10 — but only as
+          "large times ordinary," not "large times large," so it barely
+          moves BV at all relative to what a run of purely ordinary returns
+          would have produced.
+        </p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">3</div>
+      <div class="tl-step-body">
+        <h4>Take the difference — J</h4>
+        <p>
+          \(J = \max(RV - BV,\,0) = 0.00001996\). Compare that to the jump
+          return's own squared size, \(0.0046^2 = 0.00002116\): \(J\)
+          recovers <strong>94.3%</strong> of the jump's own contribution to
+          RV — close, not exact, because BV also absorbed a small,
+          legitimate share of the jump's size through its two neighbor
+          pairings, exactly as the mechanism above predicts.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">One jump bar, and how RV and BV process it differently</div>
+    <svg viewBox="0 0 640 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Top panel: fifteen vertical bars representing one-minute returns, mostly small and alternating up and down, with one much taller bar at position nine representing a jump. Bottom panel: two lines tracking cumulative realized variance and cumulative bipower variation as more bars are processed left to right — the realized-variance line shoots up almost to the top the instant it reaches the jump bar and stays flat afterward, while the bipower-variation line rises only gently through the same point and keeps rising smoothly.">
+      <line x1="30" y1="78" x2="620" y2="78" style="stroke:var(--border2)"/>
+      <text x="20" y="82" text-anchor="end" fill="var(--text3)" font-size="9" font-family="'DM Mono',monospace">0</text>
+
+      <rect x="41.5" y="69.1" width="9" height="8.9" style="fill:var(--blue)"/>
+      <rect x="82.1" y="78" width="9" height="7.3" style="fill:var(--blue)"/>
+      <rect x="122.6" y="68.1" width="9" height="9.9" style="fill:var(--blue)"/>
+      <rect x="163.2" y="78" width="9" height="8.5" style="fill:var(--blue)"/>
+      <rect x="203.8" y="70.3" width="9" height="7.7" style="fill:var(--blue)"/>
+      <rect x="244.4" y="78" width="9" height="9.2" style="fill:var(--blue)"/>
+      <rect x="284.9" y="69.9" width="9" height="8.1" style="fill:var(--blue)"/>
+      <rect x="325.5" y="78" width="9" height="6.8" style="fill:var(--blue)"/>
+      <rect x="366.1" y="23.0" width="9" height="55.0" style="fill:var(--red)"/>
+      <text x="370.6" y="17" text-anchor="middle" fill="var(--red)" font-size="10" font-family="'DM Mono',monospace" font-weight="700">+46.0bp — jump</text>
+      <rect x="406.6" y="78" width="9" height="7.7" style="fill:var(--blue)"/>
+      <rect x="447.2" y="69.5" width="9" height="8.5" style="fill:var(--blue)"/>
+      <rect x="487.8" y="78" width="9" height="9.6" style="fill:var(--blue)"/>
+      <rect x="528.4" y="70.7" width="9" height="7.3" style="fill:var(--blue)"/>
+      <rect x="568.9" y="78" width="9" height="8.1" style="fill:var(--blue)"/>
+      <rect x="609.5" y="68.8" width="9" height="9.2" style="fill:var(--blue)"/>
+      <text x="330" y="108" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">1-minute returns, bar heights √-scaled for visibility — the jump is ~30-65× its neighbors in truth</text>
+
+      <line x1="30" y1="300" x2="620" y2="300" style="stroke:var(--border2)"/>
+      <line x1="30" y1="168" x2="30" y2="300" style="stroke:var(--border2)"/>
+      <text x="20" y="304" text-anchor="end" fill="var(--text3)" font-size="9" font-family="'DM Mono',monospace">0</text>
+      <text x="20" y="172" text-anchor="end" fill="var(--text3)" font-size="9" font-family="'DM Mono',monospace">max</text>
+      <line x1="370.6" y1="168" x2="370.6" y2="300" style="stroke:var(--red);stroke-dasharray:3,3;opacity:.5"/>
+
+      <polyline points="46.0,296.6 86.6,295.9 127.1,294.1 167.7,293.3 208.3,292.8 248.9,291.9 289.4,291.4 330.0,291.2 370.6,168.2 411.1,168.2 451.7,168.2 492.3,168.1 532.9,168.1 573.4,168.1 614.0,168.0" style="stroke:var(--red);stroke-width:2.5;fill:none"/>
+      <polyline points="46.0,300.0 86.6,296.5 127.1,294.7 167.7,293.0 208.3,292.2 248.9,291.2 289.4,290.3 330.0,289.9 370.6,277.3 411.1,267.6 451.7,267.5 492.3,267.1 532.9,266.9 573.4,266.8 614.0,266.5" style="stroke:var(--green);stroke-width:2.5;fill:none"/>
+      <text x="400" y="185" fill="var(--red)" font-size="11" font-family="'DM Mono',monospace">RV — jumps up, stays high</text>
+      <text x="400" y="285" fill="var(--green)" font-size="11" font-family="'DM Mono',monospace">BV — barely reacts</text>
+    </svg>
+    <div class="tl-chart-caption">
+      Bar heights above are square-root-scaled purely so the ordinary bars
+      stay visible next to the jump — the labeled +46.0bp value is the real
+      one used in every calculation. Below, both cumulative curves are
+      square-root-scaled onto the same [0, max] axis (their true units
+      differ by roughly 15×) precisely to make the divergence itself
+      legible: RV's running total leaps almost to its final value the
+      instant the jump bar is processed and goes flat afterward; BV's
+      running total ticks up only slightly at that same instant, because
+      the jump only ever entered two "large × ordinary" products, never a
+      "large × large" one.
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Rebuild the same session, live — scale the background noise or the jump</h3>
+    <p>
+      Starts on the exact worked-example numbers above (background scale
+      1.0×, jump size 46.0bp). Drag either control and RV, BV and J
+      recompute instantly from a fifteen-return session built the same way:
+      fourteen small alternating background returns plus one larger return
+      inserted at the same position.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Background return scale</span><span class="tl-live" id="bv-bgscale-val">1.00×</span></div>
+        <input type="range" id="bv-bgscale" min="0" max="3" step="0.05" value="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Jump size</span><span class="tl-live" id="bv-jump-val">46.0 bp</span></div>
+        <input type="range" id="bv-jump" min="0" max="100" step="0.5" value="46">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      RV = <b id="bv-rv">0.00002133</b>&emsp;BV = <b id="bv-bv">0.00000137</b>&emsp;J = max(RV−BV,0) = <b id="bv-j">0.00001996</b>
+    </div>
+    <div class="tl-readout">
+      Jump fraction J/RV = <b id="bv-jf">93.6%</b>
+      <span id="bv-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="bv-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+    <p style="margin:14px 0 0;font-size:12.5px">
+      Drag the jump size to 0 and watch RV and BV converge almost exactly —
+      with no jump present, both estimators are consistently estimating the
+      same continuous variance, just as the theory above says they should.
+      Drag the background scale up instead and notice J barely moves — it's
+      tracking the jump's own size, not the general noise level of the
+      session.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>A related fix for a different problem: realized kernels</h2>
+  <p>
+    Bipower variation is not the only refinement built on top of plain RV,
+    and it's worth being precise about which problem it solves versus which
+    problem a different, commonly-paired estimator solves. At very high
+    sampling frequencies (seconds, or the very fastest minute bars),
+    observed prices pick up <strong>microstructure noise</strong> — bid-ask
+    bounce, discrete tick sizes, and similar frictions that are not part of
+    the "true," frictionless price process at all. This noise inflates RV
+    in a way that has nothing to do with jumps: it's an artifact of market
+    mechanics at the finest timescales, and it gets worse (not better) as
+    the sampling interval shrinks toward zero — the opposite of what the
+    textbook "sample as often as possible" intuition would suggest.
+  </p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🧩</div>
+      <h4>Bipower variation — robust to jumps</h4>
+      <p>
+        Fixes the conflation of continuous and discrete-jump variance
+        within realized variance. Built from adjacent absolute-return
+        products, scaled by \(\pi/2\). This lesson's subject.
+      </p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📶</div>
+      <h4>Realized kernels — robust to microstructure noise</h4>
+      <p>
+        Barndorff-Nielsen, Hansen, Lunde &amp; Shephard (2008): a
+        kernel-weighted sum of realized autocovariances (not just the
+        contemporaneous sum of squares), constructed specifically to remain
+        consistent for integrated variance even when observed returns carry
+        noise from bid-ask bounce. A genuinely different mechanism, aimed at
+        a genuinely different contaminant — not derived in full here, since
+        this lesson's depth budget goes to bipower variation, but worth
+        knowing it exists and what it's for.
+      </p>
+    </div>
+  </div>
+  <p>
+    The two problems can coexist in the same dataset — a fast sampling
+    frequency chosen to resolve jumps precisely can simultaneously pick up
+    more microstructure noise — which is exactly why serious realized-vol
+    research usually reports results at more than one sampling frequency (as
+    this repo's own bipower work does, comparing 1-minute and 5-minute bars
+    directly) rather than trusting a single frequency's number blindly.
+  </p>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>How this repo actually uses it — measured, not just theorized</h2>
+  <p>
+    This is not a purely theoretical curiosity in this codebase. The exact
+    \(RV\), \(BV\), and \(J\) formulas above are implemented, byte-for-byte,
+    as <code>bipower(r)</code> and <code>jump_fraction(r)</code> in
+    <code>volatilityExhaustion/vol_exhaustion_lib.py</code>, and run across
+    roughly 70,000 (pair, date) rows of real 1-minute FX and gold data in
+    <code>volatilityExhaustion/jump_diffusion_daily.py</code>.
+  </p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">✅</div>
+      <h4>The measurement itself checks out</h4>
+      <p>
+        Whole-session jump share averages roughly 6-10% of total realized
+        variance across FX majors, crosses, and gold. Critically, this
+        wasn't just computed and trusted — <code>jump_event_validation.py</code>
+        tested it against known scheduled macro releases and it
+        <strong>passed</strong>: days carrying a Major-impact calendar event
+        are measurably jumpier than quiet days, in all three asset classes,
+        on both halves of an in-sample/out-of-sample split, at both 1-minute
+        and 5-minute sampling (t-statistics +2.1 to +14.0 across 12/12
+        cells). The single largest 1-minute move of the day lands within
+        ±5 minutes of a Major release 35-41% of the time, against a roughly
+        1% baseline if timing were random — a 34-45× lift.
+      </p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">⚠</div>
+      <h4>Using the split to improve a forecast tested NULL</h4>
+      <p>
+        The natural next question — does knowing today was jump-driven let
+        you forecast tomorrow's volatility more accurately? — was tested
+        directly in <code>jump_diffusion_forecast.py</code>, pre-registered
+        against this repo's own volatility-forecast scoring harness
+        (QLIKE loss, Garman-Klass proxy, 60/40 chronological split). A
+        diffusion-only sigma, scaled by the trailing 30-day diffusive share
+        of realized variance, needed to beat the raw incumbent forecast by
+        ≥2% out-of-sample on days following a high-jump day. It came in at
+        <strong>−0.24% (FX majors), +0.26% (FX crosses), −0.16% (gold)</strong>
+        — an order of magnitude short, with the sign disagreeing across
+        asset classes.
+      </p>
+    </div>
+  </div>
+  <div class="tl-solid amber">
+    <strong>The null was checked before being accepted, and it held up.</strong>
+    This repo's own discipline requires ruling out a vacuous test before
+    reporting a null result. Here, the correction wasn't a near-constant
+    rescale (the diffusive-share multiplier varied with real ~4-5%
+    dispersion after scale-matching), a sharper single-day construction was
+    tried and performed clearly <em>worse</em> as the algebra predicts for
+    over-correcting a 30-day average, and the underlying economic premise
+    was tested separately and found <strong>true</strong>: an
+    Andersen-Bollerslev-Diebold-style regression of tomorrow's variance on
+    today's continuous versus jump components gives
+    \(\beta_{\text{cont}} = +0.47\) (t = 53.5) versus
+    \(\beta_{\text{jump}} = -0.33\) (t = −10.3) on FX majors, replicating on
+    23 of 26 instruments — jump variance really does predict
+    <em>lower</em> variance tomorrow than the same amount of continuous
+    variance would. The effect is real; it is simply too small (roughly 7%
+    of a session's variance, further diluted inside a 30-day trailing
+    average) to move a daily volatility forecast by more than the noise
+    floor of the scoring metric itself. A separate, related extension —
+    Lee-Mykland per-return jump detection on this same data — additionally
+    found that jump-driven days mean-revert in realized variance
+    <em>faster</em> than smooth days (a real, replicated effect across all
+    six FX majors), but that jumps carry essentially no information about
+    next-day <em>direction</em>: magnitude, not direction, is what this
+    repo's jump measurement has consistently found itself able to say
+    anything about. Per this repo's own pre-registered stop rule, none of
+    this was wired into the live forecaster.
+  </div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>Common pitfalls</h2>
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Where bipower variation quietly goes wrong</div>
+    <h3>The asymptotic estimator needs help in small, real samples</h3>
+    <p>
+      Everything derived above is an <strong>asymptotic</strong> result — it
+      holds exactly as the sampling interval shrinks toward zero and the
+      number of returns per period grows toward infinity. Real intraday
+      data gives you a finite, often modest number of bars per session
+      (a few hundred at 1-minute bars, far fewer at 5-minute), and two
+      specific finite-sample problems can contaminate the clean asymptotic
+      story:
+    </p>
+    <p>
+      <strong>Two jumps landing next to each other.</strong> The whole
+      robustness mechanism relies on a jump's immediate neighbor being an
+      <em>ordinary</em> return. If two jumps happen to land in consecutive
+      intervals — plausible around a fast-moving news sequence, or simply
+      by chance in a short session — each one's "ordinary" neighbor is
+      actually the other jump, and the plain bipower estimator above will
+      pick up a real, contaminating jump-times-jump term it was designed to
+      avoid.
+    </p>
+    <p>
+      <strong>The specific pairing scheme can understate BV in small
+      samples.</strong> Using only adjacent (lag-1) pairs, rather than a
+      richer averaging scheme, means the estimator's finite-sample variance
+      is higher than its asymptotic derivation suggests — it can run
+      slightly biased low relative to true integrated variance purely from
+      sampling noise, independent of any jump at all.
+    </p>
+    <p>
+      Neither problem is fatal to the method — they're the reason the
+      literature developed <strong>truncated</strong> and
+      <strong>multipower</strong> variation variants, which use more than
+      two returns per term (or explicitly discard/cap suspiciously large
+      individual returns before pairing) specifically to stay robust even
+      when jumps cluster or samples are short. Plain bipower variation, as
+      derived in this lesson, is the clean theoretical foundation those
+      variants build on — worth knowing as a real, documented caveat before
+      treating a single small-sample BV number as gospel, not a reason to
+      distrust the underlying idea.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 08</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>RV estimates total quadratic variation — continuous plus jump, conflated.</strong> It cannot, on its own, tell you which source produced any particular squared return.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Bipower variation replaces squares with adjacent absolute-return products,</strong> \(BV=\frac{\pi}{2}\sum|r_i||r_{i-1}|\) — a jump inflates RV quadratically but BV only linearly, through its ordinary neighbor.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The π/2 constant is exact, not a fudge factor</strong> — it corrects for \(E[|Z|]^2=2/\pi\) so BV is unbiased for the same continuous variance RV would estimate with no jumps present.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>J = max(RV−BV, 0) is a whole-session, aggregate split</strong> — it says how much of the day's variance was jump-driven, not which specific return was the jump.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This exact estimator is implemented and validated on real data in this repo</strong> — the jump/continuous split passes a genuine out-of-sample test against known scheduled news events.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Using the split to improve a live volatility forecast tested NULL here</strong> — a real, replicated economic effect (jump variance predicts lower future variance) that was still too small to clear this repo's own pre-registered forecast-improvement bar.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 09</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why does realized variance (RV) fail to distinguish continuous diffusive variance from jump variance?</summary>
+    <div class="tl-answer">
+      RV sums the square of every intraday return without regard to what
+      produced it. A large squared return from an ordinary but volatile
+      diffusive move and a large squared return from a genuine discrete
+      jump both simply add \(r_i^2\) to the same running total — the sum has
+      no mechanism for asking whether a given return's size came from
+      ordinary continuous noise or from a discontinuity in the price path.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Explain precisely why replacing \(r_i^2\) with \(|r_i||r_{i-1}|\) makes bipower variation robust to a finite-activity jump, while RV is not.</summary>
+    <div class="tl-answer">
+      Under standard jump-diffusion assumptions, a jump lands in exactly one
+      return interval and does not make the immediately adjacent return
+      unusually large — that neighbor is still an ordinary draw from the
+      continuous diffusion. RV contributes the jump's full squared size,
+      \(r_j^2\), directly. BV instead multiplies the jump return by its
+      ordinary-sized neighbor, \(|r_j|\cdot|r_{\text{neighbor}}|\) — "large
+      times ordinary," which grows only linearly in the jump's size, not
+      quadratically, and whose relative contribution to the full sum shrinks
+      toward zero as the sampling interval shrinks and the number of terms
+      grows. RV's jump contribution does not shrink the same way.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Where does the \(\pi/2\) constant in the bipower variation formula come from, and what would happen without it?</summary>
+    <div class="tl-answer">
+      For a standard normal \(Z\), \(E[|Z|]=\sqrt{2/\pi}\), so the product of
+      two independent standard-normal absolute values has expectation
+      \(E[|Z_i|]E[|Z_{i-1}|]=2/\pi\) — short of 1 by a factor of \(2/\pi\)
+      relative to what \(E[Z_i^2]=1\) would give. Since ordinary intraday
+      returns under diffusion are (approximately) scaled normal variables,
+      the raw, unscaled sum of adjacent absolute-return products would have
+      expectation \(\frac{2}{\pi}\sigma^2 T\) instead of the true integrated
+      variance \(\sigma^2 T\) — a systematic \(2/\pi\approx0.637\) downward
+      bias. Multiplying by \(\pi/2\) exactly cancels that bias, making BV
+      unbiased for the same continuous variance RV estimates when no jumps
+      are present. Without it, BV would consistently understate continuous
+      variance by roughly 36%, even on a day with no jumps at all.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. A trading desk computes RV = 0.00004, BV = 0.000031 for one session. What is the estimated jump contribution, and what can — and can't — this desk conclude from that one number?</summary>
+    <div class="tl-answer">
+      \(J = \max(RV-BV,0) = 0.000009\) — roughly 22.5% of the session's total
+      realized variance is attributed to jump activity, with 77.5% coming
+      from continuous diffusion. This is a whole-session, aggregate split:
+      it tells the desk how much of today's total variance was jump-driven
+      in the aggregate. It does <strong>not</strong> tell them which
+      specific return, or which specific minute, was the jump — identifying
+      the exact timing of individual jump events requires a per-return
+      detector (Lee-Mykland / Boudt-Croux-Laurent, the next lesson), not
+      this whole-session ratio.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. What problem does a realized kernel solve that plain bipower variation does not, and vice versa?</summary>
+    <div class="tl-answer">
+      Bipower variation is built specifically to remain a consistent
+      estimator of continuous integrated variance in the presence of
+      (finite-activity) jumps — its target contaminant is discrete price
+      discontinuities. A realized kernel (Barndorff-Nielsen, Hansen, Lunde
+      &amp; Shephard, 2008) is a kernel-weighted sum of realized
+      autocovariances built specifically to remain consistent under
+      microstructure noise — bid-ask bounce and similar frictions that
+      inflate RV at very high sampling frequencies for reasons that have
+      nothing to do with jumps. They are related but genuinely distinct
+      fixes for two different contaminants, and the two problems can appear
+      in the same dataset simultaneously.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. This repo has actually implemented and run bipower variation on real FX and gold data. What did that measurement find, and did it end up improving the live volatility forecaster?</summary>
+    <div class="tl-answer">
+      The measurement itself is validated: whole-session jump share averages
+      roughly 6-10% across instruments, and — critically — days carrying a
+      known Major-impact scheduled news release are measurably jumpier than
+      quiet days, holding on both halves of an in-sample/out-of-sample
+      split, in all three asset classes, at both 1-minute and 5-minute
+      sampling. But using that continuous/jump split to sharpen next-day
+      volatility forecasts was tested directly, pre-registered, against this
+      repo's own forecast-scoring harness, and came back <strong>null</strong> —
+      the diffusion-only forecast missed its required ≥2% out-of-sample
+      improvement bar by roughly an order of magnitude, with the sign of the
+      effect even disagreeing across asset classes. The underlying economic
+      premise (jump variance predicts lower future variance than continuous
+      variance does) checked out as genuinely true in a separate regression
+      — the effect is real, just too small, once diluted through a 30-day
+      trailing forecast window, to survive as a usable forecast improvement.
+      Measurement validated; forecast application null — and the repo
+      reported both, rather than only the flattering half.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Ole E. Barndorff-Nielsen &amp; Neil Shephard, <em>"Power and Bipower Variation with Stochastic Volatility and Jumps,"</em> Journal of Financial Econometrics, 2(1), 2004 — the original paper deriving bipower variation and its jump-robustness properties, the foundation of this lesson.</li>
+    <li>Ole E. Barndorff-Nielsen, Peter Reinhard Hansen, Asger Lunde &amp; Neil Shephard, <em>"Designing Realized Kernels to Measure the ex post Variation of Equity Prices in the Presence of Noise,"</em> Econometrica, 76(6), 2008 — the realized-kernel estimator mentioned in Section 05, addressing microstructure noise rather than jumps.</li>
+    <li>Suzanne S. Lee &amp; Per A. Mykland, <em>"Jumps in Financial Markets: A New Nonparametric Test and Jump Dynamics,"</em> Review of Financial Studies, 21(6), 2008 — the per-return jump detector covered in the next lesson.</li>
+    <li>Torben G. Andersen, Tim Bollerslev &amp; Francis X. Diebold, <em>"Roughing It Up: Including Jump Components in the Measurement, Modeling, and Forecasting of Return Volatility,"</em> Review of Economics and Statistics, 89(4), 2007 — the continuous/jump-component forecasting regression referenced in Section 06.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="institutional-har-rv.html">← HAR-RV</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="institutional-jump-detection-tests.html">Lee-Mykland &amp; Boudt-Croux-Laurent →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+<script>
+(function(){
+  var PI_OVER_2 = Math.PI / 2;
+  var BASE_BG_BP = [1.2, -0.8, 1.5, -1.1, 0.9, -1.3, 1.0, -0.7, -0.9, 1.1, -1.4, 0.8, -1.0, 1.3];
+  var JUMP_INDEX = 8; // 0-based position of the jump among 15 returns
+  var DEFAULTS = { bgScale: 1, jump: 46 };
+
+  var bgScaleInput = document.getElementById('bv-bgscale');
+  if (!bgScaleInput) return;
+  var jumpInput = document.getElementById('bv-jump');
+  var bgScaleVal = document.getElementById('bv-bgscale-val');
+  var jumpVal = document.getElementById('bv-jump-val');
+  var rvOut = document.getElementById('bv-rv');
+  var bvOut = document.getElementById('bv-bv');
+  var jOut = document.getElementById('bv-j');
+  var jfOut = document.getElementById('bv-jf');
+  var note = document.getElementById('bv-note');
+  var resetBtn = document.getElementById('bv-reset');
+
+  function buildReturnsBp(bgScale, jumpBp) {
+    var out = [];
+    for (var i = 0; i < BASE_BG_BP.length + 1; i++) {
+      if (i === JUMP_INDEX) {
+        out.push(jumpBp);
+      } else {
+        var srcIdx = i < JUMP_INDEX ? i : i - 1;
+        out.push(BASE_BG_BP[srcIdx] * bgScale);
+      }
+    }
+    return out;
+  }
+
+  function fmt8(x) { return x.toFixed(8); }
+
+  function recompute() {
+    var bgScale = parseFloat(bgScaleInput.value);
+    var jumpBp = parseFloat(jumpInput.value);
+
+    if (!isFinite(bgScale) || !isFinite(jumpBp) || bgScale < 0 || jumpBp < 0) {
+      note.textContent = '(background scale and jump size must be non-negative numbers)';
+      rvOut.textContent = '—'; bvOut.textContent = '—'; jOut.textContent = '—'; jfOut.textContent = '—';
+      return;
+    }
+
+    bgScaleVal.textContent = bgScale.toFixed(2) + '×';
+    jumpVal.textContent = jumpBp.toFixed(1) + ' bp';
+
+    var bp = buildReturnsBp(bgScale, jumpBp);
+    var r = bp.map(function(v){ return v * 1e-4; });
+
+    var rv = 0;
+    for (var i = 0; i < r.length; i++) rv += r[i] * r[i];
+
+    var bv = 0;
+    for (var i = 1; i < r.length; i++) bv += Math.abs(r[i]) * Math.abs(r[i - 1]);
+    bv *= PI_OVER_2;
+
+    var j = Math.max(rv - bv, 0);
+
+    rvOut.textContent = fmt8(rv);
+    bvOut.textContent = fmt8(bv);
+    jOut.textContent = fmt8(j);
+
+    if (rv <= 1e-18) {
+      jfOut.textContent = '—';
+      note.textContent = '(all returns are ~0 — no variance to split)';
+    } else {
+      jfOut.textContent = ((j / rv) * 100).toFixed(1) + '%';
+      note.textContent = '';
+    }
+  }
+
+  bgScaleInput.addEventListener('input', recompute);
+  jumpInput.addEventListener('input', recompute);
+  resetBtn.addEventListener('click', function(){
+    bgScaleInput.value = DEFAULTS.bgScale;
+    jumpInput.value = DEFAULTS.jump;
+    recompute();
+  });
+  recompute();
+})();
+</script>
+</body>
+</html>

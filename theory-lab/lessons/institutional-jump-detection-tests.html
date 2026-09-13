@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lee-Mykland &amp; Boudt-Croux-Laurent — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Volatility Estimation &amp; Jump Detection / Lee-Mykland &amp; Boudt-Croux-Laurent</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Volatility Estimation &amp; Jump Detection 4 of 4</div>
+  <h1 class="tl-title">Lee-Mykland &amp; Boudt-Croux-Laurent: Testing for Jumps</h1>
+  <p class="tl-dek">Bipower variation, the previous lesson's tool, tells you how much of a day's total variance came from jumps in aggregate. It cannot tell you which specific return was the jump. This lesson builds the test that can — and the correction that keeps that test honest across a trading day whose ordinary volatility is anything but flat.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — with a rare exception: this repo's own <code>jump_detect_lm.py</code> implements BOTH Lee-Mykland AND a Boudt-Croux-Laurent-style periodicity correction, live and consumed by two downstream modules — details in the repo callout below</span>
+    <span>~19 min read</span>
+    <span>Prereqs: <a href="institutional-bipower-variation.html">Bipower Variation: Decomposing Continuous vs. Jump Variation</a></span>
+  </div>
+
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="institutional-jump-detection-tests-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Bipower variation answers "how much of today's variance was jumpy" with a single daily ratio. It has no per-return resolution — it structurally cannot say which return was the jump, how many there were, or when. <strong>Lee-Mykland (2008)</strong> is the test built to answer exactly that.</li>
+      <li>Lee-Mykland scales each return by a <strong>local</strong> volatility estimate built from bipower variation over nearby returns, excluding the return being tested — so a genuine jump can't contaminate the very yardstick used to judge it. The ratio is \(L_i = r_i/\hat\sigma_i\).</li>
+      <li>The day's <strong>maximum</strong> \(|L_i|\), under the null of no jumps, converges to a <strong>Gumbel</strong> (extreme-value) distribution as the number of tested returns grows — not a normal distribution — because it is the maximum of many approximately-Gaussian ratios, and maxima of Gaussians have their own, slower-growing limiting law. The critical threshold has to come from that theory, with sample-size-dependent normalizing constants, not from a flat "4-sigma" rule of thumb.</li>
+      <li>Intraday volatility has a well-documented <strong>U-shape</strong> — busy at the open and close, quiet mid-session. A plain Lee-Mykland test, applied without adjustment, systematically over-flags ordinary open/close moves as jumps and under-flags genuine mid-session jumps, because its local-vol yardstick blends the whole day together.</li>
+      <li><strong>Boudt-Croux-Laurent (2011)</strong> fixes this by estimating a per-time-of-day volatility factor and dividing every return by its own time-of-day's typical size <em>before</em> applying the Lee-Mykland statistic — de-seasonalizing volatility before testing for jumps.</li>
+      <li>This repo's own detector implements both pieces, is consumed by two downstream modules, and its own unit test shows the periodicity correction collapsing a diurnal false-positive count from 1,020 to 3 on synthetic pure-diffusion data. The findings it produces are about volatility <em>regime</em>, not direction — see the repo callout for the honest specifics.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters — the question bipower variation can't answer</h2>
+  <p>
+    <a href="institutional-bipower-variation.html">Bipower Variation</a> decomposed
+    a day's total realized variance into a continuous part and a jump part — one
+    number per day, telling you what <em>share</em> of the day's variance came
+    from discontinuous moves. That is genuinely useful, and it is also, by
+    construction, the end of what a single daily ratio can say. It cannot tell
+    you whether the day held one enormous jump or four modest ones. It cannot
+    tell you whether the jump happened at the London open, around a
+    scheduled data release, or in a quiet overnight session. It has no
+    per-return resolution at all — a ratio computed over an entire day's worth
+    of returns has already thrown that information away by the time you read it.
+  </p>
+  <p>
+    This lesson answers the sharper question: given a sequence of high-frequency
+    returns, which <em>specific</em> one is statistically very unlikely to have
+    come from ordinary continuous diffusion? That is a per-return hypothesis
+    test, run independently at every point in the day, and it needs its own
+    machinery — built by Suzanne Lee and Per Mykland in 2008, with an important
+    correction added by Kris Boudt, Christophe Croux, and Sébastien Laurent in
+    2011 once the test was run on real, intraday-seasonal data and produced
+    systematically wrong answers at certain times of day.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Judging "unusually late" against how late someone usually runs</h3>
+    <p>
+      Deciding whether a single return is a jump is like deciding whether a
+      friend showing up 20 minutes late is alarming. The answer depends
+      entirely on the yardstick: 20 minutes late is nothing for a friend who
+      routinely runs 30 minutes behind, and a real red flag for a friend who
+      has never once been more than 2 minutes late. Lee-Mykland's core idea is
+      exactly this comparison, made rigorous: build a <strong>local</strong>
+      estimate of how big returns <em>usually</em> are right around this point
+      in time, from the nearby returns — but pointedly excluding the return
+      currently being judged, so a genuine jump can't inflate the very
+      yardstick used to catch it — and then ask whether today's specific
+      return is implausibly large against that local yardstick.
+    </p>
+    <p>
+      The complication Boudt-Croux-Laurent exists to fix is equally intuitive:
+      what if "how late this friend usually runs" itself depends
+      systematically on the time of day — chronically 25 minutes late to
+      breakfast, always on time for dinner? Averaging across the whole day
+      to build one yardstick would call the friend "suspiciously punctual" at
+      breakfast and "suspiciously late" at dinner, when neither is actually
+      unusual once you condition on the time. Intraday volatility does exactly
+      this — high near the open and close, quiet mid-session — and a
+      yardstick that ignores it makes precisely that mistake, for precisely
+      that reason.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step — Lee-Mykland (2008)</h2>
+  <p>
+    Let \(r_i\) denote the (possibly already-deseasonalized — Section 04 covers
+    that) log-return over a short high-frequency interval, indexed
+    \(i=1,\dots,n\) across a trading day. The local volatility estimate at
+    point \(i\) is built from bipower variation over the \(K\) returns
+    immediately preceding it, deliberately <strong>excluding \(r_i\) itself</strong>:
+  </p>
+  <div class="tl-math">\[ \hat\sigma_i^2 = \frac{1}{K-2}\sum_{j=i-K+2}^{i-1} |r_j|\,|r_{j-1}| \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>σ̂ᵢ</code><span>the local volatility estimate used to judge return i — built entirely from OTHER returns</span></div>
+    <div class="tl-eq-chip c2"><code>K</code><span>the window size — how many nearby returns feed the local estimate</span></div>
+    <div class="tl-eq-chip c3"><code>|r_j||r_{j-1}|</code><span>consecutive absolute-return products — the same bipower building block from the previous lesson</span></div>
+  </div>
+  <p>
+    Excluding \(r_i\) from its own yardstick is the whole point: if a real jump
+    happened at \(i\) and its size leaked into \(\hat\sigma_i\), the estimate
+    would inflate itself around the jump and the test would blind itself to
+    the very thing it exists to catch. The test statistic is then simply the
+    standardized return:
+  </p>
+  <div class="tl-math">\[ L_i = \frac{r_i}{\hat\sigma_i} \]</div>
+  <p>
+    A large \(|L_i|\) says "this return is big relative to what's been
+    typical right around it." The subtlety — and the reason this test needed
+    an entire paper rather than a single formula — is what "big" should mean
+    when you are computing \(L_i\) at <em>every</em> point in the day and
+    asking whether <em>any</em> of them stands out.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Why the maximum of many z-scores is not itself a z-score</div>
+    <h3>Extreme value theory, not a flat "4-sigma" rule</h3>
+    <p>
+      Under the null hypothesis of pure continuous diffusion (no jumps
+      anywhere), each \(L_i\) is, approximately and individually, a
+      standard-normal-like ratio. But a day's test doesn't ask about one
+      \(L_i\) — it asks whether the <strong>maximum</strong> of \(|L_i|\)
+      over all \(n\) returns in the day exceeds some threshold. That is a
+      completely different statistical object. The maximum of \(n\)
+      independent (or weakly dependent) draws from a distribution in the
+      normal's domain of attraction does <em>not</em> converge to another
+      normal distribution as \(n\) grows — it converges to a
+      <strong>Gumbel</strong> distribution, one of the three classical
+      extreme-value laws (the Fisher–Tippett–Gnedenko theorem). Normal tails
+      decay so fast that the maximum over many draws grows only slowly, on
+      the order of \(\sqrt{\ln n}\) — a specific, well-characterized shape,
+      but not a bell curve, and not something a flat "flag anything past 4
+      standard deviations" rule respects.
+    </p>
+    <p>
+      Practically, this means the critical value a day's maximum \(|L_i|\)
+      needs to clear depends on \(n\) — how many returns were tested that
+      day — through two normalizing constants derived from the Gumbel limit
+      law:
+    </p>
+  </div>
+
+  <div class="tl-math">\[ \text{flag return } i \text{ if } |L_i| > C_n + S_n\big(-\ln(-\ln(1-\alpha))\big) \]</div>
+  <div class="tl-math">\[ C_n = \frac{\sqrt{2\ln n}}{c} - \frac{\ln\pi + \ln\ln n}{2c\sqrt{2\ln n}}, \qquad S_n = \frac{1}{c\sqrt{2\ln n}}, \qquad c = \sqrt{\tfrac{2}{\pi}} \]</div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">α</div>
+      <div class="tl-fp-name">Per-day false-positive rate</div>
+      <div class="tl-fp-desc">Under pure diffusion with no jumps at all, a fraction α of days would still show at least one "jump" purely by chance. This repo's detector uses α=1%.</div>
+    </div>
+    <div class="tl-fp green">
+      <div class="tl-fp-term">C_n, S_n</div>
+      <div class="tl-fp-name">Gumbel location &amp; scale</div>
+      <div class="tl-fp-desc">Reparameterized for this test, both functions of n alone — more returns tested per day pushes the critical value up, since there are more chances for an ordinary large return somewhere.</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">c = √(2/π)</div>
+      <div class="tl-fp-name">A normalizing constant</div>
+      <div class="tl-fp-desc">The raw bipower average is a slightly biased variance estimator (E|Z|=√(2/π) for standard normal Z). Rather than rescale σ̂ᵢ itself, this constant is folded straight into Cₙ and Sₙ — exactly how this repo's own code does it too.</div>
+    </div>
+  </div>
+
+  <div class="tl-solid amber">
+    <strong>The "~4-sigma" heuristic is a simplification, not the actual rule.</strong>
+    A commonly cited rough guide in practice is to treat \(|L_i|\) past roughly
+    4 to 5 as "probably a jump" for a typical intraday sample size. That
+    number isn't arbitrary — it's roughly where \(C_n + S_n(-\ln(-\ln(1-\alpha)))\)
+    happens to land for common \((n,\alpha)\) combinations — but it is a
+    simplification riding on that coincidence, not the actual rule. The real
+    critical value is sample-size-dependent, computed exactly as above. For
+    \(\alpha=1\%\), it moves with \(n\):
+  </div>
+  <div class="tl-symbols"><table>
+    <tr><td>\(n=10\)</td><td>critical value ≈ <strong>4.80</strong> (this lesson's toy 10-bar example, Section 05)</td></tr>
+    <tr><td>\(n=78\)</td><td>critical value ≈ <strong>5.10</strong></td></tr>
+    <tr><td>\(n=96\)</td><td>critical value ≈ <strong>5.14</strong></td></tr>
+    <tr><td>\(n=288\)</td><td>critical value ≈ <strong>5.40</strong> (a full session of continuous 5-minute bars — this repo's own default, and the value used by the calculator in Section 06)</td></tr>
+  </table></div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If you flip one coin, getting heads isn't surprising. If you ask a thousand people to each flip a coin, someone getting ten heads in a row isn't surprising either — with a thousand tries, a run that rare is bound to show up in at least one of them. The more chances you give something unlikely to happen, the more likely it is that <em>somewhere</em> in all those chances it actually does — and the "how surprised should I be" threshold has to rise with the number of chances, not stay fixed. Testing every single return in a day for "is this one a jump" is exactly this situation: more returns tested means a bigger single move is needed before it's genuinely surprising, and the Gumbel-based threshold is what correctly raises the bar as the number of tries grows.</p>
+  </div>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(r_i\)</td><td>The (possibly deseasonalized) log-return at point \(i\) in the day.</td></tr>
+    <tr><td>\(\hat\sigma_i\)</td><td>Local volatility estimate at \(i\), built from bipower variation over the \(K\) returns before \(i\), excluding \(r_i\) itself.</td></tr>
+    <tr><td>\(K\)</td><td>The local window size. This repo uses \(K=270\) for 5-minute returns — Lee-Mykland's own recommendation at that sampling frequency.</td></tr>
+    <tr><td>\(L_i\)</td><td>The test statistic — return \(i\) standardized by its own local volatility.</td></tr>
+    <tr><td>\(n\)</td><td>Number of returns tested (per day, or per continuous grid) — the critical value is a function of this.</td></tr>
+    <tr><td>\(\alpha\)</td><td>The chosen per-day false-positive rate under the null of no jumps.</td></tr>
+    <tr><td>\(C_n, S_n\)</td><td>Gumbel location and scale constants for sample size \(n\) — where the sample-size-dependence actually lives.</td></tr>
+  </table></div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>The problem a plain test walks straight into: the intraday U-shape</h2>
+  <p>
+    Intraday volatility in FX and equities is not flat across the trading
+    session — it follows a well-documented, structural <strong>U-shape</strong>:
+    busiest right at the open and again into the close, quietest in the middle
+    of the session. This is not specific to any one market or era; it shows
+    up wherever intraday microstructure has been studied, and it is exactly
+    the shape a plain Lee-Mykland local-vol window, if wide enough to span
+    much of the day, will blend together rather than track.
+  </p>
+  <p>
+    The consequence runs in <strong>both</strong> directions at once. Near the
+    open and close, a blended local-vol estimate is <em>too low</em> relative
+    to what's actually typical there — so an entirely ordinary large open-bar
+    move looks abnormally large against that too-low yardstick, and gets
+    <strong>flagged as a false-positive jump</strong>. Mid-session, the same
+    blended estimate is <em>too high</em> relative to what's actually typical
+    there — so a genuine jump, which only needs to be large relative to the
+    quiet midday baseline, can hide beneath an inflated yardstick and produce
+    a <strong>false negative</strong>, missed entirely.
+  </p>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">The intraday U-shape — drag the slider to see the baseline local vol move</div>
+    <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A U-shaped curve of typical intraday volatility, high near the open and close, low at midday, with a marker that moves along the curve as a slider changes the selected time of day.">
+      <line x1="60" y1="220" x2="610" y2="220" style="stroke:var(--border2)"/>
+      <line x1="60" y1="20" x2="60" y2="220" style="stroke:var(--border2)"/>
+      <text x="70" y="240" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">open</text>
+      <text x="308" y="240" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">midday</text>
+      <text x="560" y="240" text-anchor="end" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">close</text>
+      <text x="26" y="120" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace" transform="rotate(-90 26 120)">local vol</text>
+      <path d="M70,40 L96,74.2 L122,104.8 L148,131.8 L174,155.2 L200,175 L226,191.2 L252,203.8 L278,212.8 L304,218.2 L330,220 L356,218.2 L382,212.8 L408,203.8 L434,191.2 L460,175 L486,155.2 L512,131.8 L538,104.8 L564,74.2 L590,40" style="stroke:var(--purple);stroke-width:2.5;fill:none;stroke-linecap:round"/>
+      <line id="lm-tod-vline" x1="70" y1="40" x2="70" y2="220" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:3 3;opacity:.5"/>
+      <circle id="lm-tod-dot" cx="70" cy="40" r="6" style="fill:var(--blue);stroke:var(--bg);stroke-width:2"/>
+    </svg>
+    <div class="tl-chart-caption" id="lm-tod-caption">At the open: baseline local vol is at its highest point of the session.</div>
+    <div class="tl-controls">
+      <div class="tl-control" style="flex:1 1 100%">
+        <div class="tl-control-head"><span>Time of day</span><span class="tl-live" id="lm-tod-label">Open</span></div>
+        <input type="range" id="lm-tod-slider" min="0" max="100" step="1" value="0" style="width:100%">
+      </div>
+    </div>
+    <div class="tl-readout">
+      Baseline local vol here ≈ <b id="lm-tod-baseline">18.00</b> bp &emsp; a return would need to exceed ≈ <b id="lm-tod-thresh">97.11</b> bp at this exact moment to be flagged as a jump (baseline × critical value 5.40)
+    </div>
+  </div>
+
+  <p>
+    Notice what that readout is really showing: the <em>standardized</em>
+    critical value (5.40, from Section 02) never changes — but the
+    <em>raw return size</em> needed to clear it swings by roughly 4.5×
+    across the session, purely because the local baseline it's being
+    compared against swings by that much. A test that doesn't track this
+    swing is, in effect, applying a wildly different practical bar for
+    "jump" depending on the clock — without ever meaning to.
+  </p>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>The fix: Boudt-Croux-Laurent (2011) — deseasonalize first, then test</h2>
+  <p>
+    BCL's fix is conceptually simple, even though estimating it robustly takes
+    some care: estimate how much bigger or smaller returns typically run at
+    each time of day, relative to the session average, and divide every
+    return by its own time-of-day's factor <em>before</em> handing it to the
+    Lee-Mykland machinery above.
+  </p>
+  <div class="tl-math">\[ \tilde r_i = \frac{r_i}{f_{\text{tod}(i)}} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>f_tod(i)</code><span>the periodicity factor for return i's time-of-day bucket — its typical size relative to the session average</span></div>
+    <div class="tl-eq-chip c2"><code>r̃ᵢ</code><span>the deseasonalized return — what feeds Section 02's L_i and σ̂ᵢ machinery instead of the raw return</span></div>
+  </div>
+  <p>
+    The factor itself needs to be estimated <strong>robustly</strong> — a
+    naive standard deviation per time bucket would itself be inflated by any
+    jumps that happen to fall in that bucket, which is precisely the
+    contamination problem Section 02 solved for the local-vol window,
+    reappearing one level up. The BCL paper's own solution is a
+    <strong>weighted standard deviation (WSD)</strong>: a robust,
+    outlier-downweighted dispersion estimate computed separately within each
+    time-of-day bucket, across many historical days, then normalized so the
+    factors average to 1 across the session (a factor of 1.8 means "1.8×
+    the session-average typical size," a factor of 0.5 means half).
+  </p>
+
+  <div class="tl-box repo">
+    <div class="tl-icon-badge green">🗂️</div>
+    <div class="tl-box-label">Verified against this repo's actual code</div>
+    <h3>jump_detect_lm.py implements both pieces — and got there by fixing two real bugs</h3>
+    <p>
+      <code>volatilityExhaustion/jump_detect_lm.py</code> is a working
+      Lee-Mykland detector, and it is <strong>not</strong> plain Lee-Mykland
+      only — it includes a Boudt-Croux-Laurent-style periodicity correction,
+      applied by construction before the jump test runs. The specifics, read
+      directly from the file:
+    </p>
+    <ul style="margin:0 0 12px 18px;font-size:13.5px;line-height:1.7">
+      <li><code>local_sigma(r, k=K)</code> implements Section 02's \(\hat\sigma_i\) exactly — bipower over the \(K\) returns strictly before \(i\), excluding \(r_i\).</li>
+      <li><code>lm_threshold(n, alpha)</code> implements Section 02's \(C_n, S_n\) Gumbel critical value exactly, including the \(c=\sqrt{2/\pi}\) constant folded into the threshold rather than into \(\hat\sigma_i\) — matching the paper's own convention.</li>
+      <li><code>periodicity(r, tod, n_is)</code> is the BCL piece: a per-30-minute-bucket factor (<code>BUCKET=30</code>, so 48 buckets/day), using a robust <strong>median</strong> absolute return per bucket (a simpler, same-spirit stand-in for the paper's WSD) — <strong>fitted only on the leading 60% of each instrument's history</strong> (<code>IS_FRAC=0.60</code>) and applied unchanged out-of-sample, so the correction itself never peeks at the data it's later used to judge.</li>
+      <li>Parameters actually used: <code>STEP=5</code> minutes, <code>K=270</code> (Lee-Mykland's own recommendation at 5-minute sampling), <code>ALPHA=0.01</code> (a stated 1%-per-day false-positive rate).</li>
+    </ul>
+    <p>
+      Two bugs in the first draft were caught only by plotting the
+      time-of-day profile of the detections, and both are worth knowing about
+      because neither was visible in the aggregate numbers: (1) the local-vol
+      window was originally rebuilt <em>per day</em>, which meant \(K=270\)
+      couldn't fill until roughly 11 hours into a session and the detector
+      was structurally blind to a London-open jump — fixed by running the
+      window continuously across the whole instrument's history and mapping
+      detections back to days afterward; (2) the periodicity correction was
+      simply missing at first, and the file's own self-test quantifies the
+      damage precisely: on synthetic pure-diffusion data with an injected 3×
+      busy window, the <strong>raw</strong> detector flagged <strong>1,020
+      false jumps</strong>; deseasonalized, <strong>3</strong>.
+    </p>
+    <p>
+      It is genuinely used downstream, not a standalone script: per this
+      project's own brick registry (<code>LEGO_MODULES.md</code>), <code>jump_detect_lm.py</code>
+      is registered as a Tier-1 pure brick exposing <code>lm_threshold</code>,
+      <code>local_sigma</code>, <code>periodicity</code>, and
+      <code>instrument_grid</code>, consumed by
+      <code>jump_regime_book.py</code> and <code>jump_exhaustion.py</code>.
+      Those two modules run the descriptive questions the daily bipower ratio
+      structurally couldn't answer — and the honest headline finding from
+      that work is that jumps here describe <strong>volatility regime, not
+      direction</strong>: detected jumps are close to day-to-day independent
+      (unlike volatility itself, which clusters hard), carry no persistent
+      directional skew, don't shift next-day continuation odds, and don't
+      change how a fresh price extreme's exhaustion odds behave at a matched
+      distance from the open. What jumps <em>do</em> carry is a genuine,
+      replicated signal about how fast volatility decays afterward — the
+      one channel the previous lesson's bipower work was also pointing
+      toward. This is measurement, not a trading signal: no cost model, no
+      backtest, no claim of edge anywhere in that work.
+    </p>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine grading how loud a classroom is, but recess and nap time are both part of the same school day. If you compute one "typical loudness" number for the whole day, recess will never look loud (it's compared against a number padded by recess itself) and nap time will look suspiciously noisy if even one kid whispers (it's compared against that same padded number, which is way too high for nap time specifically). The fix is to grade each period against its OWN typical loudness — recess against typical recess noise, nap time against typical nap-time quiet — before asking "was this moment unusually loud." That's exactly what dividing each return by its own time-of-day's typical size does before the jump test ever runs.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Worked example — the same open-bar move, judged two ways</h2>
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>A toy 10-bar session: one false positive, one false negative, both fixed by BCL</h3>
+    <p>
+      Ten consecutive intraday bars, U-shaped baseline size (bp = basis
+      points = 0.01%): typical moves of 18, 14, 9, 6, 4, 4, 6, 9, 14, 18 bp
+      through the session (open → midday → close). Every bar's actual return
+      equals its own baseline exactly (alternating sign), <strong>except
+      two</strong>: bar 1 (the open) actually moves <strong>+55bp</strong> —
+      a big open-bar move, but nowhere near unprecedented for an open — and
+      bar 6 (deep in the quiet midday stretch) actually moves
+      <strong>+25bp</strong> — the session's one genuine jump, planted
+      exactly where ordinary moves are smallest.
+    </p>
+    <div class="tl-symbols" style="overflow-x:auto"><table>
+      <tr><td>bar</td><td>1 (open)</td><td>2</td><td>3</td><td>4</td><td>5</td><td>6 (JUMP)</td><td>7</td><td>8</td><td>9</td><td>10 (close)</td></tr>
+      <tr><td>baseline (bp)</td><td>18</td><td>14</td><td>9</td><td>6</td><td>4</td><td>4</td><td>6</td><td>9</td><td>14</td><td>18</td></tr>
+      <tr><td>actual r (bp)</td><td><strong>+55</strong></td><td>−14</td><td>+9</td><td>−6</td><td>+4</td><td><strong>+25</strong></td><td>−6</td><td>+9</td><td>−14</td><td>+18</td></tr>
+    </table></div>
+    <p>
+      Session average baseline is 10.2bp, so bar 1's periodicity factor is
+      \(18/10.2=1.7647\) and bar 6's is \(4/10.2=0.3922\). Applying Section
+      02's bipower \(\hat\sigma_i\) formula (window = the other 9 bars) to
+      the <strong>raw</strong> returns gives the plain Lee-Mykland read;
+      applying it to the returns <strong>after</strong> dividing each by its
+      own periodicity factor gives the BCL-corrected read. For this 10-bar
+      toy day (\(n=10\)), Section 02's Gumbel formula puts the critical value
+      at <strong>4.80</strong> (\(\alpha=1\%\)):
+    </p>
+    <div class="tl-symbols" style="overflow-x:auto"><table>
+      <tr><td></td><td>plain: \(\hat\sigma_i\)</td><td>plain: \(L_i\)</td><td>BCL: \(\hat\sigma_i\)</td><td>BCL: \(L_i\)</td><td>verdict (threshold 4.80)</td></tr>
+      <tr><td>Bar 1 — open, +55bp</td><td>10.52bp</td><td><strong>5.23</strong></td><td>15.51bp</td><td><strong>2.01</strong></td><td>plain <span style="color:var(--red)">falsely flags it</span> · BCL <span style="color:var(--green)">correctly clears it</span></td></tr>
+      <tr><td>Bar 6 — midday, +25bp</td><td>14.17bp</td><td><strong>1.76</strong></td><td>11.60bp</td><td><strong>5.50</strong></td><td>plain <span style="color:var(--red)">misses it entirely</span> · BCL <span style="color:var(--green)">correctly flags it</span></td></tr>
+    </table></div>
+    <p>
+      Both statistics recompute directly from the definitions above with
+      nothing hidden: plain \(\hat\sigma_1\) is the root-mean bipower product
+      over the other 9 bars' raw returns (\(\sqrt{886/8}=10.52\)bp), so
+      \(L_1=55/10.52=5.23\) — <strong>above</strong> the 4.80 threshold, a
+      false positive, purely because the whole-day yardstick doesn't know the
+      open is supposed to run hot. Once every return is divided by its own
+      factor, the <em>ordinary</em> bars (2–5, 7–10) all normalize to exactly
+      \(\pm10.2\)bp — the session average — because each one's actual return
+      already equalled its own baseline. Only the two unusual bars stand out
+      after normalizing: bar 1 becomes \(55/1.7647=31.17\)bp (still large, but
+      no longer enormous once judged against a 10.2bp-normalized yardstick of
+      \(\hat\sigma_1=15.51\)bp — \(L_1=31.17/15.51=2.01\), clearing the bar
+      cleanly) and bar 6 becomes \(25/0.3922=63.75\)bp — genuinely enormous
+      even after normalizing — against \(\hat\sigma_6=11.60\)bp, giving
+      \(L_6=63.75/11.60=5.50\), correctly above threshold. The plain test
+      got both bars backwards; the corrected test gets both right.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>Try it yourself</h2>
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>The same return size, judged plain vs. BCL-corrected, at three times of day</h3>
+    <p>
+      A simplified but faithful version of the mechanism above: this repo's
+      detector effectively uses a session-average local vol of
+      \(\bar\sigma=10.2\)bp for the <strong>plain</strong> statistic
+      (because its wide local-vol window blends the whole session together),
+      while the <strong>BCL-corrected</strong> statistic works out to simply
+      dividing the raw return by its own time-of-day's typical size directly
+      — 18bp at the open or close, 4bp at midday. Pick a time of day and a
+      return size; the critical value shown is 5.40 (\(n=288\), a full
+      5-minute-bar session, \(\alpha=1\%\) — this repo's own default).
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Return size (bp)</span></div>
+        <input type="number" id="lm-calc-r" class="tl-scratch-input" value="60" step="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Time of day</span></div>
+        <select id="lm-calc-tod" class="tl-scratch-input">
+          <option value="open">Open (baseline 18bp)</option>
+          <option value="midday">Midday (baseline 4bp)</option>
+          <option value="close">Close (baseline 18bp)</option>
+        </select>
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Plain L = |r| / 10.2 = <b id="lm-calc-Lplain">5.8824</b> &emsp; verdict: <b id="lm-calc-plain-verdict">FLAGGED</b>
+    </div>
+    <div class="tl-readout">
+      BCL L = |r| / baseline = <b id="lm-calc-Lbcl">3.3333</b> &emsp; verdict: <b id="lm-calc-bcl-verdict">clear</b>
+      <span id="lm-calc-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="lm-calc-reset" class="tl-scratch-reset-btn">Reset to 60bp at the open</button>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>Common pitfalls</h2>
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Where this test quietly goes wrong</div>
+    <h3>Two limits worth keeping in view every time this test is used</h3>
+    <p>
+      <strong>The critical value doesn't transfer across sampling
+      frequencies without recalibration.</strong> \(K\), \(n\), and the
+      resulting critical value are all tied to a specific bar size. This
+      repo's \(K=270\) is Lee-Mykland's own recommendation <em>at 5-minute
+      sampling</em>, chosen partly because 1-minute FX returns carry enough
+      microstructure noise (measured elsewhere in this repo at roughly 1.05×
+      to 1.19× the 5-minute realized variance) that an L-statistic built on
+      1-minute bars mistakes noise for jumps. Swapping to 1-minute or
+      15-minute bars without recomputing \(K\), \(n\), and the Gumbel
+      threshold for that new frequency will over- or under-flag jumps in a
+      way that has nothing to do with whether the market actually jumped.
+    </p>
+    <p>
+      <strong>A statistically significant \(L_i\) says nothing about
+      <em>why</em>.</strong> The test flags that a return was implausibly
+      large relative to its local, deseasonalized baseline — full stop. It
+      cannot distinguish a scheduled data release everyone was watching from
+      a thin-liquidity flash move nobody was positioned for. This repo's own
+      validation work (Section 04's callout) ties detected jumps to known
+      calendar events only <em>statistically</em> — jump days run 1.15× to
+      1.31× more likely on Major-event days, and roughly a quarter to a third
+      of a day's first detected jump lands within ±5 minutes of a release —
+      which still leaves a large share of detected jumps with no
+      calendar-event explanation at all. Attributing a specific flagged
+      return to a specific cause requires external context the statistic
+      itself does not, and cannot, provide.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 08</span></div>
+  <h2>The category's arc, complete</h2>
+  <p>
+    This is the fourth and final lesson in Volatility Estimation &amp; Jump
+    Detection, and the four lessons build one continuous toolkit rather than
+    four unrelated topics:
+  </p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🎲</div>
+      <h4>1. Model the possibility of jumps</h4>
+      <p>Merton jump-diffusion (an earlier lesson, outside this category) bolts a Poisson-driven jump process onto ordinary geometric Brownian motion — the theoretical acknowledgment that price paths can genuinely tear, not just wiggle.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">📏</div>
+      <h4>2–3. Measure the aggregate contribution</h4>
+      <p>Garman-Klass/Yang-Zhang and HAR-RV (Lessons 1–2) build better realized-volatility estimators from OHLC and intraday data; bipower variation (Lesson 3) then splits a day's realized variance into a continuous part and a jump part — how much of the total was jumpy, in aggregate.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🎯</div>
+      <h4>4. Pin down individual events</h4>
+      <p>This lesson: Lee-Mykland plus the Boudt-Croux-Laurent correction takes that aggregate share and localizes it — which specific return, at which specific moment, is the jump. Model the possibility, measure the total, then find the exact event: the whole arc in one line.</p>
+    </div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 09</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Lee-Mykland tests one return at a time,</strong> standardizing it by a local bipower volatility estimate that strictly excludes the return being tested — so a genuine jump can't inflate its own yardstick.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The day's maximum \(|L_i|\) is Gumbel-distributed under the null, not normal</strong> — a flat "4-sigma" rule is a rough simplification of a real, sample-size-dependent critical value built from extreme-value theory.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A plain test, run against the intraday U-shape without adjustment, gets it wrong in both directions</strong> — false positives at the open/close, false negatives mid-session — because its local-vol window blends the whole day together.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Boudt-Croux-Laurent fixes this by deseasonalizing first:</strong> divide each return by its own time-of-day's typical size, then apply Lee-Mykland's machinery to the deseasonalized series.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This repo's own detector implements both pieces, honestly</strong> — a Tier-1 brick consumed by two downstream modules, with a self-test that shows the correction collapsing 1,020 diurnal false positives to 3.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Neither test explains WHY a flagged return jumped,</strong> and neither transfers across sampling frequencies without recalibrating K, n, and the critical value from scratch.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 10</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Bipower variation (previous lesson) and Lee-Mykland (this lesson) both concern jumps. What is the actual difference in what each one tells you?</summary>
+    <div class="tl-answer">
+      Bipower variation produces a single number per day: what share of that
+      day's total realized variance came from jumps in aggregate. It has no
+      per-return resolution. Lee-Mykland is a per-return hypothesis test — it
+      flags which <em>specific</em> return(s), at which specific time, are
+      statistically implausible under continuous diffusion. One measures the
+      total; the other localizes it.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why does Lee-Mykland's local volatility estimate \(\hat\sigma_i\) deliberately exclude the return \(r_i\) being tested?</summary>
+    <div class="tl-answer">
+      If a genuine jump occurred at \(i\) and its size were included in
+      \(\hat\sigma_i\), the local volatility estimate would inflate itself
+      right around the jump, making the very return that should stand out
+      look "normal" relative to an artificially widened yardstick. Excluding
+      \(r_i\) keeps the test statistic's denominator uncontaminated by the
+      thing the numerator is being tested for.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why does the day's maximum |L_i| follow a Gumbel distribution rather than a normal distribution, even though each individual L_i is approximately normal under the null?</summary>
+    <div class="tl-answer">
+      The maximum of many independent (or weakly dependent) draws from a
+      normal-like distribution does not converge to another normal
+      distribution as the number of draws grows — by the
+      Fisher–Tippett–Gnedenko extreme-value theorem, it converges to a Gumbel
+      distribution, because normal tails decay fast enough that the maximum
+      only grows slowly, on the order of \(\sqrt{\ln n}\). Testing a whole
+      day's worth of returns for a jump means testing a maximum, not a single
+      draw, so the correct reference distribution for the critical value is
+      Gumbel, not normal.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. What specific problem does the intraday U-shape create for a plain Lee-Mykland test, and in which direction does each type of error run?</summary>
+    <div class="tl-answer">
+      A plain local-vol window that spans much of the day blends the U-shape
+      away, producing one blended yardstick used everywhere. Near the open
+      and close, actual local volatility is higher than that blended
+      yardstick, so ordinary large moves there look abnormally large and get
+      <strong>falsely flagged</strong> as jumps. Mid-session, actual local
+      volatility is lower than the blended yardstick, so a genuine jump can
+      be smaller than the (too-high) yardstick suggests is needed, and gets
+      <strong>missed</strong> — a false negative.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. In one sentence, what does the Boudt-Croux-Laurent correction actually do to the returns before Lee-Mykland's test runs?</summary>
+    <div class="tl-answer">
+      It divides each return by a robustly-estimated, per-time-of-day
+      periodicity factor (that time bucket's typical size relative to the
+      session average) — deseasonalizing volatility first, so the Lee-Mykland
+      machinery is then applied to returns that no longer carry the intraday
+      U-shape's systematic swing.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. This repo's jump_detect_lm.py flags a return as a jump with statistical confidence, on a day that also happens to carry a scheduled Major economic release. Does the statistic itself prove the release caused the jump?</summary>
+    <div class="tl-answer">
+      No. The Lee-Mykland/BCL statistic only establishes that the return was
+      implausibly large relative to its deseasonalized local baseline — it
+      has no mechanism to attribute a cause. This repo's own validation shows
+      only a statistical tendency (jump days run 1.15×–1.31× more likely on
+      Major-event days, and roughly a quarter to a third of first jumps land
+      within ±5 minutes of a release) — real, but far from universal, and
+      confirming any single flagged return's actual cause requires external
+      context the test itself cannot supply.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Suzanne S. Lee and Per A. Mykland, <em>"Jumps in Financial Markets: A New Nonparametric Test and Jump Dynamics,"</em> Review of Financial Studies, 21(6), 2008 — the original per-return jump test: the bipower-based local volatility estimate, the \(L_i\) statistic, and the Gumbel-based critical value this lesson builds directly.</li>
+    <li>Kris Boudt, Christophe Croux, and Sébastien Laurent, <em>"Robust Estimation of Intraweek Periodicity in Volatility and Jump Detection,"</em> Journal of Empirical Finance, 18(2), 2011 — the periodicity correction: the weighted standard deviation (WSD) estimator and the deseasonalize-then-test procedure this lesson's Section 04 describes.</li>
+    <li>Ole E. Barndorff-Nielsen and Neil Shephard, <em>"Power and Bipower Variation with Stochastic Volatility and Jumps,"</em> Journal of Financial Econometrics, 2(1), 2004 — the original bipower variation construction this lesson's local volatility estimate reuses, previously covered in the Bipower Variation lesson.</li>
+    <li>Torben G. Andersen, Tim Bollerslev, and Dobrislav Dobrev, <em>"No-Arbitrage Semi-Martingale Restrictions for Continuous-Time Volatility Models subject to Leverage Effects, Jumps and i.i.d. Noise: Theory and Testable Distributional Implications,"</em> Journal of Econometrics, 138(1), 2007 — a related jump-test framework and a useful point of comparison for how different papers handle the same extreme-value calibration problem.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="institutional-bipower-variation.html">← Bipower Variation</a>
+    <a href="../hub.html">Theory Lab hub →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+<script>
+(function(){
+  // U-shape slider — baseline(t) = 4 + 14*(2t-1)^2, t in [0,1] from open to close.
+  var slider = document.getElementById('lm-tod-slider');
+  if (!slider) return;
+  var dot = document.getElementById('lm-tod-dot');
+  var vline = document.getElementById('lm-tod-vline');
+  var label = document.getElementById('lm-tod-label');
+  var baseOut = document.getElementById('lm-tod-baseline');
+  var threshOut = document.getElementById('lm-tod-thresh');
+  var caption = document.getElementById('lm-tod-caption');
+  var CRIT = 5.395;
+
+  function update(){
+    var t = parseInt(slider.value, 10) / 100;
+    var u = 2 * t - 1;
+    var baseline = 4 + 14 * u * u;
+    var x = 70 + 520 * t;
+    var y = 220 - 180 * u * u;
+    dot.setAttribute('cx', x.toFixed(1));
+    dot.setAttribute('cy', y.toFixed(1));
+    vline.setAttribute('x1', x.toFixed(1));
+    vline.setAttribute('x2', x.toFixed(1));
+    vline.setAttribute('y1', y.toFixed(1));
+    baseOut.textContent = baseline.toFixed(2);
+    threshOut.textContent = (baseline * CRIT).toFixed(2);
+    var tod;
+    if (t < 0.12) tod = 'Open';
+    else if (t < 0.35) tod = 'Mid-morning';
+    else if (t <= 0.65) tod = 'Midday';
+    else if (t < 0.88) tod = 'Mid-afternoon';
+    else tod = 'Close';
+    label.textContent = tod;
+    if (t < 0.05) caption.textContent = 'At the open: baseline local vol is at its highest point of the session.';
+    else if (t > 0.95) caption.textContent = 'At the close: baseline local vol is back up near its session high.';
+    else if (t > 0.45 && t < 0.55) caption.textContent = 'At midday: baseline local vol sits at its lowest point of the session.';
+    else caption.textContent = 'Baseline local vol at ' + tod.toLowerCase() + ': moving between the open/close high and the midday low.';
+  }
+  slider.addEventListener('input', update);
+  update();
+})();
+</script>
+<script>
+(function(){
+  // Try-it-yourself calculator: plain vs BCL Lee-Mykland statistic.
+  var rInput = document.getElementById('lm-calc-r');
+  if (!rInput) return;
+  var todSelect = document.getElementById('lm-calc-tod');
+  var LplainOut = document.getElementById('lm-calc-Lplain');
+  var LbclOut = document.getElementById('lm-calc-Lbcl');
+  var plainVerdict = document.getElementById('lm-calc-plain-verdict');
+  var bclVerdict = document.getElementById('lm-calc-bcl-verdict');
+  var note = document.getElementById('lm-calc-note');
+  var resetBtn = document.getElementById('lm-calc-reset');
+
+  var SIGMA_BAR = 10.2;               // session-average local vol (bp) — the plain estimate
+  var BASELINE = { open: 18, midday: 4, close: 18 };  // bp, this bucket's typical size
+  var CRIT = 5.395;                   // n=288, alpha=1% (this repo's own session default)
+  var DEFAULTS = { r: 60, tod: 'open' };
+
+  function setBlank(msg){
+    LplainOut.textContent = '—';
+    LbclOut.textContent = '—';
+    plainVerdict.textContent = '—';
+    bclVerdict.textContent = '—';
+    note.textContent = msg;
+  }
+
+  function recompute(){
+    var raw = rInput.value;
+    var rNum = parseFloat(raw);
+    if (raw === '' || !isFinite(rNum)) {
+      setBlank('Enter a number — blank or non-numeric return sizes can\'t be tested.');
+      return;
+    }
+    var r = Math.abs(rNum);
+    var tod = todSelect.value;
+    var baseline = BASELINE[tod] || BASELINE.open;
+
+    if (r === 0) {
+      LplainOut.textContent = '0.0000';
+      LbclOut.textContent = '0.0000';
+      plainVerdict.textContent = 'clear';
+      bclVerdict.textContent = 'clear';
+      note.textContent = '(a zero-size return is no move at all — nothing to test)';
+      return;
+    }
+
+    var Lplain = r / SIGMA_BAR;
+    var Lbcl = r / baseline;
+    LplainOut.textContent = Lplain.toFixed(4);
+    LbclOut.textContent = Lbcl.toFixed(4);
+    plainVerdict.textContent = Lplain > CRIT ? 'FLAGGED' : 'clear';
+    bclVerdict.textContent = Lbcl > CRIT ? 'FLAGGED' : 'clear';
+    note.textContent = rNum < 0
+      ? '(negative input — the test uses the SIZE of the move, so the sign above was dropped)'
+      : (Lplain > CRIT) !== (Lbcl > CRIT)
+        ? '← the verdict flips between plain and BCL-corrected at this return size and time of day'
+        : '';
+  }
+
+  rInput.addEventListener('input', recompute);
+  todSelect.addEventListener('change', recompute);
+  resetBtn.addEventListener('click', function(){
+    rInput.value = DEFAULTS.r;
+    todSelect.value = DEFAULTS.tod;
+    recompute();
+  });
+  recompute();
+})();
+</script>
+</body>
+</html>
