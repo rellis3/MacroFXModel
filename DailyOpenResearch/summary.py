@@ -113,6 +113,19 @@ def main():
         w(f"| first {tf} candle: rest-of-day same direction | " + " | ".join(pct(x[p]['rest_of_day_same_direction']) for p in PAIRS) + " |")
         w(f"| first {tf} candle: opposite extreme holds all day | " + " | ".join(pct(x[p]['opposite_extreme_holds_all_day']) for p in PAIRS) + " |")
     w("")
+    w("## Swing high/low retest (comes back later in the day, not the immediate pullback)")
+    w("| | " + " | ".join(R[p]["meta"]["label"] for p in PAIRS) + " |")
+    w("|---|" + "---|" * 3)
+    rt = {p: R[p]["retest"]["all"] for p in PAIRS}
+    w("| retests scored (n) | " + " | ".join(f"{rt[p]['n']:,}" for p in PAIRS) + " |")
+    w("| reject the level first / break it first | " + " | ".join(f"{rt[p]['reject']['p']}% / {rt[p]['break']['p']}%" for p in PAIRS) + " |")
+    w("| minutes to retest (median) | " + " | ".join(f"{rt[p]['retest_minutes']['median']:.0f}" for p in PAIRS) + " |")
+    w("| day closes beyond the level after retest | " + " | ".join(pct(rt[p]['close_beyond_after_retest']) for p in PAIRS) + " |")
+    w("| reject sim: net / gross avg R (t of gross) | " + " | ".join(f"{r(rt[p]['sim_reject'])} / {r(rt[p]['sim_reject'],'avg_r_gross')} (t {rt[p]['sim_reject'].get('t_stat_gross')})" for p in PAIRS) + " |")
+    w("| break sim: net / gross avg R (t of gross) | " + " | ".join(f"{r(rt[p]['sim_break'])} / {r(rt[p]['sim_break'],'avg_r_gross')} (t {rt[p]['sim_break'].get('t_stat_gross')})" for p in PAIRS) + " |")
+    is_ = {p: R[p]["retest"]["is_oos"] for p in PAIRS}
+    w("| reject rate, in-sample / out-of-sample | " + " | ".join(f"{is_[p]['IS']['reject']['p']}% / {is_[p]['OOS']['reject']['p']}%" for p in PAIRS) + " |")
+    w("")
     out = os.path.join(HERE, "out", "SUMMARY.md")
     with open(out, "w") as fh:
         fh.write("\n".join(L))

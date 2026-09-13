@@ -102,3 +102,14 @@ Anchor = broker daily candle (17:00 New York boundary; first bar 23:00 UK on gol
 | first 60m candle: opposite extreme holds all day | 13.3% | 12.1% | 8.3% |
 | first 240m candle: rest-of-day same direction | 49.4% | 49.9% | 49.5% |
 | first 240m candle: opposite extreme holds all day | 33.7% | 25.6% | 21.6% |
+
+## Swing high/low retest (comes back later in the day, not the immediate pullback)
+| | Gold (XAUUSD) | Nasdaq (NAS100) | EURUSD |
+|---|---|---|---|
+| retests scored (n) | 51,571 | 52,299 | 45,836 |
+| reject the level first / break it first | 48.1% / 51.9% | 47.8% / 52.2% | 48.7% / 51.3% |
+| minutes to retest (median) | 40 | 29 | 45 |
+| day closes beyond the level after retest | 49.5% | 50.6% | 49.8% |
+| reject sim: net / gross avg R (t of gross) | -0.146 / +0.017 (t 1.84) | -0.130 / +0.016 (t 1.24) | -0.216 / +0.008 (t 1.35) |
+| break sim: net / gross avg R (t of gross) | -0.165 / +0.015 (t 2.41) | -0.088 / +0.018 (t 2.77) | -0.184 / -0.001 (t -0.2) |
+| reject rate, in-sample / out-of-sample | 48.1% / 48.1% | 47.4% / 48.5% | 48.5% / 48.9% |

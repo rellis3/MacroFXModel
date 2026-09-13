@@ -544,3 +544,57 @@ Touch rate by distance from the open:
 | 240m | 0.1-0.2 | 346 | 50.6% [45.3-55.8] n=346 | 15.6% [12.2-19.8] n=346 |
 | 240m | 0.2-0.35 | 1278 | 49.4% [46.6-52.1] n=1278 | 26.9% [24.6-29.4] n=1278 |
 | 240m | large >0.35 | 1096 | 49.1% [46.1-52.0] n=1096 | 47.4% [44.4-50.3] n=1096 |
+
+## 10. Swing high/low retest
+
+A confirmed swing high or low (ATR-threshold zigzag, theta=0.15 ADR) that gets fully re-approached LATER in the day - not the shallow pullback the fib study watches, but price coming all the way back after having moved on. Reaction is a 0.15 ADR race: REJECT (price moves away from the level first) vs BREAK (price takes it out first) - same race convention as the PDH/PDL study, for direct comparison.
+
+All retests: n=51,571, 48.1% reject the level first, 51.9% break it first, 4.5% unresolved by day end. Day closes beyond the level after the retest: 49.5% [49.1-49.9] n=51571. Swing size 0.247 ADR (median). Retests per day: 14.0 (median).
+
+| sim | result |
+|---|---|
+| Reject (bet the level holds) | n=51571 win 47.8% avg -0.146R, gross +0.017R (t 1.84, cost 0.16R) PF 0.76 t=-14.14 maxDD -7550.25R |
+| Break (bet it gives way, target = 1 swing beyond) | n=51571 win 39.5% avg -0.165R, gross +0.015R (t 2.41, cost 0.18R) PF 0.77 t=-3.47 maxDD -8591.02R |
+
+IS / OOS reject rate:
+- IS: 48.1% [47.5-48.6] n=30104 (n=31529)
+- OOS: 48.1% [47.4-48.8] n=19152 (n=20042)
+
+Retest conditioning - swing high vs low:
+
+| group | n | reject | break | sim reject (net/gross) | sim break (net/gross) |
+|---|---|---|---|---|---|
+| swing_high_retest | 25832 | 48.0% [47.4-48.6] n=24573 | 52.0% [51.4-52.6] n=24573 | -0.149 / 0.01 | -0.207 / 0.024 |
+| swing_low_retest | 25739 | 48.1% [47.5-48.8] n=24683 | 51.9% [51.2-52.5] n=24683 | -0.144 / 0.024 | -0.122 / 0.007 |
+
+Retest conditioning - first pivot of day vs later:
+
+| group | n | reject | break | sim reject (net/gross) | sim break (net/gross) |
+|---|---|---|---|---|---|
+| first_pivot_of_day | 2208 | 48.5% [46.5-50.6] n=2196 | 51.5% [49.4-53.5] n=2196 | -0.228 / -0.026 | -0.088 / 0.024 |
+| later_pivot | 49363 | 48.1% [47.6-48.5] n=47060 | 51.9% [51.5-52.4] n=47060 | -0.142 / 0.019 | -0.168 / 0.015 |
+
+Retest conditioning - swing size:
+
+| group | n | reject | break | sim reject (net/gross) | sim break (net/gross) |
+|---|---|---|---|---|---|
+| <0.2 ADR | 16366 | 48.6% [47.8-49.4] n=15655 | 51.4% [50.6-52.2] n=15655 | -0.15 / -0.001 | -0.11 / 0.007 |
+| 0.2-0.4 | 26285 | 47.8% [47.2-48.4] n=25015 | 52.2% [51.6-52.8] n=25015 | -0.149 / 0.012 | -0.126 / 0.015 |
+| 0.4-0.7 | 8012 | 48.2% [47.1-49.3] n=7709 | 51.8% [50.7-52.9] n=7709 | -0.116 / 0.072 | -0.409 / 0.028 |
+| >0.7 ADR | 908 | 46.3% [43.0-49.6] n=877 | 53.7% [50.4-57.0] n=877 | -0.246 / -0.012 | -0.095 / 0.077 |
+
+Retest conditioning - time to retest:
+
+| group | n | reject | break | sim reject (net/gross) | sim break (net/gross) |
+|---|---|---|---|---|---|
+| <=30min | 22379 | 48.2% [47.5-48.8] n=22049 | 51.8% [51.2-52.5] n=22049 | -0.135 / 0.037 | -0.237 / 0.02 |
+| 30-120min | 15918 | 48.2% [47.4-49.0] n=15023 | 51.8% [51.0-52.6] n=15023 | -0.144 / 0.001 | -0.099 / 0.015 |
+| >120min | 13274 | 47.8% [46.9-48.6] n=12184 | 52.2% [51.4-53.1] n=12184 | -0.167 / 0.002 | -0.121 / 0.009 |
+
+Retest conditioning - vol regime:
+
+| group | n | reject | break | sim reject (net/gross) | sim break (net/gross) |
+|---|---|---|---|---|---|
+| quiet | 9524 | 47.7% [46.7-48.7] n=9139 | 52.3% [51.3-53.3] n=9139 | -0.164 / 0.035 | -0.16 / 0.034 |
+| normal | 32714 | 48.4% [47.8-48.9] n=31123 | 51.6% [51.1-52.2] n=31123 | -0.156 / 0.012 | -0.194 / 0.007 |
+| heavy | 8577 | 47.5% [46.4-48.5] n=8257 | 52.5% [51.5-53.6] n=8257 | -0.082 / 0.021 | -0.053 / 0.019 |

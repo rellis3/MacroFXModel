@@ -299,5 +299,32 @@ def write_report(res: dict, path: str):
         for g, rr in r["by_range_adr"].items():
             w(f"| {k} | {g} | {rr['n']} | {_ci(rr['rest_same'])} | {_ci(rr['opp_held'])} |")
     w("")
+    # ---- retest
+    rt = res["retest"]
+    w("## 10. Swing high/low retest")
+    w("")
+    w(f"A confirmed swing high or low (ATR-threshold zigzag, theta={rt['theta_adr']} ADR) that gets fully re-approached LATER in the day - not the shallow pullback the fib study watches, but price coming all the way back after having moved on. Reaction is a {rt['react_adr']} ADR race: REJECT (price moves away from the level first) vs BREAK (price takes it out first) - same race convention as the PDH/PDL study, for direct comparison.")
+    w("")
+    a = rt["all"]
+    w(f"All retests: n={a['n']:,}, {a['reject']['p']}% reject the level first, {a['break']['p']}% break it first, {a['unresolved']['p']}% unresolved by day end. "
+      f"Day closes beyond the level after the retest: {_ci(a['close_beyond_after_retest'])}. Swing size {a['swing_size_adr']['median']} ADR (median). Retests per day: {rt['retests_per_day']['median']} (median).")
+    w("")
+    w("| sim | result |")
+    w("|---|---|")
+    w(f"| Reject (bet the level holds) | {_ts(a['sim_reject'])} |")
+    w(f"| Break (bet it gives way, target = 1 swing beyond) | {_ts(a['sim_break'])} |")
+    w("")
+    w("IS / OOS reject rate:")
+    w(f"- IS: {_ci(rt['is_oos']['IS']['reject'])} (n={rt['is_oos']['IS']['n']})")
+    w(f"- OOS: {_ci(rt['is_oos']['OOS']['reject'])} (n={rt['is_oos']['OOS']['n']})")
+    w("")
+    for cond, label in (("by_kind", "swing high vs low"), ("by_order", "first pivot of day vs later"), ("by_swing_size", "swing size"), ("by_retest_speed", "time to retest"), ("by_vol_regime", "vol regime")):
+        w(f"Retest conditioning - {label}:")
+        w("")
+        w("| group | n | reject | break | sim reject (net/gross) | sim break (net/gross) |")
+        w("|---|---|---|---|---|---|")
+        for g, r in rt[cond].items():
+            w(f"| {g} | {r['n']} | {_ci(r['reject'])} | {_ci(r['break'])} | {r['sim_reject'].get('avg_r')} / {r['sim_reject'].get('avg_r_gross')} | {r['sim_break'].get('avg_r')} / {r['sim_break'].get('avg_r_gross')} |")
+        w("")
     with open(path, "w") as fh:
         fh.write("\n".join(L))

@@ -17,6 +17,7 @@ from .studies_fib import fib_study
 from .studies_vwap import vwap_study
 from .studies_session import asia_range_study, prior_levels_study
 from .studies_mtf import mtf_first_candle_study
+from .studies_retest import retest_study
 from .report import write_report
 
 
@@ -56,6 +57,7 @@ def run_pair(pair: str, anchor: str = "broker", anchors_to_compare=("broker", "l
         ("asia_range", lambda: asia_range_study(days, pair)),
         ("prior_levels", lambda: prior_levels_study(days)),
         ("mtf_first_candle", lambda: mtf_first_candle_study(days)),
+        ("retest", lambda: retest_study(days, pair)),
     ]
     for name, fn in steps:
         t = time.time()
