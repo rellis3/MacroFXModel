@@ -1,0 +1,345 @@
+<title>The 23:00 Open</title>
+<meta name="description" content="What ten years of one-minute data say about the retail daily-open playbook on gold, Nasdaq and EURUSD.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  color-scheme:light;
+  --bg:#EEF1F4; --surface:#FFFFFF; --ink:#141A24; --muted:#5C6675; --rule:#D3D9E0; --grid:#E2E7EC;
+  --accent:#0E7C7B; --amber:#B45309; --grey:#6B7280;
+  --gold:#B8860B; --nq:#2E6FD6; --eur:#C0392B;
+  --null:#8A94A3;
+  --display:"Fraunces",Georgia,"Times New Roman",serif;
+  --body:"Source Sans 3","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#12161C; --surface:#1A2029; --ink:#E8ECF1; --muted:#9AA5B4; --rule:#2C3541; --grid:#242C36;
+    --accent:#3BAFAE; --amber:#E0A040; --grey:#9AA3B0;
+    --gold:#B98A26; --nq:#5B93EA; --eur:#E0685C; --null:#7D8794;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#12161C; --surface:#1A2029; --ink:#E8ECF1; --muted:#9AA5B4; --rule:#2C3541; --grid:#242C36;
+  --accent:#3BAFAE; --amber:#E0A040; --grey:#9AA3B0;
+  --gold:#B98A26; --nq:#5B93EA; --eur:#E0685C; --null:#7D8794;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.55;padding-inline:20px;padding-block:32px 72px}
+.wrap{max-width:960px;margin:0 auto}
+.prose{max-width:68ch}
+h1,h2,h3{font-family:var(--display);font-weight:600;line-height:1.1;text-wrap:balance;margin:0}
+h1{font-size:clamp(34px,5vw,52px);font-variation-settings:"opsz" 144;letter-spacing:-.01em}
+h2{font-size:clamp(24px,3vw,30px);margin-top:56px;margin-bottom:10px}
+h3{font-size:19px;margin-top:28px;margin-bottom:6px}
+p{margin:0 0 14px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:14px}
+.lede{font-size:20px;line-height:1.45;color:var(--ink);margin-top:18px}
+.meta{font-family:var(--mono);font-size:13px;color:var(--muted);margin-top:18px;display:flex;flex-wrap:wrap;gap:6px 22px}
+.meta b{color:var(--ink);font-weight:600}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:.94em}
+.rule{border:0;border-top:1px solid var(--rule);margin:40px 0}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{padding:8px 10px;text-align:left;vertical-align:top;border-bottom:1px solid var(--rule)}
+th{font-family:var(--mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500}
+td.num,th.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:14px}
+.tscroll{overflow-x:auto;margin:14px 0 6px}
+.pill{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:3px;white-space:nowrap}
+.pill.none{background:color-mix(in srgb,var(--grey) 16%,transparent);color:var(--ink)}
+.pill.cost{background:color-mix(in srgb,var(--amber) 18%,transparent);color:var(--ink)}
+.pill.small{background:color-mix(in srgb,var(--accent) 20%,transparent);color:var(--ink)}
+.pill.real{background:var(--accent);color:#fff}
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-family:var(--mono);font-size:12px;color:var(--muted);margin:6px 0 0}
+.legend span::before{content:"";display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:6px;vertical-align:middle;background:var(--c)}
+.legend .dash::before{height:0;border-top:2px dashed var(--c);background:none}
+figure{margin:18px 0 8px;background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:16px 16px 12px}
+figcaption{font-size:14px;color:var(--muted);margin-top:8px;max-width:72ch}
+figcaption b{color:var(--ink);font-weight:600}
+.fig-title{font-family:var(--body);font-weight:600;font-size:15px;margin:0 0 8px}
+.multi{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media (max-width:720px){.multi{grid-template-columns:1fr}}
+.panel h4{font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.04em;margin:0 0 4px;color:var(--ink)}
+svg{display:block;width:100%;height:auto;overflow:visible}
+svg text{font-family:var(--mono);font-size:11px;fill:var(--muted)}
+svg .axis{stroke:var(--rule);stroke-width:1}
+svg .gridline{stroke:var(--grid);stroke-width:1}
+.tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--bg);font-family:var(--mono);font-size:12px;padding:6px 8px;border-radius:4px;opacity:0;transform:translate(-50%,-120%);white-space:nowrap;z-index:9;transition:opacity .08s}
+.hit{fill:transparent;cursor:crosshair}
+ul.tight{padding-left:20px;margin:0 0 14px}
+ul.tight li{margin-bottom:6px}
+ol.next{padding-left:22px}
+ol.next li{margin-bottom:12px}
+ol.next b{font-weight:600}
+.callout{border-left:3px solid var(--accent);padding:6px 16px;margin:20px 0;background:var(--surface)}
+.callout p{margin:0}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (prefers-reduced-motion: reduce){.tip{transition:none}}
+</style>
+<div class="wrap">
+<div class="prose">
+<div class="eyebrow">Daily-open research · gold, Nasdaq, EURUSD · 2016–2026, 1-minute bars</div>
+<h1>The 23:00 Open</h1>
+<p class="lede">Ten years of one-minute data, run through the retail daily-open playbook: opening-range breakouts, impulse legs with fib pullbacks, VWAP bands, the Asian range into London, prior-day levels, the first candle on every timeframe. Each claim is scored against what a random walk would produce, and every trade sim shows gross next to net so you can see what the spread does.</p>
+<div class="meta" id="meta"></div>
+</div>
+
+<h2>Scorecard</h2>
+<div class="prose"><p>Verdicts across the three instruments. <span class="pill none">no edge</span> means the number equals its null. <span class="pill cost">cost-eaten</span> means gross expectancy is about zero and the spread makes it a loss. <span class="pill small">small, real</span> means it clears the null in and out of sample but not the spread at this scale.</p></div>
+<div class="tscroll"><table id="score">
+<thead><tr><th>Claim</th><th>Verdict</th><th>What the data says</th></tr></thead>
+<tbody>
+<tr><td>The 23:00 UK open is a volatility event</td><td><span class="pill real">real, on gold &amp; NQ</span></td><td>First 15 minutes run about 1.5× the per-minute range of the following hour on gold and NQ, then fade. On EURUSD 23:00 is the quietest hour of the day. London 08:00 and New York 13:30–15:00 UK own the range.</td></tr>
+<tr><td>The day's high or low forms in the first hour</td><td><span class="pill none">no edge</span></td><td>Happens 18–20% of days on gold/NQ, 12% on EURUSD, <b>below</b> the 22–27% a shuffled random ordering of the same day gives. Extremes form in the New York hours.</td></tr>
+<tr><td>The first candle sets the day's direction</td><td><span class="pill none">no edge</span></td><td>First 15/30/60/120-minute direction agrees with the rest of the day 48–50% of the time on every instrument and timeframe. The 52–56% seen in retail material comes from letting the first move overlap the day it predicts.</td></tr>
+<tr><td>Opening-range breakout</td><td><span class="pill cost">cost-eaten</span></td><td>Reaching +1 range before the opposite edge matches the random-walk expectation on gold/NQ and sits below it on EURUSD. Gross within ±0.03R of zero; net −0.13 to −0.32R gold, −0.11 to −0.20R NQ, −0.31 to −0.91R EURUSD. Both sides of the range are taken on 78–95% of days.</td></tr>
+<tr><td>Impulse leg, then fib pullback continues</td><td><span class="pill small">small, real</span></td><td>Continuation runs 2–4 points above the random-walk null at every depth, in and out of sample, and 4–5 points above for impulsive legs. Limit entries at 0.382–0.5 still lose gross (the bar that fills you keeps going); 0.618–0.786 with a stop at the origin is +0.03 to +0.11R gross on gold and about zero on NQ and EURUSD, with the spread worth 0.2–0.7R.</td></tr>
+<tr><td>Price returns to VWAP after a band push</td><td><span class="pill small">instrument-specific</span></td><td>Gold reverts faster than baseline (43% within an hour vs 34%), NQ keeps going (25% vs 36%), EURUSD is neutral. Fade and bounce sims are gross-flat and net-negative because Asia-session bands are tighter than the spread.</td></tr>
+<tr><td>Asia range break sets the London/NY direction</td><td><span class="pill none">no edge</span></td><td>Day closes beyond the first-broken side 51–52% on all three. Gold takes both sides of its Asia range on 35% of days, EURUSD 47%, NQ 54%. Breakout and sweep-fade sims +0.02 to +0.10R gross, negative net.</td></tr>
+<tr><td>Prior-day high/low hold on first touch</td><td><span class="pill none">breaks slightly more</span></td><td>At the first touch, price goes 0.15 ADR through before 0.15 ADR back 52–56% of the time. PDH/PDL are touched on 42–56% of days, prior-week levels on 18–28%.</td></tr>
+<tr><td>Opening gaps fill</td><td><span class="pill real">real, small</span></td><td>93–97% of gaps fill, but gaps above 0.30 ADR fill only about half the time. Monday gaps (median 0.06–0.08 ADR) fill 81–88%.</td></tr>
+<tr><td>Once 0.3 ADR from the open, the open holds</td><td><span class="pill small">structural</span></td><td>Never revisited that day 41–42% of the time, identical on all three instruments. At 13:00 UK with more than 0.5 ADR of travel the close is back through the open only 6–15% of days, yet the odds of further progress from there are still 50%.</td></tr>
+</tbody></table></div>
+
+<h2>1 · Where the volatility is</h2>
+<div class="prose"><p>Mean one-minute true range in ADR units for the first eight hours after the open. The spike in the first block is the CME re-open on gold and NQ (the "Asian injection"); the second rise around +2h to +3h is Tokyo and Shanghai cash. None of it compares with London or New York, which is where the anchor comparison says an open study should live.</p></div>
+<figure><div class="fig-title">One-minute range by 15-minute block after the 23:00 UK open (‰ of ADR)</div><div class="multi" id="fig-profile"></div>
+<figcaption>Per-block mean of the one-minute true range divided by that day's trailing ADR, ×1000. Hover for values. Same y-scale across panels.</figcaption></figure>
+
+<h2>2 · When the day's extremes form</h2>
+<div class="prose"><p>Share of days whose high or low sits in each 30-minute bucket after the open. The first bucket is high by construction (the open is often near an extreme), the Asian and London hours are flat, and the mass is in 13:00–16:00 UK. The first hour holds an extreme less often than a shuffled ordering of the same day's moves would, on all three instruments.</p></div>
+<figure><div class="fig-title">Days with the high or the low in each 30-minute bucket (%)</div><div id="fig-extremes"></div>
+<div class="legend"><span style="--c:var(--gold)">Gold</span><span style="--c:var(--nq)">Nasdaq</span><span style="--c:var(--eur)">EURUSD</span></div>
+<figcaption>High-share plus low-share per bucket. Bucket 0 is the first 30 minutes after the open; 14h is 13:00 UK.</figcaption></figure>
+<div class="tscroll"><table id="tbl-ext"></table></div>
+
+<h2>3 · Impulse leg, fib pullback</h2>
+<div class="prose"><p>A leg is drawable the first time price gives back 23.6% of a swing of at least 0.12 ADR from the last confirmed pivot, within four hours of the open. Nothing after that moment defines the leg. Depth is the fraction of the leg given back; a TradingView fib drawn low-to-high shows 1 − depth, so the 0.618 line on that chart is 0.382 depth here. The null is the random-walk probability from the close of the bar that first reached the depth.</p></div>
+<figure><div class="fig-title">Continuation to a new extreme, observed minus random-walk null (percentage points)</div><div class="multi" id="fig-fib"></div>
+<div class="legend"><span style="--c:var(--ink)">All legs</span><span style="--c:var(--accent)">Impulsive legs</span><span style="--c:var(--null)">Grinding legs</span></div>
+<figcaption>Positive means pullbacks continue more often than chance. Impulsive = top half on both path efficiency and speed. Bars are the excess over null; the table has the raw numbers.</figcaption></figure>
+<div class="tscroll"><table id="tbl-fib"></table></div>
+<div class="prose"><p>After a continuation, the extension reached before the day ends or price falls back through half the original leg: 1.1× on 82–86% of legs, 1.272× on 64–68%, 1.618× on 43–48%. Those match the 1.1 / 1.2 / 1.618 targets on the chart in the screenshot, but they are close to what an unbiased walk gives as well.</p></div>
+
+<h2>4 · Every strategy sim, gross and net</h2>
+<div class="prose"><p>The pattern of the whole suite in one picture: gross expectancy sits at zero, and the spread decides the sign. Each row is one simulated rule; the hollow mark is the average R before cost, the filled mark after. The gap is the cost, and it is large because the stops these setups use are a few minutes of Asian-session range.</p></div>
+<figure><div class="fig-title">Average R per trade, before and after cost</div><div class="multi" id="fig-sims"></div>
+<div class="legend"><span class="dash" style="--c:var(--muted)">gross (before cost)</span><span style="--c:var(--ink)">net (after cost)</span></div>
+<figcaption>Assumed round-trip cost: 0.30 on gold, 1.5 points on NQ, 1.5 pips on EURUSD. Hover for n, win rate and the t-statistic of the gross average.</figcaption></figure>
+
+<h2>5 · Asia range into London and New York</h2>
+<div class="prose"><p>The Asia range (23:00 to 07:00 UK) is the retail trader's second favourite box. Which sides get taken says something about each instrument's character: gold spends its day inside or on one side of the box, NQ runs through both sides more often than not.</p></div>
+<figure><div class="fig-title">What London and New York do with the Asia range (% of days)</div><div id="fig-asia"></div>
+<div class="legend"><span style="--c:var(--accent)">high only</span><span style="--c:var(--amber)">low only</span><span style="--c:var(--ink)">both sides</span><span style="--c:var(--null)">neither</span></div>
+<figcaption>First break arrives a median 44–72 minutes after 07:00. The day closes beyond the first-broken side 51–52% of the time on all three.</figcaption></figure>
+
+<h2>6 · The rest of the checklist</h2>
+<div class="tscroll"><table id="tbl-rest"></table></div>
+
+<h2>What I would investigate next</h2>
+<div class="prose">
+<ol class="next">
+<li><b>Move the anchor to where the range is.</b> Re-run the suite at London 08:00 and New York 14:30 UK. The anchor comparison puts 22–28% of the day's range in the first hour after 08:00 versus 9–12% after 23:00, and on EURUSD it is the only open worth anchoring to.</li>
+<li><b>Measure the real 23:00 spread.</b> Every sim here is decided by cost, and rollover spreads on gold and indices are typically several times the daytime spread for exactly the minutes the injection candle prints. Log live spreads by minute-since-open and re-run with the measured curve.</li>
+<li><b>Scale the impulse-continuation effect up.</b> It is the only stable number above null. Test legs of 0.35 ADR and larger on 5-minute bars, across all 26 pairs and the whole day, with an ATR stop instead of the origin, and find the minimum leg size at which the edge exceeds the spread.</li>
+<li><b>Treat NQ and gold differently in Asia.</b> NQ trends away from VWAP and takes both sides of its range 54% of the time; gold reverts and takes both sides 35%. Continuation logic on NQ and range logic on gold, as a paired walk-forward.</li>
+<li><b>Condition on the previous session, not the calendar.</b> Major-news days changed nothing. The session-handoff work already in this repo shows volatility clusters session to session; condition the open studies on the prior NY session's range and where it closed.</li>
+<li><b>Use the gap the right way round.</b> The 0.15–0.30 ADR gaps fill 74–82% of the time with a median fill over an hour; test fading them with a stop beyond the opening extreme and study the days they do not fill.</li>
+<li><b>Replace the fixed reaction race at prior levels with a distribution.</b> Record full MFE/MAE after the first touch, split by the session it is touched in.</li>
+<li><b>Walk-forward the two best-looking cells with their neighbours.</b> Gold wide-Asia-range breakout (+0.05R net, n=549) and EURUSD sweep-fade (gross t=2.3). Both are single cells out of dozens; a rolling annual refit is the honest test, and the leave-one-out tooling in the repo already exists for it.</li>
+<li><b>Get bid/ask bars.</b> Fib limit fills showed adverse selection worth 3–8% of R; with two-sided bars the fill assumption becomes exact.</li>
+</ol>
+</div>
+
+<hr class="rule">
+<div class="prose">
+<h3>Method notes</h3>
+<ul class="tight">
+<li>Anchor: the broker daily candle (17:00 New York boundary). The feed follows CME hours, so gold and NQ print their first bar at 18:00 NY = 23:00 UK all year; EURUSD trades through it.</li>
+<li>ADR = trailing 20-day median daily range, strictly prior. All distances are in ADR so the instruments compare directly.</li>
+<li>Nulls: driftless random walk for every race (with the fill or breakout bar's overshoot accounted for), and a shuffled-returns null for the early-extreme claims. Wilson 95% intervals; minimum 30 per reported cell; 60/40 in-sample/out-of-sample by date; per-year, weekday, vol-regime and major-news-day tables in the full reports.</li>
+<li>Code and full tables: <code>DailyOpenResearch/</code> in the repo, <code>FINDINGS.md</code> for the narrative, <code>out/&lt;pair&gt;/REPORT.md</code> for every number.</li>
+</ul>
+</div>
+</div>
+<div class="tip" id="tip"></div>
+<script>
+/*__DATA__*/
+const P = DATA.pairs, L = DATA.labels, per = DATA.per;
+const COL = {gold:"var(--gold)", nq:"var(--nq)", eurusd:"var(--eur)"};
+const tip = document.getElementById("tip");
+function showTip(e, html){ tip.innerHTML = html; tip.style.left = e.clientX + "px"; tip.style.top = (e.clientY - 10) + "px"; tip.style.opacity = 1; }
+function hideTip(){ tip.style.opacity = 0; }
+const svgNS = "http://www.w3.org/2000/svg";
+function el(tag, attrs, parent){ const n = document.createElementNS(svgNS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); if (parent) parent.appendChild(n); return n; }
+function fmt(v, d=1){ return (v==null? "n/a" : (+v).toFixed(d)); }
+
+// meta
+document.getElementById("meta").innerHTML = P.map(p => `<span><b>${L[p]}</b> ${per[p].meta.days} days · ADR ${p==='eurusd'? (per[p].meta.adr*10000).toFixed(0)+' pips' : per[p].meta.adr.toFixed(0)+' pts'} · cost ${p==='eurusd'? (per[p].meta.cost*10000).toFixed(1)+' pips' : per[p].meta.cost}</span>`).join("");
+
+// 1. profile small multiples (line)
+(function(){
+  const host = document.getElementById("fig-profile");
+  const ymax = Math.max(...P.flatMap(p => per[p].profile.map(d => d.v))) * 1.08;
+  P.forEach(p => {
+    const panel = document.createElement("div"); panel.className = "panel"; panel.innerHTML = `<h4 style="color:${COL[p]}">${L[p]}</h4>`;
+    const W = 300, H = 170, m = {l: 30, r: 8, t: 8, b: 22};
+    const svg = el("svg", {viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": `${L[p]} volatility profile`});
+    const data = per[p].profile; const xs = v => m.l + (v / 480) * (W - m.l - m.r); const ys = v => m.t + (1 - v / ymax) * (H - m.t - m.b);
+    [0, 10, 20].forEach(g => { if (g < ymax) { el("line", {x1: m.l, x2: W - m.r, y1: ys(g), y2: ys(g), class: "gridline"}, svg); el("text", {x: m.l - 4, y: ys(g) + 4, "text-anchor": "end"}, svg).textContent = g; } });
+    el("line", {x1: m.l, x2: W - m.r, y1: H - m.b, y2: H - m.b, class: "axis"}, svg);
+    [0, 120, 240, 360, 480].forEach(x => { el("text", {x: xs(x), y: H - 6, "text-anchor": "middle"}, svg).textContent = (x/60) + "h"; });
+    const path = data.map((d, i) => (i ? "L" : "M") + xs(d.m + 7.5).toFixed(1) + " " + ys(d.v).toFixed(1)).join(" ");
+    const area = path + ` L${xs(data[data.length-1].m + 7.5).toFixed(1)} ${ys(0)} L${xs(7.5).toFixed(1)} ${ys(0)} Z`;
+    el("path", {d: area, fill: COL[p], opacity: .12, stroke: "none"}, svg);
+    el("path", {d: path, fill: "none", stroke: COL[p], "stroke-width": 2, "stroke-linejoin": "round"}, svg);
+    const dot = el("circle", {r: 4, fill: COL[p], stroke: "var(--surface)", "stroke-width": 2, opacity: 0}, svg);
+    const hit = el("rect", {x: m.l, y: m.t, width: W - m.l - m.r, height: H - m.t - m.b, class: "hit"}, svg);
+    hit.addEventListener("mousemove", e => { const r = svg.getBoundingClientRect(); const x = (e.clientX - r.left) / r.width * W; const idx = Math.max(0, Math.min(data.length - 1, Math.round((x - m.l) / (W - m.l - m.r) * 480 / 15 - 0.5))); const d = data[idx]; dot.setAttribute("cx", xs(d.m + 7.5)); dot.setAttribute("cy", ys(d.v)); dot.setAttribute("opacity", 1); showTip(e, `${Math.floor(d.m/60)}h${String(d.m%60).padStart(2,"0")} after open · ${d.v}‰ ADR/min`); });
+    hit.addEventListener("mouseleave", () => { dot.setAttribute("opacity", 0); hideTip(); });
+    panel.appendChild(svg); host.appendChild(panel);
+  });
+})();
+
+// 2. extremes multi-line
+(function(){
+  const host = document.getElementById("fig-extremes");
+  const W = 920, H = 240, m = {l: 34, r: 60, t: 10, b: 26};
+  const svg = el("svg", {viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "When the day's extremes form"});
+  const ymax = Math.max(...P.flatMap(p => per[p].extremes.map(d => d.v))) * 1.1;
+  const xs = v => m.l + (v / 1440) * (W - m.l - m.r); const ys = v => m.t + (1 - v / ymax) * (H - m.t - m.b);
+  [0, 5, 10, 15].forEach(g => { if (g < ymax) { el("line", {x1: m.l, x2: W - m.r, y1: ys(g), y2: ys(g), class: "gridline"}, svg); el("text", {x: m.l - 4, y: ys(g) + 4, "text-anchor": "end"}, svg).textContent = g + "%"; } });
+  el("line", {x1: m.l, x2: W - m.r, y1: H - m.b, y2: H - m.b, class: "axis"}, svg);
+  for (let h = 0; h <= 24; h += 2) el("text", {x: xs(h * 60), y: H - 8, "text-anchor": "middle"}, svg).textContent = h + "h";
+  const dots = {};
+  P.forEach(p => {
+    const data = per[p].extremes;
+    const path = data.map((d, i) => (i ? "L" : "M") + xs(d.m + 15).toFixed(1) + " " + ys(d.v).toFixed(1)).join(" ");
+    el("path", {d: path, fill: "none", stroke: COL[p], "stroke-width": 2, "stroke-linejoin": "round"}, svg);
+    const last = data[data.length - 1];
+    el("text", {x: xs(last.m + 15) + 6, y: ys(last.v) + 4, fill: COL[p], style: "fill:" + COL[p]}, svg).textContent = L[p];
+    dots[p] = el("circle", {r: 4, fill: COL[p], stroke: "var(--surface)", "stroke-width": 2, opacity: 0}, svg);
+  });
+  const vline = el("line", {y1: m.t, y2: H - m.b, class: "axis", opacity: 0}, svg);
+  const hit = el("rect", {x: m.l, y: m.t, width: W - m.l - m.r, height: H - m.t - m.b, class: "hit"}, svg);
+  hit.addEventListener("mousemove", e => { const r = svg.getBoundingClientRect(); const x = (e.clientX - r.left) / r.width * W; const idx = Math.max(0, Math.min(47, Math.floor((x - m.l) / (W - m.l - m.r) * 48))); vline.setAttribute("x1", xs(idx*30+15)); vline.setAttribute("x2", xs(idx*30+15)); vline.setAttribute("opacity", 1);
+    const rows = P.map(p => { const d = per[p].extremes[idx]; if (!d) return ""; dots[p].setAttribute("cx", xs(d.m+15)); dots[p].setAttribute("cy", ys(d.v)); dots[p].setAttribute("opacity", 1); return `${L[p]} ${d.v}%`; });
+    showTip(e, `${Math.floor(idx/2)}h${idx%2?"30":"00"}–${Math.floor((idx+1)/2)}h${(idx+1)%2?"30":"00"} · ` + rows.join(" · ")); });
+  hit.addEventListener("mouseleave", () => { vline.setAttribute("opacity", 0); P.forEach(p => dots[p].setAttribute("opacity", 0)); hideTip(); });
+  host.appendChild(svg);
+  document.getElementById("tbl-ext").innerHTML = `<thead><tr><th></th>${P.map(p=>`<th class="num">${L[p]}</th>`).join("")}</tr></thead><tbody>
+  <tr><td>First 60 min share of the day's range (median)</td>${P.map(p=>`<td class="num">${fmt(per[p].first60.share,3)}</td>`).join("")}</tr>
+  <tr><td>Last 60 min share (control)</td>${P.map(p=>`<td class="num">${fmt(per[p].first60.last_share,3)}</td>`).join("")}</tr>
+  <tr><td>Day high or low inside the first 60 min</td>${P.map(p=>`<td class="num">${fmt(per[p].first60.ext)}%</td>`).join("")}</tr>
+  <tr><td>… shuffled-returns null</td>${P.map(p=>`<td class="num">${fmt(per[p].first60.ext_null)}%</td>`).join("")}</tr>
+  <tr><td>P(day low in first 60 min | up close)</td>${P.map(p=>`<td class="num">${fmt(per[p].judas.obs)}%</td>`).join("")}</tr>
+  <tr><td>… shuffled-returns null</td>${P.map(p=>`<td class="num">${fmt(per[p].judas.null)}%</td>`).join("")}</tr>
+  <tr><td>First 60 min direction = rest of day</td>${P.map(p=>`<td class="num">${fmt(per[p].firstmove.first_60m)}%</td>`).join("")}</tr>
+  <tr><td>First 120 min direction = rest of day</td>${P.map(p=>`<td class="num">${fmt(per[p].firstmove.first_120m)}%</td>`).join("")}</tr></tbody>`;
+})();
+
+// 3. fib excess-over-null grouped bars, small multiples
+(function(){
+  const host = document.getElementById("fig-fib");
+  const series = [["all", "var(--ink)"], ["impulsive", "var(--accent)"], ["grind", "var(--null)"]];
+  const all = P.flatMap(p => series.flatMap(([s]) => per[p].fib[s].map(d => d.obs - d.null)));
+  const ymin = Math.min(-2, Math.floor(Math.min(...all)) - 1), ymax = Math.ceil(Math.max(...all)) + 1;
+  P.forEach(p => {
+    const panel = document.createElement("div"); panel.className = "panel"; panel.innerHTML = `<h4 style="color:${COL[p]}">${L[p]} <span style="color:var(--muted);font-weight:400">· ${per[p].fib.n.toLocaleString()} legs</span></h4>`;
+    const W = 300, H = 170, m = {l: 30, r: 6, t: 8, b: 22};
+    const svg = el("svg", {viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": `${L[p]} fib continuation excess over null`});
+    const ys = v => m.t + (1 - (v - ymin) / (ymax - ymin)) * (H - m.t - m.b);
+    const depths = per[p].fib.all.map(d => d.d); const gw = (W - m.l - m.r) / depths.length; const bw = (gw - 10) / series.length;
+    for (let g = Math.ceil(ymin/2)*2; g <= ymax; g += 2) { el("line", {x1: m.l, x2: W - m.r, y1: ys(g), y2: ys(g), class: g === 0 ? "axis" : "gridline"}, svg); el("text", {x: m.l - 4, y: ys(g) + 4, "text-anchor": "end"}, svg).textContent = (g > 0 ? "+" : "") + g; }
+    depths.forEach((d, i) => {
+      el("text", {x: m.l + gw * (i + .5), y: H - 6, "text-anchor": "middle"}, svg).textContent = d;
+      series.forEach(([s, c], j) => {
+        const row = per[p].fib[s][i]; const v = row.obs - row.null; const x = m.l + gw * i + 5 + j * bw;
+        const y0 = ys(0), y1 = ys(v); const top = Math.min(y0, y1), h = Math.max(1, Math.abs(y1 - y0));
+        const r = el("rect", {x: x + 1, y: top, width: bw - 2, height: h, fill: c, rx: 1.5}, svg);
+        r.addEventListener("mousemove", e => showTip(e, `${s} legs · depth ${d} · observed ${row.obs}% vs null ${row.null}% · n=${row.n.toLocaleString()}`)); r.addEventListener("mouseleave", hideTip);
+      });
+    });
+    panel.appendChild(svg); host.appendChild(panel);
+  });
+  document.getElementById("tbl-fib").innerHTML = `<thead><tr><th>Pullback reached</th>${P.map(p=>`<th class="num">${L[p]} observed / null</th>`).join("")}</tr></thead><tbody>` +
+    per.gold.fib.all.map((row, i) => `<tr><td class="num" style="text-align:left">${row.d}</td>${P.map(p => { const r = per[p].fib.all[i]; return `<td class="num">${r.obs} / ${r.null}</td>`; }).join("")}</tr>`).join("") +
+    `<tr><td>Excess over null at 0.5 depth, in-sample (first 60%)</td>${P.map(p=>`<td class="num">${per[p].fib.is["0.5"]>0?"+":""}${fmt(per[p].fib.is["0.5"])} pts</td>`).join("")}</tr>` +
+    `<tr><td>Excess over null at 0.5 depth, out-of-sample (last 40%)</td>${P.map(p=>`<td class="num">${per[p].fib.oos["0.5"]>0?"+":""}${fmt(per[p].fib.oos["0.5"])} pts</td>`).join("")}</tr>` +
+    `<tr><td>Extension ≥ 1.272 after continuation</td>${P.map(p=>`<td class="num">${fmt(per[p].fib.ext["1.272"])}%</td>`).join("")}</tr><tr><td>Extension ≥ 1.618 after continuation</td>${P.map(p=>`<td class="num">${fmt(per[p].fib.ext["1.618"])}%</td>`).join("")}</tr></tbody>`;
+})();
+
+// 4. sims dumbbells
+(function(){
+  const host = document.getElementById("fig-sims");
+  const names = per.gold.sims.map(s => s.name);
+  const allv = P.flatMap(p => per[p].sims.flatMap(s => [s.net, s.gross]));
+  const xmin = Math.min(-0.4, Math.floor(Math.min(...allv) * 10) / 10), xmax = Math.max(0.2, Math.ceil(Math.max(...allv) * 10) / 10);
+  P.forEach(p => {
+    const panel = document.createElement("div"); panel.className = "panel"; panel.innerHTML = `<h4 style="color:${COL[p]}">${L[p]}</h4>`;
+    const W = 300, rh = 24, m = {l: 8, r: 8, t: 14, b: 20}, H = m.t + names.length * rh + m.b;
+    const svg = el("svg", {viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": `${L[p]} strategy sims`});
+    const xs = v => m.l + (v - xmin) / (xmax - xmin) * (W - m.l - m.r);
+    [-1, -0.5, 0, 0.5].forEach(g => { if (g >= xmin && g <= xmax) { el("line", {x1: xs(g), x2: xs(g), y1: m.t - 4, y2: H - m.b, class: g === 0 ? "axis" : "gridline"}, svg); el("text", {x: xs(g), y: H - 6, "text-anchor": "middle"}, svg).textContent = (g > 0 ? "+" : "") + g + "R"; } });
+    per[p].sims.forEach((s, i) => {
+      const y = m.t + i * rh + rh / 2;
+      el("text", {x: m.l, y: y - 7, style: "fill:var(--ink);font-size:10px"}, svg).textContent = s.name;
+      el("line", {x1: xs(s.gross), x2: xs(s.net), y1: y + 4, y2: y + 4, stroke: "var(--muted)", "stroke-width": 2, "stroke-dasharray": "3 2"}, svg);
+      el("circle", {cx: xs(s.gross), cy: y + 4, r: 4, fill: "var(--surface)", stroke: "var(--muted)", "stroke-width": 2}, svg);
+      el("circle", {cx: xs(s.net), cy: y + 4, r: 4.5, fill: COL[p], stroke: "var(--surface)", "stroke-width": 1.5}, svg);
+      const hit = el("rect", {x: 0, y: y - rh/2, width: W, height: rh, class: "hit"}, svg);
+      hit.addEventListener("mousemove", e => showTip(e, `${s.name} · n=${s.n.toLocaleString()} · win ${s.win}% · gross ${s.gross>0?"+":""}${fmt(s.gross,3)}R (t ${fmt(s.t,1)}) · net ${s.net>0?"+":""}${fmt(s.net,3)}R · cost ${fmt(s.cost,2)}R`)); hit.addEventListener("mouseleave", hideTip);
+    });
+    panel.appendChild(svg); host.appendChild(panel);
+  });
+})();
+
+// 5. asia stacked bars
+(function(){
+  const host = document.getElementById("fig-asia");
+  const W = 920, rh = 34, m = {l: 70, r: 10, t: 6, b: 22}, H = m.t + P.length * rh + m.b;
+  const svg = el("svg", {viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Asia range outcomes"});
+  const xs = v => m.l + v / 100 * (W - m.l - m.r);
+  [0, 25, 50, 75, 100].forEach(g => { el("line", {x1: xs(g), x2: xs(g), y1: m.t, y2: H - m.b, class: "gridline"}, svg); el("text", {x: xs(g), y: H - 6, "text-anchor": "middle"}, svg).textContent = g + "%"; });
+  const segs = [["high", "high only", "var(--accent)"], ["low", "low only", "var(--amber)"], ["both", "both sides", "var(--ink)"], ["neither", "neither", "var(--null)"]];
+  P.forEach((p, i) => {
+    const y = m.t + i * rh + 5; let acc = 0;
+    el("text", {x: m.l - 8, y: y + 16, "text-anchor": "end", style: "fill:" + COL[p] + ";font-weight:600"}, svg).textContent = L[p];
+    segs.forEach(([k, lab, c]) => {
+      const v = per[p].asia[k]; const r = el("rect", {x: xs(acc) + 1, y: y, width: Math.max(0, xs(acc + v) - xs(acc) - 2), height: rh - 10, fill: c, rx: 2}, svg);
+      if (v > 8) el("text", {x: xs(acc + v / 2), y: y + 16, "text-anchor": "middle", style: "fill:var(--surface);font-weight:600"}, svg).textContent = v + "%";
+      r.addEventListener("mousemove", e => showTip(e, `${L[p]} · ${lab} ${v}% · Asia range median ${per[p].asia.range} ADR · first break median ${per[p].asia.mins} min after 07:00`)); r.addEventListener("mouseleave", hideTip);
+      acc += v;
+    });
+  });
+  host.appendChild(svg);
+})();
+
+// 6. rest table
+(function(){
+  const rows = [
+    ["Never returns to the open after moving 0.3 ADR away", p => fmt(per[p].holds["0.3_ADR"]) + "%"],
+    ["Opening gap fill rate (all gaps)", p => fmt(per[p].gap.fill) + "%"],
+    ["Gap fill rate, gap > 0.30 ADR", p => fmt(per[p].gap.big) + "%"],
+    ["Monday gap fill rate", p => fmt(per[p].gap.mon) + "%"],
+    ["ORB 30m: day closes on breakout side", p => fmt(per[p].orb.or_30m.close) + "%"],
+    ["ORB 30m: both sides of the range taken", p => fmt(per[p].orb.or_30m.both) + "%"],
+    ["ORB 30m: +1 range before opposite edge, observed / null", p => fmt(per[p].orb.or_30m.race) + " / " + fmt(per[p].orb.or_30m.race_null)],
+    ["Back to VWAP within 60 min after 2σ touch / random bar", p => fmt(per[p].vwap.rev2) + " / " + fmt(per[p].vwap.rev_base)],
+    ["|z| ≥ 1.5 at minute 120: closes further / back through VWAP", p => fmt(per[p].vwap.further120) + " / " + fmt(per[p].vwap.through120)],
+    ["Side of VWAP at 07:00 UK = rest of day", p => fmt(per[p].vwap.london) + "%"],
+    ["Asia: day closes beyond first-broken side", p => fmt(per[p].asia.beyond) + "%"],
+    ["Asia: opposite side also taken after first break", p => fmt(per[p].asia.opp) + "%"],
+    ["PDH touched / rejects first at touch", p => fmt(per[p].levels.PDH.touch) + " / " + fmt(per[p].levels.PDH.reject)],
+    ["PDL touched / rejects first at touch", p => fmt(per[p].levels.PDL.touch) + " / " + fmt(per[p].levels.PDL.reject)],
+    ["PWH touched / PWL touched", p => fmt(per[p].levels.PWH.touch) + " / " + fmt(per[p].levels.PWL.touch)],
+    ["First 15m candle: rest of day same direction / its opposite extreme holds", p => fmt(per[p].mtf["15m"].same) + " / " + fmt(per[p].mtf["15m"].hold)],
+    ["First 60m candle: same direction / opposite extreme holds", p => fmt(per[p].mtf["60m"].same) + " / " + fmt(per[p].mtf["60m"].hold)],
+    ["First 4h candle: same direction / opposite extreme holds", p => fmt(per[p].mtf["240m"].same) + " / " + fmt(per[p].mtf["240m"].hold)],
+  ];
+  document.getElementById("tbl-rest").innerHTML = `<thead><tr><th>Measure (% of days unless noted)</th>${P.map(p=>`<th class="num">${L[p]}</th>`).join("")}</tr></thead><tbody>` + rows.map(([lab, f]) => `<tr><td>${lab}</td>${P.map(p=>`<td class="num">${f(p)}</td>`).join("")}</tr>`).join("") + "</tbody>";
+})();
+</script>
