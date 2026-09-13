@@ -2,7 +2,7 @@
 
 Analysis suite for the retail "daily open" playbook (23:00 UK broker open) on gold, Nasdaq and EURUSD, built on the 1-minute parquet files in `VolRangeForecaster/data/m1/`.
 
-Read `FINDINGS.md` first. Per-instrument reports are in `out/<pair>/REPORT.md`, the raw numbers in `out/<pair>/results.json`, and the cross-instrument table in `out/SUMMARY.md`.
+Read `FINDINGS.md` first, then `BACKTEST.md` for what happens when the one statistically-stable finding (#5) is run through the real backtest pipeline (real cost model, real position sizing, real per-pair tearsheet). Per-instrument reports are in `out/<pair>/REPORT.md`, the raw numbers in `out/<pair>/results.json`, and the cross-instrument table in `out/SUMMARY.md`.
 
 ```
 pip3 install pandas pyarrow scipy numpy
