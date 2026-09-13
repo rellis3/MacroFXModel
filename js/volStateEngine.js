@@ -28,9 +28,10 @@
  *     `pathEfficiency`/`touchProbability`/`amihudIlliquidity` onto
  *     `computeSessionMetrics()`'s return at the call site (function body
  *     untouched).
- *   - `medianTimeToTouch` and `costRatio` are called at the /api/vol-forecast/
- *     intelligence aggregation layer (server.js), not per-instrument, since
- *     they combine forecast fields with a caller-supplied distance/spread.
+ *   - `medianTimeToTouch`, `costRatio`, and `carryToVol` are called at the
+ *     /api/vol-forecast/intelligence aggregation layer (server.js), not
+ *     per-instrument, since they combine forecast fields with a
+ *     caller-supplied distance/spread/rate-differential.
  */
 
 // ── 1. Volatility acceleration (ΔVol, Δ²Vol) ────────────────────────────────
@@ -295,4 +296,23 @@ export function amihudIlliquidity(bars, rangePct) {
     totalVolume,
     illiquidity: Math.round((rangePct / totalVolume) * 1e6) / 1e6,
   };
+}
+
+// ── 11. Carry-to-vol (annualised rate differential ÷ annualised vol) ───────
+// The classic risk-adjusted carry read: a fat rate differential on a wild
+// pair is a worse trade than a smaller differential on a calm one, and raw
+// carry alone can't be compared across pairs the way carry-to-vol can.
+// Both inputs are caller-supplied and already annualised — carryPct from
+// js/rateDiffEngine.js's per-currency latestRate (base minus quote,
+// e.g. EUR's short rate minus USD's for EUR/USD), volAnnualPct the SAME
+// annualised vol_annual the forecaster already reports. No fetching, no
+// FX-specific logic here — caller decides which instruments even have a
+// currency-pair carry leg (this returns null gracefully for anything else,
+// same as every other guard in this file, but it's the caller's job not to
+// ask this function about Gold or an equity index in the first place).
+// Carry itself can be legitimately NEGATIVE (a negative-carry pair) —
+// unlike costRatio, this does not reject negative input.
+export function carryToVol(carryPct, volAnnualPct) {
+  if (!(volAnnualPct > 0) || carryPct == null || !Number.isFinite(carryPct)) return null;
+  return Math.round((carryPct / volAnnualPct) * 100) / 100;
 }

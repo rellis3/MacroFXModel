@@ -119,6 +119,7 @@
     <a href="#vi-ranking">Cross-Asset Ranking</a>
     <a href="#vi-regime">Regime State</a>
     <a href="#vi-cost">Cost & Normalisation</a>
+    <a href="#vi-carry">Carry-to-Vol</a>
     <a href="#vi-clock">Vol as Clock</a>
     <a href="#vi-vrp">Implied vs Realised</a>
     <a href="#vi-liquidity">Liquidity</a>
@@ -149,6 +150,12 @@
     <h2>Cost & Normalisation <span class="vi-q">§1</span></h2>
     <p class="vi-section-note">Spread as a fraction of today's expected daily range — a pair whose spread eats 8% of its typical day is a different instrument to trade than one where it's 0.5%, regardless of the setup. Sorted cheapest first.</p>
     <div id="viCostTable"><div class="vi-empty">Loading…</div></div>
+  </section>
+
+  <section class="vi-section" id="vi-carry">
+    <h2>Carry-to-Vol <span class="vi-q">§6</span></h2>
+    <p class="vi-section-note">Annualised short-rate differential (base currency's policy rate minus quote's — js/rateDiffEngine.js, already live for the macro scorecard) divided by annualised vol. Raw carry alone can't be compared across pairs; a fat differential on a wild pair is a worse risk-adjusted trade than a smaller one on a calm pair. FX pairs only — Gold and the indices have no currency-pair carry leg. Sorted highest positive carry-to-vol first.</p>
+    <div id="viCarryTable"><div class="vi-empty">Loading…</div></div>
   </section>
 
   <section class="vi-section" id="vi-clock">
@@ -259,6 +266,7 @@ async function loadIntelligence() {
     renderVolRanking(data);
     renderRegimeTable(data);
     renderCostTable(data);
+    renderCarryTable(data);
     renderClockTable(data);
     renderVrp(data);
     renderIvTermTable(data);
@@ -315,6 +323,26 @@ function renderCostTable(data) {
       <div class="vi-bar-val">${(f.cost_ratio * 100).toFixed(2)}%</div>
     </div>`;
   }).join('') + `<div class="vi-section-note" style="margin-top:8px">Cost ratio = spread ÷ today's daily σ, as a %. Widest bar in this list = ${(maxRatio * 100).toFixed(2)}%.</div>`;
+}
+
+function renderCarryTable(data) {
+  const el = $('viCarryTable');
+  const rows = Object.entries(data.instruments ?? {})
+    .filter(([, f]) => f.carry_to_vol != null)
+    .sort((a, b) => b[1].carry_to_vol - a[1].carry_to_vol);
+  if (!rows.length) { el.innerHTML = '<div class="vi-empty">No live carry data right now (needs the rate-differential feed refreshed — /api/rate-diff/refresh — plus a computed daily σ for each pair).</div>'; return; }
+  const maxAbs = Math.max(...rows.map(([, f]) => Math.abs(f.carry_to_vol)), 0.01);
+  el.innerHTML = rows.map(([name, f]) => {
+    const w = Math.max(2, Math.min(100, (Math.abs(f.carry_to_vol) / maxAbs) * 100));
+    const positive = f.carry_to_vol >= 0;
+    const ppTxt = f.carry_pct != null ? `${f.carry_pct >= 0 ? '+' : ''}${fmtNum(f.carry_pct, 2)}pp` : '';
+    return `
+    <div class="vi-bar-row">
+      <div class="vi-bar-label">${name}</div>
+      <div class="vi-bar-track"><div class="vi-bar-fill ${positive ? 'cheap' : 'expensive'}" style="width:${w}%"></div></div>
+      <div class="vi-bar-val" style="width:84px">${ppTxt} / ${positive ? '+' : ''}${fmtNum(f.carry_to_vol, 2)}</div>
+    </div>`;
+  }).join('') + '<div class="vi-section-note" style="margin-top:8px">Value shown: annualised rate differential (pp) / carry-to-vol ratio. Green = positive carry-to-vol; red = negative.</div>';
 }
 
 function renderClockTable(data) {

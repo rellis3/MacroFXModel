@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import {
   volAcceleration, termStructureState, ivPremium, pathEfficiency,
   touchProbability, costRatio, medianTimeToTouch, rangeEfficiencyRatio,
-  realisedSkew, amihudIlliquidity,
+  realisedSkew, amihudIlliquidity, carryToVol,
 } from './volStateEngine.js';
 
 let failures = 0;
@@ -247,6 +247,19 @@ console.log('volStateEngine');
   ok('empty bars array → nulls, no throw', amihudIlliquidity([], 0.9).totalVolume === null);
   ok('non-array bars → nulls, no throw', amihudIlliquidity(null, 0.9).totalVolume === null);
   ok('negative rangePct → nulls, no throw', amihudIlliquidity(bars, -1).totalVolume === null);
+}
+
+// ── carryToVol ────────────────────────────────────────────────────────────
+{
+  ok('positive carry, ratio computed', carryToVol(3, 6) === 0.5, JSON.stringify(carryToVol(3, 6)));
+  ok('negative carry (a genuine negative-carry pair) is NOT rejected, unlike costRatio',
+     carryToVol(-2, 8) === -0.25, JSON.stringify(carryToVol(-2, 8)));
+  ok('zero carry → ratio 0, not null', carryToVol(0, 8) === 0);
+  ok('zero vol → null, no throw (no div/0)', carryToVol(3, 0) === null);
+  ok('negative vol (invalid) → null, no throw', carryToVol(3, -8) === null);
+  ok('null carry → null, no throw', carryToVol(null, 8) === null);
+  ok('NaN carry → null, no throw', carryToVol(NaN, 8) === null);
+  ok('undefined carry → null, no throw', carryToVol(undefined, 8) === null);
 }
 
 console.log(failures === 0 ? `\nAll tests passed.` : `\n${failures} FAILURE(S)`);

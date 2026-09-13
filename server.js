@@ -37,7 +37,7 @@ import { appendRows as vmAppendRows, readRange as vmReadRange, buildRow as vmBui
 import { renderVumanchuMtfPNG, renderVumanchuMtfSVG, vumanchuMtfData, vumanchuMtfCaption, TF_SECONDS as VM_TF_SECONDS, AGREE_MODES as VM_AGREE_MODES } from './js/vumanchuMtf.js';
 import { renderMtfStackPNG, mtfStackData, mtfStackCaption, SERIES_SOURCES as MTF_SERIES_SOURCES, MAX_TFS as MTF_MAX_TFS, MIN_BARS as MTF_STACK_MIN_BARS } from './js/mtfStack.js';
 import { startVolForecastScheduler, forecastState, runVolForecast, getSessionStatus, ensureOhlcCache, INSTRUMENTS as VOL_INSTRUMENTS } from './js/volForecastScheduler.js';
-import { costRatio, medianTimeToTouch, ivPremium } from './js/volStateEngine.js';
+import { costRatio, medianTimeToTouch, ivPremium, carryToVol } from './js/volStateEngine.js';
 import { yangZhangVolSeries, hv20Series, ewmaVolSeries, computeForecast as _computeForecast } from './js/volForecast.js';
 import { getSessionStats, computeSessionStats, isSessionStatsComputing } from './js/sessionStats.js';
 import { computeHitRates, isHitRatesComputing, HR_INSTRUMENTS } from './js/hitRateBackfill.js';
@@ -17744,11 +17744,12 @@ app.get('/api/vol-forecast/intelligence', async (_req, res) => {
       return res.json({ ok: false, reason: 'no_forecast', instruments: {} });
     }
 
-    const [spreadsResult, sessionResult, cvolResult, oiStoreRaw] = await Promise.all([
+    const [spreadsResult, sessionResult, cvolResult, oiStoreRaw, rateDiffRaw] = await Promise.all([
       _fetchSpreads(VOL_INSTRUMENTS.map(i => i.oandaInstrument)).catch(() => ({ ok: false, pairs: {} })),
       getSessionStatus().catch(() => null),
       _getCvol().catch(() => null),
       kv.get('oi_store').catch(() => null),
+      kv.get(_RATE_DIFF_KV).catch(() => null),
     ]);
 
     // IV term structure (all-day-automated CME QuikStrike 'settles' sweep) and
@@ -17760,6 +17761,18 @@ app.get('/api/vol-forecast/intelligence', async (_req, res) => {
     try { if (oiStoreRaw) oiStore = JSON.parse(oiStoreRaw).data ?? JSON.parse(oiStoreRaw); } catch { /* degrades to empty */ }
     const _normPair = x => String(x).toLowerCase().replace(/[/_]/g, '');
     const oiKeys = Object.keys(oiStore);
+
+    // Carry — per-currency short-rate reads already live in rate_diff_v1
+    // (js/rateDiffEngine.js, refreshed daily via /api/rate-diff/refresh; same
+    // KV entry that route already serves). Pair-level carry = base ccy's
+    // latestRate minus quote ccy's, via the SAME _ccyPairFrom() splitter the
+    // AI-analysis prompt's macro-scorecard join already uses — feed it
+    // cfg.oandaInstrument ('EUR_USD'), not cfg.name ('EURUSD'): the latter has
+    // no separator for _ccyPairFrom to split on. FX pairs only — Gold/indices
+    // have no currency-pair carry leg, _ccyPairFrom returns null for those
+    // and the loop below skips them, not a fabricated zero.
+    let rateDiffByCcy = {};
+    try { if (rateDiffRaw) rateDiffByCcy = JSON.parse(rateDiffRaw).byCcy ?? {}; } catch { /* degrades to empty */ }
 
     const instruments = {};
     const volRanking = [];
@@ -17812,6 +17825,20 @@ app.get('/api/vol-forecast/intelligence', async (_req, res) => {
       const ivTermStructure = oiInst?.ivTermStructure ?? null;   // automated nightly ('settles' view, on by default)
       const riskReversal    = oiInst?.riskReversal ?? null;      // only present when the per-strike chain was captured that day
 
+      // Carry-to-vol — FX pairs only (see the Promise.all comment above for
+      // why oandaInstrument, not cfg.name).
+      let carryPct = null, carryVsVol = null;
+      const ccPair = _ccyPairFrom(cfg.oandaInstrument);
+      if (ccPair) {
+        const [base, quote] = ccPair;
+        const baseRate = rateDiffByCcy[base]?.latestRate;
+        const quoteRate = rateDiffByCcy[quote]?.latestRate;
+        if (Number.isFinite(baseRate) && Number.isFinite(quoteRate)) {
+          carryPct = Math.round((baseRate - quoteRate) * 100) / 100;
+          carryVsVol = carryToVol(carryPct, fc.vol_annual);
+        }
+      }
+
       instruments[cfg.name] = {
         assetClass: cfg.assetClass,
         vol_annual: fc.vol_annual ?? null,
@@ -17828,6 +17855,8 @@ app.get('/api/vol-forecast/intelligence', async (_req, res) => {
         vrp,
         iv_term_structure: ivTermStructure,
         risk_reversal: riskReversal,
+        carry_pct: carryPct,
+        carry_to_vol: carryVsVol,
         session: sess ? {
           hl: sess.hl ?? null, oc: sess.oc ?? null, oc_rem: sess.oc_rem ?? null,
           bar_count: sess.bar_count ?? null,   // ~hours elapsed since the London-midnight anchor — the "elapsed" side of the time-budget read
@@ -17856,9 +17885,12 @@ app.get('/api/vol-forecast/intelligence', async (_req, res) => {
       // every night (not an optional extra) and is already ivTermStructure()-
       // computed onto oi_store. Fixed to read that, per-pair, above instead
       // of leaving it here unclaimed.
+      // carry_to_vol removed from this list — corrected and wired above,
+      // reading js/rateDiffEngine.js's already-live per-currency short rates
+      // (rate_diff_v1 KV) rather than needing carryEngine.js's basket-backtest
+      // engine at all.
       not_available: {
-        jump_diffusion: 'Needs proper high-frequency (bipower variation) methodology on the M1 cache — a separate backtest-style study, not a live payload field.',
-        carry_to_vol: 'carryEngine.js is a basket-backtest engine, not a live per-pair carry number — needs new wiring before it can rank pairs live.',
+        jump_diffusion: 'A whole-session jump-share decomposition needs proper high-frequency (bipower variation) methodology on the M1 cache — a separate backtest-style study, not a live payload field. (Note: a narrower, touch-conditional version already exists — volatilityExhaustion/median_follow_conditioned.py\'s _jump_frac — but it answers a different question and is scoped to a pre-touch window, not a full session.)',
       },
     };
 
