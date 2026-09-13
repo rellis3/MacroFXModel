@@ -3888,6 +3888,30 @@ python volatility_bot/volatility_bot.py --live --url &lt;dashboard-url&gt;</pre>
       </div>
     </div>
 
+    <!-- Live vs backtest drift -->
+    <div class="card" style="padding:0">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 6px">
+        <span style="font-size:12px;font-weight:600;color:#38bdf8">Live vs Backtest Drift</span>
+        <span class="bot-banner-sub" style="margin:0" title="Every Sunday 01:00 London, each of the past week's closed trades is independently re-decided from the exact touch + as-of-that-day honest book, and compared to what was actually traded. 100% direction match is expected — anything less means live and backtest have genuinely diverged, not just margin naturally thinning near the threshold.">weekly automated check — rebuilds each trade's decision from scratch and compares direction, not a self-report</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace">
+          <thead>
+            <tr style="background:var(--s2);color:var(--text3)">
+              <th style="padding:6px 10px;text-align:left">Week ending</th>
+              <th style="padding:6px 10px;text-align:right">Checked</th>
+              <th style="padding:6px 10px;text-align:right">Match rate</th>
+              <th style="padding:6px 10px;text-align:right">Mismatches</th>
+              <th style="padding:6px 10px;text-align:right">Thin margin/no vote</th>
+            </tr>
+          </thead>
+          <tbody id="vb2DriftBody">
+            <tr><td colspan="5" style="padding:12px;text-align:center;color:var(--text3)">No drift audit run yet — first check fires the next Sunday 01:00 London</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- Today's levels & live decisions -->
     <div class="card" style="padding:0">
       <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 6px">
