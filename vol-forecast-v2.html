@@ -417,19 +417,17 @@
 .vf-ccy-pill.neut { opacity: .55; }
 .vf-ccy-score { font-size: 9px; font-weight: 400; opacity: .75; }
 
-/* Volatility-state strip (additive — new panel, does not touch the CCY strip
-   above or any per-pair chart). Reuses the CCY strip's container/label
-   classes; only the pill color variants are new. */
-.vf-vol-pill { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-family: 'DM Mono', monospace; font-weight: 600; padding: 3px 8px; border-radius: 4px; border: 1px solid var(--border); background: var(--s2); color: var(--text2); white-space: nowrap; cursor: pointer; }
-.vf-vol-pill.expand   { background: var(--amber-bg, #92400e18); border-color: var(--amber-bd, #92400e55); color: var(--amber, #fbbf24); }
-.vf-vol-pill.compress { background: var(--blue-bg, #1e3a8a18);  border-color: var(--blue-bd, #1e3a8a55);  color: var(--blue, #60a5fa); }
-.vf-vol-pill.neut     { opacity: .6; }
-.vf-vol-pill.active   { outline: 2px solid var(--text); outline-offset: 1px; }
-/* Tap-to-reveal detail line — mobile has no hover, so `title` alone is
-   useless on a touchscreen; this is the actual detail surface on any
-   device. flex-basis:100% forces it onto its own row inside the strip's
-   wrapping flex layout regardless of screen width. */
-.vf-vol-detail { flex-basis: 100%; white-space: pre-line; font-size: 10.5px; line-height: 1.5; font-family: 'DM Mono', monospace; color: var(--text3); padding-top: 6px; margin-top: 2px; border-top: 1px solid var(--border); }
+/* Per-card volatility-state chip (v2 — moved off the standalone bottom strip
+   into the card itself; see js `_volStateCardChipHtml`). Deliberately does
+   NOT repeat term structure / expansion-compression: `.vf-cone-*`/trendChip
+   above (near line ~1908, `trendDir`/`trendLabel`) already shows that from
+   the same cone_5d-vs-vol_pct comparison — a second copy here would just be
+   two badges disagreeing at the threshold edges. Only the genuinely new
+   metrics (vol acceleration, path efficiency, theoretical touch prob) live
+   here. Tap-to-reveal, not hover — `title` alone is inert on a touchscreen. */
+.vf-vol-card-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 10px; font-family: 'DM Mono', monospace; font-weight: 600; color: var(--text2); background: var(--s2); border: 1px solid var(--border); border-radius: 4px; padding: 2px 7px; margin-top: 5px; cursor: pointer; }
+.vf-vol-card-chip:active { outline: 2px solid var(--text); outline-offset: 1px; }
+.vf-vol-card-detail { white-space: pre-line; font-size: 10px; line-height: 1.5; font-family: 'DM Mono', monospace; color: var(--text3); margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--border); }
 
 .vf-levels-view { margin-top: 14px; background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--r); overflow: hidden; }
 .vf-levels-nav { display: flex; align-items: center; gap: 10px; padding: 9px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
@@ -862,14 +860,6 @@
   <span style="font-size:9px;font-family:'DM Mono',monospace;color:var(--text3);margin-left:auto" id="vfCcyNote"></span>
 </div>
 
-<!-- VOLATILITY STATE STRIP (additive — reads only new vol_accel/term_structure/
-     vol_state fields already carried on the existing forecast+session payloads;
-     does not read from or alter the per-pair cards/charts above) -->
-<div class="vf-ccy-strip" id="vfVolStateStrip" style="display:none">
-  <span class="vf-ccy-label">Volatility State</span>
-  <span id="vfVolStatePills">—</span>
-  <div class="vf-vol-detail" id="vfVolStateDetail">Tap a pair for detail · touch % is theoretical, not backtested</div>
-</div>
 
 <!-- WEEKLY PANEL -->
 <div class="v2-panel" id="vfWeeklyPanel" style="display:none">
@@ -1372,6 +1362,7 @@ let _activeTab        = 'today';
 document.addEventListener('DOMContentLoaded', () => {
   document.body.classList.toggle('dark', true);
   _loadPosSettings();
+  _bindVolStateCardTaps();   // once — delegated, survives renderV2Grid's periodic full-grid rebuilds
   loadForecast();
   loadHistory();
   loadSession();
@@ -1653,7 +1644,6 @@ function _reloadForecastView(date) {
     }
     if (levelsViewActive) renderLevelsTable();
     renderCurrencyStrength(currentWeekly);
-    renderVolStatePanel(forecast, session);   // additive — see fn header
     // renderV2Grid already calls loadAllM5Charts — no duplicate call needed
     return forecast;
   });
@@ -2167,7 +2157,8 @@ function buildSessionHtml(name, s, data) {
       </div>
     </div>
     ${_breakoutProbHtml(s, fc)}
-    ${s.outlook ? `<div class="vf-outlook">${s.outlook}</div>` : ''}`;
+    ${s.outlook ? `<div class="vf-outlook">${s.outlook}</div>` : ''}
+    ${_volStateCardChipHtml(name, s)}`;
 }
 
 function barRow(label, value, maxValue, fillClass) {
@@ -2915,80 +2906,73 @@ function renderCurrencyStrength(weeklyData) {
   if (strip) strip.style.display='';
 }
 
-// ── Volatility State (additive, 2026-09-13) ─────────────────────────────
+// ── Volatility State (v2 — in-card, 2026-09-13) ──────────────────────────
 // Reads js/volStateEngine.js's fields, which already ride along on the
-// existing forecast/session payloads (vol_accel/term_structure per
-// instrument on `forecastData.instruments[name]`; vol_state.path_efficiency/
-// vol_state.touch_prob per instrument on `sessionData.instruments[name]`).
-// Purely additive: does not read `f`/`s` fields any other renderer depends
-// on, does not touch buildV2Card or the per-pair chart/archive code, and
-// silently no-ops if a pair lacks the new fields (older cached forecasts).
-// Per-pair detail text, keyed by instrument name — populated fresh on every
-// render, read by the tap handler below. Module-scope so both functions see
-// the same object without threading it through the DOM.
+// existing forecast/session payloads: vol_accel per instrument on
+// `currentForecast.instruments[name]`; vol_state.path_efficiency/
+// vol_state.touch_prob per instrument on the session payload's `s`.
+//
+// v1 was a standalone strip below all ~30 cards (bad on mobile — required
+// scrolling past the whole grid) using hover-only `title` for detail (worse
+// on mobile — inert on a touchscreen). v2 fixes both: the chip lives inside
+// buildSessionHtml(), so it renders wherever the card already does, and it's
+// tap-to-reveal via a delegated click handler on #vfGrid (persists across
+// renderV2Grid's periodic full-grid rebuilds, which per-chip listeners would
+// not). #vfGrid itself is only touched by having listeners attached to it —
+// its own children/innerHTML are managed entirely by renderV2Grid/buildV2Card,
+// untouched here.
+//
+// Deliberately DOES NOT repeat term_structure/expansion-compression: the
+// card's own header already shows this via `trendDir`/`trendLabel` (~line
+// 1908, same cone_5d-vs-vol_pct comparison) — re-showing it here under a
+// different threshold would be two indicators quietly disagreeing at the
+// edges. Only the metrics with no existing equivalent are shown.
+//
+// Purely additive: does not read any `f`/`s` field another renderer depends
+// on, does not modify buildV2Card or the per-pair chart/archive code, and
+// silently omits the chip if a pair lacks the new fields (e.g. a forecast
+// cached before this shipped) — no error, no blank chip.
 let _volStateDetails = {};
 
-function renderVolStatePanel(forecastData, sessionData) {
-  const strip = document.getElementById('vfVolStateStrip');
-  const container = document.getElementById('vfVolStatePills');
-  if (!strip || !container) return;
-  if (!forecastData?.instruments) { strip.style.display = 'none'; return; }
+function _volStateCardChipHtml(name, s) {
+  const f  = currentForecast?.instruments?.[name] ?? null;
+  const va = f?.vol_accel ?? null;
+  const vs = s?.vol_state ?? {};
+  if (!va && vs.path_efficiency?.efficiency == null && vs.touch_prob?.oc_median == null) return '';
 
-  const sessInst = sessionData?.instruments ?? {};
   const pct = v => v == null ? null : Math.round(v * 100);
-  _volStateDetails = {};
+  const effPct   = pct(vs.path_efficiency?.efficiency);
+  const touchPct = pct(vs.touch_prob?.oc_median);
+  const vaArrow  = (va?.label === 'accelerating' || va?.label === 'rising')   ? '▲'
+                 : (va?.label === 'decelerating' || va?.label === 'falling') ? '▼' : '·';
+  const vaPct    = va?.d1 != null ? `${va.d1*100 >= 0 ? '+' : ''}${(va.d1*100).toFixed(1)}%` : null;
 
-  const chips = Object.entries(forecastData.instruments).map(([name, f]) => {
-    if (!f || f.error) return '';
-    const ts = f.term_structure ?? null;
-    const va = f.vol_accel ?? null;
-    if (!ts && !va) return '';   // no volStateEngine fields on this forecast (e.g. stale cache) — skip, don't render blanks
+  _volStateDetails[name] = [
+    `${name} — volatility state (descriptive, additive; not used by the live bot)`,
+    `Vol acceleration (rate of change of vol itself): ${va?.label ?? 'n/a'}${vaPct ? ` (ΔVol ${vaPct})` : ''}`,
+    `Path efficiency today: ${effPct != null ? effPct + '%' : '—'} (100% = straight trend, 0% = round-trip back to open — finer than the direction% above, which can't tell a trend day from a chop day with the same range)`,
+    `Touch prob. to O-C median, remainder of session: ${touchPct != null ? touchPct + '%' : '—'} — theoretical Brownian estimate, NOT a backtested signal`,
+    `(Expanding/compressing is already shown above in the header badge — not repeated here.)`,
+  ].join('\n');
 
-    const vs      = sessInst[name]?.vol_state ?? {};
-    const effPct  = pct(vs.path_efficiency?.efficiency);
-    const touchPct = pct(vs.touch_prob?.oc_median);
-
-    const tsLabel = ts?.label ?? 'insufficient_data';
-    const tsCls   = tsLabel === 'expanding' ? 'expand' : tsLabel === 'compressing' ? 'compress' : 'neut';
-    const tsTxt   = tsLabel === 'expanding' ? 'EXP' : tsLabel === 'compressing' ? 'COMP' : '–';
-    const vaArrow = (va?.label === 'accelerating' || va?.label === 'rising')   ? '▲'
-                  : (va?.label === 'decelerating' || va?.label === 'falling') ? '▼' : '·';
-
-    _volStateDetails[name] = [
-      `${name} — volatility state (descriptive, additive; not used by the live bot)`,
-      `Term structure: ${tsLabel}${ts?.slope != null ? ` (5d-vs-long slope ${ts.slope})` : ''}`,
-      `Vol acceleration: ${va?.label ?? 'n/a'}${va?.d1 != null ? ` (ΔVol ${(va.d1*100).toFixed(1)}%)` : ''}`,
-      `Path efficiency today: ${effPct != null ? effPct + '%' : '—'} (100% = straight trend, 0% = round-trip back to open)`,
-      `Touch prob. to O-C median, remainder of session: ${touchPct != null ? touchPct + '%' : '—'} — theoretical Brownian estimate, NOT a backtested signal`,
-    ].join('\n');
-
-    // title= kept as a bonus for desktop hover; data-pair is what the tap
-    // handler below actually uses, since `title` alone is inert on touch.
-    return `<span class="vf-vol-pill ${tsCls}" data-pair="${name}" title="${_volStateDetails[name].replace(/"/g,'&quot;')}">${name} ${tsTxt}${vaArrow}`
-         + `${effPct != null ? ` · eff ${effPct}%` : ''}${touchPct != null ? ` · P${touchPct}%` : ''}</span>`;
-  }).filter(Boolean).join('');
-
-  if (!chips) { strip.style.display = 'none'; return; }
-  container.innerHTML = chips;
-  strip.style.display = '';
-
-  // Bind the tap/click handler once (delegated, so re-renders that replace
-  // innerHTML don't need it re-attached) rather than per-pill.
-  if (!container.dataset.volTapBound) {
-    container.addEventListener('click', _onVolStatePillTap);
-    container.dataset.volTapBound = '1';
-  }
+  return `
+    <span class="vf-vol-card-chip" data-pair="${name}" title="${_volStateDetails[name].replace(/"/g,'&quot;')}">${vaArrow}${vaPct ? ` ${vaPct}` : ''}${effPct != null ? ` · eff ${effPct}%` : ''}${touchPct != null ? ` · P${touchPct}%` : ''}</span>
+    <div class="vf-vol-card-detail" id="volstate-detail-${name}" style="display:none"></div>`;
 }
 
-function _onVolStatePillTap(e) {
-  const pill = e.target.closest('.vf-vol-pill');
-  const box  = document.getElementById('vfVolStateDetail');
-  if (!pill || !box) return;
-  const detail = _volStateDetails[pill.dataset.pair];
-  if (!detail) return;
-  box.textContent = detail;
-  document.querySelectorAll('#vfVolStatePills .vf-vol-pill.active').forEach(p => p.classList.remove('active'));
-  pill.classList.add('active');
+function _bindVolStateCardTaps() {
+  const grid = document.getElementById('vfGrid');
+  if (!grid || grid.dataset.volTapBound) return;
+  grid.addEventListener('click', e => {
+    const chip = e.target.closest('.vf-vol-card-chip');
+    if (!chip) return;
+    const box = document.getElementById(`volstate-detail-${chip.dataset.pair}`);
+    if (!box) return;
+    const showing = box.style.display !== 'none';
+    box.style.display = showing ? 'none' : '';
+    if (!showing) box.textContent = _volStateDetails[chip.dataset.pair] ?? '';
+  });
+  grid.dataset.volTapBound = '1';
 }
 
 // ── Levels View ────────────────────────────────────────────────────────────────
