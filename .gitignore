@@ -213,3 +213,5 @@ analysis/output/line-touch-response/
 # fully regenerable from the M1 cache in one run. The small summaries it feeds
 # (m1_gap_audit_summary.json, jump_diffusion_summary.json) ARE tracked.
 volatilityExhaustion/jump_diffusion_daily.csv
+volatilityExhaustion/jump_detect_lm.csv
+volatilityExhaustion/daily_bars.csv

@@ -530,6 +530,9 @@ alongside.
 - `jump_diffusion_daily.py` — Phase-12 whole-session jump share per (pair, date) at 1-min AND 5-min sampling, gap-aware, causal → `jump_diffusion_daily.csv` (regenerable, gitignored). Run `python3 jump_diffusion_daily.py` (`--selftest` for the synthetic checks incl. the gap-trap test).
 - `jump_event_validation.py` — Phase-12 pre-registered kill condition: jump share vs `calendar_events.csv` Major events, IS/OOS, per asset class — **PASS 12/12**; `--timing` adds the release-clustering mechanism check (34-45× lift). Run `python3 jump_event_validation.py`.
 - `jump_diffusion_forecast.py` — Phase-12 the payoff test: diffusion-only σ vs raw YZ σ on QLIKE (`js/volForecastBench.js`'s own loss/proxy/split) — **NULL**, with diagnostics confirming the economic premise (β_jump = −0.33, t = −10.3, 23/26 instruments) despite the null. Run `python3 jump_diffusion_forecast.py`.
+- `jump_detect_lm.py` — Phase-13 Lee-Mykland per-return jump detection (5-min continuous grid, K=270, α=1%/day, diurnal-adjusted) → `jump_detect_lm.csv`: jump count/intensity/sign/size, realised semivariance, quarticity. Run `python3 jump_detect_lm.py` (`--selftest` for the diurnal-trap check).
+- `jump_regime_book.py` — Phase-13b the descriptive regime book: distributions, clustering (with an RV positive control), asymmetry persistence, next-day behaviour split by character vs level, the frequency×size map, and the ratio-artifact control. Run `python3 jump_regime_book.py`.
+- `jump_exhaustion.py` — Phase-13c conditions `measure_extremes.py`'s fresh-extreme race (reused verbatim) on the causal pre-extreme jump share, within distance bands — **NULL** (jump-driven extremes exhaust the same as smooth ones). Run `python3 jump_exhaustion.py`.
 - `summary.json` / `forecast_vs_fade_summary.json` / `jump_diffusion_summary.json` — headline stats.
 
 ## Phase 12 — whole-session JUMP/DIFFUSION decomposition: the measurement is REAL, the forecast payoff is NULL (`m1_gap_audit.py`, `jump_diffusion_daily.py`, `jump_event_validation.py`, `jump_diffusion_forecast.py`)
@@ -635,3 +638,131 @@ rather than a daily aggregate, which the 34-45× timing lift suggests would be c
 Run `python3 m1_gap_audit.py` → `python3 jump_diffusion_daily.py` (add `--selftest` for the
 synthetic checks) → `python3 jump_event_validation.py` (add `--timing`) →
 `python3 jump_diffusion_forecast.py`.
+
+## Phase 13 — the JUMP REGIME BOOK: jumps describe VOLATILITY, never DIRECTION (`jump_detect_lm.py`, `jump_regime_book.py`, `jump_exhaustion.py`)
+
+Phase 12 measured *how much* of a session's variance was jumpy. It structurally cannot say
+how MANY jumps, how BIG, in which DIRECTION, or whether jumps CLUSTER — a single daily ratio
+has no per-return resolution. Phase 13 adds a detector that flags individual jump TIMES
+(Lee-Mykland 2008) and then runs the descriptive regime questions off it. **Measurement only
+— no trade, no cost, no signal anywhere in this phase.**
+
+### The detector, and two bugs worth recording
+`jump_detect_lm.py` scales each 5-min return by a local bipower volatility over the K=270
+returns before it, and thresholds with the Gumbel critical value so α is a stated
+**per-day false-positive rate** (1%), not a hand-picked "3×ATR". Two things were wrong in
+the first draft and were caught by plotting the time-of-day profile of the detections:
+
+1. **The window was resetting every day.** A London session holds only ~288 5-min returns,
+   so K=270 never filled until ~11 hours in — the detector was structurally blind before
+   ~10:00 UTC and could not flag a London-open jump. The grid now runs **continuously per
+   instrument**, with detections assigned back to London days afterwards.
+2. **No diurnal adjustment.** Intraday FX volatility has a ~3× cycle (04:00 UTC ≈0.5× the
+   daily mean, 14:00 UTC ≈1.8×), so LM was flagging the US session simply because that is
+   when the market is busy. Returns are now deseasonalised by a per-time-of-day factor
+   (Boudt-Croux-Laurent), fitted on IS only. The unit test is blunt about why this matters:
+   on pure diffusion with a 3× busy window, the raw detector flags **1,020 false jumps**;
+   deseasonalised, **3**.
+
+Fixing both collapsed the cross-instrument spread from 28-67% of days carrying a jump to a
+tight **46-60%** — the spread *was* the artifact. Validation against `calendar_events.csv`:
+jump days are 1.15-1.31× more likely on Major-event days, and ~24-34% of each day's FIRST
+detected jump lands within ±5min of a release (~1% of session minutes qualify).
+
+### 1. What the numbers actually look like
+Worth stating because intuition about them tends to run high — a "jump-dominated" FX day is
+nothing like a 40% variance share:
+
+| | P50 | P75 | P90 | P95 | P99 |
+|---|---|---|---|---|---|
+| bipower jump share (fx_major) | 0.044 | 0.100 | 0.165 | 0.220 | 0.373 |
+| LM jump-variance share (fx_major) | 0.023 | 0.156 | 0.326 | 0.451 | 0.631 |
+| LM jumps per day | 1 | 2 | 3 | 4 | 6 |
+| largest jump, abs % (fx_major) | 0.050 | 0.168 | 0.279 | 0.373 | 0.647 |
+
+~51% of FX days carry ≥1 detected jump (pure-diffusion null ~1%). Gold's jumps are ~3×
+larger than FX's (P50 largest jump 0.141% vs 0.050%) — the asset classes are genuinely
+different and are never pooled here.
+
+### 2. Jumps do NOT cluster — volatility does
+The pre-registered null was P(jump tomorrow | jump today) = P(jump tomorrow).
+
+| series | fx_major | fx_cross | metal |
+|---|---|---|---|
+| bipower jump share, rank corr | +0.032 | +0.026 | +0.082 |
+| bipower jump share, P(hi\|hi) lift | 1.03 | 1.05 | 1.14 |
+| **realised variance (positive control), rank corr** | **+0.716** | **+0.772** | **+0.693** |
+| **realised variance, P(hi\|hi) lift** | **2.40** | **2.54** | **2.70** |
+
+The positive control is the point: the same method sees **enormous** clustering in
+volatility (lift 2.4-2.7×) and **almost none** in jumps (1.03-1.14×). The LM detector reads
+marginally *anti*-clustered (lift 0.93-0.98) but its trailing yardstick is inflated by
+yesterday's jump, so that sign is inside the noise between the two estimators and **no
+jump-clustering direction is claimed** — only that jumps are close to day-to-day independent
+while vol is strongly persistent. There is no "shock regime" in the sense of one jump
+raising tomorrow's jump odds.
+
+### 3. Jump asymmetry does not persist
+Mean asymmetry is mildly negative for gold in both halves (−0.084 IS / −0.068 OOS), but FX
+disagrees across halves (fx_cross −0.004 IS vs −0.070 OOS) and the **day-over-day AR(1)
+correlation is ≈0 everywhere (−0.03 to +0.03)**. Up-vs-down jump variance is a description
+of today with no memory — it cannot be a state variable.
+
+### 4. Direction: NULL, in every cell of every split
+Next-day continuation (does tomorrow's close-to-open keep today's sign) sits at **44-52% in
+every single cell** — across high/low RV, jump-driven/smooth, and all four quadrants of the
+frequency×size map, both halves, all three asset classes. Nothing here forecasts direction.
+This is the same wall Phases 6-11 hit from other angles: *magnitude/state → environment →
+execution, never direction*.
+
+### 5. The real finding: jump-driven volatility mean-reverts faster
+Holding the volatility LEVEL fixed and splitting only on character, next-day RV decay
+(RV_{t+1}/RV_t) separates cleanly and replicates 6/6:
+
+| | fx_major IS | fx_major OOS | fx_cross IS | fx_cross OOS | metal IS | metal OOS |
+|---|---|---|---|---|---|---|
+| HIGH RV, **jump-driven** | 0.825 | 0.784 | 0.813 | 0.778 | 0.749 | 0.781 |
+| HIGH RV, **smooth** | 0.926 | 0.965 | 0.939 | 0.946 | 0.868 | 0.932 |
+
+The frequency×size map orders it monotonically (fx_major OOS): *normal* 1.115 → *choppy*
+0.969 → *shock event* 0.827 → *stress regime* 0.660.
+
+**Artifact-controlled.** A decay RATIO falls mechanically when its denominator is larger,
+and jump-driven days do have larger RV_t — so the ordering was refitted as
+`log RV_{t+1} = a + b·log RV_t + c·jump_share_t`. The jump coefficient stays firmly
+negative at a matched volatility level: **c = −0.99 to −1.47, t = −4.2 to −31.1, 6/6 cells**.
+Economically, ~10pp more jump share is followed by ~11% lower RV tomorrow. This is Phase 12's
+β_jump = −0.33 seen from a second, independent angle, with the level controlled.
+
+### 6. Jump-adjusted exhaustion: NULL
+The most direct test for this folder. Reusing `measure_extremes.py`'s race **verbatim**
+(θ=0.25, H=60, MIN_EXT=0.4, 50/50 split — EURUSD's mean hold reproduces the published 0.519
+exactly), each fresh extreme is conditioned on the bipower jump share of the session **up to
+that bar only** (causal), *within* distance bands so the conditioner cannot be credited for
+distance. Pre-registered: a jump-driven extreme is a repricing rather than exhaustion, so
+hold rate should FALL as pre-extreme jump share rises.
+
+**It does not.** Pooled jumpy-minus-smooth hold difference: **+0.0031 IS / −0.0008 OOS**,
+with the sign agreeing on 5/8 instruments but pointing in *different directions* across them
+(USDCAD −0.029 OOS, USDCHF +0.034 OOS). Cells hold 1,000-3,700 observations each, so a 3pp
+effect would have been visible. **At the same distance from the open, a jump-driven extreme
+exhausts no differently from a smooth one.** How price got there does not change whether the
+extreme holds.
+
+### What Phase 13 settles
+**Jumps are a volatility-regime variable, not a direction or exhaustion variable.** They are
+near-independent day to day (unlike vol), they carry no persistent directional skew, they do
+not shift the exhaustion odds at a level, and they do not predict continuation. What they DO
+carry is genuine, replicated information about **how fast volatility decays** — which is the
+one channel Phase 12's forecast test was also pointing at.
+
+That makes the HAR-RV-CJ follow-up flagged in Phase 12 the clear next step rather than a
+throwaway: c ≈ −1.2 at t ≈ −20 on next-day log RV, with today's level controlled, is real
+signal that Phase 12's multiplicative-strip-on-a-30-day-window construction simply could not
+express. **Caveat, stated plainly: a regression coefficient is not a forecast improvement.**
+Phase 12 ran a genuine out-of-sample QLIKE competition and the strip lost; Phase 13's c is a
+fitted coefficient, and turning it into a forecast that beats YZ out-of-sample is exactly the
+step that remains unproven.
+
+Run `python3 jump_detect_lm.py` (`--selftest` for the diurnal-trap and causality checks) →
+`python3 jump_regime_book.py` → `python3 jump_exhaustion.py`.

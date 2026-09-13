@@ -7276,3 +7276,63 @@ Phase 3 tested and failed.
 NULL (Phase 3), pre-registered and reported.** Best follow-up if revisited: a HAR-RV-CJ
 forecaster using the continuous/jump split as **separate regressors** — β_jump = −0.33
 at t = −10.3 is real signal the multiplicative-strip construction cannot express.
+
+### 1at. Lee-Mykland jump detector + jump regime book (2026-09-13) — jumps describe VOLATILITY, not DIRECTION
+
+**Brick:** `volatilityExhaustion/jump_detect_lm.py` → `lm_threshold(n, alpha)`,
+`local_sigma(r, K)`, `periodicity(r, tod, n_is)`, `instrument_grid(m1)` (Tier 1, pure).
+Consumers: `jump_regime_book.py`, `jump_exhaustion.py`.
+
+Extends §1as (which registered the bipower `bipower`/`jump_fraction` brick) from a daily
+RATIO to per-return jump TIMES, so count/size/sign/clustering become answerable at all.
+Lee-Mykland (2008): scale each 5-min return by a trailing bipower local vol (K=270),
+threshold at the Gumbel critical value so **α is a stated per-day false-positive rate (1%)**
+rather than a hand-picked ATR multiple.
+
+**Two bugs caught by plotting the time-of-day profile of the detections — both would have
+driven every downstream result, and neither was visible in the aggregate numbers:**
+1. **The local-vol window was resetting per day.** A London session holds ~288 5-min
+   returns, so K=270 never filled until ~11h in: the detector was structurally blind before
+   ~10:00 UTC. Grid now runs continuously per instrument, detections mapped back to days.
+2. **No diurnal adjustment.** FX intraday vol has a ~3× cycle, so LM was flagging the US
+   session for being busy. Returns are deseasonalised per time-of-day (Boudt-Croux-Laurent),
+   fitted IS-only. Unit test: on pure diffusion with a 3× busy window the raw detector flags
+   **1,020 false jumps**, deseasonalised **3**.
+   Fixing both collapsed the cross-instrument spread from 28-67% of days carrying a jump to
+   **46-60%** — the spread WAS the artifact. Validated against `calendar_events.csv`: jump
+   days 1.15-1.31× more likely on Major-event days; 24-34% of first jumps land within ±5min
+   of a release (~1% of minutes qualify).
+
+**Findings (full writeup: `volatilityExhaustion/README.md` Phase 13). Descriptive only —
+no trade, no cost, no signal anywhere in this phase.**
+- **Jumps do NOT cluster.** Bipower-share rank autocorr +0.03/+0.03/+0.08, P(hi|hi) lift
+  1.03-1.14. The **positive control is the point**: the same computation on realised
+  variance gives rank autocorr **+0.69 to +0.77, lift 2.40-2.70**. Vol clusters hard; jumps
+  barely do. (The LM detector reads marginally anti-clustered, 0.93-0.98, but its trailing
+  yardstick is inflated by yesterday's jump, so that sign is inside the noise between the
+  two estimators and **no jump-clustering direction is claimed**.) There is no "shock
+  regime" in the sense of one jump raising tomorrow's jump odds.
+- **Jump asymmetry has no memory.** Day-over-day AR(1) ≈0 (−0.03..+0.03) in every class and
+  half; gold mildly down-skewed in level, FX inconsistent across halves.
+- **Direction: NULL in every cell.** Next-day continuation 44-52% across high/low RV,
+  jump-driven/smooth, and all four frequency×size quadrants, both halves, all classes. Same
+  wall Phases 6-11 hit: *magnitude/state → environment → execution, never direction*.
+- **THE REAL FINDING — jump-driven volatility mean-reverts faster.** At matched RV level,
+  HIGH-RV jump-driven days decay to 0.78-0.83 of today's RV vs 0.93-0.97 for smooth ones,
+  6/6 cells. The frequency×size map orders monotonically (normal 1.115 → choppy 0.969 →
+  shock 0.827 → stress 0.660). **Artifact-controlled**: a decay ratio falls mechanically
+  when the denominator is bigger, so it was refit as `log RV_{t+1} = a + b·log RV_t +
+  c·jump_share_t` — **c = −0.99..−1.47, t = −4.2..−31.1, 6/6**. ~10pp more jump share → ~11%
+  lower RV tomorrow. This is §1as's β_jump = −0.33 from a second independent angle.
+- **Jump-adjusted exhaustion: NULL.** `jump_exhaustion.py` reuses `measure_extremes.py`'s
+  race **verbatim** (EURUSD mean hold reproduces the published 0.519 exactly) and conditions
+  each fresh extreme on the causal pre-extreme jump share, *within* distance bands. Pooled
+  jumpy-minus-smooth hold difference **+0.0031 IS / −0.0008 OOS**, signs pointing different
+  ways across instruments, on cells of 1,000-3,700. At the same distance from the open, a
+  jump-driven extreme exhausts no differently from a smooth one.
+
+**Status: ✅ bricks registered · detector validated against known events · one replicated
+finding (vol-decay), three clean nulls (clustering, direction, exhaustion).** The
+HAR-RV-CJ follow-up flagged in §1as is now the clear next step rather than a throwaway —
+with the caveat, stated plainly, that **a regression coefficient is not a forecast
+improvement**: §1as ran a genuine OOS QLIKE competition and the strip lost.
