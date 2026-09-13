@@ -4329,6 +4329,34 @@ python volatility_bot_v2/volatility_bot_v2.py --live --url &lt;dashboard-url&gt;
       </div>
     </div>
 
+    <!-- Entry-slippage correlation — real fill vs the plan's modeled entry -->
+    <div class="card" style="padding:0">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 6px;flex-wrap:wrap">
+        <span style="font-size:12px;font-weight:600;color:#f59e0b">Backtest vs Live — Entry Slippage</span>
+        <button onclick="loadFaEntrySlippage()" style="background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text3);padding:3px 10px;font-size:11px;cursor:pointer;margin-left:auto">↺ Refresh</button>
+        <span class="bot-banner-sub" style="margin:0;flex-basis:100%">every real fill is a market order at whatever price the market's AT when it executes — SL/TP stay fixed at the plan's modeled level. This measures the gap directly (last 30 days), split by decision type since a FOLLOW touch fires because price is already moving, so it's expected to slip worse than a FADE touch.</span>
+      </div>
+      <div id="faSlipKpi" style="padding:0 16px 10px;font-size:12px"></div>
+      <div style="overflow-x:auto;max-height:400px;overflow-y:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace">
+          <thead>
+            <tr style="background:var(--s2);color:var(--text3)">
+              <th style="padding:6px 10px;text-align:left">Time (UTC)</th>
+              <th style="padding:6px 10px;text-align:left">Pair</th>
+              <th style="padding:6px 10px;text-align:left">Ladder</th>
+              <th style="padding:6px 10px;text-align:left">Decision</th>
+              <th style="padding:6px 10px;text-align:right">Planned entry</th>
+              <th style="padding:6px 10px;text-align:right">Real fill</th>
+              <th style="padding:6px 10px;text-align:right">Slip</th>
+            </tr>
+          </thead>
+          <tbody id="faSlipBody">
+            <tr><td colspan="7" style="padding:14px;text-align:center;color:var(--text3)">loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- Decision audit log -->
     <div class="card" style="padding:0">
       <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 6px">

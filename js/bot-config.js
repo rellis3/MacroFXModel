@@ -2,6 +2,7 @@
 // and the Backtest/MT5 bot (backtestsystem_live_config KV).
 
 import { createLevelChart } from './levelChart.js';
+import { getPipSize } from './utils.js';
 
 // ── Telegram bot defaults ─────────────────────────────────────────────────────
 
@@ -4647,6 +4648,7 @@ async function loadFaLiveStatus() {
   loadFaAllLines();
   loadFaDecisionLog();
   loadFaFrequencyCheck();
+  loadFaEntrySlippage();
 }
 
 // Frozen reference: the offline backtest's OWN daily trade-count
@@ -4823,6 +4825,133 @@ async function loadFaDecisionLog() {
     }).join('') + (events.length > 300 ? `<tr><td colspan="9" style="padding:8px;text-align:center;color:var(--text3)">…${events.length - 300} older event(s) not shown</td></tr>` : '');
   } catch (e) { body.innerHTML = `<tr><td colspan="9" style="padding:14px;text-align:center;color:var(--text3)">${e.message}</td></tr>`; }
 }
+
+// ── Entry-slippage correlation (2026-09-13) — direct owner ask, after a code
+// review of fib_atlas_bot.py + pylego/broker/{mt5,paper}.py found the actual
+// mechanism behind the live/backtest gap already on record (85.7% backtest
+// win rate vs 39.6% live, bot-audit.html): both brokers fill entries as a
+// real MARKET order at whatever price prevails the instant the order
+// executes (Mt5Broker: tick.ask/bid; PaperBroker: mid ± half-spread), NEVER
+// at the plan's modeled rung price — but SL/TP are sent as the plan's FIXED
+// absolute price levels, computed assuming a perfect fill exactly at the
+// rung. Between RearmTracker.touch() firing and the order actually landing
+// there's a real gap (tick_secs=3 + processing/network latency), and for a
+// FOLLOW decision specifically, price is disproportionately likely to keep
+// moving the same direction during that gap (a follow touch fires BECAUSE
+// price is already moving that way) — so the real fill lands worse than
+// modeled, shrinking the effective reward distance and growing the
+// effective risk distance versus the backtest's idealized instant fill.
+// This card measures that directly from real data instead of asserting it:
+// matches each real fill (comment carries the SAME dedupeTag the plan-time
+// "entered" decision-log event recorded) back to the entry/sl/tp THAT
+// decision logged, and reports the real slip in pips, split by decision
+// type (follow vs fade) since the mechanism above predicts follow should
+// slip worse than fade. This is per-bot, deliberately NOT wired into any
+// cross-bot terminal (bot-audit.html) yet — owner wants this pattern proven
+// out on each bot individually first before centralizing it.
+const FA_SLIP_LOOKBACK_DAYS = 30;
+// A trade's own fill and the decision-log "entered" event that caused it
+// are the SAME code path in fib_atlas_bot.py's tick loop (broker.enter()
+// called immediately after _record_decision(..., "entered", ...)), so a
+// real match should land within a couple of ticks -- 5 minutes is a
+// generous allowance for clock skew/API lag, not a sign either timestamp is
+// untrustworthy.
+const FA_SLIP_MATCH_WINDOW_SECS = 300;
+
+function _faMatchDecision(trade, decisions) {
+  // tz_offset_sec (pylego/broker/clock.py convention, project_broker_clock_
+  // offset.md): MT5 stamps time_open on the BROKER's clock (+2/+3h), paper
+  // stamps true UTC (offset 0) -- normalize to UTC before comparing against
+  // the decision log's own `t` (Python time.time(), always true UTC).
+  const openUtc = (trade.time_open ?? 0) - (trade.tz_offset_sec ?? 0);
+  let best = null, bestDelta = Infinity;
+  for (const d of decisions) {
+    if (d.status !== 'entered') continue;
+    if (d.pair !== trade.key) continue;
+    if (d.ladder !== trade.ladder) continue;
+    if (d.side !== trade.side) continue;
+    if (trade.rung != null && d.rung != null && Number(d.rung) !== Number(trade.rung)) continue;
+    const delta = openUtc - (d.t ?? 0);
+    if (delta < 0 || delta > FA_SLIP_MATCH_WINDOW_SECS) continue;
+    if (delta < bestDelta) { bestDelta = delta; best = d; }
+  }
+  return best;
+}
+
+async function loadFaEntrySlippage() {
+  const body = document.getElementById('faSlipBody');
+  const kpiEl = document.getElementById('faSlipKpi');
+  if (!body) return;
+  body.innerHTML = '<tr><td colspan="7" style="padding:14px;text-align:center;color:var(--text3)">loading…</td></tr>';
+  try {
+    const to = new Date().toISOString().slice(0, 10);
+    const from = new Date(Date.now() - FA_SLIP_LOOKBACK_DAYS * 86400_000).toISOString().slice(0, 10);
+    const r = await fetch(`/api/fib-atlas-bot/trade-log?from=${from}&to=${to}`);
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'fetch failed');
+    const rows = [];
+    let unmatched = 0;
+    for (const t of j.trades || []) {
+      if (t.ladder == null || t.side == null) continue;   // comment didn't decode -- can't correlate
+      const d = _faMatchDecision(t, j.decisions || []);
+      if (!d) { unmatched++; continue; }
+      if (d.entry == null || t.open_price == null) continue;
+      let pip;
+      try { pip = getPipSize(t.symbol); } catch { continue; }
+      if (!(pip > 0)) continue;
+      const slipPips = ((t.direction === 'BUY' ? (t.open_price - d.entry) : (d.entry - t.open_price)) / pip);
+      rows.push({ ...t, decision: d.decision, margin: d.margin, plannedEntry: d.entry, slipPips });
+    }
+
+    if (!rows.length) {
+      const why = unmatched ? `${unmatched} trade(s) found but none matched a decision-log entry within ${FA_SLIP_MATCH_WINDOW_SECS}s (decision logging may have started after these fills)` : 'No matched fills in the last ' + FA_SLIP_LOOKBACK_DAYS + ' days';
+      body.innerHTML = `<tr><td colspan="7" style="padding:14px;text-align:center;color:var(--text3)">${why}</td></tr>`;
+      if (kpiEl) kpiEl.innerHTML = '';
+      return;
+    }
+
+    const byDecision = {};
+    for (const row of rows) (byDecision[row.decision || '?'] ??= []).push(row.slipPips);
+    const summarize = xs => {
+      const n = xs.length;
+      const mean = xs.reduce((a, b) => a + b, 0) / n;
+      const sorted = [...xs].sort((a, b) => a - b);
+      return { n, mean, min: sorted[0], max: sorted[n - 1] };
+    };
+    const allSlip = rows.map(r => r.slipPips);
+    const overall = summarize(allSlip);
+    const kpiCell = (label, s) => `<div>
+        ${label} avg slip: <b style="color:${s.mean > 0 ? 'var(--red)' : s.mean < 0 ? 'var(--green)' : 'var(--text3)'}">${s.mean >= 0 ? '+' : ''}${s.mean.toFixed(2)}p</b>
+        <span style="color:var(--text3)">(n=${s.n}, range ${s.min.toFixed(1)} to ${s.max.toFixed(1)}p)</span>
+      </div>`;
+    const cells = [kpiCell('All', overall)];
+    for (const [dec, xs] of Object.entries(byDecision)) cells.push(kpiCell(dec, summarize(xs)));
+    if (kpiEl) {
+      kpiEl.innerHTML = `<div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:6px">${cells.join('')}</div>
+        <div style="color:var(--text3)">positive = real fill worse than the plan's modeled entry (paid more on a buy, sold for less on a sell) · ${unmatched} fill(s) had no matching decision-log entry within ${FA_SLIP_MATCH_WINDOW_SECS}s, excluded above</div>`;
+    }
+
+    rows.sort((a, b) => (b.time_open ?? 0) - (a.time_open ?? 0));
+    body.innerHTML = rows.slice(0, 200).map(row => {
+      const ts = row.time_open ? new Date((row.time_open - (row.tz_offset_sec ?? 0)) * 1000).toISOString().slice(0, 19).replace('T', ' ') : '—';
+      const decColor = row.decision === 'follow' ? 'var(--blue,#60a5fa)' : row.decision === 'fade' ? 'var(--amber,#e0a93b)' : 'var(--text3)';
+      const slipColor = row.slipPips > 0 ? 'var(--red)' : row.slipPips < 0 ? 'var(--green)' : 'var(--text3)';
+      return `<tr>
+        <td style="padding:5px 10px;text-align:left;color:var(--text3)">${ts}</td>
+        <td style="padding:5px 10px;font-weight:600;text-align:left">${(row.key || row.symbol || '?').toUpperCase()}</td>
+        <td style="padding:5px 10px;text-align:left;color:${row.ladder === 'asia' ? '#38bdf8' : '#4fd1c5'}">${row.ladder === 'asia' ? 'Asia' : 'Monday'}</td>
+        <td style="padding:5px 10px;text-align:left;color:${decColor}">${row.decision || '—'}</td>
+        <td style="padding:5px 10px;text-align:right">${row.plannedEntry != null ? (+row.plannedEntry).toFixed(5) : '—'}</td>
+        <td style="padding:5px 10px;text-align:right">${row.open_price != null ? (+row.open_price).toFixed(5) : '—'}</td>
+        <td style="padding:5px 10px;text-align:right;color:${slipColor}">${row.slipPips >= 0 ? '+' : ''}${row.slipPips.toFixed(2)}p</td>
+      </tr>`;
+    }).join('') + (rows.length > 200 ? `<tr><td colspan="7" style="padding:8px;text-align:center;color:var(--text3)">…${rows.length - 200} older matched fill(s) not shown</td></tr>` : '');
+  } catch (e) {
+    body.innerHTML = `<tr><td colspan="7" style="padding:14px;text-align:center;color:var(--text3)">${e.message}</td></tr>`;
+    if (kpiEl) kpiEl.innerHTML = '';
+  }
+}
+window.loadFaEntrySlippage = loadFaEntrySlippage;
 
 // Backtest data refresh (2026-09-10) — fires the SAME runOne() the nightly
 // reference-engine-rebuild job uses, via the existing async-job endpoints

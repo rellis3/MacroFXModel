@@ -6549,8 +6549,17 @@ async function _fetchBookSnapshot(instrument) {
   if (!r.ok) throw new Error(`OANDA ${r.status}`);
   return (await r.json()).positionBook;
 }
+// OANDA serves a byte-identical frozen book from Friday 21:00 UTC to Sunday 21:00
+// UTC, with the snapshot time still advancing on the grid. Recording it stores 144
+// copies of Friday's close and rolls them into "Saturday" and "Sunday" daily rows
+// that no study should see. Same rule the backfill fetcher uses (is_market_shut).
+function _bookMarketShut(now = new Date()) {
+  const dow = now.getUTCDay(), h = now.getUTCHours();
+  return (dow === 5 && h >= 21) || dow === 6 || (dow === 0 && h < 21);
+}
 async function _recordBookHistory() {
   if (!process.env.OANDA_KEY) return { skipped: 'no OANDA_KEY' };
+  if (_bookMarketShut()) return { skipped: 'market shut — the book is frozen' };
   if (_bookHistRunning) return { skipped: 'running' };
   _bookHistRunning = true;
   try {
