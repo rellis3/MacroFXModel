@@ -32,6 +32,24 @@
 .vi-subhead { font-size: 12px; font-weight: 600; margin: 18px 0 2px; padding-top: 14px; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
 .vi-subhead .vi-q { font-size: 8.5px; color: var(--text3); border-color: var(--border); background: var(--s2); text-transform: none; font-weight: 500; }
 
+/* "How to read this" — native <details>, works with a tap on any device with
+   zero custom JS. Deliberately NOT relying on title="" hover tooltips for
+   anything load-bearing here — that mistake already cost a rebuild once
+   this session on a different page, on a phone with no hover at all. */
+.vi-learn { background: var(--s2); border: 1px solid var(--border); border-radius: var(--r); margin-bottom: 14px; }
+.vi-learn summary { cursor: pointer; padding: 8px 12px; font-size: 11.5px; font-weight: 600; color: var(--text2); list-style: none; display: flex; align-items: center; gap: 6px; }
+.vi-learn summary::-webkit-details-marker { display: none; }
+.vi-learn summary::before { content: '▸'; color: var(--blue); transition: transform .15s; font-size: 10px; }
+.vi-learn[open] summary::before { transform: rotate(90deg); }
+.vi-learn-body { padding: 2px 14px 12px; font-size: 12px; line-height: 1.65; color: var(--text2); }
+.vi-learn-body p { margin: 0 0 8px; }
+.vi-learn-body p:last-child { margin-bottom: 0; }
+.vi-learn-body b { color: var(--text); }
+.vi-learn-body .vi-ex { background: var(--s1); border-left: 3px solid var(--blue-bd); border-radius: 0 6px 6px 0; padding: 6px 10px; margin: 8px 0; font-size: 11.5px; color: var(--text3); }
+.vi-learn-body dl { margin: 6px 0 0; }
+.vi-learn-body dt { color: var(--text); font-weight: 600; font-family: 'DM Mono', monospace; font-size: 11px; margin-top: 8px; }
+.vi-learn-body dd { margin: 2px 0 0; color: var(--text3); }
+
 .vi-scroll { overflow-x: auto; }
 .vi-table { width: 100%; border-collapse: collapse; font-family: 'DM Mono', monospace; font-size: 11.5px; min-width: 640px; }
 .vi-table th { text-align: left; font-size: 9.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text3); padding: 6px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
@@ -135,12 +153,41 @@
   <section class="vi-section" id="vi-ranking">
     <h2>Cross-Asset Volatility Ranking <span class="vi-q">§6 liquidity/regime</span></h2>
     <p class="vi-section-note">All instruments ranked by their 252-day volatility percentile, right now — is FX vol hot while equity vol is cold, or is this a systemic risk-off day where everything is elevated together?</p>
+    <details class="vi-learn" open>
+      <summary>How to read this</summary>
+      <div class="vi-learn-body">
+        <p>Each bar is a <b>percentile</b>, not a volatility level. A bar at 75th means "this pair's own volatility has been lower than today's on 75% of the last 252 trading days" — it says nothing about whether that pair moves 10 pips a day or 200. GBP/JPY is naturally choppier than EUR/CHF in absolute terms; this chart isn't comparing that. It's asking, separately for each instrument, "is <i>today</i> unusual for <i>this one</i>?"</p>
+        <p><b>What to look for is the shape of the whole list, not any single bar.</b> A handful of tall bars with everything else short means one or two isolated stories (a single central bank surprise, one earnings-driven index move). Most bars bunched up near the top together is a different, more systemic read — broad risk-off, a shared macro shock hitting everything at once.</p>
+        <p>Colour is just grouping (blue = FX, purple = index, amber = commodity) so you can spot at a glance whether the elevated pairs cluster in one asset class or spread across all of them — not a good/bad signal on its own.</p>
+      </div>
+    </details>
     <div id="viVolRanking"><div class="vi-empty">Loading…</div></div>
   </section>
 
   <section class="vi-section" id="vi-regime">
     <h2>Regime State — per pair <span class="vi-q">§4</span></h2>
     <p class="vi-section-note">Term structure (5d/21d/63d/252d percentile, tall amber bar = short-dated vol running hot vs its own long-run rank), vol-of-vol, vol acceleration (is the vol regime itself speeding up or slowing down), range efficiency (close-to-close vs range-based vol — trending/gap-driven vs choppy), and realised skew (does this pair fall faster than it rises, or the reverse).</p>
+    <details class="vi-learn" open>
+      <summary>How to read this</summary>
+      <div class="vi-learn-body">
+        <p>This is the densest table on the page — six different reads on the same question, "what kind of volatility regime is this pair in right now," from six different angles. Go column by column:</p>
+        <dl>
+          <dt>Term Structure</dt>
+          <dd>Compares this week's volatility rank to this pair's own yearly rank. <b>EXPANDING</b> = the last week is running hotter than the last year would suggest — vol is building, ranges may get bigger from here. <b>COMPRESSING</b> = the opposite, a quiet stretch relative to the year. The ⚡ bolt means the 1-month window agrees too, not just the 1-week — two windows pointing the same way is a steadier read than one that could just be a noisy few days.</dd>
+          <dt>Cone (5/21/63/252d)</dt>
+          <dd>The same idea as Term Structure, drawn as four tiny bars left to right (short window → long window). Taller bars on the <b>left</b> mean short-dated vol is running hot. Bars that shrink as you move left to right = compression; bars that grow = expansion. It's the visual version of the Term Structure badge — check them against each other as a sanity check.</dd>
+          <dt>Vol Accel</dt>
+          <dd>Not the level of volatility — its <b>rate of change</b>. ▲ means the vol regime is speeding up day over day, ▼ means it's slowing down. A pair can be EXPANDING (term structure) but decelerating (accel) at the same time — that would mean vol is elevated but the trend of getting worse has already turned.</dd>
+          <dt>Vol-of-Vol</dt>
+          <dd>How much the volatility estimate itself is jumping around, day to day. "Unstable" is a flag to treat every other number on this page for that pair with a wider margin of error today — the ground itself is shaky, not just the price.</dd>
+          <dt>Range Efficiency</dt>
+          <dd><b>TRENDING</b> (often gap-driven) means the day-to-day moves aren't being fully absorbed within each day's own high-low range — price is carrying through, sometimes via an overnight gap. <b>CHOPPY</b> means the opposite: big intraday ranges, but little net progress once the day closes — a lot of back-and-forth that goes nowhere.</dd>
+          <dt>Skew</dt>
+          <dd>Compares the size of this pair's down days to its up days. <b>Falls faster</b> means down moves have historically been bigger than up moves (common on JPY crosses) — a symmetric expectation is the wrong shape for a pair like that.</dd>
+        </dl>
+        <div class="vi-ex">None of these are trade signals on their own — they're all descriptive state, the same "context, not a trigger" framing as everywhere else on this page. The value is in combining them: EXPANDING + accelerating + Unstable vol-of-vol is a very different market than EXPANDING + decelerating + Stable vol-of-vol, even though the headline badge looks the same.</div>
+      </div>
+    </details>
     <div class="vi-scroll"><table class="vi-table" id="viRegimeTable"><thead><tr>
       <th>Pair</th><th>Term Structure</th><th>Cone (5/21/63/252d)</th><th>Vol Accel</th><th>Vol-of-Vol</th><th>Range Efficiency</th><th>Skew</th>
     </tr></thead><tbody><tr><td colspan="7" class="vi-empty">Loading…</td></tr></tbody></table></div>
@@ -149,12 +196,29 @@
   <section class="vi-section" id="vi-cost">
     <h2>Cost & Normalisation <span class="vi-q">§1</span></h2>
     <p class="vi-section-note">Spread as a fraction of today's expected daily range — a pair whose spread eats 8% of its typical day is a different instrument to trade than one where it's 0.5%, regardless of the setup. Sorted cheapest first.</p>
+    <details class="vi-learn" open>
+      <summary>How to read this</summary>
+      <div class="vi-learn-body">
+        <p>Every setup has a cost baked in before it's even right — the spread you pay to get in. What this chart does is put that cost in the SAME units as the pair's own volatility, instead of raw pips, so a 3-pip spread on a quiet pair and a 3-pip spread on a wild one show up as very different numbers.</p>
+        <p><b>Cost ratio = spread ÷ today's expected daily range.</b> A pair at 1% means the spread is a tiny fraction of what the pair typically moves in a day — cheap, the cost barely matters. A pair at 10%+ means a meaningful chunk of a "normal" day's move just went to the spread before price has done anything for you.</p>
+        <div class="vi-ex">Rule of thumb: under ~3% is cheap, over ~8% is genuinely expensive relative to the pair's own typical day. This isn't about which pair has the smallest spread in pips — a wide-pip pair with a huge daily range can still be "cheap" by this measure, and a tight-pip pair with a tiny range can still be "expensive."</div>
+      </div>
+    </details>
     <div id="viCostTable"><div class="vi-empty">Loading…</div></div>
   </section>
 
   <section class="vi-section" id="vi-carry">
     <h2>Carry-to-Vol <span class="vi-q">§6</span></h2>
     <p class="vi-section-note">Annualised short-rate differential (base currency's policy rate minus quote's — js/rateDiffEngine.js, already live for the macro scorecard) divided by annualised vol. Raw carry alone can't be compared across pairs; a fat differential on a wild pair is a worse risk-adjusted trade than a smaller one on a calm pair. FX pairs only — Gold and the indices have no currency-pair carry leg. Sorted highest positive carry-to-vol first.</p>
+    <details class="vi-learn" open>
+      <summary>How to read this</summary>
+      <div class="vi-learn-body">
+        <p>"Carry" is what you earn (or pay) just for HOLDING an FX position overnight, from the interest-rate gap between the two currencies — separate from anything price does. A pair name like GBP/CHF is really "long GBP, short CHF": if GBP's interest rate is higher than CHF's, being long that pair earns you the difference every day you hold it, on top of (or against) whatever the price does.</p>
+        <p>The two numbers shown per pair are: the raw <b>annualised rate differential</b> (pp = percentage points), and that differential <b>divided by the pair's own volatility</b> — the risk-adjusted version. A fat rate gap on a wild, unpredictable pair isn't actually a better carry trade than a smaller gap on a calm one, because the price swings can wipe out years of that daily interest in one bad session. Dividing by vol is what makes very different pairs comparable on the same scale.</p>
+        <div class="vi-ex">Worked example from real numbers on this page: <b>GBP/CHF at +3.75pp / +0.83</b> means GBP's policy rate is 3.75 percentage points above CHF's, and after adjusting for how volatile GBP/CHF actually is, that's +0.83 units of carry per unit of risk — the best risk-adjusted carry on the list. <b>EUR/GBP at −1.71pp / −0.74</b> means the opposite: EUR's rate is well below GBP's, so being long EUR/GBP actively PAYS carry rather than earning it — a genuine headwind sitting underneath any price-based reason to hold that trade.</div>
+        <p>Green bars are positive carry-to-vol (you're paid to hold); red bars are negative (you pay to hold). This says nothing about which way price is likely to move — it's a separate, additive-or-subtractive cost sitting underneath the trade.</p>
+      </div>
+    </details>
     <div id="viCarryTable"><div class="vi-empty">Loading…</div></div>
   </section>
 
@@ -164,6 +228,23 @@
       Median/P75 time (as a fraction of the trading day) a driftless model expects price to take reaching the O-C median target, given today's σ and however much distance remains right now — closed-form Brownian math, <b>not backtested</b>.
       "Stale" means more time has elapsed than the median first-passage time predicts and the level still hasn't been reached — the thesis may be running behind schedule on timing grounds, independent of P&amp;L.
     </p>
+    <details class="vi-learn" open>
+      <summary>How to read this</summary>
+      <div class="vi-learn-body">
+        <p>Every other number on this page describes DISTANCE — how far a pair might move. This section is the only one about TIME — how long that move typically takes. The maths behind it treats price as a random walk with no directional bias, and asks: "given today's volatility and however far this level still is, how long does a typical path take to get there?"</p>
+        <dl>
+          <dt>Elapsed</dt>
+          <dd>Hours since the London-midnight session anchor — simply how far into today's session you are.</dd>
+          <dt>Remaining to O-C med</dt>
+          <dd>How much further price needs to move, as a %, to reach the O-C median target for today — the same median line used elsewhere on this dashboard's forecast pages.</dd>
+          <dt>Median / P75 time-to-touch</dt>
+          <dd>Given that remaining distance and today's volatility, how long a <b>typical</b> path takes to cover it — median means half of all random-walk paths would have arrived by then, P75 means three-quarters would have. These numbers can look large (many hours, sometimes beyond the trading day) when the remaining distance is small relative to volatility — that's expected, not an error.</dd>
+          <dt>Status</dt>
+          <dd><b>ON SCHEDULE</b> just means less time has elapsed than the median path would take — nothing has gone wrong. <b>RUNNING LONG</b> means more time has passed than the median expects and the level still hasn't printed — worth noticing, but it is a timing observation, not a signal that price will or won't get there.</dd>
+        </dl>
+        <div class="vi-ex">This is closed-form probability theory, not a backtested pattern — it's the same maths behind option pricing's "probability of touch," applied here to your own forecaster's σ. Treat it as a reference line for pacing a trade thesis, never as a prediction of direction or profit.</div>
+      </div>
+    </details>
     <div class="vi-scroll"><table class="vi-table" id="viClockTable"><thead><tr>
       <th>Pair</th><th>Elapsed</th><th>Remaining to O-C med</th><th>Median time-to-touch</th><th>P75 time-to-touch</th><th>Status</th>
     </tr></thead><tbody><tr><td colspan="6" class="vi-empty">Loading…</td></tr></tbody></table></div>
@@ -172,6 +253,20 @@
   <section class="vi-section" id="vi-vrp">
     <h2>Tradable Asset — Implied vs Realised <span class="vi-q">§5</span></h2>
     <p class="vi-section-note">The variance risk premium: implied minus realised volatility. Positive means the options market is pricing in more movement than has actually been happening — selling that gap is the classic vol-carry trade. Single-index CBOE coverage (EVZ/GVZ) is EUR/USD and Gold only.</p>
+    <details class="vi-learn" open>
+      <summary>How to read this</summary>
+      <div class="vi-learn-body">
+        <p>Everywhere else on this page, volatility is measured FROM PRICE — it's a fact about what already happened. This section is different: it's a PRICE ITSELF, set by traders in the options market betting on what volatility will be in the future. The two numbers are genuinely different things:</p>
+        <dl>
+          <dt>Realised vol</dt>
+          <dd>What this pair has ACTUALLY been doing, measured from real price history — the same daily σ used everywhere else on this dashboard.</dd>
+          <dt>Implied vol</dt>
+          <dd>What the options market is CHARGING right now for future protection — literally the price of an option, converted into a volatility number. It reflects what traders expect AND how nervous they are, all in one figure.</dd>
+        </dl>
+        <div class="vi-ex"><b>IMPLIED RICH</b> means implied is running above realised — the options market expects (or is pricing in, out of fear) more movement than has actually been happening lately. That can mean a real event is coming, or it can just mean options are temporarily expensive — selling that gap is the classic "vol carry" trade professional options desks run. <b>IMPLIED CHEAP</b> is the reverse: the options market is underpricing what's actually going on, which can happen when a slow options market hasn't caught up to a recent pickup in realised movement.</div>
+        <p>This is a price, not a forecast — it doesn't predict which way the underlying pair will move, only how much options currently cost for protection against it moving at all.</p>
+      </div>
+    </details>
     <div id="viVrp"><div class="vi-empty">Loading…</div></div>
     <div class="vi-links">
       <a href="fx-vol-carry-backtest.html">FX/Gold Vol-Carry Backtester →</a>
@@ -181,18 +276,28 @@
 
     <h3 class="vi-subhead">IV Term Structure <span class="vi-q">from your CME OI capture</span></h3>
     <p class="vi-section-note">Per-expiry at-the-money implied vol, front expiry vs back expiry — from the automated nightly QuikStrike 'settles' capture (oi_recon/), already computed by <code>ivTermStructure()</code> in js/ivMetrics.js and reused here read-through, not recomputed. Inverted (front richer than back) usually means the market is pricing a near-term event; upward-sloping is the calmer default.</p>
+    <div class="vi-ex" style="margin-bottom:10px">This is the SAME implied-vs-realised idea above, but broken out by how far out the option expires. <b>Front</b> = the nearest-dated option (days away), <b>Back</b> = a much longer-dated one (often a year+). Longer-dated options normally cost a bit more simply because more time means more uncertainty to insure against — that's <b>UPWARD</b>, the calm/default shape. <b>INVERTED</b> (front pricier than back) is the unusual one: the near-term option costs MORE than the far one, which is what it looks like right before a known event — a near-dated option has to cover that specific date, a far one just averages over a much longer, calmer stretch.</div>
     <div class="vi-scroll"><table class="vi-table" id="viIvTermTable"><thead><tr>
       <th>Pair</th><th>Front (DTE / IV)</th><th>Back (DTE / IV)</th><th>Slope</th><th>Shape</th>
     </tr></thead><tbody><tr><td colspan="5" class="vi-empty">Loading…</td></tr></tbody></table></div>
 
     <h3 class="vi-subhead">Risk Reversal <span class="vi-q">put IV − call IV, ~3% OTM</span></h3>
     <p class="vi-section-note">Positive means puts are richer than calls — downside fear priced into the skew; negative means calls are richer — upside chase. This needs the per-strike option chain, which is <b>not captured automatically every night</b> (only the per-expiry settlement table is) — shown only for whichever pairs had that chain captured today.</p>
+    <div class="vi-ex" style="margin-bottom:10px">Puts protect against a fall, calls protect against a rise. If puts cost more than calls right now, more people are paying up to insure against a DROP than a rally — the options market's own read on which direction feels riskier, from real money changing hands, not a prediction of what will actually happen.</div>
     <div id="viRiskReversal"><div class="vi-empty">Loading…</div></div>
   </section>
 
   <section class="vi-section" id="vi-liquidity">
     <h2>Liquidity & Participation <span class="vi-q">§6</span></h2>
     <p class="vi-section-note">Range consumed per unit of OANDA tick volume so far today — an Amihud-style illiquidity read. Higher means today's range is being produced by relatively thin participation; lower means a heavier tape is behind the same range. Tick count, not real traded volume — magnitude only, and only meaningful relative to other pairs right now or this pair's own recent history, never as an absolute number.</p>
+    <details class="vi-learn" open>
+      <summary>How to read this</summary>
+      <div class="vi-learn-body">
+        <p>Two sessions can cover the exact same price range for very different reasons. A move made on a heavy, active tape — lots of participants trading — generally means more people agreed with the direction and it's more likely to hold. The same-sized move on a thin, quiet tape can mean far fewer participants were actually behind it, and it may be more easily reversed once real volume shows up.</p>
+        <p>This chart is <b>range ÷ participation</b> — a bigger bar means the range is being produced by relatively less activity, i.e. a thinner move. A smaller bar means a heavier tape sits behind the same-sized range.</p>
+        <div class="vi-ex">Important caveat, built into the number itself: OANDA reports <b>tick count</b>, not real traded volume (contracts, lots, or £ value) — it's a proxy for activity, not a direct measure of it. Treat this as relative only — comparing pairs against each other right now, or a pair against its own recent history — never as an absolute score, and never on its own without the rest of this page's context.</div>
+      </div>
+    </details>
     <div id="viLiquidity"><div class="vi-empty">Loading…</div></div>
   </section>
 
