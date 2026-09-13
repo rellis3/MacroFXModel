@@ -596,3 +596,70 @@ Retest conditioning - vol regime:
 | quiet | 8607 | 48.0% [47.0-49.1] n=8249 | 52.0% [50.9-53.0] n=8249 | -0.276 / 0.016 | -0.202 / 0.039 |
 | normal | 33295 | 48.7% [48.1-49.2] n=31590 | 51.3% [50.8-51.9] n=31590 | -0.211 / 0.005 | -0.179 / -0.007 |
 | heavy | 3519 | 50.2% [48.5-51.9] n=3315 | 49.8% [48.1-51.5] n=3315 | -0.119 / 0.028 | -0.19 / -0.048 |
+
+## 11. Merging signals for confidence (vote / confluence)
+
+Six signals - momentum from the open, side of session VWAP, Asia-range first-break direction, PDH/PDL touch reaction, the last resolved swing retest (section 10), and the last resolved fib-leg outcome (section 5) - each cast one vote at 13:00 UK, predicting the sign of the REST of the day (checkpoint to close, overlap-free with every signal). n=2,734 days with a defined target.
+
+Each signal alone:
+
+| signal | accuracy | n active |
+|---|---|---|
+| mom | 50.4% [48.5-52.3] n=2733 p=0.702 | 2733 |
+| vwap | 50.2% [48.3-52.1] n=2734 p=0.863 | 2734 |
+| asia | 51.1% [49.2-53.0] n=2611 p=0.256 | 2611 |
+| pdlvl | 49.6% [47.3-51.8] n=1848 p=0.727 | 1848 |
+| swing | 49.4% [47.5-51.3] n=2640 p=0.572 | 2640 |
+| fib | 50.9% [49.1-52.8] n=2733 p=0.339 | 2733 |
+
+Accuracy of the MAJORITY VOTE, by how many of the (up to 6) signals agree:
+
+| |net vote| | n | accuracy | sim (0.5 ADR stop, 1 ADR target) net/gross avg R (t of gross) |
+|---|---|---|---|
+| 1 | 298 | 54.7% [49.0-60.3] n=298 p=0.118 | 0.054 / 0.1 (t 1.79) |
+| 2 | 463 | 49.2% [44.7-53.8] n=463 p=0.78 | -0.057 / -0.01 (t -0.25) |
+| 3 | 340 | 52.1% [46.8-57.3] n=340 p=0.481 | -0.01 / 0.033 (t 0.67) |
+| 4 | 624 | 47.9% [44.0-51.8] n=624 p=0.317 | -0.071 / -0.026 (t -0.77) |
+| 5 | 291 | 51.2% [45.5-56.9] n=291 p=0.725 | 0.006 / 0.052 (t 0.95) |
+| 6 | 520 | 51.7% [47.4-56.0] n=520 p=0.456 | -0.06 / -0.016 (t -0.42) |
+
+IS/OOS accuracy at each vote strength:
+
+| |net vote| | IS | OOS |
+|---|---|---|
+| 1 | 52.3% [44.9-59.5] n=176 p=0.598 | 58.2% [49.3-66.6] n=122 p=0.085 |
+| 2 | 49.3% [43.5-55.1] n=282 p=0.858 | 49.2% [42.0-56.4] n=181 p=0.882 |
+| 3 | 52.8% [45.8-59.8] n=193 p=0.472 | 51.0% [43.0-59.0] n=147 p=0.869 |
+| 4 | 48.1% [43.3-53.0] n=399 p=0.483 | 47.6% [41.1-54.1] n=225 p=0.505 |
+| 5 | 51.7% [43.7-59.6] n=149 p=0.743 | 50.7% [42.6-58.8] n=142 p=0.933 |
+| 6 | 51.4% [46.0-56.8] n=323 p=0.656 | 52.3% [45.3-59.1] n=197 p=0.569 |
+
+Pairwise agreement between signals (P(same direction) when both fired - independent weak signals near 51% marginal accuracy would agree roughly 51% of the time by chance; anything well above that means the signals are reading the same underlying state, not confirming each other independently):
+
+| pair | n | agreement |
+|---|---|---|
+| mom-vwap | 2733 | 84.5% |
+| mom-asia | 2610 | 74.4% |
+| mom-pdlvl | 1847 | 77.7% |
+| mom-swing | 2639 | 67.8% |
+| mom-fib | 2732 | 62.6% |
+| vwap-asia | 2611 | 65.3% |
+| vwap-pdlvl | 1848 | 81.2% |
+| vwap-swing | 2640 | 72.8% |
+| vwap-fib | 2733 | 68.6% |
+| asia-pdlvl | 1765 | 64.7% |
+| asia-swing | 2526 | 56.8% |
+| asia-fib | 2610 | 51.6% |
+| pdlvl-swing | 1805 | 68.2% |
+| pdlvl-fib | 1848 | 63.2% |
+| swing-fib | 2640 | 66.4% |
+
+Best single signal alone: 51.1% [49.2-53.0] n=2611 p=0.256. Unanimous vote (all active signals agree) vs best single signal is the comparison that answers whether merging beats picking the best one.
+
+Vote strength restricted to volatility regime (does confluence just mean 'heavy-vol trend day'?):
+
+| regime, |net|>=3 | n | accuracy |
+|---|---|---|
+| quiet | 277 | 49.8% [44.0-55.7] n=277 p=1 |
+| normal | 1336 | 50.2% [47.5-52.9] n=1336 p=0.891 |
+| heavy | 141 | 52.5% [44.3-60.5] n=141 p=0.614 |

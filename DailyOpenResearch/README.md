@@ -23,6 +23,7 @@ Studies (each a function in its own module, all taking a `Days` object built wit
 | `studies_session.py` | Asia range into London/NY (breakout and sweep-fade sims); PDH/PDL/PDC/PWH/PWL touch and reaction |
 | `studies_mtf.py` | first candle of the day on 5m/15m/30m/1h/4h |
 | `studies_retest.py` | swing high/low retest later in the day: reject vs break, with sims (distinct from the fib study's immediate pullback) |
+| `studies_confluence.py` | merges 6 signals into one vote at a fixed checkpoint - does agreement raise accuracy, or are the signals just correlated with each other |
 | `news.py` | Major-impact event dates from `calendar_events.csv` for conditioning |
 
 Conventions: distances in ADR (trailing 20-day median daily range, strictly prior); R net of an assumed round-trip cost with gross alongside; Wilson 95% CIs; 60/40 IS/OOS by date; minimum 30 per reported cell.

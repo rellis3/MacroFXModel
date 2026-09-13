@@ -326,5 +326,49 @@ def write_report(res: dict, path: str):
         for g, r in rt[cond].items():
             w(f"| {g} | {r['n']} | {_ci(r['reject'])} | {_ci(r['break'])} | {r['sim_reject'].get('avg_r')} / {r['sim_reject'].get('avg_r_gross')} | {r['sim_break'].get('avg_r')} / {r['sim_break'].get('avg_r_gross')} |")
         w("")
+    # ---- confluence
+    cf = res["confluence"]
+    w("## 11. Merging signals for confidence (vote / confluence)")
+    w("")
+    w(f"Six signals - momentum from the open, side of session VWAP, Asia-range first-break direction, PDH/PDL touch reaction, the last resolved swing retest (section 10), and the last resolved fib-leg outcome (section 5) - each cast one vote at {cf['cutoff']}, predicting the sign of the REST of the day (checkpoint to close, overlap-free with every signal). n={cf['n_days']:,} days with a defined target.")
+    w("")
+    w("Each signal alone:")
+    w("")
+    w("| signal | accuracy | n active |")
+    w("|---|---|---|")
+    for k, v in cf["marginal"].items():
+        w(f"| {k} | {_ci(v)} | {v['n']} |")
+    w("")
+    w("Accuracy of the MAJORITY VOTE, by how many of the (up to 6) signals agree:")
+    w("")
+    w("| |net vote| | n | accuracy | sim (0.5 ADR stop, 1 ADR target) net/gross avg R (t of gross) |")
+    w("|---|---|---|---|")
+    for k, v in cf["accuracy_by_|net_vote|"].items():
+        s_ = v["sim_0.5ADRstop_1ADRtarget"]
+        w(f"| {k} | {v['n']} | {_ci(v['accuracy'])} | {s_.get('avg_r')} / {s_.get('avg_r_gross')} (t {s_.get('t_stat_gross')}) |")
+    w("")
+    w("IS/OOS accuracy at each vote strength:")
+    w("")
+    w("| |net vote| | IS | OOS |")
+    w("|---|---|---|")
+    for k, v in cf["accuracy_by_|net_vote|_is_oos"].items():
+        w(f"| {k} | {_ci(v['IS'])} | {_ci(v['OOS'])} |")
+    w("")
+    w("Pairwise agreement between signals (P(same direction) when both fired - independent weak signals near 51% marginal accuracy would agree roughly 51% of the time by chance; anything well above that means the signals are reading the same underlying state, not confirming each other independently):")
+    w("")
+    w("| pair | n | agreement |")
+    w("|---|---|---|")
+    for k, v in cf["pairwise_agreement_pct"].items():
+        w(f"| {k} | {v['n']} | {v['p']}% |")
+    w("")
+    w(f"Best single signal alone: {_ci(cf['single_best_signal_alone'])}. Unanimous vote (all active signals agree) vs best single signal is the comparison that answers whether merging beats picking the best one.")
+    w("")
+    w("Vote strength restricted to volatility regime (does confluence just mean 'heavy-vol trend day'?):")
+    w("")
+    w("| regime, |net|>=3 | n | accuracy |")
+    w("|---|---|---|")
+    for k, v in cf["by_vol_regime_strong_vote"].items():
+        w(f"| {k} | {v['n']} | {_ci(v['accuracy'])} |")
+    w("")
     with open(path, "w") as fh:
         fh.write("\n".join(L))

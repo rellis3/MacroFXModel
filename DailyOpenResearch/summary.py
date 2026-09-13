@@ -126,6 +126,17 @@ def main():
     is_ = {p: R[p]["retest"]["is_oos"] for p in PAIRS}
     w("| reject rate, in-sample / out-of-sample | " + " | ".join(f"{is_[p]['IS']['reject']['p']}% / {is_[p]['OOS']['reject']['p']}%" for p in PAIRS) + " |")
     w("")
+    w("## Merging signals for confidence (vote of 6 signals at 13:00 UK, predicting the rest of the day)")
+    w("| | " + " | ".join(R[p]["meta"]["label"] for p in PAIRS) + " |")
+    w("|---|" + "---|" * 3)
+    cf = {p: R[p]["confluence"] for p in PAIRS}
+    w("| best single signal alone | " + " | ".join(pct(cf[p]['single_best_signal_alone']) for p in PAIRS) + " |")
+    w("| unanimous vote (all active signals agree), n | " + " | ".join(str(cf[p]['accuracy_by_|net_vote|'].get('6', {}).get('n', 'n/a')) for p in PAIRS) + " |")
+    w("| unanimous vote accuracy | " + " | ".join(pct(cf[p]['accuracy_by_|net_vote|'].get('6', {}).get('accuracy')) for p in PAIRS) + " |")
+    w("| unanimous vote accuracy, IS / OOS | " + " | ".join(f"{cf[p]['accuracy_by_|net_vote|_is_oos'].get('6',{}).get('IS',{}).get('p','n/a')}% / {cf[p]['accuracy_by_|net_vote|_is_oos'].get('6',{}).get('OOS',{}).get('p','n/a')}%" for p in PAIRS) + " |")
+    w("| unanimous-vote sim: net / gross avg R (t of gross) | " + " | ".join(f"{r(cf[p]['accuracy_by_|net_vote|'].get('6',{}).get('sim_0.5ADRstop_1ADRtarget',{}))} / {r(cf[p]['accuracy_by_|net_vote|'].get('6',{}).get('sim_0.5ADRstop_1ADRtarget',{}),'avg_r_gross')} (t {cf[p]['accuracy_by_|net_vote|'].get('6',{}).get('sim_0.5ADRstop_1ADRtarget',{}).get('t_stat_gross')})" for p in PAIRS) + " |")
+    w("| median pairwise signal agreement (independence would be ~51%) | " + " | ".join(f"{sorted(v['p'] for v in cf[p]['pairwise_agreement_pct'].values())[len(cf[p]['pairwise_agreement_pct'])//2]}%" for p in PAIRS) + " |")
+    w("")
     out = os.path.join(HERE, "out", "SUMMARY.md")
     with open(out, "w") as fh:
         fh.write("\n".join(L))

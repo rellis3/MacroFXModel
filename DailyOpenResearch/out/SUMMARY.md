@@ -113,3 +113,13 @@ Anchor = broker daily candle (17:00 New York boundary; first bar 23:00 UK on gol
 | reject sim: net / gross avg R (t of gross) | -0.146 / +0.017 (t 1.84) | -0.130 / +0.016 (t 1.24) | -0.216 / +0.008 (t 1.35) |
 | break sim: net / gross avg R (t of gross) | -0.165 / +0.015 (t 2.41) | -0.088 / +0.018 (t 2.77) | -0.184 / -0.001 (t -0.2) |
 | reject rate, in-sample / out-of-sample | 48.1% / 48.1% | 47.4% / 48.5% | 48.5% / 48.9% |
+
+## Merging signals for confidence (vote of 6 signals at 13:00 UK, predicting the rest of the day)
+| | Gold (XAUUSD) | Nasdaq (NAS100) | EURUSD |
+|---|---|---|---|
+| best single signal alone | 53.0% | 51.4% | 51.1% |
+| unanimous vote (all active signals agree), n | 487 | 347 | 520 |
+| unanimous vote accuracy | 56.3% | 51.0% | 51.7% |
+| unanimous vote accuracy, IS / OOS | 56.8% / 55.4% | 51.5% / 50.4% | 51.4% / 52.3% |
+| unanimous-vote sim: net / gross avg R (t of gross) | +0.098 / +0.129 (t 2.93) | -0.009 / +0.015 (t 0.27) | -0.060 / -0.016 (t -0.42) |
+| median pairwise signal agreement (independence would be ~51%) | 65.9% | 71.1% | 67.8% |
