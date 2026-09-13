@@ -7,7 +7,8 @@
 import assert from 'node:assert/strict';
 import {
   volAcceleration, termStructureState, ivPremium, pathEfficiency,
-  touchProbability, costRatio,
+  touchProbability, costRatio, medianTimeToTouch, rangeEfficiencyRatio,
+  realisedSkew, amihudIlliquidity,
 } from './volStateEngine.js';
 
 let failures = 0;
@@ -113,6 +114,139 @@ console.log('volStateEngine');
   ok('zero spread → ratio 0', costRatio(0, 0.1) === 0);
   ok('zero sigma → null, no throw', costRatio(0.05, 0) === null);
   ok('negative spread → null, no throw', costRatio(-1, 0.1) === null);
+}
+
+// ── medianTimeToTouch ─────────────────────────────────────────────────────
+{
+  // Both sides of every comparison below go through the function's own 3dp
+  // rounding, so 1e-3 tolerance (not 1e-6) is the right bar — otherwise the
+  // rounding itself trips the assertion, not a real mismatch.
+  const Z50 = 0.6744897501960817;
+  const r = medianTimeToTouch(1, 1);
+  ok('median time-to-touch matches the closed-form constant',
+     Math.abs(r.medianFrac - Math.pow(1 / Z50, 2)) < 1e-3, JSON.stringify(r));
+  ok('p75 time is LONGER than median time (75% confidence needs more time than 50%)',
+     r.p75Frac > r.medianFrac, JSON.stringify(r));
+
+  const near = medianTimeToTouch(0.1, 1);
+  const far  = medianTimeToTouch(2, 1);
+  ok('closer target → shorter median time', near.medianFrac < far.medianFrac);
+
+  const doubleSigma = medianTimeToTouch(1, 2);   // t ∝ 1/σ² for fixed distance
+  ok('doubling σ quarters the median time (t ∝ 1/σ²)',
+     Math.abs(doubleSigma.medianFrac - r.medianFrac / 4) < 1e-3,
+     `double=${doubleSigma.medianFrac} r/4=${r.medianFrac / 4}`);
+
+  ok('invalid σ → nulls, no throw', medianTimeToTouch(1, 0).medianFrac === null);
+  ok('non-positive distance → nulls, no throw', medianTimeToTouch(0, 1).medianFrac === null);
+  ok('negative σ → nulls, no throw', medianTimeToTouch(1, -1).medianFrac === null);
+}
+
+// ── rangeEfficiencyRatio ──────────────────────────────────────────────────
+{
+  // Gap-driven: the whole day-to-day move happens at the OPEN (a gap from
+  // yesterday's close), then the session itself barely moves — so today's
+  // OWN high-low range stays tiny and roughly CONSTANT regardless of the
+  // gap size, while close-to-close still captures the full move. This is
+  // the actual mechanism Parkinson misses (it only sees each day's own
+  // H/L, never the gap between one day's close and the next day's open) —
+  // an earlier draft of this test scaled the day's range WITH the move
+  // itself, which defeats the point: if the range fully contains the move,
+  // Parkinson tracks it just as well as close-to-close does, and the ratio
+  // comes out flat/low instead of high. Varying gap size (+0.5%/+1.8%
+  // alternating, not a constant return) also matters — a razor-smooth
+  // constant-return ramp has ZERO close-to-close variance by definition.
+  let p = 100;
+  const trendBars = [];
+  for (let i = 0; i < 25; i++) {
+    const ret = i % 2 === 0 ? 0.005 : 0.018;
+    const o = p * (1 + ret);   // gap from yesterday's close to today's open
+    const c = o * 1.0002;      // today itself barely moves after opening
+    trendBars.push({ open: o, high: Math.max(o, c) * 1.0001, low: Math.min(o, c) * 0.9999, close: c });
+    p = c;
+  }
+  const trend = rangeEfficiencyRatio(trendBars, 20);
+  ok('gap-driven moves with tight intraday ranges → ratio > 1, label trending',
+     trend.ratio > 1.15 && trend.label === 'trending', JSON.stringify(trend));
+
+  // Choppy: wide daily ranges, but closes keep reverting near the same level
+  // (alternating ±0.1% off the previous close) — big ranges, little net progress.
+  let base = 100;
+  const choppyBars = [];
+  for (let i = 0; i < 25; i++) {
+    const c = base * (i % 2 === 0 ? 1.001 : 0.999);
+    choppyBars.push({ open: base, high: base * 1.02, low: base * 0.98, close: c });
+    base = c;
+  }
+  const choppy = rangeEfficiencyRatio(choppyBars, 20);
+  ok('wide ranges with reverting closes → ratio < 1, label choppy',
+     choppy.ratio < 0.85 && choppy.label === 'choppy', JSON.stringify(choppy));
+
+  ok('too few bars → insufficient_data', rangeEfficiencyRatio(trendBars.slice(0, 5), 20).label === 'insufficient_data');
+  ok('empty/undefined → insufficient_data, no throw', rangeEfficiencyRatio(undefined).label === 'insufficient_data');
+
+  // purity: inputs not mutated
+  const beforeLen = trendBars.length;
+  rangeEfficiencyRatio(trendBars, 20);
+  ok('does not mutate input array', trendBars.length === beforeLen);
+}
+
+// ── realisedSkew ──────────────────────────────────────────────────────────
+{
+  // Downside-heavy: down days move further than up days (JPY-cross-like).
+  let p = 100;
+  const downHeavy = [];
+  for (let i = 0; i < 65; i++) {
+    const o = p;
+    p *= (i % 2 === 0) ? 1.005 : 0.985;   // up +0.5%, down -1.5%
+    downHeavy.push({ open: o, high: Math.max(o, p) * 1.001, low: Math.min(o, p) * 0.999, close: p });
+  }
+  const dh = realisedSkew(downHeavy, 60);
+  ok('bigger down-day moves → downside-heavy', dh.ratio > 1.15 && dh.label === 'downside-heavy', JSON.stringify(dh));
+
+  // Upside-heavy: mirror — up days move further than down days.
+  p = 100;
+  const upHeavy = [];
+  for (let i = 0; i < 65; i++) {
+    const o = p;
+    p *= (i % 2 === 0) ? 1.015 : 0.995;   // up +1.5%, down -0.5%
+    upHeavy.push({ open: o, high: Math.max(o, p) * 1.001, low: Math.min(o, p) * 0.999, close: p });
+  }
+  const uh = realisedSkew(upHeavy, 60);
+  ok('bigger up-day moves → upside-heavy', uh.ratio < (1 / 1.15) && uh.label === 'upside-heavy', JSON.stringify(uh));
+
+  // Symmetric: equal-magnitude up/down alternation.
+  p = 100;
+  const symm = [];
+  for (let i = 0; i < 65; i++) {
+    const o = p;
+    p *= (i % 2 === 0) ? 1.01 : 0.99;
+    symm.push({ open: o, high: Math.max(o, p) * 1.001, low: Math.min(o, p) * 0.999, close: p });
+  }
+  const sy = realisedSkew(symm, 60);
+  ok('equal-magnitude up/down → symmetric', sy.label === 'symmetric', JSON.stringify(sy));
+
+  ok('too few bars → insufficient_data', realisedSkew(downHeavy.slice(0, 10), 60).label === 'insufficient_data');
+  ok('empty/undefined → insufficient_data, no throw', realisedSkew(undefined).label === 'insufficient_data');
+}
+
+// ── amihudIlliquidity ─────────────────────────────────────────────────────
+{
+  const bars = [{ volume: 100 }, { volume: 150 }, { volume: 200 }];   // total 450
+  const r = amihudIlliquidity(bars, 0.9);
+  ok('range ÷ total volume', r.totalVolume === 450 && Math.abs(r.illiquidity - 0.9 / 450) < 1e-9, JSON.stringify(r));
+
+  const thin  = amihudIlliquidity([{ volume: 10 }], 0.9);
+  const thick = amihudIlliquidity([{ volume: 10000 }], 0.9);
+  ok('same range, less volume → higher illiquidity', thin.illiquidity > thick.illiquidity);
+
+  ok('zero total volume → illiquidity null (no div/0), volume still reported',
+     amihudIlliquidity([{ volume: 0 }], 0.9).illiquidity === null);
+  ok('missing volume field defaults to 0, does not throw',
+     amihudIlliquidity([{}], 0.9).totalVolume === 0);
+  ok('empty bars array → nulls, no throw', amihudIlliquidity([], 0.9).totalVolume === null);
+  ok('non-array bars → nulls, no throw', amihudIlliquidity(null, 0.9).totalVolume === null);
+  ok('negative rangePct → nulls, no throw', amihudIlliquidity(bars, -1).totalVolume === null);
 }
 
 console.log(failures === 0 ? `\nAll tests passed.` : `\n${failures} FAILURE(S)`);

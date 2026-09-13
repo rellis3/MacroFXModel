@@ -37,6 +37,7 @@ import { appendRows as vmAppendRows, readRange as vmReadRange, buildRow as vmBui
 import { renderVumanchuMtfPNG, renderVumanchuMtfSVG, vumanchuMtfData, vumanchuMtfCaption, TF_SECONDS as VM_TF_SECONDS, AGREE_MODES as VM_AGREE_MODES } from './js/vumanchuMtf.js';
 import { renderMtfStackPNG, mtfStackData, mtfStackCaption, SERIES_SOURCES as MTF_SERIES_SOURCES, MAX_TFS as MTF_MAX_TFS, MIN_BARS as MTF_STACK_MIN_BARS } from './js/mtfStack.js';
 import { startVolForecastScheduler, forecastState, runVolForecast, getSessionStatus, ensureOhlcCache, INSTRUMENTS as VOL_INSTRUMENTS } from './js/volForecastScheduler.js';
+import { costRatio, medianTimeToTouch, ivPremium } from './js/volStateEngine.js';
 import { yangZhangVolSeries, hv20Series, ewmaVolSeries, computeForecast as _computeForecast } from './js/volForecast.js';
 import { getSessionStats, computeSessionStats, isSessionStatsComputing } from './js/sessionStats.js';
 import { computeHitRates, isHitRatesComputing, HR_INSTRUMENTS } from './js/hitRateBackfill.js';
@@ -17603,6 +17604,127 @@ app.get('/api/vol-forecast/session', async (req, res) => {
   try {
     const status = await getSessionStatus();
     res.json(status);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ── Volatility Intelligence — cross-pair aggregation ────────────────────────
+// Backs the standalone volatility-intelligence.html hub page. Assembles
+// per-pair fields js/volStateEngine.js already computes onto forecastState.latest
+// (term_structure, vol_accel, range_efficiency, realised_skew) and onto the
+// live session (path_efficiency, touch_prob, amihud) — read-through, not
+// recomputed — plus two genuinely NEW cross-cutting joins only this endpoint
+// can make: cost_ratio (needs live spreads) and time_to_touch (needs a
+// specific remaining-distance + σ pair, which varies per instrument's live
+// session state). Cached briefly since spreads are live-quoted.
+//
+// `not_available` names, explicitly, the items from the original volatility
+// research answer that this repo genuinely cannot build cleanly right now —
+// jump/diffusion needs proper high-frequency methodology, risk reversals and
+// IV term structure need an options-skew data source this repo doesn't have,
+// carry-to-vol needs carryEngine.js turned into a live per-pair number
+// (it's currently a basket-backtest engine only) — rather than silently
+// omitting them or faking a number.
+let _volIntelCache = { at: 0, data: null };
+const _VOL_INTEL_TTL_MS = 60 * 1000;
+
+app.get('/api/vol-forecast/intelligence', async (_req, res) => {
+  try {
+    if (_volIntelCache.data && Date.now() - _volIntelCache.at < _VOL_INTEL_TTL_MS) {
+      return res.json({ ..._volIntelCache.data, cached: true });
+    }
+    if (!forecastState.latest?.instruments) {
+      return res.json({ ok: false, reason: 'no_forecast', instruments: {} });
+    }
+
+    const [spreadsResult, sessionResult, cvolResult] = await Promise.all([
+      _fetchSpreads(VOL_INSTRUMENTS.map(i => i.oandaInstrument)).catch(() => ({ ok: false, pairs: {} })),
+      getSessionStatus().catch(() => null),
+      _getCvol().catch(() => null),
+    ]);
+
+    const instruments = {};
+    const volRanking = [];
+
+    for (const cfg of VOL_INSTRUMENTS) {
+      const fc = forecastState.latest.instruments[cfg.name];
+      if (!fc) continue;
+      const sess = sessionResult?.instruments?.[cfg.name] ?? null;
+
+      // sigmaPct backed out from vol_annual — the SAME derivation the session
+      // path in volForecastScheduler.js already uses (vol_annual / √252), so
+      // this stays consistent with it rather than re-deriving BM_P50 a
+      // second time just to invert hl_median.
+      const sigmaPct = fc.vol_annual > 0 ? fc.vol_annual / Math.sqrt(252) : null;
+
+      let costRatioVal = null, spreadPips = null;
+      const sp = spreadsResult?.pairs?.[cfg.oandaInstrument];
+      if (sp && sp.bid > 0 && sp.ask > 0 && sigmaPct > 0) {
+        const mid = (sp.bid + sp.ask) / 2;
+        const spreadPct = (sp.ask - sp.bid) / mid * 100;
+        costRatioVal = costRatio(spreadPct, sigmaPct);
+        spreadPips = sp.spreadPips;
+      }
+
+      const timeToTouch = (sess && sigmaPct > 0 && sess.oc_rem != null)
+        ? medianTimeToTouch(sess.oc_rem, sigmaPct)
+        : null;
+
+      // VRP — EURUSD/GOLD only, same CVOL coverage _injectServerContext
+      // already relies on for the AI-analysis prompt's impliedVol section.
+      let vrp = null;
+      if (cvolResult?.levels && (cfg.name === 'EURUSD' || cfg.name === 'GOLD')) {
+        const sid = cfg.name === 'EURUSD' ? 'EVZCLS' : 'GVZCLS';
+        const ivLevel = cvolResult.levels[sid];
+        if (ivLevel != null && fc.vol_annual > 0) vrp = ivPremium(ivLevel, fc.vol_annual);
+      }
+
+      instruments[cfg.name] = {
+        assetClass: cfg.assetClass,
+        vol_annual: fc.vol_annual ?? null,
+        vol_pct: fc.vol_pct ?? null,
+        cone_5d: fc.cone_5d ?? null, cone_21d: fc.cone_21d ?? null, cone_63d: fc.cone_63d ?? null,
+        vol_vov_label: fc.vol_vov_label ?? null,
+        term_structure: fc.term_structure ?? null,
+        vol_accel: fc.vol_accel ?? null,
+        range_efficiency: fc.range_efficiency ?? null,
+        realised_skew: fc.realised_skew ?? null,
+        cost_ratio: costRatioVal,
+        spread_pips: spreadPips,
+        time_to_touch: timeToTouch,
+        vrp,
+        session: sess ? {
+          hl: sess.hl ?? null, oc: sess.oc ?? null,
+          path_efficiency: sess.vol_state?.path_efficiency ?? null,
+          touch_prob: sess.vol_state?.touch_prob ?? null,
+          amihud: sess.vol_state?.amihud ?? null,
+        } : null,
+      };
+
+      if (fc.vol_pct != null) {
+        volRanking.push({ name: cfg.name, assetClass: cfg.assetClass, vol_pct: fc.vol_pct, vol_annual: fc.vol_annual ?? null });
+      }
+    }
+
+    volRanking.sort((a, b) => b.vol_pct - a.vol_pct);
+
+    const payload = {
+      ok: true,
+      computed_at: new Date().toISOString(),
+      session_date: forecastState.latest.session_date,
+      instruments,
+      cross_asset_vol_ranking: volRanking,
+      not_available: {
+        jump_diffusion: 'Needs proper high-frequency (bipower variation) methodology on the M1 cache — a separate backtest-style study, not a live payload field.',
+        risk_reversals: 'No put/call skew data source in this repo — CVOL only carries single-index EVZ/GVZ levels, not a full vol surface.',
+        iv_term_structure: 'No options-implied-vol-by-tenor data source available.',
+        carry_to_vol: 'carryEngine.js is a basket-backtest engine, not a live per-pair carry number — needs new wiring before it can rank pairs live.',
+      },
+    };
+
+    _volIntelCache = { at: Date.now(), data: payload };
+    res.json({ ...payload, cached: false });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }

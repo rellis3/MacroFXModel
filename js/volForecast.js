@@ -39,7 +39,7 @@ import { COG_CONST } from './cogReverseEngineer.js';
 import { buildLadder, flattenLadder } from './forecastLadder.js';
 import { forecastSigma } from './forecastSigma.js';
 import { LADDER_PARAMS } from './forecastLadderParams.js';
-import { volAcceleration, termStructureState } from './volStateEngine.js';
+import { volAcceleration, termStructureState, rangeEfficiencyRatio, realisedSkew } from './volStateEngine.js';
 
 const TRADING_DAYS = 252;
 const EWMA_LAMBDA  = 0.94;
@@ -708,13 +708,15 @@ export function computeForecast(ohlc, assetClass = 'fx', newsMult = 1.0, opts = 
   });
 
   // Additive volatility-STATE fields (js/volStateEngine.js) — descriptive
-  // derivatives of the σ series/cone fields already computed above. Never
-  // read by the live bot's plan-building path (see that module's header
-  // contract); UI/research consumers only. Every field above `_base` is
-  // returned exactly as before — this only appends two new keys.
+  // derivatives of the σ series/cone fields/OHLC already computed/available
+  // above. Never read by the live bot's plan-building path (see that
+  // module's header contract); UI/research consumers only. Every field
+  // above `_base` is returned exactly as before — this only appends keys.
   return Object.assign(_base, {
-    vol_accel:      volAcceleration(volSeries),
-    term_structure: termStructureState(_base),
+    vol_accel:       volAcceleration(volSeries),
+    term_structure:  termStructureState(_base),
+    range_efficiency: rangeEfficiencyRatio(ohlc),
+    realised_skew:    realisedSkew(ohlc),
   });
 }
 

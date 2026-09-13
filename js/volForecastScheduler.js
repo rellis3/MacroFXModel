@@ -26,7 +26,7 @@ import { harShadowFields, harIvShadowFields } from './forecastExport.js';
 import { IV_INDEX_BY_INSTRUMENT } from './volForecastBench.js';
 import { fetchFredSeries, forwardFillToDates } from './fredFetch.js';
 import { londonMidnightSec } from './volBacktestEngine.js';
-import { pathEfficiency, touchProbability } from './volStateEngine.js';
+import { pathEfficiency, touchProbability, amihudIlliquidity } from './volStateEngine.js';
 
 // HAR-RV shadow forecast (challenger σ through the incumbent band math, stored
 // as `f.har` per instrument — purely additive). Kill switch: VOL_FORECAST_HAR=0.
@@ -723,6 +723,10 @@ export async function getSessionStatus() {
           oh_median: touchProbability(sm.oh_rem, sigmaPct, remainingFrac),
           ol_median: touchProbability(sm.ol_rem, sigmaPct, remainingFrac),
         } : null,
+        // Amihud-style illiquidity (range consumed per unit of OANDA tick
+        // volume so far) — only meaningful relatively (this pair vs its own
+        // history, or vs other pairs right now), see js/volStateEngine.js.
+        amihud: amihudIlliquidity(bar.bars, sm.hl),
       };
 
       instruments[cfg.name] = {

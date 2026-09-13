@@ -21,11 +21,16 @@
  *
  * Consumers (additive, do not modify the base object in place):
  *   - `js/volForecast.js` `computeForecast()` — Object.assign's
- *     `volAcceleration`/`termStructureState` onto its existing return, same
- *     pattern already used for the `ladder` fields.
+ *     `volAcceleration`/`termStructureState`/`rangeEfficiencyRatio`/
+ *     `realisedSkew` onto its existing return, same pattern already used
+ *     for the `ladder` fields.
  *   - `js/volForecastScheduler.js` `getSessionStatus()` — Object.assign's
- *     `pathEfficiency`/`touchProbability` onto `computeSessionMetrics()`'s
- *     return at the call site (function body untouched).
+ *     `pathEfficiency`/`touchProbability`/`amihudIlliquidity` onto
+ *     `computeSessionMetrics()`'s return at the call site (function body
+ *     untouched).
+ *   - `medianTimeToTouch` and `costRatio` are called at the /api/vol-forecast/
+ *     intelligence aggregation layer (server.js), not per-instrument, since
+ *     they combine forecast fields with a caller-supplied distance/spread.
  */
 
 // ── 1. Volatility acceleration (ΔVol, Δ²Vol) ────────────────────────────────
@@ -153,4 +158,141 @@ export function touchProbability(remainingPct, sigmaPct, remainingFrac) {
 export function costRatio(spreadPct, sigmaPct) {
   if (!(spreadPct >= 0) || !(sigmaPct > 0)) return null;
   return Math.round((spreadPct / sigmaPct) * 10000) / 10000;
+}
+
+// ── 7. Median / P75 first-passage TIME (the inverse of touchProbability) ───
+// touchProbability asks "what's P(touch) by a given time" — this asks the
+// dual question, "how long, typically, UNTIL touch". For a DRIFTLESS
+// Brownian motion the first-passage time has NO finite mean (a known,
+// slightly counterintuitive fact — the distribution's tail is too fat), but
+// the MEDIAN and other quantiles are perfectly well-defined, so that's what
+// this returns, not a mean.
+//   P(touch by time-fraction t) = 2*(1-Φ(a/(σ√t)))  [same formula as
+//   touchProbability]. Setting that to a target probability p and solving
+//   for t gives t = (a / (σ·Φ⁻¹(1 - p/2)))². Below, p=0.5 → Φ⁻¹(0.75); p=0.75
+//   → Φ⁻¹(0.625) — both are fixed constants, so no general inverse-CDF
+//   solver is needed (matches the no-external-dep style of stdNormalCdf).
+// Use: compare the elapsed time-fraction of the session against medianFrac —
+// if price hasn't reached a level by the time half of all driftless paths
+// would have, the thesis is stale on schedule grounds, independent of P&L
+// (the "time stop" idea). Reference line only, same caveat as touchProbability.
+const Z_MEDIAN_TOUCH = 0.6744897501960817;   // Φ⁻¹(0.75)
+const Z_P75_TOUCH     = 0.31863936396437514; // Φ⁻¹(0.625)
+
+export function medianTimeToTouch(remainingPct, sigmaPct) {
+  if (!(sigmaPct > 0) || !(remainingPct > 0)) return { medianFrac: null, p75Frac: null };
+  const r3 = x => Math.round(x * 1000) / 1000;
+  return {
+    medianFrac: r3(Math.pow(remainingPct / (sigmaPct * Z_MEDIAN_TOUCH), 2)),
+    p75Frac:    r3(Math.pow(remainingPct / (sigmaPct * Z_P75_TOUCH), 2)),
+  };
+}
+
+// ── 8. Range efficiency (close-to-close vol vs range-based vol) ────────────
+// Parkinson (range-based) vol only sees each day's OWN high-low — it never
+// sees the gap BETWEEN one day's close and the next day's open. Close-to-
+// close vol sees exactly that gap. So the two estimators diverge in a
+// specific, mechanical way:
+//   ratio = close-to-close σ / Parkinson σ
+//   ratio > 1 → day-to-day moves are happening AT THE GAP, not contained
+//               within any single session's observed range ("trending" in
+//               the loose sense that the move isn't given back intraday)
+//   ratio < 1 → big intraday ranges, but closes keep reverting near the
+//               prior close — choppy/mean-reverting, little net progress
+//   ~1        → neutral, the two estimators roughly agree
+// NOTE: a razor-smooth CONSTANT daily return (a perfect ramp) has ZERO
+// close-to-close variance by definition — dispersion needs varying return
+// SIZE day to day, not just a persistent direction. See the test file for
+// a worked, previously-wrong synthetic case and why it was wrong.
+// Parkinson: σ² = mean[(ln(H/L))²] / (4·ln2) — the standard range estimator,
+// independent of the Yang-Zhang σ the forecaster uses elsewhere (deliberately
+// NOT reusing YZ here — YZ already blends overnight+range+CC, which would
+// make this ratio circular against itself).
+export function rangeEfficiencyRatio(ohlc, lookback = 20) {
+  const bad = { ccVol: null, rangeVol: null, ratio: null, label: 'insufficient_data' };
+  const n = ohlc?.length ?? 0;
+  if (n < lookback + 1) return bad;
+
+  const closes = ohlc.slice(-(lookback + 1)).map(b => b.close);
+  const ccReturns = [];
+  for (let i = 1; i < closes.length; i++) {
+    if (closes[i - 1] > 0 && closes[i] > 0) ccReturns.push(Math.log(closes[i] / closes[i - 1]));
+  }
+  if (ccReturns.length < 5) return bad;
+  const ccMean = ccReturns.reduce((a, b) => a + b, 0) / ccReturns.length;
+  const ccVar  = ccReturns.reduce((a, b) => a + (b - ccMean) ** 2, 0) / (ccReturns.length - 1);
+  const ccVol  = Math.sqrt(ccVar);
+
+  const window  = ohlc.slice(-lookback);
+  const pkTerms = window
+    .filter(b => b.high > 0 && b.low > 0 && b.high >= b.low)
+    .map(b => Math.log(b.high / b.low) ** 2);
+  if (pkTerms.length < 5) return bad;
+  const rangeVol = Math.sqrt(pkTerms.reduce((a, b) => a + b, 0) / pkTerms.length / (4 * Math.LN2));
+
+  const ratio = rangeVol > 0 ? ccVol / rangeVol : null;
+  // ±15% band, deliberately the same margin termStructureState uses to
+  // separate signal from day-to-day noise — a judgment call, not a fitted
+  // threshold; revisit if a calibration study finds a sharper cut.
+  let label = 'neutral';
+  if (ratio != null) {
+    if (ratio > 1.15) label = 'trending';
+    else if (ratio < 0.85) label = 'choppy';
+  }
+  const r3 = x => x == null ? null : Math.round(x * 1000) / 1000;
+  return { ccVol: r3(ccVol), rangeVol: r3(rangeVol), ratio: r3(ratio), label };
+}
+
+// ── 9. Realised skew (downside σ vs upside σ) ───────────────────────────────
+// A symmetric cone is wrong for a pair that falls faster than it rises (JPY
+// crosses, AUD) or vice versa. Splits daily log-returns by sign and measures
+// each side's RMS magnitude around zero (semi-deviation, not each side's own
+// mean — deliberate: this asks "how big are down days vs up days", the same
+// framing `sortinoRatio` in metricsCore.js uses for downside deviation).
+export function realisedSkew(ohlc, lookback = 60) {
+  const bad = { downVol: null, upVol: null, ratio: null, label: 'insufficient_data' };
+  const n = ohlc?.length ?? 0;
+  if (n < lookback + 1) return bad;
+
+  const closes = ohlc.slice(-(lookback + 1)).map(b => b.close);
+  const rets = [];
+  for (let i = 1; i < closes.length; i++) {
+    if (closes[i - 1] > 0 && closes[i] > 0) rets.push(Math.log(closes[i] / closes[i - 1]));
+  }
+  const downs = rets.filter(r => r < 0);
+  const ups   = rets.filter(r => r > 0);
+  if (downs.length < 5 || ups.length < 5) return bad;
+
+  const rms = arr => Math.sqrt(arr.reduce((a, b) => a + b * b, 0) / arr.length);
+  const downVol = rms(downs);
+  const upVol   = rms(ups);
+  const ratio   = upVol > 0 ? downVol / upVol : null;
+
+  let label = 'symmetric';
+  if (ratio != null) {
+    if      (ratio > 1.15)        label = 'downside-heavy';   // falls faster than it rises
+    else if (ratio < 1 / 1.15)    label = 'upside-heavy';     // symmetric band in log-ratio terms
+  }
+  const r3 = x => x == null ? null : Math.round(x * 1000) / 1000;
+  return { downVol: r3(downVol), upVol: r3(upVol), ratio: r3(ratio), label };
+}
+
+// ── 10. Amihud-style illiquidity (range consumed per unit of tick volume) ──
+// "Range per unit of participation" — a thin, low-volume session producing a
+// big range is a different market than a heavy-volume session producing the
+// same range. OANDA candles already carry a `volume` field (tick count, not
+// real traded volume — same caveat `tier5_liquidity.py` documents: magnitude
+// only, no direction). Only meaningful RELATIVELY (this pair today vs its
+// own recent history, or vs other pairs right now) — the raw number has no
+// absolute meaning since tick-count scale varies per instrument/session.
+export function amihudIlliquidity(bars, rangePct) {
+  if (!Array.isArray(bars) || bars.length === 0 || !(rangePct >= 0)) {
+    return { totalVolume: null, illiquidity: null };
+  }
+  const totalVolume = bars.reduce((sum, b) => sum + (Number(b?.volume) || 0), 0);
+  if (totalVolume <= 0) return { totalVolume: 0, illiquidity: null };
+  return {
+    totalVolume,
+    illiquidity: Math.round((rangePct / totalVolume) * 1e6) / 1e6,
+  };
 }
