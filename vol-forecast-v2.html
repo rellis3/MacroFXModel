@@ -420,10 +420,16 @@
 /* Volatility-state strip (additive — new panel, does not touch the CCY strip
    above or any per-pair chart). Reuses the CCY strip's container/label
    classes; only the pill color variants are new. */
-.vf-vol-pill { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-family: 'DM Mono', monospace; font-weight: 600; padding: 3px 8px; border-radius: 4px; border: 1px solid var(--border); background: var(--s2); color: var(--text2); white-space: nowrap; cursor: help; }
+.vf-vol-pill { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-family: 'DM Mono', monospace; font-weight: 600; padding: 3px 8px; border-radius: 4px; border: 1px solid var(--border); background: var(--s2); color: var(--text2); white-space: nowrap; cursor: pointer; }
 .vf-vol-pill.expand   { background: var(--amber-bg, #92400e18); border-color: var(--amber-bd, #92400e55); color: var(--amber, #fbbf24); }
 .vf-vol-pill.compress { background: var(--blue-bg, #1e3a8a18);  border-color: var(--blue-bd, #1e3a8a55);  color: var(--blue, #60a5fa); }
 .vf-vol-pill.neut     { opacity: .6; }
+.vf-vol-pill.active   { outline: 2px solid var(--text); outline-offset: 1px; }
+/* Tap-to-reveal detail line — mobile has no hover, so `title` alone is
+   useless on a touchscreen; this is the actual detail surface on any
+   device. flex-basis:100% forces it onto its own row inside the strip's
+   wrapping flex layout regardless of screen width. */
+.vf-vol-detail { flex-basis: 100%; white-space: pre-line; font-size: 10.5px; line-height: 1.5; font-family: 'DM Mono', monospace; color: var(--text3); padding-top: 6px; margin-top: 2px; border-top: 1px solid var(--border); }
 
 .vf-levels-view { margin-top: 14px; background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--r); overflow: hidden; }
 .vf-levels-nav { display: flex; align-items: center; gap: 10px; padding: 9px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
@@ -862,7 +868,7 @@
 <div class="vf-ccy-strip" id="vfVolStateStrip" style="display:none">
   <span class="vf-ccy-label">Volatility State</span>
   <span id="vfVolStatePills">—</span>
-  <span style="font-size:9px;font-family:'DM Mono',monospace;color:var(--text3);margin-left:auto">Hover a pair for detail · touch % is theoretical, not backtested</span>
+  <div class="vf-vol-detail" id="vfVolStateDetail">Tap a pair for detail · touch % is theoretical, not backtested</div>
 </div>
 
 <!-- WEEKLY PANEL -->
@@ -2917,6 +2923,11 @@ function renderCurrencyStrength(weeklyData) {
 // Purely additive: does not read `f`/`s` fields any other renderer depends
 // on, does not touch buildV2Card or the per-pair chart/archive code, and
 // silently no-ops if a pair lacks the new fields (older cached forecasts).
+// Per-pair detail text, keyed by instrument name — populated fresh on every
+// render, read by the tap handler below. Module-scope so both functions see
+// the same object without threading it through the DOM.
+let _volStateDetails = {};
+
 function renderVolStatePanel(forecastData, sessionData) {
   const strip = document.getElementById('vfVolStateStrip');
   const container = document.getElementById('vfVolStatePills');
@@ -2925,6 +2936,7 @@ function renderVolStatePanel(forecastData, sessionData) {
 
   const sessInst = sessionData?.instruments ?? {};
   const pct = v => v == null ? null : Math.round(v * 100);
+  _volStateDetails = {};
 
   const chips = Object.entries(forecastData.instruments).map(([name, f]) => {
     if (!f || f.error) return '';
@@ -2942,7 +2954,7 @@ function renderVolStatePanel(forecastData, sessionData) {
     const vaArrow = (va?.label === 'accelerating' || va?.label === 'rising')   ? '▲'
                   : (va?.label === 'decelerating' || va?.label === 'falling') ? '▼' : '·';
 
-    const title = [
+    _volStateDetails[name] = [
       `${name} — volatility state (descriptive, additive; not used by the live bot)`,
       `Term structure: ${tsLabel}${ts?.slope != null ? ` (5d-vs-long slope ${ts.slope})` : ''}`,
       `Vol acceleration: ${va?.label ?? 'n/a'}${va?.d1 != null ? ` (ΔVol ${(va.d1*100).toFixed(1)}%)` : ''}`,
@@ -2950,13 +2962,33 @@ function renderVolStatePanel(forecastData, sessionData) {
       `Touch prob. to O-C median, remainder of session: ${touchPct != null ? touchPct + '%' : '—'} — theoretical Brownian estimate, NOT a backtested signal`,
     ].join('\n');
 
-    return `<span class="vf-vol-pill ${tsCls}" title="${title.replace(/"/g,'&quot;')}">${name} ${tsTxt}${vaArrow}`
+    // title= kept as a bonus for desktop hover; data-pair is what the tap
+    // handler below actually uses, since `title` alone is inert on touch.
+    return `<span class="vf-vol-pill ${tsCls}" data-pair="${name}" title="${_volStateDetails[name].replace(/"/g,'&quot;')}">${name} ${tsTxt}${vaArrow}`
          + `${effPct != null ? ` · eff ${effPct}%` : ''}${touchPct != null ? ` · P${touchPct}%` : ''}</span>`;
   }).filter(Boolean).join('');
 
   if (!chips) { strip.style.display = 'none'; return; }
   container.innerHTML = chips;
   strip.style.display = '';
+
+  // Bind the tap/click handler once (delegated, so re-renders that replace
+  // innerHTML don't need it re-attached) rather than per-pill.
+  if (!container.dataset.volTapBound) {
+    container.addEventListener('click', _onVolStatePillTap);
+    container.dataset.volTapBound = '1';
+  }
+}
+
+function _onVolStatePillTap(e) {
+  const pill = e.target.closest('.vf-vol-pill');
+  const box  = document.getElementById('vfVolStateDetail');
+  if (!pill || !box) return;
+  const detail = _volStateDetails[pill.dataset.pair];
+  if (!detail) return;
+  box.textContent = detail;
+  document.querySelectorAll('#vfVolStatePills .vf-vol-pill.active').forEach(p => p.classList.remove('active'));
+  pill.classList.add('active');
 }
 
 // ── Levels View ────────────────────────────────────────────────────────────────
