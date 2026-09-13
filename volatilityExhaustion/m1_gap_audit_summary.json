@@ -1,0 +1,655 @@
+{
+ "audcad": {
+  "pair": "audcad",
+  "bars": 3929555,
+  "days": 3316,
+  "median_bars_per_day": 1423.0,
+  "span": "2016-01-04..2026-08-20",
+  "buckets": {
+   "WEEKEND": 554,
+   "HOLIDAY": 8,
+   "UNEXPLAINED": 3
+  },
+  "daily_break_utc_hours": [],
+  "sunday_week_open_days": 544,
+  "issues": [
+   "UNEXPLAINED: 3 hole(s) \u2014 2024-05-20 178min, 2022-05-12 172min, 2020-12-07 69min",
+   "SHORT_DAY: 1 non-Sunday, non-holiday day(s) under 35% of median 1423 bars \u2014 2026-08-20"
+  ],
+  "exclude_dates": [
+   "2020-12-07",
+   "2022-05-12",
+   "2024-05-20",
+   "2026-08-20"
+  ],
+  "clean": false
+ },
+ "audchf": {
+  "pair": "audchf",
+  "bars": 3832261,
+  "days": 3315,
+  "median_bars_per_day": 1375.0,
+  "span": "2016-01-04..2026-08-20",
+  "buckets": {
+   "WEEKEND": 554,
+   "HOLIDAY": 10,
+   "UNEXPLAINED": 4
+  },
+  "daily_break_utc_hours": [],
+  "sunday_week_open_days": 543,
+  "issues": [
+   "UNEXPLAINED: 4 hole(s) \u2014 2022-05-04 370min, 2024-05-20 178min, 2022-05-12 172min, 2022-05-04 97min",
+   "SHORT_DAY: 1 non-Sunday, non-holiday day(s) under 35% of median 1375 bars \u2014 2026-08-20"
+  ],
+  "exclude_dates": [
+   "2022-05-04",
+   "2022-05-05",
+   "2022-05-12",
+   "2024-05-20",
+   "2026-08-20"
+  ],
+  "clean": false
+ },
+ "audjpy": {
+  "pair": "audjpy",
+  "bars": 3924591,
+  "days": 3316,
+  "median_bars_per_day": 1422.0,
+  "span": "2016-01-04..2026-08-20",
+  "buckets": {
+   "WEEKEND": 554,
+   "HOLIDAY": 8,
+   "UNEXPLAINED": 2
+  },
+  "daily_break_utc_hours": [],
+  "sunday_week_open_days": 544,
+  "issues": [
+   "UNEXPLAINED: 2 hole(s) \u2014 2024-05-20 178min, 2022-05-12 172min",
+   "SHORT_DAY: 1 non-Sunday, non-holiday day(s) under 35% of median 1422 bars \u2014 2026-08-20"
+  ],
+  "exclude_dates": [
+   "2022-05-12",
+   "2024-05-20",
+   "2026-08-20"
+  ],
+  "clean": false
+ },
+ "audnzd": {
+  "pair": "audnzd",
+  "bars": 3924582,
+  "days": 3316,
+  "median_bars_per_day": 1421.0,
+  "span": "2016-01-04..2026-08-20",
+  "buckets": {
+   "WEEKEND": 554,
+   "HOLIDAY": 10,
+   "UNEXPLAINED": 5
+  },
+  "daily_break_utc_hours": [],
+  "sunday_week_open_days": 544,
+  "issues": [
+   "UNEXPLAINED: 5 hole(s) \u2014 2022-05-04 370min, 2024-05-20 178min, 2022-05-12 172min, 2022-05-04 97min, 2020-12-07 80min",
+   "SHORT_DAY: 1 non-Sunday, non-holiday day(s) under 35% of median 1421 bars \u2014 2026-08-20"
+  ],
+  "exclude_dates": [
+   "2020-12-07",
+   "2022-05-04",
+   "2022-05-05",
+   "2022-05-12",
+   "2024-05-20",
+   "2026-08-20"
+  ],
+  "clean": false
+ },
+ "audusd": {
+  "pair": "audusd",
+  "bars": 3686619,
+  "days": 3317,
+  "median_bars_per_day": 1313.0,
+  "span": "2016-01-04..2026-08-21",
+  "buckets": {
+   "WEEKEND": 554,
+   "HOLIDAY": 8,
+   "UNEXPLAINED": 4
+  },
+  "daily_break_utc_hours": [],
+  "sunday_week_open_days": 544,
+  "issues": [
+   "UNEXPLAINED: 4 hole(s) \u2014 2022-05-04 365min, 2024-05-20 178min, 2022-05-12 172min, 2022-05-04 97min",
+   "SHORT_DAY: 1 non-Sunday, non-holiday day(s) under 35% of median 1313 bars \u2014 2026-08-21"
+  ],
+  "exclude_dates": [
+   "2022-05-04",
+   "2022-05-05",
+   "2022-05-12",
+   "2024-05-20",
+   "2026-08-21"
+  ],
+  "clean": false
+ },
+ "cadjpy": {
+  "pair": "cadjpy",
+  "bars": 3942149,
+  "days": 3316,
+  "median_bars_per_day": 1429.0,
+  "span": "2016-01-04..2026-08-20",
+  "buckets": {
+   "WEEKEND": 554,
+   "HOLIDAY": 8,
+   "UNEXPLAINED": 3
+  },
+  "daily_break_utc_hours": [],
+  "sunday_week_open_days": 544,
+  "issues": [
+   "UNEXPLAINED: 3 hole(s) \u2014 2024-05-20 178min, 2022-05-12 172min, 2020-12-07 81min",
+   "SHORT_DAY: 1 non-Sunday, non-holiday day(s) under 35% of median 1429 bars \u2014 2026-08-20"
+  ],
+  "exclude_dates": [
+   "2020-12-07",
+   "2022-05-12",
+   "2024-05-20",
+   "2026-08-20"
+  ],
+  "clean": false
+ },
+ "chfjpy": {
+  "pair": "chfjpy",
+  "bars": 3931217,
+  "days": 3316,
+  "median_bars_per_day": 1425.0,
+  "span": "2016-01-04..2026-08-20",
+  "buckets": {
+   "WEEKEND": 554,
+   "HOLIDAY": 10,
+   "UNEXPLAINED": 2
+  },
+  "daily_break_utc_hours": [],
+  "sunday_week_open_days": 544,
+  "issues": [
+   "UNEXPLAINED: 2 hole(s) \u2014 2024-05-20 178min, 2022-05-12 172min",
+   "SHORT_DAY: 1 non-Sunday, non-holiday day(s) under 35% of median 1425 bars \u2014 2026-08-20"
+  ],
+  "exclude_dates": [
+   "2022-05-12",
+   "2024-05-20",
+   "2026-08-20"
+  ],
+  "clean": false
+ },
+ "euraud": {
+  "pair": "euraud",
+  "bars": 3781741,
+  "days": 3238,
+  "median_bars_per_day": 1387.0,
+  "span": "2016-01-04..2026-05-22",
+  "buckets": {
+   "WEEKEND": 541,
+   "HOLIDAY": 9,
+   "UNEXPLAINED": 3
+  },
+  "daily_break_utc_hours": [],
+  "sunday_week_open_days": 530,
+  "issues": [
+   "UNEXPLAINED: 3 hole(s) \u2014 2022-05-08 227min, 2024-05-20 178min, 2022-05-12 172min",
+   "SHORT_DAY: 1 non-Sunday, non-holiday day(s) under 35% of median 1387 bars \u2014 2026-05-22"
+  ],
+  "exclude_dates": [
+   "2022-05-08",
+   "2022-05-09",
+   "2022-05-12",
+   "2024-05-20",
+   "2026-05-22"
+  ],
+  "clean": false
+ },
+ "eurcad": {
+  "pair": "eurcad",
+  "bars": 3851955,
+  "days": 3239,
+  "median_bars_per_day": 1430.0,
+  "span": "2016-01-04..2026-05-22",
+  "buckets": {
+   "WEEKEND": 541,
+   "HOLIDAY": 8,
+   "UNEXPLAINED": 2
+  },
+  "daily_break_utc_hours": [],
+  "sunday_week_open_days": 531,
+  "issues": [
+   "UNEXPLAINED: 2 hole(s) \u2014 2024-05-20 178min, 2022-05-12 172min",
+   "SHORT_DAY: 1 non-Sunday, non-holiday day(s) under 35% of median 1430 bars \u2014 2026-05-22"
+  ],
+  "exclude_dates": [
+   "2022-05-12",
+   "2024-05-20",
+   "2026-05-22"
+  ],
+  "clean": false
+ },
+ "eurchf": {
+  "pair": "eurchf",
+  "bars": 3649858,
+  "days": 3239,
+  "median_bars_per_day": 1318.0,
+  "span": "2016-01-04..2026-05-22",
+  "buckets": {
+   "WEEKEND": 541,
+   "HOLIDAY": 8,
+   "UNEXPLAINED": 2
+  },
+  "daily_break_utc_hours": [],
+  "sunday_week_open_days": 531,
+  "issues": [
+   "UNEXPLAINED: 2 hole(s) \u2014 2024-05-20 178min, 2022-05-12 172min",
+   "SHORT_DAY: 1 non-Sunday, non-holiday day(s) under 35% of median 1318 bars \u2014 2026-05-22"
+  ],
+  "exclude_dates": [
+   "2022-05-12",
+   "2024-05-20",
+   "2026-05-22"
+  ],
+  "clean": false
+ },
+ "eurgbp": {
+  "pair": "eurgbp",
+  "bars": 3811288,
+  "days": 3316,
+  "median_bars_per_day": 1351.0,
+  "span": "2016-01-04..2026-08-21",
+  "buckets": {
+   "WEEKEND": 554,
+   "HOLIDAY": 8,
+   "UNEXPLAINED": 3
+  },
+  "daily_break_utc_hours": [],
+  "sunday_week_open_days": 543,
+  "issues": [
+   "UNEXPLAINED: 3 hole(s) \u2014 2022-05-08 286min, 2024-05-20 178min, 2022-05-12 172min",
+   "SHORT_DAY: 1 non-Sunday, non-holiday day(s) under 35% of median 1351 bars \u2014 2026-08-21"
+  ],
+  "exclude_dates": [
+   "2022-05-08",
+   "2022-05-09",
+   "2022-05-12",
+   "2024-05-20",
+   "2026-08-21"
+  ],
+  "clean": false
+ },
+ "eurjpy": {
+  "pair": "eurjpy",
+  "bars": 3783229,
+  "days": 3239,
+  "median_bars_per_day": 1390.0,
+  "span": "2016-01-04..2026-05-22",
+  "buckets": {
+   "WEEKEND": 541,
+   "HOLIDAY": 8,
+   "UNEXPLAINED": 2
+  },
+  "daily_break_utc_hours": [],
+  "sunday_week_open_days": 531,
+  "issues": [
+   "UNEXPLAINED: 2 hole(s) \u2014 2022-05-12 743min, 2024-05-20 178min",
+   "SHORT_DAY: 1 non-Sunday, non-holiday day(s) under 35% of median 1390 bars \u2014 2026-05-22"
+  ],
+  "exclude_dates": [
+   "2022-05-12",
+   "2024-05-20",
+   "2026-05-22"
+  ],
+  "clean": false
+ },
+ "eurnzd": {
+  "pair": "eurnzd",
+  "bars": 3843619,
+  "days": 3239,
+  "median_bars_per_day": 1424.0,
+  "span": "2016-01-04..2026-05-22",
+  "buckets": {
+   "WEEKEND": 541,
+   "HOLIDAY": 11,
+   "UNEXPLAINED": 2
+  },
+  "daily_break_utc_hours": [],
+  "sunday_week_open_days": 531,
+  "issues": [
+   "UNEXPLAINED: 2 hole(s) \u2014 2024-05-20 178min, 2022-05-12 172min",
+   "SHORT_DAY: 1 non-Sunday, non-holiday day(s) under 35% of median 1424 bars \u2014 2026-05-22"
+  ],
+  "exclude_dates": [
+   "2022-05-12",
+   "2024-05-20",
+   "2026-05-22"
+  ],
+  "clean": false
+ },
+ "eurusd": {
+  "pair": "eurusd",
+  "bars": 3840908,
+  "days": 3317,
+  "median_bars_per_day": 1378.0,
+  "span": "2016-01-04..2026-08-21",
+  "buckets": {
+   "WEEKEND": 554,
+   "HOLIDAY": 8,
+   "UNEXPLAINED": 2
+  },
+  "daily_break_utc_hours": [],
+  "sunday_week_open_days": 544,
+  "issues": [
+   "UNEXPLAINED: 2 hole(s) \u2014 2024-05-20 178min, 2022-05-12 172min",
+   "SHORT_DAY: 1 non-Sunday, non-holiday day(s) under 35% of median 1378 bars \u2014 2026-08-21"
+  ],
+  "exclude_dates": [
+   "2022-05-12",
+   "2024-05-20",
+   "2026-08-21"
+  ],
+  "clean": false
+ },
+ "gbpaud": {
+  "pair": "gbpaud",
+  "bars": 3845947,
+  "days": 3238,
+  "median_bars_per_day": 1427.0,
+  "span": "2016-01-04..2026-05-22",
+  "buckets": {
+   "WEEKEND": 541,
+   "HOLIDAY": 8,
+   "UNEXPLAINED": 2
+  },
+  "daily_break_utc_hours": [],
+  "sunday_week_open_days": 530,
+  "issues": [
+   "UNEXPLAINED: 2 hole(s) \u2014 2024-05-20 178min, 2022-05-12 172min",
+   "SHORT_DAY: 1 non-Sunday, non-holiday day(s) under 35% of median 1427 bars \u2014 2026-05-22"
+  ],
+  "exclude_dates": [
+   "2022-05-12",
+   "2024-05-20",
+   "2026-05-22"
+  ],
+  "clean": false
+ },
+ "gbpcad": {
+  "pair": "gbpcad",
+  "bars": 3841697,
+  "days": 3239,
+  "median_bars_per_day": 1424.0,
+  "span": "2016-01-04..2026-05-22",
+  "buckets": {
+   "WEEKEND": 541,
+   "HOLIDAY": 8,
+   "UNEXPLAINED": 2
+  },
+  "daily_break_utc_hours": [],
+  "sunday_week_open_days": 531,
+  "issues": [
+   "UNEXPLAINED: 2 hole(s) \u2014 2024-05-20 178min, 2022-05-12 172min",
+   "SHORT_DAY: 1 non-Sunday, non-holiday day(s) under 35% of median 1424 bars \u2014 2026-05-22"
+  ],
+  "exclude_dates": [
+   "2022-05-12",
+   "2024-05-20",
+   "2026-05-22"
+  ],
+  "clean": false
+ },
+ "gbpchf": {
+  "pair": "gbpchf",
+  "bars": 3832552,
+  "days": 3239,
+  "median_bars_per_day": 1420.0,
+  "span": "2016-01-04..2026-05-22",
+  "buckets": {
+   "WEEKEND": 541,
+   "HOLIDAY": 10,
+   "UNEXPLAINED": 2
+  },
+  "daily_break_utc_hours": [],
+  "sunday_week_open_days": 531,
+  "issues": [
+   "UNEXPLAINED: 2 hole(s) \u2014 2024-05-20 178min, 2022-05-12 172min",
+   "SHORT_DAY: 1 non-Sunday, non-holiday day(s) under 35% of median 1420 bars \u2014 2026-05-22"
+  ],
+  "exclude_dates": [
+   "2022-05-12",
+   "2024-05-20",
+   "2026-05-22"
+  ],
+  "clean": false
+ },
+ "gbpjpy": {
+  "pair": "gbpjpy",
+  "bars": 3839998,
+  "days": 3239,
+  "median_bars_per_day": 1423.0,
+  "span": "2016-01-04..2026-05-22",
+  "buckets": {
+   "WEEKEND": 541,
+   "HOLIDAY": 8,
+   "UNEXPLAINED": 2
+  },
+  "daily_break_utc_hours": [],
+  "sunday_week_open_days": 531,
+  "issues": [
+   "UNEXPLAINED: 2 hole(s) \u2014 2024-05-20 178min, 2022-05-12 172min",
+   "SHORT_DAY: 1 non-Sunday, non-holiday day(s) under 35% of median 1423 bars \u2014 2026-05-22"
+  ],
+  "exclude_dates": [
+   "2022-05-12",
+   "2024-05-20",
+   "2026-05-22"
+  ],
+  "clean": false
+ },
+ "gbpnzd": {
+  "pair": "gbpnzd",
+  "bars": 3831977,
+  "days": 3238,
+  "median_bars_per_day": 1418.0,
+  "span": "2016-01-04..2026-05-22",
+  "buckets": {
+   "WEEKEND": 541,
+   "HOLIDAY": 11,
+   "UNEXPLAINED": 2
+  },
+  "daily_break_utc_hours": [],
+  "sunday_week_open_days": 530,
+  "issues": [
+   "UNEXPLAINED: 2 hole(s) \u2014 2024-05-20 178min, 2022-05-12 172min",
+   "SHORT_DAY: 1 non-Sunday, non-holiday day(s) under 35% of median 1418 bars \u2014 2026-05-22"
+  ],
+  "exclude_dates": [
+   "2022-05-12",
+   "2024-05-20",
+   "2026-05-22"
+  ],
+  "clean": false
+ },
+ "gbpusd": {
+  "pair": "gbpusd",
+  "bars": 3815842,
+  "days": 3317,
+  "median_bars_per_day": 1358.0,
+  "span": "2016-01-04..2026-08-21",
+  "buckets": {
+   "WEEKEND": 554,
+   "HOLIDAY": 8,
+   "UNEXPLAINED": 2
+  },
+  "daily_break_utc_hours": [],
+  "sunday_week_open_days": 544,
+  "issues": [
+   "UNEXPLAINED: 2 hole(s) \u2014 2024-05-20 178min, 2022-05-12 172min",
+   "SHORT_DAY: 1 non-Sunday, non-holiday day(s) under 35% of median 1358 bars \u2014 2026-08-21"
+  ],
+  "exclude_dates": [
+   "2022-05-12",
+   "2024-05-20",
+   "2026-08-21"
+  ],
+  "clean": false
+ },
+ "gold": {
+  "pair": "gold",
+  "bars": 3722340,
+  "days": 3302,
+  "median_bars_per_day": 1358.0,
+  "span": "2016-01-04..2026-08-21",
+  "buckets": {
+   "DAILY_BREAK": 2113,
+   "WEEKEND": 554,
+   "HOLIDAY": 73,
+   "UNEXPLAINED": 7
+  },
+  "daily_break_utc_hours": [
+   20,
+   21
+  ],
+  "sunday_week_open_days": 541,
+  "issues": [
+   "UNEXPLAINED: 7 hole(s) \u2014 2019-03-06 186min, 2024-05-20 178min, 2022-05-12 172min, 2022-05-04 94min, 2020-03-31 82min",
+   "SHORT_DAY: 1 non-Sunday, non-holiday day(s) under 35% of median 1358 bars \u2014 2026-08-21"
+  ],
+  "exclude_dates": [
+   "2019-03-06",
+   "2019-03-07",
+   "2020-03-24",
+   "2020-03-31",
+   "2020-04-02",
+   "2022-05-04",
+   "2022-05-12",
+   "2024-05-20",
+   "2026-08-21"
+  ],
+  "clean": false
+ },
+ "nzdjpy": {
+  "pair": "nzdjpy",
+  "bars": 3848393,
+  "days": 3239,
+  "median_bars_per_day": 1426.0,
+  "span": "2016-01-04..2026-05-22",
+  "buckets": {
+   "WEEKEND": 541,
+   "HOLIDAY": 11,
+   "UNEXPLAINED": 2
+  },
+  "daily_break_utc_hours": [],
+  "sunday_week_open_days": 531,
+  "issues": [
+   "UNEXPLAINED: 2 hole(s) \u2014 2024-05-20 178min, 2022-05-12 172min",
+   "SHORT_DAY: 1 non-Sunday, non-holiday day(s) under 35% of median 1426 bars \u2014 2026-05-22"
+  ],
+  "exclude_dates": [
+   "2022-05-12",
+   "2024-05-20",
+   "2026-05-22"
+  ],
+  "clean": false
+ },
+ "nzdusd": {
+  "pair": "nzdusd",
+  "bars": 3802273,
+  "days": 3317,
+  "median_bars_per_day": 1364.0,
+  "span": "2016-01-04..2026-08-21",
+  "buckets": {
+   "WEEKEND": 554,
+   "HOLIDAY": 12,
+   "UNEXPLAINED": 7
+  },
+  "daily_break_utc_hours": [],
+  "sunday_week_open_days": 544,
+  "issues": [
+   "UNEXPLAINED: 7 hole(s) \u2014 2022-05-04 369min, 2024-05-20 178min, 2022-05-12 172min, 2024-02-12 141min, 2021-12-05 117min",
+   "SHORT_DAY: 1 non-Sunday, non-holiday day(s) under 35% of median 1364 bars \u2014 2026-08-21"
+  ],
+  "exclude_dates": [
+   "2021-12-05",
+   "2022-05-04",
+   "2022-05-05",
+   "2022-05-12",
+   "2024-02-12",
+   "2024-05-20",
+   "2026-08-21"
+  ],
+  "clean": false
+ },
+ "usdcad": {
+  "pair": "usdcad",
+  "bars": 3850955,
+  "days": 3317,
+  "median_bars_per_day": 1389.0,
+  "span": "2016-01-04..2026-08-21",
+  "buckets": {
+   "WEEKEND": 554,
+   "HOLIDAY": 8,
+   "UNEXPLAINED": 2
+  },
+  "daily_break_utc_hours": [],
+  "sunday_week_open_days": 544,
+  "issues": [
+   "UNEXPLAINED: 2 hole(s) \u2014 2024-05-20 178min, 2022-05-12 172min",
+   "SHORT_DAY: 1 non-Sunday, non-holiday day(s) under 35% of median 1389 bars \u2014 2026-08-21"
+  ],
+  "exclude_dates": [
+   "2022-05-12",
+   "2024-05-20",
+   "2026-08-21"
+  ],
+  "clean": false
+ },
+ "usdchf": {
+  "pair": "usdchf",
+  "bars": 3590697,
+  "days": 3317,
+  "median_bars_per_day": 1259.0,
+  "span": "2016-01-04..2026-08-21",
+  "buckets": {
+   "WEEKEND": 554,
+   "HOLIDAY": 8,
+   "UNEXPLAINED": 4
+  },
+  "daily_break_utc_hours": [],
+  "sunday_week_open_days": 544,
+  "issues": [
+   "UNEXPLAINED: 4 hole(s) \u2014 2022-05-04 371min, 2024-05-20 178min, 2022-05-12 172min, 2022-05-04 97min",
+   "SHORT_DAY: 1 non-Sunday, non-holiday day(s) under 35% of median 1259 bars \u2014 2026-08-21"
+  ],
+  "exclude_dates": [
+   "2022-05-04",
+   "2022-05-05",
+   "2022-05-12",
+   "2024-05-20",
+   "2026-08-21"
+  ],
+  "clean": false
+ },
+ "usdjpy": {
+  "pair": "usdjpy",
+  "bars": 3874254,
+  "days": 3317,
+  "median_bars_per_day": 1395.0,
+  "span": "2016-01-04..2026-08-21",
+  "buckets": {
+   "WEEKEND": 554,
+   "HOLIDAY": 8,
+   "UNEXPLAINED": 2
+  },
+  "daily_break_utc_hours": [],
+  "sunday_week_open_days": 544,
+  "issues": [
+   "UNEXPLAINED: 2 hole(s) \u2014 2024-05-20 178min, 2022-05-12 172min",
+   "SHORT_DAY: 1 non-Sunday, non-holiday day(s) under 35% of median 1395 bars \u2014 2026-08-21"
+  ],
+  "exclude_dates": [
+   "2022-05-12",
+   "2024-05-20",
+   "2026-08-21"
+  ],
+  "clean": false
+ }
+}

@@ -1,0 +1,58 @@
+{
+ "phase3": {
+  "loss": "QLIKE",
+  "proxy": "garman_klass",
+  "oos_frac": 0.4,
+  "yz_window": 30,
+  "jump_window": 30,
+  "pass_pct": 2.0,
+  "min_oos": 200,
+  "oos_high_jump_improvement_pct": {
+   "fx_major": -0.239,
+   "fx_cross": 0.264,
+   "metal": -0.164
+  },
+  "oos_n": {
+   "fx_major": 1310,
+   "fx_cross": 3138,
+   "metal": 117
+  },
+  "premise": {
+   "fx_major": {
+    "n": 19268,
+    "b_cont": 0.4705,
+    "t_cont": 53.53,
+    "b_jump": -0.3299,
+    "t_jump": -10.26,
+    "holds": true
+   },
+   "fx_cross": {
+    "n": 48842,
+    "b_cont": 0.3525,
+    "t_cont": 60.43,
+    "b_jump": -0.2151,
+    "t_jump": -9.48,
+    "holds": true
+   },
+   "metal": {
+    "n": 2735,
+    "b_cont": 0.6914,
+    "t_cont": 42.82,
+    "b_jump": -0.5444,
+    "t_jump": -2.32,
+    "holds": true
+   },
+   "per_pair": {
+    "less": 23,
+    "total": 26,
+    "negative": 20,
+    "exceptions": [
+     "audchf",
+     "audjpy",
+     "eurgbp"
+    ]
+   }
+  },
+  "passed": false
+ }
+}

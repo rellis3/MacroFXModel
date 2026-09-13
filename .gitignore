@@ -208,3 +208,8 @@ oi_research_book/data/bot_backtest/
 # Line Touch Response Study raw per-pair responses (~9MB/pair, 17 pairs).
 # Derived data, rebuildable with: node analysis/line_touch_response_study.mjs
 analysis/output/line-touch-response/
+
+# jump_diffusion_daily.py's batch output: ~12MB of RV/BV over 70,871 (pair, date) rows,
+# fully regenerable from the M1 cache in one run. The small summaries it feeds
+# (m1_gap_audit_summary.json, jump_diffusion_summary.json) ARE tracked.
+volatilityExhaustion/jump_diffusion_daily.csv

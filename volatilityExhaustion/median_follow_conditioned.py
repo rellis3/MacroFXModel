@@ -23,7 +23,7 @@ conditioner (terciles), IS/OOS, pooled FX. Reuses costed_median_follow primitive
 """
 import os, sys, datetime, math
 import numpy as np
-from vol_exhaustion_lib import load_m1, build_london_daily, causal_sigma
+from vol_exhaustion_lib import load_m1, build_london_daily, causal_sigma, jump_fraction
 from costed_median_follow import (INSTR, FX, CACHE, C_MED, C_75, COST_PCT, SLIP_PCT,
                                   _resolve, _stats, _fmt)
 
@@ -82,17 +82,17 @@ def _ou_halflife(cl, vwap, upto):
 
 
 def _jump_frac(cl, upto):
-    """Bipower jump fraction on pre-tag 1-min log returns [0:upto]."""
+    """Bipower jump fraction on pre-tag 1-min log returns [0:upto].
+
+    Thin wrapper: the RV/BV math now lives ONCE in vol_exhaustion_lib.jump_fraction
+    (Lego Principle 1) so the whole-session daily scope in jump_diffusion_daily.py
+    shares this estimator instead of copying it. Guards and arithmetic are unchanged,
+    so the published Phase-8/10b numbers are untouched — asserted in
+    jump_diffusion_daily.py's self-test."""
     if upto < MIN_PRE:
         return None
     r = np.diff(np.log(np.maximum(cl[:upto], 1e-12)))
-    if r.size < 3:
-        return None
-    rv = np.sum(r * r)
-    bv = (math.pi / 2) * np.sum(np.abs(r[1:]) * np.abs(r[:-1]))
-    if rv <= 1e-18:
-        return None
-    return max(rv - bv, 0.0) / rv
+    return jump_fraction(r)
 
 
 def collect(pair):
