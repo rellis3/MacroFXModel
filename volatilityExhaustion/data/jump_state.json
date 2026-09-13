@@ -1,0 +1,531 @@
+{
+ "generated_utc": "2026-09-13T22:19:47Z",
+ "method": {
+  "sampling": "5-minute, London day, gap-spanning returns dropped",
+  "estimator": "bipower variation (Barndorff-Nielsen & Shephard); jump times by Lee-Mykland (2008), diurnally adjusted",
+  "jump_share": "max(RV-BV, 0) / RV  \u2014 a continuous descriptive share, NOT a binary jump/no-jump classifier",
+  "null_reference": "under pure diffusion ~1% of days would show >=1 detected jump"
+ },
+ "instruments": {
+  "audcad": {
+   "asset_class": "fx_cross",
+   "n_days": 2753,
+   "span": [
+    "2016-01-04",
+    "2026-08-19"
+   ],
+   "jump_share_pct": {
+    "p50": 3.91,
+    "p75": 9.22,
+    "p90": 16.24,
+    "p95": 22.03,
+    "p99": 38.87
+   },
+   "mean_jump_share_pct": 6.46,
+   "mean_jumps_per_day": 0.96,
+   "days_with_jump_pct": 51.9
+  },
+  "audchf": {
+   "asset_class": "fx_cross",
+   "n_days": 2752,
+   "span": [
+    "2016-01-04",
+    "2026-08-19"
+   ],
+   "jump_share_pct": {
+    "p50": 3.39,
+    "p75": 8.15,
+    "p90": 13.78,
+    "p95": 18.56,
+    "p99": 32.1
+   },
+   "mean_jump_share_pct": 5.44,
+   "mean_jumps_per_day": 0.83,
+   "days_with_jump_pct": 46.9
+  },
+  "audjpy": {
+   "asset_class": "fx_cross",
+   "n_days": 2754,
+   "span": [
+    "2016-01-04",
+    "2026-08-19"
+   ],
+   "jump_share_pct": {
+    "p50": 4.39,
+    "p75": 9.72,
+    "p90": 16.13,
+    "p95": 20.68,
+    "p99": 35.48
+   },
+   "mean_jump_share_pct": 6.5,
+   "mean_jumps_per_day": 1.02,
+   "days_with_jump_pct": 51.5
+  },
+  "audnzd": {
+   "asset_class": "fx_cross",
+   "n_days": 2751,
+   "span": [
+    "2016-01-04",
+    "2026-08-19"
+   ],
+   "jump_share_pct": {
+    "p50": 4.75,
+    "p75": 9.61,
+    "p90": 16.21,
+    "p95": 23.48,
+    "p99": 44.86
+   },
+   "mean_jump_share_pct": 7.01,
+   "mean_jumps_per_day": 0.97,
+   "days_with_jump_pct": 52.1
+  },
+  "audusd": {
+   "asset_class": "fx_major",
+   "n_days": 2751,
+   "span": [
+    "2016-01-04",
+    "2026-08-20"
+   ],
+   "jump_share_pct": {
+    "p50": 4.07,
+    "p75": 9.92,
+    "p90": 16.56,
+    "p95": 22.21,
+    "p99": 38.84
+   },
+   "mean_jump_share_pct": 6.63,
+   "mean_jumps_per_day": 0.96,
+   "days_with_jump_pct": 49.2
+  },
+  "cadjpy": {
+   "asset_class": "fx_cross",
+   "n_days": 2753,
+   "span": [
+    "2016-01-04",
+    "2026-08-19"
+   ],
+   "jump_share_pct": {
+    "p50": 4.3,
+    "p75": 9.72,
+    "p90": 15.93,
+    "p95": 21.81,
+    "p99": 36.13
+   },
+   "mean_jump_share_pct": 6.56,
+   "mean_jumps_per_day": 1.04,
+   "days_with_jump_pct": 53.9
+  },
+  "chfjpy": {
+   "asset_class": "fx_cross",
+   "n_days": 2754,
+   "span": [
+    "2016-01-04",
+    "2026-08-19"
+   ],
+   "jump_share_pct": {
+    "p50": 3.77,
+    "p75": 8.34,
+    "p90": 13.38,
+    "p95": 17.09,
+    "p99": 31.85
+   },
+   "mean_jump_share_pct": 5.55,
+   "mean_jumps_per_day": 0.94,
+   "days_with_jump_pct": 51.1
+  },
+  "euraud": {
+   "asset_class": "fx_cross",
+   "n_days": 2689,
+   "span": [
+    "2016-01-04",
+    "2026-05-21"
+   ],
+   "jump_share_pct": {
+    "p50": 3.61,
+    "p75": 8.6,
+    "p90": 14.54,
+    "p95": 19.36,
+    "p99": 34.33
+   },
+   "mean_jump_share_pct": 5.76,
+   "mean_jumps_per_day": 0.91,
+   "days_with_jump_pct": 50.2
+  },
+  "eurcad": {
+   "asset_class": "fx_cross",
+   "n_days": 2690,
+   "span": [
+    "2016-01-04",
+    "2026-05-21"
+   ],
+   "jump_share_pct": {
+    "p50": 3.05,
+    "p75": 8.45,
+    "p90": 14.16,
+    "p95": 19.21,
+    "p99": 34.73
+   },
+   "mean_jump_share_pct": 5.59,
+   "mean_jumps_per_day": 0.85,
+   "days_with_jump_pct": 49.8
+  },
+  "eurchf": {
+   "asset_class": "fx_cross",
+   "n_days": 2690,
+   "span": [
+    "2016-01-04",
+    "2026-05-21"
+   ],
+   "jump_share_pct": {
+    "p50": 3.85,
+    "p75": 9.05,
+    "p90": 14.37,
+    "p95": 17.67,
+    "p99": 26.43
+   },
+   "mean_jump_share_pct": 5.68,
+   "mean_jumps_per_day": 0.9,
+   "days_with_jump_pct": 50.4
+  },
+  "eurgbp": {
+   "asset_class": "fx_cross",
+   "n_days": 2754,
+   "span": [
+    "2016-01-04",
+    "2026-08-20"
+   ],
+   "jump_share_pct": {
+    "p50": 3.82,
+    "p75": 9.69,
+    "p90": 16.17,
+    "p95": 21.2,
+    "p99": 33.65
+   },
+   "mean_jump_share_pct": 6.32,
+   "mean_jumps_per_day": 0.94,
+   "days_with_jump_pct": 51.5
+  },
+  "eurjpy": {
+   "asset_class": "fx_cross",
+   "n_days": 2690,
+   "span": [
+    "2016-01-04",
+    "2026-05-21"
+   ],
+   "jump_share_pct": {
+    "p50": 4.49,
+    "p75": 9.68,
+    "p90": 14.93,
+    "p95": 19.18,
+    "p99": 32.47
+   },
+   "mean_jump_share_pct": 6.26,
+   "mean_jumps_per_day": 1.04,
+   "days_with_jump_pct": 53.2
+  },
+  "eurnzd": {
+   "asset_class": "fx_cross",
+   "n_days": 2690,
+   "span": [
+    "2016-01-04",
+    "2026-05-21"
+   ],
+   "jump_share_pct": {
+    "p50": 3.63,
+    "p75": 8.56,
+    "p90": 13.76,
+    "p95": 18.35,
+    "p99": 36.38
+   },
+   "mean_jump_share_pct": 5.76,
+   "mean_jumps_per_day": 0.93,
+   "days_with_jump_pct": 49.6
+  },
+  "eurusd": {
+   "asset_class": "fx_major",
+   "n_days": 2755,
+   "span": [
+    "2016-01-04",
+    "2026-08-20"
+   ],
+   "jump_share_pct": {
+    "p50": 4.3,
+    "p75": 10.0,
+    "p90": 16.37,
+    "p95": 21.71,
+    "p99": 33.69
+   },
+   "mean_jump_share_pct": 6.51,
+   "mean_jumps_per_day": 1.07,
+   "days_with_jump_pct": 54.0
+  },
+  "gbpaud": {
+   "asset_class": "fx_cross",
+   "n_days": 2690,
+   "span": [
+    "2016-01-04",
+    "2026-05-21"
+   ],
+   "jump_share_pct": {
+    "p50": 4.02,
+    "p75": 9.34,
+    "p90": 15.62,
+    "p95": 21.07,
+    "p99": 37.07
+   },
+   "mean_jump_share_pct": 6.28,
+   "mean_jumps_per_day": 1.03,
+   "days_with_jump_pct": 53.3
+  },
+  "gbpcad": {
+   "asset_class": "fx_cross",
+   "n_days": 2690,
+   "span": [
+    "2016-01-04",
+    "2026-05-21"
+   ],
+   "jump_share_pct": {
+    "p50": 4.01,
+    "p75": 9.61,
+    "p90": 15.98,
+    "p95": 21.78,
+    "p99": 37.26
+   },
+   "mean_jump_share_pct": 6.39,
+   "mean_jumps_per_day": 0.95,
+   "days_with_jump_pct": 53.2
+  },
+  "gbpchf": {
+   "asset_class": "fx_cross",
+   "n_days": 2690,
+   "span": [
+    "2016-01-04",
+    "2026-05-21"
+   ],
+   "jump_share_pct": {
+    "p50": 3.57,
+    "p75": 9.11,
+    "p90": 14.81,
+    "p95": 19.62,
+    "p99": 32.98
+   },
+   "mean_jump_share_pct": 5.87,
+   "mean_jumps_per_day": 1.01,
+   "days_with_jump_pct": 54.9
+  },
+  "gbpjpy": {
+   "asset_class": "fx_cross",
+   "n_days": 2690,
+   "span": [
+    "2016-01-04",
+    "2026-05-21"
+   ],
+   "jump_share_pct": {
+    "p50": 4.68,
+    "p75": 10.15,
+    "p90": 16.38,
+    "p95": 20.64,
+    "p99": 34.14
+   },
+   "mean_jump_share_pct": 6.7,
+   "mean_jumps_per_day": 1.07,
+   "days_with_jump_pct": 54.9
+  },
+  "gbpnzd": {
+   "asset_class": "fx_cross",
+   "n_days": 2690,
+   "span": [
+    "2016-01-04",
+    "2026-05-21"
+   ],
+   "jump_share_pct": {
+    "p50": 3.98,
+    "p75": 8.98,
+    "p90": 15.18,
+    "p95": 20.95,
+    "p99": 38.73
+   },
+   "mean_jump_share_pct": 6.24,
+   "mean_jumps_per_day": 0.99,
+   "days_with_jump_pct": 52.2
+  },
+  "gbpusd": {
+   "asset_class": "fx_major",
+   "n_days": 2755,
+   "span": [
+    "2016-01-04",
+    "2026-08-20"
+   ],
+   "jump_share_pct": {
+    "p50": 4.85,
+    "p75": 10.49,
+    "p90": 17.29,
+    "p95": 22.23,
+    "p99": 36.79
+   },
+   "mean_jump_share_pct": 6.97,
+   "mean_jumps_per_day": 1.04,
+   "days_with_jump_pct": 53.4
+  },
+  "gold": {
+   "asset_class": "metal",
+   "n_days": 2736,
+   "span": [
+    "2016-01-04",
+    "2026-08-20"
+   ],
+   "jump_share_pct": {
+    "p50": 4.5,
+    "p75": 10.27,
+    "p90": 16.81,
+    "p95": 21.57,
+    "p99": 33.09
+   },
+   "mean_jump_share_pct": 6.63,
+   "mean_jumps_per_day": 1.16,
+   "days_with_jump_pct": 55.2
+  },
+  "nzdjpy": {
+   "asset_class": "fx_cross",
+   "n_days": 2690,
+   "span": [
+    "2016-01-04",
+    "2026-05-21"
+   ],
+   "jump_share_pct": {
+    "p50": 4.04,
+    "p75": 8.95,
+    "p90": 14.45,
+    "p95": 18.68,
+    "p99": 35.43
+   },
+   "mean_jump_share_pct": 6.1,
+   "mean_jumps_per_day": 0.97,
+   "days_with_jump_pct": 50.3
+  },
+  "nzdusd": {
+   "asset_class": "fx_major",
+   "n_days": 2752,
+   "span": [
+    "2016-01-04",
+    "2026-08-20"
+   ],
+   "jump_share_pct": {
+    "p50": 3.95,
+    "p75": 9.08,
+    "p90": 15.13,
+    "p95": 21.22,
+    "p99": 39.91
+   },
+   "mean_jump_share_pct": 6.25,
+   "mean_jumps_per_day": 0.96,
+   "days_with_jump_pct": 48.8
+  },
+  "usdcad": {
+   "asset_class": "fx_major",
+   "n_days": 2755,
+   "span": [
+    "2016-01-04",
+    "2026-08-20"
+   ],
+   "jump_share_pct": {
+    "p50": 3.42,
+    "p75": 8.92,
+    "p90": 15.75,
+    "p95": 21.67,
+    "p99": 39.61
+   },
+   "mean_jump_share_pct": 6.16,
+   "mean_jumps_per_day": 0.84,
+   "days_with_jump_pct": 46.5
+  },
+  "usdchf": {
+   "asset_class": "fx_major",
+   "n_days": 2752,
+   "span": [
+    "2016-01-04",
+    "2026-08-20"
+   ],
+   "jump_share_pct": {
+    "p50": 3.76,
+    "p75": 9.31,
+    "p90": 15.28,
+    "p95": 20.05,
+    "p99": 36.59
+   },
+   "mean_jump_share_pct": 6.05,
+   "mean_jumps_per_day": 0.9,
+   "days_with_jump_pct": 47.7
+  },
+  "usdjpy": {
+   "asset_class": "fx_major",
+   "n_days": 2755,
+   "span": [
+    "2016-01-04",
+    "2026-08-20"
+   ],
+   "jump_share_pct": {
+    "p50": 6.34,
+    "p75": 12.09,
+    "p90": 18.43,
+    "p95": 23.84,
+    "p99": 36.15
+   },
+   "mean_jump_share_pct": 8.17,
+   "mean_jumps_per_day": 1.31,
+   "days_with_jump_pct": 59.7
+  }
+ },
+ "findings": [
+  {
+   "id": "events",
+   "phase": "12",
+   "verdict": "validated",
+   "claim": "Days carrying a Major macro release are measurably jumpier.",
+   "detail": "12/12 cells \u2014 every asset class, both halves of the sample, both sampling frequencies (t +2.09 to +14.04). On event days the largest 1-min move lands within 5 minutes of a release 35-41% of the time against a ~1% chance baseline."
+  },
+  {
+   "id": "decay",
+   "phase": "13",
+   "verdict": "validated",
+   "claim": "Jump-driven volatility mean-reverts faster than smooth volatility.",
+   "detail": "At a matched volatility level, high-vol jump-driven days decay to 0.78-0.83 of today's realised variance by tomorrow vs 0.93-0.97 for smooth ones \u2014 6/6 cells. Artifact-controlled: regressing log RV(t+1) on log RV(t) + jump share leaves the jump coefficient at -0.99 to -1.47, t -4.2 to -31.1."
+  },
+  {
+   "id": "cluster",
+   "phase": "13",
+   "verdict": "null",
+   "claim": "Jumps do NOT cluster day to day.",
+   "detail": "Rank autocorrelation of jump share +0.03 to +0.08 (lift 1.03-1.14x). The same computation on realised variance gives +0.69 to +0.77 (lift 2.40-2.70x) \u2014 volatility clusters hard, jumps barely do. There is no shock regime in which one jump raises tomorrow's jump odds."
+  },
+  {
+   "id": "direction",
+   "phase": "13",
+   "verdict": "null",
+   "claim": "Nothing here predicts direction.",
+   "detail": "Next-day continuation sits at 44-52% in every cell of every split \u2014 high/low volatility, jump-driven/smooth, all four quadrants of the frequency x size map, both halves, all asset classes."
+  },
+  {
+   "id": "exhaustion",
+   "phase": "13",
+   "verdict": "null",
+   "claim": "A jump-driven extreme exhausts no differently from a smooth one.",
+   "detail": "Conditioning the fresh-extreme hold race on the causal pre-extreme jump share, within distance bands: pooled +0.0031 in-sample, -0.0008 out-of-sample, signs pointing opposite ways across instruments, on cells of 1,000-3,700 observations."
+  },
+  {
+   "id": "forecast",
+   "phase": "12 & 14",
+   "verdict": "null",
+   "claim": "The jump share does NOT improve tomorrow's volatility forecast.",
+   "detail": "Tested twice and failed twice. Stripping the jump component out of the Yang-Zhang sigma: -0.24%/+0.26%/-0.16% OOS QLIKE against a +2% bar. Feeding the continuous and jump components in as separate HAR regressors (the form built to carry exactly this): +0.4% to -0.7% against the same HAR without the split. This is why the page describes today and claims nothing about tomorrow."
+  },
+  {
+   "id": "intraday_rv",
+   "phase": "14",
+   "verdict": "lead",
+   "claim": "Intraday realised variance beats the shipped daily sigma as a forecast input \u2014 but this was the control arm, not the hypothesis.",
+   "detail": "HAR on 5-minute realised variance beats the incumbent Yang-Zhang sigma by 9.7% (FX majors), 21.0% (crosses) and 21.0% (gold) on OOS QLIKE, consistently across both specifications. NOT pre-registered \u2014 it fell out of the control arm of the jump test \u2014 so it needs its own pre-registered confirmation before anything is built on it."
+  }
+ ],
+ "contract": "Descriptive state only. Never a trading signal, and never wired into the live bot plan-building path (volatilityBotPlan.js / volatilityBotProducer.js)."
+}

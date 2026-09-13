@@ -9453,6 +9453,39 @@ app.get('/api/vumanchu/mtf-stack', async (req, res) => {
   }
 });
 
+// ─── Jump/diffusion state (volatilityExhaustion Phases 12-14) ────────────────
+// Serves the FROZEN table `volatilityExhaustion/data/jump_state.json`, produced
+// offline by `export_jump_state.py`. Same learn-offline / ship-a-file pattern as
+// the VuManChu state table below: the measurement reads ~1.6GB of 1-min bars
+// across 26 instruments and takes the better part of an hour, so it can never
+// run on a request.
+//
+// The table carries each instrument's jump-share DISTRIBUTION (the yardstick a
+// live reading is scored against) plus the pre-registered verdict of every phase,
+// carried as data so `jump-diffusion.html` cannot drift from the research.
+//
+// DESCRIPTIVE ONLY. Three independent tests (Phase 12 sigma-strip, Phase 14
+// HAR-CJ, Phase 13 exhaustion conditioning) failed to convert the jump share into
+// a better forward number, so nothing here is a forecast or a trading signal, and
+// nothing here is imported by volatilityBotPlan.js / volatilityBotProducer.js.
+const _JUMP_STATE_PATH = path.join(__dirname, 'volatilityExhaustion', 'data', 'jump_state.json');
+let _jumpState = null, _jumpStateAt = 0;
+
+app.get('/api/jump-diffusion/state', (req, res) => {
+  // Re-read at most every 5 min so a regenerated table is picked up without a
+  // redeploy, but a burst of requests does not hammer the disk.
+  if (!_jumpState || Date.now() - _jumpStateAt > 300_000) {
+    try {
+      _jumpState = JSON.parse(fs.readFileSync(_JUMP_STATE_PATH, 'utf8'));
+      _jumpStateAt = Date.now();
+    } catch (e) {
+      console.warn('[jump-diffusion/state] table unreadable:', e.message);
+      return res.status(503).json({ error: 'jump state table unavailable', detail: e.message });
+    }
+  }
+  res.json(_jumpState);
+});
+
 // ─── VuManChu state + forward-validation logger ──────────────────────────────
 // The live read (`/api/vumanchu/state`) keys into the FROZEN table the offline
 // lab produced (`vumanchuLab/data/vumanchu_state_table.json`). The brain stays

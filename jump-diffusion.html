@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jump vs Diffusion</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/index.css">
+<style>
+/* Mirrors volatility-intelligence.html's chrome so the two read as one family. */
+#jdApp { padding: 0 24px 60px; max-width: 1280px; margin: 0 auto; }
+.jd-topbar { display: flex; align-items: center; gap: 12px; padding: 16px 0 12px; border-bottom: 1.5px solid var(--border); flex-wrap: wrap; }
+.jd-title { font-size: 16px; font-weight: 600; }
+.jd-sub { font-size: 10px; color: var(--text3); letter-spacing: .06em; text-transform: uppercase; margin-top: 2px; font-family: 'DM Mono', monospace; }
+.jd-spacer { flex: 1; }
+.jd-back { font-size: 11px; color: var(--text2); text-decoration: none; border: 1.5px solid var(--border); border-radius: 20px; padding: 5px 12px; font-family: 'DM Mono', monospace; white-space: nowrap; }
+.jd-back:hover { border-color: var(--blue); color: var(--blue); }
+
+.jd-jumpnav { position: sticky; top: 0; z-index: 100; background: var(--bg); display: flex; gap: 6px; flex-wrap: wrap; padding: 10px 0; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+.jd-jumpnav a { font-size: 10.5px; font-family: 'DM Mono', monospace; color: var(--text2); text-decoration: none; background: var(--s1); border: 1px solid var(--border); border-radius: 14px; padding: 4px 10px; white-space: nowrap; }
+.jd-jumpnav a:hover { color: var(--blue); border-color: var(--blue-bd); }
+
+.jd-intro { background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--rl); padding: 12px 16px; margin-bottom: 18px; font-size: 12.5px; line-height: 1.6; color: var(--text2); }
+.jd-intro b { color: var(--text); }
+
+.jd-section { scroll-margin-top: 56px; background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--rl); padding: 16px 18px; margin-bottom: 16px; }
+.jd-section h2 { font-size: 13.5px; font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.jd-section .jd-q { font-size: 9px; font-family: 'DM Mono', monospace; color: var(--blue); border: 1px solid var(--blue-bd); background: var(--blue-bg); border-radius: 5px; padding: 2px 6px; font-weight: 600; }
+.jd-section-note { font-size: 11px; color: var(--text3); line-height: 1.55; margin: 4px 0 12px; }
+.jd-section-note code { font-family: 'DM Mono', monospace; background: var(--s2); padding: 1px 4px; border-radius: 3px; }
+
+.jd-scroll { overflow-x: auto; }
+.jd-table { width: 100%; border-collapse: collapse; font-family: 'DM Mono', monospace; font-size: 11.5px; min-width: 680px; }
+.jd-table th { text-align: right; font-size: 9.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text3); padding: 6px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.jd-table th:first-child, .jd-table td:first-child { text-align: left; }
+.jd-table td { padding: 7px 8px; border-bottom: 1px solid var(--border); color: var(--text2); white-space: nowrap; text-align: right; }
+.jd-table tr:last-child td { border-bottom: none; }
+.jd-table tr:hover td { background: var(--s2); }
+.jd-pair { color: var(--text); font-weight: 600; }
+.jd-ac-tag { font-size: 8.5px; color: var(--text3); text-transform: uppercase; margin-left: 4px; }
+
+/* Percentile ladder — p50..p99 as bar heights on a COMMON scale across all pairs,
+   so the column compares instruments rather than re-normalising each to itself. */
+.jd-ladder { display: flex; align-items: flex-end; gap: 2px; height: 20px; }
+.jd-ladder i { flex: 1; border-radius: 1px; background: var(--blue); opacity: .30; min-height: 2px; display: block; }
+.jd-ladder i.hi { opacity: .85; }
+
+/* Verdict cards — the study's own conclusions, carried as data */
+.jd-verdicts { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px; }
+.jd-card { background: var(--s2); border: 1px solid var(--border); border-radius: var(--rm, 8px); padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
+.jd-card .jd-claim { font-size: 12.5px; font-weight: 600; color: var(--text); line-height: 1.4; }
+.jd-card .jd-detail { font-size: 11px; color: var(--text3); line-height: 1.55; }
+.jd-card.v-validated { border-left: 3px solid var(--green); }
+.jd-card.v-null { border-left: 3px solid var(--text3); }
+.jd-card.v-lead { border-left: 3px solid var(--amber); }
+
+.jd-badge { display: inline-flex; align-items: center; gap: 3px; font-size: 9.5px; font-weight: 600; font-family: 'DM Mono', monospace; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border); background: var(--s1); color: var(--text2); white-space: nowrap; letter-spacing: .04em; }
+.jd-badge.good { background: var(--green-bg); border-color: var(--green-bd); color: var(--green); }
+.jd-badge.dim  { background: var(--s1); border-color: var(--border); color: var(--text3); }
+.jd-badge.warm { background: var(--amber-bg); border-color: var(--amber-bd); color: var(--amber); }
+
+.jd-warn { background: var(--s2); border: 1px solid var(--border); border-left: 3px solid var(--amber); border-radius: var(--rm, 8px); padding: 11px 14px; font-size: 11.5px; line-height: 1.6; color: var(--text2); }
+.jd-warn b { color: var(--text); }
+.jd-empty { color: var(--text3); font-size: 11.5px; padding: 10px 0; }
+.jd-foot { font-size: 10.5px; color: var(--text3); line-height: 1.6; margin-top: 4px; font-family: 'DM Mono', monospace; }
+@media (max-width: 700px) {
+  #jdApp { padding: 0 14px 48px; }
+  .jd-jumpnav { gap: 4px; }
+}
+</style>
+</head>
+<body class="dark">
+<div id="jdApp">
+
+  <div class="jd-topbar">
+    <div>
+      <div class="jd-title">Jump vs Diffusion</div>
+      <div class="jd-sub">How today&rsquo;s volatility arrived &middot; measured, not forecast</div>
+    </div>
+    <div class="jd-spacer"></div>
+    <span class="live-pill"><span class="live-dot"></span><span id="jdUpdated">Loading&hellip;</span></span>
+    <a class="jd-back" href="vol-forecast-v2.html">&larr; Vol Forecast v2</a>
+  </div>
+
+  <div class="jd-jumpnav">
+    <a href="#jd-what">What This Measures</a>
+    <a href="#jd-dist">Per-Pair Yardstick</a>
+    <a href="#jd-verdicts">What Held, What Didn&rsquo;t</a>
+    <a href="#jd-notforecast">Why There&rsquo;s No Forecast Here</a>
+  </div>
+
+  <div class="jd-intro">
+    Two days can print the same range and be completely different events: one ground there steadily, the other
+    sat flat and gapped on a data release. This page splits realised variance into the part that came from
+    <b>smooth diffusion</b> and the part that came from <b>discrete jumps</b>.
+    Every number is <b>descriptive state</b> — it describes how today moved, and deliberately claims nothing about
+    tomorrow. Nothing here feeds the live bots, same discipline as
+    <a href="volatility-intelligence.html" style="color:var(--blue)">Vol Intelligence</a>.
+    <span id="jdStatusLine" style="color:var(--text3)"></span>
+  </div>
+
+  <section class="jd-section" id="jd-what">
+    <h2>What this measures <span class="jd-q">bipower variation</span></h2>
+    <p class="jd-section-note">
+      Realised variance <code>RV = &Sigma;r&sup2;</code> counts everything. Bipower variation
+      <code>BV = (&pi;/2)&middot;&Sigma;|r<sub>t</sub>||r<sub>t-1</sub>|</code> is jump-robust — a lone
+      jump enters only one product on each side, so it washes out. The difference is the jump part:
+      <code>jump share = max(RV &minus; BV, 0) / RV</code>. Measured on 5-minute returns over the London day,
+      with returns that span a session break dropped (an archive hole would otherwise read as a jump).
+      Jump <em>times</em> come from a Lee-Mykland test with a stated 1%-per-day false-positive rate, after
+      removing the ~3&times; intraday volatility cycle.
+    </p>
+    <div class="jd-warn">
+      <b>This is a continuous share, not a jump/no-jump verdict.</b> <code>max(&hellip;,0)</code> floors the estimate
+      because bipower is itself noisy and the difference goes negative on plenty of genuinely quiet days. Read
+      &ldquo;today is 18% jump-driven&rdquo; as a description of character, never as &ldquo;there were N jumps&rdquo; —
+      and always against the pair&rsquo;s own percentiles below, since 18% is ordinary for one pair and a 95th-percentile
+      day for another.
+    </div>
+  </section>
+
+  <section class="jd-section" id="jd-dist">
+    <h2>Per-pair yardstick <span class="jd-q">10.6y reference distribution</span></h2>
+    <p class="jd-section-note">
+      A live jump-share reading is meaningless without the distribution it sits in. These are each instrument&rsquo;s own
+      percentiles over the full archive — the scale against which a current session should be read. The ladder shades
+      p50 &rarr; p99 left to right.
+    </p>
+    <div class="jd-scroll"><table class="jd-table" id="jdDistTable"><thead><tr>
+      <th>Pair</th><th>Median</th><th>p75</th><th>p90</th><th>p95</th><th>p99</th>
+      <th>Scale</th><th>Jumps/day</th><th>Days w/ jump</th><th>Days</th>
+    </tr></thead><tbody><tr><td colspan="10" class="jd-empty">Loading&hellip;</td></tr></tbody></table></div>
+    <div class="jd-foot" id="jdDistFoot"></div>
+  </section>
+
+  <section class="jd-section" id="jd-verdicts">
+    <h2>What held, and what didn&rsquo;t <span class="jd-q">pre-registered</span></h2>
+    <p class="jd-section-note">
+      Every claim below was written down with a kill condition <em>before</em> the data was run, and the nulls are
+      reported as nulls. They are carried here as data from the study output, so this page cannot quietly drift from
+      what was actually measured.
+    </p>
+    <div class="jd-verdicts" id="jdVerdicts"><div class="jd-empty">Loading&hellip;</div></div>
+  </section>
+
+  <section class="jd-section" id="jd-notforecast">
+    <h2>Why there is no forecast on this page <span class="jd-q">three failed tests</span></h2>
+    <p class="jd-section-note">
+      The obvious idea is that a jump-inflated volatility reading overstates tomorrow, so stripping the jump out
+      should forecast better. The reasoning is sound and the underlying effect is real — a jumpier day <em>is</em>
+      followed by a quieter one at a matched volatility level. It still does not produce a better forecast, tested
+      three separate ways:
+    </p>
+    <div class="jd-scroll"><table class="jd-table" style="min-width:560px"><thead><tr>
+      <th>Test</th><th>Construction</th><th>Bar</th><th>Result</th>
+    </tr></thead><tbody>
+      <tr><td class="jd-pair">Phase 12</td><td style="text-align:left">Scale &sigma; by the 30-day diffusive share</td><td>&ge;2% OOS QLIKE</td><td>&minus;0.24% / +0.26% / &minus;0.16%</td></tr>
+      <tr><td class="jd-pair">Phase 14</td><td style="text-align:left">HAR, continuous &amp; jump as separate regressors</td><td>&ge;2% vs HAR-RV</td><td>+0.4% to &minus;0.7%</td></tr>
+      <tr><td class="jd-pair">Phase 13</td><td style="text-align:left">Condition the exhaustion race on pre-extreme jump share</td><td>consistent sign</td><td>+0.003 IS / &minus;0.001 OOS</td></tr>
+    </tbody></table></div>
+    <div class="jd-warn" style="margin-top:12px">
+      <b>So the page describes today and stops there.</b> A &ldquo;treat tomorrow&rsquo;s cone with wider error bars&rdquo;
+      chip would be exactly the claim these three tests failed to support. The honest read: the jump share tells you
+      what <em>kind</em> of day this was, and that is genuinely useful context — it just is not a forward signal, and
+      labelling it as one would be the easiest way to make this page worse than nothing.
+    </div>
+  </section>
+
+  <div class="jd-foot" id="jdMethodFoot"></div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const ACLASS = { fx_major: 'major', fx_cross: 'cross', metal: 'metal' };
+
+function badge(cls, txt) { return `<span class="jd-badge ${cls}">${txt}</span>`; }
+
+// Ladder: p50..p99 drawn as bar heights against ONE scale shared by every row, so a
+// pair with a genuinely fatter jump tail shows a visibly taller ladder. Normalising
+// each pair to its own p99 (the first version of this) made all 26 rows identical and
+// encoded nothing.
+function ladder(d, globalMax) {
+  const keys = ['p50', 'p75', 'p90', 'p95', 'p99'];
+  return `<div class="jd-ladder">` + keys.map(k => {
+    const h = Math.max(2, Math.round((d[k] / globalMax) * 20));
+    return `<i class="${k === 'p95' || k === 'p99' ? 'hi' : ''}" style="height:${h}px" title="${k} · ${d[k]}%"></i>`;
+  }).join('') + `</div>`;
+}
+
+function renderDist(data) {
+  const tbody = $('jdDistTable').querySelector('tbody');
+  const rows = Object.entries(data.instruments || {});
+  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="10" class="jd-empty">No data.</td></tr>'; return; }
+  // heaviest-jump pairs first — the ones where this read matters most
+  rows.sort((a, b) => b[1].jump_share_pct.p95 - a[1].jump_share_pct.p95);
+  const globalMax = Math.max(...rows.map(([, r]) => r.jump_share_pct.p99)) || 1;
+  tbody.innerHTML = rows.map(([name, r]) => {
+    const d = r.jump_share_pct;
+    return `<tr>
+      <td class="jd-pair">${name.toUpperCase()}<span class="jd-ac-tag">${ACLASS[r.asset_class] || ''}</span></td>
+      <td>${d.p50.toFixed(1)}%</td>
+      <td>${d.p75.toFixed(1)}%</td>
+      <td>${d.p90.toFixed(1)}%</td>
+      <td>${d.p95.toFixed(1)}%</td>
+      <td>${d.p99.toFixed(1)}%</td>
+      <td style="width:90px">${ladder(d, globalMax)}</td>
+      <td>${r.mean_jumps_per_day.toFixed(2)}</td>
+      <td>${r.days_with_jump_pct.toFixed(0)}%</td>
+      <td style="color:var(--text3)">${r.n_days.toLocaleString()}</td>
+    </tr>`;
+  }).join('');
+  const any = rows[0][1];
+  $('jdDistFoot').textContent =
+    `Sorted by p95 (heaviest jump tail first). Span ${any.span[0]} → ${any.span[1]}. ` +
+    `"Days w/ jump" counts sessions with at least one Lee-Mykland detection — under pure diffusion that would be ~1%. ` +
+    `Ladders share one scale across all pairs, so a taller ladder is a genuinely fatter jump tail.`;
+}
+
+function renderVerdicts(data) {
+  const el = $('jdVerdicts');
+  const list = data.findings || [];
+  if (!list.length) { el.innerHTML = '<div class="jd-empty">No verdicts.</div>'; return; }
+  const cls = { validated: 'good', null: 'dim', lead: 'warm' };
+  const label = { validated: '✓ HELD', null: '— NULL', lead: '△ LEAD, UNCONFIRMED' };
+  el.innerHTML = list.map(f => `
+    <div class="jd-card v-${f.verdict}">
+      <div>${badge(cls[f.verdict] || 'dim', label[f.verdict] || f.verdict)}
+           <span class="jd-badge dim">PHASE ${f.phase}</span></div>
+      <div class="jd-claim">${f.claim}</div>
+      <div class="jd-detail">${f.detail}</div>
+    </div>`).join('');
+}
+
+async function load() {
+  try {
+    const res = await fetch('/api/jump-diffusion/state');
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      $('jdStatusLine').textContent =
+        ` Unavailable: ${err.detail || err.error || res.statusText}. Regenerate with ` +
+        `volatilityExhaustion/export_jump_state.py.`;
+      $('jdUpdated').textContent = 'Unavailable';
+      return;
+    }
+    const data = await res.json();
+    const n = Object.keys(data.instruments || {}).length;
+    $('jdUpdated').textContent = 'Frozen table · ' + (data.generated_utc || '').slice(0, 10);
+    $('jdStatusLine').textContent = ` ${n} instruments · precomputed offline, served from disk.`;
+    renderDist(data);
+    renderVerdicts(data);
+    const m = data.method || {};
+    $('jdMethodFoot').innerHTML =
+      `Method — ${m.sampling || ''}. ${m.estimator || ''}. ` +
+      `Null reference: ${m.null_reference || ''}.<br>${data.contract || ''}`;
+  } catch (e) {
+    $('jdStatusLine').textContent = ` Fetch failed: ${e.message}`;
+    $('jdUpdated').textContent = 'Error';
+  }
+}
+load();
+</script>
+</body>
+</html>

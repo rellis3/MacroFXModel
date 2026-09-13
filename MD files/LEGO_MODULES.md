@@ -7336,3 +7336,58 @@ finding (vol-decay), three clean nulls (clustering, direction, exhaustion).** Th
 HAR-RV-CJ follow-up flagged in §1as is now the clear next step rather than a throwaway —
 with the caveat, stated plainly, that **a regression coefficient is not a forecast
 improvement**: §1as ran a genuine OOS QLIKE competition and the strip lost.
+
+### 1au. HAR-RV-CJ forecast test + the shipped Jump/Diffusion page (2026-09-13) — the forecast question closed, the measurement surfaced
+
+**Scripts:** `volatilityExhaustion/har_cj_forecast.py` (the test), `export_jump_state.py`
+(the frozen table). **Page:** `jump-diffusion.html`. **Endpoint:** `/api/jump-diffusion/state`.
+
+**The test.** §1as's Phase-12 null was diagnosed as a too-blunt lever (scaling a 30-day YZ
+average by a jump correction cannot express a next-day effect), and §1at measured the effect
+directly. HAR-CJ (Andersen-Bollerslev-Diebold 2007) is the form built to carry it: continuous
+and jump components as SEPARATE regressors at daily/weekly/monthly lags. Pre-registered bar:
+beat HAR-RV — the same model minus the split — by ≥2% OOS QLIKE on fx_majors, scored with
+`js/volForecastBench.js`'s own loss/proxy/split, coefficients fit walk-forward on an
+expanding window mirroring `harRvPred`.
+
+**Result: NULL, the third independent time.** Log form (the sound specification): the split
+moves the forecast **+0.41% to −0.69%** against a 2% bar, sign disagreeing across asset
+classes AND across the two split definitions (bipower vs Lee-Mykland). **The forecast
+question is closed** — three constructions, three nulls (Phase 12 σ-strip, Phase 13
+exhaustion conditioning, Phase 14 HAR-CJ). §1at's vol-decay effect is real and replicated
+and is simply not convertible into a better next-day variance forecast.
+
+**A numerical trap worth recording.** The first draft returned QLIKE in the *millions*.
+Daily variances are ~1e-4 against an intercept column of 1; `volForecastBench.js` already
+documents its own 5-column IV system blowing up to QLIKE 7.5e5 unscaled, and the CJ system
+is 7 columns. Remedy taken straight from that file rather than rediscovered: scale
+regressors + target by 1/median(RV) (scale-equivariant, so predictions unchanged and only
+the solve is stabilised) and floor every prediction at `VAR_FLOOR_FRAC` = 1% of median RV,
+applied identically to every model including the incumbent. The **level form stays badly
+conditioned** for 7 columns on skewed variance (IS 0.59 vs OOS 0.43 — outlier-dominated);
+the log form is the one to read. Both are reported.
+
+**Control-arm finding, NOT the hypothesis and NOT pre-registered:** HAR fit on **intraday
+5-min realised variance** beats the shipped Yang-Zhang σ by **9.7% / 21.0% / 21.0%** OOS
+QLIKE (fx_major / fx_cross / metal, log form; 6.5/8.8/22.1% level form) — every class, both
+specifications. That is about using intraday data at all, not about jumps. Needs its own
+pre-registration before anything is built on it, but it is a better lead than any remaining
+jump angle.
+
+**The page.** §1at's measurement is validated (Phase 2: 12/12 cells, 34-45× event-timing
+lift), so it ships as DESCRIPTIVE STATE. Same learn-offline / ship-a-file pattern as the
+VuManChu state table (§ `vumanchuLab/data/vumanchu_state_table.json`): `export_jump_state.py`
+freezes a 12KB table, the endpoint serves it with a 5-min re-read, the batch job (~1.6GB of
+1-min bars) never runs on a request. The page carries each instrument's own jump-share
+percentiles — a live reading means nothing without the distribution it sits in — plus every
+phase's verdict **read from the study output as data**, so it cannot drift from the research.
+Linked from `vol-forecast-v2.html`'s tool row and cross-linked from
+`volatility-intelligence.html`.
+
+**What the page deliberately does NOT have: a forecast, a reliability multiplier, or a
+"wider error bars on tomorrow's cone" chip.** That chip asserts precisely the claim Phases
+12/13/14 each failed to support. Nothing here is imported by `volatilityBotPlan.js` /
+`volatilityBotProducer.js`.
+
+**Status: ✅ registered · forecast question closed (3/3 null) · measurement shipped as
+descriptive state · one unconfirmed control-arm lead (intraday RV as a forecast input).**
