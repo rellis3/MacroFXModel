@@ -49,6 +49,27 @@
   .dot { width:9px; height:9px; border-radius:50%; display:inline-block; }
   #blotterBody tr:hover { background:#182030; cursor:pointer; }
   #blotterBody tr.selected { background:#1f2b45; }
+
+  /* ── Year → month → day drill-down heatmap ────────────────────────────── */
+  .dd-breadcrumb { display:flex; align-items:center; gap:6px; margin-bottom:10px; font-family:'DM Mono',monospace; font-size:12px; flex-wrap:wrap; }
+  .dd-breadcrumb button { background:var(--panel2); border:1px solid var(--line); color:var(--accent); border-radius:5px; padding:3px 10px; cursor:pointer; font-family:inherit; font-size:11px; }
+  .dd-breadcrumb button:hover { border-color:var(--accent); }
+  .dd-breadcrumb button:disabled { opacity:.4; cursor:default; color:var(--text2); }
+  .dd-crumb-sep { color:var(--text3); }
+  .dd-grid { display:flex; flex-wrap:wrap; gap:6px; }
+  .dd-cell { border-radius:6px; border:1px solid var(--line); display:flex; flex-direction:column; align-items:center; justify-content:center; font-family:'DM Mono',monospace; transition:transform .08s; }
+  .dd-cell.dd-clickable { cursor:pointer; }
+  .dd-cell.dd-clickable:hover { transform:scale(1.05); border-color:var(--accent); z-index:1; }
+  .dd-cell.dd-year { width:104px; height:66px; font-size:11px; }
+  .dd-cell.dd-month { width:88px; height:58px; font-size:10px; }
+  .dd-cell.dd-day { width:100%; height:100%; font-size:9px; }
+  .dd-cell.dd-empty { border-color:transparent; background:transparent !important; }
+  .dd-cell .dd-lbl { color:var(--text3); opacity:.85; }
+  .dd-cell .dd-val { font-size:12px; font-weight:600; margin-top:2px; }
+  .dd-cell .dd-n { font-size:8px; color:var(--text3); opacity:.7; margin-top:1px; }
+  .dd-daywrap { display:grid; grid-template-columns:repeat(7,44px); gap:5px; }
+  .dd-dow { font-size:9px; color:var(--text3); text-align:center; font-family:'DM Mono',monospace; height:16px; }
+  .dd-daywrap .dd-cell.dd-day { width:44px; height:40px; }
 </style>
 </head>
 <body>
@@ -229,6 +250,13 @@
   <h2>Cumulative portfolio return % <label style="font-size:11px;color:var(--muted);font-weight:400;margin-left:10px">Log scale (compounded) <input type="checkbox" id="logScaleChk" checked></label></h2>
   <div class="muted" style="margin-bottom:10px">Compounded reinvests each day's % return into the next day's base — a hypothetical this engine does NOT actually run (see the warning above; real sizing is fixed-%-of-original-capital, matching the non-compounded line). Non-compounded sums the daily % returns — what this engine's own fixed-fractional sizing actually produces, and the one to trust. Log scale defaults ON because a linear plot of exponential compounding is unreadable (a hockey stick) regardless of whether the underlying edge is real — toggle off to see the raw curve.</div>
   <canvas id="eqChart"></canvas>
+</div>
+
+<div class="card">
+  <h2>Year → month → day drill-down</h2>
+  <div class="muted" style="margin-bottom:10px">Non-compounded daily % return, summed per period — the same fixed-fractional basis as the "one to trust" line above (not the compounded curve, which explodes with trade count and is not what this engine actually risks). Click a year to see its months, then a month to see its days. Color scale is relative to the periods shown at that level, not fixed across the whole page.</div>
+  <div class="dd-breadcrumb" id="ddBreadcrumb"></div>
+  <div id="ddGrid"></div>
 </div>
 
 <div class="card">
@@ -502,6 +530,8 @@ let tradeEqChart = null;
 let mcFanChart = null;
 let evtChart = null;
 let lastTrades = [];
+let ddEquity = [];
+let ddState = { level: 'year', year: null, month: null };
 let lastResponse = null;
 const OUTLIER_TOP_N = [1, 5, 10, 20, 50];
 const MC_RUNS = 300;
@@ -1068,6 +1098,9 @@ async function loadData() {
 function render(j) {
   lastTrades = j.trades ?? [];
   document.getElementById('tradeCount').textContent = lastTrades.length;
+  ddEquity = j.equityCurve ?? [];
+  ddState = { level: 'year', year: null, month: null };
+  renderDrilldown();
   const s = j.stats;
   document.getElementById('naiveSharpe').textContent = fmt2(j.naiveAvgSharpe);
   document.getElementById('combinedSharpe').textContent = fmt2(s.sharpe);
@@ -1218,6 +1251,125 @@ function render(j) {
       <td class="num">${fmt1(shareOf(p) * 100)}%</td></tr>`).join('');
   document.getElementById('weightBar').innerHTML = rows.map(([pair, p]) =>
     `<div class="bar" style="width:${shareOf(p) * 100}%;background:${PAIR_COLORS[pair] ?? '#5a6380'}" title="${pair}: ${fmt1(shareOf(p) * 100)}%"></div>`).join('');
+}
+
+// ── Year → month → day drill-down heatmap ───────────────────────────────────
+// Non-compounded (additive) daily % return, same basis as the equity chart's
+// "one to trust" line -- deliberately NOT the compounded curve, which would
+// make any single hot day/month look artificially dominant relative to the
+// sum-of-parts view this drill-down is for.
+function ddColorFor(val, maxAbs) {
+  if (!maxAbs || !Number.isFinite(val)) return { bg: 'transparent', txt: 'var(--text3)' };
+  const frac = Math.max(-1, Math.min(1, val / maxAbs));
+  const alpha = Math.min(0.85, Math.abs(frac) * 0.8 + 0.08);
+  const bg = frac >= 0 ? `rgba(52,211,153,${alpha})` : `rgba(248,113,113,${alpha})`;
+  const txt = Math.abs(frac) > 0.55 ? '#0b0e14' : (frac >= 0 ? 'var(--green)' : 'var(--red)');
+  return { bg, txt };
+}
+function ddBreadcrumbHtml() {
+  const parts = [`<button ${ddState.level === 'year' ? 'disabled' : ''} onclick="ddGoYear()">All years</button>`];
+  if (ddState.year != null) {
+    parts.push('<span class="dd-crumb-sep">›</span>');
+    parts.push(`<button ${ddState.level === 'month' ? 'disabled' : ''} onclick="ddGoMonth(${ddState.year})">${ddState.year}</button>`);
+  }
+  if (ddState.month != null) {
+    const mName = new Date(Date.UTC(2000, ddState.month, 1)).toLocaleDateString('en-GB', { month: 'long', timeZone: 'UTC' });
+    parts.push('<span class="dd-crumb-sep">›</span>');
+    parts.push(`<button disabled>${mName}</button>`);
+  }
+  return parts.join('');
+}
+function ddGoYear() { ddState = { level: 'year', year: null, month: null }; renderDrilldown(); }
+function ddGoMonth(year) { ddState = { level: 'month', year, month: null }; renderDrilldown(); }
+function ddGoDay(year, month) { ddState = { level: 'day', year, month }; renderDrilldown(); }
+window.ddGoYear = ddGoYear; window.ddGoMonth = ddGoMonth; window.ddGoDay = ddGoDay;
+
+function renderDrilldown() {
+  document.getElementById('ddBreadcrumb').innerHTML = ddBreadcrumbHtml();
+  const grid = document.getElementById('ddGrid');
+  if (!ddEquity.length) { grid.innerHTML = '<div class="muted">No data</div>'; return; }
+
+  if (ddState.level === 'year') {
+    const byYear = new Map();
+    for (const p of ddEquity) {
+      const y = p.date.slice(0, 4);
+      const cur = byYear.get(y) ?? { sum: 0, n: 0 };
+      cur.sum += p.dailyReturn; cur.n++;
+      byYear.set(y, cur);
+    }
+    const years = [...byYear.keys()].sort();
+    const maxAbs = Math.max(...years.map(y => Math.abs(byYear.get(y).sum)), 0.01);
+    grid.innerHTML = `<div class="dd-grid">${years.map(y => {
+      const { sum, n } = byYear.get(y);
+      const { bg, txt } = ddColorFor(sum, maxAbs);
+      return `<div class="dd-cell dd-year dd-clickable" style="background:${bg}" onclick="ddGoMonth(${y})" title="${y}: ${sum >= 0 ? '+' : ''}${sum.toFixed(2)}% over ${n} trading days">
+        <span class="dd-lbl" style="color:${txt}">${y}</span>
+        <span class="dd-val" style="color:${txt}">${sum >= 0 ? '+' : ''}${sum.toFixed(1)}%</span>
+        <span class="dd-n" style="color:${txt}">${n}d</span>
+      </div>`;
+    }).join('')}</div>`;
+    return;
+  }
+
+  if (ddState.level === 'month') {
+    const year = ddState.year;
+    const byMonth = new Map();
+    for (const p of ddEquity) {
+      if (!p.date.startsWith(String(year))) continue;
+      const m = parseInt(p.date.slice(5, 7), 10) - 1;
+      const cur = byMonth.get(m) ?? { sum: 0, n: 0 };
+      cur.sum += p.dailyReturn; cur.n++;
+      byMonth.set(m, cur);
+    }
+    const present = [...byMonth.values()];
+    const maxAbs = Math.max(...present.map(v => Math.abs(v.sum)), 0.01);
+    const cells = [];
+    for (let m = 0; m < 12; m++) {
+      const mName = new Date(Date.UTC(2000, m, 1)).toLocaleDateString('en-GB', { month: 'short', timeZone: 'UTC' });
+      const data = byMonth.get(m);
+      if (!data) { cells.push(`<div class="dd-cell dd-month dd-empty"><span class="dd-lbl">${mName}</span></div>`); continue; }
+      const { bg, txt } = ddColorFor(data.sum, maxAbs);
+      cells.push(`<div class="dd-cell dd-month dd-clickable" style="background:${bg}" onclick="ddGoDay(${year},${m})" title="${mName} ${year}: ${data.sum >= 0 ? '+' : ''}${data.sum.toFixed(2)}% over ${data.n} trading days">
+        <span class="dd-lbl" style="color:${txt}">${mName}</span>
+        <span class="dd-val" style="color:${txt}">${data.sum >= 0 ? '+' : ''}${data.sum.toFixed(1)}%</span>
+        <span class="dd-n" style="color:${txt}">${data.n}d</span>
+      </div>`);
+    }
+    grid.innerHTML = `<div class="dd-grid">${cells.join('')}</div>`;
+    return;
+  }
+
+  // level === 'day'
+  const { year, month } = ddState;
+  const byDay = new Map();
+  for (const p of ddEquity) {
+    const d = new Date(p.date + 'T00:00:00Z');
+    if (d.getUTCFullYear() !== year || d.getUTCMonth() !== month) continue;
+    byDay.set(d.getUTCDate(), (byDay.get(d.getUTCDate()) ?? 0) + p.dailyReturn);
+  }
+  const vals = [...byDay.values()];
+  const maxAbs = Math.max(...vals.map(Math.abs), 0.01);
+  const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  const firstDow = new Date(Date.UTC(year, month, 1)).getUTCDay();   // 0=Sun
+  const dowLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const leadBlank = (firstDow + 6) % 7;   // convert to Mon-first offset
+
+  const cells = dowLabels.map(d => `<div class="dd-dow">${d}</div>`);
+  for (let i = 0; i < leadBlank; i++) cells.push('<div class="dd-cell dd-day dd-empty"></div>');
+  for (let day = 1; day <= daysInMonth; day++) {
+    const v = byDay.get(day);
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    if (v == null) {
+      cells.push(`<div class="dd-cell dd-day dd-empty" title="${dateStr}: no trades"><span class="dd-lbl">${day}</span></div>`);
+      continue;
+    }
+    const { bg, txt } = ddColorFor(v, maxAbs);
+    cells.push(`<div class="dd-cell dd-day" style="background:${bg}" title="${dateStr}: ${v >= 0 ? '+' : ''}${v.toFixed(3)}%">
+      <span class="dd-lbl" style="color:${txt}">${day}</span>
+      <span class="dd-val" style="color:${txt};font-size:9px">${v >= 0 ? '+' : ''}${v.toFixed(1)}</span>
+    </div>`);
+  }
+  grid.innerHTML = `<div class="dd-daywrap">${cells.join('')}</div>`;
 }
 
 function csvDownload(filename, rows) {

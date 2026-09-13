@@ -649,13 +649,27 @@ export function asiaFibAtlasWalk(packed, { instrument, assetClass = 'fx', rearmF
             const levelFlipState = (isAbove ? closeHi > here : closeLo < here) ? 'retest' : 'fresh';
 
             // ── Outcome: race the two real neighbours from this touch ──────
-            let outcome = 'neither', deepest = here, resolveTime = null, resolveIdx = null, extreme = here;
+            // NOTE (2026-09-12, FIB_ATLAS_BACKTEST_VS_LIVE.md item #3): on the
+            // resolution bar, 'out' is checked BEFORE 'back' and breaks
+            // immediately — so an M1 bar whose range spans BOTH the outer
+            // target and the inner stop is silently resolved as 'out', with
+            // no check for whether 'back' also would have fired on that same
+            // bar. That's optimistic for a FOLLOW decision (outer='out' is
+            // its win) and irrelevant for FADE (outer='out' is already its
+            // loss either way). `sameBarAmbiguous` records, purely for
+            // diagnosis, whether this happened — it does not change outcome,
+            // win, or any existing field.
+            let outcome = 'neither', deepest = here, resolveTime = null, resolveIdx = null, extreme = here, sameBarAmbiguous = false;
             for (let j = k; j < bars.length; j++) {
               const b2 = bars[j];
               const fwd = isAbove ? b2.high : b2.low, bwd = isAbove ? b2.low : b2.high;
               if (isAbove ? bwd < deepest : bwd > deepest) deepest = bwd;
               if (isAbove ? fwd > extreme : fwd < extreme) extreme = fwd;
-              if (outer != null && reach(fwd, outer)) { outcome = 'out'; resolveTime = b2.time; resolveIdx = j; break; }
+              if (outer != null && reach(fwd, outer)) {
+                outcome = 'out'; resolveTime = b2.time; resolveIdx = j;
+                sameBarAmbiguous = isAbove ? bwd <= inner : bwd >= inner;
+                break;
+              }
               if (isAbove ? bwd <= inner : bwd >= inner) { outcome = 'back'; resolveTime = b2.time; resolveIdx = j; break; }
             }
             // Extended search (2026-08-31): only reached when the same-day
@@ -796,7 +810,7 @@ export function asiaFibAtlasWalk(packed, { instrument, assetClass = 'fx', rearmF
               otherSideTouchedBefore: null,   // filled in a post-pass below (needs both sides' first-touch times)
               price: +here.toFixed(6), pip,
               dayOpen, asiaHigh: asia.high, asiaLow: asia.low, asiaRange: asia.range,
-              time: bar.time, resolveTime, concurrencyResolveTime, outcome, resolveIdx,
+              time: bar.time, resolveTime, concurrencyResolveTime, outcome, resolveIdx, sameBarAmbiguous,
               sessionClose: sessionCloseBar.close, sessionCloseTime: sessionCloseBar.time,
               minsToResolve: minsToResolve != null ? +minsToResolve.toFixed(0) : null,
               pullbackFrac: pullbackFrac != null ? +pullbackFrac.toFixed(3) : null,
