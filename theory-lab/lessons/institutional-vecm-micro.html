@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vector Error Correction Models — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Vector Error Correction Models — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer full derivations, live math notation, and a 6-question self-test?<a href="institutional-vecm.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Price Discovery &amp; Lead-Lag 1 · Price Discovery &amp; Lead-Lag</div>
+      <h1 class="sl-h1">Vector Error Correction Models, <em>Who Actually Does the Correcting?</em></h1>
+      <p class="sl-lede">Cointegration proves two prices are tied together by a leash with a normal length. It never says which one moves when the leash goes taut. This is the first lesson in a brand-new category of the curriculum built entirely around that question — and a Vector Error Correction Model is the first real tool for answering it: an actual regression for how each series' next move depends on how far the pair currently sits from equilibrium.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">A leash proves nothing about who moves</h2>
+      <p class="sl-sub">Recap: cointegration shows a stationary spread exists. It stops there.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🐕</div><div><h4>The leash exists (Cointegration)</h4><p>Y_t − β·X_t − c is stationary — the spread has a stable home it keeps returning to. That's the entire content of the Cointegration lesson's Engle-Granger test.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">❓</div><div><h4>But who gets pulled?</h4><p>A leash going taut doesn't say whether the dog gets yanked forward, the walker gets tugged back, or both. Cointegration is silent on this entirely.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📐</div><div><h4>A VECM is the answer</h4><p>Two regressions — one for ΔY, one for ΔX — each predicting this period's change from last period's spread. The coefficients say exactly who moves, and by how much.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔭</div><div><h4>Why a whole new category</h4><p>"Which price is leading, which is following" is the organizing question of this entire 3-lesson category — VECM is the first, informal answer; Granger causality and Hasbrouck's Information Share (next two lessons) make it rigorous.</p></div></div>
+      </div>
+      <div class="sl-quote">The Cointegration lesson even names this next step in one sentence of its own text: model each series' change partly on how far last period's spread sat from equilibrium. This deck is that sentence, spelled all the way out.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">The model: two equations, one shared term</h2>
+      <p class="sl-sub">Z_{t-1} is last period's cointegrating residual — the exact same spread from the Cointegration lesson, reused as a predictor.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The equations</div>
+        <div class="sl-row">
+          <div class="sl-box amber">ΔY_t</div>
+          <div class="sl-arrow">=</div>
+          <div class="sl-box">α_Y · Z_{t-1}</div>
+          <div class="sl-arrow">+</div>
+          <div class="sl-box">short-run lags</div>
+          <div class="sl-arrow">+</div>
+          <div class="sl-box">ε_Y,t</div>
+        </div>
+        <div class="sl-row">
+          <div class="sl-box amber">ΔX_t</div>
+          <div class="sl-arrow">=</div>
+          <div class="sl-box">α_X · Z_{t-1}</div>
+          <div class="sl-arrow">+</div>
+          <div class="sl-box">short-run lags</div>
+          <div class="sl-arrow">+</div>
+          <div class="sl-box">ε_X,t</div>
+        </div>
+        <div class="sl-verdict">Z_{t-1} = Y_{t-1} − β·X_{t-1} − c — nothing new, just last period's spread. <strong>α_Y and α_X are the new content</strong> this whole deck is about.</div>
+      </div>
+      <p class="sl-p">The "short-run lags" pieces are ordinary autoregressive terms — recent momentum in ΔY and ΔX feeding into the forecast — exactly the machinery the ARIMA &amp; VAR lesson already builds. Nothing about them is specific to error correction, so this deck (like the full lesson) treats them at a conceptual level only and spends its time on α_Y and α_X instead.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Two scenarios, same leash, different puller</h2>
+      <p class="sl-sub">Same spread, same magnitude of correction needed — three different ways it could actually play out.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="scenario-tabs">
+          <button class="sl-tab active" data-panel="sc-y">Y adjusts</button>
+          <button class="sl-tab" data-panel="sc-x">X adjusts</button>
+          <button class="sl-tab" data-panel="sc-both">Both adjust a little</button>
+        </div>
+        <div class="sl-panel active" id="sc-y">
+          <div class="sl-verdict"><strong>α_Y = −0.35, α_X ≈ 0.</strong> Y falls back hard toward X; X barely reacts to the disequilibrium at all. X is behaving like a <strong>weakly exogenous anchor</strong> — Y is doing essentially all of the correcting.</div>
+        </div>
+        <div class="sl-panel" id="sc-x">
+          <div class="sl-verdict"><strong>α_X = +0.35, α_Y ≈ 0.</strong> The mirror image: X rises back toward Y, while Y ignores the gap almost entirely. Now Y is the anchor and X is the follower — same leash, opposite puller.</div>
+        </div>
+        <div class="sl-panel" id="sc-both">
+          <div class="sl-verdict"><strong>α_Y = −0.18, α_X = +0.17.</strong> Both series move roughly evenly to close the same gap — no clear anchor or follower, both sides sharing the adjustment almost equally.</div>
+        </div>
+      </div>
+      <p class="sl-p">All three scenarios are perfectly valid, cointegrated systems — nothing about cointegration itself prefers one over another. Only a fitted VECM's α_Y and α_X actually tell you which world a real pair is in.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Watch the correction happen</h2>
+      <p class="sl-sub">Y overshoots well above X, then gets pulled back down. X barely moves throughout.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Visualize it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two lines, Y and X, starting close together. Y rises well above X for a stretch, then falls back down to reconverge with X near the end, while X drifts only gently and steadily throughout.">
+            <line x1="40" y1="20" x2="40" y2="215" style="stroke:var(--border2)"/>
+            <line x1="40" y1="215" x2="600" y2="215" style="stroke:var(--border2)"/>
+            <polyline points="60,165 130,140 200,110 270,85 340,68 410,60 480,70 550,105 600,130" style="stroke:var(--blue);stroke-width:2.5;fill:none;stroke-linecap:round"/>
+            <polyline points="60,170 130,168 200,165 270,163 340,161 410,159 480,157 550,155 600,153" style="stroke:var(--purple);stroke-width:2.5;fill:none;stroke-linecap:round"/>
+            <text x="410" y="45" text-anchor="middle" fill="var(--blue)" font-size="11" font-family="'DM Mono',monospace">Y (follower)</text>
+            <text x="550" y="170" text-anchor="middle" fill="var(--purple)" font-size="11" font-family="'DM Mono',monospace">X (anchor)</text>
+            <line x1="410" y1="60" x2="410" y2="215" style="stroke:var(--text3);stroke-dasharray:3,3;opacity:.5"/>
+            <text x="410" y="230" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">|Z| widest here</text>
+          </svg>
+        </div>
+        <div class="sl-note">Y ranges far from X (the gap — Z — widens), then swings back down to reconverge, all while X drifts only gently. That asymmetry — one series doing almost all the round-trip work — is exactly a large |α_Y| paired with a small |α_X|.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">The formal guarantee: Granger Representation Theorem</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Cited as a given result — not re-derived</div>
+        <p>Engle &amp; Granger's 1987 paper — the same paper that defines cointegration itself — proves: any genuinely cointegrated pair <strong>must</strong> admit a valid error-correction representation of exactly this two-equation form, and conversely, a valid error-correction representation <strong>implies</strong> the pair is cointegrated. The two ideas are formally equivalent, not just related.</p>
+      </div>
+      <p class="sl-p">One consequence worth remembering: α_Y and α_X can't <em>both</em> be exactly zero. If neither series ever responded to the disequilibrium, nothing would pull Z back toward zero, and the pair wouldn't be cointegrated in the first place. At least one of the two has to be doing real work — the fitted model just says which, and how much.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Comparing α_Y and α_X is the whole point</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Large |α_Y|, small |α_X|</span>
+          <ul>
+            <li>Y does almost all the correcting</li>
+            <li>X is the "anchor" — barely reacts to the gap</li>
+            <li>Y is the "follower"</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Comparable |α_Y| and |α_X|</span>
+          <ul>
+            <li>Both series share the adjustment</li>
+            <li>No clean anchor/follower split</li>
+            <li>Correction happens from both sides at once</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this is heading next</div>
+        <p>This is exactly the question the next lesson in this category, <strong>Hasbrouck Information Share</strong>, formalizes properly — not for one pair, but for many simultaneous quote venues of the same asset, asking rigorously which one is actually leading price discovery. Comparing α_Y to α_X here is the direct, two-variable preview of that idea.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Drag the error-correction term, watch both forecasts move</h2>
+      <p class="sl-sub">α_Y = −0.35, α_X = +0.15 fixed. Only Z_{t-1} changes. Watch which bar moves further.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 160" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two horizontal bars, one for the forecast change in Y and one for the forecast change in X, extending left or right from a center line as the error-correction term slider is dragged.">
+            <line x1="320" y1="20" x2="320" y2="140" style="stroke:var(--border2)"/>
+            <text x="60" y="45" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">ΔY_t</text>
+            <rect id="vslide-barY" x="320" y="35" width="0" height="24" rx="4" style="fill:var(--blue)"/>
+            <text x="60" y="105" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">ΔX_t</text>
+            <rect id="vslide-barX" x="320" y="95" width="0" height="24" rx="4" style="fill:var(--purple)"/>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Error-correction term Z_{t-1}</span><span class="sl-live" id="vslide-zval">Z = 0.0050</span></div>
+        <input type="range" class="sl-slider" id="vslide-slider" min="-200" max="200" step="5" value="50">
+        <div class="sl-note" id="vslide-readout">ΔY_t = −0.35 × 0.0050 = −0.00175 &nbsp;|&nbsp; ΔX_t = 0.15 × 0.0050 = +0.00075</div>
+      </div>
+      <p class="sl-p">Drag Z_{t-1} toward either extreme and both bars grow — but the blue Y bar always grows more than twice as fast as the purple X bar, because |α_Y|=0.35 is more than twice |α_X|=0.15. That fixed ratio, not the size of any one shock, is what marks Y as the follower.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Compute the full forecast yourself</h2>
+      <p class="sl-sub">ΔY_t = α_Y·Z_{t-1}, ΔX_t = α_X·Z_{t-1}. Change any input, live.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>α_Y</label><input type="number" class="sl-input" id="vc-aY" value="-0.35" step="0.05"></div>
+          <div class="sl-calc-field"><label>α_X</label><input type="number" class="sl-input" id="vc-aX" value="0.15" step="0.05"></div>
+          <div class="sl-calc-field"><label>Z_{t-1}</label><input type="number" class="sl-input" id="vc-Z" value="0.0050" step="0.0010"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">ΔY_t</div>
+            <div class="sl-calc-result-val" id="vc-dY">−0.00175</div>
+          </div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">ΔX_t</div>
+            <div class="sl-calc-result-val" id="vc-dX">+0.00075</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div id="vc-note">Y is adjusting about <b>2.33×</b> as fast as X.</div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="vc-reset">Reset to worked-example numbers</button>
+        <div class="sl-note">Blank, non-numeric input on any field shows "—" instead of breaking the formula.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">The worked example, start to finish</h2>
+      <p class="sl-sub">Continuing the Cointegration lesson's own AUD/USD-vs-NZD/USD numbers, one step further.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The numbers</div>
+        <div class="sl-row">
+          <div class="sl-box">β̂ = 1.10<br>c = 0</div>
+          <div class="sl-arrow">→</div>
+          <div class="sl-box amber">Y₅=0.6650<br>X₅=0.6000</div>
+          <div class="sl-arrow">→</div>
+          <div class="sl-box green">Z₅ = 0.0050</div>
+        </div>
+        <div class="sl-verdict">Z₅ = Y₅ − 1.10·X₅ = 0.6650 − 0.6600 = <strong>0.0050</strong> — the same spread the Cointegration lesson's own scratchpad already defaults to.</div>
+        <div class="sl-row" style="margin-top:14px">
+          <div class="sl-box">α_Y=−0.35, α_X=0.15</div>
+          <div class="sl-arrow">→</div>
+          <div class="sl-box red">ΔY = −0.00175</div>
+          <div class="sl-box green">ΔX = +0.00075</div>
+        </div>
+        <div class="sl-verdict">AUD/USD is forecast to fall ~17.5 pips, NZD/USD to rise ~7.5 pips — both closing the same gap, AUD/USD doing about 2.3× more of the work.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Where this quietly goes wrong</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🚫</div><div><h4>Skipping the cointegration test</h4><p>The theorem's guarantee only applies to genuinely cointegrated pairs. Fit this on two series never actually shown to cointegrate and the α's mean nothing.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📏</div><div><h4>No significance check</h4><p>A bigger |α_Y| in one small noisy sample isn't proof Y is "the" follower — the same standard-error caveats that apply to any OLS coefficient apply here too.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔄</div><div><h4>Sign convention matters</h4><p>Flip how Z is defined and every sign above flips with it. α_Y&gt;0 and α_X&lt;0 together means the gap gets pushed wider, not corrected — not valid error correction at all.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">✂️</div><div><h4>Dropping lags in a real fit</h4><p>This deck's calculator isolates α·Z for teaching clarity. A genuine fit (like this repo's own <code>fitVECM</code>) keeps the short-run lag terms — omitting them biases the estimated α itself.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What is the error-correction term Z_{t-1}, exactly?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Last period's cointegrating residual, Y_{t-1} − β·X_{t-1} − c</button>
+        <button class="sl-quiz-opt">A brand-new quantity unrelated to cointegration</button>
+        <button class="sl-quiz-opt">The correlation between ΔY and ΔX</button>
+        <div class="sl-quiz-explain">It's exactly the Cointegration lesson's own spread, lagged one period and reused as a regressor for this period's changes.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>α_Y = −0.50, α_X = −0.01 (statistically indistinguishable from zero). Which series is the "follower"?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Y — it absorbs almost all of the correction</button>
+        <button class="sl-quiz-opt">X — its coefficient is closer to zero</button>
+        <button class="sl-quiz-opt">Neither — both coefficients are negative</button>
+        <div class="sl-quiz-explain">A large-magnitude α_Y with α_X near zero is the textbook "weak exogeneity" case: X barely reacts to disequilibrium, Y does virtually all of the adjusting.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>What does the Granger Representation Theorem actually state?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Cointegration and a valid error-correction representation are equivalent — each implies the other</button>
+        <button class="sl-quiz-opt">Every time series eventually becomes stationary</button>
+        <button class="sl-quiz-opt">α_Y must always equal α_X</button>
+        <div class="sl-quiz-explain">Proven by Engle &amp; Granger (1987): a cointegrated pair must admit a valid VECM representation, and a valid VECM representation implies cointegration.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Given α_Y=0.30, α_X=−0.20, and Z_{t-1}=0.01&gt;0, what's wrong with these particular signs?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Both push the spread further from zero instead of correcting it</button>
+        <button class="sl-quiz-opt">Nothing — both signs are perfectly valid for error correction</button>
+        <button class="sl-quiz-opt">α_X should always be larger than α_Y</button>
+        <div class="sl-quiz-explain">With Z_{t-1}&gt;0, correction needs α_Y≤0 and/or α_X≥0. Here Y is forecast to rise further and X to fall further — the gap widens, not closes — inconsistent with genuine cointegration.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Does this repo have a real, live two-equation VECM system anywhere?</h4>
+        <button class="sl-quiz-opt" data-correct="true">No — but it does have a genuine single-equation error-correction model, live in production</button>
+        <button class="sl-quiz-opt">Yes, a full jointly-estimated α_Y/α_X system runs in production</button>
+        <button class="sl-quiz-opt">No error-correction code of any kind exists in this repo</button>
+        <div class="sl-quiz-explain"><code>js/arma.js</code>'s <code>fitVECM</code> is a genuine, live single-equation error-correction regression (wired through <code>computeARMAForecast</code> into several production files) — but it forecasts one series against a price-implied fair value, not a jointly-fitted two-series α_Y/α_X system.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Cointegration proves a stationary spread exists between Y and X. A VECM is the dynamic regression built on top of it, forecasting each series' own change from that spread's last value.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>The error-correction term Z_{t-1} is nothing new — it's exactly the Cointegration lesson's own spread, one period lagged and reused as a predictor.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Comparing |α_Y| and |α_X| is the actual payoff: the larger one marks the "follower" doing most of the correcting, the smaller one the relative "anchor."</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The Granger Representation Theorem is the formal bridge — cointegration and valid error correction are equivalent, proven by Engle &amp; Granger (1987), cited here rather than re-derived.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>This repo already runs a genuine single-equation version live (<code>js/arma.js</code>'s <code>fitVECM</code>) — the full two-equation system built here goes further than that code does.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Read a cointegrated pair's fitted α_Y and α_X as a real, informal answer to "which price is doing the adjusting" — and recognize that question as the exact seed of the next two lessons in this category, which make it formally rigorous.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Granger Causality &amp; Lead-Lag Analysis</h3>
+        <p>"Which price moves first" formalized properly — does X's past genuinely help predict Y's future, beyond what Y's own past already tells you?</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="institutional-granger-causality-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="institutional-vecm.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Slide 8 — drag Z_{t-1}, watch both forecast bars redraw live.
+  (function(){
+    var slider = document.getElementById('vslide-slider');
+    if (!slider) return;
+    var zval = document.getElementById('vslide-zval');
+    var readout = document.getElementById('vslide-readout');
+    var barY = document.getElementById('vslide-barY');
+    var barX = document.getElementById('vslide-barX');
+    var ALPHA_Y = -0.35, ALPHA_X = 0.15;
+    var CENTER = 320, PX_PER_UNIT = 6000; // Z in [-0.02, 0.02] -> dY,dX in [-0.007, 0.007] -> up to ~42px
+
+    function fmt(n){ return (n >= 0 ? '+' : '') + n.toFixed(5); }
+
+    function update(){
+      var Z = parseInt(slider.value, 10) / 10000; // slider is in units of 1e-4
+      zval.textContent = 'Z = ' + Z.toFixed(4);
+      var dY = ALPHA_Y * Z;
+      var dX = ALPHA_X * Z;
+
+      var wY = Math.abs(dY) * PX_PER_UNIT;
+      barY.setAttribute('width', wY.toFixed(1));
+      barY.setAttribute('x', (dY >= 0 ? CENTER : CENTER - wY).toFixed(1));
+
+      var wX = Math.abs(dX) * PX_PER_UNIT;
+      barX.setAttribute('width', wX.toFixed(1));
+      barX.setAttribute('x', (dX >= 0 ? CENTER : CENTER - wX).toFixed(1));
+
+      readout.textContent = 'ΔY_t = -0.35 × ' + Z.toFixed(4) + ' = ' + fmt(dY) +
+        '  |  ΔX_t = 0.15 × ' + Z.toFixed(4) + ' = ' + fmt(dX);
+    }
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Slide 9 — full ΔY/ΔX calculator.
+  (function(){
+    var aY = document.getElementById('vc-aY');
+    if (!aY) return;
+    var aX = document.getElementById('vc-aX'), Z = document.getElementById('vc-Z');
+    var dYOut = document.getElementById('vc-dY'), dXOut = document.getElementById('vc-dX');
+    var note = document.getElementById('vc-note');
+    var resetBtn = document.getElementById('vc-reset');
+    var DEFAULTS = { aY: -0.35, aX: 0.15, Z: 0.0050 };
+
+    function fmt(n){ return (n >= 0 ? '+' : '') + n.toFixed(5); }
+
+    function recompute(){
+      var av = parseFloat(aY.value), xv = parseFloat(aX.value), zv = parseFloat(Z.value);
+      if (![av, xv, zv].every(isFinite)) {
+        dYOut.textContent = '—'; dXOut.textContent = '—';
+        note.innerHTML = 'Enter numeric values for α_Y, α_X, and Z_{t-1}.';
+        return;
+      }
+      var dY = av * zv, dX = xv * zv;
+      dYOut.textContent = fmt(dY);
+      dXOut.textContent = fmt(dX);
+
+      if (av === 0 && xv === 0) {
+        note.innerHTML = 'Both α are zero — not consistent with a genuinely cointegrated pair (Granger Representation Theorem).';
+        return;
+      }
+      if (zv !== 0 && av > 0 && xv < 0) {
+        note.innerHTML = 'Warning: these signs push the spread further apart, not together — not valid error correction.';
+        return;
+      }
+      var absY = Math.abs(av), absX = Math.abs(xv);
+      if (absX === 0) { note.innerHTML = 'X never responds (α_X = 0) — Y absorbs the entire correction alone.'; return; }
+      if (absY === 0) { note.innerHTML = 'Y never responds (α_Y = 0) — X absorbs the entire correction alone.'; return; }
+      var ratio = absY / absX;
+      note.innerHTML = ratio >= 1
+        ? 'Y is adjusting about <b>' + ratio.toFixed(2) + '×</b> as fast as X.'
+        : 'X is adjusting about <b>' + (1 / ratio).toFixed(2) + '×</b> as fast as Y.';
+    }
+
+    [aY, aX, Z].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      aY.value = DEFAULTS.aY; aX.value = DEFAULTS.aX; Z.value = DEFAULTS.Z;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>
