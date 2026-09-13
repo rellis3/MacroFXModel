@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Volatility Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/index.css">
+<style>
+/* ── Page layout ─────────────────────────────────────────────────────────── */
+#viApp { padding: 0 24px 60px; max-width: 1280px; margin: 0 auto; }
+.vi-topbar { display: flex; align-items: center; gap: 12px; padding: 16px 0 12px; border-bottom: 1.5px solid var(--border); flex-wrap: wrap; }
+.vi-title { font-size: 16px; font-weight: 600; }
+.vi-sub { font-size: 10px; color: var(--text3); letter-spacing: .06em; text-transform: uppercase; margin-top: 2px; font-family: 'DM Mono', monospace; }
+.vi-spacer { flex: 1; }
+.vi-back { font-size: 11px; color: var(--text2); text-decoration: none; border: 1.5px solid var(--border); border-radius: 20px; padding: 5px 12px; font-family: 'DM Mono', monospace; white-space: nowrap; }
+.vi-back:hover { border-color: var(--blue); color: var(--blue); }
+
+/* Quick jump nav — sticky, wraps on mobile instead of overflowing */
+.vi-jumpnav { position: sticky; top: 0; z-index: 100; background: var(--bg); display: flex; gap: 6px; flex-wrap: wrap; padding: 10px 0; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+.vi-jumpnav a { font-size: 10.5px; font-family: 'DM Mono', monospace; color: var(--text2); text-decoration: none; background: var(--s1); border: 1px solid var(--border); border-radius: 14px; padding: 4px 10px; white-space: nowrap; }
+.vi-jumpnav a:hover { color: var(--blue); border-color: var(--blue-bd); }
+
+.vi-intro { background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--rl); padding: 12px 16px; margin-bottom: 18px; font-size: 12.5px; line-height: 1.6; color: var(--text2); }
+.vi-intro b { color: var(--text); }
+
+.vi-section { scroll-margin-top: 56px; background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--rl); padding: 16px 18px; margin-bottom: 16px; }
+.vi-section h2 { font-size: 13.5px; font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+.vi-section .vi-q { font-size: 9px; font-family: 'DM Mono', monospace; color: var(--blue); border: 1px solid var(--blue-bd); background: var(--blue-bg); border-radius: 5px; padding: 2px 6px; font-weight: 600; }
+.vi-section-note { font-size: 11px; color: var(--text3); line-height: 1.5; margin: 4px 0 12px; }
+
+.vi-scroll { overflow-x: auto; }
+.vi-table { width: 100%; border-collapse: collapse; font-family: 'DM Mono', monospace; font-size: 11.5px; min-width: 640px; }
+.vi-table th { text-align: left; font-size: 9.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text3); padding: 6px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.vi-table td { padding: 7px 8px; border-bottom: 1px solid var(--border); color: var(--text2); white-space: nowrap; }
+.vi-table tr:last-child td { border-bottom: none; }
+.vi-table tr:hover td { background: var(--s2); }
+.vi-pair { color: var(--text); font-weight: 600; }
+.vi-ac-tag { font-size: 8.5px; color: var(--text3); text-transform: uppercase; margin-left: 4px; }
+
+/* Bar visualisations */
+.vi-bar-row { display: flex; align-items: center; gap: 10px; padding: 5px 0; }
+.vi-bar-label { width: 78px; flex-shrink: 0; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text); font-weight: 600; }
+.vi-bar-track { flex: 1; height: 14px; background: var(--s2); border-radius: 4px; overflow: hidden; position: relative; }
+.vi-bar-fill { height: 100%; border-radius: 4px; transition: width .3s; }
+.vi-bar-fill.fx { background: var(--blue); }
+.vi-bar-fill.commodity { background: var(--amber); }
+.vi-bar-fill.index { background: var(--purple); }
+.vi-bar-fill.cheap { background: var(--green); }
+.vi-bar-fill.expensive { background: var(--red); }
+.vi-bar-val { width: 44px; flex-shrink: 0; text-align: right; font-family: 'DM Mono', monospace; font-size: 10.5px; color: var(--text3); }
+
+/* Badges */
+.vi-badge { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; font-weight: 600; font-family: 'DM Mono', monospace; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border); background: var(--s2); color: var(--text2); white-space: nowrap; }
+.vi-badge.warm  { background: var(--amber-bg); border-color: var(--amber-bd); color: var(--amber); }
+.vi-badge.cool  { background: var(--blue-bg);  border-color: var(--blue-bd);  color: var(--blue); }
+.vi-badge.good  { background: var(--green-bg); border-color: var(--green-bd); color: var(--green); }
+.vi-badge.bad   { background: var(--red-bg);   border-color: var(--red-bd);   color: var(--red); }
+.vi-badge.dim   { opacity: .55; }
+
+/* Cone mini-bars (4 columns: 5d/21d/63d/252d percentile) */
+.vi-cone { display: flex; align-items: flex-end; gap: 2px; height: 26px; width: 44px; }
+.vi-cone-bar { flex: 1; background: var(--s3); border-radius: 2px 2px 0 0; position: relative; min-height: 2px; }
+.vi-cone-bar.hi { background: var(--amber); }
+.vi-cone-bar.lo { background: var(--blue); }
+
+/* VRP diverging gauge */
+.vi-vrp-card { background: var(--s2); border: 1px solid var(--border); border-radius: var(--r); padding: 12px 14px; margin-bottom: 10px; }
+.vi-vrp-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.vi-vrp-bars { display: flex; flex-direction: column; gap: 5px; }
+.vi-vrp-line { display: flex; align-items: center; gap: 8px; font-family: 'DM Mono', monospace; font-size: 10.5px; }
+.vi-vrp-line .lbl { width: 64px; flex-shrink: 0; color: var(--text3); }
+.vi-vrp-line .track { flex: 1; height: 10px; background: var(--s1); border-radius: 3px; overflow: hidden; }
+.vi-vrp-line .fill { height: 100%; border-radius: 3px; }
+.vi-vrp-line .fill.implied { background: var(--purple); }
+.vi-vrp-line .fill.realised { background: var(--blue); }
+.vi-vrp-line .val { width: 48px; text-align: right; color: var(--text2); }
+
+.vi-links { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.vi-links a { font-size: 10.5px; font-family: 'DM Mono', monospace; color: var(--text2); text-decoration: none; border: 1px solid var(--border); border-radius: 14px; padding: 4px 10px; background: var(--s2); }
+.vi-links a:hover { color: var(--blue); border-color: var(--blue-bd); }
+
+.vi-deferred-item { padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 11.5px; line-height: 1.5; }
+.vi-deferred-item:last-child { border-bottom: none; }
+.vi-deferred-item b { color: var(--text); font-family: 'DM Mono', monospace; font-size: 11px; }
+.vi-deferred-item span { color: var(--text3); }
+
+.vi-empty { font-size: 11.5px; color: var(--text3); padding: 10px 0; }
+.vi-clock-status { font-size: 9.5px; font-weight: 600; padding: 2px 6px; border-radius: 4px; }
+.vi-clock-status.onschedule { background: var(--green-bg); color: var(--green); }
+.vi-clock-status.stale { background: var(--amber-bg); color: var(--amber); }
+.vi-clock-status.na { background: var(--s2); color: var(--text3); }
+
+@media (max-width: 820px) {
+  #viApp { padding: 0 12px 40px; }
+  .vi-jumpnav { gap: 4px; }
+  .vi-section { padding: 12px; }
+  .vi-bar-label { width: 60px; font-size: 10px; }
+}
+</style>
+</head>
+<body class="dark">
+<div id="viApp">
+
+  <div class="vi-topbar">
+    <div>
+      <div class="vi-title">Volatility Intelligence</div>
+      <div class="vi-sub">Cross-pair regime · cost · clock · liquidity</div>
+    </div>
+    <div class="vi-spacer"></div>
+    <span class="live-pill"><span class="live-dot"></span><span id="viUpdated">Loading…</span></span>
+    <a class="vi-back" href="vol-forecast-v2.html">&larr; Vol Forecast v2</a>
+  </div>
+
+  <div class="vi-jumpnav">
+    <a href="#vi-ranking">Cross-Asset Ranking</a>
+    <a href="#vi-regime">Regime State</a>
+    <a href="#vi-cost">Cost & Normalisation</a>
+    <a href="#vi-clock">Vol as Clock</a>
+    <a href="#vi-vrp">Implied vs Realised</a>
+    <a href="#vi-liquidity">Liquidity</a>
+    <a href="#vi-deferred">Not Built Yet</a>
+  </div>
+
+  <div class="vi-intro">
+    Every number here is <b>descriptive state</b>, not a validated trading signal — same discipline as the rest of this dashboard.
+    Nothing on this page feeds the live bots; it reads the forecaster's own output and today's live session, same as
+    <a href="vol-forecast-v2.html" style="color:var(--blue)">Vol Forecast v2</a>. <span id="viStatusLine" style="color:var(--text3)"></span>
+  </div>
+
+  <section class="vi-section" id="vi-ranking">
+    <h2>Cross-Asset Volatility Ranking <span class="vi-q">§6 liquidity/regime</span></h2>
+    <p class="vi-section-note">All instruments ranked by their 252-day volatility percentile, right now — is FX vol hot while equity vol is cold, or is this a systemic risk-off day where everything is elevated together?</p>
+    <div id="viVolRanking"><div class="vi-empty">Loading…</div></div>
+  </section>
+
+  <section class="vi-section" id="vi-regime">
+    <h2>Regime State — per pair <span class="vi-q">§4</span></h2>
+    <p class="vi-section-note">Term structure (5d/21d/63d/252d percentile, tall amber bar = short-dated vol running hot vs its own long-run rank), vol-of-vol, vol acceleration (is the vol regime itself speeding up or slowing down), range efficiency (close-to-close vs range-based vol — trending/gap-driven vs choppy), and realised skew (does this pair fall faster than it rises, or the reverse).</p>
+    <div class="vi-scroll"><table class="vi-table" id="viRegimeTable"><thead><tr>
+      <th>Pair</th><th>Term Structure</th><th>Cone (5/21/63/252d)</th><th>Vol Accel</th><th>Vol-of-Vol</th><th>Range Efficiency</th><th>Skew</th>
+    </tr></thead><tbody><tr><td colspan="7" class="vi-empty">Loading…</td></tr></tbody></table></div>
+  </section>
+
+  <section class="vi-section" id="vi-cost">
+    <h2>Cost & Normalisation <span class="vi-q">§1</span></h2>
+    <p class="vi-section-note">Spread as a fraction of today's expected daily range — a pair whose spread eats 8% of its typical day is a different instrument to trade than one where it's 0.5%, regardless of the setup. Sorted cheapest first.</p>
+    <div id="viCostTable"><div class="vi-empty">Loading…</div></div>
+  </section>
+
+  <section class="vi-section" id="vi-clock">
+    <h2>Vol as Clock — time budgets <span class="vi-q">§3</span></h2>
+    <p class="vi-section-note">
+      Median/P75 time (as a fraction of the trading day) a driftless model expects price to take reaching the O-C median target, given today's σ and however much distance remains right now — closed-form Brownian math, <b>not backtested</b>.
+      "Stale" means more time has elapsed than the median first-passage time predicts and the level still hasn't been reached — the thesis may be running behind schedule on timing grounds, independent of P&amp;L.
+    </p>
+    <div class="vi-scroll"><table class="vi-table" id="viClockTable"><thead><tr>
+      <th>Pair</th><th>Elapsed</th><th>Remaining to O-C med</th><th>Median time-to-touch</th><th>P75 time-to-touch</th><th>Status</th>
+    </tr></thead><tbody><tr><td colspan="6" class="vi-empty">Loading…</td></tr></tbody></table></div>
+  </section>
+
+  <section class="vi-section" id="vi-vrp">
+    <h2>Tradable Asset — Implied vs Realised <span class="vi-q">§5</span></h2>
+    <p class="vi-section-note">The variance risk premium: implied minus realised volatility. Positive means the options market is pricing in more movement than has actually been happening — selling that gap is the classic vol-carry trade. Only EUR/USD and Gold have single-index implied-vol coverage here (CBOE EVZ/GVZ) — everything else genuinely has no options-implied data in this repo.</p>
+    <div id="viVrp"><div class="vi-empty">Loading…</div></div>
+    <div class="vi-links">
+      <a href="fx-vol-carry-backtest.html">FX/Gold Vol-Carry Backtester →</a>
+      <a href="vix-vol-carry-backtest.html">VIX Vol-Carry Study →</a>
+      <a href="oi-zones.html">Dealer Gamma / OI Zones →</a>
+    </div>
+  </section>
+
+  <section class="vi-section" id="vi-liquidity">
+    <h2>Liquidity & Participation <span class="vi-q">§6</span></h2>
+    <p class="vi-section-note">Range consumed per unit of OANDA tick volume so far today — an Amihud-style illiquidity read. Higher means today's range is being produced by relatively thin participation; lower means a heavier tape is behind the same range. Tick count, not real traded volume — magnitude only, and only meaningful relative to other pairs right now or this pair's own recent history, never as an absolute number.</p>
+    <div id="viLiquidity"><div class="vi-empty">Loading…</div></div>
+  </section>
+
+  <section class="vi-section" id="vi-deferred">
+    <h2>Not built yet — and why</h2>
+    <p class="vi-section-note">From the original volatility-uses research: these don't have clean data or methodology support in this repo right now. Listed honestly rather than faked or silently omitted.</p>
+    <div id="viDeferred"><div class="vi-empty">Loading…</div></div>
+  </section>
+
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const fmtPct  = (v, dp = 0) => v == null ? '—' : `${v.toFixed(dp)}%`;
+const fmtNum  = (v, dp = 2) => v == null ? '—' : v.toFixed(dp);
+const ACLASS_LABEL = { fx: 'FX', commodity: 'Commodity', index: 'Index' };
+
+function badge(cls, text) { return `<span class="vi-badge ${cls}">${text}</span>`; }
+
+function termStructureBadge(ts) {
+  if (!ts || ts.label === 'insufficient_data') return badge('dim', '—');
+  if (ts.label === 'expanding')   return badge('warm', `▲ EXPANDING${ts.inflection ? ' ⚡' : ''}`);
+  if (ts.label === 'compressing') return badge('cool', `▼ COMPRESSING${ts.inflection ? ' ⚡' : ''}`);
+  return badge('dim', '→ STABLE');
+}
+function volAccelBadge(va) {
+  if (!va || va.label === 'insufficient_data') return badge('dim', '—');
+  const arrow = (va.label === 'accelerating' || va.label === 'rising') ? '▲' : (va.label === 'decelerating' || va.label === 'falling') ? '▼' : '·';
+  const cls = (va.label === 'accelerating' || va.label === 'rising') ? 'warm' : (va.label === 'decelerating' || va.label === 'falling') ? 'cool' : 'dim';
+  const pct = va.d1 != null ? ` ${va.d1 >= 0 ? '+' : ''}${(va.d1 * 100).toFixed(1)}%` : '';
+  return badge(cls, `${arrow}${pct}`);
+}
+function vovBadge(label) {
+  if (!label) return badge('dim', '—');
+  const cls = label === 'Unstable' ? 'bad' : label === 'Moderate' ? 'warm' : 'good';
+  return badge(cls, label);
+}
+function rangeEffBadge(re) {
+  if (!re || re.label === 'insufficient_data') return badge('dim', '—');
+  const cls = re.label === 'trending' ? 'warm' : re.label === 'choppy' ? 'cool' : 'dim';
+  const txt = re.label === 'trending' ? 'TRENDING' : re.label === 'choppy' ? 'CHOPPY' : 'NEUTRAL';
+  return badge(cls, `${txt} ${fmtNum(re.ratio)}`);
+}
+function skewBadge(sk) {
+  if (!sk || sk.label === 'insufficient_data') return badge('dim', '—');
+  const cls = sk.label === 'downside-heavy' ? 'bad' : sk.label === 'upside-heavy' ? 'good' : 'dim';
+  const txt = sk.label === 'downside-heavy' ? '▼ DOWN-HEAVY' : sk.label === 'upside-heavy' ? '▲ UP-HEAVY' : 'SYMMETRIC';
+  return badge(cls, `${txt} ${fmtNum(sk.ratio)}`);
+}
+function coneMini(fc) {
+  const vals = [fc.cone_5d, fc.cone_21d, fc.cone_63d, fc.vol_pct];
+  if (vals.every(v => v == null)) return `<div class="vi-cone"></div>`;
+  const bars = vals.map(v => {
+    const h = v == null ? 2 : Math.max(2, Math.round(v * 0.26));
+    const cls = v == null ? '' : v >= 75 ? 'hi' : v <= 25 ? 'lo' : '';
+    return `<div class="vi-cone-bar ${cls}" style="height:${h}px" title="${v == null ? 'n/a' : v + 'th pct'}"></div>`;
+  }).join('');
+  return `<div class="vi-cone">${bars}</div>`;
+}
+
+async function loadIntelligence() {
+  try {
+    const res = await fetch('/api/vol-forecast/intelligence');
+    const data = await res.json();
+    if (!data.ok) {
+      $('viStatusLine').textContent = `Unavailable: ${data.reason || data.error || 'unknown error'}`;
+      return;
+    }
+    $('viUpdated').textContent = 'Live · ' + new Date(data.computed_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    $('viStatusLine').textContent = `${Object.keys(data.instruments).length} instruments · session ${data.session_date ?? ''}${data.cached ? ' · cached' : ''}`;
+    renderVolRanking(data);
+    renderRegimeTable(data);
+    renderCostTable(data);
+    renderClockTable(data);
+    renderVrp(data);
+    renderLiquidity(data);
+    renderDeferred(data);
+  } catch (e) {
+    $('viStatusLine').textContent = `Fetch failed: ${e.message}`;
+  }
+}
+
+function renderVolRanking(data) {
+  const el = $('viVolRanking');
+  const rows = data.cross_asset_vol_ranking ?? [];
+  if (!rows.length) { el.innerHTML = '<div class="vi-empty">No ranking data.</div>'; return; }
+  el.innerHTML = rows.map(r => `
+    <div class="vi-bar-row">
+      <div class="vi-bar-label">${r.name}<span class="vi-ac-tag">${ACLASS_LABEL[r.assetClass] ?? ''}</span></div>
+      <div class="vi-bar-track"><div class="vi-bar-fill ${r.assetClass}" style="width:${Math.max(2, r.vol_pct)}%"></div></div>
+      <div class="vi-bar-val">${r.vol_pct}th</div>
+    </div>`).join('');
+}
+
+function renderRegimeTable(data) {
+  const tbody = $('viRegimeTable').querySelector('tbody');
+  const entries = Object.entries(data.instruments ?? {});
+  if (!entries.length) { tbody.innerHTML = '<tr><td colspan="7" class="vi-empty">No data.</td></tr>'; return; }
+  tbody.innerHTML = entries.map(([name, f]) => `
+    <tr>
+      <td class="vi-pair">${name}</td>
+      <td>${termStructureBadge(f.term_structure)}</td>
+      <td>${coneMini(f)}</td>
+      <td>${volAccelBadge(f.vol_accel)}</td>
+      <td>${vovBadge(f.vol_vov_label)}</td>
+      <td>${rangeEffBadge(f.range_efficiency)}</td>
+      <td>${skewBadge(f.realised_skew)}</td>
+    </tr>`).join('');
+}
+
+function renderCostTable(data) {
+  const el = $('viCostTable');
+  const rows = Object.entries(data.instruments ?? {})
+    .filter(([, f]) => f.cost_ratio != null)
+    .sort((a, b) => a[1].cost_ratio - b[1].cost_ratio);
+  if (!rows.length) { el.innerHTML = '<div class="vi-empty">No live spread coverage right now (needs OANDA pricing + a computed daily σ for each pair).</div>'; return; }
+  const maxRatio = Math.max(...rows.map(([, f]) => f.cost_ratio), 0.0001);
+  el.innerHTML = rows.map(([name, f]) => {
+    const pctWidth = Math.max(2, Math.min(100, (f.cost_ratio / maxRatio) * 100));
+    const cheap = f.cost_ratio < maxRatio * 0.33;
+    return `
+    <div class="vi-bar-row">
+      <div class="vi-bar-label">${name}</div>
+      <div class="vi-bar-track"><div class="vi-bar-fill ${cheap ? 'cheap' : 'expensive'}" style="width:${pctWidth}%"></div></div>
+      <div class="vi-bar-val">${(f.cost_ratio * 100).toFixed(2)}%</div>
+    </div>`;
+  }).join('') + `<div class="vi-section-note" style="margin-top:8px">Cost ratio = spread ÷ today's daily σ, as a %. Widest bar in this list = ${(maxRatio * 100).toFixed(2)}%.</div>`;
+}
+
+function renderClockTable(data) {
+  const tbody = $('viClockTable').querySelector('tbody');
+  const entries = Object.entries(data.instruments ?? {}).filter(([, f]) => f.session && f.time_to_touch);
+  if (!entries.length) { tbody.innerHTML = '<tr><td colspan="6" class="vi-empty">No live session data with a computable time budget right now.</td></tr>'; return; }
+  tbody.innerHTML = entries.map(([name, f]) => {
+    const elapsedFrac = f.session.bar_count != null ? f.session.bar_count / 24 : null;
+    const median = f.time_to_touch.medianFrac;
+    let statusHtml = '<span class="vi-clock-status na">n/a</span>';
+    if (elapsedFrac != null && median != null) {
+      const stale = elapsedFrac > median;
+      statusHtml = stale
+        ? '<span class="vi-clock-status stale">RUNNING LONG</span>'
+        : '<span class="vi-clock-status onschedule">ON SCHEDULE</span>';
+    }
+    return `
+      <tr>
+        <td class="vi-pair">${name}</td>
+        <td>${elapsedFrac != null ? (elapsedFrac * 24).toFixed(1) + 'h' : '—'}</td>
+        <td>${f.session.oc_rem != null ? fmtNum(f.session.oc_rem) + '%' : '—'}</td>
+        <td>${median != null ? (median * 24).toFixed(1) + 'h' : '—'}</td>
+        <td>${f.time_to_touch.p75Frac != null ? (f.time_to_touch.p75Frac * 24).toFixed(1) + 'h' : '—'}</td>
+        <td>${statusHtml}</td>
+      </tr>`;
+  }).join('');
+}
+
+function renderVrp(data) {
+  const el = $('viVrp');
+  const rows = Object.entries(data.instruments ?? {}).filter(([, f]) => f.vrp);
+  if (!rows.length) { el.innerHTML = '<div class="vi-empty">No implied-vol coverage available right now (needs FRED_KEY + EVZ/GVZ data for EUR/USD or Gold).</div>'; return; }
+  const maxScale = Math.max(...rows.flatMap(([, f]) => [f.vrp.premium != null ? Math.abs(f.vol_annual ?? 0) + Math.abs(f.vrp.premium) : 0]), 10);
+  el.innerHTML = rows.map(([name, f]) => {
+    const realised = f.vol_annual ?? 0;
+    const implied  = realised + (f.vrp.premium ?? 0);
+    const richCheap = f.vrp.premium > 0 ? badge('warm', `IMPLIED RICH  +${fmtNum(f.vrp.premium)} vol pts (${fmtNum(f.vrp.premium_pct, 1)}%)`) : badge('cool', `IMPLIED CHEAP  ${fmtNum(f.vrp.premium)} vol pts (${fmtNum(f.vrp.premium_pct, 1)}%)`);
+    return `
+    <div class="vi-vrp-card">
+      <div class="vi-vrp-head"><span class="vi-pair">${name}</span>${richCheap}</div>
+      <div class="vi-vrp-bars">
+        <div class="vi-vrp-line"><span class="lbl">Implied</span><div class="track"><div class="fill implied" style="width:${Math.min(100, implied / maxScale * 100)}%"></div></div><span class="val">${fmtNum(implied, 1)}%</span></div>
+        <div class="vi-vrp-line"><span class="lbl">Realised</span><div class="track"><div class="fill realised" style="width:${Math.min(100, realised / maxScale * 100)}%"></div></div><span class="val">${fmtNum(realised, 1)}%</span></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderLiquidity(data) {
+  const el = $('viLiquidity');
+  const rows = Object.entries(data.instruments ?? {})
+    .filter(([, f]) => f.session?.amihud?.illiquidity != null)
+    .sort((a, b) => b[1].session.amihud.illiquidity - a[1].session.amihud.illiquidity);
+  if (!rows.length) { el.innerHTML = '<div class="vi-empty">No live tick-volume data right now.</div>'; return; }
+  const maxIll = Math.max(...rows.map(([, f]) => f.session.amihud.illiquidity), 1e-9);
+  el.innerHTML = rows.map(([name, f]) => {
+    const w = Math.max(2, (f.session.amihud.illiquidity / maxIll) * 100);
+    return `
+    <div class="vi-bar-row">
+      <div class="vi-bar-label">${name}</div>
+      <div class="vi-bar-track"><div class="vi-bar-fill warm" style="width:${w}%"></div></div>
+      <div class="vi-bar-val" title="ticks so far">${f.session.amihud.totalVolume ?? '—'}</div>
+    </div>`;
+  }).join('') + '<div class="vi-section-note" style="margin-top:8px">Widest bar = thinnest tape relative to range, among today\'s covered pairs. Ranked highest illiquidity first.</div>';
+}
+
+function renderDeferred(data) {
+  const el = $('viDeferred');
+  const items = data.not_available ?? {};
+  const labels = {
+    jump_diffusion: 'Jump/diffusion decomposition',
+    risk_reversals: 'Risk reversals (put/call skew)',
+    iv_term_structure: 'Implied-vol term structure around events',
+    carry_to_vol: 'Carry-to-vol ranking',
+  };
+  const keys = Object.keys(items);
+  if (!keys.length) { el.innerHTML = '<div class="vi-empty">—</div>'; return; }
+  el.innerHTML = keys.map(k => `<div class="vi-deferred-item"><b>${labels[k] ?? k}</b><br><span>${items[k]}</span></div>`).join('');
+}
+
+loadIntelligence();
+setInterval(loadIntelligence, 60_000);
+</script>
+</body>
+</html>

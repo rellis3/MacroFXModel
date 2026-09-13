@@ -17695,7 +17695,8 @@ app.get('/api/vol-forecast/intelligence', async (_req, res) => {
         time_to_touch: timeToTouch,
         vrp,
         session: sess ? {
-          hl: sess.hl ?? null, oc: sess.oc ?? null,
+          hl: sess.hl ?? null, oc: sess.oc ?? null, oc_rem: sess.oc_rem ?? null,
+          bar_count: sess.bar_count ?? null,   // ~hours elapsed since the London-midnight anchor — the "elapsed" side of the time-budget read
           path_efficiency: sess.vol_state?.path_efficiency ?? null,
           touch_prob: sess.vol_state?.touch_prob ?? null,
           amihud: sess.vol_state?.amihud ?? null,
