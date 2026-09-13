@@ -533,7 +533,9 @@ alongside.
 - `jump_detect_lm.py` — Phase-13 Lee-Mykland per-return jump detection (5-min continuous grid, K=270, α=1%/day, diurnal-adjusted) → `jump_detect_lm.csv`: jump count/intensity/sign/size, realised semivariance, quarticity. Run `python3 jump_detect_lm.py` (`--selftest` for the diurnal-trap check).
 - `jump_regime_book.py` — Phase-13b the descriptive regime book: distributions, clustering (with an RV positive control), asymmetry persistence, next-day behaviour split by character vs level, the frequency×size map, and the ratio-artifact control. Run `python3 jump_regime_book.py`.
 - `jump_exhaustion.py` — Phase-13c conditions `measure_extremes.py`'s fresh-extreme race (reused verbatim) on the causal pre-extreme jump share, within distance bands — **NULL** (jump-driven extremes exhaust the same as smooth ones). Run `python3 jump_exhaustion.py`.
-- `summary.json` / `forecast_vs_fade_summary.json` / `jump_diffusion_summary.json` — headline stats.
+- `har_cj_forecast.py` — Phase-14 HAR-RV-CJ: continuous/jump as separate HAR regressors vs the same HAR without the split, walk-forward, QLIKE — **NULL** (+0.4% to −0.7% vs a 2% bar). Control arm found intraday-RV HAR beats the shipped YZ σ by 10-21% OOS (not pre-registered). Run `python3 har_cj_forecast.py`.
+- `export_jump_state.py` — freezes the study into `data/jump_state.json` (per-pair jump-share percentiles + every phase verdict) for `/api/jump-diffusion/state` and `jump-diffusion.html`. Run after the daily + LM scripts.
+- `summary.json` / `forecast_vs_fade_summary.json` / `jump_diffusion_summary.json` / `har_cj_summary.json` — headline stats.
 
 ## Phase 12 — whole-session JUMP/DIFFUSION decomposition: the measurement is REAL, the forecast payoff is NULL (`m1_gap_audit.py`, `jump_diffusion_daily.py`, `jump_event_validation.py`, `jump_diffusion_forecast.py`)
 
@@ -766,3 +768,68 @@ step that remains unproven.
 
 Run `python3 jump_detect_lm.py` (`--selftest` for the diurnal-trap and causality checks) →
 `python3 jump_regime_book.py` → `python3 jump_exhaustion.py`.
+
+## Phase 14 — HAR-RV-CJ: the forecast question, closed (`har_cj_forecast.py`)
+
+Phase 12 failed to improve the σ forecast by scaling it with a jump correction, and the
+diagnosis was that the lever was too blunt — YZ is a 30-day average, so a correction to the
+whole window cannot express an effect that lives in the next day. Phase 13 then measured
+that effect directly (jumpier day → quieter tomorrow, c = −0.99..−1.47). **HAR-CJ
+(Andersen-Bollerslev-Diebold 2007) is the form built to carry exactly this**: put the
+continuous and jump components in as *separate* regressors at daily/weekly/monthly lags.
+
+Pre-registered: HAR-CJ must beat HAR-RV — the **same model without the split** — by ≥2%
+OOS QLIKE on fx_majors. Scored with `js/volForecastBench.js`'s own loss, GK proxy and 60/40
+split; coefficients fit walk-forward on an expanding window, mirroring `harRvPred`.
+
+**Result: NULL, for the third independent time.** In the log form (the sound specification),
+the jump split moves the forecast by **+0.41% to −0.69%** against a 2% bar, with the sign
+disagreeing across asset classes and across the two ways of defining the split:
+
+| log form, GK proxy | HAR-RV | HAR-CJ (bipower) | HAR-CJ (Lee-Mykland) |
+|---|---|---|---|
+| fx_major OOS QLIKE | 0.29817 | 0.29828 (−0.04%) | 0.30024 (−0.69%) |
+| fx_cross OOS QLIKE | 0.29623 | 0.29503 (+0.41%) | 0.29496 (+0.43%) |
+| metal OOS QLIKE | 0.29542 | 0.29548 (−0.02%) | 0.28993 (+1.86%) |
+
+**A numerical trap, recorded because it nearly produced a fake result.** The first draft
+returned QLIKE values in the *millions*. Daily variances are ~1e-4 against an intercept
+column of 1, and `volForecastBench.js` already documents its own 5-column system blowing up
+to QLIKE 7.5e5 unscaled — the CJ system here is 7 columns. The fix is that file's own:
+scale regressors and target by 1/median(RV) (OLS is scale-equivariant, so predictions are
+unchanged and only the solve is stabilised), and floor every prediction at 1% of median RV
+so an unconstrained fit that wants to go negative cannot manufacture an explosion. The floor
+is applied identically to every model, incumbent included. **The level form remains badly
+conditioned** for a 7-column system on heavily skewed variance (IS QLIKE 0.59 vs OOS 0.43 —
+the fit is outlier-dominated), which is why the log form is the one to read.
+
+**The forecast question is now closed.** Three constructions, three nulls: scale σ by the
+diffusive share (Phase 12), split RV into components as HAR regressors (Phase 14), and
+condition the exhaustion race on pre-extreme jump share (Phase 13). The vol-decay effect is
+real and replicated, and it is *not* convertible into a better next-day variance forecast.
+
+**One thing did fall out of the control arm, and it is not a jump finding.** HAR fit on
+**intraday 5-minute realised variance** beats the shipped Yang-Zhang σ by **9.7% (fx_major),
+21.0% (fx_cross), 21.0% (metal)** OOS QLIKE in the log form (6.5%/8.8%/22.1% in level form)
+— consistent across every class and both specifications. That says the incumbent's weakness
+is using *daily OHLC* rather than intraday data at all, which has nothing to do with jumps.
+**It was the control arm, not the hypothesis**, so it carries no pre-registration and needs
+its own before anything is built on it — but it is a far better lead than any remaining
+jump angle. Run `python3 har_cj_forecast.py`.
+
+## Shipped: the Jump vs Diffusion page (`jump-diffusion.html`)
+
+The measurement is validated (Phase 2) and is worth surfacing as **descriptive state**, so it
+now has a page — linked from `vol-forecast-v2.html`'s tool row and cross-linked from
+`volatility-intelligence.html`. It carries each instrument's own jump-share percentiles (a
+live reading is meaningless without the distribution it sits in) and every phase's verdict,
+**read from the study output as data** so the page cannot drift from the research.
+
+Served the same learn-offline / ship-a-file way as the VuManChu state table:
+`export_jump_state.py` freezes a 12KB table to `volatilityExhaustion/data/jump_state.json`,
+`/api/jump-diffusion/state` serves it with a 5-minute re-read. The batch job reads ~1.6GB of
+1-min bars and can never run on a request.
+
+**What the page deliberately does not have: a forecast, a reliability multiplier, or a cone
+caveat chip.** That chip would assert exactly the claim Phases 12/13/14 each failed to
+support. Nothing here is imported by `volatilityBotPlan.js` / `volatilityBotProducer.js`.
