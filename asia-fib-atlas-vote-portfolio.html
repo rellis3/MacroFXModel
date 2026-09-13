@@ -351,7 +351,7 @@
 import { summarizeTrades, sortinoRatio, calmar as calmarRatio, histVaR } from './js/metricsCore.js';
 import { backtestStats, shuffle } from './js/backtestStats.js';
 import { mulberry32 } from './js/statsCore.js';
-import { fitTailModel } from './js/evtTail.js';
+import { fitTailModel, fitGPD } from './js/evtTail.js';
 import { createLevelChart } from './js/levelChart.js';
 // All 26 locally-cached pairs both Fib Atlas ladders were widened to (same
 // list scripts/backfill_fib_atlas_vote_trades.mjs uses) — no exclusions here,
@@ -855,6 +855,40 @@ function renderMonteCarlo(j) {
 // question than the empirical VaR/CVaR cards above: how bad could a day be
 // BEYOND anything actually observed. Fit on the daily-return series (same
 // basis as Skew/Excess Kurtosis), threshold at the 90th loss percentile.
+// Bootstrap confidence interval on the GPD shape/ceiling (2026-09-13) --
+// fitGPD is a closed-form point estimate (probability-weighted moments) with
+// no uncertainty of its own; on ~200 exceedances that point estimate alone
+// invites over-reading a single number as exact. Resamples the ACTUAL
+// exceedances (not the raw daily series) with replacement, refits, repeats --
+// holds the threshold fixed, so this isolates the estimator's own sampling
+// variance at exactly the exceedance count the live fit used. Deterministic
+// (mulberry32) so the CI doesn't jitter between renders of the same data.
+function bootstrapTailCI(dailyReturns, threshold, B = 1500) {
+  const losses = dailyReturns.map(r => -r);
+  const exceedances = losses.filter(l => l > threshold).map(l => l - threshold);
+  if (exceedances.length < 10) return null;
+  const rng = mulberry32(0x9e3779b9);
+  const shapes = [], ceilings = [];
+  for (let b = 0; b < B; b++) {
+    const resample = new Array(exceedances.length);
+    for (let i = 0; i < exceedances.length; i++) resample[i] = exceedances[(rng() * exceedances.length) | 0];
+    const fit = fitGPD(resample);
+    if (!fit) continue;
+    shapes.push(fit.shape);
+    if (fit.shape < -1e-6) ceilings.push(threshold + fit.scale / Math.abs(fit.shape));
+  }
+  shapes.sort((a, b) => a - b);
+  ceilings.sort((a, b) => a - b);
+  const q = (arr, p) => arr.length ? arr[Math.min(arr.length - 1, Math.floor(p * arr.length))] : null;
+  return {
+    n: shapes.length,
+    shapeP5: q(shapes, 0.05), shapeP95: q(shapes, 0.95),
+    pUnbounded: shapes.filter(s => s >= 0).length / shapes.length,
+    boundedFrac: ceilings.length / shapes.length,
+    ceilingP5: q(ceilings, 0.05), ceilingP50: q(ceilings, 0.50), ceilingP95: q(ceilings, 0.95),
+  };
+}
+
 function renderEvtTail(j) {
   const explainerEl = document.getElementById('evtExplainer');
   const kpiEl = document.getElementById('evtKpi');
@@ -872,10 +906,14 @@ function renderEvtTail(j) {
     : model.shape < -0.05 ? 'a bounded tail — the fit implies a hard ceiling on how bad a single day can get'
     : 'a roughly exponential tail — moderate, no strong evidence either way';
   const ceiling = model.shape < -1e-6 ? model.threshold + model.scale / Math.abs(model.shape) : null;
+  const ci = bootstrapTailCI(dailyReturns, model.threshold);
   explainerEl.innerHTML = `Fit on the worst ${fmt1(model.freq * 100)}% of days (${model.nExceed} of ${model.n}, above a ${fmt2(model.threshold)}% loss threshold). `
     + `Shape ξ = ${fmt2(model.shape)} → <b>${tailType}</b>.`
     + (ceiling != null ? ` The fit's own implied ceiling: no single day should exceed roughly <b>${fmt1(ceiling)}%</b>.` : '')
-    + ` Dots = actual days; the line is the fitted model, extrapolated a bit past your worst day so far.`;
+    + ` Dots = actual days; the line is the fitted model, extrapolated a bit past your worst day so far.`
+    + (ci ? ` <b>This is a point estimate on only ${model.nExceed} tail days — treat it as a range, not a fact.</b> A bootstrap (resampling those same exceedances ${ci.n.toLocaleString()} times) puts the shape's 90% interval at ${fmt2(ci.shapeP5)} to ${fmt2(ci.shapeP95)}`
+      + (ci.pUnbounded > 0.05 ? `, and ${fmt1(ci.pUnbounded * 100)}% of resamples come out unbounded (ξ≥0) entirely — the "hard ceiling" read is NOT solid at this sample size.` : `, with only ${fmt1(ci.pUnbounded * 100)}% of resamples coming out unbounded — the bounded-tail call itself holds up, but ` + (ci.ceilingP5 != null ? `where that ceiling actually sits is much less certain: the 90% interval runs ${fmt1(ci.ceilingP5)}% to ${fmt1(ci.ceilingP95)}%, not one fixed number.` : ''))
+      : '');
 
   kpiEl.innerHTML = [
     kpiCard('Shape (ξ)', fmt2(model.shape), model.shape < -0.05 ? 'green' : model.shape > 0.05 ? 'red' : '', model.shape < -0.05 ? 'bounded tail' : model.shape > 0.05 ? 'fat tail' : 'exponential-ish'),
@@ -883,6 +921,7 @@ function renderEvtTail(j) {
     kpiCard('Threshold', fmt2(model.threshold) + '%', '', `90th pctile of daily loss`),
     kpiCard('Exceedances', `${model.nExceed} / ${model.n}`, '', 'days used to fit the tail'),
     ...(ceiling != null ? [kpiCard('Implied ceiling', fmt1(ceiling) + '%', 'amber', "the fit's own worst-case claim")] : []),
+    ...(ci ? [kpiCard('Ceiling 90% CI (bootstrap)', ci.ceilingP5 != null ? `${fmt1(ci.ceilingP5)}% – ${fmt1(ci.ceilingP95)}%` : 'n/a', 'amber', `${fmt1(ci.pUnbounded * 100)}% of resamples unbounded`)] : []),
   ].join('');
 
   const fittedPts = model.fittedCurve.filter(pt => pt.survival > 0);
