@@ -17744,11 +17744,22 @@ app.get('/api/vol-forecast/intelligence', async (_req, res) => {
       return res.json({ ok: false, reason: 'no_forecast', instruments: {} });
     }
 
-    const [spreadsResult, sessionResult, cvolResult] = await Promise.all([
+    const [spreadsResult, sessionResult, cvolResult, oiStoreRaw] = await Promise.all([
       _fetchSpreads(VOL_INSTRUMENTS.map(i => i.oandaInstrument)).catch(() => ({ ok: false, pairs: {} })),
       getSessionStatus().catch(() => null),
       _getCvol().catch(() => null),
+      kv.get('oi_store').catch(() => null),
     ]);
+
+    // IV term structure (all-day-automated CME QuikStrike 'settles' sweep) and
+    // risk reversal (needs the per-strike chain — captured on a --chain pass or
+    // a manual paste, not guaranteed every day) — reads the SAME oi_store KV
+    // entry and the SAME normalised-key match _injectServerContext already
+    // uses for the AI-analysis prompt, rather than a second lookup convention.
+    let oiStore = {};
+    try { if (oiStoreRaw) oiStore = JSON.parse(oiStoreRaw).data ?? JSON.parse(oiStoreRaw); } catch { /* degrades to empty */ }
+    const _normPair = x => String(x).toLowerCase().replace(/[/_]/g, '');
+    const oiKeys = Object.keys(oiStore);
 
     const instruments = {};
     const volRanking = [];
@@ -17786,6 +17797,21 @@ app.get('/api/vol-forecast/intelligence', async (_req, res) => {
         if (ivLevel != null && fc.vol_annual > 0) vrp = ivPremium(ivLevel, fc.vol_annual);
       }
 
+      // IV term structure + risk reversal — from the CME QuikStrike capture
+      // (oi_recon/), already computed and stored on oi_store by whatever
+      // process builds it; read-through only, nothing recomputed here.
+      // Matches on cfg.oandaInstrument (e.g. 'XAU_USD'), NOT cfg.name (e.g.
+      // 'GOLD') — oi_store's own keys are OANDA/CME-symbol-shaped, same
+      // convention products.py uses ('EUR/USD', 'XAU/USD', 'NAS100_USD').
+      // cfg.name only happens to equal that for plain FX pairs (EURUSD vs
+      // EUR_USD normalise to the same string); it does NOT for Gold or the
+      // indices — caught by a synthetic-key smoke test before this shipped,
+      // where the naive cfg.name match silently returned null for Gold.
+      const oiKey  = oiKeys.find(k => _normPair(k) === _normPair(cfg.oandaInstrument));
+      const oiInst = oiKey ? oiStore[oiKey] : null;
+      const ivTermStructure = oiInst?.ivTermStructure ?? null;   // automated nightly ('settles' view, on by default)
+      const riskReversal    = oiInst?.riskReversal ?? null;      // only present when the per-strike chain was captured that day
+
       instruments[cfg.name] = {
         assetClass: cfg.assetClass,
         vol_annual: fc.vol_annual ?? null,
@@ -17800,6 +17826,8 @@ app.get('/api/vol-forecast/intelligence', async (_req, res) => {
         spread_pips: spreadPips,
         time_to_touch: timeToTouch,
         vrp,
+        iv_term_structure: ivTermStructure,
+        risk_reversal: riskReversal,
         session: sess ? {
           hl: sess.hl ?? null, oc: sess.oc ?? null, oc_rem: sess.oc_rem ?? null,
           bar_count: sess.bar_count ?? null,   // ~hours elapsed since the London-midnight anchor — the "elapsed" side of the time-budget read
@@ -17822,10 +17850,14 @@ app.get('/api/vol-forecast/intelligence', async (_req, res) => {
       session_date: forecastState.latest.session_date,
       instruments,
       cross_asset_vol_ranking: volRanking,
+      // Corrected from the first version of this endpoint, which wrongly
+      // claimed no IV-term-structure/risk-reversal data source exists — it
+      // does: oi_recon/'s CME QuikStrike 'settles' capture runs automatically
+      // every night (not an optional extra) and is already ivTermStructure()-
+      // computed onto oi_store. Fixed to read that, per-pair, above instead
+      // of leaving it here unclaimed.
       not_available: {
         jump_diffusion: 'Needs proper high-frequency (bipower variation) methodology on the M1 cache — a separate backtest-style study, not a live payload field.',
-        risk_reversals: 'No put/call skew data source in this repo — CVOL only carries single-index EVZ/GVZ levels, not a full vol surface.',
-        iv_term_structure: 'No options-implied-vol-by-tenor data source available.',
         carry_to_vol: 'carryEngine.js is a basket-backtest engine, not a live per-pair carry number — needs new wiring before it can rank pairs live.',
       },
     };

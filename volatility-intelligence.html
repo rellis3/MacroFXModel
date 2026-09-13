@@ -28,6 +28,9 @@
 .vi-section h2 { font-size: 13.5px; font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
 .vi-section .vi-q { font-size: 9px; font-family: 'DM Mono', monospace; color: var(--blue); border: 1px solid var(--blue-bd); background: var(--blue-bg); border-radius: 5px; padding: 2px 6px; font-weight: 600; }
 .vi-section-note { font-size: 11px; color: var(--text3); line-height: 1.5; margin: 4px 0 12px; }
+.vi-section-note code { font-family: 'DM Mono', monospace; background: var(--s2); padding: 1px 4px; border-radius: 3px; }
+.vi-subhead { font-size: 12px; font-weight: 600; margin: 18px 0 2px; padding-top: 14px; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+.vi-subhead .vi-q { font-size: 8.5px; color: var(--text3); border-color: var(--border); background: var(--s2); text-transform: none; font-weight: 500; }
 
 .vi-scroll { overflow-x: auto; }
 .vi-table { width: 100%; border-collapse: collapse; font-family: 'DM Mono', monospace; font-size: 11.5px; min-width: 640px; }
@@ -161,13 +164,23 @@
 
   <section class="vi-section" id="vi-vrp">
     <h2>Tradable Asset — Implied vs Realised <span class="vi-q">§5</span></h2>
-    <p class="vi-section-note">The variance risk premium: implied minus realised volatility. Positive means the options market is pricing in more movement than has actually been happening — selling that gap is the classic vol-carry trade. Only EUR/USD and Gold have single-index implied-vol coverage here (CBOE EVZ/GVZ) — everything else genuinely has no options-implied data in this repo.</p>
+    <p class="vi-section-note">The variance risk premium: implied minus realised volatility. Positive means the options market is pricing in more movement than has actually been happening — selling that gap is the classic vol-carry trade. Single-index CBOE coverage (EVZ/GVZ) is EUR/USD and Gold only.</p>
     <div id="viVrp"><div class="vi-empty">Loading…</div></div>
     <div class="vi-links">
       <a href="fx-vol-carry-backtest.html">FX/Gold Vol-Carry Backtester →</a>
       <a href="vix-vol-carry-backtest.html">VIX Vol-Carry Study →</a>
       <a href="oi-zones.html">Dealer Gamma / OI Zones →</a>
     </div>
+
+    <h3 class="vi-subhead">IV Term Structure <span class="vi-q">from your CME OI capture</span></h3>
+    <p class="vi-section-note">Per-expiry at-the-money implied vol, front expiry vs back expiry — from the automated nightly QuikStrike 'settles' capture (oi_recon/), already computed by <code>ivTermStructure()</code> in js/ivMetrics.js and reused here read-through, not recomputed. Inverted (front richer than back) usually means the market is pricing a near-term event; upward-sloping is the calmer default.</p>
+    <div class="vi-scroll"><table class="vi-table" id="viIvTermTable"><thead><tr>
+      <th>Pair</th><th>Front (DTE / IV)</th><th>Back (DTE / IV)</th><th>Slope</th><th>Shape</th>
+    </tr></thead><tbody><tr><td colspan="5" class="vi-empty">Loading…</td></tr></tbody></table></div>
+
+    <h3 class="vi-subhead">Risk Reversal <span class="vi-q">put IV − call IV, ~3% OTM</span></h3>
+    <p class="vi-section-note">Positive means puts are richer than calls — downside fear priced into the skew; negative means calls are richer — upside chase. This needs the per-strike option chain, which is <b>not captured automatically every night</b> (only the per-expiry settlement table is) — shown only for whichever pairs had that chain captured today.</p>
+    <div id="viRiskReversal"><div class="vi-empty">Loading…</div></div>
   </section>
 
   <section class="vi-section" id="vi-liquidity">
@@ -248,6 +261,8 @@ async function loadIntelligence() {
     renderCostTable(data);
     renderClockTable(data);
     renderVrp(data);
+    renderIvTermTable(data);
+    renderRiskReversal(data);
     renderLiquidity(data);
     renderDeferred(data);
   } catch (e) {
@@ -344,6 +359,46 @@ function renderVrp(data) {
         <div class="vi-vrp-line"><span class="lbl">Implied</span><div class="track"><div class="fill implied" style="width:${Math.min(100, implied / maxScale * 100)}%"></div></div><span class="val">${fmtNum(implied, 1)}%</span></div>
         <div class="vi-vrp-line"><span class="lbl">Realised</span><div class="track"><div class="fill realised" style="width:${Math.min(100, realised / maxScale * 100)}%"></div></div><span class="val">${fmtNum(realised, 1)}%</span></div>
       </div>
+    </div>`;
+  }).join('');
+}
+
+function ivShapeBadge(shape) {
+  if (shape === 'inverted') return badge('warm', 'INVERTED');
+  if (shape === 'upward')   return badge('cool', 'UPWARD');
+  return badge('dim', 'FLAT');
+}
+
+function renderIvTermTable(data) {
+  const tbody = $('viIvTermTable').querySelector('tbody');
+  const rows = Object.entries(data.instruments ?? {}).filter(([, f]) => f.iv_term_structure);
+  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="5" class="vi-empty">No IV term structure captured for any pair right now — check oi_recon/\'s last sweep.</td></tr>'; return; }
+  tbody.innerHTML = rows.map(([name, f]) => {
+    const ts = f.iv_term_structure;
+    return `
+      <tr>
+        <td class="vi-pair">${name}</td>
+        <td>${ts.front.dte}d / ${fmtNum(ts.front.iv, 1)}%</td>
+        <td>${ts.back.dte}d / ${fmtNum(ts.back.iv, 1)}%</td>
+        <td>${ts.slope >= 0 ? '+' : ''}${fmtNum(ts.slope, 1)}</td>
+        <td>${ivShapeBadge(ts.shape)}</td>
+      </tr>`;
+  }).join('');
+}
+
+function renderRiskReversal(data) {
+  const el = $('viRiskReversal');
+  const rows = Object.entries(data.instruments ?? {}).filter(([, f]) => f.risk_reversal);
+  if (!rows.length) { el.innerHTML = '<div class="vi-empty">No pair had its per-strike chain captured today — risk reversal needs that pass, not just the (always-automated) settlements table.</div>'; return; }
+  el.innerHTML = rows.map(([name, f]) => {
+    const rr = f.risk_reversal;
+    const cls = rr.tilt === 'downside' ? 'bad' : rr.tilt === 'upside' ? 'good' : 'dim';
+    const txt = rr.tilt === 'downside' ? '▼ DOWNSIDE (puts richer)' : rr.tilt === 'upside' ? '▲ UPSIDE (calls richer)' : 'FLAT';
+    return `
+    <div class="vi-bar-row">
+      <div class="vi-bar-label">${name}</div>
+      <div style="flex:1;font-family:'DM Mono',monospace;font-size:10.5px;color:var(--text3)">Put ${fmtNum(rr.putIV, 1)}% · Call ${fmtNum(rr.callIV, 1)}% · RR ${rr.rr >= 0 ? '+' : ''}${fmtNum(rr.rr, 2)}</div>
+      <div>${badge(cls, txt)}</div>
     </div>`;
   }).join('');
 }
