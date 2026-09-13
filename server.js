@@ -143,6 +143,7 @@ import { analyzePair as _mcondAnalyzePair, summarizeRows as _mcondSummarize, ver
 import { creditGate as _creditGateBrick } from './js/creditCore.js';
 import { creditRegime as _creditRegime } from './js/creditHmm.js';
 import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2, fetchFromR2 as gliFetchFromR2, M1_TAIL_PREFIX as _M1_TAIL_PREFIX } from './js/volBacktestM1Engine.js';
+import { auditVoteAtlasDrift as _auditVoteAtlasDrift } from './js/voteAtlasDriftAudit.js';
 import { resampleBars as plResampleBars, runPatternScan, annotateHtfAlignment as plAnnotateHtfAlignment, confidenceBucketStats as plConfidenceBucketStats, classifySwingStructure as plClassifySwingStructure } from './js/patternEngine.js';
 import { loadTradeLabBars, loadFullArchivePacked } from './js/tradeLabDataSource.js';
 import { findImpulseRetracements } from './js/impulseRetracementGeometry.js';
@@ -16115,6 +16116,67 @@ async function _volatilityV2AccumulateTradeLog() {
 }
 setInterval(_volatilityV2AccumulateTradeLog, 10 * 60_000);
 setTimeout(_volatilityV2AccumulateTradeLog, 35_000);
+
+// Weekly live-vs-backtest drift audit (2026-09-13) — automates the manual
+// 150-trade check run 2026-09-12: for each of the past week's closed Vote
+// Atlas trades, rebuild the exact touch + as-of-that-day honest book from
+// real M1 and compare the independently-recomputed direction against what
+// was actually traded. Reuses js/voteAtlasDriftAudit.js (the SAME logic the
+// manual audit used, extracted into a shared module rather than
+// reimplemented here — see CLAUDE.md's "Live-vs-backtest parity" rule about
+// exactly this failure mode) — server.js just supplies the trade log, the
+// real loadM1ForPair, and where to persist the result.
+//
+// History (not just the latest run) is kept so bot-config/bot-analysis can
+// show whether match rate is drifting week over week, not just a single
+// snapshot — the whole point of the owner's own request for this job.
+const VOTE_DRIFT_HISTORY_KEY = 'volatility_bot_v2_drift_history';
+const VOTE_DRIFT_MAX_HISTORY = 52; // ~1 year of weekly snapshots
+
+async function _volatilityV2WeeklyDriftAudit() {
+  try {
+    const logRaw = await kv.get('volatility_bot_v2_trade_log').catch(() => null);
+    if (!logRaw) { console.log('[vote-drift-audit] no trade log yet, skipping'); return; }
+    const allTrades = JSON.parse(logRaw).data ?? JSON.parse(logRaw);
+    const cutoffSec = Date.now() / 1000 - 7 * 24 * 3600;
+    // Only trades with a parseable zone_id are this system's own (Vote
+    // Atlas) trades -- the trade log is a single shared KV key per bot, not
+    // filtered by strategy at read time.
+    const recent = allTrades.filter(t => t.time_open >= cutoffSec && t.zone_id);
+    if (!recent.length) { console.log('[vote-drift-audit] no Vote Atlas trades in the last 7 days, skipping'); return; }
+    console.log(`[vote-drift-audit] auditing ${recent.length} trade(s) from the last 7 days...`);
+    const report = await _auditVoteAtlasDrift(recent, loadM1ForPair);
+    const entry = {
+      weekEnding: new Date().toISOString().slice(0, 10),
+      totalTrades: report.totalTrades, checkedWithVote: report.checkedWithVote,
+      directionMatches: report.directionMatches, directionMismatches: report.directionMismatches,
+      matchRate: report.matchRate, thinMarginOrNoVote: report.thinMarginOrNoVote,
+      mismatchDetail: report.mismatchDetail.slice(0, 20), // cap stored detail -- not the full trade dump every week
+    };
+    const histRaw = await kv.get(VOTE_DRIFT_HISTORY_KEY).catch(() => null);
+    const history = histRaw ? (JSON.parse(histRaw).data ?? JSON.parse(histRaw)) : [];
+    history.push(entry);
+    if (history.length > VOTE_DRIFT_MAX_HISTORY) history.splice(0, history.length - VOTE_DRIFT_MAX_HISTORY);
+    await kv.put(VOTE_DRIFT_HISTORY_KEY, JSON.stringify({ data: history, timestamp: Date.now() }));
+    console.log(`[vote-drift-audit] done: ${entry.matchRate}% match (${entry.directionMatches}/${entry.checkedWithVote}), ${entry.thinMarginOrNoVote} thin-margin/no-vote`);
+    if (entry.directionMismatches > 0) {
+      console.warn(`[vote-drift-audit] ⚠ ${entry.directionMismatches} REAL direction mismatch(es) this week — worth investigating directly, not explained by margin thinness`);
+    }
+  } catch (e) { console.error('[vote-drift-audit] failed:', e.message); }
+}
+if (process.env.OANDA_KEY) {
+  // _scheduleDailyLondon fires daily; gated to Sunday here rather than
+  // building a second scheduler primitive for a once-a-week cadence. 01:00
+  // London on a Sunday sits well clear of active trading hours for every
+  // instrument this system covers.
+  _scheduleDailyLondon(1, 0, () => {
+    if (new Date().getUTCDay() !== 0) return; // 0 = Sunday
+    let enabled = process.env.VOTE_DRIFT_AUDIT !== '0';
+    if (enabled) _volatilityV2WeeklyDriftAudit();
+    else console.log('[vote-drift-audit] weekly tick — disabled (VOTE_DRIFT_AUDIT=0)');
+  });
+  console.log('[vote-drift-audit] weekly tick armed for Sunday 01:00 London (gated by VOTE_DRIFT_AUDIT=0 to disable)');
+}
 
 // Fib Atlas dedupe-tag decoder — `fib_atlas_bot_status` is ALREADY in
 // _worker.js's STATUS_KEYS, so every closed trade it reports already flows
