@@ -2305,7 +2305,33 @@ async function _injectServerContext(pair, s) {
       vol_annual: fc.vol_annual ?? null, vol_pct: fc.vol_pct ?? null,
       cone_5d: fc.cone_5d ?? null, cone_21d: fc.cone_21d ?? null, cone_63d: fc.cone_63d ?? null,
       vol_vov_label: fc.vol_vov_label ?? null,
+      // js/volStateEngine.js fields, already computed onto `fc` by
+      // computeForecast() — passed through as-is, NOT recomputed here. The
+      // prompt below used to re-derive expanding/compressing inline from
+      // cone_5d vs vol_pct (a second copy of termStructureState's own
+      // math); it now reads fc.term_structure directly so there is one
+      // source of truth instead of two that could silently drift apart.
+      term_structure: fc.term_structure ?? null,   // {slope, label, inflection}
+      vol_accel: fc.vol_accel ?? null,              // {d1, d2, label}
     };
+  }
+
+  // Live session-derived volatility state (js/volStateEngine.js pathEfficiency/
+  // touchProbability, via getSessionStatus() — same call the vol-forecast pages
+  // poll). Separate from volCone above because it's session/live-derived, not
+  // from the daily forecast object, and best-effort like impliedVol/riskFlags —
+  // getSessionStatus() is 90s-cached, so this rarely triggers a fresh Oanda call.
+  if (key && !s.volState) {
+    try {
+      const sess = await getSessionStatus();
+      const vs = sess?.instruments?.[key]?.vol_state;
+      if (vs) {
+        const block = {};
+        if (vs.path_efficiency?.efficiency != null) block.pathEfficiencyPct = Math.round(vs.path_efficiency.efficiency * 100);
+        if (vs.touch_prob?.oc_median != null)       block.touchProbToOcMedianPct = Math.round(vs.touch_prob.oc_median * 100);
+        if (Object.keys(block).length) s.volState = block;
+      }
+    } catch { /* left absent — prompt tolerates it */ }
   }
 
   if (!s.impliedVol && (key === 'EURUSD' || key === 'GOLD')) {
@@ -2709,11 +2735,19 @@ ${s.surpriseIndex && Object.keys(s.surpriseIndex).length > 0
 VOLATILITY CONE (forecast σ vs its own history — context, not a signal)
 ${s.volCone ? `Annualised σ: ${s.volCone.vol_annual ?? 'N/A'}%  |  252d percentile: ${s.volCone.vol_pct ?? 'N/A'}th
 Shorter-window percentiles — 5d: ${s.volCone.cone_5d ?? 'N/A'}th  |  21d: ${s.volCone.cone_21d ?? 'N/A'}th  |  63d: ${s.volCone.cone_63d ?? 'N/A'}th
-${s.volCone.cone_5d != null && s.volCone.vol_pct != null
-    ? (s.volCone.cone_5d - s.volCone.vol_pct >= 15 ? '→ Vol EXPANDING — recent σ running above its long-run rank; moves may get bigger, widen stops'
-      : s.volCone.vol_pct - s.volCone.cone_5d >= 15 ? '→ Vol CONTRACTING — recent σ cooling vs its long-run rank; compression regime'
-      : '→ Vol steady across windows — no expansion/contraction signal') : ''}
+${s.volCone.term_structure
+    ? (s.volCone.term_structure.label === 'expanding' ? `→ Vol EXPANDING — recent σ running above its long-run rank; moves may get bigger, widen stops${s.volCone.term_structure.inflection ? ' (confirmed by the 21d window too — early regime-turn signal, not just noise)' : ''}`
+      : s.volCone.term_structure.label === 'compressing' ? `→ Vol CONTRACTING — recent σ cooling vs its long-run rank; compression regime${s.volCone.term_structure.inflection ? ' (confirmed by the 21d window too — early regime-turn signal, not just noise)' : ''}`
+      : '→ Vol steady across windows — no expansion/contraction signal')
+    : ''}
+${s.volCone.vol_accel && s.volCone.vol_accel.label !== 'insufficient_data' ? `Vol acceleration — is the vol regime itself speeding up or slowing down (not just its current level): ${s.volCone.vol_accel.label}${s.volCone.vol_accel.d1 != null ? ` (ΔVol ${s.volCone.vol_accel.d1 >= 0 ? '+' : ''}${(s.volCone.vol_accel.d1 * 100).toFixed(1)}% day/day)` : ''}` : ''}
 Vol-of-vol: ${s.volCone.vol_vov_label ?? 'N/A'}${s.volCone.vol_vov_label === 'Unstable' ? ' — σ itself is jumping around, treat the range forecast with wider error bars' : ''}` : '  Not available'}
+
+VOLATILITY STATE — TODAY'S SESSION (js/volStateEngine.js — descriptive, NOT a backtested signal)
+${s.volState ? [
+    s.volState.pathEfficiencyPct != null ? `Path efficiency so far: ${s.volState.pathEfficiencyPct}% (100% = straight trend all session, 0% = pure back-and-forth chop to the open — distinguishes a trend day from a choppy day with the SAME range, which the directional % elsewhere can't)` : null,
+    s.volState.touchProbToOcMedianPct != null ? `Theoretical touch probability to the O-C median for the rest of the session: ${s.volState.touchProbToOcMedianPct}% (closed-form Brownian estimate, NOT backtested — use as a rough reference line only, never state it as a validated edge)` : null,
+  ].filter(Boolean).join('\n') || '  Not available' : '  Not available'}
 
 IMPLIED VOL — OPTIONS MARKET (CBOE 1M index vs our realized σ; a price, not a forecast)
 ${s.impliedVol ? `${s.impliedVol.index} ${s.impliedVol.level}  |  ${s.impliedVol.pct}th percentile of 5 years
