@@ -1049,6 +1049,7 @@ export default {
             // here means a silent 48h TTL and the record resets every two days.
             'macro_scorecard_history_v1',
             'oanda_book_history_v1',
+            'pair_ledger_v1',
             // oi_auto_target decides whether the nightly sweep feeds the live bots. If it
             // expired it would silently revert to the shadow default, and a fortnight of
             // intended-live captures would land nowhere the bots read.

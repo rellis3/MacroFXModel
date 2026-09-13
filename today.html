@@ -1092,6 +1092,13 @@ WHAT IT IS NOT. Not direction — every sentence it produces is about range. Not
     </h3>
     <div class="dr-sec-body"><div id="drAttrib"></div></div>
   </div>
+  <div class="dr-sec" id="drLedgerSec" data-seckey="ledger">
+    <h3 class="help" title="What this page called on this pair on past days, scored against what actually happened at the session close, the next day and five days on. A hit is the sign of the move agreeing with the direction tag; MIXED calls are the page declining to call and are not scored. Below 30 scored calls it says so rather than quoting a rate. This is the only track record the direction tag has.">
+      <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">&#9662;</span>This page&rsquo;s record on this pair</span><i class="ev c" title="context until it has enough calls to clear or fail a coin flip">~</i>
+      <span class="chip neu" style="font-size:9px">the ledger &middot; scored daily</span>
+    </h3>
+    <div class="dr-sec-body"><div id="drLedger"><span class="muted">loading&hellip;</span></div></div>
+  </div>
   <div class="dr-sec" id="drAllReadsSec" data-seckey="allreads">
     <h3 class="help" title="Every chip the card used to show, in one row. The card now keeps five at most — the day, the lean, its best supporter, its worst threat, the clock — and the rest live here so nothing is lost, only demoted.">
       <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>All reads, at once</span><i class="ev c" title="context — mixed evidence; each chip carries its own">~</i>
@@ -6170,6 +6177,52 @@ function _clockTier(r) {
 }
 function pairChipsHtml(r) { return _dayTier(r) + _leanTier(r) + _clockTier(r); }
 
+// ── The ledger: post what the board rendered, once per UTC day ───────────────
+// The direction tag is assembled here from seven sources and exists nowhere else,
+// so this page is the honest source of "what was called". The server keeps the
+// first call of each day and scores it against real closes (js/pairLedger.js).
+// Posted ~25s after boot so the tape and spreads have landed; a second open the
+// same day refreshes the price only.
+function _threatKind(r) {
+  const c = r.cost;
+  if (c && (!c.tradeable || c.gate === 'fail' || c.gate === 'bad')) return 'cost';
+  if (r.isProx) return 'prox';
+  if (r.ct?.level === 'EXTREME') return 'cot';
+  const bk = _crowd[r.d.sym]?.book;
+  if (bk?.pain) { const side = bk.longPct >= 50 ? 'long' : 'short'; const uw = side === 'long' ? bk.pain.longsUnderwaterPct : bk.pain.shortsUnderwaterPct; if (Math.max(bk.longPct, bk.shortPct ?? 0) >= 60 && uw >= 60) return 'pain'; }
+  if (divergenceChip(r)) return 'divergence';
+  if (/rich/.test(ivRvChip(r) || '')) return 'ivrv';
+  if (c && c.gate === 'warn') return 'cost-warn';
+  return null;
+}
+function ledgerCallFor(r) {
+  const d = r.d, t = directionFor(r);
+  if (!t || !d?.sym) return null;
+  const pip = _pipSz(d), tp = _tape[d.sym];
+  return {
+    pair: r.name, sym: d.sym, direction: t.direction, agree: t.agree ?? null, total: t.total ?? null, strength: t.strength ?? null,
+    tape: (tp?.ok && !tp.stale) ? tp.label : null, threat: _threatKind(r), used: r.used ?? null,
+    expRange: d.levels?.hl_med?.range_pts != null ? +(d.levels.hl_med.range_pts * pip).toFixed(6) : null,
+    spread: r.cost?.pips != null ? +(r.cost.pips * pip).toFixed(6) : null,
+    price: d.current_price ?? null, atr: tp?.atr ?? null,
+  };
+}
+async function postLedgerCalls() {
+  const day = new Date().toISOString().slice(0, 10);
+  let done = null; try { done = localStorage.getItem('ledger_posted'); } catch {}
+  const calls = allRows().map(ledgerCallFor).filter(Boolean);
+  if (!calls.length) return;
+  try {
+    const r = await fetch('/api/ledger/record', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ calls }) }).then(x => x.json());
+    if (r?.ok) { try { localStorage.setItem('ledger_posted', day); } catch {} if (r.added) console.log(`[ledger] recorded ${r.added} calls for ${r.day}`); }
+  } catch (e) { /* the record is best-effort; a missed day is a visible gap, not an error */ }
+}
+setTimeout(() => postLedgerCalls().catch(() => {}), 25_000);
+// Once an hour while open, so a day the page was opened early still gets its
+// price refreshed and a pair that loaded late still gets its first call.
+setInterval(() => { if (document.visibilityState === 'visible') postLedgerCalls().catch(() => {}); }, 3600_000);
+
+
 // ── The drawer's status line: the three tiers in one row, always visible ─────
 // Six slots, most conditional, so it usually shows four or five: price and change
 // from the open · the lean with its agreement · range used of expected · the tape
@@ -6241,6 +6294,26 @@ function nowParagraph(r) {
   if (d.news_flag) out.push(`${d.news_flag} today scales the range ×${d.news_mult} until it clears.`);
   else if (e && (e.ms - Date.now()) <= 14 * 3600e3) out.push(`${e.event} at ${evtTime(e)} UK.`);
   return out.join(' ') || '<span class="muted">Not enough loaded yet to compose a read.</span>';
+}
+
+// ── Lean & flow: the page's own record on this pair ──────────────────────────
+async function renderDrawerLedger(r) {
+  const sec = $('drLedgerSec'), box = $('drLedger');
+  const j = await jget('/api/ledger?pair=' + encodeURIComponent(r.name)).catch(() => null);
+  if (!j?.ok) { sec.style.display = 'none'; return; }
+  sec.style.display = '';
+  const c = j.cite;
+  const recent = (j.rows || []).filter(x => x.out).slice(-8).reverse();
+  const rows = recent.map(x => {
+    const o = x.out.h1 ?? x.out.h0;
+    const hit = o?.hit;
+    return `<div class="ccy-legrow"><span class="lp">${x.d} <span class="dim-age">${x.dir === 'up' ? '▲' : x.dir === 'down' ? '▼' : '◆'} ${x.agree != null ? x.agree + '/' + x.total : ''}${x.tape ? ' · ' + x.tape : ''}</span></span>` +
+      `<span class="dim-age">${o?.inAtr != null ? (o.inAtr > 0 ? '+' : '') + o.inAtr + ' ATR' : '—'}</span>` +
+      `<span class="lv ${hit === true ? 'bull' : hit === false ? 'bear' : 'neu'}">${hit === true ? 'hit' : hit === false ? 'miss' : x.dir === 'mixed' ? 'declined' : 'open'}</span></div>`;
+  }).join('');
+  box.innerHTML = `<div class="ccy-explain">${esc0(c.text)}</div>` +
+    (rows ? `<div class="ccy-legs" style="margin-top:8px"><div class="fac-head"><span>Recent calls, scored at the next close</span><span class="fv neu">move · result</span></div>${rows}</div>` : '') +
+    `<div class="muted" style="font-size:10.5px;margin-top:8px">Recorded from what this page rendered, first call of each day. Scored against OANDA daily closes. A miss is a miss; the page does not get to re-score itself.</div>`;
 }
 
 // ── Why tab: the pair's fundamental gap, factor by factor ────────────────────
@@ -6831,6 +6904,7 @@ async function openDrawer(name) {
   try { $('drNow').innerHTML = nowParagraph(r); } catch (e) { $('drNow').innerHTML = ''; console.error('[now]', e); }
   try { $('drLadder').innerHTML = ladderHtml(r) || '<span class="muted">No ladder for this instrument yet.</span>'; } catch (e) { $('drLadderSec').style.display = 'none'; }
   try { $('drAllReads').innerHTML = allReadsHtml(r); } catch (e) { $('drAllReadsSec').style.display = 'none'; }
+  renderDrawerLedger(r).catch(() => { $('drLedgerSec').style.display = 'none'; });
   try { renderDrawerFactor(r); } catch (e) { $('drFactorSec').style.display = 'none'; }
   try { const a = analogShapeHtml(r.name); if (a) { $('drAnalog').innerHTML = a; $('drAnalogSec').style.display = ''; } } catch (e) {}
   // The book loads lazily; once it is in, the Now paragraph can say who is underwater.

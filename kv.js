@@ -49,6 +49,9 @@ const _CF_EXACT = new Set([
   'tg_config', 'ai_alert_cfg',
   'macro_regime_fx_v1',      // 8y regime-conditional FX study — ~11 sequential FRED calls to
                              // rebuild, and the answer only changes by one day at a time.
+  'pair_ledger_v1',          // what today.html CALLED each day, scored against what happened. The
+                             // only track record the page's direction tag has ever had; a lost store
+                             // is that record, gone. Must also be in _worker.js PERMANENT_KEYS.
   'oanda_book_history_v1',   // OANDA position-book aggregates: 20-min rows for 14 days, daily beyond.
                              // The live poll computed and discarded these for years; this is the only
                              // record. Backfillable from OANDA in principle (~9h), so less precious than

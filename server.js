@@ -112,6 +112,7 @@ import { buildScorecard as buildMacroScorecard, topBottomPair as macroTopBottomP
 import { classifyTapeSpeed as _classifyTape, describeTapeSpeed as _describeTape, speedFromCloses as _tapeSpeed, atr14 as _tapeAtr, paramsKeyFor as _tapeKey } from './js/tapeSpeedEngine.js';
 import { summarisePositionBook as _summariseBook } from './js/positionBookMetrics.js';
 import { BOOK_HISTORY_KV, BOOK_INSTRUMENTS, fineRow as _bookFineRow, parseStore as _bookParse, upsertFine as _bookUpsert, rollDaily as _bookRoll, changeOver as _bookChange, approxBytes as _bookBytes } from './js/positionBookHistory.js';
+import { LEDGER_KV, upsertCalls as _ledgerUpsert, scoreRows as _ledgerScore, summarise as _ledgerSummary, citeFor as _ledgerCite, dayOf as _ledgerDay } from './js/pairLedger.js';   // what the page called, scored against what happened
 import { SCORECARD_HISTORY_KV, rowFromScorecard as _scRow, upsertRow as _scUpsert, parseStore as _scParse, seriesFor as _scSeries } from './js/scorecardHistory.js';   // one row per day of what the scorecard said
 import { fetchYieldCurveData, yieldCurveScore, YIELD_CURVE_UNIVERSE } from './js/yieldCurveEngine.js';
 import { fetchConsumerConfidenceData, consumerConfidenceCompositeScore, CONFIDENCE_UNIVERSE } from './js/consumerConfidenceEngine.js';
@@ -6595,6 +6596,73 @@ app.get('/api/oanda-book/history', async (req, res) => {
 app.post('/api/oanda-book/history/record', async (_req, res) => {
   try { res.json({ ok: true, ...(await _recordBookHistory()) }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// ── The ledger — what today.html called, scored against what happened ────────
+// The board posts its rendered calls once per UTC day (js/pairLedger.js explains
+// why the browser is the honest source: the direction tag exists nowhere else).
+// First call of the day wins; the price refreshes. A scorer runs every few hours
+// and fills in the session close, +1d and +5d against OANDA daily closes aligned
+// to London midnight, the same anchor the forecaster uses.
+async function _readLedger() {
+  const raw = await kv.getStrict(LEDGER_KV);
+  if (!raw) return [];
+  let p; try { p = typeof raw === 'string' ? JSON.parse(raw) : raw; } catch (e) { throw new Error(`${LEDGER_KV} is unparseable (${String(raw).length} bytes) — refusing to overwrite`); }
+  const rows = p?.rows ?? p;
+  if (!Array.isArray(rows)) throw new Error(`${LEDGER_KV} has the wrong shape — refusing to overwrite`);
+  return rows;
+}
+async function _writeLedger(rows) { await kv.put(LEDGER_KV, JSON.stringify({ rows, updatedAt: Date.now() })); }
+
+app.post('/api/ledger/record', express.json({ limit: '512kb' }), async (req, res) => {
+  try {
+    const calls = Array.isArray(req.body?.calls) ? req.body.calls : [];
+    if (!calls.length) return res.status(400).json({ ok: false, error: 'calls[] required' });
+    const rows = await _readLedger();
+    const r = _ledgerUpsert(rows, calls.slice(0, 60), { day: _ledgerDay(), at: Date.now() });
+    if (r.changed) await _writeLedger(r.rows);
+    res.json({ ok: true, added: r.added, refreshed: r.refreshed, day: _ledgerDay(), rows: r.rows.length });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// Daily closes for scoring, London-midnight aligned. `d` is the candle's own day,
+// which is the day a morning call belongs to.
+async function _dailyClosesFor(sym, count = 14) {
+  const bars = await _fetchOandaCandles(sym, 'D', count);
+  return bars.filter(b => b.complete).map(b => ({ d: String(b.time).slice(0, 10), close: b.close }));
+}
+let _ledgerScoring = false;
+async function _scoreLedger() {
+  if (_ledgerScoring) return { skipped: 'running' };
+  if (!process.env.OANDA_KEY) return { skipped: 'no OANDA_KEY' };
+  _ledgerScoring = true;
+  try {
+    const rows = await _readLedger();
+    const pending = rows.filter(r => !r.out?.h5 && r.sym);
+    if (!pending.length) return { scored: 0, pending: 0 };
+    const syms = [...new Set(pending.map(r => r.sym))];
+    const closesBySym = {};
+    for (const sym of syms) {
+      try { closesBySym[sym] = await _dailyClosesFor(sym); } catch (e) { /* that pair waits for the next pass */ }
+      await new Promise(r => setTimeout(r, 250));
+    }
+    const r = _ledgerScore(rows, closesBySym);
+    if (r.scored) { await _writeLedger(r.rows); console.log(`[ledger] scored ${r.scored} rows (${pending.length} were pending)`); }
+    return { scored: r.scored, pending: pending.length };
+  } finally { _ledgerScoring = false; }
+}
+setInterval(() => _scoreLedger().catch(e => console.error('[ledger]', e.message)), 6 * 3600_000);
+
+app.get('/api/ledger', async (req, res) => {
+  try {
+    const rows = await _readLedger();
+    const pair = String(req.query.pair || '');
+    if (pair) return res.json({ ok: true, pair, cite: _ledgerCite(rows, pair), rows: rows.filter(r => r.pair === pair).slice(-60) });
+    res.json({ ok: true, summary: _ledgerSummary(rows), latestDay: rows.at(-1)?.d ?? null });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/ledger/score', async (_req, res) => {
+  try { res.json({ ok: true, ...(await _scoreLedger()) }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 // ── Scorecard history — one row per day, so the composite can one day be tested ─
@@ -30050,6 +30118,7 @@ _backfillSurpriseStore()
 // seeding.
 setTimeout(() => _recordScorecardHistory().catch(e => console.error('[scorecard-history] first run failed (store left untouched):', e.message)), 3 * 60_000);
 setTimeout(() => _recordBookHistory().catch(e => console.error('[book-history] first run failed (store left untouched):', e.message)), 4 * 60_000);
+setTimeout(() => _scoreLedger().catch(e => console.error('[ledger] first scoring pass failed (store left untouched):', e.message)), 5 * 60_000);
 await reloadConfig();
 await reloadLevels();
 _restoreVolatilityV2Config().catch(e => console.error('[VOLATILITY-V2] config repair error:', e.message));
