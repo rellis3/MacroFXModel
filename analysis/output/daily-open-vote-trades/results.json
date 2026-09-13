@@ -1,0 +1,233 @@
+{
+ "generatedAt": "2026-09-13T19:17:26.193Z",
+ "rungs": {
+  "fib618": {
+   "perPair": {
+    "gold": {
+     "stats": {
+      "days": 1004,
+      "sharpe": -2.18,
+      "sortino": -3.14,
+      "psr": 0,
+      "skew": 1.25,
+      "excessKurt": -0.42,
+      "acf1": -0.037,
+      "annVol": 28.47,
+      "cagr": -48.34,
+      "maxDD": -93.64,
+      "calmar": -0.52,
+      "profitFactor": 0.74,
+      "winRate": 23.5,
+      "var95": -1.381,
+      "var99": -1.474,
+      "cvar95": -1.437,
+      "volTarget": {
+       "target": 10,
+       "cagr": -19.96,
+       "maxDD": -60.59,
+       "calmar": -0.33
+      }
+     },
+     "n": 1004
+    },
+    "nq": {
+     "stats": {
+      "days": 816,
+      "sharpe": -1.4,
+      "sortino": -2.26,
+      "psr": 0.009,
+      "skew": 1.36,
+      "excessKurt": -0.14,
+      "acf1": 0.025,
+      "annVol": 27.77,
+      "cagr": -34.68,
+      "maxDD": -77.3,
+      "calmar": -0.45,
+      "profitFactor": 0.82,
+      "winRate": 21.9,
+      "var95": -1.137,
+      "var99": -1.158,
+      "cvar95": -1.152,
+      "volTarget": {
+       "target": 10,
+       "cagr": -13.46,
+       "maxDD": -39.73,
+       "calmar": -0.34
+      }
+     },
+     "n": 816
+    },
+    "eurusd": {
+     "stats": {
+      "days": 884,
+      "sharpe": -3.07,
+      "sortino": -4.35,
+      "psr": 0,
+      "skew": 1.44,
+      "excessKurt": 0.09,
+      "acf1": -0.018,
+      "annVol": 27.29,
+      "cagr": -58.36,
+      "maxDD": -95.4,
+      "calmar": -0.61,
+      "profitFactor": 0.65,
+      "winRate": 20.7,
+      "var95": -1.342,
+      "var99": -1.406,
+      "cvar95": -1.383,
+      "volTarget": {
+       "target": 10,
+       "cagr": -26.81,
+       "maxDD": -66.63,
+       "calmar": -0.4
+      }
+     },
+     "n": 884
+    }
+   },
+   "combined": {
+    "stats": {
+     "days": 1136,
+     "sharpe": -3.29,
+     "sortino": -3.29,
+     "psr": 0,
+     "skew": 0.92,
+     "excessKurt": 0.43,
+     "acf1": 0.011,
+     "annVol": 44.99,
+     "cagr": -79.46,
+     "maxDD": -99.92,
+     "calmar": -0.8,
+     "profitFactor": 0.62,
+     "winRate": 42.9,
+     "var95": -3.642,
+     "var99": -3.771,
+     "cvar95": -3.721,
+     "volTarget": {
+      "target": 10,
+      "cagr": -28.37,
+      "maxDD": -78.06,
+      "calmar": -0.36
+     }
+    },
+    "n": 2704,
+    "days": 1136
+   },
+   "naiveAvgSharpe": -2.217
+  },
+  "fib786": {
+   "perPair": {
+    "gold": {
+     "stats": {
+      "days": 967,
+      "sharpe": -3.16,
+      "sortino": -5.46,
+      "psr": 0,
+      "skew": 2.27,
+      "excessKurt": 3.21,
+      "acf1": -0.026,
+      "annVol": 39.46,
+      "cagr": -73.41,
+      "maxDD": -99.49,
+      "calmar": -0.74,
+      "profitFactor": 0.6,
+      "winRate": 12.4,
+      "var95": -1.712,
+      "var99": -1.86,
+      "cvar95": -1.803,
+      "volTarget": {
+       "target": 10,
+       "cagr": -27.45,
+       "maxDD": -72.25,
+       "calmar": -0.38
+      }
+     },
+     "n": 967
+    },
+    "nq": {
+     "stats": {
+      "days": 742,
+      "sharpe": -2.46,
+      "sortino": -4.96,
+      "psr": 0,
+      "skew": 2.6,
+      "excessKurt": 4.75,
+      "acf1": -0.014,
+      "annVol": 36.61,
+      "cagr": -61.99,
+      "maxDD": -95.09,
+      "calmar": -0.65,
+      "profitFactor": 0.65,
+      "winRate": 10.4,
+      "var95": -1.246,
+      "var99": -1.281,
+      "cvar95": -1.271,
+      "volTarget": {
+       "target": 10,
+       "cagr": -22.21,
+       "maxDD": -54.51,
+       "calmar": -0.41
+      }
+     },
+     "n": 742
+    },
+    "eurusd": {
+     "stats": {
+      "days": 825,
+      "sharpe": -3.8,
+      "sortino": -6.45,
+      "psr": 0,
+      "skew": 2.51,
+      "excessKurt": 4.36,
+      "acf1": -0.007,
+      "annVol": 37.29,
+      "cagr": -77.42,
+      "maxDD": -99.35,
+      "calmar": -0.78,
+      "profitFactor": 0.54,
+      "winRate": 10.8,
+      "var95": -1.621,
+      "var99": -1.724,
+      "cvar95": -1.689,
+      "volTarget": {
+       "target": 10,
+       "cagr": -31.97,
+       "maxDD": -72.96,
+       "calmar": -0.44
+      }
+     },
+     "n": 825
+    }
+   },
+   "combined": {
+    "stats": {
+     "days": 1118,
+     "sharpe": -4.72,
+     "sortino": -5.53,
+     "psr": 0,
+     "skew": 1.52,
+     "excessKurt": 2,
+     "acf1": 0.019,
+     "annVol": 57.64,
+     "cagr": -94.49,
+     "maxDD": -100,
+     "calmar": -0.94,
+     "profitFactor": 0.52,
+     "winRate": 23.5,
+     "var95": -4.171,
+     "var99": -4.411,
+     "cvar95": -4.318,
+     "volTarget": {
+      "target": 10,
+      "cagr": -37.96,
+      "maxDD": -88.3,
+      "calmar": -0.43
+     }
+    },
+    "n": 2534,
+    "days": 1118
+   },
+   "naiveAvgSharpe": -3.14
+  }
+ }
+}

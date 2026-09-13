@@ -17,6 +17,10 @@ Reproduced from source of truth:
   * London daily OHLC     -> js/volEstimatorAB.js `buildLondonDaily` (open=first, close=last, minBars>=6)
   * Yang-Zhang sigma      -> js/volBacktestEngine.js `yzVolSeries(window=30)`, k=0.34/(1.34+(w+1)/(w-1))
   * causal sigma for day i = yz[i-1]  (predicts day i using data < i)
+
+Also hosts the bipower jump/diffusion decomposition (`bipower`, `jump_fraction`) —
+pure return-array math, shared by the pre-touch (Phase 8/10b) and whole-session
+(jump_diffusion_daily) scopes so there is only ever one copy of the estimator.
 """
 import numpy as np
 
@@ -164,6 +168,46 @@ def causal_sigma_kind(daily, kind='yz'):
     if kind == 'robust':
         return robust_sigma(daily)
     return causal_sigma(daily)
+
+
+# ── Bipower jump/diffusion decomposition (Barndorff-Nielsen & Shephard 2004) ──
+# Lifted here from median_follow_conditioned._jump_frac (Phase 8) so the ONE copy of
+# this math serves both the narrow pre-touch window it was built for and the
+# whole-session daily scope (jump_diffusion_daily.py). Per the Lego Principle the
+# formula is IMPORTED, never re-derived: _jump_frac stays as a thin wrapper so the
+# published Phase-8/10b results remain byte-identical.
+#
+#   RV = Σ rₜ²                     — total realised variance (diffusion + jumps)
+#   BV = (π/2)·Σ |rₜ||rₜ₋₁|        — jump-ROBUST: a lone jump enters only one product
+#                                    each side, so it vanishes as Δt→0
+#   jump_frac = max(RV−BV, 0) / RV
+#
+# The max(...,0) floor is deliberate and is NOT a significance test: BV is itself a
+# noisy estimator, so RV−BV goes negative on plenty of genuinely jump-free days. That
+# makes this an honest CONTINUOUS DESCRIPTIVE share (which is all the state field
+# needs), not a binary jump/no-jump classifier. A formal BNS ratio test would need a
+# tripower-quarticity variance estimator; see jump_diffusion_daily.py, which measures
+# empirically whether the simple fraction is sharp enough for the job.
+
+def bipower(r):
+    """(RV, BV) over a 1-D array of log returns. Pure; no sampling opinion."""
+    r = np.asarray(r, dtype=np.float64)
+    if r.size < 3:
+        return None
+    rv = float(np.sum(r * r))
+    bv = float((np.pi / 2) * np.sum(np.abs(r[1:]) * np.abs(r[:-1])))
+    return rv, bv
+
+
+def jump_fraction(r):
+    """max(RV−BV,0)/RV for a 1-D array of log returns. None if undefined."""
+    out = bipower(r)
+    if out is None:
+        return None
+    rv, bv = out
+    if rv <= 1e-18:
+        return None
+    return max(rv - bv, 0.0) / rv
 
 
 # ── tiny self-test on synthetic bars (also used by the JS cross-check) ─────────
