@@ -3110,6 +3110,9 @@ ${s.backdrop ? `Risk mood ${s.backdrop.risk ?? '?'}. ${s.backdrop.corr ? `Correl
 DATA CONFLICTS (resolve before narrating)
 ${(s.conflicts || []).length ? s.conflicts.map(c => `  ${c}`).join('\n') + `
 Anything depending on a conflicted number is UNSUPPORTED until it resolves. Say so up front; do not append it as a caveat after the conclusion.` : '  None where sources can be cross-checked.'}
+${s.staleness ? `
+DATA LAG (not a conflict — the sources agree on the dates they share; one is simply behind)
+  ${s.staleness}` : ''}
 
 WHEN THE USUAL RELATIONSHIP BREAKS
 ${(s.divergences || []).length ? s.divergences.map(d => `  ${d.what} - ${d.observed}

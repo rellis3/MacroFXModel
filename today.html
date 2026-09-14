@@ -1461,7 +1461,11 @@ async function loadCommodityDrivers() {
     if (q?.price != null && prevClose) {
       const hist = (oh.values ?? []).slice(-15).map(v => num(v.close)).filter(v => v != null);
       hist.push(q.price);   // append today's live price so the sparkline reflects the current tick
-      commodityDrivers = { wti: { price: q.price, prevClose, wkAgoPrice, pct: (q.price - prevClose) / prevClose * 100, hist } };
+      // Daily closes BY DATE, so a lagged FRED print can be compared to OANDA's
+      // close on the same day rather than to today's live tick.
+      const closesByDate = {};
+      for (const v of (oh.values ?? [])) { const d = String(v.datetime ?? v.time ?? '').slice(0, 10); const c = num(v.close); if (d && c != null) closesByDate[d] = c; }
+      commodityDrivers = { wti: { price: q.price, prevClose, wkAgoPrice, pct: (q.price - prevClose) / prevClose * 100, hist, closesByDate } };
     }
   } catch (e) {}
 }
@@ -2585,33 +2589,56 @@ function tradeGate(r) {
 // resolves. This detects those cases so the page and the AI both have to deal with them
 // before writing a story on top.
 const CONFLICT_PCT = 4;   // two readings of one price disagreeing by more than this
+// Sources that genuinely disagree vs a source that is merely BEHIND. The first
+// version of this compared FRED's last print to today's live tick and, on
+// 2026-09-14, declared a +5.5% "disagreement" -- when on every date the two shared
+// they agreed to within 0.4%, and oil had simply moved 7% in the three days FRED
+// had not yet published. Same fetch-time-vs-data-time error as the macro pages.
+// So: compare on the SAME DATE. Only a same-date gap is a conflict; a lag is
+// reported as a lag, with how far the price has moved since.
+let _wtiLag = null;   // { days, movedPct } when FRED is behind, for the notes
 function dataConflicts() {
   const out = [];
-  // Oil: FRED's DCOILWTICO (daily settle, published with a lag) vs the live OANDA
-  // quote. These measure the same barrel and should be within a percent or two.
-  const fredWti = fred?.wti?.value, liveWti = commodityDrivers?.wti?.price;
-  if (Number.isFinite(fredWti) && Number.isFinite(liveWti) && fredWti > 0) {
+  _wtiLag = null;
+  const fredWti = fred?.wti?.value, fredDate = fred?.wti?.asOf ?? null, liveWti = commodityDrivers?.wti?.price;
+  if (!(Number.isFinite(fredWti) && fredWti > 0)) return out;
+  const sameDay = fredDate ? commodityDrivers?.wti?.closesByDate?.[fredDate] : null;
+  if (Number.isFinite(sameDay) && sameDay > 0) {
+    // The honest comparison: same barrel, same day.
+    const diffPct = (sameDay - fredWti) / fredWti * 100;
+    if (Math.abs(diffPct) >= CONFLICT_PCT) {
+      out.push({ id: 'wti', label: 'WTI crude', a: { src: 'FRED DCOILWTICO', v: +fredWti.toFixed(2), asOf: fredDate }, b: { src: `OANDA close, same day`, v: +sameDay.toFixed(2) }, diffPct: +diffPct.toFixed(1), loadBearing: 'inflation-expectations and any commodity-currency read' });
+    }
+    // Agreed on the shared date. If the live price has since moved a lot, that is a
+    // lag to state, not a disagreement to escalate.
+    if (Number.isFinite(liveWti) && fredDate) {
+      const days = Math.round((Date.now() - Date.parse(fredDate + 'T00:00:00Z')) / 864e5);
+      const movedPct = (liveWti - fredWti) / fredWti * 100;
+      if (days >= 2 && Math.abs(movedPct) >= CONFLICT_PCT) _wtiLag = { days, movedPct: +movedPct.toFixed(1), fred: +fredWti.toFixed(2), live: +liveWti.toFixed(2), fredDate };
+    }
+  } else if (Number.isFinite(liveWti)) {
+    // No same-day close to check against: fall back to live-vs-FRED, but say plainly
+    // that the gap may be lag rather than disagreement.
     const diffPct = (liveWti - fredWti) / fredWti * 100;
     if (Math.abs(diffPct) >= CONFLICT_PCT) {
-      out.push({
-        id: 'wti', label: 'WTI crude',
-        a: { src: 'FRED DCOILWTICO', v: +fredWti.toFixed(2), asOf: fred?.wti?.asOf ?? null },
-        b: { src: 'live OANDA quote', v: +liveWti.toFixed(2) },
-        diffPct: +diffPct.toFixed(1),
-        // Oil is load-bearing whenever the story is about inflation expectations.
-        loadBearing: 'inflation-expectations and any commodity-currency read',
-      });
+      out.push({ id: 'wti', label: 'WTI crude', a: { src: 'FRED DCOILWTICO', v: +fredWti.toFixed(2), asOf: fredDate }, b: { src: 'live OANDA quote (no same-day close to compare)', v: +liveWti.toFixed(2) }, diffPct: +diffPct.toFixed(1), loadBearing: 'inflation-expectations and any commodity-currency read', unverified: true });
     }
   }
   return out;
 }
+function dataLagHtml() {
+  const l = _wtiLag; if (!l) return '';
+  return `<div class="conflict" style="border-color:var(--border);background:var(--card2)"><div class="conflict-h" style="color:var(--text2)">ⓘ FRED is behind, not wrong</div>`
+    + `<div class="conflict-r"><b>WTI crude</b>: FRED's last print is ${l.fred} for ${esc0(l.fredDate)} (${l.days} days ago) and agreed with OANDA's close that day. Oil has since moved <b>${l.movedPct > 0 ? '+' : ''}${l.movedPct}%</b> to ${l.live}. Reads that use the FRED number — inflation expectations, commodity currencies — are running ${l.days} days stale; the live quote is the current one.</div></div>`;
+}
 function dataConflictHtml() {
   const c = dataConflicts();
-  if (!c.length) return '';
+  if (!c.length) return dataLagHtml();
   return `<div class="conflict"><div class="conflict-h">⚠ Sources disagree — treat anything built on this as unsupported</div>`
     + c.map(x => `<div class="conflict-r"><b>${esc0(x.label)}</b>: ${x.a.src} reads <b>${x.a.v}</b>${x.a.asOf ? ` (${esc0(x.a.asOf)})` : ''} while the ${esc0(x.b.src)} reads <b>${x.b.v}</b> — a <b>${x.diffPct > 0 ? '+' : ''}${x.diffPct}%</b> gap. `
+      + (x.unverified ? `No same-day close was available to check whether this is a real disagreement or FRED lagging a fast move; treat as unverified rather than wrong. ` : '')
       + `This number is load-bearing for ${esc0(x.loadBearing)}, so those reads are <b>not supported</b> until the gap resolves — this is a reason to wait, not a caveat to append to a conclusion.</div>`).join('')
-    + `</div>`;
+    + `</div>` + dataLagHtml();
 }
 
 // ── Divergences: when the textbook relationship breaks ───────────────────────
@@ -4308,6 +4335,7 @@ function assembleCcySnapshot(ccy) {
     backdrop: { risk: risk?.tone ?? null, corr: creg ? `${creg.state} (mean |rho| ${creg.mean})` : null,
                 rates: (rd && rd.usable && rd.meaningful) ? rd.dominant : 'not interpretable today' },
     conflicts: dataConflicts().map(c => `${c.label}: ${c.a.src}=${c.a.v} vs ${c.b.src}=${c.b.v} (${c.diffPct}% gap) — load-bearing for ${c.loadBearing}`),
+    staleness: (() => { const c = dataConflicts(); const l = _wtiLag; return l ? `WTI: FRED's last print (${l.fred}, ${l.fredDate}) is ${l.days} days behind and agreed with OANDA that day; oil has since moved ${l.movedPct > 0 ? '+' : ''}${l.movedPct}% to ${l.live}. Use the live number for anything about oil today; FRED-derived inflation-expectation reads are ${l.days} days stale, not wrong.` : null; })(),
     divergences: macroDivergences().map(d => ({ what: d.title, observed: d.detail, why: d.teach })),
   };
 }
