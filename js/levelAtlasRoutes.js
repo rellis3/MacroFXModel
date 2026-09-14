@@ -544,15 +544,22 @@ export function mountLevelAtlasRoutes(app, express) {
           if (!live.date) { skipped[alias] = 'no live coverage yet'; continue; }
           const stored = await getJSON(`${PREFIX}/${pair}.json`);
           const book = stored?.books?.[DEFAULT_REARM] ?? null;
+          // `base` = the cell's own in-sample base rates for this side+rung (out/back %,
+          // average pullback after a touch, minutes to resolve) — vol-forecast-v3.html's
+          // Levels sheet prints these as "if it reverses → price · ~minutes". Additive:
+          // v2 and bot-config ignore the field.
+          const baseFor = t => book?.cells?.[`${t.side}|${t.rung}`]?.base?.is ?? null;
           const pending = (live.pending ?? [])
             .filter(t => t.rung !== 'p90')   // no outer rung to price against — excluded everywhere else too
             .map(t => ({ side: t.side, rung: t.rung, level: t.level, currentPrice: t.currentPrice,
-                         decision: book ? voteDecision(book, t) : null }));
+                         decision: book ? voteDecision(book, t) : null, base: baseFor(t) }));
           const touches = (live.touches ?? [])
             .filter(t => t.rung !== 'p90')
             .map(t => ({ side: t.side, rung: t.rung, level: t.level, ordinal: t.ordinal, time: t.time, outcome: t.outcome,
-                         decision: book ? voteDecision(book, t) : null }));
-          instruments[pair] = { instrument: pair, date: live.date, pending, touches };
+                         decision: book ? voteDecision(book, t) : null, base: baseFor(t) }));
+          // `alias` echoes the caller's own spelling so a page that asked with display
+          // names ("GOLD") can find its row without re-implementing resolveKey.
+          instruments[pair] = { instrument: pair, alias, date: live.date, pending, touches };
         } catch (e) { skipped[alias] = `error: ${e.message}`; }
       }
       res.json({ ok: true, instruments, skipped });
