@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Hill Estimator — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">The Hill Estimator — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer full derivations, live math notation, and a 6-question self-test?<a href="institutional-hill-estimator.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Risk Attribution &amp; Tail Statistics 2 · Risk Attribution &amp; Tail Statistics</div>
+      <h1 class="sl-h1">The Hill Estimator, <em>A Ruler for Tail Heaviness</em></h1>
+      <p class="sl-lede">This curriculum's Extreme Value Theory lesson already builds a fitted Generalized Pareto Distribution — a full portrait of a tail's shape. This deck covers something older and much cruder: sort your data, take the biggest few values, average one log-ratio, and flip it upside down. No fitting, no distributional form — just a number that says how heavy the tail is.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">A ruler, not a portrait</h2>
+      <p class="sl-sub">Two different jobs, using two different amounts of machinery.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag">The GPD fit (sibling lesson)</span>
+          <ul>
+            <li>Fits a full exceedance distribution — shape ξ and scale β</li>
+            <li>Needs a threshold u and a fitting procedure (MLE / PWM)</li>
+            <li>Can be inverted for VaR/CVaR at ANY confidence level</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">The Hill estimator (this deck)</span>
+          <ul>
+            <li>Estimates one exponent, α — no scale, no full distribution</li>
+            <li>Needs only the top k order statistics — sort, sum, divide</li>
+            <li>Cannot be inverted for an arbitrary VaR/CVaR on its own</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-quote">Read the sibling lesson first if you haven't — this deck assumes its ξ notation and its Balkema-de Haan-Pickands framing throughout, and points back to it by name instead of repeating it.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">The formula: sort, sum, invert</h2>
+      <p class="sl-sub">X₍₁₎ ≤ X₍₂₎ ≤ ... ≤ X₍ₙ₎ — the sample sorted ascending. Pick k.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The Hill estimator</div>
+        <div class="sl-row">
+          <div class="sl-box green">α̂_k</div>
+          <div class="sl-arrow">=</div>
+          <div class="sl-box">[ (1/k) · Σ ln( X₍ₙ₋ᵢ₊₁₎ / X₍ₙ₋ₖ₎ ) ]</div>
+          <div class="sl-arrow">⁻¹</div>
+        </div>
+        <div class="sl-verdict">Sum the log-ratio of each of the top k values to the (k+1)-th largest value, X₍ₙ₋ₖ₎ — the reference point, playing the same role the sibling lesson's threshold u plays. Average it. Flip it upside down. That's the whole estimator.</div>
+      </div>
+      <p class="sl-p">The sibling lesson's shape parameter ξ (for its heavy-tailed ξ&gt;0 case) is this same α, inverted: ξ = 1/α, exactly. Not an analogy — the identical fact about the tail, in two conventional units.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Why an average log-ratio recovers an exponent</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The one-line derivation</div>
+        <div class="sl-verdict">If X has an EXACT Pareto tail above some point u — P(X&gt;x | X&gt;u) = (x/u)⁻ᵅ — then Y = ln(X/u) is Exponentially distributed with rate α. The MLE of an Exponential rate is 1 / (sample mean).</div>
+        <div class="sl-row" style="margin-top:14px">
+          <div class="sl-box">Hill's α̂</div>
+          <div class="sl-arrow">=</div>
+          <div class="sl-box green">the Exponential-rate MLE, applied to the top k log-ratios</div>
+        </div>
+      </div>
+      <p class="sl-p">That's why the formula looks like "average, then flip." The estimator is justified more generally, under the weaker regularly-varying-tail assumption, not only for an exact Pareto distribution — but the exact-Pareto case is the cleanest way to see where the arithmetic comes from.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Worked example, six numbers, k = 5</h2>
+      <p class="sl-sub">Illustrative daily loss magnitudes (bps), largest first — not real market data.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The numbers</div>
+        <div class="sl-row">
+          <div class="sl-box">187 · 152 · 134 · 121 · 109</div>
+          <div class="sl-arrow">ref →</div>
+          <div class="sl-box amber">98</div>
+        </div>
+        <div class="sl-verdict">ln(187/98)+ln(152/98)+ln(134/98)+ln(121/98)+ln(109/98) = 0.6461+0.4389+0.3129+0.2108+0.1064 = <strong>1.7151</strong>. Average over k=5: <strong>0.3430</strong>.</div>
+        <div class="sl-row" style="margin-top:14px">
+          <div class="sl-box green">α̂ = 1 / 0.3430 ≈ 2.92</div>
+          <div class="sl-arrow">→</div>
+          <div class="sl-box">ξ̂ = 1/α̂ ≈ 0.343</div>
+        </div>
+        <div class="sl-verdict">Against the sibling lesson's own framing: ξ̂ ≈ 0.34 is a real, moderate heavy tail — well short of the ξ ≥ 0.5 infinite-variance zone that lesson flags.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Choosing k: the "Hill horror plot"</h2>
+      <p class="sl-sub">Drag k. Watch which order statistics are "in," and how much α̂ wobbles.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — a live Hill plot on a simulated Pareto(α=3) sample</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 260" id="hillm-svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart of the Hill estimator's alpha-hat as a function of k, wobbling unstably as k runs from 2 to 27, with a dashed line at the true alpha of 3">
+            <line x1="45" y1="215" x2="605" y2="215" style="stroke:var(--border2)"/>
+            <line x1="45" y1="15" x2="45" y2="215" style="stroke:var(--border2)"/>
+            <line id="hillm-true-line" x1="45" y1="0" x2="605" y2="0" style="stroke:var(--green);stroke-width:1.5;stroke-dasharray:4,3"/>
+            <text x="598" y="0" id="hillm-true-label" text-anchor="end" style="font:10px 'DM Mono',monospace;fill:var(--green)">true α = 3 (known only here)</text>
+            <text x="45" y="230" style="font:10px 'DM Mono',monospace;fill:var(--text3)">k=2</text>
+            <text x="605" y="230" text-anchor="end" style="font:10px 'DM Mono',monospace;fill:var(--text3)">k=27</text>
+            <path id="hillm-curve" d="" style="fill:none;stroke:var(--red);stroke-width:2"/>
+            <line id="hillm-marker-line" x1="0" y1="0" x2="0" y2="215" style="stroke:var(--blue);stroke-width:1;stroke-dasharray:2,2"/>
+            <circle id="hillm-marker-dot" cx="0" cy="0" r="5" style="fill:var(--blue);stroke:var(--panel);stroke-width:2"/>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>k (top order statistics used)</span><span class="sl-live" id="hillm-kval">k = 5</span></div>
+        <input type="range" class="sl-slider" id="hillm-slider" min="2" max="27" step="1" value="5">
+        <div id="hillm-strip" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:12px"></div>
+        <div class="sl-verdict" style="margin-top:12px" id="hillm-readout">k = 5 → α̂ ≈ — , ξ̂ ≈ —</div>
+        <div class="sl-note">Red dots = the top-k values feeding the sum. Amber = the reference X₍ₙ₋ₖ₎. Gray = not used at this k. α̂ never settles cleanly — that instability is the normal case for a Hill plot, not a bug.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Compute α̂ on your own numbers</h2>
+      <p class="sl-sub">Paste any list, largest first. The (k+1)-th number becomes the reference automatically.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field" style="flex:2 1 260px"><label>Order statistics (largest first)</label><input type="text" class="sl-input" id="hcm-list" value="187, 152, 134, 121, 109, 98"></div>
+          <div class="sl-calc-field"><label>k</label><input type="number" class="sl-input" id="hcm-k" value="5" step="1" min="1"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">α̂</div>
+            <div class="sl-calc-result-val" id="hcm-alpha">2.92</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div id="hcm-stats">ξ̂ = 1/α̂ ≈ <b id="hcm-xi">0.343</b> · reference X₍ₙ₋ₖ₎ = <b id="hcm-ref">98</b></div>
+          <div id="hcm-note"></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="hcm-reset">Reset to worked-example numbers</button>
+        <div class="sl-note">Blank, too-short, or non-positive input shows "—" instead of breaking the formula — same defensive-input rule as every other calculator in this curriculum.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Why bother, when a GPD fit does more?</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🧩</div><div><h4>Weaker assumption</h4><p>Only "regularly varying tail" — never commits to the exceedances actually being a Generalized Pareto Distribution.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚡</div><div><h4>Trivial to compute</h4><p>A sort, k logarithms, a sum, a divide. No optimizer, no PWM algebra, nothing to check for convergence.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📐</div><div><h4>Known asymptotics</h4><p>Consistent and asymptotically normal as k,n→∞ with k/n→0 — variance shrinks roughly like α²/k (Hill, 1975).</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🚫</div><div><h4>The trade-off</h4><p>Only ever a shape exponent — no scale, no closed-form VaR/CVaR at an arbitrary confidence level the way a fitted (ξ,β) GPD provides.</p></div></div>
+      </div>
+      <div class="sl-quote">Hill's number tells you "this tail is scarier than that one," almost for free. It doesn't tell you the exact loss at the one-in-a-thousand day — that still needs the sibling lesson's fuller machinery.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Ranking tail heaviness across FX pairs</h2>
+      <p class="sl-sub">A cheap screening step, before deciding where a full GPD fit is worth the effort. Illustrative numbers only.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">😌</div><div><h4>A calm major pair</h4><p>α̂ ≈ 4.5 — thinner tail, closer to near-Gaussian extremes.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">➖</div><div><h4>A typical G10 cross</h4><p>α̂ ≈ 3.0 — moderately heavy, a realistic middle of the road for daily FX.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔥</div><div><h4>A crisis-prone EM/commodity currency</h4><p>α̂ ≈ 1.8 — genuinely fat, near the variance-breaking α ≤ 2 zone.</p></div></div>
+      </div>
+      <p class="sl-p">A ranking like this is cheap enough to run on an entire watchlist as a first pass, flagging fat-tailed names for a proper GPD fit rather than fitting every instrument with equal effort.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">What's actually in this repo</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">✅</div><div><h4>A correct Hill estimator exists</h4><p><code>js/extremesCore.js</code>'s <code>hillEstimator(xs, k)</code> uses this deck's exact formula and α/ξ=1/α convention — its own comment even flags k-sensitivity unprompted.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🚫</div><div><h4>...but nothing calls it</h4><p>Grepping every other file in the repo for a caller of <code>hillEstimator</code> turns up zero. Defined, correct, exported — unused.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔌</div><div><h4>Its GPD neighbors ARE live</h4><p><code>fitGPD</code>/<code>potFit</code> from the same file power <code>js/analyticsDesk.js</code>'s desk snapshot, called live from <code>server.js</code>.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔁</div><div><h4>A second GPD fitter, too</h4><p><code>js/evtTail.js</code> has its own independent probability-weighted-moments GPD fit (its own shape/scale naming) — two working GPD fitters, one unused Hill estimator.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Where this quietly goes wrong</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📈</div><div><h4>The horror plot is normal</h4><p>As slide 6 shows on real simulated data, α̂ rarely settles into a clean plateau. Reporting one k without showing the range is the single most common misuse.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🚫</div><div><h4>Wrong for non-regularly-varying tails</h4><p>Exponential (ξ=0) or bounded (ξ&lt;0) tails give the formula a number anyway — but there's no true polynomial exponent for it to be estimating.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🌊</div><div><h4>Still assumes weak dependence</h4><p>Volatility clustering can let one turbulent episode dominate the top-k order statistics and skew α̂ — the same caveat the sibling lesson raises for GPD fitting.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔬</div><div><h4>Unvalidated ≠ trustworthy</h4><p>One α̂ at one k on one sample is a number, not evidence — check stability across k and, ideally, against a GPD fit on the same data.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What must the data satisfy for the Hill estimator to target a well-defined quantity?</h4>
+        <button class="sl-quiz-opt" data-correct="true">A regularly varying (power-law-decaying) right tail</button>
+        <button class="sl-quiz-opt">The exceedances must exactly follow a Generalized Pareto Distribution</button>
+        <button class="sl-quiz-opt">The full sample must be normally distributed</button>
+        <div class="sl-quiz-explain">Hill's assumption is strictly weaker than "this is a GPD" — every GPD with ξ&gt;0 is regularly varying, but not every regularly varying tail is a GPD.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Order statistics 240, 210, 175, 150 (largest first), k=3. What's α̂?</h4>
+        <button class="sl-quiz-opt" data-correct="true">≈ 3.12</button>
+        <button class="sl-quiz-opt">≈ 0.32</button>
+        <button class="sl-quiz-opt">≈ 1.00</button>
+        <div class="sl-quiz-explain">Reference = 150. Sum of ln-ratios ≈ 0.9606; average over k=3 ≈ 0.3202; α̂ = 1/0.3202 ≈ 3.12. (0.32 is ξ̂ = 1/α̂, not α̂ itself.)</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>How does this lesson's α relate to the sibling lesson's ξ, for a heavy tail?</h4>
+        <button class="sl-quiz-opt" data-correct="true">ξ = 1/α exactly — the same fact, two units</button>
+        <button class="sl-quiz-opt">They measure unrelated properties of the tail</button>
+        <button class="sl-quiz-opt">ξ = α² approximately</button>
+        <div class="sl-quiz-explain">For the regularly-varying, ξ&gt;0 regime, ξ and α are defined so that ξ=1/α exactly — not an approximation.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Too large a k causes what kind of problem, and what's the sibling lesson's analogous choice?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Bias — non-tail observations contaminate the estimate; analogous to setting the threshold u too low</button>
+        <button class="sl-quiz-opt">Variance — the estimate becomes noisier</button>
+        <button class="sl-quiz-opt">No problem — more data is always better here</button>
+        <div class="sl-quiz-explain">Too small k = high variance (too few points). Too large k = bias (pulling in the ordinary bulk of the distribution) — exactly the sibling lesson's "threshold u too low" failure mode, restated in ranks.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>What can a fitted GPD do that a plain Hill estimate cannot?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Produce a closed-form VaR/CVaR at any confidence level</button>
+        <button class="sl-quiz-opt">Tell you whether the tail is heavy or thin</button>
+        <button class="sl-quiz-opt">Nothing — they're interchangeable</button>
+        <div class="sl-quiz-explain">Both can indicate tail heaviness. Only the fitted (ξ,β) GPD pair, combined with the threshold, plugs into a closed-form quantile/CVaR formula at an arbitrary confidence level — the Hill estimator alone gives only the exponent.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="6">
+        <div class="sl-quiz-num">Question 6</div>
+        <h4>Does this repo run a live Hill estimator in production?</h4>
+        <button class="sl-quiz-opt" data-correct="true">No — a correct implementation exists in js/extremesCore.js but has zero callers, unlike its live GPD/POT neighbors</button>
+        <button class="sl-quiz-opt">Yes, it drives the desk snapshot's tail-risk row</button>
+        <button class="sl-quiz-opt">No EVT-related code of any kind exists in this repo</button>
+        <div class="sl-quiz-explain"><code>hillEstimator</code> is defined and exported but never imported elsewhere. <code>fitGPD</code>/<code>potFit</code> from the same file ARE wired into <code>js/analyticsDesk.js</code>, called live from <code>server.js</code>.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>The Hill estimator (Hill, 1975) sorts the data, takes the top k order statistics, averages a log-ratio to the k-th largest, and inverts — no fitted distribution, no numerical optimizer.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Its output α̂ is the sibling lesson's ξ, inverted: ξ = 1/α exactly, for the heavy-tailed case — one fact, two units.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>It needs a weaker assumption and near-zero computation, but only ever produces a shape exponent — not a full distribution to invert for an arbitrary VaR/CVaR.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Choosing k is choosing the sibling lesson's threshold u, restated in ranks: too small is noisy, too large is biased — the "Hill horror plot" is the normal case, not an edge case.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>A correct, ready-made hillEstimator already sits in this repo's own extremesCore.js — unused, next to the GPD/POT code that genuinely is live.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Get a quick, defensible read on how heavy a tail is — and tell it apart from a full GPD fit's fuller, but heavier, machinery — without confusing "estimated a shape exponent" for "fitted a distribution I can invert for any quantile."</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Factor, Marginal &amp; Component VaR</h3>
+        <p>From estimating how heavy one tail is, to attributing a portfolio's total risk across the positions and factors actually driving it.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="institutional-factor-marginal-component-var-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="institutional-hill-estimator.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  var ORDER_STATS = [11.17, 8.649, 7.405, 6.365, 6.351, 6.023, 5.907, 4.57, 4.279, 4.083,
+    3.982, 3.338, 3.258, 3.183, 3.173, 2.943, 2.861, 2.859, 2.787, 2.661,
+    2.597, 2.539, 2.509, 2.494, 2.483, 2.465, 2.416, 2.386, 2.353, 2.27];
+  var K_MIN = 2, K_MAX = 27;
+
+  function hillAt(k){
+    var ref = ORDER_STATS[k];
+    if (!(ref > 0)) return null;
+    var s = 0;
+    for (var i = 0; i < k; i++) s += Math.log(ORDER_STATS[i] / ref);
+    if (!(s > 0)) return null;
+    return k / s;
+  }
+
+  // Slide 6 — live Hill-plot chart + k slider + order-stat strip.
+  (function(){
+    var svg = document.getElementById('hillm-svg');
+    if (!svg) return;
+    var slider = document.getElementById('hillm-slider');
+    var kVal = document.getElementById('hillm-kval');
+    var curve = document.getElementById('hillm-curve');
+    var trueLine = document.getElementById('hillm-true-line');
+    var trueLabel = document.getElementById('hillm-true-label');
+    var markerLine = document.getElementById('hillm-marker-line');
+    var markerDot = document.getElementById('hillm-marker-dot');
+    var readout = document.getElementById('hillm-readout');
+    var strip = document.getElementById('hillm-strip');
+
+    var PX_X0 = 45, PX_X1 = 605, PX_Y_TOP = 15, PX_Y_BOT = 215;
+    var ALPHA_MIN = 1.5, ALPHA_MAX = 4.5, TRUE_ALPHA = 3;
+
+    function xPx(k){ return PX_X0 + (k - K_MIN) / (K_MAX - K_MIN) * (PX_X1 - PX_X0); }
+    function yPx(a){
+      var c = Math.max(ALPHA_MIN, Math.min(ALPHA_MAX, a));
+      return PX_Y_BOT - (c - ALPHA_MIN) / (ALPHA_MAX - ALPHA_MIN) * (PX_Y_BOT - PX_Y_TOP);
+    }
+
+    var d = '';
+    for (var k = K_MIN; k <= K_MAX; k++) {
+      var a = hillAt(k);
+      if (a == null) continue;
+      d += (d === '' ? 'M ' : ' L ') + xPx(k).toFixed(1) + ',' + yPx(a).toFixed(1);
+    }
+    curve.setAttribute('d', d);
+    var trueY = yPx(TRUE_ALPHA);
+    trueLine.setAttribute('y1', trueY); trueLine.setAttribute('y2', trueY);
+    trueLabel.setAttribute('y', trueY - 6);
+
+    var dotEls = [];
+    for (var r = 0; r < ORDER_STATS.length; r++) {
+      var span = document.createElement('span');
+      span.style.width = '9px'; span.style.height = '9px'; span.style.borderRadius = '50%';
+      span.style.display = 'inline-block'; span.style.background = 'var(--border2)';
+      strip.appendChild(span);
+      dotEls.push(span);
+    }
+
+    function update(){
+      var kk = parseInt(slider.value, 10);
+      if (!isFinite(kk) || kk < K_MIN || kk > K_MAX) kk = K_MIN;
+      kVal.textContent = 'k = ' + kk;
+      var a = hillAt(kk);
+      var mx = xPx(kk);
+      markerLine.setAttribute('x1', mx); markerLine.setAttribute('x2', mx);
+      if (a != null) {
+        var my = yPx(a);
+        markerDot.setAttribute('cx', mx); markerDot.setAttribute('cy', my);
+        readout.innerHTML = 'k = ' + kk + ' → α̂ ≈ <b>' + a.toFixed(3) + '</b>, ξ̂ = 1/α̂ ≈ <b>' + (1/a).toFixed(3) + '</b>';
+      } else {
+        markerDot.setAttribute('cx', mx); markerDot.setAttribute('cy', PX_Y_BOT);
+        readout.textContent = 'k = ' + kk + ' → α̂ ≈ — (degenerate at this k)';
+      }
+      dotEls.forEach(function(el, i){
+        var rank = i + 1;
+        if (rank <= kk) el.style.background = 'var(--red)';
+        else if (rank === kk + 1) el.style.background = 'var(--amber)';
+        else el.style.background = 'var(--border2)';
+      });
+    }
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Slide 7 — paste-your-own-numbers calculator.
+  (function(){
+    var listEl = document.getElementById('hcm-list');
+    if (!listEl) return;
+    var kEl = document.getElementById('hcm-k');
+    var alphaOut = document.getElementById('hcm-alpha');
+    var xiOut = document.getElementById('hcm-xi');
+    var refOut = document.getElementById('hcm-ref');
+    var note = document.getElementById('hcm-note');
+    var resetBtn = document.getElementById('hcm-reset');
+    var DEFAULTS = { list: '187, 152, 134, 121, 109, 98', k: 5 };
+
+    function recompute(){
+      var raw = (listEl.value || '').split(',').map(function(s){ return parseFloat(s.trim()); });
+      var k = parseInt(kEl.value, 10);
+      alphaOut.textContent = '—'; xiOut.textContent = '—'; refOut.textContent = '—';
+
+      if (!raw.length || raw.some(function(v){ return !isFinite(v); })) {
+        note.textContent = 'Enter comma-separated numbers only.';
+        return;
+      }
+      if (!isFinite(k) || k < 1) { note.textContent = 'k must be a positive integer.'; return; }
+      if (raw.length < k + 1) {
+        note.textContent = 'Need at least k+1 = ' + (k + 1) + ' values (one more than k, for the reference).';
+        return;
+      }
+      var ref = raw[k];
+      if (!(ref > 0)) { note.textContent = 'The reference value (position k+1) must be positive.'; return; }
+      var s = 0, bad = false;
+      for (var i = 0; i < k; i++) {
+        if (!(raw[i] > 0)) { bad = true; break; }
+        s += Math.log(raw[i] / ref);
+      }
+      if (bad) { note.textContent = 'Every one of the top k values must be positive.'; return; }
+      if (!(s > 0)) { note.textContent = 'Top k values must all be larger than the reference — check the order.'; return; }
+      var avg = s / k, alpha = 1 / avg;
+      alphaOut.textContent = alpha.toFixed(2);
+      refOut.textContent = ref.toString();
+      xiOut.textContent = (1 / alpha).toFixed(3);
+      note.textContent = '';
+    }
+
+    listEl.addEventListener('input', recompute);
+    kEl.addEventListener('input', recompute);
+    resetBtn.addEventListener('click', function(){
+      listEl.value = DEFAULTS.list; kEl.value = DEFAULTS.k;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>
