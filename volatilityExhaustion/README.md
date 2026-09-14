@@ -534,6 +534,8 @@ alongside.
 - `jump_regime_book.py` — Phase-13b the descriptive regime book: distributions, clustering (with an RV positive control), asymmetry persistence, next-day behaviour split by character vs level, the frequency×size map, and the ratio-artifact control. Run `python3 jump_regime_book.py`.
 - `jump_exhaustion.py` — Phase-13c conditions `measure_extremes.py`'s fresh-extreme race (reused verbatim) on the causal pre-extreme jump share, within distance bands — **NULL** (jump-driven extremes exhaust the same as smooth ones). Run `python3 jump_exhaustion.py`.
 - `har_cj_forecast.py` — Phase-14 HAR-RV-CJ: continuous/jump as separate HAR regressors vs the same HAR without the split, walk-forward, QLIKE — **NULL** (+0.4% to −0.7% vs a 2% bar). Control arm found intraday-RV HAR beats the shipped YZ σ by 10-21% OOS (not pre-registered). Run `python3 har_cj_forecast.py`.
+- `export_intraday_percentiles.py` — the TIME-OF-DAY yardstick: per 30-min checkpoint, the historical distribution of session-open→checkpoint jump share, plus the frozen diurnal periodicity curve the live detector uses → `data/jump_intraday.json`. Run `python3 export_intraday_percentiles.py`.
+- `crosscheck_jump.py` / `crosscheck_jump.mjs` — the JS↔Python parity contract for the jump maths (RV, BV, jump fraction, threshold, local sigma, deseasonalised returns, detected indices, all to 1e-12). Run `python3 crosscheck_jump.py`.
 - `export_jump_state.py` — freezes the study into `data/jump_state.json` (per-pair jump-share percentiles + every phase verdict) for `/api/jump-diffusion/state` and `jump-diffusion.html`. Run after the daily + LM scripts.
 - `summary.json` / `forecast_vs_fade_summary.json` / `jump_diffusion_summary.json` / `har_cj_summary.json` — headline stats.
 
@@ -833,3 +835,57 @@ Served the same learn-offline / ship-a-file way as the VuManChu state table:
 **What the page deliberately does not have: a forecast, a reliability multiplier, or a cone
 caveat chip.** That chip would assert exactly the claim Phases 12/13/14 each failed to
 support. Nothing here is imported by `volatilityBotPlan.js` / `volatilityBotProducer.js`.
+
+## Live: the intraday read (`js/jumpDiffusionCore.js`, `export_intraday_percentiles.py`)
+
+"How is today arriving?" — the session-so-far jump share and the Lee-Mykland jump times,
+on `jump-diffusion.html`. **No streaming feed was built, and none is needed.**
+
+**Why one REST call is enough.** The decomposition runs on 5-minute returns, and a single
+`count=2000` OANDA M5 request covers ~7 days. That span is not incidental: the detector's
+local-volatility window is 270 bars and one session holds only ~288, so a window rebuilt
+per-day never fills and the detector goes blind for the first ~11 hours — the exact bug
+Phase 13 caught by plotting detections against time of day. The multi-day window is a
+correctness requirement, and `count=2000` satisfies it in one call. No socket, no poller.
+
+**The time-of-day ruler (`export_intraday_percentiles.py` → `data/jump_intraday.json`).**
+A part-day jump share is not comparable to a full-day percentile, in the same direction
+twice: it is noisier (at 09:00 you have ~100 of ~288 returns) *and* biased high (one
+release dominates a short window far more than a session). Measured, the gap is large —
+**EURUSD's p90 jump share is 50.3% one hour in, against 21.6% by the close**. Scoring a
+morning reading against the full-day ruler would cry wolf daily. So the table carries, for
+every 30-minute checkpoint, the historical distribution of the share *from session open to
+that checkpoint*, and a live reading is scored at the checkpoint it has actually reached.
+The same file freezes the 48-bucket diurnal periodicity curve the live detector divides by
+— fitted offline on the full archive, **never refit live**: one session cannot estimate a
+48-bucket curve, and a live refit would drift from the research.
+
+**The maths exists on both sides, and that is asserted rather than assumed.** The study is
+Python; the live read is JS. Per `PYTHON_LEGO.md`'s generate-don't-port rule,
+`js/jumpDiffusionCore.js` reproduces the estimator and `crosscheck_jump.py` proves it:
+RV, BV, the jump fraction, the Gumbel threshold, every local-sigma value, every
+deseasonalised return and the exact set of detected jump indices must agree to **1e-12**.
+Same contract `crosscheck_sigma.mjs` provides for σ. It passes at max |Δ| = 0.
+
+**Two bugs the tests caught before anything shipped.** (1) `_londonParts` hands its
+argument to `Intl`, which reads a number as **milliseconds**; OANDA bar times are epoch
+**seconds**, so the first draft dated every bar to 1970 and folded the whole multi-day
+window into "today". (2) The unit suite's synthetic noise was uniform, which is bounded at
+~1.73 sd and can never cross a 5.4 sd threshold — the diurnal-trap test was passing by
+never firing at all. Both are now covered: 14 tests in `js/jumpDiffusionCore.test.mjs`,
+Gaussian noise via Box-Muller.
+
+**Verified end to end on a real release.** Replaying EURUSD's 2024-02-02 payrolls day up to
+15:00 UTC, the live path returns a 37.8% session jump share with jumps detected at exactly
+**13:30 and 13:35 UTC** — the release minute and the one after. Scored against that
+checkpoint's own distribution (p95 24.8%, p99 43.2%) it reads **"very high"**; against the
+full-day p90 of 16.4% it would have read "extreme". That difference is the whole argument
+for the time-of-day table.
+
+`/api/jump-diffusion/live?pair=<pair>` serves it. **Descriptive only** — it says what today
+IS, never what tomorrow will be, because Phases 12/13/14 each failed to turn the jump share
+into a better forward number. Not imported by `volatilityBotPlan.js` /
+`volatilityBotProducer.js`.
+
+Run `python3 export_intraday_percentiles.py` (after the gap audit), then
+`python3 crosscheck_jump.py` and `node js/jumpDiffusionCore.test.mjs` to check the contract.

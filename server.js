@@ -152,6 +152,8 @@ import { findImpulseRetracements } from './js/impulseRetracementGeometry.js';
 import { runImpulseEmaRange } from './js/impulseEmaRangeV1Engine.js';
 import { runLiveValidation } from './js/liveValidationCore.js';
 import { OANDA_INSTRUMENT_MAP, clampToNow, fetchIntradayOnce, fetchIntraday } from './js/oandaIntraday.js';
+import { buildGrid, bipower, jumpFraction, detectJumps, scoreAgainstTimeOfDay, STEP_MIN, BARS_PER_DAY } from './js/jumpDiffusionCore.js';
+import { _londonParts } from './js/londonSession.js';
 import { parquetRead as gliParquetRead, parquetMetadataAsync as gliParquetMeta } from 'hyparquet';
 import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from './js/asiaRangeEngine.js';
 import { runRangeExtBacktest, summarizeRangeExt, RANGE_EXT_INSTRUMENTS } from './js/rangeExtEngine.js';
@@ -9493,6 +9495,128 @@ app.get('/api/jump-diffusion/state', (req, res) => {
     }
   }
   res.json(_jumpState);
+});
+
+// ─── Jump/diffusion LIVE intraday read ───────────────────────────────────────
+// "How is today arriving?" — the session-so-far jump share, scored against the
+// distribution for THIS POINT IN THE DAY, plus the Lee-Mykland jump times.
+//
+// Deliberately NOT a streaming feed. The decomposition runs on 5-minute returns,
+// and one `count=2000` M5 request covers ~7 days — which is what the detector
+// actually needs, because its local-volatility window is 270 bars and a single
+// session only holds ~288. A window rebuilt per-day never fills and the detector
+// goes blind for the first ~11 hours (a real bug in the research code, caught only
+// by plotting detections against time of day). So: one REST call per pair per
+// refresh, no socket, no background poller.
+//
+// Two frozen tables do the rest, both from the offline study:
+//   * `jump_intraday.json` percentiles  — a part-day share is noisier AND biased
+//     high versus a full day, so scoring 09:00 against a full-day p90 would cry
+//     wolf every morning. Each reading is scored at the checkpoint it has reached.
+//   * the 48-bucket diurnal periodicity curve — divided out before the jump test,
+//     so the detector does not simply flag the US session for being busy. Frozen,
+//     never refit live: one session cannot estimate it, and a live refit would
+//     drift from the research.
+//
+// DESCRIPTIVE ONLY, and it must stay that way: Phases 12/13/14 each failed to turn
+// the jump share into a better forward number, so this says what today IS, never
+// what tomorrow will be. Not imported by volatilityBotPlan.js / volatilityBotProducer.js.
+const _JUMP_INTRADAY_PATH = path.join(__dirname, 'volatilityExhaustion', 'data', 'jump_intraday.json');
+let _jumpIntraday = null, _jumpIntradayAt = 0;
+
+function _jumpIntradayTable() {
+  if (_jumpIntraday && Date.now() - _jumpIntradayAt < 300_000) return _jumpIntraday;
+  try {
+    _jumpIntraday = JSON.parse(fs.readFileSync(_JUMP_INTRADAY_PATH, 'utf8'));
+    _jumpIntradayAt = Date.now();
+  } catch (e) {
+    console.warn('[jump-diffusion/live] intraday table unreadable:', e.message);
+    _jumpIntraday = null;
+  }
+  return _jumpIntraday;
+}
+
+app.get('/api/jump-diffusion/live', async (req, res) => {
+  try {
+    const pair = String(req.query.pair || 'eurusd').toLowerCase();
+    const table = _jumpIntradayTable();
+    const inst = table?.instruments?.[pair];
+    if (!inst) {
+      return res.status(404).json({ ok: false, error: `no intraday table for ${pair}`,
+        hint: 'regenerate with volatilityExhaustion/export_intraday_percentiles.py' });
+    }
+    const osym = OANDA_INSTRUMENT_MAP[pair];
+    if (!osym) return res.status(404).json({ ok: false, error: `no OANDA mapping for ${pair}` });
+    if (!process.env.OANDA_KEY) return res.status(503).json({ ok: false, error: 'OANDA_KEY not configured' });
+
+    // ~7 days of M5 — enough to fill the 270-bar local-vol window across days.
+    const bars = await fetchIntradayOnce(osym, 'M5', { count: 2000 });
+    if (!bars || bars.length < 400) {
+      return res.json({ ok: false, error: `only ${bars?.length ?? 0} bars returned` });
+    }
+
+    const { ret, tod, endIdx } = buildGrid(bars, { stepMin: STEP_MIN });
+    if (ret.length < 400) return res.json({ ok: false, error: 'too few usable returns' });
+
+    // Today's London session: the last bar's London date defines "today", so a
+    // request during the Sunday-evening open reads that session, not the calendar day.
+    // NOTE _londonParts passes a number straight to Intl, which reads it as
+    // MILLISECONDS; OANDA bar times here are epoch SECONDS, so they must be scaled.
+    // Getting this wrong silently dates every bar to 1970 and folds the whole
+    // multi-day window into "today".
+    const lastTime = bars[bars.length - 1].time;                 // epoch seconds
+    const londonDate = t => _londonParts(t * 1000).date;
+    const todayDate = londonDate(lastTime);
+    const isToday = endIdx.map(i => londonDate(bars[i].time) === todayDate);
+    const firstToday = isToday.findIndex(Boolean);
+    if (firstToday < 0) return res.json({ ok: false, error: 'no bars in the current session' });
+
+    const todayRet = ret.slice(firstToday);
+    const sessionMinutes = (lastTime - bars[endIdx[firstToday]].time) / 60;
+    // London minute-of-day. The London offset is always a whole number of hours, so
+    // the MINUTES component is the same in both zones; only the hour needs converting.
+    const londonMinute = _londonParts(lastTime * 1000).hour * 60 + new Date(lastTime * 1000).getUTCMinutes();
+
+    // Jump share over the session so far — the same estimator the study uses.
+    const share = jumpFraction(todayRet);
+    const bp = bipower(todayRet);
+
+    // Jump TIMES: detection runs over the FULL multi-day series so the window is
+    // filled, then only today's flags are reported.
+    const det = detectJumps(ret, tod, inst.periodicity, { n: BARS_PER_DAY });
+    const jumps = [];
+    for (let i = firstToday; i < ret.length; i++) {
+      if (!det.flags[i]) continue;
+      const bar = bars[endIdx[i]];
+      jumps.push({
+        utc: new Date(bar.time * 1000).toISOString().slice(11, 16),
+        ret_pct: Math.round(ret[i] * 1e6) / 1e4,
+        direction: ret[i] > 0 ? 'up' : 'down',
+      });
+    }
+    const scored = share == null ? null
+      : scoreAgainstTimeOfDay(share, londonMinute, inst);
+
+    res.json({
+      ok: true,
+      pair, asset_class: inst.asset_class, session_date: todayDate,
+      as_of_utc: new Date(lastTime * 1000).toISOString(),
+      session_minutes: Math.round(sessionMinutes),
+      returns_seen: todayRet.length,
+      jump_share_pct: share == null ? null : Math.round(share * 10000) / 100,
+      rv: bp?.rv ?? null, bv: bp?.bv ?? null,
+      n_jumps: jumps.length, jumps,
+      time_of_day: scored,
+      diurnal_adjusted: det.applied,
+      lm_threshold: Math.round(det.threshold * 1000) / 1000,
+      contract: 'Descriptive state for the session so far. Not a forecast and not a '
+              + 'trading signal — three pre-registered tests failed to turn the jump '
+              + 'share into a better forward number.',
+    });
+  } catch (e) {
+    console.warn('[jump-diffusion/live]', e.message);
+    res.status(502).json({ ok: false, error: e.message });
+  }
 });
 
 // ─── VuManChu state + forward-validation logger ──────────────────────────────
