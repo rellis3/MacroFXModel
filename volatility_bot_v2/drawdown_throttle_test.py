@@ -81,5 +81,54 @@ ok("reset() clears the running peak — re-seeds from the NEXT balance given, no
 t10.update(9_500)  # a real new high above the re-seeded 9,000 peak
 ok("peak re-seeded from post-reset balance, not stuck at the old one", t10.update(8_800) == 1.0)  # -7.4% off 9,500, still under -8% trigger
 
+print("[graded mode — steps through tiers on the way down and back up]")
+t11 = DrawdownThrottle(mode="graded")  # default tiers: (-4,.65) (-6,.40) (-8,.25), restore -2
+ok("full size while flat/growing", t11.update(10_000) == 1.0)
+ok("full size on a small, sub-first-tier dip", t11.update(9_700) == 1.0)  # -3% off peak
+t11b = DrawdownThrottle(mode="graded")
+t11b.update(10_000)
+ok("shallowest tier (.65) applied the SAME call once past -4%", t11b.update(9_550) == 0.65)  # -4.5% off peak
+ok("mid tier (.40) once past -6%", t11b.update(9_300) == 0.40)  # -7% off peak
+ok("deepest tier (.25) once past -8%", t11b.update(9_000) == 0.25)  # -10% off peak
+ok("stays at deepest tier on a further dip", t11b.update(8_500) == 0.25)
+
+print("[graded mode — restore behaviour matches cliff (hysteresis off the SAME peak, never resets)]")
+t12 = DrawdownThrottle(mode="graded")
+t12.update(10_000)
+t12.update(9_000)   # -10%, throttles at the deepest tier, peak stays 10,000
+ok("throttled at the floor", t12.update(9_000) == 0.25)
+ok("still throttled while only back to -3% (better than -2%? no -- -3 < -2, i.e. NOT yet recovered)", t12.update(9_700) == 0.65)  # eased back up a tier, still throttled
+ok("fully restores once back to -2% off the ORIGINAL peak", t12.update(9_800) == 1.0)
+
+print("[graded mode — sync_cfg reads throttle_mode from live config, falls back to cliff on anything else]")
+t13 = DrawdownThrottle()
+t13.sync_cfg({"throttle_mode": "graded"})
+ok("mode switches to graded", t13.mode == "graded")
+t13.sync_cfg({"throttle_mode": "cliff"})
+ok("mode switches back to cliff", t13.mode == "cliff")
+t13.sync_cfg({"throttle_mode": "something_unrecognized"})
+ok("an unrecognized mode falls back to cliff, not a crash/silent graded", t13.mode == "cliff")
+t14 = DrawdownThrottle(mode="graded")
+t14.sync_cfg({})
+ok("sync_cfg with no throttle_mode key preserves the constructor's mode", t14.mode == "graded")
+
+print("[graded mode — snapshot/restore round-trips mode and last mult too]")
+t15 = DrawdownThrottle(mode="graded")
+t15.update(10_000)
+t15.update(9_000)  # triggers at the floor tier
+snap15 = t15.snapshot()
+ok("snapshot reports mode", snap15["mode"] == "graded")
+ok("snapshot reports the active mult", snap15["mult"] == 0.25)
+t16 = DrawdownThrottle(mode="graded")
+t16.restore(snap15)
+ok("restored throttled state", t16._throttled is True)
+ok("restored last mult, usable before the first post-restart update() call", t16._last_mult == 0.25)
+
+print("[graded mode — an invalid/garbage mode string never crashes, silently coerces to cliff]")
+t17 = DrawdownThrottle(mode="not-a-real-mode", trigger_dd=-8.0, restore_dd=-2.0, mult=0.25)
+ok("constructor coerces an unrecognized mode to cliff", t17.mode == "cliff")
+t17.update(10_000)
+ok("behaves as cliff (not graded) after coercion", t17.update(9_100) == 0.25)  # -9%, past cliff trigger -8
+
 print(f"\n{'ALL PASSED' if fails == 0 else f'{fails} FAILED'}")
 sys.exit(1 if fails else 0)

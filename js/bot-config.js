@@ -3699,7 +3699,9 @@ const VB2_DEFAULTS = {
   fade_stop_tighten: false, max_open_risk_pct: 0,
   early_exit: true, early_exit_threshold: 0.4,
   p90_enabled: false,
-  throttle_enabled: true, throttle_trigger_dd: -8.0, throttle_restore_dd: -2.0, throttle_mult: 0.25,
+  throttle_enabled: true, throttle_mode: 'graded', throttle_trigger_dd: -8.0, throttle_restore_dd: -2.0, throttle_mult: 0.25,
+  // throttle_mode 'graded' made the live default 2026-09-14 -- see the
+  // bot's own DEFAULT_CFG doc / drawdown_throttle.py for the validation trail.
   stack_guard: true, stack_guard_pips: 5,
   plan_max_age_hours: 1,
   // 2026-08-31: flattens open positions before the strategy's own session
@@ -3772,6 +3774,7 @@ function renderVb2Form() {
   set('vb2_early_exit_threshold', _vb2Cfg.early_exit_threshold ?? VB2_DEFAULTS.early_exit_threshold);
   chk('vb2_p90_enabled',         _vb2Cfg.p90_enabled ?? VB2_DEFAULTS.p90_enabled);
   chk('vb2_throttle_enabled',    _vb2Cfg.throttle_enabled ?? VB2_DEFAULTS.throttle_enabled);
+  { const el = document.getElementById('vb2_throttle_mode'); if (el) el.value = _vb2Cfg.throttle_mode ?? VB2_DEFAULTS.throttle_mode; }
   set('vb2_throttle_trigger_dd', _vb2Cfg.throttle_trigger_dd ?? VB2_DEFAULTS.throttle_trigger_dd);
   set('vb2_throttle_restore_dd', _vb2Cfg.throttle_restore_dd ?? VB2_DEFAULTS.throttle_restore_dd);
   set('vb2_throttle_mult',       _vb2Cfg.throttle_mult ?? VB2_DEFAULTS.throttle_mult);
@@ -3821,6 +3824,7 @@ function readVb2Form() {
   _vb2Cfg.early_exit_threshold = num('vb2_early_exit_threshold', VB2_DEFAULTS.early_exit_threshold);
   _vb2Cfg.p90_enabled          = !!document.getElementById('vb2_p90_enabled')?.checked;
   _vb2Cfg.throttle_enabled     = !!document.getElementById('vb2_throttle_enabled')?.checked;
+  _vb2Cfg.throttle_mode        = document.getElementById('vb2_throttle_mode')?.value || VB2_DEFAULTS.throttle_mode;
   _vb2Cfg.throttle_trigger_dd  = num('vb2_throttle_trigger_dd', VB2_DEFAULTS.throttle_trigger_dd);
   _vb2Cfg.throttle_restore_dd  = num('vb2_throttle_restore_dd', VB2_DEFAULTS.throttle_restore_dd);
   _vb2Cfg.throttle_mult        = num('vb2_throttle_mult', VB2_DEFAULTS.throttle_mult);
@@ -4018,9 +4022,10 @@ async function loadVb2LiveStatus() {
     const throttleResetBtn = document.getElementById('vb2ThrottleResetBtn');
     if (throttleEl) {
       const th = st.throttle;
+      const modeTag = th?.mode === 'graded' ? ' [graded]' : th?.mode ? ' [cliff]' : '';
       if (!th || th.peak == null) { throttleEl.textContent = 'no data yet'; throttleEl.style.color = 'var(--text3)'; }
-      else if (th.throttled) { throttleEl.textContent = `⚠ ENGAGED — sizing cut (peak ${th.peak.toFixed(2)})`; throttleEl.style.color = 'var(--amber,#e0a93b)'; }
-      else { throttleEl.textContent = `clear (peak ${th.peak.toFixed(2)})`; throttleEl.style.color = 'var(--green)'; }
+      else if (th.throttled) { throttleEl.textContent = `⚠ ENGAGED${modeTag} — sizing at ${th.mult}× (peak ${th.peak.toFixed(2)})`; throttleEl.style.color = 'var(--amber,#e0a93b)'; }
+      else { throttleEl.textContent = `clear${modeTag} (peak ${th.peak.toFixed(2)})`; throttleEl.style.color = 'var(--green)'; }
       // Only surfaced while actually engaged -- resetting a clear throttle is a no-op with no
       // signal to show for it, so the button would just be confusing clutter the rest of the time.
       if (throttleResetBtn) throttleResetBtn.style.display = (th && th.throttled) ? '' : 'none';

@@ -132,15 +132,25 @@ DEFAULT_CFG = {
     "paper_spread_pips": {},
     # Drawdown throttle — added 2026-08-30 (live-vs-backtest parity audit
     # found this lever, validated in analysis/drawdown_throttle_backtest.mjs,
-    # had never been implemented live at all). De-risks (scales risk_pct by
-    # throttle_mult) once this bot's OWN realized-balance drawdown from its
-    # running peak breaches throttle_trigger_dd, restores full size once it
-    # recovers to throttle_restore_dd. Different from RiskGuard above: this
-    # is a gradual size multiplier reacting to a SUSTAINED losing stretch
-    # over the bot's whole life (never resets), not a binary daily/monthly
-    # lockout. Validated: ~40% shallower drawdown both IS and OOS, at a
-    # real, disclosed Sharpe/CAGR cost -- see drawdown_throttle.py's own doc.
+    # had never been implemented live at all). De-risks (scales risk_pct)
+    # once this bot's OWN realized-balance drawdown from its running peak
+    # breaches a trigger, restores full size once it recovers. Different
+    # from RiskGuard above: this is a gradual size multiplier reacting to a
+    # SUSTAINED losing stretch over the bot's whole life (never resets), not
+    # a binary daily/monthly lockout.
+    #
+    # throttle_mode "graded" (made the live default 2026-09-14) steps size
+    # down through a 3-tier ramp as drawdown worsens instead of one on/off
+    # cliff -- see drawdown_throttle.py's DEFAULT_GRADED_TIERS and its own
+    # doc for the full validation trail (IS/OOS-stable on the 17-pair
+    # research set, THEN re-confirmed on this account's own actual live-
+    # configured backtest: same Sharpe 3.61 vs 3.62, shallower max DD -13.3%
+    # vs -14.1% compounded, better Calmar throughout). throttle_trigger_dd/
+    # throttle_mult below are ignored in graded mode (fixed, validated
+    # tiers, not slider-derived) -- set throttle_mode back to "cliff" to
+    # revert to the original single-step design using those two fields.
     "throttle_enabled": True,
+    "throttle_mode": "graded",
     "throttle_trigger_dd": -8.0,
     "throttle_restore_dd": -2.0,
     "throttle_mult": 0.25,
