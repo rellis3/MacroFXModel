@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bipower Variation — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Bipower Variation — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer full derivations, live math notation, and a 6-question self-test?<a href="institutional-bipower-variation.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Volatility Estimation &amp; Jump Detection 3 · Volatility Estimation &amp; Jump Detection</div>
+      <h1 class="sl-h1">Bipower Variation, <em>Splitting Variance Into Two Stories</em></h1>
+      <p class="sl-lede">Realized variance adds up every squared intraday return and calls the total "today's volatility." It has no way to say how much of that total was ordinary diffusion versus one violent, discrete jump — a single scheduled-news spike and forty quiet ticks that happen to sum to the same number look identical to it. Bipower variation asks a sharper question of the exact same data and splits the number back into its two pieces.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">One number, two very different things added together</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">Σ</div><div><h4>RV sums squared returns</h4><p>Realized variance, RV = Σr², converges to the price path's true quadratic variation as sampling gets finer — a real, useful result, and the building block behind HAR-RV.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚡</div><div><h4>Quadratic variation has two sources</h4><p>Ordinary continuous diffusion, running all the time — and discrete jumps, firing rarely and violently. Both contribute squared returns to the same RV total.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🙈</div><div><h4>RV can't tell them apart</h4><p>One 40-pip, one-minute NFP spike and forty ordinary 1-pip wiggles that happen to sum to the same total sum-of-squares are, to plain RV, the exact same number.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">💰</div><div><h4>Why the split matters</h4><p>Continuous variance is the risk you size a position around holding through ordinary noise. Jump variance is a genuinely different risk — the "event vol" desks price separately (see the Merton jump-diffusion lesson).</p></div></div>
+      </div>
+      <div class="sl-quote">Imagine measuring a hiker's day only by total elevation gain. One hiker climbed a long, steady, moderate slope; another mostly walked flat ground but fell into one deep, sudden ravine. Same total number, completely different day. RV is that total-elevation number for a return series — and bipower variation is the trick that tells the two stories apart using only the same data RV already has.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">The core trick: pair returns instead of squaring them</h2>
+      <p class="sl-sub">Same fifteen-return session throughout — one jump at minute 9. Step through what RV does with it, what BV does instead, and the gap between them.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="core-tabs">
+          <button class="sl-tab active" data-panel="core-1">1 · RV sums squares</button>
+          <button class="sl-tab" data-panel="core-2">2 · BV pairs neighbors</button>
+          <button class="sl-tab" data-panel="core-3">3 · The gap is the jump</button>
+        </div>
+        <div class="sl-panel active" id="core-1">
+          <div class="sl-row"><div class="sl-box">r₉ = +46.0bp</div><div class="sl-arrow">→</div><div class="sl-box amber">r₉² = huge</div></div>
+          <div class="sl-verdict">RV = Σrᵢ² contributes the jump's <strong>full squared size</strong> — no discount. On this exact session, this one return alone supplies <strong>99.2%</strong> of the entire day's RV.</div>
+        </div>
+        <div class="sl-panel" id="core-2">
+          <div class="sl-row"><div class="sl-box">r₉ = +46.0bp</div><div class="sl-arrow">×</div><div class="sl-box">r₈ = −0.7bp</div><div class="sl-arrow">→</div><div class="sl-box green">|r₉||r₈| = large × ordinary</div></div>
+          <div class="sl-verdict">BV = (π/2)Σ|rᵢ||rᵢ₋₁| multiplies the jump by its <strong>ordinary neighbor</strong>, not by itself. A jump ~40× the size of a normal return contributes ~40× a normal term to BV, not ~1,600× — and that share shrinks toward zero as sampling gets finer. BV barely moves.</div>
+        </div>
+        <div class="sl-panel" id="core-3">
+          <div class="sl-row"><div class="sl-box">RV = 0.00002133</div><div class="sl-arrow">−</div><div class="sl-box green">BV = 0.00000137</div><div class="sl-arrow">=</div><div class="sl-box amber">J = 0.00001996</div></div>
+          <div class="sl-verdict">The gap J = max(RV−BV, 0) recovers <strong>94.3%</strong> of the jump return's own squared size (0.0046² = 0.00002116) — close, not exact, because BV also absorbed a small legitimate share of it through its two neighbor pairings.</div>
+        </div>
+      </div>
+      <p class="sl-p">Same mechanism throughout: RV treats a jump quadratically (r² of the jump itself); BV treats it linearly (the jump times an ordinary neighbor). That asymmetry — not a fitted parameter, not a threshold — is the entire reason BV stays robust to jumps while RV does not.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Watch it happen, bar by bar</h2>
+      <p class="sl-sub">Fifteen 1-minute returns, one jump at bar 9. Below: cumulative RV and cumulative BV as each bar is processed, left to right.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Visualize it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Top panel: fifteen vertical bars representing one-minute returns, mostly small and alternating up and down, with one much taller bar at position nine representing a jump. Bottom panel: two lines tracking cumulative realized variance and cumulative bipower variation as more bars are processed left to right — the realized-variance line shoots up almost to the top the instant it reaches the jump bar and stays flat afterward, while the bipower-variation line rises only gently through the same point.">
+            <line x1="30" y1="78" x2="620" y2="78" style="stroke:var(--border2)"/>
+            <rect x="41.5" y="69.1" width="9" height="8.9" style="fill:var(--blue)"/>
+            <rect x="82.1" y="78" width="9" height="7.3" style="fill:var(--blue)"/>
+            <rect x="122.6" y="68.1" width="9" height="9.9" style="fill:var(--blue)"/>
+            <rect x="163.2" y="78" width="9" height="8.5" style="fill:var(--blue)"/>
+            <rect x="203.8" y="70.3" width="9" height="7.7" style="fill:var(--blue)"/>
+            <rect x="244.4" y="78" width="9" height="9.2" style="fill:var(--blue)"/>
+            <rect x="284.9" y="69.9" width="9" height="8.1" style="fill:var(--blue)"/>
+            <rect x="325.5" y="78" width="9" height="6.8" style="fill:var(--blue)"/>
+            <rect x="366.1" y="23.0" width="9" height="55.0" style="fill:var(--red)"/>
+            <text x="370.6" y="17" text-anchor="middle" fill="var(--red)" font-size="10" font-family="'DM Mono',monospace" font-weight="700">+46.0bp — jump</text>
+            <rect x="406.6" y="78" width="9" height="7.7" style="fill:var(--blue)"/>
+            <rect x="447.2" y="69.5" width="9" height="8.5" style="fill:var(--blue)"/>
+            <rect x="487.8" y="78" width="9" height="9.6" style="fill:var(--blue)"/>
+            <rect x="528.4" y="70.7" width="9" height="7.3" style="fill:var(--blue)"/>
+            <rect x="568.9" y="78" width="9" height="8.1" style="fill:var(--blue)"/>
+            <rect x="609.5" y="68.8" width="9" height="9.2" style="fill:var(--blue)"/>
+            <text x="330" y="108" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">bar heights √-scaled for visibility — the jump is ~30-65× its neighbors in truth</text>
+
+            <line x1="30" y1="300" x2="620" y2="300" style="stroke:var(--border2)"/>
+            <line x1="30" y1="168" x2="30" y2="300" style="stroke:var(--border2)"/>
+            <line x1="370.6" y1="168" x2="370.6" y2="300" style="stroke:var(--red);stroke-dasharray:3,3;opacity:.5"/>
+            <polyline points="46.0,296.6 86.6,295.9 127.1,294.1 167.7,293.3 208.3,292.8 248.9,291.9 289.4,291.4 330.0,291.2 370.6,168.2 411.1,168.2 451.7,168.2 492.3,168.1 532.9,168.1 573.4,168.1 614.0,168.0" style="stroke:var(--red);stroke-width:2.5;fill:none"/>
+            <polyline points="46.0,300.0 86.6,296.5 127.1,294.7 167.7,293.0 208.3,292.2 248.9,291.2 289.4,290.3 330.0,289.9 370.6,277.3 411.1,267.6 451.7,267.5 492.3,267.1 532.9,266.9 573.4,266.8 614.0,266.5" style="stroke:var(--green);stroke-width:2.5;fill:none"/>
+            <text x="400" y="185" fill="var(--red)" font-size="11" font-family="'DM Mono',monospace">RV — jumps up, stays high</text>
+            <text x="400" y="285" fill="var(--green)" font-size="11" font-family="'DM Mono',monospace">BV — barely reacts</text>
+          </svg>
+        </div>
+        <div class="sl-note">Both cumulative curves are square-root-scaled onto the same axis (their true final values differ by ~15×) precisely so the divergence itself is legible: RV leaps almost to its final value the instant the jump bar is processed; BV ticks up only slightly at that same instant.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">The π/2 isn't decoration — it's an exact correction</h2>
+      <p class="sl-sub">For a standard normal Z, E[|Z|] = √(2/π). That one identity is the entire reason the constant is there.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Without the correction</span>
+          <p>An ordinary diffusive return is r = σ√Δ·Z. Two adjacent absolute returns have E[|rᵢ||rᵢ₋₁|] = σ²Δ·E[|Z|]² = σ²Δ·(2/π) — short of the true σ²Δ by a factor of 2/π ≈ 0.637. Left uncorrected, the raw sum would understate continuous variance by roughly 36%, even on a session with zero jumps.</p>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">With π/2</span>
+          <p>Multiplying by π/2 exactly cancels that shortfall: (π/2)·(2/π) = 1. So E[BV] = σ²T = E[RV] in the no-jump case — BV is unbiased for precisely the same continuous variance RV would estimate if there were no jumps at all. Not a tuning knob; the unique constant that makes the two estimators agree when there's nothing for them to disagree about.</p>
+        </div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Where this needs a number</div>
+        <p>E[|Z|] = √(2/π) ≈ 0.7979 for a standard normal. Square it: E[|Z|]² = 2/π ≈ 0.6366. Take its reciprocal: π/2 ≈ 1.5708 — exactly the constant in the BV formula. Every step is an identity, not an approximation.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Drag the jump size — watch RV and BV split apart</h2>
+      <p class="sl-sub">Fourteen background returns held fixed; only the size of the ninth return (the "jump") changes. RV and BV both start equal at zero jump size, then pull apart.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two vertical bars, one for realized variance and one for bipower variation, that grow as a jump-size slider increases, with realized variance growing much taller than bipower variation">
+            <line x1="40" y1="200" x2="600" y2="200" style="stroke:var(--border2)"/>
+            <rect id="jb-rv-bar" x="220" y="193.85" width="70" height="6.15" rx="4" style="fill:var(--red)"/>
+            <text x="255" y="180" text-anchor="middle" fill="var(--red)" font-size="12" font-family="'DM Mono',monospace" font-weight="700">RV</text>
+            <rect id="jb-bv-bar" x="350" y="193.04" width="70" height="6.96" rx="4" style="fill:var(--green)"/>
+            <text x="385" y="180" text-anchor="middle" fill="var(--green)" font-size="12" font-family="'DM Mono',monospace" font-weight="700">BV</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Jump size</span><span class="sl-live" id="jb-jump-val">0.0 bp</span></div>
+        <input type="range" class="sl-slider" id="jb-slider" min="0" max="100" step="1" value="0">
+        <div class="sl-note" id="jb-readout">RV = 0.00000017 · BV = 0.00000022 · J = 0.00000000 — with no jump, RV and BV agree almost exactly, as the theory predicts.</div>
+      </div>
+      <p class="sl-p">Slide it up toward 100bp and RV races toward the top of the chart while BV barely lifts off the floor. Bring it back to zero and the two bars converge back to nearly equal heights — RV and BV are only estimating different things when a jump is actually present.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Compute RV, BV and J yourself</h2>
+      <p class="sl-sub">Five one-minute returns (bp). Edit any of them — a small jump is pre-loaded at r₃.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>r₁ (bp)</label><input type="number" class="sl-input" id="cr-r1" value="1.0" step="0.1"></div>
+          <div class="sl-calc-field"><label>r₂ (bp)</label><input type="number" class="sl-input" id="cr-r2" value="-0.8" step="0.1"></div>
+          <div class="sl-calc-field"><label>r₃ (bp)</label><input type="number" class="sl-input" id="cr-r3" value="25.0" step="0.1"></div>
+          <div class="sl-calc-field"><label>r₄ (bp)</label><input type="number" class="sl-input" id="cr-r4" value="-0.9" step="0.1"></div>
+          <div class="sl-calc-field"><label>r₅ (bp)</label><input type="number" class="sl-input" id="cr-r5" value="1.1" step="0.1"></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>RV = Σrᵢ² = <b id="cr-rv">0.00000629</b></div>
+          <div>BV = (π/2)Σ|rᵢ||rᵢ₋₁| = <b id="cr-bv">0.00000070</b></div>
+          <div>J = max(RV−BV, 0) = <b id="cr-j">0.00000559</b> &nbsp;(jump fraction <b id="cr-jf">88.9%</b>)</div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="cr-reset">Reset to the 5-return example</button>
+        <div class="sl-note" id="cr-note">Blank or non-numeric inputs show "—" for every result instead of silently breaking the formula.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">What J tells you — and what it doesn't</h2>
+      <div class="sl-callout blue">
+        <div class="sl-callout-label">A whole-session ratio, not a timestamp</div>
+        <p>J = max(RV−BV, 0) — and the normalized jump fraction J/RV — answer "of this session's <strong>total</strong> realized variance, how much came from jump activity?" That's a single aggregate number per period. It does <strong>not</strong> say which specific one-minute return was the jump, or exactly when it happened.</p>
+      </div>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">This lesson — bipower variation</span>
+          <p>A whole-session ratio: "22% of today's variance was jump-driven." One number per day, built from the aggregate RV/BV gap.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Next lesson — Lee-Mykland / BCL</span>
+          <p>A per-return test: scale each individual return by a trailing bipower-based local volatility and flag exactly which minute crossed a statistical jump threshold.</p>
+        </div>
+      </div>
+      <p class="sl-p">Same underlying bipower math, applied at two different resolutions — a session-level split here, a return-by-return detector next.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">A different fix, for a different contaminant</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🧩</div><div><h4>Bipower variation — robust to jumps</h4><p>Adjacent absolute-return products, scaled by π/2. Fixes RV's conflation of continuous and discrete-jump variance. This deck's subject.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📶</div><div><h4>Realized kernels — robust to microstructure noise</h4><p>Barndorff-Nielsen, Hansen, Lunde &amp; Shephard (2008): a kernel-weighted sum of realized autocovariances, built to stay consistent when bid-ask bounce contaminates very-high-frequency returns — a genuinely different problem, not derived here.</p></div></div>
+      </div>
+      <div class="sl-quote">The two contaminants can show up in the same dataset at once — sampling fast enough to resolve jumps precisely also picks up more microstructure noise. Serious realized-vol work usually checks more than one sampling frequency rather than trusting a single number blindly.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Measured on real data — and honestly reported when it didn't pay off</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Verified against this repo's actual code</div>
+        <p>The exact RV/BV/J formulas here are implemented as <code>bipower()</code> and <code>jump_fraction()</code> in <code>volatilityExhaustion/vol_exhaustion_lib.py</code>, run across ~70,000 (pair, date) rows of real FX/gold 1-minute data. <strong>The measurement passed a real out-of-sample test</strong>: days carrying a Major scheduled-news release are measurably jumpier than quiet days, both halves of an IS/OOS split, all 3 asset classes, both 1-min and 5-min sampling (t +2.1 to +14.0, 12/12 cells) — the day's single largest move lands within ±5min of the release 35-41% of the time vs a ~1% random baseline.</p>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">But using it to improve a forecast tested NULL</div>
+        <p>A diffusion-only volatility forecast, scaled by the trailing diffusive share of variance, needed to beat the raw forecast by ≥2% OOS QLIKE on days after a high-jump day. Actual result: <strong>−0.24% (FX majors), +0.26% (crosses), −0.16% (gold)</strong> — an order of magnitude short, sign disagreeing across classes. The underlying premise checked out as genuinely true (jump variance predicts lower future variance, β = −0.33, t = −10.3, replicating on 23/26 instruments) — the effect is real, just too small to survive as a forecast improvement. Per the repo's own pre-registered stop rule, this was never wired into the live forecaster.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">The clean theory needs help in small, real samples</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Where plain BV can be fooled</span>
+          <ul>
+            <li>Two jumps landing in consecutive intervals — each one's "ordinary" neighbor is actually the other jump</li>
+            <li>Only a few hundred bars per session means real finite-sample noise, not the clean asymptotic limit</li>
+            <li>Lag-1-only pairing can run slightly biased low in short samples, independent of any jump at all</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Why it isn't fatal</span>
+          <ul>
+            <li>Truncated and multipower variation variants use more than two returns per term, or cap suspiciously large returns before pairing</li>
+            <li>Built specifically to stay robust even when jumps cluster or samples are short</li>
+            <li>Plain bipower variation, as derived here, is the clean foundation those variants build on — not a discarded first draft</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What does realized variance (RV) fail to distinguish?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Continuous diffusive variance from discrete jump variance</button>
+        <button class="sl-quiz-opt">Morning session variance from afternoon session variance</button>
+        <button class="sl-quiz-opt">Positive returns from negative returns</button>
+        <div class="sl-quiz-explain">RV sums r² for every return with no regard for what caused it — a large squared return from ordinary diffusion and one from a genuine jump add the identical amount.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Why is BV robust to a jump while RV is not?</h4>
+        <button class="sl-quiz-opt" data-correct="true">A jump contributes r² (quadratic) to RV but only |r|·|ordinary neighbor| (linear) to BV</button>
+        <button class="sl-quiz-opt">BV simply deletes the largest return before summing</button>
+        <button class="sl-quiz-opt">BV only sums returns from the first half of the session</button>
+        <div class="sl-quiz-explain">A jump's neighbor is still an ordinary diffusive return, so pairing them gives "large × ordinary," not "large × large" — a much smaller, shrinking share of the total as sampling gets finer.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Where does the π/2 constant in the BV formula come from?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It corrects for E[|Z|]² = 2/π, the expected value of a standard normal's absolute value, squared</button>
+        <button class="sl-quiz-opt">It's a rounding convention with no theoretical basis</button>
+        <button class="sl-quiz-opt">It converts basis points into decimal returns</button>
+        <div class="sl-quiz-explain">Adjacent absolute normal returns have expectation scaled by 2/π short of the true variance; multiplying by π/2 exactly cancels that shortfall.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>A session has RV = 0.00004 and BV = 0.000031. What does J = max(RV−BV, 0) tell you?</h4>
+        <button class="sl-quiz-opt" data-correct="true">About 22.5% of the session's total variance is estimated to be jump-driven, in aggregate</button>
+        <button class="sl-quiz-opt">Exactly which one-minute return was the jump</button>
+        <button class="sl-quiz-opt">That no jump occurred, since J is a small number</button>
+        <div class="sl-quiz-explain">J/RV = 0.000009/0.00004 = 22.5%. It's a whole-session aggregate split — identifying which specific return was the jump needs a per-return detector (next lesson).</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>In this repo, did using the RV/BV jump split actually improve the live volatility forecaster?</h4>
+        <button class="sl-quiz-opt" data-correct="true">No — the measurement validated against real news events, but the forecast-improvement test came back null</button>
+        <button class="sl-quiz-opt">Yes, it was wired directly into the live forecaster after passing every test</button>
+        <button class="sl-quiz-opt">The split was never actually computed on real data, only simulated</button>
+        <div class="sl-quiz-explain">Phase 2 (validating jump share against known news events) passed cleanly. Phase 3 (using the split to beat the raw forecast OOS) missed its pre-registered bar by roughly an order of magnitude — a real but too-small effect, reported honestly as null rather than wired in.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>RV estimates total quadratic variation — continuous plus jump, conflated — with no way to tell the two apart on its own.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>BV replaces squares with adjacent absolute-return products: a jump inflates RV quadratically but BV only linearly, through its ordinary neighbor.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>The π/2 constant is an exact correction for E[|Z|]² = 2/π, not a fitted or arbitrary number.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>J = max(RV−BV, 0) is a whole-session, aggregate jump share — not a timestamp for any individual return.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Realized kernels solve a related but different problem — microstructure noise, not jumps.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>This repo validated the measurement on real data against known news events, then honestly reported that using it to improve a forecast tested null.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Read a realized-variance number knowing it might be hiding a jump inside it, and know exactly which second formula to reach for to check. Understand precisely why pairing neighboring returns — not squaring, not deleting outliers — is what makes an estimator jump-robust. And keep "the measurement is validated" and "the measurement improves a forecast" as two separate claims, the way this repo's own honest null result insists on.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Lee-Mykland &amp; Boudt-Croux-Laurent Jump Detection</h3>
+        <p>From "how much of today was jump-driven" to "which specific minute was the jump" — a per-return test built on the same bipower foundation.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="institutional-jump-detection-tests-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="institutional-bipower-variation.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  var PI_OVER_2 = Math.PI / 2;
+
+  // Jump-size slider — two bars (RV, BV), fourteen fixed background returns + one variable jump.
+  (function(){
+    var slider = document.getElementById('jb-slider');
+    if (!slider) return;
+    var jumpVal = document.getElementById('jb-jump-val');
+    var rvBar = document.getElementById('jb-rv-bar');
+    var bvBar = document.getElementById('jb-bv-bar');
+    var readout = document.getElementById('jb-readout');
+    var BASE_BG_BP = [1.2, -0.8, 1.5, -1.1, 0.9, -1.3, 1.0, -0.7, -0.9, 1.1, -1.4, 0.8, -1.0, 1.3];
+    var JUMP_INDEX = 8;
+    var BASE_Y = 200, MAX_H = 165;
+    var REF = 0.00010017; // RV at jump=100bp, background scale 1x — normalizes bar height
+
+    function buildReturns(jumpBp) {
+      var out = [];
+      for (var i = 0; i < BASE_BG_BP.length + 1; i++) {
+        if (i === JUMP_INDEX) out.push(jumpBp * 1e-4);
+        else out.push((i < JUMP_INDEX ? BASE_BG_BP[i] : BASE_BG_BP[i - 1]) * 1e-4);
+      }
+      return out;
+    }
+
+    function update() {
+      var jumpBp = parseFloat(slider.value);
+      if (!isFinite(jumpBp) || jumpBp < 0) jumpBp = 0;
+      jumpVal.textContent = jumpBp.toFixed(1) + ' bp';
+
+      var r = buildReturns(jumpBp);
+      var rv = 0;
+      for (var i = 0; i < r.length; i++) rv += r[i] * r[i];
+      var bv = 0;
+      for (var i = 1; i < r.length; i++) bv += Math.abs(r[i]) * Math.abs(r[i - 1]);
+      bv *= PI_OVER_2;
+      var j = Math.max(rv - bv, 0);
+
+      var hRV = Math.sqrt(Math.max(rv, 0) / REF) * MAX_H;
+      var hBV = Math.sqrt(Math.max(bv, 0) / REF) * MAX_H;
+      hRV = Math.min(hRV, MAX_H); hBV = Math.min(hBV, MAX_H);
+
+      rvBar.setAttribute('y', (BASE_Y - hRV).toFixed(1));
+      rvBar.setAttribute('height', Math.max(hRV, 1.5).toFixed(1));
+      bvBar.setAttribute('y', (BASE_Y - hBV).toFixed(1));
+      bvBar.setAttribute('height', Math.max(hBV, 1.5).toFixed(1));
+
+      readout.textContent = 'RV = ' + rv.toFixed(8) + ' · BV = ' + bv.toFixed(8) + ' · J = ' + j.toFixed(8) +
+        (jumpBp < 0.5 ? ' — with no jump, RV and BV agree almost exactly, as the theory predicts.' : '');
+    }
+
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // 5-return calculator.
+  (function(){
+    var r1 = document.getElementById('cr-r1');
+    if (!r1) return;
+    var ids = ['cr-r1', 'cr-r2', 'cr-r3', 'cr-r4', 'cr-r5'];
+    var inputs = ids.map(function(id){ return document.getElementById(id); });
+    var rvOut = document.getElementById('cr-rv'), bvOut = document.getElementById('cr-bv');
+    var jOut = document.getElementById('cr-j'), jfOut = document.getElementById('cr-jf');
+    var note = document.getElementById('cr-note');
+    var resetBtn = document.getElementById('cr-reset');
+    var DEFAULTS = [1.0, -0.8, 25.0, -0.9, 1.1];
+    var DEFAULT_NOTE = 'Blank or non-numeric inputs show "—" for every result instead of silently breaking the formula.';
+
+    function setBlank(msg) {
+      rvOut.textContent = '—'; bvOut.textContent = '—'; jOut.textContent = '—'; jfOut.textContent = '—';
+      note.textContent = msg;
+    }
+
+    function recompute() {
+      var vals = inputs.map(function(el){ return parseFloat(el.value); });
+      if (!vals.every(isFinite)) {
+        setBlank('Enter a number in every field — blank or non-numeric input can\'t be computed.');
+        return;
+      }
+      var r = vals.map(function(v){ return v * 1e-4; });
+      var rv = 0;
+      for (var i = 0; i < r.length; i++) rv += r[i] * r[i];
+      var bv = 0;
+      for (var i = 1; i < r.length; i++) bv += Math.abs(r[i]) * Math.abs(r[i - 1]);
+      bv *= PI_OVER_2;
+      var j = Math.max(rv - bv, 0);
+
+      rvOut.textContent = rv.toFixed(8);
+      bvOut.textContent = bv.toFixed(8);
+      jOut.textContent = j.toFixed(8);
+      if (rv <= 1e-18) {
+        jfOut.textContent = '—';
+        note.textContent = 'All returns are ~0 — there is no variance to split into RV and BV.';
+      } else {
+        jfOut.textContent = ((j / rv) * 100).toFixed(1) + '%';
+        note.textContent = DEFAULT_NOTE;
+      }
+    }
+
+    inputs.forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      inputs.forEach(function(el, i){ el.value = DEFAULTS[i]; });
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

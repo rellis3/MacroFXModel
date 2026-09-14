@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Granger Causality &amp; Lead-Lag Analysis — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<style>
+  .tl-table-wrap{overflow-x:auto;margin:14px 0}
+  table.tl-tbl{width:100%;border-collapse:collapse;font-size:13px;background:var(--s1);border:1px solid var(--border);border-radius:var(--r)}
+  table.tl-tbl th,table.tl-tbl td{padding:9px 12px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
+  table.tl-tbl th{color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:.04em;font-weight:700;background:var(--s2)}
+  table.tl-tbl tr:last-child td{border-bottom:none}
+  table.tl-tbl td{color:var(--text2);font-family:'DM Mono',monospace}
+  table.tl-tbl td:first-child{color:var(--text);font-weight:600;white-space:nowrap;font-family:'DM Sans',sans-serif}
+  table.tl-tbl td.tl-num{text-align:right}
+</style>
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Price Discovery &amp; Lead-Lag / Granger Causality &amp; Lead-Lag Analysis</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Price Discovery &amp; Lead-Lag 2 of 3</div>
+  <h1 class="tl-title">Granger Causality &amp; Lead-Lag Analysis</h1>
+  <p class="tl-dek">The Vector Error Correction Model told you, for one already-cointegrated pair, which side does the correcting. That's a narrow question about one specific kind of relationship. This lesson asks something broader and more precisely defined: for any two series at all, does one's past genuinely sharpen a forecast of the other's future — beyond what the target's own history already gives you — and can that claim be pinned down with an exact F-test rather than a hunch about which line moved first on the chart?</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — no Granger-causality F-test or VAR-based causality regression exists anywhere in this repo (grepped <code>js/</code>, <code>DecisionEngine/</code>, every root <code>.py</code> file, and <code>server.js</code>); every hit for "Granger" is Engle-Granger's <em>cointegration</em> test (a different contribution by the same author, already covered in the Cointegration lesson) or an unrelated Granger-Ramanathan regression weighting scheme in <code>js/volHorseRaceEngine.js</code> — see "How practitioners actually use this" for the simpler cross-correlation cousin that genuinely does exist, in several places</span>
+    <span>~18 min read</span>
+    <span>Prereqs: <a href="arima-var.html">ARIMA &amp; Vector Autoregression (VAR)</a>, <a href="cointegration.html">Cointegration &amp; Statistical Arbitrage</a>, <a href="institutional-vecm.html">Vector Error Correction Models</a></span>
+  </div>
+
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="institutional-granger-causality-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>\(X\) <strong>Granger-causes</strong> \(Y\) means one precise, narrow thing: adding \(X\)'s lagged values to a regression that already contains \(Y\)'s own lags significantly improves the forecast of \(Y\). Nothing more, nothing metaphysical — a statistical, incremental-predictive-power claim, not a structural one.</li>
+      <li>The test is a nested-regression F-test: fit a <strong>restricted</strong> model (\(Y_t\) on its own lags only) and an <strong>unrestricted</strong> model (\(Y_t\) on its own lags plus \(X\)'s lags), then test whether the \(X\) coefficients are jointly zero via \(F = \frac{(RSS_r - RSS_u)/q}{RSS_u/(n-k)}\), where \(q\) is the number of dropped \(X\) lags and \(k\) is the unrestricted model's parameter count.</li>
+      <li>Two mandatory pre-checks, both skippable in ways that silently break the test: pick the lag order \(p\) with AIC/BIC <em>before</em> testing (the <a href="model-selection-aic-bic.html">Model Selection: AIC &amp; BIC</a> lesson derives both criteria), and confirm both series are stationary first (test on returns, not price levels — unless the pair is cointegrated, in which case the <a href="institutional-vecm.html">VECM</a> lesson's error-correction framework is the correct home for this question, not a plain differenced VAR).</li>
+      <li>A worked toy example below fits both regressions on 12 observations and gets \(F \approx 38.6\) against \(q=1\), \(n-k=9\) degrees of freedom — comfortably past even the 1% critical value of 10.56, a clean reject-the-null result computed end to end and hand-checkable.</li>
+      <li>Run the test in <strong>both directions</strong>. \(X\) Granger-causing \(Y\) and \(Y\) Granger-causing \(X\) are two separate hypotheses on two separate regressions; both can be significant at once (genuine feedback), one can be, or neither.</li>
+      <li>Cross-correlation of returns at various lags — \(\text{corr}(X_t, Y_{t+k})\) for a range of \(k\) — is the simpler, non-regression cousin of the identical lead-lag question, and unlike Granger causality it does <strong>not</strong> control for \(Y\)'s own persistence. This repo genuinely runs several versions of that simpler tool in production; grep results are in "How practitioners actually use this" below. No Granger F-test exists anywhere in the codebase.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    The <a href="institutional-vecm.html">Vector Error Correction Models</a>
+    lesson answered a narrow, specific question about a narrow, specific
+    situation: given two series already proven cointegrated, which one does
+    most of the work correcting back toward equilibrium when the spread
+    stretches too far? That question only even makes sense for a cointegrated
+    pair — it presupposes a stable long-run relationship exists at all. This
+    lesson asks a different, more general question that applies to
+    <em>any</em> two time series, cointegrated or not, related or not: does
+    one series' recent history genuinely help forecast the other's next move,
+    beyond what the target series' own history already tells you? That is the
+    literal content of Granger causality, and it is the formal machinery
+    behind every "does the yield spread lead FX" or "does this cross lead
+    that one" question this curriculum and this repo's own research code keep
+    raising informally.
+  </p>
+  <p>
+    This ground is not entirely new. The
+    <a href="arima-var.html">ARIMA &amp; Vector Autoregression (VAR)</a>
+    lesson already introduces Granger causality as the natural diagnostic to
+    run on a fitted VAR — it states the restricted-vs-unrestricted F-test in
+    one paragraph, gives the rooster-and-sunrise analogy for why
+    "Granger-causes" isn't real causation, and walks through a narrated (but
+    explicitly <em>not yet fitted</em>) example asking whether a DE–US yield
+    spread leads EUR/USD. That lesson is the right place for VAR itself: how
+    a multi-series regression system is built and estimated, lag by lag. What
+    it deliberately does not do — flagged by its own "no such fit has
+    actually been run" caveat — is write out the F-statistic's exact formula,
+    walk a worked numeric example all the way through, build a live
+    calculator, or work through the pre-checks and pitfalls in depth. That is
+    the entire content of this lesson: the same diagnostic, taken from a
+    one-paragraph mention to a fully worked, testable procedure.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A narrower, more honest way to ask "does X move first?"</h3>
+    <p>
+      Staring at a chart and noticing "the spread always seems to dip a day
+      before FX sells off" is a real observation, but it's an observation
+      about one dataset, filtered through one person's eye for patterns —
+      exactly the kind of thing that's easy to convince yourself of after the
+      fact. Granger's actual proposal, from his 1969 paper, is a specific
+      test that replaces that impression with a number: build the best
+      possible forecast of \(Y\) using only \(Y\)'s own past, then build a
+      second forecast that also gets to see \(X\)'s past, and check —
+      formally, with an F-test — whether the second forecast is
+      <em>significantly</em> better. If \(X\)'s history buys nothing once
+      \(Y\)'s own history is already accounted for, \(X\) doesn't
+      Granger-cause \(Y\), full stop, no matter how compelling a handful of
+      chart-reading instances looked.
+    </p>
+    <p>
+      The name is famously misleading, and Granger himself was careful about
+      this: "Granger-causes" is not a claim that \(X\) makes \(Y\) happen. It
+      is a claim that \(X\)'s history carries genuine, incremental
+      forecasting content for \(Y\) — which a shared, unobserved driver
+      hitting both series on a slightly different clock can produce just as
+      easily as a real causal channel can. Treat every result this lesson's
+      test produces as "X's past has predictive value for Y," never as
+      "X causes Y" — the distinction is not pedantic, it's the entire content
+      of what the test can and can't tell you.
+    </p>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine trying to guess tomorrow's temperature. First you guess using only the last week's temperatures. Then you guess again, but this time you're also allowed to look at the last week's ice cream sales. If peeking at ice cream sales genuinely makes your temperature guess better — not just different, actually more accurate — then ice cream sales "Granger-cause" temperature by this test's narrow definition. Obviously ice cream doesn't make the weather happen; both are driven by the actual sun, which the test never sees directly. That's exactly the trap: the test can only tell you "this extra information helped predict," never "this is the true reason."</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+  <p>
+    This section states Granger causality's precise statistical definition,
+    the two nested regressions the test actually compares, the F-statistic
+    formula in full, and the two pre-checks (lag order, stationarity) that
+    have to happen before any of it is meaningful.
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(Y_t, X_t\)</td><td>The two series under test — is \(X\)'s past useful for forecasting \(Y\)? (The reverse direction, does \(Y\)'s past forecast \(X\), is a separate test with the roles swapped — see the bidirectional discussion below.)</td></tr>
+    <tr><td>\(p\)</td><td>The lag order — how many past periods of each series enter the regression. Chosen by AIC/BIC <em>before</em> the causality test, not tuned to make the test come out significant.</td></tr>
+    <tr><td>\(a_i, b_j\)</td><td>Coefficients on \(Y\)'s own lags and on \(X\)'s lags, respectively, in the unrestricted model.</td></tr>
+    <tr><td>\(RSS_r, RSS_u\)</td><td>Residual sum of squares from the restricted (no \(X\) lags) and unrestricted (with \(X\) lags) regressions.</td></tr>
+    <tr><td>\(q\)</td><td>The number of restrictions being tested — equal to \(p\), the number of \(X\)-lag coefficients set to zero in the restricted model.</td></tr>
+    <tr><td>\(k\)</td><td>The total number of estimated parameters in the unrestricted model (intercept plus all \(Y\)-lag and \(X\)-lag coefficients).</td></tr>
+    <tr><td>\(n\)</td><td>The number of observations actually used in the regression (the full sample minus \(p\) lost to lagging).</td></tr>
+    <tr><td>\(F\)</td><td>The test statistic, compared against the \(F(q, n-k)\) distribution's critical value.</td></tr>
+  </table></div>
+
+  <p><strong>1. The precise definition.</strong> This is a statistical
+  definition, not a philosophical one, and it is defined entirely in terms of
+  one specific regression comparison:</p>
+  <div class="tl-solid blue">
+    <strong>\(X\) Granger-causes \(Y\)</strong> if, and only if, including
+    past values of \(X\) in a regression that already contains past values of
+    \(Y\) produces a statistically significant improvement in forecasting
+    \(Y\)'s current value — measured by whether the added \(X\)-lag
+    coefficients are jointly, significantly different from zero. That's the
+    whole definition. It says nothing about mechanism, nothing about which
+    series "really" drives the other in some deeper sense, and nothing that
+    survives outside this specific VAR/regression framework.
+  </div>
+
+  <p><strong>2. The two nested regressions.</strong> Everything rests on
+  comparing a restricted model against an unrestricted one that nests it —
+  the unrestricted model reduces exactly to the restricted model when every
+  \(b_j\) is set to zero:</p>
+  <div class="tl-math">\[ \textbf{Restricted:}\quad Y_t = c + \sum_{i=1}^{p} a_i\, Y_{t-i} + e_t \]</div>
+  <div class="tl-math">\[ \textbf{Unrestricted:}\quad Y_t = c + \sum_{i=1}^{p} a_i\, Y_{t-i} + \sum_{j=1}^{p} b_j\, X_{t-j} + \epsilon_t \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Σ a_i Y_{t-i}</code><span>Y's own momentum — present in both models, untouched by the test</span></div>
+    <div class="tl-eq-chip c4"><code>Σ b_j X_{t-j}</code><span>the new content — dropped entirely in the restricted model, the only thing the test asks about</span></div>
+    <div class="tl-eq-chip c2"><code>e_t, ε_t</code><span>each model's own residual — its own RSS is what the test compares</span></div>
+  </div>
+  <p>
+    The null hypothesis is exactly \(H_0: b_1 = b_2 = \dots = b_p = 0\) — every
+    added \(X\)-lag coefficient is zero, meaning \(X\)'s history adds nothing.
+    Fit both regressions by ordinary least squares on the same sample (this
+    lesson takes OLS fitting itself as given, exactly as the Cointegration
+    and VECM lessons treat their own regression coefficients as already
+    estimated inputs), record each one's residual sum of squares, and compare.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Two students take the same test to predict tomorrow's price. Student A (the restricted model) only gets to study the price's own past. Student B (the unrestricted model) gets to study the price's own past <em>and</em> another series' past. If Student B's answer sheet has way less total error than Student A's — more than could plausibly happen just from Student B having extra, useless scratch paper to fidget with — then that other series genuinely helped, and it Granger-causes the price. If Student B does barely any better despite the extra material, the other series wasn't carrying real information.</p>
+  </div>
+
+  <p><strong>3. The F-statistic, in full.</strong> A larger unrestricted model
+  can never have higher RSS than its nested restricted version — adding
+  regressors can only help or do nothing, since OLS could always set every
+  \(b_j = 0\) and recover the restricted fit exactly if that were truly
+  optimal. The F-test asks whether the RSS drop is bigger than pure chance
+  would produce from adding \(q\) meaningless extra regressors:</p>
+  <div class="tl-math">\[ F = \frac{\left(RSS_r - RSS_u\right)/q}{RSS_u/(n-k)} \]</div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue"><div class="tl-fp-term">(RSS_r − RSS_u)/q</div><div class="tl-fp-name">Numerator</div><div class="tl-fp-desc">The average RSS improvement <em>per restriction removed</em> — how much better the fit gets, per added X-lag coefficient</div></div>
+    <div class="tl-fp green"><div class="tl-fp-term">RSS_u/(n−k)</div><div class="tl-fp-name">Denominator</div><div class="tl-fp-desc">The unrestricted model's own residual variance estimate — the yardstick "how much RSS improvement is unremarkable, just from noise"</div></div>
+    <div class="tl-fp amber"><div class="tl-fp-term">F ~ F(q, n−k)</div><div class="tl-fp-name">Reference distribution</div><div class="tl-fp-desc">Under H₀ (all bⱼ = 0), F follows an F-distribution with q and n−k degrees of freedom</div></div>
+  </div>
+  <p>
+    A large \(F\) means the \(X\) lags bought a fit improvement well beyond
+    what \(q\) extra, genuinely useless regressors would be expected to buy
+    by chance alone — reject \(H_0\), and call the result "\(X\)
+    Granger-causes \(Y\)" at whatever significance level the chosen critical
+    value corresponds to. A small \(F\) means the improvement is
+    indistinguishable from noise — fail to reject, and there is no evidence
+    \(X\)'s history adds anything once \(Y\)'s own history is already in the
+    model.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge amber">📏</div>
+    <div class="tl-box-label">Pre-check 1 — lag order, chosen before testing</div>
+    <h3>Pick \(p\) with AIC/BIC first, then run the test at that \(p\)</h3>
+    <p>
+      Both regressions above share the same lag order \(p\) — that's what
+      makes them nested and the F-test valid. \(p\) itself is not a free
+      knob to tune until the test comes out significant; it has to be chosen
+      by an independent, principled criterion first, exactly the way the
+      <a href="model-selection-aic-bic.html">Model Selection: AIC &amp;
+      BIC</a> lesson derives \(AIC = 2k - 2\ln\hat L\) and
+      \(BIC = k\ln(n) - 2\ln\hat L\) (equivalently, for an OLS regression's
+      Gaussian likelihood, \(-2\ln\hat L\) reduces to \(n\ln(RSS/n)\) plus a
+      constant that cancels when comparing models on the same data) for
+      penalizing added parameters. The standard practice: fit the
+      (restricted, \(Y\)-only) VAR-style
+      autoregression at several candidate lag orders \(p = 1, 2, \dots,
+      p_{\max}\), pick whichever minimizes AIC or BIC, and use that same
+      \(p\) for both the restricted and unrestricted Granger regressions.
+      Searching over many lag orders and reporting only the one that produces
+      the smallest p-value for the causality test itself — rather than the
+      one AIC/BIC actually selected — is a data-mining shortcut that inflates
+      the false-positive rate, precisely the multiple-testing problem this
+      curriculum's own <a href="multiple-testing.html">Multiple Testing</a>
+      lesson exists to catch elsewhere.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge amber">📐</div>
+    <div class="tl-box-label">Pre-check 2 — stationarity</div>
+    <h3>Test on stationary series, or use a VECM instead</h3>
+    <p>
+      The F-test's reference distribution assumes standard regression
+      conditions that a non-stationary, trending series violates outright —
+      fitting this test directly on raw price <em>levels</em> risks exactly
+      the classic Granger &amp; Newbold (1974) spurious-regression failure
+      mode already flagged in the ARIMA &amp; VAR lesson's own pitfalls:
+      impressive-looking significance that reflects two series both trending
+      over time, not any genuine predictive link. The fix in the ordinary
+      case is the same fix ARIMA's own "I" step and VAR's pre-check both
+      use: difference the series first (test on <strong>returns</strong>,
+      not price levels) so both inputs are stationary before any lag
+      structure is fit.
+    </p>
+    <p>
+      There is exactly one legitimate exception, and it needs its own name
+      rather than being silently ignored: if \(Y\) and \(X\) are
+      <strong>cointegrated</strong>, naively differencing both before testing
+      throws away the long-run equilibrium relationship between them — the
+      same warning the ARIMA &amp; VAR lesson gives about plain differenced
+      VARs on cointegrated pairs. The correct home for a Granger-style test
+      on a genuinely cointegrated pair is inside the
+      <a href="institutional-vecm.html">Vector Error Correction Model</a>
+      framework: test the short-run lagged-difference terms
+      <em>and</em> the error-correction coefficient (\(\alpha_Y\) or
+      \(\alpha_X\) in that lesson's own notation) jointly, rather than
+      testing a plain differenced VAR that has quietly deleted the one term
+      — \(Z_{t-1}\) — carrying the pair's actual long-run linkage. This
+      lesson does not re-derive that VECM-based joint test in full; it flags
+      the exception and points to the VECM lesson's own error-correction
+      term as exactly the piece a plain differenced-VAR Granger test would
+      otherwise be missing.
+    </p>
+  </div>
+
+  <p><strong>4. Bidirectional causality and feedback.</strong> Nothing about
+  the setup above is symmetric in \(X\) and \(Y\) — the test above only asks
+  whether \(X\)'s past helps forecast \(Y\). The mirror-image test, with
+  \(Y\)'s lags added to a regression of \(X\) on \(X\)'s own lags, is a
+  completely separate hypothesis on a separate pair of regressions:</p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">➡️</div>
+      <h4>One-directional</h4>
+      <p>
+        \(X\) Granger-causes \(Y\) (test 1 significant), but \(Y\) does not
+        Granger-cause \(X\) (test 2 not significant). \(X\) behaves like a
+        genuine leading indicator for \(Y\) within this framework, with no
+        evidence of the reverse.
+      </p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🔁</div>
+      <h4>Bidirectional — a feedback loop</h4>
+      <p>
+        Both tests significant: \(X\)'s past helps forecast \(Y\), and
+        \(Y\)'s past helps forecast \(X\). Neither series is a pure leader —
+        the two feed into each other, and treating either one as "the" driver
+        misreads the fitted result.
+      </p>
+    </div>
+  </div>
+  <p>
+    A feedback loop is not a contradiction or a sign one of the two tests is
+    broken — it is a perfectly coherent, common empirical outcome, especially
+    for two closely related instruments (a currency pair and a highly
+    correlated cross, or spot and a related futures contract) where genuine
+    information plausibly flows both ways at different, overlapping
+    timescales. Running only one direction and silently assuming "no evidence
+    \(X\) causes \(Y\)" also rules out \(Y\) causing \(X\) is a common and
+    entirely avoidable mistake — the two tests cost twice the regressions and
+    answer a question the single-direction result cannot.
+  </p>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>A 12-observation Granger causality F-test, computed end to end</h3>
+    <p>
+      A small toy dataset: two return series, \(X_t\) and \(Y_t\), for
+      \(t = 0, \dots, 13\) (both already stationary — these are one-period
+      returns, not price levels, satisfying the stationarity pre-check
+      above). Values are illustrative, chosen to make the arithmetic clean
+      and hand-checkable, not a fitted result on real market data.
+    </p>
+    <div class="tl-table-wrap"><table class="tl-tbl">
+      <tr><th>t</th><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th><th>10</th><th>11</th><th>12</th><th>13</th></tr>
+      <tr><td>X_t (%)</td><td class="tl-num">0.10</td><td class="tl-num">0.31</td><td class="tl-num">0.02</td><td class="tl-num">−0.21</td><td class="tl-num">−0.45</td><td class="tl-num">−0.12</td><td class="tl-num">−0.09</td><td class="tl-num">−0.45</td><td class="tl-num">−0.45</td><td class="tl-num">0.50</td><td class="tl-num">0.15</td><td class="tl-num">−0.27</td><td class="tl-num">−0.07</td><td class="tl-num">0.47</td></tr>
+      <tr><td>Y_t (%)</td><td class="tl-num">0.20</td><td class="tl-num">−0.09</td><td class="tl-num">0.15</td><td class="tl-num">−0.06</td><td class="tl-num">−0.15</td><td class="tl-num">−0.27</td><td class="tl-num">−0.18</td><td class="tl-num">0.03</td><td class="tl-num">−0.15</td><td class="tl-num">−0.28</td><td class="tl-num">0.25</td><td class="tl-num">0.31</td><td class="tl-num">−0.21</td><td class="tl-num">−0.08</td></tr>
+    </table></div>
+    <p>
+      Testing whether \(X\) Granger-causes \(Y\) at lag \(p=1\), using periods
+      \(t=2\) through \(13\) as the regression sample (\(n=12\), holding
+      \(t=0\) and \(t=1\) out as initialization so every regressor is
+      actually observed). Both models are already fit via OLS (exactly as
+      the VECM lesson's worked example treats its own fitted coefficients as
+      given inputs — the fitting procedure itself isn't re-derived here):
+    </p>
+    <div class="tl-table-wrap"><table class="tl-tbl">
+      <tr><th>Model</th><th>Fitted equation</th><th>RSS</th></tr>
+      <tr><td>Restricted</td><td>\(\hat Y_t = -0.0495 + 0.0750\,Y_{t-1}\)</td><td class="tl-num">RSS_r = 0.4260</td></tr>
+      <tr><td>Unrestricted</td><td>\(\hat Y_t = 0.0113 + 0.1766\,Y_{t-1} + 0.5872\,X_{t-1}\)</td><td class="tl-num">RSS_u = 0.0806</td></tr>
+    </table></div>
+    <p>
+      Adding \(X_{t-1}\) drops the RSS from 0.4260 to 0.0806 — a large
+      apparent improvement, but "large" only means something once it's
+      weighed against how much RSS a single extra, genuinely useless
+      regressor would be expected to shave off by chance. That's exactly what
+      the F-statistic weighs:
+    </p>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c1"><code>q = 1</code><span>one restriction dropped — the single X-lag coefficient set to zero</span></div>
+      <div class="tl-eq-chip c2"><code>k = 3</code><span>unrestricted model's parameters: intercept, Y-lag, X-lag</span></div>
+      <div class="tl-eq-chip c3"><code>n = 12</code><span>observations in the regression sample</span></div>
+      <div class="tl-eq-chip c4"><code>n − k = 9</code><span>denominator degrees of freedom</span></div>
+    </div>
+    <div class="tl-math">\[ F = \frac{(0.4260 - 0.0806)/1}{0.0806/9} = \frac{0.3454}{0.008956} \approx 38.57 \]</div>
+    <p>
+      Compared against the standard \(F(1,9)\) critical values — 5.12 at the
+      5% level, 10.56 at the 1% level — \(F \approx 38.57\) clears both by a
+      wide margin. In this toy sample, \(X\) Granger-causes \(Y\) at lag 1,
+      well past the 1% significance level. Nothing here claims this specific
+      dataset reflects any real traded instrument; the arithmetic is exact
+      and reproducible, the series are illustrative.
+    </p>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>The Granger F-test calculator</h3>
+    <p>
+      Starts on the worked example's own numbers. Enter any \(RSS_r\),
+      \(RSS_u\), \(q\), \(n\), and \(k\) and the F-statistic recomputes
+      live, alongside a significance read against a small hardcoded table of
+      standard F critical values. <strong>Read the honesty note below the
+      readout</strong> — this lookup is deliberately compact, not a full
+      F-distribution calculator.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>RSS restricted (RSS_r)</span></div>
+        <input type="number" id="gc-calc-RSSr" class="tl-scratch-input" value="0.4260" step="0.001" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>RSS unrestricted (RSS_u)</span></div>
+        <input type="number" id="gc-calc-RSSu" class="tl-scratch-input" value="0.0806" step="0.001" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Restrictions dropped (q)</span></div>
+        <input type="number" id="gc-calc-q" class="tl-scratch-input" value="1" step="1" min="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Observations (n)</span></div>
+        <input type="number" id="gc-calc-n" class="tl-scratch-input" value="12" step="1" min="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Unrestricted params (k)</span></div>
+        <input type="number" id="gc-calc-k" class="tl-scratch-input" value="3" step="1" min="1">
+      </div>
+    </div>
+    <div class="tl-btnrow" style="margin-top:14px">
+      <button type="button" class="tl-btn active" id="gc-calc-alpha05" data-alpha="0.05">α = 0.05</button>
+      <button type="button" class="tl-btn" id="gc-calc-alpha01" data-alpha="0.01">α = 0.01</button>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      df₁ = q = <b id="gc-calc-df1">1</b>&emsp;df₂ = n−k = <b id="gc-calc-df2">9</b>&emsp;F = <b id="gc-calc-F">38.57</b>
+    </div>
+    <div class="tl-readout">
+      <span id="gc-calc-verdict">Tabulated F(1,9) critical value at α=0.05 ≈ <b>5.12</b> — 38.57 &gt; 5.12, so <b>reject H₀</b>: X Granger-causes Y at this significance level.</span>
+    </div>
+    <div class="tl-hint" id="gc-calc-hint" style="margin-top:8px">Honesty note: this calculator hardcodes standard F critical values only for q = 1–5 and a fixed grid of denominator degrees of freedom (5, 6, 7, 8, 9, 10, 12, 15, 20, 25, 30, 40, 60, 120). A df₂ that falls between two tabulated values is matched to the <em>nearest</em> tabulated one, not interpolated — the displayed critical value is an approximation, not an exact lookup, and gets less precise the further your df₂ sits from the table's grid points. For q &gt; 5, exact p-values, or serious use, compute the F-statistic here and check significance with real statistical software.</div>
+    <button type="button" id="gc-calc-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Cross-correlation of returns at various lags — the simpler, non-regression cousin</div>
+    <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart of sample cross-correlation between X and Y returns at lags from minus five to plus five days. Bars near zero at negative lags, rising to a peak around lag plus two, then falling back toward zero at larger positive lags, illustrating X leading Y by about two periods.">
+      <line x1="50" y1="220" x2="600" y2="220" style="stroke:var(--border)"/>
+      <line x1="325" y1="20" x2="325" y2="220" style="stroke:var(--border2);stroke-dasharray:2,3"/>
+      <text x="325" y="235" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">lag 0</text>
+      <text x="60" y="235" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">−5</text>
+      <text x="590" y="235" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">+5</text>
+      <text x="580" y="18" text-anchor="end" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">X leads Y →</text>
+      <!-- bars: lag -5..+5, heights illustrative, peak at lag +2 -->
+      <g fill="var(--blue)">
+        <rect x="55" y="214" width="34" height="6"/>
+        <rect x="100" y="211" width="34" height="9"/>
+        <rect x="145" y="205" width="34" height="15"/>
+        <rect x="190" y="200" width="34" height="20"/>
+        <rect x="235" y="195" width="34" height="25"/>
+        <rect x="280" y="188" width="34" height="32"/>
+      </g>
+      <g fill="var(--green)">
+        <rect x="325" y="160" width="34" height="60"/>
+        <rect x="370" y="90" width="34" height="130"/>
+        <rect x="415" y="60" width="34" height="160"/>
+        <rect x="460" y="120" width="34" height="100"/>
+        <rect x="505" y="175" width="34" height="45"/>
+        <rect x="550" y="205" width="34" height="15"/>
+      </g>
+      <text x="432" y="50" text-anchor="middle" fill="var(--green)" font-size="11" font-family="'DM Mono',monospace">peak ≈ lag +2</text>
+    </svg>
+    <div class="tl-chart-caption">
+      Illustrative bar heights, not a fitted result. A cross-correlation
+      table like this is the simpler cousin of Granger causality: it asks
+      "does \(X_t\) correlate with \(Y_{t+k}\) for some lag \(k\)?" without
+      fitting any regression or controlling for \(Y\)'s own autocorrelation
+      — cheap and transparent, but blind to the possibility that \(Y\)'s own
+      momentum alone explains the apparent lead, which the Granger F-test
+      controls for directly by including \(Y\)'s own lags in both models.
+    </div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    <strong>The FX use case: does one correlated series lead another?</strong>
+    The natural application is exactly the lead-lag question this whole
+    curriculum category is organized around: pick two related instruments — a
+    currency pair and a highly correlated cross, spot and a related
+    interest-rate future, or the yield-spread/EUR-USD pairing the ARIMA &amp;
+    VAR lesson raises but leaves untested — difference both to returns,
+    select a lag order by AIC/BIC, and run the Granger F-test in both
+    directions. A clean asymmetric result (one direction significant, the
+    reverse not) is directly actionable: it says the leading series' recent
+    moves carry genuine forecasting content for the lagging series, at a
+    specific, testable lag — not just "seems to move first" from eyeballing a
+    chart.
+  </p>
+  <div class="tl-box repo">
+    <div class="tl-icon-badge green">🗂️</div>
+    <div class="tl-box-label">What's actually verified against this repo's code</div>
+    <h3>No Granger regression exists — but the simpler cross-correlation cousin genuinely does, in several independent places</h3>
+    <p>
+      A direct grep for <code>granger</code>/<code>Granger</code> across
+      <code>js/</code>, <code>DecisionEngine/</code>, every root
+      <code>.py</code> file, and <code>server.js</code> turns up real hits —
+      but every one of them is either Engle-Granger's <em>cointegration</em>
+      test (<code>portfolioBacktest/portfolio_backtest.py</code>,
+      <code>js/hedgeSignalV2Engine.js</code>,
+      <code>js/goldMinerArbEngine.js</code> — a different Granger
+      contribution entirely, covered in the Cointegration lesson) or an
+      unrelated Granger-Ramanathan regression-weighting scheme in
+      <code>js/volHorseRaceEngine.js</code>. Nothing in this repo fits a
+      restricted/unrestricted VAR pair or computes the F-statistic this
+      lesson derives.
+    </p>
+    <p>
+      What genuinely does exist, in production, is this lesson's "simpler
+      cousin" — plain cross-correlation of one series against another at a
+      range of lags, with no regression underneath it at all.
+      <code>js/nasdaqResearch.js</code>'s <code>leadLagCorrelation(driverSeries,
+      targetSeries, opts)</code> computes Pearson or Spearman correlation
+      between the driver at time \(t\) and the target at time \(t+\text{lag}\)
+      across a configurable lag range, with a t-stat from
+      <code>corrTStat</code> — its own comment states the convention this
+      lesson's chart above reuses: "lag &gt; 0 means the driver LEADS the
+      target." <code>js/creditLeadLagEngine.js</code>'s
+      <code>leadLagTable(driver, target, maxLag)</code> does the identical
+      Pearson-correlation-at-each-lag computation for the credit-spread/NQ
+      realized-vol relationship. <code>js/yieldCouplingCore.js</code>'s
+      <code>computeDailyLeadLag(fx, spread, opts)</code> runs the same idea
+      on daily DE–US yield-spread and FX returns, explicitly to test
+      "at what lag does the spread lead price." None of these three tools
+      controls for the target series' own autocorrelation the way the
+      Granger F-test's restricted model does — they answer the simpler,
+      cheaper question this lesson's cross-correlation chart illustrates, not
+      the regression-based one. Separately, <code>js/compass.js</code>'s
+      <code>compositeSpreadZSeries</code> feeds a rolling-regression
+      residual (price regressed on a composite yield-spread z-score) that its
+      own comment calls "the real lead-lag metric" — a genuine regression,
+      but a single-equation divergence residual, not a restricted-vs-
+      unrestricted Granger comparison either.
+    </p>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>A correlated cross and a rate-futures contract: which one actually leads?</h3>
+    <p>
+      Suppose a desk trades two highly correlated pairs — say a commodity
+      currency against USD, and a second commodity currency against USD, both
+      exposed to the same broad risk-sentiment factor — and wants to know
+      whether one systematically leads the other by a lag short enough to
+      trade. The naive approach is exactly the cross-correlation tools
+      grepped above: compute \(\text{corr}(X_t, Y_{t+k})\) for a range of
+      \(k\) and look for a peak away from zero. That's a real, useful first
+      pass — and it's what this repo's own lead-lag tooling already runs. But
+      a peak at lag \(k=2\) in a raw cross-correlation could just as easily
+      reflect \(Y\)'s own momentum (yesterday's move predicting today's, with
+      no help from \(X\) at all) coinciding with \(X\) and \(Y\) simply being
+      correlated in level. The Granger F-test is the version of the same
+      question that actually controls for that: it only credits \(X\) with
+      "leading" \(Y\) if \(X\)'s lags improve the forecast <em>after</em>
+      \(Y\)'s own momentum is already in the model. A desk that found a
+      cross-correlation peak worth investigating further would run the
+      Granger F-test next, precisely to separate "X's own lagged moves add
+      real information" from "Y is just autocorrelated, and X happens to be
+      correlated with Y in general."
+    </p>
+    <p>
+      The same logic applies directly to spot versus a related interest-rate
+      future: a futures contract pricing in a rate move ahead of spot FX
+      catching up is a textbook lead-lag candidate, and exactly the kind of
+      relationship where distinguishing "the future genuinely leads" from
+      "both instruments share the same slow-moving driver" is the entire
+      point of running the regression-based test rather than stopping at a
+      correlation peak.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where Granger causality testing quietly goes wrong</h3>
+    <p>
+      <strong>Spurious Granger causality from non-stationarity.</strong>
+      Skipping the stationarity pre-check and fitting on trending price
+      levels is the single most common way this test produces a
+      confident-looking but meaningless result — the classic Granger &amp;
+      Newbold (1974) spurious-regression failure mode, restated here in its
+      most direct form: two independently trending series can produce a
+      textbook-looking "significant" F-statistic with zero genuine predictive
+      link. Test on returns.
+    </p>
+    <p>
+      <strong>A common confounding factor.</strong> The test cannot
+      distinguish "X's history genuinely helps forecast Y" from "an
+      unobserved third factor drives both X and Y, hitting X's data feed
+      slightly earlier." Two FX pairs both moved by the same broad
+      risk-sentiment shock, where one pair's price feed simply updates or
+      gets quoted a few seconds before the other's, can produce a clean,
+      significant one-directional Granger result with no genuine causal or
+      even informational link between the two series themselves — the shared
+      shock, not either series, is doing all the work.
+    </p>
+    <p>
+      <strong>Measurement-timing and synchronicity effects.</strong> A subtler
+      version of the same trap: two instruments that trade in different
+      time zones, or close at different times of day, can show an apparent
+      "lead-lag" relationship that is really just an artifact of when each
+      series' price was last updated relative to when new information hit
+      the market — not one series genuinely anticipating the other. An asset
+      whose daily close is measured several hours before a second asset's
+      close will mechanically look like it "leads," purely because its
+      recorded price is older and hasn't yet absorbed news that later moves
+      the second asset. This is a data-construction artifact, not a
+      predictive relationship, and it does not show up as an obvious error in
+      the F-statistic itself — it has to be ruled out by checking the actual
+      timestamps and market hours behind each series before trusting a
+      lead-lag finding.
+    </p>
+    <p>
+      <strong>Low power with short samples or too many lags.</strong> Every
+      lag added to \(p\) costs a parameter in \(k\), which shrinks \(n-k\)
+      and eats into the denominator degrees of freedom driving the test's
+      power. On the kind of sample sizes common in daily FX/macro research —
+      a few hundred to a few thousand observations — a lag order chosen too
+      generously, or a sample cut too short, can fail to detect a real,
+      economically meaningful lead-lag relationship simply because there
+      isn't enough data left to estimate it precisely. This cuts the opposite
+      direction from the spurious-significance pitfalls above: it's a risk of
+      false negatives, not false positives, and the AIC/BIC lag-selection
+      pre-check exists partly to avoid it by not fitting more lags than the
+      sample can actually support.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Granger causality has one precise, statistical definition.</strong> X Granger-causes Y if adding X's lags to a regression already containing Y's own lags significantly improves the forecast of Y — an incremental-predictive-power claim, nothing more.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The test is a nested F-test.</strong> \(F = \frac{(RSS_r-RSS_u)/q}{RSS_u/(n-k)}\), comparing a restricted (Y-lags only) and unrestricted (Y-lags plus X-lags) regression, referenced against \(F(q, n-k)\).</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Two pre-checks are mandatory, not optional.</strong> Choose the lag order with AIC/BIC before testing, and confirm stationarity (test returns, not levels) — or route a genuinely cointegrated pair through the VECM's error-correction framework instead of a plain differenced VAR.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Test both directions.</strong> X-causes-Y and Y-causes-X are separate hypotheses on separate regressions; both, either, or neither can be significant, and a bidirectional result (a feedback loop) is a coherent, common finding, not a broken test.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>"Granger-causes" is not "causes."</strong> It is a statistical, predictive claim vulnerable to confounding, non-stationarity, and measurement-timing artifacts — never read a significant result as proof of a real mechanistic link.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This repo runs the simpler cousin, not the regression test itself.</strong> No Granger F-test exists anywhere in the codebase; genuine cross-correlation-at-various-lags tools do (<code>js/nasdaqResearch.js</code>, <code>js/creditLeadLagEngine.js</code>, <code>js/yieldCouplingCore.js</code>), and they don't control for the target's own autocorrelation the way this test does.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. State the precise, statistical definition of "X Granger-causes Y" — not the informal or philosophical version.</summary>
+    <div class="tl-answer">
+      X Granger-causes Y if including past values of X in a regression that
+      already contains Y's own past values produces a statistically
+      significant improvement in forecasting Y — formally, if the
+      coefficients on X's lagged terms are jointly, significantly different
+      from zero in the unrestricted model versus the restricted (Y-lags-only)
+      model. It is a claim about incremental predictive power within this
+      specific regression framework, not a claim about true, structural, or
+      mechanistic causation.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Write the restricted and unrestricted regressions the Granger F-test compares, and identify q and k in terms of the lag order p.</summary>
+    <div class="tl-answer">
+      Restricted: \(Y_t = c + \sum_{i=1}^{p} a_i Y_{t-i} + e_t\).
+      Unrestricted: \(Y_t = c + \sum_{i=1}^{p} a_i Y_{t-i} + \sum_{j=1}^{p} b_j X_{t-j} + \epsilon_t\).
+      \(q = p\) — the number of X-lag coefficients set to zero in the
+      restricted model (the number of restrictions under \(H_0\)).
+      \(k = 2p+1\) — the unrestricted model's total parameter count: one
+      intercept, \(p\) Y-lag coefficients, and \(p\) X-lag coefficients.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Given RSS_r = 0.60, RSS_u = 0.20, q = 2, n = 30, k = 5, compute the F-statistic.</summary>
+    <div class="tl-answer">
+      \(F = \frac{(0.60 - 0.20)/2}{0.20/(30-5)} = \frac{0.20}{0.20/25} = \frac{0.20}{0.008} = 25\).
+      With df₁ = 2 and df₂ = 25, this F is far above any standard critical
+      value at conventional significance levels (roughly 3.4 at the 5% level
+      for these degrees of freedom) — reject \(H_0\); X Granger-causes Y in
+      this sample.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Why must the lag order p be chosen with AIC/BIC before running the Granger test, rather than searched over until the test itself looks most significant?</summary>
+    <div class="tl-answer">
+      The restricted and unrestricted models must share the same, fixed lag
+      order for the F-test's nested-model comparison and its reference
+      \(F(q, n-k)\) distribution to be valid. Choosing p by AIC/BIC first
+      (an independent criterion balancing fit against parameter count) fixes
+      that lag order on principled grounds before the causality question is
+      even asked. Searching over many lag orders and reporting whichever one
+      produces the smallest causality p-value, instead of the one AIC/BIC
+      actually selected, is a multiple-testing shortcut that inflates the
+      false-positive rate — the test's stated significance level no longer
+      means what it claims to mean once the lag order itself was chosen to
+      maximize significance.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Two series are non-stationary but genuinely cointegrated. What goes wrong if you difference both and run a plain Granger F-test, and what should be done instead?</summary>
+    <div class="tl-answer">
+      Differencing a cointegrated pair before testing discards the long-run
+      equilibrium relationship between them — the same information a plain
+      differenced VAR loses, per the ARIMA &amp; VAR lesson's own pitfall.
+      The correct approach is to test within a Vector Error Correction Model
+      framework instead: include the error-correction term (last period's
+      cointegrating residual, \(Z_{t-1}\) in the VECM lesson's own notation)
+      alongside the short-run lagged-difference terms, and test the X-lag
+      coefficients and/or the error-correction coefficient jointly, rather
+      than silently dropping the one term that carries the pair's long-run
+      linkage.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. A Granger test finds that a broad risk-sentiment proxy Granger-causes both currency pair A and currency pair B, each with a slightly different lag. Someone concludes "A Granger-causes B." What's the flaw, and what pitfall does this illustrate?</summary>
+    <div class="tl-answer">
+      This is the confounding-factor pitfall: if a shared risk-sentiment
+      shock genuinely drives both A and B, but reaches each pair's price feed
+      with a slightly different delay, a Granger test run only on A and B
+      directly (without controlling for the shared driver) can produce a
+      clean, significant "A Granger-causes B" result even though neither
+      pair has any real informational or causal link to the other — the
+      third factor is doing all the work. The fix is to test for or control
+      for the suspected common driver (here, the risk-sentiment proxy
+      itself) rather than treating a bivariate A-vs-B result as evidence of
+      a direct relationship between the two.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Clive W. J. Granger, <em>"Investigating Causal Relations by Econometric Models and Cross-Spectral Methods,"</em> Econometrica, 1969 — the original paper defining the test this entire lesson is built on, part of the body of work behind Granger's 2003 Nobel Memorial Prize in Economic Sciences.</li>
+    <li>C. W. J. Granger and P. Newbold, <em>"Spurious Regressions in Econometrics,"</em> Journal of Econometrics, 1974 — the classic warning behind this lesson's stationarity pre-check, also cited in the ARIMA &amp; VAR lesson's own pitfalls section.</li>
+    <li>James D. Hamilton, <em>Time Series Analysis</em>, Princeton University Press, 1994 — the standard graduate textbook treatment of Granger causality testing within a VAR framework.</li>
+    <li>Walter Enders, <em>Applied Econometric Time Series</em>, Wiley — a standard applied-econometrics textbook covering the restricted/unrestricted F-test, lag-order selection via information criteria, and Granger causality in practice.</li>
+    <li>Joel Hasbrouck, <em>"One Security, Many Markets: Determining the Contributions to Price Discovery,"</em> Journal of Finance, 1995 — the rigorous multi-venue generalization of "which price leads" covered directly in the sibling Hasbrouck Information Share lesson, next in this category.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="institutional-vecm.html">← Vector Error Correction Models</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="institutional-hasbrouck-information-share.html">Hasbrouck Information Share &amp; Price Discovery →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+<script>
+(function(){
+  var DEFAULTS = { RSSr: 0.4260, RSSu: 0.0806, q: 1, n: 12, k: 3 };
+  var fields = ['RSSr', 'RSSu', 'q', 'n', 'k'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('gc-calc-' + f); });
+  if (!inputs.RSSr) return;
+
+  var df1Out = document.getElementById('gc-calc-df1');
+  var df2Out = document.getElementById('gc-calc-df2');
+  var FOut = document.getElementById('gc-calc-F');
+  var verdictOut = document.getElementById('gc-calc-verdict');
+  var hintOut = document.getElementById('gc-calc-hint');
+  var resetBtn = document.getElementById('gc-calc-reset');
+  var alphaBtns = [document.getElementById('gc-calc-alpha05'), document.getElementById('gc-calc-alpha01')];
+  var alpha = 0.05;
+
+  // Standard F-distribution critical values (public textbook constants).
+  // Keys: alpha -> df1(q) -> df2(n-k) -> critical F.
+  var FCRIT = {
+    0.05: {
+      1: {5:6.61,6:5.99,7:5.59,8:5.32,9:5.12,10:4.96,12:4.75,15:4.54,20:4.35,25:4.24,30:4.17,40:4.08,60:4.00,120:3.92},
+      2: {5:5.79,6:5.14,7:4.74,8:4.46,9:4.26,10:4.10,12:3.89,15:3.68,20:3.49,25:3.39,30:3.32,40:3.23,60:3.15,120:3.07},
+      3: {5:5.41,6:4.76,7:4.35,8:4.07,9:3.86,10:3.71,12:3.49,15:3.29,20:3.10,25:2.99,30:2.92,40:2.84,60:2.76,120:2.68},
+      4: {5:5.19,6:4.53,7:4.12,8:3.84,9:3.63,10:3.48,12:3.26,15:3.06,20:2.87,25:2.76,30:2.69,40:2.61,60:2.53,120:2.45},
+      5: {5:5.05,6:4.39,7:3.97,8:3.69,9:3.48,10:3.33,12:3.11,15:2.90,20:2.71,25:2.60,30:2.53,40:2.45,60:2.37,120:2.29}
+    },
+    0.01: {
+      1: {5:16.26,6:13.75,7:12.25,8:11.26,9:10.56,10:10.04,12:9.33,15:8.68,20:8.10,25:7.77,30:7.56,40:7.31,60:7.08,120:6.85},
+      2: {5:13.27,6:10.92,7:9.55,8:8.65,9:8.02,10:7.56,12:6.93,15:6.36,20:5.85,25:5.57,30:5.39,40:5.18,60:4.98,120:4.79},
+      3: {5:12.06,6:9.78,7:8.45,8:7.59,9:6.99,10:6.55,12:5.95,15:5.42,20:4.94,25:4.68,30:4.51,40:4.31,60:4.13,120:3.95},
+      4: {5:11.39,6:9.15,7:7.85,8:7.01,9:6.42,10:5.99,12:5.41,15:4.89,20:4.43,25:4.18,30:4.02,40:3.83,60:3.65,120:3.48},
+      5: {5:10.97,6:8.75,7:7.46,8:6.63,9:6.06,10:5.64,12:5.06,15:4.56,20:4.10,25:3.85,30:3.70,40:3.51,60:3.34,120:3.17}
+    }
+  };
+  var DF2_GRID = [5,6,7,8,9,10,12,15,20,25,30,40,60,120];
+
+  function nearestDf2(df2){
+    var best = DF2_GRID[0];
+    DF2_GRID.forEach(function(g){ if (Math.abs(g - df2) < Math.abs(best - df2)) best = g; });
+    return best;
+  }
+
+  function recompute(){
+    var RSSr = parseFloat(inputs.RSSr.value);
+    var RSSu = parseFloat(inputs.RSSu.value);
+    var q = parseInt(inputs.q.value, 10);
+    var n = parseInt(inputs.n.value, 10);
+    var k = parseInt(inputs.k.value, 10);
+
+    if (![RSSr, RSSu, q, n, k].every(isFinite) || RSSr < 0 || RSSu < 0 || q < 1 || n < 1 || k < 1) {
+      df1Out.textContent = '—'; df2Out.textContent = '—'; FOut.textContent = '—';
+      verdictOut.textContent = 'Enter non-negative RSS values and positive integers for q, n, k.';
+      return;
+    }
+    var df1 = q, df2 = n - k;
+    df1Out.textContent = df1;
+    if (df2 <= 0) {
+      df2Out.textContent = df2;
+      FOut.textContent = '—';
+      verdictOut.textContent = 'n − k ≤ 0 — not enough observations for this many parameters. Increase n or reduce k/q.';
+      return;
+    }
+    df2Out.textContent = df2;
+    if (RSSu <= 0) {
+      FOut.textContent = '—';
+      verdictOut.textContent = 'RSS_u must be greater than 0 (a zero-residual fit makes the F-statistic undefined here).';
+      return;
+    }
+    var F = ((RSSr - RSSu) / q) / (RSSu / df2);
+    FOut.textContent = F.toFixed(2);
+
+    if (RSSr < RSSu) {
+      verdictOut.innerHTML = 'RSS_r is smaller than RSS_u — that should not happen (dropping regressors can only raise or hold RSS steady). Check the inputs; F = ' + F.toFixed(2) + ' as entered, but this combination is not a valid nested-model comparison.';
+      return;
+    }
+
+    if (df1 > 5) {
+      verdictOut.innerHTML = 'F = ' + F.toFixed(2) + '. This calculator’s hardcoded table only covers q (df₁) 1–5 — for q = ' + df1 + ', check significance with real statistical software or an F-distribution table.';
+      return;
+    }
+    var usedDf2 = nearestDf2(df2);
+    var crit = FCRIT[alpha][df1][usedDf2];
+    var approxNote = usedDf2 !== df2 ? ' (using tabulated df₂=' + usedDf2 + ' as the nearest match to your df₂=' + df2 + ')' : '';
+    var verdict = F > crit ? 'reject H₀: X Granger-causes Y at this significance level' : 'fail to reject H₀ — no significant evidence X Granger-causes Y at this level';
+    verdictOut.innerHTML = 'Tabulated F(' + df1 + ',' + usedDf2 + ') critical value at α=' + alpha + ' ≈ <b>' + crit.toFixed(2) + '</b>' + approxNote + ' — ' + F.toFixed(2) + (F > crit ? ' &gt; ' : ' ≤ ') + crit.toFixed(2) + ', so <b>' + verdict + '</b>.';
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  alphaBtns.forEach(function(b){
+    b.addEventListener('click', function(){
+      alpha = parseFloat(b.getAttribute('data-alpha'));
+      alphaBtns.forEach(function(o){ o.classList.remove('active'); });
+      b.classList.add('active');
+      recompute();
+    });
+  });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    alpha = 0.05;
+    alphaBtns.forEach(function(o){ o.classList.remove('active'); });
+    alphaBtns[0].classList.add('active');
+    recompute();
+  });
+  recompute();
+})();
+</script>
+</body>
+</html>

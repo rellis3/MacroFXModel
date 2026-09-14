@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CoVaR — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+<style>
+  .cv-dot{fill:var(--text2);opacity:.8}
+  .cv-axis{stroke:var(--border2);stroke-width:1}
+  .cv-axistext{font:10px 'DM Mono',monospace;fill:var(--text3)}
+</style>
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">CoVaR: Conditional Value-at-Risk for Systemic Risk — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer full derivations, live math notation, and a 6-question self-test?<a href="institutional-covar.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Risk Attribution &amp; Tail Statistics 1 of 3</div>
+      <h1 class="sl-h1">CoVaR, <em>Whose Risk Is It Anyway?</em></h1>
+      <p class="sl-lede">Plain VaR asks how bad institution j's own losses can get, on its own. CoVaR asks a genuinely different question: how bad can j's losses get, GIVEN that institution i is already in distress — a measure of spillover and co-movement, not standalone risk. And despite the near-identical name, this is not the same thing as CVaR from the Coherent Risk Measures lesson — this deck draws that line carefully, on purpose.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Standalone risk misses the whole point of "systemic"</h2>
+      <p class="sl-sub">Every risk number computed on one institution alone quietly assumes its distress doesn't change anyone else's risk.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The gap standalone VaR leaves open</div>
+        <div class="sl-row">
+          <div class="sl-box">VaR(j) alone</div>
+          <div class="sl-arrow">answers</div>
+          <div class="sl-box green">"How bad can j's OWN losses get?"</div>
+        </div>
+        <div class="sl-row">
+          <div class="sl-box amber">CoVaR(j | i in distress)</div>
+          <div class="sl-arrow">answers</div>
+          <div class="sl-box red">"How bad can j's losses get, GIVEN i is already in trouble?"</div>
+        </div>
+        <div class="sl-verdict">One large institution's distress — or a currency's funding markets seizing up — can make everyone else's losses more likely AND more severe at the same moment. Standalone risk numbers, computed on each institution separately, have no way to see that at all.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">CoVaR: a VaR conditioned on someone else's distress</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The definition</div>
+        <div class="sl-row">
+          <div class="sl-box purple">CoVaR<sub>j|i</sub>(q)</div>
+          <div class="sl-arrow">=</div>
+          <div class="sl-box">the q-quantile of X<sub>j</sub>, GIVEN X<sub>i</sub> = VaR<sub>q</sub>(X<sub>i</sub>)</div>
+        </div>
+        <div class="sl-verdict">Same style of question as plain VaR — a worst-case percentile — but computed on a completely different, conditioned-on world: the one where i is already sitting at its own distress level.</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📉</div><div><h4>i, the conditioning institution</h4><p>Whatever's already in distress — a bank, a currency, a funding-stress indicator.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>j, the target institution</h4><p>Whose risk is being measured — CONDITIONAL on i's state, not on its own.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚠️</div><div><h4>Sign convention flag</h4><p>This lesson works in RETURNS, not losses — "distress" means a large NEGATIVE return, the opposite convention from the loss-based VaR/CVaR lesson.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔁</div><div><h4>Still a full VaR-style quantile</h4><p>Nothing about the "quantile of j" part changed — only the fact that it's now conditioned on a second variable's state.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">ΔCoVaR — the number actually used to rank systemic risk</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The marginal, spillover-only piece</div>
+        <div class="sl-row">
+          <div class="sl-box amber">ΔCoVaR<sub>j|i</sub></div>
+          <div class="sl-arrow">=</div>
+          <div class="sl-box">CoVaR<sub>j|i in distress</sub> − CoVaR<sub>j|i at median</sub></div>
+        </div>
+        <div class="sl-verdict">CoVaR alone still bundles j's own baseline risk together with the extra risk that comes specifically from i's distress. Subtracting the median-state CoVaR nets j's baseline out entirely — what's left is ONLY the spillover attributable to i.</div>
+      </div>
+      <div class="sl-quote">A large, negative ΔCoVaR means i's distress genuinely drags j's tail risk down further. A ΔCoVaR near zero means i's condition barely moves j's risk at all — no matter how risky either institution looks standing alone.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Estimating it: one quantile regression, read off twice</h2>
+      <p class="sl-sub">Full derivation of the pinball loss and why it targets a quantile, not a mean, lives in the sibling Quantile Regression lesson — reused here, not re-derived.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>One fitted line, two readings</div>
+        <div class="sl-row">
+          <div class="sl-box">Fit q<sub>q</sub>(X<sub>j</sub>|X<sub>i</sub>=x) = α<sub>q</sub> + β<sub>q</sub>x</div>
+          <div class="sl-arrow">via quantile regression</div>
+        </div>
+        <div class="sl-row">
+          <div class="sl-box blue">Plug in x = Median(X<sub>i</sub>)</div>
+          <div class="sl-arrow">→</div>
+          <div class="sl-box">CoVaR at baseline</div>
+        </div>
+        <div class="sl-row">
+          <div class="sl-box red">Plug in x = VaR<sub>q</sub>(X<sub>i</sub>)</div>
+          <div class="sl-arrow">→</div>
+          <div class="sl-box">CoVaR at distress</div>
+        </div>
+        <div class="sl-verdict">ΔCoVaR<sub>j|i</sub> = β<sub>q</sub> × [VaR<sub>q</sub>(X<sub>i</sub>) − Median(X<sub>i</sub>)] — the fitted SLOPE times the DISTANCE between i's two states. If β<sub>q</sub>=0, ΔCoVaR is zero no matter how extreme i's distress level is.</div>
+      </div>
+      <p class="sl-p">New here: <a href="quantile-regression-micro.html" style="color:var(--blue)">Quantile Regression</a> derives why minimizing the asymmetric pinball loss recovers a conditional quantile at all — that machinery isn't re-derived in this deck, just reused.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Drag i's distress level, watch CoVaR and ΔCoVaR move — live</h2>
+      <p class="sl-sub">Ten toy (i, j) return points and their fitted 5%-quantile line: q(j|i) = −0.4 + 0.8i. The blue marker (i at its median, 0%) stays fixed; drag i's distress level and the red marker slides along the line.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Scatter plot with i's return on the horizontal axis and j's return on the vertical axis. Ten points slope upward together. A fitted quantile line runs beneath nearly all of them. A blue marker sits fixed on the line where i is at its median. A red marker on the line moves as the distress slider below is dragged, with dashed guide lines showing its coordinates and a bracket showing the vertical gap between the two markers, delta CoVaR.">
+            <line class="cv-axis" x1="60" y1="20" x2="60" y2="260"/>
+            <line class="cv-axis" x1="60" y1="260" x2="600" y2="260"/>
+            <text class="cv-axistext" x="330" y="285" text-anchor="middle">i's return (%)</text>
+            <text class="cv-axistext" x="127.5" y="274" text-anchor="middle">-4</text>
+            <text class="cv-axistext" x="262.5" y="274" text-anchor="middle">-2</text>
+            <text class="cv-axistext" x="397.5" y="274" text-anchor="middle">0</text>
+            <text class="cv-axistext" x="532.5" y="274" text-anchor="middle">2</text>
+            <text class="cv-axistext" x="48" y="234" text-anchor="end">-4</text>
+            <text class="cv-axistext" x="48" y="174" text-anchor="end">-2</text>
+            <text class="cv-axistext" x="48" y="114" text-anchor="end">0</text>
+            <text class="cv-axistext" x="48" y="54" text-anchor="end">2</text>
+
+            <circle class="cv-dot" cx="93.75" cy="239" r="3.5"/>
+            <circle class="cv-dot" cx="195" cy="191" r="3.5"/>
+            <circle class="cv-dot" cx="262.5" cy="155" r="3.5"/>
+            <circle class="cv-dot" cx="330" cy="131" r="3.5"/>
+            <circle class="cv-dot" cx="363.75" cy="119" r="3.5"/>
+            <circle class="cv-dot" cx="411" cy="98" r="3.5"/>
+            <circle class="cv-dot" cx="438" cy="89" r="3.5"/>
+            <circle class="cv-dot" cx="465" cy="80" r="3.5"/>
+            <circle class="cv-dot" cx="519" cy="65" r="3.5"/>
+            <circle class="cv-dot" cx="559.5" cy="47" r="3.5"/>
+
+            <line x1="60" y1="242" x2="600" y2="50" style="stroke:var(--purple);stroke-width:2.5"/>
+            <text x="430" y="68" font-size="11" font-family="'DM Mono',monospace" fill="var(--purple)">q(j|i) = -0.4 + 0.8i</text>
+
+            <line x1="397.5" y1="122" x2="397.5" y2="260" style="stroke:var(--blue);stroke-width:1;stroke-dasharray:3,3"/>
+            <line x1="60" y1="122" x2="397.5" y2="122" style="stroke:var(--blue);stroke-width:1;stroke-dasharray:3,3"/>
+            <circle cx="397.5" cy="122" r="6" fill="var(--blue)"/>
+            <text x="270" y="112" font-size="10" font-family="'DM Mono',monospace" fill="var(--blue)">i at median</text>
+
+            <line id="cv-dot-vline" x1="195" y1="194" x2="195" y2="260" style="stroke:var(--red);stroke-width:1;stroke-dasharray:3,3"/>
+            <line id="cv-dot-hline" x1="60" y1="194" x2="195" y2="194" style="stroke:var(--red);stroke-width:1;stroke-dasharray:3,3"/>
+            <circle id="cv-dot-distress" cx="195" cy="194" r="6.5" fill="var(--red)"/>
+
+            <line id="cv-bracket-v" x1="80" y1="122" x2="80" y2="194" style="stroke:var(--amber);stroke-width:2"/>
+            <line x1="74" y1="122" x2="86" y2="122" style="stroke:var(--amber);stroke-width:2"/>
+            <line id="cv-bracket-bot" x1="74" y1="194" x2="86" y2="194" style="stroke:var(--amber);stroke-width:2"/>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>i's distress level, VaR<sub>q</sub>(X<sub>i</sub>)</span><span class="sl-live" id="cv-slider-val">i = -3.0%</span></div>
+        <input type="range" class="sl-slider" id="cv-slider" min="-5" max="-0.2" step="0.1" value="-3">
+        <div class="sl-note" id="cv-slider-readout">CoVaR at median = -0.40% · CoVaR at distress = -2.80% · ΔCoVaR = -2.40%</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">CoVaR vs. CVaR — one letter apart, completely different questions</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">CVaR — averages a tail</span>
+          <p>E[L | L &gt; VaR(L)] — the average loss WITHIN one variable's own tail. Exactly one random variable, throughout. Covered in the Coherent Risk Measures lesson.</p>
+        </div>
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">CoVaR — conditions on a different variable</span>
+          <p>A VaR-style quantile of j, conditioned on a DIFFERENT variable i's distress. Always at least two distinct random variables — a co-movement statistic, not a within-tail average.</p>
+        </div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">The distinction in one sentence</div>
+        <p>CVaR averages OVER a tail; CoVaR conditions ON a different variable's distress. A number labeled "CVaR" and a number labeled "CoVaR" are not interchangeable, not approximately equal, and not variations of the same question — despite sharing every letter but one.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">From banks to FX: an application by analogy</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🏦</div><div><h4>The original setting: banks</h4><p>Adrian &amp; Brunnermeier's own paper studies banking-sector systemic risk — i and j are financial institutions, and the results are empirically about banks.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">💱</div><div><h4>A natural FX/macro reframing</h4><p>i = USD funding stress, j = an EM currency basket. Same fitted line, same math: q(j|i) = −0.4 + 0.8i still gives CoVaR = −0.4% at normal funding conditions, −2.8% when funding stress hits its own distress level.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔧</div><div><h4>Why it transfers</h4><p>The underlying statistics — a conditional quantile of one return series given another — don't actually require i and j to be banks at all.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚠️</div><div><h4>Say so honestly</h4><p>This is borrowing a technique built for one domain and pointing it at another — not a claim the original paper studied FX, or that this specific spillover size has been empirically estimated anywhere.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Specify α, β, and both states of i — compute live</h2>
+      <p class="sl-sub">Starts on the worked-example numbers. Change any field.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Intercept α<sub>q</sub> (%)</label><input type="number" class="sl-input" id="mc-alpha" value="-0.4" step="0.1"></div>
+          <div class="sl-calc-field"><label>Slope β<sub>q</sub></label><input type="number" class="sl-input" id="mc-beta" value="0.8" step="0.05"></div>
+        </div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>i at median (%)</label><input type="number" class="sl-input" id="mc-median" value="0" step="0.5"></div>
+          <div class="sl-calc-field"><label>i in distress (%)</label><input type="number" class="sl-input" id="mc-distress" value="-3" step="0.5"></div>
+        </div>
+        <div class="sl-calc-row" style="margin-top:10px">
+          <div class="sl-calc-result"><div class="sl-calc-result-label">CoVaR at median</div><div class="sl-calc-result-val" id="mc-covar-median">-0.4000%</div></div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">CoVaR at distress</div><div class="sl-calc-result-val" id="mc-covar-distress">-2.8000%</div></div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">ΔCoVaR</div><div class="sl-calc-result-val" id="mc-dcovar">-2.4000%</div></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="mc-reset">Reset to worked-example numbers</button>
+        <div class="sl-note" id="mc-note">Blank or non-numeric fields show "—" instead of breaking the formula.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">How practitioners actually use it</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📊</div><div><h4>Ranking institutions by systemic contribution</h4><p>Compute ΔCoVaR<sub>system|i</sub> for many institutions i and rank by size — the paper's own headline use, distinguishing systemic importance from raw size.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🏦</div><div><h4>Not the same as "too big to fail"</h4><p>An institution can be small but highly interconnected (large ΔCoVaR) or huge but contribute little marginal spillover — the two rankings genuinely diverge.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📐</div><div><h4>Richer conditioning sets</h4><p>Add macro state variables (VIX-style vol, credit spreads) into the quantile regression alongside i's own return for a fuller picture.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🌐</div><div><h4>A pairwise building block</h4><p>Usually computed for many (i, j) pairs and read as individual spillover strengths — not, by itself, a finished network model.</p></div></div>
+      </div>
+      <div class="sl-quote">Two EM currencies with nearly identical plain VaR can have very different ΔCoVaR against USD funding stress — one whose tail losses co-move strongly with funding conditions, one driven mostly by idiosyncratic factors. Plain VaR alone can't tell them apart; ΔCoVaR can.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Where CoVaR gets over-trusted</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📉</div><div><h4>Short, noisy samples</h4><p>The toy dataset's own fitted line only lands 1 of 10 points (10%) below it, not exactly 5% — fitting a tail quantile is inherently a small-effective-sample exercise.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎚️</div><div><h4>Arbitrary threshold choice</h4><p>Nothing pins down whether "distress" should mean i's 5%, 1%, or 10% quantile — a different q can meaningfully change the fitted β and ΔCoVaR.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🕸️</div><div><h4>Pairwise, not a full network</h4><p>ΔCoVaR says something specific about i and j — it doesn't describe multi-institution propagation, feedback, or simultaneous distress across many names at once.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🚫</div><div><h4>Not proof of causation</h4><p>A large ΔCoVaR shows co-movement — a shared third factor could drive both i's distress and j's losses without either causing the other.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What does CoVaR<sub>j|i</sub>(q) measure?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The q-quantile of j's returns, conditional on i being at a specified state (usually i's own distress level)</button>
+        <button class="sl-quiz-opt">The average loss in j's own tail, past j's own VaR</button>
+        <button class="sl-quiz-opt">j's plain, unconditional VaR — CoVaR is just another name for it</button>
+        <div class="sl-quiz-explain">CoVaR conditions j's quantile on a DIFFERENT variable's (i's) state — that conditioning on a second variable is the whole point.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Why is ΔCoVaR, not CoVaR alone, the number used to rank systemic importance?</h4>
+        <button class="sl-quiz-opt" data-correct="true">CoVaR alone still bundles in j's own baseline risk; ΔCoVaR nets that out and isolates only the spillover attributable to i</button>
+        <button class="sl-quiz-opt">ΔCoVaR is just CoVaR expressed as a percentage instead of a dollar amount</button>
+        <button class="sl-quiz-opt">They're the same number under a different name — either works</button>
+        <div class="sl-quiz-explain">ΔCoVaR = CoVaR at distress − CoVaR at median. Subtracting the median-state baseline isolates the marginal, spillover-only piece.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>In q(j|i) = α + βi, what happens to ΔCoVaR if β = 0?</h4>
+        <button class="sl-quiz-opt" data-correct="true">ΔCoVaR is zero, no matter how extreme i's own distress level is</button>
+        <button class="sl-quiz-opt">ΔCoVaR becomes undefined and can't be computed</button>
+        <button class="sl-quiz-opt">ΔCoVaR equals α regardless of i's state</button>
+        <div class="sl-quiz-explain">ΔCoVaR = β × [VaR_q(X_i) − Median(X_i)]. If β=0, that product is zero regardless of how far apart i's two states are.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Is CoVaR the same thing as CVaR (Conditional VaR / Expected Shortfall)?</h4>
+        <button class="sl-quiz-opt" data-correct="true">No — CVaR averages a loss within one variable's own tail; CoVaR conditions one variable's quantile on a different variable's distress</button>
+        <button class="sl-quiz-opt">Yes, they're two names for the exact same formula</button>
+        <button class="sl-quiz-opt">Yes, but CoVaR is just CVaR computed at a different confidence level</button>
+        <div class="sl-quiz-explain">CVaR involves exactly one random variable; CoVaR always involves at least two. Sharing letters is the only thing they share.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Did Adrian &amp; Brunnermeier's original paper study CoVaR applied to FX or macro risk factors?</h4>
+        <button class="sl-quiz-opt" data-correct="true">No — the original setting is banking-sector systemic risk; applying it to FX/macro is an application by analogy</button>
+        <button class="sl-quiz-opt">Yes, FX was the paper's primary empirical focus</button>
+        <button class="sl-quiz-opt">The paper is only theoretical and never applies to any real data</button>
+        <div class="sl-quiz-explain">The underlying math doesn't require i and j to be banks, but the original paper's own empirical results are about banks — an FX/macro application borrows the technique rather than replicating the paper's own results.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="6">
+        <div class="sl-quiz-num">Question 6</div>
+        <h4>A large, negative ΔCoVaR<sub>j|i</sub> is found. What can you correctly conclude?</h4>
+        <button class="sl-quiz-opt" data-correct="true">j's tail risk co-moves strongly with i's distress — not proof that i's distress causes j's losses</button>
+        <button class="sl-quiz-opt">i's distress definitely causes j's losses, mechanically and directly</button>
+        <button class="sl-quiz-opt">j is now guaranteed to lose money whenever i is distressed</button>
+        <div class="sl-quiz-explain">ΔCoVaR is a conditional/co-movement statistic. A shared third factor could drive both i's distress and j's losses without either causing the other — causal language overstates what the number demonstrates.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>CoVaR<sub>j|i</sub>(q) is a VaR-style quantile of j, conditioned on a different variable i's distress — not j's plain, unconditional VaR.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>ΔCoVaR = CoVaR<sub>j|i in distress</sub> − CoVaR<sub>j|i at median</sub> is the actual systemic-risk-ranking tool — it isolates the marginal spillover, netting out j's own baseline risk.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Estimation is one quantile regression of j on i: ΔCoVaR<sub>j|i</sub> = β<sub>q</sub>[VaR<sub>q</sub>(X<sub>i</sub>) − Median(X<sub>i</sub>)] — the fitted slope times the distance between i's two states.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>CoVaR is not CVaR: CVaR averages within one variable's own tail; CoVaR conditions on a different variable's distress entirely.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Applying CoVaR to FX/macro pairs (e.g. USD funding stress → EM FX) is an honest application by analogy, not something the original banking-sector paper itself studied.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Threshold choice, small-sample noise, the pairwise (not network) scope of the measure, and the pull toward causal language are all real pitfalls to name plainly alongside any ΔCoVaR number.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Read a fitted conditional-quantile relationship between two return series and compute exactly how much of one institution's tail risk is attributable to another's distress — and explain, precisely, why that number is not the same thing as CVaR/Expected Shortfall despite the similar name.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Hill Estimator &amp; Tail-Index Estimation</h3>
+        <p>CoVaR takes a fitted tail relationship between two series as a given input. Next up: how the shape of a single series' own tail — how fast its extreme losses actually decay — gets estimated directly from data.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="institutional-hill-estimator-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="institutional-covar.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  var ALPHA = -0.4, BETA = 0.8, MEDIAN_I = 0;
+
+  function q(i){ return ALPHA + BETA * i; }
+  function x_of(i){ return 60 + (i + 5) / 8 * 540; }
+  function y_of(j){ return 260 - (j + 5) / 8 * 240; }
+
+  // Slide 6 — distress-level slider redraws the red marker and readout.
+  (function(){
+    var slider = document.getElementById('cv-slider');
+    if (!slider) return;
+    var valEl = document.getElementById('cv-slider-val');
+    var readoutEl = document.getElementById('cv-slider-readout');
+    var dot = document.getElementById('cv-dot-distress');
+    var vline = document.getElementById('cv-dot-vline');
+    var hline = document.getElementById('cv-dot-hline');
+    var bracketV = document.getElementById('cv-bracket-v');
+    var bracketBot = document.getElementById('cv-bracket-bot');
+    var covarMedian = q(MEDIAN_I);
+
+    function update(){
+      var iDist = parseFloat(slider.value);
+      if (!isFinite(iDist)) return;
+      var covarDistress = q(iDist);
+      var dcovar = covarDistress - covarMedian;
+      var x = x_of(iDist), y = y_of(covarDistress);
+      var xMed = x_of(MEDIAN_I), yMed = y_of(covarMedian);
+
+      dot.setAttribute('cx', x.toFixed(1));
+      dot.setAttribute('cy', y.toFixed(1));
+      vline.setAttribute('x1', x.toFixed(1));
+      vline.setAttribute('x2', x.toFixed(1));
+      vline.setAttribute('y1', y.toFixed(1));
+      hline.setAttribute('x1', Math.min(x, 60).toFixed(1));
+      hline.setAttribute('x2', x.toFixed(1));
+      hline.setAttribute('y1', y.toFixed(1));
+      hline.setAttribute('y2', y.toFixed(1));
+
+      var bracketX = Math.max(20, Math.min(xMed, x) - 15);
+      bracketV.setAttribute('x1', bracketX.toFixed(1));
+      bracketV.setAttribute('x2', bracketX.toFixed(1));
+      bracketV.setAttribute('y1', yMed.toFixed(1));
+      bracketV.setAttribute('y2', y.toFixed(1));
+      bracketBot.setAttribute('x1', (bracketX - 6).toFixed(1));
+      bracketBot.setAttribute('x2', (bracketX + 6).toFixed(1));
+      bracketBot.setAttribute('y1', y.toFixed(1));
+      bracketBot.setAttribute('y2', y.toFixed(1));
+
+      valEl.textContent = 'i = ' + iDist.toFixed(1) + '%';
+      readoutEl.textContent = 'CoVaR at median = ' + covarMedian.toFixed(2) + '% · CoVaR at distress = ' + covarDistress.toFixed(2) + '% · ΔCoVaR = ' + dcovar.toFixed(2) + '%';
+    }
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Slide 9 — full four-input calculator.
+  (function(){
+    var alphaEl = document.getElementById('mc-alpha');
+    if (!alphaEl) return;
+    var ids = ['alpha', 'beta', 'median', 'distress'];
+    var inputs = {};
+    ids.forEach(function(f){ inputs[f] = document.getElementById('mc-' + f); });
+    var covarMedianOut = document.getElementById('mc-covar-median');
+    var covarDistressOut = document.getElementById('mc-covar-distress');
+    var dcovarOut = document.getElementById('mc-dcovar');
+    var note = document.getElementById('mc-note');
+    var resetBtn = document.getElementById('mc-reset');
+    var DEFAULTS = { alpha: -0.4, beta: 0.8, median: 0, distress: -3 };
+    var DASH = '—';
+    var DEFAULT_NOTE = 'Blank or non-numeric fields show "—" instead of breaking the formula.';
+
+    function recompute(){
+      var v = {};
+      ids.forEach(function(f){ v[f] = parseFloat(inputs[f].value); });
+
+      if (!ids.every(function(f){ return isFinite(v[f]); })) {
+        covarMedianOut.textContent = DASH;
+        covarDistressOut.textContent = DASH;
+        dcovarOut.textContent = DASH;
+        note.textContent = DEFAULT_NOTE;
+        return;
+      }
+
+      var covarMedian = v.alpha + v.beta * v.median;
+      var covarDistress = v.alpha + v.beta * v.distress;
+      var dcovar = covarDistress - covarMedian;
+
+      covarMedianOut.textContent = covarMedian.toFixed(4) + '%';
+      covarDistressOut.textContent = covarDistress.toFixed(4) + '%';
+      dcovarOut.textContent = dcovar.toFixed(4) + '%';
+      note.textContent = DEFAULT_NOTE;
+    }
+
+    ids.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      ids.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

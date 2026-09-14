@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Roll's Implicit Spread Estimator — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Market Microstructure Extensions / Roll's Spread Estimator</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Market Microstructure Extensions 2 of 5</div>
+  <h1 class="tl-title">Roll's Implicit Spread Estimator</h1>
+  <p class="tl-dek">No quotes, no order book, no depth data — just a raw series of trade prices. Roll's 1984 insight is that the bid-ask spread leaves a fingerprint even there: it forces consecutive price changes to bounce against each other, and that bounce alone is enough to back the spread out.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — a classical price-only estimator, verified nowhere in this repo: no file computes a serial covariance of price changes for spread estimation, and this repo's own Market Microstructure lesson never mentions Roll's estimator (it derives Glosten-Milgrom and Kyle's Lambda, both of which assume quotes are visible)</span>
+    <span>~14 min read</span>
+    <span>Prereqs: <a href="institutional-trade-classification.html">Trade Classification: Lee-Ready &amp; Bulk Volume</a>, <a href="market-microstructure.html">Market Microstructure: Price Impact &amp; the Bid-Ask Spread</a></span>
+  </div>
+
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="institutional-roll-spread-estimator-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Roll (1984) assumes the true efficient price \(m_t\) is a random walk with no serial correlation in its own changes, but every <em>observed</em> trade price bounces between the bid and the ask: \(P_t = m_t + \tfrac{s}{2}q_t\), \(q_t=\pm1\).</li>
+      <li>That mechanical bounce alone — with no real price movement required — forces the observed price-change series to have <strong>negative</strong> lag-1 serial covariance: \(\mathrm{Cov}(\Delta P_t,\Delta P_{t-1}) = -\tfrac{s^2}{4}\). Solving backwards gives the estimator, \(s = 2\sqrt{-\mathrm{Cov}(\Delta P_t,\Delta P_{t-1})}\).</li>
+      <li><strong>The critical catch:</strong> that square root only exists when the empirical covariance actually comes out negative, as the theory predicts. In short, noisy, or strongly trending samples it very often comes out positive instead — and the estimator is then simply undefined, not just imprecise.</li>
+      <li>This lesson's own 14-print worked example, built from a spread of exactly \(s=0.10\), recovers a Roll estimate of \(0.0986\) — within about 1.4% — while a second, purely trending series with no bounce at all produces a <em>positive</em> covariance and no estimate at all.</li>
+      <li>Corwin &amp; Schultz (2012) is the modern successor most worth knowing by name: it estimates the effective spread from daily high/low ranges instead of transaction-price serial covariance, and is considerably more robust in exactly the short-sample, trending conditions that break Roll's estimator.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    The <a href="market-microstructure.html">Market Microstructure: Price Impact
+    &amp; the Bid-Ask Spread</a> lesson in this Theory Lab derives, from first
+    principles, <em>why</em> a bid-ask spread exists at all: Glosten-Milgrom's
+    \(\text{Spread}=\alpha(V_H-V_L)\), a market maker's calculated defense
+    against adverse selection. That derivation — and Kyle's Lambda alongside
+    it — takes for granted that you can actually <em>see</em> the bid and the
+    ask being quoted. Checked against that lesson directly: it never mentions
+    Roll's estimator, and neither does anywhere else in this repository — a
+    repo-wide search for a serial-covariance computation on price changes,
+    specifically for the purpose of backing out a spread, turns up nothing.
+    This lesson is new ground, not a restatement of anything already here.
+  </p>
+  <p>
+    In practice, a researcher is frequently handed something much thinner than
+    a full quote history: a plain series of trade prints, timestamp and price,
+    nothing else. That was the entire state of publicly available U.S. equity
+    data for decades before consolidated quote feeds became standard, and it
+    remains the state of many datasets today — some FX venues, many
+    retail-facing data feeds, older or lower-tier historical archives, and any
+    dataset that simply never captured the book. <strong>Roll's (1984)
+    question is exactly this practical one: given nothing but a series of
+    transaction prices, with no bid, no ask, and no depth, can the effective
+    spread still be recovered?</strong> The answer turns out to be yes — not
+    by observing the spread directly, but by noticing a very specific
+    statistical fingerprint it leaves behind in how consecutive trade prices
+    move.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>The bid-ask bounce: apparent price moves that aren't real price moves</h3>
+    <p>
+      Picture a security with a genuinely stable "true" value — nothing about
+      it is actually changing. Every trade, though, executes at one of two
+      prices: the bid (a seller crosses in) or the ask (a buyer crosses in).
+      Purely by chance, suppose the sequence of trades goes ask, bid, ask, bid.
+      Look only at the raw sequence of printed prices, with no idea which side
+      each trade hit: the price appears to fall (ask → bid), then rise back
+      (bid → ask), then fall again, then rise again — a jagged, oscillating
+      series that looks exactly like genuine volatility, even though the
+      underlying value of the security never moved by a single cent. This is
+      the <strong>bid-ask bounce</strong>: mechanical noise injected into the
+      observed price series purely by which side of the spread each trade
+      happened to hit, with zero contribution from any real change in value.
+    </p>
+    <p>
+      Roll's insight is that this bounce isn't just noise to be filtered out —
+      it's structured noise, and its structure depends on exactly one unknown
+      quantity: the spread \(s\) itself. A trade that hits the ask sits
+      \(s/2\) above the true price; a trade that hits the bid sits \(s/2\)
+      below it. Every time a trade alternates from one side to the other, the
+      observed price swings by roughly a full spread's worth, with no true
+      movement behind it at all. That swinging has a very specific
+      statistical signature — and reverse-engineering the size of the spread
+      from that signature, using nothing but the printed prices, is the whole
+      of what follows.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>1. Setting up the model: a true price plus a bounce</h3>
+  <p>
+    Roll's model has exactly two moving parts. First, an unobservable
+    "efficient" or "true" price \(m_t\) — the fair value the security would
+    trade at if every trade happened right at the midpoint — which follows a
+    random walk with <strong>no serial correlation in its own changes</strong>:
+    \(\Delta m_t = m_t - m_{t-1}\) is mean-zero and uncorrelated across time,
+    exactly the informationally-efficient-price assumption already used
+    throughout this Theory Lab (the same "prices, not price changes, carry
+    memory" idea behind the <a href="stationarity-acf-pacf.html">Stationarity,
+    ACF &amp; PACF</a> lesson's treatment of a random walk as the canonical
+    non-stationary series with zero own-autocovariance in its differences).
+    Second, every <em>observed</em> transaction price is not \(m_t\) itself,
+    but \(m_t\) plus or minus half the spread, depending on which side of the
+    market the trade hit:
+  </p>
+  <div class="tl-math">\[ P_t = m_t + \frac{s}{2}\,q_t, \qquad q_t = \begin{cases}+1 & \text{trade at the ask}\\-1 & \text{trade at the bid}\end{cases} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>P_t</code><span>the observed, printed transaction price — the only thing actually recorded</span></div>
+    <div class="tl-eq-chip c2"><code>m_t</code><span>the unobservable true efficient price — never printed anywhere</span></div>
+    <div class="tl-eq-chip c3"><code>s</code><span>the (here assumed constant) effective bid-ask spread — the unknown this lesson solves for</span></div>
+    <div class="tl-eq-chip c4"><code>q_t</code><span>the trade-side indicator: +1 at the ask, −1 at the bid, assumed i.i.d. and equally likely each trade, independent of \(\Delta m_t\)</span></div>
+  </div>
+  <p>
+    \(q_t\) being independent and identically distributed, coin-flip-like
+    across trades is the model's key simplifying assumption: it says nothing
+    about <em>which</em> trades land on which side beyond "roughly half and
+    half, with no memory from one trade to the next." Real order flow can
+    violate this (a run of buyer-initiated trades during a genuine rally, for
+    instance) — a point this lesson returns to directly when discussing why
+    the estimator can fail.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine a see-saw sitting perfectly balanced and never actually tipping over — that's the true price, calm and steady. Now imagine someone keeps tapping one end and then the other, completely at random, just to make it wobble a little each time — that's a trade landing at the ask, then the bid, then the ask again. Watching only the wobble, without knowing which end got tapped, it looks like the see-saw is doing something on its own. It isn't. The wobble is entirely explained by which end got tapped, and how hard — which here means the size of the spread.</p>
+  </div>
+
+  <h3>2. From the bounce to a price change</h3>
+  <p>
+    The quantity that actually gets analyzed is the observed <strong>price
+    change</strong> from one trade to the next, \(\Delta P_t = P_t - P_{t-1}\).
+    Substituting the model in:
+  </p>
+  <div class="tl-math">\[ \Delta P_t = \Delta m_t + \frac{s}{2}\big(q_t - q_{t-1}\big) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>ΔP_t</code><span>the observed, printed price change — what any transaction-price dataset actually contains</span></div>
+    <div class="tl-eq-chip c2"><code>Δm_t</code><span>the genuine, unobservable change in fair value — mean zero, no serial correlation</span></div>
+    <div class="tl-eq-chip c3"><code>(s/2)(q_t − q_{t-1})</code><span>the bounce term — the entire spurious part of the observed move, driven purely by which side the last two trades hit</span></div>
+  </div>
+  <p>
+    Every observed price change is a sum of two pieces that have nothing to
+    do with each other: a genuine (if usually tiny) move in fair value, and a
+    mechanical bounce term that depends only on whether consecutive trades
+    landed on the same side of the market or opposite sides. If two
+    consecutive trades hit the same side (\(q_t = q_{t-1}\)), the bounce term
+    is exactly zero — no bounce, no spurious move. If they land on opposite
+    sides, the bounce term is \(\pm s\), a full spread's worth of spurious
+    price change, in whichever direction the flip went.
+  </p>
+
+  <h3>3. Deriving the covariance result</h3>
+  <p>
+    Roll's central result is about how \(\Delta P_t\) relates to
+    \(\Delta P_{t-1}\), the <em>previous</em> price change — exactly the
+    lag-1 serial covariance this curriculum calls \(\gamma(1)\) in the
+    <a href="stationarity-acf-pacf.html">Stationarity, ACF &amp; PACF</a>
+    lesson, applied here to the price-change series rather than a generic
+    series \(X_t\). Because \(\Delta m_t\) is mean-zero, serially
+    uncorrelated, and independent of every \(q\), every cross-term involving
+    a \(\Delta m\) vanishes in expectation, leaving only the bounce terms to
+    interact with each other:
+  </p>
+  <div class="tl-math">\[ \mathrm{Cov}(\Delta P_t,\Delta P_{t-1}) = \left(\frac{s}{2}\right)^{2}\mathrm{Cov}\big(q_t - q_{t-1},\; q_{t-1} - q_{t-2}\big) \]</div>
+  <p>
+    Expand the covariance of the two bracketed terms into four pieces. Since
+    the \(q\)'s are i.i.d. across trades, \(\mathrm{Cov}(q_t,q_{t-1})=0\) and
+    \(\mathrm{Cov}(q_t,q_{t-2})=0\) and \(\mathrm{Cov}(q_{t-1},q_{t-2})=0\) —
+    the only surviving term is a \(q_{t-1}\) covarying with <em>itself</em>:
+  </p>
+  <div class="tl-math">\[ \mathrm{Cov}(q_t-q_{t-1},\,q_{t-1}-q_{t-2}) = \underbrace{\mathrm{Cov}(q_t,q_{t-1})}_{0} - \underbrace{\mathrm{Cov}(q_t,q_{t-2})}_{0} - \underbrace{\mathrm{Var}(q_{t-1})}_{=\,1} + \underbrace{\mathrm{Cov}(q_{t-1},q_{t-2})}_{0} = -1 \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c4"><code>Var(q_{t-1}) = 1</code><span>q is ±1 with equal probability, so E[q]=0 and E[q²]=1 — its variance is exactly 1</span></div>
+    <div class="tl-eq-chip c1"><code>all other terms = 0</code><span>i.i.d. trade sides mean nothing about one trade's side predicts a <em>different</em> trade's side</span></div>
+  </div>
+  <p>
+    The only surviving piece is the shared \(q_{t-1}\) term, appearing with a
+    <strong>negative</strong> sign because it's being subtracted in one factor
+    and added in the other. Substituting back:
+  </p>
+  <div class="tl-math">\[ \boxed{\ \mathrm{Cov}(\Delta P_t,\Delta P_{t-1}) = -\frac{s^{2}}{4}\ } \]</div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">Cov(ΔP_t, ΔP_t−1)</div>
+      <div class="tl-fp-name">Lag-1 serial covariance</div>
+      <div class="tl-fp-desc">Of the observed price-change series — the only quantity computed directly from data</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">−s²/4</div>
+      <div class="tl-fp-name">Roll's theoretical result</div>
+      <div class="tl-fp-desc">A pure artifact of the bid-ask bounce — no real price movement is required to produce it</div>
+    </div>
+  </div>
+  <p>
+    Two things are worth sitting with here, because both are exactly what the
+    intuition section promised. <strong>Why negative:</strong> a bounce that
+    pushes \(\Delta P_t\) one direction is, on average, undone by the next
+    bounce — a trade that just crossed to the ask (pushing the observed price
+    up) is exactly as likely as ever to be followed by a trade back at the
+    bid (pushing it back down), and that systematic "what went up mechanically
+    comes back down mechanically" pattern <em>is</em> negative serial
+    covariance, definitionally. Real information-driven price moves have no
+    reason to reverse themselves this way; the bid-ask bounce mechanically
+    does, every time consecutive trades land on different sides. <strong>Why
+    a factor of 4, not 1:</strong> each individual bounce displaces the
+    observed price by a <em>half</em>-spread, \(s/2\), not a full spread — and
+    covariance is built from a product of two such displacements, so the
+    half-spread gets squared: \((s/2)^2 = s^2/4\). The \(\tfrac14\) isn't an
+    arbitrary constant tucked into the formula; it falls straight out of
+    measuring the bounce in half-spread units and then squaring it.
+  </p>
+  <p>
+    One further structural implication worth stating plainly, since the
+    self-test below returns to it: because the \(q\)'s are i.i.d. with no
+    memory beyond one lag, the model predicts \(\mathrm{Cov}(\Delta
+    P_t,\Delta P_{t-k})=0\) for every \(k\ge 2\) — the bid-ask bounce is a
+    strictly one-period phenomenon in this model. Only the very next price
+    change is systematically related to the current one; anything two or
+    more trades apart carries no mechanical bounce relationship at all.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If a ball keeps bouncing between a low wall and a high wall, and you only ever measure how far it moved on each bounce, you'll notice something reliable: a big move toward the high wall is almost always followed by a move back toward the low wall, and vice versa. The moves aren't random noise pointing every which way — they're specifically anti-correlated, because the ball can only be bouncing between the same two walls. The spread is the distance between the walls; the bounce pattern in the moves is the clue that lets you measure that distance without ever seeing the walls themselves.</p>
+  </div>
+
+  <h3>4. Solving for the spread — and the crucial caveat</h3>
+  <p>
+    Rearranging Roll's result to solve for the one unknown, \(s\), is a
+    single algebraic step: multiply both sides by \(-4\) and take a square
+    root.
+  </p>
+  <div class="tl-math">\[ s = 2\sqrt{-\,\mathrm{Cov}(\Delta P_t,\Delta P_{t-1})} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>s</code><span>Roll's estimated effective spread — the entire output of the method</span></div>
+    <div class="tl-eq-chip c3"><code>Cov(ΔP_t, ΔP_t−1)</code><span>the empirical lag-1 serial covariance, computed directly from a real transaction-price series</span></div>
+  </div>
+  <p>
+    That negative sign under the square root is not a cosmetic detail — it is
+    the single most important practical fact about this estimator, and it
+    deserves to be stated as plainly as possible.
+  </p>
+  <div class="tl-solid amber">
+    <strong>The estimator only exists when the empirical covariance actually
+    comes out negative.</strong> Roll's derivation is a statement about what
+    the covariance is <em>on average</em>, under a specific idealized model —
+    it is not a guarantee about what any one finite, real, noisy sample of
+    trade prices will produce. In short windows, in strongly trending
+    markets, or whenever the "true price is a pure, memoryless random walk"
+    assumption is violated even mildly (momentum, mean-reversion, a real
+    autocorrelated drift in the fundamental value itself), the
+    <em>empirical</em> serial covariance very commonly comes out
+    <strong>positive</strong> instead of negative. When that happens, there is
+    no real number whose square is that (positive) quantity times \(-4\) —
+    the formula asks for the square root of a negative number, and Roll's
+    estimator is simply <strong>undefined</strong>, full stop, not just noisy
+    or imprecise. This is a routine, expected outcome of applying the method
+    to real short or trending samples, not a rare edge case — anyone using
+    Roll's estimator in practice needs a plan for what to do with a window
+    that returns no answer at all, because a meaningful share of windows
+    will.
+  </div>
+
+  <h3>5. Beyond Roll: high-low range estimators</h3>
+  <p>
+    Roll's estimator is the foundational member of a much broader literature
+    of price-only spread and impact estimators, not the last word in it. The
+    modern estimator most worth knowing by name is Corwin &amp; Schultz
+    (2012), which takes a completely different route to the same goal:
+    instead of the serial covariance of transaction prices, it uses the
+    observed <strong>high and low</strong> price over a trading day (or other
+    fixed interval), comparing the range over single days against the range
+    over overlapping two-day windows. The core idea, stated without deriving
+    it here, is that the daily high-low range grows with both genuine
+    volatility <em>and</em> the spread (a high print is inflated toward the
+    ask, a low print is deflated toward the bid), while volatility itself
+    scales differently across a one-day versus a two-day window than the
+    spread's fixed per-trade contribution does — comparing the two ranges
+    lets the spread component be isolated algebraically. Because it never
+    needs a negative serial covariance to exist, it does not suffer from
+    Roll's "sometimes returns nothing at all" failure mode nearly as often,
+    and it has become the more commonly cited choice in recent empirical
+    microstructure work specifically for that robustness. This lesson's
+    depth budget goes to Roll, as the historically foundational and
+    conceptually clearest result; Corwin-Schultz is flagged here by name so
+    it is recognized on sight, not derived.
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(m_t\)</td><td>The unobservable true (efficient) price — assumed a random walk with no serial correlation in \(\Delta m_t\).</td></tr>
+    <tr><td>\(P_t\)</td><td>The observed transaction price — the only thing actually present in a price-only dataset.</td></tr>
+    <tr><td>\(s\)</td><td>The (here assumed constant) effective bid-ask spread — the unknown Roll's estimator solves for.</td></tr>
+    <tr><td>\(q_t\)</td><td>Trade-side indicator, \(+1\) at the ask or \(-1\) at the bid, assumed i.i.d. and equally likely.</td></tr>
+    <tr><td>\(\Delta P_t\)</td><td>The observed price change, \(P_t - P_{t-1}\) — the quantity a transaction-price dataset lets you actually compute.</td></tr>
+    <tr><td>\(\mathrm{Cov}(\Delta P_t,\Delta P_{t-1})\)</td><td>The lag-1 serial covariance of price changes — \(\gamma(1)\) in this curriculum's stationarity notation, applied to \(\Delta P_t\).</td></tr>
+  </table></div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Recovering a known 0.10 spread from 14 toy transaction prints</h3>
+    <p>
+      Construct a toy true price that drifts slowly upward, \(m_t = 100.00 +
+      0.02t\) for \(t=0,\dots,13\) (a genuine trend — this is not a flat,
+      unmoving efficient price), with a constant true spread of exactly
+      \(s=0.10\) (so a half-spread of \(0.05\)). Each of the 14 trades is
+      assigned to the ask (+) or the bid (&minus;) by a fixed, hand-picked
+      pattern that mixes runs and flips — deliberately not a perfectly
+      mechanical alternation, since a real order-flow sequence never is
+      either:
+    </p>
+    <div class="tl-symbols"><table>
+      <tr><td>t</td><td>0&emsp;1&emsp;2&emsp;3&emsp;4&emsp;5&emsp;6&emsp;7&emsp;8&emsp;9&emsp;10&emsp;11&emsp;12&emsp;13</td></tr>
+      <tr><td>true \(m_t\)</td><td>100.00&emsp;100.02&emsp;100.04&emsp;100.06&emsp;100.08&emsp;100.10&emsp;100.12&emsp;100.14&emsp;100.16&emsp;100.18&emsp;100.20&emsp;100.22&emsp;100.24&emsp;100.26</td></tr>
+      <tr><td>side</td><td>ASK&emsp;BID&emsp;BID&emsp;ASK&emsp;ASK&emsp;ASK&emsp;BID&emsp;ASK&emsp;ASK&emsp;BID&emsp;ASK&emsp;BID&emsp;BID&emsp;ASK</td></tr>
+      <tr><td>observed \(P_t\)</td><td>100.05&emsp;99.97&emsp;99.99&emsp;100.11&emsp;100.13&emsp;100.15&emsp;100.07&emsp;100.19&emsp;100.21&emsp;100.13&emsp;100.25&emsp;100.17&emsp;100.19&emsp;100.31</td></tr>
+    </table></div>
+    <p>
+      The 13 consecutive price changes, \(\Delta P_1,\dots,\Delta P_{13}\):
+    </p>
+    <div class="tl-symbols"><table>
+      <tr><td>ΔP</td><td>&minus;0.08&emsp;0.02&emsp;0.12&emsp;0.02&emsp;0.02&emsp;&minus;0.08&emsp;0.12&emsp;0.02&emsp;&minus;0.08&emsp;0.12&emsp;&minus;0.08&emsp;0.02&emsp;0.12</td></tr>
+    </table></div>
+    <p>
+      Pair each \(\Delta P_t\) (for \(t=2,\dots,13\), 12 values) with the
+      previous change \(\Delta P_{t-1}\), and compute their sample covariance
+      the same way this curriculum's own
+      <a href="primer-correlation-regression.html">Correlation &amp; Linear
+      Regression</a> primer does — averaging the product of deviations from
+      each series' own mean, dividing by the number of pairs:
+    </p>
+    <div class="tl-math">\[ \overline{\Delta P_t} = 0.0283,\qquad \overline{\Delta P_{t-1}} = 0.0117,\qquad \widehat{\mathrm{Cov}}(\Delta P_t,\Delta P_{t-1}) = \frac{-0.02917}{12} = -0.002431 \]</div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c1"><code>−0.02917</code><span>the sum of all 12 cross-products of deviations, computed pair by pair</span></div>
+      <div class="tl-eq-chip c4"><code>/12</code><span>divided by the number of paired observations — negative, exactly as Roll's model predicts</span></div>
+    </div>
+    <p>The empirical covariance is negative, so the square root is real, and Roll's estimator applies cleanly:</p>
+    <div class="tl-math">\[ s_{\text{Roll}} = 2\sqrt{0.002431} \approx 0.0986 \]</div>
+    <p>
+      Compare that to the <strong>true</strong> spread used to construct the
+      data, \(s=0.10\): the estimator recovers \(0.0986\), about 1.4% below
+      the true value — a genuinely close recovery of a known quantity, using
+      nothing but the 14 printed prices and Roll's single formula. Nothing
+      about the trend in \(m_t\) contaminated the result, exactly as the
+      derivation above predicts: a smooth drift with no serial correlation of
+      its own contributes nothing to \(\mathrm{Cov}(\Delta P_t,\Delta
+      P_{t-1})\), leaving the bounce term to do all the work.
+    </p>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Feed in a price series, live — including one that breaks the estimator</h3>
+    <p>
+      Starts loaded with the worked example's own 14 prices above. Edit the
+      list (comma- or space-separated) and the sample serial covariance and
+      Roll spread estimate recompute instantly. The second button loads a
+      purely trending series with no bid-ask bounce at all — watch the
+      covariance flip positive and the estimator refuse to return a number.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control" style="flex-basis:100%">
+        <div class="tl-control-head"><span>Transaction price series</span></div>
+        <input type="text" id="roll-scratch-prices" class="tl-scratch-input" value="100.05, 99.97, 99.99, 100.11, 100.13, 100.15, 100.07, 100.19, 100.21, 100.13, 100.25, 100.17, 100.19, 100.31">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      n = <b id="roll-scratch-n">14</b> prices&emsp;&rarr;&emsp;<b id="roll-scratch-ndelta">13</b> price changes&emsp;&rarr;&emsp;<b id="roll-scratch-npairs">12</b> lag-1 pairs
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Cov(&Delta;P_t, &Delta;P_t&minus;1) = <b id="roll-scratch-cov">&minus;0.002431</b>
+    </div>
+    <div class="tl-readout">
+      Roll spread estimate s = <b id="roll-scratch-s">0.0986</b>
+      <span id="roll-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="roll-scratch-reset" class="tl-scratch-reset-btn">Reset to the worked example</button>
+    <button type="button" id="roll-scratch-trend" class="tl-scratch-reset-btn">Load a trending series (Roll undefined)</button>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">The worked example, drawn: observed price bouncing between bid and ask around a drifting true price</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Chart of 14 transaction prints. A dashed grey line rising steadily left to right is the unobservable true price, drifting slowly upward. A green dashed line above it and a red dashed line below it are the ask and bid levels, each a constant half-spread from the true price and rising in parallel with it. A solid blue jagged line connects the 14 actual observed print prices, which alternate close to the ask line and the bid line rather than following the smooth true price directly, illustrating the bid-ask bounce superimposed on the underlying drift.">
+      <line x1="60" y1="20" x2="60" y2="270" style="stroke:var(--border)"/>
+      <line x1="60" y1="270" x2="600" y2="270" style="stroke:var(--border)"/>
+      <text x="330" y="292" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">trade # (t)</text>
+      <text x="26" y="150" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace" transform="rotate(-90 26 150)">price</text>
+
+      <polyline points="60.0,188.0 101.5,176.0 143.1,164.0 184.6,152.0 226.2,140.0 267.7,128.0 309.2,116.0 350.8,104.0 392.3,92.0 433.8,80.0 475.4,68.0 516.9,56.0 558.5,44.0 600.0,32.0" style="fill:none;stroke:var(--green);stroke-width:1.5;stroke-dasharray:4,3;opacity:.8"/>
+      <text x="604" y="30" fill="var(--green)" font-size="10" font-family="'DM Mono',monospace">ask = m_t + s/2</text>
+
+      <polyline points="60.0,248.0 101.5,236.0 143.1,224.0 184.6,212.0 226.2,200.0 267.7,188.0 309.2,176.0 350.8,164.0 392.3,152.0 433.8,140.0 475.4,128.0 516.9,116.0 558.5,104.0 600.0,92.0" style="fill:none;stroke:var(--red);stroke-width:1.5;stroke-dasharray:4,3;opacity:.8"/>
+      <text x="604" y="96" fill="var(--red)" font-size="10" font-family="'DM Mono',monospace">bid = m_t − s/2</text>
+
+      <polyline points="60.0,218.0 101.5,206.0 143.1,194.0 184.6,182.0 226.2,170.0 267.7,158.0 309.2,146.0 350.8,134.0 392.3,122.0 433.8,110.0 475.4,98.0 516.9,86.0 558.5,74.0 600.0,62.0" style="fill:none;stroke:var(--text3);stroke-width:1.5;stroke-dasharray:2,3"/>
+      <text x="480" y="150" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">true price m_t (drifting, never bounces)</text>
+
+      <polyline points="60.0,188.0 101.5,236.0 143.1,224.0 184.6,152.0 226.2,140.0 267.7,128.0 309.2,176.0 350.8,104.0 392.3,92.0 433.8,140.0 475.4,68.0 516.9,116.0 558.5,104.0 600.0,32.0" style="fill:none;stroke:var(--blue);stroke-width:2.5;stroke-linejoin:round"/>
+      <circle cx="60.0" cy="188.0" r="4" fill="var(--blue)"/>
+      <circle cx="101.5" cy="236.0" r="4" fill="var(--blue)"/>
+      <circle cx="143.1" cy="224.0" r="4" fill="var(--blue)"/>
+      <circle cx="184.6" cy="152.0" r="4" fill="var(--blue)"/>
+      <circle cx="226.2" cy="140.0" r="4" fill="var(--blue)"/>
+      <circle cx="267.7" cy="128.0" r="4" fill="var(--blue)"/>
+      <circle cx="309.2" cy="176.0" r="4" fill="var(--blue)"/>
+      <circle cx="350.8" cy="104.0" r="4" fill="var(--blue)"/>
+      <circle cx="392.3" cy="92.0" r="4" fill="var(--blue)"/>
+      <circle cx="433.8" cy="140.0" r="4" fill="var(--blue)"/>
+      <circle cx="475.4" cy="68.0" r="4" fill="var(--blue)"/>
+      <circle cx="516.9" cy="116.0" r="4" fill="var(--blue)"/>
+      <circle cx="558.5" cy="104.0" r="4" fill="var(--blue)"/>
+      <circle cx="600.0" cy="32.0" r="4" fill="var(--blue)"/>
+      <text x="66" y="36" fill="var(--blue)" font-size="10" font-family="'DM Mono',monospace">observed P_t (bounces)</text>
+    </svg>
+    <div class="tl-chart-caption">
+      The true price (grey, dashed) rises smoothly with no bounce at all — it
+      is a random walk with zero serial correlation in its own changes. The
+      bid and ask levels (red and green, dashed) track it in perfect
+      parallel, a constant half-spread on either side. The actual observed
+      trade prices (solid blue) zig-zag between the two dashed reference
+      lines as consecutive trades alternate sides — visually, exactly the
+      "apparent volatility with no real movement behind it" the intuition box
+      above describes, superimposed on the genuine underlying drift.
+    </div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Roll's estimator is rarely a desk's final word on spread cost — it is a
+    cheap, quote-free sanity check, and its main practical value is exactly
+    that cheapness. A few habits follow directly from everything derived
+    above:
+  </p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📉</div>
+      <h4>1. Compute it over rolling windows, expect gaps</h4>
+      <p>Because the estimator is undefined whenever the empirical covariance is non-negative, a rolling-window application of Roll's estimator to real data routinely produces a series with real holes in it — windows with no estimate at all — rather than a smooth, always-populated time series. Any pipeline built on this estimator needs to treat "no estimate this window" as a normal, expected outcome, not an error to suppress.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">✅</div>
+      <h4>2. Cross-check against Corwin-Schultz where possible</h4>
+      <p>Since the high-low estimator doesn't share Roll's specific failure mode, running both side by side on the same data — even without deriving Corwin-Schultz in full — gives a useful robustness check: broad agreement between the two is reassuring, and Roll simply failing to return a number in a window where Corwin-Schultz does is itself informative about how much bounce structure that window actually contains.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🕰️</div>
+      <h4>3. Reach for it specifically when quotes genuinely aren't available</h4>
+      <p>When quote or order-book data exists, a direct, observed quoted or effective spread is almost always preferable to any implicit estimator — Roll's method exists for the specific situation where that data simply isn't there, historically or in a given venue, not as a general substitute for looking at the actual quotes when they're on hand.</p>
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>Backfilling a spread estimate for a thin, quote-poor historical window</h3>
+    <p>
+      Suppose a research project needs a rough spread history for a
+      thinly-traded FX cross going back further than any usable quote feed is
+      available, but a clean series of transaction prints exists for the
+      whole period. Rather than leaving the spread column blank for those
+      early years, a rolling application of Roll's estimator (say, over
+      monthly windows of daily closes, or intraday windows of individual
+      prints, depending on what the data actually supports) fills in a
+      genuinely informative — if noisy, and sometimes missing — implied
+      spread series, built from data that was already there. The honest
+      caveat travels with the result: some windows, especially the more
+      volatile or thinly-traded ones, will come back with no estimate at all,
+      and that absence needs to be represented explicitly (a missing value,
+      not a zero, and certainly not silently interpolated over) rather than
+      quietly dropped or backfilled with a neighboring window's number.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where Roll's estimator is misread or misapplied</h3>
+    <p>
+      <strong>Treating an undefined result as "the spread is roughly zero."</strong>
+      A non-negative empirical covariance means the model's assumptions broke
+      down for that window — usually a real trend, a short sample, or
+      correlated order flow — not that the true spread was small. Silently
+      substituting zero, or dropping the observation without flagging why,
+      throws away exactly the information that the estimator's own
+      assumptions didn't hold there.
+    </p>
+    <p>
+      <strong>Confusing this lesson's "bid-ask bounce" with the same phrase
+      used elsewhere in this curriculum for a different job.</strong> The
+      <a href="hurst-variance-ratio.html">Hurst &amp; the Variance Ratio Test</a>
+      and <a href="institutional-bipower-variation.html">Bipower Variation</a>
+      lessons both mention bid-ask bounce too — but there it shows up as
+      <em>contamination to be filtered out</em> of a realized-variance or
+      mean-reversion estimate, a nuisance the estimator has to survive. Here,
+      the exact same underlying phenomenon is the <em>signal being
+      measured</em> — Roll's method exists specifically to extract the
+      bounce's size, not to remove its influence from something else. Same
+      mechanism, opposite role in the two applications.
+    </p>
+    <p>
+      <strong>Assuming a constant spread over the estimation window.</strong>
+      Roll's derivation assumes \(s\) is fixed for the whole sample. A real
+      spread that widens around news or thins during a session transition —
+      exactly the kind of time-varying behavior the
+      <a href="market-microstructure.html">Market Microstructure</a> lesson's
+      \(\lambda\) discussion warns about for price impact — is being averaged
+      over by a single Roll estimate, not tracked through the window.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Roll's estimator recovers an effective spread from transaction prices alone</strong> — no quotes, no order book, exploiting the fact that the bid-ask bounce mechanically creates negative serial covariance in observed price changes.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The core result, derived directly:</strong> \(\mathrm{Cov}(\Delta P_t,\Delta P_{t-1}) = -s^2/4\) — negative because a bounce in one direction is mechanically undone by the next, and a factor of 4 because the bounce is measured in half-spread units, then squared.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>The estimator, \(s=2\sqrt{-\mathrm{Cov}(\Delta P_t,\Delta P_{t-1})}\), is undefined whenever the empirical covariance is non-negative</strong> — a routine, expected outcome in short or trending samples, not a rare failure. Any real application needs a plan for windows that return no answer at all.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The worked 14-print example recovers 0.0986 against a true spread of 0.10</strong> — about 1.4% off, and only because a genuine drift in the true price contributes nothing to the lag-1 covariance, leaving the bounce term to do all the work.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Corwin &amp; Schultz (2012) is the more robust modern successor,</strong> estimating the effective spread from daily high-low ranges instead — worth knowing by name even without deriving it, specifically because it doesn't share Roll's undefined-result failure mode.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. What data does Roll's estimator require, and why was that a significant advantage historically?</summary>
+    <div class="tl-answer">
+      Only a series of transaction (trade) prices — no bid, no ask, no
+      order-book depth. This mattered because, for decades, consolidated
+      quote data was either unavailable, expensive, or simply never recorded
+      for large stretches of market history, while transaction prices were
+      far more commonly captured. Roll's method let researchers estimate the
+      effective bid-ask spread from exactly the kind of thin data — price and
+      timestamp only — that was often all that existed, and it remains
+      relevant today anywhere only transaction prices are reported.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Explain, in your own words, why the bid-ask bounce produces <em>negative</em> serial covariance in the observed price-change series, even when the true efficient price never moves.</summary>
+    <div class="tl-answer">
+      Every observed price is the true price plus or minus a half-spread,
+      depending on whether the trade hit the ask or the bid. When two
+      consecutive trades land on different sides, the observed price swings
+      by roughly a full spread, and that swing tends to reverse itself on the
+      following trade if it, too, switches sides — a rise driven by hitting
+      the ask is systematically prone to being followed by a fall back toward
+      (or through) the bid, and vice versa. That "what bounced one way
+      mechanically tends to bounce back" pattern is negative serial
+      covariance by definition, and the formal derivation confirms it: with
+      \(q_t\) i.i.d., the only surviving term in
+      \(\mathrm{Cov}(q_t-q_{t-1},\,q_{t-1}-q_{t-2})\) is \(-\mathrm{Var}(q_{t-1})=-1\),
+      producing \(\mathrm{Cov}(\Delta P_t,\Delta P_{t-1})=-s^2/4\), strictly
+      negative for any spread \(s>0\).
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why does Roll's covariance result come out as \(-s^2/4\) rather than \(-s^2\)?</summary>
+    <div class="tl-answer">
+      Because each individual trade's bounce displaces the observed price by
+      a <em>half</em>-spread, \(s/2\), away from the true price — not by a
+      full spread. Covariance is a product of two such displacements, so the
+      half-spread gets squared: \((s/2)^2 = s^2/4\). The factor of 4 in the
+      denominator isn't an arbitrary constant; it falls directly out of
+      measuring the bounce in half-spread units and then squaring that
+      quantity when forming the covariance.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. A real transaction-price sample produces a lag-1 serial covariance of \(\Delta P_t\) equal to \(+0.0004\). What does Roll's estimator say, and what does this most plausibly indicate about the sample?</summary>
+    <div class="tl-answer">
+      Roll's estimator is undefined here: \(s=2\sqrt{-\mathrm{Cov}}\) requires
+      a negative covariance, and \(+0.0004\) is positive, so there is no real
+      square root to take. This is not a rare or exotic outcome — it happens
+      routinely in short windows, in strongly trending samples, or whenever
+      the underlying assumption that the true price is a memoryless random
+      walk with no serial correlation is violated (a real, persistent
+      momentum or mean-reversion in the fundamental value itself, or
+      correlated rather than i.i.d. trade-side flow). The correct response is
+      to report "no estimate for this window," not to force a number out of
+      the formula or to interpret the failure as "the spread must be near
+      zero."
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Given a computed \(\mathrm{Cov}(\Delta P_t,\Delta P_{t-1}) = -0.0025\), what spread does Roll's estimator imply?</summary>
+    <div class="tl-answer">
+      \(s = 2\sqrt{-(-0.0025)} = 2\sqrt{0.0025} = 2(0.05) = 0.10\). The
+      covariance is negative, so the estimator applies cleanly, and the
+      implied effective spread is exactly 0.10 in whatever price units the
+      series was measured in.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. How does Corwin &amp; Schultz's (2012) high-low estimator differ from Roll's in what data it uses, and why does that make it more robust in practice?</summary>
+    <div class="tl-answer">
+      Corwin-Schultz uses each period's observed high and low price — not the
+      serial covariance of consecutive transaction prices — comparing the
+      range measured over single-day windows against the range measured over
+      overlapping two-day windows to isolate the spread's contribution to
+      that range algebraically. Because it never depends on a serial
+      covariance coming out negative, it doesn't inherit Roll's specific
+      failure mode of returning no estimate at all in short, trending, or
+      otherwise assumption-violating samples — the exact weakness this lesson
+      spends the most time on for Roll's own estimator.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Richard Roll, <em>"A Simple Implicit Measure of the Effective Bid-Ask Spread in an Efficient Market,"</em> Journal of Finance, 39(4), 1984 — the original derivation covered in full above.</li>
+    <li>Shane A. Corwin &amp; Paul Schultz, <em>"A Simple Way to Estimate Bid-Ask Spreads from Daily High and Low Prices,"</em> Journal of Finance, 67(2), 2012 — the high-low range estimator named as Roll's modern, more robust successor.</li>
+    <li><code>theory-lab/lessons/market-microstructure.html</code> in this repo — the Glosten-Milgrom and Kyle's Lambda derivations this lesson's spread notation and adverse-selection framing build on.</li>
+    <li><code>theory-lab/lessons/stationarity-acf-pacf.html</code> in this repo — the autocovariance and lag notation, \(\gamma(k)\), this lesson's \(\mathrm{Cov}(\Delta P_t,\Delta P_{t-1})\) is a direct application of.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="institutional-trade-classification.html">← Trade Classification</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="institutional-glosten-milgrom.html">Glosten-Milgrom →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+<script>
+(function(){
+  var input = document.getElementById('roll-scratch-prices');
+  if (!input) return;
+  var nOut = document.getElementById('roll-scratch-n');
+  var ndeltaOut = document.getElementById('roll-scratch-ndelta');
+  var npairsOut = document.getElementById('roll-scratch-npairs');
+  var covOut = document.getElementById('roll-scratch-cov');
+  var sOut = document.getElementById('roll-scratch-s');
+  var note = document.getElementById('roll-scratch-note');
+  var resetBtn = document.getElementById('roll-scratch-reset');
+  var trendBtn = document.getElementById('roll-scratch-trend');
+
+  var WORKED = "100.05, 99.97, 99.99, 100.11, 100.13, 100.15, 100.07, 100.19, 100.21, 100.13, 100.25, 100.17, 100.19, 100.31";
+  var TRENDING = "100.00, 100.01, 100.03, 100.06, 100.10, 100.15, 100.21, 100.28, 100.36, 100.45, 100.55, 100.66, 100.78, 100.91";
+
+  function parsePrices(str){
+    return str
+      .split(/[\s,]+/)
+      .map(function(t){ return t.trim(); })
+      .filter(function(t){ return t.length > 0; })
+      .map(parseFloat);
+  }
+
+  function recompute(){
+    var prices = parsePrices(input.value);
+    var valid = prices.every(function(p){ return isFinite(p); });
+
+    if (prices.length === 0 || !valid) {
+      nOut.textContent = '—'; ndeltaOut.textContent = '—'; npairsOut.textContent = '—';
+      covOut.textContent = '—'; sOut.textContent = '—';
+      note.textContent = '(enter a comma- or space-separated list of numeric prices)';
+      return;
+    }
+
+    var n = prices.length;
+    nOut.textContent = n;
+
+    if (n < 4) {
+      ndeltaOut.textContent = n > 0 ? (n - 1) : '0';
+      npairsOut.textContent = '0';
+      covOut.textContent = '—'; sOut.textContent = '—';
+      note.textContent = '(need at least 4 prices — 3 price changes — to form a single lag-1 pair)';
+      return;
+    }
+
+    var deltas = [];
+    for (var i = 1; i < n; i++) deltas.push(prices[i] - prices[i - 1]);
+    ndeltaOut.textContent = deltas.length;
+
+    var x = deltas.slice(1);       // ΔP_t, t = 2..n-1
+    var y = deltas.slice(0, -1);   // ΔP_{t-1}
+    var m = x.length;
+    npairsOut.textContent = m;
+
+    var meanX = x.reduce(function(a, b){ return a + b; }, 0) / m;
+    var meanY = y.reduce(function(a, b){ return a + b; }, 0) / m;
+    var sumProd = 0;
+    for (var j = 0; j < m; j++) sumProd += (x[j] - meanX) * (y[j] - meanY);
+    var cov = sumProd / m;
+
+    covOut.textContent = cov.toFixed(6);
+
+    if (cov < 0) {
+      var s = 2 * Math.sqrt(-cov);
+      sOut.textContent = s.toFixed(4);
+      note.textContent = '';
+    } else {
+      sOut.textContent = 'undefined';
+      note.textContent = "Roll's estimator is undefined here — the observed serial covariance is not negative, so there's no real square root to take; this happens often in short or trending samples.";
+    }
+  }
+
+  input.addEventListener('input', recompute);
+  resetBtn.addEventListener('click', function(){
+    input.value = WORKED;
+    recompute();
+  });
+  trendBtn.addEventListener('click', function(){
+    input.value = TRENDING;
+    recompute();
+  });
+  recompute();
+})();
+</script>
+</body>
+</html>

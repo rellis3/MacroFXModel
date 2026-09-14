@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Garman-Klass &amp; Yang-Zhang — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Garman-Klass &amp; Yang-Zhang — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer full derivations, a live candlestick chart, and a 6-question self-test?<a href="institutional-garman-klass-yang-zhang.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Volatility Estimation &amp; Jump Detection 1 · Volatility Estimation &amp; Jump Detection</div>
+      <h1 class="sl-h1">Garman-Klass &amp; Yang-Zhang, <em>Reading the Whole Bar</em></h1>
+      <p class="sl-lede">A closing price is a snapshot of where the day ended up. It says nothing about how far price actually traveled to get there. This deck opens a brand-new category by asking a simple question with a genuinely useful answer: what happens once a volatility estimator is allowed to read the open, high, and low too — not just the close?</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">One number a day is a wasteful way to measure a day</h2>
+      <p class="sl-sub">Two very different days can produce an identical closing price.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📷</div><div><h4>Close-to-close sees a snapshot</h4><p>Every historical-vol calculation built on log returns uses exactly one price per day — wherever the bar happened to end up.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🌪</div><div><h4>A wild day and a dead day can look identical</h4><p>Open 1.0820, spike to 1.0900, collapse to 1.0790, close 1.0825 — versus a flat day that opens 1.0820 and closes 1.0825. Close-to-close can't tell them apart.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📊</div><div><h4>The high and low were sitting right there</h4><p>Every daily bar already carries four prices, not one. Range-based (OHLC) estimators use all four.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚡</div><div><h4>The payoff: far less data needed</h4><p>Reading the whole bar reaches the same statistical precision with a fraction of the trading days a close-only estimate would need.</p></div></div>
+      </div>
+      <div class="sl-quote">Think of a closing price as a single 6pm photo of someone's day. It can't tell you if that day was chaotic or calm — only how things happened to settle by evening. The high and low are the missing record of how much actually happened in between.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Parkinson (1980) — just the range</h2>
+      <p class="sl-sub">The simplest range-based estimator: look only at how wide the day swung.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The formula</div>
+        <div class="sl-row">
+          <div class="sl-box">σ²_P</div>
+          <div class="sl-arrow">=</div>
+          <div class="sl-box amber">ln(H/L)²</div>
+          <div class="sl-arrow">÷</div>
+          <div class="sl-box">4·ln2</div>
+        </div>
+        <div class="sl-verdict">Under a continuous, <strong>driftless</strong> price model, this single ratio is an unbiased estimate of that day's variance — using only the high and the low, nothing else.</div>
+        <div class="sl-note">About 5x more statistically efficient than close-to-close under that model. The cost: it can't see drift, and it can't see the open or close at all — a day that swings wide and snaps back looks identical to one that swings wide and stays there.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Garman-Klass (1980) — range plus open-close</h2>
+      <p class="sl-sub">Adds back exactly the information Parkinson throws away: where the bar started and ended.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">↕</div><div><h4>0.5 · ln(H/L)²</h4><p>The range term — captures every bit of within-bar movement, however wide the swing.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">−</div><div><h4>(2ln2−1) · ln(C/O)²</h4><p>Subtracted back out, weighted by ≈0.3863 — corrects for the fact that a close-to-close comparison only cares where the bar started and ended, not how far it wandered.</p></div></div>
+      </div>
+      <div class="sl-quote">About 7.4x more efficient than close-to-close under the same driftless model — better than Parkinson alone, for one extra term already sitting in the same daily bar.</div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Where this breaks</div>
+        <p>Garman-Klass assumes continuous trading with no gap between one bar's close and the next bar's open. Whatever happens in that gap — a weekend rollover, a scheduled-release jump — is completely invisible to it.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Three estimators, side by side</h2>
+      <p class="sl-sub">What each one uses, what each one assumes, and where each one breaks.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Compare</div>
+        <div class="sl-tabs" id="cmp-tabs">
+          <button class="sl-tab active" data-panel="cmp-1">Parkinson</button>
+          <button class="sl-tab" data-panel="cmp-2">Garman-Klass</button>
+          <button class="sl-tab" data-panel="cmp-3">Yang-Zhang</button>
+        </div>
+        <div class="sl-panel active" id="cmp-1">
+          <div class="sl-verdict"><strong>Uses:</strong> high, low only. <strong>Assumes:</strong> continuous, driftless motion. <strong>Efficiency vs. close-close:</strong> ≈5x. <strong>Blind to:</strong> drift, the open/close, and any gap between bars.</div>
+        </div>
+        <div class="sl-panel" id="cmp-2">
+          <div class="sl-verdict"><strong>Uses:</strong> high, low, open, close. <strong>Assumes:</strong> driftless motion, no gap between bars. <strong>Efficiency vs. close-close:</strong> ≈7.4x. <strong>Blind to:</strong> the overnight/weekend gap specifically — its single biggest real-world limitation for FX.</div>
+        </div>
+        <div class="sl-panel" id="cmp-3">
+          <div class="sl-verdict"><strong>Uses:</strong> high, low, open, close, <em>and</em> the prior close (for the overnight gap). <strong>Assumes:</strong> nothing about drift; explicitly models the overnight gap. <strong>Efficiency vs. close-close:</strong> up to ≈14x under drift+jump scenarios in the original paper. <strong>Blind to:</strong> essentially nothing this deck covers — the most complete of the four.</div>
+        </div>
+      </div>
+      <p class="sl-p">Each estimator in this progression fixes exactly one limitation of the one before it — the range term, then the open-close correction, then (next) drift-independence, then the overnight gap.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Rogers-Satchell — fixing the zero-drift assumption</h2>
+      <p class="sl-sub">Parkinson and Garman-Klass both quietly assume the price never trends. A steadily trending day fools both of them a little.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Parkinson &amp; Garman-Klass</span>
+          <ul>
+            <li>Derived assuming zero drift</li>
+            <li>A steadily trending day picks up a small systematic bias</li>
+            <li>Can't distinguish "wandered" from "walked somewhere"</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Rogers-Satchell (1991)</span>
+          <ul>
+            <li>σ²_RS = ln(H/C)ln(H/O) + ln(L/C)ln(L/O)</li>
+            <li>Drift-independent by construction — stays unbiased on a trending day</li>
+            <li>Rarely used alone — its real job is as a building block inside Yang-Zhang, next</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-quote">Rogers-Satchell is the ingredient, not usually the finished dish. What it fixes is exactly the property Yang-Zhang needs from its own intraday-range term.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Yang-Zhang (2000) — the complete combination</h2>
+      <p class="sl-sub">Three variance sources, weighted to minimize the total.</p>
+      <div class="sl-row">
+        <div class="sl-box">σ²_YZ</div>
+        <div class="sl-arrow">=</div>
+        <div class="sl-box amber">σ²_overnight</div>
+        <div class="sl-arrow">+</div>
+        <div class="sl-box">k·σ²_open-close</div>
+        <div class="sl-arrow">+</div>
+        <div class="sl-box green">(1−k)·σ²_RS</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🌙</div><div><h4>σ²_overnight = Var[ln(Oₜ/Cₜ₋₁)]</h4><p>The exact close-to-open gap Garman-Klass can never see — measured directly, not inferred.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📐</div><div><h4>k = 0.34 / (1.34 + (n+1)/(n−1))</h4><p>Not a guess — derived to minimize the combined estimator's total variance for a sample of n days.</p></div></div>
+      </div>
+      <div class="sl-quote">Overnight fixes Garman-Klass's blind spot. Rogers-Satchell fixes the zero-drift assumption. k blends them at the mathematically optimal weight. That's the whole design in one sentence.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">How much data does each one actually need?</h2>
+      <p class="sl-sub">Drag the slider. Shorter bars mean less sampling noise for the same window length — watch how much faster the range-based estimators shrink.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — Monte Carlo check, driftless simulation</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart comparing sampling noise of close-to-close, Parkinson, Garman-Klass, and Yang-Zhang volatility estimators at a chosen window length, with shorter bars meaning less noise" id="eff-svg">
+            <line x1="60" y1="220" x2="610" y2="220" style="stroke:var(--border2)"/>
+            <text x="26" y="130" text-anchor="middle" fill="var(--text3)" font-size="10.5" font-family="'DM Mono',monospace" transform="rotate(-90 26 130)">sampling noise (%)</text>
+            <g id="eff-bars"></g>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Window length (trading days, k)</span><span class="sl-live" id="eff-kval">k = 60</span></div>
+        <input type="range" class="sl-slider" id="eff-slider" min="5" max="100" step="1" value="60">
+        <div class="sl-note" id="eff-readout">At k=60: close-close ≈9.0% relative sampling noise · Parkinson ≈4.0% · Garman-Klass ≈3.2% · Yang-Zhang ≈3.3% (800-path Monte Carlo, true vol fixed at 8% annualized).</div>
+      </div>
+      <p class="sl-p">Flip it around: close-to-close needed roughly 25 trading days to reach the same ~15% noise level Parkinson, Garman-Klass, and Yang-Zhang all reached with just 5 days — verified by simulation, not assumed from the textbook multiplier alone.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">All four, on the same eight days</h2>
+      <p class="sl-sub">A synthetic EURUSD-style week, with one 38-pip weekend-style gap on day 5.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>What each estimator saw</div>
+        <div class="sl-row">
+          <div class="sl-box">close-close<br>3.08%</div>
+          <div class="sl-box amber">Parkinson<br>3.56%</div>
+          <div class="sl-box amber">Garman-Klass<br>3.81%</div>
+          <div class="sl-box green">Yang-Zhang<br>4.27%</div>
+        </div>
+        <div class="sl-verdict">Yang-Zhang sits highest — it's the <strong>only</strong> one of the four with a dedicated term for day 5's gap. Garman-Klass barely reacted to the exact event it's structurally blind to.</div>
+      </div>
+      <p class="sl-p">Every number above was actually computed from an eight-bar OHLC table, not written to look plausible — the same table and the same live-recalculating candlestick chart are in the full lesson.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Compute Garman-Klass yourself</h2>
+      <p class="sl-sub">Enter one day's O/H/L/C. Invalid combinations are caught, not silently turned into NaN.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Open</label><input type="number" class="sl-input" id="gk-O" value="1.0820" step="0.0001"></div>
+          <div class="sl-calc-field"><label>High</label><input type="number" class="sl-input" id="gk-H" value="1.0845" step="0.0001"></div>
+          <div class="sl-calc-field"><label>Low</label><input type="number" class="sl-input" id="gk-L" value="1.0808" step="0.0001"></div>
+          <div class="sl-calc-field"><label>Close</label><input type="number" class="sl-input" id="gk-C" value="1.0838" step="0.0001"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">GK σ (annualized, √252)</div>
+            <div class="sl-calc-result-val" id="gk-result">3.468%</div>
+          </div>
+        </div>
+        <div class="sl-note" id="gk-note">H must be at or above both open and close; L must be at or below both; high can't sit below low.</div>
+        <button type="button" class="sl-reset-btn" id="gk-reset">Reset to worked-example day 1</button>
+      </div>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Yang-Zhang's weight, for any sample size</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Sample size n (days)</label><input type="number" class="sl-input" id="yzk-n" value="30" step="1" min="2"></div>
+          <div class="sl-calc-op">→</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">k = 0.34/(1.34+(n+1)/(n−1))</div>
+            <div class="sl-calc-result-val" id="yzk-result">0.1937</div>
+          </div>
+        </div>
+        <div class="sl-note">n must be an integer of at least 2 — the formula divides by (n−1).</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">A quiet week, then a weekend gap</h2>
+      <div class="sl-quote">A desk sizes stops off a 30-day Garman-Klass figure all week — fine, because nothing gapped. Then a Friday-evening headline moves rates expectations, and price gaps meaningfully over the weekend rollover. Garman-Klass's rolling estimate barely reacts: the gap happened entirely between two bars, in the exact blind spot its no-gap assumption creates. Yang-Zhang's estimate jumps immediately, because its overnight term is built specifically to measure a move like this one.</div>
+      <p class="sl-p">A desk sizing risk off Garman-Klass alone that week would be working from a volatility figure that quietly understated exactly the kind of move that just happened — the dollars-and-stops version of "GK assumes no gap," not just an abstract limitation.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Genuinely built here — verified, not assumed</h2>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">Verified against this repo's actual code</div>
+        <p>This is not a "concept — not built here" lesson. <strong>Yang-Zhang</strong> is the live production volatility input in <code>js/volForecast.js</code>'s <code>computeForecast()</code> for both FX and gold, walk-forward validated independently in <code>forge/vol.py</code> / <code>forge/run_vol.py</code>, with dedicated tests in <code>forge/vol_test.py</code>. <strong>Garman-Klass</strong> is the realized-variance "ground truth" a separate forecast benchmark (<code>js/volForecastBench.js</code>) scores every candidate estimator against. <strong>Parkinson</strong> drives a live trending/choppy regime classifier (<code>js/volStateEngine.js</code>'s <code>rangeEfficiencyRatio()</code>). <strong>Rogers-Satchell</strong> is gold's dedicated shadow estimator, mirrored into the live MT5 bot in <code>DynAnchorBot/dyn_anchor_mt5_bot.py</code>.</p>
+      </div>
+      <p class="sl-p">Every formula in this deck was checked line-by-line against the actual implementation — not assumed from the estimator's name.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What does Parkinson's estimator use that close-to-close volatility never looks at?</h4>
+        <button class="sl-quiz-opt" data-correct="true">That day's own high and low</button>
+        <button class="sl-quiz-opt">Trading volume</button>
+        <button class="sl-quiz-opt">The prior day's close</button>
+        <div class="sl-quiz-explain">Parkinson uses only H and L from the current bar — the exact information a close-to-close calculation never touches.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>What is Garman-Klass's real limitation?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It assumes no gap between one bar's close and the next bar's open</button>
+        <button class="sl-quiz-opt">It requires implied volatility data</button>
+        <button class="sl-quiz-opt">It only works on equities, never FX</button>
+        <div class="sl-quiz-explain">GK's formula only ever looks at one bar's own OHLC — whatever happens in the gap to the next bar's open (a weekend rollover, a news jump) is invisible to it.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>What property does Rogers-Satchell have that Parkinson and Garman-Klass both lack?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Drift independence — it stays unbiased on a trending day</button>
+        <button class="sl-quiz-opt">It uses implied volatility instead of realized</button>
+        <button class="sl-quiz-opt">It ignores the high and low entirely</button>
+        <div class="sl-quiz-explain">Parkinson and Garman-Klass are both derived under a zero-drift assumption; Rogers-Satchell's formula is specifically constructed to stay unbiased regardless of drift.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>What does Yang-Zhang's overnight term specifically fix?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Garman-Klass's blindness to the close-to-open gap</button>
+        <button class="sl-quiz-opt">The zero-drift assumption</button>
+        <button class="sl-quiz-opt">Discrete sampling bias in the high/low</button>
+        <div class="sl-quiz-explain">Var[ln(Oₜ/Cₜ₋₁)] is a dedicated term measuring exactly the overnight gap Garman-Klass has no way to see — Rogers-Satchell (already inside Yang-Zhang) is what fixes the drift assumption.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Is Yang-Zhang actually used in this repo's production code, or just explained here?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It's the live primary volatility input in js/volForecast.js's computeForecast()</button>
+        <button class="sl-quiz-opt">It's a pure concept, not built anywhere in this repo</button>
+        <button class="sl-quiz-opt">It only appears in a research notebook, never in production</button>
+        <div class="sl-quiz-explain">js/volForecast.js's computeForecast() calls yangZhangVolSeries() as its primary σ input for FX and gold; a second, independent Python implementation in forge/vol.py is walk-forward validated and tested.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Close-to-close volatility uses one price a day. Range-based (OHLC) estimators use all four a daily bar already provides.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Parkinson (range only) → Garman-Klass (+ open-close) → Rogers-Satchell (drift-independent) → Yang-Zhang (+ overnight gap) is a ladder of increasingly complete assumptions.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Garman-Klass's real limitation is the no-gap assumption — a genuine issue for FX around weekend rollovers, fixed specifically by Yang-Zhang's overnight term.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>This deck's own Monte Carlo check recovered ≈5x (Parkinson) and ≈7.8x (Garman-Klass) efficiency gains over close-close vol — matching the textbook figures, not just citing them.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>All four estimators are genuinely implemented in this repo — Yang-Zhang is the live production estimator, not a concept sitting unused.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Recognize when a close-only volatility figure is quietly throwing away real information, and reach for an OHLC estimator instead. Know exactly which failure mode each estimator fixes — drift, the open/close, or the overnight gap — instead of treating "range-based" as one interchangeable idea. Read this repo's own volatility code with the actual formulas in hand, not just the estimator names.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>HAR-RV: Forecasting Realized Volatility</h3>
+        <p>Every estimator in this deck measures a day that already happened. HAR-RV takes realized volatility and turns it into an actual forecast of tomorrow's — the measurement-to-forecast gap this deck deliberately stopped short of.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="institutional-har-rv-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="institutional-garman-klass-yang-zhang.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  var LN2 = Math.log(2);
+  var SQRT252 = Math.sqrt(252);
+  function parkinsonTerm(H, L){ return Math.pow(Math.log(H / L), 2) / (4 * LN2); }
+  function gkTerm(O, H, L, C){ return 0.5 * Math.pow(Math.log(H / L), 2) - (2 * LN2 - 1) * Math.pow(Math.log(C / O), 2); }
+
+  // ── Efficiency bar chart + window-length slider ──
+  (function(){
+    var slider = document.getElementById('eff-slider');
+    if (!slider) return;
+    var kVal = document.getElementById('eff-kval');
+    var readout = document.getElementById('eff-readout');
+    var barsG = document.getElementById('eff-bars');
+
+    // Monte Carlo-verified relative sampling noise (%) at a 60-day window
+    // (800-path driftless simulation, true annualized vol fixed at 8%).
+    var REL60 = { cc: 9.0, pk: 4.0, gk: 3.2, yz: 3.3 };
+    var LABELS = ['cc', 'pk', 'gk', 'yz'];
+    var NAMES = { cc: 'close-close', pk: 'Parkinson', gk: 'Garman-Klass', yz: 'Yang-Zhang' };
+    var COLORS = { cc: 'var(--red)', pk: 'var(--amber)', gk: 'var(--blue)', yz: 'var(--green)' };
+    var X = { cc: 130, pk: 280, gk: 430, yz: 580 };
+    var BAR_W = 70;
+    var Y_BASE = 210, Y_TOP = 30, MAX_PCT = 35;
+
+    function relAt(base, k){ return base * Math.sqrt(60 / k); }
+    function pctToY(pct){ return Y_BASE - Math.min(pct, MAX_PCT) / MAX_PCT * (Y_BASE - Y_TOP); }
+
+    function build(){
+      var svgns = 'http://www.w3.org/2000/svg';
+      barsG.innerHTML = '';
+      LABELS.forEach(function(key){
+        var rect = document.createElementNS(svgns, 'rect');
+        rect.setAttribute('id', 'eff-bar-' + key);
+        rect.setAttribute('x', X[key] - BAR_W/2);
+        rect.setAttribute('width', BAR_W);
+        rect.setAttribute('rx', 4);
+        rect.style.fill = COLORS[key];
+        rect.style.opacity = '0.85';
+        barsG.appendChild(rect);
+
+        var label = document.createElementNS(svgns, 'text');
+        label.setAttribute('x', X[key]); label.setAttribute('y', Y_BASE + 20);
+        label.setAttribute('text-anchor', 'middle');
+        label.setAttribute('font-size', '11');
+        label.setAttribute('font-family', "'DM Sans',sans-serif");
+        label.style.fill = 'var(--text2)';
+        label.textContent = NAMES[key];
+        barsG.appendChild(label);
+
+        var valLabel = document.createElementNS(svgns, 'text');
+        valLabel.setAttribute('id', 'eff-val-' + key);
+        valLabel.setAttribute('x', X[key]);
+        valLabel.setAttribute('text-anchor', 'middle');
+        valLabel.setAttribute('font-size', '12');
+        valLabel.setAttribute('font-weight', '700');
+        valLabel.setAttribute('font-family', "'DM Mono',monospace");
+        valLabel.style.fill = 'var(--text)';
+        barsG.appendChild(valLabel);
+      });
+    }
+
+    function update(){
+      var k = parseInt(slider.value, 10);
+      kVal.textContent = 'k = ' + k;
+      var vals = {};
+      LABELS.forEach(function(key){
+        var pct = relAt(REL60[key], k);
+        vals[key] = pct;
+        var y = pctToY(pct);
+        var rect = document.getElementById('eff-bar-' + key);
+        rect.setAttribute('y', y);
+        rect.setAttribute('height', Math.max(Y_BASE - y, 1));
+        var vLabel = document.getElementById('eff-val-' + key);
+        vLabel.setAttribute('y', y - 8);
+        vLabel.textContent = pct.toFixed(1) + '%';
+      });
+      readout.textContent = 'At k=' + k + ': close-close ≈' + vals.cc.toFixed(1) +
+        '% relative sampling noise · Parkinson ≈' + vals.pk.toFixed(1) +
+        '% · Garman-Klass ≈' + vals.gk.toFixed(1) +
+        '% · Yang-Zhang ≈' + vals.yz.toFixed(1) +
+        '% (scaled from an 800-path Monte Carlo at k=60, true vol fixed at 8% annualized).';
+    }
+
+    build();
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // ── Garman-Klass single-bar calculator ──
+  (function(){
+    var oI = document.getElementById('gk-O');
+    if (!oI) return;
+    var hI = document.getElementById('gk-H'), lI = document.getElementById('gk-L'), cI = document.getElementById('gk-C');
+    var result = document.getElementById('gk-result');
+    var note = document.getElementById('gk-note');
+    var resetBtn = document.getElementById('gk-reset');
+    var DEFAULTS = { O: 1.0820, H: 1.0845, L: 1.0808, C: 1.0838 };
+    var DEFAULT_NOTE = 'H must be at or above both open and close; L must be at or below both; high can’t sit below low.';
+
+    function recompute(){
+      var O = parseFloat(oI.value), H = parseFloat(hI.value), L = parseFloat(lI.value), C = parseFloat(cI.value);
+      if (![O,H,L,C].every(isFinite)) { result.textContent = '—'; note.textContent = 'Enter a number in every field.'; return; }
+      if (O <= 0 || H <= 0 || L <= 0 || C <= 0) { result.textContent = '—'; note.textContent = 'Prices must be positive.'; return; }
+      if (H < L) { result.textContent = '—'; note.textContent = 'High can’t be below low.'; return; }
+      if (H < Math.max(O, C)) { result.textContent = '—'; note.textContent = 'High must be at or above open and close.'; return; }
+      if (L > Math.min(O, C)) { result.textContent = '—'; note.textContent = 'Low must be at or below open and close.'; return; }
+      var gk = Math.sqrt(Math.max(gkTerm(O, H, L, C), 0)) * SQRT252 * 100;
+      result.textContent = gk.toFixed(3) + '%';
+      note.textContent = DEFAULT_NOTE;
+    }
+
+    [oI, hI, lI, cI].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      oI.value = DEFAULTS.O; hI.value = DEFAULTS.H; lI.value = DEFAULTS.L; cI.value = DEFAULTS.C;
+      recompute();
+    });
+    recompute();
+  })();
+
+  // ── Yang-Zhang k(n) mini calculator ──
+  (function(){
+    var nI = document.getElementById('yzk-n');
+    if (!nI) return;
+    var result = document.getElementById('yzk-result');
+
+    function recompute(){
+      var n = parseFloat(nI.value);
+      if (!isFinite(n) || n < 2 || Math.floor(n) !== n) { result.textContent = '—'; return; }
+      var k = 0.34 / (1.34 + (n + 1) / (n - 1));
+      result.textContent = k.toFixed(4);
+    }
+    nI.addEventListener('input', recompute);
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

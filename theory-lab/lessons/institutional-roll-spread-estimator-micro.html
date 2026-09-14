@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Roll's Implicit Spread Estimator — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Roll's Implicit Spread Estimator — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivation, a live 14-print worked example, and a 6-question self-test?<a href="institutional-roll-spread-estimator.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Market Microstructure Extensions 2 · Market Microstructure Extensions</div>
+      <h1 class="sl-h1">Roll's Implicit Spread Estimator, <em>Measuring a Spread You Never See</em></h1>
+      <p class="sl-lede">No quotes. No order book. Just a plain series of trade prices. Roll's 1984 result is that the bid-ask spread still leaves a fingerprint in that series — it forces consecutive price changes to bounce against each other — and that bounce alone is enough to recover the spread's size.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">All you're handed is a list of trade prices</h2>
+      <p class="sl-sub">No bid. No ask. No depth. Just price, timestamp, price, timestamp.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📄</div><div><h4>Thinner than it sounds</h4><p>For decades this was the entire state of a lot of market history — no consolidated quote feed, just prints. Plenty of data today is still this thin.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">❓</div><div><h4>Roll's exact question</h4><p>Given nothing but a series of transaction prices, can the effective bid-ask spread still be recovered?</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">✅</div><div><h4>The answer is yes</h4><p>Not by seeing the spread directly — by noticing a specific statistical fingerprint it leaves in how consecutive prices move.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🆕</div><div><h4>New ground in this curriculum</h4><p>The Market Microstructure lesson here derives <em>why</em> a spread exists (Glosten-Milgrom, Kyle) — it never touches estimating one from prices alone. This deck does.</p></div></div>
+      </div>
+      <div class="sl-quote">Market Microstructure Extensions Lesson 2 of 5 — this deck assumes you already know what a bid-ask spread is and why it exists. What it adds: how to measure one when nobody handed you the quotes.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">The true price never bounces. What you actually see does.</h2>
+      <p class="sl-sub">Same underlying security, two ways of looking at it.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="bounce-tabs">
+          <button class="sl-tab active" data-panel="bounce-1">True price</button>
+          <button class="sl-tab" data-panel="bounce-2">Observed (bouncing) price</button>
+        </div>
+        <div class="sl-panel active" id="bounce-1">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 140" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A smooth straight line rising gently left to right, representing the unobservable true efficient price with no bounce at all">
+            <line x1="40" y1="110" x2="600" y2="30" style="stroke:var(--text2);stroke-width:2.5"/>
+          </svg></div>
+          <div class="sl-verdict">The unobservable "true" price \(m_t\) — a random walk with <strong>no serial correlation in its own changes</strong>. It can drift, but it never mechanically reverses itself.</div>
+        </div>
+        <div class="sl-panel" id="bounce-2">
+          <div class="sl-svgwrap"><svg viewBox="0 0 640 140" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A jagged zig-zagging line that trends the same direction as the smooth true price but bounces sharply up and down around it at every step">
+            <line x1="40" y1="110" x2="600" y2="30" style="stroke:var(--border2);stroke-width:1.5;stroke-dasharray:4,3"/>
+            <polyline points="40,95 82,120 124,110 166,60 208,50 250,42 292,80 334,32 376,26 418,58 460,18 502,48 544,42 586,10" style="fill:none;stroke:var(--blue);stroke-width:2.5"/>
+          </svg></div>
+          <div class="sl-verdict">Every <em>printed</em> trade price \(P_t\) — bouncing between a bid and an ask that straddle the true price above. The zig-zag is real in the data even though the dashed true price beneath it never actually reverses.</div>
+        </div>
+      </div>
+      <p class="sl-p">Nobody trading against this security sees the dashed line — only the solid, bouncing one. Roll's whole method is about reading that bounce backwards to recover how far apart the bid and ask must have been.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Roll's model, in one line</h2>
+      <p class="sl-sub">Every observed trade price is the true price, plus or minus a half-spread.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The model</div>
+        <div class="sl-row">
+          <div class="sl-box">P_t</div>
+          <div class="sl-arrow">=</div>
+          <div class="sl-box">m_t</div>
+          <div class="sl-arrow">+</div>
+          <div class="sl-box amber">(s/2) · q_t</div>
+        </div>
+        <div class="sl-verdict"><strong>q_t</strong> flips between +1 (this trade hit the ask) and −1 (this trade hit the bid), coin-flip-like and independent from one trade to the next. The bracketed term is the entire bounce — everything spurious in the printed price.</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">P</div><div><h4>P_t — observed</h4><p>The only thing actually recorded in a transaction-price dataset.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">m</div><div><h4>m_t — true, unseen</h4><p>Fair value. Never printed. A random walk with no memory in its own changes.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">s</div><div><h4>s — the spread</h4><p>The one unknown quantity this whole method exists to recover.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">q</div><div><h4>q_t — trade side</h4><p>+1 at the ask, −1 at the bid, assumed random and independent each trade.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Why negative, and why divided by 4</h2>
+      <p class="sl-sub">The derivation lands on Cov(ΔP_t, ΔP_t−1) = −s²/4. Both pieces of that result have a plain-English reason.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Why negative</span>
+          <p>A bounce that pushes the price one way is mechanically prone to being undone by the very next trade — hit the ask, and the next trade is just as likely to hit the bid, pulling the price back. "What bounced one way tends to bounce back" <em>is</em> negative serial covariance, by definition — no real price reversal required.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag amber">Why divided by 4</span>
+          <p>Each trade's bounce is a <em>half</em>-spread, s/2, not a full spread. Covariance is built from a product of two such displacements, so the half-spread gets squared: (s/2)² = s²/4. The ¼ isn't arbitrary — it falls straight out of measuring the bounce in half-spread units.</p>
+        </div>
+      </div>
+      <div class="sl-quote">One more structural fact worth carrying: because q_t has no memory beyond one trade, the model predicts Cov(ΔP_t, ΔP_t−k) = 0 for every k ≥ 2. The bounce is strictly a one-period phenomenon — only the very next price change is mechanically related to this one.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Drawn: the bounce, riding on top of a real drift</h2>
+      <p class="sl-sub">14 toy trade prints, true spread s = 0.10, true price drifting slowly upward.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Visualize it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Chart of 14 transaction prints. A dashed grey line rising steadily is the unobservable true price. A green dashed ask line above and a red dashed bid line below both rise in parallel with it, a constant half-spread away. A solid blue jagged line connects the 14 actual observed prints, alternating close to the ask and bid lines rather than the smooth true price, showing the bid-ask bounce riding on top of the underlying drift.">
+            <line x1="60" y1="20" x2="60" y2="270" style="stroke:var(--border2)"/>
+            <line x1="60" y1="270" x2="600" y2="270" style="stroke:var(--border2)"/>
+            <polyline points="60.0,188.0 101.5,176.0 143.1,164.0 184.6,152.0 226.2,140.0 267.7,128.0 309.2,116.0 350.8,104.0 392.3,92.0 433.8,80.0 475.4,68.0 516.9,56.0 558.5,44.0 600.0,32.0" style="fill:none;stroke:var(--green);stroke-width:1.5;stroke-dasharray:4,3;opacity:.85"/>
+            <polyline points="60.0,248.0 101.5,236.0 143.1,224.0 184.6,212.0 226.2,200.0 267.7,188.0 309.2,176.0 350.8,164.0 392.3,152.0 433.8,140.0 475.4,128.0 516.9,116.0 558.5,104.0 600.0,92.0" style="fill:none;stroke:var(--red);stroke-width:1.5;stroke-dasharray:4,3;opacity:.85"/>
+            <polyline points="60.0,218.0 101.5,206.0 143.1,194.0 184.6,182.0 226.2,170.0 267.7,158.0 309.2,146.0 350.8,134.0 392.3,122.0 433.8,110.0 475.4,98.0 516.9,86.0 558.5,74.0 600.0,62.0" style="fill:none;stroke:var(--text3);stroke-width:1.5;stroke-dasharray:2,3"/>
+            <polyline points="60.0,188.0 101.5,236.0 143.1,224.0 184.6,152.0 226.2,140.0 267.7,128.0 309.2,176.0 350.8,104.0 392.3,92.0 433.8,140.0 475.4,68.0 516.9,116.0 558.5,104.0 600.0,32.0" style="fill:none;stroke:var(--blue);stroke-width:2.5;stroke-linejoin:round"/>
+            <text x="480" y="150" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">true price (never bounces)</text>
+            <text x="500" y="26" fill="var(--green)" font-size="10" font-family="'DM Mono',monospace">ask</text>
+            <text x="500" y="102" fill="var(--red)" font-size="10" font-family="'DM Mono',monospace">bid</text>
+            <text x="66" y="36" fill="var(--blue)" font-size="10" font-family="'DM Mono',monospace">observed (bounces)</text>
+          </svg>
+        </div>
+        <div class="sl-note">The grey dashed line is the unobservable truth: rising smoothly, with zero bounce. The solid blue line is everything a real dataset actually contains — and it visibly zig-zags between the two dashed reference levels every time consecutive trades switch sides. This exact series recovers a Roll estimate of 0.0986 against the true 0.10 spread used to build it — the full lesson works the arithmetic by hand.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Turn the result around, solve for s</h2>
+      <p class="sl-sub">One algebraic step: multiply by −4, take a square root.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The estimator</div>
+        <div class="sl-row">
+          <div class="sl-box">Cov(ΔP_t, ΔP_t−1)</div>
+          <div class="sl-arrow">=</div>
+          <div class="sl-box red">−s²/4</div>
+        </div>
+        <div class="sl-verdict">↓ rearrange for s ↓</div>
+        <div class="sl-row">
+          <div class="sl-box green">s</div>
+          <div class="sl-arrow">=</div>
+          <div class="sl-box green">2 · √( −Cov(ΔP_t, ΔP_t−1) )</div>
+        </div>
+        <div class="sl-note">Feed in the empirical serial covariance of price changes, computed from nothing but the raw price series, and this formula hands back an estimated effective spread.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Drag the true spread, watch the recovery</h2>
+      <p class="sl-sub">Same 14-print bounce pattern and drift every time — only the spread changes. Watch the estimate track it.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A bouncing price series between a bid and ask level, both of which move further apart as the spread slider is dragged higher">
+            <line x1="60" y1="230" x2="600" y2="230" style="stroke:var(--border2)"/>
+            <polyline id="rs-ask" points="" style="fill:none;stroke:var(--green);stroke-width:1.5;stroke-dasharray:4,3;opacity:.85"/>
+            <polyline id="rs-bid" points="" style="fill:none;stroke:var(--red);stroke-width:1.5;stroke-dasharray:4,3;opacity:.85"/>
+            <polyline id="rs-true" points="" style="fill:none;stroke:var(--text3);stroke-width:1.5;stroke-dasharray:2,3"/>
+            <polyline id="rs-obs" points="" style="fill:none;stroke:var(--blue);stroke-width:2.5;stroke-linejoin:round"/>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>True spread s</span><span class="sl-live" id="rs-sval">s = 0.10</span></div>
+        <input type="range" class="sl-slider" id="rs-slider" min="2" max="40" step="1" value="10">
+        <div class="sl-note" id="rs-readout">Cov(ΔP_t, ΔP_t−1) = −0.002500 → Roll estimate ≈ 0.1000 (recovers the slider's own s exactly)</div>
+      </div>
+      <p class="sl-p">This specific bounce pattern is constructed so the sample covariance lands exactly on Roll's theoretical −s²/4 relationship, for any spread you drag to — real trade data is never this clean, which is exactly what the next few slides are about.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">The catch that matters more than the formula itself</h2>
+      <p class="sl-sub">The square root only exists if the covariance actually comes out negative.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Read this twice</div>
+        <p>Roll's −s²/4 is a statement about what the covariance is <strong>on average</strong>, under an idealized model — not a guarantee about any one real, finite, noisy sample. In short windows, strongly trending markets, or whenever the "true price is a memoryless random walk" assumption is even mildly violated, the <strong>empirical</strong> covariance routinely comes out <strong>positive</strong> instead. When that happens there is no real square root to take — the estimator is <strong>undefined</strong>, not just noisy. This is a routine, expected outcome of using the method on real short or trending samples, not a rare edge case.</p>
+      </div>
+      <div class="sl-quote">A rolling application of Roll's estimator to real data produces a series with genuine holes in it — windows with no estimate at all. Any honest use of this method needs a plan for what "no answer" means, because a meaningful share of windows will return exactly that.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Compute it yourself — including the undefined case</h2>
+      <p class="sl-sub">Enter a serial covariance value. The formula does the rest, and refuses to answer when it should.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change the input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Cov(ΔP_t, ΔP_t−1)</label><input type="number" class="sl-input" id="roll-calc-cov" value="-0.0025" step="0.0005"></div>
+          <div class="sl-calc-op">→</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Roll spread estimate s</div>
+            <div class="sl-calc-result-val" id="roll-calc-result">0.1000</div>
+          </div>
+        </div>
+        <div class="sl-note" id="roll-calc-note"></div>
+        <div class="sl-teaser-btns" style="margin-top:12px">
+          <button type="button" class="sl-reset-btn" id="roll-calc-reset">Reset to −0.0025 (defined)</button>
+          <button type="button" class="sl-reset-btn" id="roll-calc-undefined">Try +0.0010 (undefined)</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Roll isn't the last word — just the first one</h2>
+      <p class="sl-sub">A newer estimator sidesteps Roll's exact failure mode entirely.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Roll (1984)</span>
+          <ul>
+            <li>Uses the serial covariance of consecutive transaction prices</li>
+            <li>Undefined whenever that covariance is non-negative</li>
+            <li>Fails routinely in short or trending windows</li>
+          </ul>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Corwin &amp; Schultz (2012)</span>
+          <ul>
+            <li>Uses each day's high and low price instead</li>
+            <li>Compares one-day range against overlapping two-day range to isolate the spread</li>
+            <li>Never needs a negative covariance to exist — far more robust in practice</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-quote">Not derived in full here — this deck's depth budget goes to Roll, as the historically foundational, conceptually clearest result. Corwin-Schultz is worth recognizing by name as the modern, more robust successor built for exactly the situations where Roll goes quiet.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">One phrase, two very different jobs</h2>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Don't conflate these</div>
+        <p>"Bid-ask bounce" shows up elsewhere in this curriculum too — the Hurst/Variance-Ratio and Bipower Variation lessons both mention it. There, it's <strong>contamination to filter out</strong> of a realized-variance or mean-reversion estimate. Here, that exact same mechanism is <strong>the signal being measured</strong> — Roll's method exists specifically to extract the bounce's size, not remove its influence from something else. Same phenomenon, opposite role.</p>
+      </div>
+      <div class="sl-callout" style="background:var(--blue-bg);border-color:var(--blue-bd)">
+        <div class="sl-callout-label" style="color:var(--blue)">Verified against this repo</div>
+        <p>A repo-wide search finds no computation anywhere of a serial covariance of price changes used specifically for spread estimation, and this curriculum's own Market Microstructure lesson (Glosten-Milgrom, Kyle's Lambda) never mentions Roll's estimator at all — this lesson is genuinely new ground, not a restatement.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What data does Roll's estimator need?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Only a series of transaction prices — no bid, no ask, no depth</button>
+        <button class="sl-quiz-opt">A full limit order book snapshot</button>
+        <button class="sl-quiz-opt">Quoted bid and ask prices over time</button>
+        <div class="sl-quiz-explain">That's the entire point of the method — recovering the spread from data that never recorded the spread directly.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Why does the bid-ask bounce make Cov(ΔP_t, ΔP_t−1) negative?</h4>
+        <button class="sl-quiz-opt" data-correct="true">A bounce one direction tends to be mechanically undone by the next trade</button>
+        <button class="sl-quiz-opt">Because the true price is falling on average</button>
+        <button class="sl-quiz-opt">Because trades always alternate perfectly, every single time</button>
+        <div class="sl-quiz-explain">A trade at the ask followed by one at the bid looks like a drop, and the next bounce back to the ask looks like a rebound — that systematic reversal is negative serial covariance, with no real price movement required.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Why −s²/4 and not −s²?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Each bounce is a half-spread, and covariance squares that displacement</button>
+        <button class="sl-quiz-opt">It's an arbitrary scaling constant with no particular meaning</button>
+        <button class="sl-quiz-opt">Because there are 4 possible trade-side combinations</button>
+        <div class="sl-quiz-explain">Each trade displaces the price by s/2, not s. Covariance is a product of two such displacements, so (s/2)² = s²/4.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>A real sample's Cov(ΔP_t, ΔP_t−1) comes out positive. What does Roll's estimator say?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Nothing — it's undefined, since there's no real square root of a positive number under the negative sign</button>
+        <button class="sl-quiz-opt">The spread is exactly zero</button>
+        <button class="sl-quiz-opt">The spread is negative</button>
+        <div class="sl-quiz-explain">This is a routine outcome in short or trending samples, not a rare failure — report "no estimate," don't force a number out of the formula.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>What does Corwin-Schultz (2012) use instead of the serial covariance of transaction prices?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Each day's observed high and low price range</button>
+        <button class="sl-quiz-opt">The order book's top-of-book depth</button>
+        <button class="sl-quiz-opt">The exact same serial covariance, just annualized</button>
+        <div class="sl-quiz-explain">Comparing one-day versus overlapping two-day high-low ranges isolates the spread's contribution algebraically — and never needs a negative covariance to exist, which is why it's more robust than Roll's estimator in practice.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Roll's estimator recovers an effective spread from transaction prices alone — no quotes needed — by exploiting the bid-ask bounce.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Cov(ΔP_t, ΔP_t−1) = −s²/4: negative because a bounce mechanically undoes itself, and divided by 4 because each bounce is a half-spread, squared.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>s = 2√(−Cov(ΔP_t, ΔP_t−1)) — but only when that covariance is actually negative, as the theory predicts.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>A non-negative empirical covariance makes the estimator undefined, full stop — a routine, expected outcome in short or trending samples, not a rare failure.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Corwin &amp; Schultz (2012) is the more robust modern successor, built from daily high-low ranges instead — worth knowing by name, even without deriving it.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Recognize when a spread can be estimated from price data alone, know exactly which sample conditions will make that estimate fail outright, and name a more robust alternative when Roll's own method goes quiet.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Glosten-Milgrom, Deepened</h3>
+        <p>Extending the adverse-selection model of the bid-ask spread beyond the single-order case covered in the base Market Microstructure lesson.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="institutional-glosten-milgrom-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="institutional-roll-spread-estimator.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Spread slider: fixed bounce pattern + drift, redraw the bounce chart and recompute Roll's estimate live.
+  (function(){
+    var slider = document.getElementById('rs-slider');
+    if (!slider) return;
+    var sVal = document.getElementById('rs-sval');
+    var readout = document.getElementById('rs-readout');
+    var askLine = document.getElementById('rs-ask');
+    var bidLine = document.getElementById('rs-bid');
+    var trueLine = document.getElementById('rs-true');
+    var obsLine = document.getElementById('rs-obs');
+
+    var N = 14, DRIFT = 0.02, M0 = 100.0;
+    // Fixed side pattern (+1 ask / -1 bid) chosen so the sample covariance lands
+    // exactly on Roll's theoretical -s^2/4 relationship for any spread.
+    var SIDE = [1, -1, -1, 1, -1, -1, 1, -1, -1, 1, -1, -1, 1, 1];
+    var X0 = 60, X1 = 600;
+
+    function xAt(i) { return X0 + (X1 - X0) * i / (N - 1); }
+
+    function update(){
+      var sCents = parseInt(slider.value, 10); // slider units of 0.01
+      var s = sCents / 100;
+      sVal.textContent = 's = ' + s.toFixed(2);
+      var half = s / 2;
+
+      var truePrice = [], askLevel = [], bidLevel = [], obs = [];
+      for (var i = 0; i < N; i++) {
+        var m = M0 + DRIFT * i;
+        truePrice.push(m);
+        askLevel.push(m + half);
+        bidLevel.push(m - half);
+        obs.push(m + SIDE[i] * half);
+      }
+
+      var all = truePrice.concat(askLevel, bidLevel, obs);
+      var pMin = Math.min.apply(null, all), pMax = Math.max.apply(null, all);
+      var pad = (pMax - pMin) * 0.08 || 0.01;
+      pMin -= pad; pMax += pad;
+      var yTop = 15, yBot = 225;
+      function yAt(p) { return yBot - (p - pMin) / (pMax - pMin) * (yBot - yTop); }
+
+      function toPoints(arr) {
+        var parts = [];
+        for (var i = 0; i < N; i++) parts.push(xAt(i).toFixed(1) + ',' + yAt(arr[i]).toFixed(1));
+        return parts.join(' ');
+      }
+      trueLine.setAttribute('points', toPoints(truePrice));
+      askLine.setAttribute('points', toPoints(askLevel));
+      bidLine.setAttribute('points', toPoints(bidLevel));
+      obsLine.setAttribute('points', toPoints(obs));
+
+      // Recompute the sample covariance and Roll estimate from the generated series.
+      var deltas = [];
+      for (var t = 1; t < N; t++) deltas.push(obs[t] - obs[t - 1]);
+      var x = deltas.slice(1), y = deltas.slice(0, -1);
+      var m2 = x.length;
+      var meanX = x.reduce(function(a,b){return a+b;}, 0) / m2;
+      var meanY = y.reduce(function(a,b){return a+b;}, 0) / m2;
+      var sumProd = 0;
+      for (var j = 0; j < m2; j++) sumProd += (x[j] - meanX) * (y[j] - meanY);
+      var cov = sumProd / m2;
+      var rollText;
+      if (cov < 0) {
+        var roll = 2 * Math.sqrt(-cov);
+        rollText = roll.toFixed(4) + ' (recovers the slider\'s own s exactly)';
+      } else {
+        rollText = 'undefined (covariance not negative)';
+      }
+      readout.textContent = 'Cov(ΔP_t, ΔP_t−1) = ' + cov.toFixed(6) + ' → Roll estimate ≈ ' + rollText;
+    }
+
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Cov -> Roll spread calculator, with the undefined-covariance guard.
+  (function(){
+    var covInput = document.getElementById('roll-calc-cov');
+    if (!covInput) return;
+    var result = document.getElementById('roll-calc-result');
+    var note = document.getElementById('roll-calc-note');
+    var resetBtn = document.getElementById('roll-calc-reset');
+    var undefinedBtn = document.getElementById('roll-calc-undefined');
+    var UNDEFINED_MSG = "Roll's estimator is undefined here — the observed serial covariance is not negative, so there's no real square root to take; this happens often in short or trending samples.";
+
+    function recompute(){
+      var cov = parseFloat(covInput.value);
+      if (!isFinite(cov)) {
+        result.textContent = '—';
+        note.textContent = 'Enter a numeric covariance value.';
+        return;
+      }
+      if (cov < 0) {
+        var s = 2 * Math.sqrt(-cov);
+        result.textContent = s.toFixed(4);
+        note.textContent = '';
+      } else {
+        result.textContent = 'undefined';
+        note.textContent = UNDEFINED_MSG;
+      }
+    }
+
+    covInput.addEventListener('input', recompute);
+    resetBtn.addEventListener('click', function(){ covInput.value = -0.0025; recompute(); });
+    undefinedBtn.addEventListener('click', function(){ covInput.value = 0.0010; recompute(); });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

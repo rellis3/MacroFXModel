@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hasbrouck Information Share — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Hasbrouck Information Share — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer full derivations, live math notation, and a 6-question self-test?<a href="institutional-hasbrouck-information-share.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Price Discovery &amp; Lead-Lag 3 · Price Discovery &amp; Lead-Lag</div>
+      <h1 class="sl-h1">Hasbrouck Information Share, <em>Which Price Actually Hears the News First?</em></h1>
+      <p class="sl-lede">The VECM lesson compared how hard each of two prices gets pulled back once they've already drifted apart. This lesson asks the sharper question: when brand-new information hits, whose price actually moves first — and how much of the total variance can genuinely be credited to each venue? The answer is rigorous, useful, and depends uncomfortably on one arbitrary modeling choice.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Adjustment speed vs. information leadership</h2>
+      <p class="sl-sub">Two different questions that a VECM's own numbers can't fully separate on their own.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🐕</div><div><h4>VECM's α_Y vs α_X</h4><p>How hard each price gets pulled back once a spread has opened up. A large |α_Y| means Y does most of the eventual correcting.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚡</div><div><h4>Hasbrouck's Information Share</h4><p>Of the variance in the shock that moves the shared "true" price, how much is attributable to venue Y vs venue X, the instant news arrives?</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔀</div><div><h4>Related, not identical</h4><p>A slow self-corrector can still be the venue where news shows up first. The two questions often agree, but they're not the same claim.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📐</div><div><h4>Same VECM, deeper analysis</h4><p>Nothing about the underlying model changes — this deck starts from the exact same two-equation system the VECM deck already built.</p></div></div>
+      </div>
+      <div class="sl-quote">A price can be a lazy, slow self-corrector and still be the one that always reacts to news first. Being quick to react and being quick to self-correct afterward are not automatically the same trait — Information Share is built to measure the first one.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Four steps from VECM to a number</h2>
+      <p class="sl-sub">Only step 3 needs the VECM's own α; step 4 is Hasbrouck's actual contribution.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The pipeline</div>
+        <div class="sl-row">
+          <div class="sl-box">1. Fit the VECM</div>
+          <div class="sl-arrow">→</div>
+          <div class="sl-box">2. Wold/VMA form</div>
+          <div class="sl-arrow">→</div>
+          <div class="sl-box amber">3. Common-factor loadings ψ</div>
+          <div class="sl-arrow">→</div>
+          <div class="sl-box red">4. Cholesky-orthogonalize</div>
+        </div>
+        <div class="sl-verdict">Step 3 turns the VECM's own α_Y, α_X into a shared weighting vector ψ. Step 4 is where Hasbrouck attributes variance — and where the ordering problem, next section, comes from.</div>
+      </div>
+      <p class="sl-p">Every stationary system has a Wold representation: express Δp_t purely as a weighted sum of current and past shocks, no lagged levels needed. The long-run sum of those weights, Ψ(1), is what step 3 uses.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">One shared row: the common-factor loadings ψ</h2>
+      <p class="sl-sub">Because both venues track one true price, Ψ(1)'s two rows come out identical.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Derived directly from α</div>
+        <div class="sl-row">
+          <div class="sl-box amber">ψ_Y</div>
+          <div class="sl-arrow">=</div>
+          <div class="sl-box">α_X / (α_X − α_Y)</div>
+        </div>
+        <div class="sl-row">
+          <div class="sl-box amber">ψ_X</div>
+          <div class="sl-arrow">=</div>
+          <div class="sl-box">−α_Y / (α_X − α_Y)</div>
+        </div>
+        <div class="sl-verdict">ψ_Y + ψ_X = 1 always. Sanity check: if α_X = 0 (X never adjusts — the VECM lesson's "weak exogeneity" case), then ψ_Y = 0 and ψ_X = 1 — X, the pure anchor, carries the entire common factor.</div>
+      </div>
+      <p class="sl-p">The less a venue reacts to disequilibrium, the more it looks like the fixed reference the other venue is chasing — and the more weight ψ hands it. This is the Gonzalo-Granger (1995) permanent-transitory decomposition, worked out for the two-venue case.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Hasbrouck's trick: orthogonalize, then attribute</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The problem it solves</div>
+        <p class="sl-p" style="margin-top:0">The two venues' shocks are usually correlated (σ_YX ≠ 0) — they share contemporaneous information. That leaves a jointly-owned cross term in the common factor's total variance, σ_w² = ψ_Y²σ_Y² + 2ψ_Yψ_Xσ_YX + ψ_X²σ_X², with no natural rule for splitting it between the two venues.</p>
+        <div class="sl-verdict">Cholesky-decompose Ω = FF′ to manufacture orthogonal shocks with no cross term left — but this requires picking which venue goes <strong>first</strong>. That venue claims the whole shared, correlated portion of the variance; the second-ordered venue gets only what's left over.</div>
+      </div>
+      <p class="sl-p">Whichever venue is listed first in the Cholesky decomposition wins the tie-break on jointly-owned variance. Nothing in the economics says which venue that should be.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">The ordering problem — the standard critique</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Same VECM, same Ω, different answer</div>
+        <p>Swap which venue is ordered first in the Cholesky decomposition, and the Information Share split can change — sometimes dramatically — even though nothing about the underlying economics changed at all. There is no principled rule for which venue "should" go first. This is the single most-cited limitation of Hasbrouck's Information Share.</p>
+      </div>
+      <p class="sl-p">Next slide shows exactly how large that swing can get, using one fitted example: α_Y = −0.40, α_X = 0.10, and a residual covariance matrix with a 0.5 correlation between the two venues' shocks.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Same fitted system, two orderings</h2>
+      <p class="sl-sub">α_Y = −0.40, α_X = 0.10, σ_Y² = 4, σ_X² = 1, σ_YX = 1. Only the ordering changes below.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="order-tabs">
+          <button class="sl-tab active" data-panel="ord-y">Y ordered first</button>
+          <button class="sl-tab" data-panel="ord-x">X ordered first</button>
+        </div>
+        <div class="sl-panel active" id="ord-y">
+          <div style="display:flex;height:38px;border-radius:8px;overflow:hidden;margin:6px 0 14px">
+            <div style="width:57.14%;background:var(--blue);display:flex;align-items:center;justify-content:center;color:#fff;font-family:'DM Mono',monospace;font-size:12px">Y: 57.1%</div>
+            <div style="width:42.86%;background:var(--purple);display:flex;align-items:center;justify-content:center;color:#fff;font-family:'DM Mono',monospace;font-size:12px">X: 42.9%</div>
+          </div>
+          <div class="sl-verdict">Y ordered first claims the entire shared, correlated portion of the variance for itself: <strong>IS_Y = 4/7 ≈ 57.1%</strong>, IS_X = 3/7 ≈ 42.9%.</div>
+        </div>
+        <div class="sl-panel" id="ord-x">
+          <div style="display:flex;height:38px;border-radius:8px;overflow:hidden;margin:6px 0 14px">
+            <div style="width:10.71%;background:var(--blue);display:flex;align-items:center;justify-content:center;color:#fff;font-family:'DM Mono',monospace;font-size:10px">Y</div>
+            <div style="width:89.29%;background:var(--purple);display:flex;align-items:center;justify-content:center;color:#fff;font-family:'DM Mono',monospace;font-size:12px">X: 89.3%</div>
+          </div>
+          <div class="sl-verdict">Same VECM, same Ω — but now X claims the shared variance instead: <strong>IS_Y = 3/28 ≈ 10.7%</strong>, IS_X = 25/28 ≈ 89.3%.</div>
+        </div>
+      </div>
+      <p class="sl-p">Y's own information share swings from 57.1% down to 10.7% purely from the ordering choice — nothing about the fitted model changed between the two tabs.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Drag the correlation, watch the gap open up</h2>
+      <p class="sl-sub">α_Y, α_X, σ_Y², σ_X² fixed. Only σ_YX (the shocks' covariance) changes below.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 170" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two stacked horizontal bars showing the information share split for Y ordered first and X ordered first, which redraw as a covariance slider is dragged, converging when covariance is near zero and diverging sharply as covariance grows.">
+            <text x="10" y="18" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">Y ordered first</text>
+            <rect id="cslide-barY1" x="10" y="26" width="0" height="30" style="fill:var(--blue)"/>
+            <rect id="cslide-barX1" x="0" y="26" width="0" height="30" style="fill:var(--purple)"/>
+            <text x="10" y="102" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">X ordered first</text>
+            <rect id="cslide-barY2" x="10" y="110" width="0" height="30" style="fill:var(--blue)"/>
+            <rect id="cslide-barX2" x="0" y="110" width="0" height="30" style="fill:var(--purple)"/>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Covariance σ_YX</span><span class="sl-live" id="cslide-val">σ_YX = 1.00</span></div>
+        <input type="range" class="sl-slider" id="cslide-slider" min="-200" max="200" step="5" value="100">
+        <div class="sl-note" id="cslide-readout">Y first: IS_Y=57.1% · X first: IS_Y=10.7%</div>
+      </div>
+      <p class="sl-p">Near σ_YX = 0 the two bars line up almost exactly — no shared variance means nothing to fight over. Drag σ_YX toward its valid extreme (±2 here, where the implied correlation hits ±1) and the two orderings pull apart hard.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Compute it yourself, from any inputs</h2>
+      <p class="sl-sub">Change α_Y, α_X, or any entry of Ω — every downstream number recomputes live.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>α_Y</label><input type="number" class="sl-input" id="hc-aY" value="-0.40" step="0.05"></div>
+          <div class="sl-calc-field"><label>α_X</label><input type="number" class="sl-input" id="hc-aX" value="0.10" step="0.05"></div>
+          <div class="sl-calc-field"><label>σ_Y²</label><input type="number" class="sl-input" id="hc-sYY" value="4" step="0.1" min="0"></div>
+          <div class="sl-calc-field"><label>σ_X²</label><input type="number" class="sl-input" id="hc-sXX" value="1" step="0.1" min="0"></div>
+          <div class="sl-calc-field"><label>σ_YX</label><input type="number" class="sl-input" id="hc-sYX" value="1" step="0.1"></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div id="hc-psi">ψ_Y = 0.200, ψ_X = 0.800, σ_w² = 1.1200</div>
+        </div>
+        <div class="sl-calc-row" style="margin-top:10px">
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Y first — IS_Y</div><div class="sl-calc-result-val" id="hc-isY1">0.5714</div></div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Y first — IS_X</div><div class="sl-calc-result-val" id="hc-isX1">0.4286</div></div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">X first — IS_Y</div><div class="sl-calc-result-val" id="hc-isY2">0.1071</div></div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">X first — IS_X</div><div class="sl-calc-result-val" id="hc-isX2">0.8929</div></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div id="hc-mid">Midpoint (Hasbrouck's own fix): IS_Y ≈ 0.3393, IS_X ≈ 0.6607</div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="hc-reset">Reset to worked-example numbers</button>
+        <div class="sl-note">Blank, non-numeric, or invalid-covariance input shows "—" instead of breaking the formula.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Two ways the literature responds</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Hasbrouck's own fix</span>
+          <ul>
+            <li>Compute IS under both orderings</li>
+            <li>Report the midpoint, or the full range</li>
+            <li>Doesn't remove the ambiguity — makes it visible and bounded</li>
+          </ul>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag" style="background:var(--purple-bg);color:var(--purple)">Alternative measures</span>
+          <ul>
+            <li>Gonzalo-Granger (1995) Component Share — same ψ, raw (non-orthogonalized) variances, no ordering step</li>
+            <li>Putniņš (2013) Information Leadership Share — reconciles cases where IS and Component Share disagree</li>
+            <li>Described conceptually — see the original papers for exact algebra</li>
+          </ul>
+        </div>
+      </div>
+      <p class="sl-p">Neither response is "the" correct fix — a wide gap between the two Cholesky orderings is itself a meaningful diagnostic, not a nuisance to average away and forget.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Where this quietly goes wrong</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🔀</div><div><h4>Reporting only one ordering</h4><p>Always compute both, or explicitly justify the ordering choice — usually neither venue's ordering is more defensible than the other.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🚫</div><div><h4>No genuine cointegration</h4><p>The whole common-factor framework needs a real, tested price-parity relationship — not just any two correlated series.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⏱️</div><div><h4>Sampling-frequency sensitivity</h4><p>Tick-level vs. one-minute vs. daily data can flip which venue appears to lead — microstructure noise and averaging both distort the answer differently.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">💧</div><div><h4>IS ≠ liquidity</h4><p>A high information share means news shows up there first — not that the venue is cheaper or more liquid to trade in. See this repo's Glosten-Milgrom, PIN, and Roll's Spread Estimator lessons for that separate question.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>How does Information Share differ from comparing α_Y and α_X directly?</h4>
+        <button class="sl-quiz-opt" data-correct="true">IS attributes variance at the moment news arrives; α comparison is about adjustment speed afterward</button>
+        <button class="sl-quiz-opt">They're exactly the same calculation, just renamed</button>
+        <button class="sl-quiz-opt">IS only applies when α_Y = α_X</button>
+        <div class="sl-quiz-explain">A venue can adjust slowly (small |α|) and still be where news shows up first — related questions, not the same claim.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>If α_X = 0 exactly, what does the common-factor loading vector become?</h4>
+        <button class="sl-quiz-opt" data-correct="true">ψ_Y = 0, ψ_X = 1 — X carries the entire common factor</button>
+        <button class="sl-quiz-opt">ψ_Y = 1, ψ_X = 0</button>
+        <button class="sl-quiz-opt">Both are undefined</button>
+        <div class="sl-quiz-explain">A venue that never responds to disequilibrium behaves like the fixed anchor — the math correctly hands it the whole permanent component.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>What mechanically causes the Cholesky-ordering sensitivity?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Correlated venue shocks leave a jointly-owned variance term that ordering arbitrarily assigns to whichever venue goes first</button>
+        <button class="sl-quiz-opt">Cholesky decomposition only works for uncorrelated variables</button>
+        <button class="sl-quiz-opt">It only happens when α_Y and α_X have the same sign</button>
+        <div class="sl-quiz-explain">Whenever σ_YX ≠ 0, the venue ordered first claims the shared, correlated variance; the second-ordered venue only gets what's left over.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>If σ_YX = 0 exactly, does the Cholesky ordering matter?</h4>
+        <button class="sl-quiz-opt" data-correct="true">No — with no shared variance to divide, both orderings give the identical split</button>
+        <button class="sl-quiz-opt">Yes — ordering always matters regardless of correlation</button>
+        <button class="sl-quiz-opt">Only if ψ_Y = ψ_X</button>
+        <div class="sl-quiz-explain">The ordering problem only exists because of the cross term 2ψ_Yψ_Xσ_YX — set σ_YX to zero and that term vanishes entirely.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Name one of the two standard literature responses to the ordering problem.</h4>
+        <button class="sl-quiz-opt" data-correct="true">Report both orderings' midpoint or range (Hasbrouck), or use Gonzalo-Granger's Component Share / Putniņš' Information Leadership Share instead</button>
+        <button class="sl-quiz-opt">Always order the more liquid venue first — that fully resolves it</button>
+        <button class="sl-quiz-opt">There is no known response in the literature</button>
+        <div class="sl-quiz-explain">Hasbrouck's own suggested fix is the midpoint/range; Gonzalo-Granger (1995) and Putniņš (2013) offer alternative measures without the same ordering dependence.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="6">
+        <div class="sl-quiz-num">Question 6</div>
+        <h4>A venue has a much higher Information Share than another for the same asset. Does that mean it's more liquid?</h4>
+        <button class="sl-quiz-opt" data-correct="true">No — IS measures where news shows up first, not spreads, depth, or execution cost</button>
+        <button class="sl-quiz-opt">Yes, by definition</button>
+        <button class="sl-quiz-opt">Only if α_Y = α_X</button>
+        <div class="sl-quiz-explain">Liquidity is a related but distinct question, covered by this repo's Glosten-Milgrom, PIN, and Roll's Spread Estimator lessons — not by Information Share.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Hasbrouck's Information Share decomposes the variance of the common efficient price's innovation, attributing a share to each venue — a sharper question than the VECM lesson's α_Y-vs-α_X adjustment-speed comparison.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>The common-factor loading vector ψ derives directly from the VECM's own α: ψ_Y = α_X/(α_X−α_Y), ψ_X = −α_Y/(α_X−α_Y) — the less a venue adjusts, the more common-factor weight it carries.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Cholesky-orthogonalizing the residual covariance matrix requires an arbitrary ordering choice, and the IS split can swing hard depending on it — 57.1% vs. 10.7% in this deck's own worked example, same fitted VECM throughout.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Two standard responses exist: Hasbrouck's own midpoint/range fix, and alternative measures — Gonzalo-Granger's (1995) Component Share and Putniņš' (2013) Information Leadership Share — that don't depend on the same arbitrary ordering.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Information Share needs genuine cointegration, is sensitive to sampling frequency, and answers a variance-attribution question — not a liquidity question, which belongs to this repo's Glosten-Milgrom, PIN, and Roll's Spread Estimator lessons instead.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Read a fitted VECM's α_Y, α_X, and residual covariance matrix all the way through to a genuine, defensible variance-attribution number for each venue — and know to report a range across Cholesky orderings rather than a single, arbitrarily-ordered figure.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">End of this category</div>
+        <h3>Kyle-Obizhaeva Market Microstructure Invariance</h3>
+        <p>That's Price Discovery &amp; Lead-Lag done: VECM, Granger Causality, and Hasbrouck Information Share. Next up: Liquidity, starting with Kyle-Obizhaeva Market Microstructure Invariance.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="institutional-kyle-obizhaeva-invariance-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="institutional-hasbrouck-information-share.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Slide 8 — drag covariance σ_YX, watch both orderings' bars redraw live.
+  (function(){
+    var slider = document.getElementById('cslide-slider');
+    if (!slider) return;
+    var val = document.getElementById('cslide-val');
+    var readout = document.getElementById('cslide-readout');
+    var barY1 = document.getElementById('cslide-barY1'), barX1 = document.getElementById('cslide-barX1');
+    var barY2 = document.getElementById('cslide-barY2'), barX2 = document.getElementById('cslide-barX2');
+    var PSI_Y = 0.2, PSI_X = 0.8, SYY = 4, SXX = 1;
+    var W = 620, X0 = 10;
+
+    function update(){
+      var sYX = parseInt(slider.value, 10) / 100; // -2.00 .. 2.00
+      val.textContent = 'σ_YX = ' + sYX.toFixed(2);
+
+      var sigw2 = PSI_Y*PSI_Y*SYY + 2*PSI_Y*PSI_X*sYX + PSI_X*PSI_X*SXX;
+      var det = SYY*SXX - sYX*sYX;
+      if (sigw2 <= 0 || det < 0) {
+        readout.textContent = 'Invalid covariance at this value.';
+        return;
+      }
+
+      // Y ordered first
+      var isY1 = Math.pow(PSI_Y*SYY + PSI_X*sYX, 2) / (SYY*sigw2);
+      var isX1 = 1 - isY1;
+      // X ordered first
+      var isX2 = Math.pow(PSI_X*SXX + PSI_Y*sYX, 2) / (SXX*sigw2);
+      var isY2 = 1 - isX2;
+
+      var wY1 = W * isY1, wX1 = W * isX1;
+      barY1.setAttribute('x', X0); barY1.setAttribute('width', wY1.toFixed(1));
+      barX1.setAttribute('x', X0 + wY1); barX1.setAttribute('width', wX1.toFixed(1));
+
+      var wY2 = W * isY2, wX2 = W * isX2;
+      barY2.setAttribute('x', X0); barY2.setAttribute('width', wY2.toFixed(1));
+      barX2.setAttribute('x', X0 + wY2); barX2.setAttribute('width', wX2.toFixed(1));
+
+      readout.textContent = 'Y first: IS_Y=' + (isY1*100).toFixed(1) + '% · X first: IS_Y=' + (isY2*100).toFixed(1) + '%';
+    }
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Slide 9 — full IS calculator, both orderings + midpoint.
+  (function(){
+    var aY = document.getElementById('hc-aY');
+    if (!aY) return;
+    var aX = document.getElementById('hc-aX'), sYY = document.getElementById('hc-sYY'),
+        sXX = document.getElementById('hc-sXX'), sYX = document.getElementById('hc-sYX');
+    var psiOut = document.getElementById('hc-psi'), midOut = document.getElementById('hc-mid');
+    var isY1 = document.getElementById('hc-isY1'), isX1 = document.getElementById('hc-isX1');
+    var isY2 = document.getElementById('hc-isY2'), isX2 = document.getElementById('hc-isX2');
+    var resetBtn = document.getElementById('hc-reset');
+    var DEFAULTS = { aY: -0.40, aX: 0.10, sYY: 4, sXX: 1, sYX: 1 };
+    var DASH = '—';
+
+    function recompute(){
+      var av = parseFloat(aY.value), xv = parseFloat(aX.value),
+          yy = parseFloat(sYY.value), xx = parseFloat(sXX.value), yx = parseFloat(sYX.value);
+
+      if (![av, xv, yy, xx, yx].every(isFinite)) {
+        psiOut.textContent = 'Enter numeric values for every field.';
+        midOut.textContent = '';
+        isY1.textContent = isX1.textContent = isY2.textContent = isX2.textContent = DASH;
+        return;
+      }
+      if (yy < 0 || xx < 0 || (yy*xx - yx*yx) < 0) {
+        psiOut.textContent = 'Not a valid covariance matrix (variances negative, or |correlation| > 1).';
+        midOut.textContent = '';
+        isY1.textContent = isX1.textContent = isY2.textContent = isX2.textContent = DASH;
+        return;
+      }
+      var denom = xv - av;
+      if (denom === 0) {
+        psiOut.textContent = 'α_Y and α_X cannot be equal — ψ is undefined.';
+        midOut.textContent = '';
+        isY1.textContent = isX1.textContent = isY2.textContent = isX2.textContent = DASH;
+        return;
+      }
+
+      var psiY = xv/denom, psiX = -av/denom;
+      var sigw2 = psiY*psiY*yy + 2*psiY*psiX*yx + psiX*psiX*xx;
+      psiOut.textContent = 'ψ_Y = ' + psiY.toFixed(3) + ', ψ_X = ' + psiX.toFixed(3) + ', σ_w² = ' + sigw2.toFixed(4);
+
+      if (sigw2 <= 0) {
+        midOut.textContent = '';
+        isY1.textContent = isX1.textContent = isY2.textContent = isX2.textContent = DASH;
+        return;
+      }
+
+      var v_isY1 = Math.pow(psiY*yy + psiX*yx, 2) / (yy*sigw2);
+      var v_isX1 = psiX*psiX*(yy*xx - yx*yx) / (yy*sigw2);
+      var v_isX2 = Math.pow(psiX*xx + psiY*yx, 2) / (xx*sigw2);
+      var v_isY2 = psiY*psiY*(xx*yy - yx*yx) / (xx*sigw2);
+
+      isY1.textContent = v_isY1.toFixed(4);
+      isX1.textContent = v_isX1.toFixed(4);
+      isY2.textContent = v_isY2.toFixed(4);
+      isX2.textContent = v_isX2.toFixed(4);
+      midOut.textContent = 'Midpoint (Hasbrouck’s own fix): IS_Y ≈ ' + ((v_isY1+v_isY2)/2).toFixed(4) + ', IS_X ≈ ' + ((v_isX1+v_isX2)/2).toFixed(4);
+    }
+
+    [aY, aX, sYY, sXX, sYX].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      aY.value = DEFAULTS.aY; aX.value = DEFAULTS.aX; sYY.value = DEFAULTS.sYY; sXX.value = DEFAULTS.sXX; sYX.value = DEFAULTS.sYX;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Factor, Marginal &amp; Component VaR — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Factor, Marginal &amp; Component VaR — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">11</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer full derivations, live math notation, and a 6-question self-test?<a href="institutional-factor-marginal-component-var.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Risk Attribution &amp; Tail Statistics 3 of 3</div>
+      <h1 class="sl-h1">One VaR Number, <em>Broken Into Its Parts</em></h1>
+      <p class="sl-lede">Total portfolio VaR tells a risk manager how much could be lost. It says nothing about which position — or which underlying risk factor — is actually driving that number. This deck walks through the machinery that answers the second question additively: every slice, summed, equals the whole.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">One aggregate number can't say "why"</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The gap a single VaR figure leaves open</div>
+        <div class="sl-row">
+          <div class="sl-box">Portfolio 95% VaR = $6,272</div>
+          <div class="sl-arrow">→</div>
+          <div class="sl-box amber">"Where is that coming from?"</div>
+        </div>
+        <div class="sl-row">
+          <div class="sl-box">A single number has already thrown away the breakdown</div>
+          <div class="sl-arrow">→</div>
+          <div class="sl-box red">No answer, by construction</div>
+        </div>
+        <div class="sl-row">
+          <div class="sl-box green">Component VaR: "Position 3 = $1,084 of the $6,272"</div>
+          <div class="sl-arrow">→</div>
+          <div class="sl-box green">An actionable attribution, not an impression</div>
+        </div>
+        <div class="sl-verdict">This lesson builds on the sibling Coherent Risk Measures lesson's VaR/CVaR definitions — it doesn't re-derive VaR, it decomposes it.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Marginal VaR — a sensitivity, not yet an attribution</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Assuming normal returns</div>
+        <div class="sl-row">
+          <div class="sl-box amber">VaR_p</div>
+          <div class="sl-arrow">=</div>
+          <div class="sl-box">z_p · σ_p, &nbsp; σ_p = √(w′Σw)</div>
+        </div>
+        <div class="sl-row">
+          <div class="sl-box amber">Marginal VaR_i</div>
+          <div class="sl-arrow">=</div>
+          <div class="sl-box">∂VaR_p/∂w_i = z_p · (Σw)_i / σ_p</div>
+        </div>
+        <div class="sl-verdict">Marginal VaR answers "if I added one more dollar to position i, how much would total VaR rise?" — a local sensitivity, holding every other position fixed. It does NOT yet tell you how much of today's VaR position i already caused.</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📐</div><div><h4>A simplification, stated up front</h4><p>This closed form needs normal (or elliptical) returns. The sibling Extreme Value Theory lesson exists for exactly the fat-tailed cases where it stops being a good approximation.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔎</div><div><h4>(Σw)_i is position i's total covariance with the whole book</h4><p>Row i of Σ dotted with the full weight vector — it captures both position i's own volatility AND how it co-moves with everything else.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Component VaR — Euler's theorem makes it exact</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The key fact: VaR_p is homogeneous of degree 1</div>
+        <div class="sl-row">
+          <div class="sl-box">Scale every position by λ</div>
+          <div class="sl-arrow">→</div>
+          <div class="sl-box green">VaR_p scales by exactly λ, too</div>
+        </div>
+        <div class="sl-row">
+          <div class="sl-box amber">Euler's theorem</div>
+          <div class="sl-arrow">⟹</div>
+          <div class="sl-box">Σ w_i · MarginalVaR_i = VaR_p, exactly</div>
+        </div>
+        <div class="sl-verdict">Component VaR_i = w_i × Marginal VaR_i. Sum every position's Component VaR and you get total portfolio VaR back — not approximately, algebraically exact. This is the practically crucial result: a clean, additive attribution instead of a vague sensitivity.</div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">A Component VaR can be negative</div>
+        <p>If a position's exposure and its Marginal VaR have opposite signs, it's a genuine diversifier — removing it would INCREASE total portfolio VaR.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Drag position weights, watch the components stack — live</h2>
+      <p class="sl-sub">Fixed volatilities (2% / 1.5% / 3%) and correlations (ρ_AB=0.3, ρ_AC=−0.2, ρ_BC=0.1), 95% confidence. Only the three weights move.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — three sliders, one stacked bar</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Waterfall bar chart showing three Component VaR segments for positions A, B and C stacking from zero up to a running total, next to a single solid bar showing total portfolio VaR at the same height, confirming the components sum exactly to the total.">
+            <line x1="40" y1="260" x2="600" y2="260" style="stroke:var(--border);stroke-width:1"/>
+            <text x="140" y="280" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">A → B → C (running total)</text>
+            <text x="500" y="280" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">total portfolio VaR</text>
+            <rect id="wf-segA" x="90" y="260" width="90" height="0" style="fill:var(--purple);opacity:0.9"/>
+            <rect id="wf-segB" x="90" y="260" width="90" height="0" style="fill:var(--blue);opacity:0.9"/>
+            <rect id="wf-segC" x="90" y="260" width="90" height="0" style="fill:var(--amber);opacity:0.9"/>
+            <rect id="wf-total" x="460" y="260" width="90" height="0" style="fill:var(--green);opacity:0.9"/>
+            <text id="wf-labelA" x="135" y="255" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text)"></text>
+            <text id="wf-labelB" x="135" y="255" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text)"></text>
+            <text id="wf-labelC" x="135" y="255" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text)"></text>
+            <text id="wf-labelTotal" x="505" y="150" text-anchor="middle" font-size="12" font-family="'DM Mono',monospace" fill="#fff" font-weight="700"></text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Weight w_A</span><span class="sl-live" id="wf-wAval">$100,000</span></div>
+        <input type="range" class="sl-slider" id="wf-wA" min="-100000" max="200000" step="5000" value="100000">
+        <div class="sl-sliderhead"><span>Weight w_B</span><span class="sl-live" id="wf-wBval">$150,000</span></div>
+        <input type="range" class="sl-slider" id="wf-wB" min="-100000" max="200000" step="5000" value="150000">
+        <div class="sl-sliderhead"><span>Weight w_C</span><span class="sl-live" id="wf-wCval">-$50,000</span></div>
+        <input type="range" class="sl-slider" id="wf-wC" min="-100000" max="200000" step="5000" value="-50000">
+        <div class="sl-note" id="wf-readout">σ_p = $3,812.81 · VaR_p = $6,272.07 · Components: A=$2,567.07 B=$2,621.00 C=$1,083.99 · sum = $6,272.07 ✓ matches VaR_p</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Factor VaR — the same logic, one level up</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>A linear factor model</div>
+        <div class="sl-row">
+          <div class="sl-box amber">r = Bf + ε</div>
+          <div class="sl-arrow">→</div>
+          <div class="sl-box">x = B′w — the portfolio's net exposure to each factor</div>
+        </div>
+        <div class="sl-row">
+          <div class="sl-box">σ_p² = x′Ωx (systematic)</div>
+          <div class="sl-arrow">+</div>
+          <div class="sl-box">w′Dw (specific)</div>
+        </div>
+        <div class="sl-verdict">Same Euler mechanism, applied to x instead of w: Factor Component VaR_j = x_j × z_p(Ωx)_j/σ_p. Summing all k factor components plus one specific-risk bucket reproduces total VaR exactly — same architecture as commercial Barra-style multi-factor models (sibling lesson), built here from first principles.</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🧭</div><div><h4>"Which macro theme?" not "which position?"</h4><p>A 40-line FX book might reduce to 4-5 real factor exposures — USD-rate, EM-FX, carry. Factor VaR answers the question a portfolio manager usually cares about most.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎲</div><div><h4>Specific risk is a real, honest bucket</h4><p>Factors never explain 100% of risk. The leftover idiosyncratic variance gets its own component — not split further, since it has no shared driver to attribute it to.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Full calculator — any weights, vols, correlations</h2>
+      <p class="sl-sub">Starts on the worked-example numbers from the full lesson. Change anything, live.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>w_A ($)</label><input type="number" class="sl-input" id="mc-wA" value="100000" step="5000"></div>
+          <div class="sl-calc-field"><label>w_B ($)</label><input type="number" class="sl-input" id="mc-wB" value="150000" step="5000"></div>
+          <div class="sl-calc-field"><label>w_C ($)</label><input type="number" class="sl-input" id="mc-wC" value="-50000" step="5000"></div>
+        </div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>σ_A (%/day)</label><input type="number" class="sl-input" id="mc-volA" value="2" step="0.1" min="0"></div>
+          <div class="sl-calc-field"><label>σ_B (%/day)</label><input type="number" class="sl-input" id="mc-volB" value="1.5" step="0.1" min="0"></div>
+          <div class="sl-calc-field"><label>σ_C (%/day)</label><input type="number" class="sl-input" id="mc-volC" value="3" step="0.1" min="0"></div>
+        </div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>ρ_AB</label><input type="number" class="sl-input" id="mc-rAB" value="0.3" step="0.05" min="-1" max="1"></div>
+          <div class="sl-calc-field"><label>ρ_AC</label><input type="number" class="sl-input" id="mc-rAC" value="-0.2" step="0.05" min="-1" max="1"></div>
+          <div class="sl-calc-field"><label>ρ_BC</label><input type="number" class="sl-input" id="mc-rBC" value="0.1" step="0.05" min="-1" max="1"></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div id="mc-shift">σ_p = $3,812.81 → VaR_p (95%) = $6,272.07</div>
+        </div>
+        <div class="sl-calc-row" style="margin-top:10px">
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Component A</div><div class="sl-calc-result-val" id="mc-cA">2567.07</div></div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Component B</div><div class="sl-calc-result-val" id="mc-cB">2621.00</div></div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Component C</div><div class="sl-calc-result-val" id="mc-cC">1083.99</div></div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Sum of components</div><div class="sl-calc-result-val" id="mc-sum">6272.07</div></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="mc-reset">Reset to worked-example numbers</button>
+        <div class="sl-note" id="mc-note">Confidence fixed at 95% (z=1.645) on this slide. Invalid or non-PSD covariance inputs show "—" instead of breaking the formula.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">How practitioners actually use this</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📊</div><div><h4>Risk budgeting</h4><p>Allocate a total VaR budget across strategies, then monitor each one's live Component VaR share against its budgeted slice.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>Targeted hedging</h4><p>Component VaR points at exactly which position or factor to trim — not an across-the-board de-risking that cuts positions barely contributing at all.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔀</div><div><h4>Marginal VaR ≠ Incremental VaR</h4><p>Marginal VaR is an infinitesimal slope. Incremental VaR is the real VaR change from adding/removing a WHOLE position (re-run the calc). They agree closely only for small positions.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧭</div><div><h4>Factor VaR for macro books</h4><p>Reduces a long position list down to the handful of macro themes a portfolio manager actually reasons about day to day.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Where this clean result quietly breaks down</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📉</div><div><h4>Needs normal (or elliptical) returns</h4><p>Under genuine fat tails, VaR is no longer a clean multiple of σ_p — Marginal/Component VaR must be estimated by simulation instead of read off a formula.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧩</div><div><h4>CVaR has a similar Euler property — not the identical formula</h4><p>Expected Shortfall is also homogeneous of degree 1, so an analogous decomposition exists (Tasche, 1999) — but the exact algebra differs from VaR's.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎭</div><div><h4>Factor VaR is only as good as B and Ω</h4><p>Stale loadings, misspecified factors, or a non-diagonal "specific" covariance all quietly misattribute risk while the arithmetic still looks exact.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🌊</div><div><h4>Σ is estimated, not known</h4><p>Calm-period correlations can shift sharply in stress — this category's own CoVaR lesson is built around exactly that worry.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What does Marginal VaR_i measure?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The change in total portfolio VaR per one extra dollar of exposure to position i, holding everything else fixed</button>
+        <button class="sl-quiz-opt">How much of today's total VaR position i is already responsible for</button>
+        <button class="sl-quiz-opt">Position i's own standalone VaR, ignoring the rest of the portfolio</button>
+        <div class="sl-quiz-explain">It's a local sensitivity — ∂VaR_p/∂w_i. Multiplying by w_i (Component VaR) is what turns it into an attribution.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Why do Component VaRs sum EXACTLY to total portfolio VaR?</h4>
+        <button class="sl-quiz-opt" data-correct="true">VaR_p is homogeneous of degree 1 in the weights, so Euler's theorem gives Σw_i·∂VaR_p/∂w_i = VaR_p exactly</button>
+        <button class="sl-quiz-opt">It's an approximation that happens to be very close in practice</button>
+        <button class="sl-quiz-opt">Because correlations are assumed to be zero</button>
+        <div class="sl-quiz-explain">Scaling every position by λ scales VaR_p by exactly λ — that homogeneity is what triggers Euler's exact identity.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Could a position have a negative Component VaR?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Yes — if its weight and Marginal VaR have opposite signs, it's a genuine diversifier; removing it would increase total VaR</button>
+        <button class="sl-quiz-opt">No — Component VaR is always non-negative by definition</button>
+        <button class="sl-quiz-opt">Only if the position has zero volatility</button>
+        <div class="sl-quiz-explain">Negative correlation with the rest of the book can make a position's Marginal VaR negative — a real, useful signal, not an error.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>In r = Bf + ε, what is x = B′w?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The portfolio's net dollar exposure to each of the k common factors — the factor-space analog of w</button>
+        <button class="sl-quiz-opt">The idiosyncratic (specific) risk of the portfolio</button>
+        <button class="sl-quiz-opt">The factor covariance matrix</button>
+        <div class="sl-quiz-explain">x is what the same Euler logic gets applied to for the factor-level decomposition, in place of w.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Why does the closed-form Marginal/Component VaR formula break down under genuinely fat-tailed returns?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It depends on VaR_p = z_p·σ_p, which needs normal (or elliptical) returns — outside that family there's no equivalent clean closed-form gradient</button>
+        <button class="sl-quiz-opt">Fat tails make Σ impossible to compute at all</button>
+        <button class="sl-quiz-opt">It doesn't break down — the formula works for any distribution</button>
+        <div class="sl-quiz-explain">Under real fat tails, marginal/component contributions must be estimated by simulation instead of read off a formula.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="6">
+        <div class="sl-quiz-num">Question 6</div>
+        <h4>What's the difference between Marginal VaR and Incremental VaR?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Marginal VaR is an infinitesimal local slope; Incremental VaR is the actual VaR change from adding/removing a whole position, found by re-computing VaR — they agree closely only for small positions</button>
+        <button class="sl-quiz-opt">They're two different names for exactly the same quantity</button>
+        <button class="sl-quiz-opt">Incremental VaR only applies to factors, never to positions</button>
+        <div class="sl-quiz-explain">For a large trade, the true incremental effect can be meaningfully non-linear — Marginal VaR's local slope is a poor substitute for re-running the calculation.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Marginal VaR is a per-unit sensitivity: z_p(Σw)_i/σ_p. Component VaR (w_i × Marginal VaR_i) turns it into a full, exact attribution.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Euler's homogeneous function theorem is why the components sum EXACTLY to total portfolio VaR — no residual, no approximation, under the normal-returns assumption.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Factor VaR applies the identical logic to x = B′w instead of w — attributing risk across a handful of common factors plus one honest specific-risk bucket.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>A Component VaR can be negative — a real diversifier, not an error. And the clean closed form depends on normal/elliptical returns and a well-specified factor model; both are checkable assumptions, not guarantees.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Take a portfolio's weights and covariance matrix, and answer "which position — or which risk factor — is actually driving our VaR, and by exactly how much" with numbers that add up to the total, not just a ranked guess.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Bates Model: Stochastic Volatility + Jumps</h3>
+        <p>Risk attribution and tail statistics take a fitted covariance matrix as a given input. Next up, a new category: what happens when the underlying's own volatility is stochastic AND can jump — Heston and Merton's jump-diffusion, combined into one model.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="institutional-bates-model-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="institutional-factor-marginal-component-var.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  var Z95 = 1.645;
+  // Fixed vols/correlations shared by the waterfall slide.
+  var SIG = [0.02, 0.015, 0.03];
+  var RHO = [
+    [1, 0.3, -0.2],
+    [0.3, 1, 0.1],
+    [-0.2, 0.1, 1]
+  ];
+
+  function buildSigma(sig, rho){
+    var S = [[0,0,0],[0,0,0],[0,0,0]];
+    for (var i = 0; i < 3; i++) {
+      for (var j = 0; j < 3; j++) S[i][j] = rho[i][j] * sig[i] * sig[j];
+    }
+    return S;
+  }
+
+  function computePortfolio(w, Sigma, z){
+    var Sw = [0,0,0];
+    for (var i = 0; i < 3; i++) {
+      var s = 0;
+      for (var j = 0; j < 3; j++) s += Sigma[i][j] * w[j];
+      Sw[i] = s;
+    }
+    var varP = 0;
+    for (i = 0; i < 3; i++) varP += w[i] * Sw[i];
+    if (!(varP > 0)) return null;
+    var sigmaP = Math.sqrt(varP);
+    var varAmt = z * sigmaP;
+    var marginal = Sw.map(function(x){ return z * x / sigmaP; });
+    var component = [0,1,2].map(function(i){ return w[i] * marginal[i]; });
+    return { sigmaP: sigmaP, varAmt: varAmt, marginal: marginal, component: component };
+  }
+
+  function money(x){
+    var neg = x < 0;
+    var s = '$' + Math.abs(x).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+    return neg ? '-' + s : s;
+  }
+
+  // Slide 5 — three sliders drive a waterfall stacked bar.
+  (function(){
+    var sA = document.getElementById('wf-wA');
+    if (!sA) return;
+    var sB = document.getElementById('wf-wB');
+    var sC = document.getElementById('wf-wC');
+    var valA = document.getElementById('wf-wAval');
+    var valB = document.getElementById('wf-wBval');
+    var valC = document.getElementById('wf-wCval');
+    var segA = document.getElementById('wf-segA');
+    var segB = document.getElementById('wf-segB');
+    var segC = document.getElementById('wf-segC');
+    var totalRect = document.getElementById('wf-total');
+    var labelA = document.getElementById('wf-labelA');
+    var labelB = document.getElementById('wf-labelB');
+    var labelC = document.getElementById('wf-labelC');
+    var labelTotal = document.getElementById('wf-labelTotal');
+    var readout = document.getElementById('wf-readout');
+
+    var BASE_Y = 260, SCALE = 190 / 13000; // px per dollar
+    var MIN_Y = 30, MAX_Y = 262;
+
+    function y_of(v){
+      var y = BASE_Y - v * SCALE;
+      if (y < MIN_Y) y = MIN_Y;
+      if (y > MAX_Y) y = MAX_Y;
+      return y;
+    }
+
+    function rectFor(fromVal, toVal){
+      var y1 = y_of(fromVal), y2 = y_of(toVal);
+      return { y: Math.min(y1, y2), h: Math.abs(y2 - y1) };
+    }
+
+    function update(){
+      var w = [parseFloat(sA.value), parseFloat(sB.value), parseFloat(sC.value)];
+      valA.textContent = money(w[0]);
+      valB.textContent = money(w[1]);
+      valC.textContent = money(w[2]);
+
+      var Sigma = buildSigma(SIG, RHO);
+      var r = computePortfolio(w, Sigma, Z95);
+      if (!r) {
+        readout.textContent = 'These weights produce an invalid (non-positive) portfolio variance — try different values.';
+        [segA, segB, segC, totalRect].forEach(function(el){ el.setAttribute('height', 0); });
+        return;
+      }
+
+      var cum = 0;
+      var segs = [];
+      [r.component[0], r.component[1], r.component[2]].forEach(function(c){
+        var rct = rectFor(cum, cum + c);
+        segs.push(rct);
+        cum += c;
+      });
+
+      segA.setAttribute('y', segs[0].y); segA.setAttribute('height', segs[0].h);
+      segB.setAttribute('y', segs[1].y); segB.setAttribute('height', segs[1].h);
+      segC.setAttribute('y', segs[2].y); segC.setAttribute('height', segs[2].h);
+
+      var totalRct = rectFor(0, r.varAmt);
+      totalRect.setAttribute('y', totalRct.y);
+      totalRect.setAttribute('height', totalRct.h);
+
+      labelA.setAttribute('y', segs[0].y + segs[0].h / 2 + 3);
+      labelA.textContent = 'A ' + money(r.component[0]);
+      labelB.setAttribute('y', segs[1].y + segs[1].h / 2 + 3);
+      labelB.textContent = 'B ' + money(r.component[1]);
+      labelC.setAttribute('y', segs[2].y + segs[2].h / 2 + 3);
+      labelC.textContent = 'C ' + money(r.component[2]);
+      labelTotal.setAttribute('y', totalRct.y + totalRct.h / 2 + 4);
+      labelTotal.textContent = money(r.varAmt);
+
+      var sum = r.component[0] + r.component[1] + r.component[2];
+      var matches = Math.abs(sum - r.varAmt) < 0.01;
+      readout.textContent = 'σ_p = ' + money(r.sigmaP) + ' · VaR_p = ' + money(r.varAmt) +
+        ' · Components: A=' + money(r.component[0]) + ' B=' + money(r.component[1]) + ' C=' + money(r.component[2]) +
+        ' · sum = ' + money(sum) + (matches ? ' ✓ matches VaR_p' : ' (mismatch — check inputs)');
+    }
+
+    [sA, sB, sC].forEach(function(s){ s.addEventListener('input', update); });
+    update();
+  })();
+
+  // Slide 7 — full number-input calculator (fixed 95% confidence).
+  (function(){
+    var wAEl = document.getElementById('mc-wA');
+    if (!wAEl) return;
+    var ids = ['wA','wB','wC','volA','volB','volC','rAB','rAC','rBC'];
+    var inputs = {};
+    ids.forEach(function(f){ inputs[f] = document.getElementById('mc-' + f); });
+    var shiftOut = document.getElementById('mc-shift');
+    var cAOut = document.getElementById('mc-cA');
+    var cBOut = document.getElementById('mc-cB');
+    var cCOut = document.getElementById('mc-cC');
+    var sumOut = document.getElementById('mc-sum');
+    var note = document.getElementById('mc-note');
+    var resetBtn = document.getElementById('mc-reset');
+    var DASH = '—';
+    var DEFAULT_NOTE = 'Confidence fixed at 95% (z=1.645) on this slide. Invalid or non-PSD covariance inputs show "—" instead of breaking the formula.';
+    var DEFAULTS = { wA: 100000, wB: 150000, wC: -50000, volA: 2, volB: 1.5, volC: 3, rAB: 0.3, rAC: -0.2, rBC: 0.1 };
+
+    function recompute(){
+      var v = {};
+      ids.forEach(function(f){ v[f] = parseFloat(inputs[f].value); });
+
+      var msgs = [];
+      if (!isFinite(v.wA) || !isFinite(v.wB) || !isFinite(v.wC)) msgs.push('weights must be numbers');
+      if (!isFinite(v.volA) || v.volA < 0 || !isFinite(v.volB) || v.volB < 0 || !isFinite(v.volC) || v.volC < 0) msgs.push('volatilities must be non-negative');
+      if (!isFinite(v.rAB) || Math.abs(v.rAB) > 1 || !isFinite(v.rAC) || Math.abs(v.rAC) > 1 || !isFinite(v.rBC) || Math.abs(v.rBC) > 1) msgs.push('correlations must be between -1 and 1');
+
+      if (msgs.length) {
+        shiftOut.textContent = 'Enter valid inputs: ' + msgs.join('; ') + '.';
+        cAOut.textContent = cBOut.textContent = cCOut.textContent = sumOut.textContent = DASH;
+        note.textContent = DEFAULT_NOTE;
+        return;
+      }
+
+      var w = [v.wA, v.wB, v.wC];
+      var sig = [v.volA / 100, v.volB / 100, v.volC / 100];
+      var rho = [
+        [1, v.rAB, v.rAC],
+        [v.rAB, 1, v.rBC],
+        [v.rAC, v.rBC, 1]
+      ];
+      var Sigma = buildSigma(sig, rho);
+      var r = computePortfolio(w, Sigma, Z95);
+
+      if (!r) {
+        shiftOut.textContent = 'These volatilities/correlations do not form a valid covariance matrix.';
+        cAOut.textContent = cBOut.textContent = cCOut.textContent = sumOut.textContent = DASH;
+        note.textContent = DEFAULT_NOTE;
+        return;
+      }
+
+      shiftOut.textContent = 'σ_p = ' + money(r.sigmaP) + ' → VaR_p (95%) = ' + money(r.varAmt);
+      cAOut.textContent = r.component[0].toFixed(2);
+      cBOut.textContent = r.component[1].toFixed(2);
+      cCOut.textContent = r.component[2].toFixed(2);
+      var sum = r.component[0] + r.component[1] + r.component[2];
+      sumOut.textContent = sum.toFixed(2);
+      note.textContent = Math.abs(sum - r.varAmt) < 0.01 ? DEFAULT_NOTE + ' ✓ sum matches VaR_p.' : DEFAULT_NOTE;
+    }
+
+    ids.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      ids.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

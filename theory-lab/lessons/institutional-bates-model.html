@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bates Model: Stochastic Volatility + Jumps — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+<style>
+  .tl-table-wrap{overflow-x:auto;margin:14px 0}
+  table.tl-tbl{width:100%;border-collapse:collapse;font-size:13px;background:var(--s1);border:1px solid var(--border);border-radius:var(--r)}
+  table.tl-tbl th,table.tl-tbl td{padding:9px 12px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
+  table.tl-tbl th{color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:.04em;font-weight:700;background:var(--s2)}
+  table.tl-tbl tr:last-child td{border-bottom:none}
+  table.tl-tbl td{color:var(--text2)}
+  table.tl-tbl td:first-child{color:var(--text);font-weight:600;white-space:nowrap}
+  table.tl-tbl td.tl-num{font-family:'DM Mono',monospace;text-align:right}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Options &amp; Vol-Surface Extensions / Bates Model: Stochastic Volatility + Jumps</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Options &amp; Vol-Surface Extensions 1 of 3</div>
+  <h1 class="tl-title">Bates Model: Stochastic Volatility + Jumps</h1>
+  <p class="tl-dek">Heston's stochastic variance can shape a smile reasonably well — until you get to short-dated options, where real markets show a skew far steeper than smooth diffusion alone can build in time. Bates (1996) staples a Merton-style jump term straight onto Heston's own price process. No new machinery gets derived here: two models this Theory Lab already covers in full, combined into one.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — grepping this repo's actual <code>.js</code>/<code>.py</code> source (case-insensitive) for "Bates" turns up zero hits anywhere in the codebase. There is also no Heston-style stochastic-variance fit (no κ, θ, ξ, ρ anywhere) and no Merton-style parametric jump-size fit (no λ, μ_J, σ_J anywhere) — consistent with both sibling lessons' own findings, which this lesson does not contradict. What the repo <em>does</em> have, genuinely adjacent in spirit: four modules literally named "jump_diffusion" in <code>volatilityExhaustion/</code> (<code>jump_diffusion_daily.py</code>, <code>jump_diffusion_forecast.py</code>, <code>jump_event_validation.py</code>, <code>jump_regime_book.py</code>) that implement a Barndorff-Nielsen &amp; Shephard-style realized-variance/bipower-variation jump-fraction test (RV − BV, split into a jump share and a diffusive share) on 1-minute FX/gold bars — a model-free empirical technique for measuring how much of a day's <em>already-realized</em> variance came from jumps versus smooth diffusion, not a fitted compound-Poisson model and not an estimate of λ, μ_J, or σ_J. Separately, <code>js/gammaGreeks.js</code> computes closed-form Black-Scholes Greeks (charm, vanna, gamma) for dealer-positioning analysis off a flat or IV-surface-fed volatility — no stochastic-vol or jump term anywhere in it either. No options-pricing engine for any of Black-Scholes, Heston, Merton, or Bates exists in this codebase.</span>
+    <span>~18 min read</span>
+    <span>Prereqs: <a href="heston-model.html">The Heston Model</a> and <a href="merton-jump-diffusion.html">The Merton Jump-Diffusion Model</a> — this lesson reuses both lessons' exact notation rather than re-deriving either</span>
+  </div>
+
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="institutional-bates-model-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides with a live three-curve smile chart and a jump-moment calculator.
+  </div>
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li><strong>Bates (1996) is literally the union of two lessons already in this Theory Lab</strong>: Heston's stochastic-variance SDE for \(v_t\), plus Merton's compound-Poisson jump term \(dJ_t\), stapled onto the same price process. Nothing about either piece is re-derived here.</li>
+      <li><strong>Why you need both.</strong> Pure Heston's stochastic vol diffuses too slowly to build the steep short-dated smile/skew real markets show; pure Merton jumps produce that steep short-dated tail behavior but have no mean-reverting machinery to explain why elevated volatility <em>persists</em> after a shock. Bates lets jumps handle short-dated tails and stochastic vol handle longer-dated shape and vol clustering.</li>
+      <li>Because the jump process is independent of the correlated Brownian pair driving price and variance, the two pieces' <strong>log-characteristic functions simply add</strong>: \(\varphi_{\text{Bates}}(u) = \varphi_{\text{Heston}}(u)\times\varphi_{\text{jump}}(u)\) — this is why Bates stays tractable enough for the exact same Carr-Madan/FFT machinery Heston alone uses.</li>
+      <li><strong>The cost is parameters.</strong> Bates has 8 free parameters — Heston's \((\kappa,\theta,\xi,\rho,v_0)\) plus the jump trio \((\lambda,\mu_J,\sigma_J)\) — versus 5 or 3 alone. More flexibility to fit an observed surface, but a genuinely harder, less identified, more overfitting-prone calibration.</li>
+      <li>A live calculator below applies the standard compound-Poisson moment formulas and shows, numerically, why fixed jump parameters matter far more at short maturities: the jump share of total <em>variance</em> stays constant across horizons, but the jump contribution to <em>skewness</em> decays like \(1/\sqrt{T}\) and to <em>excess kurtosis</em> like \(1/T\) — the actual mechanism behind "jumps dominate the short end, stochastic vol dominates the long end."</li>
+      <li>Jump risk is not perfectly hedgeable by continuous delta-hedging the way pure diffusion risk is under Black-Scholes-style replication — an incomplete-markets subtlety flagged honestly here, without inventing a specific risk-premium formula this lesson isn't certain of.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    The <a href="heston-model.html">Heston Model</a> lesson ends by naming its
+    own limitation honestly: no single stochastic-volatility model perfectly
+    reproduces every observed smile at every expiry simultaneously, and it
+    points forward to exactly the model this lesson covers. Here's the
+    specific gap. Fit Heston's five parameters
+    \((\kappa,\theta,\xi,\rho,v_0)\) to a long-dated slice of an implied-vol
+    surface — six months, a year out — and the correlated stochastic-variance
+    mechanism that lesson derives can produce a genuinely convincing smile and
+    skew. Fit the same five parameters to a <em>one-week</em> slice of the
+    same surface, and it typically can't get there: real short-dated FX and
+    equity smiles are often dramatically steeper than anything Heston's
+    diffusion, however correlated, can generate in that little time. \(v_t\)
+    simply hasn't had enough time to wander far from \(v_0\), and \(\rho\)'s
+    leverage effect needs the underlying's diffusion to actually accumulate a
+    meaningful correlated co-movement — both mechanisms are continuous and
+    gradual by construction, and a few trading days is not much runway for a
+    continuous process to build a steep skew.
+  </p>
+  <p>
+    The <a href="merton-jump-diffusion.html">Merton Jump-Diffusion</a> lesson
+    has the opposite problem from the opposite direction. A discontinuous jump
+    can inject a large move in an instant, independent of how much calendar
+    time has passed — which is exactly what a steep short-dated skew needs.
+    But Merton's jump term has no memory: each jump is drawn independently,
+    with no mechanism at all describing why a day's volatility should stay
+    elevated <em>after</em> a jump lands rather than immediately reverting to
+    the same flat \(\sigma\) as before. Real markets don't behave that way —
+    the GARCH and Heston lessons both build entire arguments around exactly
+    the opposite empirical fact, that volatility clusters and mean-reverts
+    over calendar time following a shock. Pure Merton jump-diffusion has no
+    machinery whatsoever for that persistence.
+  </p>
+  <p>
+    David Bates' 1996 paper is the direct response to both gaps at once, and
+    it is not a new derivation — it is an explicit combination. Take Heston's
+    two correlated SDEs exactly as that lesson leaves them. Take Merton's
+    compound-Poisson jump term exactly as that lesson leaves it. Add the jump
+    term onto Heston's price equation. That's the whole model specification.
+    The genuinely new content in this lesson is not "how does stochastic
+    volatility work" or "how does a jump term work" — both are settled,
+    cross-linked, and not repeated here — it's <strong>how the two pieces
+    divide the labor</strong>, why that division is the actual point of
+    combining them, and what combining them costs in calibration difficulty.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A river with its own weather, plus an upstream dam</h3>
+    <p>
+      The Heston lesson's own analogy: volatility is "weather that has its
+      own weather" — a slow-moving climate system of calm spells and
+      turbulent spells, drifting and mean-reverting over time, tending to get
+      stormier exactly when the river (price) is falling. The Merton lesson's
+      own analogy: a calm river with an upstream dam that, every so often,
+      releases a sudden burst of water with no warning — a genuine
+      discontinuity, not a fast wiggle.
+    </p>
+    <p>
+      Bates is both analogies describing the same river at once. Most of the
+      time, the river's level drifts with its own slow-moving weather system
+      exactly as the Heston lesson describes — calm spells, turbulent spells,
+      each one tending to spill more when the water's already dropping. And,
+      independently of that weather, the dam upstream can still release
+      without warning, on top of whatever the weather's doing that day. A
+      dam release close to the current moment (a short-dated option) can
+      move the level far more than the slow-moving weather system could have
+      produced by itself in so little time; a dam release six months from
+      now, averaged in with six months of ordinary weather variation, barely
+      changes the overall picture. That's the entire complementarity this
+      lesson exists to explain, told as one river instead of two separate
+      ones.
+    </p>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Heston's model says volatility has its own slow weather. Merton's model says price can suddenly jump, like a surprise fire alarm. Bates just says: why not both? Most days it's the slow weather doing its thing, and every once in a while, completely separately, the fire alarm goes off too. A fire alarm going off THIS AFTERNOON changes your whole day a lot; a fire alarm that might go off sometime in the next six months barely changes what you'd plan for six months from now, because six months of ordinary weather swamps it. That's why the alarm (jumps) matters most for "what happens really soon" and the weather (stochastic vol) matters most for "what happens over the long run."</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math: two lessons' equations, stapled together</h2>
+  <p>
+    Recall Heston's two correlated SDEs exactly as that lesson derives them —
+    reproduced here without re-derivation, purely as the starting point:
+  </p>
+  <div class="tl-math">
+    \[ dS_t = \mu S_t\,dt + \sqrt{v_t}\,S_t\,dW_t^{1}, \qquad dv_t = \kappa(\theta - v_t)\,dt + \xi\sqrt{v_t}\,dW_t^{2}, \qquad \mathrm{Corr}(dW_t^{1}, dW_t^{2}) = \rho \]
+  </div>
+  <p>
+    And recall Merton's jump term exactly as that lesson derives it — a
+    compound Poisson process built from a Poisson arrival clock \(N_t\) with
+    intensity \(\lambda\), and independently-drawn jump sizes \(Y_i\) with
+    \(\ln(1+Y_i)\sim\mathcal{N}(\mu_J,\sigma_J^2)\):
+  </p>
+  <div class="tl-math">
+    \[ dJ_t = \left(\prod_{i=N_{t^-}+1}^{N_t}(1+Y_i)\right) - 1 \]
+  </div>
+  <p>
+    Bates' entire model specification is: take Heston's price SDE, and add
+    Merton's jump term to its right-hand side, unchanged:
+  </p>
+  <div class="tl-math">
+    \[ \frac{dS_t}{S_{t^-}} = \mu\,dt + \sqrt{v_t}\,dW_t^{1} + dJ_t \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>√v_t dW_t¹</code><span>Heston's diffusion term, unchanged — variance is still its own stochastic process</span></div>
+    <div class="tl-eq-chip c2"><code>dJ_t</code><span>Merton's jump term, unchanged — a separate, independent compound-Poisson process</span></div>
+  </div>
+  <p>
+    Heston's variance SDE itself is left completely untouched — \(v_t\) still
+    mean-reverts toward \(\theta\) at speed \(\kappa\) with its own CIR-type
+    noise \(\xi\sqrt{v_t}\,dW_t^2\), and \(\rho\) still links that noise to
+    the price Brownian motion \(dW_t^1\) exactly as before. Bates adds a
+    <em>third</em>, independent source of randomness — the jump process
+    \(J_t\) — on top of Heston's already-correlated pair, rather than
+    modifying either of Heston's two SDEs in any way:
+  </p>
+  <div class="tl-math">
+    \[ dv_t = \kappa(\theta - v_t)\,dt + \xi\sqrt{v_t}\,dW_t^{2}, \qquad \mathrm{Corr}(dW_t^{1}, dW_t^{2}) = \rho \]
+  </div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">κ, θ, ξ, ρ, v₀</div>
+      <div class="tl-fp-name">Heston's five, unchanged</div>
+      <div class="tl-fp-desc">Mean-reverting stochastic variance and its correlation with price — reused verbatim from that lesson</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">λ, μ_J, σ_J</div>
+      <div class="tl-fp-name">Merton's three, unchanged</div>
+      <div class="tl-fp-desc">Jump intensity, and the mean/spread of the lognormal jump size — reused verbatim from that lesson</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">J_t independent of (W¹, W²)</div>
+      <div class="tl-fp-name">The one new modeling assumption</div>
+      <div class="tl-fp-desc">The jump process is assumed independent of the correlated Brownian pair — see Section 03 for why this is the assumption that keeps the model tractable</div>
+    </div>
+  </div>
+  <p>
+    Every symbol here already has a full entry in one of the two sibling
+    lessons' symbol tables — nothing below is a new definition, only a
+    pointer to where each one was actually derived:
+  </p>
+  <div class="tl-symbols"><table>
+    <tr><td>\(S_t, \mu\)</td><td>Price and drift — same role as in the Heston and Merton lessons alike.</td></tr>
+    <tr><td>\(v_t,\ \kappa,\ \theta,\ \xi,\ \rho,\ dW_t^{1},\ dW_t^{2}\)</td><td>Instantaneous variance and its five parameters, plus the two correlated Brownian motions — all defined in full in the <a href="heston-model.html">Heston Model</a> lesson's own symbol table. Not redefined here.</td></tr>
+    <tr><td>\(N_t,\ \lambda,\ Y_i,\ \mu_J,\ \sigma_J,\ dJ_t\)</td><td>The Poisson arrival process, its intensity, the lognormal jump size and its two parameters, and the compound-Poisson jump term itself — all defined in full in the <a href="merton-jump-diffusion.html">Merton Jump-Diffusion</a> lesson's own symbol table. Not redefined here.</td></tr>
+    <tr><td>\(J_t \perp (W_t^{1}, W_t^{2})\)</td><td>The jump process is assumed independent of both Brownian motions — a jump's timing and size have nothing to do with the current level of \(v_t\) or with which way the diffusion happens to be moving that instant. This is the one genuinely new assumption Bates adds, and Section 03 explains why it's the specific assumption that keeps the model's characteristic function tractable.</td></tr>
+  </table></div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If you already understand the Heston lesson's two equations and the Merton lesson's jump term separately, you already understand Bates — there is no third new equation to learn. The only genuinely new sentence is: "the fire alarm (jumps) is assumed to have nothing to do with today's weather (v_t) or which way the weather's currently blowing (ρ)." That's it.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>Why independence buys tractability: the characteristic function just multiplies</h2>
+  <p>
+    The <a href="fft-option-pricing-carr-madan.html">FFT Option Pricing
+    (Carr-Madan)</a> lesson explains, and doesn't re-derive, why Heston's
+    tractability rests entirely on having a known closed-form
+    <strong>characteristic function</strong> \(\varphi_T(u)\) — the Fourier
+    transform of the log-price distribution — which Carr-Madan's method then
+    turns into an entire strip of option prices with a single FFT call. Bates
+    needs the identical property to be pricing-tractable at all, and it's
+    worth being explicit about exactly why adding a jump term doesn't break
+    it.
+  </p>
+  <p>
+    A standard fact about independent random variables: the characteristic
+    function of a <em>sum</em> of two independent random variables is the
+    <em>product</em> of their individual characteristic functions — equivalently,
+    their <strong>log</strong>-characteristic functions simply <em>add</em>.
+    Bates' log-price at time \(T\) is, informally, "the Heston part" (drift
+    plus correlated diffusion) plus "the jump part" (the accumulated compound
+    Poisson jumps), and because Section 02 assumed the jump process is
+    independent of the Heston diffusion, that sum's characteristic function
+    factors cleanly:
+  </p>
+  <div class="tl-math">
+    \[ \varphi_{\text{Bates}}(u) = \varphi_{\text{Heston}}(u)\times\varphi_{\text{jump}}(u) \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>φ_Heston(u)</code><span>Heston's own known closed-form characteristic function, unchanged — same object the Heston/FFT lessons already use</span></div>
+    <div class="tl-eq-chip c2"><code>φ_jump(u)</code><span>the compound-Poisson jump process's own characteristic function — a standard, simple closed form for a Poisson-lognormal jump mixture</span></div>
+  </div>
+  <p>
+    Neither factor is derived here — \(\varphi_{\text{Heston}}\)'s derivation
+    is the substantial applied mathematics the Heston lesson explicitly
+    declines to reproduce, and \(\varphi_{\text{jump}}\)'s is a standard,
+    considerably shorter result for a Poisson-lognormal compound process. The
+    point worth sitting with is structural, not computational:
+    <strong>combining two tractable models by adding an independent term
+    keeps the combination tractable</strong>, because independence is exactly
+    the condition under which characteristic functions multiply. Had Bates
+    instead let jump timing or size depend on \(v_t\) or on \(\rho\)'s
+    correlated diffusion — a plausible-sounding refinement, and one some
+    later papers explore — this clean factorization would no longer hold,
+    and the model would lose the tractability that makes it usable in
+    practice at all.
+  </p>
+  <div class="tl-solid blue">
+    <strong>This is exactly what makes Bates FFT-pricing-compatible.</strong>
+    Once \(\varphi_{\text{Bates}}(u)\) is known in closed form — which it is,
+    precisely because of the multiplication above — Carr &amp; Madan's
+    method applies to it exactly the way it applies to Heston alone: the
+    <a href="fft-option-pricing-carr-madan.html">FFT Option Pricing
+    (Carr-Madan)</a> lesson's damping-and-FFT machinery doesn't care which
+    tractable characteristic function it's fed, only that one exists. This
+    lesson doesn't re-derive that machinery; it only establishes that Bates
+    supplies it with a valid input.
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If two things happening are totally unrelated to each other, the "recipe" for their combined randomness is just multiplying the two separate recipes together — no new math needed. Bates gets to do exactly that because it assumes the jump alarm has nothing to do with the slow weather. That's why the same fast pricing trick (Carr-Madan/FFT) built for the weather-only model still works once the alarm gets added — the combined recipe is still simple enough for the trick to use.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>The actual mechanism: variance share is flat, but skew and kurtosis decay with horizon</h2>
+  <p>
+    Section 01 asserted, in words, that jumps matter more at short maturities
+    and stochastic vol matters more at long ones. This section makes that
+    precise using the same standard compound-Poisson moment formulas the
+    Merton lesson's fat-tails discussion rests on, now applied specifically
+    to how they scale with the horizon \(T\).
+  </p>
+  <p>
+    Over a horizon \(T\), a compound Poisson process's cumulants (raw
+    building blocks of variance, skewness, and kurtosis) each scale as
+    \(\lambda T\) times a raw moment of the jump-size distribution \(Y\).
+    For \(Y\) lognormal in the Merton/Bates sense
+    (\(\ln(1+Y)\sim\mathcal{N}(\mu_J,\sigma_J^2)\), approximated here — as
+    the Merton lesson does — by treating \(Y\) itself as approximately
+    \(\mathcal{N}(\mu_J,\sigma_J^2)\) for clean, standard closed-form
+    moments):
+  </p>
+  <div class="tl-math">
+    \[ \text{Var}_{\text{jump}} = \lambda T(\mu_J^2+\sigma_J^2), \qquad \kappa_3 = \lambda T(\mu_J^3+3\mu_J\sigma_J^2), \qquad \kappa_4 = \lambda T(\mu_J^4+6\mu_J^2\sigma_J^2+3\sigma_J^4) \]
+  </div>
+  <p>
+    Add Heston's own diffusive variance contribution, \(v_0 T\)
+    (approximately, over a short horizon where \(v_t\) hasn't moved far from
+    \(v_0\)), and total variance is:
+  </p>
+  <div class="tl-math">
+    \[ \text{Var}_{\text{total}} = v_0 T + \lambda T(\mu_J^2+\sigma_J^2) \]
+  </div>
+  <p>
+    Every term on both sides of that equation is proportional to \(T\) —
+    <strong>the jump share of total variance is therefore the same
+    fraction at every horizon</strong>, short or long, for fixed parameters.
+    That's a genuinely non-obvious fact worth sitting with: adding jumps
+    doesn't disproportionately inflate short-dated variance relative to
+    long-dated variance at all.
+  </p>
+  <p>
+    Skewness and excess kurtosis behave completely differently, because they
+    <em>divide</em> a cumulant by a power of total variance:
+  </p>
+  <div class="tl-math">
+    \[ \text{Skew} = \frac{\kappa_3}{\text{Var}_{\text{total}}^{3/2}}, \qquad \text{Excess Kurtosis} = \frac{\kappa_4}{\text{Var}_{\text{total}}^{2}} \]
+  </div>
+  <p>
+    The numerator of skewness scales as \(T\) (one power of \(\lambda T\));
+    the denominator scales as \(T^{3/2}\) (total variance to the 3/2 power).
+    Skewness therefore scales as \(T/T^{3/2}=T^{-1/2}\) — it decays like
+    \(1/\sqrt{T}\). Excess kurtosis's numerator also scales as \(T\), but its
+    denominator scales as \(T^2\), so excess kurtosis scales as
+    \(T/T^2=T^{-1}\) — it decays like \(1/T\), <em>faster</em> than skewness.
+    This is exactly the same mathematics behind the Central Limit Theorem:
+    aggregate enough independent shocks together and a distribution's higher
+    moments wash out toward normality, with skewness fading faster than the
+    raw spread and kurtosis fading fastest of all.
+  </p>
+  <div class="tl-solid green">
+    <strong>This is the precise mechanism behind "jumps dominate the short
+    end, stochastic vol dominates the long end."</strong> Fixed jump
+    parameters contribute a <em>constant share of variance</em> at every
+    maturity, but a <em>rapidly vanishing share of skew and (especially)
+    kurtosis</em> as maturity lengthens. Implied-vol skew and smile curvature
+    are driven by exactly those higher moments, not by raw variance — which
+    is why a jump term can dramatically steepen a one-week smile while barely
+    nudging a one-year smile, using the very same \((\lambda,\mu_J,\sigma_J)\)
+    the whole way through. Heston's stochastic vol, by contrast, needs
+    calendar time to accumulate its correlated co-movement — it has the
+    opposite problem, contributing comparatively little smile-shaping power
+    at very short horizons and considerably more at longer ones. The two
+    mechanisms hand off almost exactly where the other one runs out of room.
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine one firework going off during a one-minute video versus during a whole two-hour movie. The firework adds roughly the same SHARE of total noise-and-light either way, minute for minute — but it makes the one-minute video look dramatically, memorably lopsided and spiky, while in a two-hour movie it's one moment among thousands and barely changes the overall feel. Jumps are the firework: same fair share of the total "action" no matter the length, but a much bigger effect on how lopsided and spiky a SHORT clip looks than a long one.</p>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Fixed jump parameters, four maturities — variance share holds, skew and kurtosis collapse</h3>
+    <p>
+      Toy parameters, held fixed across every maturity below: diffusive
+      volatility \(\sqrt{v_0}=9\%\) annualized, jump intensity \(\lambda=3\)
+      per year, mean log-jump size \(\mu_J=-1\%\), jump-size volatility
+      \(\sigma_J=4\%\). Every number below is arithmetic straight from the
+      formulas in Section 04 (cross-checked in Python before publishing this
+      lesson):
+    </p>
+    <div class="tl-table-wrap"><table class="tl-tbl">
+      <tr><th>Maturity</th><th>Jump share of variance</th><th>Skewness</th><th>Excess kurtosis</th></tr>
+      <tr><td>1 week</td><td class="tl-num">38.6%</td><td class="tl-num">−0.699</td><td class="tl-num">7.744</td></tr>
+      <tr><td>1 month</td><td class="tl-num">38.6%</td><td class="tl-num">−0.336</td><td class="tl-num">1.787</td></tr>
+      <tr><td>3 months</td><td class="tl-num">38.6%</td><td class="tl-num">−0.194</td><td class="tl-num">0.596</td></tr>
+      <tr><td>1 year</td><td class="tl-num">38.6%</td><td class="tl-num">−0.097</td><td class="tl-num">0.149</td></tr>
+    </table></div>
+    <p>
+      The variance share column is flat, exactly as Section 04 predicts —
+      the same fixed jump parameters always contribute 38.6% of total return
+      variance, regardless of horizon. But excess kurtosis at 1 week
+      (7.744) is <strong>52 times</strong> the 1-year value (0.149) — precisely
+      the \(1/T\) scaling predicted (1 year is 52 weeks, and
+      \(7.744/52 \approx 0.149\)); skewness at 1 week (−0.699) is
+      \(\sqrt{52}\approx7.2\) times the 1-year value (−0.097), precisely the
+      \(1/\sqrt{T}\) scaling. This is the honest, arithmetic version of "jumps
+      matter far more at short maturities" — not a vague appeal to
+      intuition, a direct consequence of how compound-Poisson cumulants scale
+      with \(T\).
+    </p>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">A toy short-dated smile: market, pure-Heston fit, and Bates fit</div>
+    <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Implied volatility plotted against strike for a one-week option. Market-observed points form a steep smile skewed toward low strikes. A dashed grey curve for a pure-Heston fit sits far too flat, well below the market points at both wings. A solid blue curve for the Bates fit sits close to the market points across the whole strike range.">
+      <line x1="40" y1="250" x2="600" y2="250" style="stroke:var(--border)"/>
+      <line x1="320" y1="20" x2="320" y2="250" style="stroke:var(--border);stroke-dasharray:2,3"/>
+      <text x="40" y="266" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">low strike (OTM put)</text>
+      <text x="480" y="266" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">high strike (OTM call)</text>
+      <text x="320" y="18" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">at-the-money</text>
+      <text x="20" y="145" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)" transform="rotate(-90 20 145)">implied vol →</text>
+
+      <path d="M40,195 C 130,196 200,199 260,203 C 300,206 310,207 320,207 C 340,208 380,209 440,211 C 500,213 560,215 600,216" style="stroke:var(--text3);stroke-width:2;stroke-dasharray:5,4" fill="none"/>
+      <text x="440" y="228" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">pure Heston fit — too flat at 1 week</text>
+
+      <path d="M40,60 C 120,80 190,120 260,165 C 295,185 310,196 320,200 C 335,206 370,213 440,206 C 500,200 560,192 600,186" style="stroke:var(--blue);stroke-width:2.5" fill="none"/>
+      <text x="46" y="50" font-size="11" font-family="'DM Mono',monospace" fill="var(--blue)">Bates fit (Heston + jumps)</text>
+
+      <circle cx="70" cy="65" r="4" fill="var(--text)"/>
+      <circle cx="150" cy="95" r="4" fill="var(--text)"/>
+      <circle cx="230" cy="150" r="4" fill="var(--text)"/>
+      <circle cx="320" cy="198" r="4" fill="var(--text)"/>
+      <circle cx="410" cy="205" r="4" fill="var(--text)"/>
+      <circle cx="490" cy="197" r="4" fill="var(--text)"/>
+      <circle cx="570" cy="188" r="4" fill="var(--text)"/>
+      <text x="70" y="42" font-size="10" font-family="'DM Mono',monospace" fill="var(--text)">market</text>
+    </svg>
+    <div class="tl-chart-caption">
+      A stylized, illustrative one-week smile — not fitted to real market
+      data or real calibrated parameters. Pure Heston (dashed grey), even
+      allowed its own best-fit \((\kappa,\theta,\xi,\rho,v_0)\), stays close
+      to flat because five trading days is too little time for correlated
+      diffusion to build real skew. Adding the jump term (solid blue) lets
+      the fit reach the steep market wings (dots) — exactly the short-dated
+      skew Section 04's kurtosis math predicts a fixed, small-\(T\) jump
+      contribution should be able to buy.
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Compute the jump component's variance/skew/kurtosis contribution across maturities, live</h3>
+    <p>
+      Starts on the worked example's own numbers. Change the diffusive
+      volatility, jump intensity, mean jump size, or jump volatility, and
+      every maturity's row recomputes instantly from the exact formulas in
+      Section 04.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Diffusive vol \(\sqrt{v_0}\) (annual %)</span></div>
+        <input type="number" id="bm-sigma" class="tl-scratch-input" value="9" step="0.5" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Jump intensity λ (per year)</span></div>
+        <input type="number" id="bm-lambda" class="tl-scratch-input" value="3" step="0.5" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Mean jump size μ_J (%)</span></div>
+        <input type="number" id="bm-muj" class="tl-scratch-input" value="-1" step="0.5">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Jump-size vol σ_J (%)</span></div>
+        <input type="number" id="bm-sigj" class="tl-scratch-input" value="4" step="0.5" min="0">
+      </div>
+    </div>
+    <div class="tl-table-wrap"><table class="tl-tbl">
+      <tr><th>Maturity</th><th>Total vol (over horizon)</th><th>Jump share of variance</th><th>Skewness</th><th>Excess kurtosis</th></tr>
+      <tr><td>1 week</td><td class="tl-num" id="bm-vol-1w">1.59%</td><td class="tl-num" id="bm-share-1w">38.6%</td><td class="tl-num" id="bm-skew-1w">-0.699</td><td class="tl-num" id="bm-kurt-1w">7.744</td></tr>
+      <tr><td>1 month</td><td class="tl-num" id="bm-vol-1m">3.32%</td><td class="tl-num" id="bm-share-1m">38.6%</td><td class="tl-num" id="bm-skew-1m">-0.336</td><td class="tl-num" id="bm-kurt-1m">1.787</td></tr>
+      <tr><td>3 months</td><td class="tl-num" id="bm-vol-3m">5.74%</td><td class="tl-num" id="bm-share-3m">38.6%</td><td class="tl-num" id="bm-skew-3m">-0.194</td><td class="tl-num" id="bm-kurt-3m">0.596</td></tr>
+      <tr><td>1 year</td><td class="tl-num" id="bm-vol-1y">11.49%</td><td class="tl-num" id="bm-share-1y">38.6%</td><td class="tl-num" id="bm-skew-1y">-0.097</td><td class="tl-num" id="bm-kurt-1y">0.149</td></tr>
+    </table></div>
+    <div class="tl-readout"><span id="bm-note" class="tl-scratch-note"></span></div>
+    <button type="button" id="bm-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>The calibration trade-off, stated honestly</h2>
+  <p>
+    Everything above is the case <em>for</em> Bates. The case against it is
+    just as real and needs equal weight: Bates has <strong>eight</strong> free
+    parameters where Heston alone has five and Merton alone has three (plus
+    the shared diffusive \(\sigma\)) —
+    \((\kappa,\theta,\xi,\rho,v_0,\lambda,\mu_J,\sigma_J)\). More parameters
+    mechanically buy more flexibility to fit whatever shape an observed
+    vol surface happens to have on a given day. That flexibility is not free.
+  </p>
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>What more parameters buys you</h4>
+      <p>
+        A genuinely richer set of achievable surface shapes: Heston's
+        correlated diffusion for the smooth, longer-dated smile and
+        clustering behavior, plus jump parameters with three separate
+        degrees of freedom (how often, how big on average, how variable) to
+        independently target the short-dated wings without having to distort
+        the longer end to compensate.
+      </p>
+    </div>
+    <div class="tl-compare-card purple">
+      <h4>What it costs</h4>
+      <p>
+        A harder, less stable, more overfitting-prone optimization problem.
+        With eight parameters and a finite, noisy set of observed option
+        prices to fit them to, <strong>multiple, meaningfully different
+        parameter combinations can produce statistically similar-looking
+        fits</strong> — a classic identification problem, not a numerical
+        bug. A slightly lower \(v_0\) and slightly higher \(\lambda\) can
+        trade off against each other and land on nearly the same fitted
+        surface, without the calibration having any way to tell you which
+        combination is the economically "right" one.
+      </p>
+    </div>
+  </div>
+  <p>
+    This is not a hypothetical concern specific to Bates — the Merton
+    lesson's own pitfalls section flags an almost identical problem for
+    Merton alone: "separating a lot of small jumps from high diffusion
+    volatility from a few large jumps ... is a notoriously ill-conditioned
+    estimation problem." Bates inherits that exact tension between
+    \(\sigma\)-like and jump-like parameters, and layers a <em>second</em>
+    one on top of it: distinguishing "the smile is steep because \(\rho\) is
+    strongly negative and \(\xi\) is large" from "the smile is steep because
+    \(\lambda\) is elevated and jumps are large" is its own, largely separate
+    identification problem, and a calibration that fits the surface well
+    today gives no guarantee it has resolved either ambiguity correctly.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine trying to guess exactly how much of a cake's height comes from three different layers by only looking at the cake from outside, with no way to slice it open. If the cake looks a certain height, lots of different combinations of layer-thicknesses could produce that same outside height. Adding a jump layer on top of Heston's two-piece cake gives you more knobs to match any outside shape you see — but it also gives you more ways to get the INSIDE wrong while still nailing the outside. That's the calibration trade-off in one sentence.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>How practitioners actually use this</h2>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📐</div>
+      <h4>Calibrate jointly across the whole maturity ladder, not slice by slice</h4>
+      <p>Because jump and stochastic-vol effects separate cleanly by maturity (Section 04), a common practical discipline is calibrating all 8 parameters simultaneously to the entire observed surface at once, rather than fitting short and long maturities separately and hoping the pieces agree — a joint fit lets the short end constrain the jump parameters and the long end constrain Heston's own five, reducing (not eliminating) the identification problem above.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">⚡</div>
+      <h4>FFT/Carr-Madan pricing, exactly as for Heston alone</h4>
+      <p>Once \(\varphi_{\text{Bates}}(u)\) is available (Section 03), the <a href="fft-option-pricing-carr-madan.html">FFT Option Pricing (Carr-Madan)</a> lesson's machinery prices an entire strike strip per candidate parameter set in one FFT call — the same computational path Heston alone uses, unmodified, because Bates' characteristic function slots into exactly the same interface.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🔧</div>
+      <h4>Regularize or constrain, don't just optimize freely</h4>
+      <p>Given the identification issues above, practitioners commonly add parameter bounds, penalty terms toward "reasonable" prior values, or stability-across-time regularization rather than trusting an unconstrained least-squares fit to land on an economically sensible parameter set on its own.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🧭</div>
+      <h4>A practical middle ground between Heston alone and full local-vol</h4>
+      <p>Bates sits between Heston (parsimonious, may underfit short maturities) and the local-volatility family the Heston lesson names but doesn't derive (exactly fits an observed surface at a point in time, at the cost of a less clean forward-looking, parametric story) — a genuinely useful middle option when both smoothness and a decent short-dated fit matter.</p>
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>A desk's Heston calibration nails 3-month vol but misprices weekly options around a data release</h3>
+    <p>
+      Suppose an FX desk calibrates Heston to its 3-month and 1-year implied
+      vols and gets a tight fit — the smoothly correlated diffusion story
+      works well at that range, exactly as Section 01 describes. The same
+      calibrated parameters, used to price a one-week option straddling a
+      known scheduled release, systematically underprice the wings relative
+      to where the market actually trades them — the desk's model says the
+      smile should be far flatter than the quotes it's seeing. Re-fitting
+      Heston's five parameters <em>only</em> to the one-week slice might
+      patch that specific maturity, but at the cost of parameters that no
+      longer make sense for the 3-month slice the desk already had right —
+      exactly the "slice by slice" trap the practitioner note above warns
+      against.
+    </p>
+    <p>
+      Adding Bates' jump term gives the desk a mechanism that targets the
+      short-dated wings specifically (Section 04's kurtosis math) without
+      requiring \(\kappa,\theta,\xi,\rho\) to be distorted away from the
+      values that already fit the longer end well. The honest caveat,
+      not to be skipped: getting a better joint fit is not the same claim as
+      having correctly identified <em>why</em> the short end is steep — per
+      Section 05, a similarly good fit could in principle come from a
+      different \((\lambda,\mu_J,\sigma_J)\) combination entirely, and the
+      desk's hedging decisions (how much of that short-dated risk is really
+      "vega" versus really "jump risk") depend on getting that distinction
+      right, not just on the fitted price matching.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where Bates-style thinking is misused or overextended</h3>
+    <p>
+      <strong>Treating a good joint fit as proof the parameter split is
+      correct.</strong> Section 05's identification problem is the headline
+      pitfall of this entire lesson: a calibration that reproduces the
+      observed surface well says the <em>combined</em> model fits, not that
+      the specific split between "how much is stochastic vol" and "how much
+      is jumps" is the economically real one. Two different calibrations that
+      both fit today's surface equally well can disagree meaningfully about
+      how much of tomorrow's risk is vega-hedgeable versus jump risk — and
+      that disagreement matters for hedging, not just for reporting a fit
+      quality metric.
+    </p>
+    <p>
+      <strong>Jump risk is not perfectly hedgeable the way pure diffusion
+      risk is.</strong> Black-Scholes-style continuous delta-hedging relies
+      on the underlying's path being continuous — trade the delta
+      continuously and a small, continuous price move is (in the idealized
+      theory) perfectly offset. A genuine discontinuous jump defeats that
+      logic: there is no way to continuously rebalance across an
+      instantaneous discrete move, so jump risk generally cannot be
+      perfectly replicated by dynamic trading in the underlying alone. This
+      is a real market-incompleteness subtlety in the option-pricing
+      literature — it typically means jump risk carries its own risk
+      premium, priced into the market rather than eliminated by hedging, the
+      same diversifiability caveat the Merton lesson's own pitfalls section
+      raises about its original derivation. This lesson states that honestly
+      at the conceptual level and does not attempt to write down a specific
+      jump-risk-premium formula it isn't fully confident of — that would be
+      presenting an unfamiliar result with false precision.
+    </p>
+    <p>
+      <strong>Calibration stability across regimes is not guaranteed.</strong>
+      Just as the Heston lesson warns that \((\kappa,\theta,\xi,\rho)\) fitted
+      today is a snapshot, not a physical law, Bates' eight parameters can
+      shift meaningfully from one calibration date to the next — and, given
+      Section 05's identification issue, some of that apparent instability
+      may reflect the optimizer landing in a different, similarly-good local
+      fit rather than a genuine change in market dynamics. Don't treat one
+      day's calibrated \((\lambda,\mu_J,\sigma_J)\) as a stable structural
+      description of "how jumpy this underlying really is."
+    </p>
+    <p>
+      <strong>A richer model is not automatically a better trading tool.</strong>
+      Exactly the same caution the Heston lesson closes on applies here,
+      doubled: fitting Bates to today's option prices is curve-fitting by
+      construction with even more degrees of freedom than Heston alone to do
+      the fitting with. A tighter in-sample fit says nothing, by itself,
+      about whether a strategy built on top of that calibration would show
+      real out-of-sample edge — that would need to be tested, per this
+      repo's validation discipline, not assumed from the model having more
+      knobs to turn.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Bates = Heston's two SDEs + Merton's jump term, stapled onto the price process.</strong> Neither piece is re-derived here — both sibling lessons already cover the full mechanics, reused verbatim.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The complementarity is the whole point.</strong> Pure Heston diffuses too slowly to build a steep short-dated smile; pure Merton jumps have no mean-reverting machinery to explain persistent elevated vol. Bates lets jumps own the short end and stochastic vol own the long end.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Independence makes the characteristic function multiply</strong> — φ_Bates = φ_Heston × φ_jump — which is exactly why Bates stays tractable for the same Carr-Madan/FFT pricing path Heston alone uses.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Jump share of variance is flat across horizons; skew decays as 1/√T and excess kurtosis as 1/T.</strong> This is the precise, arithmetic reason fixed jump parameters matter far more at short maturities than long ones.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Eight parameters buy flexibility at the cost of identification.</strong> Multiple, meaningfully different (κ,θ,ξ,ρ,v₀,λ,μ_J,σ_J) combinations can produce statistically similar fits — a real, honest calibration-stability concern, not a throwaway caveat.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Jump risk is not perfectly hedgeable by continuous delta-hedging.</strong> A genuine discontinuity defeats the continuous-rebalancing logic behind Black-Scholes-style replication — an incomplete-markets subtlety, stated honestly without a specific unverified risk-premium formula.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>This repo has no Bates, Heston, or Merton implementation anywhere.</strong> This lesson is pure theory background — the repo's own "jump_diffusion"-named modules do model-free realized-variance jump detection, not parametric jump-diffusion or stochastic-vol fitting.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 08</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. In one sentence, what is Bates' model specification, and which parts of it does this lesson re-derive?</summary>
+    <div class="tl-answer">
+      Bates takes Heston's price SDE and adds Merton's compound-Poisson jump
+      term \(dJ_t\) to its right-hand side, leaving Heston's variance SDE
+      untouched. This lesson re-derives neither Heston's two SDEs nor
+      Merton's jump mechanics — both are taken as given from their own
+      sibling lessons; the only genuinely new content is how the two
+      combine, why that combination is useful, and what it costs to
+      calibrate.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why can pure Heston struggle to fit a steep short-dated (e.g. one-week) implied-vol skew, even with its own best-fit parameters?</summary>
+    <div class="tl-answer">
+      Heston's skew-generating mechanism is continuous and gradual: variance
+      \(v_t\) needs time to wander meaningfully away from \(v_0\), and the
+      leverage correlation \(\rho\) needs the diffusion to actually
+      accumulate a correlated co-movement with price over calendar time. A
+      few trading days is not enough runway for either mechanism to build a
+      large effect, so pure Heston tends to produce a much flatter short-dated
+      smile than real markets often show.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why does the log-characteristic function of Bates equal the SUM of Heston's and the jump component's log-characteristic functions, and why does that matter practically?</summary>
+    <div class="tl-answer">
+      Because the jump process is assumed independent of the correlated
+      Brownian pair driving price and variance, and the characteristic
+      function of a sum of independent random variables is the product of
+      their individual characteristic functions — equivalently, log-characteristic
+      functions add. Practically, this means Bates' characteristic function
+      is available in closed form the moment Heston's and the jump
+      component's are, which is exactly what makes Bates compatible with the
+      same Carr-Madan/FFT pricing machinery used for Heston alone, with no
+      new pricing infrastructure required.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. In the worked example, why does excess kurtosis fall by a factor of 52 from 1 week to 1 year, while the jump share of total variance stays exactly the same (38.6%) at both horizons?</summary>
+    <div class="tl-answer">
+      Every cumulant of a compound Poisson process (variance, the 3rd
+      cumulant behind skewness, the 4th behind kurtosis) scales linearly with
+      \(\lambda T\). Variance's numerator and total variance itself both
+      scale as \(T\), so their ratio (the jump variance share) is
+      horizon-invariant. Excess kurtosis, though, divides a \(T\)-scaling
+      numerator by total variance SQUARED (\(T^2\)), so it scales as
+      \(1/T\) overall — and 1 year is 52 weeks, so kurtosis at 1 week is
+      almost exactly 52 times its 1-year value, matching the arithmetic
+      exactly.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. A colleague says "Bates fits the observed vol surface better than Heston alone, so its calibrated λ, μ_J, and σ_J must be the true jump parameters driving this market." What's the precise problem with that claim?</summary>
+    <div class="tl-answer">
+      A better joint fit shows the combined 8-parameter model can reproduce
+      the observed surface — it does not show that the specific split
+      between "how much is stochastic vol" and "how much is jumps" is
+      uniquely correct. With 8 parameters fit to a finite, noisy set of
+      option prices, multiple meaningfully different parameter combinations
+      can produce statistically similar-looking fits — a genuine
+      identification problem, not a numerical error. The fit quality alone
+      cannot distinguish between competing parameter combinations that all
+      fit about equally well.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Why is jump risk described as not "perfectly hedgeable" the way pure diffusion risk is under Black-Scholes-style replication?</summary>
+    <div class="tl-answer">
+      Continuous delta-hedging relies on the underlying's price path being
+      continuous, so a small price move can (in the idealized theory) be
+      offset by continuously rebalancing a hedge position. A genuine
+      discontinuous jump breaks that logic outright — there is no way to
+      continuously rebalance across an instantaneous discrete move — so jump
+      risk generally cannot be perfectly replicated by dynamic trading in the
+      underlying alone. This is a real market-incompleteness issue in the
+      option-pricing literature, typically meaning jump risk carries its own
+      priced risk premium rather than being hedged away entirely; this lesson
+      states that conceptually without asserting a specific unverified
+      risk-premium formula.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>David S. Bates, "Jumps and Stochastic Volatility: Exchange Rate Processes Implicit in Deutsche Mark Options," <em>Review of Financial Studies</em>, 1996 — the seminal paper this lesson is built around, combining Heston's stochastic-variance process with a Merton-style jump term, and, notably, built on FX/currency option data just as Heston's own paper was.</li>
+    <li>Steven L. Heston, "A Closed-Form Solution for Options with Stochastic Volatility with Applications to Bond and Currency Options," <em>Review of Financial Studies</em>, 1993 — the stochastic-variance half of this model, derived in full in the sibling <a href="heston-model.html">Heston Model</a> lesson.</li>
+    <li>Robert C. Merton, "Option Pricing When Underlying Stock Returns Are Discontinuous," <em>Journal of Financial Economics</em>, 1976 — the jump-diffusion half of this model, derived in full in the sibling <a href="merton-jump-diffusion.html">Merton Jump-Diffusion</a> lesson.</li>
+    <li>Peter Carr and Dilip Madan, "Option valuation using the fast Fourier transform," <em>Journal of Computational Finance</em>, 1999 — the FFT pricing method this lesson's Section 03 points to as the practical pricing path once Bates' characteristic function is in hand; covered in full in the sibling <a href="fft-option-pricing-carr-madan.html">FFT Option Pricing (Carr-Madan)</a> lesson.</li>
+    <li>Rama Cont &amp; Peter Tankov, <em>Financial Modelling with Jump Processes</em>, Chapman &amp; Hall/CRC, 2004 — the same standard reference cited in the Merton and Heston lessons, covering combined jump/stochastic-vol models in the broader affine-process framework this lesson's model belongs to.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="institutional-factor-marginal-component-var.html">← Factor, Marginal &amp; Component VaR</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="institutional-dupire-local-vol.html">Dupire Local Volatility →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+<script>
+(function(){
+  var ids = ['sigma', 'lambda', 'muj', 'sigj'];
+  var inputs = {};
+  ids.forEach(function(f){ inputs[f] = document.getElementById('bm-' + f); });
+  if (!inputs.sigma) return;
+
+  var DEFAULTS = { sigma: 9, lambda: 3, muj: -1, sigj: 4 };
+  var DASH = '—';
+  var MATURITIES = [
+    { key: '1w', T: 1/52 },
+    { key: '1m', T: 1/12 },
+    { key: '3m', T: 0.25 },
+    { key: '1y', T: 1.0 }
+  ];
+
+  var out = {};
+  MATURITIES.forEach(function(m){
+    out[m.key] = {
+      vol: document.getElementById('bm-vol-' + m.key),
+      share: document.getElementById('bm-share-' + m.key),
+      skew: document.getElementById('bm-skew-' + m.key),
+      kurt: document.getElementById('bm-kurt-' + m.key)
+    };
+  });
+  var note = document.getElementById('bm-note');
+  var resetBtn = document.getElementById('bm-reset');
+
+  function blankRow(key){
+    out[key].vol.textContent = DASH;
+    out[key].share.textContent = DASH;
+    out[key].skew.textContent = DASH;
+    out[key].kurt.textContent = DASH;
+  }
+
+  function recompute(){
+    var sigma = parseFloat(inputs.sigma.value) / 100;
+    var lambda = parseFloat(inputs.lambda.value);
+    var muJ = parseFloat(inputs.muj.value) / 100;
+    var sigJ = parseFloat(inputs.sigj.value) / 100;
+
+    if (![sigma, lambda, muJ, sigJ].every(isFinite) || sigma < 0 || lambda < 0 || sigJ < 0) {
+      MATURITIES.forEach(function(m){ blankRow(m.key); });
+      note.textContent = '(enter numeric values — diffusive vol, λ, and σ_J must be non-negative)';
+      return;
+    }
+
+    var EY2 = muJ * muJ + sigJ * sigJ;
+    var EY3 = Math.pow(muJ, 3) + 3 * muJ * sigJ * sigJ;
+    var EY4 = Math.pow(muJ, 4) + 6 * muJ * muJ * sigJ * sigJ + 3 * Math.pow(sigJ, 4);
+
+    MATURITIES.forEach(function(m){
+      var T = m.T;
+      var diffVar = sigma * sigma * T;
+      var lamT = lambda * T;
+      var jumpVar = lamT * EY2;
+      var totalVar = diffVar + jumpVar;
+
+      if (!(totalVar > 0)) {
+        blankRow(m.key);
+        return;
+      }
+
+      var k3 = lamT * EY3;
+      var k4 = lamT * EY4;
+      var skew = k3 / Math.pow(totalVar, 1.5);
+      var exk = k4 / (totalVar * totalVar);
+      var share = jumpVar / totalVar * 100;
+      var totalVol = Math.sqrt(totalVar) * 100;
+
+      out[m.key].vol.textContent = totalVol.toFixed(2) + '%';
+      out[m.key].share.textContent = share.toFixed(1) + '%';
+      out[m.key].skew.textContent = skew.toFixed(3);
+      out[m.key].kurt.textContent = exk.toFixed(3);
+    });
+
+    note.textContent = '';
+  }
+
+  ids.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    ids.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
+</body>
+</html>

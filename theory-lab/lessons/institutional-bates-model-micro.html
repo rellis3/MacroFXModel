@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bates Model — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+<style>
+  .bm-dot{fill:var(--text2)}
+  .bm-axis{stroke:var(--border2);stroke-width:1}
+  .bm-axistext{font:10px 'DM Mono',monospace;fill:var(--text3)}
+</style>
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Bates Model: Stochastic Volatility + Jumps — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer full derivations, live math notation, and a 6-question self-test?<a href="institutional-bates-model.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Options &amp; Vol-Surface Extensions 1 of 3</div>
+      <h1 class="sl-h1">Bates: <em>One Model, Two Jobs</em></h1>
+      <p class="sl-lede">Heston's stochastic variance can shape a smile reasonably well — until you get to short-dated options, where real markets show a skew far steeper than smooth diffusion alone can build in time. Bates (1996) staples a Merton-style jump term straight onto Heston's own price process. No new machinery here: two models this Theory Lab already covers in full, combined into one.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Why you need both pieces</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Two models, two opposite gaps</div>
+        <div class="sl-row">
+          <div class="sl-box blue">Pure Heston</div>
+          <div class="sl-arrow">can</div>
+          <div class="sl-box green">shape a smooth, longer-dated smile + vol clustering</div>
+        </div>
+        <div class="sl-row">
+          <div class="sl-box blue">Pure Heston</div>
+          <div class="sl-arrow">can't</div>
+          <div class="sl-box red">build a STEEP short-dated smile — diffusion is too slow</div>
+        </div>
+        <div class="sl-row">
+          <div class="sl-box purple">Pure Merton jumps</div>
+          <div class="sl-arrow">can</div>
+          <div class="sl-box green">inject steep short-dated tail risk instantly</div>
+        </div>
+        <div class="sl-row">
+          <div class="sl-box purple">Pure Merton jumps</div>
+          <div class="sl-arrow">can't</div>
+          <div class="sl-box red">explain why elevated vol PERSISTS after a shock — no clustering machinery</div>
+        </div>
+        <div class="sl-verdict">Bates hands the short end to jumps and the long end to stochastic vol — the two mechanisms hand off almost exactly where the other one runs out of room.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">The model: two sibling lessons' equations, stapled together</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Nothing re-derived — only combined</div>
+        <div class="sl-row">
+          <div class="sl-box blue">Heston's price SDE</div>
+          <div class="sl-arrow">+</div>
+          <div class="sl-box purple">Merton's jump term dJ_t</div>
+          <div class="sl-arrow">=</div>
+          <div class="sl-box green">Bates' price SDE</div>
+        </div>
+        <div class="sl-row">
+          <div class="sl-box">dS_t/S_t = μdt + √v_t dW_t¹ + dJ_t</div>
+        </div>
+        <div class="sl-row">
+          <div class="sl-box amber">dv_t = κ(θ−v_t)dt + ξ√v_t dW_t² &nbsp;·&nbsp; Corr(dW_t¹,dW_t²)=ρ</div>
+        </div>
+        <div class="sl-verdict">Heston's variance SDE is untouched. The only genuinely new assumption: the jump process J_t is independent of both Brownian motions — that's what Section 4 needs to work.</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🔵</div><div><h4>κ, θ, ξ, ρ, v₀</h4><p>Heston's five — mean-reverting stochastic variance and its price correlation. Reused verbatim from that lesson.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🟣</div><div><h4>λ, μ_J, σ_J</h4><p>Merton's three — jump intensity and the mean/spread of the lognormal jump size. Reused verbatim from that lesson.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Independence makes the characteristic function multiply</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Why Bates stays tractable</div>
+        <div class="sl-row">
+          <div class="sl-box amber">φ_Bates(u)</div>
+          <div class="sl-arrow">=</div>
+          <div class="sl-box blue">φ_Heston(u)</div>
+          <div class="sl-arrow">×</div>
+          <div class="sl-box purple">φ_jump(u)</div>
+        </div>
+        <div class="sl-verdict">The characteristic function of a SUM of independent random variables is the PRODUCT of their own characteristic functions. Because jumps are assumed independent of the Heston diffusion, Bates' combined characteristic function is available the moment both pieces' are — no new derivation needed.</div>
+      </div>
+      <div class="sl-quote">This is exactly what makes Bates FFT-pricing-compatible: once φ_Bates(u) is known in closed form, the same Carr-Madan/FFT machinery from the sibling FFT Option Pricing lesson prices an entire strike strip in one call — it doesn't care which tractable characteristic function it's fed.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Drag the jump sliders — watch the three smiles diverge</h2>
+      <p class="sl-sub">A stylized, illustrative one-week smile. Heston's curve (blue) stays fixed. Pure-jump (purple) and Bates (green) redraw as jump intensity and jump size change — and because cumulants add, Bates' wing steepness is always Heston's plus the jump's.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Implied volatility smile chart with strike on the horizontal axis. A blue curve for pure Heston stays fixed and relatively flat. A purple curve for pure jumps and a green curve for combined Bates both grow steeper at low strikes as the jump intensity and jump size sliders below are increased, with the Bates curve always at least as steep as either component.">
+            <line class="bm-axis" x1="60" y1="20" x2="60" y2="260"/>
+            <line class="bm-axis" x1="60" y1="260" x2="600" y2="260"/>
+            <line x1="330" y1="20" x2="330" y2="260" style="stroke:var(--border2);stroke-dasharray:3,3"/>
+            <text class="bm-axistext" x="130" y="274" text-anchor="middle">low strike (OTM put)</text>
+            <text class="bm-axistext" x="530" y="274" text-anchor="middle">high strike (OTM call)</text>
+            <text class="bm-axistext" x="330" y="16" text-anchor="middle">at-the-money</text>
+
+            <polyline id="bm-curve-heston" points="" style="stroke:var(--blue);stroke-width:2.5" fill="none"/>
+            <polyline id="bm-curve-jump" points="" style="stroke:var(--purple);stroke-width:2.5" fill="none"/>
+            <polyline id="bm-curve-bates" points="" style="stroke:var(--green);stroke-width:2.5" fill="none"/>
+
+            <text x="66" y="46" font-size="10" font-family="'DM Mono',monospace" fill="var(--green)">Bates (Heston + jumps)</text>
+            <text x="66" y="60" font-size="10" font-family="'DM Mono',monospace" fill="var(--purple)">pure jumps only</text>
+            <text x="66" y="167" font-size="10" font-family="'DM Mono',monospace" fill="var(--blue)">pure Heston (fixed)</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Jump intensity λ (per year)</span><span class="sl-live" id="bm-lambda-val">λ = 3.0</span></div>
+        <input type="range" class="sl-slider" id="bm-lambda-slider" min="0" max="8" step="0.5" value="3">
+        <div class="sl-sliderhead"><span>Jump size (combined |μ_J| and σ_J effect)</span><span class="sl-live" id="bm-size-val">size = 4.0</span></div>
+        <input type="range" class="sl-slider" id="bm-size-slider" min="0" max="8" step="0.5" value="4">
+        <div class="sl-note" id="bm-chart-note">Set both sliders to 0 and watch the purple and green curves collapse onto the blue one — no jumps means Bates IS Heston.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">The precise mechanism: flat variance share, vanishing skew and kurtosis</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Fixed jump parameters, four maturities</div>
+        <div class="sl-row"><div class="sl-box">Jump share of variance</div><div class="sl-arrow">→</div><div class="sl-box green">38.6% at EVERY horizon — flat</div></div>
+        <div class="sl-row"><div class="sl-box">Skewness</div><div class="sl-arrow">decays like</div><div class="sl-box amber">1/√T</div></div>
+        <div class="sl-row"><div class="sl-box">Excess kurtosis</div><div class="sl-arrow">decays like</div><div class="sl-box red">1/T — fastest of all</div></div>
+        <div class="sl-verdict">1 week's excess kurtosis (7.744) is 52× the 1-year value (0.149) — exactly 52 weeks per year, exactly the 1/T scaling predicted. Same fixed jump parameters, dramatically different effect on smile shape depending on maturity.</div>
+      </div>
+      <p class="sl-p">Every compound-Poisson cumulant scales as λT — so variance's numerator and denominator both scale as T (ratio flat), but skewness divides by Var^1.5 (T^1.5) and kurtosis by Var² (T²), leaving T^−1/2 and T^−1 respectively. This is the same Central-Limit-Theorem logic behind any sum of independent shocks washing out toward normality as more of them pile up.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Compute it yourself — drag the horizon, watch skew and kurtosis collapse</h2>
+      <p class="sl-sub">Starts on the full lesson's worked-example numbers. Change any jump parameter, then drag the horizon slider.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Diffusive vol √v₀ (annual %)</label><input type="number" class="sl-input" id="mc-sigma" value="9" step="0.5" min="0"></div>
+          <div class="sl-calc-field"><label>λ (jumps/year)</label><input type="number" class="sl-input" id="mc-lambda" value="3" step="0.5" min="0"></div>
+        </div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Mean jump size μ_J (%)</label><input type="number" class="sl-input" id="mc-muj" value="-1" step="0.5"></div>
+          <div class="sl-calc-field"><label>Jump-size vol σ_J (%)</label><input type="number" class="sl-input" id="mc-sigj" value="4" step="0.5" min="0"></div>
+        </div>
+        <div class="sl-sliderhead"><span>Horizon T</span><span class="sl-live" id="mc-t-val">1 week</span></div>
+        <input type="range" class="sl-slider" id="mc-t-slider" min="0" max="1000" step="1" value="0">
+        <div class="sl-calc-row" style="margin-top:10px">
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Total vol (over horizon)</div><div class="sl-calc-result-val" id="mc-vol">1.59%</div></div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Jump share of variance</div><div class="sl-calc-result-val" id="mc-share">38.6%</div></div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Skewness</div><div class="sl-calc-result-val" id="mc-skew">-0.699</div></div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Excess kurtosis</div><div class="sl-calc-result-val" id="mc-kurt">7.744</div></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="mc-reset">Reset to worked-example numbers</button>
+        <div class="sl-note" id="mc-note">Blank or non-numeric fields show "—" instead of breaking the formula. Jump share of variance stays constant as you drag T — skew and kurtosis don't.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">The calibration trade-off, stated honestly</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">What 8 parameters buys you</span>
+          <p>κ, θ, ξ, ρ, v₀ (Heston's five) plus λ, μ_J, σ_J (Merton's three) — a genuinely richer set of achievable surface shapes, targeting the short-dated wings without distorting the longer end to compensate.</p>
+        </div>
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">What it costs</span>
+          <p>A harder, less stable, more overfitting-prone optimization. Multiple, meaningfully different 8-parameter combinations can produce statistically similar-looking fits — a genuine identification problem, not a numerical bug.</p>
+        </div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">This is not new to Bates — it's compounded</div>
+        <p>The Merton lesson already flags "separating small jumps from high diffusion vol from a few large jumps" as ill-conditioned on its own. Bates layers a second ambiguity on top: is the smile steep because ρ and ξ are large, or because λ and jump size are elevated? A good fit alone can't say.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">How practitioners actually use this</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📐</div><div><h4>Calibrate jointly, not slice by slice</h4><p>Fit all 8 parameters to the whole maturity ladder at once — short maturities help pin down jump params, long maturities help pin down Heston's five.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚡</div><div><h4>Same FFT/Carr-Madan pricing path as Heston</h4><p>Once φ_Bates(u) exists, the identical FFT machinery prices an entire strike strip per candidate parameter set — no new pricing infrastructure required.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔧</div><div><h4>Regularize, don't optimize blindly</h4><p>Given the identification issue, add parameter bounds or stability-across-time penalties rather than trusting an unconstrained fit to land somewhere economically sensible.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧭</div><div><h4>A middle ground between Heston and local vol</h4><p>More flexible than Heston alone at short maturities; still a cleaner, more parametric forward-looking story than a fully empirical local-vol surface fit.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Where Bates-style thinking goes wrong</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🎭</div><div><h4>A good fit ≠ a correct parameter split</h4><p>Two calibrations that both fit today's surface equally well can disagree meaningfully about how much of tomorrow's risk is vega-hedgeable versus jump risk.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧨</div><div><h4>Jump risk isn't perfectly hedgeable</h4><p>Continuous delta-hedging needs a continuous path. A genuine discontinuity defeats that logic — jump risk generally can't be replicated by dynamic trading alone, and typically carries its own priced risk premium instead.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🌊</div><div><h4>Calibration stability isn't guaranteed</h4><p>Eight parameters can shift meaningfully between calibration dates — and some of that apparent instability may just be the optimizer landing in a different, similarly-good local fit.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🚫</div><div><h4>More knobs ≠ validated edge</h4><p>A tighter in-sample fit with more degrees of freedom says nothing, by itself, about real out-of-sample trading edge.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What is Bates' model specification, in one sentence?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Heston's price SDE plus Merton's compound-Poisson jump term dJ_t added to it — Heston's variance SDE is untouched</button>
+        <button class="sl-quiz-opt">A brand-new SDE unrelated to either Heston or Merton</button>
+        <button class="sl-quiz-opt">Merton's jump-diffusion with a time-varying σ instead of a constant one</button>
+        <div class="sl-quiz-explain">Bates re-derives nothing — it staples Merton's jump term onto Heston's price process, leaving Heston's variance SDE exactly as that lesson left it.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Why does pure Heston struggle with a steep one-week implied-vol skew?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Its skew-generating mechanism is continuous and gradual — a few trading days isn't enough time for correlated diffusion to build a large effect</button>
+        <button class="sl-quiz-opt">Heston has no correlation parameter at all</button>
+        <button class="sl-quiz-opt">Heston only works for equities, never FX</button>
+        <div class="sl-quiz-explain">v_t needs time to wander from v_0, and ρ's leverage effect needs calendar time to accumulate — both mechanisms are gradual by construction.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Why does φ_Bates(u) = φ_Heston(u) × φ_jump(u)?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The jump process is assumed independent of the Heston diffusion, and independent variables' characteristic functions multiply</button>
+        <button class="sl-quiz-opt">Because Bates chose to define it that way, with no deeper reason</button>
+        <button class="sl-quiz-opt">It doesn't — this is a common misconception</button>
+        <div class="sl-quiz-explain">A sum of independent random variables has a characteristic function equal to the product of the parts' own characteristic functions — exactly why Bates stays FFT-tractable.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Fixed jump parameters: why does excess kurtosis fall 52× from 1 week to 1 year while the jump variance SHARE stays exactly the same?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Every cumulant scales as λT, but kurtosis divides by variance², which scales as T² — so kurtosis scales as 1/T while the variance share (T/T) stays flat</button>
+        <button class="sl-quiz-opt">It's a coincidence specific to this one example</button>
+        <button class="sl-quiz-opt">Kurtosis and variance share always move together</button>
+        <div class="sl-quiz-explain">Variance's own ratio is T/T = flat. Kurtosis is T/T² = 1/T. 1 year is 52 weeks, so kurtosis at 1 week is ~52× the 1-year value — exact CLT-style scaling.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>A calibration fits the observed surface well with 8 Bates parameters. Does that prove the fitted λ, μ_J, σ_J are the "true" jump parameters?</h4>
+        <button class="sl-quiz-opt" data-correct="true">No — multiple, meaningfully different 8-parameter combinations can produce statistically similar fits, a genuine identification problem</button>
+        <button class="sl-quiz-opt">Yes, a good fit uniquely pins down every parameter</button>
+        <button class="sl-quiz-opt">Only if the fit uses more than 1,000 option quotes</button>
+        <div class="sl-quiz-explain">Fit quality shows the combined model works — it can't distinguish between competing parameter splits that all fit about equally well.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="6">
+        <div class="sl-quiz-num">Question 6</div>
+        <h4>Why is jump risk not "perfectly hedgeable" the way pure diffusion risk is under Black-Scholes-style replication?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Continuous delta-hedging needs a continuous price path — a genuine discontinuity can't be offset by continuously rebalancing across it</button>
+        <button class="sl-quiz-opt">Jump risk can always be perfectly hedged with a large enough position</button>
+        <button class="sl-quiz-opt">It's hedgeable, just more expensive to hedge</button>
+        <div class="sl-quiz-explain">A real market-incompleteness subtlety: jump risk generally can't be replicated by dynamic trading in the underlying alone, so it typically carries its own priced risk premium instead.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Bates = Heston's two SDEs + Merton's jump term, stapled onto the price process — neither piece re-derived, both reused verbatim.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>The complementarity is the point: jumps own the short-dated tails, stochastic vol owns the longer-dated shape and clustering.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Independence makes φ_Bates = φ_Heston × φ_jump — why the same Carr-Madan/FFT pricing path still works.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Jump variance share is flat across horizons; skew decays as 1/√T and excess kurtosis as 1/T — the precise reason jumps matter most at the short end.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Eight parameters buy flexibility at the cost of a real, honest identification problem — multiple combinations can fit similarly well.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Jump risk isn't perfectly hedgeable by continuous delta-hedging — an incomplete-markets subtlety worth carrying forward honestly.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Read a vol surface and reason about WHICH mechanism should be doing the work at each maturity — and explain, with actual arithmetic, why the same jump parameters matter enormously at one week and barely at all at one year.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Dupire Local Volatility</h3>
+        <p>Bates fits a parametric SDE to the surface. Next up: a completely different philosophy — skip the SDE story and derive the volatility function that EXACTLY reproduces every observed option price at a point in time.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="institutional-dupire-local-vol-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="institutional-bates-model.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Shared compound-Poisson moment math, reused by both interactive slides.
+  function jumpMoments(sigma, lambda, muJ, sigJ, T){
+    var diffVar = sigma*sigma*T;
+    var lamT = lambda*T;
+    var EY2 = muJ*muJ + sigJ*sigJ;
+    var EY3 = Math.pow(muJ,3) + 3*muJ*sigJ*sigJ;
+    var EY4 = Math.pow(muJ,4) + 6*muJ*muJ*sigJ*sigJ + 3*Math.pow(sigJ,4);
+    var jumpVar = lamT*EY2;
+    var totalVar = diffVar + jumpVar;
+    if (!(totalVar > 0)) return null;
+    var k3 = lamT*EY3, k4 = lamT*EY4;
+    return {
+      totalVar: totalVar,
+      totalVol: Math.sqrt(totalVar),
+      jumpShare: jumpVar/totalVar,
+      skew: k3/Math.pow(totalVar,1.5),
+      exk: k4/(totalVar*totalVar)
+    };
+  }
+
+  // Slide 5 — jump intensity/size sliders redraw three smile curves.
+  (function(){
+    var lamSlider = document.getElementById('bm-lambda-slider');
+    if (!lamSlider) return;
+    var sizeSlider = document.getElementById('bm-size-slider');
+    var lamVal = document.getElementById('bm-lambda-val');
+    var sizeVal = document.getElementById('bm-size-val');
+    var curveHeston = document.getElementById('bm-curve-heston');
+    var curveJump = document.getElementById('bm-curve-jump');
+    var curveBates = document.getElementById('bm-curve-bates');
+    var chartNote = document.getElementById('bm-chart-note');
+
+    var A_H = 25, B_H = 10; // fixed Heston wing curvature/skew, illustrative px units
+    var BASE_Y = 190;
+    var X0 = 60, X1 = 600, MIDX = 330, HALFX = 270;
+    var N = 24;
+
+    var Y_MIN = 24, Y_MAX = 258; // keep every curve inside the visible plot area
+
+    function curvePoints(A, B){
+      var pts = [];
+      for (var i = 0; i <= N; i++){
+        var x = X0 + (X1 - X0) * i / N;
+        var m = (x - MIDX) / HALFX;
+        var deviation = A * m * m - B * m;
+        var y = BASE_Y - deviation;
+        if (y < Y_MIN) y = Y_MIN;
+        if (y > Y_MAX) y = Y_MAX;
+        pts.push(x.toFixed(1) + ',' + y.toFixed(1));
+      }
+      return pts.join(' ');
+    }
+
+    function update(){
+      var lambda = parseFloat(lamSlider.value);
+      var size = parseFloat(sizeSlider.value);
+      lamVal.textContent = 'λ = ' + lambda.toFixed(1);
+      sizeVal.textContent = 'size = ' + size.toFixed(1);
+
+      // Jump-only wing curvature/skew scaled so defaults (λ=3, size=4) land near
+      // A_j≈70, B_j≈30 — clearly steeper than the fixed Heston curve.
+      var A_j = 5.83 * lambda * size;
+      var B_j = 2.5 * lambda * size;
+
+      curveHeston.setAttribute('points', curvePoints(A_H, B_H));
+      curveJump.setAttribute('points', curvePoints(A_j, B_j));
+      curveBates.setAttribute('points', curvePoints(A_H + A_j, B_H + B_j));
+
+      chartNote.textContent = (lambda === 0 || size === 0)
+        ? 'No jumps: the purple and green curves collapse onto the blue Heston curve — Bates IS Heston when λ or the jump size is zero.'
+        : 'Because cumulants add, Bates’ wing curvature (' + (A_H + A_j).toFixed(0) + ') is always exactly Heston’s (' + A_H + ') plus the jump’s (' + A_j.toFixed(0) + ').';
+    }
+
+    lamSlider.addEventListener('input', update);
+    sizeSlider.addEventListener('input', update);
+    update();
+  })();
+
+  // Slide 7 — full calculator with a horizon slider (0-1000 mapped to a log-ish day scale).
+  (function(){
+    var sigmaEl = document.getElementById('mc-sigma');
+    if (!sigmaEl) return;
+    var ids = ['sigma','lambda','muj','sigj'];
+    var inputs = {};
+    ids.forEach(function(f){ inputs[f] = document.getElementById('mc-' + f); });
+    var tSlider = document.getElementById('mc-t-slider');
+    var tVal = document.getElementById('mc-t-val');
+    var volOut = document.getElementById('mc-vol');
+    var shareOut = document.getElementById('mc-share');
+    var skewOut = document.getElementById('mc-skew');
+    var kurtOut = document.getElementById('mc-kurt');
+    var note = document.getElementById('mc-note');
+    var resetBtn = document.getElementById('mc-reset');
+    var DASH = '—';
+    var DEFAULT_NOTE = 'Blank or non-numeric fields show "—" instead of breaking the formula. Jump share of variance stays constant as you drag T — skew and kurtosis don’t.';
+    var DEFAULTS = { sigma: 9, lambda: 3, muj: -1, sigj: 4 };
+
+    // Slider position 0..1000 maps log-linearly from 1 day to 400 days.
+    var MIN_DAYS = 1, MAX_DAYS = 400;
+    function sliderToDays(pos){
+      var frac = pos / 1000;
+      return Math.exp(Math.log(MIN_DAYS) + frac * (Math.log(MAX_DAYS) - Math.log(MIN_DAYS)));
+    }
+    function daysLabel(days){
+      if (days < 1.5) return Math.round(days) + ' day';
+      if (days < 20) return days.toFixed(1) + ' days';
+      if (days < 65) return (days/7).toFixed(1) + ' weeks';
+      if (days < 400) return (days/30.44).toFixed(1) + ' months';
+      return (days/365).toFixed(2) + ' years';
+    }
+    // Default slider position 0 = 7 days (1 week), matching the worked example.
+    tSlider.value = 1000 * (Math.log(7) - Math.log(MIN_DAYS)) / (Math.log(MAX_DAYS) - Math.log(MIN_DAYS));
+
+    function recompute(){
+      var sigma = parseFloat(inputs.sigma.value) / 100;
+      var lambda = parseFloat(inputs.lambda.value);
+      var muJ = parseFloat(inputs.muj.value) / 100;
+      var sigJ = parseFloat(inputs.sigj.value) / 100;
+      var days = sliderToDays(parseFloat(tSlider.value));
+      var T = days / 365;
+      tVal.textContent = daysLabel(days);
+
+      if (![sigma, lambda, muJ, sigJ].every(isFinite) || sigma < 0 || lambda < 0 || sigJ < 0) {
+        volOut.textContent = shareOut.textContent = skewOut.textContent = kurtOut.textContent = DASH;
+        note.textContent = '(enter numeric values — diffusive vol, λ, and σ_J must be non-negative)';
+        return;
+      }
+
+      var m = jumpMoments(sigma, lambda, muJ, sigJ, T);
+      if (!m) {
+        volOut.textContent = shareOut.textContent = skewOut.textContent = kurtOut.textContent = DASH;
+        note.textContent = '(these inputs produce zero total variance)';
+        return;
+      }
+
+      volOut.textContent = (m.totalVol * 100).toFixed(2) + '%';
+      shareOut.textContent = (m.jumpShare * 100).toFixed(1) + '%';
+      skewOut.textContent = m.skew.toFixed(3);
+      kurtOut.textContent = m.exk.toFixed(3);
+      note.textContent = DEFAULT_NOTE;
+    }
+
+    ids.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+    tSlider.addEventListener('input', recompute);
+    resetBtn.addEventListener('click', function(){
+      ids.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+      tSlider.value = 1000 * (Math.log(7) - Math.log(MIN_DAYS)) / (Math.log(MAX_DAYS) - Math.log(MIN_DAYS));
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

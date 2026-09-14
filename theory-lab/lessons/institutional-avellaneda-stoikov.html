@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Avellaneda-Stoikov Inventory-Aware Market Making — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+<style>
+  .tl-table-wrap{overflow-x:auto;margin:14px 0}
+  table.tl-tbl{width:100%;border-collapse:collapse;font-size:13px;background:var(--s1);border:1px solid var(--border);border-radius:var(--r)}
+  table.tl-tbl th,table.tl-tbl td{padding:9px 12px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
+  table.tl-tbl th{color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:.04em;font-weight:700;background:var(--s2)}
+  table.tl-tbl tr:last-child td{border-bottom:none}
+  table.tl-tbl td{color:var(--text2)}
+  table.tl-tbl td:first-child{color:var(--text);font-weight:600;white-space:nowrap}
+  table.tl-tbl td.tl-num{font-family:'DM Mono',monospace;text-align:right}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Market Making / Avellaneda-Stoikov Inventory-Aware Market Making</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Market Making 1 of 1</div>
+  <h1 class="tl-title">Avellaneda-Stoikov Inventory-Aware Market Making</h1>
+  <p class="tl-dek">A market maker earns the spread by quoting both sides — but every fill leaves a position behind, and a position is a bet the market maker didn't necessarily want to make. Avellaneda &amp; Stoikov (2008) built the first widely-used closed-form answer to a genuinely practical question: given a inventory you're already holding, where should your bid and ask actually sit?</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — no Avellaneda-Stoikov logic, reservation-price math, or two-sided quoting engine of any kind exists anywhere in this repo, verified by grepping every <code>.js</code>/<code>.py</code> file (case-insensitive) for "Avellaneda", "Stoikov", "reservation.price", "inventory.skew", and "market.mak". The only hits at all are two unrelated, incidental uses of the plain English phrase: a comment in <code>_worker.js</code> noting that OANDA's FX prices come "from a primary market maker" (a data-source label, not model logic), and an identical docstring line repeated in <code>Gold/</code>, <code>ConfluenceBot/</code>, and <code>GoldV2/</code>'s <code>modules/session_engine.py</code> describing how "the market makes a strong directional [move]" at session opens — ordinary usage of the verb "to make," unrelated to the market-making trading strategy this lesson covers. This repo has no code that quotes both a bid and an ask, tracks a running inventory, or computes anything resembling a reservation price.</span>
+    <span>~18 min read</span>
+    <span>Prereqs: <a href="limit-order-books.html">Limit Order Books &amp; Queue Dynamics</a>, <a href="ou-mean-reversion.html">Ornstein-Uhlenbeck</a></span>
+  </div>
+
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="institutional-avellaneda-stoikov-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides with a live slider that skews the quotes as inventory moves.
+  </div>
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>A market maker who always quotes symmetrically around the mid-price — same distance on both sides, regardless of what they're currently holding — can accumulate a runaway position: every fill on the same side just keeps adding to it, because nothing in a symmetric quote discourages that.</li>
+      <li>Avellaneda &amp; Stoikov's (2008) fix is the <strong>reservation price</strong> \(r(s,q,t) = s - q\gamma\sigma^2(T-t)\) — NOT the mid-price \(s\), but the mid shifted by an amount proportional to current inventory \(q\), risk aversion \(\gamma\), variance \(\sigma^2\), and time remaining \((T-t)\). A market maker centers their quotes on \(r\), not \(s\).</li>
+      <li>The shift always points toward flat: long inventory (\(q>0\)) pulls \(r\) below the mid, making the ask relatively closer (easier to sell into) and the bid relatively farther (harder to buy more); short inventory does the mirror image. This is <strong>inventory skew</strong>, and it is the entire mechanism that keeps this model's market maker from accumulating a runaway position the way naive symmetric quoting can.</li>
+      <li>The total optimal spread, \(\delta_b+\delta_a = \gamma\sigma^2(T-t) + \frac{2}{\gamma}\ln\!\left(1+\frac{\gamma}{k}\right)\), splits into two genuinely different components: a pure <strong>inventory-risk</strong> term that grows with risk aversion, variance, and time left to hold a position, and a pure <strong>market-making profit</strong> term set by how fast order-arrival intensity decays with quoted distance from the mid (the parameter \(k\)).</li>
+      <li>This is a stylized, finite-horizon, inventory-only model. It does <strong>not</strong> price in adverse selection — the risk that a fill itself is informative that the market is about to move against the market maker — which is exactly the mechanism the sibling <a href="institutional-glosten-milgrom.html">Glosten-Milgrom</a> and <a href="institutional-order-flow-imbalance.html">Order Flow Imbalance</a> lessons cover instead. A real desk's spread has to compensate for both risks at once; this lesson is honest about covering only one of them.</li>
+      <li>A full worked numeric example and a live six-input calculator below let you compute \(r\), the spread, and the resulting bid/ask for any inputs, and watch the reservation price and both quotes skew as inventory sweeps from short to long.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    Quoting a market sounds simple in its purest form: post a bid a little
+    below the mid-price, post an ask a little above it, collect the spread
+    every time both sides eventually get hit, and repeat. The trouble is that
+    "both sides eventually get hit" is a statement about the long run, and a
+    market maker doesn't live only in the long run — they live fill by fill,
+    in real time, and fills rarely arrive in neat, offsetting pairs. Sell into
+    the bid, and the market maker is suddenly long. Nobody has to buy from
+    them next; the very next ten fills could all land on the same side too.
+    Every executed trade changes the market maker's <strong>inventory</strong>,
+    and inventory is not a bookkeeping detail — it's a directional bet the
+    market maker is now carrying, whether they wanted one or not, and the
+    market can move against it at any moment.
+  </p>
+  <p>
+    A market maker who ignores this and just keeps quoting the same fixed
+    distance on both sides of the mid, forever, has no mechanism at all to
+    push their own inventory back toward flat. If the market happens to be
+    persistently one-sided for a while — more genuine sellers than buyers
+    showing up, say — that symmetric quoter simply keeps buying, level after
+    level, accumulating a larger and larger long position with no internal
+    brake on the process. Avellaneda &amp; Stoikov's 2008 paper, <em>"High-
+    frequency trading in a limit order book,"</em> is the seminal closed-form
+    answer to the obvious next question: if a market maker is currently
+    holding some inventory \(q\), how should that change where they quote,
+    not just how eagerly they quote?
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A shopkeeper who already has too much of one item</h3>
+    <p>
+      Picture a secondhand bookshop that both buys and sells the same
+      title — offering a lower price to whoever walks in wanting to sell a
+      copy, and a higher price to whoever wants to buy one, pocketing the
+      gap. If the shop already has forty copies sitting on the shelf, unsold,
+      a sensible owner doesn't keep offering the same generous buy price to
+      the next person who walks in wanting to sell a forty-first — they cut
+      the buy price further (less eager to take on even more of what they
+      already have too much of) and sweeten the sell price a little (more
+      eager to finally move some of the pile). Nothing about the book's
+      actual value changed; only the shop's own current position did, and
+      that alone is reason enough to shade both prices.
+    </p>
+    <p>
+      A market maker holding a long inventory faces exactly this situation,
+      continuously, with a security instead of books. The reservation price
+      is the formal version of "shade both prices toward getting rid of what
+      you already have too much of" — and it is precisely calibrated,
+      not just a vague nudge, using how risk-averse the market maker is, how
+      volatile the security is, and how much time is left before the trading
+      session's clock runs out.
+    </p>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine you're trading stickers with friends: you'll buy a sticker for 2 coins or sell one for 3 coins, all day. If you already have a huge pile of dinosaur stickers, do you really want to keep offering 2 coins for more dinosaur stickers? Probably not — you'd rather pay less for more of them (so you stop piling up) and be happy to sell yours for a little less too, just to get rid of some. That's the whole idea: how many stickers you're already holding should change your prices, not just how good a trader you are.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>1. Setting the stage: mid-price dynamics and CARA risk aversion</h3>
+  <p>
+    Avellaneda &amp; Stoikov model the security's mid-price \(s_t\) as a
+    driftless Brownian motion, \(ds_t = \sigma\,dW_t\) — the exact same
+    diffusion term the sibling <a href="ou-mean-reversion.html">Ornstein-
+    Uhlenbeck</a> lesson uses, with \(\theta = 0\): "no rubber band pulling
+    it back toward any mean, just random jostling scaled by \(\sigma\)." That
+    lesson's own framing is worth reusing directly here rather than
+    re-deriving separately — a pure random walk in the mid-price is exactly
+    the OU process's degenerate special case, and \(\sigma\) means the
+    identical thing in both lessons: the size of the unpredictable shock per
+    unit time. (Later market-making literature does sometimes substitute a
+    mean-reverting, \(\theta>0\) process for the mid-price instead of a pure
+    random walk — a natural-sounding extension this lesson won't pretend to
+    detail, since the original 2008 paper itself uses the plain driftless
+    case throughout.)
+  </p>
+  <p>
+    The market maker is assumed to have <strong>CARA (constant absolute risk
+    aversion) utility</strong>, \(u(x) = -e^{-\gamma x}\), over terminal
+    wealth at a fixed horizon \(T\), where \(\gamma>0\) is the risk-aversion
+    parameter — a higher \(\gamma\) means a market maker who dislikes
+    variance in their terminal wealth more, and who will therefore demand
+    more compensation for holding any given amount of inventory risk.
+    Solving the market maker's optimal-control problem under this setup
+    (Avellaneda &amp; Stoikov do this via a Hamilton-Jacobi-Bellman equation
+    and an asymptotic expansion — a full derivation this lesson doesn't
+    reproduce, since the closed-form result is the genuinely useful part)
+    produces two formulas: where to center the quotes, and how wide to make
+    them.
+  </p>
+
+  <h3>2. The reservation price — not the mid-price, a shifted indifference price</h3>
+  <p>
+    The central object of the model is the <strong>reservation price</strong>
+    (also called the indifference price):
+  </p>
+  <div class="tl-math">\[ r(s,q,t) = s - q\,\gamma\,\sigma^2\,(T-t) \]</div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">s</div>
+      <div class="tl-fp-name">Mid-price</div>
+      <div class="tl-fp-desc">The market's current best estimate of fair value — where symmetric quoting would center both sides</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">q</div>
+      <div class="tl-fp-name">Current inventory</div>
+      <div class="tl-fp-desc">Signed: positive if long, negative if short, zero if flat — this is what makes r differ from s at all</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">r</div>
+      <div class="tl-fp-name">Reservation price</div>
+      <div class="tl-fp-desc">Where the market maker actually centers their quotes — the mid, shifted toward flat</div>
+    </div>
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>γ</code><span>risk aversion — how much the market maker dislikes holding inventory risk</span></div>
+    <div class="tl-eq-chip c2"><code>σ²</code><span>variance of the mid-price — same σ as the OU lesson's diffusion term, squared</span></div>
+    <div class="tl-eq-chip c3"><code>(T−t)</code><span>time remaining in the trading horizon — how much longer this inventory has left to move against the market maker</span></div>
+  </div>
+  <p>
+    <strong>This is the single most important thing to get right about this
+    model: \(r\) is not the mid-price.</strong> It is the mid, shifted by an
+    amount \(q\gamma\sigma^2(T-t)\) — and the direction of that shift always
+    points toward encouraging the market maker back toward flat inventory.
+    Take \(q>0\) (long): the shift subtracts a positive amount from \(s\), so
+    \(r&lt;s\) — the reservation price sits <em>below</em> the mid. Centering
+    quotes on a below-mid \(r\) makes the ask (posted above \(r\)) closer to
+    the true mid than a symmetric quote would be — more attractive to
+    whoever wants to buy, more likely to get hit, and every hit sells off
+    some of the long position. Simultaneously it makes the bid (posted below
+    \(r\), which is already below \(s\)) farther from the mid than a
+    symmetric quote — less attractive, less likely to add still more
+    inventory the market maker least wants right now. \(q&lt;0\) (short) is the
+    exact mirror image: \(r>s\), the bid becomes relatively more attractive
+    and the ask relatively less so, nudging the position back up toward
+    flat. At \(q=0\), the shift vanishes entirely and \(r=s\) — a flat market
+    maker has no inventory reason to skew away from the mid at all.
+  </p>
+
+  <div class="tl-solid blue">
+    <strong>Read the sign carefully — it's easy to get backward on a first
+    pass.</strong> Long inventory (\(q>0\)) shifts \(r\) <em>down</em>, below
+    the mid. That is what makes the ask look cheap (relative to \(r\)) and
+    the bid look already-paid-up, biasing fills toward selling. It is
+    tempting to guess "long inventory should push my price expectations up,"
+    but the reservation price isn't a forecast of where the market is
+    headed — it's the price at which the market maker themselves would be
+    indifferent between their current position and flat, and a market maker
+    already holding a long position that could lose value is, by
+    construction, less eager to hold even more of it, hence a <em>lower</em>
+    indifference price for adding to that position.
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If you're already holding way too many dinosaur stickers, would you pay the SAME price for one more as someone who has zero? No — you'd only want one more if it were cheaper than usual, because you already have plenty. That "I'd only want more if it's cheaper" price is the reservation price. It's not a guess about whether stickers are about to become more valuable — it's just an honest price for someone who's already holding a lot of them.</p>
+  </div>
+
+  <h3>3. The optimal spread — two genuinely different components</h3>
+  <p>
+    Around the reservation price, Avellaneda &amp; Stoikov derive the
+    optimal total width between the bid and ask distances, \(\delta_b\) and
+    \(\delta_a\) (measured outward from \(r\), not from \(s\)):
+  </p>
+  <div class="tl-math">\[ \delta_b + \delta_a = \gamma\sigma^2(T-t) + \frac{2}{\gamma}\ln\!\left(1+\frac{\gamma}{k}\right) \]</div>
+  <p>
+    The second term's \(k\) comes from a specific model of how likely a
+    quote is to get filled the farther it sits from the mid: order arrivals
+    are modeled as a Poisson process whose intensity decays exponentially in
+    distance,
+  </p>
+  <div class="tl-math">\[ \lambda(\delta) = A\,e^{-k\delta} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>A</code><span>the baseline fill-arrival rate right at the touch (δ=0)</span></div>
+    <div class="tl-eq-chip c2"><code>k</code><span>how fast that arrival rate decays as the quote moves farther from the mid — a market where traders are very price-sensitive has a LARGE k</span></div>
+  </div>
+  <p>
+    In the common simplified/symmetric-around-\(r\) form this lesson uses
+    (matching how the result is most often reproduced in practitioner
+    walkthroughs), the two half-distances are set equal, \(\delta_b=\delta_a=
+    \tfrac{1}{2}(\delta_b+\delta_a)\), so the actual quotes are:
+  </p>
+  <div class="tl-math">\[ \text{bid} = r - \frac{\delta_b+\delta_a}{2}, \qquad \text{ask} = r + \frac{\delta_b+\delta_a}{2} \]</div>
+  <p>
+    The two additive terms making up the total spread answer two completely
+    different questions, and it's worth keeping them mentally separate:
+  </p>
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>1. Inventory-risk term: γσ²(T−t)</h4>
+      <p>
+        The exact same expression that sets how far \(r\) shifts per unit of
+        inventory. It answers: "how much extra margin do I need, just to
+        compensate for the risk of holding any position at all, for the
+        time I have left?" It grows with risk aversion (a jumpier market
+        maker demands more cushion), with variance (a more volatile security
+        is more dangerous to be stuck holding), and with time remaining (more
+        time is more time for the market to move against an open position).
+        Notice this term has nothing to do with getting filled at all — it's
+        pure compensation for risk, and it would still apply even to a
+        market maker who somehow never had to worry about whether their
+        quotes actually traded.
+      </p>
+    </div>
+    <div class="tl-compare-card purple">
+      <h4>2. Market-making profit term: (2/γ)ln(1+γ/k)</h4>
+      <p>
+        Answers a different question entirely: "given that quoting farther
+        from the mid earns more per fill but gets filled less often (that's
+        what \(k\) controls), how wide should I quote to balance those two
+        forces optimally?" As \(\gamma\to0\) (a risk-neutral market maker),
+        this term converges to \(2/k\) — a pure liquidity-provision spread
+        driven only by how fast fills dry up with distance, with no risk
+        aversion involved at all. For \(\gamma>0\) it's larger than \(2/k\):
+        even the "pure profit-margin" half of the spread widens somewhat as
+        the market maker becomes more risk-averse, because a risk-averse
+        market maker also wants a bigger buffer per individual trade, not
+        just less total inventory risk.
+      </p>
+    </div>
+  </div>
+
+  <div class="tl-solid amber">
+    <strong>Not a coincidence: the same γσ²(T−t) shows up twice.</strong> The
+    exact expression that sets how far the reservation price shifts per unit
+    of inventory is also, unchanged, the inventory-risk half of the total
+    spread. Both come out of the same second-order approximation to the
+    market maker's value function in the paper's derivation — the model is
+    internally consistent about exactly one thing: the "cost" of holding one
+    more unit of inventory for the remaining time \((T-t)\), at this
+    \(\gamma\) and \(\sigma\), is priced identically wherever it shows up.
+  </div>
+
+  <div class="tl-solid green">
+    <strong>A clean structural feature worth noticing: the total spread
+    width doesn't depend on inventory at all.</strong> \(\delta_b+\delta_a\)
+    has no \(q\) in it anywhere. Whatever inventory the market maker is
+    carrying, the bid-ask distance stays exactly the same width — what
+    changes with inventory is only where that fixed-width window is
+    <em>centered</em> (on \(r\), not \(s\)). Inventory skew in this model is
+    entirely a re-centering effect, not a widening-one-side effect.
+  </div>
+
+  <h3>4. Inventory skew, end to end</h3>
+  <p>
+    Putting the two formulas together: a market maker who is currently long
+    skews <em>both</em> quotes down — bid and ask both shift lower than a
+    naive symmetric quote around \(s\) would place them, because both are
+    built from \(r&lt;s\). The ask being lower makes it easier to sell (closer
+    to the mid, more likely to attract a buyer); the bid being lower makes
+    it harder to buy more (farther below the mid than a symmetric quote,
+    less likely to attract a seller). Symmetric quoting does neither of
+    these things — it holds both quotes a fixed distance from \(s\)
+    regardless of \(q\), which is exactly why a symmetric quoter has no
+    internal mechanism stopping inventory from drifting arbitrarily far from
+    flat if fills happen to keep landing on the same side for a while. The
+    reservation-price mechanism is the model's entire answer to that
+    problem, and it is the single idea this whole lesson exists to convey.
+  </p>
+
+  <h3>5. The role of the time horizon T</h3>
+  <p>
+    Every formula above carries \((T-t)\), remaining time until a fixed
+    horizon \(T\). As \((T-t)\to0\), the inventory-shift term
+    \(q\gamma\sigma^2(T-t)\) shrinks to zero regardless of how large \(q\)
+    is, so \(r\to s\) — the reservation price converges back to the plain
+    mid-price right at the horizon. This is deliberate, not an accident of
+    the algebra: the model is built around a market maker who must, by
+    construction, care less and less about holding a position as the clock
+    runs out on the very last moments they'd be exposed to it — there's less
+    and less time left for that inventory to move against them. Note,
+    though, that the <em>spread</em> does not collapse to zero at the same
+    moment: the market-making profit term \(\frac{2}{\gamma}\ln(1+\gamma/k)\)
+    has no \((T-t)\) in it at all, so as \((T-t)\to0\) the total spread
+    converges to that pure profit term, not to zero — quoting stays
+    profitable-width even in the model's very last instant, only the
+    inventory-driven skew disappears.
+  </p>
+  <p>
+    Be honest about what this modeling choice actually represents: it is a
+    deliberate, standard feature of the original finite-horizon HFT framing —
+    Avellaneda &amp; Stoikov built a model of a market maker who effectively
+    wants to end the trading session flat, and the reservation price
+    mechanically enforces exactly that as \(t\to T\). It is <strong>not</strong>
+    a realistic description of a desk that never actually "closes the
+    book" — most real market-making operations run continuously, session
+    after session, with no single terminal time at which they're forced to
+    stop caring about inventory. Later literature has developed infinite-
+    horizon and rolling-horizon variants of inventory-aware market making
+    that don't force this end-of-day flattening behavior — this lesson notes
+    that such variants exist honestly, without inventing details of any
+    specific paper's exact formulation, since the original 2008 model is
+    finite-horizon throughout and that's the version derived here.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If a toy store is closing forever at 5pm today, the owner stops caring about restocking shelves as 5pm gets close — there's no point buying more toys they'll never get to sell. That's the model's "T" — a hard closing time that makes inventory worries fade out right at the end. A real toy store that reopens again tomorrow doesn't actually think this way; it always cares at least a little about what's on the shelves. The model's flat-by-closing-time behavior is a simplification that makes the math clean, not a claim about how every real market maker actually operates.</p>
+  </div>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(s\)</td><td>Mid-price of the security right now.</td></tr>
+    <tr><td>\(q\)</td><td>Current inventory — signed: positive long, negative short, zero flat.</td></tr>
+    <tr><td>\(\gamma\)</td><td>(gamma) The market maker's risk aversion (CARA utility parameter, \(u(x)=-e^{-\gamma x}\)).</td></tr>
+    <tr><td>\(\sigma^2\)</td><td>Variance of the mid-price's driftless Brownian motion — same \(\sigma\) as the sibling Ornstein-Uhlenbeck lesson's diffusion term.</td></tr>
+    <tr><td>\(T-t\)</td><td>Remaining time in the fixed trading horizon.</td></tr>
+    <tr><td>\(r(s,q,t)\)</td><td>The reservation (indifference) price — where quotes are actually centered; equals \(s\) only when \(q=0\) or \((T-t)=0\).</td></tr>
+    <tr><td>\(k\)</td><td>Decay rate of order-arrival intensity with distance from the mid — larger \(k\) means fills dry up faster the farther a quote sits.</td></tr>
+    <tr><td>\(A\)</td><td>Baseline order-arrival intensity right at the touch (\(\delta=0\)), in \(\lambda(\delta)=Ae^{-k\delta}\).</td></tr>
+    <tr><td>\(\delta_b, \delta_a\)</td><td>Distance of the bid / ask from the reservation price \(r\) (not from \(s\)).</td></tr>
+  </table></div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>A market maker long 5 units, halfway through the session</h3>
+    <p>
+      Mid-price \(s=100.00\), inventory \(q=+5\) (long), risk aversion
+      \(\gamma=0.1\), volatility \(\sigma=2\) (so \(\sigma^2=4\)), half the
+      trading session remaining (\(T-t=0.5\)), and a market-depth parameter
+      \(k=1.5\). These are illustrative round numbers chosen for clean
+      arithmetic, in generic price units — not tied to any specific
+      instrument or currency pair.
+    </p>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>Compute the inventory shift</h4>
+          <p>
+            \(q\gamma\sigma^2(T-t) = 5 \times 0.1 \times 4 \times 0.5 = 1.00\).
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>Compute the reservation price</h4>
+          <p>
+            \(r = s - 1.00 = 100.00 - 1.00 = \mathbf{99.00}\). Being long
+            pulled the reservation price a full point below the mid — the
+            market maker's own indifference point for adding to this
+            position sits noticeably cheaper than the market's actual mid.
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>Compute the two spread components separately</h4>
+          <p>
+            Inventory-risk term: \(\gamma\sigma^2(T-t) = 0.1\times4\times0.5
+            = 0.20\) (identical to the per-unit shift above, since here
+            \(q=1\)-unit sensitivity is exactly this number). Market-making
+            profit term: \(\frac{2}{\gamma}\ln(1+\gamma/k) =
+            \frac{2}{0.1}\ln(1+0.1/1.5) = 20\times\ln(1.0667) \approx
+            20\times0.06454 \approx 1.2908\).
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">4</div>
+        <div class="tl-step-body">
+          <h4>Add them for the total spread</h4>
+          <p>
+            \(\delta_b+\delta_a = 0.20 + 1.2908 \approx \mathbf{1.4908}\).
+            Half of that, \(0.7454\), is added on each side of \(r\).
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">5</div>
+        <div class="tl-step-body">
+          <h4>Compute the final bid and ask</h4>
+          <p>
+            Bid \(= r - 0.7454 = 99.00 - 0.7454 \approx \mathbf{98.2546}\).
+            Ask \(= r + 0.7454 = 99.00 + 0.7454 \approx \mathbf{99.7454}\).
+            Compare this to what a naive symmetric quoter, ignoring
+            inventory entirely, would have posted around the plain mid:
+            bid \(99.00-0.7454\approx98.2546\)... using \(s=100\) instead of
+            \(r=99\) gives bid \(\approx99.2546\), ask \(\approx100.7454\) —
+            a full point higher on both sides. The inventory-aware quotes
+            sit a full point cheaper across the board, exactly enough to
+            make selling more attractive and buying more relatively less
+            so.
+          </p>
+        </div>
+      </div>
+    </div>
+    <p>
+      Every number above was cross-checked against the live calculator
+      directly below it and agrees to the last decimal shown.
+    </p>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Compute r, the spread, and both quotes for any inputs — and watch the skew sweep</h3>
+    <p>
+      Starts on the worked example's own numbers. Change any input and
+      everything below recomputes instantly, including a guard for
+      non-numeric, blank, or non-positive-where-required entries (\(\sigma\),
+      \(\gamma\), and \(k\) must all be strictly positive; \((T-t)\) must be
+      \(\ge0\)).
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Mid-price \(s\)</span></div>
+        <input type="number" id="as-s" class="tl-scratch-input" value="100" step="0.5">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Inventory \(q\) (+long / −short)</span></div>
+        <input type="number" id="as-q" class="tl-scratch-input" value="5" step="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Risk aversion \(\gamma\)</span></div>
+        <input type="number" id="as-gamma" class="tl-scratch-input" value="0.1" step="0.01" min="0.0001">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Volatility \(\sigma\)</span></div>
+        <input type="number" id="as-sigma" class="tl-scratch-input" value="2" step="0.1" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Time remaining \((T-t)\)</span></div>
+        <input type="number" id="as-tt" class="tl-scratch-input" value="0.5" step="0.05" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Depth parameter \(k\)</span></div>
+        <input type="number" id="as-k" class="tl-scratch-input" value="1.5" step="0.1" min="0.0001">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Inventory shift = <b id="as-shift">1.0000</b>&emsp;Reservation price \(r\) = <b id="as-r">99.0000</b>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Inventory-risk term = <b id="as-invterm">0.2000</b>&emsp;Profit term = <b id="as-profitterm">1.2908</b>&emsp;Total spread = <b id="as-spread">1.4908</b>
+    </div>
+    <div class="tl-readout">
+      Bid = <b id="as-bid">98.2546</b>&emsp;Ask = <b id="as-ask">99.7454</b>
+      <span id="as-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="as-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+
+    <p style="margin-top:16px">
+      Holding \(s\), \(\gamma\), \(\sigma\), \((T-t)\), and \(k\) at whatever
+      is currently entered above, here is how \(r\), the bid, and the ask
+      would look at several different inventory levels — the numeric picture
+      of inventory skew sweeping from short to long:
+    </p>
+    <div class="tl-table-wrap"><table class="tl-tbl">
+      <tr><th>q</th><th>Reservation price r</th><th>Bid</th><th>Ask</th></tr>
+      <tbody id="as-sweep-body">
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Reservation price, bid, and ask as inventory sweeps from short to long</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart with inventory on the horizontal axis, from -10 (short) to +10 (long), and price on the vertical axis. A dashed horizontal line marks the constant mid-price. Three sloped lines cross it: the reservation price line, which falls as inventory rises; a bid line running parallel below it; and an ask line running parallel above it. All three lines slope downward together as inventory increases from short to long, showing both quotes shifting lower as the market maker accumulates a long position.">
+      <line x1="80" y1="20" x2="80" y2="260" style="stroke:var(--border);stroke-width:1"/>
+      <line x1="80" y1="260" x2="600" y2="260" style="stroke:var(--border);stroke-width:1"/>
+      <text x="340" y="285" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">inventory q (short ← 0 → long)</text>
+      <text x="30" y="140" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)" transform="rotate(-90 30 140)">price</text>
+
+      <line x1="80" y1="145" x2="580" y2="145" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:4,4"/>
+      <text x="586" y="149" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">mid s</text>
+
+      <line x1="330" y1="20" x2="330" y2="260" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:2,3"/>
+      <text x="330" y="272" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">q=0</text>
+
+      <polyline points="80,72.9 205,99.2 330,125.4 455,151.7 580,177.9" style="fill:none;stroke:var(--green);stroke-width:2"/>
+      <polyline points="80,92.5 205,118.8 330,145.0 455,171.3 580,197.5" style="fill:none;stroke:var(--purple);stroke-width:2.5"/>
+      <polyline points="80,112.1 205,138.3 330,164.6 455,190.8 580,217.1" style="fill:none;stroke:var(--red);stroke-width:2"/>
+
+      <text x="590" y="76" font-size="11" font-family="'DM Mono',monospace" fill="var(--green)">ask</text>
+      <text x="590" y="200" font-size="11" font-family="'DM Mono',monospace" fill="var(--purple)">r</text>
+      <text x="590" y="220" font-size="11" font-family="'DM Mono',monospace" fill="var(--red)">bid</text>
+
+      <circle cx="455" cy="145.0" r="0" style="opacity:0"/>
+      <circle cx="455" cy="151.7" r="4" fill="var(--green)"/>
+      <circle cx="455" cy="171.3" r="4.5" fill="var(--purple)"/>
+      <circle cx="455" cy="190.8" r="4" fill="var(--red)"/>
+      <text x="455" y="60" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text2)">worked example (q=+5)</text>
+
+      <text x="80" y="14" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">q=−10</text>
+      <text x="580" y="14" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">q=+10</text>
+    </svg>
+    <div class="tl-chart-caption">
+      Worked example's own parameters (\(\gamma=0.1\), \(\sigma=2\),
+      \(T-t=0.5\), \(k=1.5\)). All three lines are perfectly parallel — the
+      bid-ask width never changes with inventory, only where the whole
+      window is centered does. Moving right (more long) drags all three
+      lines down together; moving left (more short) drags them up.
+    </div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How this connects to the rest of this Theory Lab</h2>
+  <p>
+    This model doesn't stand alone — it deliberately isolates one specific
+    risk (inventory) from two other things this curriculum covers in
+    dedicated lessons of their own, and being precise about that boundary is
+    the honest way to present it.
+  </p>
+  <div class="tl-compare">
+    <div class="tl-compare-card amber">
+      <h4>What this model does NOT price in: adverse selection</h4>
+      <p>
+        Nothing in \(r(s,q,t)\) or the spread formula asks whether the
+        counterparty on the other side of a fill knows something the market
+        maker doesn't. The sibling <a href="institutional-glosten-milgrom.html">
+        Glosten-Milgrom</a> lesson shows a spread can exist for a purely
+        risk-neutral market maker, with zero inventory concern at all, purely
+        because some fraction \(\mu\) of arriving flow is informed — a
+        completely different mechanism from this lesson's inventory-holding
+        risk. A real market maker faces both risks simultaneously: this
+        model's fill-intensity function \(\lambda(\delta)=Ae^{-k\delta}\)
+        treats every arriving order as equally likely to be informed or
+        uninformed, which is exactly the simplification a Glosten-Milgrom-
+        style toxicity adjustment would relax.
+      </p>
+    </div>
+    <div class="tl-compare-card blue">
+      <h4>A related but different real-time signal: Order Flow Imbalance</h4>
+      <p>
+        The sibling <a href="institutional-order-flow-imbalance.html">Order
+        Flow Imbalance</a> lesson builds real-time signals — OFI and the
+        microprice — from a sequence of book updates, often used in practice
+        to refine a market maker's estimate of the "true" reference price
+        \(s\) that this model simply treats as an exogenous input following
+        \(ds=\sigma\,dW\). This lesson's \(s\) doesn't ask where it comes
+        from; a live desk plugging numbers into this model in practice would
+        very plausibly be feeding it a microprice-adjusted reference rather
+        than a naive best-bid/best-ask midpoint.
+      </p>
+    </div>
+  </div>
+  <p>
+    And none of this matters unless the quotes this model produces are
+    actual resting limit orders in a real venue. The sibling <a
+    href="limit-order-books.html">Limit Order Books &amp; Queue Dynamics</a>
+    lesson covers exactly that mechanical layer — price-time priority, queue
+    position, cancellation and requoting — which this lesson takes entirely
+    for granted. The reservation price and optimal spread tell a market
+    maker <em>where</em> to quote; the limit-order-book lesson covers what
+    actually happens once that quote is sitting in a real queue, competing
+    with everyone else's resting orders at the same price.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>This model is really good at answering "how much of this thing do I already have, and how should that change my prices?" It's not trying to answer a completely different question: "is the person buying from me right now secretly smarter than me about where the price is headed?" That second question has its own lesson (Glosten-Milgrom) with its own completely different answer. A real market maker has to worry about both questions at once — this lesson is honest that it only tackles the first one.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>How practitioners actually use this</h2>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🎛️</div>
+      <h4>A calibration target, not a plug-and-play formula</h4>
+      <p>\(A\) and \(k\) in the Poisson fill-intensity model are not known constants — they must be estimated from a venue's own historical fill data, and a poor fit means the "optimal" spread is optimal for the wrong market.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">⚙️</div>
+      <h4>A building block inside larger market-making systems</h4>
+      <p>The reservation-price mechanism is widely used as one input inside more elaborate, production market-making engines — often combined with toxicity filters, position limits, and latency-aware requoting logic this lesson doesn't cover.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">📐</div>
+      <h4>A teaching device for "why does inventory matter at all"</h4>
+      <p>Even where the exact closed-form isn't used live, the reservation-price intuition — center on an inventory-shifted price, not the raw mid — is close to universal informal practice among human market makers.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🔁</div>
+      <h4>Rolling re-solves, not a single static answer</h4>
+      <p>In practice \(s\), \(q\), and even the fitted \(A,k\) keep changing tick by tick, so a live implementation re-solves \(r\) and the spread continuously — this lesson's single "worked example" is really one frozen instant of a process meant to run constantly.</p>
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>A desk that just got run over on one side</h3>
+    <p>
+      Imagine a market maker who has been symmetric-quoting a currency pair
+      and, over the last hour, has been repeatedly lifted on their offer as
+      a wave of genuine buying interest passed through — they are now
+      meaningfully long, with no natural mechanism in a naive symmetric
+      strategy to stop the position from growing further if the buying
+      continues. Switching that same desk onto an Avellaneda-Stoikov-style
+      reservation price would immediately compute a negative shift from the
+      mid proportional to that new, larger \(q\): both quotes would drop,
+      the ask closer to the touch (more likely to finally get some of that
+      inventory sold back off) and the bid farther from it (less likely to
+      keep adding to an already-uncomfortable position). This is exactly the
+      mechanical behavior a real inventory-limit system is trying to
+      approximate by hand with hard position caps and manual skew — the
+      formula just makes the skew continuous and quantitatively principled
+      instead of a blunt on/off cutoff.
+    </p>
+    <p>
+      Nothing above is a claim this repo runs any such system live — see the
+      status badge above for exactly what does and doesn't exist here today.
+      It illustrates the mechanism a desk that <em>did</em> run this model
+      would actually be reacting to, which is the point of the exercise.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where this model quietly stops matching reality</h3>
+    <p>
+      <strong>Continuous, free re-quoting is assumed, not modeled as
+      costly.</strong> The math treats moving a quote as instantaneous and
+      free. Real venues have latency, and a resting order that gets
+      cancelled and replaced loses its place in the queue entirely — the
+      sibling <a href="limit-order-books.html">Limit Order Books</a> lesson's
+      queue-priority mechanics are completely absent from this model, which
+      can make its prescribed "optimal" requoting frequency unrealistic on a
+      venue where queue position itself has real value.
+    </p>
+    <p>
+      <strong>\(\sigma\) is assumed known and constant, and \(\lambda(\delta)
+      =Ae^{-k\delta}\) is assumed to be the right functional form.</strong>
+      Both are calibration choices dressed up as fixed model inputs. Real
+      volatility clusters and regime-shifts rather than sitting at one
+      constant value for the whole horizon, and there is no guarantee actual
+      order-arrival intensity truly decays exponentially in distance from
+      the mid rather than in some other shape — a poor fit on either
+      assumption means the formula's numbers are precise but not accurate.
+    </p>
+    <p>
+      <strong>Adverse selection is not in this model at all.</strong> As
+      Section 03 above states plainly, every arriving order is treated as
+      equally likely to be informed — this model has no \(\mu\)-style
+      parameter the way <a href="institutional-glosten-milgrom.html">Glosten-
+      Milgrom</a> and PIN do. A market maker relying on this model alone in a
+      genuinely toxic-flow environment is pricing one real risk correctly
+      and one real risk not at all.
+    </p>
+    <p>
+      <strong>The finite-horizon "flatten by T" behavior is a modeling
+      simplification, not a universally desirable trading behavior.</strong>
+      As Section 02 discussed, this is a deliberate feature of the original
+      framing, appropriate for a desk that genuinely wants to end a session
+      flat — not automatically the right target for a desk that runs
+      continuously across sessions with no single terminal time.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The reservation price \(r(s,q,t)=s-q\gamma\sigma^2(T-t)\) is not the mid-price</strong> — it's the mid shifted toward flat by an amount set by inventory, risk aversion, variance, and time remaining.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Long inventory shifts r below the mid; short inventory shifts it above.</strong> This makes selling (if long) or buying (if short) relatively more attractive, nudging the market maker back toward flat — the entire mechanism symmetric quoting lacks.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The total spread splits into an inventory-risk term (γσ²(T−t)) and a market-making profit term ((2/γ)ln(1+γ/k))</strong> that answer genuinely different questions — and the total spread's width doesn't depend on inventory at all; only where it's centered does.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>As (T−t)→0, r converges to s but the spread does not converge to zero</strong> — it converges to the pure profit term, since only the inventory-driven half of the spread vanishes at the horizon.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>This model prices inventory risk only — it has no adverse-selection mechanism at all.</strong> Glosten-Milgrom and PIN cover the informed-trading risk this model is silent on; a real desk needs both, not either.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Free continuous re-quoting, constant known σ, and a specific exponential fill-intensity shape are all simplifying assumptions</strong> — each one is a real place the closed-form answer can quietly stop matching the venue it's actually being used on.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Is the reservation price r(s,q,t) the same thing as the mid-price s? If not, what determines how far apart they are?</summary>
+    <div class="tl-answer">
+      No. \(r(s,q,t) = s - q\gamma\sigma^2(T-t)\) — they're equal only when
+      \(q=0\) or \((T-t)=0\). Otherwise \(r\) is shifted away from \(s\) by
+      an amount proportional to current inventory \(q\), risk aversion
+      \(\gamma\), the mid-price's variance \(\sigma^2\), and remaining time
+      \((T-t)\). The larger any of those four factors, the farther \(r\)
+      drifts from the plain mid.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. A market maker is currently long (q &gt; 0). Does the reservation price shift above or below the mid, and why does that push the market maker's inventory back toward flat?</summary>
+    <div class="tl-answer">
+      Below the mid: \(r = s - q\gamma\sigma^2(T-t)\), and with \(q>0\) the
+      subtracted term is positive, so \(r&lt;s\). Centering both quotes on a
+      below-mid \(r\) makes the ask (posted above \(r\)) closer to the true
+      mid — more attractive to a buyer, more likely to sell off some of the
+      long position — while the bid (posted below \(r\), already below
+      \(s\)) sits farther from the mid, less likely to attract another
+      seller and add still more inventory. Short inventory produces the
+      exact mirror image, with \(r\) above the mid.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. What are the two components of the total optimal spread, and what does each one depend on?</summary>
+    <div class="tl-answer">
+      \(\delta_b+\delta_a = \underbrace{\gamma\sigma^2(T-t)}_{\text{inventory
+      risk}} + \underbrace{\frac{2}{\gamma}\ln(1+\gamma/k)}_{\text{market-
+      making profit}}\). The first term depends on risk aversion, variance,
+      and time remaining — pure compensation for the risk of holding any
+      position at all, with no reference to how easily quotes get filled.
+      The second depends on risk aversion and the fill-intensity decay rate
+      \(k\) — it balances earning more per fill (quoting farther out)
+      against getting filled less often, and would remain nonzero even for
+      a market maker with zero inventory-holding risk at all.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. What happens to r and to the total spread as (T−t) → 0 (right at the trading horizon)? Are both effects the same?</summary>
+    <div class="tl-answer">
+      No — they behave differently. \(r\to s\): the inventory-driven shift
+      \(q\gamma\sigma^2(T-t)\) vanishes as \((T-t)\to0\) regardless of \(q\),
+      so the reservation price converges back to the plain mid. The total
+      spread does <em>not</em> converge to zero, though — only its
+      inventory-risk term \(\gamma\sigma^2(T-t)\) vanishes; the market-
+      making profit term \(\frac{2}{\gamma}\ln(1+\gamma/k)\) has no
+      \((T-t)\) in it and survives unchanged, so the spread converges to
+      that pure profit-margin width, not to zero.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Does this model account for the risk that the counterparty filling a quote is an informed trader? If not, which lesson(s) in this curriculum do?</summary>
+    <div class="tl-answer">
+      No. This is an inventory-only model — its fill-intensity function
+      \(\lambda(\delta)=Ae^{-k\delta}\) treats every arriving order as
+      equally likely to be informed or uninformed, and nothing in
+      \(r(s,q,t)\) or the spread formula depends on the probability of
+      informed trading at all. The Glosten-Milgrom and PIN lessons in this
+      curriculum cover exactly that separate risk (adverse selection) — a
+      real market maker's spread has to compensate for both risks at once,
+      but this model addresses only one of them.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. A market maker with s=100, γ=0.1, σ=2, T−t=0.5, k=1.5 is short 5 units (q=−5) instead of long 5. Compute r, and say which side (bid or ask) becomes relatively more attractive to a counterparty as a result.</summary>
+    <div class="tl-answer">
+      \(r = 100 - (-5)(0.1)(4)(0.5) = 100 + 1.00 = 101.00\) — the mirror
+      image of the worked example's long case (which gave \(r=99.00\)).
+      Both quotes are now centered above the mid instead of below it: the
+      bid (posted below \(r=101\)) sits closer to the true mid than a
+      symmetric quote would, making it relatively more attractive to a
+      seller — exactly what a market maker who is short wants, since a fill
+      on the bid buys back some of the short position and moves inventory
+      toward flat.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Marco Avellaneda &amp; Sasha Stoikov, <em>"High-Frequency Trading in a Limit Order Book,"</em> Quantitative Finance, 8(3), 217–224, 2008 — the seminal paper this entire lesson is built on: the reservation price, the optimal spread, and the exponential order-arrival intensity model.</li>
+    <li>Olivier Guéant, Charles-Albert Lehalle &amp; Joaquin Fernandez-Tapia, <em>"Dealing with the Inventory Risk: A Solution to the Market Making Problem,"</em> Mathematics and Financial Economics, 7(4), 2013 — a well-known follow-up that generalizes the Avellaneda-Stoikov framework, including asymptotic solutions and inventory-limit considerations beyond the original closed-form approximation.</li>
+    <li>Lawrence R. Glosten &amp; Paul R. Milgrom, <em>"Bid, Ask and Transaction Prices in a Specialist Market with Heterogeneously Informed Traders,"</em> Journal of Financial Economics, 14(1), 1985 — the adverse-selection mechanism this lesson explicitly does not model; covered in full in the sibling <a href="institutional-glosten-milgrom.html">Glosten-Milgrom</a> lesson.</li>
+    <li>Rama Cont, Arseniy Kukanov &amp; Sasha Stoikov, <em>"The Price Impact of Order Book Events,"</em> Journal of Financial Econometrics, 12(1), 2014 — Sasha Stoikov's own later work on real-time order-flow signals, covered in the sibling <a href="institutional-order-flow-imbalance.html">Order Flow Imbalance</a> lesson.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="institutional-market-depth-slope.html">← Market Depth, Order-Book Slope &amp; Depth Imbalance</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="institutional-covar.html">CoVaR: Conditional Value-at-Risk for Systemic Risk →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+<script>
+(function(){
+  var ids = ['s','q','gamma','sigma','tt','k'];
+  var inputs = {};
+  ids.forEach(function(f){ inputs[f] = document.getElementById('as-' + f); });
+  if (!inputs.s) return;
+
+  var DEFAULTS = { s: 100, q: 5, gamma: 0.1, sigma: 2, tt: 0.5, k: 1.5 };
+  var DASH = '—';
+
+  var out = {
+    shift: document.getElementById('as-shift'),
+    r: document.getElementById('as-r'),
+    invterm: document.getElementById('as-invterm'),
+    profitterm: document.getElementById('as-profitterm'),
+    spread: document.getElementById('as-spread'),
+    bid: document.getElementById('as-bid'),
+    ask: document.getElementById('as-ask')
+  };
+  var note = document.getElementById('as-note');
+  var resetBtn = document.getElementById('as-reset');
+  var sweepBody = document.getElementById('as-sweep-body');
+  var SWEEP_Q = [-10, -5, 0, 5, 10];
+
+  function blank(){
+    Object.keys(out).forEach(function(k){ out[k].textContent = DASH; });
+    sweepBody.innerHTML = '';
+  }
+
+  function computeAt(s, q, gamma, sigma, tt, k){
+    var invterm = gamma * sigma * sigma * tt;
+    var shift = q * invterm;
+    var r = s - shift;
+    var profitterm = (2 / gamma) * Math.log(1 + gamma / k);
+    var spread = invterm + profitterm;
+    var half = spread / 2;
+    return { r: r, bid: r - half, ask: r + half, invterm: invterm, profitterm: profitterm, spread: spread, shift: shift };
+  }
+
+  function recompute(){
+    var v = {};
+    ids.forEach(function(f){ v[f] = parseFloat(inputs[f].value); });
+
+    var msgs = [];
+    if (!isFinite(v.s)) msgs.push('mid-price s must be a number');
+    if (!isFinite(v.q)) msgs.push('inventory q must be a number');
+    if (!isFinite(v.gamma) || v.gamma <= 0) msgs.push('risk aversion γ must be a positive number');
+    if (!isFinite(v.sigma) || v.sigma < 0) msgs.push('volatility σ must be non-negative');
+    if (!isFinite(v.tt) || v.tt < 0) msgs.push('time remaining (T−t) must be non-negative');
+    if (!isFinite(v.k) || v.k <= 0) msgs.push('depth parameter k must be a positive number');
+
+    if (msgs.length){
+      blank();
+      note.textContent = '(' + msgs.join('; ') + ')';
+      return;
+    }
+
+    note.textContent = '';
+    var c = computeAt(v.s, v.q, v.gamma, v.sigma, v.tt, v.k);
+    out.shift.textContent = c.shift.toFixed(4);
+    out.r.textContent = c.r.toFixed(4);
+    out.invterm.textContent = c.invterm.toFixed(4);
+    out.profitterm.textContent = c.profitterm.toFixed(4);
+    out.spread.textContent = c.spread.toFixed(4);
+    out.bid.textContent = c.bid.toFixed(4);
+    out.ask.textContent = c.ask.toFixed(4);
+
+    sweepBody.innerHTML = '';
+    SWEEP_Q.forEach(function(q){
+      var row = computeAt(v.s, q, v.gamma, v.sigma, v.tt, v.k);
+      var tr = document.createElement('tr');
+      tr.innerHTML = '<td>' + (q > 0 ? '+' + q : q) + '</td>' +
+        '<td class="tl-num">' + row.r.toFixed(4) + '</td>' +
+        '<td class="tl-num">' + row.bid.toFixed(4) + '</td>' +
+        '<td class="tl-num">' + row.ask.toFixed(4) + '</td>';
+      sweepBody.appendChild(tr);
+    });
+  }
+
+  ids.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    ids.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
+</body>
+</html>

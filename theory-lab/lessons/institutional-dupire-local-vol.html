@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dupire's Local Volatility Model — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Options &amp; Vol-Surface Extensions / Dupire's Local Volatility Model</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Options &amp; Vol-Surface Extensions 2 of 3</div>
+  <h1 class="tl-title">Dupire's Local Volatility Model</h1>
+  <p class="tl-dek">Heston and SABR make volatility stochastic — its own random process, with its own source of noise. Dupire's 1994 result takes a third route: keep volatility a plain, deterministic number, but let that number depend on where the spot is and when. One equation, one source of randomness, and a formula that backs the whole thing out of the market's own option prices.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — not built or tested anywhere in this repo; see the grounding note in Section 06 for the exact grep finding</span>
+    <span>~18 min read</span>
+    <span>Prereqs: <a href="institutional-bates-model.html">Bates Model: Stochastic Volatility + Jumps</a>, plus this Theory Lab's own <a href="vega-volatility-surface.html">Vega &amp; the Volatility Surface</a>, <a href="heston-model.html">The Heston Model</a>, and <a href="sabr-model.html">The SABR Model</a></span>
+  </div>
+
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="institutional-dupire-local-vol-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>This curriculum now has three genuinely distinct ways to handle the fact that volatility isn't one flat number: <a href="vega-volatility-surface.html">read the market's own implied-vol surface</a> directly, make volatility <strong>stochastic</strong> (Heston/SABR — its own random process, its own Brownian motion), or make it <strong>local</strong> (Dupire — a deterministic function \(\sigma_{\text{local}}(S,t)\) of the spot's own level and time, no extra randomness at all).</li>
+      <li>Local vol has exactly <strong>one</strong> source of randomness — the same \(dW_t\) that drives the spot. Heston has <strong>two</strong> — \(dW_t^1\) for price and a separate \(dW_t^2\) for variance, correlated by \(\rho\). That is the entire structural distinction, and it is the one to keep straight above everything else in this lesson.</li>
+      <li>Dupire's 1994 result: given a complete, arbitrage-free grid of call prices \(C(K,T)\) for every strike and maturity, there is a formula — \(\sigma_{\text{local}}^2(K,T) = \big[\partial C/\partial T + rK\,\partial C/\partial K\big] \big/ \big[\tfrac12 K^2\,\partial^2C/\partial K^2\big]\) — that extracts the <em>unique</em> deterministic vol function consistent with that entire surface, and that reprices every vanilla on it exactly, by construction.</li>
+      <li>That "exactly, by construction" is the whole character difference from Heston/SABR: local vol is a <strong>calibration device</strong>, not a tested behavioral model — it can't fail to fit today's surface, the same way a spline through a set of points can't fail to pass through them. Heston/SABR are <strong>parametric models</strong> that impose an assumed dynamic and can be, and are, checked against how the surface actually moves.</li>
+      <li>The standard critique: local vol fits today's snapshot perfectly but its own implied dynamics for how the smile should evolve going forward are widely considered unrealistic — typically too flat, relative to what markets actually show later. That mismatch is the main reason practitioners lean on stochastic-vol models, or hybrid <strong>stochastic-local-vol (SLV)</strong> constructions, rather than trading off a pure local-vol model's forward behavior.</li>
+      <li>Computing the formula from real, noisy, discretely-quoted market data is a genuinely hard numerical problem in its own right — raw finite differences on noisy prices blow up — which is why production local-vol construction always fits a smooth surface first (a spline, or a parametric smile model like SABR) and differentiates <em>that</em>, never the raw quotes.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    Three lessons already in this Theory Lab attack the same underlying fact
+    — that real options markets never quote one flat \(\sigma\) — from three
+    genuinely different angles, and it's worth being explicit about all three
+    before adding a fourth idea on top. <a href="vega-volatility-surface.html">Vega
+    &amp; the Volatility Surface</a> establishes that the surface exists and
+    describes its two axes (skew and term structure) as observed market data,
+    without proposing any model that could <em>generate</em> it. <a
+    href="heston-model.html">The Heston Model</a> and <a
+    href="sabr-model.html">The SABR Model</a> both propose an answer: make
+    volatility itself a second random process, correlated with the
+    underlying's own returns, so the model's own dynamics produce a smile
+    endogenously. Both of those are <strong>stochastic volatility</strong>
+    models in the precise technical sense — variance or vol-level genuinely
+    has its own independent source of randomness.
+  </p>
+  <p>
+    Bruno Dupire's 1994 paper, "Pricing with a Smile," proposes something that
+    sounds almost too simple to be a genuine alternative: what if volatility
+    isn't random at all — what if it's just a number that happens to depend on
+    where the spot currently is and what time it currently is,
+    \(\sigma_{\text{local}}(S,t)\), fixed and knowable at every point on that
+    grid, with zero extra randomness anywhere in the model? This is
+    <strong>local volatility</strong>, and it is not a compromise or a
+    simplification of Heston/SABR — it is a structurally different modeling
+    choice that happens to solve a completely different problem extremely
+    well: given today's entire observed surface, find the one diffusion model
+    that reproduces every single quoted price on it, exactly. Understanding
+    precisely how that differs from what Heston and SABR do — not just in
+    outcome, but in what kind of claim each model is even making — is the
+    entire point of this lesson.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>One dial that moves on its own, versus one dial you can read off a map</h3>
+    <p>
+      Imagine volatility as a dial. Black-Scholes says the dial is glued in
+      place — one setting, forever. Heston and SABR say the dial has a mind
+      of its own: it wiggles around randomly over time, on top of whatever the
+      spot price is doing, and the two wiggle together in a correlated way.
+      That's genuinely <em>two</em> separate sources of unpredictability
+      running at once — you don't know where spot will be, and, separately,
+      you don't know where the vol dial will be either.
+    </p>
+    <p style="margin-bottom:0">
+      Local vol says something different: the dial isn't random at all — it's
+      more like a thermostat with a pre-printed lookup table taped to it,
+      "if the room is at this temperature and it's this time of day, set the
+      heat to exactly this level." Nothing about the dial's <em>setting</em>
+      is uncertain once you know the room's temperature and the time — all the
+      uncertainty in the whole system comes from not knowing what the
+      temperature (the spot price) itself will do. Read the temperature off
+      the map, read the corresponding setting off the table, done. One source
+      of not-knowing, not two.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+  <p>
+    Four things in order: (1) the local-vol SDE, set directly against
+    Heston's two SDEs so the "one source versus two" distinction is
+    unmistakable in the notation itself; (2) Dupire's formula, stated in
+    full; (3) why the formula is true, sketched informally; (4) a fully
+    worked numerical example computed from finite differences, by hand.
+  </p>
+
+  <h3>1. One SDE, one source of randomness</h3>
+  <p>
+    Recall plain Black-Scholes' single equation for the underlying, with one
+    constant \(\sigma\):
+  </p>
+  <div class="tl-math">\[ dS_t = \mu S_t\,dt + \sigma S_t\,dW_t \]</div>
+  <p>
+    Local volatility keeps <em>exactly</em> this same shape — one equation,
+    one Brownian motion \(dW_t\) — and makes exactly one change: \(\sigma\)
+    stops being a constant and becomes a deterministic function of the
+    current spot level and the current time:
+  </p>
+  <div class="tl-math">\[ dS_t = \mu S_t\,dt + \sigma_{\text{local}}(S_t, t)\,S_t\,dW_t \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>σ_local(S_t, t)</code><span>a deterministic function — plug in the current (S,t), read off a number, no randomness in that step</span></div>
+    <div class="tl-eq-chip c2"><code>dW_t</code><span>the same single Brownian motion driving price, exactly as in Black-Scholes</span></div>
+  </div>
+  <p>
+    Now put Heston's two equations directly alongside it, reusing that
+    lesson's own notation without changing a symbol:
+  </p>
+  <div class="tl-math">
+    \[ dS_t = \mu S_t\,dt + \sqrt{v_t}\,S_t\,dW_t^{1} \]
+    \[ dv_t = \kappa(\theta - v_t)\,dt + \xi\sqrt{v_t}\,dW_t^{2}, \qquad \mathrm{Corr}(dW_t^1, dW_t^2) = \rho \]
+  </div>
+  <div class="tl-compare">
+    <div class="tl-compare-card green">
+      <h4>Local vol — one equation, one dW</h4>
+      <p>
+        \(\sigma_{\text{local}}(S_t,t)\) is a plain function — a lookup table
+        indexed by the two things you already know at every instant, the
+        current spot and the current time. There is no second stochastic
+        differential equation anywhere in the model, no vol-of-vol parameter,
+        no correlation parameter \(\rho\) — there is nothing for \(\rho\) to
+        even <em>be</em> a correlation <em>between</em>, since there is only
+        ever one source of randomness in the whole system.
+      </p>
+    </div>
+    <div class="tl-compare-card purple">
+      <h4>Stochastic vol (Heston/SABR) — two equations, two dW's</h4>
+      <p>
+        \(v_t\) (Heston) or \(\alpha_t\) (SABR) is itself a random process with
+        its own Brownian motion \(dW_t^2\), its own vol-of-vol
+        (\(\xi\) or \(\nu\)), and a correlation \(\rho\) linking it back to
+        the price shock \(dW_t^1\). Even if you know \(S_t\) and \(t\)
+        exactly right now, you still don't know what \(v_t\) itself will do
+        next — a genuinely separate source of uncertainty.
+      </p>
+    </div>
+  </div>
+  <div class="tl-solid blue">
+    <strong>The one distinction to keep above everything else in this lesson:</strong>
+    local vol's randomness comes entirely from not knowing where \(S_t\) will
+    be — once you know \(S_t\) and \(t\), \(\sigma_{\text{local}}(S_t,t)\) is
+    a known number, not a random draw. Heston/SABR's randomness has a second,
+    independent component: even conditional on knowing \(S_t\) and \(t\)
+    exactly, \(v_t\) (or \(\alpha_t\)) is still not pinned down — it has its
+    own separate history of shocks. One random source versus two, full stop.
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Local vol is a vending machine: punch in "spot = 98, time = day 40" and it spits out one exact number, every single time, no surprises. Stochastic vol is a vending machine that's also somehow a little bit haunted: punch in the exact same "spot = 98, time = day 40" twice and it can hand you two different numbers, because something else — its own private randomness — is also steering the machine, separate from whatever you typed in.</p>
+  </div>
+
+  <h3>2. Dupire's formula</h3>
+  <p>
+    Dupire's 1994 result answers a question that sounds almost circular:
+    suppose you are handed a genuinely complete, arbitrage-free grid of
+    vanilla European call prices, \(C(K,T)\), for every strike \(K\) and
+    every maturity \(T\) a market could plausibly quote. Is there a
+    <em>single</em> local-volatility function \(\sigma_{\text{local}}(S,t)\)
+    whose diffusion, run forward, reproduces every one of those prices
+    exactly? Dupire showed the answer is yes, it is unique, and — the truly
+    useful part — it can be read directly off the price surface's own
+    derivatives, with no calibration search at all:
+  </p>
+  <div class="tl-math">
+    \[ \sigma_{\text{local}}^2(K,T) \;=\; \frac{\dfrac{\partial C}{\partial T} + rK\,\dfrac{\partial C}{\partial K}}{\dfrac12 K^2\,\dfrac{\partial^2 C}{\partial K^2}} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>∂C/∂T</code><span>how the call price at this strike changes as maturity lengthens</span></div>
+    <div class="tl-eq-chip c2"><code>rK·∂C/∂K</code><span>a carry/drift correction from discounting the strike forward at the risk-free rate</span></div>
+    <div class="tl-eq-chip c4"><code>½K²·∂²C/∂K²</code><span>strike-convexity — proportional to the risk-neutral density of S_T at K, per Breeden-Litzenberger</span></div>
+  </div>
+  <div class="tl-symbols"><table>
+    <tr><td>\(C(K,T)\)</td><td>The market (or model) price of a vanilla European call struck at \(K\), expiring at \(T\), as a continuous, twice-differentiable function of both strike and maturity — the entire object this formula needs as its input.</td></tr>
+    <tr><td>\(K,T\)</td><td>Strike and maturity — the two coordinates the whole formula is evaluated at. The output, \(\sigma_{\text{local}}(K,T)\), is the model's vol function evaluated at the point \(S=K,\,t=T\) — reading the formula off the (K,T) plane recovers the function's value on that plane, not a separate object.</td></tr>
+    <tr><td>\(r\)</td><td>The (constant, for this stated form of the formula) risk-free rate. This is the zero-dividend-yield version of the formula; the fuller version used in production carries an added dividend-yield term and a different \((r-q)\) drift coefficient — see the caveat below.</td></tr>
+    <tr><td>\(\partial C/\partial T\)</td><td>The calendar slope of the price surface at fixed strike — how much more a call at that same strike costs for a slightly longer maturity.</td></tr>
+    <tr><td>\(\partial C/\partial K,\ \partial^2C/\partial K^2\)</td><td>The strike slope and strike curvature of the price surface at fixed maturity. \(\partial^2C/\partial K^2\) in particular is not an arbitrary quantity — up to a constant, it <em>is</em> the risk-neutral probability density of \(S_T\) at \(K\), the Breeden-Litzenberger result this category's next lesson derives in full. A negative or zero \(\partial^2C/\partial K^2\) is not a modeling nuance; it means the input prices imply a nonsensical (negative) probability density somewhere, which is exactly why it sits in the denominator here.</td></tr>
+  </table></div>
+  <div class="tl-solid amber">
+    <strong>A convention caveat, stated honestly rather than glossed over.</strong>
+    This is the standard, most commonly cited form of Dupire's formula (it
+    matches, for instance, the version in Jim Gatheral's <em>The Volatility
+    Surface</em>, already cited in the Heston lesson) under a zero continuous
+    dividend/repo yield. Once a dividend or foreign interest rate \(q\)
+    enters (essential for FX, where \(q\) is the foreign short rate), the
+    formula picks up an extra \(qC\) term in the numerator and \((r-q)\)
+    replaces \(r\) in the drift term. Different texts also state the formula
+    in terms of the whole implied-variance surface \(w(K,T)=\sigma_{\text{impl}}^2(K,T)\,T\)
+    rather than raw call prices \(C(K,T)\), which looks algebraically
+    different but is the identical result via the chain rule. This lesson
+    presents the call-price form given above because it is the cleanest to
+    reason about and to compute a worked example from by hand; a production
+    implementation should be checked directly against Dupire's original
+    paper (or a text like Gatheral's) for the exact sign and dividend
+    conventions it needs, rather than trusting any one restated version,
+    this one included, blindly.
+  </div>
+
+  <h3>3. Why the formula is true — sketched, not derived</h3>
+  <p>
+    The full derivation runs through the Dupire partial differential equation
+    (a forward PDE in \(K\) and \(T\), the mirror image of the familiar
+    backward Black-Scholes PDE in \(S\) and \(t\)) and is genuinely technical
+    — it is not carried out here, the same way this Theory Lab's Heston
+    lesson states that model's characteristic-function pricing result without
+    re-deriving it. The informal shape of the argument, though, is worth
+    having: \(\partial^2C/\partial K^2\) already connects the price surface
+    to the risk-neutral density of \(S_T\) (Breeden-Litzenberger, covered
+    properly in the next lesson in this category). Dupire's forward equation
+    is, in essence, a statement of how that entire density has to evolve
+    consistently through time under a one-factor diffusion with a
+    state-and-time-dependent volatility — and rearranging that evolution
+    equation for the one unknown function, \(\sigma_{\text{local}}^2(K,T)\),
+    in terms of quantities the observed price surface already hands you
+    (its own \(K\)- and \(T\)-derivatives), is what produces the formula
+    above. The genuinely hard mathematics is showing that such a
+    \(\sigma_{\text{local}}\) exists and is unique for any well-behaved,
+    arbitrage-free surface — that existence-and-uniqueness result is
+    Dupire's real contribution, not merely restating the PDE.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If you know exactly how a whole pond's water level is going to change everywhere over the next minute, and you know exactly what the pond's surface looks like right now, there's only one consistent story for "how fast is the water flowing at each spot, right now" that could produce that change everywhere at once. Dupire's formula is that story, written out for option prices instead of water: given the whole price surface and how it's changing, there's exactly one local-vol function that could be producing it.</p>
+  </div>
+
+  <h3>4. A fully worked numerical example</h3>
+  <p>
+    Real finite differences need real numbers to sit on. The cleanest
+    possible worked example uses a call-price grid that is itself generated
+    from plain, flat-\(\sigma\) Black-Scholes — deliberately a smooth,
+    noise-free, already-arbitrage-free surface, exactly the kind of clean
+    input this formula needs and real market data almost never hands you
+    directly (the practical numerical reality section below is built around
+    that exact gap). Using a smooth flat-vol surface here also doubles as a
+    sanity check on the formula itself: if the true world really is
+    flat-\(\sigma\) Black-Scholes, Dupire's formula, fed that surface's own
+    prices, should recover something very close to that same flat \(\sigma\)
+    back out — a "does the formula even work" check before trusting it on
+    anything more realistic.
+  </p>
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Recovering a known flat vol from its own Black-Scholes call prices</h3>
+    <p>
+      Take \(S=100\), \(r=5\%\), a true flat \(\sigma=20\%\), and evaluate
+      Black-Scholes call prices on a small five-point stencil around
+      \(K=100\), \(T=1.0\) year: strike step \(h=5\), time step
+      \(\Delta t=0.1\) years.
+    </p>
+    <div class="tl-math">
+      <pre style="margin:0;text-align:left;font-family:'DM Mono',monospace;font-size:13px;color:var(--text2);white-space:pre-wrap;line-height:1.7">C(K−h, T)   = C(95,  1.0) = 13.3465
+C(K,   T)   = C(100, 1.0) = 10.4506
+C(K+h, T)   = C(105, 1.0) =  8.0214
+C(K,   T−Δt)= C(100, 0.9) =  9.7982
+C(K,   T+Δt)= C(100, 1.1) = 11.0820</pre>
+    </div>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>Strike derivatives — central differences, fixed T</h4>
+          <div class="tl-math">
+            \[ \frac{\partial C}{\partial K} \approx \frac{C(K{+}h,T) - C(K{-}h,T)}{2h} = \frac{8.0214 - 13.3465}{10} = -0.5325 \]
+            \[ \frac{\partial^2 C}{\partial K^2} \approx \frac{C(K{+}h,T) - 2C(K,T) + C(K{-}h,T)}{h^2} = \frac{8.0214 - 20.9012 + 13.3465}{25} = 0.01867 \]
+          </div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>Calendar derivative — central difference, fixed K</h4>
+          <div class="tl-math">
+            \[ \frac{\partial C}{\partial T} \approx \frac{C(K,T{+}\Delta t) - C(K,T{-}\Delta t)}{2\Delta t} = \frac{11.0820 - 9.7982}{0.2} = 6.4190 \]
+          </div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>Assemble numerator, denominator, and the ratio</h4>
+          <div class="tl-math">
+            \[ \text{numerator} = 6.4190 + (0.05)(100)(-0.5325) = 6.4190 - 2.6626 = 3.7564 \]
+            \[ \text{denominator} = \tfrac12(100)^2(0.01867) = 93.33 \]
+            \[ \sigma_{\text{local}}^2(100, 1.0) \approx \frac{3.7564}{93.33} = 0.04025 \]
+            \[ \sigma_{\text{local}}(100, 1.0) \approx \sqrt{0.04025} \approx 20.06\% \]
+          </div>
+        </div>
+      </div>
+    </div>
+    <p style="margin-bottom:0">
+      20.06% against a true input of 20.00% — the small gap is pure finite-
+      difference discretization error (a coarser stencil, \(h=5\) and
+      \(\Delta t=0.1\), against a smooth but curved surface), not a flaw in
+      the formula itself; a finer stencil closes that gap further. The point
+      of this example isn't the tiny residual error — it's that the formula,
+      mechanically applied to a clean, self-consistent surface, hands back
+      almost exactly the volatility that surface was actually built from.
+      Real market surfaces are never this clean, which is exactly the
+      practical problem covered in Section 05.
+    </p>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Compute the discretized Dupire formula from your own five call prices</h3>
+    <p>
+      Starts on the worked example's own numbers. Edit any price, strike
+      step \(h\), time step \(\Delta t\), or rate \(r\), and \(\partial
+      C/\partial K\), \(\partial^2C/\partial K^2\), \(\partial C/\partial T\),
+      and \(\sigma_{\text{local}}\) recompute instantly from the discretized
+      formula above.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Strike \(K\)</span></div>
+        <input type="number" id="dup-scratch-K" class="tl-scratch-input" value="100" step="1" min="0.01">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Strike step \(h\)</span></div>
+        <input type="number" id="dup-scratch-h" class="tl-scratch-input" value="5" step="0.5" min="0.01">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Time step \(\Delta t\) (yrs)</span></div>
+        <input type="number" id="dup-scratch-dt" class="tl-scratch-input" value="0.1" step="0.01" min="0.001">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Rate \(r\) (%)</span></div>
+        <input type="number" id="dup-scratch-r" class="tl-scratch-input" value="5" step="0.25">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>C(K−h, T)</span></div>
+        <input type="number" id="dup-scratch-Ckm" class="tl-scratch-input" value="13.3465" step="0.0001">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>C(K, T)</span></div>
+        <input type="number" id="dup-scratch-Ck" class="tl-scratch-input" value="10.4506" step="0.0001">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>C(K+h, T)</span></div>
+        <input type="number" id="dup-scratch-Ckp" class="tl-scratch-input" value="8.0214" step="0.0001">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>C(K, T−Δt)</span></div>
+        <input type="number" id="dup-scratch-Ctm" class="tl-scratch-input" value="9.7982" step="0.0001">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>C(K, T+Δt)</span></div>
+        <input type="number" id="dup-scratch-Ctp" class="tl-scratch-input" value="11.0820" step="0.0001">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      ∂C/∂K ≈ <b id="dup-scratch-dCdK">−0.5325</b>&emsp;∂²C/∂K² ≈ <b id="dup-scratch-d2CdK2">0.01867</b>&emsp;∂C/∂T ≈ <b id="dup-scratch-dCdT">6.4190</b>
+    </div>
+    <div class="tl-readout">
+      σ²_local ≈ <b id="dup-scratch-sig2">0.04025</b>&emsp;σ_local ≈ <b id="dup-scratch-sig">20.06%</b>
+      <span id="dup-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="dup-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">The finite-difference stencil the Dupire formula's inputs actually live on</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A grid with strike on the horizontal axis and time to maturity on the vertical axis. Five points are marked: the center point at (K,T), a point to its left at (K minus h, T), a point to its right at (K plus h, T), a point below at (K, T minus delta t), and a point above at (K, T plus delta t). The three horizontal points feed the strike derivatives; the two vertical points feed the calendar derivative.">
+      <line x1="60" y1="150" x2="580" y2="150" style="stroke:var(--border2);stroke-width:1"/>
+      <line x1="320" y1="30" x2="320" y2="270" style="stroke:var(--border2);stroke-width:1"/>
+      <text x="580" y="168" text-anchor="end" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">strike K →</text>
+      <text x="330" y="42" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">maturity T →</text>
+
+      <circle cx="180" cy="150" r="7" style="fill:var(--blue-bg);stroke:var(--blue);stroke-width:2"/>
+      <text x="180" y="176" text-anchor="middle" font-size="12" font-family="'DM Mono',monospace" fill="var(--blue)">K−h, T</text>
+      <text x="180" y="192" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">13.3465</text>
+
+      <circle cx="320" cy="150" r="8" style="fill:var(--amber-bg);stroke:var(--amber);stroke-width:2.5"/>
+      <text x="320" y="176" text-anchor="middle" font-size="12" font-family="'DM Mono',monospace" fill="var(--amber)">K, T</text>
+      <text x="320" y="192" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">10.4506</text>
+
+      <circle cx="460" cy="150" r="7" style="fill:var(--blue-bg);stroke:var(--blue);stroke-width:2"/>
+      <text x="460" y="176" text-anchor="middle" font-size="12" font-family="'DM Mono',monospace" fill="var(--blue)">K+h, T</text>
+      <text x="460" y="192" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">8.0214</text>
+
+      <circle cx="320" cy="230" r="7" style="fill:var(--green-bg);stroke:var(--green);stroke-width:2"/>
+      <text x="320" y="256" text-anchor="middle" font-size="12" font-family="'DM Mono',monospace" fill="var(--green)">K, T−Δt</text>
+      <text x="320" y="272" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">9.7982</text>
+
+      <circle cx="320" cy="70" r="7" style="fill:var(--green-bg);stroke:var(--green);stroke-width:2"/>
+      <text x="320" y="52" text-anchor="middle" font-size="12" font-family="'DM Mono',monospace" fill="var(--green)">K, T+Δt</text>
+      <text x="320" y="96" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">11.0820</text>
+
+      <line x1="187" y1="150" x2="313" y2="150" style="stroke:var(--blue);stroke-width:1.5;stroke-dasharray:3,3"/>
+      <line x1="327" y1="150" x2="453" y2="150" style="stroke:var(--blue);stroke-width:1.5;stroke-dasharray:3,3"/>
+      <line x1="320" y1="78" x2="320" y2="142" style="stroke:var(--green);stroke-width:1.5;stroke-dasharray:3,3"/>
+      <line x1="320" y1="158" x2="320" y2="222" style="stroke:var(--green);stroke-width:1.5;stroke-dasharray:3,3"/>
+
+      <text x="65" y="290" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--blue)">blue pair (horizontal) → ∂C/∂K and ∂²C/∂K²</text>
+      <text x="380" y="290" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--green)">green pair (vertical) → ∂C/∂T</text>
+    </svg>
+    <div class="tl-chart-caption">
+      The five call prices from the worked example, placed on the (strike,
+      maturity) grid they actually occupy. Every derivative the Dupire
+      formula needs comes from exactly these five points — no other market
+      data enters the calculation at this one (K,T) location.
+    </div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>A calibration device, not a behavioral model</h2>
+  <p>
+    The worked example above is a hint at something larger and more
+    important than the arithmetic itself. Because Dupire's formula is
+    derived directly from the observed price surface's own derivatives —
+    not fit to it by an optimizer searching over a handful of free parameters
+    — a local-vol model built this way reprices every single vanilla option
+    on that surface <strong>exactly</strong>, by construction, not
+    approximately. There is no residual fitting error to report, the same way
+    there is no "fitting error" in reading a value straight off a lookup
+    table you built from the data itself.
+  </p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">📐</div>
+      <h4>Local vol (Dupire) — a calibration device</h4>
+      <p>
+        Built by reading derivatives directly off today's observed surface.
+        It cannot fail to fit today's quoted prices — that's what it's for.
+        There is no separate "does it fit the market" question to ask, the
+        same way there's no meaningful sense in which a spline curve "fits"
+        the data points it was built to pass through.
+      </p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🧬</div>
+      <h4>Heston / SABR — parametric behavioral models</h4>
+      <p>
+        Built from a handful of free parameters (\(\kappa,\theta,\xi,\rho,v_0\)
+        for Heston; \(\alpha,\beta,\rho,\nu\) for SABR) governing an
+        <em>assumed</em> dynamic. Fitting them to today's surface is a real
+        optimization with a real residual — they may not match every quoted
+        point exactly, and whether their assumed dynamic actually describes
+        how the market behaves is a testable, falsifiable question.
+      </p>
+    </div>
+  </div>
+  <p>
+    That last sentence is the crux of this whole section. A Heston or SABR
+    calibration makes a genuine claim about the world — "variance
+    mean-reverts at speed \(\kappa\)," "the forward's own volatility
+    random-walks with vol-of-vol \(\nu\)" — that could, in principle, turn
+    out to be a bad description of how the actual market moves, checkable by
+    watching how the smile evolves over subsequent days and comparing it to
+    what the calibrated model predicted. A local-vol construction makes no
+    such claim at all: it is a mathematically guaranteed match to a single
+    day's snapshot, full stop, and asking "does local vol fit today's smile"
+    is a category error — of course it does, that's the entire mechanism.
+    The genuinely interesting, testable question about local vol lives one
+    level up, addressed next: not whether it matches today, but whether the
+    dynamics it implies for <em>tomorrow's</em> smile look anything like
+    reality.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Tracing a picture through tracing paper always matches the picture underneath perfectly — that's not a skill, it's what tracing means. Painting the same picture freehand from memory might come out close, or might come out visibly wrong in some spot — but if you get it right, that says something real about how well you understand the picture. Local vol is the tracing paper. Heston and SABR are the freehand painting.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>The critique: right today, unrealistic tomorrow</h2>
+  <p>
+    Exactly matching today's surface sounds like an unambiguous virtue, and
+    for a single, narrow purpose — pricing an <em>exotic</em> option
+    consistently against the vanillas already trading today — it is. The
+    well-documented problem shows up when you ask the model to say anything
+    about the <em>future</em>: how should the smile look next week, once
+    spot has moved? A calibrated local-vol model does have an opinion here —
+    its own diffusion, run forward, implies a specific prediction for how
+    the whole smile should evolve as time passes and spot moves around — and
+    that opinion is widely considered, across the practitioner literature,
+    to be a poor match for how real smiles actually behave.
+  </p>
+  <p>
+    The standard way this gets discussed is the <strong>sticky strike versus
+    sticky delta</strong> question: as spot moves, does the market's smile
+    stay pinned to fixed absolute strikes ("sticky strike" — an option's own
+    quoted implied vol barely changes even as spot moves under it), or does
+    the whole smile shift bodily with spot, staying roughly fixed only in
+    <em>moneyness</em> or delta terms ("sticky delta")? Empirically, many
+    FX and equity markets behave closer to something in between, often
+    leaning toward sticky-delta-like behavior for meaningful spot moves. A
+    calibrated local-vol model's own internal, mechanically-implied
+    prediction for this question tends not to line up cleanly with either
+    convention, and in particular its implied <em>forward</em> smile — the
+    smile the model predicts for a future date, given how spot has moved by
+    then — is generally considered noticeably flatter than what markets
+    actually go on to show. This is a qualitative, well-known pattern in the
+    literature rather than one precise universal number; exactly how much
+    flatter, and in which markets, is an empirical question this lesson
+    won't overstate a specific figure for.
+  </p>
+  <div class="tl-solid red">
+    <strong>Fits perfectly today, drifts unrealistically tomorrow — in one sentence.</strong>
+    A pure local-vol model's entire dynamical behavior is a byproduct of
+    forcing an exact match to one static snapshot; nothing in its
+    construction ever asked "does this evolve the way real smiles evolve?"
+    Heston/SABR ask exactly that question from the start (their dynamics are
+    specified, then fit) — which is why, even though they may not fit today's
+    snapshot as exactly as local vol does, many practitioners trust their
+    <em>forward</em> behavior more.
+  </div>
+  <p>
+    The industry's practical answer to "I want an exact fit today <em>and</em>
+    realistic forward dynamics" is a hybrid class of models generally called
+    <strong>stochastic-local volatility (SLV)</strong>: keep a genuine
+    stochastic-vol core (a Heston-like process, with its own second Brownian
+    motion and its own tested dynamics) for realism, then overlay a
+    deterministic local-vol-style correction factor that nudges the combined
+    model back onto an exact match with today's observed surface. This
+    lesson states that such hybrids exist and roughly what problem they're
+    solving conceptually — combining stochastic vol's more trustworthy
+    forward dynamics with local vol's exact-fit property — without asserting
+    a specific SLV paper, calibration formula, or "leverage function"
+    construction in detail; that machinery is a distinct, more advanced
+    topic in its own right, not something to compress into a paragraph here
+    without inventing precision this lesson doesn't have.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine a photo that's been perfectly touched up to match today's lighting exactly — flawless for today's picture, but if you tried to use it to predict what tomorrow's lighting will look like, it would guess "basically the same, just a little flatter," which usually isn't how lighting (or smiles) actually change. Practitioners' fix is to start from a model that already has a decent, tested sense of how lighting changes over time, then apply just enough of the touch-up trick to make today's specific photo match exactly too.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>The practical numerical reality: smooth the surface first</h2>
+  <p>
+    Every derivative in the worked example above was computed against a
+    perfectly smooth, exactly-known Black-Scholes surface. Real market data
+    is nothing like that: quotes exist only at a discrete, often sparse grid
+    of strikes and maturities, each one carries genuine bid-ask noise, and
+    adjacent quotes can be mildly inconsistent with each other in ways that
+    are economically meaningless but numerically toxic. Plugging raw market
+    quotes straight into the finite-difference version of Dupire's formula —
+    especially the second derivative \(\partial^2C/\partial K^2\), which sits
+    in the denominator — is a well-known way to produce wildly unstable,
+    sometimes negative (and therefore meaningless) local-vol values, because
+    finite differences amplify noise sharply, and a second derivative
+    amplifies it worse than a first derivative does.
+  </p>
+  <p>
+    The standard practical fix is to never differentiate the raw quotes at
+    all: fit a smooth surface to the observed prices <em>first</em>, then
+    apply Dupire's formula analytically or numerically to that already-smooth
+    fitted surface instead. This Theory Lab's own sibling lesson, <a
+    href="sabr-model.html">The SABR Model</a>, is one standard example of
+    exactly this kind of smoothing input — a SABR fit gives a smooth, closed-
+    form implied-vol curve at any strike from just a handful of liquid
+    quotes, and that smooth curve (converted to prices) is a far safer object
+    to differentiate than the raw quotes it was fit to. Other common
+    approaches include fitting a smooth spline directly to the implied-
+    variance surface, or other parametric smile-fitting families built
+    specifically to be well-behaved (twice differentiable, arbitrage-free)
+    by construction. Whichever smoothing method is used, the discipline is
+    the same: differentiate the fitted, smooth object, never the raw,
+    discrete, noisy market print.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where local-vol construction quietly goes wrong</h3>
+    <p>
+      <strong>Differentiating raw, noisy quotes directly.</strong> The single
+      most important practical pitfall, covered above: naive finite
+      differences on unsmoothed market prices routinely produce unstable or
+      outright negative local-variance estimates. A smoothing/fitting step
+      first is not an optional refinement — it is close to mandatory for any
+      real-data application of this formula.
+    </p>
+    <p>
+      <strong>"Reprices everything" is not "predicts the future correctly."</strong>
+      Restated from Section 04 because it is the pitfall most likely to be
+      forgotten in practice: a local-vol model's perfect fit to today's
+      surface says nothing about whether its implied forward smile dynamics
+      are realistic. Using it to price a path-dependent exotic whose value
+      depends heavily on <em>how</em> the smile evolves (not just today's
+      snapshot) inherits that dynamical weakness directly.
+    </p>
+    <p>
+      <strong>Extrapolation into illiquid corners is a modeling artifact, not
+      a market fact.</strong> Deep out-of-the-money strikes or very long
+      maturities frequently have no real, actively-traded quotes at all — any
+      \(C(K,T)\) value used there already came from someone's extrapolation
+      or interpolation choice, not the market. A local-vol number backed out
+      at such a point is one further derivative removed from real data; it
+      reflects the smoothing/extrapolation method's own assumptions at least
+      as much as it reflects anything the market actually believes about that
+      strike or maturity.
+    </p>
+    <p style="margin-bottom:0">
+      <strong>FX-specific surface quirks need deliberate handling.</strong>
+      FX vol surfaces carry known structural features — desks quote in delta
+      rather than strike, and there are well-known symmetries linking a
+      currency pair's own quoted surface to its inverse pair's surface (a
+      EUR/USD quote implies constraints on the corresponding USD/EUR quote).
+      Dupire's formula is defined on a strike/maturity grid, not a
+      delta/maturity grid, so converting a standard FX delta-quoted surface
+      into the \(C(K,T)\) form this formula needs requires care; done
+      carelessly, the resulting local-vol surface can end up inconsistent
+      with the very FX symmetries the raw quotes actually respect. This is a
+      genuine, non-trivial piece of surface-construction engineering, stated
+      here only at the conceptual level of "this needs deliberate handling,"
+      not as a solved recipe.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Local vol's practical home is exotic-options pricing, precisely because
+    of the exact-fit property Section 03 describes. A desk that has already
+    marked its entire vanilla smile needs to price a barrier option, a
+    digital, or another exotic on the same underlying in a way that is
+    <em>consistent</em> with those already-marked vanilla prices — arbitrage
+    between an exotic and a static hedge built from vanillas is a real risk
+    if the exotic is priced off a different, inconsistent volatility
+    assumption. A local-vol surface built to match the vanilla market exactly
+    is the natural tool for that specific consistency requirement, evaluated
+    numerically via a finite-difference PDE solve or a Monte Carlo simulation
+    of the local-vol SDE, rather than the closed-form or semi-closed-form
+    routes available for plain vanillas under Heston or SABR. Whether that
+    same local-vol model's forward-dynamics weakness matters for a specific
+    exotic depends heavily on how path-dependent that exotic's payoff is —
+    a barrier option, whose value depends on the path the smile takes on the
+    way to the barrier being touched, is far more exposed to that weakness
+    than an instrument that only cares about the terminal distribution of
+    \(S_T\).
+  </p>
+
+  <div class="tl-box repo">
+    <div class="tl-icon-badge green">🗂️</div>
+    <div class="tl-box-label">What's actually verified against this repo's code</div>
+    <h3>No Dupire or local-volatility implementation anywhere in this codebase</h3>
+    <p>
+      A direct grep for <code>Dupire</code> and <code>local.vol</code>
+      (case-insensitive) across every <code>.js</code> and <code>.py</code>
+      file in this repo turns up zero hits for "Dupire" anywhere, and exactly
+      four hits for a "local vol" phrase — all four unrelated to this
+      lesson's model. <code>bot/backtest.py</code> uses "local volatility
+      classification" to describe an ATR-based bucketing of entry bars into
+      calm/turbulent regimes for backtest labeling — a descriptive label for
+      a rolling realized-vol statistic, not a deterministic function of price
+      and time in Dupire's sense. <code>volatilityExhaustion/jump_regime_book.py</code>
+      and <code>volatilityExhaustion/jump_detect_lm.py</code> use "local vol"
+      to describe the Lee-Mykland (2008) jump detector's own rolling,
+      strictly-backward-looking realized-volatility window (K=270 bars) used
+      to scale each return before flagging jumps — a completely different,
+      much older sense of "local" (locally-in-time estimated realized
+      volatility from a trailing window of past returns), unrelated to
+      Dupire's \(\sigma_{\text{local}}(S,t)\) surface construction from
+      option prices. This repo has no options-pricing module of any kind (a
+      finding already established in the Heston and SABR lessons), so there
+      is no Dupire formula, no local-vol PDE solver, and no local-vol
+      calibration routine anywhere in it — this lesson, like its two
+      stochastic-volatility siblings, is pure theory background.
+    </p>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>Pricing a barrier option consistently with an already-marked vanilla smile</h3>
+    <p>
+      An FX exotics desk has a full, liquid vanilla smile marked for
+      USD/JPY at a given expiry — the standard ATM/risk-reversal/butterfly
+      points, extended to a full strike ladder the way the SABR lesson
+      describes. A client asks for a price on a down-and-out barrier option
+      on the same pair and expiry. Pricing that barrier off a single flat
+      \(\sigma\) (say, the ATM vol) would be internally inconsistent with the
+      desk's own marked vanilla smile — a client could, in principle, static-
+      hedge a claim on the barrier using a portfolio of the desk's own
+      vanillas and arbitrage the mispricing between the two.
+    </p>
+    <p style="margin-bottom:0">
+      Building a local-vol surface calibrated to that exact vanilla smile and
+      pricing the barrier via a PDE solve or Monte Carlo simulation under
+      that local-vol process removes that specific inconsistency — the
+      barrier price is now, by construction, compatible with every vanilla
+      price already on the desk's books. What that calibration does
+      <em>not</em> do is guarantee the barrier's price correctly reflects how
+      the smile will actually move between now and the barrier's expiry —
+      the desk's risk managers separately have to be aware that a
+      pure-local-vol barrier price inherits the model's known forward-
+      dynamics weakness, which is one real reason larger desks increasingly
+      reach for SLV hybrids specifically for path-dependent exotics like
+      barriers, rather than trusting pure local vol's dynamics on an
+      instrument this sensitive to them.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Local vol has one source of randomness; stochastic vol has two.</strong> \(\sigma_{\text{local}}(S_t,t)\) is a deterministic function of the same \(dW_t\) driving price — Heston/SABR add a genuinely separate \(dW_t^2\) correlated by \(\rho\).</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Dupire's formula extracts a unique local-vol surface from a complete option-price grid.</strong> \(\sigma_{\text{local}}^2(K,T)=\big[\partial C/\partial T+rK\,\partial C/\partial K\big]/\big[\tfrac12K^2\,\partial^2C/\partial K^2\big]\), and the worked example recovered a known 20% flat vol to within 0.06 points from its own finite differences.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">≡</span><span><strong>Local vol is a calibration device; Heston/SABR are testable behavioral models.</strong> Exact repricing is guaranteed by construction, not evidence of a good model of dynamics — that question is a separate, harder one.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Local vol's own implied forward-smile dynamics are widely considered unrealistic — typically too flat.</strong> This, not any fitting failure, is the main reason practitioners lean on stochastic-vol models or stochastic-local-vol (SLV) hybrids.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Raw, noisy market quotes cannot be differentiated directly.</strong> A smoothing or parametric-fitting step (a spline, or a SABR-style smile fit) has to come first — naive finite differences on real data are numerically unstable, especially in the denominator's second derivative.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This repo has no Dupire or local-vol implementation of any kind.</strong> The only "local vol" hits in the codebase are an unrelated ATR-bucketing label and the Lee-Mykland jump detector's rolling realized-vol window — not this lesson's model.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 08</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. State the single structural distinction between local volatility and stochastic volatility (Heston/SABR) in terms of sources of randomness.</summary>
+    <div class="tl-answer">
+      Local volatility has exactly one source of randomness: \(\sigma_{\text{local}}(S_t,t)\)
+      is a deterministic function of the current spot and time, driven by the
+      same single Brownian motion \(dW_t\) that drives the price itself — once
+      \(S_t\) and \(t\) are known, the volatility is a known number, not a
+      random draw. Stochastic volatility models (Heston, SABR) have two
+      sources: a second, independent Brownian motion (\(dW_t^2\)) drives
+      variance or the vol level itself, correlated with but not determined
+      by the price shock \(dW_t^1\) — even knowing \(S_t\) and \(t\) exactly
+      leaves the current vol level genuinely uncertain.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. What did Dupire's 1994 result actually show, given a complete, arbitrage-free grid of vanilla call prices?</summary>
+    <div class="tl-answer">
+      That there exists a unique deterministic local-volatility function,
+      \(\sigma_{\text{local}}(S,t)\), whose one-factor diffusion, run forward,
+      reproduces every one of those quoted call prices exactly — and that
+      this function can be extracted directly from the price surface's own
+      partial derivatives via the formula \(\sigma_{\text{local}}^2(K,T) =
+      [\partial C/\partial T + rK\,\partial C/\partial K] / [\tfrac12
+      K^2\,\partial^2C/\partial K^2]\), with no calibration search required.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why is local vol described as a "calibration device" rather than a "behavioral model" the way Heston and SABR are?</summary>
+    <div class="tl-answer">
+      Because it is built directly from the observed price surface's own
+      derivatives rather than fit to it via a search over free parameters
+      governing an assumed dynamic. It cannot fail to match today's quoted
+      prices — that guaranteed exact fit is what the construction produces
+      by definition, the same way a curve built to pass through a set of
+      points cannot fail to pass through them. Heston/SABR instead specify
+      an assumed dynamic first (mean-reverting variance, or a driftless
+      vol-of-vol random walk) and then fit a handful of parameters to
+      today's surface — a real optimization with a real residual, and a
+      dynamic assumption that is independently testable against how the
+      market actually evolves.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. What is the standard critique of local volatility models, and why does it push practitioners toward stochastic-vol or SLV models instead?</summary>
+    <div class="tl-answer">
+      A calibrated local-vol model fits today's snapshot of the smile
+      exactly, but its own implied dynamics for how the smile should evolve
+      going forward are widely considered unrealistic — typically producing
+      a forward-implied smile that is flatter than what markets are actually
+      observed to show later (the "sticky strike versus sticky delta"
+      discussion). Because that forward-dynamics behavior matters directly
+      for pricing path-dependent exotics, practitioners often prefer
+      stochastic-volatility models (whose dynamics are specified and testable
+      from the start) or stochastic-local-volatility (SLV) hybrids, which
+      combine a stochastic-vol core for more realistic dynamics with a
+      local-vol-style correction to still match today's surface exactly.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Why can't Dupire's formula be applied by taking raw finite differences directly on actual, noisy market-quoted option prices?</summary>
+    <div class="tl-answer">
+      Real market quotes are discrete, bid-ask-noisy, and only mildly
+      internally consistent from one strike or maturity to the next. Finite
+      differences amplify that noise, and the formula's denominator involves
+      a <em>second</em> derivative in strike, which amplifies noise even more
+      sharply than a first derivative — routinely producing numerically
+      unstable or even negative (meaningless) local-variance estimates from
+      raw quotes. The standard fix is to fit a smooth surface to the
+      observed prices first (a spline, or a parametric smile fit such as
+      SABR) and apply the formula to that already-smooth fitted surface,
+      never to the raw discrete quotes directly.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Given C(K−h,T)=12.00, C(K,T)=10.00, C(K+h,T)=8.40, C(K,T−Δt)=9.00, C(K,T+Δt)=11.50, with K=100, h=5, Δt=0.25, and r=3%, compute the approximate local vol at (K,T).</summary>
+    <div class="tl-answer">
+      \(\partial C/\partial K \approx (8.40-12.00)/10 = -0.36\).
+      \(\partial^2C/\partial K^2 \approx (8.40-20.00+12.00)/25 = 0.016\).
+      \(\partial C/\partial T \approx (11.50-9.00)/0.5 = 5.00\). Numerator
+      \(= 5.00 + (0.03)(100)(-0.36) = 3.92\). Denominator \(=
+      \tfrac12(100)^2(0.016) = 80\). \(\sigma_{\text{local}}^2 = 3.92/80 =
+      0.049\), so \(\sigma_{\text{local}} \approx \sqrt{0.049} \approx
+      22.1\%\).
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Bruno Dupire, "Pricing with a Smile," <em>Risk Magazine</em>, 1994 — the original paper this entire lesson is built around: the local-volatility model, the forward PDE, and the formula for extracting \(\sigma_{\text{local}}(K,T)\) from a complete option-price surface.</li>
+    <li>Jim Gatheral, <em>The Volatility Surface: A Practitioner's Guide</em>, Wiley, 2006 — already cited in the Heston lesson; states Dupire's formula in full, including the dividend-yield term this lesson's simplified zero-yield version omits, and covers the sticky-strike/sticky-delta forward-dynamics discussion in depth.</li>
+    <li>This Theory Lab's own <a href="heston-model.html">Heston Model</a> and <a href="sabr-model.html">SABR Model</a> lessons — read first if you haven't; this lesson deliberately reuses their exact SDE notation throughout rather than re-deriving stochastic volatility from scratch.</li>
+    <li>This Theory Lab's own <a href="vega-volatility-surface.html">Vega &amp; the Volatility Surface</a> lesson — the empirical description of the surface itself (skew and term structure) that all three of local vol, Heston, and SABR exist to explain or fit.</li>
+    <li>This category's next lesson, <a href="institutional-breeden-litzenberger-variance-swaps.html">Breeden-Litzenberger &amp; Variance Swaps</a> — derives in full the result this lesson only invokes: that \(\partial^2C/\partial K^2\) is, up to a constant, the risk-neutral density of \(S_T\).</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="institutional-bates-model.html">← Bates Model: Stochastic Volatility + Jumps</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="institutional-breeden-litzenberger-variance-swaps.html">Breeden-Litzenberger &amp; Variance Swaps →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+<script>
+(function(){
+  var DEFAULTS = { K: 100, h: 5, dt: 0.1, r: 5, Ckm: 13.3465, Ck: 10.4506, Ckp: 8.0214, Ctm: 9.7982, Ctp: 11.0820 };
+  var fields = ['K', 'h', 'dt', 'r', 'Ckm', 'Ck', 'Ckp', 'Ctm', 'Ctp'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('dup-scratch-' + f); });
+  if (!inputs.K) return;
+
+  var dCdKOut = document.getElementById('dup-scratch-dCdK');
+  var d2CdK2Out = document.getElementById('dup-scratch-d2CdK2');
+  var dCdTOut = document.getElementById('dup-scratch-dCdT');
+  var sig2Out = document.getElementById('dup-scratch-sig2');
+  var sigOut = document.getElementById('dup-scratch-sig');
+  var note = document.getElementById('dup-scratch-note');
+  var resetBtn = document.getElementById('dup-scratch-reset');
+
+  function blank(){
+    dCdKOut.textContent = '—'; d2CdK2Out.textContent = '—'; dCdTOut.textContent = '—';
+    sig2Out.textContent = '—'; sigOut.textContent = '—';
+  }
+
+  function recompute(){
+    var K = parseFloat(inputs.K.value);
+    var h = parseFloat(inputs.h.value);
+    var dt = parseFloat(inputs.dt.value);
+    var r = parseFloat(inputs.r.value) / 100;
+    var Ckm = parseFloat(inputs.Ckm.value);
+    var Ck = parseFloat(inputs.Ck.value);
+    var Ckp = parseFloat(inputs.Ckp.value);
+    var Ctm = parseFloat(inputs.Ctm.value);
+    var Ctp = parseFloat(inputs.Ctp.value);
+    var vals = [K, h, dt, r, Ckm, Ck, Ckp, Ctm, Ctp];
+
+    if (!vals.every(isFinite)) {
+      note.textContent = '(enter numbers in every field)';
+      blank();
+      return;
+    }
+    if (K <= 0 || h <= 0 || dt <= 0) {
+      note.textContent = '(K, h, and Δt must all be positive)';
+      blank();
+      return;
+    }
+    if (h >= K) {
+      note.textContent = '(h must be smaller than K, so K−h stays a positive strike)';
+      blank();
+      return;
+    }
+
+    var dCdK = (Ckp - Ckm) / (2 * h);
+    var d2CdK2 = (Ckp - 2 * Ck + Ckm) / (h * h);
+    var dCdT = (Ctp - Ctm) / (2 * dt);
+
+    dCdKOut.textContent = dCdK.toFixed(4);
+    d2CdK2Out.textContent = d2CdK2.toFixed(5);
+    dCdTOut.textContent = dCdT.toFixed(4);
+
+    if (!(d2CdK2 > 0)) {
+      note.textContent = '(∂²C/∂K² ≤ 0 — these prices imply a non-positive risk-neutral density at this strike, which is not arbitrage-free; the formula is undefined here)';
+      sig2Out.textContent = '—'; sigOut.textContent = '—';
+      return;
+    }
+
+    var numerator = dCdT + r * K * dCdK;
+    var denominator = 0.5 * K * K * d2CdK2;
+    var sig2 = numerator / denominator;
+
+    if (!(sig2 >= 0)) {
+      note.textContent = '(negative implied local variance — these five prices are not mutually consistent with an arbitrage-free surface)';
+      sig2Out.textContent = sig2.toFixed(5); sigOut.textContent = '—';
+      return;
+    }
+
+    note.textContent = '';
+    sig2Out.textContent = sig2.toFixed(5);
+    sigOut.textContent = (Math.sqrt(sig2) * 100).toFixed(2) + '%';
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
+</body>
+</html>

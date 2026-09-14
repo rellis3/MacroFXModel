@@ -375,6 +375,28 @@ function stripMicroEducationUI(html, isHub) {
   return html;
 }
 
+// ── Institutional Methods (admin-only category set) ─────────────────────────
+// A separate, more advanced set of Theory Lab categories — estimators,
+// tests, factor models, microstructure/liquidity extensions, etc. — meant
+// for institutional users. Unlike HIDE_MICRO_EDUCATION above (a cosmetic,
+// UI-only hide), this one actually blocks access: a non-admin request for
+// any lessons/institutional-*.html page (full lesson or its -micro.html
+// deck) gets a plain 404, and hub.html has each institutional category's
+// block — wrapped in <!-- INSTITUTIONAL:START/END --> sentinels in the
+// source file — stripped out entirely, so there's nothing to discover.
+// An education-zone session with role=admin always sees and can reach
+// everything, regardless of this flag. Set to '0' to open the whole set up
+// to every education-zone session, admin or not.
+const HIDE_INSTITUTIONAL_METHODS = (process.env.HIDE_INSTITUTIONAL_METHODS ?? '1') !== '0';
+const INSTITUTIONAL_PAGE_RE = /^\/theory-lab\/lessons\/institutional-[^/]+\.html$/;
+const INSTITUTIONAL_HUB_BLOCK_RE = /<!-- INSTITUTIONAL:START -->[\s\S]*?<!-- INSTITUTIONAL:END -->\n?/g;
+
+function isEducationAdmin(req) {
+  const cookies = authParseCookies(req);
+  const info = authDecodeCookie(cookies[`${AUTH_COOKIE_NAME}_education`], 'education');
+  return info?.role === 'admin';
+}
+
 function authSign(payload) {
   return crypto.createHmac('sha256', AUTH_SECRET).update(payload).digest('hex');
 }
@@ -29907,10 +29929,12 @@ if (HIDE_MICRO_EDUCATION || AUTH_ENABLED) {
     fs.readFile(path.join(__dirname, req.path), 'utf8', (err, html) => {
       if (err) return next();
 
-      if (HIDE_MICRO_EDUCATION) {
-        const cookies = authParseCookies(req);
-        const info = authDecodeCookie(cookies[`${AUTH_COOKIE_NAME}_education`], 'education');
-        if (info?.role !== 'admin') html = stripMicroEducationUI(html, isHub);
+      const isAdmin = isEducationAdmin(req);
+
+      if (HIDE_MICRO_EDUCATION && !isAdmin) html = stripMicroEducationUI(html, isHub);
+
+      if (isHub && AUTH_ENABLED && HIDE_INSTITUTIONAL_METHODS && !isAdmin) {
+        html = html.replace(INSTITUTIONAL_HUB_BLOCK_RE, '');
       }
 
       if (isHub && AUTH_ENABLED) {
@@ -29919,6 +29943,19 @@ if (HIDE_MICRO_EDUCATION || AUTH_ENABLED) {
 
       res.type('html').send(html);
     });
+  });
+}
+
+// Blocks direct access to institutional-*.html lesson/deck pages for anyone
+// without an admin education session — see HIDE_INSTITUTIONAL_METHODS above.
+// Gated on AUTH_ENABLED too: with no passwords configured (local/sandbox
+// dev) there is no "admin" to distinguish, so nothing here is blocked,
+// matching how every other auth-gated behavior in this file already
+// no-ops when auth itself is off.
+if (HIDE_INSTITUTIONAL_METHODS && AUTH_ENABLED) {
+  app.get(INSTITUTIONAL_PAGE_RE, (req, res, next) => {
+    if (isEducationAdmin(req)) return next();
+    res.status(404).type('html').send('<!doctype html><title>Not Found</title><p>Not found.</p>');
   });
 }
 

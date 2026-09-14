@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Barra-Style Risk Models — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Factor Models / Barra-Style Risk Models</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Factor Models 5 of 5</div>
+  <h1 class="tl-title">Barra-Style Risk Models</h1>
+  <p class="tl-dek">CAPM, Fama-French, and APT can all be rebuilt from a published paper. A commercial multi-factor risk model can't — it's proprietary production infrastructure, recalibrated constantly on huge datasets. This lesson maps what these systems actually are, honestly, rather than pretending to derive one.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — a proprietary commercial category, not something any repo builds; this repo's genuine risk-decomposition analogs are Hierarchical Risk Parity, Factor-Based Portfolio Construction, and Random Matrix Theory, applied to FX/gold instead of equities</span>
+    <span>~17 min read</span>
+    <span>Prereqs: <a href="institutional-apt.html">Arbitrage Pricing Theory</a>, <a href="random-matrix-theory.html">Random Matrix Theory &amp; the Marchenko-Pastur Law</a></span>
+  </div>
+
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="institutional-barra-risk-models-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>This is the one lesson in this category that cannot be derived from a published academic paper: Barra, MSCI, and Axioma-style commercial risk models are large, proprietary, continuously-recalibrated production systems, and their exact factor construction is a trade secret. This lesson is an honest orientation map, not a from-scratch build.</li>
+      <li>The general structure <em>is</em> public knowledge and stated precisely here: \(R_i = \sum_k X_{ik} f_k + u_i\), where \(X_{ik}\) are an asset's known, pre-computed factor <strong>exposures</strong> and \(f_k\) are factor <strong>returns</strong>, estimated by a cross-sectional regression each period — conceptually the same move as the Fama-MacBeth stage-2 regression from lesson 3 of this category, just with dozens of style factors plus industry/sector and (for global models) country dummies instead of a handful of academic ones.</li>
+      <li>What makes these genuinely different from an academic Fama-French-style model isn't just "more factors": careful covariance-matrix shrinkage so the risk matrix stays invertible for optimization, continuous re-estimation instead of one fixed specification, formal industry/sector/country factors, and a design purpose — risk attribution and portfolio construction — rather than testing an asset-pricing hypothesis.</li>
+      <li>This repo trades FX and gold, not a broad equity cross-section — there is no direct Barra-for-currencies in wide commercial use. But the underlying logic (decompose total risk into named systematic buckets plus a residual, then use that decomposition for both attribution and construction) is exactly what this curriculum's own <a href="hierarchical-risk-parity.html">Hierarchical Risk Parity</a>, <a href="factor-based-portfolio-construction.html">Factor-Based Portfolio Construction</a>, and <a href="random-matrix-theory.html">Random Matrix Theory</a> lessons already do for this repo's own instrument universe.</li>
+      <li>A genuinely computable anchor closes the gap a full build can't: a real, correct 2-factor risk decomposition — factor variance via \(x^\top F x\) plus specific variance — computed live, exactly the arithmetic a 40-factor commercial model runs at far larger scale.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters, and what this lesson honestly is</h2>
+  <p>
+    Every other lesson in this category can be rebuilt, end to end, from a
+    published source. <a href="institutional-capm.html">CAPM</a> comes from
+    Sharpe (1964) and Lintner (1965). <a href="institutional-fama-french-carhart.html">Fama-French
+    and Carhart</a> come from sorted-portfolio construction rules described in
+    print, reproducible from public data. <a href="institutional-fama-macbeth.html">Fama-MacBeth</a>
+    is a two-stage regression procedure, fully specified in a 1973 paper.
+    <a href="institutional-apt.html">Arbitrage Pricing Theory</a> is a
+    no-arbitrage argument that places no restriction at all on which factors
+    to use, leaving the researcher free to pick any set and estimate it
+    openly. None of that is true of a Barra, MSCI Barra, or Axioma-style
+    commercial multi-factor risk model. These are large, proprietary,
+    continuously-recalibrated production systems, built by commercial
+    vendors on enormous datasets, sold as a subscription service to
+    institutional risk and portfolio-management desks. The exact
+    construction of their factors — precisely how "size" or "momentum" or
+    "liquidity" is standardized, weighted, and combined with dozens of
+    others each period — is a trade secret, not a formula in a paper. It
+    cannot be rebuilt from public sources the way every other lesson in this
+    category can, and this lesson does not pretend otherwise.
+  </p>
+  <p>
+    What this lesson <em>can</em> do, honestly, is give an accurate map:
+    what these systems structurally are, what part of that structure is
+    genuinely public knowledge versus proprietary detail, what institutions
+    actually use them for, and — since this repo has no equity cross-section
+    and therefore no direct use for one — what this repo's own genuine
+    risk-decomposition tooling does instead, for FX and gold, using exactly
+    the same underlying logic. Call this an orientation lesson rather than a
+    derivation, and treat that distinction as the single most important
+    thing to take away from it.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A commercial risk model is closer to a weather service than to a physics paper</h3>
+    <p>
+      A physics paper's equations are complete on the page — anyone with the
+      same inputs and the same method gets the same answer, forever, because
+      the method itself is the whole product. A weather forecasting service
+      is a different kind of thing: the underlying physics of the atmosphere
+      is public, but the specific model — which satellites feed it, how its
+      thousands of parameters were tuned, how it gets re-calibrated against
+      yesterday's forecast error — is the vendor's proprietary product, sold
+      because building and maintaining it is expensive and specialized work
+      that most customers would rather buy than replicate. A Barra-style
+      risk model is the second kind of thing. The general shape of the
+      equation — exposures times factor returns, plus a residual — is public
+      knowledge, the "physics." The specific 40-plus factors, exactly how
+      each one is built and standardized this quarter, and the covariance
+      adjustments that make the whole system numerically usable, are the
+      proprietary product a fund pays MSCI or Axioma a subscription for
+      instead of building in-house.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The general structure — what actually is public</h2>
+  <p>
+    Strip away every vendor's specific factor set and one equation remains,
+    and it is genuinely public, standard knowledge across the industry —
+    every textbook treatment of multi-factor risk models states it this way:
+  </p>
+  <div class="tl-math">\[ R_i = \sum_{k=1}^{K} X_{ik}\, f_k + u_i \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>R_i</code><span>asset i's return over the period</span></div>
+    <div class="tl-eq-chip c2"><code>X_ik</code><span>asset i's known, pre-computed exposure (loading) to factor k — e.g. this stock's size score, momentum score, or sector membership indicator</span></div>
+    <div class="tl-eq-chip c3"><code>f_k</code><span>factor k's return that period — unknown in advance, estimated from the cross-section</span></div>
+    <div class="tl-eq-chip c4"><code>u_i</code><span>asset i's idiosyncratic (specific) return — assumed uncorrelated across assets</span></div>
+  </div>
+  <p>
+    Read this equation carefully against the Fama-MacBeth lesson's stage-2
+    regression, because the resemblance is exact and load-bearing, not
+    superficial. In Fama-MacBeth, exposures (betas) are estimated first
+    from a time-series regression, then held fixed while a
+    <em>cross-sectional</em> regression each period recovers the factor
+    <em>returns</em> — regressing that period's asset returns on the
+    known betas. A commercial risk model runs the identical logic: the
+    exposures \(X_{ik}\) are the known, standardized inputs (computed from
+    fundamentals, price history, or a classification like GICS sector, and
+    re-standardized cross-sectionally every period so they have comparable
+    scale), and \(f_k\), the factor returns, are recovered by a
+    cross-sectional regression of that period's realized asset returns on
+    those known exposures. The mechanics are the same two-stage idea; what's
+    different is scale and purpose, covered in the next section.
+  </p>
+
+  <div class="tl-steps">
+    <div class="tl-step">
+      <div class="tl-step-num">1</div>
+      <div class="tl-step-body">
+        <h4>Exposures are computed first, and standardized cross-sectionally</h4>
+        <p>Every stock in the universe gets a numeric score on every factor this period — its raw size (log market cap), raw momentum (trailing 12-month return), its sector membership (a 0/1 dummy for each industry it belongs to), and dozens more. Each continuous score is typically standardized (z-scored) across the whole cross-section that period, so a "momentum exposure of +1.5" means 1.5 standard deviations above that period's cross-sectional average, not a raw percentage.</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">2</div>
+      <div class="tl-step-body">
+        <h4>A cross-sectional regression each period recovers the factor returns</h4>
+        <p>With every asset's exposures \(X_{ik}\) fixed and known for this period, and every asset's realized return \(R_i\) now observed, a single cross-sectional regression across all \(N\) assets solves for the \(K\) unknown factor returns \(f_k\) that period — repeated fresh, every period, exactly the Fama-MacBeth stage-2 move, just with a far larger \(K\).</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">3</div>
+      <div class="tl-step-body">
+        <h4>The residual is treated as idiosyncratic, and assumed uncorrelated</h4>
+        <p>Whatever the K factors don't explain of asset i's return that period is \(u_i\) — assumed uncorrelated across assets once the factors are removed. This assumption is what makes the resulting covariance matrix tractable: instead of estimating every pairwise covariance directly, the model only needs the \(K\times K\) factor covariance matrix and \(N\) individual specific variances.</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">4</div>
+      <div class="tl-step-body">
+        <h4>The resulting risk model, in matrix form</h4>
+        <p>The same low-rank-plus-diagonal structure the Factor-Based Portfolio Construction lesson already derives generalizes directly: \(\Sigma = X F X^\top + D\), where \(X\) is the \(N\times K\) exposure matrix, \(F\) is the \(K\times K\) factor covariance matrix, and \(D\) is the diagonal matrix of specific variances. This is the object a commercial vendor actually delivers to a client — not raw returns, but \(X\), \(F\), and \(D\), refreshed on a schedule, ready to plug into a portfolio optimizer.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine a report card that scores every student in a school on a handful of traits — how tall, how fast, how good at math — measured the same consistent way for everyone. Once every student has those scores, you can work backward from an actual event (say, a school-wide race) to figure out how much "being tall" or "being fast" was worth that specific day — that's the factor return. What's left over for each student, after accounting for their traits, is just their own personal performance that day, unrelated to anyone else's. A commercial risk model does this with dozens of traits, for thousands of stocks, every single day.</p>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">One hypothetical portfolio's total risk, decomposed into named buckets plus a residual</div>
+    <svg viewBox="0 0 640 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Stacked bar chart showing one hypothetical portfolio's total risk variance split into three segments: style factor risk 45 percent, industry factor risk 30 percent, and specific risk 25 percent">
+      <text x="320" y="28" text-anchor="middle" fill="var(--text2)" font-size="12" font-family="'DM Mono',monospace">Total active risk, decomposed (illustrative)</text>
+
+      <line x1="260" y1="270" x2="260" y2="50" style="stroke:var(--border)"/>
+      <line x1="60" y1="270" x2="260" y2="270" style="stroke:var(--border)"/>
+      <text x="45" y="274" text-anchor="end" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">0%</text>
+      <line x1="255" y1="50" x2="260" y2="50" style="stroke:var(--border)"/>
+      <text x="45" y="54" text-anchor="end" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">100%</text>
+      <line x1="255" y1="160" x2="260" y2="160" style="stroke:var(--border)"/>
+      <text x="45" y="164" text-anchor="end" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">50%</text>
+
+      <!-- Stacked bar, bottom to top: specific 25%, industry 30%, style 45%. Bar spans y=270 (0%) to y=50 (100%): 2.2px per % -->
+      <rect x="140" y="215" width="120" height="55" style="fill:var(--red);opacity:.75;stroke:var(--red);stroke-width:1"/>
+      <text x="200" y="247" text-anchor="middle" fill="var(--text)" font-size="12" font-family="'DM Mono',monospace" font-weight="600">25%</text>
+
+      <rect x="140" y="149" width="120" height="66" style="fill:var(--amber);opacity:.8;stroke:var(--amber);stroke-width:1"/>
+      <text x="200" y="186" text-anchor="middle" fill="var(--text)" font-size="12" font-family="'DM Mono',monospace" font-weight="600">30%</text>
+
+      <rect x="140" y="50" width="120" height="99" style="fill:var(--blue);opacity:.8;stroke:var(--blue);stroke-width:1"/>
+      <text x="200" y="103" text-anchor="middle" fill="var(--text)" font-size="12" font-family="'DM Mono',monospace" font-weight="600">45%</text>
+
+      <line x1="260" y1="80" x2="330" y2="80" style="stroke:var(--blue);stroke-width:1.2"/>
+      <text x="336" y="84" fill="var(--blue)" font-size="12" font-family="'DM Mono',monospace">Style-factor risk (size, momentum, value, …)</text>
+
+      <line x1="260" y1="182" x2="330" y2="182" style="stroke:var(--amber);stroke-width:1.2"/>
+      <text x="336" y="186" fill="var(--amber)" font-size="12" font-family="'DM Mono',monospace">Industry / sector factor risk</text>
+
+      <line x1="260" y1="242" x2="330" y2="242" style="stroke:var(--red);stroke-width:1.2"/>
+      <text x="336" y="246" fill="var(--red)" font-size="12" font-family="'DM Mono',monospace">Specific (idiosyncratic) risk</text>
+
+      <text x="200" y="292" text-anchor="middle" fill="var(--text3)" font-size="10.5" font-family="'DM Mono',monospace">total portfolio variance = 100%</text>
+    </svg>
+    <div class="tl-chart-caption">
+      A static, illustrative decomposition of one hypothetical active portfolio's
+      total risk — the kind of chart a Barra-style report hands a portfolio
+      manager after every rebalance. Real numbers vary enormously by
+      portfolio and mandate; nothing here is fitted to real data. The
+      calculator below computes a genuinely live, simplified instance of
+      exactly this split, with a 2-factor toy model instead of a proprietary
+      40-plus-factor one.
+    </div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>What makes commercial models genuinely different — beyond "more factors"</h2>
+  <p>
+    It would be easy, and wrong, to describe a Barra-style model as
+    "Fama-French with more factors." Four things separate a commercial
+    production system from an academic specification, and none of them are
+    about factor count alone:
+  </p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🧮</div>
+      <h4>1. Covariance-matrix shrinkage, built for optimization</h4>
+      <p>
+        An academic factor model is built to test a hypothesis about
+        expected returns; a commercial risk model is built to produce a
+        covariance matrix a portfolio <em>optimizer</em> can actually invert
+        without blowing up. That requires careful eigenvalue adjustment and
+        shrinkage — exactly the ill-conditioning problem the
+        <a href="random-matrix-theory.html">Random Matrix Theory</a> lesson
+        in this curriculum already establishes: an estimated correlation
+        matrix's smaller eigenvalues are largely sampling noise, and feeding
+        a portfolio optimizer a noisy, ill-conditioned matrix produces
+        unstable, extreme weights. Commercial vendors run their own,
+        proprietary version of this correction on every factor covariance
+        matrix they publish, for exactly the same structural reason this
+        repo's own Random Matrix Theory and Hierarchical Risk Parity
+        lessons care about it.
+      </p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🔁</div>
+      <h4>2. Continuous, frequent re-estimation</h4>
+      <p>
+        CAPM and Fama-French are fixed specifications, published once, and
+        anyone can re-run them on new data with the same formula. A
+        commercial risk model is re-estimated and re-calibrated on a rolling
+        basis — often daily for the covariance inputs — by the vendor's own
+        production pipeline, with periodic methodology revisions that are
+        themselves proprietary. There is no single, citable "the 2024
+        version" the way there is a single citable Fama-French three-factor
+        paper.
+      </p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🏭</div>
+      <h4>3. Industry, sector, and country factors, formally included</h4>
+      <p>
+        Academic models rarely include industry membership as a formal
+        factor alongside style factors. Commercial models do, as a matter
+        of course: every stock gets a sector or industry dummy (and, for a
+        global model, a country dummy) sitting in the same exposure matrix
+        \(X\) right alongside its size, value, and momentum scores — because
+        industry and country effects are large, real, and need to be priced
+        into the risk matrix for attribution to make sense.
+      </p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🎯</div>
+      <h4>4. Built for attribution and construction, not hypothesis testing</h4>
+      <p>
+        Fama-French exists to test whether size and value help explain the
+        cross-section of expected returns — an asset-pricing research
+        question. A Barra-style model exists to answer a completely
+        different question: right now, today, how much of my portfolio's
+        risk relative to its benchmark comes from my momentum tilt versus my
+        sector bets versus stock-specific noise — a risk-management
+        production question, covered next.
+      </p>
+    </div>
+  </div>
+
+  <div class="tl-solid amber">
+    <strong>The covariance-shrinkage point is not a side detail — it's the
+    single biggest reason a "just estimate more factors yourself" approach
+    doesn't reproduce a commercial model.</strong> A 40-plus-factor exposure
+    matrix estimated naively, without careful treatment of the resulting
+    factor covariance matrix's smaller eigenvalues, hands a portfolio
+    optimizer exactly the ill-conditioned, noise-inflated matrix this
+    curriculum's Random Matrix Theory lesson warns against. The proprietary
+    value in a commercial risk model is arguably concentrated more in that
+    shrinkage/regularization step than in the factor list itself.
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>What institutions actually use these for</h2>
+  <p>
+    Nobody licenses a Barra-style model to discover a tradable signal — the
+    factor exposures it publishes are widely known, already-priced-in
+    descriptive statistics, not proprietary alpha. The genuine, concrete use
+    cases are all downstream, risk-management workflow:
+  </p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📊</div>
+      <h4>Risk attribution</h4>
+      <p>
+        Decompose a portfolio's total (or active, relative-to-benchmark)
+        risk into named systematic buckets plus an idiosyncratic residual —
+        exactly the stacked-bar picture above. A risk manager asks "how much
+        of my tracking error against the benchmark comes from my momentum
+        tilt?" and gets a real number, computed from \(x_p^\top F x_p\) for
+        the portfolio's own exposure vector \(x_p\).
+      </p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">📈</div>
+      <h4>Performance attribution</h4>
+      <p>
+        The same decomposition, run after the fact on realized returns
+        rather than forecast risk: how much of what the portfolio actually
+        earned last quarter came from its momentum exposure times the
+        momentum factor's realized return, versus its sector bets, versus
+        pure stock selection (the idiosyncratic piece) — the honest,
+        after-the-fact version of the risk-attribution question above.
+      </p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🧭</div>
+      <h4>Portfolio-construction constraints</h4>
+      <p>
+        Feed \(X\), \(F\), and \(D\) into a portfolio optimizer as explicit
+        constraints: "keep sector exposure within 2% of the benchmark,"
+        "limit total factor tilt on any single style factor to a set
+        bound." The risk model's exposures become the actual decision
+        variables an optimizer respects, not just a report generated after
+        the trades are already made.
+      </p>
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>A 2-factor risk decomposition, computed by hand</h3>
+    <p>
+      A real commercial model can't be reconstructed here, but the exact
+      arithmetic it runs, at a far larger scale, can be — and checking it by
+      hand is the whole point. Take a toy 2-factor model with a fixed,
+      explicitly stated factor covariance matrix:
+    </p>
+    <div class="tl-math">\[ F = \begin{bmatrix} 0.0400 & 0.0100 \\ 0.0100 & 0.0200 \end{bmatrix} \]</div>
+    <p>
+      Give a hypothetical position exposure \(x = (x_1, x_2) = (1.00,\ 0.50)\)
+      — 1.00 units of momentum exposure, 0.50 units of value exposure — and a
+      specific variance of 0.0100. Factor variance is the quadratic form
+      \(x^\top F x\):
+    </p>
+    <div class="tl-math">\[ x^\top F x = x_1^2 F_{11} + 2x_1 x_2 F_{12} + x_2^2 F_{22} = (1.00)^2(0.0400) + 2(1.00)(0.50)(0.0100) + (0.50)^2(0.0200) \]</div>
+    <p>
+      \(= 0.0400 + 0.0100 + 0.0050 = \mathbf{0.0550}\). Total portfolio
+      variance is factor variance plus specific variance: \(0.0550 + 0.0100
+      = \mathbf{0.0650}\). The split: factor risk is \(0.0550 / 0.0650 =
+      \mathbf{84.6\%}\) of total variance, specific risk is \(0.0100 /
+      0.0650 = \mathbf{15.4\%}\) — a real, correct instance of the exact
+      decomposition a 40-plus-factor commercial model produces, just with
+      \(K=2\) instead of \(K>40\).
+    </p>
+    <p>
+      Second check, different inputs: exposures \(x_1=0.50\) (momentum),
+      \(x_2=-0.30\) (value), specific variance \(0.0200\). Factor variance
+      \(=(0.50)^2(0.0400) + 2(0.50)(-0.30)(0.0100) + (-0.30)^2(0.0200) =
+      0.0100 - 0.0030 + 0.0018 = 0.0088\). Total variance \(= 0.0088 +
+      0.0200 = 0.0288\). Split: factor risk \(0.0088/0.0288 = 30.6\%\),
+      specific risk \(0.0200/0.0288 = 69.4\%\) — a short, value-tilted,
+      lower-conviction position ends up carrying most of its risk as
+      idiosyncratic, exactly as it should, since its factor exposures
+      are smaller and partially offsetting.
+    </p>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>The same factor-risk / specific-risk split, live</h3>
+    <p>
+      Starts on the worked example's exact numbers: momentum exposure 1.00,
+      value exposure 0.50, specific variance 0.0100, against the fixed
+      2×2 factor covariance matrix stated above (\(F_{11}=0.0400\),
+      \(F_{12}=F_{21}=0.0100\), \(F_{22}=0.0200\) — not editable, since a
+      real vendor's factor covariance matrix isn't something a client edits
+      either). Change either exposure or the specific variance and the
+      decomposition recomputes instantly from \(x^\top F x\) plus specific
+      variance.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Momentum exposure \(x_1\)</span></div>
+        <input type="number" id="barra-scratch-x1" class="tl-scratch-input" value="1.00" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Value exposure \(x_2\)</span></div>
+        <input type="number" id="barra-scratch-x2" class="tl-scratch-input" value="0.50" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Specific variance \(D_i\)</span></div>
+        <input type="number" id="barra-scratch-spec" class="tl-scratch-input" value="0.0100" step="0.001" min="0">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Factor variance x&#8868;Fx = <b id="barra-scratch-fvar">0.0550</b>&emsp;Total variance = <b id="barra-scratch-total">0.0650</b>
+    </div>
+    <div class="tl-readout">
+      Factor risk = <b id="barra-scratch-fpct">84.6%</b>&emsp;Specific risk = <b id="barra-scratch-spct">15.4%</b>
+      <span id="barra-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="barra-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Tying the category together — four factor models, side by side</h2>
+  <p>
+    This is the last lesson in this five-lesson category, and the honest
+    place to land is a direct comparison of all four models covered across
+    it, since each one answers a genuinely different question with a
+    genuinely different method:
+  </p>
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>CAPM</h4>
+      <ul>
+        <li><strong>Factors:</strong> 1 — the market</li>
+        <li><strong>Basis:</strong> equilibrium theory (mean-variance investors, market clearing)</li>
+        <li><strong>Factor construction:</strong> a single market portfolio proxy</li>
+        <li><strong>Primary use:</strong> asset-pricing research, cost-of-capital theory</li>
+      </ul>
+    </div>
+    <div class="tl-compare-card green">
+      <h4>Fama-French / Carhart</h4>
+      <ul>
+        <li><strong>Factors:</strong> 3-4 — market, size, value, [momentum]</li>
+        <li><strong>Basis:</strong> empirical — return anomalies formalized after the fact</li>
+        <li><strong>Factor construction:</strong> long-short sorted portfolios (SMB, HML, WML) from public breakpoints</li>
+        <li><strong>Primary use:</strong> asset-pricing research, academic performance-attribution baseline</li>
+      </ul>
+    </div>
+    <div class="tl-compare-card purple">
+      <h4>Arbitrage Pricing Theory</h4>
+      <ul>
+        <li><strong>Factors:</strong> unspecified by the theory — any K the researcher chooses</li>
+        <li><strong>Basis:</strong> no-arbitrage (law of one price), no equilibrium assumption needed</li>
+        <li><strong>Factor construction:</strong> left open — macro variables, statistical extraction (e.g. PCA), or named styles</li>
+        <li><strong>Primary use:</strong> asset-pricing research, theoretical justification for multi-factor models generally</li>
+      </ul>
+    </div>
+    <div class="tl-compare-card amber">
+      <h4>Barra-style commercial models</h4>
+      <ul>
+        <li><strong>Factors:</strong> dozens of style factors, plus industry/sector and (global) country dummies</li>
+        <li><strong>Basis:</strong> commercial engineering — built for accurate risk prediction, not an asset-pricing claim</li>
+        <li><strong>Factor construction:</strong> proprietary, standardized fundamental/technical descriptors — trade secret</li>
+        <li><strong>Primary use:</strong> risk management production — attribution and portfolio construction</li>
+      </ul>
+    </div>
+  </div>
+  <p>
+    Notice the progression across the row: the first three models exist to
+    answer a research question about <em>why</em> expected returns differ
+    across assets, and each relaxes the previous one's assumptions (CAPM's
+    strict equilibrium, then Fama-French's atheoretical empiricism, then
+    APT's fully open factor choice). A Barra-style model isn't a further
+    step along that same research progression at all — it's a different
+    project entirely, aimed at a production risk-management need rather
+    than an asset-pricing hypothesis, which is exactly why it needs
+    engineering (covariance shrinkage, continuous recalibration) that none
+    of the first three ever required.
+  </p>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>The honest FX/macro comparison — what this repo does instead</h2>
+  <p>
+    This repo trades FX and gold, not a broad equity cross-section. There is
+    no widely-used commercial Barra-for-currencies the way there is for
+    equities — the whole commercial multi-factor risk-model industry grew up
+    around large equity universes, where hundreds or thousands of names and
+    a rich set of fundamental descriptors make a 40-plus-factor model both
+    feasible and valuable. A basket of a few dozen FX pairs and gold doesn't
+    have the same cross-section to build that kind of model from, and no
+    equivalent commercial product exists in wide use for it.
+  </p>
+  <p>
+    But the underlying <em>logic</em> — decompose total risk into named
+    systematic buckets plus a residual, and use that decomposition for both
+    attribution and construction — is exactly what three lessons already in
+    this curriculum do, for this repo's own instrument universe, without
+    the equity-specific size/value/momentum/sector taxonomy:
+  </p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🌳</div>
+      <h4><a href="hierarchical-risk-parity.html">Hierarchical Risk Parity</a></h4>
+      <p>
+        Clusters this repo's own FX pairs by correlation-distance into a
+        dendrogram (the worked example there groups a five-pair basket into
+        a "risk-on" bloc — EURUSD, GBPUSD, AUDUSD — and a "safe-haven" bloc —
+        USDJPY, USDCHF), then allocates top-down. That dendrogram-based bloc
+        structure is this repo's own version of "named systematic buckets" —
+        discovered from correlation structure rather than from a
+        fundamentals-based style taxonomy, but doing the same structural job
+        a Barra-style model's industry/sector grouping does.
+      </p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">📐</div>
+      <h4><a href="factor-based-portfolio-construction.html">Factor-Based Portfolio Construction</a></h4>
+      <p>
+        Builds exactly this lesson's Section 02 equation, \(r_i = \sum_k
+        \beta_{ik} f_k + \varepsilon_i\), for named FX/macro factors — carry,
+        momentum, value — with real published loadings-and-target-exposure
+        worked math (solving \(B^\top w = q\) for the weights that hit a
+        stated carry/momentum profile). It is, structurally, a small,
+        honestly-scoped, unvalidated version of the exact same factor-model
+        machinery this lesson describes at commercial scale — the lesson's
+        own takeaways are explicit that these three named factors are cited
+        academic literature, not something validated on this repo's data.
+      </p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">📊</div>
+      <h4><a href="random-matrix-theory.html">Random Matrix Theory &amp; the Marchenko-Pastur Law</a></h4>
+      <p>
+        Gives this repo's own principled test for which eigenvalues of a
+        correlation matrix are real, distinguishable structure versus
+        sampling noise — the worked example there finds one genuine common
+        factor (a dollar/risk-on component) and several eigenvalues
+        indistinguishable from noise in a 30-pair, 250-day FX basket. This
+        is the closest thing this repo has to the covariance-shrinkage
+        discipline Section 03 above says is arguably the biggest genuine
+        engineering difference in a real commercial risk model — the same
+        underlying concern (don't trust every eigenvalue of a
+        finite-sample covariance matrix), applied here rather than inside a
+        commercial vendor's black box.
+      </p>
+    </div>
+  </div>
+  <p>
+    None of these three lessons is a Barra-equivalent, and none of them
+    claims to be — each one says so explicitly in its own takeaways. What
+    they collectively demonstrate is that this repo already has the correct
+    <em>idea</em> a commercial risk model is built around, applied honestly
+    to the universe this repo actually trades, rather than a gap this
+    lesson needs to paper over by pretending an equity-style factor
+    taxonomy would transfer directly.
+  </p>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>A multi-asset desk running both an equity book and this repo's FX book</h3>
+    <p>
+      Picture a multi-asset fund where the equity desk licenses a
+      commercial Barra-style model for its cash-equity book — every morning
+      it gets a risk report breaking the book's active risk into style,
+      sector, and specific buckets, feeding directly into the equity
+      optimizer's constraints. The FX desk, running a book like this repo's,
+      has no equivalent subscription to point at. What it has instead is
+      exactly the toolkit surveyed above: a correlation-distance dendrogram
+      (Hierarchical Risk Parity) that discovers the FX book's own risk-on
+      versus safe-haven bloc structure, a small named-factor model (carry,
+      momentum, value) if the desk wants an explicit style tilt, and a
+      Marchenko-Pastur check on the correlation matrix feeding either one,
+      so the desk knows which of its own "factors" are statistically real
+      before trusting a risk report built on them. The equity desk's report
+      and the FX desk's toolkit are doing the same underlying job — neither
+      is more rigorous than the other in principle, and the FX desk's
+      version is honestly disclosed as unvalidated here, exactly the caveat
+      this whole curriculum insists on.
+    </p>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine one friend has a subscription to a professional meal-planning service that tracks dozens of nutrients across a huge grocery store's worth of ingredients. You don't have that subscription, and there isn't a version of it built for the three ingredients you actually cook with. But you can still do the same basic thing that service does — group your ingredients by which ones go well together, notice which combination actually drives most of a dish's flavor versus which part is just random variation, and plan meals around that — just at a much smaller, hand-built scale. That's the honest relationship between a Barra subscription and this repo's own risk-decomposition lessons.</p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where Barra-style models get misunderstood or misused</h3>
+    <p>
+      <strong>Mistaking a risk model for an alpha model.</strong> A
+      commercial risk model's factor exposures are widely known,
+      already-priced-in descriptive statistics — everyone with the same
+      subscription sees the same momentum score for the same stock. There is
+      no edge in simply knowing a stock's Barra momentum exposure; the model
+      exists to measure and manage risk, not to generate a trading signal,
+      exactly the same alpha-versus-beta distinction the Alpha vs. Beta
+      Separation lesson makes about a single market beta, now applied across
+      dozens of factors at once.
+    </p>
+    <p>
+      <strong>Treating "inside the noise band" as settled, permanent
+      truth.</strong> A factor's exposures and covariances are re-estimated
+      on a rolling basis; a factor that looks statistically weak or noisy
+      this quarter can look different next quarter as more data accumulates
+      or the underlying regime shifts — the exact caveat the Random Matrix
+      Theory lesson raises about its own noise-band test, now compounded
+      across a system re-estimated far more often than any lesson in this
+      curriculum is re-run.
+    </p>
+    <p>
+      <strong>Style and industry factors can overlap in practice.</strong> A
+      formally "orthogonal" factor decomposition on paper can still see two
+      factors move together in a given period — a momentum factor and a
+      technology-sector factor, say, both loading heavily on the same
+      handful of stocks during a specific rally — which muddies a clean
+      "X% came from momentum, Y% came from sector" attribution story exactly
+      when the market is doing something unusual enough to be worth
+      attributing carefully in the first place.
+    </p>
+    <p>
+      <strong>The proprietary methodology is itself a form of model risk.</strong>
+      A client cannot fully audit how a vendor's factors are built,
+      standardized, or re-weighted — a methodology change the vendor makes
+      quietly between versions can shift reported factor exposures and risk
+      attributions without any change in the client's actual portfolio,
+      a real operational risk unique to relying on infrastructure this
+      curriculum's own from-scratch lessons never carry, precisely because
+      every other lesson here can be independently re-derived and checked.
+    </p>
+  </div>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(R_i\)</td><td>Asset i's return over the period.</td></tr>
+    <tr><td>\(X_{ik}\)</td><td>Asset i's known, pre-computed exposure (loading) to factor k, standardized cross-sectionally each period.</td></tr>
+    <tr><td>\(f_k\)</td><td>Factor k's return that period — unknown in advance, recovered by a cross-sectional regression.</td></tr>
+    <tr><td>\(u_i\)</td><td>Asset i's idiosyncratic (specific) return — assumed uncorrelated across assets.</td></tr>
+    <tr><td>\(X\), \(F\), \(D\)</td><td>The N×K exposure matrix, K×K factor covariance matrix, and N×N diagonal specific-variance matrix a vendor actually delivers: \(\Sigma = XFX^\top + D\).</td></tr>
+    <tr><td>Style factor</td><td>A continuous, cross-sectionally standardized descriptor — size, momentum, value, liquidity, and dozens more in a real commercial model.</td></tr>
+    <tr><td>Industry / country factor</td><td>A 0/1 membership dummy included formally alongside style factors — sector or GICS-industry for a single-country model, plus country for a global one.</td></tr>
+    <tr><td>Risk attribution</td><td>Decomposing forecast total or active risk into named factor buckets plus a specific residual.</td></tr>
+    <tr><td>Performance attribution</td><td>The same decomposition run on realized returns, after the fact.</td></tr>
+  </table></div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>This is the one model in this category that cannot be rebuilt from a paper.</strong> Barra/MSCI/Axioma-style commercial risk models are proprietary production systems whose exact factor construction is a trade secret — this lesson maps their structure honestly rather than pretending to derive one.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The general structure \(R_i=\sum_k X_{ik}f_k+u_i\) genuinely is public knowledge.</strong> Known, pre-computed exposures times factor returns estimated by a cross-sectional regression each period — conceptually the Fama-MacBeth stage-2 move, at a far larger factor count.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>"More factors than Fama-French" is not the real distinction.</strong> Covariance shrinkage for optimization tractability, continuous re-estimation, formal industry/country factors, and a design purpose built for attribution and construction rather than hypothesis testing are what genuinely separate a commercial model from an academic one.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Institutions use these for risk attribution, performance attribution, and portfolio-construction constraints</strong> — never as a source of alpha, since the exposures a subscription reveals are widely-known, already-priced-in descriptive statistics.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>There is no direct Barra-for-currencies in wide commercial use.</strong> This repo's genuine analog is the same decompose-and-attribute logic, already built here for FX/gold: Hierarchical Risk Parity, Factor-Based Portfolio Construction, and Random Matrix Theory.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The live calculator is a real, correct decomposition, just at toy scale.</strong> Factor variance \(x^\top F x\) plus specific variance is exactly the arithmetic a 40-plus-factor commercial model runs, computed here with \(K=2\).</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 08</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. In \(R_i = \sum_k X_{ik} f_k + u_i\), which quantities are known/pre-computed inputs, and which one is estimated fresh each period?</summary>
+    <div class="tl-answer">
+      The exposures \(X_{ik}\) (an asset's loading on each factor — size score, momentum score, sector dummy, and so on) are known and pre-computed for that period, typically standardized cross-sectionally. The factor returns \(f_k\) are the unknowns, recovered by a cross-sectional regression of that period's realized asset returns \(R_i\) on the known exposures \(X_{ik}\), repeated fresh every period. \(u_i\), the idiosyncratic residual, is whatever the K factors leave unexplained for asset i, assumed uncorrelated across assets.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why can't a Barra-style commercial risk model be rebuilt from a published academic paper the way CAPM or Fama-French can?</summary>
+    <div class="tl-answer">
+      CAPM and Fama-French are fixed specifications published once, with every construction detail stated in the open literature — anyone can re-run them from the same public formula. A commercial model is a large, proprietary, continuously-recalibrated production system: the exact standardization, weighting, and combination of its dozens of factors is a trade secret owned by the vendor, and the whole system is re-estimated and periodically revised on a rolling basis, so there is no single, fixed, citable specification the way there is for the academic models.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why does covariance-matrix shrinkage matter specifically for portfolio optimization, and which lesson in this curriculum already explains why?</summary>
+    <div class="tl-answer">
+      An estimated covariance or correlation matrix's smaller eigenvalues are largely sampling noise rather than real structure, and feeding a portfolio optimizer a noisy, ill-conditioned matrix produces unstable, extreme optimized weights, since the optimizer effectively inverts that matrix. The Random Matrix Theory lesson in this curriculum already establishes exactly this point with the Marchenko-Pastur noise band, and Hierarchical Risk Parity sidesteps the same fragility by never inverting the full covariance matrix at all. A commercial risk model runs its own proprietary version of the same correction so the risk matrix it delivers stays usable inside a client's optimizer.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. What is the difference between risk attribution and performance attribution, in a Barra-style workflow?</summary>
+    <div class="tl-answer">
+      Risk attribution decomposes forecast risk — how much of the portfolio's total or active (relative-to-benchmark) risk is expected to come from each named factor bucket versus specific risk, computed from the factor exposures and the factor covariance matrix before returns are realized. Performance attribution runs the same decomposition after the fact, on realized returns, explaining how much of what the portfolio actually earned came from each factor's exposure times that factor's realized return, versus stock-specific selection. Same underlying decomposition, applied looking forward versus looking backward.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Why is there no widely-used commercial Barra-equivalent for FX, and what does this repo use instead for the same underlying job?</summary>
+    <div class="tl-answer">
+      The commercial multi-factor risk-model industry grew up around large equity universes with hundreds or thousands of names and a rich set of fundamental descriptors, which makes a 40-plus-factor model both feasible and valuable; a basket of a few dozen FX pairs and gold doesn't offer that same cross-section, and no equivalent commercial product exists in wide use for it. This repo uses the same underlying logic — decompose total risk into named systematic buckets plus a residual, then use that decomposition for attribution and construction — via its own Hierarchical Risk Parity (correlation-distance clustering into blocs), Factor-Based Portfolio Construction (named carry/momentum/value factor loadings), and Random Matrix Theory (a noise-band test on the correlation matrix's eigenvalues) lessons, applied to its own FX/gold universe rather than a broad equity cross-section.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. A colleague says "since our FX book has a Barra-style risk decomposition available through this lesson's calculator, we now have a validated FX risk model." What's wrong with that claim?</summary>
+    <div class="tl-answer">
+      The calculator is a genuinely correct piece of arithmetic — a real, working instance of the factor-variance-plus-specific-variance decomposition a commercial model runs — but it uses a fixed, illustrative 2×2 factor covariance matrix stated explicitly for teaching purposes, not one estimated from this repo's actual FX data with any of the shrinkage, continuous recalibration, or industry/country structure a real commercial model has. Nothing in this lesson estimates real exposures, real factor covariances, or real specific variances from this project's own instrument universe — that would require building (and separately validating) something closer to the Factor-Based Portfolio Construction or Random Matrix Theory lessons' own machinery on real data, which those lessons themselves are explicit has not been done here either.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Richard C. Grinold &amp; Ronald N. Kahn, <em>Active Portfolio Management</em>, 2nd ed., McGraw-Hill, 1999 — the standard practitioner reference for multi-factor risk model structure, risk decomposition, and the active-management workflows (risk attribution, portfolio construction against a benchmark) this lesson describes; also the primary source cited in this curriculum's own Active Portfolio Management lesson.</li>
+    <li>MSCI Barra multi-factor risk model methodology — general, publicly available methodology overviews from MSCI describe the exposure/factor-return/specific-risk structure covered in Section 02 of this lesson; this lesson does not claim access to, or knowledge of, any proprietary factor-construction detail beyond what MSCI itself publishes as a general methodology summary.</li>
+    <li>Marcos López de Prado, "Building Diversified Portfolios that Outperform Out-of-Sample," <em>Journal of Portfolio Management</em>, 42(4), 2016 — the source of this curriculum's own Hierarchical Risk Parity lesson, cited here as this repo's genuine analog to a commercial model's bloc/cluster structure.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="institutional-apt.html">← Arbitrage Pricing Theory</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="institutional-garman-klass-yang-zhang.html">Garman-Klass &amp; Yang-Zhang →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+<script>
+(function(){
+  var F11 = 0.0400, F12 = 0.0100, F22 = 0.0200;
+  var DEFAULTS = { x1: 1.00, x2: 0.50, spec: 0.0100 };
+  var fields = ['x1', 'x2', 'spec'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('barra-scratch-' + f); });
+  if (!inputs.x1) return;
+
+  var fvarOut = document.getElementById('barra-scratch-fvar');
+  var totalOut = document.getElementById('barra-scratch-total');
+  var fpctOut = document.getElementById('barra-scratch-fpct');
+  var spctOut = document.getElementById('barra-scratch-spct');
+  var note = document.getElementById('barra-scratch-note');
+  var resetBtn = document.getElementById('barra-scratch-reset');
+
+  function recompute(){
+    var x1 = parseFloat(inputs.x1.value);
+    var x2 = parseFloat(inputs.x2.value);
+    var spec = parseFloat(inputs.spec.value);
+
+    if (![x1, x2, spec].every(isFinite)) {
+      note.textContent = '(enter numeric values for both exposures and the specific variance)';
+      fvarOut.textContent = '—';
+      totalOut.textContent = '—';
+      fpctOut.textContent = '—';
+      spctOut.textContent = '—';
+      return;
+    }
+    if (spec < 0) {
+      note.textContent = '(specific variance cannot be negative)';
+      fvarOut.textContent = '—';
+      totalOut.textContent = '—';
+      fpctOut.textContent = '—';
+      spctOut.textContent = '—';
+      return;
+    }
+
+    var fvar = x1 * x1 * F11 + 2 * x1 * x2 * F12 + x2 * x2 * F22;
+    // Guard against floating-point drift producing a tiny negative from a
+    // valid PSD matrix (F is positive definite: F11*F22 - F12^2 > 0).
+    if (fvar < 0) fvar = 0;
+    var total = fvar + spec;
+
+    fvarOut.textContent = fvar.toFixed(4);
+    totalOut.textContent = total.toFixed(4);
+
+    if (total === 0) {
+      note.textContent = '(zero exposure and zero specific variance — no risk to decompose)';
+      fpctOut.textContent = '—';
+      spctOut.textContent = '—';
+      return;
+    }
+
+    note.textContent = '';
+    fpctOut.textContent = (fvar / total * 100).toFixed(1) + '%';
+    spctOut.textContent = (spec / total * 100).toFixed(1) + '%';
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
+</body>
+</html>

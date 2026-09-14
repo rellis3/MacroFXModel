@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fama-French &amp; Carhart — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Fama-French &amp; Carhart — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer full derivations, the double-sort mechanics, and a 6-question self-test?<a href="institutional-fama-french-carhart.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Factor Models 2 · Factor Models</div>
+      <h1 class="sl-h1">Fama-French &amp; Carhart, <em>Beyond the Single Factor</em></h1>
+      <p class="sl-lede">CAPM says one number — market beta — should explain a stock's expected return. It doesn't, not fully: small stocks and cheap "value" stocks both beat what their beta predicts, decade after decade. Fama and French's fix wasn't a better beta. It was two more zero-cost, long-short portfolios, measured directly and handed to the regression as their own factors — and this deck ends on the most distinctive part: currency markets have the exact same story, and this repo already tried building one.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Two anomalies CAPM's beta can't touch</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📉</div><div><h4>The size effect</h4><p>Sort stocks by market cap. The smallest ones earn more, on average, than their CAPM beta says they should — a persistent, replicated pattern a single factor has no room to describe.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">💰</div><div><h4>The value effect</h4><p>Sort stocks by book-to-market instead. Cheap ("value") stocks beat their beta-predicted return; richly priced ("growth") stocks fall short of theirs. Same story, different sort.</p></div></div>
+      </div>
+      <div class="sl-quote">Both patterns survive controlling for beta. Both are too large and too persistent to be noise. CAPM's single factor simply isn't enough — and the fix Fama &amp; French (1993) reached for wasn't a smarter beta, it was two more measured, tradeable portfolios sitting right next to it.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Two more zero-cost portfolios, added as regressors</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The three-factor model</div>
+        <div class="sl-row">
+          <div class="sl-box">R − R_f</div>
+          <div class="sl-arrow">=</div>
+          <div class="sl-box amber">α + β<sub>MKT</sub>(R<sub>m</sub>−R<sub>f</sub>)</div>
+          <div class="sl-arrow">+</div>
+          <div class="sl-box green">β<sub>SMB</sub>·SMB</div>
+          <div class="sl-arrow">+</div>
+          <div class="sl-box purple">β<sub>HML</sub>·HML</div>
+        </div>
+        <div class="sl-verdict">The market term (amber) is CAPM, unchanged. SMB (green) and HML (purple) are new — and each one is a real, tradeable strategy first, a "factor" second.</div>
+      </div>
+      <p class="sl-p"><strong>SMB</strong> (Small Minus Big): the return of a diversified small-cap portfolio minus a diversified large-cap portfolio, every period. <strong>HML</strong> (High Minus Low): the return of a high book-to-market ("value") portfolio minus a low book-to-market ("growth") portfolio. A stock's β<sub>SMB</sub> or β<sub>HML</sub> just measures how much its own return moves with each of those spreads — regardless of whether the stock is technically small or cheap itself.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">How SMB and HML actually get built</h2>
+      <p class="sl-sub">Not an abstraction — a specific mechanical recipe. Step through it.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="build-tabs">
+          <button class="sl-tab active" data-panel="build-1">1 · Two independent sorts</button>
+          <button class="sl-tab" data-panel="build-2">2 · Six portfolios</button>
+          <button class="sl-tab" data-panel="build-3">3 · Compute SMB &amp; HML</button>
+        </div>
+        <div class="sl-panel active" id="build-1">
+          <div class="sl-row">
+            <div class="sl-box">Size: median split<br>Small / Big</div>
+            <div class="sl-arrow">×</div>
+            <div class="sl-box">Book-to-market: 30/40/30<br>Low / Neutral / High</div>
+          </div>
+          <div class="sl-verdict">Both sorts run independently — a stock's size bucket has zero influence on which B/M bucket it lands in, or vice versa.</div>
+        </div>
+        <div class="sl-panel" id="build-2">
+          <div class="sl-row">
+            <div class="sl-box amber">S/Low</div><div class="sl-box amber">S/Neutral</div><div class="sl-box amber">S/High</div>
+          </div>
+          <div class="sl-row">
+            <div class="sl-box">B/Low</div><div class="sl-box">B/Neutral</div><div class="sl-box">B/High</div>
+          </div>
+          <div class="sl-verdict">The two sorts intersect into 6 value-weighted portfolios, rebalanced annually — using book-value data lagged from the prior fiscal year-end, so no portfolio ever uses accounting data the market couldn't have known yet.</div>
+        </div>
+        <div class="sl-panel" id="build-3">
+          <div class="sl-row"><div class="sl-box green">SMB = avg(3 small row) − avg(3 big row)</div></div>
+          <div class="sl-row"><div class="sl-box purple">HML = avg(2 high col) − avg(2 low col)</div></div>
+          <div class="sl-verdict">Averaging across the OTHER dimension on each side is what purges the tilt — SMB is a clean size spread with no value tilt riding along, and HML a clean value spread with no size tilt.</div>
+        </div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Same discipline as elsewhere in this curriculum</div>
+        <p>The annual rebalance's built-in accounting lag is exactly the point-in-time-computability rule this curriculum's own Feature Engineering, Leakage &amp; Reproducibility lesson insists on — a factor built from book value the market couldn't have known yet isn't measuring a tradeable strategy at all.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Three factors, three toy periods, drawn</h2>
+      <p class="sl-sub">Made-up return figures for illustration — not fitted to real data.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Visualize it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Grouped bar chart showing SMB, HML, and UMD factor returns across three toy periods. Period 1: SMB +1.2, HML +0.8, UMD +1.5. Period 2: SMB -0.5, HML +1.0, UMD -0.3. Period 3: SMB +0.6, HML -0.4, UMD +0.9.">
+            <line x1="40" y1="150" x2="620" y2="150" style="stroke:var(--border2);stroke-width:1.5"/>
+            <text x="330" y="245" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">three toy periods</text>
+
+            <rect x="90" y="114" width="26" height="36" fill="var(--green)"/>
+            <rect x="120" y="126" width="26" height="24" fill="var(--amber)"/>
+            <rect x="150" y="105" width="26" height="45" fill="var(--purple)"/>
+            <text x="140" y="170" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">Period 1</text>
+
+            <rect x="290" y="150" width="26" height="15" fill="var(--green)"/>
+            <rect x="320" y="120" width="26" height="30" fill="var(--amber)"/>
+            <rect x="350" y="150" width="26" height="9" fill="var(--purple)"/>
+            <text x="340" y="185" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">Period 2</text>
+
+            <rect x="490" y="132" width="26" height="18" fill="var(--green)"/>
+            <rect x="520" y="150" width="26" height="12" fill="var(--amber)"/>
+            <rect x="550" y="123" width="26" height="27" fill="var(--purple)"/>
+            <text x="540" y="185" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">Period 3</text>
+
+            <rect x="40" y="20" width="12" height="12" fill="var(--green)"/><text x="58" y="30" fill="var(--text2)" font-size="10" font-family="'DM Mono',monospace">SMB</text>
+            <rect x="120" y="20" width="12" height="12" fill="var(--amber)"/><text x="138" y="30" fill="var(--text2)" font-size="10" font-family="'DM Mono',monospace">HML</text>
+            <rect x="200" y="20" width="12" height="12" fill="var(--purple)"/><text x="218" y="30" fill="var(--text2)" font-size="10" font-family="'DM Mono',monospace">UMD</text>
+          </svg>
+        </div>
+        <div class="sl-note">Notice period 2: HML is positive while UMD is negative — the value/momentum diversification the next section builds on. No two of these three bars move in lockstep across all three periods.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Carhart's fourth factor — momentum earns its own line</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Value — HML's logic</span>
+          <p>Buy things that got cheap, on the bet they revert. A high book-to-market ratio is the signature.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Momentum — UMD's logic</span>
+          <p>Buy things that are already going up, on the bet the trend continues a while longer. Rank by trailing 12-month return, <strong>skipping the most recent month</strong> to dodge short-term reversal.</p>
+        </div>
+      </div>
+      <p class="sl-p">These aren't the same idea at two speeds — they're genuinely different bets, and at times they've been <strong>negatively correlated</strong>: a stock can screen as cheap (high HML exposure) while still falling (negative UMD exposure). Carhart (1997) gave momentum its own factor line specifically because it survives even after size and value are already controlled for.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Why the negative correlation is a feature</div>
+        <p>Two factors that don't move in lockstep combine into a smoother combined exposure than either alone — the same diversification logic behind holding two low-covariance assets in one portfolio, applied to factors instead of stocks.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">The 2015 extension, briefly</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">RMW</div><div><h4>Robust Minus Weak</h4><p>Long high-operating-profitability firms, short low-profitability ones. More expected profit, holding price fixed, should mean higher expected return.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">CMA</div><div><h4>Conservative Minus Aggressive</h4><p>Long low-investment firms, short high-investment ones. Aggressive investment today competes with cash that could otherwise be paid out or compounded.</p></div></div>
+      </div>
+      <div class="sl-quote">Both come from a dividend-discount-model argument, not a pure anomaly hunt. The five-factor model is the modern academic standard — but the 3- and 4-factor versions are still quoted constantly in practice, chosen by context rather than one strictly replacing the others.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">This curriculum already taught you a factor model</h2>
+      <p class="sl-sub">The FX carry trade, from this curriculum's own Interest Rate Parity lesson, is the identical structure.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Equity factor</span>
+          <ul>
+            <li><strong>MKT</strong> — return of the whole market</li>
+            <li><strong>HML</strong> — long cheap, short expensive stocks</li>
+            <li><strong>UMD</strong> — long winners, short losers</li>
+          </ul>
+        </div>
+        <div class="sl-ccard blue">
+          <span class="sl-ctag blue">Direct FX analog</span>
+          <ul>
+            <li><strong>"Dollar factor"</strong> — average return across a currency basket vs. USD</li>
+            <li><strong>FX carry factor</strong> — long high-rate currencies, short low-rate funding currencies</li>
+            <li><strong>FX momentum</strong> — Menkhoff, Sarno, Schmeling &amp; Schrimpf (2012), built the same way UMD is</li>
+          </ul>
+        </div>
+      </div>
+      <p class="sl-p">The FX carry trade exists precisely because UIP's prediction — that a high-yielder should depreciate to offset its extra interest — fails, on average, across decades. That's HML's risk-premium logic, transplanted: a persistent long-short spread, compensated for real, debated risk (crash risk, or consumption risk — Lustig &amp; Verdelhan, 2007), not a free lunch.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">This repo actually tried it — and got an honest null</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Verified against this repo's actual code</div>
+        <p><code>forge/xsect.py</code> builds a genuine cross-sectional long-short basket across 26 FX/gold instruments, with both a "momentum" (follow the leaders) and a "reversion" (fade the extremes) sign as pre-registered, walk-forward-tested alternatives — the same construction move as UMD, applied to a distance-from-weekly-open score. Result, 10 years, 6 folds: <strong>OOS t = 0.44</strong>, inside a shuffled-score null's own range (−2.05 to +1.68). A clean null, not a validated edge. Separately, <code>forge/yield_basket.py</code> builds a genuine rate-differential-based FX cross-sectional basket on the live YieldSpreadBot engine — written, but currently unrun, blocked on FRED API access.</p>
+      </div>
+      <p class="sl-p">No literal SMB, HML, or UMD exists anywhere in this codebase — this repo trades FX and gold, not equities, so that's expected. What's genuinely present is the same <em>methodological move</em>, tested honestly, with a result that didn't clear its own noise floor.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Drag β<sub>HML</sub> and watch the prediction move</h2>
+      <p class="sl-sub">Everything else held fixed at the worked example's values. Only the value-factor loading changes.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart showing the HML contribution term, which grows or shrinks as the beta-HML slider moves, alongside the resulting total predicted return">
+            <line x1="40" y1="190" x2="620" y2="190" style="stroke:var(--border2);stroke-width:1.5"/>
+            <line x1="40" y1="20" x2="40" y2="190" style="stroke:var(--border2);stroke-width:1"/>
+            <text x="160" y="210" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">β_HML · HML term</text>
+            <rect id="hml-bar" x="130" y="130" width="60" height="60" fill="var(--amber)"/>
+            <text id="hml-bar-label" x="160" y="120" text-anchor="middle" fill="var(--amber)" font-size="12" font-family="'DM Mono',monospace" font-weight="700">+0.60%</text>
+            <text x="450" y="80" text-anchor="middle" fill="var(--text2)" font-size="11" font-family="'DM Mono',monospace">predicted excess return</text>
+            <text id="hml-total-label" x="450" y="115" text-anchor="middle" fill="var(--green)" font-size="22" font-family="'DM Mono',monospace" font-weight="700">4.25%</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>β<sub>HML</sub></span><span class="sl-live" id="hml-mval">β_HML = 0.60</span></div>
+        <input type="range" class="sl-slider" id="hml-slider" min="-100" max="200" step="5" value="60">
+        <div class="sl-note">Fixed: α=0.30%, β_MKT·MKT=2.20%, β_SMB·SMB=1.20%, β_UMD·UMD=−0.05% (sum 3.65%). HML itself is fixed at 1.0% — only β_HML moves, so the HML term is β_HML × 1.0%.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Compute the full prediction yourself</h2>
+      <p class="sl-sub">R̂ = α + β_MKT·MKT + β_SMB·SMB + β_HML·HML + β_UMD·UMD. Change any input, live.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>α (%)</label><input type="number" class="sl-input" id="mf-alpha" value="0.30" step="0.05"></div>
+          <div class="sl-calc-field"><label>β_MKT</label><input type="number" class="sl-input" id="mf-bmkt" value="1.10" step="0.05"></div>
+          <div class="sl-calc-field"><label>β_SMB</label><input type="number" class="sl-input" id="mf-bsmb" value="0.80" step="0.05"></div>
+          <div class="sl-calc-field"><label>β_HML</label><input type="number" class="sl-input" id="mf-bhml" value="0.60" step="0.05"></div>
+          <div class="sl-calc-field"><label>β_UMD</label><input type="number" class="sl-input" id="mf-bumd" value="-0.10" step="0.05"></div>
+        </div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>MKT−RF (%)</label><input type="number" class="sl-input" id="mf-mkt" value="2.0" step="0.1"></div>
+          <div class="sl-calc-field"><label>SMB (%)</label><input type="number" class="sl-input" id="mf-smb" value="1.5" step="0.1"></div>
+          <div class="sl-calc-field"><label>HML (%)</label><input type="number" class="sl-input" id="mf-hml" value="1.0" step="0.1"></div>
+          <div class="sl-calc-field"><label>UMD (%)</label><input type="number" class="sl-input" id="mf-umd" value="0.5" step="0.1"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Predicted R̂</div>
+            <div class="sl-calc-result-val" id="mf-result">4.25%</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>β_MKT·MKT = <b id="mf-t1">2.20</b>%</div>
+          <div>β_SMB·SMB = <b id="mf-t2">1.20</b>%</div>
+          <div>β_HML·HML = <b id="mf-t3">0.60</b>%</div>
+          <div>β_UMD·UMD = <b id="mf-t4">-0.05</b>%</div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="mf-reset">Reset to worked-example numbers</button>
+        <div class="sl-note" id="mf-note">Blank or non-numeric input in any field shows "—" instead of breaking the formula.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What two anomalies does CAPM's single beta leave unexplained?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The size effect and the value effect</button>
+        <button class="sl-quiz-opt">Inflation risk and interest-rate risk</button>
+        <button class="sl-quiz-opt">Dividend yield and earnings growth</button>
+        <div class="sl-quiz-explain">Small stocks and high book-to-market ("value") stocks both earn more than their CAPM beta predicts — the exact patterns SMB and HML were built to measure directly.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>How is SMB actually computed from the six Fama-French portfolios?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Average of the 3 small portfolios minus the average of the 3 big portfolios</button>
+        <button class="sl-quiz-opt">The single smallest stock's return minus the single biggest stock's return</button>
+        <button class="sl-quiz-opt">Average of the 2 high book-to-market portfolios minus the 2 low ones</button>
+        <div class="sl-quiz-explain">Averaging across all three book-to-market buckets on each side purges any value/growth tilt, isolating a clean size spread. (That second option describes HML, not SMB.)</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Why does Carhart's UMD get its own factor instead of folding into HML?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Momentum is a distinct, persistent continuation effect, at times negatively correlated with value</button>
+        <button class="sl-quiz-opt">Momentum and value always move together, so it's just a naming preference</button>
+        <button class="sl-quiz-opt">UMD isn't a real tradeable portfolio, just a statistical adjustment</button>
+        <div class="sl-quiz-explain">Value and momentum have shown periods of negative correlation — a stock can be cheap (high HML) while still falling (negative UMD) — which is exactly why UMD adds genuinely new information rather than restating HML.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>What is the direct FX-market analog of Carhart's UMD factor?</h4>
+        <button class="sl-quiz-opt" data-correct="true">A published currency momentum factor (Menkhoff, Sarno, Schmeling &amp; Schrimpf, 2012), built the same way — rank, long winners, short losers</button>
+        <button class="sl-quiz-opt">Covered interest rate parity</button>
+        <button class="sl-quiz-opt">There is no FX analog to momentum</button>
+        <div class="sl-quiz-explain">FX momentum is a real, published, direct analog — not just a loose comparison — built by the identical rank-and-spread recipe as UMD.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>What did this repo's own <code>forge/xsect.py</code> cross-sectional FX basket actually find, walk-forward tested?</h4>
+        <button class="sl-quiz-opt" data-correct="true">A clean null — OOS t=0.44, inside its own shuffled-score noise floor</button>
+        <button class="sl-quiz-opt">A strong, validated momentum edge ready to trade</button>
+        <button class="sl-quiz-opt">It has never been run</button>
+        <div class="sl-quiz-explain">The construction is genuine and the test is honest, but the result doesn't clear its own null — a documented academic factor existing elsewhere is not the same claim as this repo's own signal clearing an OOS bar.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>CAPM's single beta leaves the size and value effects unexplained; Fama &amp; French (1993) add SMB and HML — real, tradeable long-short portfolios — as two more regressors.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>SMB and HML have a precise recipe: independent 2×3 sorts (size median split, B/M 30/40/30) into six value-weighted portfolios, rebalanced annually with a deliberate accounting lag.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Carhart (1997) adds UMD/momentum — a genuinely distinct, sometimes negatively-correlated-with-value continuation effect, not a redundant restatement.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Fama-French (2015) adds RMW and CMA via a dividend-discount-model argument; it's the modern standard, but 3- and 4-factor versions remain in routine use.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The FX carry trade is the identical methodological move in a currency-market costume, with direct published analogs for MKT, HML, and UMD alike.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>This repo's own honest attempt at the FX analog (<code>forge/xsect.py</code>) came back a clean null — a documented factor elsewhere is not validated edge here.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Read a manager's or a strategy's factor loadings as a style profile, not a skill certificate. Recognize the FX carry and momentum trades for what they structurally are — priced factors compensated for real risk, not free lunches. And keep "documented in the literature" and "validated on this repo's own data" as two entirely separate claims, exactly as <code>forge/xsect.py</code>'s own null result illustrates.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Fama-MacBeth Regressions</h3>
+        <p>How to actually test whether a factor is priced across many assets at once, period by period — the two-pass regression procedure the whole factor-model literature runs its tests through.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="institutional-fama-macbeth-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="institutional-fama-french-carhart.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // HML-loading slider — bar height and total readout redraw live.
+  (function(){
+    var slider = document.getElementById('hml-slider');
+    if (!slider) return;
+    var mVal = document.getElementById('hml-mval');
+    var bar = document.getElementById('hml-bar');
+    var barLabel = document.getElementById('hml-bar-label');
+    var totalLabel = document.getElementById('hml-total-label');
+    var FIXED_SUM = 0.30 + 2.20 + 1.20 - 0.05; // alpha + MKT term + SMB term + UMD term
+    var HML = 1.0;
+    var BASELINE_Y = 190, PX_PER_PCT = 20;
+
+    function update(){
+      var bHml = parseInt(slider.value, 10) / 100;
+      mVal.textContent = 'β_HML = ' + bHml.toFixed(2);
+      var term = bHml * HML;
+      var h = Math.abs(term) * PX_PER_PCT;
+      var y = term >= 0 ? BASELINE_Y - h : BASELINE_Y;
+      bar.setAttribute('y', y.toFixed(1));
+      bar.setAttribute('height', Math.max(h, 0.5).toFixed(1));
+      bar.setAttribute('fill', term >= 0 ? 'var(--amber)' : 'var(--red)');
+      barLabel.textContent = (term >= 0 ? '+' : '') + term.toFixed(2) + '%';
+      barLabel.setAttribute('y', (y - 8).toFixed(1));
+      var total = FIXED_SUM + term;
+      totalLabel.textContent = total.toFixed(2) + '%';
+      totalLabel.setAttribute('fill', total >= 0 ? 'var(--green)' : 'var(--red)');
+    }
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Full multi-factor calculator.
+  (function(){
+    var alpha = document.getElementById('mf-alpha');
+    if (!alpha) return;
+    var fields = ['alpha', 'bmkt', 'bsmb', 'bhml', 'bumd', 'mkt', 'smb', 'hml', 'umd'];
+    var inputs = {};
+    fields.forEach(function(f){ inputs[f] = document.getElementById('mf-' + f); });
+    var DEFAULTS = { alpha: 0.30, bmkt: 1.10, bsmb: 0.80, bhml: 0.60, bumd: -0.10, mkt: 2.0, smb: 1.5, hml: 1.0, umd: 0.5 };
+
+    var t1 = document.getElementById('mf-t1'), t2 = document.getElementById('mf-t2'),
+        t3 = document.getElementById('mf-t3'), t4 = document.getElementById('mf-t4');
+    var result = document.getElementById('mf-result');
+    var note = document.getElementById('mf-note');
+    var resetBtn = document.getElementById('mf-reset');
+    var DEFAULT_NOTE = 'Blank or non-numeric input in any field shows "—" instead of breaking the formula.';
+
+    function fmt(n){ return n.toFixed(2); }
+
+    function recompute(){
+      var v = {}, ok = true;
+      fields.forEach(function(f){
+        var x = parseFloat(inputs[f].value);
+        v[f] = x;
+        if (!isFinite(x)) ok = false;
+      });
+      if (!ok) {
+        t1.textContent = t2.textContent = t3.textContent = t4.textContent = '—';
+        result.textContent = '—';
+        note.textContent = 'Enter a number in every field — blank or non-numeric input can\'t be computed.';
+        return;
+      }
+      var termMkt = v.bmkt * v.mkt, termSmb = v.bsmb * v.smb, termHml = v.bhml * v.hml, termUmd = v.bumd * v.umd;
+      var total = v.alpha + termMkt + termSmb + termHml + termUmd;
+      t1.textContent = fmt(termMkt);
+      t2.textContent = fmt(termSmb);
+      t3.textContent = fmt(termHml);
+      t4.textContent = fmt(termUmd);
+      result.textContent = fmt(total) + '%';
+      note.textContent = DEFAULT_NOTE;
+    }
+
+    fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

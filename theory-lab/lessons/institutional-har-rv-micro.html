@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HAR-RV &amp; Realized Volatility — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">HAR-RV &amp; Realized Volatility — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer full derivations, a live calculator, and a 6-question self-test?<a href="institutional-har-rv.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Volatility Estimation &amp; Jump Detection 2 · Volatility Estimation &amp; Jump Detection</div>
+      <h1 class="sl-h1">HAR-RV, <em>Three Horizons and an Ordinary Regression</em></h1>
+      <p class="sl-lede">The previous lesson built GARCH out of a single noisy number per day — one squared return. This lesson replaces that number with realized variance, a far better-measured daily estimate built from many intraday returns — and shows that forecasting it well takes nothing more exotic than an ordinary linear regression on three horizons: today, this week, and this month.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">One squared return is a coin flip. Many of them aren't.</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">1</div><div><h4>The old way — one observation per day</h4><p>GARCH's entire picture of "yesterday's variance" comes from a single squared close-to-close return, ε²ₜ₋₁. Two days with identical true variance can produce very different squared returns just from where the close happened to land.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">Σ</div><div><h4>Realized variance — many observations, summed</h4><p>RVₜ = Σ r²ₜ,ⱼ over every intraday interval j in day t (5-minute bars are typical). Instead of one noisy squared return, you're averaging roughly 78 of them — the same statistical trick behind every "more data, less noise" result you've ever relied on.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">∞</div><div><h4>What it converges to</h4><p>As the sampling interval shrinks (subject to microstructure noise in practice), RVₜ converges to the quadratic variation of the price path over that day — the formal object measuring exactly how much a continuous price process moved, jumps included.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔗</div><div><h4>Same object, next lesson</h4><p>Bipower Variation, next in this category, splits this exact quantity into a continuous part and a jump part. Same underlying object, two different lessons asking different questions of it.</p></div></div>
+      </div>
+      <div class="sl-quote">If you wanted to know how bumpy a car ride was, you could ask "how big was the single worst bump?" — one noisy number. Or you could add up every jolt felt the entire ride — realized variance. It uses far more information about what actually happened.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Why volatility "remembers" longer than GARCH thinks it should</h2>
+      <p class="sl-sub">A genuine RV series decays far more slowly than GARCH's clean geometric persistence implies — the "long memory" stylized fact. Corsi's fix doesn't need fractional calculus.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🌅</div><div><h4>The day trader</h4><p>Cares almost entirely about today and yesterday — the horizon their positions actually live on.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📅</div><div><h4>The weekly rebalancer</h4><p>Cares about how choppy the past week has been on average — one wild day matters less than the week's overall character.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🗓</div><div><h4>The monthly allocator</h4><p>Cares about the past month's average character — a single day or week barely moves their picture of "normal."</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">✳</div><div><h4>Corsi's move</h4><p>Don't pick one horizon — regress on all three at once, as three ordinary linear terms. The blend of simple pieces approximates genuine long memory almost as well as fitting a fractionally-integrated model directly.</p></div></div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs a name</div>
+        <p>This is the Heterogeneous Market Hypothesis (Müller et al., 1997) turned into a forecasting model — "Heterogeneous Autoregressive" is literally what the H and the AR in HAR-RV stand for.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Same job, different raw material</h2>
+      <p class="sl-sub">GARCH and HAR-RV both forecast tomorrow's variance. What each one is allowed to look at is where they genuinely differ.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="gh-tabs">
+          <button class="sl-tab active" data-panel="gh-1">GARCH's input</button>
+          <button class="sl-tab" data-panel="gh-2">HAR-RV's input</button>
+        </div>
+        <div class="sl-panel active" id="gh-1">
+          <div class="sl-row"><div class="sl-box amber">ε²ₜ₋₁<br><span style="font-size:10px;opacity:.7">one squared return</span></div><div class="sl-arrow">+</div><div class="sl-box amber">σ²ₜ₋₁<br><span style="font-size:10px;opacity:.7">its own prior forecast</span></div><div class="sl-arrow">→</div><div class="sl-box">σ²ₜ</div></div>
+          <div class="sl-verdict">GARCH(1,1) never looks inside the trading day. Its entire picture of "yesterday" is one number, recursively filtered through its own memory of prior forecasts.</div>
+        </div>
+        <div class="sl-panel" id="gh-2">
+          <div class="sl-row"><div class="sl-box green">RVₜ<br><span style="font-size:10px;opacity:.7">~78 squared returns</span></div><div class="sl-box green">RVₜ⁽ʷ⁾<br><span style="font-size:10px;opacity:.7">5-day average</span></div><div class="sl-box green">RVₜ⁽ᵐ⁾<br><span style="font-size:10px;opacity:.7">22-day average</span></div><div class="sl-arrow">→</div><div class="sl-box">RVₜ₊₁</div></div>
+          <div class="sl-verdict">HAR-RV's every input is a genuinely well-measured, many-observation quantity — including the "daily" term itself, when built from real intraday data.</div>
+        </div>
+      </div>
+      <p class="sl-p">The honest takeaway: when HAR-RV outperforms GARCH, it's usually because its raw material is better-measured — not because its model is fancier. It's the opposite: HAR-RV is plain OLS on three linear terms; GARCH is a nonlinear recursive filter fit by maximum likelihood.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">The model itself — three terms, added together</h2>
+      <p class="sl-sub">RVₜ₊₁ = β₀ + β_d·RVₜ + β_w·RVₜ⁽ʷ⁾ + β_m·RVₜ⁽ᵐ⁾ + εₜ₊₁</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">β₀</div><div><h4>Constant</h4><p>A baseline term, same units as RV.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">βd</div><div><h4>Daily term — RVₜ</h4><p>Today's own realized variance — the fastest-moving, most reactive horizon.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">βw</div><div><h4>Weekly term — RVₜ⁽ʷ⁾</h4><p>Average RV over the past 5 trading days including today.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">βm</div><div><h4>Monthly term — RVₜ⁽ᵐ⁾</h4><p>Average RV over the past 22 trading days including today — the slowest-moving anchor.</p></div></div>
+      </div>
+      <div class="sl-quote">Every term on the right-hand side is a number you already have the moment day t closes — no latent recursive state the way GARCH's σ²ₜ₋₁ is. Fitting β₀, β_d, β_w, β_m is literally an ordinary least-squares regression on three engineered features. Nothing about the estimation is volatility-specific; all the cleverness is in which three features to regress on.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">A 22-day worked example, drawn</h2>
+      <p class="sl-sub">Days 10–14 carry a volatility cluster. By day 22 the daily figure has decayed back near baseline — but the weekly and especially monthly averages haven't fully forgotten it.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Visualize it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart with four bars: daily RV 0.397, weekly average RV 0.439, monthly average RV 0.596, and the combined HAR-RV forecast 0.468, with the monthly term running highest because it still fully contains the volatility cluster's peak.">
+            <line x1="20" y1="260" x2="620" y2="260" style="stroke:var(--border2)"/>
+            <rect x="40" y="121" width="100" height="139" rx="4" style="fill:var(--blue-bg);stroke:var(--blue-bd)"/>
+            <text x="90" y="112" text-anchor="middle" fill="var(--text)" font-size="13" font-family="'DM Mono',monospace" font-weight="700">0.3969</text>
+            <text x="90" y="277" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">Daily RVₜ</text>
+
+            <rect x="200" y="106" width="100" height="154" rx="4" style="fill:var(--amber-bg);stroke:var(--amber-bd)"/>
+            <text x="250" y="97" text-anchor="middle" fill="var(--text)" font-size="13" font-family="'DM Mono',monospace" font-weight="700">0.4387</text>
+            <text x="250" y="277" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">Weekly RVₜ⁽ʷ⁾</text>
+
+            <rect x="360" y="51" width="100" height="209" rx="4" style="fill:var(--purple-bg);stroke:var(--purple-bd)"/>
+            <text x="410" y="42" text-anchor="middle" fill="var(--text)" font-size="13" font-family="'DM Mono',monospace" font-weight="700">0.5962</text>
+            <text x="410" y="277" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">Monthly RVₜ⁽ᵐ⁾</text>
+
+            <rect x="520" y="96" width="100" height="164" rx="4" style="fill:var(--green-bg);stroke:var(--green);stroke-width:2"/>
+            <text x="570" y="87" text-anchor="middle" fill="var(--green)" font-size="14" font-family="'DM Mono',monospace" font-weight="700">0.4680</text>
+            <text x="570" y="277" text-anchor="middle" fill="var(--green)" font-size="11" font-family="'DM Mono',monospace" font-weight="700">Forecast RVₜ₊₁</text>
+          </svg>
+        </div>
+        <div class="sl-note">Monthly (purple) runs highest because it's the only window still fully containing the cluster's peak. The forecast (green) blends all three by their fitted weights (β_d=0.35, β_w=0.41, β_m=0.20, plus β₀=0.03) — landing above the daily figure alone precisely because the longer horizons remember what yesterday already has forgotten.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Drag the memory — watch the forecast respond</h2>
+      <p class="sl-sub">The weekly and monthly averages don't move on their own — they're built from history. Drag each to see how directly they drive the forecast.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 290" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart with a fixed daily RV bar and two draggable weekly and monthly RV bars, plus a forecast bar that redraws live as the sliders move">
+            <line x1="20" y1="260" x2="620" y2="260" style="stroke:var(--border2)"/>
+            <rect x="40" y="121" width="100" height="139" rx="4" style="fill:var(--blue-bg);stroke:var(--blue-bd)"/>
+            <text x="90" y="112" text-anchor="middle" fill="var(--text)" font-size="12" font-family="'DM Mono',monospace">0.397 (fixed)</text>
+            <text x="90" y="277" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">Daily RVₜ</text>
+
+            <rect id="hs-wbar" x="200" y="106" width="100" height="154" rx="4" style="fill:var(--amber-bg);stroke:var(--amber-bd)"/>
+            <text id="hs-wval" x="250" y="97" text-anchor="middle" fill="var(--text)" font-size="13" font-family="'DM Mono',monospace" font-weight="700">0.439</text>
+            <text x="250" y="277" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">Weekly RVₜ⁽ʷ⁾</text>
+
+            <rect id="hs-mbar" x="360" y="51" width="100" height="209" rx="4" style="fill:var(--purple-bg);stroke:var(--purple-bd)"/>
+            <text id="hs-mval" x="410" y="42" text-anchor="middle" fill="var(--text)" font-size="13" font-family="'DM Mono',monospace" font-weight="700">0.596</text>
+            <text x="410" y="277" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">Monthly RVₜ⁽ᵐ⁾</text>
+
+            <rect id="hs-fbar" x="520" y="96" width="100" height="164" rx="4" style="fill:var(--green-bg);stroke:var(--green);stroke-width:2"/>
+            <text id="hs-fval" x="570" y="87" text-anchor="middle" fill="var(--green)" font-size="14" font-family="'DM Mono',monospace" font-weight="700">0.468</text>
+            <text x="570" y="277" text-anchor="middle" fill="var(--green)" font-size="11" font-family="'DM Mono',monospace" font-weight="700">Forecast RVₜ₊₁</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Weekly RVₜ⁽ʷ⁾ (%²)</span><span class="sl-live" id="hs-wlive">0.439</span></div>
+        <input type="range" class="sl-slider" id="hs-wslider" min="300" max="800" step="1" value="439">
+        <div class="sl-sliderhead" style="margin-top:10px"><span>Monthly RVₜ⁽ᵐ⁾ (%²)</span><span class="sl-live" id="hs-mlive">0.596</span></div>
+        <input type="range" class="sl-slider" id="hs-mslider" min="300" max="800" step="1" value="596">
+        <div class="sl-note" id="hs-readout">Forecast = 0.03 + 0.35(0.397) + 0.41(0.439) + 0.20(0.596) = 0.468 — daily RVₜ stays fixed here so you can isolate how the two memory terms alone move the forecast.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Compute the forecast yourself</h2>
+      <p class="sl-sub">RVₜ₊₁ = 0.03 + 0.35·RVₜ + 0.41·RVₜ⁽ʷ⁾ + 0.20·RVₜ⁽ᵐ⁾. Change any input, live.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>RVₜ (%²)</label><input type="number" class="sl-input" id="hc-rvt" value="0.3969" step="0.01" min="0"></div>
+          <div class="sl-calc-field"><label>RVₜ⁽ʷ⁾ (%²)</label><input type="number" class="sl-input" id="hc-rvw" value="0.4387" step="0.01" min="0"></div>
+          <div class="sl-calc-field"><label>RVₜ⁽ᵐ⁾ (%²)</label><input type="number" class="sl-input" id="hc-rvm" value="0.5962" step="0.01" min="0"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">Forecast RVₜ₊₁</div>
+            <div class="sl-calc-result-val" id="hc-result">0.4680</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>σₜ₊₁ (daily) = <b id="hc-sigma">0.684</b>%</div>
+          <div>Annualized ≈ <b id="hc-annual">10.86</b>%</div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="hc-reset">Reset to worked-example numbers</button>
+        <div class="sl-note" id="hc-note">RV can't be negative — variance is never negative — so a negative or non-numeric entry shows "—" instead of a nonsense forecast. Coefficients (β₀=0.03, β_d=0.35, β_w=0.41, β_m=0.20) are fixed illustrative values here.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Is this actually built here?</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Verified against this repo's actual code</div>
+        <p>Yes — genuinely, and running live every day, though not (yet) as any asset class's primary σ. <code>js/volForecastBench.js</code>'s <code>harRvPred()</code> is Corsi's exact model, fit by a strictly causal, expanding-window walk-forward OLS. <code>js/volForecastScheduler.js</code>'s daily <code>runVolForecast()</code> job computes a full HAR-RV shadow forecast (<code>f.har</code>) for every one of ~28 instruments, every trading day. <code>js/volHorseRaceEngine.js</code> races it live against 7 other estimators (RW, EWMA, HV, Yang-Zhang, GARCH, and two combination models) by out-of-sample QLIKE, via a live endpoint. And <code>js/indexRvHar.js</code> runs a genuine-intraday-RV variant for equity indices — built specifically because an earlier range-based HAR shadow understated SPX's true volatility by roughly half (≈9.5% read versus a true ≈19%).</p>
+      </div>
+      <p class="sl-p">What it is <em>not</em>, per this project's own <code>PLATFORM_MODEL</code> mapping: the estimator actually setting live trading bands today is Yang-Zhang for FX, GARCH(1,1) for indices, and rolling HV for commodities. HAR-RV sits beside all three as an actively-benchmarked challenger — purely additive, never touching the primary numbers — not as a replacement for any of them. The horse race is a genuinely live computation over current data, not a fixed verdict baked into the code.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Where HAR-RV quietly stops being HAR-RV</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">No genuine intraday data</span>
+          <ul>
+            <li>HAR-RV's entire edge rests on RV being well-measured — many observations, not one</li>
+            <li>Only daily OHLC bars available? True RV can't be computed at all</li>
+            <li>Running the same equation on a single-observation daily proxy isn't a free upgrade — it's an untested estimator wearing Corsi's formula</li>
+            <li>This repo's own <code>indexRvHar.js</code> exists because that exact substitution understated index vol by roughly half</li>
+          </ul>
+        </div>
+        <div class="sl-ccard amber">
+          <span class="sl-ctag amber">Collinearity + smoothing lag</span>
+          <ul>
+            <li>Daily, weekly, monthly RV averages move together far more than "independent" features normally would</li>
+            <li>Can make individual β estimates unstable on a short window — a small ridge penalty (used in this repo) is the standard fix</li>
+            <li>A blended, multi-horizon forecast structurally reads <em>below</em> reality right as a sharp new shock hits</li>
+            <li>Documented in this project's own gold research: HAR sat ~15% under a plain close-to-close estimate in an elevated regime</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-quote">"HAR-RV beats GARCH" is an empirical finding conditional on well-measured, high-frequency data — not a universal law. This project's own horse race exists precisely to re-check that ranking per instrument, not to assume it from the math.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Why is realized variance (RV) a better estimate of a day's true variance than one squared close-to-close return?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It sums many intraday squared returns instead of relying on a single noisy observation</button>
+        <button class="sl-quiz-opt">It uses a longer historical window than GARCH does</button>
+        <button class="sl-quiz-opt">It assumes returns are always positive</button>
+        <div class="sl-quiz-explain">RV = Σ r²ₜ,ⱼ over every intraday interval — averaging roughly 78 observations per day instead of trusting one squared close-to-close return.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>What are the three regressors in the HAR-RV equation?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Today's RV, and its 5-day and 22-day rolling averages</button>
+        <button class="sl-quiz-opt">Yesterday's squared return, and two lags of GARCH's own variance</button>
+        <button class="sl-quiz-opt">Implied volatility at three different option maturities</button>
+        <div class="sl-quiz-explain">RVₜ₊₁ = β₀ + β_d·RVₜ + β_w·RVₜ⁽ʷ⁾ + β_m·RVₜ⁽ᵐ⁾ + εₜ₊₁ — the daily figure plus a weekly (5-day) and monthly (22-day) rolling average of it.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>What was Corsi's key argument for why three linear regressors can mimic genuine long-memory behavior?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Different participants operate at different horizons; summing a simple term per horizon approximates the aggregate's slow decay</button>
+        <button class="sl-quiz-opt">Long memory doesn't actually exist in real volatility data</button>
+        <button class="sl-quiz-opt">Three regressors are always better than one, regardless of what they measure</button>
+        <div class="sl-quiz-explain">Daily traders, weekly rebalancers, and monthly allocators each contribute their own simpler persistence — layering one linear term per horizon approximates the complicated aggregate almost as well as fitting a fractionally-integrated model directly.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>When HAR-RV outperforms GARCH, what is usually the honest reason?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Its input (realized variance) is better-measured, not because its model is more sophisticated</button>
+        <button class="sl-quiz-opt">HAR-RV uses a more complex nonlinear recursion than GARCH</button>
+        <button class="sl-quiz-opt">HAR-RV doesn't require any historical data to fit</button>
+        <button class="sl-quiz-opt">GARCH is only valid for equities, never FX or commodities</button>
+        <div class="sl-quiz-explain">HAR-RV is actually the simpler model — plain OLS on three linear terms — versus GARCH's nonlinear recursive maximum-likelihood filter. The typical edge comes from better-measured input, not a fancier model.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>What does this repo's own code reveal about HAR-RV's actual status here?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Genuinely implemented and running live daily, as a benchmarked challenger — not yet any asset class's primary σ</button>
+        <button class="sl-quiz-opt">Purely theoretical — never implemented anywhere in this codebase</button>
+        <button class="sl-quiz-opt">It has fully replaced GARCH and Yang-Zhang as the platform's only volatility estimator</button>
+        <div class="sl-quiz-explain">Corsi's exact model runs daily for every instrument (js/volForecastScheduler.js, js/volForecastBench.js) and is raced against 7 alternatives (js/volHorseRaceEngine.js) — but the platform's live trading bands still come from Yang-Zhang (FX), GARCH (indices), or HV (commodities), per PLATFORM_MODEL.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Realized variance sums many intraday squared returns instead of relying on one squared daily return — a large-sample average, not a single noisy draw.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>HAR-RV is literally an OLS regression on three engineered features — today's RV, and its 5-day and 22-day rolling averages.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Corsi's insight: heterogeneous trading horizons, layered as three simple linear terms, approximate genuine long-memory behavior without fractional-differencing machinery.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>HAR-RV's typical edge over GARCH comes from a better-measured input, not a fancier model — it's the simpler model of the two.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>This repo genuinely runs Corsi's exact model live, daily, for every instrument, benchmarked against 7 alternatives — as a challenger, not (yet) any asset class's primary σ.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>HAR-RV needs genuine intraday data to be the model the literature validated — fed a single-observation daily proxy instead, it quietly becomes something else.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Recognize why a better-measured input can beat a fancier recursive model, and why that lesson generalizes well past volatility forecasting. Read a multi-horizon regression like HAR-RV for what it actually is — three plain averages, fit by OLS — rather than assuming "long memory" requires exotic machinery. Know exactly where this repo's own HAR-RV sits today: real, live, actively tested, and honestly not yet in the driver's seat for any asset class.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Bipower Variation</h3>
+        <p>Realized variance captures a day's total movement, jumps included. Bipower variation is the tool that splits that total into its continuous part and its jump part — a genuine decomposition, not a guess.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="institutional-bipower-variation-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="institutional-har-rv.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // GARCH vs HAR-RV input tabs are handled by deck.js's generic .sl-tabs wiring.
+
+  // Slide 7 — drag weekly/monthly RV, live-redraw the bar chart + forecast.
+  (function(){
+    var wSlider = document.getElementById('hs-wslider');
+    if (!wSlider) return;
+    var mSlider = document.getElementById('hs-mslider');
+    var wLive = document.getElementById('hs-wlive'), mLive = document.getElementById('hs-mlive');
+    var wBar = document.getElementById('hs-wbar'), mBar = document.getElementById('hs-mbar'), fBar = document.getElementById('hs-fbar');
+    var wVal = document.getElementById('hs-wval'), mVal = document.getElementById('hs-mval'), fVal = document.getElementById('hs-fval');
+    var readout = document.getElementById('hs-readout');
+    var RVT = 0.397, B0 = 0.03, BD = 0.35, BW = 0.41, BM = 0.20;
+    var K = 300, BASE = 260, TOP = 20;
+
+    function setBar(bar, label, rv, x) {
+      var h = Math.max(0, Math.min(BASE - TOP, rv * K));
+      bar.setAttribute('y', (BASE - h).toFixed(1));
+      bar.setAttribute('height', h.toFixed(1));
+      label.setAttribute('y', (BASE - h - 9).toFixed(1));
+      label.textContent = rv.toFixed(3);
+    }
+
+    function update() {
+      var rvw = parseInt(wSlider.value, 10) / 1000;
+      var rvm = parseInt(mSlider.value, 10) / 1000;
+      wLive.textContent = rvw.toFixed(3);
+      mLive.textContent = rvm.toFixed(3);
+      setBar(wBar, wVal, rvw, 200);
+      setBar(mBar, mVal, rvm, 360);
+      var fc = B0 + BD * RVT + BW * rvw + BM * rvm;
+      setBar(fBar, fVal, fc, 520);
+      fVal.setAttribute('fill', 'var(--green)');
+      readout.textContent = 'Forecast = 0.03 + 0.35(0.397) + 0.41(' + rvw.toFixed(3) + ') + 0.20(' + rvm.toFixed(3) + ') = ' + fc.toFixed(3) + ' — daily RVₜ stays fixed here so you can isolate how the two memory terms alone move the forecast.';
+    }
+
+    wSlider.addEventListener('input', update);
+    mSlider.addEventListener('input', update);
+    update();
+  })();
+
+  // Slide 8 — HAR-RV forecast calculator with defensive guards.
+  (function(){
+    var rvtI = document.getElementById('hc-rvt');
+    if (!rvtI) return;
+    var rvwI = document.getElementById('hc-rvw'), rvmI = document.getElementById('hc-rvm');
+    var result = document.getElementById('hc-result'), sigma = document.getElementById('hc-sigma'), annual = document.getElementById('hc-annual');
+    var note = document.getElementById('hc-note'), resetBtn = document.getElementById('hc-reset');
+    var DEFAULTS = { rvt: 0.3969, rvw: 0.4387, rvm: 0.5962 };
+    var DEFAULT_NOTE = 'RV can\'t be negative — variance is never negative — so a negative or non-numeric entry shows "—" instead of a nonsense forecast. Coefficients (β₀=0.03, β_d=0.35, β_w=0.41, β_m=0.20) are fixed illustrative values here.';
+    var B0 = 0.03, BD = 0.35, BW = 0.41, BM = 0.20, SQRT252 = Math.sqrt(252);
+
+    function blank(msg) {
+      result.textContent = '—'; sigma.textContent = '—'; annual.textContent = '—';
+      note.textContent = msg;
+    }
+
+    function recompute() {
+      var rvt = parseFloat(rvtI.value), rvw = parseFloat(rvwI.value), rvm = parseFloat(rvmI.value);
+      if (!isFinite(rvt) || !isFinite(rvw) || !isFinite(rvm)) {
+        blank('Enter a number in every field — blank or non-numeric input can\'t be computed.');
+        return;
+      }
+      if (rvt < 0 || rvw < 0 || rvm < 0) {
+        blank('RV inputs can\'t be negative — variance is never negative.');
+        return;
+      }
+      var fc = B0 + BD * rvt + BW * rvw + BM * rvm;
+      if (!(fc > 0)) {
+        blank('These inputs forecast a zero or negative variance — not a valid forecast.');
+        return;
+      }
+      var s = Math.sqrt(fc);
+      result.textContent = fc.toFixed(4);
+      sigma.textContent = s.toFixed(3);
+      annual.textContent = (s * SQRT252).toFixed(2);
+      note.textContent = DEFAULT_NOTE;
+    }
+
+    [rvtI, rvwI, rvmI].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      rvtI.value = DEFAULTS.rvt; rvwI.value = DEFAULTS.rvw; rvmI.value = DEFAULTS.rvm;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

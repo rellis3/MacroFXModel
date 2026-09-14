@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>White's Reality Check &amp; Hansen's SPA Test — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Backtest &amp; Research Integrity / White's Reality Check &amp; Hansen's SPA Test</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Backtest &amp; Research Integrity 1 of 2</div>
+  <h1 class="tl-title">White's Reality Check &amp; Hansen's SPA Test</h1>
+  <p class="tl-dek">The Deflated Sharpe Ratio corrects one reported Sharpe for an <em>estimate</em> of how many trials produced it. These two tests skip the estimate entirely — they bootstrap the full return history of every candidate strategy you actually ran, directly against each other.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — this repo's own stationary block bootstrap (<code>statsCore.js</code>) is real, battle-tested machinery, but every use of it in this repo tests ONE strategy/statistic at a time; the one place a best-of-N correction exists (<code>volReversionCore.js</code>, best of 4 horizons) uses a parametric Bonferroni adjustment, not a bootstrap-of-the-max — and a sharper version of this exact problem (best of ~600 configs per pair) is named an unaddressed risk elsewhere in this repo. No White's Reality Check or Hansen's SPA machinery exists anywhere here</span>
+    <span>~18 min read</span>
+    <span>Prereqs: <a href="sharpe-family-deflated.html">Sharpe, Sortino, Calmar &amp; the Deflated Sharpe Ratio</a>, <a href="bootstrapping-monte-carlo.html">Bootstrapping &amp; Monte Carlo Simulation</a></span>
+  </div>
+
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="institutional-reality-check-spa-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>White's Reality Check (2000) tests whether the <strong>best</strong> of \(N\) candidate strategies truly beats a benchmark, or is just the luckiest of \(N\) noisy draws. The test statistic is \(\bar V = \max_k \bar d_k\), the largest of the \(N\) candidates' own sample mean excess returns.</li>
+      <li>Because strategy returns are autocorrelated over time and often cross-correlated with each other (variations on a theme share the same underlying bets), a textbook normal critical value for a max-of-\(N\) statistic is the wrong tool. WRC instead <strong>stationary block-bootstraps</strong> the whole panel — the exact machinery this series' own Bootstrapping &amp; Monte Carlo lesson builds, applied here to a <em>maximum across candidates</em> instead of to one series alone.</li>
+      <li>WRC has a known weakness: throwing a pile of obviously-bad candidates into the test widens its bootstrap null more than necessary, costing real statistical power. Hansen's SPA test (2005) fixes exactly that — studentizing each candidate by its own bootstrap-estimated spread, and stopping a clearly-inferior candidate from acting like it "could have won" in the bootstrap world — and is the field's preferred modern successor to WRC, not a rival idea.</li>
+      <li>In this lesson's worked panel of 5 toy strategies, one strategy's raw Sharpe (0.93) looks almost as strong as the genuine edge's (1.19) purely because it happened to realize very low variance — its actual mean edge is a third the size, and a bootstrap test shows it is nowhere close to distinguishable from noise (\(p\approx0.24\)), while the genuine edge survives comfortably.</li>
+      <li>Like the Deflated Sharpe Ratio, both tests are only as honest as the declared candidate set — quietly running 50 variants and only submitting the best 5 to the test defeats the entire exercise, and no formula catches that; it is a discipline problem, not a statistical one.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    <a href="sharpe-family-deflated.html">Sharpe, Sortino, Calmar &amp; the Deflated
+    Sharpe Ratio</a> ends on a specific correction: a reported Sharpe ratio,
+    picked as the best of \(N\) variations tried during development, has to
+    clear a chance-inflated benchmark \(SR_0\) — not zero — before it means
+    anything. That correction is powerful, but notice exactly what it needs as
+    <strong>input</strong>: the count \(N\) of trials run, and the
+    <em>dispersion</em> of the \(N\) resulting Sharpe ratios, \(\sigma_{SR}\).
+    Neither of those inputs is the trials' actual return data. DSR takes a
+    statistical shortcut — model the best-of-\(N\) Sharpe as the maximum of
+    \(N\) roughly Gaussian numbers, plug in a count and a spread, and use
+    extreme value theory to work out what chance alone should produce.
+  </p>
+  <p>
+    White's Reality Check (Halbert White, 2000) and Hansen's SPA test (Peter
+    R. Hansen, 2005) attack the identical question — "did I just get lucky
+    searching over many strategies?" — from the opposite direction. Instead of
+    summarizing each trial down to one Sharpe ratio and then reasoning about
+    the shape of a maximum, they keep every candidate strategy's <strong>full
+    period-by-period return history</strong> and directly <strong>bootstrap
+    the whole panel</strong> — resampling all \(N\) return series together,
+    recomputing the same "who's best right now" statistic on each resample,
+    and building an actual empirical distribution of what the best-of-\(N\)
+    result looks like under pure luck, with zero real edge required anywhere.
+    No Gaussian approximation for the maximum, no extreme-value-theory
+    formula for \(SR_0\) — the bootstrap resampling does that job directly,
+    using the real data's own autocorrelation and cross-strategy correlation
+    instead of an assumed shape.
+  </p>
+  <p>
+    This is the direct reason both lessons are prerequisites here. DSR gave
+    this series the entire "best of \(N\) is inflated by the search itself"
+    framing and the \(N\), \(T\) notation this lesson reuses in the same
+    roles. <a href="bootstrapping-monte-carlo.html">Bootstrapping &amp; Monte
+    Carlo</a> already built the stationary block bootstrap this lesson leans
+    on directly — its own \(l\) (block length) and \(B\) (number of
+    resamples) notation carries over unchanged. What's new here is narrow but
+    consequential: the bootstrap gets pointed at a <em>maximum across many
+    candidate series</em>, not a single statistic computed on one series.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Don't guess how lucky the lottery could get — actually run the lottery again</h3>
+    <p>
+      The Deflated Sharpe Ratio's approach is a bit like estimating how likely
+      it is that <em>someone</em> wins a big prize among 50 lottery players by
+      assuming ticket-winning amounts follow a bell curve and computing the
+      expected maximum from the formula for that curve. It's a reasonable
+      shortcut, and it works well when the bell-curve assumption is close
+      enough. White's Reality Check and Hansen's SPA test take a more direct
+      route: they still have all 50 players' actual, specific results sitting
+      right there, so instead of assuming a shape, they <strong>literally
+      replay the lottery draw over and over</strong> — reshuffling the 50
+      players' real ticket outcomes (in contiguous chunks, so any streaks of
+      luck within one player's ticket history survive the reshuffle), and each
+      time recording who "wins" — the biggest payout among the 50 — under a
+      world engineered so nobody has a real edge. Do that thousands of times
+      and count how often the replayed lottery's best result is at least as
+      good as what actually happened. That fraction <em>is</em> the answer to
+      "how suspicious should I be of this result" — no bell-curve assumption
+      required, because the real data supplied its own distribution.
+    </p>
+    <p>
+      Hansen's refinement adds one more piece of realism. Some of the 50
+      players clearly had terrible tickets — deep in last place, nowhere close
+      to winning. Letting their reshuffled outcomes still compete for "biggest
+      payout" in the replayed lottery, the way White's original method does,
+      wastes some of the test's sensitivity: it's spending statistical power
+      worrying about players who were never realistically going to be the
+      story. Hansen's fix quietly benches the clearly-terrible players from
+      that competition in the replay (while still counting them, honestly, as
+      part of the search that was run) and puts every remaining player's
+      payout on a common footing by dividing out how volatile each one's own
+      results tend to be. The question sharpens from "who had the single
+      biggest number" to "who beat their own normal range of outcomes by the
+      most, once the also-rans are stopped from padding the comparison" —
+      which is a more sensitive, harder-to-fool test of the exact same claim.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>White's Reality Check, step by step</h2>
+  <p>
+    <strong>The setup.</strong> There are \(N\) candidate strategies (the
+    parameter sweep, the different lookbacks, the competing signal
+    variants — whatever the actual search produced), each with a return
+    series over the same \(T\) time periods. For each candidate \(k =
+    1,\dots,N\) and period \(t = 1,\dots,T\), define the excess return over
+    a fixed benchmark — buy-and-hold, zero, or an incumbent strategy already
+    in production:
+  </p>
+  <div class="tl-math">\[ d_{k,t} = R_{k,t} - R_{t}^{\,bench} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>d_{k,t}</code><span>candidate k's excess return over the benchmark, period t</span></div>
+    <div class="tl-eq-chip c2"><code>R_{k,t}</code><span>candidate k's own realized return, period t</span></div>
+    <div class="tl-eq-chip c4"><code>R_t^bench</code><span>the fixed benchmark's return, same period t</span></div>
+  </div>
+  <p>
+    Each candidate's own sample mean excess return is \(\bar d_k =
+    \frac{1}{T}\sum_{t=1}^{T} d_{k,t}\). White's null hypothesis is that the
+    <strong>best</strong> candidate's expected excess return is no better
+    than the benchmark's — i.e. every candidate's true, population mean
+    excess return is \(\le 0\), so any apparent winner is just the luckiest
+    draw among \(N\) noisy trials with nothing real behind it. The test
+    statistic is the largest of the \(N\) sample means:
+  </p>
+  <div class="tl-math">\[ \bar V = \max_{k=1,\dots,N} \bar d_k \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>V̄</code><span>WRC's test statistic — the best candidate's own sample mean excess return</span></div>
+    <div class="tl-eq-chip c3"><code>max_k</code><span>taken across every candidate actually run, not just the reported winner</span></div>
+  </div>
+  <p>
+    <strong>Why an ordinary critical value is the wrong tool here.</strong>
+    A single strategy's mean excess return, on its own, could in principle be
+    tested with a textbook t-test — if its returns were independent over
+    time. Two things break that shortcut for \(\bar V\) specifically. First,
+    financial returns are typically autocorrelated (this series' own
+    stationarity, GARCH, and Hurst-exponent material all document exactly
+    this), so the usual \(\sqrt{T}\)-based standard error is wrong on a
+    single series before the max is even taken. Second — and this is the
+    genuinely new problem — \(\bar V\) is a <em>maximum</em> over \(N\)
+    correlated candidates, not one number: strategies built as variations on
+    a theme (adjacent lookback windows, closely related entry filters) share
+    much of the same underlying market exposure, so their sample means move
+    together, not independently. There is no simple closed-form distribution
+    for "the maximum of \(N\) autocorrelated, cross-correlated things" the
+    way there is for a single Gaussian mean. WRC's answer is to stop looking
+    for a formula and instead <strong>bootstrap the empirical distribution of
+    \(\bar V\) itself</strong>.
+  </p>
+  <p>
+    <strong>The stationary block bootstrap, applied to the max.</strong> This
+    is precisely the machinery <a href="bootstrapping-monte-carlo.html">Bootstrapping
+    &amp; Monte Carlo</a> already built — Politis &amp; Romano's (1994)
+    stationary bootstrap draws block lengths themselves at random from a
+    geometric distribution (mean block length \(l\)) rather than fixing one,
+    resampling contiguous runs so that whatever short-term serial dependence
+    exists inside a real block survives in the resample, exactly as that
+    lesson describes for a single series. WRC applies the identical
+    resampling idea with two specific changes:
+  </p>
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>1. One shared block-index path, applied to every candidate at once</h4>
+      <p>
+        Rather than bootstrapping each candidate's series separately, WRC
+        draws a single sequence of resampled time-indices and applies it
+        <strong>jointly</strong> to all \(N\) candidates' returns for that
+        replicate. This preserves not just each candidate's own serial
+        correlation but the <em>cross-candidate</em> correlation too — if two
+        strategies both had a bad week because of the same market move, that
+        joint bad week stays joint in the resample, rather than being
+        scattered independently across candidates.
+      </p>
+    </div>
+    <div class="tl-compare-card purple">
+      <h4>2. Recentered at zero, then a max is taken, not reported alone</h4>
+      <p>
+        Each candidate's returns are first <strong>demeaned</strong> by its
+        own sample mean, \(d_{k,t} - \bar d_k\), before resampling — this
+        enforces the null hypothesis directly on the bootstrap world (every
+        candidate has exactly zero true edge in the resampled universe, by
+        construction). A replicate's mean is computed for every candidate
+        from that demeaned, resampled series, and the <strong>largest</strong>
+        of those \(N\) resampled means becomes one bootstrap replicate of
+        \(\bar V\) itself — matching the maximum-taking step in the real
+        statistic exactly.
+      </p>
+    </div>
+  </div>
+  <p>
+    Repeating this \(B\) times (the same \(B\) — number of bootstrap
+    replicates — as the Bootstrapping lesson, typically 1,000–10,000+) builds
+    up an empirical null distribution \(\{\bar V^*_1,\dots,\bar V^*_B\}\) for
+    the best-of-\(N\) statistic under "zero true edge everywhere." The
+    bootstrap p-value is the fraction of replicates at least as extreme as
+    the real observed \(\bar V\):
+  </p>
+  <div class="tl-math">\[ p_{WRC} = \frac{1 + \#\{b : \bar V^*_b \ge \bar V\}}{1 + B} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>#{...}</code><span>how many of the B replicates matched or beat the real V̄</span></div>
+    <div class="tl-eq-chip c4"><code>+1 / +1</code><span>the Davison–Hinkley correction — keeps p from reading as exactly 0, the same convention this repo's own block-bootstrap brick (statsCore.js) already uses</span></div>
+  </div>
+  <p>
+    A small \(p_{WRC}\) means the best-of-\(N\) result observed in the real
+    data would be rare even under a world engineered so that no candidate has
+    any true edge at all — evidence the apparent winner is more than best-of-luck.
+    A large \(p_{WRC}\) means the observed "best" result is exactly the kind
+    of thing \(N\) noisy, edge-free candidates would produce anyway.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine five kids each flip their own coin 16 times and you write down each kid's number of heads. One kid got the most heads — is that kid's coin secretly weighted? To check without any coin-flipping theory, you could literally hand out five completely fair coins, have five (make-believe) kids flip them the same number of times, write down the best score among THAT batch, and repeat that whole five-kid contest thousands of times. If the "winning" score from thousands of fair-coin contests is almost always at least as good as your real kid's winning score, your real result isn't suspicious — fair coins produce results that good all the time when five kids are competing. That's the entire idea: instead of doing the coin-flipping math by formula, just run the fair-coin contest for real, a lot of times, and see how often it beats what you actually saw.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>WRC's weak spot, and how Hansen's SPA test fixes it</h2>
+  <p>
+    White's Reality Check is correct, but it has a well-documented practical
+    weakness that shows up the moment a real candidate set includes obviously
+    bad strategies alongside a genuinely promising one — which is almost
+    always, since a real parameter sweep rarely produces \(N\) equally
+    plausible candidates.
+  </p>
+  <div class="tl-solid amber">
+    <strong>The problem: WRC's bootstrap null gets wider than it needs to be.</strong>
+    Demeaning <em>every</em> candidate at zero — including the ones whose real
+    performance was clearly, unambiguously terrible — gives every single one
+    of them, in the bootstrap replay, an equal shot at producing the largest
+    resampled mean. A strategy that was obviously dominated on the real data
+    still gets to act, in the resampled world, as if it might have tied for
+    best. The more junk candidates included, the wider the bootstrap
+    distribution of \(\bar V^*\) becomes, which raises the bar the real
+    \(\bar V\) has to clear — <strong>lower statistical power</strong> to
+    detect a genuinely good strategy, purely because it was tested alongside
+    a pile of obviously-bad ones.
+  </div>
+  <p>
+    Hansen's SPA test (2005) — "Superior Predictive Ability" — targets this
+    exact weakness with two specific changes, while keeping WRC's core
+    bootstrap machinery intact:
+  </p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📏</div>
+      <h4>1. Studentize before taking the max</h4>
+      <p>
+        Instead of comparing raw sample means directly, SPA divides each
+        candidate's mean by its own bootstrap-estimated standard error,
+        \(t_k = \bar d_k / s_k\), before taking the maximum across
+        candidates. This puts a low-volatility candidate and a high-volatility
+        candidate on a comparable footing — exactly the same reasoning a
+        Sharpe ratio applies to a single strategy, now applied across the
+        whole candidate set before the "who's best" comparison is made.
+      </p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🚫</div>
+      <h4>2. Don't let clearly-inferior candidates pad the null</h4>
+      <p>
+        Rather than demeaning every candidate to exactly zero, SPA only gives
+        that "benefit of the doubt" recentering to candidates that weren't
+        clearly, convincingly bad on the real data. A candidate whose own
+        studentized statistic sits meaningfully below zero keeps something
+        closer to its own actual (negative) performance in the bootstrap
+        world instead — denying it the chance to drift up and pretend it
+        could have tied for best purely from resampling noise.
+      </p>
+    </div>
+  </div>
+  <p>
+    Formally (in the simplified form this lesson uses — Hansen's own paper
+    derives a threshold that shrinks slowly with \(T\) via a law-of-the-
+    iterated-logarithm argument, tighter than the fixed cutoff used here for
+    clarity), each candidate gets its own recentering point \(g_k\):
+  </p>
+  <div class="tl-math">\[ g_k = \begin{cases} \bar d_k & \text{if } \bar d_k / s_k < -c \quad \text{(clearly inferior — keep its own mean)} \\[4pt] 0 & \text{otherwise (benefit of the doubt — recenter at zero, as WRC does for everyone)} \end{cases} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>c</code><span>a fixed cutoff (this lesson uses c=1 own-standard-error below zero) — Hansen's real rule uses a threshold that shrinks with T</span></div>
+    <div class="tl-eq-chip c4"><code>g_k</code><span>where candidate k's bootstrap replicates get recentered — 0 for contenders, its own mean for clear losers</span></div>
+  </div>
+  <p>
+    and the bootstrap replicate for candidate \(k\) is its resampled
+    deviation from its own realized mean, shifted back by \(g_k\) and
+    studentized by \(s_k\):
+  </p>
+  <div class="tl-math">\[ Z^*_{k,b} = \frac{\big(\bar d^{\,*}_{k,b} - \bar d_k\big) + g_k}{s_k}\,, \qquad Z^*_b = \max_{k} Z^*_{k,b} \]</div>
+  <p>
+    Comparing the real observed studentized statistic \(Z = \max_k
+    \bar d_k / s_k\) against the empirical distribution of \(\{Z^*_1,\dots,
+    Z^*_B\}\) gives \(p_{SPA}\), computed the same way as \(p_{WRC}\) above.
+    Because obviously-inferior candidates no longer get to inflate the null
+    the way they do in WRC, \(p_{SPA}\) is typically smaller — more power to
+    detect a real winner — for the exact same underlying data. This is why
+    SPA is described as the modern, generally-preferred successor to WRC
+    rather than a competing, unrelated idea: it reuses WRC's entire bootstrap
+    engine and null-hypothesis framing, and repairs one specific, well-
+    understood source of lost power.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If you're judging a footrace and three of the ten runners visibly tripped and walked the whole way, still counting their (terrible) times as "maybe they could have won" when you imagine the race being rerun is silly — they clearly couldn't have. Hansen's fix is exactly that: stop giving the obviously-last-place runners a fair shot at "winning" the imaginary rerun, since real evidence already says they weren't competitive, and put every remaining runner's finishing time in context of how consistent that particular runner normally is, not just the raw number of seconds.</p>
+  </div>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(N\)</td><td>Number of candidate strategies actually run — same role as the Deflated Sharpe lesson's \(N\).</td></tr>
+    <tr><td>\(T\)</td><td>Number of time periods in the shared return history — same role as the Deflated Sharpe lesson's \(T\).</td></tr>
+    <tr><td>\(d_{k,t}\)</td><td>Candidate \(k\)'s excess return over the benchmark at period \(t\).</td></tr>
+    <tr><td>\(\bar d_k\)</td><td>Candidate \(k\)'s own sample mean excess return over all \(T\) periods.</td></tr>
+    <tr><td>\(s_k\)</td><td>Candidate \(k\)'s own sample standard deviation (or bootstrap-estimated spread) of \(d_{k,t}\).</td></tr>
+    <tr><td>\(\bar V\)</td><td>White's Reality Check statistic — \(\max_k \bar d_k\), the best candidate's raw mean excess return.</td></tr>
+    <tr><td>\(Z\)</td><td>Hansen's SPA statistic — \(\max_k \bar d_k / s_k\), the best candidate's studentized mean excess return.</td></tr>
+    <tr><td>\(g_k\)</td><td>SPA's per-candidate recentering point — 0 for a contender, \(\bar d_k\) itself for a clearly-inferior candidate.</td></tr>
+    <tr><td>\(l\)</td><td>Mean block length in the stationary bootstrap — same role as the Bootstrapping lesson's \(l\).</td></tr>
+    <tr><td>\(B\)</td><td>Number of bootstrap replicates drawn — same role as the Bootstrapping lesson's \(B\).</td></tr>
+    <tr><td>\(p_{WRC}, p_{SPA}\)</td><td>The two tests' bootstrap p-values — the fraction of replicates at least as extreme as the real observed statistic.</td></tr>
+  </table></div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Five toy strategies, 16 periods, one real edge, one deceptively high Sharpe</h3>
+    <p>
+      A small candidate panel — one genuinely edged strategy, three ordinary
+      noise strategies, and one noise strategy that happened to realize
+      unusually low variance (and therefore an eye-catching raw Sharpe)
+      purely by chance over this specific 16-period sample, benchmark = 0:
+    </p>
+    <div class="tl-symbols"><table>
+      <tr><td>A — Momentum (real edge)</td><td>0.90, 0.10, 0.70, −0.20, 0.60, 1.00, 0.00, 0.80, 0.30, 0.90, −0.10, 0.70, 0.40, 0.20, 0.90, 0.30</td></tr>
+      <tr><td>B — Mean-Reversion (noise)</td><td>0.30, −0.80, 0.60, −0.40, −0.10, 0.90, −0.60, 0.20, −0.90, 0.50, 0.70, −0.30, −0.50, 0.40, −0.20, 0.10</td></tr>
+      <tr><td>C — Carry (lucky-Sharpe noise)</td><td>0.30, 0.00, 0.40, −0.10, 0.20, 0.35, −0.05, 0.25, 0.10, 0.30, −0.15, 0.20, 0.25, 0.05, 0.30, 0.10</td></tr>
+      <tr><td>D — Breakout (noise)</td><td>−1.20, 1.50, −0.80, 0.90, −1.60, 1.10, −0.40, 1.30, −1.00, 0.60, −1.40, 0.80, −0.60, 1.00, −1.10, 0.70</td></tr>
+      <tr><td>E — Contrarian (noise, worst)</td><td>−0.50, 0.60, −0.90, 0.30, −0.20, −0.70, 0.40, −0.60, 0.10, −0.80, 0.50, −0.30, −0.60, 0.20, −0.40, 0.30</td></tr>
+    </table></div>
+    <p>
+      Every value is a percent return for that period. Computing each
+      candidate's sample mean \(\bar d_k\), standard deviation \(s_k\), raw
+      (unannualized) Sharpe \(\bar d_k / s_k\), and studentized statistic
+      \(\bar d_k / (s_k/\sqrt{T})\) directly from these 16 numbers each:
+    </p>
+    <div class="tl-symbols"><table>
+      <tr><td>A — Momentum</td><td>mean = 0.469, s = 0.394, raw Sharpe = 1.19, t = 4.75</td></tr>
+      <tr><td>B — Mean-Reversion</td><td>mean = −0.006, s = 0.552, raw Sharpe = −0.01, t = −0.05</td></tr>
+      <tr><td>C — Carry</td><td>mean = 0.156, s = 0.168, raw Sharpe = 0.93, t = 3.72</td></tr>
+      <tr><td>D — Breakout</td><td>mean = −0.013, s = 1.089, raw Sharpe = −0.01, t = −0.05</td></tr>
+      <tr><td>E — Contrarian</td><td>mean = −0.163, s = 0.502, raw Sharpe = −0.32, t = −1.30</td></tr>
+    </table></div>
+    <p>
+      <strong>Notice the trap before running any bootstrap.</strong> Strategy
+      C's raw Sharpe (0.93) is the second-highest in the whole panel —
+      comfortably ahead of every other noise strategy and not far behind
+      Momentum's genuine 1.19 — purely because C's realized standard
+      deviation (0.168) happened to come out tiny over this short sample. Its
+      actual mean edge (0.156) is barely a third the size of Momentum's
+      (0.469). A researcher scanning for "best Sharpe" would notice C; the
+      test statistic that actually matters here is the mean, not the ratio.
+    </p>
+    <p>
+      The observed WRC statistic is the largest of the five means:
+      \(\bar V = \max(0.469,\,-0.006,\,0.156,\,-0.013,\,-0.163) = 0.469\),
+      achieved by Momentum. The observed SPA statistic is the largest of the
+      five t-stats: \(Z = \max(4.75,\,-0.05,\,3.72,\,-0.05,\,-1.30) = 4.75\),
+      also Momentum — this time by a wider margin, since studentizing
+      shrinks Carry's apparent edge over the noise candidates rather than
+      inflating it.
+    </p>
+    <p>
+      Running the stationary block bootstrap described above — mean block
+      length \(l=2\), demeaning every candidate before resampling, one shared
+      block-index path applied jointly to all five series, \(B=5{,}000\)
+      replicates — on this exact panel gives (one representative run;
+      genuinely fresh randomness each time will land close but not identical):
+    </p>
+    <div class="tl-math">\[ p_{WRC}(\bar V = 0.469) \approx 0.0028, \qquad p_{SPA}(Z = 4.75) \approx 0.0002 \]</div>
+    <p>
+      Momentum's edge survives comfortably under both tests, and more
+      confidently under SPA — exactly the power-recovery SPA is built to
+      provide, on data where WRC already succeeds. E (Contrarian, \(t=-1.30\))
+      is the only candidate this cutoff flags as clearly inferior for SPA's
+      recentering rule; it keeps its own negative mean rather than getting
+      benched at zero, denying it any chance to drift upward in the replay.
+    </p>
+    <p>
+      Now the punchline for Carry's tempting Sharpe: running that same
+      bootstrap procedure but asking whether <em>Carry's own</em> mean
+      (0.156) clears the best-of-five noise bar gives \(p \approx 0.24\) — not
+      remotely significant. Despite a raw Sharpe that looked almost as
+      strong as the real edge's, Carry's actual mean outperformance is
+      exactly the kind of thing five noise-driven candidates produce by
+      chance anyway. An impressive-looking Sharpe and a statistically real
+      edge are two different claims, and this is precisely the gap the
+      Deflated Sharpe lesson's worked example makes for a single reported
+      Sharpe — here it's made directly from the full candidate panel's own
+      return histories, with a genuine bootstrap standing in for that
+      lesson's extreme-value-theory formula.
+    </p>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Run a real stationary block bootstrap on this panel, live</h3>
+    <p>
+      Starts on the worked example's exact five return series. Edit any
+      series (comma-separated, any length ≥ 6 — series of different lengths
+      are trimmed to the shortest, so every candidate stays aligned on the
+      same time periods), change the mean block length or resamples per
+      click, and press <strong>Run</strong> — every click draws genuinely
+      new random resamples (not a replay of a fixed script) and adds them
+      to a running tally, so the bootstrap p-value keeps refining the more
+      you run. Toggle studentizing to switch between the WRC and SPA
+      statistics on the exact same panel.
+    </p>
+    <div class="tl-controls" id="wrc-series-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>A — Momentum</span></div>
+        <textarea class="tl-scratch-input" id="wrc-series-A" rows="2">0.90, 0.10, 0.70, -0.20, 0.60, 1.00, 0.00, 0.80, 0.30, 0.90, -0.10, 0.70, 0.40, 0.20, 0.90, 0.30</textarea>
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>B — Mean-Reversion</span></div>
+        <textarea class="tl-scratch-input" id="wrc-series-B" rows="2">0.30, -0.80, 0.60, -0.40, -0.10, 0.90, -0.60, 0.20, -0.90, 0.50, 0.70, -0.30, -0.50, 0.40, -0.20, 0.10</textarea>
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>C — Carry</span></div>
+        <textarea class="tl-scratch-input" id="wrc-series-C" rows="2">0.30, 0.00, 0.40, -0.10, 0.20, 0.35, -0.05, 0.25, 0.10, 0.30, -0.15, 0.20, 0.25, 0.05, 0.30, 0.10</textarea>
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>D — Breakout</span></div>
+        <textarea class="tl-scratch-input" id="wrc-series-D" rows="2">-1.20, 1.50, -0.80, 0.90, -1.60, 1.10, -0.40, 1.30, -1.00, 0.60, -1.40, 0.80, -0.60, 1.00, -1.10, 0.70</textarea>
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>E — Contrarian</span></div>
+        <textarea class="tl-scratch-input" id="wrc-series-E" rows="2">-0.50, 0.60, -0.90, 0.30, -0.20, -0.70, 0.40, -0.60, 0.10, -0.80, 0.50, -0.30, -0.60, 0.20, -0.40, 0.30</textarea>
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Mean block length (l)</span></div>
+        <input type="number" id="wrc-block" class="tl-scratch-input" value="2" step="1" min="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Resamples per click (B)</span></div>
+        <select id="wrc-batch" class="tl-scratch-input">
+          <option value="500">500</option>
+          <option value="2000" selected>2,000</option>
+          <option value="5000">5,000</option>
+        </select>
+      </div>
+    </div>
+    <div class="tl-controls">
+      <div class="tl-btnrow">
+        <button class="tl-btn" id="wrc-run-btn">▶ Run resamples</button>
+        <button class="tl-btn" id="wrc-studentize-btn">Studentize: OFF (WRC)</button>
+        <button class="tl-btn" id="wrc-tally-reset">↺ Reset tally</button>
+        <span class="tl-hint">Editing a series or the block length auto-resets the tally — the observed statistic changed.</span>
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout" id="wrc-observed-readout">
+      Observed statistic: <b id="wrc-observed-val">—</b>&emsp;(candidate <b id="wrc-observed-who">—</b>)
+    </div>
+    <div class="tl-readout" id="wrc-tally-readout">
+      Resamples run so far: <b id="wrc-total">0</b>&emsp;≥ observed: <b id="wrc-countge">0</b>&emsp;bootstrap p-value ≈ <b id="wrc-pvalue">—</b>
+      <span id="wrc-note" class="tl-scratch-note"></span>
+    </div>
+    <div class="tl-chart interactive">
+      <div class="tl-chart-label">Live bootstrap null distribution (cumulative across all clicks)</div>
+      <svg viewBox="0 0 640 200" id="wrc-hist-svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Live-updating histogram of the bootstrap replicate distribution, with the real observed statistic marked as a vertical line"></svg>
+    </div>
+    <button type="button" id="wrc-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">The five candidates' mean excess return, and where the real winner sits in its own bootstrap null</div>
+    <svg viewBox="0 0 640 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Top panel: bar chart of five candidate strategies' sample mean excess return, with Momentum highlighted as the clear leader at 0.469 and Carry's much smaller 0.156 shown despite its high Sharpe. Bottom panel: a histogram-style sketch of the bootstrap null distribution of the best-of-five statistic, concentrated near zero, with the real observed value of 0.469 marked far out in the thin right tail.">
+      <text x="10" y="18" fill="var(--text3)" font-size="10.5" font-family="'DM Mono',monospace">sample mean excess return, %/period</text>
+      <line x1="60" y1="30" x2="60" y2="120" style="stroke:var(--border)"/>
+      <line x1="60" y1="120" x2="610" y2="120" style="stroke:var(--border)"/>
+
+      <rect x="90" y="35" width="60" height="85" rx="3" style="fill:var(--green)"/>
+      <text x="120" y="28" text-anchor="middle" fill="var(--text)" font-size="12" font-weight="700" font-family="'DM Mono',monospace">0.469</text>
+      <text x="120" y="134" text-anchor="middle" fill="var(--text2)" font-size="10.5" font-family="'DM Sans',sans-serif">A Momentum</text>
+
+      <rect x="190" y="119" width="60" height="2" rx="1" style="fill:var(--text3)"/>
+      <text x="220" y="134" text-anchor="middle" fill="var(--text3)" font-size="10.5" font-family="'DM Sans',sans-serif">B Mean-Rev</text>
+
+      <rect x="290" y="92" width="60" height="28" rx="3" style="fill:var(--amber)"/>
+      <text x="320" y="85" text-anchor="middle" fill="var(--text)" font-size="12" font-weight="700" font-family="'DM Mono',monospace">0.156</text>
+      <text x="320" y="134" text-anchor="middle" fill="var(--text2)" font-size="10.5" font-family="'DM Sans',sans-serif">C Carry</text>
+      <text x="320" y="147" text-anchor="middle" fill="var(--amber)" font-size="9.5" font-family="'DM Sans',sans-serif">(raw Sharpe 0.93 — deceptive)</text>
+
+      <rect x="390" y="119" width="60" height="2" rx="1" style="fill:var(--text3)"/>
+      <text x="420" y="134" text-anchor="middle" fill="var(--text3)" font-size="10.5" font-family="'DM Sans',sans-serif">D Breakout</text>
+
+      <rect x="490" y="120" width="60" height="16" rx="3" style="fill:var(--red)" opacity=".6"/>
+      <text x="520" y="150" text-anchor="middle" fill="var(--text3)" font-size="10.5" font-family="'DM Sans',sans-serif">E Contrarian</text>
+
+      <text x="10" y="178" fill="var(--text3)" font-size="10.5" font-family="'DM Mono',monospace">bootstrap null distribution of max(mean), B replicates</text>
+      <line x1="60" y1="190" x2="60" y2="255" style="stroke:var(--border)"/>
+      <line x1="60" y1="255" x2="610" y2="255" style="stroke:var(--border)"/>
+      <path d="M60,255 L90,250 L120,225 L150,190 L180,205 L210,235 L240,248 L270,253 L300,254.5 L330,255 L360,255 L560,255" style="fill:none;stroke:var(--blue);stroke-width:2"/>
+      <path d="M60,255 L90,250 L120,225 L150,190 L180,205 L210,235 L240,248 L270,253 L300,254.5 L330,255 L360,255 L560,255 Z" style="fill:var(--blue);opacity:.12;stroke:none"/>
+      <line x1="527" y1="180" x2="527" y2="255" style="stroke:var(--green);stroke-width:2;stroke-dasharray:4,3"/>
+      <text x="527" y="172" text-anchor="middle" fill="var(--green)" font-size="10.5" font-weight="700" font-family="'DM Mono',monospace">real V̄ = 0.469</text>
+      <text x="150" y="205" text-anchor="middle" fill="var(--text3)" font-size="9.5" font-family="'DM Sans',sans-serif">null mass concentrated near 0</text>
+      <text x="330" y="270" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">bootstrap replicate of max(mean)</text>
+    </svg>
+    <div class="tl-chart-caption">
+      Schematic, hand-drawn to illustrate the <em>shape</em> of the result, not
+      a plot of one specific bootstrap run's raw counts (the live widget above
+      draws the real thing). Top: Momentum's mean genuinely stands apart from
+      the pack, and Carry's tempting Sharpe corresponds to a modest, unremarkable
+      mean. Bottom: the bootstrap null — built entirely from a world with zero
+      true edge anywhere — piles up near zero, with only a thin tail reaching as
+      far out as the real observed \(\bar V = 0.469\), which is why \(p_{WRC}\)
+      comes out small.
+    </div>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where WRC and SPA quietly get misapplied</h3>
+    <p>
+      <strong>The declared candidate set has to be the real candidate set.</strong>
+      This is the single most important caveat, and it is identical in spirit
+      to the Deflated Sharpe lesson's warning about undercounting \(N\).
+      Running 50 variations, discarding the 45 that looked bad, and submitting
+      only the best 5 to a WRC or SPA test produces a test that is completely
+      worthless — not slightly optimistic, worthless — because the whole
+      method's honesty depends on the bootstrap seeing every candidate that
+      was genuinely in contention, junk included. A test correctly run on a
+      dishonestly curated candidate set will still return a confident-looking
+      p-value; nothing about the arithmetic can detect that the candidate set
+      itself was cherry-picked upstream. This is a discipline problem, not a
+      statistical one, and no later step in the pipeline can fix it after the
+      fact.
+    </p>
+    <p>
+      <strong>Treating a small p-value as proof of a tradable edge.</strong>
+      Exactly as the Deflated Sharpe lesson insists a high DSR is evidence,
+      not proof — surviving WRC or SPA says a candidate's outperformance is
+      unlikely to be pure best-of-\(N\) luck on <em>this historical sample</em>.
+      It says nothing about transaction costs, regime shift, or whether the
+      strategy still works on data the whole search never touched at all —
+      this repo's own OOS bar (Lego Principle 5) remains a separate,
+      still-mandatory hurdle on top of a passed reality check, not a hurdle
+      it substitutes for.
+    </p>
+    <p>
+      <strong>Forgetting the benchmark is a choice that changes the answer.</strong>
+      \(d_{k,t} = R_{k,t} - R_t^{bench}\) is only as meaningful as the
+      benchmark chosen — zero, buy-and-hold, or an incumbent strategy already
+      running are three different, defensible questions ("is any candidate
+      better than nothing," "better than doing nothing active," "better than
+      what's already deployed"), and switching the benchmark can flip which
+      candidate is even eligible to be the observed maximum. Name the
+      benchmark up front, exactly as this project's own working agreement
+      insists for any claimed improvement.
+    </p>
+    <p>
+      <strong>Mistaking "not significant" for "definitely fake."</strong> A
+      genuinely modest, real edge over a short sample (16 periods, in this
+      lesson's own toy panel) can easily fail to clear a bootstrap bar simply
+      because there isn't yet enough data for the test to have real
+      statistical power — this is exactly why this repo's own validation rule
+      insists on a non-trivial trade count (≥30) before treating an OOS result
+      as evidence either way. A null result from a short track record is a
+      "not yet distinguishable from noise," not an epitaph.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    WRC and SPA are gate-keeping tools, used the same way the Deflated Sharpe
+    Ratio is used — applied once, near the end of a research process, to the
+    full honest set of everything that was tried, not as a routine tearsheet
+    line computed on whatever happens to be reported. A quant research group
+    running a large parameter sweep treats "my best backtested variant beats
+    the incumbent" as an unverified claim until it clears exactly this kind
+    of test against the <em>entire</em> sweep, not just the reported winner.
+    SPA has effectively superseded WRC as the default choice in the
+    econometrics and quant-finance literature precisely because it recovers
+    power without sacrificing anything WRC already got right — there's
+    rarely a reason to reach for the older test once SPA is implemented,
+    beyond historical continuity or a specific paper's convention.
+  </p>
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world scenario</div>
+    <h3>What this repo already has, and what it's still missing</h3>
+    <p>
+      This repo's own <code>statsCore.js</code> ships a genuine, correct
+      stationary (Politis–Romano) block bootstrap — <code>blockResample</code>
+      and <code>blockBootstrapIC</code> — reused across
+      <code>backtestStats.js</code> (max-drawdown Monte Carlo), the frozen
+      expectation snapshot pipeline (<code>scripts/freeze_expectation.mjs</code>),
+      a live volatility-reversion significance test
+      (<code>js/volReversionCore.js</code>), and a Python COT factor test
+      (<code>analysis/cot_factor/factor_test.py</code>). This is real,
+      working machinery — the exact building block this lesson's bootstrap
+      needs — and it is already battle-tested in this codebase.
+    </p>
+    <p>
+      What it has never been pointed at is a genuine <em>multi-candidate</em>
+      test of the kind this lesson describes. Every one of those call sites
+      bootstraps <strong>one</strong> series or statistic at a time: one
+      strategy's Sharpe or drawdown confidence interval, one predictor's own
+      IC against its own serial-dependence null. The one place this repo
+      explicitly corrects for testing several things at once —
+      <code>js/volReversionCore.js</code>'s "best of 4 horizon tests" — uses a
+      parametric Bonferroni adjustment (multiply the raw p-value by the
+      number of horizons actually tested), not a bootstrap of the max
+      statistic across horizons. That is a real, honest correction, but it is
+      a different, more conservative tool than WRC or SPA, not an instance of
+      either.
+    </p>
+    <p>
+      The sharper version of the exact problem this lesson exists to solve is
+      named directly, and flagged as unresolved, in this repo's own honest
+      self-assessment: <em>"The headline numbers (55–65% win rates, ~20–28%
+      CAGR, Sharpe &gt; 2 optimizer configs) are largely selected as
+      best-of-N (e.g. best of ~600 random configs per pair)... Best-of-N
+      ranked on the same data is multiple-comparisons bias: with enough
+      configs, something will look great on noise... Mitigation:
+      combinatorially-purged cross-validation... plus a deflated-Sharpe
+      adjustment for the number of trials run."</em> Purged CV and a deflated-
+      Sharpe adjustment are exactly the mitigations already named — a genuine
+      bootstrap test of the full ~600-candidate panel's own return histories,
+      the way this lesson describes, is not among them. The pieces to build
+      one — the stationary block bootstrap itself, plus the multiple-testing
+      instincts already documented throughout this repo's review docs — are
+      already sitting in this codebase; assembling them into an actual
+      WRC/SPA-style test of a full candidate panel has not been done.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>WRC and SPA test the full candidate set's real return histories directly,</strong> where the Deflated Sharpe Ratio corrects one reported Sharpe using an estimated trial count and dispersion.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The test statistic is a maximum across candidates,</strong> \(\bar V=\max_k \bar d_k\) for WRC — which is exactly why a textbook single-series critical value doesn't apply.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A stationary block bootstrap, applied jointly across all candidates,</strong> builds the empirical null distribution of that maximum — the same machinery the Bootstrapping &amp; Monte Carlo lesson introduces, pointed at a max instead of one series.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>WRC is conservative when junk candidates are included</strong> — demeaning every candidate at zero lets obviously-bad ones widen the null and cost real power.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Hansen's SPA test studentizes and stops clearly-inferior candidates from padding the null,</strong> recovering power on the same data — the field's preferred modern successor, not a rival method.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>An impressive raw Sharpe is not the same claim as a statistically real edge.</strong> This lesson's worked example shows a noise strategy's Sharpe (0.93) looking nearly as good as a real edge's (1.19) while its own mean fails the bootstrap test outright (\(p\approx0.24\)).</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Both tests are worthless on a dishonestly curated candidate set.</strong> Submitting only the best-looking survivors of a larger, undisclosed search defeats the entire method — no formula can detect it after the fact.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. What exactly is White's Reality Check's null hypothesis, and what is its test statistic?</summary>
+    <div class="tl-answer">
+      The null hypothesis is that the <em>best</em> of \(N\) candidate
+      strategies has a true, population expected excess return over the
+      benchmark that is no better than the benchmark itself (\(\le 0\)) — i.e.
+      any apparent winner is just the luckiest of \(N\) noisy trials with no
+      real edge anywhere. The test statistic is \(\bar V = \max_k \bar d_k\),
+      the largest of the \(N\) candidates' own sample mean excess returns.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why can't a textbook normal-distribution critical value be used to judge \(\bar V\) directly?</summary>
+    <div class="tl-answer">
+      Two separate problems stack up. First, financial returns are typically
+      autocorrelated, so even a single candidate's own sample mean doesn't
+      have the simple i.i.d.-based standard error a textbook t-test assumes.
+      Second, and specific to this test, \(\bar V\) is a <em>maximum</em>
+      across \(N\) candidates that are usually cross-correlated with each
+      other (variations on a theme share underlying market exposure) — there
+      is no simple closed-form distribution for the maximum of many
+      autocorrelated, cross-correlated quantities. WRC sidesteps both
+      problems by bootstrapping the empirical distribution of \(\bar V\)
+      directly from the real, dependent data instead of assuming a shape.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. What specific weakness in WRC does Hansen's SPA test fix, and how?</summary>
+    <div class="tl-answer">
+      WRC demeans every candidate at zero before bootstrapping, including
+      candidates that were obviously, clearly bad on the real data — letting
+      them act, in the resampled world, as if they had an equal shot at
+      producing the largest resampled mean. The more junk candidates
+      included, the wider WRC's bootstrap null gets, costing statistical
+      power. SPA fixes this two ways: (1) studentizing each candidate's
+      statistic by its own bootstrap-estimated spread before taking the max,
+      putting different-volatility candidates on a comparable footing, and
+      (2) only recentering candidates that weren't clearly inferior at zero
+      — a clearly-inferior candidate keeps something closer to its own
+      actual (negative) performance in the bootstrap world, denying it a
+      chance to pad the null. Both changes recover power on the same
+      underlying data.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. In this lesson's worked example, why did Strategy C ("Carry") — with the second-highest raw Sharpe in the whole panel — fail a bootstrap test of its own mean excess return?</summary>
+    <div class="tl-answer">
+      Carry's raw Sharpe (0.93) looked strong specifically because its
+      realized standard deviation (0.168) happened to come out very small
+      over this short 16-period sample — a Sharpe ratio rewards low variance
+      as much as it rewards a genuine mean edge. Carry's actual mean
+      excess return (0.156) was barely a third the size of the genuinely
+      edged strategy's (0.469), and testing that mean against the same
+      best-of-five bootstrap null gave \(p\approx0.24\) — nowhere close to
+      significant. An impressive Sharpe purely from low realized variance is
+      exactly the kind of result five noise-driven candidates can produce by
+      chance, which is why the test looks at the mean (and, for SPA, the
+      studentized statistic) rather than trusting a raw Sharpe ranking
+      directly.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. How does WRC/SPA's basic approach differ structurally from the Deflated Sharpe Ratio's, even though both correct for the same underlying "best of N" problem?</summary>
+    <div class="tl-answer">
+      The Deflated Sharpe Ratio compresses each of the \(N\) trials down to a
+      single Sharpe ratio, then uses an extreme-value-theory formula — fed an
+      estimated trial count \(N\) and the dispersion \(\sigma_{SR}\) of those
+      \(N\) Sharpe ratios — to work out what the best-of-\(N\) Sharpe should
+      look like under pure luck. WRC and SPA instead keep every candidate's
+      full period-by-period return history and directly stationary-block-
+      bootstrap the entire panel, jointly resampling all \(N\) series and
+      recomputing the real "who's best" statistic on each resample to build
+      an actual empirical null distribution — no Gaussian-maximum
+      approximation and no separate dispersion estimate required, because the
+      bootstrap uses the real data's own autocorrelation and cross-candidate
+      correlation directly.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. A researcher ran 50 variations of a strategy, quietly discarded the 45 that looked unpromising, and submitted only the remaining 5 (including the eventual "winner") to a Reality Check test, which came back with a small, significant p-value. Is that p-value trustworthy?</summary>
+    <div class="tl-answer">
+      No. WRC and SPA are only honest when the candidate set fed into the
+      bootstrap is the complete, real set of everything that was actually
+      tried. Discarding the 45 unpromising variants before running the test
+      means the bootstrap never saw the true scale of the search — it
+      computed a correct answer to the wrong question ("is the best of these
+      5 real?" instead of "is the best of these 50 real?"). The resulting
+      p-value can look confidently significant while being completely
+      uninformative about the real, much larger search that actually
+      happened. This mirrors the Deflated Sharpe lesson's warning about
+      undercounting \(N\) exactly — it is a discipline failure the
+      arithmetic has no way to detect after the fact.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Halbert White, <em>"A Reality Check for Data Snooping,"</em> Econometrica, 68(5), 2000 — the original Reality Check: the max-of-N test statistic, the stationary bootstrap applied to it, and the data-snooping framing this lesson builds on directly.</li>
+    <li>Peter R. Hansen, <em>"A Test for Superior Predictive Ability,"</em> Journal of Business &amp; Economic Statistics, 23(4), 2005 — the SPA test: studentization and the inferior-candidate recentering rule that recovers power over White's original test.</li>
+    <li>Dimitris N. Politis &amp; Joseph P. Romano, <em>"The Stationary Bootstrap,"</em> Journal of the American Statistical Association, 89(428), 1994 — the random block-length bootstrap this lesson's resampling procedure is built on, already the basis for the Bootstrapping &amp; Monte Carlo lesson's own block bootstrap.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="../hub.html">← Theory Lab hub</a>
+    <a href="institutional-triple-barrier-labeling.html">Triple-Barrier &amp; Meta-Labelling →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+<script>
+(function(){
+  // ---- Genuine, live stationary block bootstrap for the WRC/SPA "try it yourself" widget ----
+  var ids = ['A','B','C','D','E'];
+  var seriesEls = {};
+  ids.forEach(function(k){ seriesEls[k] = document.getElementById('wrc-series-' + k); });
+  if (!seriesEls.A) return;
+
+  var blockEl = document.getElementById('wrc-block');
+  var batchEl = document.getElementById('wrc-batch');
+  var runBtn = document.getElementById('wrc-run-btn');
+  var studentBtn = document.getElementById('wrc-studentize-btn');
+  var tallyResetBtn = document.getElementById('wrc-tally-reset');
+  var resetBtn = document.getElementById('wrc-reset');
+  var obsValEl = document.getElementById('wrc-observed-val');
+  var obsWhoEl = document.getElementById('wrc-observed-who');
+  var totalEl = document.getElementById('wrc-total');
+  var countGEEl = document.getElementById('wrc-countge');
+  var pvalEl = document.getElementById('wrc-pvalue');
+  var noteEl = document.getElementById('wrc-note');
+  var svg = document.getElementById('wrc-hist-svg');
+
+  var DEFAULTS = {
+    A: '0.90, 0.10, 0.70, -0.20, 0.60, 1.00, 0.00, 0.80, 0.30, 0.90, -0.10, 0.70, 0.40, 0.20, 0.90, 0.30',
+    B: '0.30, -0.80, 0.60, -0.40, -0.10, 0.90, -0.60, 0.20, -0.90, 0.50, 0.70, -0.30, -0.50, 0.40, -0.20, 0.10',
+    C: '0.30, 0.00, 0.40, -0.10, 0.20, 0.35, -0.05, 0.25, 0.10, 0.30, -0.15, 0.20, 0.25, 0.05, 0.30, 0.10',
+    D: '-1.20, 1.50, -0.80, 0.90, -1.60, 1.10, -0.40, 1.30, -1.00, 0.60, -1.40, 0.80, -0.60, 1.00, -1.10, 0.70',
+    E: '-0.50, 0.60, -0.90, 0.30, -0.20, -0.70, 0.40, -0.60, 0.10, -0.80, 0.50, -0.30, -0.60, 0.20, -0.40, 0.30'
+  };
+
+  var studentize = false;
+  var MIN_T = 6;
+  var CUTOFF = 1; // "clearly inferior" if own t-stat < -CUTOFF
+
+  var state = null; // { series, T, stats, gCenter, observed, observedKey, total, countGE, bins, binLo, binW, binCounts }
+
+  function mean(a){ var s = 0; for (var i = 0; i < a.length; i++) s += a[i]; return s / a.length; }
+  function std(a){
+    if (a.length < 2) return 0;
+    var m = mean(a), s = 0;
+    for (var i = 0; i < a.length; i++) s += (a[i] - m) * (a[i] - m);
+    return Math.sqrt(s / (a.length - 1));
+  }
+  function parseSeries(text){
+    return text.split(',').map(function(x){ return parseFloat(x.trim()); }).filter(function(x){ return isFinite(x); });
+  }
+
+  function blockResampleIdx(n, meanBlock){
+    var idxPath = new Array(n);
+    var p = 1 / Math.max(1, meanBlock);
+    var idx = Math.floor(Math.random() * n);
+    for (var i = 0; i < n; i++){
+      idxPath[i] = idx;
+      idx = (Math.random() < p) ? Math.floor(Math.random() * n) : (idx + 1) % n;
+    }
+    return idxPath;
+  }
+
+  function buildState(){
+    var raw = {}, lens = [];
+    for (var k in seriesEls) {
+      raw[k] = parseSeries(seriesEls[k].value);
+      if (raw[k].length) lens.push(raw[k].length);
+    }
+    if (!lens.length) return { error: 'Enter at least one comma-separated return series.' };
+    var T = Math.min.apply(null, lens);
+    if (T < MIN_T) {
+      return { error: 'Need at least ' + MIN_T + ' periods per strategy to form meaningful blocks — the shortest series here has ' + T + '.' };
+    }
+    var series = {}, statsByKey = {}, flat = [];
+    var warnTrim = false;
+    for (var k2 in raw) {
+      if (!raw[k2].length) continue;
+      if (raw[k2].length !== T) warnTrim = true;
+      var arr = raw[k2].slice(0, T);
+      series[k2] = arr;
+      var m = mean(arr), s = std(arr);
+      statsByKey[k2] = { mean: m, std: s, se: s / Math.sqrt(T) };
+      flat.push(m, s);
+    }
+    var keys = Object.keys(series);
+    if (keys.length < 2) return { error: 'Need at least two candidate strategies to test a "best of N" claim.' };
+
+    var allFlat = std(flat) === 0 && flat.every(function(x){ return x === 0; });
+    var anyFlat = keys.filter(function(k){ return statsByKey[k].std === 0; });
+
+    var gCenter = {};
+    keys.forEach(function(k){
+      var st = statsByKey[k];
+      var t = st.se > 0 ? st.mean / st.se : 0;
+      gCenter[k] = (t < -CUTOFF) ? st.mean : 0;
+    });
+
+    var observedWRC = -Infinity, observedWRCKey = null;
+    var observedSPA = -Infinity, observedSPAKey = null;
+    keys.forEach(function(k){
+      var st = statsByKey[k];
+      if (st.mean > observedWRC) { observedWRC = st.mean; observedWRCKey = k; }
+      var t = st.se > 0 ? st.mean / st.se : (st.mean > 0 ? Infinity : -Infinity);
+      if (t > observedSPA) { observedSPA = t; observedSPAKey = k; }
+    });
+
+    // Plausible bounds for the replicate statistic, from the data's own range,
+    // so the live histogram has a fixed, honest axis from the very first click.
+    var lo = Infinity, hi = -Infinity;
+    keys.forEach(function(k){
+      var arr = series[k], st = statsByKey[k];
+      var loRaw = Math.min.apply(null, arr), hiRaw = Math.max.apply(null, arr);
+      var g = gCenter[k];
+      var loRep, hiRep;
+      if (studentize) {
+        loRep = (loRaw - st.mean + g) / (st.se || 1);
+        hiRep = (hiRaw - st.mean + g) / (st.se || 1);
+      } else {
+        loRep = loRaw - st.mean;
+        hiRep = hiRaw - st.mean;
+      }
+      if (loRep < lo) lo = loRep;
+      if (hiRep > hi) hi = hiRep;
+    });
+    if (!isFinite(lo) || !isFinite(hi) || hi <= lo) { lo = -1; hi = 1; }
+    var pad = (hi - lo) * 0.05;
+    lo -= pad; hi += pad;
+
+    return {
+      series: series, T: T, keys: keys, stats: statsByKey, gCenter: gCenter,
+      observedWRC: observedWRC, observedWRCKey: observedWRCKey,
+      observedSPA: observedSPA, observedSPAKey: observedSPAKey,
+      total: 0, countGE: 0,
+      binLo: lo, binHi: hi, nBins: 26, binCounts: new Array(26).fill(0),
+      warnTrim: warnTrim, anyFlat: anyFlat
+    };
+  }
+
+  function currentObserved(){
+    return studentize
+      ? { val: state.observedSPA, key: state.observedSPAKey }
+      : { val: state.observedWRC, key: state.observedWRCKey };
+  }
+
+  function resetTally(){
+    state = buildState();
+    if (state.error) {
+      obsValEl.textContent = '—'; obsWhoEl.textContent = '—';
+      totalEl.textContent = '0'; countGEEl.textContent = '0'; pvalEl.textContent = '—';
+      noteEl.textContent = state.error;
+      renderHist();
+      return;
+    }
+    var obs = currentObserved();
+    obsValEl.textContent = obs.val.toFixed(4) + (studentize ? ' (studentized)' : '');
+    obsWhoEl.textContent = obs.key;
+    totalEl.textContent = '0'; countGEEl.textContent = '0'; pvalEl.textContent = '—';
+    var msgs = [];
+    if (state.warnTrim) msgs.push('series had different lengths — trimmed to the shortest (T=' + state.T + ') so every candidate stays aligned.');
+    if (state.anyFlat.length) msgs.push('strategy ' + state.anyFlat.join(', ') + ' has all-identical returns (std=0) — it can never produce the resampled max after centering, so it carries no information for this test.');
+    noteEl.textContent = msgs.join(' ');
+    renderHist();
+  }
+
+  function runBatch(nRuns){
+    if (!state || state.error) return;
+    var obs = currentObserved();
+    for (var b = 0; b < nRuns; b++) {
+      var idxPath = blockResampleIdx(state.T, Math.max(1, parseInt(blockEl.value, 10) || 1));
+      var maxRep = -Infinity;
+      for (var i = 0; i < state.keys.length; i++) {
+        var k = state.keys[i];
+        var arr = state.series[k], st = state.stats[k];
+        var s = 0;
+        for (var t = 0; t < state.T; t++) s += arr[idxPath[t]];
+        var resampMean = s / state.T;
+        var rep;
+        if (studentize) {
+          rep = (resampMean - st.mean + state.gCenter[k]) / (st.se || 1);
+        } else {
+          rep = resampMean - st.mean;
+        }
+        if (rep > maxRep) maxRep = rep;
+      }
+      state.total++;
+      if (maxRep >= obs.val) state.countGE++;
+      var binIdx = Math.floor((maxRep - state.binLo) / (state.binHi - state.binLo) * state.nBins);
+      if (binIdx < 0) binIdx = 0;
+      if (binIdx >= state.nBins) binIdx = state.nBins - 1;
+      state.binCounts[binIdx]++;
+    }
+    totalEl.textContent = state.total.toLocaleString();
+    countGEEl.textContent = state.countGE.toLocaleString();
+    pvalEl.textContent = ((state.countGE + 1) / (state.total + 1)).toFixed(4);
+    renderHist();
+  }
+
+  function renderHist(){
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    if (!state || state.error) return;
+    var W = 640, H = 200, padL = 44, padB = 24, padT = 14, padR = 14;
+    var plotW = W - padL - padR, plotH = H - padT - padB;
+    var maxCount = Math.max.apply(null, state.binCounts.concat([1]));
+    var ns = 'http://www.w3.org/2000/svg';
+    function el(tag, attrs){
+      var e = document.createElementNS(ns, tag);
+      for (var a in attrs) e.setAttribute(a, attrs[a]);
+      return e;
+    }
+    svg.appendChild(el('line', { x1: padL, y1: padT, x2: padL, y2: padT + plotH, stroke: 'var(--border)' }));
+    svg.appendChild(el('line', { x1: padL, y1: padT + plotH, x2: padL + plotW, y2: padT + plotH, stroke: 'var(--border)' }));
+    var binW = plotW / state.nBins;
+    for (var i = 0; i < state.nBins; i++) {
+      var h = state.total > 0 ? (state.binCounts[i] / maxCount) * (plotH - 4) : 0;
+      var x = padL + i * binW;
+      var y = padT + plotH - h;
+      svg.appendChild(el('rect', { x: x + 1, y: y, width: Math.max(0, binW - 2), height: h, rx: 1, fill: 'var(--blue)', opacity: '0.75' }));
+    }
+    var obs = currentObserved();
+    var frac = (obs.val - state.binLo) / (state.binHi - state.binLo);
+    frac = Math.max(0, Math.min(1, frac));
+    var ox = padL + frac * plotW;
+    svg.appendChild(el('line', { x1: ox, y1: padT - 2, x2: ox, y2: padT + plotH, stroke: 'var(--green)', 'stroke-width': '2', 'stroke-dasharray': '4,3' }));
+    var lbl = el('text', { x: ox, y: padT - 4, 'text-anchor': ox > W - 90 ? 'end' : 'middle', fill: 'var(--green)', 'font-size': '10', 'font-weight': '700', 'font-family': "'DM Mono',monospace" });
+    lbl.textContent = 'real = ' + obs.val.toFixed(3);
+    svg.appendChild(lbl);
+    var loLbl = el('text', { x: padL, y: H - 6, 'text-anchor': 'start', fill: 'var(--text3)', 'font-size': '9.5', 'font-family': "'DM Mono',monospace" });
+    loLbl.textContent = state.binLo.toFixed(2);
+    svg.appendChild(loLbl);
+    var hiLbl = el('text', { x: padL + plotW, y: H - 6, 'text-anchor': 'end', fill: 'var(--text3)', 'font-size': '9.5', 'font-family': "'DM Mono',monospace" });
+    hiLbl.textContent = state.binHi.toFixed(2);
+    svg.appendChild(hiLbl);
+  }
+
+  runBtn.addEventListener('click', function(){
+    if (!state) resetTally();
+    if (state.error) return;
+    var n = parseInt(batchEl.value, 10) || 2000;
+    runBatch(n);
+  });
+  studentBtn.addEventListener('click', function(){
+    studentize = !studentize;
+    studentBtn.textContent = studentize ? 'Studentize: ON (SPA)' : 'Studentize: OFF (WRC)';
+    resetTally();
+  });
+  tallyResetBtn.addEventListener('click', resetTally);
+  ids.forEach(function(k){ seriesEls[k].addEventListener('input', resetTally); });
+  blockEl.addEventListener('input', resetTally);
+  resetBtn.addEventListener('click', function(){
+    ids.forEach(function(k){ seriesEls[k].value = DEFAULTS[k]; });
+    studentize = false;
+    studentBtn.textContent = 'Studentize: OFF (WRC)';
+    resetTally();
+  });
+
+  resetTally();
+})();
+</script>
+</body>
+</html>

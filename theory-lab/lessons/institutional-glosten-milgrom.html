@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Glosten-Milgrom: Sequential Bayesian Market Making — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Market Microstructure Extensions / Glosten-Milgrom</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Market Microstructure Extensions 3 of 5</div>
+  <h1 class="tl-title">Glosten-Milgrom: Sequential Bayesian Market Making</h1>
+  <p class="tl-dek">A market maker facing one anonymous order at a time never learns who it came from — only whether it was a buy or a sell. That single bit of information is enough, applied through nothing but Bayes' rule, to derive a bid-ask spread from scratch, and to explain why quotes tighten as a session's trades accumulate and widen again right before the next scheduled surprise.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — confirmed absent from this codebase; a different Bayesian scoring method exists, but for signals, not quotes</span>
+    <span>~19 min read</span>
+    <span>Prereqs: <a href="market-microstructure.html">Market Microstructure: Price Impact &amp; the Bid-Ask Spread</a> (Kyle's Lambda), <a href="bayesian-inference.html">Bayesian Inference &amp; Updating</a></span>
+  </div>
+
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="institutional-glosten-milgrom-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Glosten-Milgrom (1985) is a <strong>discrete, one-trader-at-a-time</strong> model: each arrival is informed (probability \(\mu\)) or noise (probability \(1-\mu\)), and the market maker's whole job is picking a bid and ask via Bayes' rule — a completely different mechanism from Kyle's Lambda's continuous, size-driven linear price impact, already covered in this Theory Lab.</li>
+      <li>A trade is evidence, exactly the way this curriculum's Bayesian Inference lesson defines evidence: \(P(V{=}V_H\mid\text{buy}) = P(\text{buy}\mid V_H)P(V_H)/P(\text{buy})\), and because informed traders correlate their side with the truth while noise traders don't, every single buy or sell moves the market maker's belief \(\delta\).</li>
+      <li>Zero-expected-profit pricing forces Ask \(=E[V\mid\text{buy}]\) above \(E[V]\) and Bid \(=E[V\mid\text{sell}]\) below it — the spread is the market maker's exact insurance premium against adverse selection, and it collapses to zero the moment \(\mu=0\): no informed traders, no adverse selection, no spread.</li>
+      <li>Worked numbers used throughout (\(\delta_0=0.5\), \(\mu=0.3\), \(V_H=105\), \(V_L=95\)): the opening quote is Ask 101.50 / Bid 98.50 (spread 3.00); after a sequence of buy, buy, sell the quote tightens to 102.75/100.00/103.65/101.50 and back to 102.75/100.00 — spreads of 3.00 → 2.75 → 2.15 → 2.75, verified by hand and by the live calculator below.</li>
+      <li>This produces a genuine, testable prediction: quoted spreads should widen ahead of scheduled high-information events (a central bank decision, a jobs report) and narrow afterward as the resulting trades reveal the news — a real, documented empirical pattern, not a theoretical curiosity.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters — and why it isn't Kyle's Lambda again</h2>
+  <p>
+    <a href="market-microstructure.html">Market Microstructure: Price Impact &amp;
+    the Bid-Ask Spread</a>, already in this Theory Lab, covers two 1985 results
+    side by side: Glosten-Milgrom's spread and Kyle's Lambda's price impact.
+    That lesson introduces Glosten-Milgrom in its simplest possible form — a
+    single quote, a flat 50/50 prior on \(V\) that never moves, informed
+    share written \(\alpha\). This lesson is that same model taken all the
+    way to what actually makes it interesting: a market maker who requotes
+    <em>after every single trade</em>, starting from whatever they believed a
+    moment ago, not a fixed 50/50 reset each time. Setting the prior to
+    exactly 0.5 in every formula below reproduces that earlier lesson's
+    Spread \(=\alpha(V_H-V_L)\) result exactly — confirming these are the
+    same model, not two different ones — but a market maker who only ever
+    quotes once, from a fixed prior, has thrown away the single most
+    practically useful thing this model predicts: that spreads move,
+    systematically, as trading itself reveals information.
+  </p>
+  <p>
+    It is worth being precise about how different this model's <em>machinery</em>
+    is from Kyle's, since both live in the same lesson elsewhere in this
+    curriculum and are easy to blur together. Kyle's Lambda is a single
+    informed trader continuously choosing an order <strong>size</strong> to
+    disguise their information inside random noise-trader volume, and the
+    object it produces is a linear, continuous price-impact function,
+    \(\Delta p=\lambda Q\) — price moves smoothly with the size of net order
+    flow. Glosten-Milgrom has no notion of size at all. Traders arrive one at
+    a time, in discrete sequence; each is either informed or noise, full
+    stop; and the market maker's entire task each time is simply to pick a
+    bid and an ask via Bayesian updating before the next arrival shows up.
+    There is no impact function here — only a bid and an ask, revised, one
+    trade at a time, forever. Kyle explains why a bigger order costs more.
+    Glosten-Milgrom explains something more fundamental: why there is a gap
+    between bid and ask <em>at all</em>, for an order of any size whatsoever —
+    and it does this with no inventory-holding cost and no explicit
+    order-processing fee anywhere in the model. Pure adverse selection is
+    sufficient, by itself, to produce a spread.
+  </p>
+
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>Kyle's Lambda (already covered)</h4>
+      <p>
+        One insider chooses order <strong>size</strong> continuously to hide
+        inside noise volume. Output: a linear price-impact coefficient
+        \(\lambda=\sigma_v/(2\sigma_u)\). Answers: "how much does trading
+        more cost?"
+      </p>
+    </div>
+    <div class="tl-compare-card purple">
+      <h4>Glosten-Milgrom (this lesson)</h4>
+      <p>
+        Traders arrive one at a time, each simply informed or noise. Output:
+        a discrete bid and ask, re-set by Bayes' rule after every arrival.
+        Answers: "why is there a gap between bid and ask in the first place?"
+      </p>
+    </div>
+  </div>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A market maker who learns something from every single ticket</h3>
+    <p>
+      Picture a market maker who has no continuous price feed, no chart, no
+      news terminal — the only information they get, ever, is a stream of
+      orders arriving one at a time, each one either a buy or a sell. They
+      cannot see who sent it. Some fraction of arrivals, call it \(\mu\), are
+      traders who genuinely know whether the asset is really worth more
+      (\(V_H\)) or less (\(V_L\)) than the current quote — and an informed
+      trader who knows this will only ever buy when it's actually worth more,
+      and only ever sell when it's actually worth less. The rest of the
+      arrivals, \(1-\mu\) of them, are ordinary liquidity traders buying or
+      selling for reasons that have nothing to do with the asset's true
+      value — a treasury desk converting cashflows, a retail order, portfolio
+      rebalancing — and they flip a mental coin, buying or selling with equal
+      probability regardless of the truth.
+    </p>
+    <p>
+      The market maker's entire problem is this: every order they see is
+      slightly more likely to be a buy if the asset is really worth more, and
+      slightly more likely to be a sell if it's really worth less — simply
+      because the informed traders are in there, always pushing in the
+      "correct" direction. That means <strong>every single order is
+      evidence</strong>, whether the market maker wants it to be or not. A
+      market maker who ignores this and quotes one flat "best guess" price
+      will get run over by the informed traders every time, because informed
+      traders only ever show up on the side of a trade that's bad for the
+      market maker. The fix, exactly as in the Kyle's-Lambda lesson's own
+      framing of the problem, is to quote two prices — a bid below the
+      market maker's best guess, an ask above it — sized so that what's made
+      from noise traders passing through the gap offsets what's lost to
+      informed traders on the other side. What Glosten-Milgrom adds beyond
+      that single insight is the machinery to say <em>exactly</em> how wide
+      that gap needs to be, and — because the market maker's belief keeps
+      shifting after every trade — exactly how it should change, quote by
+      quote, as the session goes on.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>1. Setting up the model, precisely</h3>
+  <p>
+    There is a true, fundamental value of the asset, \(V\), which takes one
+    of two possible values: a high value \(V_H\) or a low value \(V_L\), with
+    \(V_H>V_L\). Unlike the earlier, simplified treatment, the market maker's
+    belief that \(V=V_H\) is a genuine variable that moves over time — call
+    it \(\delta\), starting from some prior \(\delta_0\) before any trades
+    are observed. Traders arrive one at a time, in sequence, and each
+    arrival is one of exactly two types:
+  </p>
+  <div class="tl-symbols"><table>
+    <tr><td>Informed trader</td><td>Arrives with probability \(\mu\). Knows \(V\) exactly. Always trades in the profitable direction: buys with certainty if \(V=V_H\), sells with certainty if \(V=V_L\).</td></tr>
+    <tr><td>Noise (liquidity) trader</td><td>Arrives with probability \(1-\mu\). Trades for reasons unrelated to \(V\): buys or sells with probability \(\tfrac12\) each, regardless of the truth.</td></tr>
+    <tr><td>\(\delta\)</td><td>The market maker's current belief that \(V=V_H\). Starts at a prior \(\delta_0\) and is updated by Bayes' rule after every single trade — the variable this lesson adds on top of the single-shot treatment elsewhere in this Theory Lab.</td></tr>
+    <tr><td>\(\mu\)</td><td>The (assumed known, or estimated from context) proportion of arriving order flow that is informed. Held fixed across the whole sequence below — only \(\delta\) moves.</td></tr>
+  </table></div>
+  <p>
+    The market maker cannot see which type just arrived — only whether the
+    order was a buy or a sell — and must post a bid and an ask <em>before</em>
+    that arrival shows up, using only whatever \(\delta\) currently is. As
+    before, assume the market maker is risk-neutral and competitive: free
+    entry from rival market makers drives expected profit on every quote to
+    exactly zero, which pins the bid and ask down to the market maker's
+    best updated estimate of \(V\) conditional on the trade that's about to
+    happen.
+  </p>
+
+  <h3>2. The Bayesian update, worked out in full</h3>
+  <p>
+    This is a direct application of the machinery already derived in
+    <a href="bayesian-inference.html">Bayesian Inference &amp; Updating</a> —
+    the same \(P(H\mid E) = P(E\mid H)P(H)/P(E)\), the same law-of-total-
+    probability denominator, nothing new assumed. Let \(H\) be the hypothesis
+    "\(V=V_H\)" and \(E\) be the evidence "the order just observed was a
+    buy." First, the two likelihoods — how likely a buy is, under each
+    possible true value of \(V\):
+  </p>
+  <div class="tl-math">\[ P(\text{buy}\mid V_H) = \mu\cdot 1 + (1-\mu)\cdot\tfrac12 \qquad\qquad P(\text{buy}\mid V_L) = \mu\cdot 0 + (1-\mu)\cdot\tfrac12 \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>μ·1</code><span>an informed trader buys with certainty when V is really high</span></div>
+    <div class="tl-eq-chip c2"><code>μ·0</code><span>an informed trader never buys when they know V is really low</span></div>
+    <div class="tl-eq-chip c3"><code>(1−μ)·½ (both)</code><span>a noise trader buys half the time regardless of the truth</span></div>
+  </div>
+  <p>
+    Read this exactly as the asymmetry it is: if \(V\) is truly high, a buy
+    can come from an informed trader (who always buys in this state) or a
+    noise trader who happened to buy; if \(V\) is truly low, a buy can
+    <em>only</em> come from a noise trader — an informed trader would never
+    buy something they know is overvalued. That asymmetry, entirely caused
+    by \(\mu\), is the whole engine of the model: whenever \(\mu>0\), a buy
+    is strictly more likely under \(V_H\) than under \(V_L\), which is
+    exactly what "a trade is evidence" means in Bayesian terms.
+  </p>
+  <p>
+    Apply the law of total probability (the same expansion
+    \(P(E)=P(E\mid H)P(H)+P(E\mid\lnot H)P(\lnot H)\) from the Bayesian
+    Inference lesson) to get the unconditional probability of a buy at all,
+    using the market maker's <em>current</em> belief \(\delta\) as the prior:
+  </p>
+  <div class="tl-math">\[ P(\text{buy}) = P(\text{buy}\mid V_H)\,\delta + P(\text{buy}\mid V_L)\,(1-\delta) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c4"><code>δ</code><span>the market maker's belief right now — the prior for this update, whatever trade came before it</span></div>
+  </div>
+  <p>Now Bayes' rule itself, exactly the form derived in the Bayesian Inference lesson:</p>
+  <div class="tl-math">\[ P(V_H \mid \text{buy}) = \frac{P(\text{buy}\mid V_H)\,\delta}{P(\text{buy})} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>P(V_H | buy)</code><span>the posterior — updated belief that V is high, after seeing this one buy</span></div>
+    <div class="tl-eq-chip c2"><code>P(buy | V_H)·δ</code><span>numerator: likelihood times prior, exactly as derived in the Bayesian Inference lesson</span></div>
+  </div>
+  <p>
+    And the mirror-image update for a sell — same law of total probability,
+    same Bayes' rule, with \(P(\text{sell}\mid V_H)=1-P(\text{buy}\mid V_H)\)
+    and \(P(\text{sell}\mid V_L)=1-P(\text{buy}\mid V_L)\):
+  </p>
+  <div class="tl-math">\[ P(V_H \mid \text{sell}) = \frac{P(\text{sell}\mid V_H)\,\delta}{P(\text{sell})}, \qquad P(\text{sell}) = P(\text{sell}\mid V_H)\,\delta + P(\text{sell}\mid V_L)\,(1-\delta) \]</div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Every trade is a little clue, and Bayes' rule is just the exact arithmetic for how big a clue it is. A buy is a slightly stronger clue for "the asset is really worth more" than for "it's really worth less" — because some of the buyers actually know something, and knowing-buyers only ever buy when it's genuinely worth more. The market maker doesn't need to know <em>which</em> buyer just showed up to still correctly update their guess, using nothing but how much more common buys are in the "really worth more" world than in the "really worth less" world.</p>
+  </div>
+
+  <h3>3. From the posterior to the quote — and why a spread exists at all</h3>
+  <p>
+    Zero-expected-profit pricing says the ask must equal the market maker's
+    expected value of \(V\) given that a buy is about to arrive; set it any
+    lower and informed buyers eat the market maker alive, any higher and a
+    rival market maker undercuts the quote. Using the posterior derived
+    above:
+  </p>
+  <div class="tl-math">\[ \text{Ask} = E[V\mid\text{buy}] = P(V_H\mid\text{buy})\,V_H + \big(1-P(V_H\mid\text{buy})\big)\,V_L \]</div>
+  <div class="tl-math">\[ \text{Bid} = E[V\mid\text{sell}] = P(V_H\mid\text{sell})\,V_H + \big(1-P(V_H\mid\text{sell})\big)\,V_L \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c3"><code>Ask</code><span>the market maker's sell price — pinned to the belief conditional on a buy having just arrived</span></div>
+    <div class="tl-eq-chip c4"><code>Bid</code><span>the market maker's buy price — the mirror image, conditional on a sell</span></div>
+  </div>
+  <p>
+    Because \(\mu\ge 0\), \(P(\text{buy}\mid V_H)\ge P(\text{buy}\mid V_L)\)
+    always, with equality only at \(\mu=0\). That single inequality is
+    everything: it guarantees \(P(V_H\mid\text{buy}) \ge \delta\) and
+    \(P(V_H\mid\text{sell}) \le \delta\) — a buy can only ever raise the
+    market maker's belief in \(V_H\), a sell can only ever lower it — which
+    in turn guarantees Ask \(\ge E[V] \ge\) Bid, with the unconditional
+    current expectation \(E[V]=\delta V_H + (1-\delta)V_L\) sitting exactly
+    between them. The spread, Ask minus Bid, is strictly positive whenever
+    \(\mu>0\) — pure adverse selection is sufficient on its own to produce a
+    spread, with no inventory-holding cost and no order-processing fee
+    anywhere in this derivation.
+  </p>
+  <div class="tl-solid purple">
+    <strong>The edge case is the whole proof.</strong> Set \(\mu=0\) — no
+    informed traders at all — and \(P(\text{buy}\mid V_H)=P(\text{buy}\mid
+    V_L)=\tfrac12\) exactly: a buy is now completely uninformative, the
+    posterior equals the prior no matter what is observed, and Ask
+    \(=\) Bid \(=E[V]\). Zero informed trading produces exactly zero spread
+    in this model. Every dollar of spread Glosten-Milgrom predicts exists
+    <em>because</em> \(\mu>0\) — it is a direct, calibrated read on how much
+    informed-trading risk the market maker believes they are facing, not an
+    administrative fee bolted on separately.
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If literally nobody trading against you ever knows more than you do, there's no reason to protect yourself with a gap between your buy and sell price at all — you'd just quote one price and be fine on average. The moment even a few of the people you trade with might genuinely know something you don't, quoting one price becomes a losing bet, and the gap you need to survive grows exactly in proportion to how many of them you think there are.</p>
+  </div>
+
+  <h3>4. Sequential updating: quotes that move, and a testable prediction</h3>
+  <p>
+    Here is the part the single-shot version of this model, covered
+    elsewhere in this Theory Lab, deliberately leaves out: nothing about
+    Bayes' rule cares whether \(\delta\) came from a textbook prior or from
+    the market maker's own posterior one trade ago. After observing a trade
+    and updating \(\delta\), the market maker simply <strong>requotes</strong>
+    — posts a brand-new bid and ask for the next arrival, computed from the
+    updated \(\delta\) using the exact same two formulas above. Today's
+    posterior becomes the very next quote's prior, exactly the sequential-
+    updating idea already established in the Bayesian Inference lesson.
+  </p>
+  <p>
+    Two structural facts fall straight out of the formulas above, without
+    needing any new machinery. First, the spread is <strong>widest exactly
+    when \(\delta=\tfrac12\)</strong> — maximal uncertainty about \(V\) — and
+    shrinks toward zero as \(\delta\) moves toward either 0 or 1, because a
+    market maker who is already nearly certain what \(V\) is has very little
+    left to be adversely selected on. Second, because each buy pushes
+    \(\delta\) away from \(\tfrac12\) (toward more certainty about \(V_H\))
+    and each sell pushes it the other way, a run of same-direction trades
+    drives \(\delta\) steadily away from indifference and the quoted spread
+    <strong>narrows as the sequence accumulates</strong> — right up until a
+    trade in the <em>other</em> direction arrives, which pulls \(\delta\)
+    back toward \(\tfrac12\) and widens the spread again. Narrowing is not
+    automatic trade-by-trade; it is what happens, on average, as evidence
+    keeps accumulating in one direction — and the worked example below shows
+    both effects concretely, including the widening-back-up case.
+  </p>
+  <p>
+    This yields a genuine, testable, real-world prediction, not just a
+    theoretical curiosity: quoted spreads should be systematically
+    <strong>wider heading into scheduled high-information-asymmetry
+    moments</strong> — earnings, a jobs report, a
+    <a href="central-bank-policy.html">central bank policy decision</a> —
+    precisely because more participants are trading on private forecasts,
+    faster models, or simply anticipation of the outcome before it's public,
+    which is exactly what a spike in the market maker's perceived \(\mu\)
+    means in this model. Immediately afterward, the burst of trading that
+    follows the release is the market rapidly working through exactly the
+    sequential update derived above: each print pushes \(\delta\) further
+    from indifference, the residual uncertainty about the "true" post-news
+    value collapses fast, and the spread compresses accordingly. This is a
+    well-documented empirical pattern in real markets — spreads visibly
+    widen pre-announcement and compress post-announcement — and it is
+    exactly what this section's math predicts, not an empirical coincidence
+    layered on afterward.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Right before a big scheduled announcement, more of the people trading might already have a good guess what it'll say — so the market maker widens the gap to protect against them. The instant the announcement drops and people start actually trading on it, each trade is a strong, consistent clue, and the market maker's guess firms up fast — so the gap shrinks again almost as quickly as it widened, trade by trade, exactly like turning a dial rather than flipping a switch.</p>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>A full sequence, computed by hand: buy, buy, sell</h3>
+    <p>
+      Take \(\delta_0=0.5\) (fully uncertain prior), \(\mu=0.3\) (30% of
+      arrivals are informed), \(V_H=105\), \(V_L=95\). First the two
+      likelihoods, fixed for the whole sequence:
+    </p>
+    <div class="tl-math">\[ P(\text{buy}\mid V_H)=0.3(1)+0.7(0.5)=0.65 \qquad P(\text{buy}\mid V_L)=0.3(0)+0.7(0.5)=0.35 \]</div>
+    <p><strong>Opening quote, from \(\delta_0=0.5\):</strong></p>
+    <div class="tl-math">\[ P(\text{buy}) = 0.65(0.5)+0.35(0.5) = 0.500 \qquad P(V_H\mid\text{buy}) = \frac{0.65(0.5)}{0.500} = 0.6500 \]</div>
+    <div class="tl-math">\[ \text{Ask}_0 = 0.65(105)+0.35(95) = 101.50 \qquad \text{Bid}_0 = 0.35(105)+0.65(95) = 98.50 \qquad \text{Spread}_0 = 3.00 \]</div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c1"><code>δ₀ = 0.50</code><span>maximal uncertainty — the widest this quote will ever be under these parameters</span></div>
+      <div class="tl-eq-chip c2"><code>Spread₀ = 3.00</code><span>matches μ(V_H−V_L)=0.3×10=3.00 exactly, confirming the δ=0.5 special case</span></div>
+    </div>
+    <p><strong>Trade 1 arrives: a BUY.</strong> The market maker updates using \(\delta_0=0.5\) as the prior — this is exactly the calculation above, so \(\delta_1 = P(V_H\mid\text{buy}) = 0.6500\).</p>
+    <p><strong>New quote, from \(\delta_1=0.65\):</strong></p>
+    <div class="tl-math">\[ \text{Ask}_1 = \frac{0.65^2(105) + 0.35^2(95)}{0.65^2+0.35^2}= 102.75 \qquad \text{Bid}_1 = \frac{0.65(0.35)(105)+0.35(0.65)(95)}{0.65(0.35)+0.35(0.65)} = 100.00 \]</div>
+    <div class="tl-math">\[ \text{Spread}_1 = 2.75 \]</div>
+    <p><strong>Trade 2 arrives: another BUY,</strong> updating from \(\delta_1=0.65\): \(\delta_2 = P(V_H\mid\text{buy}) = \dfrac{0.65(0.65)}{0.65(0.65)+0.35(0.35)} = \dfrac{0.4225}{0.5450} = 0.7752\).</p>
+    <p><strong>New quote, from \(\delta_2=0.7752\):</strong></p>
+    <div class="tl-math">\[ \text{Ask}_2 = 103.65 \qquad \text{Bid}_2 = 101.50 \qquad \text{Spread}_2 = 2.15 \]</div>
+    <p><strong>Trade 3 arrives: a SELL,</strong> updating from \(\delta_2=0.7752\): \(\delta_3 = P(V_H\mid\text{sell}) = \dfrac{0.35(0.7752)}{0.35(0.7752)+0.65(0.2248)} = 0.6500\).</p>
+    <div class="tl-math">\[ \text{Ask}_3 = 102.75 \qquad \text{Bid}_3 = 100.00 \qquad \text{Spread}_3 = 2.75 \]</div>
+    <div class="tl-symbols"><table>
+      <tr><td>Stage</td><td>δ (belief \(V{=}V_H\)) — Ask — Bid — Spread</td></tr>
+      <tr><td>Opening</td><td>0.5000 — 101.50 — 98.50 — <strong>3.00</strong></td></tr>
+      <tr><td>After buy #1</td><td>0.6500 — 102.75 — 100.00 — <strong>2.75</strong></td></tr>
+      <tr><td>After buy #2</td><td>0.7752 — 103.65 — 101.50 — <strong>2.15</strong></td></tr>
+      <tr><td>After sell #3</td><td>0.6500 — 102.75 — 100.00 — <strong>2.75</strong></td></tr>
+    </table></div>
+    <p>
+      Two consistent buys shrink the spread monotonically, 3.00 → 2.75 →
+      2.15, exactly as the "narrows toward certainty" claim above predicts.
+      The sell that follows doesn't send \(\delta\) all the way back to the
+      original 0.50 prior — it lands exactly back at 0.6500, precisely the
+      belief (and precisely the quote) that existed right after the very
+      first buy. That is not a coincidence: expressed as odds,
+      \(\delta/(1-\delta)\), each buy multiplies the odds by the same fixed
+      factor \(0.65/0.35\), and each sell multiplies by its exact reciprocal
+      — so two buys and one sell net out to exactly one buy's worth of
+      evidence, landing precisely where one buy alone would. Every number in
+      this table has been independently verified in Node.js and matches to
+      full floating-point precision; the live calculator below reproduces it
+      exactly.
+    </p>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Set the parameters, then requote after each trade, live</h3>
+    <p>
+      Starts on the worked example's numbers. Change \(\delta_0\), \(\mu\),
+      \(V_H\) or \(V_L\) and the opening quote below recalculates instantly
+      (and the simulation resets to that new starting point). Then click
+      "Buy arrives" or "Sell arrives" repeatedly to watch \(\delta\) update
+      and the market maker requote, exactly as derived above.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Prior \(\delta_0\) (%)</span></div>
+        <input type="number" id="gm-scratch-delta0" class="tl-scratch-input" value="50" step="1" min="0" max="100">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Informed share \(\mu\) (%)</span></div>
+        <input type="number" id="gm-scratch-mu" class="tl-scratch-input" value="30" step="1" min="0" max="100">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>High value \(V_H\)</span></div>
+        <input type="number" id="gm-scratch-vh" class="tl-scratch-input" value="105" step="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Low value \(V_L\)</span></div>
+        <input type="number" id="gm-scratch-vl" class="tl-scratch-input" value="95" step="1">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Opening — Ask = <b id="gm-scratch-ask0">101.50</b>&emsp;Bid = <b id="gm-scratch-bid0">98.50</b>&emsp;Spread = <b id="gm-scratch-spread0">3.00</b>&emsp;E[V] = <b id="gm-scratch-mid0">100.00</b>
+      <span id="gm-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="gm-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+
+    <p style="margin-top:18px;border-top:1px solid var(--border);padding-top:14px;font-size:13.5px;color:var(--text2)">
+      <strong style="color:var(--text)">Now simulate the sequence.</strong> Each click updates \(\delta\)
+      by Bayes' rule from whatever it currently is, then requotes.
+    </p>
+    <div class="tl-btnrow">
+      <button type="button" id="gm-sim-buy" class="tl-btn">Buy arrives →</button>
+      <button type="button" id="gm-sim-sell" class="tl-btn">← Sell arrives</button>
+      <button type="button" id="gm-sim-reset" class="tl-btn">Reset simulation</button>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Current belief &delta; = <b id="gm-sim-delta">0.5000</b>&emsp;Trades simulated: <b id="gm-sim-count">0</b>
+    </div>
+    <div class="tl-readout">
+      Live quote — Ask = <b id="gm-sim-ask">101.50</b>&emsp;Bid = <b id="gm-sim-bid">98.50</b>&emsp;Spread = <b id="gm-sim-spread">3.00</b>
+      <span id="gm-sim-note" class="tl-scratch-note"></span>
+    </div>
+    <ol id="gm-sim-log" style="margin-top:10px;font-size:13px;color:var(--text2)"></ol>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">The opening quote: E[V] in the middle, Ask above, Bid below</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagram showing the unconditional expected value E of V at the center, with the ask price above it and the bid price below it, and two arrows: a green arrow labeled buy pushing belief upward toward the ask, and a red arrow labeled sell pushing belief downward toward the bid.">
+      <line x1="70" y1="150" x2="570" y2="150" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:4,4"/>
+      <text x="580" y="154" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">price</text>
+
+      <rect x="230" y="128" width="180" height="44" rx="8" style="fill:var(--panel2,var(--s2));stroke:var(--border2)"/>
+      <text x="320" y="146" text-anchor="middle" fill="var(--text)" font-size="13" font-family="'DM Mono',monospace">E[V] = 100.00</text>
+      <text x="320" y="162" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">unconditional, at &delta;=0.50</text>
+
+      <rect x="235" y="40" width="170" height="46" rx="8" style="fill:var(--blue-bg);stroke:var(--blue-bd)"/>
+      <text x="320" y="59" text-anchor="middle" fill="var(--text)" font-size="13" font-family="'DM Mono',monospace">Ask = 101.50</text>
+      <text x="320" y="75" text-anchor="middle" fill="var(--blue)" font-size="10" font-family="'DM Mono',monospace">= E[V | buy]</text>
+
+      <rect x="235" y="220" width="170" height="46" rx="8" style="fill:var(--amber-bg);stroke:var(--amber-bd)"/>
+      <text x="320" y="239" text-anchor="middle" fill="var(--text)" font-size="13" font-family="'DM Mono',monospace">Bid = 98.50</text>
+      <text x="320" y="255" text-anchor="middle" fill="var(--amber)" font-size="10" font-family="'DM Mono',monospace">= E[V | sell]</text>
+
+      <line x1="320" y1="126" x2="320" y2="90" style="stroke:var(--green);stroke-width:2.5" marker-end="url(#gmArrowUp)"/>
+      <text x="336" y="108" fill="var(--green)" font-size="11" font-family="'DM Mono',monospace" font-weight="700">BUY</text>
+      <text x="336" y="121" fill="var(--text3)" font-size="9.5" font-family="'DM Mono',monospace">belief shifts up</text>
+
+      <line x1="320" y1="174" x2="320" y2="216" style="stroke:var(--red);stroke-width:2.5" marker-end="url(#gmArrowDown)"/>
+      <text x="336" y="196" fill="var(--red)" font-size="11" font-family="'DM Mono',monospace" font-weight="700">SELL</text>
+      <text x="336" y="209" fill="var(--text3)" font-size="9.5" font-family="'DM Mono',monospace">belief shifts down</text>
+
+      <defs>
+        <marker id="gmArrowUp" markerWidth="8" markerHeight="8" refX="4" refY="0" orient="auto"><path d="M0,4 L4,-4 L8,4 Z" fill="var(--green)"/></marker>
+        <marker id="gmArrowDown" markerWidth="8" markerHeight="8" refX="4" refY="8" orient="auto"><path d="M0,4 L4,12 L8,4 Z" fill="var(--red)"/></marker>
+      </defs>
+
+      <text x="120" y="45" fill="var(--text3)" font-size="10.5" font-family="'DM Mono',monospace">V_H = 105</text>
+      <text x="120" y="262" fill="var(--text3)" font-size="10.5" font-family="'DM Mono',monospace">V_L = 95</text>
+    </svg>
+    <div class="tl-chart-caption">
+      Every quote is anchored around the current unconditional expectation
+      \(E[V]=\delta V_H+(1-\delta)V_L\) — never above it (the ask) and never
+      below it (the bid). A buy is evidence <em>for</em> \(V_H\), so it
+      pushes the next quote's whole picture upward; a sell pushes it
+      downward. The gap itself is not decoration — it is exactly as wide as
+      needed to keep the market maker's expected profit at zero given how
+      much of the flow is believed informed.
+    </div>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">The spread narrows with consecutive confirming trades — and widens back on a contrarian one</div>
+    <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart of the quoted spread across four stages of the worked example: 3.00 at the opening quote, 2.75 after one buy, 2.15 after two buys, and back up to 2.75 after a third trade that is a sell.">
+      <line x1="60" y1="220" x2="600" y2="220" style="stroke:var(--border2)"/>
+      <text x="26" y="120" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace" transform="rotate(-90 26 120)">spread</text>
+
+      <rect x="90" y="52" width="80" height="168" rx="4" style="fill:var(--purple-bg);stroke:var(--purple-bd)"/>
+      <text x="130" y="44" text-anchor="middle" fill="var(--purple)" font-size="13" font-family="'DM Mono',monospace" font-weight="700">3.00</text>
+      <text x="130" y="238" text-anchor="middle" fill="var(--text3)" font-size="10.5" font-family="'DM Mono',monospace">opening</text>
+
+      <rect x="220" y="72" width="80" height="148" rx="4" style="fill:var(--blue-bg);stroke:var(--blue-bd)"/>
+      <text x="260" y="64" text-anchor="middle" fill="var(--blue)" font-size="13" font-family="'DM Mono',monospace" font-weight="700">2.75</text>
+      <text x="260" y="238" text-anchor="middle" fill="var(--text3)" font-size="10.5" font-family="'DM Mono',monospace">after buy #1</text>
+
+      <rect x="350" y="99" width="80" height="121" rx="4" style="fill:var(--green-bg);stroke:var(--green-bd)"/>
+      <text x="390" y="91" text-anchor="middle" fill="var(--green)" font-size="13" font-family="'DM Mono',monospace" font-weight="700">2.15</text>
+      <text x="390" y="238" text-anchor="middle" fill="var(--text3)" font-size="10.5" font-family="'DM Mono',monospace">after buy #2</text>
+
+      <rect x="480" y="72" width="80" height="148" rx="4" style="fill:var(--red-bg);stroke:var(--red-bd)"/>
+      <text x="520" y="64" text-anchor="middle" fill="var(--red)" font-size="13" font-family="'DM Mono',monospace" font-weight="700">2.75</text>
+      <text x="520" y="238" text-anchor="middle" fill="var(--text3)" font-size="10.5" font-family="'DM Mono',monospace">after sell #3</text>
+    </svg>
+    <div class="tl-chart-caption">
+      Two buys in a row push \(\delta\) steadily away from 0.50, and the
+      spread shrinks monotonically as it does — 3.00 → 2.75 → 2.15. The
+      third trade, a sell, is contrarian evidence: it pulls \(\delta\) back
+      toward indifference, and the spread widens again, back to 2.75.
+      Narrowing is what happens on average as consistent evidence
+      accumulates in one direction; it is not a one-way ratchet that only
+      ever tightens.
+    </div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Nobody at a real desk runs this exact Bayesian update by hand, trade by
+    trade — but the intuition it formalizes shows up constantly, under
+    different names:
+  </p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🧪</div>
+      <h4>Order-flow toxicity metrics</h4>
+      <p>Measures like VPIN (Volume-Synchronized Probability of Informed Trading) are direct practical descendants of exactly this idea: estimate, from observed order-flow imbalance, how "informed" current flow looks, and widen protective quotes when it looks more toxic — the empirical cousin of watching \(\mu\) rise.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">⚡</div>
+      <h4>Algorithmic requoting after every print</h4>
+      <p>Electronic market makers update quotes essentially trade-by-trade, not on a fixed clock — a direct, practical echo of Glosten-Milgrom's discrete "requote after every arrival" structure, as distinct from Kyle's continuous impact curve.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">📅</div>
+      <h4>Pre/post-event spread scheduling</h4>
+      <p>Desks mechanically widen spreads ahead of scheduled releases and watch them compress in the minutes after, precisely because the perceived informed share and the market's residual uncertainty both spike beforehand and both resolve fast once the first wave of trades has priced the news in.</p>
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>Watching a G10 pair's spread breathe around a rate decision</h3>
+    <p>
+      In the hour before a scheduled central bank decision, a market maker
+      quoting a major FX pair widens their spread well beyond its normal
+      level — not because liquidity has physically vanished the way it does
+      in Kyle's thin-session example, but because they believe a materially
+      higher share of the flow crossing their book in this window is trading
+      on a private read of the likely outcome. That is a rise in the
+      market maker's perceived \(\mu\), exactly as this lesson's model
+      defines it, and the wider spread is the exact protective response the
+      zero-expected-profit condition demands. See
+      <a href="central-bank-policy.html">Central Bank Policy</a> for what
+      actually drives the outcome uncertainty behind this.
+    </p>
+    <p>
+      The moment the decision is announced, order flow surges — and,
+      crucially, it is no longer a coin flip: the initial wave of trades is
+      heavily one-sided, reflecting genuine reaction to the news. Each of
+      those early trades is powerful evidence in the Bayesian sense derived
+      above, and \(\delta\) (or its real-world analogue, the market's
+      residual uncertainty about the new fair value) collapses fast over the
+      next several prints. Spreads compress accordingly, often within
+      minutes — the exact sequential-updating mechanism from Section 02,
+      playing out live rather than as a hand-worked example.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where this model is misread or over-applied</h3>
+    <p>
+      <strong>Confusing \(\mu\) and \(\delta\).</strong> \(\mu\) is a fixed
+      parameter — the assumed share of informed arrivals — and does not move
+      trade to trade in this lesson's setup. \(\delta\) is the variable that
+      actually updates: the market maker's belief about \(V\). Mixing them up
+      is an easy notational trap, since both are probabilities between 0 and
+      1 that both matter to the quote.
+    </p>
+    <p>
+      <strong>Treating Glosten-Milgrom and Kyle's Lambda as competing
+      explanations for the same thing.</strong> They aren't. Glosten-Milgrom
+      explains the existence and size of a discrete bid-ask gap from a
+      sequence of unit trades; Kyle explains how the price concession scales
+      with order <em>size</em> in a continuous setting. A real quoted spread
+      and real observed slippage can both be present, driven by both
+      mechanisms simultaneously, without either model needing to be "wrong."
+    </p>
+    <p>
+      <strong>Assuming the spread narrows monotonically, trade after
+      trade.</strong> The worked example above shows this directly: two
+      confirming buys narrow the spread, but the very next contrarian sell
+      widens it back up. Narrowing is a statement about what tends to happen
+      as evidence accumulates <em>in one direction</em> — not a one-way
+      ratchet that can only ever tighten as a session goes on.
+    </p>
+    <p>
+      <strong>Reading the whole observed spread as pure adverse-selection
+      premium.</strong> Exactly the same caveat already raised in the Kyle's
+      Lambda lesson applies here: real quoted spreads also bake in
+      order-processing costs and inventory-risk compensation (Ho-Stoll-style
+      inventory models, not covered in either lesson). Glosten-Milgrom
+      isolates one real, provable component of the spread — it is not a
+      claim that adverse selection is the only thing in it.
+    </p>
+    <p>
+      <strong>Treating \(\mu\) and \(\delta_0\) as directly observable.</strong>
+      Neither is handed to a real market maker on a plate. In practice both
+      are estimated — from historical order-flow patterns, from a scheduled
+      calendar of information events, or from toxicity proxies like VPIN —
+      and every conclusion drawn from this model inherits whatever
+      uncertainty exists in those estimates.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Glosten-Milgrom and Kyle's Lambda are structurally different models.</strong> One is discrete, sequential, single-order, and produces a bid/ask via Bayesian updating; the other is continuous, size-driven, and produces a linear impact coefficient. Both are 1985 results, and neither is a special case of the other.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A trade is Bayesian evidence, derived exactly as this curriculum's Bayesian Inference lesson defines evidence.</strong> \(P(V_H\mid\text{buy})=P(\text{buy}\mid V_H)\delta/P(\text{buy})\), with the asymmetry between \(P(\text{buy}\mid V_H)\) and \(P(\text{buy}\mid V_L)\) generated entirely by \(\mu\).</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Pure adverse selection is sufficient to produce a spread — no inventory or order-processing cost required.</strong> At \(\mu=0\) the spread collapses to exactly zero; the spread's entire existence in this model is a function of \(\mu>0\).</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The market maker requotes after every trade, using the previous quote's posterior as the new prior.</strong> Worked numbers: \(\delta_0{=}0.5,\mu{=}0.3,V_H{=}105,V_L{=}95\) gives an opening spread of 3.00, narrowing to 2.75 then 2.15 after two confirming buys, and widening back to 2.75 after one contrarian sell — verified independently in Node.js.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Narrowing is not a one-way ratchet.</strong> Spreads shrink as evidence accumulates consistently in one direction and widen back on new, conflicting evidence — the model predicts genuine oscillation, not monotonic tightening.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The testable, real-world prediction: spreads widen ahead of scheduled information events and compress after.</strong> Both because \(\mu\) is believed higher pre-event and because the resulting trades sharply resolve \(\delta\) post-event — a genuine, documented empirical pattern, not solely a theoretical artifact.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. What is the single most fundamental structural difference between Kyle's Lambda and Glosten-Milgrom, as market microstructure models?</summary>
+    <div class="tl-answer">
+      Kyle's Lambda is a continuous model in which one informed trader
+      chooses an order <em>size</em> to disguise their information inside
+      random noise-trader volume, producing a linear price-impact function
+      \(\Delta p=\lambda Q\) that moves smoothly with net order flow.
+      Glosten-Milgrom is a discrete, sequential model with no notion of
+      order size at all: traders arrive one at a time, each is simply
+      informed or noise, and the market maker's job is to post a bid and ask
+      via Bayesian updating before each arrival — with no continuous impact
+      function, only discrete quotes revised trade by trade. They answer
+      different questions: Kyle explains why bigger orders cost more;
+      Glosten-Milgrom explains why a bid-ask gap exists in the first place,
+      for an order of any size.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why does observing a single buy order necessarily raise the market maker's posterior belief that \(V=V_H\), for any \(\mu>0\)?</summary>
+    <div class="tl-answer">
+      Because \(P(\text{buy}\mid V_H)=\mu+\tfrac{1-\mu}{2}\) is strictly
+      greater than \(P(\text{buy}\mid V_L)=\tfrac{1-\mu}{2}\) whenever
+      \(\mu>0\) — an informed trader always buys when \(V=V_H\) and never
+      buys when \(V=V_L\), while noise traders buy with equal probability
+      regardless. That asymmetry means a buy is inherently more consistent
+      with the world in which \(V=V_H\) than with the world in which
+      \(V=V_L\), and Bayes' rule mechanically converts a likelihood
+      asymmetry like that into a posterior shift in the same direction —
+      exactly the same logic already established in the Bayesian Inference
+      lesson.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Using \(\delta_0=0.5\), \(\mu=0.3\), \(V_H=105\), \(V_L=95\), walk through computing the opening ask.</summary>
+    <div class="tl-answer">
+      \(P(\text{buy}\mid V_H)=0.3(1)+0.7(0.5)=0.65\) and
+      \(P(\text{buy}\mid V_L)=0.3(0)+0.7(0.5)=0.35\). With \(\delta_0=0.5\):
+      \(P(\text{buy})=0.65(0.5)+0.35(0.5)=0.500\), and
+      \(P(V_H\mid\text{buy})=0.65(0.5)/0.500=0.6500\). The ask is
+      \(E[V\mid\text{buy}]=0.65(105)+0.35(95)=68.25+33.25=\mathbf{101.50}\).
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Why doesn't Glosten-Milgrom need any inventory-holding cost or order-processing fee to produce a positive spread — and what happens to the spread if \(\mu=0\)?</summary>
+    <div class="tl-answer">
+      The spread here is derived purely from the zero-expected-profit
+      condition applied to a market maker who is being adversely selected:
+      Ask \(=E[V\mid\text{buy}]\ge E[V]\) and Bid
+      \(=E[V\mid\text{sell}]\le E[V]\) follow directly from the fact that a
+      buy is more likely under \(V_H\) than \(V_L\) (and the mirror for
+      sell) — nothing about holding inventory or processing an order enters
+      the derivation at all. If \(\mu=0\), then
+      \(P(\text{buy}\mid V_H)=P(\text{buy}\mid V_L)=\tfrac12\) exactly, a
+      trade carries no information whatsoever, the posterior always equals
+      the prior, and Ask \(=\) Bid \(=E[V]\) — the spread is exactly zero.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. In the worked sequence (buy, buy, sell), why doesn't the third trade — a sell — send \(\delta\) all the way back to the original 0.50 prior?</summary>
+    <div class="tl-answer">
+      Expressed as odds, \(\delta/(1-\delta)\), each buy multiplies the
+      current odds by the fixed factor \(0.65/0.35\) and each sell multiplies
+      by the exact reciprocal, \(0.35/0.65\) — buy and sell are mirror-image
+      evidence of equal strength in opposite directions. Two buys followed
+      by one sell therefore net out to exactly one buy's worth of evidence
+      (two multiplications by the buy factor, one by its reciprocal, leaves
+      one factor of the buy multiplier remaining), which is why \(\delta\)
+      after buy-buy-sell lands at exactly 0.6500 — precisely the belief (and
+      precisely the quote) that existed right after the very first buy alone,
+      not back at the original 0.50.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. What genuine, testable real-world prediction does sequential Bayesian updating make about spreads around a scheduled event like a central bank decision?</summary>
+    <div class="tl-answer">
+      Quoted spreads should be systematically wider in the period leading up
+      to a scheduled high-information-asymmetry event, because the market
+      maker's perceived share of informed order flow, \(\mu\), is believed
+      to spike as more participants trade ahead of the outcome. Immediately
+      after the announcement, the resulting burst of one-sided, information-
+      revealing trades drives a fast sequence of Bayesian updates that pulls
+      \(\delta\) rapidly away from indifference, collapsing residual
+      uncertainty about the new fair value — and the spread should compress
+      accordingly, often within minutes. This is a real, well-documented
+      empirical pattern in markets around events such as central bank
+      decisions, not merely a theoretical artifact of the model.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Lawrence R. Glosten &amp; Paul R. Milgrom, "Bid, Ask and Transaction Prices in a Specialist Market with Heterogeneously Informed Traders," <em>Journal of Financial Economics</em>, 14(1), 1985 — the original derivation this lesson works through in full, including the sequential-updating extension.</li>
+    <li>Albert S. "Pete" Kyle, "Continuous Auctions and Insider Trading," <em>Econometrica</em>, 1985 — the companion 1985 result covered in the prerequisite lesson, contrasted throughout this one.</li>
+    <li>Maureen O'Hara, <em>Market Microstructure Theory</em>, Blackwell, 1995 — the standard textbook synthesis of both this model and the wider adverse-selection literature it founded.</li>
+    <li><code>theory-lab/lessons/bayesian-inference.html</code> in this repo — the Bayes'-rule machinery this lesson's derivation applies directly, notation and all.</li>
+    <li><code>theory-lab/lessons/market-microstructure.html</code> in this repo — the single-shot, fixed-prior version of this exact model, presented alongside Kyle's Lambda.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="institutional-roll-spread-estimator.html">← Roll's Spread Estimator</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="institutional-pin.html">PIN: The Probability of Informed Trading →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var d0Input = document.getElementById('gm-scratch-delta0');
+  if (!d0Input) return;
+  var muInput = document.getElementById('gm-scratch-mu');
+  var vhInput = document.getElementById('gm-scratch-vh');
+  var vlInput = document.getElementById('gm-scratch-vl');
+  var ask0Out = document.getElementById('gm-scratch-ask0');
+  var bid0Out = document.getElementById('gm-scratch-bid0');
+  var spread0Out = document.getElementById('gm-scratch-spread0');
+  var mid0Out = document.getElementById('gm-scratch-mid0');
+  var note = document.getElementById('gm-scratch-note');
+  var resetBtn = document.getElementById('gm-scratch-reset');
+
+  var buyBtn = document.getElementById('gm-sim-buy');
+  var sellBtn = document.getElementById('gm-sim-sell');
+  var simResetBtn = document.getElementById('gm-sim-reset');
+  var deltaOut = document.getElementById('gm-sim-delta');
+  var countOut = document.getElementById('gm-sim-count');
+  var simAskOut = document.getElementById('gm-sim-ask');
+  var simBidOut = document.getElementById('gm-sim-bid');
+  var simSpreadOut = document.getElementById('gm-sim-spread');
+  var simNote = document.getElementById('gm-sim-note');
+  var logEl = document.getElementById('gm-sim-log');
+
+  var DEFAULTS = { delta0: 50, mu: 30, vh: 105, vl: 95 };
+  var EPS = 1e-9;
+
+  // Running simulation state.
+  var state = { delta: 0.5, mu: 0.3, vh: 105, vl: 95, count: 0, valid: true };
+
+  function readInputs(){
+    return {
+      delta0: parseFloat(d0Input.value) / 100,
+      mu: parseFloat(muInput.value) / 100,
+      vh: parseFloat(vhInput.value),
+      vl: parseFloat(vlInput.value)
+    };
+  }
+
+  function validate(p){
+    if (![p.delta0, p.mu, p.vh, p.vl].every(isFinite)) return 'Enter a number in every field.';
+    if (p.delta0 < 0 || p.delta0 > 1) return 'δ₀ must be a percentage between 0 and 100.';
+    if (p.mu < 0 || p.mu > 1) return 'μ must be a percentage between 0 and 100.';
+    if (p.vh <= p.vl) return 'V_H must be strictly greater than V_L.';
+    return null;
+  }
+
+  // Given a prior `delta`, compute the resulting quote {ask, bid, spread, mid}.
+  function quoteFor(delta, mu, vh, vl){
+    var pBuyH = mu * 1 + (1 - mu) * 0.5;
+    var pBuyL = mu * 0 + (1 - mu) * 0.5;
+    var pSellH = 1 - pBuyH;
+    var pSellL = 1 - pBuyL;
+    var pBuy = pBuyH * delta + pBuyL * (1 - delta);
+    var pSell = pSellH * delta + pSellL * (1 - delta);
+    var postBuy = pBuy > EPS ? (pBuyH * delta) / pBuy : delta;
+    var postSell = pSell > EPS ? (pSellH * delta) / pSell : delta;
+    var ask = postBuy * vh + (1 - postBuy) * vl;
+    var bid = postSell * vh + (1 - postSell) * vl;
+    return { ask: ask, bid: bid, spread: ask - bid, mid: delta * vh + (1 - delta) * vl, postBuy: postBuy, postSell: postSell, pBuy: pBuy, pSell: pSell };
+  }
+
+  function recomputeOpening(){
+    var p = readInputs();
+    var err = validate(p);
+    if (err) {
+      note.textContent = '(' + err + ')';
+      ask0Out.textContent = '—'; bid0Out.textContent = '—';
+      spread0Out.textContent = '—'; mid0Out.textContent = '—';
+      state.valid = false;
+      buyBtn.disabled = true; sellBtn.disabled = true;
+      simNote.textContent = 'Fix the inputs above to enable the simulation.';
+      return;
+    }
+    note.textContent = '';
+    state.valid = true;
+    buyBtn.disabled = false; sellBtn.disabled = false;
+    simNote.textContent = '';
+    var q = quoteFor(p.delta0, p.mu, p.vh, p.vl);
+    ask0Out.textContent = q.ask.toFixed(2);
+    bid0Out.textContent = q.bid.toFixed(2);
+    spread0Out.textContent = q.spread.toFixed(2);
+    mid0Out.textContent = q.mid.toFixed(2);
+
+    // Any change to the shared inputs resets the running simulation.
+    state.delta = p.delta0;
+    state.mu = p.mu;
+    state.vh = p.vh;
+    state.vl = p.vl;
+    state.count = 0;
+    if (logEl) logEl.innerHTML = '';
+    renderSim();
+  }
+
+  function renderSim(){
+    deltaOut.textContent = state.delta.toFixed(4);
+    countOut.textContent = state.count;
+    if (!state.valid) {
+      simAskOut.textContent = '—'; simBidOut.textContent = '—'; simSpreadOut.textContent = '—';
+      return;
+    }
+    var q = quoteFor(state.delta, state.mu, state.vh, state.vl);
+    simAskOut.textContent = q.ask.toFixed(2);
+    simBidOut.textContent = q.bid.toFixed(2);
+    simSpreadOut.textContent = q.spread.toFixed(2);
+  }
+
+  function simulate(direction){
+    if (!state.valid) return;
+    var q = quoteFor(state.delta, state.mu, state.vh, state.vl);
+    // Guard: if this direction of trade is (numerically) impossible under
+    // the current parameters, don't divide by ~zero — just note it and stop.
+    if (direction === 'buy' && q.pBuy <= EPS) {
+      simNote.textContent = '(a buy is essentially impossible under these parameters — δ is already pinned at an extreme)';
+      return;
+    }
+    if (direction === 'sell' && q.pSell <= EPS) {
+      simNote.textContent = '(a sell is essentially impossible under these parameters — δ is already pinned at an extreme)';
+      return;
+    }
+    simNote.textContent = '';
+    var newDelta = direction === 'buy' ? q.postBuy : q.postSell;
+    state.count += 1;
+    var nextQuote = quoteFor(newDelta, state.mu, state.vh, state.vl);
+    var row = document.createElement('li');
+    row.textContent = 'Trade #' + state.count + ' (' + (direction === 'buy' ? 'BUY' : 'SELL') + '): δ ' +
+      state.delta.toFixed(4) + ' → ' + newDelta.toFixed(4) + ' — next quote Ask ' +
+      nextQuote.ask.toFixed(2) + ' / Bid ' + nextQuote.bid.toFixed(2) +
+      ' (spread ' + nextQuote.spread.toFixed(2) + ')';
+    if (logEl) logEl.appendChild(row);
+    state.delta = newDelta;
+    renderSim();
+  }
+
+  [d0Input, muInput, vhInput, vlInput].forEach(function(el){ el.addEventListener('input', recomputeOpening); });
+  resetBtn.addEventListener('click', function(){
+    d0Input.value = DEFAULTS.delta0; muInput.value = DEFAULTS.mu;
+    vhInput.value = DEFAULTS.vh; vlInput.value = DEFAULTS.vl;
+    recomputeOpening();
+  });
+  buyBtn.addEventListener('click', function(){ simulate('buy'); });
+  sellBtn.addEventListener('click', function(){ simulate('sell'); });
+  simResetBtn.addEventListener('click', function(){
+    var p = readInputs();
+    var err = validate(p);
+    if (err) return;
+    state.delta = p.delta0; state.count = 0;
+    if (logEl) logEl.innerHTML = '';
+    renderSim();
+  });
+
+  recomputeOpening();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+</body>
+</html>

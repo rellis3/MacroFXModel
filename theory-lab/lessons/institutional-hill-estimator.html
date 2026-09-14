@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Hill Estimator — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Risk Attribution &amp; Tail Statistics / The Hill Estimator</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Risk Attribution &amp; Tail Statistics 2 of 3</div>
+  <h1 class="tl-title">The Hill Estimator</h1>
+  <p class="tl-dek">Fitting a full Generalized Pareto Distribution to a tail is one honest way to size up how heavy it is. Sorting your data, taking the handful of biggest extremes, and averaging one log-ratio is another — cruder, older, and, for a quick answer, frequently good enough.</p>
+  <div class="tl-meta">
+    <span class="tl-status candidate">CANDIDATE — a correct, ready-to-use <code>hillEstimator(xs, k)</code> already exists in <code>js/extremesCore.js</code> — the exact file backing this project's live GPD/POT tail fit — computing precisely this lesson's α̂ (and ξ̂ = 1/α̂), but grepping every other file in this repo turns up zero callers of it; its neighbors in the same file, <code>fitGPD</code> and <code>potFit</code>, ARE wired live into <code>js/analyticsDesk.js</code>'s per-instrument desk snapshot (imported by <code>server.js</code>) and <code>js/forecastCoverage.js</code>'s band-break diagnostic — see "How practitioners actually use this" below</span>
+    <span>~15 min read</span>
+    <span>Prereqs: <a href="extreme-value-theory.html">Extreme Value Theory &amp; Tail Risk</a> (this lesson assumes and repeatedly cross-references its GPD/POT machinery rather than re-deriving it)</span>
+  </div>
+
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="institutional-hill-estimator-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>The <a href="extreme-value-theory.html">Extreme Value Theory &amp; Tail Risk</a> lesson already covers fitting a full Generalized Pareto Distribution to threshold exceedances. This lesson does not re-derive any of that — it covers a different, older, much simpler tool for the same underlying question: <em>how heavy is this tail?</em></li>
+      <li>The <strong>Hill estimator</strong> (Hill, 1975) sorts the data, takes the \(k\) largest order statistics, and averages the log-ratio of each to the \(k\)-th largest: \(\hat\alpha_k = \big[\frac{1}{k}\sum_{i=1}^{k}\ln(X_{(n-i+1)}/X_{(n-k)})\big]^{-1}\). No numerical optimization, no distributional form beyond "regularly varying tail."</li>
+      <li>Its output, \(\hat\alpha\), is the <strong>same number</strong> as the sibling lesson's shape parameter, just inverted: for the heavy-tailed case (\(\xi>0\)), \(\xi = 1/\alpha\) exactly. An \(\hat\alpha \approx 2.9\) and a \(\hat\xi \approx 0.34\) are two units for one fact, not two competing estimates.</li>
+      <li>Choosing \(k\) is the Hill estimator's own version of the sibling lesson's "choosing the threshold \(u\)" problem: too small a \(k\) means high variance (a handful of points), too large a \(k\) means bias (you've pulled in observations that aren't really tail behavior anymore) — visualized as the notoriously unstable "Hill plot."</li>
+      <li>What Hill buys you (no distributional assumption, trivial computation, known asymptotics) it also costs you: it only ever estimates the shape exponent, never a full fitted distribution — it can't be inverted for an arbitrary VaR/CVaR quantile the closed-form way a fitted GPD can.</li>
+      <li>This repo's own <code>js/extremesCore.js</code> already contains a correct <code>hillEstimator</code> implementation using exactly this lesson's α/ξ convention — but, per the grep in the status badge above, nothing calls it. Its GPD/POT siblings in the same file are what's actually live in production.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+  The <a href="extreme-value-theory.html">Extreme Value Theory &amp; Tail Risk</a> lesson already
+  did the heavy lifting on this curriculum's central tail-risk question: historical VaR/CVaR break
+  down far out in the tail, and the peaks-over-threshold method fixes that by fitting a Generalized
+  Pareto Distribution to threshold exceedances, using its shape parameter \(\xi\) to say whether the
+  tail is heavy (\(\xi>0\)), exponential (\(\xi=0\)), or bounded (\(\xi<0\)) — and, when \(\xi>0\), to
+  extrapolate a VaR or CVaR estimate past anything actually observed. None of that gets re-derived
+  here. If you haven't read that lesson, read it first — this one assumes its notation, its
+  Balkema-de-Haan-Pickands framing, and its honesty checks throughout, and will point back to it by
+  name rather than repeat it.
+  </p>
+  <p>
+  What this lesson covers instead is a tool that predates that whole fitting machinery in spirit, if
+  not quite in publication date: the <strong>Hill estimator</strong>, from Bruce Hill's 1975 paper.
+  Where a GPD fit commits to an entire parametric family for the exceedance distribution and estimates
+  both a shape and a scale parameter, Hill's approach asks a narrower question and answers it with far
+  less machinery: <em>given that this tail looks roughly like a power law, what's the exponent?</em> No
+  scale parameter, no numerical fitting procedure, no full distribution to hand back — just a sum, a
+  handful of logarithms, and a reciprocal. It is a genuinely different estimator built on a genuinely
+  weaker assumption (regularly varying tails generally, not "this specific exceedance distribution is a
+  GPD"), and it remains, decades on, the standard quick-and-dirty tool for one specific job: sizing up
+  and comparing how heavy different tails are before deciding whether a fuller GPD fit is even worth
+  doing.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A ruler for tail heaviness, not a portrait of the whole tail</h3>
+    <p>
+    A fitted GPD is like commissioning a detailed portrait of exactly how the tail bulges past a
+    threshold — two numbers (\(\xi,\beta\)) that together describe the whole shape, precise enough to
+    answer "what's the loss at the 99.9th percentile?" The Hill estimator is more like holding up a
+    ruler and reading off one number: how fast does the tail get thin as you move further out? It
+    doesn't try to describe the whole shape — it just asks whether the tail decays quickly (thin,
+    high \(\alpha\)) or slowly (fat, low \(\alpha\)), using only the handful of most extreme
+    observations you actually have, and it does that using nothing more than sorting and averaging. If
+    you've ever eyeballed two return series and thought "this one clearly has scarier tails than that
+    one" and wanted a single number to back that impression up without committing to a full model, the
+    Hill estimator is exactly that number, made rigorous.
+    </p>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The other lesson in this pair builds a detailed clay model of exactly how bad the worst days get, all the way out past anything you've seen. This lesson is a much cruder trick: take your five or ten worst days, see how much bigger each one is than the smallest of that group, average that out, and flip it upside down. That one number tells you "scary tail" versus "not-so-scary tail" almost instantly — it just can't tell you the shape of the whole clay model the way the other method can.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+  <p>
+  Suppose \(X_1,\dots,X_n\) are (loss) observations believed to have a <strong>regularly varying</strong>
+  right tail — informally, a tail that behaves like a power law far out: \(P(X>x) \sim C\,x^{-\alpha}\)
+  as \(x\to\infty\), for some unknown tail index \(\alpha>0\) and some constant \(C\). This is a strictly
+  weaker assumption than "the exceedances follow a Generalized Pareto Distribution" — every GPD with
+  \(\xi>0\) has a regularly varying tail with \(\alpha=1/\xi\), but plenty of distributions have a
+  regularly varying tail without being a GPD anywhere close to the threshold. Sort the sample into
+  ascending order statistics \(X_{(1)} \le X_{(2)} \le \dots \le X_{(n)}\), so \(X_{(n)}\) is the single
+  largest observation. Pick a number \(k\) — how many of the top order statistics to use — and define:
+  </p>
+  <div class="tl-math">\[ \hat\alpha_k = \left[ \frac{1}{k}\sum_{i=1}^{k} \ln\!\left(\frac{X_{(n-i+1)}}{X_{(n-k)}}\right) \right]^{-1} \]</div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">X_(n-i+1)</div>
+      <div class="tl-fp-name">The i-th largest value</div>
+      <div class="tl-fp-desc">As i runs 1..k, this sweeps the k biggest observations in the sample: the max, the 2nd-largest, ... down to the k-th largest</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">X_(n-k)</div>
+      <div class="tl-fp-name">The reference / threshold order statistic</div>
+      <div class="tl-fp-desc">The (k+1)-th largest value — everything in the sum is measured relative to this one point</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">α̂_k</div>
+      <div class="tl-fp-name">The Hill estimate of the tail index</div>
+      <div class="tl-fp-desc">The reciprocal of the average log-ratio — bigger α means a thinner tail, smaller α means a fatter one</div>
+    </div>
+  </div>
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(X_{(1)},\dots,X_{(n)}\)</td><td>The sample sorted ascending — \(X_{(n)}\) is the maximum, \(X_{(n-1)}\) the second-largest, and so on.</td></tr>
+      <tr><td>\(k\)</td><td>How many of the top order statistics feed the estimate — the single knob this whole lesson is about tuning.</td></tr>
+      <tr><td>\(X_{(n-k)}\)</td><td>The \((k+1)\)-th largest observation — plays the same role a chosen threshold \(u\) plays in the sibling lesson's peaks-over-threshold setup, except here it's picked by <em>rank</em> (the k-th-from-the-top value) rather than by a fixed dollar or percentile level.</td></tr>
+      <tr><td>\(\alpha\)</td><td>The tail index — the exponent in \(P(X>x)\sim Cx^{-\alpha}\). Larger \(\alpha\) = thinner tail; \(\alpha\) close to zero = extremely heavy tail. No finite variance once \(\alpha\le 2\), no finite mean once \(\alpha\le 1\) — the exact same moment-existence cutoffs the sibling lesson states in terms of \(\xi\).</td></tr>
+      <tr><td>\(\xi = 1/\alpha\)</td><td>The <a href="extreme-value-theory.html">sibling lesson's</a> Generalized Pareto shape parameter, for the heavy-tailed regime \(\xi>0\) it discusses. This is not an analogy or a rough correspondence — for a regularly-varying tail, \(\xi\) and \(\alpha\) are defined so that \(\xi=1/\alpha\) exactly. A Hill estimate of \(\hat\alpha=2.9\) and a GPD fit reporting \(\hat\xi=0.34\) on the same tail are reporting the identical fact about that tail in two conventional units.</td></tr>
+    </table>
+  </div>
+
+  <div class="tl-solid blue">
+    <strong>Why averaging log-ratios recovers a tail exponent.</strong> If \(X\) has an <em>exact</em>
+    Pareto tail above some point \(u\) — \(P(X>x\mid X>u) = (x/u)^{-\alpha}\) for \(x\ge u\) — then a
+    short calculation shows \(Y=\ln(X/u)\) is Exponentially distributed with rate \(\alpha\). The
+    maximum-likelihood estimate of an Exponential distribution's rate is just the reciprocal of the
+    sample mean. Hill's estimator is exactly that MLE, applied to the log-ratios of the top \(k\)
+    observations against the \((k+1)\)-th largest acting as \(u\) — which is why it drops straight out
+    of "assume an exact Pareto tail past this random threshold, then take the usual MLE," even though
+    the estimator itself is justified more generally under the weaker regularly-varying-tail assumption,
+    not only for an exact Pareto distribution.
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Take your k biggest numbers. For each one, ask "how many times bigger is this than the smallest of the group?" — then take the logarithm of that, because logs turn "how many times bigger" into a plain distance that's easy to average. Average those distances, then flip the average upside down. That flip-upside-down step is the whole trick: a tail that gets thin fast gives you small distances (things aren't that much bigger than the group's floor), which flips into a big α̂; a tail that stays fat gives you big distances, which flips into a small α̂.</p>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Six order statistics, k = 5, computed by hand</h3>
+    <p>
+    A toy sample of six illustrative daily loss magnitudes (basis points), already sorted from largest
+    to smallest — not a fitted result on real market data, chosen so the arithmetic is exact and
+    hand-checkable:
+    </p>
+    <div class="tl-symbols"><table>
+      <tr><td>Rank</td><td>1st (max)&emsp;&emsp;2nd&emsp;&emsp;3rd&emsp;&emsp;4th&emsp;&emsp;5th&emsp;&emsp;6th</td></tr>
+      <tr><td>Value (bps)</td><td>187&emsp;&emsp;&emsp;152&emsp;&emsp;134&emsp;&emsp;121&emsp;&emsp;109&emsp;&emsp;98</td></tr>
+    </table></div>
+    <p>
+    Take \(k=5\): the five largest values feed the sum, and the 6th-largest, \(98\), is the reference
+    \(X_{(n-k)}\):
+    </p>
+    <div class="tl-symbols"><table>
+      <tr><td>\(\ln(187/98)\)</td><td>= \(\ln(1.9082)\) = 0.6461</td></tr>
+      <tr><td>\(\ln(152/98)\)</td><td>= \(\ln(1.5510)\) = 0.4389</td></tr>
+      <tr><td>\(\ln(134/98)\)</td><td>= \(\ln(1.3673)\) = 0.3129</td></tr>
+      <tr><td>\(\ln(121/98)\)</td><td>= \(\ln(1.2347)\) = 0.2108</td></tr>
+      <tr><td>\(\ln(109/98)\)</td><td>= \(\ln(1.1122)\) = 0.1064</td></tr>
+    </table></div>
+    <p>
+    Sum the five log-ratios: \(0.6461+0.4389+0.3129+0.2108+0.1064 = 1.7151\). Divide by \(k=5\):
+    average \(= 0.3430\). The Hill estimate is the reciprocal of that average:
+    </p>
+    <div class="tl-math">\[ \hat\alpha_5 = \frac{1}{0.3430} \approx 2.92, \qquad \hat\xi_5 = \frac{1}{\hat\alpha_5} \approx 0.343 \]</div>
+    <p>
+    Read against the sibling lesson's own \(\xi\) framing: \(\hat\xi\approx0.34\) sits comfortably in
+    the \(\xi>0\) heavy-tailed regime — a real, if moderate, fat tail, still well short of the
+    \(\xi\ge0.5\) infinite-variance territory that lesson's icard grid flags. This toy sample was
+    picked to produce a realistic-looking estimate, not measured from any actual instrument.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>Choosing k: the Hill plot and the bias-variance trade-off</h2>
+  <p>
+  Every number this lesson has produced so far depended on a choice: \(k\), how many of the top order
+  statistics to trust. That choice carries the exact same tension the sibling lesson's threshold
+  \(u\) carries for peaks-over-threshold fitting — phrased differently, but structurally identical:
+  </p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge red">📉</div>
+      <h4>k too small — high variance</h4>
+      <p>Using only the top 3-4 observations means the estimate is built from almost nothing — a single unusually extreme (or unusually mild) point among the very largest swings \(\hat\alpha\) wildly. Noisy, but at least genuinely "in the tail."</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">📈</div>
+      <h4>k too large — bias</h4>
+      <p>Pulling in the top 40% of the sample means most of those "extreme" points aren't really tail behavior at all — they're the ordinary bulk of the distribution, contaminating the regularly-varying-tail assumption the whole estimator rests on and systematically pulling \(\hat\alpha\) away from its true value.</p>
+    </div>
+  </div>
+  <div class="tl-solid amber">
+    <strong>This is the sibling lesson's threshold-selection problem, restated in ranks instead of
+    dollars.</strong> There, too high a \(u\) starves the GPD fit of exceedances (noise); too low a
+    \(u\) lets ordinary observations bias the fitted shape. Here, too small a \(k\) starves the Hill
+    sum of order statistics (noise); too large a \(k\) lets ordinary observations bias \(\hat\alpha\).
+    Same trade-off, same shape of problem, different unit for the knob.
+  </div>
+  <p>
+  Practitioners visualize this trade-off with a <strong>Hill plot</strong>: compute \(\hat\alpha_k\) for
+  every \(k\) across some reasonable range, and plot the estimate against \(k\). The chart below does
+  exactly that on a simulated sample of 300 draws from a true Pareto distribution with \(\alpha=3\) —
+  simulated, so the "right answer" is known here in a way it never is on real data, purely to make the
+  instability visible against a ground truth. Drag the slider to change \(k\) and watch which order
+  statistics feed the sum.
+  </p>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">A live Hill plot — α̂(k) computed on the fly from a simulated Pareto(α=3) sample, n=300</div>
+    <svg viewBox="0 0 640 300" id="hill-svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart of the Hill estimator's alpha-hat as a function of k, showing a wobbly, unstable line as k increases from 2 to 27, with a dashed reference line at the true alpha of 3">
+      <line x1="55" y1="250" x2="610" y2="250" style="stroke:var(--border);stroke-width:1"></line>
+      <line x1="55" y1="20" x2="55" y2="250" style="stroke:var(--border);stroke-width:1"></line>
+      <line id="hill-true-line" x1="55" y1="0" x2="610" y2="0" style="stroke:var(--green);stroke-width:1.5;stroke-dasharray:4,3"></line>
+      <text x="600" y="0" id="hill-true-label" text-anchor="end" style="font:10px 'DM Mono',monospace;fill:var(--green)">true α = 3 (known only in this simulation)</text>
+      <text x="55" y="265" style="font:10px 'DM Mono',monospace;fill:var(--text3)">k=2</text>
+      <text x="610" y="265" text-anchor="end" style="font:10px 'DM Mono',monospace;fill:var(--text3)">k=27</text>
+      <text x="20" y="24" style="font:10px 'DM Mono',monospace;fill:var(--text3)">4.5</text>
+      <text x="20" y="140" style="font:10px 'DM Mono',monospace;fill:var(--text3)">3.0</text>
+      <text x="20" y="254" style="font:10px 'DM Mono',monospace;fill:var(--text3)">1.5</text>
+      <path id="hill-curve" d="" style="fill:none;stroke:var(--red);stroke-width:2"></path>
+      <line id="hill-marker-line" x1="0" y1="0" x2="0" y2="250" style="stroke:var(--blue);stroke-width:1;stroke-dasharray:2,2"></line>
+      <circle id="hill-marker-dot" cx="0" cy="0" r="5" style="fill:var(--blue);stroke:var(--s1);stroke-width:2"></circle>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head">
+          <span>k (top order statistics used)</span>
+          <span class="tl-live" id="hill-k-val">k = 5</span>
+        </div>
+        <input type="range" id="hill-k-slider" min="2" max="27" step="1" value="5">
+        <div class="tl-hint">Small k (left) = noisy, jumps around with every extra point. Large k (right) = smoother, but drifting away from the true α=3 as ordinary observations dilute the tail.</div>
+      </div>
+    </div>
+    <div class="tl-readout" id="hill-readout">k = 5 → α̂ ≈ — , ξ̂ = 1/α̂ ≈ —</div>
+    <div id="hill-strip" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:10px" aria-label="Which order statistics are currently in the top-k sum"></div>
+    <div class="tl-chart-caption" id="hill-caption">
+    The dots below the chart are this sample's 30 largest order statistics, largest at left. Blue dots
+    are the top k feeding the sum; the amber dot is \(X_{(n-k)}\), the reference; gray dots aren't used
+    at this k. Notice \(\hat\alpha\) never quite settles down or converges cleanly on the true value —
+    it wanders, sometimes for a long stretch of k, which is exactly the "Hill horror plot" phenomenon
+    practitioners have to live with. There is no formula that tells you the one correct k; only
+    judgment, sensitivity checks across a range, and — same as the sibling lesson's own advice for
+    threshold \(u\) — distrust of any single number reported without showing how it moves as k moves.
+    </div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine asking "how tall are the biggest kids in school, on average?" If you only ask about the top 2 kids, one growth spurt swings your answer wildly. If you ask about the top 200, you've stopped talking about "the biggest kids" at all — you're just describing everyone. Somewhere in between is a reasonable answer, but there's no magic number that's obviously correct, and it usually looks different depending on exactly which school (which dataset) you're standing in.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+  <strong>Why reach for something this crude.</strong> Given that the sibling lesson's fitted GPD hands
+  back a full \((\xi,\beta)\) pair — enough to extrapolate a VaR or CVaR at any confidence level — it's
+  worth being explicit about why the Hill estimator remains a standard tool rather than an obsolete
+  curiosity:
+  </p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🧩</div>
+      <h4>Weaker assumption</h4>
+      <p>It needs only "regularly varying tail" — it never commits to the exceedances actually being Generalized Pareto. Every GPD tail is regularly varying, but the reverse isn't required, so Hill's assumption is the strictly weaker, more forgiving one.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">⚡</div>
+      <h4>Trivial to compute</h4>
+      <p>A sort, k logarithms, a sum, a division. No numerical optimizer, no probability-weighted-moments algebra, no convergence to check — the entire sibling lesson's MLE/PWM fitting machinery is simply not needed.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">📐</div>
+      <h4>Known asymptotics</h4>
+      <p>Under regularity conditions, \(\hat\alpha_k\) is consistent and asymptotically normal as \(k,n\to\infty\) with \(k/n\to0\), with variance shrinking roughly like \(\alpha^2/k\) — a textbook-standard result (Hill, 1975), giving a principled (if asymptotic) sense of how much to trust a given k.</p>
+    </div>
+  </div>
+  <div class="tl-solid red">
+    <strong>The trade-off, stated as plainly as the TL;DR did.</strong> All of that buys you one number
+    — a shape exponent — and nothing else. A fitted GPD's \((\xi,\beta)\) pair, combined with the
+    threshold \(u\) and exceedance rate, plugs directly into the sibling lesson's closed-form
+    \(\widehat{\text{VaR}}_p\) and \(\widehat{\text{CVaR}}_p\) formulas at <em>any</em> confidence level
+    \(p\). The Hill estimator alone gives you no scale, no threshold-exceedance-rate bookkeeping, and no
+    such formula — it tells you the tail is heavy or light, not what a specific rare loss level actually
+    is. Later work built quantile-extrapolation extensions on top of a Hill-type estimate, but that is
+    additional machinery bolted on afterward, not something the plain \(\hat\alpha_k\) formula itself
+    hands you — which is precisely why this curriculum's fuller quantile/VaR extrapolation lives in the
+    <a href="extreme-value-theory.html">GPD/POT lesson</a>, not here.
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Hill's number tells you "this tail is scarier than that one" almost for free. It doesn't tell you exactly how much you'd lose on the one-in-a-thousand day — for that you still need the fuller model from the other lesson. Think of it as a quick smoke alarm, not a full inspection report.</p>
+  </div>
+
+  <p>
+  <strong>The FX use case: a quick heaviness ranking, before committing to anything heavier.</strong> A
+  common, genuinely useful role for the Hill estimator is exactly this: compute \(\hat\alpha\) (at a
+  couple of sensible \(k\) values) across a shortlist of FX pairs or return series, and rank them by
+  tail heaviness before deciding which ones warrant a full GPD/POT fit for actual VaR/CVaR
+  extrapolation. Illustrative numbers only, not this repo's actual output:
+  </p>
+  <div class="tl-symbols"><table>
+    <tr><td>Instrument (illustrative)</td><td>α̂ (illustrative)&emsp;&emsp;Reading</td></tr>
+    <tr><td>A "calm," heavily-arbed major pair</td><td>≈ 4.5 — thinner tail, closer to near-Gaussian behavior in its extremes</td></tr>
+    <tr><td>A typical G10 cross</td><td>≈ 3.0 — moderately heavy, the realistic middle of the road for daily FX returns</td></tr>
+    <tr><td>A crisis-prone EM or commodity currency</td><td>≈ 1.8 — genuinely fat, approaching the variance-breaking \(\alpha\le2\) zone</td></tr>
+  </table></div>
+  <p>
+  A ranking like that is cheap enough to run on every instrument on a desk's watchlist as a screening
+  step — flag the fat-tailed names for a proper GPD fit and closer risk scrutiny, and don't spend fitting
+  effort on names whose tails already look thin. It is a diagnostic, not a risk number to trade off of
+  directly.
+  </p>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Paste your own top order statistics</h3>
+    <p>
+    Enter any list of numbers, largest first, comma-separated (paste from anywhere — they don't need to
+    be real market data), and how many of the top values, \(k\), should feed the sum. The
+    \((k{+}1)\)-th number in your list becomes the reference \(X_{(n-k)}\) automatically. Starts on the
+    worked example's own six numbers.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control" style="flex:2 1 320px">
+        <div class="tl-control-head"><span>Order statistics, largest first (comma-separated)</span></div>
+        <input type="text" id="hc-calc-list" class="tl-scratch-input" value="187, 152, 134, 121, 109, 98">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>k (top values to use)</span></div>
+        <input type="number" id="hc-calc-k" class="tl-scratch-input" value="5" step="1" min="1">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Reference X₍ₙ₋ₖ₎ = <b id="hc-calc-ref">98</b>&emsp;Σ ln-ratios = <b id="hc-calc-sum">1.7151</b>&emsp;average = <b id="hc-calc-avg">0.3430</b>
+    </div>
+    <div class="tl-readout">
+      α̂ = <b id="hc-calc-alpha">2.92</b>&emsp;&emsp;ξ̂ = 1/α̂ = <b id="hc-calc-xi">0.343</b>
+      <span id="hc-calc-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="hc-calc-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+    <div class="tl-hint" style="margin-top:8px">This calculator does no sorting or validation of "is this actually your top k" beyond checking the list is long enough and every ratio comes out positive — as with the real estimator, feeding it numbers that aren't really order statistics of a heavy tail produces a number with no meaningful target.</div>
+  </div>
+
+  <div class="tl-box repo">
+    <div class="tl-icon-badge green">🗂️</div>
+    <div class="tl-box-label">What's actually verified against this repo's code</div>
+    <h3>A correct Hill estimator exists — right next to the GPD/POT code that's actually live</h3>
+    <p>
+    A direct grep for <code>Hill</code>/<code>tail.index</code>/<code>hillEstimator</code> across
+    every <code>.js</code> and <code>.py</code> file in this repo turns up exactly one real hit:
+    <code>js/extremesCore.js</code> defines <code>hillEstimator(xs, k)</code>, which sorts the
+    positive values descending, sums \(\ln(v_i/v_k)\) over the top \(k\), and returns
+    <code>{alpha, xi: 1/alpha, k, n}</code> — the identical formula and the identical
+    \(\alpha\)/\(\xi{=}1/\alpha\) convention this lesson uses throughout, right down to the variable
+    names. Its own comment flags exactly this lesson's central pitfall unprompted: "Sensitive to k by
+    construction — callers should read it across a k-range, not trust one k."
+    </p>
+    <p>
+    But grepping every <em>other</em> file in the repo for a caller of <code>hillEstimator</code> turns
+    up nothing — it is defined, correct, and exported, and nothing imports it. That's a genuinely
+    different status from its neighbors in the very same file: <code>fitGPD</code> and
+    <code>potFit</code> (the sibling lesson's own POT/GPD machinery, implemented here via
+    probability-weighted moments per Hosking &amp; Wallis 1987) ARE wired live —
+    <code>js/analyticsDesk.js</code>'s <code>deskSnapshot</code> function imports <code>potFit</code>,
+    <code>gpdQuantile</code>, <code>gpdES</code>, and <code>returnLevel</code> to build the "how fat is
+    the tail" row of a per-instrument desk view, and <code>server.js</code> genuinely calls
+    <code>deskSnapshot(bars, inst.assetClass)</code> in production. <code>js/forecastCoverage.js</code>
+    separately imports <code>fitGPD</code> for a band-break diagnostic. A second, independent GPD
+    implementation also exists in <code>js/evtTail.js</code> (its own probability-weighted-moments fit,
+    a different internal naming convention of <code>shape</code>/<code>scale</code> rather than
+    \(\xi\)/\(\beta\)) — so this repo has not one but two working GPD fitters in active or near-active
+    use, and one entirely unused, ready-made Hill estimator sitting beside the first of them.
+    </p>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>A desk deciding where to spend GPD-fitting effort</h3>
+    <p>
+    Imagine a risk desk with a dozen instruments on its watchlist and limited time to build and validate
+    full GPD fits for each. Running <code>hillEstimator</code> across each instrument's top 20-40 daily
+    loss magnitudes (cheap enough to run on all twelve in the time it takes to fit one careful GPD) would
+    surface which names have the fattest apparent tails — exactly the ranking use case above. That
+    ranking would then direct where the more expensive, more assumption-laden GPD/POT fit (and its
+    threshold-stability checks, per the sibling lesson's own pitfalls section) actually gets built.
+    Today, per the grounding above, that first triage step isn't wired to anything — the desk snapshot
+    goes straight to the full POT/GPD fit for every instrument it covers, without a Hill-based
+    pre-screen. Whether adding one would actually save meaningful effort, or just add a second unvalidated
+    number to look at, is exactly the kind of question this repo's own validation discipline would want
+    answered empirically before wiring it in — not asserted here.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where the Hill estimator quietly goes wrong</h3>
+    <ul>
+      <li>
+      <strong>The Hill horror plot is not an edge case — it's the normal case.</strong> As the
+      interactive chart above shows on genuinely simulated data, \(\hat\alpha_k\) rarely settles into a
+      clean plateau. Reporting a single \(\hat\alpha\) at one arbitrarily chosen \(k\), without showing
+      how it moves as \(k\) moves, hides exactly the instability the estimator is famous for among
+      practitioners — the same discipline the sibling lesson demands for threshold \(u\) sensitivity
+      applies here, k for k.
+      </li>
+      <li>
+      <strong>It assumes a regularly varying tail — it does not check for one.</strong> Applying the
+      Hill formula to a sample whose true tail is exponential (\(\xi=0\)) or bounded (\(\xi<0\), in the
+      sibling lesson's terms) produces a number regardless — the arithmetic never refuses to run — but
+      that number has no stable target to estimate: there is no true polynomial exponent \(\alpha\) for
+      an exponential or bounded tail to converge to. A fitted GPD, by contrast, handles all three
+      \(\xi\) regimes uniformly through one shape parameter that's allowed to come out zero or negative;
+      the Hill estimator has no equivalent "tell me this tail isn't Pareto-type at all" signal built in.
+      </li>
+      <li>
+      <strong>Independence (or weak dependence) is still assumed, and real returns violate it.</strong>
+      Exactly the same caveat the sibling lesson raises about GPD/POT fitting applies here unchanged:
+      the classical theory behind Hill's estimator assumes something like i.i.d. tail behavior, and
+      financial returns cluster in volatility regimes rather than behaving as independent draws. A run
+      of extreme days from one volatility episode can dominate the top-\(k\) order statistics and skew
+      \(\hat\alpha\) without that meaning the underlying long-run tail index has actually changed.
+      </li>
+      <li>
+      <strong>A confident-looking α̂ is not a validated one.</strong> Same discipline as everywhere
+      else in this curriculum: a Hill estimate computed once, on one sample, at one \(k\), is a number —
+      not evidence that it reflects a stable, persistent property of that instrument's return
+      distribution, until it's checked for stability across \(k\), across sub-samples, and ideally
+      against a genuinely different tail estimator (the GPD fit) on the same data.
+      </li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The Hill estimator (Hill, 1975) is a simpler, older alternative to a full GPD fit.</strong> \(\hat\alpha_k = \big[\frac{1}{k}\sum_{i=1}^{k}\ln(X_{(n-i+1)}/X_{(n-k)})\big]^{-1}\) — sort, take the top k, average a log-ratio, invert.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">≡</span><span><strong>Its output is the sibling lesson's ξ, inverted.</strong> For the heavy-tailed regime, \(\xi = 1/\alpha\) exactly — one fact, two conventional units, not two competing numbers.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>It needs less and computes faster.</strong> Only "regularly varying tail," not "this is a GPD" — and a sum of logs instead of a numerical fit, with known (if asymptotic) sampling behavior.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>It only ever hands back a shape exponent.</strong> No scale, no closed-form VaR/CVaR at an arbitrary confidence level the way a fitted \((\xi,\beta)\) GPD provides — that machinery lives in the sibling lesson, not here.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Choosing k is choosing u, restated.</strong> Too small = noisy; too large = biased — the identical trade-off the sibling lesson names for its own threshold choice, visualized here as the notoriously unstable "Hill plot."</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A ready-made, correct implementation sits unused in this repo.</strong> <code>js/extremesCore.js</code>'s <code>hillEstimator</code> has zero callers, unlike its live GPD/POT neighbors <code>fitGPD</code>/<code>potFit</code>, wired into <code>js/analyticsDesk.js</code> via <code>server.js</code>.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. In plain terms, what does the Hill estimator require of the data, and what does it explicitly NOT require, compared to fitting a full Generalized Pareto Distribution?</summary>
+    <div class="tl-answer">
+    It requires only that the tail be <em>regularly varying</em> — that \(P(X>x)\) decays like a power
+    law, \(Cx^{-\alpha}\), for some unknown \(\alpha>0\), far out in the tail. It explicitly does
+    <strong>not</strong> require assuming the exceedances follow a full Generalized Pareto Distribution,
+    and it estimates no scale parameter at all — only the exponent \(\alpha\). Every GPD tail with
+    \(\xi>0\) is regularly varying, so Hill's assumption is the strictly weaker of the two.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Given the four order statistics 240, 210, 175, 150 (largest first) and k=3, compute α̂ (to two decimal places).</summary>
+    <div class="tl-answer">
+    The reference is the 4th value, \(X_{(n-k)}=150\). \(\ln(240/150)=0.4700\),
+    \(\ln(210/150)=0.3365\), \(\ln(175/150)=0.1542\). Sum \(=0.9606\); average over \(k=3\) is
+    \(0.3202\). \(\hat\alpha = 1/0.3202 \approx 3.12\) (and \(\hat\xi \approx 0.32\)).
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. What is the exact numerical relationship between this lesson's α and the sibling extreme-value-theory lesson's shape parameter ξ, for the heavy-tailed case?</summary>
+    <div class="tl-answer">
+    \(\xi = 1/\alpha\) (equivalently \(\alpha=1/\xi\)) exactly, for the regularly-varying, \(\xi>0\)
+    regime the sibling lesson describes. They are not two separate estimates of related-but-different
+    quantities — a Hill estimate \(\hat\alpha\) and a GPD-fitted \(\hat\xi\) on the same tail are
+    reporting the same underlying tail-heaviness fact, just expressed as an exponent versus its
+    reciprocal.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Explain the bias-variance trade-off in choosing k, and name the sibling lesson's own analogous choice.</summary>
+    <div class="tl-answer">
+    Too small a \(k\) means the estimate is built from very few extreme observations, so it is
+    high-variance — noisy, jumping around with each additional point. Too large a \(k\) pulls in
+    observations that are no longer genuinely "in the tail," contaminating the regularly-varying-tail
+    assumption and biasing \(\hat\alpha\) away from its true value. This is exactly the sibling lesson's
+    threshold \(u\) selection problem for peaks-over-threshold GPD fitting, restated in terms of a rank
+    (\(k\)) instead of a dollar or percentile level (\(u\)) — same underlying tension, different unit.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. What can a fitted Generalized Pareto Distribution do that the plain Hill estimator cannot?</summary>
+    <div class="tl-answer">
+    A fitted GPD produces a full \((\xi,\beta)\) pair, which — combined with the threshold and
+    exceedance rate — plugs into a closed-form formula for VaR or CVaR at any confidence level,
+    including levels beyond the observed sample (the sibling lesson's core extrapolation result). The
+    Hill estimator, on its own, hands back only the shape exponent \(\hat\alpha\) — a statement about
+    how heavy the tail is, not a fitted distribution that can be inverted for an arbitrary quantile.
+    Turning a Hill-type estimate into an actual extrapolated loss level requires additional machinery
+    built on top of it, not something the plain formula in this lesson provides.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Is there a working Hill estimator anywhere in this repo's actual code, and is it used in production?</summary>
+    <div class="tl-answer">
+    Yes and no, respectively. <code>js/extremesCore.js</code> defines a correct
+    <code>hillEstimator(xs, k)</code> using exactly this lesson's formula and \(\alpha\)/\(\xi{=}1/\alpha\)
+    convention — but grepping the rest of the codebase for a caller of it turns up nothing; it is
+    defined and exported, never imported or invoked anywhere else. That is a different status from its
+    neighbors in the same file, <code>fitGPD</code> and <code>potFit</code>, which ARE wired live into
+    <code>js/analyticsDesk.js</code>'s per-instrument desk snapshot (called from <code>server.js</code>)
+    and into <code>js/forecastCoverage.js</code>'s band-break diagnostic.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Bruce M. Hill, <em>"A Simple General Approach to Inference About the Tail of a Distribution,"</em> The Annals of Statistics, 1975 — the original paper this entire lesson is built on.</li>
+    <li>Paul Embrechts, Claudia Klüppelberg, and Thomas Mikosch, <em>Modelling Extremal Events for Insurance and Finance</em>, Springer, 1997 — the same standard EVT-for-risk reference the sibling lesson cites; covers the Hill estimator alongside GPD/POT fitting in one unified treatment.</li>
+    <li>Laurens de Haan and Ana Ferreira, <em>Extreme Value Theory: An Introduction</em>, Springer, 2006 — a standard graduate-level treatment of regularly varying tails, the Hill estimator's asymptotic theory, and its relationship to the peaks-over-threshold/GPD approach.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="institutional-covar.html">← CoVaR: Conditional Value-at-Risk for Systemic Risk</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="institutional-factor-marginal-component-var.html">Factor, Marginal &amp; Component VaR →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+<script>
+(function(){
+  // Section 03 — live Hill plot chart + k slider, computed entirely from a
+  // fixed, real simulated dataset (Pareto(alpha=3), n=300, seed fixed at
+  // generation time; only the top 30 order statistics are needed here).
+  var ORDER_STATS = [11.17, 8.649, 7.405, 6.365, 6.351, 6.023, 5.907, 4.57, 4.279, 4.083,
+    3.982, 3.338, 3.258, 3.183, 3.173, 2.943, 2.861, 2.859, 2.787, 2.661,
+    2.597, 2.539, 2.509, 2.494, 2.483, 2.465, 2.416, 2.386, 2.353, 2.27];
+  var TRUE_ALPHA = 3;
+  var K_MIN = 2, K_MAX = 27;
+
+  function hillAt(k){
+    var ref = ORDER_STATS[k]; // 0-indexed: ORDER_STATS[0] = X_(n), ORDER_STATS[k] = X_(n-k)
+    if (!(ref > 0)) return null;
+    var s = 0;
+    for (var i = 0; i < k; i++) s += Math.log(ORDER_STATS[i] / ref);
+    if (!(s > 0)) return null;
+    return k / s;
+  }
+
+  (function(){
+    var svg = document.getElementById('hill-svg');
+    if (!svg) return;
+    var slider = document.getElementById('hill-k-slider');
+    var kVal = document.getElementById('hill-k-val');
+    var curve = document.getElementById('hill-curve');
+    var trueLine = document.getElementById('hill-true-line');
+    var trueLabel = document.getElementById('hill-true-label');
+    var markerLine = document.getElementById('hill-marker-line');
+    var markerDot = document.getElementById('hill-marker-dot');
+    var readout = document.getElementById('hill-readout');
+    var strip = document.getElementById('hill-strip');
+    var caption = document.getElementById('hill-caption');
+
+    var PX_X0 = 55, PX_X1 = 610;
+    var PX_Y_TOP = 20, PX_Y_BOT = 250;
+    var ALPHA_MIN = 1.5, ALPHA_MAX = 4.5;
+
+    function xPx(k){ return PX_X0 + (k - K_MIN) / (K_MAX - K_MIN) * (PX_X1 - PX_X0); }
+    function yPx(a){
+      var clamped = Math.max(ALPHA_MIN, Math.min(ALPHA_MAX, a));
+      return PX_Y_BOT - (clamped - ALPHA_MIN) / (ALPHA_MAX - ALPHA_MIN) * (PX_Y_BOT - PX_Y_TOP);
+    }
+
+    // Build the wobbly curve once — real values, computed live from ORDER_STATS.
+    var d = '';
+    for (var k = K_MIN; k <= K_MAX; k++) {
+      var a = hillAt(k);
+      if (a == null) continue;
+      d += (d === '' ? 'M ' : ' L ') + xPx(k).toFixed(1) + ',' + yPx(a).toFixed(1);
+    }
+    curve.setAttribute('d', d);
+
+    var trueY = yPx(TRUE_ALPHA);
+    trueLine.setAttribute('y1', trueY); trueLine.setAttribute('y2', trueY);
+    trueLabel.setAttribute('y', trueY - 6);
+
+    // Build the order-statistics strip (top 30 dots) once.
+    var dotEls = [];
+    var refEl = null;
+    for (var r = 0; r < ORDER_STATS.length; r++) {
+      var span = document.createElement('span');
+      span.style.background = 'var(--border2)';
+      span.style.width = '9px'; span.style.height = '9px'; span.style.borderRadius = '50%';
+      span.style.display = 'inline-block';
+      strip.appendChild(span);
+      dotEls.push(span);
+    }
+
+    function update(){
+      var kk = parseInt(slider.value, 10);
+      if (!isFinite(kk) || kk < K_MIN || kk > K_MAX) kk = K_MIN;
+      kVal.textContent = 'k = ' + kk;
+      var a = hillAt(kk);
+      var mx = xPx(kk);
+      markerLine.setAttribute('x1', mx); markerLine.setAttribute('x2', mx);
+      if (a != null) {
+        var my = yPx(a);
+        markerDot.setAttribute('cx', mx); markerDot.setAttribute('cy', my);
+        readout.innerHTML = 'k = ' + kk + ' → α̂ ≈ <b>' + a.toFixed(3) + '</b>, ξ̂ = 1/α̂ ≈ <b>' + (1/a).toFixed(3) + '</b>';
+      } else {
+        markerDot.setAttribute('cx', mx); markerDot.setAttribute('cy', PX_Y_BOT);
+        readout.textContent = 'k = ' + kk + ' → α̂ ≈ — (degenerate at this k)';
+      }
+      dotEls.forEach(function(el, i){
+        var rank = i + 1; // 1-indexed rank
+        if (rank <= kk) { el.style.background = 'var(--red)'; }
+        else if (rank === kk + 1) { el.style.background = 'var(--amber)'; }
+        else { el.style.background = 'var(--border2)'; }
+      });
+    }
+
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Section 04 — "try it yourself" free-form calculator.
+  (function(){
+    var listEl = document.getElementById('hc-calc-list');
+    if (!listEl) return;
+    var kEl = document.getElementById('hc-calc-k');
+    var refOut = document.getElementById('hc-calc-ref');
+    var sumOut = document.getElementById('hc-calc-sum');
+    var avgOut = document.getElementById('hc-calc-avg');
+    var alphaOut = document.getElementById('hc-calc-alpha');
+    var xiOut = document.getElementById('hc-calc-xi');
+    var note = document.getElementById('hc-calc-note');
+    var resetBtn = document.getElementById('hc-calc-reset');
+    var DEFAULTS = { list: '187, 152, 134, 121, 109, 98', k: 5 };
+
+    function recompute(){
+      var raw = (listEl.value || '').split(',').map(function(s){ return parseFloat(s.trim()); });
+      var k = parseInt(kEl.value, 10);
+      var blank = ['—','—','—','—','—'];
+      refOut.textContent = blank[0]; sumOut.textContent = blank[1]; avgOut.textContent = blank[2];
+      alphaOut.textContent = blank[3]; xiOut.textContent = blank[4];
+
+      if (!raw.length || raw.some(function(v){ return !isFinite(v); })) {
+        note.textContent = '(enter comma-separated numbers only)';
+        return;
+      }
+      if (!isFinite(k) || k < 1) {
+        note.textContent = '(k must be a positive integer)';
+        return;
+      }
+      if (raw.length < k + 1) {
+        note.textContent = '(need at least k+1 = ' + (k + 1) + ' values in the list — one more than k, to supply the reference X_(n-k))';
+        return;
+      }
+      var ref = raw[k];
+      if (!(ref > 0)) {
+        note.textContent = '(the reference value, position k+1 in your list, must be positive)';
+        return;
+      }
+      var s = 0, bad = false;
+      for (var i = 0; i < k; i++) {
+        if (!(raw[i] > 0)) { bad = true; break; }
+        s += Math.log(raw[i] / ref);
+      }
+      if (bad) {
+        note.textContent = '(every one of the top k values must be positive)';
+        return;
+      }
+      if (!(s > 0)) {
+        note.textContent = '(the top k values are not all larger than the reference — check the list is sorted largest-first)';
+        return;
+      }
+      var avg = s / k;
+      var alpha = 1 / avg;
+      refOut.textContent = ref.toString();
+      sumOut.textContent = s.toFixed(4);
+      avgOut.textContent = avg.toFixed(4);
+      alphaOut.textContent = alpha.toFixed(2);
+      xiOut.textContent = (1 / alpha).toFixed(3);
+      note.textContent = '';
+    }
+
+    listEl.addEventListener('input', recompute);
+    kEl.addEventListener('input', recompute);
+    resetBtn.addEventListener('click', function(){
+      listEl.value = DEFAULTS.list; kEl.value = DEFAULTS.k;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

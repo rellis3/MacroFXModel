@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fama-MacBeth Two-Stage Regression — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Factor Models / Fama-MacBeth</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Factor Models 3 of 5</div>
+  <h1 class="tl-title">Fama-MacBeth Two-Stage Regression</h1>
+  <p class="tl-dek">Fama-French gives you a factor loading — how exposed an asset is to a risk factor. It never answers a genuinely separate question: what does the market actually pay, in return per unit of exposure, for bearing that risk — and how do you get an honest standard error when every asset's return in a given month is buffeted by the same shared shock? Fama-MacBeth (1973) answers both, one period at a time.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — a two-stage panel risk-premium estimator; a repo-wide search confirms no Fama-MacBeth (or equivalent per-period cross-sectional regression) implementation exists anywhere in this codebase</span>
+    <span>~18 min read</span>
+    <span>Prereqs: <a href="institutional-fama-french-carhart.html">Fama-French &amp; Carhart</a>, <a href="primer-correlation-regression.html">Correlation &amp; Linear Regression</a></span>
+  </div>
+
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="institutional-fama-macbeth-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>A factor-loading regression (Fama-French, Carhart) tells you how <strong>exposed</strong> an asset is to a factor (\(\beta_i\)); it says nothing about what the market <strong>pays</strong> per unit of that exposure. Fama-MacBeth (1973) estimates that price — the factor's risk premium \(\lambda\) — with a standard error that is actually trustworthy.</li>
+      <li>The procedure runs OLS <strong>twice, on two different axes</strong>: Stage 1 is one time-series regression per asset (across periods) to get each asset's fixed \(\hat\beta_i\); Stage 2 is one cross-sectional regression per period (across assets) using those fixed betas as the regressor, producing one \(\hat\lambda_t\) per period.</li>
+      <li>The risk premium estimate is the plain average of the \(T\) period-by-period \(\hat\lambda_t\)'s; its standard error comes from the <strong>time-series</strong> standard deviation of the \(\hat\lambda_t\) series itself, divided by \(\sqrt{T}\) — never from a single pooled regression's residuals.</li>
+      <li>This sidesteps the single biggest trap in panel asset pricing: pooling every asset-period observation into one giant OLS regression understates standard errors badly, because returns across <em>different</em> assets in the <em>same</em> period are correlated — they share common-period shocks. Fama-MacBeth's per-period estimates reduce each period to one number, so that correlation stops mattering.</li>
+      <li>Stage-1 betas are themselves noisy estimates, not the true population values — using an estimated regressor in Stage 2 biases \(\hat\lambda\) toward zero (classical errors-in-variables attenuation). Shanken (1992) derived the standard correction, which inflates the reported standard errors to account for that extra layer of uncertainty.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    <a href="institutional-fama-french-carhart.html">Fama-French &amp; Carhart</a>
+    hands you a genuinely useful number for every asset: its factor betas —
+    how much a stock, or an FX carry basket, moves per unit move in the
+    market factor, the size factor, value, momentum. That regression answers
+    "how exposed is this asset to this risk." It does not, and structurally
+    cannot, answer a second and completely separate question that any
+    investor actually holding the factor exposure needs answered: <strong>is
+    the market compensating anyone for bearing that risk, and how much?</strong>
+    A factor with a large, positive, statistically reliable average payoff per
+    unit of exposure is one worth being exposed to; a factor whose exposure
+    earns nothing on average, or earns a payoff indistinguishable from zero
+    once measured honestly, is not — no matter how cleanly its betas were
+    estimated in the first stage.
+  </p>
+  <p>
+    That "measured honestly" clause is where this lesson actually lives.
+    Getting a point estimate of a risk premium is not hard — regress returns
+    on betas and read off the slope. Getting a <em>standard error you can
+    trust</em> for that estimate is the hard part, because asset returns
+    within the same month, week, or day are not independent draws: a bad
+    month for equities is a bad month for nearly every stock at once; a
+    dollar-strength shock moves nearly every G10 cross the same direction on
+    the same day. Every asset-period observation quietly shares information
+    with every other asset-period observation from the same period, and any
+    inference procedure that doesn't account for that will report standard
+    errors far smaller than the truth. Fama and MacBeth's 1973 paper — "Risk,
+    Return, and Equilibrium: Empirical Tests" — is built around a specific,
+    elegant answer to exactly this problem, and it remains the standard
+    textbook procedure for estimating a factor's price of risk fifty years
+    later.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>An assembly line: measure exposure once, then price it fresh every single period</h3>
+    <p>
+      Picture a research desk holding a basket of currency portfolios, each
+      with a known, already-measured sensitivity to a carry factor — some
+      portfolios are heavily exposed, some barely at all, established once
+      from years of history. Now for a single specific month, take that
+      month's actual returns across every portfolio in the basket and ask one
+      question: this month, did more carry exposure actually correspond to a
+      better or worse return, and by how much per unit of exposure? That
+      "how much per unit of exposure, this month" is a single cross-sectional
+      regression — one number, \(\hat\lambda_t\), telling you the price the
+      market charged (or paid) for carry risk during that specific month.
+    </p>
+    <p>
+      Now repeat that same one-month exercise separately for every month in
+      the sample — the exposures never change (they were measured once, up
+      front, from the full history), but the price of bearing them bounces
+      around from month to month, because different months bring different
+      shocks. Some months carry pays off handsomely; others it gets punished.
+      The final risk-premium estimate is simply the average of all those
+      monthly prices, and — this is the entire trick — the standard error
+      comes from how much those monthly prices themselves bounce around,
+      not from pretending every asset in every month was an independent
+      coin flip. If the monthly prices bounce around a lot, the average is
+      uncertain and the standard error says so honestly. If a single giant
+      regression pooled every asset and every month together instead, it
+      would have no idea the ups and downs it's staring at are really just a
+      much smaller number of monthly stories repeated across many highly
+      correlated assets — and it would report a standard error far too small
+      to be believed.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The two-stage procedure, precisely</h2>
+  <p>
+    Both stages are ordinary least squares — the exact machinery derived in
+    <a href="primer-correlation-regression.html">Correlation &amp; Linear
+    Regression</a>, \(\hat\beta = \mathrm{Cov}(X,Y)/\mathrm{Var}(X)\). What
+    changes between the two stages is not the formula — it's which axis of
+    the data plays the role of "the sample." Stage 1 treats <em>time</em> as
+    the sample, holding the asset fixed. Stage 2 treats <em>assets</em> as
+    the sample, holding the period fixed. Keeping that one distinction straight
+    is the whole procedure.
+  </p>
+
+  <p><strong>Stage 1 — time-series regression, once per asset, using the full sample.</strong>
+  For each asset \(i\) separately, regress that one asset's returns on the
+  factor across every period \(t=1,\dots,T\) in the sample:</p>
+  <div class="tl-math">\[ R_{i,t} = a_i + \beta_i F_t + \varepsilon_{i,t}, \qquad t = 1,\dots,T \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>R_{i,t}</code><span>asset i's realized return in period t</span></div>
+    <div class="tl-eq-chip c2"><code>F_t</code><span>the factor's realized return in period t (e.g. a carry-factor return)</span></div>
+    <div class="tl-eq-chip c3"><code>β_i</code><span>asset i's exposure to the factor — estimated once, fixed forever after</span></div>
+    <div class="tl-eq-chip c4"><code>ε_{i,t}</code><span>whatever this period's return isn't explained by the factor</span></div>
+  </div>
+  <p>
+    This is precisely the single-factor version of the regression the
+    Fama-French &amp; Carhart lesson runs (there with several factors at
+    once; here, one, to keep the arithmetic below trackable by hand — nothing
+    about the logic changes with more factors). Using exactly the OLS slope
+    formula from the regression primer, but now with time \(t\) running over
+    the sample for one fixed asset \(i\):
+  </p>
+  <div class="tl-math">\[ \hat\beta_i = \frac{\mathrm{Cov}_t(R_i, F)}{\mathrm{Var}_t(F)} \]</div>
+  <p>
+    Do this once, separately, for every asset in the universe — \(N\)
+    completely independent time-series regressions, each run over the same
+    \(T\) periods. The output is a fixed number per asset, \(\hat\beta_1,
+    \hat\beta_2, \dots, \hat\beta_N\), that never changes again for the rest
+    of the procedure. Stage 1 is finished the moment these are estimated;
+    <a href="primer-correlation-regression.html">Correlation &amp; Linear
+    Regression</a> and the Fama-French &amp; Carhart lesson already cover
+    every detail of how a regression like this is actually fit, so it is not
+    re-derived here — this lesson takes stage-1 betas as a <em>given input</em>
+    and starts precisely where those lessons leave off.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Stage 1 is like measuring how sensitive each kid's mood is to rainy days, using a whole year of data per kid. You do this once per kid, using everything you know about them, and then you write that sensitivity number down and stop touching it — it's now a fixed fact about that kid for the rest of the exercise.</p>
+  </div>
+
+  <p><strong>Stage 2 — cross-sectional regression, repeated separately for every single period.</strong>
+  Now flip axes entirely. Pick one period \(t\), hold it fixed, and look
+  across all \(N\) assets at once. Regress that period's realized returns on
+  the (already-known, already-fixed) Stage-1 betas:</p>
+  <div class="tl-math">\[ R_{i,t} = \lambda_{0,t} + \lambda_t\,\hat\beta_i + \eta_{i,t}, \qquad i = 1,\dots,N \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>R_{i,t}</code><span>this period's actual return, across every asset — the dependent variable this time</span></div>
+    <div class="tl-eq-chip c3"><code>β̂_i</code><span>the fixed Stage-1 exposures — now playing the role of the regressor, X</span></div>
+    <div class="tl-eq-chip c2"><code>λ_t</code><span>this period's estimated price of factor risk — the slope this regression fits</span></div>
+    <div class="tl-eq-chip c4"><code>λ_{0,t}</code><span>this period's zero-beta return — what a hypothetical asset with no factor exposure earned</span></div>
+  </div>
+  <p>
+    Notice exactly what swapped: in Stage 1, time indexed the sample and the
+    asset was fixed; here, assets index the sample (\(i=1,\dots,N\)) and the
+    period \(t\) is fixed. It is the identical OLS slope formula, only now
+    the covariance and variance are computed <em>across assets, within one
+    period</em>, rather than across periods for one asset:
+  </p>
+  <div class="tl-math">\[ \hat\lambda_t = \frac{\mathrm{Cov}_i(\hat\beta, R_t)}{\mathrm{Var}_i(\hat\beta)} \]</div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">Cov_i(β̂, R_t)</div>
+      <div class="tl-fp-name">Cross-sectional co-movement</div>
+      <div class="tl-fp-desc">Across assets, this period only: did higher exposure line up with a higher return?</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">Var_i(β̂)</div>
+      <div class="tl-fp-name">Spread of exposures</div>
+      <div class="tl-fp-desc">How much the betas themselves vary across the asset universe — fixed, doesn't change period to period</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">λ̂_t</div>
+      <div class="tl-fp-name">This period's price of risk</div>
+      <div class="tl-fp-desc">Return earned per unit of factor exposure, in this one period alone</div>
+    </div>
+  </div>
+  <p>
+    Run this cross-sectional regression <em>separately, once per period</em>
+    — \(T\) completely independent regressions, one for every date in the
+    sample, each one producing its own \(\hat\lambda_t\). Unlike Stage 1
+    (where the betas are fixed inputs, estimated once and reused), Stage 2
+    genuinely reruns from scratch every single period, because the actual
+    realized returns \(R_{i,t}\) — the thing being explained — are different
+    every period even though the regressor \(\hat\beta_i\) never changes.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Stage 2 asks the same question fresh every single day: today, across all the kids, did the ones with a higher measured rain-sensitivity actually end up moodier than the ones with lower sensitivity — and by how much per point of sensitivity? You get one answer for today, a different answer for tomorrow, a different one the day after, because the weather and the mood are different every day even though each kid's own sensitivity number never moves.</p>
+  </div>
+
+  <p><strong>Final step — average across time, and get the standard error from the time series of estimates itself.</strong>
+  The Stage-2 procedure hands back \(T\) separate estimates, \(\hat\lambda_1,
+  \hat\lambda_2,\dots,\hat\lambda_T\) — one price of risk per period. The
+  Fama-MacBeth risk-premium estimate is nothing more exotic than their plain
+  average:</p>
+  <div class="tl-math">\[ \bar\lambda = \frac{1}{T}\sum_{t=1}^{T} \hat\lambda_t \]</div>
+  <p>
+    The standard error is where the entire procedure earns its keep. It is
+    computed from how much the \(\hat\lambda_t\)'s themselves vary across
+    time — exactly the ordinary standard-error-of-a-sample-mean formula,
+    treating the \(T\) period-level estimates as \(T\) observations of a
+    single random variable:
+  </p>
+  <div class="tl-math">\[ s_\lambda = \sqrt{\frac{1}{T-1}\sum_{t=1}^{T}\big(\hat\lambda_t-\bar\lambda\big)^2} \qquad SE(\bar\lambda) = \frac{s_\lambda}{\sqrt{T}} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>s_λ</code><span>the sample standard deviation of the T period-level λ̂_t estimates</span></div>
+    <div class="tl-eq-chip c4"><code>SE(λ̄)</code><span>standard error of the average — shrinks as more periods are added, exactly like any sample mean</span></div>
+  </div>
+  <p>
+    A t-statistic for testing whether the average risk premium is
+    distinguishable from zero follows immediately, \(t = \bar\lambda /
+    SE(\bar\lambda)\). Nothing here touches the within-period cross-sectional
+    correlation between assets at all — and that omission is deliberate,
+    and is the entire point of the next section.
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(R_{i,t}\)</td><td>Asset \(i\)'s realized return in period \(t\).</td></tr>
+    <tr><td>\(F_t\)</td><td>The factor's realized return in period \(t\) (a single factor here; the same logic extends to a vector of factors, as in Fama-French/Carhart).</td></tr>
+    <tr><td>\(\hat\beta_i\)</td><td>Asset \(i\)'s Stage-1 factor exposure — estimated once from the full time series, then held fixed for every Stage-2 regression.</td></tr>
+    <tr><td>\(\hat\lambda_t\)</td><td>The Stage-2 estimated price of factor risk for period \(t\) alone — one per period.</td></tr>
+    <tr><td>\(\hat\lambda_{0,t}\)</td><td>Period \(t\)'s estimated zero-beta return (Stage-2 intercept).</td></tr>
+    <tr><td>\(N\)</td><td>Number of assets in the cross-section (the sample size for every Stage-2 regression).</td></tr>
+    <tr><td>\(T\)</td><td>Number of time periods (the sample size for every Stage-1 regression, and for the final time-series average).</td></tr>
+    <tr><td>\(\bar\lambda\)</td><td>The Fama-MacBeth risk-premium estimate — the plain average of the T period-level \(\hat\lambda_t\)'s.</td></tr>
+    <tr><td>\(s_\lambda\)</td><td>Sample standard deviation of the \(\hat\lambda_t\) time series.</td></tr>
+    <tr><td>\(SE(\bar\lambda)\)</td><td>\(s_\lambda/\sqrt{T}\) — the honest standard error, built from time-series variation in the period estimates, not from a pooled panel's residuals.</td></tr>
+  </table></div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>Why pooling is wrong, and this is right</h2>
+  <p>
+    The single most important idea in this lesson is not the two-stage
+    mechanics above — it's <em>why</em> those mechanics were designed this
+    way instead of the far more obvious alternative: stack every asset's
+    return in every period into one giant panel of \(N\times T\) observations
+    and run one pooled OLS regression of \(R_{i,t}\) on \(\hat\beta_i\)
+    directly. That regression is trivial to run, and it produces a point
+    estimate of the risk premium that is not even unreasonable. Its standard
+    error, however, is badly, systematically wrong — and it is wrong in a
+    predictable direction: too small, making a risk premium look far more
+    statistically reliable than it actually is.
+  </p>
+  <p>
+    The reason is cross-sectional correlation. Ordinary least squares'
+    standard-error formula assumes every observation's error term is
+    independent of every other observation's error term. That assumption is
+    reasonable across <em>time</em> for many financial series (today's
+    surprise doesn't mechanically determine tomorrow's), but it is badly
+    false <em>within</em> a single period, across assets: a common
+    macro shock — a surprise rate decision, a risk-off day, a dollar-funding
+    squeeze — hits nearly every asset in the cross-section at once, in the
+    same direction. A pooled regression with \(N\times T\) rows is not
+    actually looking at \(N\times T\) independent pieces of information; it
+    is looking at something closer to \(T\) independent monthly "stories,"
+    each one repeated \(N\) times with only asset-specific noise added on
+    top. Treating it as \(N\times T\) independent draws overstates the
+    genuine sample size enormously, and understates the standard error to
+    match.
+  </p>
+  <div class="tl-compare">
+    <div class="tl-compare-card red">
+      <h4>Pooled panel OLS — wrong</h4>
+      <p>
+        Stack all \(N\times T\) asset-period observations and run one OLS
+        regression of \(R_{i,t}\) on \(\hat\beta_i\). The standard-error
+        formula assumes every one of the \(N\times T\) error terms is
+        independent. It has no mechanism to notice that, within any single
+        period, the \(N\) error terms all lean the same direction because
+        they share that period's common shock — the formula is simply blind
+        to it, and reports a standard error far smaller than the truth.
+      </p>
+    </div>
+    <div class="tl-compare-card green">
+      <h4>Fama-MacBeth — right</h4>
+      <p>
+        Run \(T\) separate cross-sectional regressions, one per period, each
+        collapsing that period's entire cross-section of information into a
+        single number, \(\hat\lambda_t\). Whatever cross-sectional
+        correlation existed among the \(N\) assets in period \(t\) is now
+        irrelevant, because period \(t\) contributes exactly <strong>one</strong>
+        data point — \(\hat\lambda_t\) — to the final average. Inference is
+        then run honestly over \(T\) genuinely separate time periods, not
+        over a fictitious \(N\times T\) independent sample.
+      </p>
+    </div>
+  </div>
+  <div class="tl-solid amber">
+    <strong>The mechanism in one sentence:</strong> Fama-MacBeth doesn't
+    eliminate cross-sectional correlation between assets — it makes it
+    irrelevant, by reducing every period's entire cross-section down to a
+    single summary number before that number ever reaches the final
+    averaging step. A pooled regression never performs that reduction, so
+    the correlation it never accounted for is still sitting inside its
+    reported standard error, quietly making it too small.
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine asking 30 kids in one class and 30 kids in another class whether they liked a rainy field trip, and treating that as 60 independent opinions. But if all 30 kids in each class were standing together in the exact same rain at the exact same time, their answers aren't really 30 independent opinions — they're one shared experience, echoed 30 times. If you had asked 100 different classes on 100 different days instead, and only kept each class's overall verdict, you'd have 100 genuinely separate opinions to average — noisier day to day, but honestly counted. That's the whole difference: don't pretend correlated echoes are independent votes.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>The errors-in-variables problem, and the Shanken correction</h2>
+  <p>
+    There is a second, separate wrinkle worth being honest about, even
+    though this lesson doesn't derive its fix in full. Stage 2 uses
+    \(\hat\beta_i\) — the Stage-1 <em>estimate</em> of asset \(i\)'s exposure
+    — as if it were the asset's true, exactly-known population beta. It
+    isn't. \(\hat\beta_i\) was itself fit from a finite time series and
+    carries its own sampling error. Using a noisy, estimated regressor in
+    place of the true unobserved one is a textbook <strong>errors-in-variables</strong>
+    problem, and it has a well-known consequence: it biases the Stage-2
+    slope \(\hat\lambda_t\) toward zero — <strong>attenuation bias</strong> —
+    because some of the genuine relationship between true exposure and
+    return gets absorbed into what looks like extra noise, simply because
+    the regressor used isn't quite the right number.
+  </p>
+  <p>
+    Jay Shanken's 1992 paper, "On the Estimation of Beta-Pricing Models"
+    (Review of Financial Studies), derived the standard correction for
+    exactly this. Without reproducing the derivation here, its role in the
+    procedure is simple to state honestly: the <strong>Shanken correction
+    inflates the Fama-MacBeth standard errors</strong> upward, to account for
+    the extra layer of estimation uncertainty coming from the fact that
+    Stage 1's betas are themselves estimates rather than known constants.
+    Plain Fama-MacBeth standard errors, uncorrected, are typically too
+    optimistic for exactly this reason — a second, independent source of
+    "the reported significance is better than the truth," distinct from (and
+    on top of) the pooling mistake in Section 03.
+  </p>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Three currency portfolios, four months, by hand</h3>
+    <p>
+      Three FX carry-sorted portfolios — A, B, C — with carry-factor betas
+      already estimated in Stage 1, from the full available history (given
+      here as inputs; how they'd be estimated is exactly the Stage-1
+      time-series regression covered above and derived in full in
+      <a href="primer-correlation-regression.html">Correlation &amp; Linear
+      Regression</a>):
+    </p>
+    <div class="tl-math">\[ \hat\beta_A = 0.7 \qquad \hat\beta_B = 1.0 \qquad \hat\beta_C = 1.3 \]</div>
+    <p>
+      Mean exposure \(\bar\beta = (0.7+1.0+1.3)/3 = 1.0\). Deviations from
+      the mean: \([-0.3,\ 0,\ 0.3]\). Variance of the exposures (this stays
+      fixed across every period — it's the same three assets every time):
+    </p>
+    <div class="tl-math">\[ \mathrm{Var}_i(\hat\beta) = \frac{(-0.3)^2+0^2+0.3^2}{3} = \frac{0.18}{3} = 0.06 \]</div>
+    <p>
+      Now four months of realized returns (illustrative, in percent), and
+      the Stage-2 cross-sectional regression run separately on each:
+    </p>
+    <div class="tl-symbols"><table>
+      <tr><td></td><td>A (β=0.7)</td><td>B (β=1.0)</td><td>C (β=1.3)</td></tr>
+      <tr><td>Month 1</td><td>1.0%</td><td>2.0%</td><td>3.5%</td></tr>
+      <tr><td>Month 2</td><td>−0.5%</td><td>−1.0%</td><td>−2.0%</td></tr>
+      <tr><td>Month 3</td><td>0.8%</td><td>1.0%</td><td>1.1%</td></tr>
+      <tr><td>Month 4</td><td>−1.0%</td><td>0.0%</td><td>1.3%</td></tr>
+    </table></div>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>Month 1: R̄ = (1.0+2.0+3.5)/3 = 2.1667</h4>
+          <p>
+            Deviations \(R_{i,1}-\bar R_1\): \([-1.1667,\ -0.1667,\ 1.3333]\).
+            \(\mathrm{Cov}_i(\hat\beta,R_1) = \frac{(-0.3)(-1.1667)+(0)(-0.1667)+(0.3)(1.3333)}{3} = \frac{0.35+0+0.4}{3} = 0.25\).
+            \(\hat\lambda_1 = 0.25/0.06 = \mathbf{4.1667}\). Intercept
+            \(\hat\lambda_{0,1} = 2.1667 - (4.1667)(1.0) = -2.0000\). (Fitted
+            values \([0.9167,\ 2.1667,\ 3.4167]\), residuals
+            \([0.0833,\ -0.1667,\ 0.0833]\), summing to 0 as OLS requires.)
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>Month 2: R̄ = (−0.5−1.0−2.0)/3 = −1.1667</h4>
+          <p>
+            Deviations: \([0.6667,\ 0.1667,\ -0.8333]\).
+            \(\mathrm{Cov}_i(\hat\beta,R_2) = \frac{(-0.3)(0.6667)+0+(0.3)(-0.8333)}{3} = \frac{-0.2-0.25}{3} = -0.15\).
+            \(\hat\lambda_2 = -0.15/0.06 = \mathbf{-2.5000}\). Intercept
+            \(\hat\lambda_{0,2} = -1.1667-(-2.5)(1.0) = 1.3333\).
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>Month 3: R̄ = (0.8+1.0+1.1)/3 = 0.9667</h4>
+          <p>
+            Deviations: \([-0.1667,\ 0.0333,\ 0.1333]\).
+            \(\mathrm{Cov}_i(\hat\beta,R_3) = \frac{(-0.3)(-0.1667)+0+(0.3)(0.1333)}{3} = \frac{0.05+0.04}{3} = 0.03\).
+            \(\hat\lambda_3 = 0.03/0.06 = \mathbf{0.5000}\). Intercept
+            \(\hat\lambda_{0,3} = 0.9667-(0.5)(1.0) = 0.4667\).
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">4</div>
+        <div class="tl-step-body">
+          <h4>Month 4: R̄ = (−1.0+0.0+1.3)/3 = 0.1000</h4>
+          <p>
+            Deviations: \([-1.1,\ -0.1,\ 1.2]\).
+            \(\mathrm{Cov}_i(\hat\beta,R_4) = \frac{(-0.3)(-1.1)+0+(0.3)(1.2)}{3} = \frac{0.33+0.36}{3} = 0.23\).
+            \(\hat\lambda_4 = 0.23/0.06 = \mathbf{3.8333}\). Intercept
+            \(\hat\lambda_{0,4} = 0.1-(3.8333)(1.0) = -3.7333\).
+          </p>
+        </div>
+      </div>
+    </div>
+    <p><strong>Averaging the four monthly prices of risk.</strong></p>
+    <div class="tl-math">\[ \bar\lambda = \frac{4.1667 - 2.5000 + 0.5000 + 3.8333}{4} = \frac{6.0000}{4} = 1.5000 \]</div>
+    <p>
+      Deviations from \(\bar\lambda=1.5\): \([2.6667,\ -4.0000,\ -1.0000,\
+      2.3333]\). Squared: \([7.1111,\ 16.0000,\ 1.0000,\ 5.4444]\), summing
+      to \(29.5556\). Dividing by \(T-1=3\) gives \(9.8519\), and:
+    </p>
+    <div class="tl-math">\[ s_\lambda = \sqrt{9.8519} \approx 3.1388 \qquad SE(\bar\lambda) = \frac{3.1388}{\sqrt{4}} \approx 1.5694 \]</div>
+    <p>
+      \(t = \bar\lambda / SE(\bar\lambda) = 1.5/1.5694 \approx 0.96\) —
+      nowhere near the conventional \(|t|>2\) threshold. With only four
+      months of data the estimate of \(\bar\lambda\) is honestly, correctly
+      reported as statistically indistinguishable from zero, even though the
+      point estimate itself (1.50% per unit of carry-factor exposure) looks
+      economically sizable. This is not a flaw in the arithmetic — it's
+      exactly what an honest standard error is supposed to do with a tiny
+      sample: refuse to oversell a noisy average as a confident discovery.
+    </p>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">The Fama-MacBeth assembly line: measure exposure once, price it fresh every period, then average the prices</div>
+    <svg viewBox="0 0 680 400" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagram showing Stage 1 as three time-series regressions, one per asset, producing fixed betas; Stage 2 as four cross-sectional regressions, one per month, each combining the fixed betas with that month's returns to produce a lambda estimate; and a final step averaging the four lambda estimates into the reported risk premium with its standard error.">
+      <rect x="15" y="14" width="195" height="56" rx="8" style="fill:var(--blue-bg);stroke:var(--blue-bd)"/>
+      <text x="112" y="36" text-anchor="middle" fill="var(--text)" font-size="12" font-family="'DM Mono',monospace">Asset A: R_A,t on F_t</text>
+      <text x="112" y="52" text-anchor="middle" fill="var(--blue)" font-size="11" font-family="'DM Mono',monospace" font-weight="700">→ β̂_A = 0.7</text>
+      <text x="112" y="65" text-anchor="middle" fill="var(--text3)" font-size="9" font-family="'DM Mono',monospace">time-series OLS, all T periods</text>
+
+      <rect x="242" y="14" width="195" height="56" rx="8" style="fill:var(--blue-bg);stroke:var(--blue-bd)"/>
+      <text x="339" y="36" text-anchor="middle" fill="var(--text)" font-size="12" font-family="'DM Mono',monospace">Asset B: R_B,t on F_t</text>
+      <text x="339" y="52" text-anchor="middle" fill="var(--blue)" font-size="11" font-family="'DM Mono',monospace" font-weight="700">→ β̂_B = 1.0</text>
+      <text x="339" y="65" text-anchor="middle" fill="var(--text3)" font-size="9" font-family="'DM Mono',monospace">time-series OLS, all T periods</text>
+
+      <rect x="469" y="14" width="195" height="56" rx="8" style="fill:var(--blue-bg);stroke:var(--blue-bd)"/>
+      <text x="566" y="36" text-anchor="middle" fill="var(--text)" font-size="12" font-family="'DM Mono',monospace">Asset C: R_C,t on F_t</text>
+      <text x="566" y="52" text-anchor="middle" fill="var(--blue)" font-size="11" font-family="'DM Mono',monospace" font-weight="700">→ β̂_C = 1.3</text>
+      <text x="566" y="65" text-anchor="middle" fill="var(--text3)" font-size="9" font-family="'DM Mono',monospace">time-series OLS, all T periods</text>
+
+      <line x1="112" y1="70" x2="330" y2="112" style="stroke:var(--border2);stroke-width:1.5"/>
+      <line x1="339" y1="70" x2="339" y2="112" style="stroke:var(--border2);stroke-width:1.5"/>
+      <line x1="566" y1="70" x2="348" y2="112" style="stroke:var(--border2);stroke-width:1.5"/>
+
+      <rect x="185" y="112" width="310" height="42" rx="8" style="fill:var(--panel2);stroke:var(--border2);stroke-width:1.5"/>
+      <text x="340" y="130" text-anchor="middle" fill="var(--text)" font-size="12" font-family="'DM Mono',monospace" font-weight="700">Stage 1 output: β̂_A, β̂_B, β̂_C</text>
+      <text x="340" y="146" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">fixed from here on — never re-estimated</text>
+
+      <line x1="260" y1="154" x2="90" y2="192" style="stroke:var(--border2);stroke-width:1.5"/>
+      <line x1="310" y1="154" x2="255" y2="192" style="stroke:var(--border2);stroke-width:1.5"/>
+      <line x1="370" y1="154" x2="425" y2="192" style="stroke:var(--border2);stroke-width:1.5"/>
+      <line x1="420" y1="154" x2="590" y2="192" style="stroke:var(--border2);stroke-width:1.5"/>
+
+      <rect x="10" y="192" width="160" height="50" rx="8" style="fill:var(--purple-bg);stroke:var(--purple-bd)"/>
+      <text x="90" y="212" text-anchor="middle" fill="var(--text)" font-size="11" font-family="'DM Mono',monospace">t=1 cross-section OLS</text>
+      <text x="90" y="228" text-anchor="middle" fill="var(--purple)" font-size="12" font-family="'DM Mono',monospace" font-weight="700">λ̂₁ = 4.1667</text>
+
+      <rect x="175" y="192" width="160" height="50" rx="8" style="fill:var(--purple-bg);stroke:var(--purple-bd)"/>
+      <text x="255" y="212" text-anchor="middle" fill="var(--text)" font-size="11" font-family="'DM Mono',monospace">t=2 cross-section OLS</text>
+      <text x="255" y="228" text-anchor="middle" fill="var(--purple)" font-size="12" font-family="'DM Mono',monospace" font-weight="700">λ̂₂ = −2.5000</text>
+
+      <rect x="340" y="192" width="160" height="50" rx="8" style="fill:var(--purple-bg);stroke:var(--purple-bd)"/>
+      <text x="420" y="212" text-anchor="middle" fill="var(--text)" font-size="11" font-family="'DM Mono',monospace">t=3 cross-section OLS</text>
+      <text x="420" y="228" text-anchor="middle" fill="var(--purple)" font-size="12" font-family="'DM Mono',monospace" font-weight="700">λ̂₃ = 0.5000</text>
+
+      <rect x="505" y="192" width="165" height="50" rx="8" style="fill:var(--purple-bg);stroke:var(--purple-bd)"/>
+      <text x="587" y="212" text-anchor="middle" fill="var(--text)" font-size="11" font-family="'DM Mono',monospace">t=4 cross-section OLS</text>
+      <text x="587" y="228" text-anchor="middle" fill="var(--purple)" font-size="12" font-family="'DM Mono',monospace" font-weight="700">λ̂₄ = 3.8333</text>
+
+      <text x="340" y="266" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">each regression uses that period's own returns — the betas above never change</text>
+
+      <line x1="90" y1="242" x2="300" y2="292" style="stroke:var(--border2);stroke-width:1.5"/>
+      <line x1="255" y1="242" x2="320" y2="292" style="stroke:var(--border2);stroke-width:1.5"/>
+      <line x1="420" y1="242" x2="360" y2="292" style="stroke:var(--border2);stroke-width:1.5"/>
+      <line x1="587" y1="242" x2="380" y2="292" style="stroke:var(--border2);stroke-width:1.5"/>
+
+      <rect x="170" y="292" width="340" height="72" rx="10" style="fill:var(--green-bg);stroke:var(--green-bd);stroke-width:2"/>
+      <text x="340" y="316" text-anchor="middle" fill="var(--text)" font-size="13" font-family="'DM Mono',monospace" font-weight="700">λ̄ = mean(λ̂_t) = 1.5000</text>
+      <text x="340" y="336" text-anchor="middle" fill="var(--green)" font-size="12" font-family="'DM Mono',monospace">SE(λ̄) = s_λ/√T ≈ 1.5694</text>
+      <text x="340" y="353" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">t ≈ 0.96 — from the spread of the four λ̂_t's, not pooled residuals</text>
+    </svg>
+    <div class="tl-chart-caption">
+      Stage 1 runs once, producing fixed exposures. Stage 2 reruns every
+      period, producing one price of risk per period. The final average and
+      its standard error come entirely from that short time series of
+      period-level prices — matching the hand-worked arithmetic above
+      exactly.
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Edit the four period-level λ̂_t's, live</h3>
+    <p>
+      Starts on the worked example's own four monthly estimates. Change any
+      value and the average, sample standard deviation, standard error, and
+      t-statistic all recompute instantly from the formulas derived above.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>λ̂₁ (Month 1)</span></div>
+        <input type="number" id="fm-scratch-l1" class="tl-scratch-input" value="4.1667" step="0.0001">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>λ̂₂ (Month 2)</span></div>
+        <input type="number" id="fm-scratch-l2" class="tl-scratch-input" value="-2.5" step="0.0001">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>λ̂₃ (Month 3)</span></div>
+        <input type="number" id="fm-scratch-l3" class="tl-scratch-input" value="0.5" step="0.0001">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>λ̂₄ (Month 4)</span></div>
+        <input type="number" id="fm-scratch-l4" class="tl-scratch-input" value="3.8333" step="0.0001">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      T (valid entries) = <b id="fm-scratch-t">4</b>&emsp;λ̄ = <b id="fm-scratch-avg">1.5000</b>
+    </div>
+    <div class="tl-readout">
+      s_λ = <b id="fm-scratch-sd">3.1388</b>&emsp;SE(λ̄) = <b id="fm-scratch-se">1.5694</b>&emsp;t = <b id="fm-scratch-tstat">0.96</b>
+      <span id="fm-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="fm-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>Testing whether a carry factor actually earns a premium across a universe of FX crosses</h3>
+    <p>
+      Suppose a research desk has already computed, for every currency pair
+      in a G10-plus-liquid-EM universe, a Stage-1 carry-factor beta from
+      several years of history — exactly the kind of exposure the
+      Fama-French &amp; Carhart lesson's machinery produces. The desk now
+      wants to know something that beta alone cannot answer: has carry
+      exposure actually been compensated, on average, with a standard error
+      that survives honest scrutiny? Running Fama-MacBeth means computing
+      one cross-sectional regression per month across every pair in the
+      universe, collecting the resulting monthly \(\hat\lambda_t\) series,
+      and only then asking whether its time-series average is reliably
+      different from zero. A large point estimate with a small \(N\) (few
+      pairs each month) or a short \(T\) (few years of history) can easily
+      produce the kind of result seen in the worked example above — an
+      economically large-looking average premium that is, honestly reported,
+      statistically indistinguishable from noise. That gap between "looks
+      big" and "is reliable" is precisely what this procedure exists to
+      expose, not paper over.
+    </p>
+  </div>
+
+  <div class="tl-solid amber">
+    <strong>A correctly-computed standard error is not the same claim as
+    "this factor has real, tradable edge."</strong> Fama-MacBeth is honest
+    machinery for estimating a risk premium and its uncertainty given a
+    fixed set of assets, a fixed factor, and a fixed historical sample —
+    that is a statement about the estimator. It says nothing about whether
+    the factor definition itself was chosen after looking at the same data
+    (a serious multiple-testing risk covered in
+    <a href="multiple-testing.html">Multiple Testing</a>), or about whether
+    a premium that held historically will persist out of sample. Nothing
+    here should be read as evidence that any specific FX factor has, or will
+    have, real edge — see
+    <a href="research-pipeline-hypothesis-to-backtest.html">The Research
+    Pipeline</a> for the discipline that separate question actually requires.
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>How practitioners actually use this</h2>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📐</div>
+      <h4>The standard textbook procedure for pricing a factor</h4>
+      <p>
+        Fama-MacBeth remains the default way academic and institutional
+        research estimates a factor's risk premium and tests whether it is
+        statistically distinguishable from zero — it appears, in some form,
+        in nearly every asset-pricing paper that estimates a \(\lambda\)
+        rather than just a \(\beta\).
+      </p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🧭</div>
+      <h4>Shanken-corrected standard errors as the reported default</h4>
+      <p>
+        Because plain Fama-MacBeth standard errors ignore Stage-1 estimation
+        error, applied work commonly reports the Shanken-corrected version
+        alongside (or instead of) the raw one, precisely to avoid overstating
+        significance from a source this lesson names explicitly in Section
+        04.
+      </p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🔁</div>
+      <h4>A second layer of correction for autocorrelated λ̂_t's</h4>
+      <p>
+        The plain \(s_\lambda/\sqrt{T}\) formula itself still assumes the
+        period-level \(\hat\lambda_t\) estimates are serially uncorrelated.
+        When a factor's price of risk trends across adjacent periods (its
+        own kind of autocorrelation, exactly the failure mode the regression
+        primer's pitfalls section warns about), a Newey-West-style
+        heteroskedasticity-and-autocorrelation-robust standard error is
+        applied to the \(\hat\lambda_t\) series itself, on top of the
+        Shanken correction.
+      </p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">📊</div>
+      <h4>An implicit factor "report card"</h4>
+      <p>
+        A factor with a Fama-MacBeth \(\bar\lambda\) that survives both
+        corrections and remains significant is treated as evidence the
+        factor is priced; one that doesn't is evidence the corresponding
+        beta, however cleanly estimated, isn't being compensated — a
+        completely different and much harder bar to clear than merely
+        having a well-estimated exposure.
+      </p>
+    </div>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where Fama-MacBeth quietly goes wrong</h3>
+    <p>
+      <strong>Reporting plain, uncorrected standard errors.</strong> The
+      \(s_\lambda/\sqrt{T}\) formula in Section 02 is the honest fix for
+      cross-sectional correlation — it is not, by itself, a fix for the
+      errors-in-variables problem in Section 04. A result that looks
+      significant using plain Fama-MacBeth standard errors can lose that
+      significance entirely once Shanken's correction is applied; quoting
+      the uncorrected number without saying so overstates confidence in
+      exactly the direction this whole procedure was built to avoid.
+    </p>
+    <p>
+      <strong>Too few periods to trust the standard error at all.</strong>
+      The worked example above used \(T=4\) purely so the arithmetic could
+      be shown by hand — in practice, a standard deviation computed from
+      only a handful of \(\hat\lambda_t\)'s is itself extremely noisy, and
+      \(SE(\bar\lambda)=s_\lambda/\sqrt{T}\) inherits that noise. A "reliable"
+      Fama-MacBeth estimate generally needs decades of monthly data (or an
+      equivalently large number of independent periods), not a handful of
+      quarters.
+    </p>
+    <p>
+      <strong>Ignoring autocorrelation in the λ̂_t series.</strong> The plain
+      standard-error formula assumes the period-level estimates are
+      themselves independent draws over time. If a factor's price of risk
+      trends in stretches rather than bouncing around independently, that
+      autocorrelation understates \(s_\lambda\) the same way autocorrelated
+      residuals understate a plain OLS standard error, covered in
+      <a href="primer-correlation-regression.html">Correlation &amp; Linear
+      Regression</a>'s own pitfalls section — the fix there is the same in
+      spirit: a robust standard error, applied here to the \(\hat\lambda_t\)
+      series rather than to a single regression's residuals.
+    </p>
+    <p>
+      <strong>Treating Stage-1 betas as forever-fixed truths.</strong> This
+      lesson holds \(\hat\beta_i\) fixed across all \(T\) Stage-2 regressions
+      to keep the procedure and the arithmetic tractable, matching Fama and
+      MacBeth's original design — but real betas can drift over long
+      samples. Applied work sometimes re-estimates betas on a rolling window
+      rather than once over the full sample, which changes the bias-variance
+      trade-off of the whole procedure without changing anything about how
+      Stage 2 or the final averaging step works.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Stage 1 measures exposure once; Stage 2 prices it fresh every period.</strong> One time-series regression per asset gives fixed \(\hat\beta_i\)'s; one cross-sectional regression per period, using those fixed betas, gives one \(\hat\lambda_t\) per period.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The risk-premium estimate is the plain average of the \(\hat\lambda_t\)'s; the standard error comes from their time-series spread,</strong> \(s_\lambda/\sqrt{T}\) — never from a single pooled regression's residuals.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Pooling every asset-period observation into one OLS regression understates the standard error badly,</strong> because assets in the same period share common shocks — a false assumption of independence that Fama-MacBeth's per-period reduction sidesteps entirely.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Stage-1 betas are noisy estimates, not known constants</strong> — using them as a Stage-2 regressor biases \(\hat\lambda_t\) toward zero (attenuation); Shanken (1992) inflates the standard errors to correct for it.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Both stages are the identical OLS slope formula,</strong> \(\hat\beta=\mathrm{Cov}(X,Y)/\mathrm{Var}(X)\) — only the axis playing the role of "the sample" (time in Stage 1, assets in Stage 2) changes.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>An honestly-computed, correctly-significant \(\bar\lambda\) still isn't proof of real trading edge.</strong> It's a statement about the estimator on a fixed historical sample — factor mining, out-of-sample survival, and costs are separate, unanswered questions.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. A Fama-French regression already gives every asset a factor beta. What genuinely new question does Fama-MacBeth answer that the beta alone does not?</summary>
+    <div class="tl-answer">
+      A beta only measures exposure — how much an asset moves per unit move
+      in the factor. It says nothing about whether the market actually
+      compensates anyone for bearing that exposure, or how much. Fama-MacBeth
+      estimates that price — the factor's risk premium \(\lambda\), in
+      return earned per unit of exposure — together with a standard error
+      that is actually trustworthy, which a single factor-loading regression
+      was never designed to provide.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Describe precisely what happens in Stage 1 versus Stage 2 — which regression runs how many times, and along which axis of the data each time.</summary>
+    <div class="tl-answer">
+      Stage 1 runs once per asset: for a fixed asset \(i\), regress its
+      returns on the factor across every period \(t=1,\dots,T\) in the
+      sample, producing one fixed \(\hat\beta_i\) per asset (\(N\)
+      regressions total, one per asset, each over time). Stage 2 runs once
+      per period: for a fixed period \(t\), regress that period's realized
+      returns across every asset \(i=1,\dots,N\) on the (already-fixed)
+      Stage-1 betas, producing one \(\hat\lambda_t\) per period (\(T\)
+      regressions total, one per period, each across assets). The axis that
+      plays "the sample" swaps completely between the two stages.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why is pooling every asset-period observation into one giant panel regression the wrong way to estimate the risk premium's standard error?</summary>
+    <div class="tl-answer">
+      Because OLS's standard-error formula assumes every observation's error
+      is independent of every other observation's error, and that
+      assumption is badly false across assets within the same period —
+      returns on different assets in the same month share common-period
+      shocks (a broad risk-off day, a rate surprise) and move together. A
+      pooled regression with \(N\times T\) rows is not really looking at
+      \(N\times T\) independent pieces of information; it's closer to \(T\)
+      independent "stories" each echoed \(N\) times. Treating it as fully
+      independent overstates the effective sample size and understates the
+      standard error to match — usually badly.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. How does Fama-MacBeth's period-by-period design make the cross-sectional correlation in Q3 irrelevant, without needing to model or estimate that correlation directly?</summary>
+    <div class="tl-answer">
+      Because Stage 2 collapses each period's entire cross-section of
+      correlated asset returns into a single number, \(\hat\lambda_t\),
+      before that period ever contributes to the final average. Whatever
+      correlation existed among the \(N\) assets within period \(t\) is
+      baked into that one \(\hat\lambda_t\) but doesn't need to be modeled
+      separately, because the final inference step only ever sees \(T\)
+      period-level numbers — one contribution per period — never the raw
+      \(N\times T\) correlated observations directly.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. What is the errors-in-variables problem in Fama-MacBeth, and what does the Shanken (1992) correction actually do about it?</summary>
+    <div class="tl-answer">
+      Stage 2 uses \(\hat\beta_i\) — a Stage-1 estimate, not the true,
+      exactly-known population beta — as its regressor. A regressor measured
+      with error, used in place of the true unobserved one, is a classical
+      errors-in-variables setup, and it biases the Stage-2 slope toward zero
+      (attenuation bias), because part of the genuine relationship gets
+      absorbed as apparent noise. Shanken (1992) derived a standard
+      correction for this that inflates the reported Fama-MacBeth standard
+      errors, to account for the extra estimation uncertainty introduced by
+      using noisy Stage-1 betas rather than true ones — it does not change
+      the point estimate \(\bar\lambda\) itself, only how confidently it can
+      be reported.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. In the worked example, four monthly λ̂_t estimates average to 1.50 with a standard error of about 1.57, giving t ≈ 0.96. A colleague argues the 1.50% average is clearly a real, tradable carry premium since it's a big number. What's the correct response, and does a large, statistically significant λ̄ from a longer, more careful Fama-MacBeth run settle the question either?</summary>
+    <div class="tl-answer">
+      The correct response to the colleague: an average that is not
+      statistically distinguishable from zero — here \(t\approx0.96\), far
+      below the conventional threshold of about 2 — cannot be treated as
+      evidence of a reliable premium no matter how large it looks in
+      percentage terms; with only \(T=4\) periods the standard error is
+      itself far too noisy to draw a confident conclusion either way. And
+      even a longer, more careful run that clears statistical significance
+      after both the Shanken and autocorrelation corrections still only
+      answers "was this premium reliably nonzero in this historical
+      sample, for this specific factor definition" — it says nothing about
+      whether the factor was chosen after looking at the same data (a
+      multiple-testing risk), or whether the premium survives out-of-sample
+      and after costs. A correctly-computed standard error is a statement
+      about the estimator, not a certificate of tradable edge.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Eugene F. Fama and James D. MacBeth, <em>"Risk, Return, and Equilibrium: Empirical Tests,"</em> Journal of Political Economy, 81(3), 1973 — the original paper: the two-stage procedure, the period-by-period cross-sectional regression, and the time-series-of-estimates approach to standard errors used throughout this lesson.</li>
+    <li>Jay Shanken, <em>"On the Estimation of Beta-Pricing Models,"</em> Review of Financial Studies, 5(1), 1992 — derives the correction for the errors-in-variables bias from using estimated (rather than true) Stage-1 betas as the Stage-2 regressor, named but not re-derived in Section 04.</li>
+    <li>John H. Cochrane, <em>Asset Pricing</em> (revised ed.), Princeton University Press, 2005 — Chapter 12 covers Fama-MacBeth alongside GMM-based alternatives and situates the procedure within the broader landscape of cross-sectional asset-pricing tests.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="institutional-fama-french-carhart.html">← Fama-French &amp; Carhart</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="institutional-apt.html">Arbitrage Pricing Theory →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+<script>
+(function(){
+  var DEFAULTS = { l1: 4.1667, l2: -2.5, l3: 0.5, l4: 3.8333 };
+  var fields = ['l1', 'l2', 'l3', 'l4'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('fm-scratch-' + f); });
+  if (!inputs.l1) return;
+
+  var tOut = document.getElementById('fm-scratch-t');
+  var avgOut = document.getElementById('fm-scratch-avg');
+  var sdOut = document.getElementById('fm-scratch-sd');
+  var seOut = document.getElementById('fm-scratch-se');
+  var tstatOut = document.getElementById('fm-scratch-tstat');
+  var note = document.getElementById('fm-scratch-note');
+  var resetBtn = document.getElementById('fm-scratch-reset');
+
+  function recompute(){
+    var vals = fields
+      .map(function(f){ return parseFloat(inputs[f].value); })
+      .filter(function(v){ return isFinite(v); });
+
+    var n = vals.length;
+    tOut.textContent = n.toString();
+
+    if (n < 2) {
+      avgOut.textContent = n === 1 ? vals[0].toFixed(4) : '—';
+      sdOut.textContent = '—';
+      seOut.textContent = '—';
+      tstatOut.textContent = '—';
+      note.textContent = '(need at least 2 valid λ̂_t values to compute a standard error — a single number has no spread to measure)';
+      return;
+    }
+
+    var avg = vals.reduce(function(a, b){ return a + b; }, 0) / n;
+    var sumSq = vals.reduce(function(a, v){ return a + Math.pow(v - avg, 2); }, 0);
+    var variance = sumSq / (n - 1);
+    var sd = Math.sqrt(variance);
+    var se = sd / Math.sqrt(n);
+
+    avgOut.textContent = avg.toFixed(4);
+    sdOut.textContent = sd.toFixed(4);
+
+    if (se === 0) {
+      seOut.textContent = '0.0000';
+      tstatOut.textContent = avg === 0 ? '—' : '±∞';
+      note.textContent = '(every entry is identical — zero spread means the standard error is exactly zero)';
+      return;
+    }
+
+    seOut.textContent = se.toFixed(4);
+    tstatOut.textContent = (avg / se).toFixed(2);
+    note.textContent = '';
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
+</body>
+</html>

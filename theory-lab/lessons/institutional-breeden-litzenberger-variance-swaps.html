@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Breeden-Litzenberger &amp; Variance Swaps — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Options &amp; Vol-Surface Extensions / Breeden-Litzenberger &amp; Variance Swaps</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Options &amp; Vol-Surface Extensions 3 of 3</div>
+  <h1 class="tl-title">Breeden-Litzenberger &amp; Variance Swaps</h1>
+  <p class="tl-dek">A continuum of European option prices secretly encodes two separate things at once: the market's entire risk-neutral probability distribution for the underlying, and a model-free fair price for realized variance itself — both pulled out of the same cross-section of quotes, without ever having to pick a volatility model first.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — grepped every <code>.js</code>/<code>.py</code> file in this repo (case-insensitive) for "Breeden", "Litzenberger", "risk-neutral density", "variance swap", and "VIX": zero hits for Breeden, Litzenberger, or risk-neutral density anywhere. "variance swap" appears three times, all in <code>js/fxVolCarryEngine.js</code>, and only as an explicit disclaimer that its own backtest is <em>not</em> a variance-swap backtest ("no FX options or variance swaps are tradable through this platform (spot only)"). "VIX" appears 352 times across roughly 40 files, but every hit is a fetched macro data feed — e.g. <code>RegimeV2/macro_overlay.py</code>'s <code>VIXFetcher</code> pulling the <code>^VIX</code> spot ticker from Yahoo Finance as a regime-conditioning input — never a computed or replicated variance-swap-style quantity. Nothing in this repo extracts a risk-neutral density or replicates variance-swap pricing from an options strip. The sibling <code>institutional-bates-model.html</code> and <code>institutional-dupire-local-vol.html</code> lessons (1 and 2 of this category) were being built in parallel and landed on disk during the writing of this lesson; both are now cross-linked, and Dupire's own lesson independently states the identical Breeden-Litzenberger fact this lesson derives in full.</span>
+    <span>~21 min read</span>
+    <span>Prereqs: <a href="black-scholes.html">Black-Scholes-Merton Option Pricing</a> (risk-neutral pricing, \(N(d_2)\) as a risk-neutral probability), <a href="vega-volatility-surface.html">Vega &amp; the Volatility Surface</a> (why a whole grid of strikes and expiries gets quoted at all)</span>
+  </div>
+
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="institutional-breeden-litzenberger-variance-swaps-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides with two live calculators and hand-drawn charts.
+  </div>
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li><strong>Breeden-Litzenberger (1978):</strong> the risk-neutral probability density of the underlying's price at expiry is \(f_Q(K) = e^{rT}\,\partial^2 C/\partial K^2\) — the second derivative of the call price with respect to strike, evaluated at \(K\), discounted back to today. A call spread approximates a digital payout; a butterfly spread approximates a spike at the middle strike; shrinking the spacing to zero turns the discrete butterfly price into exactly this second derivative.</li>
+      <li><strong>Variance swaps:</strong> the risk-neutral expected realized variance of the underlying can be replicated by a "strip" of out-of-the-money puts and calls across every strike, each weighted by \(2/K^2\) — the famous log-contract result. You never need to forecast future volatility; today's entire strike-by-strike option prices already imply the answer.</li>
+      <li>Both results share one deep reason for their kinship: they both extract information that lives in the <em>entire cross-section</em> of option prices, without assuming any specific model for how volatility behaves — genuinely different in kind from the parametric machinery in the sibling <a href="institutional-bates-model.html">Bates Model</a> and <a href="institutional-dupire-local-vol.html">Dupire Local Volatility</a> lessons, both of which commit to a specific model structure before fitting it to the surface.</li>
+      <li>The exact same quantity, \(\partial^2 C/\partial K^2\), sits in the denominator of the Dupire local-volatility formula (sibling lesson) — not a coincidence: it's the arbitrage-free risk-neutral density, and any formula that needs "how much probability mass sits near this strike" needs this object.</li>
+      <li>Neither result survives contact with real markets without an honest caveat: both need a genuine continuum of strikes in theory, and both are computed in practice on a finite, truncated set of actual listed strikes — introducing interpolation risk (Breeden-Litzenberger) and truncation error (variance-swap replication) that this lesson quantifies with worked toy examples.</li>
+      <li>This is the actual theoretical basis for how the real-world <strong>VIX index</strong> is computed — CBOE's published methodology is a discretized version of exactly the variance-swap replication formula derived here.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    <a href="black-scholes.html">Black-Scholes-Merton</a> hands you \(N(d_2)\):
+    the risk-neutral probability that a single option, at a single strike,
+    finishes in the money. That's genuinely useful, but it's also a very
+    narrow slice of information — one number, about one strike. The market,
+    on any given day, is quoting calls and puts at dozens of strikes on the
+    same underlying and the same expiry simultaneously. A natural question
+    follows immediately: if one strike's option price encodes one
+    probability, does the <em>entire set</em> of prices across every strike
+    encode the entire probability distribution? The answer, due to Breeden
+    and Litzenberger in 1978, is yes — and it comes with an explicit formula,
+    not just a plausibility argument.
+  </p>
+  <p>
+    A second, seemingly unrelated question turns out to have almost the
+    identical answer. A <strong>variance swap</strong> is a contract that
+    pays out based on how much the underlying actually moved around over
+    some period — its <em>realized variance</em> — rather than on its
+    direction. Pricing that contract sounds like it should require
+    forecasting future volatility, which nobody can do with confidence. It
+    doesn't. A classical replication result shows the risk-neutral
+    <em>expected</em> realized variance can be built today, exactly, from a
+    portfolio of options at every strike, weighted in a specific way — no
+    volatility forecast required, only today's already-observed prices. This
+    lesson covers both results together because the second is built on the
+    same idea as the first: an entire cross-section of option prices, not
+    any single price, is the thing that actually contains the information.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A call spread is a bet on "above"; a butterfly is a bet on "exactly here"</h3>
+    <p>
+      A single call option pays off however far above its strike the
+      underlying ends up — an open-ended amount. A <strong>call spread</strong>
+      — long one call, short another at a slightly higher strike — caps that
+      payoff, and as the two strikes get closer together, the payoff starts
+      looking less like "a lot if we're way above" and more like "exactly $1
+      if we finish above this level, $0 otherwise": a digital, or binary,
+      bet. The price of that spread, divided by the strike gap, approximates
+      the market's probability of finishing above that level.
+    </p>
+    <p>
+      Push one step further: a <strong>butterfly spread</strong> — long a
+      call at a lower strike, short two calls at the middle strike, long one
+      more call at a higher strike, all evenly spaced — pays off only in a
+      narrow band around the middle strike, tapering to zero on both sides.
+      As the three strikes are squeezed together toward one point, that
+      tent-shaped payoff gets narrower and taller, converging toward an
+      idealized payout that fires only if the underlying lands <em>exactly</em>
+      at that one strike — a Dirac-delta-like payoff. The market price of that
+      shrinking butterfly, appropriately rescaled, converges to exactly the
+      risk-neutral probability density at that point. That limit, made
+      precise, <em>is</em> Breeden-Litzenberger's second derivative.
+    </p>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine you can't ask people directly "how likely do you think it is the temperature tomorrow is exactly 70 degrees?" — but you can watch what they're willing to pay for a bet that only wins in a very narrow band around 70. If you keep narrowing that band and watch how the bet's price scales, you can back out exactly how likely people think 70 degrees is, without ever asking the question directly. That's the whole trick: option prices are bets, and squeezing three nearby bets together (a butterfly) reveals a probability that was hiding inside the prices the whole time.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>Part 1 — The math, step by step: Breeden-Litzenberger</h2>
+  <p>
+    Let \(C(K)\) denote the price today of a European call option struck at
+    \(K\), expiring at time \(T\), on an underlying with risk-neutral density
+    \(f_Q(\cdot)\) for its terminal price \(S_T\). Its price is the
+    discounted risk-neutral expectation of the payoff:
+  </p>
+  <div class="tl-math">\[ C(K) = e^{-rT}\,E^Q\big[(S_T-K)^+\big] = e^{-rT}\int_K^\infty (s-K)\,f_Q(s)\,ds \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>f_Q(s)</code><span>the risk-neutral probability density of S_T — the unknown object this whole section recovers</span></div>
+    <div class="tl-eq-chip c2"><code>(S_T-K)^+</code><span>the call's payoff — zero below the strike, S_T−K above it</span></div>
+    <div class="tl-eq-chip c4"><code>e^{-rT}</code><span>discounts the risk-neutral expected payoff back to today's price</span></div>
+  </div>
+  <p>
+    Differentiate both sides with respect to \(K\) once (Leibniz's rule for
+    differentiating under the integral sign, since the lower limit of
+    integration itself depends on \(K\)):
+  </p>
+  <div class="tl-math">\[ \frac{\partial C}{\partial K} = -e^{-rT}\int_K^\infty f_Q(s)\,ds = -e^{-rT}\,P(S_T>K) \]</div>
+  <p>
+    This first derivative already has a clean reading: it's (minus, and
+    discounted) the risk-neutral probability of finishing above \(K\) — the
+    same flavor of object as Black-Scholes' \(N(d_2)\), just written as a
+    slope of the call-price curve instead of a closed form. Differentiate a
+    <em>second</em> time with respect to \(K\):
+  </p>
+  <div class="tl-math">\[ \frac{\partial^2 C}{\partial K^2} = e^{-rT}\,f_Q(K) \qquad\Longrightarrow\qquad \boxed{f_Q(K) = e^{rT}\,\frac{\partial^2 C}{\partial K^2}} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>∂²C/∂K²</code><span>the curvature of the call-price curve at strike K, as a function of strike</span></div>
+    <div class="tl-eq-chip c3"><code>f_Q(K)</code><span>the Breeden-Litzenberger result: the risk-neutral density, recovered directly from observed call prices</span></div>
+  </div>
+  <p>
+    That boxed identity is the entire Breeden-Litzenberger (1978) result. It
+    requires no assumption about which model generated the call prices in
+    the first place — no Black-Scholes, no stochastic volatility, nothing.
+    It is a purely mechanical statement: <em>whatever</em> arbitrage-free
+    call-price curve the market actually quotes, its curvature in strike
+    <em>is</em> the risk-neutral density, up to the discount factor. This is
+    exactly what makes it "model-free" in the sense this lesson keeps coming
+    back to.
+  </p>
+  <p>
+    <strong>Why a butterfly spread is the discrete version of this second
+    derivative.</strong> A butterfly centered at \(K\) with wing spacing
+    \(h\) — long one call at \(K-h\), short two calls at \(K\), long one
+    call at \(K+h\) — has price \(C(K-h)-2C(K)+C(K+h)\). Divide by \(h^2\)
+    and this is exactly the standard central finite-difference approximation
+    to the second derivative:
+  </p>
+  <div class="tl-math">\[ \frac{\partial^2 C}{\partial K^2}\bigg|_{K} \approx \frac{C(K-h)-2C(K)+C(K+h)}{h^2}, \qquad f_Q(K) \approx e^{rT}\,\frac{C(K-h)-2C(K)+C(K+h)}{h^2} \]</div>
+  <p>
+    As \(h\to 0\) this converges to the exact second derivative; at any
+    finite \(h\) — the only case that ever exists in a real market, where
+    strikes are listed at fixed intervals — it's an approximation, and
+    Section 08 returns to exactly how that approximation can go wrong.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If you know the price of a butterfly bet centered at every possible strike, and you know that as the wings of the butterfly get pulled in tight it turns into a bet on "exactly this one number," then you already know how likely the market thinks every single outcome is — strike by strike, all the way across. That's the whole idea: derivatives (in the calculus sense) of the derivative-security (option) prices hand you the probabilities directly.</p>
+  </div>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(C(K)\)</td><td>Price today of a European call struck at \(K\), expiring at \(T\).</td></tr>
+    <tr><td>\(P(K)\)</td><td>Price today of a European put struck at \(K\), expiring at \(T\).</td></tr>
+    <tr><td>\(f_Q(K)\)</td><td>The risk-neutral probability density of \(S_T\), evaluated at \(K\) — the Breeden-Litzenberger result.</td></tr>
+    <tr><td>\(r\), \(T\)</td><td>Risk-free rate and time to expiry.</td></tr>
+    <tr><td>\(F\)</td><td>Forward price, \(F = S_0 e^{rT}\).</td></tr>
+    <tr><td>\(h\)</td><td>Strike spacing used in a discrete butterfly / finite-difference approximation.</td></tr>
+    <tr><td>\(K_0\)</td><td>Reference strike closest to (at or below) the forward — the CBOE convention used in Part 2.</td></tr>
+    <tr><td>\(Q(K_i)\)</td><td>The out-of-the-money option price used at strike \(K_i\) in the variance-swap strip (a put below \(K_0\), a call above, the average of both at \(K_0\)).</td></tr>
+  </table></div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>Worked example and a live calculator — Breeden-Litzenberger</h2>
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Three call prices, five minutes of arithmetic, one probability density</h3>
+    <p>
+      Underlying at \(S_0=100\), risk-free rate \(r=2\%\), \(T=0.5\) years.
+      Three call prices at strikes spaced \(h=5\) apart around \(K=100\)
+      (these are illustrative numbers, generated from a flat 20% Black-Scholes
+      volatility purely so the result can be checked against a known answer
+      below — Breeden-Litzenberger itself needs no such assumption):
+    </p>
+    <div class="tl-symbols"><table>
+      <tr><td>\(C(95)\)</td><td>\(\$8.9470\)</td></tr>
+      <tr><td>\(C(100)\)</td><td>\(\$6.1207\)</td></tr>
+      <tr><td>\(C(105)\)</td><td>\(\$3.9856\)</td></tr>
+    </table></div>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>Discrete second derivative</h4>
+          <p>
+            \(\dfrac{C(95)-2C(100)+C(105)}{5^2} = \dfrac{8.9470 - 12.2414 + 3.9856}{25} = \dfrac{0.6912}{25} \approx 0.027648\)
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>Discount back to a density</h4>
+          <p>
+            \(f_Q(100) \approx e^{rT}\times 0.027648 = e^{0.01}\times 0.027648 \approx \mathbf{0.027926}\)
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>Sanity-check against the true density</h4>
+          <p>
+            Because these three call prices were in fact generated from a
+            flat 20% Black-Scholes surface, \(S_T\) really is lognormal, and
+            its exact density at \(S_T=100\) can be computed directly from
+            the lognormal formula: \(\approx 0.028209\). The discrete
+            butterfly approximation (\(0.027926\)) is within about
+            <strong>1%</strong> of the true value — the residual gap is
+            purely finite-\(h\) discretization error, exactly as Section 02
+            predicted, and it would shrink further as \(h\to 0\).
+          </p>
+        </div>
+      </div>
+    </div>
+    <p>
+      Note what this recovers: not "the probability the option finishes in
+      the money" (a single number, from a single strike, the way \(N(d_2)\)
+      works) but <em>the actual height of the probability curve</em> at
+      \(S_T=100\) — a genuinely richer object, extracted from three market
+      prices and nothing else.
+    </p>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Shrinking a butterfly spread's wings turns its payoff into a density spike</div>
+    <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three overlaid tent-shaped butterfly payoff diagrams centered on the same strike, each narrower and taller than the last, converging toward a tall thin spike that represents the limiting Dirac-delta payoff.">
+      <line x1="40" y1="230" x2="600" y2="230" style="stroke:var(--border);stroke-width:1"/>
+      <line x1="320" y1="230" x2="320" y2="20" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"/>
+      <text x="320" y="250" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">K</text>
+      <text x="60" y="250" fill="var(--text3)" font-size="11" font-family="'DM Sans',sans-serif">strike / price</text>
+
+      <!-- wide butterfly, h=40 -->
+      <path d="M120,230 L280,150 L320,130 L360,150 L520,230" style="fill:none;stroke:var(--blue);stroke-width:2"/>
+      <text x="150" y="145" fill="var(--blue)" font-size="10" font-family="'DM Mono',monospace">wide wings (large h)</text>
+
+      <!-- medium butterfly, h=20 -->
+      <path d="M220,230 L290,105 L320,80 L350,105 L420,230" style="fill:none;stroke:var(--purple);stroke-width:2"/>
+      <text x="360" y="95" fill="var(--purple)" font-size="10" font-family="'DM Mono',monospace">narrower (smaller h)</text>
+
+      <!-- narrow butterfly, h=8 -->
+      <path d="M280,230 L305,60 L320,35 L335,60 L360,230" style="fill:none;stroke:var(--amber);stroke-width:2.5"/>
+      <text x="150" y="55" fill="var(--amber)" font-size="10" font-family="'DM Mono',monospace">nearly a spike (h→0)</text>
+
+      <!-- limiting spike arrow -->
+      <line x1="320" y1="230" x2="320" y2="25" style="stroke:var(--green);stroke-width:2.5"/>
+      <polygon points="320,20 314,32 326,32" style="fill:var(--green)"/>
+      <text x="380" y="30" fill="var(--green)" font-size="11" font-family="'DM Mono',monospace">limit: Dirac-delta payoff → f_Q(K)</text>
+    </svg>
+    <div class="tl-chart-caption">
+      Each curve is a butterfly spread's payoff (long-short-short-long calls),
+      centered on the same strike \(K\), with progressively smaller wing
+      spacing \(h\). As \(h\to 0\), the rescaled butterfly price converges to
+      the risk-neutral density at \(K\) — illustrative of the limiting
+      mechanism, not a plot of the worked example's specific numbers above.
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Feed in three of your own call prices — the density recomputes live</h3>
+    <p>
+      Starts on the worked example's exact numbers. Assumes evenly-spaced
+      strikes (\(K-h,\,K,\,K+h\)) — the standard discrete Breeden-Litzenberger
+      setup. Non-numeric, blank, or non-positive spacing inputs show "—"
+      instead of breaking the formula; a <em>negative</em> computed density
+      is flagged explicitly, since a real probability density can never be
+      negative (Section 08 explains what that would actually mean).
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>C(K−h)</span></div>
+        <input type="number" id="bl-Cm" class="tl-scratch-input" value="8.9470" step="0.01">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>C(K)</span></div>
+        <input type="number" id="bl-Cc" class="tl-scratch-input" value="6.1207" step="0.01">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>C(K+h)</span></div>
+        <input type="number" id="bl-Cp" class="tl-scratch-input" value="3.9856" step="0.01">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Spacing h</span></div>
+        <input type="number" id="bl-h" class="tl-scratch-input" value="5" step="0.5" min="0.0001">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Rate r (%/yr)</span></div>
+        <input type="number" id="bl-r" class="tl-scratch-input" value="2" step="0.25">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Time T (yrs)</span></div>
+        <input type="number" id="bl-T" class="tl-scratch-input" value="0.5" step="0.05" min="0.0001">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Discrete second derivative = <b id="bl-secondderiv">0.027648</b>
+    </div>
+    <div class="tl-readout">
+      f_Q(K) ≈ <b id="bl-density">0.027926</b> <span id="bl-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="bl-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Part 2 — The math, step by step: variance swaps and the options strip</h2>
+  <p>
+    A <strong>variance swap</strong> pays the buyer, at expiry, the
+    difference between the underlying's actual realized variance over the
+    contract's life and a fixed "strike" agreed at inception — so pricing
+    the swap fairly means finding the strike that makes the contract worth
+    zero today: the risk-neutral <em>expected</em> realized variance. The
+    genuinely surprising classical result (going back to work by Neuberger,
+    and formalized by Carr and Madan, and by Demeterfi, Derman, Kamal and
+    Zou) is that this expectation can be built <em>today</em>, exactly, from
+    a static portfolio of options — no path simulation, no volatility
+    forecast, just today's prices.
+  </p>
+  <p>
+    The key building block is the <strong>log contract</strong>: a claim
+    that pays \(-2\ln(S_T/F)\) at expiry, where \(F\) is the forward price.
+    Under standard continuous-diffusion assumptions (no jumps — Section 08
+    flags exactly where this matters), Itô's lemma applied to \(\ln S_t\)
+    shows that the risk-neutral expectation of this log-contract payoff
+    equals exactly the expected integrated variance over the contract's
+    life. In other words: <em>if</em> you can find a way to buy this exact
+    log payoff today, you've bought a variance swap.
+  </p>
+  <p>
+    You can't trade \(\ln(S_T)\) directly — no such instrument exists. But
+    any smooth payoff \(g(S_T)\) can be exactly spanned (replicated) by a
+    position in the forward plus a continuum of out-of-the-money puts and
+    calls, using the identity (a standard result in option-payoff
+    replication, sometimes called the Carr-Madan spanning formula):
+  </p>
+  <div class="tl-math">\[ g(S_T) = g(F) + g'(F)(S_T-F) + \int_0^F g''(K)(K-S_T)^+\,dK + \int_F^\infty g''(K)(S_T-K)^+\,dK \]</div>
+  <p>
+    Apply this to \(g(x) = -2\ln(x/F)\). Its second derivative is
+    \(g''(K) = 2/K^2\) — and that \(2/K^2\) weight is exactly the famous
+    weighting scheme for the option strip. Taking risk-neutral expectations
+    of both sides, discounting, and dividing by \(T\) to annualize gives the
+    model-free variance formula:
+  </p>
+  <div class="tl-math">\[ E^Q\!\left[\frac{1}{T}\int_0^T \sigma_t^2\,dt\right] \approx \frac{2}{T}\left[\int_0^{K_0} \frac{e^{rT}P(K)}{K^2}\,dK + \int_{K_0}^\infty \frac{e^{rT}C(K)}{K^2}\,dK\right] - \frac{1}{T}\left(\frac{F}{K_0}-1\right)^2 \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>P(K), C(K)</code><span>out-of-the-money put and call prices at every strike — puts below the reference strike K₀, calls above it</span></div>
+    <div class="tl-eq-chip c2"><code>1/K²</code><span>the log-contract's own weighting — a direct consequence of g''(K)=2/K² for g(x)=−2ln(x/F)</span></div>
+    <div class="tl-eq-chip c4"><code>(F/K₀−1)²</code><span>a small correction term for using a reference strike K₀ near, but not exactly at, the forward F</span></div>
+  </div>
+  <p>
+    Because this is exactly the same "differentiate/reconstruct a payoff
+    from a strip of options" machinery as Part 1 — the second derivative of
+    a payoff function, weighted across every strike — it should feel like a
+    close cousin of Breeden-Litzenberger, not a coincidence. Section 06
+    makes that connection explicit. In practice, the integrals above become
+    a discrete sum over the actual listed strikes:
+  </p>
+  <div class="tl-math">\[ \text{Var} \approx \frac{2}{T}\sum_i \frac{\Delta K_i}{K_i^2}\,e^{rT}\,Q(K_i) \;-\; \frac{1}{T}\left(\frac{F}{K_0}-1\right)^2 \]</div>
+  <p>
+    where \(Q(K_i)\) is the out-of-the-money option price at strike
+    \(K_i\) (put below \(K_0\), call above, the average of both at \(K_0\)
+    itself) and \(\Delta K_i\) is the spacing around that strike (typically
+    the average distance to its two neighbors). This discretized form is
+    — not coincidentally — essentially identical in structure to the
+    published <strong>CBOE VIX methodology</strong>, which computes the VIX
+    index precisely this way from real S&amp;P 500 option quotes.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>You don't need to know the future — you need today's whole surface</h3>
+    <p>
+      Forecasting future volatility is genuinely hard; nobody has a reliable
+      crystal ball for it. The variance-swap replication result sidesteps
+      that problem entirely by asking a different question: not "what will
+      volatility <em>be</em>," but "what does the <em>entire current market</em>
+      of option prices, across every strike, already imply the fair
+      break-even variance should be, right now." Buying the right strip of
+      options today — a lot of far out-of-the-money puts and calls weighted
+      down by \(1/K^2\), progressively fewer as strikes move away from the
+      current price — literally locks in that answer as a static, unchanging
+      position, with no forecast anywhere in the construction.
+    </p>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine wanting to bet on "how bumpy will the road be" without knowing which specific bumps are coming. Instead of guessing the bumps, you buy a big spread-out set of small side bets — a little bit on "it swerves left a lot," a little on "it swerves right a lot," smaller bets the further out those swerves get — and it turns out that if you buy exactly the right mix, today, the total payout of that mix automatically matches how bumpy the road actually turns out to be. You never had to predict the road. You just had to buy the right basket of side bets on it, all at once, today.</p>
+  </div>
+
+  <div class="tl-solid amber">
+    <strong>This is a real, well-known fact worth stating plainly: this
+    replication idea is the actual theoretical basis for how the CBOE
+    computes the VIX index.</strong> The VIX is not a survey of opinions
+    about future volatility — it is calculated directly from a snapshot of
+    real S&amp;P 500 option prices across a strip of strikes, using a
+    discretized version of the exact \(1/K^2\)-weighted formula derived
+    above (with CBOE's own specific strike-inclusion and truncation rules,
+    discussed honestly in Section 08).
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Worked example and a live calculator — variance-swap strip replication</h2>
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Five strikes, a discretized strip, one approximate fair variance</h3>
+    <p>
+      Same underlying as Part 1 — \(S_0=100\), \(r=2\%\), \(T=0.5\) — so the
+      forward is \(F = 100\,e^{0.01} \approx 101.005\). Five strikes,
+      \(\Delta K = 10\) apart, with the reference strike \(K_0=100\) (the
+      highest listed strike at or below \(F\)); OTM prices generated from
+      the same flat 20% Black-Scholes surface as Part 1, purely so the
+      result can again be checked against a known answer:
+    </p>
+    <div class="tl-symbols"><table>
+      <tr><td>K=80 (put)</td><td>\(\$0.2601\)</td></tr>
+      <tr><td>K=90 (put)</td><td>\(\$1.5584\)</td></tr>
+      <tr><td>K=100 (avg put/call)</td><td>\(\$5.6231\)</td></tr>
+      <tr><td>K=110 (call)</td><td>\(\$2.4729\)</td></tr>
+      <tr><td>K=120 (call)</td><td>\(\$0.8311\)</td></tr>
+    </table></div>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>Weight each price by ΔK/K² and discount</h4>
+          <p>
+            Each strike's contribution is \(\frac{\Delta K}{K^2}e^{rT}Q(K)\):
+            \(K{=}80\): \(0.000410\); \(K{=}90\): \(0.001943\);
+            \(K{=}100\): \(0.005680\); \(K{=}110\): \(0.002064\);
+            \(K{=}120\): \(0.000583\). Sum \(\approx 0.010681\).
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>Scale by 2/T and subtract the forward-correction term</h4>
+          <p>
+            \(\frac{2}{0.5}\times 0.010681 \approx 0.042722\). Correction:
+            \(\frac{1}{0.5}\left(\frac{101.005}{100}-1\right)^2 \approx 0.000202\).
+            Variance \(\approx 0.042722 - 0.000202 = \mathbf{0.042520}\).
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>Convert to an annualized volatility, and check against the truth</h4>
+          <p>
+            \(\sqrt{0.042520} \approx \mathbf{20.62\%}\). Since the true flat
+            vol used to generate every price above was exactly 20%, this
+            five-strike, \(\Delta K{=}10\)-spaced approximation overstates
+            the true fair vol by about <strong>0.6 percentage points (a
+            ~3% relative error)</strong> — purely from having only five,
+            fairly widely-spaced strikes rather than a genuine continuum.
+            Re-running the identical formula on a much wider, finer strike
+            grid (strikes 40 to 160, spaced 5 apart) brings the estimate to
+            20.21% — visibly closer to the true 20%, confirming the error is
+            a discretization/truncation artifact, not a flaw in the
+            replication logic itself.
+          </p>
+        </div>
+      </div>
+    </div>
+    <p>
+      This is a simplified, hand-rolled illustration of the idea — not a
+      claim of the exact precision a real trading desk or CBOE's production
+      VIX calculation achieves. Treat the specific error size here as
+      illustrative of the mechanism (finite strikes ⇒ approximation error),
+      not as a general bound on how accurate this method is in real markets.
+    </p>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">The options strip: OTM puts and calls across strikes, weighted by 1/K²</div>
+    <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart with five bars across strikes 80, 90, 100, 110 and 120, heights representing each strike's contribution to the variance-swap replication sum, tallest near the middle strike and tapering on both sides, puts colored differently from calls, with a dashed forward line near the middle.">
+      <line x1="40" y1="230" x2="600" y2="230" style="stroke:var(--border);stroke-width:1"/>
+      <line x1="326" y1="230" x2="326" y2="30" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:4,4"/>
+      <text x="332" y="42" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">F ≈ 101</text>
+
+      <rect x="95" y="212" width="70" height="18" style="fill:var(--blue);opacity:0.85"/>
+      <text x="130" y="245" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">K=80 (put)</text>
+
+      <rect x="185" y="145" width="70" height="85" style="fill:var(--blue);opacity:0.85"/>
+      <text x="220" y="245" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">K=90 (put)</text>
+
+      <rect x="275" y="40" width="70" height="190" style="fill:var(--purple);opacity:0.85"/>
+      <text x="310" y="245" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">K=100 (avg)</text>
+
+      <rect x="365" y="140" width="70" height="90" style="fill:var(--green);opacity:0.85"/>
+      <text x="400" y="245" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">K=110 (call)</text>
+
+      <rect x="455" y="205" width="70" height="25" style="fill:var(--green);opacity:0.85"/>
+      <text x="490" y="245" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">K=120 (call)</text>
+
+      <text x="130" y="30" fill="var(--text3)" font-size="10" font-family="'DM Sans',sans-serif">bar height ∝ (ΔK/K²)·e^(rT)·Q(K) — each strike's contribution to the variance sum</text>
+    </svg>
+    <div class="tl-chart-caption">
+      Contribution per strike, from the worked example above — puts (blue)
+      below the forward, calls (green) above it, the largest single
+      contribution at the reference strike \(K_0=100\) (purple) nearest the
+      forward. Far-OTM strikes contribute progressively less, both because
+      \(1/K^2\) shrinks and because deep OTM option prices are themselves
+      small.
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Change any OTM price, rate, time, or forward — the strip recomputes live</h3>
+    <p>
+      Starts on the worked example's exact numbers, with strikes fixed at
+      80/90/100/110/120 (\(\Delta K=10\) throughout, \(K_0=100\)) to keep the
+      calculator tractable. Enter the OTM price you'd actually observe at
+      each strike (a put below the forward, a call above it, the average of
+      both at \(K_0\)). Blank or negative prices, or a non-positive \(T\),
+      show "—" instead of breaking the formula.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Q(80) — put</span></div>
+        <input type="number" id="vs-Q80" class="tl-scratch-input" value="0.2601" step="0.01" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Q(90) — put</span></div>
+        <input type="number" id="vs-Q90" class="tl-scratch-input" value="1.5584" step="0.01" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Q(100) — avg put/call</span></div>
+        <input type="number" id="vs-Q100" class="tl-scratch-input" value="5.6231" step="0.01" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Q(110) — call</span></div>
+        <input type="number" id="vs-Q110" class="tl-scratch-input" value="2.4729" step="0.01" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Q(120) — call</span></div>
+        <input type="number" id="vs-Q120" class="tl-scratch-input" value="0.8311" step="0.01" min="0">
+      </div>
+    </div>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Forward F</span></div>
+        <input type="number" id="vs-F" class="tl-scratch-input" value="101.005" step="0.5">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Rate r (%/yr)</span></div>
+        <input type="number" id="vs-r" class="tl-scratch-input" value="2" step="0.25">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Time T (yrs)</span></div>
+        <input type="number" id="vs-T" class="tl-scratch-input" value="0.5" step="0.05" min="0.0001">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Sum of weighted contributions = <b id="vs-sum">0.010681</b>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Variance ≈ <b id="vs-var">0.042520</b>&emsp;Annualized vol ≈ <b id="vs-vol">20.62%</b>
+    </div>
+    <div class="tl-readout">
+      <span id="vs-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="vs-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>Why these two results are actually connected</h2>
+  <p>
+    It would be easy to teach Breeden-Litzenberger and variance-swap
+    replication as two unrelated party tricks that both happen to involve
+    second derivatives. They're not unrelated — they're the same underlying
+    idea, applied to two different target payoffs. Breeden-Litzenberger asks
+    "what payoff, spanned across a continuum of strikes, recovers the
+    probability density itself?" and the answer is the second derivative of
+    the call price. Variance-swap replication asks "what payoff, spanned
+    across a continuum of strikes, recovers expected realized variance?" and
+    the answer again comes from a second derivative — this time of the
+    log-contract payoff \(g(x)=-2\ln(x/F)\), which is exactly what produces
+    the \(2/K^2\) weighting. Both are instances of the identical spanning
+    principle: <em>any</em> smooth function of \(S_T\) can be rebuilt from a
+    continuum of options via its own second derivative, weighted across
+    strikes — Breeden-Litzenberger is that principle applied to the
+    indicator-like limit of a butterfly, variance-swap replication is the
+    same principle applied to the log payoff.
+  </p>
+  <p>
+    The exact quantity at the center of Part 1, \(\partial^2 C/\partial K^2\),
+    is not unique to this lesson — it is also, not coincidentally, the same
+    object that sits in the denominator of the <strong>Dupire local
+    volatility</strong> formula (covered in the sibling
+    <a href="institutional-dupire-local-vol.html">Dupire Local Volatility</a>
+    lesson in this category). That's a genuine, structural connection, not a
+    coincidence of notation: Dupire's formula needs "how much risk-neutral
+    probability mass sits near this strike" as an ingredient for turning an
+    entire implied-volatility surface into a single local-volatility
+    function, and that ingredient <em>is</em> the Breeden-Litzenberger
+    density. Both lessons ultimately depend on the same arbitrage-free
+    object; they just use it for different purposes once they have it.
+  </p>
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>What this lesson's two results have in common</h4>
+      <p>
+        Both extract a well-defined, model-independent quantity — a
+        probability density, or an expected variance — directly from the
+        observed cross-section of option prices. Neither requires committing
+        to a specific stochastic process for the underlying's volatility
+        first. If the observed prices are arbitrage-free, the extraction
+        works regardless of what "true" model, if any, generated them.
+      </p>
+    </div>
+    <div class="tl-compare-card purple">
+      <h4>What the sibling Bates and Dupire lessons do differently</h4>
+      <p>
+        The <a href="institutional-bates-model.html">Bates Model</a> commits
+        to a specific parametric structure — stochastic volatility plus
+        price jumps, with a fixed number of parameters to calibrate — before
+        it can price anything. <a href="institutional-dupire-local-vol.html">
+        Dupire Local Volatility</a> is a genuine step toward "model-free" in
+        that it's consistent with any full implied-vol surface by
+        construction, but it still commits to a specific structural
+        assumption: that volatility is a deterministic function of price and
+        time alone (no separate stochastic-volatility factor). This lesson's
+        two results commit to neither kind of assumption — they only assume
+        the observed option prices themselves are arbitrage-free.
+      </p>
+    </div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Some tools in this category are like building a specific machine first — decide exactly how it works inside, tune its knobs to match what you see, then use it to make predictions (that's Bates and Dupire). This lesson's two tools are different: they're more like a ruler you hold up directly against the market's own prices, and read the answer straight off — no machine to build first, just a very clever way of measuring what's already there.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>How practitioners actually use this</h2>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📊</div>
+      <h4>Extracting an implied distribution from the vol surface</h4>
+      <p>Rather than assuming a distributional shape up front, a desk can interpolate/smooth the observed strike-by-strike implied vols into a continuous call-price curve, then apply Breeden-Litzenberger to read off the market's own implied distribution — used to sanity-check tail pricing or to compare against a house view.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🎯</div>
+      <h4>Trading realized-vs-implied variance</h4>
+      <p>The fair variance-swap strike from the strip replication is, by construction, the market's break-even for realized variance. A desk with a view that realized variance will differ can take a position accordingly — the replication formula is what defines the fair line to trade against.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🧭</div>
+      <h4>The VIX index itself</h4>
+      <p>CBOE publishes the exact strike-selection, weighting, and interpolation rules it uses to compute the VIX this way, in real time, from actual listed S&amp;P 500 option quotes — a real-world, continuously-running instance of the formula in Section 04.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🩹</div>
+      <h4>A model-free cross-check on parametric models</h4>
+      <p>Because Breeden-Litzenberger needs no model assumption, a density extracted this way can serve as an independent check on whatever a Bates or Dupire-style calibration produces — if the two disagree sharply, that's a flag to look harder at the parametric model's fit, not at this lesson's math.</p>
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>A skew steepens overnight — what does the density say happened?</h3>
+    <p>
+      Imagine an index's implied-vol skew steepens sharply overnight — OTM
+      puts get noticeably more expensive relative to OTM calls, with the
+      at-the-money vol barely moving. A Breeden-Litzenberger density
+      extraction, run before and after, makes the shift concrete rather than
+      qualitative: the left tail of the implied distribution visibly
+      thickens (more risk-neutral probability mass priced into a sharp
+      downside move), while the body of the distribution near the current
+      price is largely unchanged. That's a genuinely different, more
+      specific statement than "vol went up" — it says <em>where</em> the
+      market's fear actually concentrated, which is exactly the kind of
+      detail a single implied-vol number, or even the ATM vol alone, cannot
+      show.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 08</span></div>
+  <h2>Common pitfalls</h2>
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Where both results quietly need real-world caveats</div>
+    <h3>A continuum of strikes never actually trades</h3>
+    <p>
+      <strong>Breeden-Litzenberger needs a continuum of strikes; only a
+      finite, discrete set actually trades.</strong> Turning a handful of
+      listed strikes into the smooth call-price curve the second derivative
+      needs requires interpolation or smoothing across the gaps — and the
+      resulting density is only as good as that interpolation. This is
+      exactly the same numerical-stability concern the sibling
+      <a href="institutional-dupire-local-vol.html">Dupire Local
+      Volatility</a> lesson raises about its own use of \(\partial^2
+      C/\partial K^2\): both formulas amplify small wiggles or noise in the
+      input curve, since differentiating twice is inherently noise-sensitive
+      — a smooth-looking implied-vol curve can still produce a jagged,
+      unreliable second derivative if the underlying option quotes are
+      thinly traded or stale.
+    </p>
+    <p>
+      <strong>A negative "density" from real market quotes is a red flag
+      about the data, not a real negative probability.</strong> A genuine
+      probability density can never be negative. If a discrete
+      second-derivative calculation on real quoted prices produces a
+      negative number, that is a diagnostic signal that the input call
+      prices are internally inconsistent — noisy, stale, or genuinely
+      arbitrageable (violating the convexity-in-strike condition that
+      arbitrage-free call prices must satisfy) — not evidence that
+      probabilities can go negative. The fix is to clean or re-check the
+      input prices, never to report a negative density as a real result.
+    </p>
+    <p>
+      <strong>Variance-swap replication has the identical continuum
+      problem, in a different guise: truncation.</strong> The theoretical
+      formula integrates over every strike from 0 to infinity; real markets
+      only list strikes out to some finite range before liquidity
+      disappears entirely. Cutting the sum off at the widest actually-traded
+      strikes, as this lesson's own worked example did at 80 and 120,
+      introduces a real approximation error — this lesson's own numbers
+      showed roughly a 3% relative vol error from using just five strikes,
+      shrinking to about 1% on a much wider, finer grid. CBOE's actual VIX
+      methodology has to handle this with explicit, published cutoff rules
+      (excluding strikes once two consecutive listed strikes have zero bids,
+      among others) — a real, engineering-level detail this lesson's toy
+      example simplifies away rather than reproduces exactly.
+    </p>
+    <p>
+      <strong>The log-contract derivation assumes continuous price paths —
+      no jumps.</strong> The step connecting realized variance to the log
+      payoff via Itô's lemma relies on the underlying following a continuous
+      diffusion. Genuine price jumps (the exact phenomenon the sibling
+      <a href="institutional-bates-model.html">Bates Model</a> lesson exists
+      to handle) introduce a residual jump-variance term the pure
+      options-strip replication does not fully capture — a known, published
+      limitation of the model-free result, not an oversight unique to this
+      lesson.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 09</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Breeden-Litzenberger: \(f_Q(K)=e^{rT}\partial^2C/\partial K^2\).</strong> A butterfly spread's price, in the limit of infinitesimal wing spacing, is exactly the risk-neutral density — a purely model-free consequence of arbitrage-free call prices.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Variance swaps can be replicated, model-free, by a strip of OTM options weighted by \(2/K^2\).</strong> The fair variance-swap strike needs no volatility forecast — only today's full cross-section of option prices, via the log-contract spanning result.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Both results are the same spanning principle, applied to two different target payoffs</strong> — a density-revealing limit for Part 1, a log-contract payoff for Part 2 — and both share the exact \(\partial^2C/\partial K^2\) object that also drives the sibling Dupire local-vol formula.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Real markets only ever supply a finite, discrete set of strikes.</strong> Breeden-Litzenberger needs interpolation/smoothing across the gaps; variance-swap replication needs a truncation cutoff at the widest listed strikes — both introduce real, quantifiable approximation error, illustrated with this lesson's own worked examples.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A negative computed "density" from real quotes is a data-quality red flag, never a real negative probability.</strong> It signals noisy, stale, or arbitrageable input prices — the fix is to clean the inputs, not to report the negative number.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>The log-contract replication assumes continuous price paths.</strong> Genuine jumps leave a residual jump-variance term the pure options-strip result does not fully capture — a published, known limitation, not a lesson-specific oversight.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 10</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. State the Breeden-Litzenberger formula, and explain in one sentence why a butterfly spread is the natural discrete analogue of it.</summary>
+    <div class="tl-answer">
+      \(f_Q(K) = e^{rT}\,\partial^2 C/\partial K^2\) — the risk-neutral
+      density at \(K\) is the discounted second derivative of the call price
+      with respect to strike. A butterfly spread's price,
+      \(C(K-h)-2C(K)+C(K+h)\), is exactly the standard central
+      finite-difference approximation to that second derivative, so its
+      price (divided by \(h^2\) and discounted) approximates the density,
+      converging to it exactly as the wing spacing \(h\to 0\).
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. In the worked Breeden-Litzenberger example, the discrete butterfly approximation gave 0.027926 against a true density of 0.028209. What does that gap represent, and would it shrink if the strike spacing h were made smaller?</summary>
+    <div class="tl-answer">
+      The gap (about 1%) is finite-difference discretization error — the
+      approximation \((C(K-h)-2C(K)+C(K+h))/h^2\) only converges to the true
+      second derivative as \(h\to 0\); at any positive \(h\) it carries
+      leading-order error proportional to \(h^2\). Yes, shrinking \(h\)
+      would reduce the gap, exactly the way it did going from the five-strike
+      variance example to the wider/finer grid in Section 05.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. What payoff does the "log contract" pay, and why does its second derivative in strike produce the famous 1/K² weighting used in variance-swap replication?</summary>
+    <div class="tl-answer">
+      The log contract pays \(-2\ln(S_T/F)\) at expiry, and its risk-neutral
+      expectation equals expected realized variance under continuous-path
+      assumptions (via Itô's lemma). Spanning this payoff with a continuum
+      of options requires \(g''(K)\) where \(g(x)=-2\ln(x/F)\); since
+      \(g'(x)=-2/x\) and \(g''(x)=2/x^2\), the spanning portfolio weights
+      each strike's OTM option by exactly \(2/K^2\) — the log payoff's own
+      curvature is literally what produces that weighting scheme.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Why are Breeden-Litzenberger and variance-swap replication described in this lesson as "the same underlying idea," rather than two unrelated results that happen to both use second derivatives?</summary>
+    <div class="tl-answer">
+      Both are instances of the same general spanning principle: any smooth
+      function of \(S_T\) can be rebuilt from a continuum of options via its
+      own second derivative, weighted across strikes. Breeden-Litzenberger
+      applies this to the indicator-like limiting payoff of a shrinking
+      butterfly to recover the density itself; variance-swap replication
+      applies the identical spanning machinery to the log-contract payoff to
+      recover expected variance. Same mechanism, two different target
+      payoffs — not a coincidence of both involving "a second derivative."
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. A discrete Breeden-Litzenberger calculation on real, quoted call prices returns a negative number for f_Q(K). What should you conclude?</summary>
+    <div class="tl-answer">
+      Not that probabilities can be negative — a genuine risk-neutral
+      density is never negative. A negative result signals that the input
+      call prices are internally inconsistent: noisy, stale, thinly traded,
+      or genuinely arbitrageable (violating the convexity-in-strike
+      condition arbitrage-free call prices must satisfy). The correct
+      response is to investigate and clean the input data, not to report the
+      negative value as a real finding.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. In what specific, structural sense do the two results in this lesson qualify as "model-free," in contrast to the sibling Bates and Dupire lessons in this same category?</summary>
+    <div class="tl-answer">
+      Both results depend only on the observed option prices being
+      arbitrage-free — they require no assumption about the specific
+      stochastic process generating those prices. The Bates model commits to
+      a specific parametric structure (stochastic volatility plus jumps)
+      before it can price anything; Dupire local volatility, while
+      consistent with any given full implied-vol surface, still commits to
+      the structural assumption that volatility is a deterministic function
+      of price and time alone. Breeden-Litzenberger and variance-swap
+      replication make neither kind of commitment — they extract their
+      result directly from the prices themselves.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Douglas T. Breeden and Robert H. Litzenberger, "Prices of State-Contingent Claims Implicit in Option Prices," <em>Journal of Business</em>, 51(4), 1978 — the seminal paper deriving the risk-neutral density as the second strike-derivative of the call price.</li>
+    <li>Peter Carr and Dilip Madan, "Towards a Theory of Volatility Trading," in <em>Volatility: New Estimation Techniques for Pricing Derivatives</em>, Risk Publications, 1998 — a standard reference for the options-spanning identity and log-contract variance replication used in Section 04.</li>
+    <li>Kresimir Demeterfi, Emanuel Derman, Michael Kamal, and Joseph Zou, "More Than You Ever Wanted to Know About Volatility Swaps," Goldman Sachs Quantitative Strategies Research Notes, 1999 — the well-known practitioner-oriented treatment of variance and volatility swap replication via a strip of options.</li>
+    <li>CBOE, <em>Cboe Volatility Index (VIX) White Paper</em>, Cboe Global Markets — the published, real-world methodology for computing the VIX index from listed S&amp;P 500 option quotes, including the exact strike-selection and truncation rules referenced in Section 08.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="institutional-dupire-local-vol.html">← Dupire Local Volatility</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="institutional-ledoit-wolf-shrinkage.html">Ledoit-Wolf Covariance Shrinkage →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+<script>
+(function(){
+  // Breeden-Litzenberger calculator
+  var DASH = '—';
+  var blIds = ['Cm','Cc','Cp','h','r','T'];
+  var blInputs = {};
+  blIds.forEach(function(f){ blInputs[f] = document.getElementById('bl-' + f); });
+  if (blInputs.Cm) {
+    var BL_DEFAULTS = { Cm: 8.9470, Cc: 6.1207, Cp: 3.9856, h: 5, r: 2, T: 0.5 };
+    var blSecond = document.getElementById('bl-secondderiv');
+    var blDensity = document.getElementById('bl-density');
+    var blNote = document.getElementById('bl-note');
+    var blReset = document.getElementById('bl-reset');
+
+    function blRecompute(){
+      var v = {};
+      blIds.forEach(function(f){ v[f] = parseFloat(blInputs[f].value); });
+
+      if (!isFinite(v.Cm) || !isFinite(v.Cc) || !isFinite(v.Cp) || !isFinite(v.h) || !isFinite(v.r) || !isFinite(v.T)) {
+        blSecond.textContent = DASH;
+        blDensity.textContent = DASH;
+        blNote.textContent = '(all fields must be numbers)';
+        return;
+      }
+      if (v.h <= 0) {
+        blSecond.textContent = DASH;
+        blDensity.textContent = DASH;
+        blNote.textContent = '(strike spacing h must be positive)';
+        return;
+      }
+      if (v.T <= 0) {
+        blSecond.textContent = DASH;
+        blDensity.textContent = DASH;
+        blNote.textContent = '(time T must be positive)';
+        return;
+      }
+
+      var secondDeriv = (v.Cm - 2 * v.Cc + v.Cp) / (v.h * v.h);
+      var density = Math.exp((v.r / 100) * v.T) * secondDeriv;
+
+      blSecond.textContent = secondDeriv.toFixed(6);
+      blDensity.textContent = density.toFixed(6);
+
+      if (density < 0) {
+        blNote.textContent = '⚠ negative — a sign of noisy/arbitrageable input prices, not a real negative probability (see Section 08)';
+      } else {
+        blNote.textContent = '';
+      }
+    }
+
+    blIds.forEach(function(f){ blInputs[f].addEventListener('input', blRecompute); });
+    blReset.addEventListener('click', function(){
+      blIds.forEach(function(f){ blInputs[f].value = BL_DEFAULTS[f]; });
+      blRecompute();
+    });
+    blRecompute();
+  }
+
+  // Variance-swap strip calculator
+  var vsPriceIds = ['Q80','Q90','Q100','Q110','Q120'];
+  var vsInputs = {};
+  vsPriceIds.forEach(function(f){ vsInputs[f] = document.getElementById('vs-' + f); });
+  var vsF = document.getElementById('vs-F');
+  var vsR = document.getElementById('vs-r');
+  var vsT = document.getElementById('vs-T');
+
+  if (vsInputs.Q80) {
+    var STRIKES = [80, 90, 100, 110, 120];
+    var DELTA_K = 10;
+    var K0 = 100;
+    var VS_DEFAULTS = { Q80: 0.2601, Q90: 1.5584, Q100: 5.6231, Q110: 2.4729, Q120: 0.8311, F: 101.005, r: 2, T: 0.5 };
+    var vsSumOut = document.getElementById('vs-sum');
+    var vsVarOut = document.getElementById('vs-var');
+    var vsVolOut = document.getElementById('vs-vol');
+    var vsNote = document.getElementById('vs-note');
+    var vsReset = document.getElementById('vs-reset');
+
+    function vsRecompute(){
+      var prices = {};
+      var allFinite = true;
+      vsPriceIds.forEach(function(f, i){
+        var val = parseFloat(vsInputs[f].value);
+        prices[STRIKES[i]] = val;
+        if (!isFinite(val) || val < 0) allFinite = false;
+      });
+      var F = parseFloat(vsF.value);
+      var rPct = parseFloat(vsR.value);
+      var T = parseFloat(vsT.value);
+
+      if (!allFinite || !isFinite(F) || !isFinite(rPct) || !isFinite(T)) {
+        vsSumOut.textContent = DASH;
+        vsVarOut.textContent = DASH;
+        vsVolOut.textContent = DASH;
+        vsNote.textContent = '(all OTM prices must be non-negative numbers, and F/r/T must be numbers)';
+        return;
+      }
+      if (T <= 0) {
+        vsSumOut.textContent = DASH;
+        vsVarOut.textContent = DASH;
+        vsVolOut.textContent = DASH;
+        vsNote.textContent = '(time T must be positive)';
+        return;
+      }
+      if (F <= 0) {
+        vsSumOut.textContent = DASH;
+        vsVarOut.textContent = DASH;
+        vsVolOut.textContent = DASH;
+        vsNote.textContent = '(forward F must be positive)';
+        return;
+      }
+
+      var r = rPct / 100;
+      var disc = Math.exp(r * T);
+      var sum = 0;
+      STRIKES.forEach(function(K){
+        sum += (DELTA_K / (K * K)) * disc * prices[K];
+      });
+
+      var varSumTerm = (2 / T) * sum;
+      var correction = (1 / T) * Math.pow((F / K0) - 1, 2);
+      var variance = varSumTerm - correction;
+
+      vsSumOut.textContent = sum.toFixed(6);
+      vsVarOut.textContent = variance.toFixed(6);
+
+      if (variance < 0) {
+        vsVolOut.textContent = DASH;
+        vsNote.textContent = '⚠ computed variance is negative — with these inputs the forward-correction term exceeds the strip sum; check that F is close to the strikes actually used (80-120)';
+      } else {
+        vsVolOut.textContent = (Math.sqrt(variance) * 100).toFixed(2) + '%';
+        vsNote.textContent = 'This 5-strike, ΔK=10 grid is a coarse truncation of the true continuum — see Section 08 for how much error that alone introduces.';
+      }
+    }
+
+    vsPriceIds.forEach(function(f){ vsInputs[f].addEventListener('input', vsRecompute); });
+    [vsF, vsR, vsT].forEach(function(el){ el.addEventListener('input', vsRecompute); });
+    vsReset.addEventListener('click', function(){
+      vsPriceIds.forEach(function(f){ vsInputs[f].value = VS_DEFAULTS[f]; });
+      vsF.value = VS_DEFAULTS.F;
+      vsR.value = VS_DEFAULTS.r;
+      vsT.value = VS_DEFAULTS.T;
+      vsRecompute();
+    });
+    vsRecompute();
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Market Depth, Order-Book Slope &amp; Depth Imbalance — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+<style>
+  .tl-table-wrap{overflow-x:auto;margin:14px 0}
+  table.tl-tbl{width:100%;border-collapse:collapse;font-size:13px;background:var(--s1);border:1px solid var(--border);border-radius:var(--r)}
+  table.tl-tbl th,table.tl-tbl td{padding:9px 12px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
+  table.tl-tbl th{color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:.04em;font-weight:700;background:var(--s2)}
+  table.tl-tbl tr:last-child td{border-bottom:none}
+  table.tl-tbl td{color:var(--text2)}
+  table.tl-tbl td:first-child{color:var(--text);font-weight:600;white-space:nowrap}
+  table.tl-tbl td.tl-num{font-family:'DM Mono',monospace;text-align:right}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Liquidity / Market Depth, Order-Book Slope &amp; Depth Imbalance</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Liquidity 3 of 3</div>
+  <h1 class="tl-title">Market Depth, Order-Book Slope &amp; Depth Imbalance</h1>
+  <p class="tl-dek">A limit order book has a shape even when nobody is trading it — how much size sits right at the best price, and how much more shows up as you look one, two, five ticks further away. Slope describes that shape; depth imbalance describes which side of it is heavier. Neither one needs a single executed trade to compute, which is exactly what separates them from every flow-based signal this Theory Lab has covered so far.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — no order-book depth, slope, or depth-imbalance code exists anywhere in this repo, verified by grepping every <code>.js</code>/<code>.py</code> file for "depth", "orderbook", "order.book", and "bookImbalance"-style terms. The closest genuinely <em>running</em> code is a different kind of object entirely: <code>js/positionBookMetrics.js</code>, called live from <code>_worker.js</code> against OANDA's <code>positionBook</code> endpoint, computes retail long/short crowding, pain, and overhead percentages from a head-count, 20-minute-stale position heatmap spanning the whole historical price range — not bid/ask resting size at defined tick distances from a live top-of-book, which is what this lesson's slope and depth-imbalance formulas require. <code>scripts/fetch_oanda_books.py</code> is a genuine, but never-yet-executed, backfill script for OANDA's raw <code>orderBook</code>/<code>positionBook</code> history (no <code>data/books/</code> directory exists on disk). This sharpens, and stays consistent with, the sibling <a href="institutional-order-flow-imbalance.html">Order Flow Imbalance</a> lesson's own finding that this repo's primary FX venue, OANDA spot, has no order book at all in the live-matching-engine sense — the closest thing it does expose (positionBook/orderBook) is retail-aggregated, price-bucketed, and 20 minutes stale, not a resting bid/ask ladder.</span>
+    <span>~17 min read</span>
+    <span>Prereqs: <a href="limit-order-books.html">Limit Order Books &amp; Queue Dynamics</a>, <a href="institutional-order-flow-imbalance.html">Order Flow Imbalance &amp; the Microprice</a></span>
+  </div>
+
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="institutional-market-depth-slope-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides with a live depth chart you can drag.
+  </div>
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li><strong>Depth</strong> is how much size is actually resting, waiting to trade, at a given price — level-1 depth is the size sitting at the best bid/ask; <strong>cumulative depth</strong> \(D(n)\) is the running total resting within \(n\) ticks (or price levels) of the touch. This is a snapshot property of the RESTING book — it needs zero executed trades to compute, unlike every flow-based signal in this Theory Lab.</li>
+      <li><strong>Order-book slope</strong> asks how quickly that cumulative depth builds up as you move away from the best price. This lesson follows the standard academic convention (Næs &amp; Skjeltorp, 2006): a <em>larger</em> slope value means depth accumulates fast — a deep, liquid book. But the literature is genuinely split on which axis "slope" runs along, and a "steep" book means the opposite thing under the inverse, walk-the-book convention — this lesson names both explicitly rather than picking a winner.</li>
+      <li><strong>Depth imbalance</strong>, \(DI=(D_b-D_a)/(D_b+D_a)\), measures which side of the book is heavier right now. At level 1 this is <em>exactly</em> the queue imbalance \(QI\) from the sibling <a href="institutional-order-flow-imbalance.html">Order Flow Imbalance</a> lesson, feeding the same microprice identity \(P_{\text{micro}}=M+\tfrac{S}{2}\cdot QI\) derived there — this lesson doesn't re-derive a different-looking version, it reuses that one directly and extends the idea to cumulative depth across several levels.</li>
+      <li>Depth imbalance is a <strong>resting-liquidity</strong> signal built from one snapshot of what's sitting on the book. Order Flow Imbalance (the sibling lesson) is a <strong>trade-flow</strong> signal built from a sequence of book <em>changes</em> over time. They frequently agree, but they are answering genuinely different questions from genuinely different data, and this lesson keeps that distinction explicit throughout.</li>
+      <li>Order-book slope is also easy to confuse with Kyle's λ (covered in the sibling <a href="institutional-kyle-obizhaeva-invariance.html">Kyle-Obizhaeva Invariance</a> lesson) — both describe "how much does size move price," but λ is a reduced-form statistic estimated from a history of trades, while slope is a purely geometric property of a single book snapshot that needs no trade history at all.</li>
+      <li>A worked toy order book below computes cumulative depth, slope under both conventions, and depth imbalance by hand — verified to match the live calculator's own output exactly.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    Every signal covered so far in this curriculum's microstructure lessons
+    either looks backward at executed trades (trade classification, Roll,
+    Glosten-Milgrom, PIN) or looks at <em>changes</em> to the book over a
+    sequence of updates (Order Flow Imbalance). This lesson asks a much
+    plainer question that none of those answer: forget what just happened —
+    what does the book <em>look like right now</em>? How much size is
+    actually resting at the best price, how much more shows up if a trader
+    is willing to walk one, two, five ticks further from it, and is that
+    resting liquidity lopsided toward buyers or sellers at this exact
+    instant? None of that requires a single trade to have occurred. A book
+    that hasn't printed a trade in the last minute still has a shape, and
+    that shape is exactly what depth, slope, and depth imbalance describe.
+  </p>
+  <p>
+    This matters practically because the shape of the resting book is what a
+    marketable order actually has to fight through. Two markets can show the
+    identical best bid and ask — the same quoted spread — and still be
+    wildly different places to trade a large order, if one has a thick wall
+    of resting size sitting right at the touch and nothing behind it, while
+    the other has modest size at the touch but plenty more stacked up a few
+    ticks back. The quoted spread alone can't tell those two books apart;
+    depth and slope can.
+  </p>
+
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>Kyle's λ (sibling lesson)</h4>
+      <p>
+        A single number, \(\lambda=\sigma_v/(2\sigma_u)\), estimated from a
+        <em>history of trades</em> — how much a security's price has actually
+        moved per unit of signed order flow, statistically, over some
+        historical window. It is a reduced-form, trade-based measure of
+        price impact.
+      </p>
+    </div>
+    <div class="tl-compare-card purple">
+      <h4>Order-book slope (this lesson)</h4>
+      <p>
+        A purely geometric property of <em>one book snapshot</em> — how
+        quickly resting size accumulates as price moves away from the touch,
+        right now. No trade history, no statistical estimation, and no
+        assumption about informed vs. noise trading is required to compute
+        it at all.
+      </p>
+    </div>
+  </div>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A snow pile right at the door, or spread evenly down the driveway</h3>
+    <p>
+      Picture two driveways after a snowstorm, both with the same amount of
+      snow cleared right at the front door. In the first driveway, every
+      shovel-load was dumped in one spot a few feet from the door — walk five
+      steps further and there's almost nothing left to wade through. In the
+      second, the snow was spread more evenly the whole length of the
+      driveway — five steps further out, there's still a meaningful pile to
+      get past. Both driveways look identical if you only glance at the door
+      itself. The difference only shows up once you ask how the pile changes
+      as you walk further away — which is exactly what order-book slope
+      measures about a market, using resting size instead of snow.
+    </p>
+    <p>
+      Depth imbalance is a separate, simpler question about the same picture:
+      is there more snow piled on the left side of the driveway or the right?
+      A driveway with a towering pile on the left and almost nothing on the
+      right tells you something about which direction is easier to walk
+      through right now — exactly the intuition behind reading a bid-heavy
+      or ask-heavy book as short-horizon pressure.
+    </p>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine a vending machine with candy stacked behind the little door. "Depth" is just: how much candy is actually sitting there right now, ready to come out? A machine can look totally normal from the front and still be nearly empty one row back. Slope and depth imbalance are just two honest ways of describing what's really stocked behind the door, before anyone even buys anything.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>1. Depth: level-1 and cumulative</h3>
+  <p>
+    <a href="limit-order-books.html">Limit Order Books &amp; Queue Dynamics</a>
+    already established the vocabulary this lesson builds on: a book is two
+    ladders of price levels, with resting size \(Q^{(i)}\) sitting at each
+    level \(i\), counted outward from the best price (\(i=1\) is the touch
+    itself). <strong>Level-1 depth</strong> is nothing more than \(Q_b^{(1)}\)
+    and \(Q_a^{(1)}\) — the size resting at the best bid and best ask, the
+    same \(Q_b, Q_a\) the sibling Order Flow Imbalance lesson uses directly.
+    <strong>Cumulative depth</strong> extends this to a running total across
+    the first \(n\) levels (equivalently, out to \(n\) ticks from the touch,
+    when levels are evenly tick-spaced):
+  </p>
+  <div class="tl-math">\[ D_b(n) = \sum_{i=1}^{n} Q_b^{(i)}, \qquad D_a(n) = \sum_{i=1}^{n} Q_a^{(i)} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>D_b(n), D_a(n)</code><span>total resting size within n ticks of the best bid / best ask</span></div>
+    <div class="tl-eq-chip c2"><code>Q_b^(i), Q_a^(i)</code><span>size resting at the i-th price level on each side, i=1 being the touch</span></div>
+  </div>
+  <p>
+    \(D(n)\) answers a genuinely practical question a naive best-bid/best-ask
+    quote can't: not "what's the current spread," but "how much size would a
+    trader actually have to consume before reaching a price \(n\) ticks worse
+    than the touch?" A trader working an order larger than \(Q^{(1)}\) alone
+    always cares about \(D(n)\) for some \(n>1\), never just level 1.
+  </p>
+
+  <h3>2. Order-book slope — two conventions, stated honestly</h3>
+  <p>
+    "Slope" asks how fast \(D(n)\) grows as \(n\) grows — the shape of the
+    depth curve, not just its endpoints. This lesson follows the concrete
+    construction used in the empirical order-book literature (Næs &amp;
+    Skjeltorp, 2006): for each level \(i\) beyond the touch, compute the
+    incremental depth added per tick of distance from the touch, then average
+    across levels:
+  </p>
+  <div class="tl-math">\[ \text{slope} = \frac{1}{n-1}\sum_{i=2}^{n} \frac{D(i) - D(1)}{i-1} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>D(i) − D(1)</code><span>how much MORE depth has accumulated by level i, beyond what was already resting at the touch</span></div>
+    <div class="tl-eq-chip c2"><code>i − 1</code><span>ticks of price distance separating level i from the touch, assuming even tick spacing</span></div>
+    <div class="tl-eq-chip c4"><code>1/(n−1) Σ</code><span>average this per-tick accumulation rate across every level examined, from 2 up to n</span></div>
+  </div>
+  <p>
+    Under this convention, computed separately for each side, <strong>a
+    larger slope value means depth builds up faster as you move away from the
+    touch</strong> — a deep book, where a large order does relatively little
+    damage to price. A slope near zero means almost nothing rests beyond the
+    touch — depth is entirely front-loaded at the best price, and any size
+    beyond \(Q^{(1)}\) has to move price meaningfully to get filled.
+  </p>
+  <p>
+    A simpler alternative some practitioners use instead of a full regression
+    or per-level average is a plain ratio of cumulative depth at some
+    distance to depth at the touch:
+  </p>
+  <div class="tl-math">\[ R(n) = \frac{D(n)}{D(1)} \]</div>
+  <p>
+    \(R(n)\) close to 1 means almost all resting size sits right at the
+    touch — the book is thin and front-loaded no matter how large \(n\) is;
+    \(R(n)\) well above 1 means meaningful depth exists further out, spread
+    beyond the very best price. \(R(n)\) and the averaged per-tick slope
+    above are two different ways of asking essentially the same question and
+    will normally move together, but they are not numerically identical —
+    this lesson's worked example computes both.
+  </p>
+
+  <div class="tl-solid amber">
+    <strong>The "steep vs. flat" ambiguity — stated honestly, not resolved.</strong>
+    Under the depth-vs-distance convention above (Næs &amp; Skjeltorp), a
+    <em>larger</em> slope number means a <em>deeper, more liquid</em> book —
+    depth accumulates quickly. But flip the axes and look at the same book
+    from the angle of a trader actually walking it — plotting the price
+    reached against cumulative quantity consumed, the inverse function of
+    \(D(n)\) — and a deep, liquid book produces a <em>flat</em> price curve
+    (little price movement per unit of size consumed), while a thin book
+    produces a <em>steep</em> one (price jumps fast for modest size). Traders
+    describing a book informally as "steep" nearly always mean this second,
+    walk-the-book sense — steep meaning thin and dangerous, the opposite
+    direction from the first convention's "large slope." Both usages are
+    genuinely common; neither is wrong; this lesson uses the depth-vs-distance
+    convention explicitly and consistently throughout, and flags this
+    ambiguity precisely so a reader checks which axis any "slope" figure they
+    encounter elsewhere is actually computed against before calling a large
+    number good or bad.
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If you're filling a swimming pool with a hose, "slope" could mean two opposite things depending on which way you're looking: how fast the water level rises per bucket poured in (fast rise = small pool = bad), or how many buckets it takes to raise the water by one inch (many buckets needed = big pool = good). Both are "the same pool," described from two opposite directions. Order-book slope has exactly this trap — always check which direction someone means before deciding whether "steep" is the good news or the bad news.</p>
+  </div>
+
+  <h3>3. Depth imbalance — and how it relates to queue imbalance and the microprice</h3>
+  <p>
+    <strong>Depth imbalance</strong> asks a different question from slope: not
+    how the book's depth is shaped, but which side currently holds more of
+    it. At level 1, this is defined identically to the queue imbalance
+    \(QI\) already introduced in the sibling
+    <a href="institutional-order-flow-imbalance.html">Order Flow Imbalance</a>
+    lesson — this lesson reuses that formula rather than inventing a
+    differently-labeled variant of the same idea:
+  </p>
+  <div class="tl-math">\[ DI^{(1)} = \frac{Q_b^{(1)} - Q_a^{(1)}}{Q_b^{(1)} + Q_a^{(1)}} \;=\; QI \]</div>
+  <p>
+    Because \(DI^{(1)}\) is exactly \(QI\), the microprice identity already
+    derived in that lesson applies here completely unchanged — this lesson
+    does not re-derive a different-looking version of it:
+  </p>
+  <div class="tl-math">\[ P_{\text{micro}} = M + \frac{S}{2}\cdot DI^{(1)}, \qquad M=\frac{P_b+P_a}{2},\ \ S=P_a-P_b \]</div>
+  <p>
+    What this lesson adds is extending the same ratio beyond level 1, to the
+    <em>cumulative</em> depth within \(n\) levels — a natural question once
+    a trader's order is larger than what's resting at the touch alone, and
+    one the level-1-only microprice formula was never built to answer:
+  </p>
+  <div class="tl-math">\[ DI(n) = \frac{D_b(n) - D_a(n)}{D_b(n) + D_a(n)} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>DI(n)</code><span>depth imbalance using total resting size within n ticks on each side, not just the touch</span></div>
+    <div class="tl-eq-chip c3"><code>DI(n) ∈ [-1, 1]</code><span>−1: every unit of depth within n ticks sits on the ask; +1: every unit sits on the bid</span></div>
+  </div>
+  <p>
+    \(DI(1)\) and \(DI(n)\) for larger \(n\) can genuinely disagree — a book
+    can be lopsided right at the touch while looking much more balanced a
+    few ticks back, or the reverse. The worked example below computes both
+    from the same toy book and shows exactly this: which \(n\) a depth
+    imbalance is computed over is a real, consequential design choice, not
+    an afterthought.
+  </p>
+
+  <div class="tl-solid blue">
+    <strong>Depth imbalance vs. Order Flow Imbalance — a resting snapshot vs. a sequence of changes.</strong>
+    It is easy to conflate these because both produce a number in \([-1,1]\)
+    describing "buy pressure vs. sell pressure," but they are built from
+    genuinely different data. Depth imbalance, \(DI(n)\), is computed from a
+    <em>single snapshot</em> of what is currently resting on each side of the
+    book — no history required at all. Order Flow Imbalance, \(OFI_n = e^b_n
+    - e^a_n\) from the sibling lesson, is computed from the <em>change</em>
+    between consecutive book updates, summed over a window — it is
+    inherently a time-series quantity and is undefined from a single
+    snapshot. A book can show a strongly positive depth imbalance (heavy
+    resting bid size right now) while OFI over the last few updates is
+    negative (that resting size has been shrinking, update by update) — the
+    two signals are telling a reader different things and can legitimately
+    point in opposite directions at the same instant.
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Depth imbalance is a photograph: "right now, is there more candy in the left jar or the right jar?" Order Flow Imbalance is a flip-book: "over the last ten seconds, which jar has been filling up and which has been emptying out?" A jar can be fuller than the other one right now (photograph) while actually draining fast (flip-book) — both readings are true at once, and they're answering different questions.</p>
+  </div>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(Q_b^{(i)}, Q_a^{(i)}\)</td><td>Resting size at the i-th price level on the bid / ask side, i=1 being the touch — same notation family as the Limit Order Books and Order Flow Imbalance lessons.</td></tr>
+    <tr><td>\(D_b(n), D_a(n)\)</td><td>Cumulative depth: total resting size within the first n levels (n ticks, if evenly spaced) of the touch.</td></tr>
+    <tr><td>slope</td><td>Average per-tick growth of cumulative depth beyond the touch — larger means a deeper, more liquid book, under this lesson's stated convention.</td></tr>
+    <tr><td>\(R(n)\)</td><td>Simple depth ratio, \(D(n)/D(1)\) — how many times larger cumulative depth at n ticks is versus depth at the touch alone.</td></tr>
+    <tr><td>\(DI^{(1)}, DI(n)\)</td><td>Depth imbalance at the touch (identical to \(QI\) from the OFI lesson) and at cumulative depth to n levels.</td></tr>
+    <tr><td>\(M, S, P_{\text{micro}}\)</td><td>Naive midpoint, spread, and the microprice — unchanged from the OFI lesson's own definitions.</td></tr>
+  </table></div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>A three-level toy book: cumulative depth, slope both ways, and two depth imbalances</h3>
+    <p>
+      A small hypothetical FX book at the same 1.1004/1.1005 touch used
+      elsewhere in this Theory Lab, three levels resting on each side:
+    </p>
+    <div class="tl-table-wrap"><table class="tl-tbl">
+      <tr><th>Level</th><th>Bid price</th><th>Bid size \(Q_b^{(i)}\)</th><th>Cum. \(D_b(i)\)</th><th>Ask price</th><th>Ask size \(Q_a^{(i)}\)</th><th>Cum. \(D_a(i)\)</th></tr>
+      <tr><td>1 (touch)</td><td class="tl-num">1.10040</td><td class="tl-num">300</td><td class="tl-num">300</td><td class="tl-num">1.10050</td><td class="tl-num">200</td><td class="tl-num">200</td></tr>
+      <tr><td>2</td><td class="tl-num">1.10030</td><td class="tl-num">250</td><td class="tl-num">550</td><td class="tl-num">1.10060</td><td class="tl-num">150</td><td class="tl-num">350</td></tr>
+      <tr><td>3</td><td class="tl-num">1.10020</td><td class="tl-num">400</td><td class="tl-num">950</td><td class="tl-num">1.10070</td><td class="tl-num">180</td><td class="tl-num">530</td></tr>
+    </table></div>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>Slope, per side</h4>
+          <p>
+            Bid: level 2 adds \((550-300)/1=250\) per tick, level 3 adds
+            \((950-300)/2=325\) per tick; average slope\(_{\text{bid}}\) =
+            \((250+325)/2 = 287.5\). Ask: level 2 adds \((350-200)/1=150\),
+            level 3 adds \((530-200)/2=165\); average slope\(_{\text{ask}}\) =
+            \((150+165)/2 = 157.5\). The bid's slope is about
+            \(287.5/157.5\approx1.825\times\) the ask's — depth is building up
+            noticeably faster on the buy side as a trader looks further from
+            the touch.
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>The simple ratio, same conclusion</h4>
+          <p>
+            \(R_{\text{bid}}(3) = 950/300 \approx 3.167\); \(R_{\text{ask}}(3)
+            = 530/200 = 2.65\). \(R_{\text{bid}} > R_{\text{ask}}\) agrees
+            with the slope calculation: bid depth grows proportionally more,
+            relative to its own touch size, than ask depth does — the same
+            conclusion reached by a much cheaper calculation.
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>Depth imbalance — level 1 vs. cumulative</h4>
+          <p>
+            \(DI^{(1)} = (300-200)/(300+200) = 0.20\) — a mildly bid-heavy
+            book at the touch alone. Using all three levels instead,
+            \(DI(3) = (950-530)/(950+530) = 420/1480 \approx 0.284\) — the
+            cumulative reading is <em>more</em> bid-heavy than the level-1
+            reading, because the bid side's extra depth further out (950 vs.
+            530 total) outpaces the ask's. The two numbers agree in
+            direction here, but not in magnitude — exactly the kind of gap
+            the lesson above warns is a real, not cosmetic, choice.
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">4</div>
+        <div class="tl-step-body">
+          <h4>Feeding straight into the microprice</h4>
+          <p>
+            \(M=(1.10040+1.10050)/2=1.100450\), half-spread \(h=0.00005\).
+            Using \(DI^{(1)}=0.20\) exactly as \(QI\) in the OFI lesson's own
+            formula: \(P_{\text{micro}} = 1.100450 + 0.00005\times0.20 =
+            1.100460\) — the identical mechanics from that lesson, no new
+            formula invented, just this lesson's own depth-imbalance number
+            plugged straight in.
+          </p>
+        </div>
+      </div>
+    </div>
+    <p>
+      This is a small, hand-built illustration of the mechanism, not a live
+      market read — but every number above was checked against the live
+      calculator directly below it, and both agree to the last decimal shown.
+    </p>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Edit any level's size and watch cumulative depth, slope, and both imbalances update live</h3>
+    <p>
+      Starts on the worked example's own three-level book. Levels are
+      assumed evenly tick-spaced (level 2 is one tick from the touch, level
+      3 is two ticks), matching the worked example above. Change any size
+      and every output recomputes instantly — including a guard for
+      negative sizes and for a side with zero total depth.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Bid size, level 1 \(Q_b^{(1)}\)</span></div>
+        <input type="number" id="mds-qb1" class="tl-scratch-input" value="300" step="10" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Bid size, level 2 \(Q_b^{(2)}\)</span></div>
+        <input type="number" id="mds-qb2" class="tl-scratch-input" value="250" step="10" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Bid size, level 3 \(Q_b^{(3)}\)</span></div>
+        <input type="number" id="mds-qb3" class="tl-scratch-input" value="400" step="10" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Ask size, level 1 \(Q_a^{(1)}\)</span></div>
+        <input type="number" id="mds-qa1" class="tl-scratch-input" value="200" step="10" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Ask size, level 2 \(Q_a^{(2)}\)</span></div>
+        <input type="number" id="mds-qa2" class="tl-scratch-input" value="150" step="10" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Ask size, level 3 \(Q_a^{(3)}\)</span></div>
+        <input type="number" id="mds-qa3" class="tl-scratch-input" value="180" step="10" min="0">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      \(D_b\): <b id="mds-db1">300</b> / <b id="mds-db2">550</b> / <b id="mds-db3">950</b>&emsp;\(D_a\): <b id="mds-da1">200</b> / <b id="mds-da2">350</b> / <b id="mds-da3">530</b>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Slope\(_{\text{bid}}\) = <b id="mds-slopeb">287.500</b>&emsp;Slope\(_{\text{ask}}\) = <b id="mds-slopea">157.500</b>&emsp;Ratio = <b id="mds-sloperatio">1.825</b>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      \(R_{\text{bid}}(3)\) = <b id="mds-rbid">3.167</b>&emsp;\(R_{\text{ask}}(3)\) = <b id="mds-rask">2.650</b>
+    </div>
+    <div class="tl-readout">
+      \(DI^{(1)}\) = <b id="mds-di1">0.200</b>&emsp;\(DI(3)\) = <b id="mds-di3">0.284</b>&emsp;Microprice (from \(DI^{(1)}\)) = <b id="mds-micro">1.100460</b>
+      <span id="mds-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="mds-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Cumulative depth by level — the bid side builds up faster than the ask side</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Grouped bar chart with three groups, one per book level. Each group has a green bid bar and a red ask bar. The bid bars grow taller from level 1 to level 3, reaching a maximum height representing 950 units of cumulative depth. The ask bars also grow but more slowly, reaching a maximum representing 530 units. The bid bars are consistently taller than the ask bars at every level, illustrating the bid side's steeper slope.">
+      <line x1="50" y1="250" x2="610" y2="250" style="stroke:var(--text3);stroke-width:1"/>
+      <text x="16" y="140" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)" transform="rotate(-90 16 140)">Cumulative depth</text>
+
+      <!-- level 1 -->
+      <rect x="100" y="187" width="46" height="63" style="fill:var(--green);opacity:.75"/>
+      <rect x="150" y="208" width="46" height="42" style="fill:var(--red);opacity:.65"/>
+      <text x="148" y="266" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">level 1</text>
+      <text x="123" y="180" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--green)">300</text>
+      <text x="173" y="201" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--red)">200</text>
+
+      <!-- level 2 -->
+      <rect x="270" y="134" width="46" height="116" style="fill:var(--green);opacity:.75"/>
+      <rect x="320" y="176" width="46" height="74" style="fill:var(--red);opacity:.65"/>
+      <text x="318" y="266" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">level 2</text>
+      <text x="293" y="127" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--green)">550</text>
+      <text x="343" y="169" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--red)">350</text>
+
+      <!-- level 3 -->
+      <rect x="440" y="50" width="46" height="200" style="fill:var(--green);opacity:.75"/>
+      <rect x="490" y="138" width="46" height="112" style="fill:var(--red);opacity:.65"/>
+      <text x="488" y="266" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">level 3</text>
+      <text x="463" y="43" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--green)">950</text>
+      <text x="513" y="131" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--red)">530</text>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--green)"></i>cumulative bid depth D_b(n)</span>
+      <span><i style="background:var(--red)"></i>cumulative ask depth D_a(n)</span>
+    </div>
+    <div class="tl-chart-caption">
+      The worked example's own numbers. Bar heights are proportional to
+      cumulative depth, not to exact pixel scale. The bid bars pull further
+      ahead of the ask bars at each successive level — the visual content of
+      "the bid side has a steeper (Næs-Skjeltorp-convention) slope."
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>Choosing which side to lean on before working a large order</h3>
+    <p>
+      A desk needs to work an order noticeably larger than what's resting at
+      the touch on either side of a currency pair's book. Reading only the
+      quoted spread gives no guidance at all — both sides look identical from
+      that vantage point. Computing \(D_b(n)\) and \(D_a(n)\) out to a few
+      ticks changes the picture: if the side the desk needs to trade against
+      shows a shallow slope (depth barely grows past the touch), the desk
+      knows in advance that pushing size through that side will move the
+      price meaningfully faster than a naive same-side-of-spread estimate
+      would suggest — a reason to slice the order smaller, work it more
+      patiently, or split it across venues, exactly the concerns the
+      Almgren-Chriss and Obizhaeva-Wang lessons address from the execution
+      side. Depth imbalance adds a second, complementary read: a book that is
+      already heavily lopsided toward the side the desk is about to trade
+      into is telling it, before a single child order is sent, that it will
+      likely be competing for size against other participants leaning the
+      same way.
+    </p>
+    <p>
+      Nothing above is a claim this repo runs this analysis on live data —
+      see the status badge above for exactly what does and doesn't exist here
+      today. It illustrates how a desk that <em>did</em> have a genuine,
+      continuously-updating top-of-book feed would actually use these two
+      numbers together, which is the point of the exercise.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📐</div>
+      <h4>A cheap, model-free liquidity gauge</h4>
+      <p>Slope and depth need no historical calibration at all — unlike Kyle's λ, they can be read directly off a single book snapshot, making them a fast first pass before reaching for a statistically-estimated impact model.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">✂️</div>
+      <h4>Sizing the first child order</h4>
+      <p>A shallow slope on the side about to be traded against is a direct, mechanical warning that even a modest clip will walk noticeably further down the book than the same clip would on a steeper-sloped side.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">⏱️</div>
+      <h4>A complement to Order Flow Imbalance, not a substitute</h4>
+      <p>OFI says which way pressure has been building over recent updates; depth imbalance says how the book is shaped right this instant. Desks that track both get a flow-based and a stock-based read of the same market at once.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🧩</div>
+      <h4>An input to, not a substitute for, an impact model</h4>
+      <p>A steep drop-off in depth beyond the touch is consistent with a large Kyle-style λ or a large Kyle-Obizhaeva bet-size sensitivity — but slope is observed directly from the book, while λ still has to be estimated statistically from trades; the two are complementary evidence, not interchangeable numbers.</p>
+    </div>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where depth, slope, and depth imbalance quietly mislead</h3>
+    <p>
+      <strong>Displayed depth is not committed depth.</strong> Iceberg orders
+      show only a fraction of their true size at any moment, understating
+      real depth; spoofed orders are posted purely to be seen and cancelled
+      before they can trade, inflating a level's apparent size with nothing
+      genuine behind it. Every formula in this lesson takes displayed size at
+      face value — it has no way to distinguish real resting interest from
+      either distortion, and a reader who forgets this treats a manufactured
+      reading as a genuine one.
+    </p>
+    <p>
+      <strong>FX specifically has no single consolidated book to read depth
+      from.</strong> Unlike a single listed exchange, spot FX trades
+      primarily OTC across multiple competing ECNs and bank-to-bank venues,
+      each with its own separate book. A slope or depth-imbalance figure
+      computed from one venue's book describes that venue only — not "the FX
+      market's" depth as a whole — and this repo's own primary venue, OANDA
+      spot, doesn't even expose a live top-of-book ladder to begin with (see
+      the status badge above). A naive depth read that ignores fragmentation
+      entirely can be badly misleading about how much liquidity genuinely
+      exists across the market.
+    </p>
+    <p>
+      <strong>These are snapshot statistics, not a stable, slow-moving
+      property.</strong> A book's slope and imbalance can change materially
+      within milliseconds as orders are added, cancelled, or filled — a
+      reading taken a second ago says nothing guaranteed about the book right
+      now. Treating either number as a multi-minute forecast rather than an
+      instantaneous read is the same category error the OFI lesson warns
+      about for its own signals.
+    </p>
+    <p>
+      <strong>Check which slope convention a source is using before calling
+      a number good or bad.</strong> As the callout above spells out, "a
+      steep book" means opposite things depending on whether the writer means
+      the depth-vs-distance curve or the walk-the-book price-impact curve.
+      Silently assuming one convention when a source meant the other is an
+      easy, entirely avoidable mistake.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Depth is a snapshot property of the resting book</strong> — level-1 depth is size at the touch; cumulative depth \(D(n)\) is the running total within n ticks. Neither needs a single executed trade to compute.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Order-book slope measures how fast cumulative depth builds up away from the touch.</strong> This lesson's convention: a larger slope value means a deeper, more liquid book — but the literature genuinely disagrees on which axis "slope" runs along, and this lesson states both conventions explicitly.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Depth imbalance at level 1 is exactly \(QI\) from the Order Flow Imbalance lesson,</strong> feeding the same microprice identity \(P_{\text{micro}}=M+\tfrac{S}{2}\cdot QI\) — this lesson extends it to cumulative depth, it doesn't replace it.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Depth imbalance (a resting snapshot) and Order Flow Imbalance (a sequence of changes) are genuinely different signals</strong> that can disagree at the same instant — one is not a substitute for the other.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Slope is a static book-shape statistic; Kyle's λ is a statistically-estimated, trade-based price-impact coefficient.</strong> They're related in spirit but built from entirely different data and computed in entirely different ways.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Displayed depth can be hidden (icebergs) or fabricated (spoofing), and FX has no single consolidated book to read it from anyway.</strong> Neither formula in this lesson can detect either distortion on its own.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. What is the difference between level-1 depth and cumulative depth \(D(n)\)?</summary>
+    <div class="tl-answer">
+      Level-1 depth is simply the size resting at the single best price on a
+      side (the touch), \(Q^{(1)}\). Cumulative depth \(D(n) =
+      \sum_{i=1}^{n} Q^{(i)}\) is the running total of resting size across
+      the first \(n\) price levels — how much size in total would need to be
+      consumed to walk the book out to \(n\) ticks (or levels) from the
+      touch, not just what sits at the very best price.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Under this lesson's stated slope convention, does a LARGER slope value mean a deeper book or a thinner one? Why does the opposite convention exist in the wild?</summary>
+    <div class="tl-answer">
+      Under the depth-vs-distance convention this lesson uses (Næs &amp;
+      Skjeltorp, 2006), a larger slope value means cumulative depth builds up
+      faster as distance from the touch grows — a deeper, more liquid book.
+      The opposite convention exists because plotting the same book from the
+      other axis — price reached versus cumulative quantity consumed while
+      walking it — inverts the relationship: a deep book produces a FLAT
+      price curve there, while a thin book produces a STEEP one. Traders
+      informally calling a book "steep" usually mean this second,
+      walk-the-book sense, which is the numerical opposite of the first
+      convention's "large slope."
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. How does level-1 depth imbalance \(DI^{(1)}\) relate to the queue imbalance \(QI\) from the Order Flow Imbalance lesson?</summary>
+    <div class="tl-answer">
+      They are the exact same quantity: \(DI^{(1)} = (Q_b^{(1)} -
+      Q_a^{(1)})/(Q_b^{(1)} + Q_a^{(1)}) = QI\). This lesson deliberately
+      reuses that lesson's own formula and its microprice identity
+      \(P_{\text{micro}}=M+\tfrac{S}{2}\cdot QI\) rather than deriving a
+      differently-labeled version of the same idea — the only genuinely new
+      construction in this lesson is extending the ratio to cumulative depth
+      across multiple levels, \(DI(n)\).
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. A book shows \(Q_b^{(1)}=400\), \(Q_a^{(1)}=100\) at the touch, but cumulative depth to 3 levels is \(D_b(3)=900\), \(D_a(3)=1{,}100\). Compute \(DI^{(1)}\) and \(DI(3)\), and explain what the disagreement between them means.</summary>
+    <div class="tl-answer">
+      \(DI^{(1)} = (400-100)/(400+100) = 0.60\) — strongly bid-heavy at the
+      touch. \(DI(3) = (900-1{,}100)/(900+1{,}100) = -200/2{,}000 = -0.10\) —
+      mildly ask-heavy once cumulative depth is considered. The book is
+      front-loaded with buy interest right at the best price, but the ask
+      side has considerably more depth resting a few ticks back — a trader
+      relying on the level-1 reading alone would badly mis-read which side
+      is actually heavier for anything larger than the smallest possible
+      trade.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Why can depth imbalance and Order Flow Imbalance disagree at the same instant, even though both produce a number that sounds like "buy vs. sell pressure"?</summary>
+    <div class="tl-answer">
+      Depth imbalance is computed from a single snapshot of what is currently
+      resting on each side of the book — it needs no history at all. Order
+      Flow Imbalance is computed from the change between consecutive book
+      updates, summed over a window — it is inherently about a sequence of
+      events over time, not a snapshot. A book can currently be bid-heavy
+      (positive depth imbalance) while that same bid-side size has been
+      shrinking over the last several updates (negative OFI) — one measure
+      describes the current state, the other describes the recent
+      trajectory, and there is no requirement that the two agree.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. How does order-book slope differ from Kyle's λ, given that both are informally described as "how much size moves price"?</summary>
+    <div class="tl-answer">
+      Kyle's λ, \(\sigma_v/(2\sigma_u)\), is a reduced-form statistic
+      estimated from a history of trades and their associated price
+      changes — it requires a time series of executed order flow and makes
+      assumptions about informed versus noise trading to interpret. Order-
+      book slope is a purely geometric property of a single resting-book
+      snapshot: how quickly cumulative displayed depth grows as price moves
+      away from the touch, computable with zero trade history and no
+      statistical estimation at all. They are related in spirit — both
+      describe how costly it might be to trade size — but they are built
+      from entirely different data using entirely different methods, and
+      neither is a substitute for computing the other.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Larry Harris, <em>Trading and Exchanges: Market Microstructure for Practitioners</em>, Oxford University Press, 2003 — the standard practitioner-facing reference for order-book mechanics, depth, and liquidity measurement generally.</li>
+    <li>Maureen O'Hara, <em>Market Microstructure Theory</em>, Blackwell Publishers, 1995 — the standard academic text covering price formation, liquidity, and the theoretical foundations this lesson's informal treatment of depth and slope builds on.</li>
+    <li>Randi Næs &amp; Johannes A. Skjeltorp, <em>"Order Book Characteristics and the Volume-Volatility Relation: Empirical Evidence from a Limit Order Book Market,"</em> Journal of Financial Markets, 9(4), 2006 — the empirical order-book-slope construction (depth accumulation per unit price distance) this lesson uses directly.</li>
+    <li>Albert S. "Pete" Kyle, <em>"Continuous Auctions and Insider Trading,"</em> Econometrica, 1985 — the price-impact coefficient λ this lesson distinguishes from a static book-shape slope; covered directly in the prerequisite <a href="institutional-kyle-obizhaeva-invariance.html">Kyle-Obizhaeva Invariance</a> lesson.</li>
+    <li>Rama Cont, Arseniy Kukanov &amp; Sasha Stoikov, <em>"The Price Impact of Order Book Events,"</em> Journal of Financial Econometrics, 12(1), 2014 — the Order Flow Imbalance definition this lesson distinguishes from depth imbalance throughout; covered in full in the sibling <a href="institutional-order-flow-imbalance.html">Order Flow Imbalance &amp; the Microprice</a> lesson.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="institutional-obizhaeva-wang-impact.html">← Obizhaeva-Wang Transient Price Impact</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="institutional-avellaneda-stoikov.html">Avellaneda-Stoikov Inventory-Aware Market Making →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+<script>
+(function(){
+  var ids = ['qb1','qb2','qb3','qa1','qa2','qa3'];
+  var inputs = {};
+  ids.forEach(function(k){ inputs[k] = document.getElementById('mds-' + k); });
+  if (!inputs.qb1) return;
+
+  var DEFAULTS = { qb1: 300, qb2: 250, qb3: 400, qa1: 200, qa2: 150, qa3: 180 };
+  var TICK_PRICE = { pb: 1.1004, pa: 1.1005 };
+
+  var out = {
+    db1: document.getElementById('mds-db1'), db2: document.getElementById('mds-db2'), db3: document.getElementById('mds-db3'),
+    da1: document.getElementById('mds-da1'), da2: document.getElementById('mds-da2'), da3: document.getElementById('mds-da3'),
+    slopeb: document.getElementById('mds-slopeb'), slopea: document.getElementById('mds-slopea'), sloperatio: document.getElementById('mds-sloperatio'),
+    rbid: document.getElementById('mds-rbid'), rask: document.getElementById('mds-rask'),
+    di1: document.getElementById('mds-di1'), di3: document.getElementById('mds-di3'), micro: document.getElementById('mds-micro')
+  };
+  var note = document.getElementById('mds-note');
+  var resetBtn = document.getElementById('mds-reset');
+  var DASH = '—';
+
+  function blank(){
+    Object.keys(out).forEach(function(k){ out[k].textContent = DASH; });
+  }
+
+  function recompute(){
+    var v = {};
+    var ok = true;
+    ids.forEach(function(k){
+      var n = parseFloat(inputs[k].value);
+      v[k] = n;
+      if (!isFinite(n) || n < 0) ok = false;
+    });
+
+    if (!ok) {
+      blank();
+      note.textContent = '(enter non-negative numbers for every level — resting size cannot be negative)';
+      return;
+    }
+
+    var Db1 = v.qb1, Db2 = Db1 + v.qb2, Db3 = Db2 + v.qb3;
+    var Da1 = v.qa1, Da2 = Da1 + v.qa2, Da3 = Da2 + v.qa3;
+
+    out.db1.textContent = Db1.toFixed(0);
+    out.db2.textContent = Db2.toFixed(0);
+    out.db3.textContent = Db3.toFixed(0);
+    out.da1.textContent = Da1.toFixed(0);
+    out.da2.textContent = Da2.toFixed(0);
+    out.da3.textContent = Da3.toFixed(0);
+
+    var slopeBid = Db1 > 0 || Db2 > 0 || Db3 > 0
+      ? (((Db2 - Db1) / 1) + ((Db3 - Db1) / 2)) / 2
+      : NaN;
+    var slopeAsk = Da1 > 0 || Da2 > 0 || Da3 > 0
+      ? (((Da2 - Da1) / 1) + ((Da3 - Da1) / 2)) / 2
+      : NaN;
+
+    out.slopeb.textContent = isFinite(slopeBid) ? slopeBid.toFixed(3) : DASH;
+    out.slopea.textContent = isFinite(slopeAsk) ? slopeAsk.toFixed(3) : DASH;
+    out.sloperatio.textContent = (isFinite(slopeBid) && isFinite(slopeAsk) && slopeAsk !== 0)
+      ? (slopeBid / slopeAsk).toFixed(3) : DASH;
+
+    out.rbid.textContent = Db1 > 0 ? (Db3 / Db1).toFixed(3) : DASH;
+    out.rask.textContent = Da1 > 0 ? (Da3 / Da1).toFixed(3) : DASH;
+
+    var noteMsgs = [];
+
+    if (Db1 + Da1 > 0) {
+      var di1 = (Db1 - Da1) / (Db1 + Da1);
+      out.di1.textContent = di1.toFixed(3);
+      var half = (TICK_PRICE.pa - TICK_PRICE.pb) / 2;
+      var mid = (TICK_PRICE.pa + TICK_PRICE.pb) / 2;
+      out.micro.textContent = (mid + half * di1).toFixed(6);
+    } else {
+      out.di1.textContent = DASH;
+      out.micro.textContent = DASH;
+      noteMsgs.push('level-1 sizes are both zero — DI(1) and the microprice are undefined');
+    }
+
+    if (Db3 + Da3 > 0) {
+      out.di3.textContent = ((Db3 - Da3) / (Db3 + Da3)).toFixed(3);
+    } else {
+      out.di3.textContent = DASH;
+      noteMsgs.push('cumulative depth is zero on both sides — DI(3) is undefined');
+    }
+
+    note.textContent = noteMsgs.length ? ('(' + noteMsgs.join('; ') + ')') : '';
+  }
+
+  ids.forEach(function(k){ inputs[k].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    ids.forEach(function(k){ inputs[k].value = DEFAULTS[k]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
+</body>
+</html>

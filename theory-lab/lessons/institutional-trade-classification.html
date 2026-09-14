@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trade Classification: Lee-Ready &amp; Bulk Volume Classification — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Market Microstructure Extensions / Trade Classification</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Market Microstructure Extensions 1 of 5</div>
+  <h1 class="tl-title">Trade Classification: Lee-Ready &amp; Bulk Volume Classification</h1>
+  <p class="tl-dek">A raw trade print is just a price, a size, and a timestamp — nothing on the tape says whether the buyer or the seller was the one who showed up demanding immediacy. Every order-flow signal in this curriculum that needs a <em>signed</em> direction, including this project's own VPIN lesson, is quietly resting on an algorithm that guesses that sign from what little data is actually available.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — not built or tested anywhere in this repo</span>
+    <span>~15 min read</span>
+    <span>Prereqs: <a href="market-microstructure.html">Market Microstructure: Price Impact &amp; the Bid-Ask Spread</a>, <a href="vpin-order-flow-toxicity.html">Order Flow Toxicity &amp; VPIN</a></span>
+  </div>
+
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="institutional-trade-classification-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Trade classification infers whether a trade was <strong>buyer-initiated</strong> or <strong>seller-initiated</strong> from data that doesn't say so directly — every downstream order-flow signal that needs signed direction (VPIN, PIN, order-flow imbalance) depends on some version of this inference, not on a genuine label in the data.</li>
+      <li>The <strong>tick rule</strong> classifies a trade by comparing its price only to the immediately preceding trade's price: higher is a buy, lower is a sell, unchanged inherits the last classified sign. It needs nothing but a price series — and it's noisy precisely because it ignores where the quote actually sat.</li>
+      <li>The <strong>quote rule</strong> instead compares the trade's price to the prevailing bid-ask midpoint at the time of the trade: above the midpoint is a buy, below is a sell — but a trade printing exactly at the midpoint leaves the quote rule with nothing to decide.</li>
+      <li>The <strong>Lee-Ready algorithm</strong> (1991) uses the quote rule as its primary classifier, applied against the quote in effect some short lag before the trade print, and falls back to the tick rule specifically to break exact-midpoint ties. It is the long-standing academic standard on historical exchange data — and its accuracy has been shown, in published work, to degrade on modern electronic and high-frequency markets.</li>
+      <li><strong>Bulk Volume Classification (BVC)</strong> (Easley, López de Prado &amp; O'Hara, 2012) classifies volume in bulk over a bar rather than trade by trade: buy-fraction \(=\Phi(\Delta P/\sigma_{\Delta P})\), the bar's standardized price change passed through the standard normal CDF. This is exactly the classification step this project's own <a href="vpin-order-flow-toxicity.html">Order Flow Toxicity &amp; VPIN</a> lesson already covers as VPIN's basis — this lesson names it explicitly and extends it, rather than re-deriving it from scratch.</li>
+      <li>A repo-wide search turns up zero implementations of Lee-Ready, the tick rule, or the quote rule anywhere in this codebase — unsurprising, since Lee-Ready needs historical quote-timestamp data of a kind FX/OTC trading typically doesn't produce in the same form exchange-listed TAQ data does.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    <a href="market-microstructure.html">Market Microstructure: Price Impact
+    &amp; the Bid-Ask Spread</a> derives the bid-ask spread from a market
+    maker's uncertainty about whether an incoming order is informed or noise.
+    <a href="vpin-order-flow-toxicity.html">Order Flow Toxicity &amp;
+    VPIN</a> builds a live, volume-bucketed proxy for exactly that same
+    informed-share parameter. Both lessons quietly assume something this
+    lesson exists to make explicit: that somewhere upstream, a trade or a
+    bucket of volume got tagged as buy-initiated or sell-initiated in the
+    first place. A raw trade record — price, size, timestamp — carries no
+    such tag. Exchanges and OTC venues don't publish "this trade was the
+    buyer's idea"; they publish a print. Whether that print was the buyer
+    lifting an offer or the seller hitting a bid has to be <em>inferred</em>,
+    and how it gets inferred is the entire subject of this lesson.
+  </p>
+  <p>
+    This isn't a narrow technical footnote. Every one of the four lessons in
+    this new "Market Microstructure Extensions" category — this one, Roll's
+    spread estimator, Glosten-Milgrom's fuller treatment, and the PIN and
+    order-flow-imbalance measures that follow — either performs this
+    inference directly or consumes signed trade direction as an input that
+    had to come from somewhere. Get the classification step wrong, and every
+    metric built on top of it — a toxicity score, an informed-trading
+    probability, an imbalance signal — is measuring an artifact of the
+    classifier, not the market.
+  </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🏷️</div>
+      <h4>An inference, not a label</h4>
+      <p>No trade tape says "buyer-initiated." Every classification scheme covered here is a rule for guessing that sign from price and quote data that <em>is</em> available.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🔗</div>
+      <h4>Already inside this curriculum</h4>
+      <p><a href="vpin-order-flow-toxicity.html">Order Flow Toxicity &amp; VPIN</a> already uses Bulk Volume Classification as its buy/sell split — this lesson names that method explicitly and gives it its own treatment.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">📉</div>
+      <h4>An academic standard with known limits</h4>
+      <p>Lee-Ready has been the default on historical exchange data for three decades — and published research has since shown where it breaks down on modern markets.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">➡️</div>
+      <h4>Feeds directly into what's next</h4>
+      <p>The PIN model and order-flow-imbalance measures — later lessons in this category — both take a stream of signed buy/sell volume as a given input. This is where that input actually comes from.</p>
+    </div>
+  </div>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>You didn't see who pulled the trigger — but you saw where the price landed</h3>
+    <p>
+      Imagine watching a vending machine's coin slot from across the room —
+      too far to see whose hand is feeding it coins, but close enough to
+      watch the display update. If the machine's displayed price just
+      ticked up, and a moment later a purchase registers above that new,
+      higher price, a reasonable guess is that someone was in a hurry and
+      paid up rather than wait. If a purchase registers exactly at the old
+      price, unchanged, the guess is murkier. Trade classification is this
+      exact guessing game, formalized: it never observes the buyer or the
+      seller directly, it observes the trade print and the standing quote,
+      and it infers direction from the relationship between the two.
+    </p>
+    <p>
+      The tick rule is the crudest version of this guess — it doesn't even
+      look at the "display" (the quote), only at whether the last purchase
+      price was higher or lower than the one before it. The quote rule looks
+      at the display directly: did this purchase happen above or below the
+      midpoint of what's currently being asked and bid? Lee-Ready combines
+      both, leaning on the quote rule as the main tool and reaching for the
+      tick rule only when the quote rule genuinely can't decide — a trade
+      that printed exactly on the midpoint, dead center between bid and ask.
+      Bulk Volume Classification abandons the trade-by-trade guess
+      altogether and instead asks a coarser, bar-level question: over this
+      whole time window, did the price move up a lot, a little, or not at
+      all — and lets that single aggregate movement decide what fraction of
+      the window's entire volume gets called "buy."
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step — three ways to classify a single trade</h2>
+  <p>
+    Three classification schemes are covered here, in increasing order of
+    sophistication, followed in Section 03 by a fourth that abandons
+    trade-by-trade classification entirely.
+  </p>
+
+  <h3>1. The tick rule — price history only</h3>
+  <p>
+    The tick rule looks at nothing but the sequence of trade prices already
+    on the tape. Let \(P_t\) be the price of trade \(t\) and \(P_{t-1}\) the
+    price of the trade immediately before it:
+  </p>
+  <div class="tl-math">
+    \[
+    \text{TickSign}(t) =
+    \begin{cases}
+    \text{Buy} & P_t > P_{t-1} \quad \text{(an "uptick")} \\
+    \text{Sell} & P_t < P_{t-1} \quad \text{(a "downtick")} \\
+    \text{TickSign}(t-1) & P_t = P_{t-1} \quad \text{(a "zero tick" — inherit the last classified sign)}
+    \end{cases}
+    \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>P_t</code><span>the price of the current trade being classified</span></div>
+    <div class="tl-eq-chip c2"><code>P_(t-1)</code><span>the price of the immediately preceding trade on the tape</span></div>
+    <div class="tl-eq-chip c4"><code>zero tick</code><span>price unchanged from the last trade — the tick rule reaches backward and copies whatever sign the last classified trade got</span></div>
+  </div>
+  <p>
+    That zero-tick case matters more than it looks: on a quiet tape with many
+    prints at the same price in a row, every one of them after the first
+    simply repeats the sign of the trade that set the current price level —
+    the tick rule has no fresh information about any of them individually.
+    The entire method's honest selling point is minimal data: a tick-rule
+    classifier needs only a price series, no quote data at all, which is
+    exactly why it's the fallback embedded inside Lee-Ready rather than a
+    method used on its own when better data exists.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The tick rule is like guessing whether someone raised or lowered the volume on a speaker by only listening to whether it got louder or quieter than a second ago — no dial to look at, just "louder than last time" or "quieter than last time." If it's exactly the same volume as last time, you just repeat your last guess, because nothing new happened to change your mind.</p>
+  </div>
+
+  <h3>2. The quote rule — compare the trade to the standing quote</h3>
+  <p>
+    The quote rule ignores trade history entirely and instead compares each
+    trade's price to the prevailing bid-ask midpoint at the moment of the
+    trade — the quote in effect just before that trade printed:
+  </p>
+  <div class="tl-math">
+    \[
+    \text{Mid}_t = \frac{\text{Bid}_t + \text{Ask}_t}{2}, \qquad
+    \text{QuoteSign}(t) =
+    \begin{cases}
+    \text{Buy} & P_t > \text{Mid}_t \\
+    \text{Sell} & P_t < \text{Mid}_t \\
+    \text{undecided} & P_t = \text{Mid}_t
+    \end{cases}
+    \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Bid_t, Ask_t</code><span>the best bid and best ask in effect immediately before trade t printed</span></div>
+    <div class="tl-eq-chip c2"><code>Mid_t</code><span>the bid-ask midpoint — the quote rule's dividing line</span></div>
+    <div class="tl-eq-chip c4"><code>undecided</code><span>a trade printing exactly at the midpoint — the quote rule alone has no basis to pick a side</span></div>
+  </div>
+  <p>
+    The intuition: a trade that executes above the midpoint most likely
+    happened because a buyer was aggressive enough to lift an offer (or pay
+    up through it), while a trade below the midpoint most likely happened
+    because a seller hit a bid. Unlike the tick rule, this genuinely uses
+    information about where liquidity was actually resting, not just where
+    the last print happened to land — which is why the quote rule is
+    generally considered the stronger classifier of the two, whenever
+    reliable, correctly time-stamped quote data is available to use it.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The quote rule is like knowing the exact fair halfway price a fruit stand is offering apples at right now. If someone actually paid more than that halfway price, they were probably in a rush to buy. If they paid less, they were probably in a rush to sell. If they paid exactly the halfway price, there's no way to tell from that fact alone which side was in a hurry.</p>
+  </div>
+
+  <h3>3. The Lee-Ready algorithm (1991) — quote rule first, tick rule to break ties</h3>
+  <p>
+    Lee &amp; Ready's original algorithm, still the long-standing academic
+    standard for classifying historical exchange-tape (TAQ-style) data,
+    combines both rules above with one specific refinement to how the quote
+    is timed. Rather than compare a trade to whatever quote is timestamped
+    closest to it, Lee-Ready compares the trade to the quote that was in
+    effect a short lag — commonly five seconds, in the original paper's
+    exchange-tape-era convention — <em>before</em> the trade print. The
+    reason is subtle but important: on the older, slower tape infrastructure
+    the original paper was built for, a trade and the quote update it
+    triggered could appear to have nearly the same timestamp even though the
+    quote update was actually a consequence of the trade, not a cause of it.
+    Stepping back by a short lag avoids comparing a trade to a quote that had
+    already reacted to that very trade.
+  </p>
+  <div class="tl-steps">
+    <div class="tl-step">
+      <div class="tl-step-num">1</div>
+      <div class="tl-step-body">
+        <h4>Apply the quote rule first, with the lagged quote</h4>
+        <p>Compare the trade's price to the midpoint of the quote in effect approximately five seconds before the print (the original paper's convention), not the most recent quote available at the trade's own timestamp.</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">2</div>
+      <div class="tl-step-body">
+        <h4>If the trade is not exactly at that midpoint, stop — the quote rule decides</h4>
+        <p>Above the lagged midpoint: buy. Below it: sell. Most trades resolve here.</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">3</div>
+      <div class="tl-step-body">
+        <h4>If the trade prints exactly at that midpoint, fall back to the tick rule</h4>
+        <p>This is the one and only job the tick rule does inside Lee-Ready: break the specific tie the quote rule cannot resolve on its own.</p>
+      </div>
+    </div>
+  </div>
+  <div class="tl-solid amber">
+    <strong>Lee-Ready's accuracy has been shown, in published research, to
+    degrade on modern electronic and high-frequency markets.</strong> This is
+    a documented empirical finding, not editorializing: work re-examining
+    Lee-Ready on contemporary data — notably Chakrabarty, Li, Nguyen &amp;
+    Van Ness — finds its classification accuracy falls meaningfully short of
+    its performance on the slower, specialist-driven markets the algorithm
+    was originally built and validated on. The mechanisms cited are concrete:
+    odd-lot trades (common on modern markets, rare when Lee-Ready was
+    designed), sub-penny pricing that packs far more possible price levels
+    into the same tick-size band the original algorithm assumed, and quote
+    updates now arriving on a timescale — microseconds to low milliseconds —
+    where the original five-second lag convention is arguably too coarse to
+    still be doing the job it was designed for.
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Lee-Ready mostly trusts the "halfway price" trick, and only falls back on the "louder or quieter than last time" trick for the rare purchase that landed exactly on the halfway mark. It was designed back when prices updated at a fairly leisurely pace. On today's markets, where prices can update thousands of times a second, some of the assumptions behind that original design — like waiting a fixed five seconds before checking the quote — don't fit as well as they used to, and researchers have actually measured that the method gets more things wrong on modern data than it did on the older data it was built for.</p>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Classifying a 9-trade toy tape three ways</h3>
+    <p>
+      A hypothetical instrument prints at a starting reference price of 100
+      (a seed trade, given, not itself classified). Nine subsequent trades
+      follow, each shown with the prevailing bid/ask quote in effect just
+      before it printed. Three trades are worth watching closely: trade 2
+      prints exactly at the midpoint (the deliberate tie case), and trades 4
+      and 7 are cases where the tick rule and the quote rule genuinely
+      disagree with each other.
+    </p>
+    <div class="tl-symbols"><table>
+      <tr><td>t (seed)</td><td>price 100 — reference point only, not classified</td></tr>
+      <tr><td>t1</td><td>price 101, quote 99/101 (mid 100) → tick: uptick → <strong>Buy</strong>. quote: 101 &gt; 100 → <strong>Buy</strong>. Lee-Ready: <strong>Buy</strong> (agree)</td></tr>
+      <tr><td>t2</td><td>price 101, quote 100/102 (mid 101) → tick: zero-tick, inherits t1 → <strong>Buy</strong>. quote: 101 = mid → <strong>tie</strong>. Lee-Ready falls back to the tick rule → <strong>Buy</strong></td></tr>
+      <tr><td>t3</td><td>price 99, quote 99/101 (mid 100) → tick: downtick → <strong>Sell</strong>. quote: 99 &lt; 100 → <strong>Sell</strong>. Lee-Ready: <strong>Sell</strong> (agree)</td></tr>
+      <tr><td>t4</td><td>price 99, quote 97/99 (mid 98) → tick: zero-tick, inherits t3 → <strong>Sell</strong>. quote: 99 &gt; 98 → <strong>Buy</strong>. Lee-Ready follows the quote rule → <strong>Buy</strong> — <em>disagrees with the tick rule</em></td></tr>
+      <tr><td>t5</td><td>price 102, quote 100/102 (mid 101) → tick: uptick → <strong>Buy</strong>. quote: 102 &gt; 101 → <strong>Buy</strong>. Lee-Ready: <strong>Buy</strong> (agree)</td></tr>
+      <tr><td>t6</td><td>price 100, quote 100/102 (mid 101) → tick: downtick → <strong>Sell</strong>. quote: 100 &lt; 101 → <strong>Sell</strong>. Lee-Ready: <strong>Sell</strong> (agree)</td></tr>
+      <tr><td>t7</td><td>price 100, quote 98/100 (mid 99) → tick: zero-tick, inherits t6 → <strong>Sell</strong>. quote: 100 &gt; 99 → <strong>Buy</strong>. Lee-Ready follows the quote rule → <strong>Buy</strong> — <em>disagrees with the tick rule</em></td></tr>
+      <tr><td>t8</td><td>price 97, quote 97/99 (mid 98) → tick: downtick → <strong>Sell</strong>. quote: 97 &lt; 98 → <strong>Sell</strong>. Lee-Ready: <strong>Sell</strong> (agree)</td></tr>
+      <tr><td>t9</td><td>price 98, quote 96/98 (mid 97) → tick: uptick → <strong>Buy</strong>. quote: 98 &gt; 97 → <strong>Buy</strong>. Lee-Ready: <strong>Buy</strong> (agree)</td></tr>
+    </table></div>
+    <p>
+      Two things this small tape demonstrates cleanly. First, the tie at t2:
+      the quote rule genuinely cannot decide a trade printing exactly at the
+      midpoint, and Lee-Ready's specific fix is to reach for the tick rule
+      only in that narrow circumstance — not as a general second opinion,
+      just as a tiebreaker. Second, t4 and t7 show the tick rule and the
+      quote rule are not just two routes to the same answer: at both trades,
+      the price was unchanged from the previous print (so the tick rule,
+      seeing no fresh price movement, simply inherited whatever sign was
+      already running), while the quote itself had drifted down between
+      trades, leaving the unchanged trade price sitting above the new, lower
+      midpoint — which the quote rule reads as aggressive buying against a
+      softening market. Lee-Ready sides with the quote rule in both cases,
+      on the premise that the quote carries more information than a mere
+      tick-to-tick price comparison. Whether that premise still holds up as
+      well on modern markets is exactly the open question the Chakrabarty et
+      al. finding above is about.
+    </p>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">The 9-trade tape above, plotted as a price path</div>
+    <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart of ten price prints (one seed print plus nine classified trades) between 97 and 102. Each classified trade is marked with a colored dot: green for a Lee-Ready buy classification, red for a Lee-Ready sell classification, and amber specifically for the one trade that printed exactly at the bid-ask midpoint and had to be resolved by falling back to the tick rule.">
+      <line x1="50" y1="220" x2="610" y2="220" style="stroke:var(--text3);stroke-width:1"/>
+      <line x1="50" y1="220" x2="50" y2="20" style="stroke:var(--text3);stroke-width:1"/>
+      <text x="330" y="245" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">trade sequence &rarr;</text>
+      <text x="24" y="120" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace" transform="rotate(-90 24 120)">price</text>
+      <text x="46" y="224" text-anchor="end" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">97</text>
+      <text x="46" y="24" text-anchor="end" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">102</text>
+
+      <!-- price path: seed=100, t1=101,t2=101,t3=99,t4=99,t5=102,t6=100,t7=100,t8=97,t9=98 -->
+      <!-- y = 220 - (price-97)*40 ; x = 60 + 60*i -->
+      <path d="M60,132 L120,92 L180,92 L240,172 L300,172 L360,12 L420,92 L480,92 L540,220 L600,172" style="stroke:var(--text3);stroke-width:1.5;fill:none;opacity:.55"/>
+
+      <circle cx="60" cy="132" r="4" fill="var(--text3)"/>
+      <text x="60" y="118" text-anchor="middle" font-size="9" font-family="'DM Mono',monospace" fill="var(--text3)">seed</text>
+
+      <circle cx="120" cy="92" r="6" fill="var(--green)"/>
+      <text x="120" y="78" text-anchor="middle" font-size="9" font-family="'DM Mono',monospace" fill="var(--green)">t1 Buy</text>
+
+      <circle cx="180" cy="92" r="7" style="fill:var(--amber);stroke:var(--bg);stroke-width:2"/>
+      <text x="180" y="78" text-anchor="middle" font-size="9" font-family="'DM Mono',monospace" fill="var(--amber)" font-weight="700">t2 tie&rarr;Buy</text>
+
+      <circle cx="240" cy="172" r="6" fill="var(--red)"/>
+      <text x="240" y="192" text-anchor="middle" font-size="9" font-family="'DM Mono',monospace" fill="var(--red)">t3 Sell</text>
+
+      <circle cx="300" cy="172" r="6" fill="var(--green)"/>
+      <text x="300" y="192" text-anchor="middle" font-size="9" font-family="'DM Mono',monospace" fill="var(--green)" font-weight="700">t4 Buy*</text>
+
+      <circle cx="360" cy="12" r="6" fill="var(--green)"/>
+      <text x="360" y="26" text-anchor="middle" font-size="9" font-family="'DM Mono',monospace" fill="var(--green)">t5 Buy</text>
+
+      <circle cx="420" cy="92" r="6" fill="var(--red)"/>
+      <text x="420" y="78" text-anchor="middle" font-size="9" font-family="'DM Mono',monospace" fill="var(--red)">t6 Sell</text>
+
+      <circle cx="480" cy="92" r="6" fill="var(--green)"/>
+      <text x="480" y="78" text-anchor="middle" font-size="9" font-family="'DM Mono',monospace" fill="var(--green)" font-weight="700">t7 Buy*</text>
+
+      <circle cx="540" cy="220" r="6" fill="var(--red)"/>
+      <text x="540" y="238" text-anchor="middle" font-size="9" font-family="'DM Mono',monospace" fill="var(--red)">t8 Sell</text>
+
+      <circle cx="600" cy="172" r="6" fill="var(--green)"/>
+      <text x="600" y="192" text-anchor="middle" font-size="9" font-family="'DM Mono',monospace" fill="var(--green)">t9 Buy</text>
+    </svg>
+    <div class="tl-chart-caption">
+      Dots show each trade's final Lee-Ready classification: green for buy,
+      red for sell, amber for the one trade (t2) that printed exactly at the
+      midpoint and needed the tick-rule tiebreak. The two dots marked with an
+      asterisk (t4, t7) are the trades where the tick rule alone would have
+      classified the opposite way — the quote had moved even though the
+      trade price hadn't, and Lee-Ready sides with the quote. Illustrative
+      toy data, not a real trade tape.
+    </div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>Bulk Volume Classification — classifying a bar, not a trade</h2>
+  <p>
+    Every method above classifies one trade at a time, and every one of them
+    needs either a clean price sequence or genuinely reliable, correctly
+    time-stamped quote data. Bulk Volume Classification (BVC), introduced by
+    Easley, López de Prado &amp; O'Hara (2012) alongside VPIN, takes a
+    deliberately different approach: instead of asking "was this specific
+    trade a buy or a sell," it asks a coarser question about an entire bar or
+    bucket of volume at once — <em>given how far the price moved over this
+    whole window, what fraction of the volume in it was probably
+    buy-initiated?</em> This is the exact method this project's own
+    <a href="vpin-order-flow-toxicity.html">Order Flow Toxicity &amp;
+    VPIN</a> lesson already introduces as the classification step underneath
+    VPIN — this lesson gives that method its own full treatment rather than
+    re-deriving it, and the notation below matches that lesson's exactly.
+  </p>
+  <div class="tl-math">
+    \[ \text{BuyFraction}_\tau = \Phi\!\left(\frac{\Delta P_\tau}{\sigma_{\Delta P}}\right), \qquad
+    V_{\text{buy},\tau} = V_\tau \cdot \text{BuyFraction}_\tau, \qquad
+    V_{\text{sell},\tau} = V_\tau - V_{\text{buy},\tau} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>ΔP_τ</code><span>the price change (close minus open) over bar τ</span></div>
+    <div class="tl-eq-chip c2"><code>σ_ΔP</code><span>an estimate of the typical bar-to-bar price-change volatility, from recent history</span></div>
+    <div class="tl-eq-chip c3"><code>Φ(·)</code><span>the standard normal cumulative distribution function — turns a standardized price move into a number between 0 and 1</span></div>
+    <div class="tl-eq-chip c4"><code>V_τ</code><span>the bar's total volume — BVC splits it, it never adds to or subtracts from it</span></div>
+  </div>
+  <p>
+    Read it the way the VPIN lesson does: standardize the bar's price change
+    into a z-score — how many "typical bar moves" this particular move was —
+    then feed that z-score through the standard normal CDF to get a number
+    between 0 and 1, and use that number directly as the fraction of the
+    bar's volume assumed buy-initiated. A bar that closed exactly flat
+    (\(\Delta P_\tau = 0\)) gets \(\Phi(0) = 0.5\): an even 50/50 split, the
+    "no directional evidence" case. A bar with a large positive price move
+    relative to its own recent volatility pushes \(\Phi(\cdot)\) toward 1 —
+    classified as almost entirely buy volume. The rest of the bar's volume,
+    \(1 - \text{BuyFraction}_\tau\), is classified sell — BVC always
+    allocates the bar's full volume between the two sides, never leaving any
+    of it unclassified.
+  </p>
+  <p>
+    The trade-off this buys is explicit: BVC never needs quote data at all —
+    only a price series and a volume series, bucketed into bars — which is
+    exactly why VPIN, built for real-time computation on high-frequency
+    futures data where clean, correctly time-stamped quote history isn't
+    always cheaply available, chose it over a genuine trade-by-trade
+    classifier like Lee-Ready. What it gives up in exchange is precision at
+    the level of any individual trade: BVC never asks whether trade number
+    47 specifically was a buy, only what fraction of the whole bar's volume
+    was probably on the buy side — a statistical proxy for aggregate
+    direction, not a verified per-trade tag.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Instead of asking "was each individual customer buying or selling apples," BVC steps back and asks one question about the whole afternoon at once: did the apple price go up a lot, a little, or not at all? If it shot up, BVC guesses most of that afternoon's apples were bought by eager buyers. If the price barely moved, BVC guesses it was a normal, even mix of buyers and sellers. It never actually checks any one customer — it's a guess about the whole crowd, based only on where the price ended up.</p>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>BVC buy-fraction across four toy price bars</h3>
+    <p>
+      A fixed volatility estimate \(\sigma_{\Delta P} = 0.0004\) applies to
+      all four bars below (in practice this would be estimated from recent
+      history — held fixed here to isolate what changing \(\Delta P_\tau\)
+      alone does). The standard normal CDF values below are the same
+      well-known values the VPIN lesson's own worked example uses
+      (\(\Phi(0)=0.5000\), \(\Phi(0.50)=0.6915\)... this example reuses
+      \(\Phi(1.00)=0.8413\), \(\Phi(2.00)=0.9772\), and \(\Phi(-0.50)=0.3085\)
+      specifically, so the two lessons' numbers are directly comparable).
+    </p>
+    <div class="tl-symbols"><table>
+      <tr><td>Bar A</td><td>\(\Delta P=+0.0008\) &rarr; \(z=\Delta P/\sigma=0.0008/0.0004=+2.00\) &rarr; \(\Phi(2.00)=0.9772\) &rarr; <strong>97.72% buy / 2.28% sell</strong> — a large rise, classified almost entirely buy</td></tr>
+      <tr><td>Bar B</td><td>\(\Delta P=0.0000\) &rarr; \(z=0.00\) &rarr; \(\Phi(0)=0.5000\) &rarr; <strong>50.00% buy / 50.00% sell</strong> — a flat bar, classified as an even split</td></tr>
+      <tr><td>Bar C</td><td>\(\Delta P=-0.0002\) &rarr; \(z=-0.0002/0.0004=-0.50\) &rarr; \(\Phi(-0.50)=0.3085\) &rarr; <strong>30.85% buy / 69.15% sell</strong> — a moderate fall, classified mostly sell</td></tr>
+      <tr><td>Bar D</td><td>\(\Delta P=+0.0004\) &rarr; \(z=+1.00\) &rarr; \(\Phi(1.00)=0.8413\) &rarr; <strong>84.13% buy / 15.87% sell</strong> — a solid rise, skewed clearly buy but less extreme than Bar A</td></tr>
+    </table></div>
+    <p>
+      The pattern to notice: Bar A's price move is exactly twice Bar D's
+      (\(z=2.00\) versus \(z=1.00\)), and its buy-fraction is correspondingly
+      more extreme (97.72% versus 84.13%) — but not twice as extreme, because
+      \(\Phi(\cdot)\) compresses as it approaches 1, exactly like any
+      cumulative probability must. Bar B, the flat bar, lands precisely at
+      the 50/50 midpoint that \(\Phi(0)=0.5\) guarantees by the symmetry of
+      the normal distribution — this is mechanical, not a coincidence of
+      these particular numbers.
+    </p>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Compute a BVC buy-fraction live, from your own inputs</h3>
+    <p>
+      Starts on Bar D from the worked example above (\(\Delta P = 0.0004\),
+      \(\sigma_{\Delta P} = 0.0004\)). Edit either value and the standardized
+      z-score, the buy-fraction \(\Phi(z)\), and the resulting buy/sell split
+      of a hypothetical 1,000-unit bar all recalculate instantly, using the
+      same standard normal CDF the calculator implements from scratch (an
+      Abramowitz-Stegun error-function approximation — the same approach
+      this repo's Black-Scholes lesson uses).
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Price change &Delta;P</span></div>
+        <input type="number" id="tc-scratch-dP" class="tl-scratch-input" value="0.0004" step="0.0001">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Volatility estimate &sigma;<sub>&Delta;P</sub></span></div>
+        <input type="number" id="tc-scratch-sigma" class="tl-scratch-input" value="0.0004" step="0.0001" min="0">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      z = &Delta;P / &sigma;<sub>&Delta;P</sub> = <b id="tc-scratch-z">1.0000</b>
+    </div>
+    <div class="tl-readout">
+      Buy fraction &Phi;(z) = <b id="tc-scratch-buyfrac">0.8413</b>&emsp;Sell fraction = <b id="tc-scratch-sellfrac">0.1587</b>
+      <span id="tc-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      On a 1,000-unit bar: V<sub>buy</sub> = <b id="tc-scratch-vbuy">841.3</b>&emsp;V<sub>sell</sub> = <b id="tc-scratch-vsell">158.7</b>
+    </div>
+    <button type="button" id="tc-scratch-reset" class="tl-scratch-reset-btn">Reset to Bar D's numbers</button>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>Why FX/OTC desks lean on BVC, not Lee-Ready — and what this repo's own code actually shows</h3>
+    <p>
+      Lee-Ready needs a genuine, correctly time-stamped record of the
+      prevailing best bid and best ask <em>at the moment of every single
+      trade</em>, going back far enough to apply its lag convention
+      correctly. Centralized, exchange-listed equity and futures markets
+      publish exactly this kind of consolidated quote data (the TAQ dataset
+      Lee-Ready was built for is the canonical example). FX spot and most
+      OTC instruments are structurally different: trading is fragmented
+      across many bilateral venues and liquidity providers, each quoting its
+      own book, with no single consolidated "national best bid/offer" tape
+      the way listed equities have one. Reconstructing a single, trustworthy,
+      correctly time-stamped prevailing-quote series across that fragmented
+      landscape — the exact input Lee-Ready requires — is a materially harder
+      data-engineering problem than it is on a single consolidated exchange
+      tape, which is precisely why BVC's only-needs-price-and-volume design
+      is attractive for FX and other OTC markets specifically.
+    </p>
+    <p>
+      This lesson's own factual claims here were checked against this
+      codebase directly rather than assumed. A repo-wide search for
+      Lee-Ready, tick-rule, and quote-rule implementation code (function
+      names, docstrings, comments) turns up <strong>zero matches anywhere in
+      this repository</strong> — the only place any of these three terms
+      appears at all is inside this project's own prose, in the
+      <a href="vpin-order-flow-toxicity.html">Order Flow Toxicity &amp;
+      VPIN</a> lesson's text, which mentions "the Lee-Ready tick rule" purely
+      as a contrast case for BVC, not as a description of code that exists.
+      Separately, that same VPIN lesson's own math section confirms, in its
+      own words, that VPIN's buy/sell split is built specifically on Bulk
+      Volume Classification — "a genuinely different object from a real
+      per-trade classification," in that lesson's own phrasing — which is
+      exactly the connection this lesson has been making explicit throughout
+      Section 03.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    In practice the choice between these methods is driven almost entirely
+    by what data is actually available, not by a pure accuracy ranking in
+    the abstract:
+  </p>
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>Lee-Ready (quote rule + tick-rule tiebreak)</h4>
+      <p>
+        The default choice on historical exchange-listed equity and futures
+        data with a genuine consolidated quote history — academic
+        microstructure research on TAQ-style datasets still leans on it
+        heavily, precisely because it's the long-standing, widely-replicated
+        standard other studies can be compared against. Its known accuracy
+        degradation on modern electronic markets (covered in Section 02) is
+        a live, acknowledged caveat researchers using it today are expected
+        to account for, not a reason it's been abandoned outright.
+      </p>
+    </div>
+    <div class="tl-compare-card purple">
+      <h4>Bulk Volume Classification</h4>
+      <p>
+        The natural choice whenever reliable trade-by-trade quote data isn't
+        cheaply available, or when the downstream use case (like VPIN)
+        specifically wants a real-time, volume-bucketed signal rather than a
+        per-trade tag. Its cost is precision at the individual-trade level —
+        it classifies a whole bar's volume by one aggregate statistic, which
+        cannot distinguish a genuine wave of many small informed trades from
+        one large resting order simply being lifted by a single counterparty.
+      </p>
+    </div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Lee-Ready is like carefully interviewing every single customer as they leave a store, one at a time, using a detailed checklist — thorough, but only possible if you actually have a clerk stationed at the door the whole time recording every entry and exit. BVC is like standing outside once an hour and just checking whether the store's total cash in the register went up a lot or a little — much less detailed about any one customer, but it works even when nobody was stationed at the door taking careful notes all day.</p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where trade classification quietly goes wrong</h3>
+    <p>
+      <strong>Treating any of these methods as ground truth.</strong> Every
+      scheme in this lesson is an inference from incomplete data, not a
+      verified record of who actually initiated a trade. Even Lee-Ready,
+      applied correctly on the exact data it was designed for, has a
+      published, non-zero misclassification rate — treating its output as
+      exact is a category error the original authors never made.
+    </p>
+    <p>
+      <strong>Applying Lee-Ready's five-second lag convention unexamined on
+      fast modern data.</strong> That specific lag was tuned to the tape
+      infrastructure Lee &amp; Ready had in 1991. Applying it uncritically to
+      a market where quotes update thousands of times a second is exactly
+      the kind of mismatch the Chakrabarty et al. degradation finding is
+      about — the fix in modern research is usually a much shorter lag or a
+      more careful sequencing rule, not abandoning the underlying logic.
+    </p>
+    <p>
+      <strong>Forgetting BVC classifies a bar, not a trade.</strong> A large
+      aggregate price move over a bar can come from many small trades all
+      pushing one direction, or from a single large trade — BVC produces the
+      identical buy/sell split either way, because it never looks below the
+      bar level. This is the exact same caveat this project's VPIN lesson
+      raises about VPIN's own inputs, because it's the same underlying
+      method.
+    </p>
+    <p>
+      <strong>Picking a classifier based on tradition rather than data
+      availability.</strong> Lee-Ready is not "more correct" in some
+      universal sense that BVC merely approximates — each method fits a
+      specific data situation (rich, reliable quote history versus
+      price-and-volume-only), and using Lee-Ready on data too sparse or too
+      fast for its assumptions produces worse classifications than a
+      properly-specified BVC would, not better ones.
+    </p>
+  </div>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(P_t\)</td><td>The price of trade \(t\), being classified.</td></tr>
+    <tr><td>\(\text{Bid}_t, \text{Ask}_t\)</td><td>The best bid and best ask in effect immediately before trade \(t\) printed.</td></tr>
+    <tr><td>\(\text{Mid}_t\)</td><td>The bid-ask midpoint, \((\text{Bid}_t+\text{Ask}_t)/2\) — the quote rule's dividing line.</td></tr>
+    <tr><td>\(\Delta P_\tau\)</td><td>The price change (close minus open) over price bar \(\tau\), used by Bulk Volume Classification.</td></tr>
+    <tr><td>\(\sigma_{\Delta P}\)</td><td>An estimate of the typical bar-to-bar price-change volatility, from recent history.</td></tr>
+    <tr><td>\(\Phi(\cdot)\)</td><td>The standard normal cumulative distribution function — the same object as \(Z(\cdot)\) in the VPIN lesson's notation.</td></tr>
+    <tr><td>\(V_\tau\)</td><td>Bar \(\tau\)'s total traded volume, split by BVC into \(V_{\text{buy},\tau}\) and \(V_{\text{sell},\tau}\).</td></tr>
+  </table></div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Trade classification is inference, not a data field.</strong> No raw trade record says who initiated it — every scheme in this lesson guesses that sign from price and quote data that is actually available.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The tick rule needs only a price series</strong> (uptick=buy, downtick=sell, zero-tick inherits the last sign); <strong>the quote rule needs the prevailing bid-ask midpoint</strong> and is generally the stronger of the two when reliable quote data exists.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Lee-Ready (1991) uses the quote rule as primary, the tick rule only to break exact-midpoint ties</strong> — and published research (Chakrabarty, Li, Nguyen &amp; Van Ness) has shown its accuracy degrades on modern electronic markets, a documented finding, not a hypothetical concern.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Bulk Volume Classification splits a whole bar's volume by \(\Phi(\Delta P/\sigma_{\Delta P})\)</strong> — this is the exact method this project's own VPIN lesson already uses as its classification step, made explicit and given its own treatment here.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>BVC classifies a bar, not a trade</strong> — it cannot distinguish many small informed trades from one large trade producing the identical aggregate price move.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Neither method is implemented anywhere in this codebase.</strong> A repo-wide search confirms zero Lee-Ready/tick-rule/quote-rule code exists — consistent with FX/OTC trading typically lacking the consolidated, correctly time-stamped quote history Lee-Ready specifically requires.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Under the tick rule, how is a trade classified if its price is exactly unchanged from the immediately preceding trade?</summary>
+    <div class="tl-answer">
+      A "zero tick" inherits the classification of the last trade that
+      <em>was</em> classified — it is not left undecided and it is not
+      automatically a buy or a sell. If several trades in a row print at the
+      same unchanged price, every one of them after the first simply repeats
+      whatever sign the trade that originally moved the price to that level
+      received, since the tick rule has no new price movement to react to
+      for any of the repeats.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. A trade prints exactly at the bid-ask midpoint. What does the quote rule alone conclude, and what does the full Lee-Ready algorithm do differently?</summary>
+    <div class="tl-answer">
+      The quote rule alone has no basis to pick a side — a trade exactly at
+      the midpoint is equally consistent with a buyer or a seller having been
+      the aggressor, so the quote rule is undecided. The full Lee-Ready
+      algorithm handles this specific case (and only this case) by falling
+      back to the tick rule: it compares the trade's price to the
+      immediately preceding trade's price and classifies it as an uptick,
+      downtick, or zero-tick exactly as the plain tick rule would. Away from
+      this exact tie, Lee-Ready uses the quote rule alone.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. A price bar has volume \(V=2{,}000\) and a standardized price change with \(\Phi(\Delta P/\sigma_{\Delta P})=0.30\). What are \(V_\text{buy}\) and \(V_\text{sell}\) under Bulk Volume Classification?</summary>
+    <div class="tl-answer">
+      \(V_\text{buy} = 2{,}000 \times 0.30 = 600\), and
+      \(V_\text{sell} = 2{,}000 - 600 = 1{,}400\). A buy-fraction below 0.5
+      means the bar's price fell relative to its own recent volatility, so
+      BVC classifies most of that bar's volume — 70% of it here — as
+      sell-initiated.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Name two specific factors, cited in published research, behind Lee-Ready's documented accuracy degradation on modern electronic markets.</summary>
+    <div class="tl-answer">
+      Any two of: odd-lot trades (far more common on modern markets than
+      when the algorithm was designed), sub-penny pricing (packing far more
+      possible price levels into the same tick-size band the original
+      algorithm assumed), and quote updates now arriving on a microsecond-
+      to-low-millisecond timescale, where the original five-second lag
+      convention no longer necessarily does the job — avoiding comparing a
+      trade to a quote that already reacted to that very trade — it was
+      designed to do. This is the specific, published finding of work
+      including Chakrabarty, Li, Nguyen &amp; Van Ness, not a general
+      impression.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. This project's own "Order Flow Toxicity & VPIN" lesson already describes a classification method as VPIN's basis. Which one, and how does it differ fundamentally from Lee-Ready?</summary>
+    <div class="tl-answer">
+      Bulk Volume Classification (BVC). Lee-Ready classifies each individual
+      trade by comparing it to a specific prevailing quote (with the tick
+      rule as a narrow tiebreak) — a trade-by-trade classifier. BVC never
+      examines any individual trade at all; it looks only at a bar's
+      aggregate price change relative to its own volatility and assigns a
+      fraction of that bar's <em>entire</em> volume to the buy side via the
+      standard normal CDF. BVC needs only price and volume data — no quote
+      data at all — which is exactly why VPIN was built on it rather than on
+      a genuine per-trade classifier like Lee-Ready.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. A repo-wide search for Lee-Ready, tick-rule, or quote-rule implementation code in this codebase finds nothing. Why is that an unsurprising finding rather than an oversight?</summary>
+    <div class="tl-answer">
+      Lee-Ready requires a genuine, correctly time-stamped record of the
+      prevailing best bid and best ask at the moment of every trade,
+      typically the kind of consolidated quote data centralized,
+      exchange-listed markets publish (the TAQ dataset it was built for is
+      the canonical example). This project's trading focus is
+      predominantly FX/OTC-style, where liquidity is fragmented across many
+      bilateral venues with no single consolidated best-bid/offer tape —
+      reconstructing the input Lee-Ready needs is a substantially harder
+      data problem in that setting, which is exactly why a
+      price-and-volume-only method like BVC is the more natural fit and the
+      one this codebase's own VPIN lesson actually leans on.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Charles M. C. Lee &amp; Mark J. Ready, "Inferring Trade Direction from Intraday Data," <em>Journal of Finance</em>, 46(2), 1991 — the original paper introducing the algorithm covered in Section 02, including the quote-rule-primary, tick-rule-tiebreak design and the original five-second lag convention.</li>
+    <li>David Easley, Marcos M. López de Prado &amp; Maureen O'Hara, "Flow Toxicity and Liquidity in a High-Frequency World," <em>Review of Financial Studies</em>, 2012 — introduces Bulk Volume Classification alongside VPIN; the same paper this project's own <a href="vpin-order-flow-toxicity.html">Order Flow Toxicity &amp; VPIN</a> lesson cites for BVC.</li>
+    <li>Bidisha Chakrabarty, Bingguang Li, Vanthuan Nguyen &amp; Robert A. Van Ness, "Trade Classification Algorithms for Electronic Communications Network Trades," <em>Journal of Banking &amp; Finance</em>, 2007 (and related follow-up work by overlapping authors) — the re-examination of Lee-Ready's accuracy on modern electronic/high-frequency market data cited in Section 02's honest-limitations callout.</li>
+    <li>Maureen O'Hara, <em>Market Microstructure Theory</em>, Blackwell, 1995 — the foundational text situating trade classification within the broader informed-vs-noise-trader framework this whole curriculum's microstructure lessons build on.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="../hub.html">← Theory Lab hub</a>
+    <a href="institutional-roll-spread-estimator.html">Roll's Spread Estimator →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+<script>
+(function(){
+  // Standard normal CDF via the Abramowitz & Stegun erf approximation
+  // (max error ~1.5e-7 — plenty for this calculator), matching this repo's
+  // Black-Scholes lesson's exact approach for consistency.
+  function erf(x){
+    var sign = x < 0 ? -1 : 1;
+    x = Math.abs(x);
+    var a1=0.254829592, a2=-0.284496736, a3=1.421413741, a4=-1.453152027, a5=1.061405429, p=0.3275911;
+    var t = 1/(1+p*x);
+    var y = 1 - (((((a5*t+a4)*t)+a3)*t+a2)*t+a1)*t*Math.exp(-x*x);
+    return sign*y;
+  }
+  function normCDF(x){ return 0.5*(1+erf(x/Math.SQRT2)); }
+
+  var dPInput = document.getElementById('tc-scratch-dP');
+  if (!dPInput) return;
+  var sigmaInput = document.getElementById('tc-scratch-sigma');
+  var zOut = document.getElementById('tc-scratch-z');
+  var buyOut = document.getElementById('tc-scratch-buyfrac');
+  var sellOut = document.getElementById('tc-scratch-sellfrac');
+  var vbuyOut = document.getElementById('tc-scratch-vbuy');
+  var vsellOut = document.getElementById('tc-scratch-vsell');
+  var note = document.getElementById('tc-scratch-note');
+  var resetBtn = document.getElementById('tc-scratch-reset');
+  var DEFAULTS = { dP: 0.0004, sigma: 0.0004 };
+  var BAR_VOLUME = 1000;
+
+  function recompute(){
+    var dP = parseFloat(dPInput.value);
+    var sigma = parseFloat(sigmaInput.value);
+
+    if (!isFinite(dP) || !isFinite(sigma)) {
+      note.textContent = '(enter numeric values for both fields)';
+      zOut.textContent = '—'; buyOut.textContent = '—'; sellOut.textContent = '—';
+      vbuyOut.textContent = '—'; vsellOut.textContent = '—';
+      return;
+    }
+    if (sigma <= 0) {
+      note.textContent = '(volatility σ_ΔP must be strictly positive — zero or negative volatility makes the standardized z-score undefined)';
+      zOut.textContent = '—'; buyOut.textContent = '—'; sellOut.textContent = '—';
+      vbuyOut.textContent = '—'; vsellOut.textContent = '—';
+      return;
+    }
+
+    note.textContent = '';
+    var z = dP / sigma;
+    var buyFrac = normCDF(z);
+    var sellFrac = 1 - buyFrac;
+
+    zOut.textContent = z.toFixed(4);
+    buyOut.textContent = buyFrac.toFixed(4);
+    sellOut.textContent = sellFrac.toFixed(4);
+    vbuyOut.textContent = (BAR_VOLUME * buyFrac).toFixed(1);
+    vsellOut.textContent = (BAR_VOLUME * sellFrac).toFixed(1);
+  }
+
+  dPInput.addEventListener('input', recompute);
+  sigmaInput.addEventListener('input', recompute);
+  resetBtn.addEventListener('click', function(){
+    dPInput.value = DEFAULTS.dP;
+    sigmaInput.value = DEFAULTS.sigma;
+    recompute();
+  });
+  recompute();
+})();
+</script>
+</body>
+</html>

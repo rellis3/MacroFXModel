@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arbitrage Pricing Theory — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Arbitrage Pricing Theory — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer full derivations, live math notation, a live calculator, and a 6-question self-test?<a href="institutional-apt.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Factor Models 4 · Factor Models</div>
+      <h1 class="sl-h1">Arbitrage Pricing Theory, <em>No Equilibrium Required</em></h1>
+      <p class="sl-lede">CAPM derives its one factor from an equation about how every investor in the economy behaves. Fama-French hand-picks specific factors because they empirically work. APT does neither — it needs only one, much weaker assumption, no arbitrage, to force expected returns into an approximately linear function of exposures to some small number of pervasive risk factors, without ever saying which ones, or how many.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Three routes to one equation</h2>
+      <p class="sl-sub">Same destination — an equation for expected return — three completely different ways to get there. Pick a model.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Compare</div>
+        <div class="sl-tabs" id="model-tabs">
+          <button class="sl-tab active" data-panel="model-1">CAPM</button>
+          <button class="sl-tab" data-panel="model-2">Fama-French</button>
+          <button class="sl-tab" data-panel="model-3">APT</button>
+        </div>
+        <div class="sl-panel active" id="model-1">
+          <div class="sl-verdict"><strong>Derived from full market equilibrium.</strong> Assume every investor is mean-variance optimizing and holds some mix of the risk-free asset and the single market portfolio — that alone pins down exactly one factor, and one price of risk for it. No choices left for the researcher to make.</div>
+        </div>
+        <div class="sl-panel" id="model-2">
+          <div class="sl-verdict"><strong>Chosen empirically — no equilibrium argument at all.</strong> Sort stocks by size, value, momentum; keep whichever sorted long-short portfolios earn a persistent excess average return; call the winners factors. Three or four specific, named, fixed-in-advance factors, the same ones every time.</div>
+        </div>
+        <div class="sl-panel" id="model-3">
+          <div class="sl-verdict"><strong>Derived from no-arbitrage alone</strong> — far weaker than full market equilibrium. Proves returns must be approximately linear in exposures to <em>some</em> small number of pervasive factors — but never says which ones, or how many. A theorem about the shape of the answer, not a specific fitted model.</div>
+        </div>
+      </div>
+      <p class="sl-p">APT only becomes a specific, testable model once you plug in a concrete choice of factors — the market portfolio alone (nearly CAPM again), the Fama-French factors, or — this deck's focus from here on — observable macroeconomic surprises.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Diversification erases the noise</h2>
+      <p class="sl-sub">Every asset's return splits into a common-factor part and its own private noise. Average enough assets and the noise disappears.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">➗</div><div><h4>One return, two parts</h4><p>Rᵢ = E[Rᵢ] + β₁F₁ + β₂F₂ + … + εᵢ — a systematic part every asset shares some exposure to, plus εᵢ, pure asset-specific noise, uncorrelated across assets.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📉</div><div><h4>Average enough assets…</h4><p>A portfolio of N assets weighted ~1/N each has idiosyncratic-noise variance shrinking toward zero as N grows — the exact same "average away the noise" mechanic random forests use on tree predictions, applied here to portfolios instead.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">✅</div><div><h4>…and only the systematic part survives</h4><p>A large, well-diversified portfolio's return collapses to E[R_P] + Σ β_Pk·Fk — no εᵢ term left to explain away, only exposure to the common, pervasive factors.</p></div></div>
+      </div>
+      <div class="sl-quote">If you flip one coin, the outcome is genuinely unpredictable. Flip a thousand and look at the average — that average lands remarkably close to 50% almost every time, because each coin's own randomness is a different, unrelated flip. A diversified portfolio does the same thing to a thousand unrelated, asset-specific noise terms.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">The no-arbitrage argument, drawn</h2>
+      <p class="sl-sub">Same factor exposure, different expected return — that gap cannot survive competitive trading.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Visualize it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagram of two diversified portfolios, P and Q, with identical factor-exposure bars but different expected-return bars — P at 8 percent, Q at 6 percent. An arrow shows the arbitrage trade: long P, short Q, producing a 2 percentage point gap captured as a riskless, zero-investment, zero-net-exposure profit.">
+            <text x="150" y="24" text-anchor="middle" fill="var(--text2)" font-size="13" font-weight="700" font-family="'DM Mono',monospace">Portfolio P</text>
+            <text x="490" y="24" text-anchor="middle" fill="var(--text2)" font-size="13" font-weight="700" font-family="'DM Mono',monospace">Portfolio Q</text>
+            <line x1="40" y1="260" x2="600" y2="260" style="stroke:var(--border2);stroke-width:1"/>
+            <rect x="90" y="200" width="60" height="60" rx="4" style="fill:var(--panel2);stroke:var(--border2);stroke-width:1.5"/>
+            <text x="120" y="234" text-anchor="middle" fill="var(--text2)" font-size="12" font-family="'DM Mono',monospace">β = 1.0</text>
+            <text x="120" y="278" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">factor exposure</text>
+            <rect x="430" y="200" width="60" height="60" rx="4" style="fill:var(--panel2);stroke:var(--border2);stroke-width:1.5"/>
+            <text x="460" y="234" text-anchor="middle" fill="var(--text2)" font-size="12" font-family="'DM Mono',monospace">β = 1.0</text>
+            <text x="460" y="278" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">factor exposure</text>
+            <text x="290" y="235" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">identical →</text>
+            <rect x="170" y="80" width="60" height="180" rx="4" style="fill:var(--green-bg);stroke:var(--green);stroke-width:2"/>
+            <text x="200" y="70" text-anchor="middle" fill="var(--green)" font-size="14" font-weight="700" font-family="'DM Mono',monospace">E[R] = 8%</text>
+            <text x="200" y="292" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">expected return</text>
+            <rect x="510" y="140" width="60" height="120" rx="4" style="fill:var(--amber-bg);stroke:var(--amber);stroke-width:2"/>
+            <text x="540" y="130" text-anchor="middle" fill="var(--amber)" font-size="14" font-weight="700" font-family="'DM Mono',monospace">E[R] = 6%</text>
+            <text x="540" y="292" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">expected return</text>
+            <line x1="230" y1="80" x2="500" y2="80" style="stroke:var(--red);stroke-width:1.5;stroke-dasharray:4,3"/>
+            <line x1="500" y1="80" x2="500" y2="140" style="stroke:var(--red);stroke-width:1.5;stroke-dasharray:4,3"/>
+            <text x="365" y="72" text-anchor="middle" fill="var(--red)" font-size="11" font-weight="700" font-family="'DM Mono',monospace">gap = 2pp</text>
+            <path d="M225,300 C 300,320 380,320 495,300" style="fill:none;stroke:var(--blue);stroke-width:2.5" marker-end="url(#apt-arrow-deck)"/>
+            <text x="360" y="316" text-anchor="middle" fill="var(--blue)" font-size="11" font-weight="700" font-family="'DM Mono',monospace">long P, short Q</text>
+            <defs>
+              <marker id="apt-arrow-deck" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+                <path d="M0,0 L8,4 L0,8 z" style="fill:var(--blue)"/>
+              </marker>
+            </defs>
+          </svg>
+        </div>
+        <div class="sl-verdict">Long $1 of P, short $1 of Q: zero net investment, zero net factor exposure (the identical β's cancel), zero idiosyncratic risk (both are already diversified) — yet a certain 2-percentage-point profit. Competitive arbitrage trading closes gaps exactly like this one, and that closing pressure is the entire mechanism behind APT's pricing equation.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">What the argument forces the pricing equation to look like</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The equation</div>
+        <div class="sl-row">
+          <div class="sl-box">E[Rᵢ]</div><div class="sl-arrow">≈</div>
+          <div class="sl-box">Rf</div><div class="sl-arrow">+</div>
+          <div class="sl-box green">Σ βᵢₖ · λₖ</div>
+        </div>
+        <div class="sl-verdict">Expected return = the risk-free rate, plus (loading × price of risk) summed across every pervasive factor. Compare this to CAPM's Rf + β·(market premium): APT is exactly this idea, generalized from one factor to K factors — with K deliberately left unspecified by the theory itself.</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">Rf</div><div><h4>Risk-free rate</h4><p>What any asset with zero exposure to every factor should earn — no risk taken, no premium owed.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">β</div><div><h4>Factor loading</h4><p>Asset i's sensitivity to factor k, estimated from a time-series regression of the asset's returns on the factor's surprise series.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">λ</div><div><h4>Factor risk premium</h4><p>The expected excess return of a portfolio with unit exposure to factor k alone, and zero exposure to every other factor — the price the market pays for that one risk.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Chen, Roll &amp; Ross: a macro face on the factors</h2>
+      <p class="sl-sub">The 1986 paper that made APT genuinely useful: five observable macro surprise variables as the priced factors.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🏭</div><div><h4>Unexpected industrial production</h4><p>The surprise component of real output growth — the same "how hot is the economy running" question the Taylor Rule's output gap asks, expressed as a surprise instead of a level.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">💵</div><div><h4>Unexpected inflation</h4><p>Actual minus already-priced-in — not the inflation rate itself. A print landing exactly at consensus carries no new information.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📐</div><div><h4>Unexpected term-spread change</h4><p>The surprise in long-minus-short government yields — a shift in the expected future path of short rates beyond what was already anticipated.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚠️</div><div><h4>Unexpected default-spread change</h4><p>The surprise in the credit-risk premium — a read on unanticipated shifts in aggregate default risk and risk appetite.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📊</div><div><h4>A market-return residual</h4><p>Whatever broad equity-market exposure isn't already captured by the four macro surprises above — so the macro story isn't quietly smuggling in the whole market factor unlabeled.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Why "surprise," never the level</h2>
+      <p class="sl-sub">The single most important idea in this whole factor list.</p>
+      <div class="sl-quote">Markets are forward-looking. By the time a macro release prints, the part everyone already expected is already priced in — through futures curves, consensus surveys, a central bank's own guidance. Only the part nobody saw coming still represents genuine, un-hedged risk at the moment it's realized, and only that part is capable of carrying a risk premium.</div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Where this connects</div>
+        <p>This is the identical logic the Central Bank Policy lesson uses for rate decisions: <em>"it is the hawkish or dovish surprise relative to what was already priced — not the absolute stance itself — that moves a currency."</em> A hike exactly matching what was priced moves almost nothing. Chen-Roll-Ross applies the same reasoning to a whole factor model at once — the Taylor Rule lesson's own "gap between implied and actual, not the level" is this same idea again, one layer removed.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Worked example: pricing three toy assets</h2>
+      <p class="sl-sub">Rf = 3%, an IP-surprise factor priced at λ = 3%, an inflation-surprise factor priced at λ = −1.5%. Pick an asset.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="asset-tabs">
+          <button class="sl-tab active" data-panel="asset-x">Asset X</button>
+          <button class="sl-tab" data-panel="asset-y">Asset Y</button>
+          <button class="sl-tab" data-panel="asset-z">Asset Z</button>
+        </div>
+        <div class="sl-panel active" id="asset-x">
+          <div class="sl-row"><div class="sl-box">β_IP 1.5</div><div class="sl-arrow">&amp;</div><div class="sl-box">β_INF 0.5</div></div>
+          <div class="sl-verdict">E[R_X] = 3 + 1.5(3) + 0.5(−1.5) = 3 + 4.5 − 0.75 = <strong>6.75%</strong>. High growth sensitivity, mild positive inflation-hedge exposure — the growth term dominates.</div>
+        </div>
+        <div class="sl-panel" id="asset-y">
+          <div class="sl-row"><div class="sl-box">β_IP 0.8</div><div class="sl-arrow">&amp;</div><div class="sl-box">β_INF −0.3</div></div>
+          <div class="sl-verdict">E[R_Y] = 3 + 0.8(3) + (−0.3)(−1.5) = 3 + 2.4 + 0.45 = <strong>5.85%</strong>. Smallest growth exposure of the three — but its negative inflation loading actually adds to the return here, the opposite effect from Asset Z.</div>
+        </div>
+        <div class="sl-panel" id="asset-z">
+          <div class="sl-row"><div class="sl-box">β_IP 2.0</div><div class="sl-arrow">&amp;</div><div class="sl-box">β_INF 1.0</div></div>
+          <div class="sl-verdict">E[R_Z] = 3 + 2.0(3) + 1.0(−1.5) = 3 + 6 − 1.5 = <strong>7.5%</strong>. The most growth-sensitive asset — but its large positive inflation-hedge exposure also costs the most, since that exposure is priced with a negative premium.</div>
+        </div>
+      </div>
+      <p class="sl-p">None of these three numbers is a fudge — each is the linear combination of loadings times prices of risk the pricing equation says it must be.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Try it yourself — the 2-factor pricing equation, live</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Rf (%)</label><input type="number" class="sl-input" id="apt-rf" value="3" step="0.25"></div>
+          <div class="sl-calc-field"><label>β₁ (IP)</label><input type="number" class="sl-input" id="apt-b1" value="1.5" step="0.1"></div>
+          <div class="sl-calc-field"><label>λ₁ (%)</label><input type="number" class="sl-input" id="apt-l1" value="3" step="0.25"></div>
+          <div class="sl-calc-field"><label>β₂ (INF)</label><input type="number" class="sl-input" id="apt-b2" value="0.5" step="0.1"></div>
+          <div class="sl-calc-field"><label>λ₂ (%)</label><input type="number" class="sl-input" id="apt-l2" value="-1.5" step="0.25"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">E[Rᵢ]</div>
+            <div class="sl-calc-result-val" id="apt-result">6.75%</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>β₁·λ₁ = <b id="apt-term1">4.50</b>pp</div>
+          <div>β₂·λ₂ = <b id="apt-term2">-0.75</b>pp</div>
+          <div>E[Rᵢ] = Rf + β₁λ₁ + β₂λ₂ = <b id="apt-result2">6.75</b>%</div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="apt-reset">Reset to Asset X's numbers</button>
+        <div class="sl-note" id="apt-note">Blank or non-numeric input in any field shows "—" instead of breaking the formula.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Watch one price of risk move the expected return</h2>
+      <p class="sl-sub">Drag the slider. Everything else stays fixed at Asset X's numbers (Rf = 3%, β₁ = 1.5, β₂ = 0.5, λ₂ = −1.5%) — only λ₁, the IP-surprise premium, moves.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart showing the implied expected return rising as the industrial-production surprise risk premium slider increases, with a live readout of the current value">
+            <line x1="60" y1="220" x2="620" y2="220" style="stroke:var(--border2)"/>
+            <line x1="60" y1="20" x2="60" y2="220" style="stroke:var(--border2)"/>
+            <text x="26" y="120" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace" transform="rotate(-90 26 120)">E[Rᵢ] (%)</text>
+            <text x="340" y="245" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">λ₁ — IP-surprise risk premium</text>
+            <rect id="apt-slider-bar" x="290" y="140" width="80" height="80" rx="4" style="fill:var(--green-bg);stroke:var(--green);stroke-width:2"/>
+            <text id="apt-slider-label" x="330" y="130" text-anchor="middle" fill="var(--green)" font-size="14" font-weight="700" font-family="'DM Mono',monospace">6.75%</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>λ₁ (IP-surprise premium)</span><span class="sl-live" id="apt-slider-mval">λ₁ = 3.0%</span></div>
+        <input type="range" class="sl-slider" id="apt-slider" min="0" max="6" step="0.5" value="3">
+        <div class="sl-note">E[Rᵢ] = 2.25 + 1.5 × λ₁ with the other four inputs held fixed — a bigger price of risk on the same 1.5 exposure moves the expected return one-for-one with λ₁'s own size.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Two honest cracks in the theory</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">The generality problem</div>
+        <p>There is no single, universally agreed "the APT model," the way there is exactly one standard Fama-French three-factor specification. Because the theory itself never specifies which factors or how many, different researchers running the identical no-arbitrage theorem routinely choose different macro variables, different factor counts, and get different implied risk premia as a result.</p>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Verified against this repo's actual code</div>
+        <p>This repo has real macro-surprise construction (<code>js/econSurprise.js</code> standardizes actual-minus-consensus by each series' own dispersion) and a real joint multi-factor OLS engine (<code>js/mve/ols.js</code>). But it never joins them: the surprise/regime studies (<code>js/macroRegimeFx.js</code>) report mean FX returns bucket-by-bucket, one macro state at a time, while the multi-factor OLS engine runs on macro <em>levels</em> (real-rate diff, DXY, curve) for fair-value estimation, not on surprises for a Chen-Roll-Ross-style expected-return decomposition. Both halves are real; the specific joint regression this lesson describes is a real but different thing this codebase hasn't built.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What single assumption is APT derived from?</h4>
+        <button class="sl-quiz-opt" data-correct="true">No-arbitrage: a diversified, zero-cost, zero-risk portfolio can't have a nonzero expected return</button>
+        <button class="sl-quiz-opt">Every investor holds the market portfolio in equilibrium</button>
+        <button class="sl-quiz-opt">Stock returns are normally distributed</button>
+        <div class="sl-quiz-explain">This is a much weaker assumption than CAPM's full-market-equilibrium requirement — it needs nothing about how any individual investor behaves, only that riskless arbitrage gets competed away.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Why is APT called "a framework, not a fitted model"?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It never specifies which factors or how many — a concrete choice must be plugged in</button>
+        <button class="sl-quiz-opt">It only works for bonds, never for equities</button>
+        <button class="sl-quiz-opt">It requires exactly three factors, like Fama-French</button>
+        <div class="sl-quiz-explain">APT proves returns must be approximately linear in exposures to SOME pervasive factors — it becomes a specific, testable model only once a researcher picks the factors.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Two diversified portfolios have identical factor exposures but different expected returns. What does a long/short position across them look like?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Zero net investment, zero net factor exposure, zero idiosyncratic risk, nonzero expected return</button>
+        <button class="sl-quiz-opt">Doubled factor exposure and doubled risk</button>
+        <button class="sl-quiz-opt">A position that requires large upfront capital</button>
+        <div class="sl-quiz-explain">That combination — no cost, no risk, but a positive expected payoff — is exactly the free lunch competitive arbitrage trading closes.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Why does Chen-Roll-Ross use the SURPRISE in inflation and industrial production, not their raw levels?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The anticipated component is already priced in — only the unexpected part is still genuine risk</button>
+        <button class="sl-quiz-opt">Surprises are easier to measure than levels</button>
+        <button class="sl-quiz-opt">Levels are always zero on average, so they can't be used</button>
+        <div class="sl-quiz-explain">Markets are forward-looking — by release time, the anticipated part is already reflected in prices. This is the same "surprise, not stance" logic the Central Bank Policy lesson uses for rate decisions.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Does having a macro-surprise index AND a multi-factor OLS engine mean this repo runs a Chen-Roll-Ross-style APT regression?</h4>
+        <button class="sl-quiz-opt" data-correct="true">No — the two pieces exist separately and are never joined into one regression</button>
+        <button class="sl-quiz-opt">Yes, exactly as this lesson describes</button>
+        <button class="sl-quiz-opt">No — neither piece exists in this repo at all</button>
+        <div class="sl-quiz-explain">The surprise index and regime studies report bucketed means, one macro state at a time; the multi-factor OLS engine regresses on macro levels for fair value, not on joint surprise factors for expected-return decomposition.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>APT is derived from no-arbitrage alone — far weaker than CAPM's full-equilibrium assumption, which is what makes it more general and less specific at once.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>It's a framework, not a fitted model — unlike CAPM's one derived factor or Fama-French's specific chosen factors, APT never says which factors or how many.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>The mechanism is a free-lunch argument: identical factor exposure but different expected return lets you build a zero-cost, zero-risk position with a nonzero expected payoff.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Chen-Roll-Ross (1986) gave APT a genuinely useful macro face: unexpected industrial production, inflation, term-spread, and default-spread surprises, plus a market residual.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Only the surprise carries a risk premium, never the level — the same logic this curriculum's Central Bank Policy and Taylor Rule lessons use for rate decisions.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>There's no single, standard "the APT model" — treat any specific specification as one modeling choice among many, not a settled consensus.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Recognize APT for what it actually is — a theorem about the shape of the pricing relationship, not a specific list of factors — and read any paper's "APT test" as one modeling choice among many rather than a settled result. Apply the "surprise, not level" logic to any macro-driven factor story, not just Chen-Roll-Ross's original five. Tell a genuine joint multi-factor regression apart from separate one-factor-at-a-time checks, which sets up the next lesson's risk-model machinery.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Barra-Style Risk Models</h3>
+        <p>How industry risk models turn dozens of style and industry factors into a full covariance matrix used for risk decomposition and portfolio construction, not just expected-return pricing.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="institutional-barra-risk-models-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="institutional-apt.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // 2-factor APT calculator, live.
+  (function(){
+    var rf = document.getElementById('apt-rf');
+    if (!rf) return;
+    var b1 = document.getElementById('apt-b1'), l1 = document.getElementById('apt-l1');
+    var b2 = document.getElementById('apt-b2'), l2 = document.getElementById('apt-l2');
+    var result = document.getElementById('apt-result'), result2 = document.getElementById('apt-result2');
+    var term1 = document.getElementById('apt-term1'), term2 = document.getElementById('apt-term2');
+    var note = document.getElementById('apt-note');
+    var resetBtn = document.getElementById('apt-reset');
+    var DEFAULTS = { rf: 3, b1: 1.5, l1: 3, b2: 0.5, l2: -1.5 };
+    var DEFAULT_NOTE = 'Blank or non-numeric input in any field shows "—" instead of breaking the formula.';
+
+    function setBlank(msg){
+      term1.textContent = '—'; term2.textContent = '—';
+      result.textContent = '—'; result2.textContent = '—';
+      note.textContent = msg;
+    }
+
+    function recompute(){
+      var rfv = parseFloat(rf.value), b1v = parseFloat(b1.value), l1v = parseFloat(l1.value);
+      var b2v = parseFloat(b2.value), l2v = parseFloat(l2.value);
+      if (![rfv, b1v, l1v, b2v, l2v].every(isFinite)) {
+        setBlank('Enter a number in every field — blank or non-numeric input can\'t be computed.');
+        return;
+      }
+      var t1 = b1v * l1v, t2 = b2v * l2v;
+      var er = rfv + t1 + t2;
+      term1.textContent = t1.toFixed(2);
+      term2.textContent = t2.toFixed(2);
+      result.textContent = er.toFixed(2) + '%';
+      result2.textContent = er.toFixed(2);
+      note.textContent = DEFAULT_NOTE;
+    }
+
+    [rf, b1, l1, b2, l2].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      rf.value = DEFAULTS.rf; b1.value = DEFAULTS.b1; l1.value = DEFAULTS.l1;
+      b2.value = DEFAULTS.b2; l2.value = DEFAULTS.l2;
+      recompute();
+    });
+    recompute();
+  })();
+
+  // λ₁ slider — E[Rᵢ] = 2.25 + 1.5·λ₁ with Rf=3, β₁=1.5, β₂=0.5, λ₂=-1.5 held fixed.
+  (function(){
+    var slider = document.getElementById('apt-slider');
+    if (!slider) return;
+    var mVal = document.getElementById('apt-slider-mval');
+    var bar = document.getElementById('apt-slider-bar');
+    var label = document.getElementById('apt-slider-label');
+    var Y0 = 220, YTOP = 20, MAXVAL = 11.25; // value at slider max (λ1=6): 2.25+9=11.25
+
+    function update(){
+      var l1 = parseFloat(slider.value);
+      if (!isFinite(l1)) l1 = 3;
+      var er = 2.25 + 1.5 * l1;
+      mVal.textContent = 'λ₁ = ' + l1.toFixed(1) + '%';
+      var frac = Math.max(0, Math.min(1, er / MAXVAL));
+      var h = frac * (Y0 - YTOP);
+      var y = Y0 - h;
+      bar.setAttribute('y', y.toFixed(1));
+      bar.setAttribute('height', h.toFixed(1));
+      label.setAttribute('y', (y - 10).toFixed(1));
+      label.textContent = er.toFixed(2) + '%';
+    }
+    slider.addEventListener('input', update);
+    update();
+  })();
+})();
+</script>
+</body>
+</html>

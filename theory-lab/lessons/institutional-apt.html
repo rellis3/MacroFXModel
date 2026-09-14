@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arbitrage Pricing Theory — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Factor Models / Arbitrage Pricing Theory</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Factor Models 4 of 5</div>
+  <h1 class="tl-title">Arbitrage Pricing Theory</h1>
+  <p class="tl-dek">CAPM derives its one factor from an equation about how <em>every</em> investor behaves. Fama-French hand-picks specific factors because they empirically work. APT does neither: one much weaker assumption — no arbitrage — is enough to force expected returns into an approximately linear function of exposures to some small number of pervasive risk factors, without ever saying which factors, or how many.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — this repo builds real macro-surprise indices and a real multi-factor regression engine, but never joins them the way Chen-Roll-Ross does</span>
+    <span>~18 min read</span>
+    <span>Prereqs: <a href="institutional-fama-macbeth.html">Fama-MacBeth</a> · <a href="taylor-rule.html">The Taylor Rule</a> · <a href="central-bank-policy.html">Central Bank Policy</a> (for the macro-surprise framing)</span>
+  </div>
+
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="institutional-apt-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Arbitrage Pricing Theory (Ross, 1976) is derived from a <strong>no-arbitrage</strong> argument alone — far weaker than CAPM's full-market-equilibrium assumption — and concludes that expected returns must be approximately linear in exposures to some small number of pervasive risk factors: \(E[R_i] \approx R_f + \sum_k \beta_{ik}\lambda_k\).</li>
+      <li>APT is a <strong>framework, not a fitted model</strong>: unlike CAPM (one factor, derived) or Fama-French (specific named factors, chosen empirically), APT makes no claim about which factors or how many — you plug in a concrete choice of factors before it becomes a testable, specific model.</li>
+      <li>The argument: if a diversified portfolio's idiosyncratic risk has been averaged away, two diversified portfolios with <em>identical</em> factor exposures but <em>different</em> expected returns let you build a zero-investment, zero-risk portfolio with a nonzero expected return — a free lunch competitive trading competes away.</li>
+      <li>Chen, Roll & Ross (1986) gave APT its most useful concrete form: observable macroeconomic <strong>surprises</strong> — unexpected industrial production growth, unexpected inflation, unexpected changes in the term spread and the default spread, and a market-return residual — as the priced factors. Only the surprise carries a risk premium; the anticipated component is already in the price, exactly the logic this curriculum's Central Bank Policy lesson uses for rate decisions.</li>
+      <li>Worked example below: a 2-factor toy model (an industrial-production-surprise factor and an inflation-surprise factor) prices three toy assets at 6.75%, 5.85%, and 7.50% — arithmetic you can rerun by hand or in the live calculator.</li>
+      <li>APT's generality is also its weakness: because it doesn't specify the factors, there is no single, universally agreed "the APT model" the way there is a specific, standard Fama-French three-factor model.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters — three completely different ways to get a factor model</h2>
+  <p>
+    This is the fourth lesson in a five-lesson sequence on factor models, and it sits in a
+    deliberately specific spot. <a href="institutional-capm.html">CAPM</a> derived a single
+    factor — the market portfolio — from an equilibrium argument about how every investor in
+    the economy behaves: if everyone is mean-variance optimizing and markets clear, the market
+    portfolio is the only priced factor, full stop, no choices left to make.
+    <a href="institutional-fama-french-carhart.html">Fama-French / Carhart</a> throws that
+    derivation out entirely and goes empirical instead: sort stocks by size, by
+    book-to-market, by momentum; keep whichever sorts earn a persistent excess average return;
+    call the winners factors. Three (or four) specific, named, fixed-in-advance factors, chosen
+    because they work, not because a theorem says they must exist.
+  </p>
+  <p>
+    Arbitrage Pricing Theory does neither of those things, and that is the entire point of this
+    lesson. Ross (1976) starts from an assumption dramatically weaker than "every investor
+    behaves like a mean-variance optimizer holding the market portfolio" — he assumes only that
+    a well-diversified, zero-cost, zero-risk portfolio cannot have a nonzero expected return,
+    because if it did, competitive arbitrage trading would immediately exploit it and compete
+    the mispricing away. From that single assumption alone — no utility functions, no
+    market-clearing condition, no claim about what any individual investor holds — he derives
+    that expected returns must be <em>approximately linear</em> in exposures to some small
+    number of pervasive, systematic risk factors:
+  </p>
+  <div class="tl-math">\[ E[R_i] \approx R_f + \sum_{k=1}^{K} \beta_{ik}\,\lambda_k \]</div>
+  <p>
+    Read that equation carefully and notice what it does <em>not</em> say. It does not say what
+    \(K\) is. It does not say what the factors \(F_k\) actually are — macro variables, style
+    portfolios, statistical principal components, anything satisfying the underlying
+    assumptions would do. CAPM is a specific, one-factor theorem. Fama-French is a specific,
+    three-factor empirical model. APT is neither specific nor a single model — it is a
+    <strong>framework</strong> that becomes a specific, testable model only once someone plugs
+    in a concrete choice of factors. Plug in the market portfolio alone and APT nearly
+    degenerates back to something CAPM-like; plug in the Fama-French factors and APT
+    rationalizes them from a different, weaker set of assumptions; plug in macroeconomic
+    surprises, as Chen, Roll & Ross did in the lesson's most useful concrete example below, and
+    you get a genuinely different, macro-flavored factor model. All three are "an APT model" —
+    which is exactly the generality this lesson has to be honest about from the first
+    paragraph.
+  </p>
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>CAPM — one factor, derived from equilibrium</h4>
+      <p>
+        Assumes every investor is mean-variance optimizing and, in equilibrium, holds some
+        combination of the risk-free asset and the single market portfolio. That strong,
+        economy-wide assumption is exactly what pins down one factor (market excess return)
+        and one price of risk for it — no choice left for the researcher to make.
+      </p>
+    </div>
+    <div class="tl-compare-card green">
+      <h4>Fama-French/Carhart — specific factors, chosen empirically</h4>
+      <p>
+        No equilibrium derivation at all. Sort stocks by size, value, momentum; keep whichever
+        sorted long-short portfolios earn a persistent excess average return; adopt them as
+        factors. Specific and fixed in advance — three or four named factors, the same ones
+        every time a paper says "Fama-French."
+      </p>
+    </div>
+    <div class="tl-compare-card purple">
+      <h4>APT — no factors specified, derived from no-arbitrage alone</h4>
+      <p>
+        A far weaker assumption than full equilibrium: only that riskless, zero-cost arbitrage
+        opportunities get competed away. Proves returns must be approximately linear in
+        exposures to <em>some</em> small number of pervasive factors — but is silent on which
+        ones or how many. A theorem about the shape of the pricing relationship, not a fitted
+        model, until factors are chosen.
+      </p>
+    </div>
+  </div>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>If two boxes hold the same risk but different price tags, buy the cheap one and sell the other</h3>
+    <p>
+      Imagine two vending machines, far apart, both selling the exact same candy bar. If one
+      charges $1 and the other charges $1.50, you don't need a theory of vending-machine
+      consumer behavior to know something is wrong — you just buy from the cheap machine and,
+      if you could, resell at the expensive one, pocketing 50 cents with zero risk. That trade
+      is so obviously profitable that if it were actually available at scale, people would do
+      it until the prices converged. The "law of one price" is just this observation, stated
+      generally: two things that are identical in every risk-relevant way cannot persistently
+      trade at different (expected) prices, because the trade that exploits the gap has no
+      downside.
+    </p>
+    <p>
+      APT applies exactly this logic to whole diversified portfolios instead of candy bars.
+      Suppose two big, well-diversified portfolios happen to have <em>identical</em> exposure
+      to every systematic risk factor that matters — same sensitivity to growth surprises, same
+      sensitivity to inflation surprises, same everything — but one is priced to return 8% and
+      the other only 6%. Buy the 8% portfolio, short the 6% one, in equal dollar amounts. The
+      systematic risk exposures are identical, so they cancel exactly; the position is
+      diversified, so the leftover asset-specific noise has already been averaged away. What's
+      left is a zero-cost, (in the limit) zero-risk portfolio with a certain 2% profit — free
+      money. That is not a state of the world competitive markets tolerate for long, and the
+      trading that closes the gap is the entire mechanism behind the APT pricing equation.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step — from a factor structure to a pricing equation</h2>
+  <p>
+    Start from an assumption about how returns are <em>generated</em>, not priced — this part
+    is purely descriptive. Suppose the return on any asset \(i\) can be written as a linear
+    function of \(K\) common, pervasive factors plus an asset-specific residual:
+  </p>
+  <div class="tl-math">\[ R_i = E[R_i] + \sum_{k=1}^{K} \beta_{ik} F_k + \varepsilon_i \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>E[R_i]</code><span>asset i's expected return — what the pricing equation below solves for</span></div>
+    <div class="tl-eq-chip c2"><code>β_ik F_k</code><span>asset i's exposure to common factor k, times that factor's realized surprise</span></div>
+    <div class="tl-eq-chip c3"><code>ε_i</code><span>asset-specific noise — mean zero, and (crucially) uncorrelated across different assets</span></div>
+  </div>
+  <p>
+    Each \(F_k\) is itself mean-zero — it represents the factor's <em>surprise</em>, the
+    deviation of the realized factor from what was already expected, not the factor's raw
+    level (this distinction becomes the entire point of Section 03). \(\varepsilon_i\) is the
+    part of asset \(i\)'s return that has nothing to do with any common factor — a firm-specific
+    earnings miss, a local supply disruption, pure noise. The one assumption doing the real
+    work is that these \(\varepsilon_i\) terms are uncorrelated (or only weakly correlated)
+    across different assets — which is exactly what makes the next step possible.
+  </p>
+  <h3>Step 1 — diversification erases the idiosyncratic term</h3>
+  <p>
+    Form a portfolio of \(N\) assets with weights \(w_i \approx 1/N\) each. Its return is:
+  </p>
+  <div class="tl-math">\[ R_P = \sum_i w_i R_i = \sum_i w_i E[R_i] + \sum_{k=1}^{K}\left(\sum_i w_i \beta_{ik}\right) F_k + \sum_i w_i \varepsilon_i \]</div>
+  <p>
+    The last term, \(\sum_i w_i \varepsilon_i\), is a weighted average of \(N\) uncorrelated,
+    mean-zero residuals with weights shrinking like \(1/N\) each. Its variance shrinks like
+    \(1/N\) as well, and as \(N\) grows large, this idiosyncratic term vanishes — exactly the
+    same diversification mechanic covered in
+    <a href="decision-trees-random-forests.html">Decision Trees &amp; Random Forests</a>' random
+    forest averaging, applied here to portfolio construction instead of tree predictions. What
+    survives in a large, well-diversified portfolio is only the systematic part:
+  </p>
+  <div class="tl-math">\[ R_P \approx E[R_P] + \sum_{k=1}^{K} \beta_{Pk} F_k \]</div>
+  <p>where \(\beta_{Pk} = \sum_i w_i \beta_{ik}\) is the portfolio's net exposure to factor \(k\).</p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If you flip one coin, the result is genuinely unpredictable. If you flip a thousand coins and look at the <em>average</em> number of heads, that average is extremely close to 50% almost every time — the individual randomness of each coin washes out in the crowd. A single asset's return has real asset-specific randomness baked in; a big, spread-out portfolio's return mostly doesn't, because each asset's own private noise is a different, unrelated coin flip, and averaging a thousand unrelated coin flips leaves you with something much more predictable than any one of them.</p>
+  </div>
+
+  <h3>Step 2 — two identically-exposed diversified portfolios can't have different expected returns</h3>
+  <p>
+    Now suppose two large, well-diversified portfolios \(P\) and \(Q\) happen to share
+    <em>exactly</em> the same factor exposures — \(\beta_{Pk} = \beta_{Qk}\) for every factor
+    \(k\) — but different expected returns, \(E[R_P] \neq E[R_Q]\). Build a third portfolio:
+    long $1 of \(P\), short $1 of \(Q\). Its properties are stark:
+  </p>
+  <div class="tl-steps">
+    <div class="tl-step">
+      <div class="tl-step-num">1</div>
+      <div class="tl-step-body">
+        <h4>Zero net investment</h4>
+        <p>The long and short legs are equal dollar amounts — this costs nothing to put on.</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">2</div>
+      <div class="tl-step-body">
+        <h4>Zero net factor exposure</h4>
+        <p>Because \(\beta_{Pk} = \beta_{Qk}\) for every \(k\), the long leg's exposure to each factor exactly cancels the short leg's exposure to that same factor.</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">3</div>
+      <div class="tl-step-body">
+        <h4>Zero idiosyncratic risk</h4>
+        <p>Both \(P\) and \(Q\) are already diversified — their own leftover asset-specific noise has already been averaged away by Step 1.</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">4</div>
+      <div class="tl-step-body">
+        <h4>Nonzero expected return</h4>
+        <p>The combined position earns \(E[R_P] - E[R_Q] \neq 0\) — with essentially none of the three ingredients (capital, factor risk, idiosyncratic risk) that would normally justify a nonzero expected return.</p>
+      </div>
+    </div>
+  </div>
+  <p>
+    That is a free lunch: a costless, riskless position with a positive expected payoff.
+    Competitive arbitrageurs would buy \(P\) and sell \(Q\) at essentially unlimited scale
+    until the trade's own buying and selling pressure pushed \(E[R_P]\) down and \(E[R_Q]\) up,
+    closing the gap. Ross's actual theorem is more careful than this three-line sketch — it is
+    a limiting argument over economies with more and more assets, and the resulting pricing
+    relation holds only <em>approximately</em>, with an error bound that shrinks as the number
+    of assets grows, rather than holding as an exact equality the way CAPM's does for a single
+    market portfolio. That asymptotic, "approximately" character is a real, load-bearing
+    caveat, not fine print — it is precisely why the pricing equation below carries an
+    \(\approx\) rather than an \(=\).
+  </p>
+  <div class="tl-math">\[ E[R_i] \approx R_f + \sum_{k=1}^{K} \beta_{ik}\,\lambda_k \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>R_f</code><span>the risk-free rate — an asset with zero exposure to every factor should earn exactly this</span></div>
+    <div class="tl-eq-chip c2"><code>β_ik</code><span>asset i's estimated sensitivity to factor k — the same loading from the return-generating process above</span></div>
+    <div class="tl-eq-chip c4"><code>λ_k</code><span>factor k's risk premium — the expected excess return earned per unit of exposure to that factor alone</span></div>
+  </div>
+  <p>
+    Each \(\lambda_k\) is exactly analogous to CAPM's single market risk premium, generalized:
+    it is the expected excess return of a portfolio built to have unit exposure to factor
+    \(k\) and precisely zero exposure to every other factor — a "factor-mimicking portfolio."
+    CAPM is the special case \(K=1\) with the market portfolio as the only factor; APT simply
+    never commits to \(K=1\) or to what the factor is.
+  </p>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">The no-arbitrage argument, drawn: same factor exposure, different expected return</div>
+    <svg viewBox="0 0 640 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagram of two diversified portfolios, P and Q, with identical factor-exposure bars but different expected-return bars — P at 8 percent, Q at 6 percent. An arrow shows the arbitrage trade: long P, short Q, producing a 2 percentage point gap captured as a riskless, zero-investment, zero-net-exposure profit.">
+      <text x="150" y="24" text-anchor="middle" fill="var(--text2)" font-size="13" font-weight="700" font-family="'DM Mono',monospace">Portfolio P</text>
+      <text x="490" y="24" text-anchor="middle" fill="var(--text2)" font-size="13" font-weight="700" font-family="'DM Mono',monospace">Portfolio Q</text>
+
+      <line x1="40" y1="260" x2="600" y2="260" style="stroke:var(--border);stroke-width:1"/>
+
+      <!-- factor exposure bars: identical height/color for both portfolios -->
+      <rect x="90" y="200" width="60" height="60" rx="4" style="fill:var(--panel2);stroke:var(--border2);stroke-width:1.5"/>
+      <text x="120" y="234" text-anchor="middle" fill="var(--text2)" font-size="12" font-family="'DM Mono',monospace">β = 1.0</text>
+      <text x="120" y="278" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">factor exposure</text>
+
+      <rect x="430" y="200" width="60" height="60" rx="4" style="fill:var(--panel2);stroke:var(--border2);stroke-width:1.5"/>
+      <text x="460" y="234" text-anchor="middle" fill="var(--text2)" font-size="12" font-family="'DM Mono',monospace">β = 1.0</text>
+      <text x="460" y="278" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">factor exposure</text>
+
+      <text x="290" y="235" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">identical →</text>
+
+      <!-- expected return bars: different heights -->
+      <rect x="170" y="80" width="60" height="180" rx="4" style="fill:var(--green-bg);stroke:var(--green);stroke-width:2"/>
+      <text x="200" y="70" text-anchor="middle" fill="var(--green)" font-size="14" font-weight="700" font-family="'DM Mono',monospace">E[R] = 8%</text>
+      <text x="200" y="292" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">expected return</text>
+
+      <rect x="510" y="140" width="60" height="120" rx="4" style="fill:var(--amber-bg);stroke:var(--amber);stroke-width:2"/>
+      <text x="540" y="130" text-anchor="middle" fill="var(--amber)" font-size="14" font-weight="700" font-family="'DM Mono',monospace">E[R] = 6%</text>
+      <text x="540" y="292" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">expected return</text>
+
+      <line x1="230" y1="80" x2="500" y2="80" style="stroke:var(--red);stroke-width:1.5;stroke-dasharray:4,3"/>
+      <line x1="500" y1="80" x2="500" y2="140" style="stroke:var(--red);stroke-width:1.5;stroke-dasharray:4,3"/>
+      <text x="365" y="72" text-anchor="middle" fill="var(--red)" font-size="11" font-weight="700" font-family="'DM Mono',monospace">gap = 2pp — same risk, different price</text>
+
+      <path d="M225,300 C 300,320 380,320 495,300" style="fill:none;stroke:var(--blue);stroke-width:2.5" marker-end="url(#apt-arrow)"/>
+      <text x="360" y="316" text-anchor="middle" fill="var(--blue)" font-size="11" font-weight="700" font-family="'DM Mono',monospace">long P, short Q</text>
+      <defs>
+        <marker id="apt-arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+          <path d="M0,0 L8,4 L0,8 z" style="fill:var(--blue)"/>
+        </marker>
+      </defs>
+    </svg>
+    <div class="tl-chart-caption">
+      Both portfolios carry the same factor exposure (β = 1.0), so a long-P / short-Q position
+      is zero-cost and zero-net-exposure — yet it earns the full 2-percentage-point expected
+      return gap with no offsetting risk. That mismatch is exactly what competitive arbitrage
+      trading closes, pushing the two expected returns back toward each other. Illustrative
+      numbers, not fitted to any real pair of portfolios.
+    </div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>Chen, Roll &amp; Ross (1986): putting a macro face on the factors</h2>
+  <p>
+    APT as derived above is silent on what \(F_k\) actually is — which is exactly why Chen,
+    Roll &amp; Ross's 1986 paper, <em>"Economic Forces and the Stock Market,"</em> is the most
+    useful concrete example for this curriculum. Rather than statistically extracting
+    unlabeled factors or borrowing style-sorted portfolios from Fama-French, they proposed a
+    specific, economically interpretable set of <strong>observable macroeconomic surprise
+    variables</strong> as the priced factors:
+  </p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🏭</div>
+      <h4>Unexpected industrial production growth</h4>
+      <p>The surprise component of real output growth — a direct read on unanticipated shifts in the business cycle, the same "how hot is the economy running" question the Taylor Rule's output gap asks, but expressed as a surprise rather than a level.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge red">💵</div>
+      <h4>Unexpected inflation</h4>
+      <p>Actual inflation minus what was already priced in — not the inflation rate itself. An inflation print that lands exactly at consensus carries no new information and should move nothing.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">📐</div>
+      <h4>Unexpected change in the term spread</h4>
+      <p>The surprise in long-minus-short government yields — a shift in what the market expects the future path of short rates to look like, beyond what was already anticipated.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">⚠️</div>
+      <h4>Unexpected change in the default spread</h4>
+      <p>The surprise in the credit-risk premium — low-grade minus high-grade (or corporate minus government) yields — a read on unanticipated shifts in aggregate default risk and risk appetite.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">📊</div>
+      <h4>A market-return residual</h4>
+      <p>Whatever exposure to broad equity-market risk isn't already captured by the four macro surprises above — included so the macro story isn't quietly smuggling in the entire market factor unlabeled.</p>
+    </div>
+  </div>
+  <h3>Why "surprise," and not the raw level, is the right way to define a factor here</h3>
+  <p>
+    This is the single most important conceptual point in this section, and it is not a minor
+    technicality. Markets are forward-looking: by the time a piece of macro data is released,
+    the component of it that was already anticipated has, in an efficient market, already been
+    priced in through whatever mechanism investors use to form expectations — futures curves,
+    consensus surveys, a central bank's own guidance. If a factor entered the pricing equation
+    as a raw level rather than a surprise, an asset's expected return would appear to depend on
+    information the market already knew and had already acted on, which makes no sense in an
+    equation whose whole purpose is to explain <em>compensation for risk investors are still
+    exposed to going forward</em>. Only the <strong>unexpected</strong> component — the part
+    nobody saw coming, and therefore the part that still represents genuine, un-hedged,
+    un-priced risk at the moment it is realized — is capable of carrying a risk premium.
+  </p>
+  <p>
+    This is precisely the same logic this curriculum's own
+    <a href="central-bank-policy.html">Central Bank Policy</a> lesson spends an entire section
+    establishing for interest-rate decisions: <em>"it is the hawkish or dovish surprise
+    relative to what was already priced — not the absolute hawkish/dovish stance itself — that
+    moves a currency."</em> A central bank hiking exactly as much as the market expected moves
+    almost nothing, because the hike was already in the price; a smaller-than-expected hike can
+    weaken a currency even though the bank still tightened. Chen-Roll-Ross applies the
+    identical reasoning to a whole factor model at once: an inflation print, a term-spread
+    move, an industrial-production release — none of it should carry a risk premium to the
+    extent it was already anticipated, and all of it should to the extent it wasn't. The
+    <a href="taylor-rule.html">Taylor Rule</a> lesson's own framing of "the gap between implied
+    and actual, not the level" is the same idea again, one layer removed: what actually moves
+    markets and carries a price is always the deviation from what was already known, not the
+    raw number itself.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If everyone already expects it to rain tomorrow and it rains, nobody's surprised and nobody changes their plans because of it — they'd already packed an umbrella. If everyone expects sunshine and it rains instead, that's the part that actually catches people off guard and makes them scramble. A weather forecast that already says "80% chance of rain" has already done the work of pricing rain in; only the gap between the forecast and what actually happens is news. Macro surprises work the same way for markets — a CPI print exactly matching consensus is a non-event, however high or low the number itself is, because the market already "packed the umbrella" for it.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>A worked example — a two-factor toy APT model</h2>
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Pricing three toy assets off two macro-surprise factors</h3>
+    <p>
+      Take a stripped-down, made-up 2-factor version of Chen-Roll-Ross: factor 1 is
+      <strong>unexpected industrial production growth</strong> (an "IP surprise"), factor 2 is
+      <strong>unexpected inflation</strong> (an "inflation surprise"). Suppose the risk-free
+      rate is \(R_f = 3\%\), and the market has priced these two factor risk premia:
+    </p>
+    <div class="tl-symbols"><table>
+      <tr><td>\(\lambda_{\text{IP}}\)</td><td>+3% — a positive premium: assets more exposed to positive IP surprises are riskier in the sense of being more procyclical, so investors demand extra expected return for that exposure.</td></tr>
+      <tr><td>\(\lambda_{\text{INF}}\)</td><td>&minus;1.5% — a negative premium: assets that do better when inflation surprises to the upside are providing a partial inflation hedge, so investors accept a lower expected return for that exposure.</td></tr>
+    </table></div>
+    <p>Three toy assets, with made-up factor loadings estimated (in a real application) from a time-series regression of each asset's own historical returns on the two factor-surprise series:</p>
+    <div class="tl-symbols"><table>
+      <tr><td>Asset X</td><td>\(\beta_{\text{IP}}=1.5\), \(\beta_{\text{INF}}=0.5\) — high growth sensitivity, mild positive inflation-hedge exposure.</td></tr>
+      <tr><td>Asset Y</td><td>\(\beta_{\text{IP}}=0.8\), \(\beta_{\text{INF}}=-0.3\) — modest growth sensitivity, and actually hurt by inflation surprises rather than hedged against them.</td></tr>
+      <tr><td>Asset Z</td><td>\(\beta_{\text{IP}}=2.0\), \(\beta_{\text{INF}}=1.0\) — the most growth-sensitive and the strongest inflation-hedge exposure of the three.</td></tr>
+    </table></div>
+    <p>Plug each asset's loadings into \(E[R_i] \approx R_f + \beta_{i,\text{IP}}\lambda_{\text{IP}} + \beta_{i,\text{INF}}\lambda_{\text{INF}}\):</p>
+    <div class="tl-math">\[ E[R_X] = 3 + 1.5(3) + 0.5(-1.5) = 3 + 4.5 - 0.75 = 6.75\% \]</div>
+    <div class="tl-math">\[ E[R_Y] = 3 + 0.8(3) + (-0.3)(-1.5) = 3 + 2.4 + 0.45 = 5.85\% \]</div>
+    <div class="tl-math">\[ E[R_Z] = 3 + 2.0(3) + 1.0(-1.5) = 3 + 6 - 1.5 = 7.5\% \]</div>
+    <p>
+      Notice what each term is doing. Asset Z has the highest IP-surprise exposure, so its
+      growth term contributes the most (+6pp) — but its large positive inflation-hedge exposure
+      also costs it the most in the second term (\(-1.5\)pp), since that hedge exposure is
+      priced with a negative premium. Asset Y has the smallest IP exposure and therefore the
+      smallest growth term (+2.4pp), but its <em>negative</em> inflation exposure (it does
+      worse, not better, on inflation surprises) actually turns the second term positive
+      (+0.45pp) rather than costing it — the exact opposite effect from Asset Z's. None of
+      these three numbers is a fudge; each is the linear combination of exposures times prices
+      of risk that the pricing equation says it must be.
+    </p>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>The same 2-factor pricing equation, live</h3>
+    <p>
+      Starts on Asset X's exact numbers above: \(R_f=3\%\), \(\beta_{\text{IP}}=1.5\),
+      \(\lambda_{\text{IP}}=3\%\), \(\beta_{\text{INF}}=0.5\), \(\lambda_{\text{INF}}=-1.5\%\).
+      Change any field and \(E[R_i]\) recalculates instantly from
+      \(E[R_i] = R_f + \beta_1\lambda_1 + \beta_2\lambda_2\).
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Risk-free rate \(R_f\) (%)</span></div>
+        <input type="number" id="apt-scratch-rf" class="tl-scratch-input" value="3" step="0.25">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Loading \(\beta_1\) (IP surprise)</span></div>
+        <input type="number" id="apt-scratch-b1" class="tl-scratch-input" value="1.5" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Premium \(\lambda_1\) (%)</span></div>
+        <input type="number" id="apt-scratch-l1" class="tl-scratch-input" value="3" step="0.25">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Loading \(\beta_2\) (inflation surprise)</span></div>
+        <input type="number" id="apt-scratch-b2" class="tl-scratch-input" value="0.5" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Premium \(\lambda_2\) (%)</span></div>
+        <input type="number" id="apt-scratch-l2" class="tl-scratch-input" value="-1.5" step="0.25">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      &beta;<sub>1</sub>&lambda;<sub>1</sub> = <b id="apt-scratch-term1">4.50</b>pp&emsp;&beta;<sub>2</sub>&lambda;<sub>2</sub> = <b id="apt-scratch-term2">-0.75</b>pp
+    </div>
+    <div class="tl-readout">
+      E[R<sub>i</sub>] = R<sub>f</sub> + &beta;<sub>1</sub>&lambda;<sub>1</sub> + &beta;<sub>2</sub>&lambda;<sub>2</sub> = <b id="apt-scratch-er">6.75</b>%
+      <span id="apt-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="apt-scratch-reset" class="tl-scratch-reset-btn">Reset to Asset X's numbers</button>
+  </div>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(E[R_i]\)</td><td>Asset \(i\)'s expected return — the quantity the pricing equation solves for.</td></tr>
+    <tr><td>\(R_f\)</td><td>The risk-free rate — what any asset with zero exposure to every factor should earn.</td></tr>
+    <tr><td>\(\beta_{ik}\)</td><td>Asset \(i\)'s loading (sensitivity) on factor \(k\) — estimated from a time-series regression of the asset's own returns on the factor's surprise series.</td></tr>
+    <tr><td>\(F_k\)</td><td>Factor \(k\)'s realized surprise — the unexpected component, mean zero by construction.</td></tr>
+    <tr><td>\(\lambda_k\)</td><td>Factor \(k\)'s risk premium — the expected excess return of a portfolio with unit exposure to factor \(k\) alone, priced by the no-arbitrage argument.</td></tr>
+    <tr><td>\(\varepsilon_i\)</td><td>Asset \(i\)'s idiosyncratic residual — uncorrelated across assets, and the reason diversification works in Section 02's argument.</td></tr>
+    <tr><td>\(K\)</td><td>The number of pervasive factors — deliberately left unspecified by the theory itself; a modeler's choice once APT is applied.</td></tr>
+  </table></div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    In practice, applying APT means making three choices the theory itself refuses to make:
+    which factors, how many, and how to estimate the \(\beta_{ik}\) loadings. A common
+    two-step procedure — the same shape as Fama-MacBeth's second pass, covered in the prior
+    lesson in this series — is to first run a time-series regression of each candidate asset's
+    returns on the chosen factor-surprise series to estimate its \(\beta_{ik}\)s, then use
+    those estimated loadings, cross-sectionally, to back out each \(\lambda_k\) as the price
+    the market is actually paying for a unit of exposure to that factor. Desks that build a
+    macro-factor APT model in the Chen-Roll-Ross spirit are, underneath the label, doing
+    exactly this: constructing standardized surprise series for each candidate macro variable
+    (actual minus consensus, scaled by that series' own historical surprise dispersion — a
+    construction covered from a different angle in this curriculum's macro-surprise-index
+    material), then regressing asset or portfolio returns on all of the surprise series
+    <em>jointly</em>, in one multi-factor regression, to recover each asset's vector of factor
+    loadings at once.
+  </p>
+  <div class="tl-solid blue">
+    <strong>The word "jointly" is doing real work in that sentence.</strong> A genuine
+    multi-factor APT regression estimates every \(\beta_{ik}\) at the same time, in a single
+    regression with several factor columns side by side — not one factor's loading estimated
+    in isolation, and not a sequence of separate univariate checks run one factor at a time.
+    Isolating that distinction is exactly what the honest read of this repo's own code below
+    turns on.
+  </div>
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Verified against this repo's actual code</div>
+    <h3>Real macro-surprise machinery and a real multi-factor regression engine — never joined the way this lesson describes</h3>
+    <p>
+      A repo-wide search for macro-surprise-based regression of FX returns turns up two
+      genuinely real, but genuinely separate, pieces of machinery — and confirming that they
+      are separate is the entire finding.
+    </p>
+    <p>
+      <strong>The surprise construction is real.</strong> <code>js/econSurprise.js</code>
+      builds an honest, standard economic-surprise index: for each release series, it computes
+      \(\text{actual}-\text{consensus}\), standardizes by that series' own historical surprise
+      dispersion (so a payrolls miss and a CPI miss become comparable), and decay-weights by
+      age into a per-currency surprise score — precisely the "surprise, not level" construction
+      this lesson's Section 03 describes. <code>js/macroRegimeFx.js</code>'s
+      <code>buildEventStudy</code> then measures how much FX pairs actually move around
+      individual scheduled releases, and its <code>buildRegimeStudy</code> buckets forward FX
+      returns by macro regime (real yields rising/falling, credit spreads
+      widening/tightening, curve inverted/normal) and reports the mean return in each bucket,
+      complete with in-sample/out-of-sample splits and an "unstable" flag when a regime's sign
+      flips between halves.
+    </p>
+    <p>
+      <strong>A genuine multi-factor OLS engine is also real</strong> —
+      <code>js/mve/ols.js</code>'s <code>olsFit</code> jointly estimates a vector of \(\beta\)s
+      on a matrix of several factor columns at once (its own header calls it "multi-factor
+      Ordinary Least Squares," generalizing a single-driver rolling regression to an arbitrary
+      factor matrix), and <code>server.js</code> uses it for a BEER-lite FX fair-value model
+      built on factors like the real-rate differential, DXY, and the yield curve.
+    </p>
+    <p>
+      <strong>What does not exist anywhere in this codebase is the two joined</strong> — a
+      single regression that takes the standardized macro-<em>surprise</em> series
+      <code>js/econSurprise.js</code> already builds and feeds several of them, jointly, as the
+      factor matrix into a multi-factor OLS engine to estimate a vector of FX-return factor
+      loadings, Chen-Roll-Ross style. The regime study buckets returns by macro state and
+      reports means per bucket, one bucket at a time — it does not estimate joint linear
+      loadings on several surprise variables at once. The multi-factor OLS engine runs on macro
+      <em>levels</em> (a real-rate differential, DXY, curve) for fair-value estimation, not on
+      surprise variables for expected-return decomposition. Both halves of this lesson's
+      concrete example are individually real and well-built in this repo; the specific thing
+      the lesson describes — a joint multi-factor regression of returns on macro surprises — is
+      a real but genuinely different thing this codebase has not built.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>APT's generality is also its weakness</h3>
+    <p>
+      <strong>There is no single, universally agreed "the APT model."</strong> Fama-French has
+      exactly one standard three-factor specification that every paper citing it means the same
+      way. APT has no such anchor: because the theory itself never specifies which factors or
+      how many, different researchers, applying the identical no-arbitrage theorem, routinely
+      choose different macro variables, different numbers of statistical factors, or different
+      estimation windows — and get materially different implied risk premia and different
+      "priced" factors as a result. A paper that says "we test APT" and finds five significant
+      factors, and another that says the same thing and finds three different ones, are not
+      necessarily contradicting each other technically; they may simply have made different
+      modeling choices the theory itself left entirely open.
+    </p>
+    <p>
+      <strong>"Approximately" is not a rounding error.</strong> Ross's own proof is an
+      asymptotic, limiting-economy argument — the pricing relation holds increasingly well as
+      the number of assets grows, not exactly for any finite set of real, tradable assets the
+      way CAPM's relation holds exactly (within its own assumptions) for any single market
+      portfolio. Reading a fitted APT model's pricing errors as pure noise, rather than partly
+      an artifact of this approximation, overstates how tightly the theory actually pins
+      things down.
+    </p>
+    <p>
+      <strong>Statistically extracted factors (from PCA, say) are often uninterpretable.</strong>
+      One popular way to sidestep "which factors" is to extract statistical factors directly
+      from the return covariance matrix rather than name them — technically valid under APT's
+      own assumptions, but it trades one problem (which economic story explains the factor?)
+      for another (does this factor still mean the same thing next year, once the covariance
+      structure shifts and the extracted components rotate?).
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>APT is derived from no-arbitrage alone</strong> — a far weaker assumption than CAPM's full-market-equilibrium requirement, which is exactly what makes APT more general and less specific at the same time.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A framework, not a fitted model.</strong> Unlike CAPM (one derived factor) or Fama-French (specific chosen factors), APT says nothing about which factors or how many — you have to plug in a concrete choice before it becomes testable.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The mechanism is a free-lunch argument.</strong> Two diversified portfolios with identical factor exposures but different expected returns let you build a zero-cost, zero-risk position with a nonzero expected return — competitive trading closes that gap.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Chen-Roll-Ross (1986) gave APT a genuinely useful macro face:</strong> unexpected industrial production, unexpected inflation, term-spread and default-spread surprises, and a market residual.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Only the surprise carries a risk premium — never the level.</strong> An anticipated change is already priced in; the same logic this curriculum's Central Bank Policy and Taylor Rule lessons use for rate decisions.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>There is no single, standard "the APT model."</strong> Because the theory never specifies the factors, different researchers routinely get different answers — treat any specific APT specification as one modeling choice among many, not a settled consensus.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. What is the single key assumption APT is derived from, and how does it compare in strength to CAPM's assumption?</summary>
+    <div class="tl-answer">
+      APT is derived from a no-arbitrage argument: a well-diversified, zero-cost, zero-risk
+      portfolio cannot have a nonzero expected return, because competitive trading would
+      immediately exploit it. This is a much weaker assumption than CAPM's, which requires
+      every investor in the economy to be mean-variance optimizing and, in equilibrium, to hold
+      some combination of the risk-free asset and the single market portfolio. APT needs
+      nothing about how any individual investor behaves — only that riskless arbitrage
+      opportunities get competed away.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why is APT described as "a framework, not a fitted model" in this lesson?</summary>
+    <div class="tl-answer">
+      Because the theory itself makes no claim about which factors belong in \(\sum_k \beta_{ik}\lambda_k\) or how many there should be (\(K\)) — it only proves that expected returns must be approximately linear in exposures to <em>some</em> small number of pervasive factors. It becomes a specific, testable model only once a researcher plugs in a concrete choice of factors (macro surprises, style-sorted portfolios, statistical principal components, or anything else satisfying the underlying assumptions).
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Two large, well-diversified portfolios P and Q have identical exposure to every priced factor, but E[R_P] = 9% and E[R_Q] = 7%. Walk through why this cannot persist under APT's no-arbitrage assumption.</summary>
+    <div class="tl-answer">
+      Build a position that is long $1 of P and short $1 of Q. It costs nothing (zero net
+      investment), and because the two portfolios' factor exposures are identical, the long
+      and short legs' exposures to every factor cancel exactly (zero net factor exposure).
+      Both portfolios are already diversified, so their leftover asset-specific noise has
+      already been averaged away (zero idiosyncratic risk). Yet the position earns
+      \(E[R_P]-E[R_Q]=2\%\) — a costless, riskless position with a positive expected payoff.
+      Competitive arbitrage trading (buying P, selling Q) would exploit this until the buying
+      and selling pressure pushed the two expected returns back together.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Using this lesson's worked-example numbers (R_f = 3%, λ_IP = 3%, λ_INF = −1.5%), what is the APT-implied expected return of an asset with β_IP = 1.0 and β_INF = 0? Show the arithmetic.</summary>
+    <div class="tl-answer">
+      \(E[R_i] = R_f + \beta_{\text{IP}}\lambda_{\text{IP}} + \beta_{\text{INF}}\lambda_{\text{INF}} = 3 + 1.0(3) + 0(-1.5) = 3+3+0 = 6\%\).
+      With zero exposure to the inflation-surprise factor, only the IP-surprise term
+      contributes anything beyond the risk-free rate — exactly what the equation says should
+      happen when a loading is zero.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Why does Chen, Roll & Ross's framework use the SURPRISE component of inflation and industrial production, rather than their raw levels, as the priced factors?</summary>
+    <div class="tl-answer">
+      Markets are forward-looking, and the anticipated component of any macro release has
+      already been priced in by the time it's published. Only the unexpected component —
+      the deviation from what was already forecast — represents genuine, still-unresolved risk
+      at the moment it's realized, and only that component is capable of carrying a risk
+      premium. This is the identical logic this curriculum's Central Bank Policy lesson uses
+      for rate decisions: it's the hawkish or dovish surprise relative to what was already
+      priced, not the absolute stance, that actually moves markets.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Why is it misleading to say "this repo runs a Chen-Roll-Ross-style APT regression" just because it has both a macro-surprise index and a multi-factor OLS engine?</summary>
+    <div class="tl-answer">
+      Because the two pieces are real but never joined the way a genuine macro-factor APT test
+      requires. The repo's surprise construction (<code>js/econSurprise.js</code>) and its
+      regime/event studies (<code>js/macroRegimeFx.js</code>) analyze FX returns conditional on
+      macro surprises one event or regime bucket at a time, reporting mean returns per bucket —
+      not a joint linear regression estimating several factor loadings simultaneously. The
+      repo's genuine multi-factor OLS engine (<code>js/mve/ols.js</code>) does estimate several
+      loadings jointly, but on macro <em>levels</em> (real-rate differential, DXY, curve) for FX
+      fair-value estimation, not on standardized macro <em>surprises</em> for expected-return
+      decomposition. Having both ingredients separately is not the same claim as having built
+      the specific joint regression this lesson describes.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Stephen A. Ross, "The Arbitrage Theory of Capital Asset Pricing," <em>Journal of Economic Theory</em>, 13(3), 1976 — the original paper deriving the APT pricing relation from a no-arbitrage argument alone.</li>
+    <li>Nai-Fu Chen, Richard Roll, and Stephen A. Ross, "Economic Forces and the Stock Market," <em>Journal of Business</em>, 59(3), 1986 — the paper proposing observable macroeconomic surprise variables (industrial production, inflation, the term spread, the default spread) as APT's priced factors, this lesson's concrete worked example.</li>
+    <li>The Taylor Rule lesson elsewhere in this curriculum — the "gap between implied and actual, not the level" reasoning this lesson's Section 03 draws on directly.</li>
+    <li>Central Bank Policy lesson elsewhere in this curriculum — the "surprise, not stance, moves markets" logic this lesson generalizes from a single rate decision to a whole macro-factor model.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="institutional-fama-macbeth.html">← Fama-MacBeth</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="institutional-barra-risk-models.html">Barra-Style Risk Models →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+<script>
+(function(){
+  var DEFAULTS = { rf: 3, b1: 1.5, l1: 3, b2: 0.5, l2: -1.5 };
+  var fields = ['rf', 'b1', 'l1', 'b2', 'l2'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('apt-scratch-' + f); });
+  if (!inputs.rf) return;
+
+  var term1Out = document.getElementById('apt-scratch-term1');
+  var term2Out = document.getElementById('apt-scratch-term2');
+  var erOut = document.getElementById('apt-scratch-er');
+  var note = document.getElementById('apt-scratch-note');
+  var resetBtn = document.getElementById('apt-scratch-reset');
+
+  function recompute(){
+    var rf = parseFloat(inputs.rf.value);
+    var b1 = parseFloat(inputs.b1.value);
+    var l1 = parseFloat(inputs.l1.value);
+    var b2 = parseFloat(inputs.b2.value);
+    var l2 = parseFloat(inputs.l2.value);
+
+    if (![rf, b1, l1, b2, l2].every(isFinite)) {
+      note.textContent = '(enter a number in every field — blank or non-numeric input can\'t be computed)';
+      term1Out.textContent = '—';
+      term2Out.textContent = '—';
+      erOut.textContent = '—';
+      return;
+    }
+
+    var term1 = b1 * l1;
+    var term2 = b2 * l2;
+    var er = rf + term1 + term2;
+    term1Out.textContent = term1.toFixed(2);
+    term2Out.textContent = term2.toFixed(2);
+    erOut.textContent = er.toFixed(2);
+    note.textContent = '';
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
+</body>
+</html>

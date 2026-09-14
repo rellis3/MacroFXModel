@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Avellaneda-Stoikov Market Making — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Avellaneda-Stoikov Inventory-Aware Market Making — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer full derivations, live math notation, and a 6-question self-test?<a href="institutional-avellaneda-stoikov.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Market Making 1 of 1</div>
+      <h1 class="sl-h1">Avellaneda-Stoikov, <em>Where Should a Market Maker Actually Quote?</em></h1>
+      <p class="sl-lede">A market maker earns the spread by quoting both sides — but every fill leaves behind a position, and a position is a risk the market maker didn't necessarily choose. This deck walks through the first widely-used closed-form answer to what a market maker holding inventory should actually do about it.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Symmetric quoting has no brake pedal</h2>
+      <p class="sl-sub">Post a fixed bid and ask around the mid, forever, and nothing stops inventory from running away.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The problem, in one picture</div>
+        <div class="sl-row">
+          <div class="sl-box">Fill on the bid</div>
+          <div class="sl-arrow">→</div>
+          <div class="sl-box amber">Now long +1</div>
+        </div>
+        <div class="sl-row">
+          <div class="sl-box">Symmetric quoter re-quotes the SAME distance either side</div>
+          <div class="sl-arrow">→</div>
+          <div class="sl-box red">No pull back toward flat</div>
+        </div>
+        <div class="sl-row">
+          <div class="sl-box">Market keeps sending buyers</div>
+          <div class="sl-arrow">→</div>
+          <div class="sl-box red">Long +2, +3, +4… no brake</div>
+        </div>
+        <div class="sl-verdict">Every fill changes inventory. A quoting rule that ignores current inventory has no mechanism at all to push a runaway position back toward flat.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">The reservation price is NOT the mid-price</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The central formula</div>
+        <div class="sl-row">
+          <div class="sl-box amber">r(s,q,t)</div>
+          <div class="sl-arrow">=</div>
+          <div class="sl-box">s − q·γ·σ²·(T−t)</div>
+        </div>
+        <div class="sl-verdict">s = mid-price · q = signed inventory (+long / −short) · γ = risk aversion · σ² = variance · (T−t) = time left. When q=0, r=s exactly — a flat market maker has no reason to skew at all.</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📉</div><div><h4>Long (q&gt;0) → r shifts DOWN</h4><p>The subtracted term is positive, so r sits below the mid — the ask looks cheap (easy to sell into), the bid looks already-paid-up (harder to buy more).</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📈</div><div><h4>Short (q&lt;0) → r shifts UP</h4><p>Exact mirror image: the bid looks relatively attractive (easy to buy back), the ask looks relatively expensive (harder to sell more).</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🌊</div><div><h4>Same σ as the OU lesson</h4><p>The model's mid-price follows ds = σ·dW — a driftless Brownian motion, exactly the θ=0 special case of the sibling Ornstein-Uhlenbeck lesson's own SDE.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚖️</div><div><h4>An indifference price, not a forecast</h4><p>r is the price at which the market maker themselves is indifferent between their current position and flat — not a prediction of where the market is headed.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Drag inventory, watch both quotes skew — live</h2>
+      <p class="sl-sub">Fixed γ=0.1, σ=2, T−t=0.5, k=1.5, mid s=100. Only inventory q moves.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Chart with inventory on the horizontal axis and price on the vertical axis. A dashed line marks the constant mid-price. Three parallel diagonal lines show the reservation price, bid, and ask, all sloping downward as inventory increases. Three dots on these lines move together as the inventory slider below is dragged.">
+            <line x1="80" y1="20" x2="80" y2="260" style="stroke:var(--border);stroke-width:1"/>
+            <line x1="80" y1="260" x2="600" y2="260" style="stroke:var(--border);stroke-width:1"/>
+            <text x="340" y="285" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">inventory q (short ← 0 → long)</text>
+            <line x1="80" y1="145" x2="580" y2="145" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:4,4"/>
+            <text x="586" y="149" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">mid s</text>
+            <line x1="330" y1="20" x2="330" y2="260" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:2,3"/>
+            <polyline points="80,72.9 205,99.2 330,125.4 455,151.7 580,177.9" style="fill:none;stroke:var(--green);stroke-width:2"/>
+            <polyline points="80,92.5 205,118.8 330,145.0 455,171.3 580,197.5" style="fill:none;stroke:var(--purple);stroke-width:2.5"/>
+            <polyline points="80,112.1 205,138.3 330,164.6 455,190.8 580,217.1" style="fill:none;stroke:var(--red);stroke-width:2"/>
+            <text x="590" y="76" font-size="11" font-family="'DM Mono',monospace" fill="var(--green)">ask</text>
+            <text x="590" y="200" font-size="11" font-family="'DM Mono',monospace" fill="var(--purple)">r</text>
+            <text x="590" y="220" font-size="11" font-family="'DM Mono',monospace" fill="var(--red)">bid</text>
+            <circle id="as-dot-ask" cx="455" cy="151.7" r="5" fill="var(--green)"/>
+            <circle id="as-dot-r" cx="455" cy="171.3" r="5.5" fill="var(--purple)"/>
+            <circle id="as-dot-bid" cx="455" cy="190.8" r="5" fill="var(--red)"/>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Inventory q</span><span class="sl-live" id="as-qval">q = +5 (long)</span></div>
+        <input type="range" class="sl-slider" id="as-qslider" min="-10" max="10" step="1" value="5">
+        <div class="sl-note" id="as-readout">r = 99.0000 · bid = 98.2546 · ask = 99.7454</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">The total spread — two different questions, added together</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Inventory-risk term: γσ²(T−t)</span>
+          <ul>
+            <li>Pure compensation for the risk of holding ANY position</li>
+            <li>Grows with risk aversion, variance, time remaining</li>
+            <li>Has nothing to do with getting filled at all</li>
+          </ul>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag" style="background:var(--purple-bg);color:var(--purple)">Profit term: (2/γ)ln(1+γ/k)</span>
+          <ul>
+            <li>Balances "wider = more per fill" against "wider = fewer fills"</li>
+            <li>Driven by k — how fast fill-arrival decays with distance</li>
+            <li>As γ→0, converges to a pure 2/k, no risk aversion involved</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">A clean structural feature</div>
+        <p>The total spread's width has NO q in it anywhere — it never changes with inventory. Inventory skew is entirely a re-centering effect (moving where the fixed-width window sits), never a widening-one-side effect.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Inventory skew, end to end</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Long inventory skews BOTH quotes down</div>
+        <div class="sl-row">
+          <div class="sl-box amber">Ask, shifted down</div>
+          <div class="sl-arrow">→</div>
+          <div class="sl-box green">Closer to mid — easier to sell into</div>
+        </div>
+        <div class="sl-row">
+          <div class="sl-box amber">Bid, shifted down</div>
+          <div class="sl-arrow">→</div>
+          <div class="sl-box red">Farther from mid — harder to buy more</div>
+        </div>
+        <div class="sl-verdict">Symmetric quoting does neither of these — both quotes stay a fixed distance from s no matter what q is. This mechanism is the model's entire fix for runaway inventory.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">The horizon T: quotes "want" to end flat</h2>
+      <p class="sl-sub">As (T−t)→0, r converges back to the mid — but the spread does NOT converge to zero.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>r → s at the horizon</h4><p>The inventory shift qγσ²(T−t) shrinks to zero as (T−t)→0, regardless of q — the reservation price collapses back onto the plain mid.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">💵</div><div><h4>Spread does NOT go to zero</h4><p>Only the inventory-risk term vanishes. The profit term (2/γ)ln(1+γ/k) has no (T−t) in it — the spread converges to that, not to zero.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🏁</div><div><h4>A deliberate finite-horizon choice</h4><p>The original 2008 model assumes a desk that wants to end the session flat — not a claim that every real desk should "close the book."</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">♾️</div><div><h4>Later variants relax this, honestly</h4><p>Infinite-horizon and rolling-horizon extensions exist in later literature — this deck won't invent details of a specific one it isn't certain of.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Compute r, the spread, and both quotes — any inputs</h2>
+      <p class="sl-sub">Change any input, live. Starts on the worked-example numbers.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Mid s</label><input type="number" class="sl-input" id="mc-s" value="100" step="0.5"></div>
+          <div class="sl-calc-field"><label>Inventory q</label><input type="number" class="sl-input" id="mc-q" value="5" step="1"></div>
+          <div class="sl-calc-field"><label>Risk aversion γ</label><input type="number" class="sl-input" id="mc-gamma" value="0.1" step="0.01" min="0.0001"></div>
+        </div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Volatility σ</label><input type="number" class="sl-input" id="mc-sigma" value="2" step="0.1" min="0"></div>
+          <div class="sl-calc-field"><label>Time left (T−t)</label><input type="number" class="sl-input" id="mc-tt" value="0.5" step="0.05" min="0"></div>
+          <div class="sl-calc-field"><label>Depth k</label><input type="number" class="sl-input" id="mc-k" value="1.5" step="0.1" min="0.0001"></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div id="mc-shift">Inventory shift = 1.0000 → r = 99.0000</div>
+        </div>
+        <div class="sl-calc-row" style="margin-top:10px">
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Inventory-risk term</div><div class="sl-calc-result-val" id="mc-invterm">0.2000</div></div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Profit term</div><div class="sl-calc-result-val" id="mc-profitterm">1.2908</div></div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Bid</div><div class="sl-calc-result-val" id="mc-bid">98.2546</div></div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Ask</div><div class="sl-calc-result-val" id="mc-ask">99.7454</div></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="mc-reset">Reset to worked-example numbers</button>
+        <div class="sl-note" id="mc-note">Blank, non-numeric, or non-positive γ/σ/k shows "—" instead of breaking the formula.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">One risk, priced honestly — not the only risk</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🎭</div><div><h4>No adverse selection here</h4><p>Every arriving order is treated as equally likely to be informed — this model has no μ-style parameter the way Glosten-Milgrom and PIN do.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔗</div><div><h4>Order Flow Imbalance feeds it, doesn't replace it</h4><p>OFI/the microprice, from the sibling deck, could refine the reference mid s this model just takes as a given exogenous input.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📋</div><div><h4>Limit Order Books is the venue this quotes into</h4><p>Reservation price and spread say WHERE to quote; queue position and priority (sibling deck) govern what happens once that order is resting.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧩</div><div><h4>A real desk needs both risks priced</h4><p>Inventory risk (this deck) and adverse selection (Glosten-Milgrom/PIN) are genuinely different mechanisms — a real spread compensates for both at once.</p></div></div>
+      </div>
+      <div class="sl-quote">This model is excellent at "how much do I already have, and how should that change my price?" It has nothing to say about "is the person trading with me right now secretly better informed than I am?" — that's a different lesson's entire job.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Where this quietly stops matching reality</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">⏱️</div><div><h4>Free, instant re-quoting assumed</h4><p>Real venues have latency, and cancel-replace loses queue position entirely — none of that friction is in this model.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎲</div><div><h4>Constant σ and one fill-shape, assumed known</h4><p>Real volatility clusters and regimes shift; real fill-arrival may not truly decay exponentially in distance the way λ(δ)=Ae^(−kδ) assumes.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎭</div><div><h4>No adverse-selection pricing at all</h4><p>Every fill is treated as equally (un)informed — a genuinely toxic-flow environment isn't priced in by this model on its own.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🏁</div><div><h4>"Flatten by T" isn't always desirable</h4><p>A deliberate simplification for a finite-horizon desk — not automatically right for one that runs continuously with no closing time.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Is the reservation price r the same thing as the mid-price s?</h4>
+        <button class="sl-quiz-opt" data-correct="true">No — r = s − qγσ²(T−t); they're equal only when q=0 or (T−t)=0</button>
+        <button class="sl-quiz-opt">Yes, always — r is just another name for the mid</button>
+        <button class="sl-quiz-opt">Only if σ is zero</button>
+        <div class="sl-quiz-explain">r is the mid shifted toward flat by an amount set by inventory, risk aversion, variance, and time remaining.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>A market maker is long (q&gt;0). Which way does r shift, and why does that push inventory back toward flat?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Below the mid — this makes the ask relatively cheap (easy to sell into) and the bid relatively pricey (harder to buy more)</button>
+        <button class="sl-quiz-opt">Above the mid — long inventory means prices are about to rise</button>
+        <button class="sl-quiz-opt">It doesn't shift — only short inventory shifts r</button>
+        <div class="sl-quiz-explain">r is an indifference price, not a forecast. Being long makes a market maker less eager to add more, hence a lower reservation price for doing so.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>What are the two components of the total optimal spread?</h4>
+        <button class="sl-quiz-opt" data-correct="true">An inventory-risk term (γσ²(T−t)) and a market-making profit term ((2/γ)ln(1+γ/k))</button>
+        <button class="sl-quiz-opt">Just one term — inventory risk alone sets the whole spread</button>
+        <button class="sl-quiz-opt">A adverse-selection term and a latency term</button>
+        <div class="sl-quiz-explain">The first is pure compensation for holding any position; the second balances earning more per fill against getting filled less often as quotes widen.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>As (T−t)→0, what happens to r and to the spread?</h4>
+        <button class="sl-quiz-opt" data-correct="true">r converges to s, but the spread converges to the profit term, NOT to zero</button>
+        <button class="sl-quiz-opt">Both r and the spread converge to zero</button>
+        <button class="sl-quiz-opt">Neither one changes as (T−t)→0</button>
+        <div class="sl-quiz-explain">Only the inventory-risk term (which carries (T−t)) vanishes — the profit term has no (T−t) in it and survives unchanged.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Does this model price in adverse selection (informed-trader risk)?</h4>
+        <button class="sl-quiz-opt" data-correct="true">No — every arriving order is treated as equally likely informed or not; Glosten-Milgrom/PIN cover that risk instead</button>
+        <button class="sl-quiz-opt">Yes, that's exactly what γ measures</button>
+        <button class="sl-quiz-opt">Yes, that's exactly what k measures</button>
+        <div class="sl-quiz-explain">This is an inventory-only model. A real desk's spread has to compensate for both inventory risk and adverse selection — this model only addresses the first.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="6">
+        <div class="sl-quiz-num">Question 6</div>
+        <h4>Does the total spread's WIDTH change as inventory q changes?</h4>
+        <button class="sl-quiz-opt" data-correct="true">No — the width (δ_b+δ_a) has no q in it at all; only where it's centered (on r) changes</button>
+        <button class="sl-quiz-opt">Yes — long inventory always widens the spread</button>
+        <button class="sl-quiz-opt">Yes — short inventory always narrows the spread</button>
+        <div class="sl-quiz-explain">Inventory skew in this model is entirely a re-centering effect. The fixed-width bid-ask window just slides up or down with q.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Symmetric quoting has no mechanism to stop inventory from running away. The reservation price r(s,q,t) = s − qγσ²(T−t) is the fix: quotes center on r, not on the mid s.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Long inventory shifts r below the mid (skewing both quotes toward selling); short inventory shifts it above (skewing toward buying) — the entire inventory-skew mechanism.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>The total spread splits into an inventory-risk term and a market-making profit term — and its WIDTH never depends on q, only where it's centered does.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>As (T−t)→0, r converges to s but the spread converges to the profit term, not zero — a deliberate finite-horizon "flatten by close" modeling choice, not a universal prescription.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>This model prices inventory risk only. It has no adverse-selection mechanism — that's Glosten-Milgrom and PIN's job — and it assumes free continuous re-quoting and a known, fixed fill-intensity shape that must be calibrated in practice.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Read a market maker's current inventory, risk aversion, and a volatility/depth estimate, and compute exactly where their bid and ask should sit relative to the mid — and explain precisely which real risk (adverse selection) this stylized model leaves for other lessons to cover.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>CoVaR: Conditional Value-at-Risk for Systemic Risk</h3>
+        <p>Market Making wraps here — next up is Risk Attribution &amp; Tail Statistics, opening with CoVaR: how much of one institution's tail risk is attributable to another's distress, not just its own.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="institutional-covar-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="institutional-avellaneda-stoikov.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  var GAMMA = 0.1, SIGMA = 2, TT = 0.5, K = 1.5, S = 100;
+
+  function computeAt(s, q, gamma, sigma, tt, k){
+    var invterm = gamma * sigma * sigma * tt;
+    var shift = q * invterm;
+    var r = s - shift;
+    var profitterm = (2 / gamma) * Math.log(1 + gamma / k);
+    var spread = invterm + profitterm;
+    var half = spread / 2;
+    return { r: r, bid: r - half, ask: r + half, invterm: invterm, profitterm: profitterm, spread: spread, shift: shift };
+  }
+
+  function x_of_q(q){ return 80 + (q + 10) * 25; }
+  function y_of_p(p){ return 40 + (104 - p) * 26.25; }
+
+  // Slide 4 — inventory slider redraws the three dots along the fixed lines.
+  (function(){
+    var slider = document.getElementById('as-qslider');
+    if (!slider) return;
+    var qval = document.getElementById('as-qval');
+    var readout = document.getElementById('as-readout');
+    var dotAsk = document.getElementById('as-dot-ask');
+    var dotR = document.getElementById('as-dot-r');
+    var dotBid = document.getElementById('as-dot-bid');
+
+    function update(){
+      var q = parseFloat(slider.value);
+      var c = computeAt(S, q, GAMMA, SIGMA, TT, K);
+      var x = x_of_q(q);
+      dotAsk.setAttribute('cx', x); dotAsk.setAttribute('cy', y_of_p(c.ask));
+      dotR.setAttribute('cx', x); dotR.setAttribute('cy', y_of_p(c.r));
+      dotBid.setAttribute('cx', x); dotBid.setAttribute('cy', y_of_p(c.bid));
+      qval.textContent = 'q = ' + (q > 0 ? '+' + q : q) + (q > 0 ? ' (long)' : q < 0 ? ' (short)' : ' (flat)');
+      readout.textContent = 'r = ' + c.r.toFixed(4) + ' · bid = ' + c.bid.toFixed(4) + ' · ask = ' + c.ask.toFixed(4);
+    }
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Slide 8 — full six-input calculator.
+  (function(){
+    var sEl = document.getElementById('mc-s');
+    if (!sEl) return;
+    var ids = ['s','q','gamma','sigma','tt','k'];
+    var inputs = {};
+    ids.forEach(function(f){ inputs[f] = document.getElementById('mc-' + f); });
+    var shiftOut = document.getElementById('mc-shift');
+    var invtermOut = document.getElementById('mc-invterm');
+    var profittermOut = document.getElementById('mc-profitterm');
+    var bidOut = document.getElementById('mc-bid');
+    var askOut = document.getElementById('mc-ask');
+    var note = document.getElementById('mc-note');
+    var resetBtn = document.getElementById('mc-reset');
+    var DEFAULTS = { s: 100, q: 5, gamma: 0.1, sigma: 2, tt: 0.5, k: 1.5 };
+    var DASH = '—';
+    var DEFAULT_NOTE = 'Blank, non-numeric, or non-positive γ/σ/k shows "—" instead of breaking the formula.';
+
+    function recompute(){
+      var v = {};
+      ids.forEach(function(f){ v[f] = parseFloat(inputs[f].value); });
+
+      var msgs = [];
+      if (!isFinite(v.s)) msgs.push('s must be a number');
+      if (!isFinite(v.q)) msgs.push('q must be a number');
+      if (!isFinite(v.gamma) || v.gamma <= 0) msgs.push('γ must be positive');
+      if (!isFinite(v.sigma) || v.sigma < 0) msgs.push('σ must be non-negative');
+      if (!isFinite(v.tt) || v.tt < 0) msgs.push('(T−t) must be non-negative');
+      if (!isFinite(v.k) || v.k <= 0) msgs.push('k must be positive');
+
+      if (msgs.length){
+        shiftOut.textContent = 'Enter valid inputs: ' + msgs.join('; ') + '.';
+        invtermOut.textContent = profittermOut.textContent = bidOut.textContent = askOut.textContent = DASH;
+        note.textContent = DEFAULT_NOTE;
+        return;
+      }
+
+      var c = computeAt(v.s, v.q, v.gamma, v.sigma, v.tt, v.k);
+      shiftOut.textContent = 'Inventory shift = ' + c.shift.toFixed(4) + ' → r = ' + c.r.toFixed(4);
+      invtermOut.textContent = c.invterm.toFixed(4);
+      profittermOut.textContent = c.profitterm.toFixed(4);
+      bidOut.textContent = c.bid.toFixed(4);
+      askOut.textContent = c.ask.toFixed(4);
+      note.textContent = DEFAULT_NOTE;
+    }
+
+    ids.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      ids.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

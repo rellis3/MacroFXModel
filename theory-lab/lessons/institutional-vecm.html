@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vector Error Correction Models — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Price Discovery &amp; Lead-Lag / Vector Error Correction Models</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Price Discovery &amp; Lead-Lag 1 of 3</div>
+  <h1 class="tl-title">Vector Error Correction Models (VECM)</h1>
+  <p class="tl-dek">Cointegration proves a spread has a home to come back to. It never says how fast either side actually walks back, or which side does the walking. A Vector Error Correction Model is the regression that answers exactly that — and the moment you compare the two answers side by side, you've taken the first real step toward asking which price is leading and which one is just catching up.</p>
+  <div class="tl-meta">
+    <span class="tl-status course">VERIFIED IN THIS REPO (partially) — <code>js/arma.js</code>'s <code>fitVECM</code> is a genuine single-equation error-correction regression (&Delta;spread<sub>t</sub> = &mu; + &phi;&middot;&Delta;spread<sub>t-1</sub> + &gamma;&middot;ECT<sub>t-1</sub> + &theta;&middot;&epsilon;<sub>t-1</sub> + &epsilon;<sub>t</sub>), wired live into the dashboard through <code>computeARMAForecast</code> (imported by <code>js/render.js</code>, <code>js/main.js</code>, <code>js/signal.js</code>, <code>js/ai.js</code> and <code>DecisionEngine/decisionInputs.js</code>) — but it's one equation for one series against a price-implied fair value, not the two-equation &Delta;Y/&Delta;X system this lesson builds. The cointegration-gated pairs trading elsewhere in this repo (<code>js/hedgeSignalV2Engine.js</code>, <code>portfolioBacktest/portfolio_backtest.py</code>, <code>js/goldMinerArbEngine.js</code>) is a different, simpler application: a static z-scored spread, not a dynamic regression at all.</span>
+    <span>~17 min read</span>
+    <span>Prereqs: <a href="cointegration.html">Cointegration &amp; Statistical Arbitrage</a>, <a href="arima-var.html">ARIMA &amp; Vector Autoregression (VAR)</a></span>
+  </div>
+
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="institutional-vecm-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>The <a href="cointegration.html">Cointegration &amp; Statistical Arbitrage</a> lesson proves a stationary spread \(Z_t = Y_t - \beta X_t - c\) exists between two non-stationary series and is tradeable as mean reversion. It stops there. A Vector Error Correction Model is the actual regression for how \(\Delta Y_t\) and \(\Delta X_t\) — the period-to-period changes — depend on how far the system currently sits from that equilibrium.</li>
+      <li>The model: \(\Delta Y_t = \alpha_Y Z_{t-1} + (\text{short-run lags}) + \epsilon_{Y,t}\) and \(\Delta X_t = \alpha_X Z_{t-1} + (\text{short-run lags}) + \epsilon_{X,t}\). \(Z_{t-1}\) — last period's cointegrating residual — is the "error-correction term," and this lesson's derivation and tools focus on \(\alpha_Y, \alpha_X\), the genuinely new content versus plain cointegration.</li>
+      <li>The sizes of \(\alpha_Y\) and \(\alpha_X\) are the heart of the lesson: a large, negative \(\alpha_Y\) means \(Y\) does most of the correcting when the spread is too wide; a small \(\alpha_X\) near zero means \(X\) barely responds — closer to an "anchor" the other series adjusts toward. Comparing the two is exactly the question the sibling <a href="institutional-hasbrouck-information-share.html">Hasbrouck Information Share</a> lesson formalizes properly for many venues at once.</li>
+      <li>The Granger Representation Theorem (Engle &amp; Granger, 1987) is the formal bridge: any genuinely cointegrated pair <em>must</em> admit an error-correction representation of this form, and conversely a valid error-correction model implies cointegration — cited here as a given result, not re-derived.</li>
+      <li>A small worked example continues the Cointegration lesson's own AUD/USD-vs-NZD/USD numbers (\(\hat\beta \approx 1.10\)) forward one step: given \(Z_{t-1}=0.0050\) and fitted \(\alpha_Y=-0.35\), \(\alpha_X=0.15\), the model forecasts \(\Delta Y_t = -0.00175\), \(\Delta X_t = +0.00075\) — AUD/USD is forecast to do roughly 2.3× more of the correcting than NZD/USD.</li>
+      <li>This repo's dashboard already runs a genuine, single-equation version of exactly this regression (<code>js/arma.js</code>'s <code>fitVECM</code>) — the two-equation system built out fully here is new, but the underlying mechanism is not hypothetical; it's live code.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    The <a href="cointegration.html">Cointegration &amp; Statistical Arbitrage</a>
+    lesson answers one precise question: does a stationary linear combination
+    of two non-stationary price series exist at all? Its Engle-Granger
+    procedure regresses \(Y_t = \alpha + \beta X_t + \epsilon_t\) in levels
+    (Step 1) and then tests whether the residual \(\hat\epsilon_t\) is
+    stationary (Step 2). If it is, you have proof that a "leash" exists — a
+    stable equilibrium the spread between \(Y\) and \(X\) keeps coming back
+    to. That lesson even names the next step explicitly, in one sentence, in
+    its own "How practitioners actually use this" section: <em>"Once
+    cointegration is established, model each series' change partly on how far
+    last period's spread was from equilibrium — the same \(\hat\epsilon_{t-1}\)
+    term from Step 2 — formalizing 'when the spread is stretched, expect a
+    correction' as an actual forecasting equation rather than just a trading
+    rule layered on top."</em> It also name-drops "Vector Error Correction
+    Model" once more, in passing, while describing Johansen's test as
+    reorganizing a joint VAR into "a form called a Vector Error Correction
+    Model (VECM) that separates short-run dynamics from a matrix \(\Pi\)
+    governing the long-run levels relationship." Neither mention is wrong —
+    but neither one writes down the actual two-equation regression, defines
+    what the adjustment coefficients mean economically, or shows the
+    arithmetic. That is the entire content of this lesson.
+  </p>
+  <p>
+    The gap being closed is specific. Cointegration is a <strong>static</strong>
+    statement: this particular linear combination of levels is stationary.
+    A VECM is a <strong>dynamic</strong> statement: here is a regression model
+    for how each series' own next move depends on that combination. Knowing a
+    leash exists tells a trader almost nothing about which end of the leash
+    actually moves when it goes taut — a spread that's too wide could close
+    because \(Y\) falls back toward \(X\), because \(X\) rises to meet \(Y\),
+    or some blend of both. Trading a z-scored spread as in the Cointegration
+    lesson's own toolkit is agnostic to that question entirely; a VECM answers
+    it directly, with a number for each series, and that number turns out to
+    matter for far more than execution — it is the first formal handle on
+    which price is <em>leading</em> and which one is <em>following</em>, the
+    theme this entire new lesson category is built around.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>The dog, the leash, and who actually does the pulling</h3>
+    <p>
+      The Cointegration lesson's own analogy: a drunk wandering unpredictably,
+      a dog on a leash wandering unpredictably beside her, and a leash length
+      that stretches and slackens but never grows without bound. That leash
+      length is the stationary spread \(Z_t\). What that analogy never asked
+      is: when the leash goes taut, who moves? Does the drunk get yanked back
+      toward the dog? Does the dog get tugged forward to catch up with the
+      drunk? Both, evenly? A real leash gives a definite, physical answer
+      depending on who's stronger and who's paying attention — and so does a
+      VECM, with a number attached to each side instead of a guess.
+    </p>
+    <p>
+      \(\alpha_Y\) is "how hard \(Y\) gets pulled back per unit of slack";
+      \(\alpha_X\) is the same number for \(X\). If \(\alpha_Y\) is large in
+      magnitude and \(\alpha_X\) is close to zero, the picture is a heavy,
+      immovable dog and a drunk who gets yanked back hard every time she
+      strays — the dog is functionally the anchor, and nearly all the
+      correcting shows up in the drunk's own motion. If both are moderate and
+      similar in size, the leash pulls both of them toward each other roughly
+      evenly. Nothing about the mere existence of the leash (cointegration)
+      tells you which of these worlds you're in. The two numbers \(\alpha_Y\)
+      and \(\alpha_X\) are the entire answer, and estimating them is what
+      turns "these two things have an equilibrium" into "here is a genuine
+      forecasting model of their next move."
+    </p>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Cointegration is proving a dog and its owner are on a leash of a certain normal length. A Vector Error Correction Model is the next, much more useful question: when the leash gets stretched too far, who moves first and who moves more — does the owner get yanked back, does the dog trot forward to catch up, or a bit of both? Knowing there's a leash at all doesn't tell you that. Watching, carefully, who actually moves when the leash goes tight does.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+  <p>
+    This section states the two-equation VECM precisely, walks through what
+    the error-correction term actually is, spends most of its time on the
+    economic meaning of \(\alpha_Y\) and \(\alpha_X\) — the genuinely new
+    content here — and closes with the Granger Representation Theorem that
+    formally justifies the whole construction. The short-run lag terms inside
+    each equation are treated at a conceptual level only: they are ordinary
+    autoregressive terms, already covered in this curriculum's
+    <a href="arima-var.html">ARIMA &amp; Vector Autoregression (VAR)</a>
+    lesson, and nothing about them is specific to error correction.
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(Y_t, X_t\)</td><td>The two non-stationary price/level series — the same notation the Cointegration lesson uses.</td></tr>
+    <tr><td>\(\beta\)</td><td>The cointegrating coefficient (hedge ratio) from the Cointegration lesson's Engle-Granger Step 1 — taken here as already estimated, not re-derived.</td></tr>
+    <tr><td>\(c\)</td><td>The cointegrating intercept — what the Cointegration lesson called \(\alpha\). Renamed \(c\) here purely to free up \(\alpha\) for the two new adjustment coefficients below; same quantity, same regression.</td></tr>
+    <tr><td>\(Z_t\)</td><td>This period's cointegrating residual, \(Z_t = Y_t - \beta X_t - c\) — exactly the Cointegration lesson's spread \(\hat\epsilon_t\), just renamed to make its new role as a regressor explicit.</td></tr>
+    <tr><td>\(Z_{t-1}\)</td><td>The <strong>error-correction term (ECT)</strong> — literally last period's spread, used as a predictor of this period's changes.</td></tr>
+    <tr><td>\(\Delta Y_t, \Delta X_t\)</td><td>This period's change in each series: \(\Delta Y_t = Y_t - Y_{t-1}\), and likewise for \(X\).</td></tr>
+    <tr><td>\(\alpha_Y, \alpha_X\)</td><td>The <strong>adjustment (loading) coefficients</strong> — how much of last period's disequilibrium each series corrects per period. The central new quantities in this lesson.</td></tr>
+    <tr><td>\(\epsilon_{Y,t}, \epsilon_{X,t}\)</td><td>The two equations' own residual shocks — everything left over after the error-correction term and short-run lags are accounted for.</td></tr>
+  </table></div>
+
+  <p><strong>1. The error-correction term.</strong> Take the Cointegration
+  lesson's spread and give it a time index that makes its role as a
+  <em>lagged predictor</em> explicit:</p>
+  <div class="tl-math">\[ Z_{t-1} = Y_{t-1} - \beta X_{t-1} - c \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Z_{t-1}</code><span>last period's cointegrating residual — the same spread from Engle-Granger Step 2</span></div>
+    <div class="tl-eq-chip c2"><code>β, c</code><span>the already-estimated hedge ratio and intercept — inputs here, not re-fit</span></div>
+    <div class="tl-eq-chip c3"><code>Y_{t-1}, X_{t-1}</code><span>last period's observed levels of the two series</span></div>
+  </div>
+  <p>
+    \(Z_{t-1}\) is nothing new arithmetically — it's precisely the residual the
+    Cointegration lesson's ADF test already proved is stationary and
+    mean-reverting. What's new is using it as an explanatory variable one
+    period ahead of time, to predict what happens <em>next</em>.
+  </p>
+
+  <p><strong>2. The full two-equation model.</strong> A VECM writes each
+  series' change as a function of that same error-correction term, plus
+  ordinary short-run lagged dynamics of both series' own changes:</p>
+  <div class="tl-math">\[ \Delta Y_t = \alpha_Y Z_{t-1} + \sum_{i=1}^{p}\phi_{Y,i}\,\Delta Y_{t-i} + \sum_{i=1}^{p}\psi_{Y,i}\,\Delta X_{t-i} + \epsilon_{Y,t} \]</div>
+  <div class="tl-math">\[ \Delta X_t = \alpha_X Z_{t-1} + \sum_{i=1}^{p}\phi_{X,i}\,\Delta Y_{t-i} + \sum_{i=1}^{p}\psi_{X,i}\,\Delta X_{t-i} + \epsilon_{X,t} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>α_Y Z_{t-1}, α_X Z_{t-1}</code><span>the error-correction terms — the new mechanism this lesson is about</span></div>
+    <div class="tl-eq-chip c4"><code>Σφ·ΔY, Σψ·ΔX</code><span>short-run lag terms — ordinary AR/VAR dynamics, covered conceptually only (see ARIMA &amp; VAR)</span></div>
+    <div class="tl-eq-chip c2"><code>ε_{Y,t}, ε_{X,t}</code><span>whatever's left over — the two equations' own shocks</span></div>
+  </div>
+  <div class="tl-solid blue">
+    <strong>A deliberate depth choice, stated plainly:</strong> this lesson's
+    derivation, worked example, and interactive tools all focus on the
+    error-correction terms \(\alpha_Y Z_{t-1}\) and \(\alpha_X Z_{t-1}\) — the
+    part that is genuinely new relative to plain cointegration. The
+    \(\sum\phi_i \Delta Y_{t-i}\) and \(\sum\psi_i \Delta X_{t-i}\) sums are
+    ordinary lagged-autoregressive terms of exactly the kind the
+    <a href="arima-var.html">ARIMA &amp; VAR</a> lesson already builds up from
+    scratch. Nothing about fitting or interpreting them is specific to error
+    correction, so this lesson treats them at a conceptual level — "the
+    model also lets recent momentum in either series feed into the forecast"
+    — rather than re-deriving VAR lag-order selection here.
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Each series' next move is explained by two kinds of memory. One kind is "was the whole system out of balance last period?" — that's the error-correction term, brand new to this lesson. The other kind is plain old momentum — "was I myself moving up or down recently, and was the other series?" — and that part is exactly the ordinary trend-following math from the ARIMA/VAR lesson, just reused here rather than reinvented.</p>
+  </div>
+
+  <p><strong>3. The economic content of \(\alpha_Y\) and \(\alpha_X\) — the
+  heart of this lesson.</strong> Suppose \(Z_{t-1} > 0\): last period, \(Y\)
+  sat above the level \(X\) implied for it, given their long-run relationship
+  (\(Y\) was "too rich," or \(X\) "too cheap," relative to each other).
+  A mean-reverting system should correct that gap, and the two coefficients
+  say exactly how:</p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge red">⬇️</div>
+      <h4>\(\alpha_Y\) negative and significant</h4>
+      <p>
+        \(Y\) tends to <strong>fall</strong> following a period where
+        \(Z_{t-1}>0\) — \(Y\) was too high, and \(Y\) itself is the one doing
+        the correcting. The more negative \(\alpha_Y\), the faster and more
+        completely \(Y\) closes the gap on its own.
+      </p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">⬆️</div>
+      <h4>\(\alpha_X\) positive and significant</h4>
+      <p>
+        \(X\) tends to <strong>rise</strong> following the same \(Z_{t-1}>0\)
+        — \(X\) was too cheap relative to \(Y\), and \(X\) is doing some or
+        all of the adjusting instead. The system can close the same gap
+        through either channel, or both at once.
+      </p>
+    </div>
+  </div>
+  <p>
+    The genuinely useful move is <strong>comparing the two magnitudes, not
+    reading either one in isolation.</strong> If \(|\alpha_Y|\) is large and
+    \(|\alpha_X|\) is small (or statistically indistinguishable from zero),
+    almost all of the correction happens through \(Y\) — \(X\) behaves like
+    the more stable, "anchor" side of the relationship, and \(Y\) is the
+    "follower" that does most of the moving to keep the pair in line. If the
+    sizes are closer together, both sides share the adjustment. A textbook
+    special case is <strong>weak exogeneity</strong>: if \(\alpha_X = 0\)
+    exactly, \(X\) never responds to the disequilibrium at all — it evolves
+    as if the relationship with \(Y\) doesn't exist, while \(Y\) absorbs the
+    entire correction. That is the cleanest possible "pure anchor, pure
+    follower" case a VECM can describe.
+  </p>
+  <div class="tl-solid amber">
+    <strong>This is exactly the question the sibling
+    <a href="institutional-hasbrouck-information-share.html">Hasbrouck
+    Information Share</a> lesson formalizes properly.</strong> Comparing
+    \(\alpha_Y\) and \(\alpha_X\) across a pair's own error-correction
+    regression is a real, useful, but informal way of asking "which price is
+    doing the adjusting, and which one looks more like the reference price
+    other venues converge to." Once the question moves from one pair to many
+    simultaneous quote venues for the same underlying asset — which price
+    feed is actually leading price discovery, moment to moment — a single
+    pair's \(\alpha\) comparison stops being precise enough, and Hasbrouck's
+    Information Share is the rigorous multi-venue answer this lesson's
+    \(\alpha_Y\)-vs-\(\alpha_X\) comparison is a direct, two-variable preview
+    of.
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine two kids holding opposite ends of a stretched rubber band. If you let go, does the left kid get yanked hard to the right, while the right kid barely budges? Or does the right kid get pulled left instead, with the left kid staying put? Or do they meet in the middle? Watching which kid actually moves — and by how much — the moment the band snaps back is precisely what comparing α_Y and α_X tells you about two prices tied together by a cointegrating relationship.</p>
+  </div>
+
+  <p><strong>4. The Granger Representation Theorem — the formal bridge.</strong>
+  Engle and Granger's 1987 paper — the same paper that defines cointegration
+  and the Engle-Granger two-step test in the Cointegration lesson — proves a
+  second, equally important result carrying their names: <strong>any set of
+  cointegrated \(I(1)\) series must admit a valid error-correction
+  representation of exactly the form above, and conversely, any valid
+  error-correction representation of two or more series implies those series
+  are cointegrated.</strong> Cointegration and error correction are not two
+  separate claims that happen to both be true about the same pair — they are
+  two equivalent descriptions of one underlying fact, proven interchangeable.
+  This lesson states that theorem as a given result and builds directly on
+  top of it, exactly as this curriculum's convention elsewhere is to cite a
+  foundational theorem's source rather than re-derive its proof from scratch.
+  </p>
+  <p>
+    One useful corollary follows immediately and is worth internalizing: a
+    genuine error-correction representation cannot have <em>both</em>
+    \(\alpha_Y = 0\) <em>and</em> \(\alpha_X = 0\) at once. If neither series
+    ever responded to the disequilibrium, nothing would be pulling \(Z_t\)
+    back toward zero, and the spread would have no mechanism enforcing
+    stationarity at all — directly contradicting the premise that the pair is
+    cointegrated in the first place. At least one loading coefficient has to
+    be doing real work; the open, empirical question a fitted VECM answers is
+    <em>which</em> one, and how much.
+  </p>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Continuing the Cointegration lesson's own AUD/USD-vs-NZD/USD numbers</h3>
+    <p>
+      The Cointegration lesson's own "try it yourself" scratchpad defaults to
+      AUD/USD spot \(Y_t=0.6650\), NZD/USD spot \(X_t=0.6000\), and an
+      already-estimated hedge ratio \(\hat\beta \approx 1.10\) (with the
+      intercept netted out, \(c=0\), exactly as that lesson's own note
+      explains: "OLS residuals average to zero by construction"). This
+      example picks up those same numbers and asks the next question:
+      <em>given a short toy history ending on that exact spread, what does a
+      fitted VECM forecast happens next?</em>
+    </p>
+    <p>A toy five-period history of both series, and the resulting spread \(Z_t = Y_t - 1.10\,X_t\) computed at every step:</p>
+    <div class="tl-symbols"><table>
+      <tr><td>t</td><td>1&emsp;&emsp;&emsp;&emsp;2&emsp;&emsp;&emsp;&emsp;3&emsp;&emsp;&emsp;&emsp;4&emsp;&emsp;&emsp;&emsp;5</td></tr>
+      <tr><td>\(Y_t\) (AUD/USD)</td><td>0.6600&emsp;0.6660&emsp;0.6700&emsp;0.6690&emsp;0.6650</td></tr>
+      <tr><td>\(X_t\) (NZD/USD)</td><td>0.6000&emsp;0.6010&emsp;0.6015&emsp;0.6030&emsp;0.6000</td></tr>
+      <tr><td>\(Z_t = Y_t - 1.10 X_t\)</td><td>0.0000&emsp;0.0049&emsp;0.00835&emsp;0.0057&emsp;<strong>0.0050</strong></td></tr>
+    </table></div>
+    <p>
+      The spread opens at exactly zero, widens to a peak of 0.00835 by
+      \(t=3\) (AUD/USD ran up faster than NZD/USD's implied co-movement), then
+      starts pulling back in — 0.0057 at \(t=4\), 0.0050 at \(t=5\) — visibly
+      correcting rather than drifting off to a new permanent level, exactly
+      the stationary behavior the Cointegration lesson's ADF test is designed
+      to detect. Take \(t=5\)'s spread as this period's error-correction term
+      for forecasting \(t=6\): \(Z_{t-1} = 0.0050\).
+    </p>
+    <p>
+      Now suppose the error-correction regression has already been fit via
+      OLS (the fitting procedure itself isn't derived here — only its
+      result, exactly as the Cointegration lesson treats Engle-Granger's
+      Step&nbsp;1 coefficients as given inputs to Step&nbsp;2), yielding
+      \(\alpha_Y = -0.35\) and \(\alpha_X = 0.15\). Ignoring the short-run lag
+      terms per this lesson's own depth-budget choice above, the one-period
+      forecast is:
+    </p>
+    <div class="tl-math">\[ \Delta Y_t = \alpha_Y Z_{t-1} = (-0.35)(0.0050) = -0.00175 \]</div>
+    <div class="tl-math">\[ \Delta X_t = \alpha_X Z_{t-1} = (0.15)(0.0050) = +0.00075 \]</div>
+    <p>
+      AUD/USD is forecast to fall by roughly 17.5 pips and NZD/USD to rise by
+      roughly 7.5 pips — both moving in the direction that closes the gap
+      (\(Y\) down, \(X\) up, shrinking \(Z\)), but \(|\alpha_Y| = 0.35\) is
+      \(7/3 \approx 2.33\times\) the size of \(|\alpha_X| = 0.15\).
+      <strong>AUD/USD is doing roughly 2.3× more of the correcting than
+      NZD/USD</strong> in this fitted system — NZD/USD is closer to the
+      relationship's anchor, AUD/USD closer to its follower. Nothing here
+      claims these specific \(\alpha\) values, or this five-point toy history,
+      are a real historical estimate for this pair; the arithmetic is exact,
+      the inputs are illustrative.
+    </p>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>The error-correction forecast, live</h3>
+    <p>
+      Starts on the worked example's exact numbers. Change \(\alpha_Y\),
+      \(\alpha_X\), or \(Z_{t-1}\) and both forecasts recompute instantly —
+      this scratchpad deliberately isolates the error-correction terms alone,
+      exactly as the lesson's own depth-budget choice: the short-run lag
+      terms are held at zero throughout.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>\(\alpha_Y\) — Y's adjustment speed</span></div>
+        <input type="number" id="vecm-scratch-aY" class="tl-scratch-input" value="-0.35" step="0.05">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>\(\alpha_X\) — X's adjustment speed</span></div>
+        <input type="number" id="vecm-scratch-aX" class="tl-scratch-input" value="0.15" step="0.05">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Error-correction term \(Z_{t-1}\)</span></div>
+        <input type="number" id="vecm-scratch-Z" class="tl-scratch-input" value="0.0050" step="0.0010">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      &Delta;Y<sub>t</sub> = &alpha;<sub>Y</sub>&middot;Z<sub>t-1</sub> = <b id="vecm-scratch-dY">-0.00175</b>&emsp;
+      &Delta;X<sub>t</sub> = &alpha;<sub>X</sub>&middot;Z<sub>t-1</sub> = <b id="vecm-scratch-dX">0.00075</b>
+    </div>
+    <div class="tl-readout">
+      <span id="vecm-scratch-note">Y is adjusting about <b>2.33×</b> as fast as X — Y is closer to the "follower," X closer to the "anchor."</span>
+    </div>
+    <button type="button" id="vecm-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">A pair diverging, then pulled back by error correction</div>
+    <svg viewBox="0 0 640 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Top panel: two price series, Y and X, both drifting, with Y overshooting well above X for a stretch before falling back to reconverge with X, which itself drifts only gently throughout. Bottom panel: the error-correction term Z, equal to Y minus beta times X, rising away from a dashed zero line as Y overshoots and then falling back toward zero as the correction completes.">
+      <text x="10" y="14" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">Levels — Y overshoots, X barely moves</text>
+      <polyline points="40,140 91,120 142,100 193,80 244,65 295,55 346,50 397,58 448,78 499,105 550,125 600,138" style="stroke:var(--blue);stroke-width:2.5" fill="none"/>
+      <polyline points="40,145 91,143 142,141 193,140 244,138 295,137 346,136 397,134 448,133 499,132 550,130 600,129" style="stroke:var(--purple);stroke-width:2.5" fill="none"/>
+      <text x="470" y="45" fill="var(--blue)" font-size="11" font-family="'DM Mono',monospace">Y (follower — large |α_Y|)</text>
+      <text x="470" y="150" fill="var(--purple)" font-size="11" font-family="'DM Mono',monospace">X (anchor — small |α_X|)</text>
+
+      <line x1="40" y1="245" x2="600" y2="245" style="stroke:var(--text3);stroke-dasharray:3,3"/>
+      <text x="10" y="194" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">Error-correction term Z_t = Y_t &minus; &beta;&middot;X_t &minus; c</text>
+      <polyline points="40,245 91,225 142,205 193,192 244,184 295,181 346,184 397,193 448,211 499,231 550,242 600,246" style="stroke:var(--green);stroke-width:2.5" fill="none"/>
+      <text x="295" y="172" text-anchor="middle" fill="var(--green)" font-size="10" font-family="'DM Mono',monospace">|Z| widest — Y furthest from equilibrium</text>
+      <text x="550" y="262" text-anchor="middle" fill="var(--green)" font-size="10" font-family="'DM Mono',monospace">Z back near zero — correction complete</text>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--blue)"></i>Y</span>
+      <span><i style="background:var(--purple)"></i>X</span>
+      <span><i style="background:var(--green)"></i>Error-correction term Z_t</span>
+    </div>
+    <div class="tl-chart-caption">
+      Top panel: Y drifts well above X for a stretch — the gap between them
+      widens — then falls back to reconverge with X, which itself moves only
+      gently throughout. Bottom panel: that same gap, expressed as the
+      error-correction term \(Z_t\), rises away from the dashed zero line as
+      Y overshoots and falls back toward it as the correction plays out —
+      this is the illustrative shape a large \(|\alpha_Y|\) paired with a
+      small \(|\alpha_X|\) produces, not a fitted result on real data.
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>Spot AUD/USD vs. a carry-implied fair value</h3>
+    <p>
+      The <a href="interest-rate-parity.html">Interest Rate Parity</a> lesson
+      builds a second, independent source of a cointegration candidate: a
+      "carry-implied fair value" series constructed from the interest-rate
+      differential rather than from a second traded currency pair. Suppose a
+      desk builds \(X_t\) as a slow-moving fair-value estimate for AUD/USD
+      derived from the AUD-USD rate differential (the same differential that
+      drives CIP's forward pricing and UIP's depreciation prediction), and
+      tests spot \(Y_t\) (actual traded AUD/USD) against it for cointegration.
+      If the pair passes, a fitted VECM on this system very plausibly finds
+      something economically sensible: \(\alpha_Y\) meaningfully negative and
+      \(\alpha_X\) close to zero. The carry-implied fair value, built from
+      slow-moving policy rates, barely reacts to any one period's trading
+      noise in spot — it behaves like a weakly exogenous anchor. Spot AUD/USD,
+      by contrast, is buffeted by order flow, risk sentiment, and short-term
+      positioning, and it's spot that does almost all of the observable
+      correcting back toward the rate-implied level.
+    </p>
+    <p>
+      That asymmetry is not a curiosity — it's exactly the kind of finding a
+      desk would use to decide which series is more useful as a "fair value
+      anchor" for a mean-reversion signal, and it's the same underlying
+      question, in miniature, that the Hasbrouck lesson formalizes across many
+      simultaneous quote venues rather than one price against one slow-moving
+      fundamental estimate.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    <strong>Dynamic pairs-trading signals, not just static z-score bands.</strong>
+    A plain cointegration-based pairs trade, as covered in the Cointegration
+    lesson, enters and exits off a z-scored spread with no explicit forecast
+    of the next move's size. A fitted VECM adds exactly that: given today's
+    \(Z_{t-1}\), it produces a genuine point forecast for \(\Delta Y_t\) and
+    \(\Delta X_t\) separately, which can inform not just <em>whether</em> to
+    trade but <em>which leg</em> is expected to do more of the moving — useful
+    for allocating a trade's expected P&amp;L contribution between the two
+    legs, or for deciding which leg to prioritize executing first if the two
+    can't be filled simultaneously.
+  </p>
+  <p>
+    <strong>This repo's own dashboard already runs a real, single-equation
+    version of this.</strong> <code>js/arma.js</code>'s <code>fitVECM</code>
+    function fits precisely \(\Delta\text{spread}_t = \mu + \phi\,\Delta
+    \text{spread}_{t-1} + \gamma\,\text{ECT}_{t-1} + \theta\,\epsilon_{t-1} +
+    \epsilon_t\) — a single equation combining a short-run AR(1) term, an
+    error-correction term, and an MA(1) term, restricted to \(\gamma \in
+    [-1, 0]\) to enforce mean-reversion by construction. Its ECT is built
+    exactly the way this lesson defines \(Z_{t-1}\): an OLS cointegrating
+    regression of the spread on the log-price of a related series
+    (\(\text{ECT}_t = \text{spread}_t - (a + b \ln(\text{price}_t))\)), falling
+    back to a plain ARMA model if that regression's \(R^2\) is too weak to
+    trust. Its own multi-step forecast loop even implements the exact
+    geometric-decay intuition this lesson's chart illustrates:
+    <code>prevECT = prevECT * (1 + gamma)</code> — each forecast step shrinks
+    the remaining disequilibrium by a factor of \((1+\gamma)\), precisely the
+    AR(1)-style decay a pure error-correction system without lag terms would
+    produce. What that code does <em>not</em> do is the full two-equation
+    system this lesson builds: it models one series' change from an ECT tied
+    to a price-implied fair value, not a jointly-estimated pair of \(\alpha_Y\)
+    and \(\alpha_X\) coefficients across two genuinely traded series.
+  </p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🔀</div>
+      <h4>Dynamic pairs trading</h4>
+      <p>A VECM's ΔY, ΔX forecasts add expected move size and per-leg attribution on top of a plain cointegration z-score entry rule.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🧭</div>
+      <h4>Anchor/follower diagnostics</h4>
+      <p>Comparing |α_Y| and |α_X| across a fitted system is a cheap, informal first pass at "which price leads" — before reaching for a proper multi-venue Information Share model.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">⏱️</div>
+      <h4>Speed-of-adjustment / half-life</h4>
+      <p>If one series absorbs nearly all correction alone, its own α behaves like an AR(1) coefficient on the spread — the same half-life logic from the Cointegration and Ornstein-Uhlenbeck lessons applies to that single equation.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🛠️</div>
+      <h4>Production forecasting, verified</h4>
+      <p><code>js/arma.js</code>'s <code>fitVECM</code> is a genuine, live example — single-equation, but real code, not a hypothetical.</p>
+    </div>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where VECM interpretation quietly goes wrong</h3>
+    <p>
+      <strong>Fitting an error-correction regression without first confirming
+      cointegration.</strong> The Granger Representation Theorem's guarantee
+      runs one specific direction plus its converse: a genuinely cointegrated
+      pair has a valid ECM representation, and a genuinely valid ECM implies
+      cointegration. Running this regression on two series that were never
+      actually shown to be cointegrated — skipping the Cointegration lesson's
+      own Engle-Granger Step 2 ADF test — produces coefficients with no
+      guarantee of meaning anything at all; \(Z_{t-1}\) built from a spurious,
+      non-stationary "spread" is just another non-stationary regressor, and
+      the whole apparatus that makes \(\alpha_Y\), \(\alpha_X\) interpretable
+      quietly stops applying.
+    </p>
+    <p>
+      <strong>Reading a large \(|\alpha|\) as "leadership" without checking
+      significance.</strong> A larger point estimate for \(|\alpha_Y|\) than
+      \(|\alpha_X|\) in one small, noisy fitted sample is not, by itself,
+      strong evidence \(Y\) is the true follower — exactly the same standard-
+      error caveats that apply to any OLS coefficient apply here, and this
+      lesson (matching the Cointegration lesson's own treatment of
+      Engle-Granger's t-statistics) does not derive the correct inference
+      procedure for testing \(\alpha_Y = 0\) or \(\alpha_X = 0\) formally.
+      Treat a striking-looking asymmetry as a hypothesis to test properly, not
+      a conclusion already reached.
+    </p>
+    <p>
+      <strong>Sign convention is not optional.</strong> Everything above
+      assumes \(Z_{t-1} = Y_{t-1} - \beta X_{t-1} - c\), so a mean-reverting
+      system needs \(\alpha_Y \le 0\) and/or \(\alpha_X \ge 0\). Flip the
+      spread's definition (as the Cointegration lesson's own note about
+      Engle-Granger's Y-vs-X asymmetry warns can happen) and every sign above
+      flips with it. A combination like \(\alpha_Y > 0\) and \(\alpha_X < 0\)
+      simultaneously does not describe a slow-adjusting pair — it describes a
+      system where the spread is mechanically pushed <em>further</em> from
+      equilibrium each period, which is not error correction at all and is
+      inconsistent with the pair actually being cointegrated.
+    </p>
+    <p>
+      <strong>Dropping the short-run lag terms in a live fit, not just a
+      teaching example.</strong> This lesson's own calculator deliberately
+      isolates \(\alpha_Y Z_{t-1}\) and \(\alpha_X Z_{t-1}\) for clarity — but
+      <code>js/arma.js</code>'s real <code>fitVECM</code> keeps its \(\phi\)
+      and \(\theta\) terms precisely because omitting genuine short-run
+      autocorrelation from a live fit biases the estimated \(\gamma\)
+      (this lesson's \(\alpha\)) itself. What's a reasonable simplification
+      for explaining the mechanism is not a reasonable simplification for
+      actually fitting one.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A VECM is the dynamic model cointegration only sets up.</strong> Cointegration proves a stationary spread exists; a VECM regresses each series' own change on that spread's last value plus short-run lags — an actual forecasting equation, not just a trading rule.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The error-correction term is nothing new arithmetically.</strong> \(Z_{t-1} = Y_{t-1} - \beta X_{t-1} - c\) is exactly the Cointegration lesson's own spread, one period lagged and reused as a regressor.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Comparing \(\alpha_Y\) and \(\alpha_X\) is the actual payoff.</strong> The larger-magnitude coefficient marks the "follower" doing most of the correcting; the smaller one marks the relative "anchor" — and this is a direct, informal preview of what the Hasbrouck Information Share lesson formalizes properly for many venues.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The Granger Representation Theorem is the formal bridge.</strong> Cointegration and a valid error-correction representation are equivalent — proven by Engle &amp; Granger (1987) — and at least one of \(\alpha_Y, \alpha_X\) must be nonzero for a genuinely cointegrated pair.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Short-run lag terms are just ARIMA/VAR, deliberately not re-derived here.</strong> They matter for a real fit (dropping them biases \(\alpha\)) even though this lesson's teaching tools isolate the error-correction term alone for clarity.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This repo already runs a real, single-equation version.</strong> <code>js/arma.js</code>'s <code>fitVECM</code> is live in production dashboards — verified, not hypothetical — though the full two-equation \(\alpha_Y\)/\(\alpha_X\) system built here goes further than that code does.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. What exactly is the error-correction term \(Z_{t-1}\), in relation to what the Cointegration lesson already builds?</summary>
+    <div class="tl-answer">
+      It's the same quantity: \(Z_{t-1} = Y_{t-1} - \beta X_{t-1} - c\), the
+      Cointegration lesson's own cointegrating residual (called \(\hat\epsilon_t\)
+      there), just carried forward one period and used as a predictor rather
+      than only tested for stationarity. Nothing about its construction is
+      new — what's new is using last period's value of it to explain this
+      period's changes in \(Y\) and \(X\).
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Write the two-equation VECM structure and identify which part is genuinely new content versus what the ARIMA &amp; VAR lesson already covers.</summary>
+    <div class="tl-answer">
+      \(\Delta Y_t = \alpha_Y Z_{t-1} + \sum_i \phi_{Y,i}\Delta Y_{t-i} + \sum_i
+      \psi_{Y,i}\Delta X_{t-i} + \epsilon_{Y,t}\), and symmetrically for
+      \(\Delta X_t\) with \(\alpha_X\). The error-correction terms
+      \(\alpha_Y Z_{t-1}\) and \(\alpha_X Z_{t-1}\) are the new content this
+      lesson is about. The lagged-difference sums are ordinary short-run
+      autoregressive/VAR dynamics — already fully covered, with no
+      error-correction-specific twist, in the ARIMA &amp; VAR lesson.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. If a fitted system shows \(\alpha_Y = -0.60\) and \(\alpha_X = -0.02\) (statistically indistinguishable from zero), what does that say about which series is the "anchor" and which is the "follower"?</summary>
+    <div class="tl-answer">
+      \(Y\) is the follower and \(X\) is close to the anchor. \(Y\)'s large,
+      negative \(\alpha_Y\) means \(Y\) does almost all of the correcting when
+      the spread deviates from equilibrium; \(X\)'s \(\alpha_X\) near zero
+      means \(X\) barely responds to the disequilibrium at all — the textbook
+      "weak exogeneity" case, where \(X\) evolves largely independently of the
+      pair's own equilibrium error while \(Y\) absorbs essentially the entire
+      adjustment.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. State the Granger Representation Theorem, and explain why this lesson cites it rather than deriving it.</summary>
+    <div class="tl-answer">
+      It states that any set of cointegrated \(I(1)\) series must admit a
+      valid error-correction representation of the VECM form, and conversely,
+      any valid error-correction representation implies the series involved
+      are cointegrated — the two concepts are formally equivalent, not merely
+      related. It comes from Engle &amp; Granger's 1987 paper, the same paper
+      that introduces cointegration itself in the Cointegration lesson. This
+      lesson cites it as a given foundational result and builds on top of it,
+      matching this curriculum's established convention of citing a
+      theorem's source rather than re-deriving every proof from first
+      principles.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Given \(\alpha_Y = 0.40\), \(\alpha_X = -0.10\), and \(Z_{t-1} = 0.02\), compute \(\Delta Y_t\) and \(\Delta X_t\) from the error-correction terms alone, and explain what's wrong with this particular pair of signs.</summary>
+    <div class="tl-answer">
+      \(\Delta Y_t = \alpha_Y Z_{t-1} = 0.40 \times 0.02 = 0.008\), and
+      \(\Delta X_t = \alpha_X Z_{t-1} = -0.10 \times 0.02 = -0.002\). Given
+      \(Z_{t-1}=0.02>0\) (Y was too high relative to X), a genuine
+      error-correction mechanism needs \(Y\) to fall and/or \(X\) to rise back
+      toward equilibrium — \(\alpha_Y \le 0\) and/or \(\alpha_X \ge 0\).
+      Here both signs point the wrong way: \(Y\) is forecast to rise
+      <em>further</em> and \(X\) to fall <em>further</em>, which would push
+      \(Z_t\) even further from zero rather than correct it. That combination
+      is inconsistent with the pair actually being cointegrated under this
+      sign convention for \(Z\).
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Does this repo already implement a full two-variable VECM system anywhere, per an honest grep of the actual code — and if not, what does exist instead?</summary>
+    <div class="tl-answer">
+      No full two-equation, jointly-estimated \(\alpha_Y\)/\(\alpha_X\) system
+      exists in this repo. What genuinely does exist is a real, live,
+      <strong>single-equation</strong> error-correction model:
+      <code>js/arma.js</code>'s <code>fitVECM</code>, which forecasts one
+      series' change (a rate spread) from its own short-run AR(1)/MA(1) terms
+      plus a single error-correction term built from an OLS-fitted
+      cointegrating regression against a related price series' log level. It
+      is wired live into the dashboard through <code>computeARMAForecast</code>,
+      imported by several production files. Separately, this repo's
+      cointegration-gated pairs-trading code (<code>js/hedgeSignalV2Engine.js</code>,
+      <code>portfolioBacktest/portfolio_backtest.py</code>,
+      <code>js/goldMinerArbEngine.js</code>) is a different, simpler
+      application entirely — a static z-scored spread with a cointegration
+      gate, not a dynamic error-correction regression at all.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Robert F. Engle and Clive W.J. Granger, <em>"Co-integration and Error Correction: Representation, Estimation, and Testing,"</em> Econometrica, 1987 — the single paper that introduces both cointegration and the Granger Representation Theorem this lesson builds on; this work contributed to Granger's share of the 2003 Nobel Memorial Prize in Economic Sciences.</li>
+    <li>Søren Johansen, <em>"Statistical Analysis of Cointegration Vectors,"</em> Journal of Economic Dynamics and Control, 1988 — the multi-series VAR/VECM generalization referenced conceptually in the Cointegration lesson's Johansen discussion.</li>
+    <li>James D. Hamilton, <em>Time Series Analysis</em>, Princeton University Press, 1994 — Chapter 19 gives the standard textbook treatment of the vector error correction model and its relationship to cointegrated VARs.</li>
+    <li>Joel Hasbrouck, <em>"One Security, Many Markets: Determining the Contributions to Price Discovery,"</em> Journal of Finance, 1995 — the paper formalizing the "which price is doing the adjusting" question this lesson previews, covered directly in the sibling Hasbrouck Information Share lesson.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="../hub.html">← Theory Lab hub</a>
+    <a href="institutional-granger-causality.html">Granger Causality &amp; Lead-Lag Analysis →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+<script>
+(function(){
+  var DEFAULTS = { aY: -0.35, aX: 0.15, Z: 0.0050 };
+  var fields = ['aY', 'aX', 'Z'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('vecm-scratch-' + f); });
+  if (!inputs.aY) return;
+
+  var dYOut = document.getElementById('vecm-scratch-dY');
+  var dXOut = document.getElementById('vecm-scratch-dX');
+  var note = document.getElementById('vecm-scratch-note');
+  var resetBtn = document.getElementById('vecm-scratch-reset');
+
+  function fmt(n){
+    return (n >= 0 ? '+' : '') + n.toFixed(5);
+  }
+
+  function recompute(){
+    var aY = parseFloat(inputs.aY.value);
+    var aX = parseFloat(inputs.aX.value);
+    var Z = parseFloat(inputs.Z.value);
+
+    if (![aY, aX, Z].every(isFinite)) {
+      dYOut.textContent = '—';
+      dXOut.textContent = '—';
+      note.textContent = '(enter numeric values for α_Y, α_X, and Z_{t-1})';
+      return;
+    }
+
+    var dY = aY * Z;
+    var dX = aX * Z;
+    dYOut.textContent = fmt(dY);
+    dXOut.textContent = fmt(dX);
+
+    if (aY === 0 && aX === 0) {
+      note.textContent = 'Both α are zero — neither series responds to disequilibrium at all. Per the Granger Representation Theorem, this is inconsistent with the pair actually being cointegrated.';
+      return;
+    }
+
+    var wrongSign = aY > 0 && aX < 0;
+    if (Z !== 0 && wrongSign) {
+      note.textContent = 'Warning: with these signs, the system would push Z further from zero, not correct it — not a valid error-correction mechanism under this sign convention.';
+      return;
+    }
+
+    var absY = Math.abs(aY), absX = Math.abs(aX);
+    if (absX === 0 && absY === 0) {
+      note.textContent = '';
+    } else if (absX === 0) {
+      note.textContent = 'X never responds (α_X = 0) — the textbook "weak exogeneity" case: Y absorbs the entire correction alone.';
+    } else if (absY === 0) {
+      note.textContent = 'Y never responds (α_Y = 0) — X absorbs the entire correction alone.';
+    } else {
+      var ratio = absY / absX;
+      if (ratio >= 1) {
+        note.textContent = 'Y is adjusting about ' + ratio.toFixed(2) + '× as fast as X — Y is closer to the "follower," X closer to the "anchor."';
+      } else {
+        note.textContent = 'X is adjusting about ' + (1/ratio).toFixed(2) + '× as fast as Y — X is closer to the "follower," Y closer to the "anchor."';
+      }
+    }
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
+</body>
+</html>

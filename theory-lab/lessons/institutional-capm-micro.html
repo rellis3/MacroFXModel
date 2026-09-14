@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CAPM — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">CAPM — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer full derivations, live math notation, and a 6-question self-test?<a href="institutional-capm.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Factor Models 1 · Factor Models</div>
+      <h1 class="sl-h1">CAPM, <em>One Beta to Price Them All</em></h1>
+      <p class="sl-lede">Markowitz proved there's a mathematically best portfolio once you know how everything covaries with everything else. CAPM asks the sharper question: if every investor actually holds that best portfolio, what does each individual asset's expected return have to be? The answer is one number — beta — and it's the founding idea this whole new category of the curriculum either builds on or was built to fix.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">A gap this curriculum has had until now</h2>
+      <p class="sl-sub">Markowitz, Black-Litterman, PCA, Random Matrix Theory — all covered. Never CAPM itself, until this lesson.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">❓</div><div><h4>Markowitz never says where returns come from</h4><p>Given expected returns and a covariance matrix, Markowitz finds the best portfolio — but never says what those expected returns should be in the first place.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚖️</div><div><h4>CAPM answers the equilibrium version</h4><p>If markets clear and every investor is a rational mean-variance optimizer with identical beliefs, what expected return must each asset offer? That's an asset-pricing question, not a portfolio-construction one.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🏛️</div><div><h4>The founding factor model</h4><p>One factor — the market — and one sensitivity number, beta. Every later lesson in this category either extends this idea or was built to fix a specific way it fails.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📆</div><div><h4>1964, not new</h4><p>William Sharpe (1964) and John Lintner (1965), building directly on Harry Markowitz's 1952 portfolio theory — CAPM is the historical starting point, chronologically as well as conceptually.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Same beliefs, same portfolio, same market</h2>
+      <p class="sl-sub">Three moves take you from "everyone optimizes the Markowitz way" to "the market portfolio is everyone's portfolio."</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The chain of reasoning</div>
+        <div class="sl-row">
+          <div class="sl-box">Identical beliefs<br>about returns &amp; risk</div>
+          <div class="sl-arrow">→</div>
+          <div class="sl-box amber">Everyone computes the<br>SAME tangency portfolio</div>
+          <div class="sl-arrow">→</div>
+          <div class="sl-box green">Market clears only if that<br>portfolio = the market itself</div>
+        </div>
+        <div class="sl-verdict">This is <strong>two-fund separation</strong>: every investor holds only a personal mix of the risk-free asset and that one common risky portfolio — cautious investors hold more risk-free, aggressive investors lever up the risky side. If literally everyone's risky holdings are a scaled version of the same portfolio, that portfolio has to be the market-value-weighted basket of every risky asset — otherwise some shares outstanding wouldn't be held by anyone, which can't be an equilibrium.</div>
+      </div>
+      <p class="sl-p">A short piece of algebra on top of that — the market portfolio being mean-variance-efficient — is what collapses directly into the CAPM pricing equation on the next slide.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">The formula itself</h2>
+      <p class="sl-sub">One equation. Every asset's required return, pinned down by one sensitivity number.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The CAPM equation</div>
+        <div class="sl-row">
+          <div class="sl-box">E[Rᵢ]</div>
+          <div class="sl-arrow">=</div>
+          <div class="sl-box">R_f</div>
+          <div class="sl-arrow">+</div>
+          <div class="sl-box amber">β × (E[Rₘ] − R_f)</div>
+        </div>
+        <div class="sl-verdict">Read it left to right: an asset's required return is the risk-free rate, plus its own beta times the market's risk premium. β = 0 → expect exactly the risk-free rate. β = 1 → expect exactly the market's own return. β = 2 → twice the market's risk premium on top of the risk-free rate.</div>
+      </div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">R_f</div><div><h4>Risk-free rate</h4><p>What you'd earn taking on zero risk at all.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">Rₘ</div><div><h4>Market portfolio return</h4><p>Every risky asset in existence, held at its market-value weight.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">β</div><div><h4>Beta</h4><p>Asset i's sensitivity to market-wide moves — Cov(Rᵢ,Rₘ) ÷ Var(Rₘ).</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Beta isn't a new formula</h2>
+      <p class="sl-sub">It's the exact same OLS slope this curriculum already derived, applied to one specific choice of x.</p>
+      <div class="sl-quote">The Correlation &amp; Linear Regression primer derives β̂ = Cov(X,Y) / Var(X) as the slope that minimizes squared residuals for ANY two variables. CAPM's beta is that identical formula with Y = an asset's excess return and X = the market's excess return. Nothing about the arithmetic changes — CAPM only adds the economic claim that this particular slope determines how much expected return the asset is entitled to.</div>
+      <div class="sl-callout">
+        <div class="sl-callout-label">Regress it directly</div>
+        <p>Rᵢ − R_f = α + β(Rₘ − R_f) + ε — asset i's excess return regressed on the market's excess return. The fitted slope β̂ from that regression is CAPM's beta, full stop. Same covariance-over-variance ratio, same least-squares derivation, same formula — just one specific, economically meaningful choice of "x."</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Two lines, constantly confused</h2>
+      <p class="sl-sub">Both plot expected return on the vertical axis. The horizontal axis — and who's even allowed on the line — is completely different.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Compare</div>
+        <div class="sl-tabs" id="cml-sml-tabs">
+          <button class="sl-tab active" data-panel="cml-panel">Capital Market Line</button>
+          <button class="sl-tab" data-panel="sml-panel">Security Market Line</button>
+        </div>
+        <div class="sl-panel active" id="cml-panel">
+          <div class="sl-verdict"><strong>Axis: total risk, σ.</strong> Only efficient portfolios belong here — specifically, blends of the risk-free asset and the market portfolio, nothing else. E[Rₚ] = R_f + (Sharpe ratio of the market) × σₚ. An individual, badly-diversified stock does NOT belong on this line — it plots to the right of it, carrying risk it isn't paid for.</div>
+        </div>
+        <div class="sl-panel" id="sml-panel">
+          <div class="sl-verdict"><strong>Axis: systematic risk only, β.</strong> Every correctly-priced asset belongs here — efficient portfolios AND single, poorly-diversified stocks alike. E[Rᵢ] = R_f + β(E[Rₘ] − R_f) — this is the CAPM equation itself, drawn as a line. Idiosyncratic risk plays no role in where an asset sits on this axis at all.</div>
+        </div>
+      </div>
+      <p class="sl-p">The clean way to keep them apart: the CML prices <em>total</em> risk and only rewards portfolios holding none of it uncompensated. The SML prices <em>one slice</em> of risk — the market-correlated slice — and applies to literally everything, diversified or not.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">The Security Market Line, drawn</h2>
+      <p class="sl-sub">A straight line from the risk-free rate. Three assets from the worked example — one on the line, two off it.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Visualize it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Security Market Line rising from the risk-free rate at beta zero, with one asset plotted exactly on the line and two assets plotted off the line, one above with positive alpha and one below with negative alpha">
+            <line x1="70" y1="260" x2="600" y2="260" style="stroke:var(--border2)"/>
+            <line x1="70" y1="260" x2="70" y2="20" style="stroke:var(--border2)"/>
+            <text x="335" y="286" text-anchor="middle" fill="var(--text3)" font-size="12" font-family="'DM Mono',monospace">β</text>
+            <text x="26" y="140" text-anchor="middle" fill="var(--text3)" font-size="12" font-family="'DM Mono',monospace" transform="rotate(-90 26 140)">E[R] %</text>
+            <text x="70" y="278" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">0</text>
+            <text x="320" y="278" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">1.0</text>
+            <text x="570" y="278" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">2.0</text>
+
+            <line x1="70" y1="230" x2="570" y2="80" style="stroke:var(--amber);stroke-width:2.5"/>
+            <text x="576" y="76" fill="var(--amber)" font-size="11" font-family="'DM Mono',monospace">SML</text>
+            <circle cx="70" cy="230" r="4" style="fill:var(--text3)"/>
+            <text x="78" y="222" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">R_f = 2%</text>
+
+            <circle cx="195" cy="192.5" r="6" style="fill:var(--green);stroke:var(--bg);stroke-width:2"/>
+            <text x="195" y="176" text-anchor="middle" fill="var(--green)" font-size="11" font-family="'DM Mono',monospace" font-weight="700">A — on the line</text>
+
+            <line x1="270" y1="170" x2="270" y2="206" style="stroke:var(--red);stroke-width:1.5;stroke-dasharray:3,3"/>
+            <circle cx="270" cy="206" r="6" style="fill:var(--red);stroke:var(--bg);stroke-width:2"/>
+            <text x="270" y="224" text-anchor="middle" fill="var(--red)" font-size="11" font-family="'DM Mono',monospace" font-weight="700">C — below (alpha &lt; 0)</text>
+
+            <line x1="445" y1="117.5" x2="445" y2="57.5" style="stroke:var(--blue);stroke-width:1.5;stroke-dasharray:3,3"/>
+            <circle cx="445" cy="57.5" r="6" style="fill:var(--blue);stroke:var(--bg);stroke-width:2"/>
+            <text x="445" y="45" text-anchor="middle" fill="var(--blue)" font-size="11" font-family="'DM Mono',monospace" font-weight="700">B — above (alpha &gt; 0)</text>
+          </svg>
+        </div>
+        <div class="sl-note">Asset A's realized average return matched CAPM's prediction exactly. Asset B earned more than its beta justified (positive alpha); Asset C earned less (negative alpha). Being off the line either way is exactly what the empirical-failure slides later in this deck are about.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Drag beta, watch the prediction move along the line</h2>
+      <p class="sl-sub">The blue dot is always exactly where CAPM predicts, for whatever beta you set. The red dot is Asset C's real, fixed observation — it doesn't move.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Security Market Line with a slider-controlled point that moves along the line as beta changes, and a fixed point off the line representing a real observed asset">
+            <line x1="70" y1="260" x2="600" y2="260" style="stroke:var(--border2)"/>
+            <line x1="70" y1="260" x2="70" y2="20" style="stroke:var(--border2)"/>
+            <text x="335" y="286" text-anchor="middle" fill="var(--text3)" font-size="12" font-family="'DM Mono',monospace">β</text>
+            <text x="26" y="140" text-anchor="middle" fill="var(--text3)" font-size="12" font-family="'DM Mono',monospace" transform="rotate(-90 26 140)">E[R] %</text>
+            <line x1="70" y1="230" x2="570" y2="80" style="stroke:var(--amber);stroke-width:2.5"/>
+            <text x="576" y="76" fill="var(--amber)" font-size="11" font-family="'DM Mono',monospace">SML</text>
+
+            <circle cx="270" cy="206" r="6" style="fill:var(--red);stroke:var(--bg);stroke-width:2"/>
+            <text x="270" y="224" text-anchor="middle" fill="var(--red)" font-size="10" font-family="'DM Mono',monospace">Asset C: β=0.8, actual 3.6%</text>
+
+            <line id="capm-slider-vline" x1="195" y1="192.5" x2="195" y2="260" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:3,3;opacity:.5"/>
+            <circle id="capm-slider-dot" cx="195" cy="192.5" r="7" style="fill:var(--blue);stroke:var(--bg);stroke-width:2"/>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Beta (β)</span><span class="sl-live" id="capm-slider-val">β = 0.50 → E[R] = 4.50%</span></div>
+        <input type="range" class="sl-slider" id="capm-slider" min="0" max="200" step="5" value="50">
+        <div class="sl-note">Slide β to 0.80 and compare the moving blue dot's height (CAPM's prediction at that beta) against the fixed red dot (Asset C's real 3.6% average return) — the vertical gap between them at β=0.8 IS Asset C's alpha, made visual.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Four assumptions, all known to be false</h2>
+      <p class="sl-sub">Every one is a deliberate simplification, not a claim about how markets actually behave.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">⏱️</div><div><h4>Single period</h4><p>Choose a portfolio once, hold it — no rebalancing, no multi-period planning.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧠</div><div><h4>Identical expectations</h4><p>Every investor agrees exactly on every asset's expected return and covariance — the assumption forcing everyone onto the same tangency portfolio.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">💸</div><div><h4>No taxes or costs</h4><p>Trading is free and instant, prices identical for everyone.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🏦</div><div><h4>Unlimited risk-free borrowing</h4><p>Anyone can borrow or lend unlimited amounts at the single rate R_f.</p></div></div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Known to be false — that's the point</div>
+        <p>Investors disagree constantly, trading has real costs, almost nobody borrows at the risk-free rate. CAPM isn't offered as a photograph of real markets — it's the simplest model that still produces one specific, testable prediction for every asset's expected return. Being wrong in measurable ways is what makes the wrongness usable.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Three assets, arithmetic by hand</h2>
+      <p class="sl-sub">Five years of toy returns, a 2% risk-free rate, one market index.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Asset A — β = 0.50</span>
+          <ul>
+            <li>Predicted: 2 + 0.50 × 5 = 4.5%</li>
+            <li>Realized average: 4.5%</li>
+            <li><strong>Alpha = 0.0%</strong> — sits exactly on the SML</li>
+          </ul>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Asset B — β = 1.50</span>
+          <ul>
+            <li>Predicted: 2 + 1.50 × 5 = 9.5%</li>
+            <li>Realized average: 13.5%</li>
+            <li><strong>Alpha = +4.0%</strong> — earned more than beta justified</li>
+          </ul>
+        </div>
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Asset C — β = 0.80</span>
+          <ul>
+            <li>Predicted: 2 + 0.80 × 5 = 6.0%</li>
+            <li>Realized average: 3.6%</li>
+            <li><strong>Alpha = −2.4%</strong> — earned less than beta justified</li>
+          </ul>
+        </div>
+      </div>
+      <p class="sl-p">Beta is computed the same way for all three: Cov(asset, market) ÷ Var(market), with the market's own variance at 34 (from a mean return of 7% across the five years). Only Asset A's returns were built as a pure linear function of the market — which is exactly why only its alpha comes out at zero.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Compute beta and CAPM's prediction yourself</h2>
+      <p class="sl-sub">Change any input, live. A near-zero market variance shows "—" instead of breaking the formula.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Cov(Rᵢ, Rₘ)</label><input type="number" class="sl-input" id="capm-cov" value="17" step="0.1"></div>
+          <div class="sl-calc-op">÷</div>
+          <div class="sl-calc-field"><label>Var(Rₘ)</label><input type="number" class="sl-input" id="capm-var" value="34" step="0.1"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">β</div>
+            <div class="sl-calc-result-val" id="capm-beta-out">0.5000</div>
+          </div>
+        </div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>R_f (%)</label><input type="number" class="sl-input" id="capm-rf" value="2" step="0.25"></div>
+          <div class="sl-calc-op">+ β ×</div>
+          <div class="sl-calc-field"><label>E[Rₘ] − R_f gets built from E[Rₘ] (%)</label><input type="number" class="sl-input" id="capm-em" value="7" step="0.25"></div>
+          <div class="sl-calc-op">=</div>
+          <div class="sl-calc-result">
+            <div class="sl-calc-result-label">CAPM E[Rᵢ]</div>
+            <div class="sl-calc-result-val" id="capm-pred-out">4.5000%</div>
+          </div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Market risk premium = E[Rₘ] − R_f = <b id="capm-prem-out">5.0000%</b></div>
+          <div>E[Rᵢ] = R_f + β × premium = <b id="capm-pred-out2">4.5000%</b></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="capm-calc-reset">Reset to Asset A's worked-example numbers</button>
+        <div class="sl-note" id="capm-calc-note">Blank, non-numeric, or zero/negative Var(Rₘ) input shows "—" — beta is undefined when the market didn't move at all.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">The empirical failure this category exists to fix</h2>
+      <div class="sl-quote">CAPM's own theory says alpha should be zero for every asset — beta is supposed to be a complete summary of the risk that matters. Fama &amp; French (1992) sorted real stocks by beta and found a much weaker relationship with average returns than CAPM predicts — while firm size and book-to-market ratio ("value") both showed a much stronger one. Small-cap and value stocks earned systematically more than their beta alone justified, in sample after sample, for decades.</div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where this needs qualifying</div>
+        <p>This is one of the most replicated results in empirical asset pricing, not a footnote. It's exactly why the toy Assets B and C carrying nonzero alpha earlier in this deck is a small, honest illustration of a real, large-scale, well-documented phenomenon — not just a constructed example.</p>
+      </div>
+      <p class="sl-p">This sets up the entire rest of this category directly: <strong>Fama-French &amp; Carhart</strong>, next in this series, adds factors built specifically around the size and value anomalies this section describes — the direct empirical response to the exact gap CAPM's single factor leaves open.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What does CAPM's beta actually equal, in formula terms?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Cov(Rᵢ, Rₘ) ÷ Var(Rₘ) — the OLS slope of asset i's return regressed on the market's</button>
+        <button class="sl-quiz-opt">Var(Rᵢ) ÷ Var(Rₘ)</button>
+        <button class="sl-quiz-opt">Corr(Rᵢ, Rₘ) alone, with no variance term</button>
+        <div class="sl-quiz-explain">Beta is exactly the Correlation &amp; Linear Regression primer's OLS slope formula, β̂ = Cov(X,Y)/Var(X), with the market's excess return standing in as X.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>What common assumption turns Markowitz's individual-optimization framework into CAPM's market-wide pricing equation?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Every investor shares identical expectations about returns and covariances</button>
+        <button class="sl-quiz-opt">Every investor has a different risk-free rate</button>
+        <button class="sl-quiz-opt">No investor is allowed to hold the risk-free asset</button>
+        <div class="sl-quiz-explain">Identical beliefs force every investor onto the exact same tangency portfolio; market clearing then forces that one common portfolio to be the market-value-weighted market portfolio itself.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>An individual, poorly-diversified stock is plotted against total risk (σ). Should it sit on the Capital Market Line?</h4>
+        <button class="sl-quiz-opt" data-correct="true">No — only efficient blends of the risk-free asset and the market portfolio belong on the CML</button>
+        <button class="sl-quiz-opt">Yes, every correctly-priced asset belongs on the CML</button>
+        <button class="sl-quiz-opt">Only if its beta is exactly 1</button>
+        <div class="sl-quiz-explain">The CML only describes efficient portfolios. The line that prices an individual stock, diversified or not, is the Security Market Line, plotted against β alone.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Asset B has β = 1.5, a CAPM-predicted return of 9.5%, and a realized average return of 13.5%. What is its alpha?</h4>
+        <button class="sl-quiz-opt" data-correct="true">+4.0%</button>
+        <button class="sl-quiz-opt">−4.0%</button>
+        <button class="sl-quiz-opt">0.0%</button>
+        <div class="sl-quiz-explain">Alpha = realized − predicted = 13.5% − 9.5% = +4.0%, a positive residual sitting above the SML.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>What did Fama &amp; French (1992) find that CAPM's beta alone fails to explain?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Small-cap and "value" (high book-to-market) stocks earned systematically higher average returns than their beta predicted</button>
+        <button class="sl-quiz-opt">Beta perfectly explained every stock's average return with no residual</button>
+        <button class="sl-quiz-opt">The risk-free rate was measured incorrectly for decades</button>
+        <div class="sl-quiz-explain">This is the canonical empirical motivation for the next lesson in this category — Fama-French &amp; Carhart adds factors built specifically around this size and value gap.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>CAPM: E[Rᵢ] = R_f + β(E[Rₘ] − R_f), where β = Cov(Rᵢ,Rₘ)/Var(Rₘ) — exactly the OLS slope from the Correlation &amp; Linear Regression primer, applied to the market as "x."</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>It's Markowitz's equilibrium consequence: identical investor beliefs force everyone onto the same tangency portfolio, and market clearing forces that portfolio to be the market portfolio.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>The CML (return vs. total risk, efficient portfolios only) and the SML (return vs. beta, every priced asset) are different lines — confusing them is the most common CAPM mistake.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Every CAPM assumption — single period, identical beliefs, no frictions, unlimited risk-free borrowing — is known to be false. That's what makes it a clean baseline, not a finished answer.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Beta alone leaves a real, well-documented gap in the cross-section of stock returns (Fama-French, 1992) — small-cap and value stocks earned more than their beta predicted, for decades.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Read a beta the same way whether it comes from a textbook, a Bloomberg terminal, or this repo's own factor-hedging code — it's always the identical OLS slope. Tell the CML and SML apart on sight. Recognize a nonzero alpha for what it honestly is: an unresolved question, not proof of skill. Understand exactly what specific, well-documented gap in CAPM the next lesson exists to close.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Fama-French &amp; Carhart</h3>
+        <p>Two more factors — size and value — built specifically to close the exact gap this lesson's empirical-failure section just described, plus a fourth for momentum.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="institutional-fama-french-carhart-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="institutional-capm.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Beta slider — point moves along the SML; a fixed red dot (Asset C) stays put.
+  (function(){
+    var slider = document.getElementById('capm-slider');
+    if (!slider) return;
+    var valEl = document.getElementById('capm-slider-val');
+    var dot = document.getElementById('capm-slider-dot');
+    var vline = document.getElementById('capm-slider-vline');
+    var RF = 2, PREMIUM = 5;
+    var X0 = 70, Y0 = 230, PX_PER_BETA = 250, PX_PER_PCT = 15;
+
+    function update(){
+      var beta = parseInt(slider.value, 10) / 100;
+      var ret = RF + beta * PREMIUM;
+      var x = X0 + PX_PER_BETA * beta;
+      var y = Y0 - PX_PER_PCT * PREMIUM * beta;
+      dot.setAttribute('cx', x.toFixed(1));
+      dot.setAttribute('cy', y.toFixed(1));
+      vline.setAttribute('x1', x.toFixed(1));
+      vline.setAttribute('x2', x.toFixed(1));
+      vline.setAttribute('y1', y.toFixed(1));
+      valEl.textContent = 'β = ' + beta.toFixed(2) + ' → E[R] = ' + ret.toFixed(2) + '%';
+    }
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Beta + CAPM calculator.
+  (function(){
+    var covEl = document.getElementById('capm-cov');
+    if (!covEl) return;
+    var varEl = document.getElementById('capm-var');
+    var rfEl = document.getElementById('capm-rf');
+    var emEl = document.getElementById('capm-em');
+    var betaOut = document.getElementById('capm-beta-out');
+    var predOut = document.getElementById('capm-pred-out');
+    var predOut2 = document.getElementById('capm-pred-out2');
+    var premOut = document.getElementById('capm-prem-out');
+    var noteEl = document.getElementById('capm-calc-note');
+    var resetBtn = document.getElementById('capm-calc-reset');
+    var DEFAULTS = { cov: 17, varm: 34, rf: 2, em: 7 };
+    var DEFAULT_NOTE = 'Blank, non-numeric, or zero/negative Var(Rₘ) input shows "—" — beta is undefined when the market didn\'t move at all.';
+
+    function setBlank(msg){
+      betaOut.textContent = '—';
+      predOut.textContent = '—';
+      predOut2.textContent = '—';
+      premOut.textContent = '—';
+      noteEl.textContent = msg;
+    }
+
+    function recompute(){
+      var cov = parseFloat(covEl.value);
+      var varm = parseFloat(varEl.value);
+      var rf = parseFloat(rfEl.value);
+      var em = parseFloat(emEl.value);
+
+      if (!isFinite(cov) || !isFinite(varm) || !isFinite(rf) || !isFinite(em)) {
+        setBlank('Enter a number in every field — blank or non-numeric input can\'t be computed.');
+        return;
+      }
+      if (varm <= 0) {
+        setBlank('Var(Rₘ) must be positive — a market that never moved has undefined beta, not just zero beta.');
+        return;
+      }
+
+      var beta = cov / varm;
+      var prem = em - rf;
+      var pred = rf + beta * prem;
+
+      betaOut.textContent = beta.toFixed(4);
+      premOut.textContent = prem.toFixed(4) + '%';
+      predOut.textContent = pred.toFixed(4) + '%';
+      predOut2.textContent = pred.toFixed(4) + '%';
+      noteEl.textContent = DEFAULT_NOTE;
+    }
+
+    [covEl, varEl, rfEl, emEl].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      covEl.value = DEFAULTS.cov; varEl.value = DEFAULTS.varm;
+      rfEl.value = DEFAULTS.rf; emEl.value = DEFAULTS.em;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>

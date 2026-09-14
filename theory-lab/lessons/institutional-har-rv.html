@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HAR-RV &amp; Realized Volatility Forecasting — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Volatility Estimation &amp; Jump Detection / HAR-RV</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Volatility Estimation &amp; Jump Detection 2 of 4</div>
+  <h1 class="tl-title">HAR-RV &amp; Realized Volatility Forecasting</h1>
+  <p class="tl-dek">A single squared daily return is one noisy sample of that day's true variance. Realized variance — the sum of hundreds of intraday squared returns — is not. Corsi's HAR-RV model shows that forecasting it well takes nothing more exotic than an ordinary regression on three horizons: yesterday, the past week, and the past month.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — genuinely implemented and running live in this repo daily (as a challenger forecast), not yet the primary σ for any asset class — see Section 06</span>
+    <span>~15 min read</span>
+    <span>Prereqs: <a href="garch-volatility.html">GARCH &amp; Volatility Clustering</a> and <a href="institutional-garman-klass-yang-zhang.html">Garman-Klass &amp; Yang-Zhang: OHLC Volatility Estimators</a></span>
+  </div>
+
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="institutional-har-rv-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li><strong>Realized variance (RV)</strong> sums many intraday squared returns over a day instead of relying on one squared close-to-close return — a large-sample average of a day's true variance instead of a single noisy draw of it.</li>
+      <li><strong>HAR-RV</strong> (Corsi, 2009): \(RV_{t+1} = \beta_0 + \beta_d RV_t + \beta_w RV_t^{(w)} + \beta_m RV_t^{(m)} + \epsilon_{t+1}\) — RV's own average over the past day, week, and month, fit by plain OLS. No fractional-differencing machinery required.</li>
+      <li>Corsi's insight: traders operating at different horizons (daily, weekly, monthly) each contribute their own persistence to the aggregate market, and layering three ordinary linear regressors — one per horizon — approximates the market's genuine long-memory behavior almost as well as an actual fractionally-integrated model.</li>
+      <li>Contrast with the previous lesson: GARCH(1,1) forecasts variance from <em>one</em> noisy observation (yesterday's squared return) fed through a recursive filter; HAR-RV forecasts it directly from realized variance itself — a well-measured quantity, used as both target and regressor. When genuine intraday data exists, that's usually a meaningfully better forecast — not because the model is fancier (it's simpler: OLS versus GARCH's nonlinear MLE), but because the input is measured better.</li>
+      <li>This repo genuinely runs Corsi's exact daily/weekly/monthly OLS regression, live, every day, for every tracked instrument — as a shadow/challenger forecast that is actively benchmarked against the incumbent estimators, not (yet) the estimator that sets any asset class's live trading bands. The full finding, with file and function names, is in Section 06.</li>
+      <li>HAR-RV is not a free upgrade over GARCH or a range-based estimator: it needs a genuine intraday-derived RV series to be the model the literature actually validated. Feed it a single-observation daily proxy instead and you've quietly rebuilt something else.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    The previous lesson built GARCH(1,1) entirely out of daily closing prices: one
+    return per day, squared, fed into a recursive filter. That's a real
+    constraint, not a stylistic choice — a single squared return
+    \(\epsilon_{t-1}^2\) is an extremely noisy way to estimate "how much
+    variance did the market actually generate yesterday." Two trading days
+    with identical <em>true</em> underlying variance can easily produce
+    squared returns that differ by a factor of three or four purely from the
+    luck of where the close happened to land relative to the day's actual
+    path. GARCH's entire recursive structure — the floor, the reaction term,
+    the inertia term — is built on top of that one noisy number, every single
+    day.
+  </p>
+  <p>
+    If you have access to intraday prices, there's a direct fix, and it
+    doesn't require a smarter model — it requires a better-measured target.
+    Instead of one squared return per day, sum up hundreds of small squared
+    intraday returns sampled throughout the session. Averaging many noisy
+    observations of the same underlying quantity is one of the oldest tricks
+    in statistics, and it works exactly as well here as anywhere else: the
+    resulting daily variance estimate — <strong>realized variance (RV)</strong>
+    — is dramatically less noisy than a single squared close-to-close return,
+    for the same underlying day.
+  </p>
+  <p>
+    That improvement creates a new problem worth having: once you have a
+    genuinely well-measured daily RV series, it turns out to behave
+    differently than a single-return-based variance series does. Its
+    autocorrelation decays far more slowly — a volatility shock's fingerprint
+    lingers for a genuinely long time, longer than GARCH's clean geometric
+    decay (persistence \(\alpha+\beta\), covered in the previous lesson)
+    implies. This "long memory" pattern is one of the most robust empirical
+    regularities in realized-volatility research, and modeling it precisely,
+    the textbook way, calls for fractionally-integrated time-series models —
+    genuinely more machinery than anything covered so far in this curriculum.
+    Fischer Corsi's 2009 contribution was showing you don't actually need any
+    of that: an ordinary linear regression on three cleverly chosen
+    horizons reproduces the behavior almost as well, with nothing more exotic
+    than OLS.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Why a day trader, a weekly rebalancer, and a monthly allocator disagree about "normal"</h3>
+    <p>
+      Picture three different desks watching the same market. A day trader
+      cares almost entirely about how choppy <em>today</em> and yesterday
+      have been — that's the horizon their positions actually live on. A
+      portfolio manager who rebalances weekly cares more about how choppy the
+      <em>past week</em> has been on average — a single wild day matters less
+      to them than the week's overall character. A macro allocator who
+      repositions monthly cares about the <em>past month's</em> average
+      character more than any single day or week within it. None of these
+      three is "wrong" about what volatility currently looks like — they're
+      each answering the question at their own horizon, and all three answers
+      are simultaneously true and simultaneously informative about where
+      volatility is heading next.
+    </p>
+    <p>
+      Corsi's insight was to stop treating this as a nuisance and start
+      treating it as the model. Instead of picking one horizon and fitting a
+      single decay rate to it (which is what GARCH's \(\alpha+\beta\) does),
+      HAR-RV just includes all three horizons as separate inputs to an
+      ordinary regression, and lets the data decide how much weight each one
+      deserves. The surprising empirical result is that this crude-sounding
+      approach — three flat averages, no exotic math — tracks real markets'
+      slow-decaying volatility memory about as well as models built
+      specifically to have that property from the ground up.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+  <h3>Step 1 — realized variance, defined</h3>
+  <p>
+    Let day \(t\) be split into \(M\) equal intraday intervals (5-minute bars
+    are a common choice — fine enough to capture most of a session's genuine
+    movement, coarse enough that bid-ask bounce and other microstructure
+    noise doesn't dominate the sum), and let \(r_{t,j}\) be the log return
+    over the \(j\)-th of those intervals. Realized variance for day \(t\) is
+    simply the sum of their squares:
+  </p>
+  <div class="tl-math">\[ RV_t = \sum_{j=1}^{M} r_{t,j}^2 \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>RV_t</code><span>day t's realized variance — a many-observation estimate, not a single squared return</span></div>
+    <div class="tl-eq-chip c2"><code>r_{t,j}</code><span>the j-th intraday log return within day t (e.g. one 5-minute bar's return)</span></div>
+    <div class="tl-eq-chip c3"><code>M</code><span>number of intraday intervals per day (≈78 for 5-minute bars over a 6.5-hour session)</span></div>
+  </div>
+  <p>
+    Compare this directly to what feeds a close-to-close variance estimate
+    (GARCH's \(\epsilon_{t-1}^2\), or a rolling HV window): exactly <em>one</em>
+    squared observation per day. \(RV_t\) sums \(M\) of them. This is not a
+    different kind of estimator with different assumptions — it's the same
+    idea (squared returns measure variance) applied at a much finer sampling
+    rate, averaged up. As \(M\to\infty\) (subject to microstructure noise
+    swamping the finest samples in practice — nobody actually pushes this to
+    tick-by-tick), \(RV_t\) converges to the <strong>quadratic variation</strong>
+    of the underlying price process over day \(t\): the formal object that
+    measures exactly how much a continuous-time price path moved, jumps
+    included. (The next lesson in this category, Bipower Variation, revisits
+    this exact quantity and shows how to split it into a continuous part and
+    a jump part — worth knowing the two lessons are talking about the same
+    underlying object from different angles.)
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If you wanted to know how bumpy a car ride was, you could ask "how big was the single biggest bump?" — that's one noisy number, and a smooth ride with one pothole would look identical to a bumpy ride that happened to have its worst moment measured badly. Or you could add up every little jolt felt the entire ride, second by second — that's realized variance. It uses far more information about the actual ride, so it's a much more honest answer to "how bumpy was today."</p>
+  </div>
+
+  <h3>Step 2 — the long-memory puzzle</h3>
+  <p>
+    Once you build a genuine \(RV_t\) series from intraday data and look at
+    its autocorrelation function, a distinctive pattern shows up: the
+    correlation between \(RV_t\) and \(RV_{t-k}\) decays extremely slowly as
+    the lag \(k\) grows — far more slowly than the clean geometric decay
+    \((\alpha+\beta)^k\) a GARCH(1,1) process implies (the previous lesson's
+    persistence and half-life derivation). This slow, hyperbolic-looking
+    decay is the signature of <strong>long memory</strong>, and the textbook
+    way to model it directly is a fractionally-integrated process (ARFIMA),
+    which requires estimating a fractional differencing parameter \(d\) — a
+    real, working piece of machinery, but meaningfully harder to estimate
+    robustly and far less intuitive to explain than anything else in this
+    curriculum so far.
+  </p>
+  <p>
+    Corsi's 2009 contribution, building on the earlier heterogeneous-market
+    literature (Müller et al., 1997), is that you don't need to fit that
+    fractional parameter at all to get most of the practical benefit. His
+    argument: the reason realized volatility looks long-memoried in aggregate
+    is that it's the superposition of genuinely different participants
+    operating at genuinely different horizons — short-horizon traders,
+    weekly rebalancers, monthly allocators — each contributing their own,
+    much simpler persistence to the pooled market. Model each horizon
+    explicitly with an ordinary linear regressor, and the sum of three simple
+    pieces approximates the complicated aggregate almost as well as fitting
+    the aggregate's own fractional parameter directly.
+  </p>
+
+  <h3>Step 3 — the HAR-RV model itself</h3>
+  <p>
+    Define the two rolling averages the model needs — the past week's and
+    past month's average daily RV, each including the current day \(t\):
+  </p>
+  <div class="tl-math">\[ RV_t^{(w)} = \frac{1}{5}\sum_{i=0}^{4} RV_{t-i}, \qquad RV_t^{(m)} = \frac{1}{22}\sum_{i=0}^{21} RV_{t-i} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>RV_t^{(w)}</code><span>average daily RV over the past 5 trading days (a trading week), including today</span></div>
+    <div class="tl-eq-chip c4"><code>RV_t^{(m)}</code><span>average daily RV over the past 22 trading days (a trading month), including today</span></div>
+  </div>
+  <p>
+    The Heterogeneous Autoregressive model of Realized Volatility is then an
+    ordinary linear regression of tomorrow's RV on today's value and both of
+    these rolling averages:
+  </p>
+  <div class="tl-math">\[ RV_{t+1} = \beta_0 + \beta_d RV_t + \beta_w RV_t^{(w)} + \beta_m RV_t^{(m)} + \epsilon_{t+1} \]</div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">β_d · RV_t</div>
+      <div class="tl-fp-name">The daily component</div>
+      <div class="tl-fp-desc">Reaction to today's own realized variance — the fastest-moving horizon</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">β_w · RV_t^(w)</div>
+      <div class="tl-fp-name">The weekly component</div>
+      <div class="tl-fp-desc">Where variance has sat, on average, over the past trading week</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">β_m · RV_t^(m)</div>
+      <div class="tl-fp-name">The monthly component</div>
+      <div class="tl-fp-desc">The slowest-moving anchor — where variance has sat over the past trading month</div>
+    </div>
+  </div>
+  <div class="tl-symbols"><table>
+    <tr><td>\(RV_{t+1}\)</td><td>The quantity being forecast — next day's realized variance.</td></tr>
+    <tr><td>\(RV_t\)</td><td>Today's realized variance — the daily/"fast" regressor.</td></tr>
+    <tr><td>\(RV_t^{(w)}\)</td><td>Average RV over the past 5 trading days (including today) — the weekly regressor.</td></tr>
+    <tr><td>\(RV_t^{(m)}\)</td><td>Average RV over the past 22 trading days (including today) — the monthly regressor.</td></tr>
+    <tr><td>\(\beta_0\)</td><td>Constant/intercept term, in the same units as RV.</td></tr>
+    <tr><td>\(\beta_d, \beta_w, \beta_m\)</td><td>The three OLS-fitted weights on the daily, weekly, and monthly regressors respectively.</td></tr>
+    <tr><td>\(\epsilon_{t+1}\)</td><td>The regression residual — whatever tomorrow's RV isn't explained by the three horizon averages.</td></tr>
+  </table></div>
+  <p>
+    Read every term on the right-hand side carefully, because the entire
+    point of the model is how ordinary they are: \(RV_t\), \(RV_t^{(w)}\), and
+    \(RV_t^{(m)}\) are all directly observed historical averages — numbers you
+    already have sitting in a spreadsheet the moment day \(t\) closes. There
+    is no latent recursive state the way GARCH's \(\sigma_{t-1}^2\) term is
+    (itself a forecast, feeding into the next forecast). Fitting
+    \(\beta_0,\beta_d,\beta_w,\beta_m\) is literally an ordinary least-squares
+    regression on three engineered features — the exact same estimation
+    machinery used for any linear regression anywhere else in this
+    curriculum. Nothing about <em>fitting</em> HAR-RV is volatility-specific;
+    all the cleverness is in <em>which three features</em> to regress on.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>HAR-RV is like predicting tomorrow's mood by asking three questions: how was today, how has this whole week been, and how has this whole month been — then taking a weighted blend of the three answers. No fancy math is needed to combine three plain averages; you're just deciding how much to trust "today" versus "this week" versus "this month," and a regression is the standard tool for finding those weights from data.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>HAR-RV versus GARCH — same job, genuinely different inputs</h2>
+  <p>
+    Both models answer the same question — "how large should tomorrow's
+    variance be?" — and both are fit to historical data and used to produce a
+    one-step-ahead forecast. But they differ in exactly what they're allowed
+    to look at, and that difference is the entire reason one typically
+    outperforms the other when the choice is available:
+  </p>
+  <div class="tl-compare">
+    <div class="tl-compare-card amber">
+      <h4>GARCH(1,1) — one noisy observation, recursively filtered</h4>
+      <p>
+        \(\sigma_t^2 = \omega + \alpha\epsilon_{t-1}^2 + \beta\sigma_{t-1}^2\).
+        The only piece of genuinely new information entering the forecast
+        each day is \(\epsilon_{t-1}^2\) — a single squared close-to-close
+        return. GARCH never looks inside the day; its entire picture of
+        "yesterday's variance" is built from that one number, plus its own
+        prior forecast. The model is mathematically elegant (a clean
+        recursive filter, a well-understood stationarity condition, a closed-
+        form long-run mean) — but its raw material each day is thin.
+      </p>
+    </div>
+    <div class="tl-compare-card blue">
+      <h4>HAR-RV — a well-measured target, used as its own regressor</h4>
+      <p>
+        \(RV_{t+1} = \beta_0 + \beta_d RV_t + \beta_w RV_t^{(w)} + \beta_m RV_t^{(m)}\).
+        Both the <em>target</em> being forecast and the <em>regressors</em>
+        doing the forecasting are realized variance — a quantity built, when
+        genuine intraday data exists, from hundreds of observations per day
+        rather than one. The model itself is plainer than GARCH (three linear
+        terms, fit by OLS, no recursion, no nonlinear likelihood) — the
+        sophistication moved from the model to the input.
+      </p>
+    </div>
+  </div>
+  <div class="tl-solid blue">
+    <strong>The improvement is in the measurement, not the machinery.</strong>
+    When genuine high-frequency data is available, HAR-RV typically forecasts
+    a given day's variance meaningfully better than GARCH(1,1) — but the
+    honest reason is that its raw material is better-measured, not that its
+    model is more sophisticated. It's the opposite: GARCH is the more
+    mathematically intricate of the two (a nonlinear recursive filter fit by
+    maximum likelihood), and HAR-RV is <em>literally an OLS regression on
+    three engineered features</em>. Better data, simpler model, usually a
+    better forecast — a genuinely useful lesson that "more sophisticated
+    model" and "better forecast" are not the same axis.
+  </div>
+  <p>
+    One more structural contrast worth noting explicitly, since it will
+    matter again in the pitfalls section: \(\beta_d+\beta_w+\beta_m\) plays a
+    loose visual echo of GARCH's persistence \(\alpha+\beta\) — both are sums
+    of coefficients on lagged variance-like terms, and both being comfortably
+    below 1 (illustrated below at 0.96) keeps the model's response to a
+    persistent elevated regime bounded rather than extrapolating forever. But
+    it is not the same object mathematically: GARCH's \(\alpha+\beta<1\) is a
+    formal stationarity condition derived from the model's own recursive
+    definition (Section 02 of the previous lesson); HAR-RV is a static linear
+    regression on already-realized values with no recursion at all, so
+    nothing forces \(\beta_d+\beta_w+\beta_m\) below any particular threshold
+    — it's simply a useful sanity check on a fitted (or hand-set) set of
+    coefficients, not a mathematical requirement the way it is for GARCH.
+  </p>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>A worked example — 22 days, computed explicitly</h2>
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Forecasting day 23's realized variance from 22 days of history</h3>
+    <p>
+      Suppose you have 22 trading days of daily realized volatility
+      \(\sigma_t\) (percent, so \(RV_t = \sigma_t^2\) is in units of
+      percent-squared) — each day could plausibly have come from genuine
+      intraday RV, or from the previous lesson's Garman-Klass/Yang-Zhang
+      range-based estimators standing in as a daily variance proxy when only
+      OHLC bars are available (a substitution the pitfall below returns to).
+      Days 10–14 carry a volatility cluster — a plausible shock and its
+      partial decay, exactly the pattern the GARCH lesson's worked example
+      traced with a single event. The baseline \(\sigma\approx0.60\%\)
+      annualizes to about 9.5%; the cluster's peak \(\sigma=1.20\%\)
+      annualizes to about 19% — the same order-of-magnitude gap this
+      project's own research (Section 06) found between an understated
+      range-based proxy and a true intraday-measured realized volatility for
+      an equity index.
+    </p>
+    <div class="tl-symbols"><table>
+      <tr><td>1</td><td>σ = 0.60% → RV = 0.3600</td></tr>
+      <tr><td>2</td><td>σ = 0.65% → RV = 0.4225</td></tr>
+      <tr><td>3</td><td>σ = 0.63% → RV = 0.3969</td></tr>
+      <tr><td>4</td><td>σ = 0.62% → RV = 0.3844</td></tr>
+      <tr><td>5</td><td>σ = 0.66% → RV = 0.4356</td></tr>
+      <tr><td>6</td><td>σ = 0.63% → RV = 0.3969</td></tr>
+      <tr><td>7</td><td>σ = 0.68% → RV = 0.4624</td></tr>
+      <tr><td>8</td><td>σ = 0.71% → RV = 0.5041</td></tr>
+      <tr><td>9</td><td>σ = 0.69% → RV = 0.4761</td></tr>
+      <tr><td>10 <em>(shock begins)</em></td><td>σ = 0.95% → RV = 0.9025</td></tr>
+      <tr><td>11 <em>(peak)</em></td><td>σ = 1.20% → RV = 1.4400</td></tr>
+      <tr><td>12</td><td>σ = 1.10% → RV = 1.2100</td></tr>
+      <tr><td>13</td><td>σ = 1.00% → RV = 1.0000</td></tr>
+      <tr><td>14</td><td>σ = 0.90% → RV = 0.8100</td></tr>
+      <tr><td>15</td><td>σ = 0.80% → RV = 0.6400</td></tr>
+      <tr><td>16</td><td>σ = 0.75% → RV = 0.5625</td></tr>
+      <tr><td>17</td><td>σ = 0.72% → RV = 0.5184</td></tr>
+      <tr><td>18</td><td>σ = 0.69% → RV = 0.4761</td></tr>
+      <tr><td>19</td><td>σ = 0.68% → RV = 0.4624</td></tr>
+      <tr><td>20</td><td>σ = 0.66% → RV = 0.4356</td></tr>
+      <tr><td>21</td><td>σ = 0.65% → RV = 0.4225</td></tr>
+      <tr><td>22 <em>("today", t)</em></td><td>σ = 0.63% → RV = 0.3969</td></tr>
+    </table></div>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>The daily term — today's own RV</h4>
+          <p>\(RV_t = RV_{22} = 0.3969\) — by day 22, the daily figure alone has already decayed back down near the pre-shock baseline.</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>The weekly term — average of days 18–22</h4>
+          <p>\(RV_t^{(w)} = \frac{0.4761+0.4624+0.4356+0.4225+0.3969}{5} = \frac{2.1935}{5} = 0.4387\) — the most recent week still carries a mild echo of the fading shock.</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>The monthly term — average of all 22 days</h4>
+          <p>Summing all 22 RV values gives 13.1158; \(RV_t^{(m)} = 13.1158/22 = 0.5962\) — the highest of the three, because the monthly window still fully contains the cluster's peak (days 11–13), which the 5-day window has already left behind.</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">4</div>
+        <div class="tl-step-body">
+          <h4>Combine with illustrative Corsi-style coefficients</h4>
+          <p>
+            Using commonly-cited ballpark published coefficients —
+            \(\beta_0=0.03\), \(\beta_d=0.35\), \(\beta_w=0.41\),
+            \(\beta_m=0.20\) (illustrative figures in the spirit of Corsi's
+            2009 estimates, <em>not</em> fitted to this 22-day toy series,
+            which is far too short to fit four parameters reliably):
+          </p>
+          <div class="tl-math">\[ RV_{23} = 0.03 + 0.35(0.3969) + 0.41(0.4387) + 0.20(0.5962) = 0.03+0.1389+0.1799+0.1192 = 0.4680 \]</div>
+          <p>
+            \(\sigma_{23} = \sqrt{0.4680} \approx 0.684\%\) daily, or about
+            \(0.684\%\times\sqrt{252}\approx10.86\%\) annualized.
+          </p>
+        </div>
+      </div>
+    </div>
+    <p>
+      Compare this to the naive "same as yesterday" forecast, which simply
+      carries \(RV_t=0.3969\) forward: \(\sigma\approx0.63\%\), about 10.00%
+      annualized. HAR-RV forecasts noticeably higher — 10.86% versus 10.00% —
+      because it hasn't forgotten what the naive forecast has: the weekly and
+      especially the monthly average are still elevated from the shock, even
+      though the single most recent day already looks calm again. That's the
+      entire practical case for HAR-RV in one number: a naive forecast that
+      only looks at yesterday can be fooled by one calm day right after a
+      cluster; HAR-RV's longer-horizon terms keep that memory alive for
+      longer, exactly matching the slow-decay behavior Section 02 described.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Recompute the HAR-RV forecast, live</h3>
+    <p>
+      Starts on the worked example's exact numbers above. Change any RV input
+      or coefficient and the forecast, implied daily σ, and annualized vol
+      recompute instantly. RV inputs can't be negative — variance is never
+      negative — so a negative or non-finite entry is flagged rather than
+      silently producing a nonsense forecast.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>RV<sub>t</sub> — daily (%²)</span></div>
+        <input type="number" id="har-scratch-rvt" class="tl-scratch-input" value="0.3969" step="0.01" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>RV<sub>t</sub><sup>(w)</sup> — weekly avg (%²)</span></div>
+        <input type="number" id="har-scratch-rvw" class="tl-scratch-input" value="0.4387" step="0.01" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>RV<sub>t</sub><sup>(m)</sup> — monthly avg (%²)</span></div>
+        <input type="number" id="har-scratch-rvm" class="tl-scratch-input" value="0.5962" step="0.01" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>β<sub>0</sub> — constant (%²)</span></div>
+        <input type="number" id="har-scratch-b0" class="tl-scratch-input" value="0.03" step="0.01">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>β<sub>d</sub> — daily weight</span></div>
+        <input type="number" id="har-scratch-bd" class="tl-scratch-input" value="0.35" step="0.01">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>β<sub>w</sub> — weekly weight</span></div>
+        <input type="number" id="har-scratch-bw" class="tl-scratch-input" value="0.41" step="0.01">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>β<sub>m</sub> — monthly weight</span></div>
+        <input type="number" id="har-scratch-bm" class="tl-scratch-input" value="0.20" step="0.01">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      β<sub>d</sub>+β<sub>w</sub>+β<sub>m</sub> = <b id="har-scratch-betasum">0.96</b>
+      <span id="har-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <div class="tl-readout">
+      RV<sub>t+1</sub> = <b id="har-scratch-rvfwd">0.4680</b>%² &rArr;
+      σ<sub>t+1</sub> = <b id="har-scratch-sigfwd">0.684</b>% daily &rArr;
+      <b id="har-scratch-annual">10.86</b>% annualized
+    </div>
+    <button type="button" id="har-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>Is HAR-RV actually built here? Yes — as a live daily challenger, not (yet) the primary</h2>
+  <p>
+    Before writing this lesson's status badge, this repo's actual volatility
+    codebase was read directly rather than assumed. The finding corrects the
+    default this curriculum otherwise applies to a freshly-covered model
+    ("concept — not built or tested anywhere in this repo"): HAR-RV is
+    genuinely implemented, and it runs live, every day, for every tracked
+    instrument — but as a research challenger sitting alongside the platform's
+    actual live estimators, not as the estimator driving anyone's trading
+    bands.
+  </p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📐</div>
+      <h4>The exact regression, implemented</h4>
+      <p><code>js/volForecastBench.js</code>'s <code>harRvPred()</code> is Corsi's model verbatim: predict \(RV_i\) from \([1, RV_{i-1}, \text{mean}(RV_{i-5..i-1}), \text{mean}(RV_{i-22..i-1})]\), fit by an expanding-window walk-forward OLS (a strictly causal 4×4 normal-equations solve, <code>solve4()</code>) — training pairs are folded in only after each target day completes, so no forecast ever sees its own outcome. A second, near-identical implementation lives in <code>js/volEstimatorAB.js</code>'s <code>harSigmaSeries()</code>, used to A/B HAR-RV against the platform's Yang-Zhang estimator directly on real intraday data.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🔁</div>
+      <h4>Computed live, every trading day</h4>
+      <p><code>js/volForecastScheduler.js</code>'s daily <code>runVolForecast()</code> job — the scheduler that produces this project's actual daily vol forecast — computes a full HAR-RV shadow forecast (σ, plus the same High-Low/Open-Close bands the primary forecast gets) for every one of its ~28 instruments and stores it as <code>f.har</code> alongside the primary numbers, via <code>harShadowFields()</code> in <code>js/forecastExport.js</code>. It even has its own export format (<code>buildExportHarText()</code>, "VOL &amp; RANGE FORECAST — HAR-RV").</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🏁</div>
+      <h4>Raced against 7 other estimators</h4>
+      <p><code>js/volHorseRaceEngine.js</code>'s <code>volHorseRace()</code>, wired to a live endpoint (<code>/api/vol-horse-race/run</code> in <code>server.js</code>), scores HAR-RV against Random Walk, EWMA, rolling HV, Yang-Zhang, GARCH(1,1), and two combination models (a fixed 50/50 blend and a Granger-Ramanathan-optimal blend) by out-of-sample QLIKE on real intraday data — and explicitly tracks, per instrument, whether HAR-RV beats whatever estimator that asset class currently uses live (<code>harBeatsPlatform</code>).</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🔬</div>
+      <h4>A genuine-intraday-RV variant for indices</h4>
+      <p><code>js/indexRvHar.js</code>'s <code>rvHarSigma()</code> runs the same forward-HAR machinery on realized variance built from the true 5-minute intraday path (not a range-based proxy), specifically because the earlier range-based HAR shadow understated index volatility by roughly half. It's wired to a live, daily-cached endpoint (<code>/api/vol-forecast/rv-har</code>) that feeds the index chart export.</p>
+    </div>
+  </div>
+  <div class="tl-solid amber">
+    <strong>What "live" does not mean here: HAR-RV is not the platform's primary σ
+    for any asset class.</strong> Per <code>volHorseRaceEngine.js</code>'s own
+    <code>PLATFORM_MODEL</code> mapping, the estimator that actually sets live
+    trading bands today is Yang-Zhang for FX, GARCH(1,1) for equity indices,
+    and rolling close-to-close HV for commodities/gold/BTC — HAR-RV sits
+    beside all three as an actively-tested challenger (<code>f.har</code>,
+    additive, never touching the primary numbers) rather than replacing any
+    of them. The horse race itself is a genuinely live computation over
+    current market data, not a hardcoded verdict frozen into the code — this
+    lesson deliberately does not report a fixed "HAR-RV wins N% of the time"
+    number, because no such fixed number is stored anywhere in the codebase;
+    the engine is built to answer that question fresh, instrument by
+    instrument, exactly the discipline the rest of this curriculum insists on
+    for any specific-signal claim.
+  </div>
+  <p>
+    Two concrete, documented findings from this project's own code are worth
+    citing directly, because both are exactly the kind of nuance a purely
+    theoretical treatment of HAR-RV would miss: <code>indexRvHar.js</code>'s
+    own header records that the earlier Garman-Klass-range-based HAR shadow
+    "assumes no gap," missing overnight gaps and the intraday path for equity
+    indices — understating SPX's true volatility by roughly half (about 9.5%
+    read versus a true reading near 19%), which is precisely why the
+    genuine-intraday-RV variant above was built. Separately,
+    <code>js/ccHvSigma.js</code>'s header notes that in gold's regime,
+    HAR-RV — "a smoothed forward forecast that reads low in an elevated
+    regime" — sat roughly 15% under a simpler close-to-close estimator during
+    one comparison. Neither finding says HAR-RV is broken; both say exactly
+    what Section 03 above already implied: HAR-RV's quality is only as good
+    as the RV series feeding it, and a smoothed, averaged forecast will
+    structurally read low right as a fresh regime shift is still under way —
+    the same lag-versus-reactivity tradeoff the GARCH lesson raised about
+    flat trailing windows, one level up the sophistication ladder.
+  </p>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">The three horizon components feeding the worked example's forecast</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart with four bars: daily RV 0.397, weekly average RV 0.439, monthly average RV 0.596, and the combined HAR-RV forecast 0.468, showing the monthly term running highest because it still fully contains the volatility cluster's peak.">
+      <line x1="20" y1="260" x2="620" y2="260" style="stroke:var(--border)"/>
+      <line x1="20" y1="30" x2="20" y2="260" style="stroke:var(--border)"/>
+      <text x="14" y="55" text-anchor="end" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">0.60</text>
+      <line x1="20" y1="50" x2="620" y2="50" style="stroke:var(--border);stroke-dasharray:2,4;opacity:.5"/>
+
+      <rect x="40" y="121" width="100" height="139" rx="4" style="fill:var(--blue-bg);stroke:var(--blue-bd)"/>
+      <text x="90" y="112" text-anchor="middle" fill="var(--text)" font-size="13" font-family="'DM Mono',monospace" font-weight="700">0.3969</text>
+      <text x="90" y="277" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">Daily RVₜ</text>
+      <text x="90" y="291" text-anchor="middle" fill="var(--text3)" font-size="9" font-family="'DM Mono',monospace">β_d = 0.35</text>
+
+      <rect x="200" y="106" width="100" height="154" rx="4" style="fill:var(--amber-bg);stroke:var(--amber-bd)"/>
+      <text x="250" y="97" text-anchor="middle" fill="var(--text)" font-size="13" font-family="'DM Mono',monospace" font-weight="700">0.4387</text>
+      <text x="250" y="277" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">Weekly RVₜ⁽ʷ⁾</text>
+      <text x="250" y="291" text-anchor="middle" fill="var(--text3)" font-size="9" font-family="'DM Mono',monospace">β_w = 0.41</text>
+
+      <rect x="360" y="51" width="100" height="209" rx="4" style="fill:var(--purple-bg);stroke:var(--purple-bd)"/>
+      <text x="410" y="42" text-anchor="middle" fill="var(--text)" font-size="13" font-family="'DM Mono',monospace" font-weight="700">0.5962</text>
+      <text x="410" y="277" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">Monthly RVₜ⁽ᵐ⁾</text>
+      <text x="410" y="291" text-anchor="middle" fill="var(--text3)" font-size="9" font-family="'DM Mono',monospace">β_m = 0.20</text>
+
+      <rect x="520" y="96" width="100" height="164" rx="4" style="fill:var(--green-bg);stroke:var(--green);stroke-width:2"/>
+      <text x="570" y="87" text-anchor="middle" fill="var(--green)" font-size="14" font-family="'DM Mono',monospace" font-weight="700">0.4680</text>
+      <text x="570" y="277" text-anchor="middle" fill="var(--green)" font-size="11" font-family="'DM Mono',monospace" font-weight="700">Forecast RVₜ₊₁</text>
+      <text x="570" y="291" text-anchor="middle" fill="var(--text3)" font-size="9" font-family="'DM Mono',monospace">+ β₀ = 0.03</text>
+    </svg>
+    <div class="tl-chart-caption">
+      The monthly component (purple) runs highest of the three because it's
+      the only window still fully containing the shock cluster's peak (days
+      11–13); the most recent week (amber) has already partly left it behind,
+      and the single most recent day (blue) has nearly fully reverted. The
+      forecast (green) blends all three by their fitted weights plus a small
+      constant — landing above the daily figure alone precisely because the
+      longer horizons haven't forgotten what yesterday already has.
+    </div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    In production, HAR-RV is virtually always re-fit walk-forward on an
+    expanding or rolling window — never fit once on a historical sample and
+    frozen, since the relationship between the three horizons genuinely
+    drifts as market structure changes. Because the three regressors are
+    strongly collinear (a calm month rarely contains a wild week, and vice
+    versa), naive OLS on a short or ill-conditioned window can produce
+    unstable individual coefficients even when the combined forecast is
+    fine — this project's own <code>harSigmaSeries()</code> (in
+    <code>js/volEstimatorAB.js</code>) adds a small relative Tikhonov ridge
+    specifically to keep that normal-equations solve well-behaved, a detail
+    worth knowing if you ever implement this yourself rather than assuming
+    plain OLS is the whole story.
+  </p>
+  <p>
+    HAR-RV also composes naturally with other information. A well-known
+    extension, HAR-IV, adds a forward-looking implied-volatility regressor
+    (from a listed vol index like the VIX or GVZ) alongside the three
+    realized-variance terms — implied vol embeds a variance risk premium and
+    genuinely helps forecast realized vol on top of HAR's own terms, an idea
+    this repo's own <code>harIvPred()</code> (also in
+    <code>volForecastBench.js</code>) implements directly for gold and equity
+    indices. And rather than picking a single winning estimator outright,
+    it's common to blend forecasts — a fixed 50/50 average of HAR-RV and
+    GARCH, or an OLS-learned optimal blend (Granger-Ramanathan regression of
+    realized vol on both forecasts, using only past data) — exactly the
+    "Combo-5050" and "Combo-optimal" entries this repo's own horse race
+    scores alongside the individual models.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where HAR-RV quietly stops being HAR-RV</h3>
+    <p>
+      <strong>It needs genuine intraday data to be the model the literature
+      validated.</strong> HAR-RV's entire advantage over GARCH rests on RV
+      being a well-measured, many-observation quantity. If all you have is
+      daily OHLC bars, you cannot compute true realized variance — you're
+      back to needing a range-based estimator (Parkinson, Garman-Klass,
+      Yang-Zhang — the previous lesson) or a recursive model like GARCH
+      instead. Running the exact same three-regressor HAR regression on a
+      single-observation daily proxy isn't a free upgrade; it's a different,
+      untested estimator that happens to share Corsi's equation, and this
+      repo's own <code>indexRvHar.js</code> exists specifically because that
+      substitution understated index volatility by roughly half.
+    </p>
+    <p>
+      <strong>The three horizon regressors are strongly collinear.</strong>
+      A calm week rarely sits inside a wild month, and vice versa — the
+      daily, weekly, and monthly RV averages move together far more than
+      three "independent" features normally would. This doesn't necessarily
+      hurt the combined forecast much, but it can make the individual
+      \(\beta_d,\beta_w,\beta_m\) estimates unstable or counter-intuitive on
+      a short or noisy fitting window; a small ridge penalty (as this
+      project's own implementation uses) is a standard, pragmatic fix.
+    </p>
+    <p>
+      <strong>A smoothed average forecast structurally lags a sharp regime
+      change.</strong> Because HAR-RV blends three different lookback
+      windows, it will, by construction, read <em>below</em> a simpler
+      current-only estimator right as volatility is spiking, and can read
+      <em>below</em> reality for a while as an elevated regime persists — the
+      documented ~15% gap against a plain close-to-close estimate in this
+      project's own gold research (Section 06) is exactly that effect, not a
+      bug. A smoothing model buys stability by trading away some
+      day-one reactivity; know which one your use case actually needs.
+    </p>
+    <p>
+      <strong>"HAR-RV beats GARCH" is not a universal law.</strong> It's an
+      empirical finding that holds when genuine high-frequency data is
+      available and well-behaved — this project's own horse race exists
+      precisely because that ranking is an empirical question to re-check per
+      instrument and asset class, not an assumption to bake in from the math
+      alone. A strong general result about one dataset or asset class is not
+      automatically a strong result everywhere else.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 08</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Realized variance sums many intraday squared returns instead of relying on one squared daily return</strong> — a large-sample average of a day's true variance, not a single noisy draw of it.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>HAR-RV is literally an OLS regression on three engineered features</strong> — today's RV, and its 5-day and 22-day rolling averages — fit the same way any linear regression is fit, nothing volatility-specific about the estimation.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Corsi's insight:</strong> heterogeneous market participants operating at different horizons each contribute their own persistence, and layering three simple linear terms approximates genuine long-memory behavior without fractional-differencing machinery.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>HAR-RV beats GARCH by having a better-measured input, not a fancier model.</strong> GARCH's nonlinear recursive filter is mathematically the more intricate of the two; HAR-RV's edge, where it has one, is entirely in what it's allowed to see.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This repo genuinely implements Corsi's exact model and runs it live, daily, for every instrument</strong> — as a benchmarked shadow forecast (<code>f.har</code>) and a genuine-intraday variant for indices, not (yet) as any asset class's primary live σ.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>HAR-RV is not a free upgrade without real intraday data.</strong> Fed a single-observation daily proxy instead of true RV, it quietly stops being the model the literature validated — this project's own code documents exactly that failure mode for index volatility.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 09</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why is realized variance (RV) a meaningfully better estimate of a given day's true variance than a single squared close-to-close return?</summary>
+    <div class="tl-answer">
+      A single squared daily return is one noisy observation of that day's
+      variance — two days with identical true variance can produce very
+      different squared returns purely from where the close happened to
+      land. RV sums \(M\) squared intraday returns sampled throughout the
+      day, so it averages many observations of the same underlying quantity
+      instead of relying on one — the standard statistical benefit of a
+      larger sample, applied to variance estimation. As sampling frequency
+      increases, RV converges toward the quadratic variation of the price
+      process over that day.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Write the HAR-RV regression equation and define every term.</summary>
+    <div class="tl-answer">
+      \(RV_{t+1} = \beta_0 + \beta_d RV_t + \beta_w RV_t^{(w)} + \beta_m RV_t^{(m)} + \epsilon_{t+1}\).
+      \(RV_{t+1}\) is the forecast target (next day's realized variance);
+      \(RV_t\) is today's own RV; \(RV_t^{(w)}\) is the average RV over the
+      past 5 trading days including today; \(RV_t^{(m)}\) is the average RV
+      over the past 22 trading days including today; \(\beta_0\) is a
+      constant; \(\beta_d,\beta_w,\beta_m\) are the OLS-fitted weights on the
+      three horizons; \(\epsilon_{t+1}\) is the regression residual.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. What was Corsi's key argument for why three ordinary linear regressors can approximate genuine long-memory behavior, without fitting a fractional-differencing parameter?</summary>
+    <div class="tl-answer">
+      Different classes of market participants operate at genuinely
+      different horizons — daily traders, weekly rebalancers, monthly
+      allocators — and each contributes its own, comparatively simple
+      persistence to the aggregate market. Modeling each horizon explicitly
+      with its own linear regressor and summing them approximates the
+      complicated slow-decaying aggregate almost as well as fitting a
+      fractionally-integrated model's own \(d\) parameter directly, without
+      needing that harder-to-estimate machinery.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. GARCH(1,1) and HAR-RV both forecast next-period variance. What is the key structural difference in what each model is allowed to see?</summary>
+    <div class="tl-answer">
+      GARCH(1,1) only ever sees one new piece of information per day —
+      yesterday's squared close-to-close return, \(\epsilon_{t-1}^2\) —
+      combined recursively with its own prior forecast \(\sigma_{t-1}^2\); it
+      never looks inside the trading day. HAR-RV instead uses realized
+      variance — built, when genuine intraday data exists, from hundreds of
+      observations per day — as both the forecast target and the regressors.
+      HAR-RV's typical edge comes from that better-measured input, not from a
+      more sophisticated model; the HAR-RV regression itself (plain OLS on
+      three linear terms) is simpler than GARCH's nonlinear recursive filter.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. In the worked example, why does HAR-RV's forecast (10.86% annualized) come out higher than a naive "same as yesterday" forecast (10.00% annualized), even though the single most recent day's RV had already reverted close to the pre-shock baseline?</summary>
+    <div class="tl-answer">
+      The naive forecast only looks at \(RV_t\), which by day 22 had already
+      decayed back near baseline. HAR-RV's weekly and especially monthly
+      averages, however, still fully or partially contain the shock cluster
+      from days 10–14, pulling the blended forecast higher. This is exactly
+      the practical benefit of the longer horizons: they keep the memory of
+      an elevated regime alive for longer than looking only at the most
+      recent single day would, matching the slow-decay ("long memory")
+      behavior real realized-volatility series exhibit.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. What has to be true of your data before HAR-RV is a legitimate upgrade over GARCH or a range-based estimator, and what happens when it isn't?</summary>
+    <div class="tl-answer">
+      You need genuine intraday (high-frequency) price data to compute true
+      realized variance in the first place — HAR-RV's advantage rests
+      entirely on RV being a well-measured, many-observation quantity. With
+      only daily OHLC bars available, true RV can't be computed at all;
+      running the same three-regressor equation on a single-observation
+      daily proxy (like a squared close-to-close return, or naively treating
+      a range-based estimator's output as RV) is not the model the
+      literature validated — this project's own code documents exactly that
+      failure mode understating index volatility by roughly half before a
+      genuine-intraday-RV variant was built to fix it.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Fulvio Corsi, <em>"A Simple Approximate Long-Memory Model of Realized Volatility,"</em> Journal of Financial Econometrics, 7(2), 2009 — the original HAR-RV paper this entire lesson is built on.</li>
+    <li>Ulrich A. Müller, Michel M. Dacorogna, Rakhal D. Davé, Richard B. Olsen, Olivier V. Pictet, and Jacob E. von Weizsäcker, <em>"Volatilities of Different Time Resolutions — Analyzing the Dynamics of Market Components,"</em> Journal of Empirical Finance, 4(2-3), 1997 — the heterogeneous-market-hypothesis literature Corsi's model builds on.</li>
+    <li>Torben G. Andersen and Tim Bollerslev, <em>"Answering the Skeptics: Yes, Standard Volatility Models Do Provide Accurate Forecasts,"</em> International Economic Review, 39(4), 1998 — an early foundational paper on realized volatility as a superior ex-post variance measure.</li>
+    <li>Andrew J. Patton, <em>"Volatility Forecast Comparison Using Imperfect Volatility Proxies,"</em> Journal of Econometrics, 160(1), 2011 — the QLIKE loss function this repo's own horse race (Section 06) uses to rank estimators out-of-sample.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="institutional-garman-klass-yang-zhang.html">← Garman-Klass &amp; Yang-Zhang</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="institutional-bipower-variation.html">Bipower Variation →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+<script>
+(function(){
+  var DEFAULTS = { rvt: 0.3969, rvw: 0.4387, rvm: 0.5962, b0: 0.03, bd: 0.35, bw: 0.41, bm: 0.20 };
+  var fields = ['rvt', 'rvw', 'rvm', 'b0', 'bd', 'bw', 'bm'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('har-scratch-' + f); });
+  if (!inputs.rvt) return;
+
+  var betasumOut = document.getElementById('har-scratch-betasum');
+  var rvfwdOut = document.getElementById('har-scratch-rvfwd');
+  var sigfwdOut = document.getElementById('har-scratch-sigfwd');
+  var annualOut = document.getElementById('har-scratch-annual');
+  var note = document.getElementById('har-scratch-note');
+  var resetBtn = document.getElementById('har-scratch-reset');
+  var SQRT252 = Math.sqrt(252);
+
+  function blank(){
+    rvfwdOut.textContent = '—';
+    sigfwdOut.textContent = '—';
+    annualOut.textContent = '—';
+  }
+
+  function recompute(){
+    var rvt = parseFloat(inputs.rvt.value);
+    var rvw = parseFloat(inputs.rvw.value);
+    var rvm = parseFloat(inputs.rvm.value);
+    var b0 = parseFloat(inputs.b0.value);
+    var bd = parseFloat(inputs.bd.value);
+    var bw = parseFloat(inputs.bw.value);
+    var bm = parseFloat(inputs.bm.value);
+
+    if (![rvt, rvw, rvm, b0, bd, bw, bm].every(isFinite)) {
+      note.textContent = '(enter a number in every field — blank or non-numeric input can\'t be computed)';
+      betasumOut.textContent = '—';
+      blank();
+      return;
+    }
+    if (rvt < 0 || rvw < 0 || rvm < 0) {
+      note.textContent = '(RV inputs can\'t be negative — variance is never negative)';
+      betasumOut.textContent = '—';
+      blank();
+      return;
+    }
+
+    var betasum = bd + bw + bm;
+    betasumOut.textContent = betasum.toFixed(2);
+
+    var rvFwd = b0 + bd * rvt + bw * rvw + bm * rvm;
+
+    if (!(rvFwd > 0)) {
+      note.textContent = '(these coefficients forecast a zero or negative variance — not a valid forecast; check for a sign error or an unrealistic coefficient)';
+      blank();
+      return;
+    }
+
+    var betaNote = betasum >= 1
+      ? ' (β_d+β_w+β_m ≥ 1 — unlike GARCH\'s α+β, this isn\'t a hard requirement for HAR-RV\'s plain OLS regression, but coefficients this large are unusual — check for a data-entry mistake)'
+      : '';
+    note.textContent = betaNote;
+
+    var sigFwd = Math.sqrt(rvFwd);
+    var annual = sigFwd * SQRT252;
+
+    rvfwdOut.textContent = rvFwd.toFixed(4);
+    sigfwdOut.textContent = sigFwd.toFixed(3);
+    annualOut.textContent = annual.toFixed(2);
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
+</body>
+</html>

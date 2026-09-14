@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Order Flow Imbalance &amp; the Microprice — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+<style>
+  .tl-table-wrap{overflow-x:auto;margin:14px 0}
+  table.tl-tbl{width:100%;border-collapse:collapse;font-size:13px;background:var(--s1);border:1px solid var(--border);border-radius:var(--r)}
+  table.tl-tbl th,table.tl-tbl td{padding:9px 12px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
+  table.tl-tbl th{color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:.04em;font-weight:700;background:var(--s2)}
+  table.tl-tbl tr:last-child td{border-bottom:none}
+  table.tl-tbl td{color:var(--text2)}
+  table.tl-tbl td:first-child{color:var(--text);font-weight:600;white-space:nowrap}
+  table.tl-tbl td.tl-num{font-family:'DM Mono',monospace;text-align:right}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Market Microstructure Extensions / Order Flow Imbalance &amp; the Microprice</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Market Microstructure Extensions 5 of 5</div>
+  <h1 class="tl-title">Order Flow Imbalance &amp; the Microprice</h1>
+  <p class="tl-dek">Every method earlier in this category reconstructs something about trading from historical data after the fact — who was probably the aggressor, how much of the spread was adverse selection, how much of the day's volume was informed. This lesson closes the category by building the two signals a live electronic desk actually watches update by update, tick by tick, right now.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — no OFI, microprice, or queue-imbalance code exists anywhere in this repo (verified by grepping every .py/.js file); the closest real artifact is <code>oi_recon/databento_orderbook_cost_estimate.py</code>, a never-executed cost query for full order-book depth data, whose own comments note this repo's primary venue — OANDA spot FX — has no order book at all</span>
+    <span>~17 min read</span>
+    <span>Prereqs: <a href="institutional-pin.html">PIN: The Probability of Informed Trading</a>, <a href="limit-order-books.html">Limit Order Books &amp; Queue Dynamics</a></span>
+  </div>
+
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="institutional-order-flow-imbalance-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li><strong>Order Flow Imbalance (OFI)</strong>, following Cont, Kukanov &amp; Stoikov (2014), is built directly from <em>changes</em> to the best bid and ask price and size between consecutive book updates — not from the sign of executed trades. It captures net buying or selling <em>pressure</em> building up at the top of the book, a genuinely different and often more immediately predictive signal than watching the last few trades' signs.</li>
+      <li>The <strong>microprice</strong> improves on the naive midpoint \((P_b+P_a)/2\) by weighting each side's price by the <em>opposite</em> side's resting size: \(P_{\text{micro}} = \frac{P_bQ_a + P_aQ_b}{Q_b+Q_a}\). Heavier resting size on one side signals more supply (or demand) waiting to be consumed there, which pulls the fair-value estimate away from that side and toward the lighter, more easily-moved side.</li>
+      <li><strong>Queue imbalance</strong>, \(QI = \frac{Q_b-Q_a}{Q_b+Q_a}\), is the simpler quantity underneath the microprice's logic — and algebraically, \(P_{\text{micro}} = M + \tfrac{S}{2}\cdot QI\), the naive midpoint plus half the spread times the queue imbalance. The two concepts aren't just related in spirit; one is a rearrangement of the other.</li>
+      <li>A worked four-snapshot toy example below shows the microprice pulling further and further from the naive midpoint as a book's queue imbalance builds from 0 to 0.5 — and then shows the price actually ticking in the direction that imbalance predicted, exactly as the theory says it should.</li>
+      <li>This closes the category's arc: trade classification signs individual trades from public quotes; Roll and Glosten-Milgrom explain and estimate why a spread exists at all; PIN estimates how much of a day's trading is informed. OFI and the microprice are the real-time, order-book-level signals that translate all of that historical-statistical machinery into something a live desk can watch move, update by update.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    <a href="limit-order-books.html">Limit Order Books &amp; Queue Dynamics</a> already
+    did the structural work this lesson leans on directly: a book is two ladders of
+    price levels, the <strong>best bid</strong> \(P_b\) and <strong>best ask</strong>
+    \(P_a\) are the touch prices, and \(Q_b\) and \(Q_a\) are the sizes resting at
+    those exact prices. Nothing here reintroduces that structure — this lesson takes
+    it as given and asks a narrower, more urgent question: given the book's current
+    state and how it just changed, what does that say about where the price is likely
+    to go in the next few ticks?
+  </p>
+  <p>
+    That question is deliberately different from everything else in this category.
+    <a href="institutional-trade-classification.html">Trade classification</a>,
+    <a href="institutional-roll-spread-estimator.html">Roll's estimator</a>,
+    <a href="institutional-glosten-milgrom.html">Glosten-Milgrom</a>, and
+    <a href="institutional-pin.html">PIN</a> all work primarily from <strong>historical
+    trade prints</strong> — a record of what already executed, summarized statistically
+    after the fact. A market maker adjusting quotes twenty times a second cannot wait
+    for statistical inference over a day's worth of trades; they need a number that
+    updates on every single book event and says, right now, which way the pressure is
+    leaning. Order Flow Imbalance and the microprice are exactly that number — built
+    not from trades at all, but from the book's own bid/ask price and size updates,
+    the same raw material the previous lesson used to describe queue position and
+    walking the book.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Watching the two lines at the checkout, not just who already got rung up</h3>
+    <p>
+      Picture two adjacent checkout lines at the deli counter from the earlier
+      lesson — one for buyers, one for sellers, resting at the best price on each
+      side. A trade-classification approach is a security camera reviewing footage
+      of people who already got served, guessing after the fact who seemed eager. OFI
+      is a completely different vantage point: someone standing at the front of the
+      store, watching the two lines <em>themselves</em> grow and shrink, minute to
+      minute. If the buyer line keeps growing while the seller line keeps getting
+      pulled shorter — people leaving before they're even served — that is
+      information about pressure building up, visible immediately, well before any
+      of those waiting people actually transact.
+    </p>
+    <p>
+      The microprice asks a related but distinct question: given how long each line
+      currently is, right now, which way is the counter more likely to move its
+      price next? If the seller line is short and thinning, there is less resistance
+      on that side — a few more impatient buyers could exhaust it and push the price
+      up before the counter can restock. The naive midpoint between the two lines'
+      posted prices ignores this entirely; the microprice leans the estimate toward
+      whichever side looks easier to blow through.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>1. Order Flow Imbalance — pressure from book updates, not trade signs</h3>
+  <p>
+    Cont, Kukanov &amp; Stoikov (2014) define OFI event by event, comparing each new
+    book update (indexed \(n\)) to the one immediately before it (\(n-1\)). Each side
+    contributes a signed quantity capturing whether that update added resting
+    interest, removed it, or improved the price outright:
+  </p>
+  <div class="tl-math">
+    \[
+    e^b_n =
+    \begin{cases}
+    Q^b_n & P^b_n > P^b_{n-1}\quad\text{(bid price improved up)} \\[2pt]
+    Q^b_n - Q^b_{n-1} & P^b_n = P^b_{n-1}\quad\text{(bid price unchanged, size moved)} \\[2pt]
+    -Q^b_{n-1} & P^b_n < P^b_{n-1}\quad\text{(bid price dropped)}
+    \end{cases}
+    \qquad
+    e^a_n =
+    \begin{cases}
+    Q^a_n & P^a_n < P^a_{n-1}\quad\text{(ask price improved down)} \\[2pt]
+    Q^a_n - Q^a_{n-1} & P^a_n = P^a_{n-1}\quad\text{(ask price unchanged, size moved)} \\[2pt]
+    -Q^a_{n-1} & P^a_n > P^a_{n-1}\quad\text{(ask price rose)}
+    \end{cases}
+    \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>e^b_n</code><span>the bid side's signed contribution at update n — positive when buy-side resting interest grows</span></div>
+    <div class="tl-eq-chip c2"><code>e^a_n</code><span>the ask side's contribution, defined with mirrored signs so it also reads positive when it implies more buying pressure</span></div>
+    <div class="tl-eq-chip c3"><code>P^b_n, Q^b_n</code><span>best bid price and size at update n; superscript a is the same for the ask side</span></div>
+  </div>
+  <p>
+    A single update's OFI is \(OFI_n = e^b_n - e^a_n\); summing \(OFI_n\) over every
+    update in a short window gives OFI for that window. The subtraction is what makes
+    the ask side's logic mirror the bid side's correctly: an ask size <em>decrease</em>
+    at an unchanged price gives \(e^a_n < 0\), and subtracting a negative number
+    <em>adds</em> to OFI — exactly right, since resting sell interest disappearing
+    (consumed or pulled) is itself a sign of building buy-side pressure, even though
+    no trade against the bid ever happened.
+  </p>
+
+  <div class="tl-steps">
+    <div class="tl-step">
+      <div class="tl-step-num">1</div>
+      <div class="tl-step-body">
+        <h4>Bid price improves up, or its size grows</h4>
+        <p>More resting buy interest, or a willingness to buy at a better price than a moment ago — both read as positive buy-side pressure.</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">2</div>
+      <div class="tl-step-body">
+        <h4>Bid size shrinks, or its price drops</h4>
+        <p>Resting buy interest is being pulled or consumed without being replaced — negative pressure.</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">3</div>
+      <div class="tl-step-body">
+        <h4>Ask size shrinks, or its price drops</h4>
+        <p>Resting sell interest thinning out or getting more aggressive toward buyers — the mirror case, and it <em>also</em> reads as positive buy-side pressure once the sign flip from \(OFI_n = e^b_n - e^a_n\) is applied.</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">4</div>
+      <div class="tl-step-body">
+        <h4>Sum over a short window</h4>
+        <p>Adding \(OFI_n\) across every update in, say, the last second or the last 50 events gives one number: net order-book pressure over that window, positive for net buying pressure, negative for net selling pressure.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine watching a tug-of-war rope, not the two teams' faces. You don't need to know who looks more determined (that's trade classification, guessing from behavior after something happened) — you just watch which way the rope is actually sliding, right now, as people join or let go of each side. OFI is watching the rope slide.</p>
+  </div>
+
+  <div class="tl-solid blue">
+    <strong>Why this beats "just look at the last few trade signs."</strong>
+    A trade only happens when a market order crosses the spread — it is a lagging
+    signal, visible only after an aggressor already acted. OFI is built from every
+    book update, including the far more numerous events where nothing traded at all:
+    a limit order added, cancelled, or improved. Pressure frequently builds up at the
+    top of the book — size quietly accumulating on the bid, size quietly draining
+    from the ask — well before it shows up as a run of same-signed trades. That head
+    start is exactly why OFI is a genuinely different, often more immediately
+    predictive signal for very short-term price moves.
+  </div>
+
+  <h3>2. The microprice — weighting price by the opposite side's size</h3>
+  <p>
+    The naive midpoint treats the book as if only the two touch prices mattered:
+    \(M = (P_b+P_a)/2\), with no reference to how much size backs each side. The
+    <strong>microprice</strong> (Stoikov, 2018, formalizing an idea long used
+    informally on trading desks) fixes this by weighting each side's price by the
+    <em>opposite</em> side's resting size:
+  </p>
+  <div class="tl-math">\[ P_{\text{micro}} = \frac{P_b\,Q_a + P_a\,Q_b}{Q_b + Q_a} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>P_b, P_a</code><span>best bid and ask prices — unchanged from the LOB lesson's notation</span></div>
+    <div class="tl-eq-chip c2"><code>Q_b, Q_a</code><span>resting size at the best bid and best ask</span></div>
+    <div class="tl-eq-chip c4"><code>P_b·Q_a, P_a·Q_b</code><span>cross-weighting — the bid price is weighted by the ask's size, and vice versa</span></div>
+  </div>
+  <p>
+    The cross-weighting is the entire idea, and it is worth deriving the intuition
+    rather than just accepting the formula. Suppose the ask side has far more resting
+    size than the bid (\(Q_a \gg Q_b\)) — a thick wall of supply sitting just above
+    the market, and comparatively little demand resting just below it. All else
+    equal, that lopsidedness makes it more likely the price gets pulled or pushed
+    <em>down</em>, toward the bid, over the next few ticks: there simply isn't much
+    resting size that has to be exhausted before an incoming seller reaches a
+    favorable price, while an incoming buyer has to work through a much larger wall
+    on the other side. The microprice formula encodes exactly this: because \(Q_a\)
+    is large, \(P_b\) — the price the market is more likely to move toward — gets
+    the large weight, while \(P_a\) gets weighted by the comparatively small
+    \(Q_b\). The heavier side's price is <em>down-weighted</em>; the lighter,
+    more easily-moved side's price dominates the average. That is why the microprice
+    sits closer to whichever side has less resting size backing it — the side under
+    less resistance to being reached.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If one team in tug-of-war has ten people holding the rope and the other has two, you don't bet the rope stays exactly in the middle — you bet it drifts toward the two-person side, because there's less resistance there. The microprice is that bet, written as a formula: it leans the "fair value" guess toward whichever side has less weight holding it in place.</p>
+  </div>
+
+  <h3>3. Queue imbalance, and the algebra connecting it to the microprice</h3>
+  <p>
+    <strong>Queue imbalance</strong> is the simpler, closely related quantity
+    underneath the microprice's logic — a normalized measure of exactly how lopsided
+    the top of book currently is:
+  </p>
+  <div class="tl-math">\[ QI = \frac{Q_b - Q_a}{Q_b + Q_a} \]</div>
+  <p>
+    \(QI\) ranges from \(-1\) (every unit of resting size sits on the ask — maximally
+    seller-heavy) to \(+1\) (every unit sits on the bid — maximally buyer-heavy), with
+    \(QI=0\) meaning a perfectly balanced book. The connection to the microprice isn't
+    just qualitative — it can be derived exactly. Write the bid and ask prices in
+    terms of the midpoint \(M\) and half-spread \(h = (P_a - P_b)/2\), so
+    \(P_b = M - h\) and \(P_a = M + h\), and substitute directly into the microprice
+    formula:
+  </p>
+  <div class="tl-math">
+    \[
+    P_{\text{micro}} = \frac{(M-h)Q_a + (M+h)Q_b}{Q_b+Q_a}
+    = \frac{M(Q_a+Q_b) + h(Q_b - Q_a)}{Q_b+Q_a}
+    = M + h\cdot\frac{Q_b-Q_a}{Q_b+Q_a}
+    \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>M(Q_a+Q_b)</code><span>the midpoint term factors out completely once M is common to both weighted prices</span></div>
+    <div class="tl-eq-chip c2"><code>h(Q_b−Q_a)</code><span>everything else collapses to the half-spread times exactly the numerator of QI</span></div>
+    <div class="tl-eq-chip c3"><code>÷(Q_b+Q_a)</code><span>dividing through leaves QI's own definition sitting inside the result</span></div>
+  </div>
+  <p>
+    Which gives the clean identity used throughout the rest of this lesson:
+  </p>
+  <div class="tl-math">\[ \boxed{P_{\text{micro}} = M + \frac{S}{2}\cdot QI}\qquad\big(S = P_a - P_b,\ \text{the spread}\big) \]</div>
+  <p>
+    The microprice is <em>exactly</em> the naive midpoint, nudged by half the spread
+    in the direction the queue imbalance points. A perfectly balanced book
+    (\(QI=0\)) makes the microprice collapse to the plain midpoint — no adjustment,
+    because there's no lopsidedness to correct for. A bid-heavy book (\(QI>0\)) pulls
+    the microprice <em>up</em>, toward the ask — consistent with the intuition above:
+    heavy resting size on the bid signals demand that could push price up toward the
+    thinner ask side. The worked example below confirms this identity numerically,
+    to the sixth decimal place, on an actual toy order book.
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(P_b, P_a\)</td><td>Best bid / best ask price — same notation as the Limit Order Books lesson.</td></tr>
+    <tr><td>\(Q_b, Q_a\)</td><td>Resting size at the best bid / best ask.</td></tr>
+    <tr><td>\(M\)</td><td>Naive midpoint, \((P_b+P_a)/2\).</td></tr>
+    <tr><td>\(S, h\)</td><td>Spread \(P_a-P_b\), and half-spread \(h=S/2\).</td></tr>
+    <tr><td>\(QI\)</td><td>Queue imbalance, \((Q_b-Q_a)/(Q_b+Q_a)\) — ranges from \(-1\) to \(+1\).</td></tr>
+    <tr><td>\(P_{\text{micro}}\)</td><td>The microprice — the size-weighted fair-value estimate, \(= M + h\cdot QI\).</td></tr>
+    <tr><td>\(e^b_n, e^a_n\)</td><td>Each side's signed contribution to OFI at book update \(n\).</td></tr>
+    <tr><td>\(OFI_n\)</td><td>Net order-book pressure at update \(n\), \(=e^b_n-e^a_n\); summed over a window for that window's OFI.</td></tr>
+  </table></div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>A book that quietly tilts, then actually moves the way it tilted</h3>
+    <p>
+      Four successive snapshots of a small hypothetical FX book, continuing the
+      LOB lesson's own 1.1004/1.1005 touch. Between each snapshot, watch \(QI\)
+      and \(P_{\text{micro}}\) diverge further from the unmoving naive midpoint —
+      and watch \(OFI\) stay strongly positive throughout, right up until the
+      price itself finally moves.
+    </p>
+    <div class="tl-table-wrap"><table class="tl-tbl">
+      <tr><th>Snapshot</th><th>Bid (P<sub>b</sub> / Q<sub>b</sub>)</th><th>Ask (P<sub>a</sub> / Q<sub>a</sub>)</th><th>Midpoint M</th><th>QI</th><th>Microprice</th></tr>
+      <tr><td>n = 1</td><td class="tl-num">1.10040 / 400</td><td class="tl-num">1.10050 / 400</td><td class="tl-num">1.100450</td><td class="tl-num">0.000</td><td class="tl-num">1.100450</td></tr>
+      <tr><td>n = 2</td><td class="tl-num">1.10040 / 600</td><td class="tl-num">1.10050 / 400</td><td class="tl-num">1.100450</td><td class="tl-num">0.200</td><td class="tl-num">1.100460</td></tr>
+      <tr><td>n = 3</td><td class="tl-num">1.10040 / 900</td><td class="tl-num">1.10050 / 300</td><td class="tl-num">1.100450</td><td class="tl-num">0.500</td><td class="tl-num">1.100475</td></tr>
+      <tr><td>n = 4</td><td class="tl-num">1.10050 / 500</td><td class="tl-num">1.10060 / 350</td><td class="tl-num">1.100550</td><td class="tl-num">0.176</td><td class="tl-num">1.100559</td></tr>
+    </table></div>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>n = 1 → n = 2: the bid quietly builds size</h4>
+          <p>
+            Neither price moves. The bid's size grows from 400 to 600 (\(e^b_2 =
+            600-400=200\)); the ask's size is unchanged (\(e^a_2 = 400-400=0\)).
+            \(OFI_2 = 200 - 0 = 200\): mild buy-side pressure, invisible to a naive
+            midpoint (which hasn't moved at all) but already visible in \(QI\)
+            rising to 0.2 and the microprice edging up to 1.100460.
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>n = 2 → n = 3: the ask thins out too</h4>
+          <p>
+            Bid size keeps growing, 600 → 900 (\(e^b_3 = 300\)). Now the ask side
+            <em>loses</em> size, 400 → 300 (\(e^a_3 = 300-400=-100\)).
+            \(OFI_3 = 300 - (-100) = 400\): the ask thinning out adds to buy-side
+            pressure exactly as the mirrored-sign construction says it should. \(QI\)
+            reaches 0.5 — the bid now holds three units of resting size for every one
+            on the ask — and the microprice has pulled to 1.100475, a full quarter-pip
+            above the still-unmoved 1.100450 midpoint.
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>n = 3 → n = 4: the price actually moves — up, as predicted</h4>
+          <p>
+            Both touch prices tick up by one pip: the old bid (1.10040) is gone,
+            replaced by a new best bid at 1.10050 with 500 resting; the old ask
+            (1.10050) is gone too, replaced by a new best ask at 1.10060 with 350
+            resting. Both price moves are price <em>improvements</em> from the
+            perspective of the side that just moved, so \(e^b_4 = Q^b_4 = 500\) and,
+            mirrored on the ask side, \(e^a_4 = -Q^a_3 = -300\).
+            \(OFI_4 = 500-(-300) = 800\) — the largest single-update reading yet,
+            confirming the move was consistent with, not contrary to, the pressure
+            that had been building. The book was buyer-heavy for two straight
+            updates, and the price it then moved to was <em>up</em> — exactly the
+            direction the growing \(QI\) and the diverging microprice had been
+            leaning toward.
+          </p>
+        </div>
+      </div>
+    </div>
+    <p>
+      Summed across the whole window, \(OFI_2+OFI_3+OFI_4 = 200+400+800=1{,}400\) —
+      one number, built entirely from book updates with no trade prints involved,
+      that was strongly positive throughout the entire buildup. This is a small,
+      hand-built illustration of the mechanism, not a live market run — but every
+      number in it is the actual output of the formulas above, checked against each
+      other to six decimal places.
+    </p>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Edit the book, watch the midpoint, microprice and QI move live</h3>
+    <p>
+      Starts on this lesson's own snapshot n = 3 (900 resting on the bid at 1.10040,
+      300 resting on the ask at 1.10050). Change any price or size and every output
+      recalculates instantly from the formulas above — including a guard for zero
+      total resting size and a check for a crossed or invalid book.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Bid price P<sub>b</sub></span></div>
+        <input type="number" id="ofi-scratch-pb" class="tl-scratch-input" value="1.1004" step="0.0001">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Bid size Q<sub>b</sub></span></div>
+        <input type="number" id="ofi-scratch-qb" class="tl-scratch-input" value="900" step="50" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Ask price P<sub>a</sub></span></div>
+        <input type="number" id="ofi-scratch-pa" class="tl-scratch-input" value="1.1005" step="0.0001">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Ask size Q<sub>a</sub></span></div>
+        <input type="number" id="ofi-scratch-qa" class="tl-scratch-input" value="300" step="50" min="0">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Midpoint M = <b id="ofi-scratch-mid">1.100450</b>&emsp;Half-spread h = <b id="ofi-scratch-h">0.000050</b>
+    </div>
+    <div class="tl-readout">
+      Microprice = <b id="ofi-scratch-micro">1.100475</b>&emsp;QI = <b id="ofi-scratch-qi">0.500</b>
+      <span id="ofi-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="ofi-scratch-reset" class="tl-scratch-reset-btn">Reset to snapshot n = 3</button>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Resting size at the touch, and where the microprice sits relative to the naive midpoint</div>
+    <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Depth diagram for snapshot 3 of the worked example: a tall bar of resting size 900 at the bid on the left, a short bar of resting size 300 at the ask on the right, a dashed vertical line marking the naive midpoint centered between them, and a solid vertical line marking the microprice shifted to the right, toward the thinner ask side.">
+      <line x1="40" y1="230" x2="600" y2="230" style="stroke:var(--text3);stroke-width:1"/>
+      <text x="150" y="255" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--green)">bid, 1.10040</text>
+      <text x="150" y="269" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">Q_b = 900</text>
+      <text x="490" y="255" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--red)">ask, 1.10050</text>
+      <text x="490" y="269" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">Q_a = 300</text>
+
+      <!-- bid bar: heavy, tall -->
+      <rect x="110" y="50" width="80" height="180" style="fill:var(--green);opacity:.30;stroke:var(--green);stroke-width:1.5"/>
+      <!-- ask bar: light, short -->
+      <rect x="450" y="170" width="80" height="60" style="fill:var(--red);opacity:.25;stroke:var(--red);stroke-width:1.5"/>
+
+      <!-- naive midpoint: dashed, centered -->
+      <line x1="320" y1="20" x2="320" y2="230" style="stroke:var(--text3);stroke-width:1.5;stroke-dasharray:5,4"/>
+      <text x="320" y="14" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)">naive midpoint</text>
+
+      <!-- microprice: solid amber, shifted right toward the lighter ask side -->
+      <line x1="392" y1="20" x2="392" y2="230" style="stroke:var(--amber);stroke-width:2.5"/>
+      <text x="392" y="248" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="var(--amber)" font-weight="700">microprice</text>
+
+      <path d="M330,40 L382,40" style="stroke:var(--amber);stroke-width:1.5;marker-end:url(#ofi-arrow)"/>
+      <defs>
+        <marker id="ofi-arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="var(--amber)"/>
+        </marker>
+      </defs>
+      <text x="356" y="32" text-anchor="middle" font-size="9" font-family="'DM Mono',monospace" fill="var(--amber)">pulled toward the lighter side</text>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--green)"></i>resting bid size (heavy — 900 units)</span>
+      <span><i style="background:var(--red)"></i>resting ask size (light — 300 units)</span>
+      <span><i style="background:var(--amber)"></i>microprice, pulled off the midpoint toward the thinner ask side</span>
+    </div>
+    <div class="tl-chart-caption">
+      Snapshot n = 3 from the worked example. The bid holds three times the ask's
+      resting size, so \(QI=0.5\) and the microprice sits noticeably above (to the
+      right of, in this layout) the naive midpoint — leaning toward the ask side,
+      which has less resistance standing in the way of the price reaching it.
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>Skewing quotes before a single trade has told anyone anything</h3>
+    <p>
+      A market-making desk quotes both sides of a currency pair continuously,
+      updating its own bid and ask every time the book it watches updates. If it
+      only re-marks its quotes off the naive midpoint, it is implicitly assuming the
+      book is always balanced — an assumption that is false almost constantly. Watch
+      OFI turn strongly positive and \(QI\) climb toward 0.4–0.5, exactly as in the
+      worked example above, and a desk running this logic will lean its own quotes
+      up <em>before</em> the price actually moves: quoting a slightly higher bid and
+      ask than the stale midpoint would suggest, both to avoid being picked off by
+      an informed buyer about to lift the thin ask, and to capture some of the move
+      the imbalance is telegraphing. This is the single most common practical use of
+      both signals together — OFI as the early-warning pressure gauge, the
+      microprice as the actual reference price the desk re-centers its own quoting
+      around, tick by tick, well before a naive midpoint would ever budge.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📊</div>
+      <h4>Short-horizon price-move features</h4>
+      <p>OFI and \(QI\), computed over rolling short windows, are common inputs to short-horizon (sub-second to a few-seconds) prediction models — genuinely different in character from the daily or intraday-bar features used elsewhere in a research pipeline, because they exist only at book-update resolution.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🧭</div>
+      <h4>A truer reference price than the midpoint</h4>
+      <p>Desks that mark P&amp;L, decide whether a resting order is "at a good price," or benchmark execution quality often use the microprice instead of the naive midpoint specifically because it already accounts for the book's current lopsidedness, not just its two touch prices.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">⏱️</div>
+      <h4>Timing aggressive orders</h4>
+      <p>An execution algorithm deciding whether to rest passively or cross the spread right now can use OFI as a real-time signal for whether the book currently favors its side — crossing when the imbalance already favors the intended direction is cheaper than crossing into resistance.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🧩</div>
+      <h4>A live complement to this category's historical tools</h4>
+      <p>PIN and Glosten-Milgrom estimate, from history, how much of a market's trading is information-driven and why a spread compensates for it. OFI and the microprice don't replace that — they are the tick-by-tick instrument a desk actually watches while those historical estimates sit in the background informing how aggressively to trade at all.</p>
+    </div>
+  </div>
+
+  <div class="tl-solid blue">
+    <strong>What this repo actually contains, checked directly rather than assumed.</strong>
+    A repo-wide search of every <code>.py</code> and <code>.js</code> file for
+    "microprice," "queue imbalance," "order flow imbalance," and the bare string
+    "OFI" turns up nothing genuinely matching this lesson's concepts — the handful
+    of "imbalance" hits that do exist are all unrelated (fair-value-gap price
+    imbalances in <code>forge/levels.py</code> and the confluence bots, and an ML
+    class-imbalance comment in <code>Gold/ml_model.py</code>). The one real,
+    order-book-adjacent artifact is <code>oi_recon/databento_orderbook_cost_estimate.py</code>
+    — a cost-scoping script that calls Databento's pricing API (never its actual
+    data API) to estimate what full MBO/MBP-10 order-book history would cost for
+    NQ futures and this repo's tracked FX futures, before any of it is purchased.
+    Its own comments are explicit that this repo's primary FX venue, OANDA spot,
+    <strong>has no order book at all</strong> to compute either signal from — a real
+    and specific reason both signals in this lesson remain genuinely conceptual
+    here, not a gap likely to close by accident.
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where OFI and the microprice quietly mislead</h3>
+    <p>
+      <strong>Treating displayed size as committed size.</strong> Just like the
+      resting size discussed in the LOB lesson, the \(Q_b\) and \(Q_a\) feeding both
+      formulas here can be cancelled an instant after being observed — "spoofing"
+      (posting size with no intention of letting it trade) exploits exactly this,
+      manufacturing a false \(QI\) reading to bait a reaction before pulling the
+      order. A signal built entirely from displayed size inherits this vulnerability
+      by construction.
+    </p>
+    <p>
+      <strong>Confusing OFI's sign with "who is right."</strong> A strongly positive
+      OFI says buy-side pressure is building at the top of the book <em>right
+      now</em> — it says nothing about whether that pressure reflects genuine new
+      information (the PIN framing) or a large but uninformed order working through
+      the book. Both this lesson's signal and PIN's estimate answer genuinely
+      different questions and shouldn't be substituted for one another.
+    </p>
+    <p>
+      <strong>Extrapolating past the horizon the signal was built for.</strong> Both
+      OFI and the microprice are constructed from, and are most informative over,
+      very short horizons — the next few updates or ticks. Treating a snapshot of
+      either as a multi-minute or multi-hour forecast is a category error; the
+      underlying queue can refill, cancel, or reverse entirely within the same
+      second the reading was taken.
+    </p>
+    <p>
+      <strong>Only ever looking at top-of-book.</strong> Both formulas here use only
+      the single best level on each side. A book can be thin and lopsided at the
+      touch while holding substantial resting size one or two levels back — the
+      signals in this lesson say nothing about that deeper structure on their own,
+      and desks that need it extend both ideas to multiple levels rather than
+      treating level-1 as the whole story.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Closing the arc — five lessons, one desk's actual workflow</h2>
+  <p>
+    This is the last lesson in Market Microstructure Extensions, and it is worth
+    naming plainly how the five lessons in this category actually fit together,
+    because none of them was ever meant to stand alone:
+  </p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">1</div>
+      <h4><a href="institutional-trade-classification.html">Trade Classification</a></h4>
+      <p>Signs individual historical trades as buyer- or seller-initiated when true intent was never recorded — the raw ingredient every later lesson in this category, and market microstructure research generally, is built on top of.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">2–3</div>
+      <h4><a href="institutional-roll-spread-estimator.html">Roll</a> &amp; <a href="institutional-glosten-milgrom.html">Glosten-Milgrom</a></h4>
+      <p>Explain and estimate <em>why</em> a bid-ask spread exists at all, and how much of it compensates a market maker for the risk of trading against someone who knows more — from limited, historical price or trade data.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">4</div>
+      <h4><a href="institutional-pin.html">PIN</a></h4>
+      <p>Takes the informed-vs-noise framing further and estimates a single number — the probability of informed trading — for how much of an instrument's overall trading, over some historical window, is information-driven.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">5</div>
+      <h4>OFI &amp; the microprice (this lesson)</h4>
+      <p>Takes everything the first four lessons say about historical trading behavior and asks the live-desk version of the same question: what does the book's own tick-by-tick updates say about pressure and fair value, right now, this instant.</p>
+    </div>
+  </div>
+  <p>
+    The gap this closes is real: lessons 1 through 4 are the statistically rigorous,
+    after-the-fact machinery a researcher uses to understand a market's
+    microstructure from historical data. OFI and the microprice are the parts of
+    that same intellectual tradition that actually get computed, live, on an
+    electronic trading desk, updated on every single book event. Neither replaces
+    the other — a desk that only watches OFI without ever having studied why
+    spreads and informed trading exist in the first place is operating on
+    intuition it can't explain; a researcher who only studies PIN and Glosten-Milgrom
+    without knowing what a modern desk actually watches in real time is missing
+    where all that theory is actually put to work.
+  </p>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>OFI is built from book updates, not trade prints.</strong> Each side contributes a signed value based on whether its price improved, held with a size change, or worsened — summed with mirrored signs so both sides consistently read as buy-side or sell-side pressure.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The microprice weights each side's price by the opposite side's size,</strong> \(P_{\text{micro}}=(P_bQ_a+P_aQ_b)/(Q_b+Q_a)\) — pulling the fair-value estimate toward whichever side has less resting size standing in its way.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Queue imbalance and the microprice are algebraically the same idea:</strong> \(P_{\text{micro}} = M + \tfrac{S}{2}\cdot QI\) — the naive midpoint, nudged by half the spread in the direction the book is lopsided.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Both signals live and die on displayed size that can vanish an instant later.</strong> Spoofed or fleeting resting orders can manufacture a misleading reading in either formula.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Both signals are short-horizon by construction.</strong> Treating a single reading as a forecast beyond the next few ticks or updates misuses what they were built to measure.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This closes the category's arc:</strong> lessons 1–4 explain and estimate spreads and informed trading from historical data; OFI and the microprice are the real-time, order-book-level signals a live desk actually watches, tick by tick.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. OFI and trade-classification methods (like the tick rule or Lee-Ready, covered earlier in this category) both try to say something about buying versus selling pressure. What is the fundamental difference in what data each one uses?</summary>
+    <div class="tl-answer">
+      Trade classification works from executed trade prints — it looks at trades
+      that already happened and infers, after the fact, which side was the
+      aggressor. OFI is built entirely from changes to the best bid/ask price and
+      size between consecutive book updates — including the far more numerous
+      updates where nothing traded at all (an order added, cancelled, or improved).
+      OFI can therefore reflect pressure building up before any trade occurs;
+      trade classification is inherently a lagging signal that only exists once a
+      trade has already crossed the spread.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why does a decrease in resting ask size (with the ask price unchanged) count as a positive contribution to OFI, even though nothing traded against the bid?</summary>
+    <div class="tl-answer">
+      Resting sell interest disappearing — whether consumed by a trade or simply
+      cancelled — means less supply is available at that price, which is itself a
+      sign of effective buy-side pressure: it becomes easier for the price to move
+      up because there is less resistance in the way. Formally, \(e^a_n =
+      Q^a_n-Q^a_{n-1} < 0\) when ask size shrinks, and since \(OFI_n = e^b_n -
+      e^a_n\), subtracting that negative number adds a positive amount to OFI —
+      exactly capturing that a thinning ask is bullish pressure, not neutral.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why does the microprice weight each side's price by the OPPOSITE side's resting size, rather than its own side's size?</summary>
+    <div class="tl-answer">
+      Heavier resting size on one side represents more supply (if it's the ask) or
+      demand (if it's the bid) sitting there waiting to be worked through — and all
+      else equal, that makes it <em>less</em> likely the price moves toward that
+      heavy side, since more size has to be consumed first. Weighting a side's
+      price by the opposite side's size means a heavy bid pulls weight onto the
+      ask price (making the average lean up, toward the ask), and a heavy ask pulls
+      weight onto the bid price (making the average lean down, toward the bid) —
+      in both cases, the estimate is pulled toward the lighter, more easily-moved
+      side, which is exactly the intended behavior.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Using \(P_{\text{micro}} = M + \tfrac{S}{2}\cdot QI\): a book has a midpoint of 1.2050, a spread of 0.0004, and \(QI = -0.4\). What is the microprice, and which side is it leaning toward?</summary>
+    <div class="tl-answer">
+      Half-spread \(h = 0.0004/2 = 0.0002\). \(P_{\text{micro}} = 1.2050 +
+      0.0002\times(-0.4) = 1.2050 - 0.00008 = 1.20492\). A negative \(QI\) means the
+      ask side holds more resting size than the bid, so the microprice is pulled
+      <em>down</em>, below the midpoint, toward the bid — the lighter side, exactly
+      as the formula's derivation predicts.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. In this lesson's worked example, the naive midpoint never moves between snapshots n=1 and n=3, while OFI stays strongly positive and QI climbs from 0 to 0.5. What actually happens at snapshot n=4, and why is it consistent with the earlier readings rather than contradicting them?</summary>
+    <div class="tl-answer">
+      Both the best bid and best ask tick up by one pip (1.1004/1.1005 to
+      1.1005/1.1006), and OFI at that update is +800 — the largest single reading
+      in the sequence, since both the bid's price improvement and the ask's price
+      deterioration count as strongly positive contributions. This is consistent
+      with, not contrary to, the earlier readings: OFI and QI had been signaling
+      building buy-side pressure for two full updates before the price actually
+      moved, and when it did move, it moved up — the exact direction that pressure
+      had been pointing toward.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. How does this lesson's content relate to PIN (lesson 4 of this category), rather than replacing it?</summary>
+    <div class="tl-answer">
+      PIN estimates, from historical trade data over some window, roughly how much
+      of an instrument's overall trading is driven by informed traders — a
+      statistical, after-the-fact characterization of a market. OFI and the
+      microprice answer a different, live question: given the book's current
+      state and its most recent updates, which way is pressure leaning and where
+      does fair value actually sit, right now. A high PIN reading is context that
+      might make a desk trade more cautiously in general; OFI and the microprice
+      are what that same desk actually watches update by update while doing so.
+      Neither one substitutes for the other — they operate at different timescales
+      answering different questions.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Rama Cont, Arseniy Kukanov &amp; Sasha Stoikov, <em>"The Price Impact of Order Book Events,"</em> Journal of Financial Econometrics, 12(1), 2014 — the original Order Flow Imbalance definition used in this lesson, and its empirical link to short-horizon price impact.</li>
+    <li>Sasha Stoikov, <em>"The Micro-Price: A High-Frequency Estimator of Future Prices,"</em> Quantitative Finance, 18(12), 2018 — formalizes the microprice this lesson derives, including its behavior as a martingale-adjusted estimator under a queueing model of the book.</li>
+    <li>Álvaro Cartea, Sebastian Jaimungal &amp; José Penalva, <em>Algorithmic and High-Frequency Trading</em>, Cambridge University Press, 2015 — the same book-structure reference cited in the Limit Order Books lesson, with further material on order-flow-based signals built directly on top of it.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="institutional-pin.html">← PIN</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="institutional-vecm.html">Vector Error Correction Models →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+<script>
+(function(){
+  var pbInput = document.getElementById('ofi-scratch-pb');
+  if (!pbInput) return;
+  var qbInput = document.getElementById('ofi-scratch-qb');
+  var paInput = document.getElementById('ofi-scratch-pa');
+  var qaInput = document.getElementById('ofi-scratch-qa');
+  var midOut = document.getElementById('ofi-scratch-mid');
+  var hOut = document.getElementById('ofi-scratch-h');
+  var microOut = document.getElementById('ofi-scratch-micro');
+  var qiOut = document.getElementById('ofi-scratch-qi');
+  var note = document.getElementById('ofi-scratch-note');
+  var resetBtn = document.getElementById('ofi-scratch-reset');
+
+  var DEFAULTS = { pb: 1.1004, qb: 900, pa: 1.1005, qa: 300 };
+
+  function recompute(){
+    var Pb = parseFloat(pbInput.value);
+    var Qb = parseFloat(qbInput.value);
+    var Pa = parseFloat(paInput.value);
+    var Qa = parseFloat(qaInput.value);
+
+    if (![Pb, Qb, Pa, Qa].every(isFinite)) {
+      midOut.textContent = '—'; hOut.textContent = '—';
+      microOut.textContent = '—'; qiOut.textContent = '—';
+      note.textContent = '(enter a number in every field)';
+      return;
+    }
+    if (Qb < 0 || Qa < 0) {
+      midOut.textContent = '—'; hOut.textContent = '—';
+      microOut.textContent = '—'; qiOut.textContent = '—';
+      note.textContent = '(resting sizes cannot be negative)';
+      return;
+    }
+    if (Pb >= Pa) {
+      midOut.textContent = '—'; hOut.textContent = '—';
+      microOut.textContent = '—'; qiOut.textContent = '—';
+      note.textContent = '(crossed or locked book: the bid price must be strictly below the ask price)';
+      return;
+    }
+
+    var total = Qb + Qa;
+    if (total <= 0) {
+      var mid0 = (Pb + Pa) / 2;
+      midOut.textContent = mid0.toFixed(6);
+      hOut.textContent = ((Pa - Pb) / 2).toFixed(6);
+      microOut.textContent = '—';
+      qiOut.textContent = '—';
+      note.textContent = '(zero total resting size at the touch — microprice and QI are undefined, division by zero)';
+      return;
+    }
+
+    var mid = (Pb + Pa) / 2;
+    var h = (Pa - Pb) / 2;
+    var micro = (Pb * Qa + Pa * Qb) / total;
+    var qi = (Qb - Qa) / total;
+
+    midOut.textContent = mid.toFixed(6);
+    hOut.textContent = h.toFixed(6);
+    microOut.textContent = micro.toFixed(6);
+    qiOut.textContent = qi.toFixed(3);
+    note.textContent = '';
+  }
+
+  [pbInput, qbInput, paInput, qaInput].forEach(function(el){ el.addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    pbInput.value = DEFAULTS.pb;
+    qbInput.value = DEFAULTS.qb;
+    paInput.value = DEFAULTS.pa;
+    qaInput.value = DEFAULTS.qa;
+    recompute();
+  });
+  recompute();
+})();
+</script>
+</body>
+</html>

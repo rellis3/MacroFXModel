@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hasbrouck Information Share — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Price Discovery &amp; Lead-Lag / Hasbrouck Information Share</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Price Discovery &amp; Lead-Lag 3 of 3</div>
+  <h1 class="tl-title">Hasbrouck Information Share &amp; Price Discovery</h1>
+  <p class="tl-dek">A VECM tells you which of two prices does more of the correcting when they drift apart. Hasbrouck's Information Share asks the sharper question underneath that: when brand-new information hits, how much of the resulting price-variance actually showed up first in venue A versus venue B? The answer turns out to depend, uncomfortably, on a modeling choice nobody's economics forces you to make.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — no Hasbrouck Information Share, variance decomposition, or Cholesky-orthogonalization code exists anywhere in this repo, verified by grepping <code>Hasbrouck</code>, <code>information.share</code>, <code>price.discovery</code>, and <code>Cholesky</code> across every <code>.js</code> and <code>.py</code> file (zero hits). This lesson builds conceptually on the sibling <a href="institutional-vecm.html">VECM</a> lesson's genuinely live, single-equation <code>js/arma.js</code> <code>fitVECM</code> — but nothing here is wired into that code, and no two-equation VECM or IS decomposition runs anywhere in this repo today.</span>
+    <span>~19 min read</span>
+    <span>Prereqs: <a href="institutional-vecm.html">Vector Error Correction Models (VECM)</a>, <a href="institutional-granger-causality.html">Granger Causality &amp; Lead-Lag Analysis</a></span>
+  </div>
+
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="institutional-hasbrouck-information-share-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides, including a side-by-side toggle between the two Cholesky orderings.
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>When the "same" asset trades in more than one place — spot vs. futures, or a pair vs. a tightly correlated proxy — and the two prices are cointegrated around one common efficient price, the question is <em>which venue's price moves first</em> when new information arrives. The sibling <a href="institutional-vecm.html">VECM</a> lesson gave an informal answer (compare \(|\alpha_Y|\) and \(|\alpha_X|\)); Hasbrouck's Information Share (IS) makes it rigorous by decomposing <em>variance</em>, not just adjustment speed.</li>
+      <li>The pipeline: fit the same two-equation VECM, invert it into its Wold/vector-moving-average representation, extract the long-run impact matrix \(\Psi(1)\) — whose rows come out identical here, because both venues track one common efficient price by construction — and read off a shared common-factor loading vector \(\psi=(\psi_Y,\psi_X)\), derivable directly from the VECM's own \(\alpha_Y,\alpha_X\).</li>
+      <li>Hasbrouck's actual trick: the two venues' shocks are correlated, so their contribution to the common factor's variance can't just be split additively. Cholesky-decompose the residual covariance matrix \(\Omega\) to manufacture orthogonal shocks, then attribute variance venue by venue. The venue ordered <strong>first</strong> in the Cholesky decomposition claims the entire shared, correlated portion of the variance for itself; the venue ordered <strong>second</strong> only gets what's left over.</li>
+      <li>That ordering is arbitrary — nothing in the economics says which venue goes first — and the split can swing dramatically depending on it. This lesson's own worked numeric example: the same fitted system gives venue Y a 57.1% information share when Y is ordered first, and only 10.7% when X is ordered first instead. This is <em>the</em> standard critique of Hasbrouck IS.</li>
+      <li>Two standard responses exist: Hasbrouck's own suggested fix — compute IS both ways and report the midpoint or the range — and alternative measures, Gonzalo &amp; Granger's (1995) Component Share and Putniņš' (2013) Information Leadership Share, that don't hinge on an arbitrary ordering the same way. All three are covered below, with a live calculator that computes both Cholesky orderings from any inputs you enter.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    The <a href="institutional-vecm.html">VECM</a> lesson built the two-equation
+    error-correction system \(\Delta Y_t = \alpha_Y Z_{t-1} + \dots +
+    \epsilon_{Y,t}\), \(\Delta X_t = \alpha_X Z_{t-1} + \dots + \epsilon_{X,t}\)
+    and pointed out, in passing, that comparing \(|\alpha_Y|\) and
+    \(|\alpha_X|\) is an informal first pass at "which price is leading."
+    A large \(|\alpha_Y|\) paired with an \(\alpha_X\) near zero says \(Y\)
+    absorbs almost all of the correction when the spread drifts — \(X\)
+    behaves like the anchor, \(Y\) like the follower. That comparison is real
+    and useful, but it's a statement about <strong>adjustment speed</strong>,
+    not about <strong>where new information actually shows up first</strong>.
+    Those two questions turn out to be closely related but genuinely distinct,
+    and Joel Hasbrouck's 1995 "One Security, Many Markets" paper is the paper
+    that made the distinction precise and gave it a rigorous answer.
+  </p>
+  <p>
+    The setting is deliberately narrow, and the narrowness is the point: the
+    "same" underlying asset trades in two (or more) venues or forms — spot FX
+    vs. FX futures, a currency pair vs. a tightly cointegrated proxy built
+    from interest-rate differentials, a stock's price on two competing
+    exchanges. Both quoted prices bounce around a single, unobserved
+    <strong>common efficient price</strong> — the "true" value the asset would
+    trade at if markets processed information instantly and perfectly — and
+    each venue's observed price is that common price plus its own transitory,
+    venue-specific noise. Cointegration is exactly what makes this framework
+    valid at all: the two observed prices being cointegrated is the formal
+    statement that they share one common stochastic trend rather than
+    wandering off independently forever. Hasbrouck's Information Share asks:
+    of the variance in the shock that moves the common efficient price each
+    period, how much of that variance is attributable to information that
+    first showed up in venue \(Y\) versus venue \(X\)?
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Two clocks, one true time, and a question about which one you'd trust</h3>
+    <p>
+      Imagine two clocks in the same room, both supposedly showing the same
+      true time, but each running slightly fast or slow at any given moment
+      and each getting corrected back toward the true time periodically. The
+      VECM's \(\alpha_Y\) and \(\alpha_X\) tell you how hard each clock gets
+      yanked back toward agreement whenever they drift apart — useful, but it
+      doesn't tell you which clock's readings you'd actually want to consult
+      <em>right now</em> if you needed to know the true time this instant.
+    </p>
+    <p>
+      Hasbrouck's Information Share answers that sharper question instead:
+      if the true time just changed (new information arrived), which clock's
+      reading moved first, and by how much of the total movement? If Clock A
+      almost always changes first and Clock B just follows along a beat
+      later, most of the informational "news" is showing up in Clock A —
+      it has a high information share, and it's functionally the reference
+      clock everyone else is chasing, whether or not it's the one doing more
+      of the eventual self-correcting.
+    </p>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The VECM lesson asked "when the two prices drift apart, which one snaps back harder?" This lesson asks a different question: "when something genuinely new happens in the world, which price hears about it and reacts first?" A price can be a slow, lazy corrector (small α) and still be the one that always reacts to news first — being quick to react to news and being quick to self-correct afterward are not automatically the same trait, and Hasbrouck's Information Share is built specifically to measure the first one.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+  <p>
+    Four steps get from the VECM's own residuals to a number for each venue's
+    Information Share. The first two steps are mechanical bookkeeping; the
+    third step — pinning down the common-factor loading vector \(\psi\) — is
+    where the VECM's own \(\alpha_Y, \alpha_X\) come back in explicitly; the
+    fourth step is Hasbrouck's actual contribution and the source of the
+    ordering problem covered right after it.
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(P_t=(Y_t,X_t)'\)</td><td>The vector of the two venues' prices for the same underlying asset — the VECM lesson's own \(Y_t,X_t\).</td></tr>
+    <tr><td>\(\epsilon_t=(\epsilon_{Y,t},\epsilon_{X,t})'\)</td><td>The VECM's own reduced-form residual vector — the two equations' own shocks, exactly as defined in the VECM lesson.</td></tr>
+    <tr><td>\(\Omega\)</td><td>The residual covariance matrix, \(\Omega=\text{Var}(\epsilon_t)=\begin{pmatrix}\sigma_Y^2 & \sigma_{YX}\\ \sigma_{YX} & \sigma_X^2\end{pmatrix}\).</td></tr>
+    <tr><td>\(\Psi(L),\ \Psi(1)\)</td><td>The Wold/vector-moving-average lag polynomial, and its sum at \(L=1\) — the <strong>long-run impact matrix</strong>: how much a shock permanently moves each price once all its effects have played out.</td></tr>
+    <tr><td>\(\psi=(\psi_Y,\psi_X)\)</td><td>The shared row of \(\Psi(1)\) — the <strong>common-factor loading vector</strong>: how much of each venue's own shock feeds into the one permanent common-price innovation.</td></tr>
+    <tr><td>\(\alpha=(\alpha_Y,\alpha_X)',\ \alpha_\perp\)</td><td>The VECM's adjustment vector and its orthogonal complement (any vector with \(\alpha'\alpha_\perp=0\)) — the input that pins \(\psi\) down.</td></tr>
+    <tr><td>\(F\)</td><td>The lower-triangular Cholesky factor of \(\Omega\), so \(\Omega=FF'\) — the tool that manufactures orthogonal shocks, and the source of the ordering dependence.</td></tr>
+    <tr><td>\(\text{IS}_j\)</td><td>Venue \(j\)'s Hasbrouck Information Share under one specific Cholesky ordering — a number in \([0,1]\), summing to 1 across both venues for a given ordering.</td></tr>
+  </table></div>
+
+  <p><strong>Step 1 — the same VECM, unchanged.</strong> Nothing about the
+  starting point differs from the VECM lesson at all:</p>
+  <div class="tl-math">\[ \Delta Y_t = \alpha_Y Z_{t-1} + (\text{short-run lags}) + \epsilon_{Y,t}, \qquad \Delta X_t = \alpha_X Z_{t-1} + (\text{short-run lags}) + \epsilon_{X,t} \]</div>
+  <p>
+    Fitting this system (by OLS, exactly as the VECM lesson describes) hands
+    you three things this lesson actually uses: the adjustment coefficients
+    \(\alpha_Y, \alpha_X\), and the residual covariance matrix \(\Omega\) —
+    how large each equation's own leftover shock is, and how correlated the
+    two equations' shocks are with each other. That correlation,
+    \(\sigma_{YX}\), turns out to be the single most important number in this
+    entire lesson.
+  </p>
+
+  <p><strong>Step 2 — the Wold/vector-moving-average representation.</strong>
+  Any stationary system (which \(\Delta Y_t, \Delta X_t\) are, being the
+  first differences of a cointegrated pair) admits an equivalent
+  representation purely in terms of current and past shocks — no lagged
+  levels, no error-correction term, just an infinite weighted sum of
+  \(\epsilon\)'s:</p>
+  <div class="tl-math">\[ \Delta P_t = \Psi(L)\,\epsilon_t = \sum_{i=0}^{\infty} \Psi_i\, \epsilon_{t-i}, \qquad \Psi_0 = I \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Ψ_i</code><span>a 2×2 matrix — how a shock from \(i\) periods ago is still moving today's \(\Delta Y_t, \Delta X_t\)</span></div>
+    <div class="tl-eq-chip c2"><code>Ψ(1)=ΣΨ_i</code><span>the cumulative, long-run effect of a single shock, once every lag's contribution is added up</span></div>
+  </div>
+  <p>
+    Every VECM has a Wold representation of this form — it's a standard,
+    purely mechanical inversion of the same fitted system, not a new
+    modeling assumption. This lesson doesn't re-derive that inversion in
+    full; the object that actually matters for everything below is just
+    \(\Psi(1)\), the long-run impact matrix.
+  </p>
+
+  <p><strong>Step 3 — the common-factor loading vector \(\psi\).</strong>
+  Because \(Y_t\) and \(X_t\) are cointegrated on a price-parity relationship
+  — they're alternate observations of essentially one asset's price, not
+  merely two correlated series — any permanent shock has to move both
+  venues' prices by the <em>same</em> amount in the long run, or the
+  cointegrating relationship between them would itself break down. That
+  economic fact forces \(\Psi(1)\) into a very specific, low-rank shape: its
+  two rows come out <strong>identical</strong>, both equal to one shared row
+  vector \(\psi' = (\psi_Y, \psi_X)\):</p>
+  <div class="tl-math">\[ \Psi(1) = \iota\,\psi', \qquad \iota = \begin{pmatrix}1\\1\end{pmatrix} \]</div>
+  <p>
+    This is exactly the permanent-transitory decomposition Gonzalo &amp;
+    Granger (1995) formalize (building on the common-trends idea in Stock
+    &amp; Watson, 1988): every cointegrated system decomposes into one
+    permanent common factor plus purely transitory deviations from it, and
+    \(\psi\) is precisely the vector of weights saying how much of each
+    venue's own shock feeds into that one permanent factor. Its innovation
+    each period is the scalar
+  </p>
+  <div class="tl-math">\[ \Delta f_t = \psi'\epsilon_t = \psi_Y \epsilon_{Y,t} + \psi_X \epsilon_{X,t} \]</div>
+  <p>
+    and this lesson derives \(\psi\) directly from the VECM's own \(\alpha\)
+    vector, using the standard result that the long-run impact matrix is
+    built from \(\alpha\)'s orthogonal complement. For the two-venue,
+    price-parity case specifically, that reduces to a clean closed form:
+  </p>
+  <div class="tl-math">\[ \psi_Y = \frac{\alpha_X}{\alpha_X-\alpha_Y}, \qquad \psi_X = \frac{-\alpha_Y}{\alpha_X-\alpha_Y}, \qquad \psi_Y+\psi_X=1 \]</div>
+  <div class="tl-solid blue">
+    <strong>A sanity check worth internalizing before moving on.</strong>
+    Plug in the VECM lesson's own "weak exogeneity" case, \(\alpha_X=0\):
+    \(\psi_Y = 0/(0-\alpha_Y) = 0\) and \(\psi_X = -\alpha_Y/(0-\alpha_Y)=1\).
+    The venue that never responds to disequilibrium ends up carrying <em>all</em>
+    of the common-factor weight. That's exactly the right answer economically
+    — a venue that ignores the spread entirely is behaving like the anchor,
+    the reference price the other venue is chasing, and the math correctly
+    assigns it the entire permanent component. This lesson derives and
+    verifies this two-venue formula explicitly; Gonzalo &amp; Granger (1995)
+    is the source for the fully general, many-venue version of the same
+    construction and should be consulted directly for that algebra.
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine the "true price" is a weighted average of what venue Y says and what venue X says. If venue X never budges no matter how out-of-line it gets (α_X = 0), the only sensible weighted average that behaves like the true price <em>is</em> venue X itself — so X gets 100% of the weight (ψ_X = 1) and Y gets none. If both venues respond somewhat, the weight splits between them according to how little each one reacts to disequilibrium — the less a venue reacts, the more it looks like the fixed reference everyone else is adjusting toward, and the more weight ψ gives it.</p>
+  </div>
+
+  <p><strong>Step 4 — Hasbrouck's trick: Cholesky-orthogonalize, then attribute
+  variance.</strong> The total variance of the common factor's own innovation
+  is a well-defined, ordering-free quantity:</p>
+  <div class="tl-math">\[ \sigma_w^2 = \text{Var}(\Delta f_t) = \psi'\Omega\psi = \psi_Y^2\sigma_Y^2 + 2\psi_Y\psi_X\sigma_{YX} + \psi_X^2\sigma_X^2 \]</div>
+  <p>
+    The problem is splitting \(\sigma_w^2\) into "venue \(Y\)'s share" and
+    "venue \(X\)'s share." If \(\sigma_{YX}=0\) — the two venues' shocks are
+    genuinely uncorrelated — the split is unambiguous: \(\psi_Y^2\sigma_Y^2\)
+    and \(\psi_X^2\sigma_X^2\) already add up to \(\sigma_w^2\) with nothing
+    left over. But whenever the venues share <em>any</em> contemporaneous
+    information — which is nearly always true at anything but the coarsest
+    sampling frequency — \(\sigma_{YX}\neq 0\), and the cross term
+    \(2\psi_Y\psi_X\sigma_{YX}\) is jointly owned by both venues at once, with
+    no natural rule for splitting it.
+  </p>
+  <p>
+    Hasbrouck's fix: Cholesky-decompose the residual covariance matrix,
+    \(\Omega = FF'\) with \(F\) lower-triangular, to build new shocks that
+    <em>are</em> mutually orthogonal by construction — no cross term left at
+    all. But a Cholesky factorization requires choosing which variable goes
+    "first": the first-ordered venue's new orthogonal shock is just its own
+    raw shock, unchanged; the second-ordered venue's new shock is its own
+    raw shock with whatever's linearly explained by the first venue's shock
+    netted out — its <strong>orthogonalized residual variance</strong>. Once
+    the shocks are orthogonal, each venue's Information Share is simply its
+    squared common-factor loading, projected through the ordering-specific
+    Cholesky factor, times its own orthogonalized innovation variance,
+    divided by the total variance \(\sigma_w^2\). Worked out explicitly for
+    two venues, with venue "1" ordered first and venue "2" ordered second:
+  </p>
+  <div class="tl-math">\[ \text{IS}_1 = \frac{(\psi_1\sigma_1^2+\psi_2\sigma_{12})^2}{\sigma_1^2\,\sigma_w^2}, \qquad \text{IS}_2 = \frac{\psi_2^2\,(\sigma_1^2\sigma_2^2-\sigma_{12}^2)}{\sigma_1^2\,\sigma_w^2} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>IS_1</code><span>the share claimed by whichever venue is ordered <em>first</em> — it gets the entire shared/correlated portion of the variance</span></div>
+    <div class="tl-eq-chip c4"><code>IS_2</code><span>the share left for the venue ordered <em>second</em> — only its variance net of anything correlated with venue 1</span></div>
+    <div class="tl-eq-chip c2"><code>σ₁²σ₂² − σ₁₂²</code><span>the determinant of Ω restricted to these two venues — venue 2's leftover, orthogonalized variance once venue 1's shock is netted out</span></div>
+  </div>
+  <p>
+    This closed form is derived directly from the Cholesky factorization
+    above (and is verified, by direct matrix computation, in this lesson's
+    own worked example below) — swap the labels 1 and 2 throughout to get
+    the formulas for the opposite ordering. \(\text{IS}_1+\text{IS}_2=1\)
+    holds for either ordering by construction, since both formulas are just
+    two different ways of exactly re-partitioning the same \(\sigma_w^2\).
+  </p>
+
+  <div class="tl-solid amber">
+    <strong>The ordering-ambiguity problem — the standard critique of
+    Hasbrouck IS.</strong> Compare the two formulas above: swapping which
+    venue is ordered first swaps which one gets to claim the shared,
+    correlated portion of the variance for itself. Whenever \(\sigma_{YX}\neq
+    0\) — which is the normal case, not an edge case — \(\text{IS}_Y\) and
+    \(\text{IS}_X\) computed under the two orderings will differ, sometimes
+    dramatically, even though nothing about the underlying economics changed
+    at all. There is no principled, data-driven rule that says which venue
+    "should" go first in the Cholesky decomposition — it is a purely
+    algebraic bookkeeping choice, and the worked example below shows just how
+    large the resulting swing can be with entirely ordinary-looking numbers.
+    This single issue is the most-cited limitation of the entire Hasbrouck IS
+    framework, and it's the reason the two literature responses below exist
+    at all.
+  </div>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">↔️</div>
+      <h4>Response 1 — Hasbrouck's own fix: report both, or the midpoint</h4>
+      <p>
+        Hasbrouck's own 1995 paper suggests the direct, practical fix:
+        compute \(\text{IS}_Y\) and \(\text{IS}_X\) under <em>both</em>
+        orderings and report the full range each venue's share can take, or
+        their midpoint as a single summary number. It doesn't remove the
+        ambiguity, but it makes it visible and bounded rather than hiding
+        behind one arbitrarily chosen ordering — the standard practical
+        convention this lesson's own calculator implements below.
+      </p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🧭</div>
+      <h4>Response 2 — alternative measures without the same ordering problem</h4>
+      <p>
+        Gonzalo &amp; Granger's own (1995) <strong>Component Share</strong>
+        measure works from the same permanent-transitory decomposition and
+        common-factor loadings \(\psi\) used above, but attributes variance
+        using each venue's <em>raw</em>, non-orthogonalized shock variance
+        rather than a Cholesky-ordered split — sidestepping the arbitrary
+        ordering step entirely, at the cost of not fully accounting for the
+        shared, correlated variance the way Hasbrouck's decomposition
+        explicitly tries to. Putniņš (2013), <em>"What do price discovery
+        metrics really measure?"</em>, studies exactly where Hasbrouck IS and
+        Component Share disagree and proposes an <strong>Information
+        Leadership Share</strong> that combines the two into a single
+        measure designed to behave sensibly in both directions. This lesson
+        describes both at the conceptual level intentionally — consult
+        Gonzalo &amp; Granger (1995) and Putniņš (2013) directly for their
+        precise algebraic definitions rather than treating any specific
+        formula reconstructed secondhand as authoritative.
+      </p>
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>The same fitted system, two orderings, two very different answers</h3>
+    <p>
+      A fitted VECM (illustrative numbers, not a real historical estimate)
+      gives \(\alpha_Y=-0.40\), \(\alpha_X=0.10\) — Y does more of the
+      error-correcting, similar in spirit to the VECM lesson's own AUD/USD
+      example — and a residual covariance matrix
+      \(\Omega=\begin{pmatrix}4 & 1\\ 1 & 1\end{pmatrix}\) (so
+      \(\sigma_Y^2=4\), \(\sigma_X^2=1\), \(\sigma_{YX}=1\), a correlation of
+      \(1/\sqrt{4\cdot1}=0.5\) between the two equations' shocks).
+    </p>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>Common-factor loadings from α</h4>
+          <p>
+            \(\psi_Y = \dfrac{0.10}{0.10-(-0.40)} = \dfrac{0.10}{0.50}=0.20\),
+            \(\psi_X = \dfrac{0.40}{0.50}=0.80\) (sum to 1, as required). X —
+            the smaller-\(|\alpha|\), closer-to-anchor venue — carries the
+            larger share of the common factor, exactly as the sanity check
+            above predicts.
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>Total common-factor variance</h4>
+          <p>
+            \(\sigma_w^2=\psi_Y^2\sigma_Y^2+2\psi_Y\psi_X\sigma_{YX}+\psi_X^2\sigma_X^2
+            = (0.2)^2(4)+2(0.2)(0.8)(1)+(0.8)^2(1) = 0.16+0.32+0.64=1.12\).
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>Ordering 1 — Y first</h4>
+          <p>
+            \(\text{IS}_Y=\dfrac{(0.2\cdot4+0.8\cdot1)^2}{4\cdot1.12}=\dfrac{(1.6)^2}{4.48}=\dfrac{2.56}{4.48}=\dfrac{4}{7}\approx0.5714\).
+            \(\text{IS}_X=\dfrac{(0.8)^2(4\cdot1-1^2)}{4\cdot1.12}=\dfrac{0.64\cdot3}{4.48}=\dfrac{1.92}{4.48}=\dfrac{3}{7}\approx0.4286\).
+            <strong>Y: 57.1%, X: 42.9%.</strong>
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">4</div>
+        <div class="tl-step-body">
+          <h4>Ordering 2 — X first</h4>
+          <p>
+            \(\text{IS}_X=\dfrac{(0.8\cdot1+0.2\cdot1)^2}{1\cdot1.12}=\dfrac{(1.0)^2}{1.12}=\dfrac{1}{1.12}=\dfrac{25}{28}\approx0.8929\).
+            \(\text{IS}_Y=\dfrac{(0.2)^2(1\cdot4-1^2)}{1\cdot1.12}=\dfrac{0.04\cdot3}{1.12}=\dfrac{0.12}{1.12}=\dfrac{3}{28}\approx0.1071\).
+            <strong>Y: 10.7%, X: 89.3%.</strong>
+          </p>
+        </div>
+      </div>
+    </div>
+    <p>
+      The exact same fitted VECM — same \(\alpha\)'s, same \(\Omega\) — hands
+      venue Y anywhere from <strong>10.7% to 57.1%</strong> of the
+      information share, purely as a function of which venue is listed first
+      in the Cholesky decomposition. Hasbrouck's own suggested fix, the
+      midpoint of the two orderings, gives \(\text{IS}_Y\approx(0.5714+0.1071)/2=0.3393\)
+      (33.9%) and \(\text{IS}_X\approx(0.4286+0.8929)/2=0.6607\) (66.1%) — a
+      single number, but one that visibly papers over a genuinely wide range
+      rather than resolving it. Both closed-form results above were verified
+      against a direct numerical Cholesky decomposition of \(\Omega\) as part
+      of building this lesson; the arithmetic is exact, the inputs are
+      illustrative.
+    </p>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">The same variance, split two different ways</div>
+    <svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two stacked horizontal bars, each split into a blue Y portion and a purple X portion, both summing to 100%. The top bar, labeled Y ordered first, is 57.1% blue and 42.9% purple. The bottom bar, labeled X ordered first, is 10.7% blue and 89.3% purple, showing the same underlying variance split very differently depending on ordering.">
+      <text x="20" y="30" font-size="12" font-family="'DM Mono',monospace" fill="var(--text2)">Y ordered first</text>
+      <rect x="20" y="40" width="325" height="40" rx="4" style="fill:var(--blue)"/>
+      <rect x="345" y="40" width="244" height="40" rx="4" style="fill:var(--purple)"/>
+      <text x="182" y="65" text-anchor="middle" font-size="13" font-family="'DM Mono',monospace" fill="#fff">Y: 57.1%</text>
+      <text x="467" y="65" text-anchor="middle" font-size="13" font-family="'DM Mono',monospace" fill="#fff">X: 42.9%</text>
+
+      <text x="20" y="130" font-size="12" font-family="'DM Mono',monospace" fill="var(--text2)">X ordered first</text>
+      <rect x="20" y="140" width="61" height="40" rx="4" style="fill:var(--blue)"/>
+      <rect x="81" y="140" width="508" height="40" rx="4" style="fill:var(--purple)"/>
+      <text x="50" y="165" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="#fff">10.7%</text>
+      <text x="335" y="165" text-anchor="middle" font-size="13" font-family="'DM Mono',monospace" fill="#fff">X: 89.3%</text>
+
+      <text x="20" y="210" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">Same α_Y, α_X, and Ω throughout — only the Cholesky ordering changes</text>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--blue)"></i>Venue Y's information share</span>
+      <span><i style="background:var(--purple)"></i>Venue X's information share</span>
+    </div>
+    <div class="tl-chart-caption">
+      Nothing about the underlying VECM changed between the two bars — same
+      \(\alpha_Y=-0.40\), \(\alpha_X=0.10\), same \(\Omega\). Y's information
+      share swings from 57.1% down to 10.7% purely because of which venue was
+      listed first in the Cholesky decomposition — the concrete shape of the
+      ordering-ambiguity problem.
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Compute the Information Share under both orderings, live</h3>
+    <p>
+      Starts on the worked example's exact numbers. Change \(\alpha_Y\),
+      \(\alpha_X\), or any entry of \(\Omega\) and every downstream quantity
+      — \(\psi_Y,\psi_X\), \(\sigma_w^2\), both orderings' IS splits, and the
+      midpoint — recomputes instantly.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>\(\alpha_Y\)</span></div>
+        <input type="number" id="his-scratch-aY" class="tl-scratch-input" value="-0.40" step="0.05">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>\(\alpha_X\)</span></div>
+        <input type="number" id="his-scratch-aX" class="tl-scratch-input" value="0.10" step="0.05">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>\(\sigma_Y^2\)</span></div>
+        <input type="number" id="his-scratch-sYY" class="tl-scratch-input" value="4" step="0.1" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>\(\sigma_X^2\)</span></div>
+        <input type="number" id="his-scratch-sXX" class="tl-scratch-input" value="1" step="0.1" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>\(\sigma_{YX}\)</span></div>
+        <input type="number" id="his-scratch-sYX" class="tl-scratch-input" value="1" step="0.1">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      &psi;<sub>Y</sub> = <b id="his-scratch-psiY">0.200</b>&emsp;&psi;<sub>X</sub> = <b id="his-scratch-psiX">0.800</b>&emsp;&sigma;<sub>w</sub><sup>2</sup> = <b id="his-scratch-sigw2">1.1200</b>
+    </div>
+    <div class="tl-readout">
+      Y first: IS<sub>Y</sub> = <b id="his-scratch-isY1">0.5714</b>, IS<sub>X</sub> = <b id="his-scratch-isX1">0.4286</b>
+    </div>
+    <div class="tl-readout">
+      X first: IS<sub>Y</sub> = <b id="his-scratch-isY2">0.1071</b>, IS<sub>X</sub> = <b id="his-scratch-isX2">0.8929</b>
+    </div>
+    <div class="tl-readout">
+      Midpoint: IS<sub>Y</sub> = <b id="his-scratch-isYm">0.3393</b>, IS<sub>X</sub> = <b id="his-scratch-isXm">0.6607</b>
+      <span id="his-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="his-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>Spot FX vs. the exchange-traded futures contract on the same pair</h3>
+    <p>
+      Suppose a desk trades both spot EUR/USD and a cointegrated,
+      exchange-listed EUR/USD futures contract, and wants to know which
+      venue's price to treat as the reference when the two briefly disagree.
+      A VECM fit on the pair might already show something like the sanity
+      check above: futures with a smaller-magnitude \(\alpha\) (closer to
+      weakly exogenous), spot doing more of the visible correcting — an
+      informal signal that futures leads. Hasbrouck's Information Share
+      makes that claim precise and quantitative: computing IS under both
+      Cholesky orderings and reporting the midpoint gives a genuine number
+      — "futures carries roughly two-thirds of the price-discovery variance
+      share" — rather than a directional impression from comparing two
+      adjustment coefficients. That number is directly actionable: if
+      futures genuinely leads price discovery, a desk pricing off a lagging
+      spot feed during fast-moving news is effectively trading on stale
+      information relative to what futures has already absorbed.
+    </p>
+    <p>
+      Nothing above should be read as an actual historical finding for any
+      specific FX pair or contract — it's illustrative of how a desk would
+      use the number, not a claim this repo has run this analysis on real
+      data. What genuinely matters here is that the VECM lesson's own
+      informal \(\alpha_Y\)-vs-\(\alpha_X\) comparison and this lesson's
+      Information Share can point in compatible directions (as in this
+      example) but are answering different questions, and a desk relying on
+      only the informal comparison is skipping a real, well-established step.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    In practice, Hasbrouck IS is used almost exclusively as a <strong>relative,
+    comparative</strong> tool — "which of these two (or more) venues carries
+    more of the price-discovery variance" — rather than as a precise,
+    stand-alone percentage to be trusted to the decimal point, precisely
+    because of the ordering sensitivity covered above. The standard workflow
+    is: confirm genuine cointegration first (the same Engle-Granger or
+    Johansen test the VECM lesson assumes as a precondition), fit the VECM,
+    compute IS under both orderings, and report either the full range or the
+    midpoint as the headline number — treating a wide range between the two
+    orderings itself as a meaningful diagnostic (a narrow range means the
+    conclusion is robust; a wide range, as in this lesson's own worked
+    example, means the ordering choice is doing more work than the data is).
+  </p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🔀</div>
+      <h4>Venue selection for execution</h4>
+      <p>A venue with a consistently high information share is where genuinely new information shows up first — a natural candidate for the "reference" feed a signal or hedge should react off of first.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🧭</div>
+      <h4>Regime and market-structure monitoring</h4>
+      <p>Re-estimating IS periodically and watching which venue's share is rising or falling over time can flag a genuine structural shift in where price discovery is happening — e.g., a lit venue losing share to a newer, faster one.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">📐</div>
+      <h4>A rigorous upgrade path from the VECM's own α comparison</h4>
+      <p>Where the VECM lesson's informal α_Y-vs-α_X comparison is a cheap first pass, IS is the version an academic paper or a serious internal research note would actually cite — same underlying VECM, formalized variance attribution.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🛠️</div>
+      <h4>Not built anywhere in this repo</h4>
+      <p>Unlike the VECM lesson's genuine <code>js/arma.js</code> <code>fitVECM</code>, no Information Share, variance-decomposition, or Cholesky-orthogonalization code exists in this codebase today — this lesson is conceptual throughout.</p>
+    </div>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where Hasbrouck IS quietly goes wrong</h3>
+    <p>
+      <strong>The ordering-ambiguity problem, restated as a checklist item.</strong>
+      Never report a single Cholesky-ordered IS split without either computing
+      both orderings or explicitly justifying why one venue's ordering is
+      more defensible than the other (which is rare — usually neither is).
+      A wide gap between the two orderings is itself informative and should
+      be reported, not hidden behind a single midpoint number.
+    </p>
+    <p>
+      <strong>Running this on series that were never actually shown to be
+      cointegrated.</strong> Exactly as the VECM lesson warns about its own
+      \(\alpha\) coefficients, the entire common-factor framework here — the
+      claim that \(\Psi(1)\) has identical, rank-deficient rows — is only
+      valid for genuinely cointegrated, price-parity-linked series. Two
+      merely-correlated but economically unrelated assets do not have a
+      shared common efficient price to attribute variance to at all;
+      computing an "Information Share" between them is not meaningful,
+      regardless of how clean the arithmetic looks.
+    </p>
+    <p>
+      <strong>Sensitivity to sampling frequency.</strong> Whether a given
+      venue "leads" price discovery can flip depending on whether the VECM
+      is fit on tick-level data, one-minute bars, or daily closes. At very
+      high frequency, bid-ask bounce and other microstructure noise inflate
+      each venue's own apparent shock variance and distort the residual
+      correlation the whole decomposition depends on; at low frequency,
+      genuine intraday leadership by one venue can average out or even
+      reverse in the aggregated data. A price-discovery conclusion reached at
+      one sampling frequency is not automatically valid at another, and this
+      lesson does not derive the correct frequency to use for any specific
+      question — that choice has to match what the underlying research
+      question actually needs.
+    </p>
+    <p>
+      <strong>Information Share answers a variance question, not a liquidity
+      question.</strong> A high IS says a venue's price moves first when new
+      information arrives — it does not say that venue is more liquid, has
+      tighter spreads, or is cheaper to trade in. Those are related but
+      genuinely distinct questions, addressed by this repo's own existing
+      microstructure lessons — <a href="institutional-glosten-milgrom.html">Glosten-Milgrom</a>,
+      <a href="institutional-pin.html">PIN</a>, and
+      <a href="institutional-roll-spread-estimator.html">Roll's Spread Estimator</a> —
+      rather than by anything in this lesson. A venue can lead price
+      discovery and simultaneously be the less liquid, more expensive venue
+      to actually execute in; nothing here should be read as a liquidity or
+      execution-cost recommendation.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Hasbrouck IS decomposes variance, not just adjustment speed.</strong> It builds on the same two-equation VECM as the sibling lesson but asks a sharper question: of the variance in the shock moving the common efficient price, how much is attributable to each venue?</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The common-factor loading vector ψ derives directly from the VECM's α.</strong> For two price-parity-cointegrated venues, \(\psi_Y=\alpha_X/(\alpha_X-\alpha_Y)\), \(\psi_X=-\alpha_Y/(\alpha_X-\alpha_Y)\) — the less a venue adjusts to disequilibrium, the more common-factor weight it carries.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Cholesky ordering is arbitrary and the split can swing hard.</strong> This lesson's own worked example: 57.1% vs. 10.7% for the same venue, same fitted VECM, only the ordering changed. This is the standard, most-cited critique of Hasbrouck IS.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Two standard responses exist.</strong> Hasbrouck's own fix — report both orderings or their midpoint — and alternative measures, Gonzalo &amp; Granger's (1995) Component Share and Putniņš' (2013) Information Leadership Share, that avoid the same ordering dependence.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Requires genuine cointegration and matters at what frequency you measure it.</strong> The whole framework is invalid for non-cointegrated series, and conclusions about which venue leads can flip between tick-level and lower-frequency data.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A high Information Share is not the same claim as "more liquid."</strong> It answers where variance is attributed, not where it's cheaper or easier to trade — a related but distinct question, covered by this repo's existing Glosten-Milgrom, PIN, and Roll's Spread Estimator lessons instead.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. How does the question Hasbrouck's Information Share answers differ from the question the VECM lesson's α_Y-vs-α_X comparison answers?</summary>
+    <div class="tl-answer">
+      Comparing \(|\alpha_Y|\) and \(|\alpha_X|\) is about adjustment speed —
+      which venue does more of the correcting once a spread has already
+      opened up. Information Share is about variance attribution at the
+      moment new information arrives — of the variance in the shock moving
+      the shared common efficient price, how much is attributable to each
+      venue. A venue can adjust slowly (small \(|\alpha|\)) and still be the
+      one where information shows up first; the two questions are related
+      but not the same, and IS is the rigorous answer to the second one.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why does the long-run impact matrix Ψ(1) have identical rows in this specific setup, and what economic fact forces that?</summary>
+    <div class="tl-answer">
+      Because \(Y_t\) and \(X_t\) are cointegrated on a price-parity
+      relationship — they're alternate observed prices for essentially one
+      asset — any genuinely permanent shock has to move both venues' prices
+      by the same amount in the long run, or the cointegrating relationship
+      linking them would itself be violated. That forces \(\Psi(1)\) to be
+      rank-1 and expressible as \(\iota\psi'\) with \(\iota=(1,1)'\), which
+      makes both of its rows equal to the one shared vector \(\psi'\).
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Mechanically, what causes the Cholesky-ordering sensitivity of Hasbrouck IS?</summary>
+    <div class="tl-answer">
+      The two venues' VECM residuals are correlated (\(\sigma_{YX}\neq0\))
+      whenever they share contemporaneous information, which is the normal
+      case. Splitting the common factor's total variance additively into
+      "venue Y's part" and "venue X's part" leaves a jointly-owned cross
+      term with no natural rule for dividing it. Cholesky-decomposing \(\Omega\)
+      resolves this by manufacturing orthogonal shocks — but doing so
+      requires arbitrarily choosing which venue is listed first, and
+      whichever venue goes first claims the entire shared, correlated
+      variance for itself while the second-ordered venue only gets what's
+      left over.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Given ψ_Y=0.5, ψ_X=0.5, σ_Y²=2, σ_X²=2, σ_YX=0, compute σ_w² and explain why the ordering doesn't matter here.</summary>
+    <div class="tl-answer">
+      \(\sigma_w^2=\psi_Y^2\sigma_Y^2+2\psi_Y\psi_X\sigma_{YX}+\psi_X^2\sigma_X^2
+      = 0.25(2)+2(0.25)(0)+0.25(2)=0.5+0+0.5=1.0\). Because
+      \(\sigma_{YX}=0\), there is no shared, correlated variance to divide
+      between orderings in the first place — plugging \(\sigma_{YX}=0\) into
+      either ordering's formula collapses both to the same unambiguous split,
+      \(\text{IS}_Y=\psi_Y^2\sigma_Y^2/\sigma_w^2=0.5\) and
+      \(\text{IS}_X=0.5\), regardless of which venue is listed first.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Name Hasbrouck's own suggested fix for the ordering problem, and name one alternative measure the literature offers instead.</summary>
+    <div class="tl-answer">
+      Hasbrouck's own fix: compute the Information Share under both
+      Cholesky orderings and report the midpoint (or the full range) rather
+      than a single ordering's number. Alternative measures that avoid the
+      same ordering dependence: Gonzalo &amp; Granger's (1995) Component
+      Share (built from the same \(\psi\) loadings but using raw,
+      non-orthogonalized variances) and Putniņš' (2013) Information
+      Leadership Share, which combines Hasbrouck IS and Component Share into
+      one measure designed to reconcile cases where they disagree.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. A venue has a consistently high Hasbrouck Information Share relative to a second venue for the same asset. Does this, by itself, mean that venue is more liquid or cheaper to trade in?</summary>
+    <div class="tl-answer">
+      No. A high Information Share means new information tends to show up in
+      that venue's price first — a statement about variance attribution in
+      price discovery. It says nothing directly about bid-ask spreads,
+      depth, or execution cost, which are the domain of this repo's own
+      Glosten-Milgrom, PIN, and Roll's Spread Estimator lessons. A venue can
+      lead price discovery and still be the more expensive, less liquid
+      venue to actually trade in — the two questions are related in
+      practice but are not the same claim, and conflating them is a common
+      pitfall.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Joel Hasbrouck, <em>"One Security, Many Markets: Determining the Contributions to Price Discovery,"</em> Journal of Finance, 1995 — the seminal paper defining Information Share, the Wold/VECM-based common-factor construction, and the Cholesky-orthogonalization approach this lesson builds on directly.</li>
+    <li>Jesús Gonzalo and Clive W.J. Granger, <em>"Estimation of Common Long-Memory Components in Cointegrated Systems,"</em> Journal of Business &amp; Economic Statistics, 1995 — the permanent-transitory decomposition and Component Share measure referenced conceptually above; consult it directly for the precise general algebra rather than this lesson's two-venue special case.</li>
+    <li>Tālis J. Putniņš, <em>"What Do Price Discovery Metrics Really Measure?,"</em> Journal of Empirical Finance, 2013 — studies where Hasbrouck IS and Component Share disagree and proposes the Information Leadership Share as a reconciling measure; described here only conceptually.</li>
+    <li>Robert F. Engle and Clive W.J. Granger, <em>"Co-integration and Error Correction: Representation, Estimation, and Testing,"</em> Econometrica, 1987 — the Granger Representation Theorem underlying the VECM/Wold-representation link this lesson relies on, already cited in full in the sibling VECM lesson.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="institutional-granger-causality.html">← Granger Causality &amp; Lead-Lag Analysis</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="institutional-kyle-obizhaeva-invariance.html">Kyle-Obizhaeva Market Microstructure Invariance →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+<script>
+(function(){
+  var DEFAULTS = { aY: -0.40, aX: 0.10, sYY: 4, sXX: 1, sYX: 1 };
+  var fields = ['aY', 'aX', 'sYY', 'sXX', 'sYX'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('his-scratch-' + f); });
+  if (!inputs.aY) return;
+
+  var out = {
+    psiY: document.getElementById('his-scratch-psiY'),
+    psiX: document.getElementById('his-scratch-psiX'),
+    sigw2: document.getElementById('his-scratch-sigw2'),
+    isY1: document.getElementById('his-scratch-isY1'),
+    isX1: document.getElementById('his-scratch-isX1'),
+    isY2: document.getElementById('his-scratch-isY2'),
+    isX2: document.getElementById('his-scratch-isX2'),
+    isYm: document.getElementById('his-scratch-isYm'),
+    isXm: document.getElementById('his-scratch-isXm')
+  };
+  var note = document.getElementById('his-scratch-note');
+  var resetBtn = document.getElementById('his-scratch-reset');
+  var DASH = '—';
+
+  function blank(){
+    Object.keys(out).forEach(function(k){ out[k].textContent = DASH; });
+  }
+
+  function recompute(){
+    var aY = parseFloat(inputs.aY.value);
+    var aX = parseFloat(inputs.aX.value);
+    var sYY = parseFloat(inputs.sYY.value);
+    var sXX = parseFloat(inputs.sXX.value);
+    var sYX = parseFloat(inputs.sYX.value);
+
+    if (![aY, aX, sYY, sXX, sYX].every(isFinite)) {
+      blank();
+      note.textContent = '(enter numeric values for every field)';
+      return;
+    }
+    if (sYY < 0 || sXX < 0) {
+      blank();
+      note.textContent = '(variances σ_Y² and σ_X² cannot be negative)';
+      return;
+    }
+    if (sYY * sXX - sYX * sYX < 0) {
+      blank();
+      note.textContent = '(this Ω is not a valid covariance matrix — the implied correlation exceeds 1 in magnitude)';
+      return;
+    }
+    var denom = aX - aY;
+    if (denom === 0) {
+      blank();
+      note.textContent = '(α_Y and α_X cannot be equal — the common-factor split is undefined when the denominator α_X − α_Y is zero)';
+      return;
+    }
+
+    note.textContent = '';
+    var psiY = aX / denom;
+    var psiX = -aY / denom;
+    var sigw2 = psiY * psiY * sYY + 2 * psiY * psiX * sYX + psiX * psiX * sXX;
+
+    out.psiY.textContent = psiY.toFixed(3);
+    out.psiX.textContent = psiX.toFixed(3);
+    out.sigw2.textContent = sigw2.toFixed(4);
+
+    if (sigw2 <= 0) {
+      out.isY1.textContent = out.isX1.textContent = out.isY2.textContent = out.isX2.textContent = out.isYm.textContent = out.isXm.textContent = DASH;
+      note.textContent = '(total common-factor variance is zero or negative — check inputs)';
+      return;
+    }
+
+    // Y ordered first
+    var isY1 = Math.pow(psiY * sYY + psiX * sYX, 2) / (sYY * sigw2);
+    var isX1 = psiX * psiX * (sYY * sXX - sYX * sYX) / (sYY * sigw2);
+    // X ordered first
+    var isX2 = Math.pow(psiX * sXX + psiY * sYX, 2) / (sXX * sigw2);
+    var isY2 = psiY * psiY * (sXX * sYY - sYX * sYX) / (sXX * sigw2);
+
+    out.isY1.textContent = isY1.toFixed(4);
+    out.isX1.textContent = isX1.toFixed(4);
+    out.isY2.textContent = isY2.toFixed(4);
+    out.isX2.textContent = isX2.toFixed(4);
+    out.isYm.textContent = ((isY1 + isY2) / 2).toFixed(4);
+    out.isXm.textContent = ((isX1 + isX2) / 2).toFixed(4);
+
+    var spread = Math.abs(isY1 - isY2);
+    if (spread > 0.25) {
+      note.textContent = '(the two orderings disagree by more than 25 percentage points here — a large ordering-sensitivity gap)';
+    } else if (sYX === 0) {
+      note.textContent = '(σ_YX = 0 — no shared variance to split, so both orderings agree exactly)';
+    }
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
+</body>
+</html>

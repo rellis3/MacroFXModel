@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Factor VaR, Marginal VaR &amp; Component VaR — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+<style>
+  .tl-table-wrap{overflow-x:auto;margin:14px 0}
+  table.tl-tbl{width:100%;border-collapse:collapse;font-size:13px;background:var(--s1);border:1px solid var(--border);border-radius:var(--r)}
+  table.tl-tbl th,table.tl-tbl td{padding:9px 12px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
+  table.tl-tbl th{color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:.04em;font-weight:700;background:var(--s2)}
+  table.tl-tbl tr:last-child td{border-bottom:none}
+  table.tl-tbl td{color:var(--text2)}
+  table.tl-tbl td:first-child{color:var(--text);font-weight:600;white-space:nowrap}
+  table.tl-tbl td.tl-num{font-family:'DM Mono',monospace;text-align:right}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Risk Attribution &amp; Tail Statistics / Factor VaR, Marginal VaR &amp; Component VaR</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Risk Attribution &amp; Tail Statistics 3 of 3</div>
+  <h1 class="tl-title">Factor VaR, Marginal VaR &amp; Component VaR</h1>
+  <p class="tl-dek">Portfolio VaR answers exactly one question — how much could we lose? It says nothing about which position, or which underlying risk factor, is actually driving that number. Marginal, Component, and Factor VaR are the machinery that answers the second question, and — unlike a vague sensitivity — Component VaR answers it additively: every position's slice, summed, equals the whole.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — no marginal-VaR, component-VaR, factor-VaR, risk-attribution, or risk-decomposition logic of any kind exists anywhere in this repo, verified by grepping every <code>.js</code>/<code>.py</code> file (case-insensitive) for "marginal.VaR", "component.VaR", "factor.VaR", "risk.attribution", and "risk.decomposition" — zero hits, not even an incidental one. The sibling <code>institutional-covar.html</code> lesson (lesson 1 of this category) had not yet been built as of this writing, so this lesson assumes nothing about its specific content beyond its evident CoVaR / systemic-co-movement topic.</span>
+    <span>~19 min read</span>
+    <span>Prereqs: <a href="coherent-risk-measures.html">Coherent Risk Measures: VaR, CVaR &amp; the Artzner Axioms</a> — this lesson reuses its exact VaR/CVaR notation and definitions rather than re-deriving them</span>
+  </div>
+
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="institutional-factor-marginal-component-var-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides with a live stacked-bar chart you can drag position weights across.
+  </div>
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Assuming normally-distributed returns, portfolio VaR has a clean closed form: \(\text{VaR}_p = z_p\,\sigma_p\), where \(\sigma_p=\sqrt{\mathbf{w}^\top\Sigma\mathbf{w}}\) is portfolio volatility, \(\Sigma\) the return covariance matrix, and \(z_p\) the standard normal quantile at confidence \(p\) — this is a simplification, and the sibling <a href="extreme-value-theory.html">Extreme Value Theory</a> lesson exists for exactly the cases where fat tails make it a poor approximation.</li>
+      <li><strong>Marginal VaR</strong>, \(\partial\text{VaR}_p/\partial w_i = z_p(\Sigma\mathbf{w})_i/\sigma_p\), is a sensitivity: how much portfolio VaR would change per one more dollar of exposure to position \(i\), holding everything else fixed.</li>
+      <li><strong>Component VaR</strong>, \(w_i \times \text{Marginal VaR}_i\), turns that sensitivity into a full attribution: because \(\text{VaR}_p\) is homogeneous of degree 1 in the position weights under this normal setup, Euler's theorem guarantees \(\sum_i w_i\,\text{Marginal VaR}_i = \text{VaR}_p\) <em>exactly</em> — no fudge factor, no residual left over.</li>
+      <li><strong>Factor VaR</strong> applies the identical logic to a smaller set of underlying risk factors instead of raw positions — decomposing an FX book's VaR into, say, USD-rate risk, EM-currency risk, and carry-factor risk — once portfolio variance is re-expressed as systematic (factor) variance plus specific variance.</li>
+      <li>A worked 3-position example below computes every number by hand and confirms the three Component VaRs sum to total portfolio VaR to floating-point precision; a live calculator lets you change weights, volatilities, and correlations and watch the additivity hold for any inputs.</li>
+      <li>The whole clean result rests on normality (or, more generally, an elliptical return distribution) and a well-specified factor model — under genuine fat tails, or with a badly-fit factor model, the closed form breaks down and simulation-based estimates are the honest fallback.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    A single portfolio VaR number is the kind of statistic that gets reported
+    upward until it reaches someone who has to make a decision with it — a
+    portfolio manager, a risk committee, a CFO signing off on a capital
+    allocation. And the very first question any of those people asks, the
+    moment the number crosses their desk, is never "is $6.2 million a big
+    number?" It's <strong>"where is that coming from?"</strong> A single
+    aggregate VaR figure, on its own, cannot answer that. It is one number
+    computed from an entire covariance matrix and an entire weight vector —
+    it has already thrown away exactly the information a risk manager needs
+    next: which position, or which underlying economic driver, is actually
+    responsible for how large that number is.
+  </p>
+  <p>
+    This is a genuinely different problem from the one the sibling
+    <a href="coherent-risk-measures.html">Coherent Risk Measures</a> lesson
+    covers. That lesson asks whether a risk measure behaves sensibly under
+    combination and scaling — a question about the risk measure itself.
+    This lesson takes portfolio VaR as already computed and asks a
+    completely separate, intensely practical question: given that number,
+    <em>how do you break it apart</em> across the positions (or the
+    factors) that produced it, in a way that's additive rather than vague?
+    "Position 3 seems risky" is an impression. "Position 3 accounts for
+    $1,084 of the portfolio's $6,272 in VaR — 17% of the total" is an
+    attribution, and attributions are what risk budgets, hedge decisions,
+    and position-trimming conversations are actually built on.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Splitting a restaurant bill by what each person actually ordered</h3>
+    <p>
+      A group dinner's total bill is one number — useful for knowing how
+      much the table owes, useless for knowing who should pay what. The
+      naive approach, splitting evenly, is like reporting one portfolio VaR
+      number and pretending every position contributes the same share
+      regardless of size or riskiness. The honest approach is to look at
+      what each person actually ordered and assign them their share of the
+      total — and if you do it consistently (itemize every dish, tax, and
+      tip proportionally), the shares add up <em>exactly</em> to the bill,
+      with nothing left over and nothing double-counted.
+    </p>
+    <p>
+      Component VaR is the portfolio-risk version of that itemized bill.
+      Marginal VaR is a smaller, related question: "if I ordered one more
+      side dish, how much would my share of the bill go up?" — a
+      sensitivity, not yet an attribution. Multiplying that per-unit
+      sensitivity by how much of the thing you actually have (Euler's
+      trick, made precise in Section 02) is exactly what turns "how much
+      would one more unit cost me" into "how much of the total bill is
+      genuinely mine" — and the same multiplication, applied to every
+      position in a portfolio, is what makes Component VaR sum exactly to
+      the total.
+    </p>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine three kids built a sandcastle together and it's exactly 100 inches tall. "The sandcastle is 100 inches tall" doesn't tell you who built the most of it. Component VaR is like carefully measuring exactly how many inches each kid's sand actually contributed — and if you measure it the right way, all three kids' inches add up to exactly 100, with nothing missing and nothing counted twice.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>1. Setup: portfolio VaR under normal returns</h3>
+  <p>
+    Consider a portfolio of \(n\) positions with dollar exposures
+    \(\mathbf{w} = (w_1,\dots,w_n)^\top\) (signed: positive for long,
+    negative for short) written against a vector of underlying returns
+    \(\mathbf{r}=(r_1,\dots,r_n)^\top\) with covariance matrix \(\Sigma\).
+    The portfolio's dollar profit-and-loss is \(\mathbf{w}^\top\mathbf{r}\),
+    and — reusing the <a href="coherent-risk-measures.html">Coherent Risk
+    Measures</a> lesson's own notation exactly — the portfolio's loss is
+    \(L_p = -\mathbf{w}^\top\mathbf{r}\), with
+    \(\text{VaR}_p(L_p) = \inf\{\ell : P(L_p>\ell)\le 1-p\}\).
+  </p>
+  <p>
+    To get the clean closed form this whole lesson is built on, add one
+    simplifying assumption on top of that general definition: \(\mathbf{r}\)
+    is jointly normal, and — the standard short-horizon convention —
+    its mean is small enough over a one-day horizon to be treated as zero.
+    Under that assumption, \(L_p \sim N(0,\,\sigma_p^2)\) where
+    \(\sigma_p = \sqrt{\mathbf{w}^\top\Sigma\mathbf{w}}\), and the VaR
+    definition above collapses to a single standard-normal quantile:
+  </p>
+  <div class="tl-math">\[ \text{VaR}_p = z_p\,\sigma_p, \qquad \sigma_p = \sqrt{\mathbf{w}^\top\Sigma\mathbf{w}}, \qquad z_p = \Phi^{-1}(p) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>w</code><span>vector of signed dollar exposures, one per position</span></div>
+    <div class="tl-eq-chip c2"><code>Σ</code><span>covariance matrix of the underlying returns</span></div>
+    <div class="tl-eq-chip c3"><code>σ_p</code><span>portfolio volatility in dollar terms</span></div>
+    <div class="tl-eq-chip c4"><code>z_p</code><span>standard normal quantile at confidence p — 1.645 at p=0.95, 2.326 at p=0.99</span></div>
+  </div>
+  <div class="tl-solid amber">
+    <strong>This closed form is a simplification, stated honestly.</strong>
+    Real returns are not normal — they have fatter tails, skew, and
+    occasional jumps, exactly the territory the sibling
+    <a href="extreme-value-theory.html">Extreme Value Theory &amp; Tail
+    Risk</a> lesson exists to handle. Everything in this lesson through the
+    worked example depends on the normal (or, as Section 05 discusses,
+    more generally elliptical) assumption holding well enough — it buys a
+    clean, exactly additive decomposition in exchange for that assumption,
+    and the trade is worth being explicit about rather than silently
+    assumed.
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If you assume a portfolio's ups and downs follow a nice, symmetric bell curve, there's a simple formula for "how bad could a really unlucky day get." That's the deal this whole lesson makes up front: assume the bell curve (at least for now), and in exchange get a clean, easy-to-split-up answer. If the real world's ups and downs have much fatter, spikier tails than a bell curve — which real markets often do — this formula is only an approximation, and a different lesson (Extreme Value Theory) is built for exactly that mismatch.</p>
+  </div>
+
+  <h3>2. Marginal VaR — a sensitivity, not yet an attribution</h3>
+  <p>
+    <strong>Marginal VaR</strong> asks: if I nudged position \(i\)'s
+    exposure by one more dollar, holding every other position's exposure
+    fixed, how much would total portfolio VaR change? Formally, it's the
+    partial derivative of \(\text{VaR}_p\) with respect to \(w_i\).
+    Differentiating \(\sigma_p=\sqrt{\mathbf{w}^\top\Sigma\mathbf{w}}\) with
+    respect to \(w_i\) (chain rule, since \(\Sigma\) is symmetric) gives
+    \(\partial\sigma_p/\partial w_i = (\Sigma\mathbf{w})_i/\sigma_p\), so:
+  </p>
+  <div class="tl-math">\[ \text{Marginal VaR}_i = \frac{\partial \text{VaR}_p}{\partial w_i} = z_p\,\frac{(\Sigma\mathbf{w})_i}{\sigma_p} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>(Σw)_i</code><span>row i of Σ dotted with the full weight vector — position i's total covariance with the whole portfolio</span></div>
+    <div class="tl-eq-chip c3"><code>Marginal VaR_i</code><span>units: dollars of extra portfolio VaR per one extra dollar of exposure to position i</span></div>
+  </div>
+  <p>
+    Notice what Marginal VaR is <em>not</em>: it is not "how much of the
+    portfolio's current VaR belongs to position \(i\)." It's purely a local
+    sensitivity — useful for "what if" questions (add a unit, trim a unit),
+    and, as it turns out, also the exact ingredient the next step needs to
+    build a genuine attribution.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Marginal VaR answers "if I bought one more dollar of this thing, how much scarier would my worst-case day get?" It doesn't tell you how much of today's scariness this position already caused — just how much scarier one more dollar of it would make things, right now, with everything else held still.</p>
+  </div>
+
+  <h3>3. Component VaR — Euler's theorem turns the sensitivity into an exact attribution</h3>
+  <p>
+    Here is the step that makes this whole framework practically useful
+    rather than merely descriptive. Scale every position in the portfolio
+    by the same positive factor \(\lambda\) — hold the portfolio's
+    <em>composition</em> fixed, just make it \(\lambda\) times as large.
+    Portfolio VaR scales by exactly \(\lambda\) too:
+  </p>
+  <div class="tl-math">\[ \text{VaR}_p(\lambda\mathbf{w}) = z_p\sqrt{(\lambda\mathbf{w})^\top\Sigma(\lambda\mathbf{w})} = z_p\sqrt{\lambda^2\,\mathbf{w}^\top\Sigma\mathbf{w}} = \lambda\, z_p\sqrt{\mathbf{w}^\top\Sigma\mathbf{w}} = \lambda\,\text{VaR}_p(\mathbf{w}) \]</div>
+  <p>
+    (using \(\sqrt{\lambda^2}=\lambda\) since \(\lambda>0\)). A function with
+    this property — \(f(\lambda\mathbf{w})=\lambda f(\mathbf{w})\) for all
+    \(\lambda>0\) — is called <strong>homogeneous of degree 1</strong>, and
+    it triggers a genuinely useful piece of calculus, <strong>Euler's
+    homogeneous function theorem</strong>: differentiate both sides of
+    \(f(\lambda\mathbf{w})=\lambda f(\mathbf{w})\) with respect to
+    \(\lambda\), then set \(\lambda=1\), and you get
+  </p>
+  <div class="tl-math">\[ \sum_{i=1}^n w_i\,\frac{\partial f}{\partial w_i} = f(\mathbf{w}) \]</div>
+  <p>
+    Apply this directly to \(f=\text{VaR}_p\): the sum of each position's
+    weight times its own Marginal VaR reproduces total portfolio VaR
+    <strong>exactly</strong> — not approximately, not "close enough for risk
+    reporting," but algebraically exact for any weights and any covariance
+    matrix, so long as returns really are normal (or elliptical; see
+    Section 05). This defines <strong>Component VaR</strong>:
+  </p>
+  <div class="tl-math">\[ \text{Component VaR}_i = w_i \times \text{Marginal VaR}_i = w_i\, z_p\,\frac{(\Sigma\mathbf{w})_i}{\sigma_p}, \qquad \sum_{i=1}^n \text{Component VaR}_i = \text{VaR}_p \]</div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">Marginal VaR</div>
+      <div class="tl-fp-name">A per-unit sensitivity</div>
+      <div class="tl-fp-desc">How much VaR one more dollar of exposure to position i would add, right now</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">Component VaR</div>
+      <div class="tl-fp-name">An exact attribution</div>
+      <div class="tl-fp-desc">Position i's actual slice of today's total VaR — every position's slice, summed, equals the whole</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">Euler's theorem</div>
+      <div class="tl-fp-name">The bridge between them</div>
+      <div class="tl-fp-desc">Valid because VaR_p is homogeneous of degree 1 in the weights — a direct consequence of the normal closed form</div>
+    </div>
+  </div>
+  <div class="tl-solid green">
+    <strong>This is the practically crucial result of the whole lesson.</strong>
+    A Marginal VaR alone only ever answers "what if." Multiplying it by the
+    position's own weight converts it into "how much of the VaR that
+    already exists is this position's" — and because the components sum
+    exactly to the total, a risk report built this way never has to say
+    "and the rest is unexplained." Every dollar of VaR is accounted for,
+    by construction.
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine a rule that says "if everyone at the party brought exactly twice as much snack food, the total pile would be exactly twice as big" — obviously true, no surprises there. Euler's theorem is the clever bit of math that turns that obvious fact into something more useful: it lets you take "how much more pile one more chip from Sam would add" and multiply it by "how many chips Sam actually brought," and when you do that for everyone and add it all up, you get the exact total pile size — not close, exact. That's the whole trick behind Component VaR.</p>
+  </div>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(\mathbf{w}\)</td><td>Vector of \(n\) signed dollar exposures — positive long, negative short.</td></tr>
+    <tr><td>\(\Sigma\)</td><td>\(n\times n\) covariance matrix of the underlying position returns.</td></tr>
+    <tr><td>\(\sigma_p\)</td><td>Portfolio volatility in dollar terms, \(\sqrt{\mathbf{w}^\top\Sigma\mathbf{w}}\).</td></tr>
+    <tr><td>\(z_p\)</td><td>Standard normal quantile at confidence \(p\) — reusing the sibling coherent-risk-measures lesson's own \(p\) for confidence level.</td></tr>
+    <tr><td>\(\text{VaR}_p\)</td><td>Total portfolio Value-at-Risk, \(z_p\sigma_p\) under the normal assumption.</td></tr>
+    <tr><td>\(\text{Marginal VaR}_i\)</td><td>\(\partial\text{VaR}_p/\partial w_i\) — the per-unit sensitivity of total VaR to position \(i\)'s exposure.</td></tr>
+    <tr><td>\(\text{Component VaR}_i\)</td><td>\(w_i\times\text{Marginal VaR}_i\) — position \(i\)'s exact, additive share of total VaR.</td></tr>
+    <tr><td>\(\mathbf{B}\)</td><td>\(n\times k\) matrix of factor loadings (betas) mapping positions onto \(k\) common risk factors.</td></tr>
+    <tr><td>\(\mathbf{f}\)</td><td>\(k\)-vector of factor returns, with covariance matrix \(\Omega\).</td></tr>
+    <tr><td>\(\mathbf{x}=\mathbf{B}^\top\mathbf{w}\)</td><td>The portfolio's net dollar exposure to each of the \(k\) factors.</td></tr>
+    <tr><td>\(D\)</td><td>Diagonal covariance matrix of idiosyncratic (specific) returns, uncorrelated with the factors and with each other.</td></tr>
+  </table></div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>Factor VaR — the same decomposition, one level up</h2>
+  <p>
+    Position-level Component VaR answers "which position?" A different,
+    equally important question is "which underlying <em>risk factor</em>?"
+    — is this FX book's risk dominated by broad USD-rate exposure, by a
+    handful of EM-currency positions that all move together, or by a carry
+    trade that quietly correlates everything? Individual positions are
+    rarely pure bets on a single thing; they're bundles of exposures to a
+    smaller set of common drivers, and a risk manager usually cares more
+    about the drivers than about the raw position list.
+  </p>
+  <p>
+    The standard tool for making that precise is a linear factor model.
+    Each position's return is written as a linear combination of a small
+    number of common factor returns plus an idiosyncratic residual:
+  </p>
+  <div class="tl-math">\[ \mathbf{r} = \mathbf{B}\mathbf{f} + \boldsymbol{\varepsilon} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>f</code><span>k-vector of common factor returns (e.g. USD-rate, EM-FX, carry), covariance Ω</span></div>
+    <div class="tl-eq-chip c2"><code>B</code><span>n×k matrix of factor loadings — how exposed each position is to each factor, typically from a regression</span></div>
+    <div class="tl-eq-chip c4"><code>ε</code><span>idiosyncratic return left over after the factors, assumed uncorrelated with f and, position to position, with each other</span></div>
+  </div>
+  <p>
+    This is exactly the same architecture behind commercial multi-factor
+    risk systems, covered honestly (as a proprietary category this repo
+    cannot rebuild from scratch) in the sibling
+    <a href="institutional-barra-risk-models.html">Barra-Style Risk
+    Models</a> lesson — same \(R_i=\sum_k X_{ik}f_k+u_i\) structure, just
+    built here from Euler's theorem instead of taken as a black box.
+  </p>
+  <p>
+    Writing \(D\) for the (diagonal, by assumption) covariance matrix of
+    \(\boldsymbol\varepsilon\), the position covariance matrix decomposes
+    as \(\Sigma = \mathbf{B}\Omega\mathbf{B}^\top + D\). Substitute this
+    into portfolio variance and define \(\mathbf{x}=\mathbf{B}^\top\mathbf{w}\)
+    — the portfolio's <em>net dollar exposure to each factor</em>, exactly
+    analogous to \(\mathbf{w}\) itself but one level up, in factor space
+    instead of position space:
+  </p>
+  <div class="tl-math">\[ \sigma_p^2 = \mathbf{w}^\top\Sigma\mathbf{w} = \mathbf{x}^\top\Omega\mathbf{x} + \mathbf{w}^\top D\mathbf{w} = \underbrace{\mathbf{x}^\top\Omega\mathbf{x}}_{\text{systematic (factor) variance}} + \underbrace{\textstyle\sum_i w_i^2 D_{ii}}_{\text{specific variance}} \]</div>
+  <p>
+    Both pieces on the right are exact, and both are homogeneous of degree
+    2 in \(\mathbf{w}\) (since \(\mathbf{x}\) is linear in \(\mathbf{w}\)),
+    so Euler's theorem applies to each separately, exactly as it did to
+    \(\text{VaR}_p\) itself in Section 02 — the only difference is that
+    the systematic block is naturally expressed in terms of \(\mathbf{x}\)
+    (per factor) rather than \(\mathbf{w}\) (per position):
+  </p>
+  <div class="tl-math">\[ \text{Factor Marginal VaR}_j = z_p\,\frac{(\Omega\mathbf{x})_j}{\sigma_p}, \qquad \text{Factor Component VaR}_j = x_j\times\text{Factor Marginal VaR}_j \]</div>
+  <p>
+    Summing the \(k\) factor components recovers only the systematic
+    share of total VaR, \(z_p(\mathbf{x}^\top\Omega\mathbf{x})/\sigma_p\) —
+    it cannot recover the whole of \(\text{VaR}_p\) on its own, because
+    idiosyncratic risk is real risk the factors don't explain. The honest
+    fix is to carry a matching <strong>specific-risk component</strong>
+    alongside the \(k\) factor components:
+  </p>
+  <div class="tl-math">\[ \text{Specific VaR} = z_p\,\frac{\mathbf{w}^\top D\mathbf{w}}{\sigma_p}, \qquad \sum_{j=1}^k \text{Factor Component VaR}_j \;+\; \text{Specific VaR} \;=\; \text{VaR}_p \]</div>
+  <p>
+    That last identity holds exactly, for the same reason position-level
+    Component VaR summed exactly: it's the identical Euler mechanism,
+    applied to a variance that's now been split into a systematic block
+    (attributed across \(k\) factors) and a specific block (kept as one
+    residual bucket rather than split further, since idiosyncratic risk by
+    construction has no common driver to attribute it to).
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine a smoothie made from five different fruits. Position-level Component VaR is like asking "how much of the smoothie's calories came from each individual piece of fruit?" Factor VaR is like asking a slightly different, often more useful question: "how much came from sugar, versus fiber, versus fat, across all the fruit combined?" — a few nutritional categories instead of five separate fruits. Whatever's left over that doesn't fit neatly into sugar/fiber/fat is the "specific" bucket — genuinely part of the calorie count, just not attributable to any one shared category.</p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">A pitfall worth flagging immediately, not saved for later</div>
+    <h3>Factor VaR is only as good as the factor model underneath it</h3>
+    <p>
+      Everything in this section assumed \(\mathbf{B}\) and \(\Omega\) are
+      a good description of reality — loadings estimated on stale data,
+      factors that don't actually span the portfolio's real risk drivers,
+      or a residual \(D\) that isn't really diagonal (idiosyncratic returns
+      that are secretly still correlated with each other) all produce a
+      factor decomposition that looks precise and additive while quietly
+      misattributing risk to the wrong category. Section 06 returns to
+      this in more depth.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Worked example and a live calculator</h2>
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>A three-position FX book — computing σ_p, VaR_p, and every Marginal and Component VaR by hand</h3>
+    <p>
+      Three positions, one-day 95% VaR (\(p=0.95\), \(z_p=1.645\)):
+      Position A, \(+\$100{,}000\), daily volatility 2%; Position B,
+      \(+\$150{,}000\), daily volatility 1.5%; Position C, \(-\$50{,}000\)
+      (short), daily volatility 3%. Pairwise correlations: \(\rho_{AB}=0.30\),
+      \(\rho_{AC}=-0.20\), \(\rho_{BC}=0.10\).
+    </p>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>Build the covariance matrix Σ</h4>
+          <p>
+            \(\Sigma_{ij}=\rho_{ij}\sigma_i\sigma_j\) (and \(\Sigma_{ii}=\sigma_i^2\)):
+            \(\Sigma_{AA}=0.0004\), \(\Sigma_{BB}=0.000225\),
+            \(\Sigma_{CC}=0.0009\), \(\Sigma_{AB}=0.30\times0.02\times0.015=0.00009\),
+            \(\Sigma_{AC}=-0.20\times0.02\times0.03=-0.00012\),
+            \(\Sigma_{BC}=0.10\times0.015\times0.03=0.000045\).
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>Compute Σw, then portfolio variance and σ_p</h4>
+          <p>
+            \((\Sigma\mathbf{w})_A = 0.0004(100000)+0.00009(150000)+(-0.00012)(-50000) = 40+13.5+6=59.5\).<br>
+            \((\Sigma\mathbf{w})_B = 0.00009(100000)+0.000225(150000)+0.000045(-50000)=9+33.75-2.25=40.5\).<br>
+            \((\Sigma\mathbf{w})_C = -0.00012(100000)+0.000045(150000)+0.0009(-50000)=-12+6.75-45=-50.25\).<br>
+            \(\mathbf{w}^\top\Sigma\mathbf{w} = 100000(59.5)+150000(40.5)+(-50000)(-50.25) = 5{,}950{,}000+6{,}075{,}000+2{,}512{,}500 = 14{,}537{,}500\).<br>
+            \(\sigma_p = \sqrt{14{,}537{,}500} \approx \mathbf{\$3{,}812.81}\).
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>Portfolio VaR</h4>
+          <p>
+            \(\text{VaR}_p = 1.645 \times 3{,}812.81 \approx \mathbf{\$6{,}272.07}\).
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">4</div>
+        <div class="tl-step-body">
+          <h4>Marginal VaR per position</h4>
+          <p>
+            \(\text{Marginal VaR}_A = 1.645\times59.5/3812.81 \approx 0.02567\).
+            \(\text{Marginal VaR}_B = 1.645\times40.5/3812.81 \approx 0.01747\).
+            \(\text{Marginal VaR}_C = 1.645\times(-50.25)/3812.81 \approx -0.02168\).
+            Read these as dollars of extra portfolio VaR per one extra
+            dollar of exposure to that position — note Position C's is
+            <em>negative</em>, since it's already short and negatively
+            correlated with A, so it's already a partial hedge.
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">5</div>
+        <div class="tl-step-body">
+          <h4>Component VaR per position — and the additivity check</h4>
+          <p>
+            \(\text{Component VaR}_A = 100{,}000\times0.02567 \approx \$2{,}567.07\).
+            \(\text{Component VaR}_B = 150{,}000\times0.01747 \approx \$2{,}621.00\).
+            \(\text{Component VaR}_C = -50{,}000\times(-0.02168) \approx \$1{,}083.99\)
+            — negative weight times negative Marginal VaR gives a
+            <em>positive</em> component: Position C is short, and being
+            short still contributes risk, it just contributes less than a
+            naive "it's a hedge, so it's free" intuition would guess.
+            Summed: \(2{,}567.07+2{,}621.00+1{,}083.99 = \mathbf{\$6{,}272.07}\)
+            — matching \(\text{VaR}_p\) exactly (any cent-level difference
+            above is only a display-rounding artifact of showing two
+            decimal places; the underlying arithmetic agrees to
+            floating-point precision).
+          </p>
+        </div>
+      </div>
+    </div>
+    <p>
+      Position B contributes the largest slice in dollar terms (\$2,621),
+      but as a <em>share</em> of its own size it's Position A that carries
+      relatively more risk per dollar — exactly the kind of comparison a
+      raw exposure list can't make, and Component VaR can.
+    </p>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">The three Component VaRs, stacked, versus total portfolio VaR — from the worked example above</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart with two bars of equal height. The left bar is stacked from three segments — Component VaR of position C at the bottom ($1,084), position B in the middle ($2,621), and position A on top ($2,567). The right bar is a single solid block labeled total portfolio VaR at $6,272. A dashed line across the top of both bars shows they reach exactly the same height, illustrating that the three components sum exactly to the total.">
+      <line x1="30" y1="260" x2="610" y2="260" style="stroke:var(--border);stroke-width:1"></line>
+      <line x1="60" y1="62.9" x2="560" y2="62.9" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:4,4"></line>
+      <text x="566" y="66" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">same height</text>
+
+      <rect x="170" y="225.9" width="110" height="34.1" style="fill:var(--amber);opacity:0.85"></rect>
+      <text x="225" y="246" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="var(--text)">C: $1,084</text>
+
+      <rect x="170" y="143.6" width="110" height="82.3" style="fill:var(--blue);opacity:0.85"></rect>
+      <text x="225" y="188" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="#fff">B: $2,621</text>
+
+      <rect x="170" y="62.9" width="110" height="80.7" style="fill:var(--purple);opacity:0.85"></rect>
+      <text x="225" y="107" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="#fff">A: $2,567</text>
+
+      <text x="225" y="278" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)">stacked Component VaRs</text>
+
+      <rect x="360" y="62.9" width="110" height="197.1" style="fill:var(--green);opacity:0.85"></rect>
+      <text x="415" y="165" text-anchor="middle" font-size="12" font-family="'DM Mono',monospace" fill="#fff">$6,272.07</text>
+      <text x="415" y="278" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)">total portfolio VaR</text>
+    </svg>
+    <div class="tl-chart-caption">
+      Three differently-colored segments, stacked, reach the exact same
+      height as the single total-VaR bar — the visual statement of
+      \(\sum_i \text{Component VaR}_i = \text{VaR}_p\).
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Change any weight, volatility, correlation, or confidence level — additivity recomputes live</h3>
+    <p>
+      Starts on the worked example's exact numbers. Edit any field and
+      \(\sigma_p\), \(\text{VaR}_p\), every Marginal VaR, every Component
+      VaR, and the additivity check all recompute instantly. Non-numeric,
+      blank, or correlation/volatility inputs that don't form a valid
+      (positive-semidefinite) covariance matrix show "—" instead of
+      breaking the formula.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Weight w_A ($)</span></div>
+        <input type="number" id="fv-wA" class="tl-scratch-input" value="100000" step="5000">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Weight w_B ($)</span></div>
+        <input type="number" id="fv-wB" class="tl-scratch-input" value="150000" step="5000">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Weight w_C ($)</span></div>
+        <input type="number" id="fv-wC" class="tl-scratch-input" value="-50000" step="5000">
+      </div>
+    </div>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Volatility σ_A (%/day)</span></div>
+        <input type="number" id="fv-volA" class="tl-scratch-input" value="2" step="0.1" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Volatility σ_B (%/day)</span></div>
+        <input type="number" id="fv-volB" class="tl-scratch-input" value="1.5" step="0.1" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Volatility σ_C (%/day)</span></div>
+        <input type="number" id="fv-volC" class="tl-scratch-input" value="3" step="0.1" min="0">
+      </div>
+    </div>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Correlation ρ_AB</span></div>
+        <input type="number" id="fv-rAB" class="tl-scratch-input" value="0.3" step="0.05" min="-1" max="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Correlation ρ_AC</span></div>
+        <input type="number" id="fv-rAC" class="tl-scratch-input" value="-0.2" step="0.05" min="-1" max="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Correlation ρ_BC</span></div>
+        <input type="number" id="fv-rBC" class="tl-scratch-input" value="0.1" step="0.05" min="-1" max="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Confidence p</span></div>
+        <select id="fv-conf" class="tl-scratch-input">
+          <option value="0.90">90%</option>
+          <option value="0.95" selected>95%</option>
+          <option value="0.99">99%</option>
+          <option value="0.999">99.9%</option>
+        </select>
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      σ_p = $<b id="fv-sigmap">3812.81</b>&emsp;VaR_p = $<b id="fv-varp">6272.07</b>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Marginal VaR: A=<b id="fv-mA">0.02567</b>&emsp;B=<b id="fv-mB">0.01747</b>&emsp;C=<b id="fv-mC">-0.02168</b>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Component VaR: A=$<b id="fv-cA">2567.07</b>&emsp;B=$<b id="fv-cB">2621.00</b>&emsp;C=$<b id="fv-cC">1083.99</b>
+    </div>
+    <div class="tl-readout">
+      Sum of components = $<b id="fv-sum">6272.07</b> <span id="fv-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="fv-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>How practitioners actually use this</h2>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📊</div>
+      <h4>Risk budgeting</h4>
+      <p>A desk allocates a total VaR "budget" across strategies or positions, then monitors each one's live Component VaR share against its budgeted share — a position quietly growing past its allotted slice is a concrete, actionable signal, not a vague sense that "risk feels higher."</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🎯</div>
+      <h4>Targeted hedging and trimming</h4>
+      <p>If Component VaR shows one position or factor dominates total risk, the fix is targeted — trim or hedge specifically that exposure — rather than an across-the-board de-risking that cuts positions that were barely contributing to begin with.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🔀</div>
+      <h4>Marginal vs. incremental VaR</h4>
+      <p>Marginal VaR is an infinitesimal per-unit sensitivity; a genuinely different, related practitioner quantity, <strong>Incremental VaR</strong>, is the actual VaR change from adding or removing a whole position — computed by literally re-running VaR with and without it. The two agree closely only when the position is small relative to the portfolio; for a large trade, Marginal VaR's local slope is a poor stand-in for the real, non-linear incremental effect.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🧭</div>
+      <h4>Factor VaR for cross-asset macro books</h4>
+      <p>A multi-currency book's dozens of positions often reduce to a handful of genuinely distinct factor exposures (rate differentials, a broad dollar factor, EM risk appetite). Factor Component VaR answers "which macro theme is actually driving this book" far more usefully to a portfolio manager than a 40-line position list.</p>
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>A risk committee asks "why did VaR jump 20% overnight?"</h3>
+    <p>
+      Imagine a multi-asset FX book whose total 95% VaR rose noticeably
+      from one day to the next, with no single position's size having
+      changed dramatically. A Component VaR breakdown, computed both days,
+      can immediately separate two very different explanations that a
+      single aggregate number cannot distinguish: did one position's own
+      volatility spike (its own Component VaR grew, others held roughly
+      steady), or did correlations shift — two previously offsetting
+      positions suddenly started moving together, inflating everyone's
+      \((\Sigma\mathbf{w})_i\) term even though no individual position's
+      size or standalone volatility changed at all? The second explanation
+      is invisible to a position-size review and only shows up once
+      \(\Sigma\) itself is inspected — precisely the mechanism Section 06
+      below flags as a genuine, honest limitation of relying on any single
+      day's estimated covariance matrix.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>Common pitfalls</h2>
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Where this clean result quietly stops holding</div>
+    <h3>The Euler-additivity result is a consequence of specific, checkable assumptions</h3>
+    <p>
+      <strong>The closed form depends on normal (or elliptical) returns,
+      specifically.</strong> \(\text{VaR}_p=z_p\sigma_p\) and its Euler
+      decomposition rely on portfolio VaR being homogeneous of degree 1 in
+      \(\mathbf{w}\) with a closed-form gradient. This carries over to the
+      broader class of <em>elliptical</em> distributions (VaR still scales
+      with portfolio standard deviation, just with a different quantile
+      constant than the normal \(z_p\)) — but outside that family, under
+      genuine fat tails, skew, or jump risk, no such clean closed form
+      exists in general. Marginal and Component VaR still have a sensible
+      meaning there, but they typically have to be estimated by simulation
+      — bumping a position's weight by a small amount and re-computing
+      historical or Monte Carlo VaR, or a kernel-smoothed empirical
+      estimator — rather than read off a formula.
+    </p>
+    <p>
+      <strong>CVaR/Expected Shortfall has a similar Euler property in many
+      treatments — but don't assume it's the identical formula.</strong>
+      Because Expected Shortfall (covered in the sibling
+      <a href="coherent-risk-measures.html">Coherent Risk Measures</a>
+      lesson) is also positively homogeneous of degree 1 in the portfolio
+      weights, a comparable Euler-style risk-contribution decomposition
+      exists for it too, described in the risk-contribction literature
+      (see Further Reading) — the general idea, allocating total risk
+      additively by differentiating a homogeneous risk measure, is not
+      unique to VaR. The specific algebra differs from the
+      \(z_p(\Sigma\mathbf{w})_i/\sigma_p\) formula derived above, though,
+      and this lesson won't present it as if it were the same expression
+      — that would be presenting an unfamiliar result with false
+      confidence.
+    </p>
+    <p>
+      <strong>Factor VaR is only as trustworthy as the factor model.</strong>
+      A misspecified \(\mathbf{B}\) (stale or wrong loadings), factors that
+      don't actually span the portfolio's real drivers, or an off-diagonal
+      \(D\) (idiosyncratic returns that are secretly still correlated)
+      all produce a factor decomposition that looks precise and
+      additive while quietly misattributing risk — the arithmetic can be
+      exactly right and the attribution can still be wrong, because the
+      inputs feeding it were wrong.
+    </p>
+    <p>
+      <strong>Σ (and Ω) are estimated, and estimates are least reliable
+      exactly when they matter most.</strong> Every formula in this lesson
+      treats \(\Sigma\) as known; in practice it's estimated from a
+      historical sample, and correlations estimated in calm markets can
+      shift sharply in a genuine stress episode — the same worry that
+      motivates this category's own lesson 1,
+      <a href="institutional-covar.html">CoVaR &amp; systemic co-movement</a>:
+      a Component VaR breakdown computed on yesterday's calm-period
+      covariance matrix can understate exactly the co-movement risk that
+      shows up first when it's needed least.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Under normal returns, \(\text{VaR}_p=z_p\sigma_p\) is homogeneous of degree 1 in the position weights</strong> — scale every position by \(\lambda\) and total VaR scales by exactly \(\lambda\), too.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Marginal VaR is a per-unit sensitivity; Component VaR (weight × Marginal VaR) is a full, exact attribution</strong> — Euler's homogeneous function theorem guarantees the components sum exactly to total portfolio VaR, no residual left over.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Factor VaR applies the identical logic one level up,</strong> attributing risk across a small set of common factors (plus one honest specific-risk bucket) instead of across raw positions, once portfolio variance is rewritten as systematic-plus-specific.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A Component VaR can be negative.</strong> If a position's exposure and its Marginal VaR have opposite signs, that position is a genuine diversifier — removing it would <em>increase</em> total portfolio VaR, not decrease it.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>The exact-additivity result depends on normal/elliptical returns and a well-specified factor model.</strong> Under genuine fat tails, or with a misspecified factor structure, the closed form breaks down and honest estimates require simulation, not a formula.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Σ itself is an estimate, not a known constant</strong> — calm-period correlations can shift sharply in stress, and any decomposition built on them inherits that instability.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 08</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Precisely, what does Marginal VaR_i measure, and what does it NOT tell you on its own?</summary>
+    <div class="tl-answer">
+      \(\text{Marginal VaR}_i=\partial\text{VaR}_p/\partial w_i=z_p(\Sigma\mathbf{w})_i/\sigma_p\)
+      — the change in total portfolio VaR per one additional dollar of
+      exposure to position \(i\), holding every other position's exposure
+      fixed. On its own it does NOT tell you how much of the portfolio's
+      <em>current</em> total VaR position \(i\) is responsible for — that
+      requires multiplying by \(w_i\) to get Component VaR.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why do the Component VaRs sum exactly to total portfolio VaR — what mathematical fact makes this exact rather than approximate?</summary>
+    <div class="tl-answer">
+      Because, under the normal-returns assumption, \(\text{VaR}_p=z_p\sigma_p\)
+      is homogeneous of degree 1 in the weight vector \(\mathbf{w}\)
+      (scaling every position by \(\lambda>0\) scales \(\text{VaR}_p\) by
+      exactly \(\lambda\)). Euler's homogeneous function theorem states
+      that for any such function, \(\sum_i w_i\,\partial f/\partial w_i = f(\mathbf{w})\)
+      exactly — applying this with \(f=\text{VaR}_p\) is precisely the
+      statement \(\sum_i\text{Component VaR}_i=\text{VaR}_p\).
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Could a position have a negative Component VaR? If so, what would that mean?</summary>
+    <div class="tl-answer">
+      Yes — it happens whenever a position's exposure \(w_i\) and its
+      Marginal VaR have opposite signs, which occurs when the position is
+      negatively correlated enough with the rest of the portfolio. A
+      negative Component VaR means that position is a genuine diversifier:
+      removing it from the portfolio would actually <em>increase</em> total
+      portfolio VaR, not decrease it, even though it's a real position with
+      its own standalone risk.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. In the factor-model setup r = Bf + ε, what is x = B'w, and why is it the right object to apply Euler's theorem to for a factor-level decomposition?</summary>
+    <div class="tl-answer">
+      \(\mathbf{x}=\mathbf{B}^\top\mathbf{w}\) is the portfolio's net dollar
+      exposure to each of the \(k\) common factors — the factor-space
+      analog of \(\mathbf{w}\) itself. Portfolio variance decomposes as
+      \(\mathbf{x}^\top\Omega\mathbf{x}+\mathbf{w}^\top D\mathbf{w}\)
+      (systematic plus specific), and the systematic term is homogeneous
+      of degree 2 in \(\mathbf{x}\) exactly the way total variance is
+      homogeneous of degree 2 in \(\mathbf{w}\) — so the same Euler logic
+      that decomposed VaR across positions decomposes the systematic share
+      of VaR across factors, using \(\mathbf{x}\) in place of \(\mathbf{w}\).
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Why does the clean closed-form Marginal/Component VaR formula break down under genuinely fat-tailed, non-elliptical returns?</summary>
+    <div class="tl-answer">
+      The formula \(z_p(\Sigma\mathbf{w})_i/\sigma_p\) depends on
+      \(\text{VaR}_p\) having the closed form \(z_p\sigma_p\), which in
+      turn depends on returns being normal (or, more generally, elliptical,
+      where VaR still scales with portfolio standard deviation using a
+      different quantile constant). Outside that family — genuine fat
+      tails, skew, jumps — VaR is no longer a simple multiple of \(\sigma_p\)
+      and has no equivalent clean closed-form gradient in general, so
+      marginal and component contributions must instead be estimated
+      by simulation (e.g., bumping a position and re-computing historical
+      or Monte Carlo VaR) rather than read off a formula.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. What is the difference between Marginal VaR and Incremental VaR, and when do they stop agreeing closely?</summary>
+    <div class="tl-answer">
+      Marginal VaR is an infinitesimal, local sensitivity — the derivative
+      of portfolio VaR with respect to one position's weight, evaluated at
+      the current portfolio. Incremental VaR is the actual, finite change
+      in total VaR from genuinely adding or removing a whole position,
+      found by literally re-computing VaR with and without it. The two
+      agree closely only when the position being considered is small
+      relative to the portfolio (where the local linear approximation
+      Marginal VaR provides is a good stand-in for the real effect); for a
+      large trade, the true incremental effect can be meaningfully
+      non-linear, and Marginal VaR's local slope is a poor substitute for
+      actually re-running the calculation.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Philippe Jorion, <em>Value at Risk: The New Benchmark for Managing Financial Risk</em> (3rd ed.), McGraw-Hill, 2007 — the standard VaR reference text, with dedicated chapters deriving marginal, incremental, and component VaR for portfolios of positions.</li>
+    <li>Robert Litterman, "Hot Spots and Hedges," <em>Journal of Portfolio Management</em>, 1996 — an early, widely-cited practitioner treatment of decomposing portfolio risk into per-position marginal contributions to identify concentrated ("hot spot") risk.</li>
+    <li>Mark Garman, "Taking VaR to Pieces," <em>Risk</em> Magazine, 1997 — introduced the "component VaR" terminology and the Euler-additivity result this lesson builds its central derivation around.</li>
+    <li>Dirk Tasche, "Risk Contributions and Performance Measurement," working paper, Technische Universität München, 1999 — generalizes Euler-based risk-contribution/allocation beyond VaR to other positively homogeneous risk measures, including Expected Shortfall, under appropriate conditions; the source for this lesson's more cautious general statement about a similar CVaR decomposition rather than a specific reproduced formula.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="institutional-hill-estimator.html">← Hill Estimator &amp; Tail-Index Estimation</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="institutional-bates-model.html">Bates Model: Stochastic Volatility + Jumps →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+<script>
+(function(){
+  var ids = ['wA','wB','wC','volA','volB','volC','rAB','rAC','rBC'];
+  var inputs = {};
+  ids.forEach(function(f){ inputs[f] = document.getElementById('fv-' + f); });
+  var confSel = document.getElementById('fv-conf');
+  if (!inputs.wA) return;
+
+  var DEFAULTS = { wA: 100000, wB: 150000, wC: -50000, volA: 2, volB: 1.5, volC: 3, rAB: 0.3, rAC: -0.2, rBC: 0.1, conf: '0.95' };
+  var DASH = '—';
+
+  var out = {
+    sigmap: document.getElementById('fv-sigmap'),
+    varp: document.getElementById('fv-varp'),
+    mA: document.getElementById('fv-mA'),
+    mB: document.getElementById('fv-mB'),
+    mC: document.getElementById('fv-mC'),
+    cA: document.getElementById('fv-cA'),
+    cB: document.getElementById('fv-cB'),
+    cC: document.getElementById('fv-cC'),
+    sum: document.getElementById('fv-sum')
+  };
+  var note = document.getElementById('fv-note');
+  var resetBtn = document.getElementById('fv-reset');
+
+  // Standard normal quantiles for the offered confidence levels — avoids
+  // needing an inverse-normal-CDF implementation for a fixed, small menu.
+  var Z = { '0.90': 1.282, '0.95': 1.645, '0.99': 2.326, '0.999': 3.090 };
+
+  function blank(){
+    Object.keys(out).forEach(function(k){ out[k].textContent = DASH; });
+  }
+
+  function recompute(){
+    var v = {};
+    ids.forEach(function(f){ v[f] = parseFloat(inputs[f].value); });
+    var z = Z[confSel.value] || Z['0.95'];
+
+    var msgs = [];
+    if (!isFinite(v.wA) || !isFinite(v.wB) || !isFinite(v.wC)) msgs.push('all three weights must be numbers');
+    if (!isFinite(v.volA) || v.volA < 0 || !isFinite(v.volB) || v.volB < 0 || !isFinite(v.volC) || v.volC < 0) msgs.push('volatilities must be non-negative numbers');
+    if (!isFinite(v.rAB) || v.rAB < -1 || v.rAB > 1 || !isFinite(v.rAC) || v.rAC < -1 || v.rAC > 1 || !isFinite(v.rBC) || v.rBC < -1 || v.rBC > 1) msgs.push('correlations must be between -1 and 1');
+
+    if (msgs.length) {
+      blank();
+      note.textContent = '(' + msgs.join('; ') + ')';
+      return;
+    }
+
+    var w = [v.wA, v.wB, v.wC];
+    var sig = [v.volA / 100, v.volB / 100, v.volC / 100];
+    var rho = [
+      [1, v.rAB, v.rAC],
+      [v.rAB, 1, v.rBC],
+      [v.rAC, v.rBC, 1]
+    ];
+
+    var Sigma = [[0,0,0],[0,0,0],[0,0,0]];
+    for (var i = 0; i < 3; i++) {
+      for (var j = 0; j < 3; j++) {
+        Sigma[i][j] = rho[i][j] * sig[i] * sig[j];
+      }
+    }
+
+    var Sw = [0, 0, 0];
+    for (i = 0; i < 3; i++) {
+      var s = 0;
+      for (j = 0; j < 3; j++) s += Sigma[i][j] * w[j];
+      Sw[i] = s;
+    }
+
+    var varP = 0;
+    for (i = 0; i < 3; i++) varP += w[i] * Sw[i];
+
+    if (!(varP > 0)) {
+      blank();
+      note.textContent = '(these volatilities/correlations do not form a valid positive-semidefinite covariance matrix — try smaller-magnitude correlations)';
+      return;
+    }
+
+    var sigmaP = Math.sqrt(varP);
+    var varPortfolio = z * sigmaP;
+    var marginal = Sw.map(function(x){ return z * x / sigmaP; });
+    var component = [0, 1, 2].map(function(i){ return w[i] * marginal[i]; });
+    var sum = component[0] + component[1] + component[2];
+
+    note.textContent = '';
+    out.sigmap.textContent = sigmaP.toFixed(2);
+    out.varp.textContent = varPortfolio.toFixed(2);
+    out.mA.textContent = marginal[0].toFixed(5);
+    out.mB.textContent = marginal[1].toFixed(5);
+    out.mC.textContent = marginal[2].toFixed(5);
+    out.cA.textContent = component[0].toFixed(2);
+    out.cB.textContent = component[1].toFixed(2);
+    out.cC.textContent = component[2].toFixed(2);
+    out.sum.textContent = sum.toFixed(2);
+
+    var diff = Math.abs(sum - varPortfolio);
+    note.textContent = diff < 0.01 ? '✓ matches VaR_p exactly (to floating-point precision)' : '(unexpected mismatch — check inputs)';
+  }
+
+  ids.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  confSel.addEventListener('change', recompute);
+  resetBtn.addEventListener('click', function(){
+    ids.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    confSel.value = DEFAULTS.conf;
+    recompute();
+  });
+  recompute();
+})();
+</script>
+</body>
+</html>
