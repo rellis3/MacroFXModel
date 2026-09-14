@@ -443,6 +443,9 @@ export function _driftD(ohlc, sigmaFwd, win = 14) {
 // threshold cannot express that and a percentile does it for free.
 //
 // Percentile is on |d| — "how unusual is a trend this STRONG" — with the direction
+// carried by the word. (Only true when the caller supplies `sigmaSeries`; see the
+// denominator note in the hist loop below, and `rankedOn` on the returned object,
+// which says which of |d| or |mu| this reading was actually ranked against.)
 // carried by the word. Magnitude is reported as %/day, which is the form a reader
 // can actually picture: "+0.47% a day for a fortnight".
 //
@@ -477,7 +480,7 @@ export function driftReadout(ohlc, sigmaFwd, win = 14, opts = {}) {
   const d = _driftD(ohlc, sigmaFwd);
   const out = {
     d, pct: null, word: 'Neutral', dir: 'flat', pctPerDay: null,
-    text: null, textFull: null, anatomy: null, n: 0,
+    text: null, textFull: null, anatomy: null, rankedOn: null, n: 0,
   };
   if (!Number.isFinite(d) || !(sigmaFwd > 0)) return out;
 
@@ -495,11 +498,33 @@ export function driftReadout(ohlc, sigmaFwd, win = 14, opts = {}) {
 
   // Historical |d| from the SAME bars this forecast was built on. Each past day's
   // drift uses only closes up to that day, so the distribution is causal.
+  //
+  // THE DENOMINATOR HAS TO BE THAT DAY'S OWN SIGMA, and for a long time it wasn't.
+  // Dividing every historical mu by TODAY's sigmaFwd looks like it normalises, but
+  // the constant appears on both sides of the comparison below and cancels exactly:
+  //   |mu_i|/sigma < |mu_today|/sigma  <=>  |mu_i| < |mu_today|
+  // so the "top X% of days" clause was ranking |mu| — a raw trailing return — while
+  // the comment above claimed it ranked |d|. Measured: pct held at 0.9610 across a
+  // 3.3x sweep of sigmaFwd, moving only once the min(v,2) clamp began to bind.
+  //
+  // That matters because it is the whole stated point of the ratio. A 0.5% trailing
+  // move in a calm month and the same move in a wild one are very different readings,
+  // and only a per-day sigma can tell them apart. `sigmaSeries` is yangZhangVolSeries'
+  // output: index-aligned to `ohlc`, null for the first `window` bars, and out[j] is
+  // built from bars up to and including j — so sigmaSeries[i-1] is the sigma as of the
+  // last bar in that history point's own mu window, and is causal by construction.
+  // Without it the old |mu| ranking is kept rather than silently changing meaning.
+  const sigSeries = Array.isArray(opts.sigmaSeries) && opts.sigmaSeries.length === ohlc.length
+    ? opts.sigmaSeries : null;
+  out.rankedOn = sigSeries ? 'd' : 'mu';
   const hist = [];
   for (let i = win + 1; i < ohlc.length; i++) {
-    const slice = ohlc.slice(0, i);
-    const mu = Math.log(slice.at(-1).close / slice.at(-(win + 1)).close) / win;
-    const v = Math.abs(mu / sigmaFwd);
+    // Direct indexing, not ohlc.slice(0,i) — the slice allocated a fresh array of
+    // length i on every iteration for the two closes it actually read.
+    const mu = Math.log(ohlc[i - 1].close / ohlc[i - 1 - win].close) / win;
+    const den = sigSeries ? sigSeries[i - 1] : sigmaFwd;
+    if (!(den > 0)) continue;                       // sigma not yet defined this early
+    const v = Math.abs(mu / den);
     if (Number.isFinite(v)) hist.push(Math.min(v, 2));
   }
   out.n = hist.length;
@@ -730,7 +755,7 @@ export function computeForecast(ohlc, assetClass = 'fx', newsMult = 1.0, opts = 
     // opts.drift carries the OPTIONAL anatomy inputs ({rates, returns}) — a caller
     // with rate or jump data supplies them, everyone else gets the precision block
     // alone. Never required: computeForecast's own contract is unchanged.
-    drift_read:    driftReadout(ohlc, sigmaFwd, 14, opts.drift ?? {}),
+    drift_read:    driftReadout(ohlc, sigmaFwd, 14, { sigmaSeries: volSeries, ...(opts.drift ?? {}) }),
     oh_v2_median:  r2v(_bmMaxQuantile( _d, 0.5)  * _p.oc_50_corr * _sp),
     oh_v2_75:      r2v(_bmMaxQuantile( _d, 0.75) * _p.oc_75_corr * _sp),
     ol_v2_median:  r2v(_bmMaxQuantile(-_d, 0.5)  * _p.oc_50_corr * _sp),
