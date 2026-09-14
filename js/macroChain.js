@@ -1,0 +1,253 @@
+/**
+ * The chain, today — Tier-1 brick.
+ *
+ * The textbook macro chain, one link at a time, with today's measured move at
+ * both ends of every link and a verdict: is the link HOLDING (both ends moved,
+ * in the direction the textbook says), BROKEN (both moved, the wrong way round),
+ * QUIET (at least one end has not moved enough to say anything) or UNMEASURED
+ * (a series is missing). The point is not prediction. It is the habit the page
+ * exists to build: seeing that oil moved and asking, in order, what it did to
+ * inflation expectations, to yields, to the real yield, to the dollar, to gold,
+ * to the commodity currencies — and noticing where the textbook stopped working,
+ * because the broken link is where the actual story is.
+ *
+ * Every input is a 20-day change (calendar-day window, via seriesDeltas — the
+ * same rule the macro-change strip uses, so a "20d" here spans what a "20d"
+ * there spans). Each node carries a noise floor below which it is "quiet": a
+ * 2bp breakeven move is not a move, and a link cannot be judged on it.
+ *
+ * Pure: no fetch, no DOM. The page builds `vals` and renders; the AI prompt gets
+ * the same links as text. Tested in js/macroChain.test.mjs.
+ *
+ * Evidence: ~ context. It explains; it does not predict. None of these links is
+ * a validated signal in this repo, and several textbook links have already been
+ * tested null as FORWARD predictors here (yields → FX, project_yield_asset_coupling).
+ */
+
+import { seriesDeltas } from './macroChange.js';
+
+export const CHAIN_WINDOW_DAYS = 20;
+
+// unit: how the 20d change is expressed. pct = percent change of a price;
+// bp = change in a percent-quoted rate ×100; pt = change in a level.
+// floor: the smallest 20d change that counts as "moved".
+export const CHAIN_NODES = {
+  oil:    { label: 'Oil (WTI)',                       unit: 'pct', floor: 3,   dp: 1, what: 'Front-month crude in dollars. Energy is the first domino: it is in every input cost and every headline inflation print.' },
+  bei:    { label: 'Inflation expectations',          unit: 'bp',  floor: 5,   dp: 0, what: 'The 10-year breakeven (T10YIE): nominal yield minus the TIPS real yield. What the bond market is pricing for average inflation over ten years.' },
+  us10y:  { label: 'US 10Y yield',                    unit: 'bp',  floor: 8,   dp: 0, what: 'The nominal 10-year Treasury yield (DGS10). It is the real yield plus expected inflation, so a move in it always has a cause on one side or the other.' },
+  real:   { label: 'Real yield (10Y TIPS)',           unit: 'bp',  floor: 8,   dp: 0, what: 'The inflation-adjusted 10-year (DFII10). The true cost of money. Gold, the dollar and long-duration assets answer to this, not to the nominal.' },
+  dxy:    { label: 'Dollar (broad index)',            unit: 'pct', floor: 0.5, dp: 1, what: 'The Fed’s trade-weighted broad dollar (DTWEXBGS). Up = the dollar bought against everything.' },
+  gold:   { label: 'Gold',                            unit: 'pct', floor: 2,   dp: 1, what: 'Gold pays nothing, so its textbook enemy is a rising real yield. It rallies into falling real yields, a weaker dollar, or a loss of faith in the people who set rates.' },
+  copper: { label: 'Copper',                          unit: 'pct', floor: 3,   dp: 1, what: 'The growth commodity. Up with global demand, down with a growth scare. Reads alongside the commodity currencies.' },
+  audusd: { label: 'AUD/USD',                         unit: 'pct', floor: 1,   dp: 1, what: 'The commodity currency the market uses as its China-and-metals proxy. Dollar up or copper down normally means AUD down.' },
+  usdcad: { label: 'USD/CAD',                         unit: 'pct', floor: 1,   dp: 1, what: 'Canada exports oil, so dearer oil normally means a stronger CAD, which is USD/CAD DOWN.' },
+  usdjpy: { label: 'USD/JPY',                         unit: 'pct', floor: 1,   dp: 1, what: 'The haven pair. Fear normally means the yen is bought — USD/JPY DOWN — as carry trades funded in yen are closed.' },
+  vix:    { label: 'Fear gauge (VIX)',                unit: 'pt',  floor: 3,   dp: 1, what: 'S&P 500 implied volatility. The price of insurance against the next 30 days.' },
+  hy:     { label: 'Credit spreads (HY)',             unit: 'bp',  floor: 15,  dp: 0, what: 'High-yield OAS: the extra yield junk borrowers pay over Treasuries. Widening = lenders want more compensation = stress.' },
+  btc:    { label: 'Bitcoin',                         unit: 'pct', floor: 5,   dp: 1, what: 'Trades most days as a high-beta risk asset and, on the days the dollar story is about credibility, as the last stop on the anti-dollar chain. The loosest link here.' },
+};
+
+// Each link: from → to, and the sign the textbook expects between the two moves.
+// +1 = they move together, −1 = they move opposite. `holds` is the sentence for a
+// link that is holding; `broken` has one sentence per direction of the FROM node,
+// because "oil up, breakevens down" and "oil down, breakevens up" are different
+// stories. Written to teach the mechanism, never to forecast.
+export const CHAIN_LINKS = [
+  {
+    id: 'oil-bei', from: 'oil', to: 'bei', sign: +1,
+    textbook: 'Dearer oil lifts inflation expectations',
+    holds: 'Energy is feeding through to what the bond market expects for inflation — the first domino is doing its job.',
+    broken: {
+      up:   'Oil rose but inflation expectations did not follow. The market is treating the oil move as temporary, or something bigger — a growth scare, a policy stand — is pulling expectations the other way. Either way the energy story has not reached the bond market yet.',
+      down: 'Oil fell but inflation expectations rose anyway. Inflation is being priced from somewhere other than energy: wages, tariffs, fiscal, or doubt about the central bank.',
+    },
+  },
+  {
+    id: 'bei-us10y', from: 'bei', to: 'us10y', sign: +1,
+    textbook: 'Higher expected inflation pushes nominal yields up',
+    holds: 'Nominal yields are moving with inflation expectations — the yield move is at least partly an inflation move.',
+    broken: {
+      up:   'Inflation expectations rose but the 10-year yield fell. Real yields must have fallen by more: the market is pricing easier policy or weaker growth even as it prices more inflation. That is the stagflation shape.',
+      down: 'Inflation expectations fell but the 10-year yield rose. Real yields are doing all the work: this is a tighter-money or a term-premium move, not an inflation move.',
+    },
+  },
+  {
+    id: 'us10y-real', from: 'us10y', to: 'real', sign: +1,
+    textbook: 'A nominal yield move is usually mostly a real-yield move',
+    holds: 'The real yield moved with the nominal — the market is repricing the cost of money, not just inflation.',
+    broken: {
+      up:   'Nominal yields rose while real yields fell: the entire rise is inflation compensation. Money is not getting tighter in real terms — it is getting looser, which is why gold and commodities can rally into it.',
+      down: 'Nominal yields fell while real yields rose: inflation expectations collapsed faster than yields did. Money is tighter in real terms even as the headline rate falls — a disinflation or growth-scare shape.',
+    },
+  },
+  {
+    id: 'real-dxy', from: 'real', to: 'dxy', sign: +1,
+    textbook: 'Higher real yields pull capital in and lift the dollar',
+    holds: 'The dollar is following real yields — the carry version of a rate move. Capital is being paid to come in, and it is coming.',
+    broken: {
+      up:   'Real yields rose but the dollar fell. Investors are demanding MORE to hold US assets and still not buying the currency: that is a risk-premium or credibility story, not a carry story. The 2022 gilt shape, on the dollar.',
+      down: 'Real yields fell but the dollar rose. Money is buying dollars for safety rather than for yield — the flight-to-quality shape.',
+    },
+  },
+  {
+    id: 'real-gold', from: 'real', to: 'gold', sign: -1,
+    textbook: 'Higher real yields are gold’s headwind',
+    holds: 'Gold is answering to the real yield, as it usually does — the opportunity cost of holding a zero-yield asset is doing the pricing.',
+    broken: {
+      up:   'Real yields rose and gold rose with them. Someone is paying up for gold despite being paid more to hold Treasuries: that is a bid for an asset with no counterparty — doubt about the currency, the fiscal path, or the people setting rates. The chain’s loudest tell.',
+      down: 'Real yields fell but gold fell too. The usual support is there and it is not working — look for forced selling (gold sold to raise cash in a margin squeeze) or a dollar bid strong enough to overwhelm it.',
+    },
+  },
+  {
+    id: 'dxy-gold', from: 'dxy', to: 'gold', sign: -1,
+    textbook: 'A stronger dollar makes dollar-priced gold dearer abroad',
+    holds: 'Gold and the dollar are moving opposite, as priced in dollars they should.',
+    broken: {
+      up:   'Dollar and gold both rose. Both are being bought as havens at once — the market wants out of something else (other currencies, risk) rather than out of the dollar.',
+      down: 'Dollar and gold both fell. The dollar is weakening without the usual gold bid — a risk-on dollar sell (money leaving safety for risk), not a credibility sell.',
+    },
+  },
+  {
+    id: 'dxy-audusd', from: 'dxy', to: 'audusd', sign: -1,
+    textbook: 'A stronger dollar weighs on the commodity currencies',
+    holds: 'AUD is moving against the dollar as a commodity currency should.',
+    broken: {
+      up:   'The dollar rose and AUD/USD rose too. Something specific is bidding the Aussie — metals, an RBA stand, or China — hard enough to beat the dollar.',
+      down: 'The dollar fell and AUD/USD fell anyway. The dollar weakness is not reaching the commodity bloc: a growth scare (copper, China) is bigger than the dollar move.',
+    },
+  },
+  {
+    id: 'oil-usdcad', from: 'oil', to: 'usdcad', sign: -1,
+    textbook: 'Dearer oil supports the Canadian dollar (USD/CAD down)',
+    holds: 'CAD is trading as an oil currency — the export channel is doing the pricing.',
+    broken: {
+      up:   'Oil rose but USD/CAD rose too: CAD is not getting its oil bid. The dollar side (rates, risk) is bigger than the commodity side, or the market doubts the oil move lasts.',
+      down: 'Oil fell but USD/CAD fell anyway: CAD is holding up without oil. A rates or risk story is carrying it.',
+    },
+  },
+  {
+    id: 'copper-audusd', from: 'copper', to: 'audusd', sign: +1,
+    textbook: 'Copper and the Aussie read the same growth story',
+    holds: 'AUD is moving with copper — the growth read is consistent across the metal and the currency.',
+    broken: {
+      up:   'Copper rose but AUD fell. The growth signal in the metal is not reaching the currency — a dollar or rates story is overriding it.',
+      down: 'Copper fell but AUD rose. The currency is ignoring a growth-scare signal from the metal — a rates or positioning story is carrying it.',
+    },
+  },
+  {
+    id: 'vix-usdjpy', from: 'vix', to: 'usdjpy', sign: -1,
+    textbook: 'Fear buys the yen (USD/JPY down)',
+    holds: 'The yen is trading as the haven it usually is.',
+    broken: {
+      up:   'Fear rose but the yen did not get bid. Either the fear is a US-rates story (higher yields hold USD/JPY up even in a sell-off) or the yen has stopped being the market’s haven for now.',
+      down: 'Fear fell but the yen strengthened anyway. Carry positions are being closed for a reason other than fear — a BoJ story or intervention.',
+    },
+  },
+  {
+    id: 'vix-hy', from: 'vix', to: 'hy', sign: +1,
+    textbook: 'Equity fear and credit stress rise together',
+    holds: 'Credit and equities agree about how afraid to be.',
+    broken: {
+      up:   'Equity fear rose but credit spreads did not. Credit is calling it noise — usually the more reliable of the two.',
+      down: 'Equity fear fell but credit spreads widened. Credit sees something equities are ignoring; this is the divergence that has historically been worth respecting.',
+    },
+  },
+  {
+    id: 'dxy-btc', from: 'dxy', to: 'btc', sign: -1,
+    textbook: 'A weaker dollar is the anti-dollar trade’s tailwind',
+    holds: 'Bitcoin is moving as the anti-dollar asset — the last link on the chain is connected today.',
+    broken: {
+      up:   'Dollar and bitcoin both rose. Bitcoin is trading as a risk asset rather than as an anti-dollar asset.',
+      down: 'Dollar fell but bitcoin fell too. The dollar weakness is not a credibility story — or bitcoin is trading as risk, and risk is being sold.',
+    },
+  },
+];
+
+const _dir = v => (v > 0 ? 'up' : v < 0 ? 'down' : 'flat');
+const _fmt = (v, unit, dp) => {
+  if (v == null || !Number.isFinite(v)) return '—';
+  const s = `${v > 0 ? '+' : ''}${v.toFixed(dp)}`;
+  return unit === 'pct' ? `${s}%` : unit === 'bp' ? `${s}bp` : s;
+};
+
+/**
+ * 20d change of a series in the node's unit. pts = ascending [{date, value}].
+ * Returns { last, delta, asOf, refDate, refGapDays } or null.
+ */
+export function nodeDelta(pts, node, window = CHAIN_WINDOW_DAYS) {
+  if (!node) return null;
+  const s = seriesDeltas(pts, [window]);
+  if (!s || s.d[window] == null) return null;
+  const raw = s.d[window];
+  const ref = s.last - raw;
+  let delta;
+  if (node.unit === 'pct') delta = ref ? (s.last / ref - 1) * 100 : null;
+  else if (node.unit === 'bp') delta = raw * 100;
+  else delta = raw;
+  if (delta == null || !Number.isFinite(delta)) return null;
+  return { last: s.last, delta, asOf: s.lastDate ?? null, refDate: s.refDate[window] ?? null, refGapDays: s.refGapDays[window] ?? null };
+}
+
+/**
+ * Evaluate every link. vals: { <nodeKey>: {delta, last, asOf, ...} | null }.
+ * Returns links in chain order, each with both ends described and a verdict.
+ */
+export function evaluateChain(vals = {}, links = CHAIN_LINKS, nodes = CHAIN_NODES) {
+  const end = key => {
+    const n = nodes[key]; const v = vals[key];
+    if (!n) return null;
+    if (!v || v.delta == null || !Number.isFinite(v.delta)) return { key, label: n.label, unit: n.unit, delta: null, moved: false, dir: null, text: '—', asOf: null };
+    const moved = Math.abs(v.delta) >= n.floor;
+    return { key, label: n.label, unit: n.unit, delta: v.delta, last: v.last ?? null, moved, dir: _dir(v.delta), text: _fmt(v.delta, n.unit, n.dp), asOf: v.asOf ?? null, floorText: _fmt(n.floor, n.unit, n.dp).replace('+', '±') };
+  };
+  return links.map(l => {
+    const a = end(l.from), b = end(l.to);
+    let verdict, read;
+    if (!a || !b || a.delta == null || b.delta == null) { verdict = 'unmeasured'; read = 'A series this link needs is not loaded, so it is not judged.'; }
+    else if (!a.moved || !b.moved) {
+      verdict = 'quiet';
+      const still = !a.moved && !b.moved ? 'neither end' : !a.moved ? a.label : b.label;
+      read = `${still === 'neither end' ? 'Neither end has' : `${still} has not`} moved past its noise floor over ${CHAIN_WINDOW_DAYS} days, so there is nothing to judge the link on.`;
+    }
+    else {
+      const agree = Math.sign(a.delta) * Math.sign(b.delta) === l.sign;
+      verdict = agree ? 'holding' : 'broken';
+      read = agree ? l.holds : l.broken[a.dir];
+    }
+    // The two ends can print on different days (the broad dollar index lags a
+    // week; OANDA closes are yesterday). A verdict across a wide gap is still a
+    // verdict, but the reader should see the gap rather than assume one date.
+    const ta = Date.parse(a?.asOf ?? ''), tb = Date.parse(b?.asOf ?? '');
+    const dateGapDays = (Number.isFinite(ta) && Number.isFinite(tb)) ? Math.round(Math.abs(ta - tb) / 864e5) : null;
+    return { id: l.id, textbook: l.textbook, sign: l.sign, a, b, verdict, read, dateGapDays };
+  });
+}
+
+/** Ends printed more than this many days apart get a visible note. */
+export const CHAIN_DATE_GAP_NOTE_DAYS = 3;
+
+/** Counts and a one-line headline over an evaluated chain. */
+export function summariseChain(links) {
+  const n = { holding: 0, broken: 0, quiet: 0, unmeasured: 0 };
+  for (const l of links) n[l.verdict] = (n[l.verdict] ?? 0) + 1;
+  const judged = n.holding + n.broken;
+  const brokenIds = links.filter(l => l.verdict === 'broken').map(l => l.id);
+  let headline;
+  if (judged === 0) headline = n.unmeasured === links.length ? 'Nothing measured yet.' : `Quiet: no link has both ends moving over ${CHAIN_WINDOW_DAYS} days. The textbook is not being tested today.`;
+  else if (n.broken === 0) headline = `${n.holding} of ${judged} testable link${judged === 1 ? '' : 's'} holding. The textbook is working — first-order reads are enough today.`;
+  else headline = `${n.broken} of ${judged} testable link${judged === 1 ? '' : 's'} broken. ${n.broken === 1 ? 'That link is' : 'Those links are'} where the story is — read the mechanism, not the level.`;
+  return { ...n, judged, brokenIds, headline };
+}
+
+/** Compact text for an AI prompt: one line per judged link, broken ones with the mechanism. */
+export function chainForPrompt(links) {
+  const lines = [];
+  for (const l of links) {
+    if (l.verdict === 'unmeasured') continue;
+    const ends = `${l.a.label} ${l.a.text} → ${l.b.label} ${l.b.text}`;
+    if (l.verdict === 'quiet') { lines.push(`- ${l.textbook}: QUIET (${ends})`); continue; }
+    const gap = l.dateGapDays > CHAIN_DATE_GAP_NOTE_DAYS ? ` [ends printed ${l.dateGapDays} days apart: ${l.a.asOf} vs ${l.b.asOf}]` : '';
+    lines.push(`- ${l.textbook}: ${l.verdict.toUpperCase()} (${ends})${gap}${l.verdict === 'broken' ? ` — ${l.read}` : ''}`);
+  }
+  return lines.join('\n');
+}

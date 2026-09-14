@@ -3141,6 +3141,9 @@ WHEN THE USUAL RELATIONSHIP BREAKS
 ${(s.divergences || []).length ? s.divergences.map(d => `  ${d.what} - ${d.observed}
      WHY IT MATTERS: ${d.why}`).join('\n') : '  Nothing unusual in the standard relationships.'}
 
+THE CHAIN (the textbook links in causal order -- energy, inflation expectations, nominal yields, real yields, the dollar, gold, the commodity currencies, bitcoin; fear, the yen, credit -- each judged on measured 20-day moves at BOTH ends; HOLDING = moved together as the textbook says, BROKEN = both moved the wrong way round, QUIET = at least one end inside its noise floor)
+${s.chain ? s.chain : '  Not measured in this snapshot.'}
+
 === END SNAPSHOT ===
 
 Rules:
@@ -3155,11 +3158,12 @@ Rules:
 7b. POSITIONING LANGUAGE. Never call any positioning "fuel", a "squeeze setup" or an "edge". Retail crowding was tested here and predicts nothing; COT extremes are contrarian CONTEXT only. A derived COT read (mirrored from other majors) is second-hand and must be labelled so. Below the 85th/15th percentile it is not crowded and must not be described as if it were.
 7c. CUTS PRICED. The curve's SLOPE is term structure and does NOT tell you whether cuts are priced -- an upward-sloping curve can coexist with priced cuts. For "is the market pricing cuts" use the 2-year-vs-policy-rate read if the snapshot has it, and say "not in this snapshot" if it does not. Do not infer cut pricing from slope.
 7d. NO DUPLICATION. The "brief" must not restate the structured fields. The fields carry the numbers; the brief is the ${TEACH ? 'reasoning that connects them, in prose, at most 180 words' : 'one-breath read, at most 80 words'}. A fact stated in a field is not repeated in the brief.
-8. ${TEACH ? 'TEACH WHILE YOU READ.' : 'DESK MODE: skip the mechanism unless it changes the conclusion.'} The reader wants to understand the machinery, not just be handed an answer. Whenever you use a relationship, give the one-clause MECHANISM alongside it -- why a steeper curve implies what it implies, why a crowded position is fuel, why beating consensus matters more than the level itself. One sentence of mechanism per claim, woven into the read; never a separate lecture, and never at the expense of the actual number.
+8. ${TEACH ? 'TEACH WHILE YOU READ.' : 'DESK MODE: skip the mechanism unless it changes the conclusion.'} The reader wants to understand the machinery, not just be handed an answer. Whenever you use a relationship, give the one-clause MECHANISM alongside it -- why a steeper curve implies what it implies, why a real-yield rise hurts gold, why beating consensus matters more than the level itself. One sentence of mechanism per claim, woven into the read; never a separate lecture, and never at the expense of the actual number.
 9. DATA CONFLICTS AND BROKEN RELATIONSHIPS COME FIRST. If a cross-check disagrees, lead with that and refuse to build on the affected number. If a textbook relationship has broken, that is usually more informative than any level on the page -- explain what the break normally means before giving the currency read.
+10. WALK THE CHAIN, DO NOT INVENT IT. The "chain" field is second- and third-order reasoning for ${ccy}: start from the link that moved first, follow the measured links forward, and stop at the first BROKEN or QUIET link -- say that the story stopped there and why that matters for ${ccy}. Only links listed as HOLDING may be chained; a QUIET link is not a weak yes, it is "not today", and a BROKEN link is the story itself. Never extend the chain past what the snapshot measured, and never assert a link the snapshot lists as quiet. ${TEACH ? 'Name each step plainly (oil -> what the bond market expects for inflation -> the real yield -> the dollar) so the reader can follow the order.' : 'Two sentences at most.'}
 
 Respond with a single valid JSON object, no markdown, no text outside it:
-{"headline":"one sentence on ${ccy} right now, plain English, no unexplained terms","bias":"STRONG|WEAK|NEUTRAL","conviction":0-10,"convictionWhy":"one clause: what caps or supports the conviction number","whatHappened":"${TEACH ? '1-2' : '1'} sentence(s) on the measured move and what drove it","whatMarketExpects":"${TEACH ? '1-2' : '1'} sentence(s) from the curve, scheduled events and positioning","fundamentals":"${TEACH ? '1-2' : '1'} sentence(s) on the scorecard and surprise data","cleanestExpression":"which pair and why","risks":"the main thing that would hurt this view","whatWouldChangeIt":"1-2 specific checkable observations","brief":"${TEACH ? 'at most 180 words in 2 short paragraphs: the reasoning that CONNECTS the fields above, teaching the mechanism -- not a restatement of them' : 'at most 80 words, one paragraph, the read in one breath'}"}`;
+{"headline":"one sentence on ${ccy} right now, plain English, no unexplained terms","bias":"STRONG|WEAK|NEUTRAL","conviction":0-10,"convictionWhy":"one clause: what caps or supports the conviction number","whatHappened":"${TEACH ? '1-2' : '1'} sentence(s) on the measured move and what drove it","whatMarketExpects":"${TEACH ? '1-2' : '1'} sentence(s) from the curve, scheduled events and positioning","fundamentals":"${TEACH ? '1-2' : '1'} sentence(s) on the scorecard and surprise data","chain":"${TEACH ? '2-4' : '1-2'} sentences: the measured chain walked forward for ${ccy}, from the first mover to the first link that broke or went quiet; 'not measured' if the snapshot has no chain","cleanestExpression":"which pair and why","risks":"the main thing that would hurt this view","whatWouldChangeIt":"1-2 specific checkable observations","brief":"${TEACH ? 'at most 180 words in 2 short paragraphs: the reasoning that CONNECTS the fields above, teaching the mechanism -- not a restatement of them' : 'at most 80 words, one paragraph, the read in one breath'}"}`;
 }
 
 app.post('/api/currency-analysis', async (req, res) => {
@@ -30245,17 +30249,27 @@ const _FREDHISTORY_SERIES = {
 };
 let _fredHistoryRunning = false;
 
+// Why the series kept vanishing: they were written with a 6h TTL and refreshed on a
+// 6h interval that SKIPPED any key still present. The refresh always ran a moment
+// before expiry, saw the key, skipped it, and the key died minutes later — so
+// /api/macro-changes (1d/5d/20d deltas, the divergence read, the chain) returned
+// empty rows for most of every day. Boot still skips what is present (a restart
+// must not hammer FRED); scheduled runs re-fetch everything, and the TTL is a day.
+const _FREDHISTORY_TTL_S = 24 * 60 * 60;
+let _fredHistoryBooted = false;
 async function refreshFredHistory(retry = 0) {
   if (!process.env.FRED_KEY) return;
   if (_fredHistoryRunning) return;
   _fredHistoryRunning = true;
+  const skipPresent = !_fredHistoryBooted || retry > 0;
+  _fredHistoryBooted = true;
   const entries = Object.entries(_FREDHISTORY_SERIES);
   let ok = 0, skipped = 0, fail = 0;
   try {
     for (const [key, id] of entries) {
       const kvKey = `fredhistory_series_${key}`;
       try {
-        const existing = await kv.get(kvKey);
+        const existing = skipPresent ? await kv.get(kvKey) : null;
         if (existing) { skipped++; continue; }
         const url = `https://api.stlouisfed.org/fred/series/observations?series_id=${id}` +
           `&api_key=${process.env.FRED_KEY}&file_type=json&sort_order=desc&limit=90`;
@@ -30268,7 +30282,7 @@ async function refreshFredHistory(retry = 0) {
             .map(o => ({ date: o.date, value: parseFloat(o.value) }))
             .reverse();
           if (pts.length > 0) {
-            await kv.put(kvKey, JSON.stringify(pts), { expirationTtl: 6 * 60 * 60 });
+            await kv.put(kvKey, JSON.stringify(pts), { expirationTtl: _FREDHISTORY_TTL_S });
             ok++;
           } else { fail++; }
         }
@@ -30280,6 +30294,7 @@ async function refreshFredHistory(retry = 0) {
     }
     if (ok > 0 || skipped === entries.length)
       console.log(`[FRED] fredhistory series ready — ${ok} fetched, ${skipped} cached, ${fail} failed`);
+    if (ok > 0) _macroChangeCache = { at: 0, data: null };   // deltas rebuild from the fresh series
     if (fail > 0 && retry < 2) {
       const waitMin = (retry + 1) * 2;
       console.warn(`[FRED] fredhistory ${fail} failures — retry in ${waitMin} min`);

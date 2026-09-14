@@ -785,6 +785,26 @@
   .diverg-t{font-size:12.5px;font-weight:700;line-height:1.4}
   .diverg-d{font-size:11.5px;color:var(--text2);line-height:1.55;margin:2px 0}
   .diverg-w{font-size:11.5px;color:var(--text3);line-height:1.6}
+  .chain{margin-top:12px;border-top:1px solid var(--border);padding-top:9px}
+  .chain-h{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--text3);margin-bottom:5px;cursor:help}
+  .chain-sum{font-size:12px;font-weight:700;line-height:1.5;margin-bottom:8px;padding:5px 9px;border-radius:6px;background:var(--bg3)}
+  .chain-sum.broke{border-left:3px solid var(--amber)}
+  .chain-sum.hold{border-left:3px solid var(--bull)}
+  .chain-sum.quiet{border-left:3px solid var(--border);color:var(--text2);font-weight:600}
+  .chain-r{border-left:2px solid var(--border);padding:2px 0 3px 9px;margin-bottom:7px}
+  .chain-r.broke{border-left-color:var(--amber)}
+  .chain-r.hold{border-left-color:var(--bull)}
+  .chain-r.quiet{opacity:.72}
+  .chain-top{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap}
+  .chain-v{font-size:9px;letter-spacing:.08em;text-transform:uppercase;font-weight:800;padding:1px 6px;border-radius:4px;background:var(--bg3);color:var(--text3)}
+  .chain-v.broke{color:var(--amber)}
+  .chain-v.hold{color:var(--bull)}
+  .chain-t{font-size:12px;font-weight:700;line-height:1.4}
+  .chain-ends{font-size:11.5px;color:var(--text2);line-height:1.6;margin:1px 0;display:flex;flex-wrap:wrap;gap:4px 6px;align-items:baseline}
+  .chain-n b.up{color:var(--bull)} .chain-n b.dn{color:var(--red)} .chain-n b.muted{color:var(--text3);font-weight:600}
+  .chain-arrow{font-size:10px;color:var(--text3);letter-spacing:.02em}
+  .chain-w{font-size:11.5px;color:var(--text3);line-height:1.6}
+  .chain-foot{font-size:10.5px;color:var(--text3);line-height:1.5;margin-top:4px}
   .fals{margin-top:12px;border-top:1px solid var(--border);padding-top:9px}
   .fals-h{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--text3);
     margin-bottom:5px;cursor:help}
@@ -1443,29 +1463,40 @@ function mveChip(r) {
 // fetch pair (today's live-ish quote + yesterday's completed OHLC close) —
 // oil is context here, not a tradeable card, so it doesn't need to tick live.
 let commodityDrivers = null;
+// The daily series behind "The chain, today" — every non-FRED node, as ascending
+// [{date, value}] closes, the shape the macro-change brick already understands.
+const CHAIN_OHLC = { oil: 'WTICO_USD', gold: 'XAU_USD', copper: 'XCU_USD', audusd: 'AUD_USD', usdcad: 'USD_CAD', usdjpy: 'USD_JPY', btc: 'BTC_USD' };
 async function loadCommodityDrivers() {
   try {
-    const [q, oh] = await Promise.all([
-      jget('/api/quote?symbol=WTICO_USD'),
-      jget('/api/ohlc?symbol=WTICO_USD'),
-    ]);
     // /api/ohlc returns OHLC as STRINGS ("84.849"); /api/quote returns a number.
-    // The arithmetic below coerces silently, but prevClose.toFixed(2) in
-    // commodityChip() threw on the string — and since that chip is built inside
-    // cardHtml(), one throw took out the ENTIRE grid render. It only fired once
-    // this fetch resolved and triggered a re-render, which is why it looked
-    // intermittent. Coerce at the boundary so nothing downstream has to care.
+    // Coerce at the boundary so nothing downstream has to care.
     const num = v => { const n = Number(v); return Number.isFinite(n) ? n : null; };
-    const prevClose = num(oh?.values?.at(-1)?.close);
-    const wkAgoPrice = num(oh?.values?.at(-6)?.close);      // ~5 trading days back
+    // /api/ohlc is NEWEST FIRST (values[0] is the last complete daily candle).
+    // This loader used to read .at(-1) as "yesterday's close" — which was the
+    // OLDEST candle, four months back — so the WTI chip's "vs yesterday" and its
+    // sparkline were built on March. Ascend once here; nothing downstream sorts.
+    const ascending = oh => (oh?.values ?? [])
+      .map(v => ({ date: String(v.datetime ?? v.time ?? '').slice(0, 10), value: num(v.close) }))
+      .filter(v => v.date && v.value != null)
+      .sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+    const [q, ...ohs] = await Promise.all([
+      jget('/api/quote?symbol=WTICO_USD'),
+      ...Object.values(CHAIN_OHLC).map(sym => jget(`/api/ohlc?symbol=${sym}`).catch(() => null)),
+    ]);
+    const series = {};
+    Object.keys(CHAIN_OHLC).forEach((k, i) => { const pts = ascending(ohs[i]); if (pts.length) series[k] = pts; });
+    const oil = series.oil ?? [];
+    const prevClose = oil.at(-1)?.value ?? null;
+    const wkAgoPrice = oil.at(-6)?.value ?? null;      // ~5 trading days back
     if (q?.price != null && prevClose) {
-      const hist = (oh.values ?? []).slice(-15).map(v => num(v.close)).filter(v => v != null);
+      const hist = oil.slice(-15).map(v => v.value);
       hist.push(q.price);   // append today's live price so the sparkline reflects the current tick
       // Daily closes BY DATE, so a lagged FRED print can be compared to OANDA's
       // close on the same day rather than to today's live tick.
-      const closesByDate = {};
-      for (const v of (oh.values ?? [])) { const d = String(v.datetime ?? v.time ?? '').slice(0, 10); const c = num(v.close); if (d && c != null) closesByDate[d] = c; }
-      commodityDrivers = { wti: { price: q.price, prevClose, wkAgoPrice, pct: (q.price - prevClose) / prevClose * 100, hist, closesByDate } };
+      const closesByDate = Object.fromEntries(oil.map(v => [v.date, v.value]));
+      commodityDrivers = { wti: { price: q.price, prevClose, wkAgoPrice, pct: (q.price - prevClose) / prevClose * 100, hist, closesByDate }, series };
+    } else if (Object.keys(series).length) {
+      commodityDrivers = { ...(commodityDrivers ?? {}), series };
     }
   } catch (e) {}
 }
@@ -2699,6 +2730,61 @@ function macroDivergences() {
   }
   return out;
 }
+// ── The chain, today ─────────────────────────────────────────────────────────
+// Energy → inflation expectations → nominal yields → real yields → the dollar →
+// gold / the commodity currencies / bitcoin; fear → the yen and credit. Every link
+// the textbook draws, with today's 20-day move at both ends and a verdict. The
+// panel is here to build one habit: when a node moves, ask what it did to the next
+// one, and notice where the textbook stopped working -- that is where the story is.
+// It explains. It does not predict (yields → FX forward coupling is a banked null
+// here), which is why the whole thing is stamped ~ context.
+function chainVals() {
+  const B = window.macroChainBrick;
+  if (!B) return null;
+  const out = {};
+  const fredSrc = { bei: 'bei', us10y: 'us10y', real: 'tips', dxy: 'dxy', vix: 'vix', hy: 'hy' };
+  for (const [node, key] of Object.entries(fredSrc)) {
+    const pts = fredHist?.[key];
+    out[node] = Array.isArray(pts) && pts.length ? B.nodeDelta(pts, B.CHAIN_NODES[node]) : null;
+  }
+  for (const node of Object.keys(CHAIN_OHLC)) {
+    const pts = commodityDrivers?.series?.[node];
+    out[node] = pts ? B.nodeDelta(pts, B.CHAIN_NODES[node]) : null;
+  }
+  return out;
+}
+function chainLinks() {
+  const B = window.macroChainBrick;
+  const vals = chainVals();
+  return (B && vals) ? B.evaluateChain(vals) : [];
+}
+function chainHtml() {
+  const B = window.macroChainBrick;
+  const links = chainLinks();
+  if (!B || !links.length) return '';
+  const sum = B.summariseChain(links);
+  if (sum.judged === 0 && sum.unmeasured === links.length) return '';
+  const W = B.CHAIN_WINDOW_DAYS;
+  const asOfs = [...new Set(links.flatMap(l => [l.a?.asOf, l.b?.asOf]).filter(Boolean))].sort();
+  const vcls = { holding: 'hold', broken: 'broke', quiet: 'quiet', unmeasured: 'quiet' };
+  const vword = { holding: 'holding', broken: 'broken', quiet: 'quiet', unmeasured: 'not measured' };
+  const end = e => {
+    const n = B.CHAIN_NODES[e.key];
+    const tip = `${n.what} ${W}-day change; noise floor ${e.floorText ?? ''}${e.asOf ? `; last print ${e.asOf}` : ''}.`;
+    return `<span class="chain-n help" title="${esc0(tip)}">${esc0(e.label)} <b class="${e.delta == null ? 'muted' : !e.moved ? 'muted' : e.dir === 'up' ? 'up' : 'dn'}">${esc0(e.text)}</b></span>`;
+  };
+  const tip = `Each row is one textbook link, in causal order. Both ends are ${W}-day changes (the same window as the "what moved" strip); a node inside its noise floor is "quiet" and the link is not judged. Holding = both moved the way the textbook says. Broken = both moved, the wrong way round -- read the sentence, that is the mechanism. This panel explains; it does not predict. None of these links is a validated forward signal here.`;
+  return `<div class="chain">
+    <div class="chain-h help" title="${esc0(tip)}">The chain, today <span class="muted" style="font-weight:400;letter-spacing:0;text-transform:none">· how the textbook links are holding, ${W}-day moves ${_EV('c', _EV_T.c)}</span></div>
+    <div class="chain-sum ${sum.broken ? 'broke' : sum.judged ? 'hold' : 'quiet'}">${esc0(sum.headline)}</div>
+    ${links.map(l => `<div class="chain-r ${vcls[l.verdict]}">
+      <div class="chain-top"><span class="chain-v ${vcls[l.verdict]}">${vword[l.verdict]}</span><span class="chain-t">${esc0(l.textbook)}</span></div>
+      <div class="chain-ends">${end(l.a)} <span class="chain-arrow">${l.sign > 0 ? '→ same way →' : '→ opposite →'}</span> ${end(l.b)}</div>
+      ${l.verdict === 'quiet' || l.verdict === 'unmeasured' ? '' : `<div class="chain-w">${esc0(l.read)}</div>`}${l.dateGapDays > B.CHAIN_DATE_GAP_NOTE_DAYS ? `<div class="chain-foot" style="margin-top:1px">ends printed ${l.dateGapDays} days apart (${esc0(l.a.asOf)} vs ${esc0(l.b.asOf)}) — one series publishes with a lag; the verdict spans that gap.</div>` : ''}
+    </div>`).join('')}
+    <div class="chain-foot">${asOfs.length ? `Series last printed ${asOfs[0] === asOfs.at(-1) ? asOfs[0] : `${asOfs[0]} to ${asOfs.at(-1)}`}. ` : ''}Quiet links are still listed so the order of the chain is always in front of you; the habit is the point.</div>
+  </div>`;
+}
 function divergenceHtml() {
   const d = macroDivergences();
   if (!d.length) return '';
@@ -3762,6 +3848,7 @@ function renderMarketRead() {
       </div>
     </div>
     ${dataConflictHtml()}
+    ${chainHtml()}
     ${divergenceHtml()}
     ${falsifierHtml(rs, risk, csrMR)}
     <div class="mread-watch">
@@ -4337,6 +4424,10 @@ function assembleCcySnapshot(ccy) {
     conflicts: dataConflicts().map(c => `${c.label}: ${c.a.src}=${c.a.v} vs ${c.b.src}=${c.b.v} (${c.diffPct}% gap) — load-bearing for ${c.loadBearing}`),
     staleness: (() => { const c = dataConflicts(); const l = _wtiLag; return l ? `WTI: FRED's last print (${l.fred}, ${l.fredDate}) is ${l.days} days behind and agreed with OANDA that day; oil has since moved ${l.movedPct > 0 ? '+' : ''}${l.movedPct}% to ${l.live}. Use the live number for anything about oil today; FRED-derived inflation-expectation reads are ${l.days} days stale, not wrong.` : null; })(),
     divergences: macroDivergences().map(d => ({ what: d.title, observed: d.detail, why: d.teach })),
+    // The chain, as text: one line per judged link, broken ones with the mechanism.
+    // This is what lets the read say "oil moved, and it reached breakevens but not
+    // the dollar" -- second and third order, from measured ends, not from memory.
+    chain: (() => { try { const B = window.macroChainBrick; const t = B ? B.chainForPrompt(chainLinks()) : ''; return t || null; } catch { return null; } })(),
   };
 }
 
@@ -4380,6 +4471,7 @@ function ccyAnalysisHtml(a, at) {
     + row('What happened', a.whatHappened)
     + row('What the market expects', a.whatMarketExpects)
     + row('Fundamentals', a.fundamentals)
+    + (a.chain && !/^not measured/i.test(a.chain) ? row('The chain, walked forward', a.chain) : '')
     + row('Cleanest way to express it', a.cleanestExpression)
     + row('Main risk', a.risks)
     + row('What would change this', a.whatWouldChangeIt)
@@ -8954,7 +9046,7 @@ const DRIVERS = {
   AUDJPY: { a: 'au10y', b: 'jp10y', label: 'AU–JP 10y', sign: +1 },
   CADJPY: { a: 'ca10y', b: 'jp10y', label: 'CA–JP 10y', sign: +1 },
 };
-const FREDHIST_KEYS = 'us10y,us2y,de10y,gb10y,jp10y,au10y,ca10y,ch10y,tips,vix,vix3m,dxy,hy,walcl,tga,rrp,ecb_assets,boj_assets';
+const FREDHIST_KEYS = 'us10y,us2y,de10y,gb10y,jp10y,au10y,ca10y,ch10y,tips,bei,vix,vix3m,dxy,hy,walcl,tga,rrp,ecb_assets,boj_assets';
 
 async function getFredHist() {
   if (fredHist) return fredHist;
@@ -10140,6 +10232,14 @@ setInterval(() => { jget('/api/vol-forecast').then(f => { if (f?.instruments) { 
 <script type="module">
   import { formatFlowBn } from './js/macroChange.js';
   window.formatFlowBn = formatFlowBn;
+  try { window.render?.(); } catch (e) {}
+</script>
+<!-- The chain (js/macroChain.js) — the textbook macro links in causal order, each
+     judged on today's 20-day moves at both ends. Context, not prediction: the
+     panel exists to build the habit of asking what a move did to the NEXT thing. -->
+<script type="module">
+  import * as MacroChain from './js/macroChain.js';
+  window.macroChainBrick = MacroChain;
   try { window.render?.(); } catch (e) {}
 </script>
 <script type="module">
