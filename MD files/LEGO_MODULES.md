@@ -237,7 +237,7 @@ OLS-recovers-a-known-law test for HAR-RV).
 
 | Brick | File | Owns | Consumers | Status |
 |---|---|---|---|---|
-| **Vol-forecast bench** | `js/volForecastBench.js` | σ-estimator **evaluation** registry (`ESTIMATORS`) — EWMA(0.90/0.94), HV20/HV30, Yang-Zhang(30), GARCH(1,1) all **imported** from `volBacktestEngine.js` (no copies, re-aligned to a `predictVar(bars)→Float64Array` no-lookahead contract) plus the one new entrant **HAR-RV** (`harRvPred`, walk-forward OLS via incremental normal equations + `solve4`); realised-variance proxies (`realizedVarSeries`: Garman-Klass / squared-return / Parkinson); QLIKE+MSE scoring with full/IS/OOS split (`scoreSeries`); `runBench` ranks by OOS QLIKE; **next-session forecast** for the winning estimator (`latestSigmaForecast`, `sigmaSeriesForExport`, `harRvForecastNext`, `benchCtx`). **HAR-IV added 2026-07** (`harIvPred`/`harIvForecastNext`, `solveN` 5×5): Corsi HAR-RV **plus a forward-looking implied-variance regressor** from the listed vol index (`IV_INDEX_BY_INSTRUMENT`: GVZ→gold, VXN→NQ, VIX→SPX, RVX→US2000, VXD→US30, OVX→oil, EVZ→EURUSD), `ivVarSeries` converts annualised IV%→daily variance (server aligns the FRED series onto the bar dates via `forwardFillAlign`). IV-gated: excluded from the default keys unless an IV series is supplied; partial IV history (e.g. GVZ from 2021) trains only its covered span. `runBench.matched` scores **harIV vs harRV on the COMMON IV-covered index set** (`scoreOnIndices`) — the fair head-to-head, since the full-sample ranks mix periods. Evidence base: implied vol carries real predictive content for future RV, often subsuming HAR terms (Busch-Christensen-Nielsen 2011), strongest on equity indices → weakest on FX (EURUSD only). Pure; unit-tested `js/volForecastBench.harIV.test.mjs` (16: solveN, IV→var, informative-IV-beats-RV, noise-IV-no-edge, partial-coverage, runBench matched/gating). **Not yet run OOS** — FRED unreachable in sandbox; verdict on Railway. | `server.js` `/api/vol-forecast-bench/*` (now fetches each instrument's IV index) + `vol-forecast-bench.html` (ranking + matched harIV-vs-harRV badge; linked from `hub.html`) | ✅ built (HAR-IV unrun OOS) |
+| **Vol-forecast bench** | `js/volForecastBench.js` | σ-estimator **evaluation** registry (`ESTIMATORS`) — EWMA(0.90/0.94), HV20/HV30, Yang-Zhang(30), GARCH(1,1) all **imported** from `volBacktestEngine.js` (no copies, re-aligned to a `predictVar(bars)→Float64Array` no-lookahead contract) plus **HAR-RV** in two forms sharing one unclamped core (`_harFitCore`, walk-forward OLS via incremental normal equations + `solve4`): **level** (`harRvPred`) and **log** (`harRvLogPred`, added 2026-09-14 — scales by `1/median(RV)`, fits log-space, exponentiates back with a causal/EXPANDING Duan-1983 smearing correction; §1ay has the full story, including a real no-lookahead leak this file's own contract test caught in an earlier whole-sample-smear draft). Log form is the one that reproduces §1aw/§1ax's validated Python finding (beats YZ30 6/7 instruments, beats level-form outright on the 3 FX majors tested); realised-variance proxies (`realizedVarSeries`: Garman-Klass / squared-return / Parkinson); QLIKE+MSE scoring with full/IS/OOS split (`scoreSeries`); `runBench` ranks by OOS QLIKE; **next-session forecast** for the winning estimator (`latestSigmaForecast`, `sigmaSeriesForExport`, `harRvForecastNext`, `harRvLogForecastNext`, `benchCtx`). **HAR-IV added 2026-07** (`harIvPred`/`harIvForecastNext`, `solveN` 5×5): Corsi HAR-RV **plus a forward-looking implied-variance regressor** from the listed vol index (`IV_INDEX_BY_INSTRUMENT`: GVZ→gold, VXN→NQ, VIX→SPX, RVX→US2000, VXD→US30, OVX→oil, EVZ→EURUSD), `ivVarSeries` converts annualised IV%→daily variance (server aligns the FRED series onto the bar dates via `forwardFillAlign`). IV-gated: excluded from the default keys unless an IV series is supplied; partial IV history (e.g. GVZ from 2021) trains only its covered span. `runBench.matched` scores **harIV vs harRV on the COMMON IV-covered index set** (`scoreOnIndices`) — the fair head-to-head, since the full-sample ranks mix periods. Evidence base: implied vol carries real predictive content for future RV, often subsuming HAR terms (Busch-Christensen-Nielsen 2011), strongest on equity indices → weakest on FX (EURUSD only). Pure; unit-tested `js/volForecastBench.harIV.test.mjs` (16) + `js/volForecastBench.test.mjs` (log-form law-recovery + outlier-stability tests added 2026-09-14). **Not yet run OOS** — FRED unreachable in sandbox; verdict on Railway. **Not wired into `/api/vol-forecast` or vol-forecast-v2/v3.html — a manual comparison/export tool only.** | `server.js` `/api/vol-forecast-bench/*` (now fetches each instrument's IV index) + `vol-forecast-bench.html` (ranking + matched harIV-vs-harRV badge; linked from `hub.html`) | ✅ built (HAR-IV unrun OOS) |
 | **Forecast drift comparator** | `js/forecastDriftCompare.js` | `compareForecastLines(bars, assetClass)` — measures the gap between the **PLAN** forecaster (frozen `nextSigma`/`volSigmaSeries` + `forecastCore` corrections — what the live vol bot's entry LINES are built from) and the **REFERENCE** forecaster (`volForecast.computeForecast` — recalibrated YZ/GARCH σ + its own corrections — what the dashboard chart shows). Returns each band's size (% of price) from both + the signed per-line drift `(plan−ref)/ref` and the σ drift. `+` = plan wider (bot enters later), `−` = narrower (bot line inside the reference → enters early). The two disagree because commodity σ is HV20 (plan) vs YZ (ref) **and** the correction sets differ (even fx, same σ, drifts ~7%). Pure, no-network, tested in `js/forecastDriftCompare.test.mjs` | `server.js` `GET /api/forecast-drift/:pair` (live D1) + `bot-config.html` Volatility tab "Forecast drift vs reference" readout | ✅ |
 | **Forecast export** | `js/forecastExport.js` | reproduce the live forecaster's export TEXT for an arbitrary daily σ (e.g. the bench winner): `forecastFields` (delegates band math to `volForecast.js`'s `_buildOutput` + the v2 drift block via imported `_driftD`/`_bmMaxQuantile`/`ASSET_PARAMS` — **never copies the recalibrated correction factors**) + the format builders `buildExportText`/`buildExportV2Text`/`buildExtendedText`/`buildExportHarText` (verbatim copies of the page functions, **golden-tested** byte-identical in `js/forecastExport.test.mjs`); **`harShadowFields` (2026-07-03)** — the daily HAR-RV challenger: bench `sigmaSeriesForExport('harRV')` σ through `forecastFields`, attached as `f.har` per instrument by the scheduler (purely additive — primary fields never move; kill switch `VOL_FORECAST_HAR=0`; delegation golden-tested byte-equal to hand-composing the two bricks) | `server.js` `/api/vol-forecast-bench/*` (export strings in the job result) + `vol-forecast-bench.html` copy buttons + `js/volForecastScheduler.js` (`f.har` shadow block in `/api/vol-forecast`) + `vol-forecast.html` ⬇ Export HAR button | ✅ |
 
@@ -7520,3 +7520,60 @@ functional-form gain in the study. Not an FX-specific artifact.
 
 **Status: ✅ registered · replicates on a genuinely different asset class · DE30/UK100
 honestly flagged as untested (tooling gap, not swept under).**
+
+### 1ay. HAR-RV registered into the JS bench, in log form (2026-09-14)
+
+**Files:** `js/volForecastBench.js`, `js/volForecastBench.test.mjs`. Follow-up to §1aw's
+"safe next stop" — registers HAR-daily as a candidate estimator in the site's own
+estimator-comparison tool (`ESTIMATORS`, `runBench`, `vol-forecast-bench.html`), the
+step explicitly scoped as safe because that tool is a manual comparison/export surface,
+not something any live route reads (checked: `/api/vol-forecast-bench/*` is
+self-contained; `/api/vol-forecast` — what `vol-forecast-v2.html`/`v3.html` actually
+call — is untouched).
+
+**`harRV` already existed in `ESTIMATORS`, but only in LEVEL form.** Cross-checking that
+exact JS code against §1aw/§1ax's own filtered archive (same (pair,date) set
+`har_cj_forecast.load()` used, 7 instruments, daily GK proxy, `yz30` as incumbent — not
+a fresh claim, the same one being registered) found log-form is the specification that
+actually reproduces the Python finding: **HAR-RV (log) beats the YZ incumbent on 6/7
+instruments (+7.8% to +35.5% OOS QLIKE)**, and beats level-form outright on all 3 FX
+majors tested (+10.3% to +36.5%), while running 2-9% behind level-form on gold/indices —
+level-form isn't broken there, it just isn't the specification that reproduces the
+validated result on the pairs where the effect is strongest. So the work was adding
+`harRvLogPred`, not flipping a switch on the estimator that was already there.
+
+**Reuses, not duplicates:** a new shared core `_harFitCore` was extracted from the
+existing (unchanged-behaviour) `harRvPred` — UNCLAMPED, because a log-variance fit is
+legitimately negative and `harRvPred`'s `Math.max(p, 1e-12)` floor would corrupt that
+(caught mid-build: an early version fed log values through the floored function and
+`Math.exp(1e-12)` ≈ 1.0 instead of the correct near-zero prediction). `harRvLogPred`
+scales by `1/median(RV)` (same `_rvScale`/`VAR_FLOOR_FRAC` convention `harIvPred`
+already used), fits on log-scaled RV via the unclamped core, exponentiates back with a
+Duan (1983) smearing correction.
+
+**A real no-lookahead bug caught by this file's own contract test, not by inspection.**
+The first smearing implementation used one aggregate constant computed over the whole
+series. `js/volForecastBench.test.mjs`'s tamper-the-last-bar test failed: because the
+constant pooled residuals from every day including ones after the day being predicted,
+mutating the LAST bar changed predictions for every EARLIER day too — a genuine leak,
+not a rounding artifact. Fixed by making the smear an EXPANDING (causal) running mean of
+`exp(residual)`, using only residuals strictly before the day being predicted — same
+causal discipline as `har_cj_forecast.py`'s IS-only smear, applied per-day here instead
+of once over a fixed split (this shared `predVar(bars, ctx)` signature has no `oosFrac`
+to support a stricter one-shot split). `harRvLogForecastNext` (mirrors `harRvForecastNext`
+for the "next session" export forecast) reuses the same walk-forward core and smear.
+
+New tests added, not just the pre-existing per-estimator no-lookahead loop (which now
+covers `harRvLog` automatically): a log-space "recovers a known generating law" check
+(mirrors the existing level-form one) and a numerical-stability check that one 5000x
+outlier day doesn't wreck neighbouring predictions. `node js/volForecastBench.test.mjs`:
+all passing.
+
+**Not wired into `vol-forecast-v2.html`/`v3.html` or any visual — deliberately.** Both
+pages share one backend (`/api/vol-forecast`), and the user's own framing was to run
+this forward as a shadow estimate before replacing anything live-facing; that decision
+is still open, this entry is only the registration step.
+
+**Status: ✅ registered · reproduces the validated finding in log form · one real
+no-lookahead bug found and fixed by the test suite itself · NOT wired into any
+live-facing forecast.**

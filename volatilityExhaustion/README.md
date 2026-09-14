@@ -991,3 +991,55 @@ profile.
 Run `python3 har_intraday_isolation.py` (after pulling the 6 index parquets into
 `portfolioBacktest/cache/` and re-running `m1_gap_audit.py` / `jump_diffusion_daily.py`
 for the full discovered set).
+
+## Phase 16 — HAR-RV registered into the site's own JS bench, in log form
+
+Phase 15's "functional form" finding (HAR beats YZ on the SAME daily-only data YZ
+already reads) needed nothing new to act on: `js/volForecastBench.js` already ships an
+estimator-comparison tool (`ESTIMATORS`, `runBench`, `vol-forecast-bench.html`) for
+exactly this purpose, and it's a manual comparison/export surface — confirmed not read
+by any live route (`/api/vol-forecast-bench/*` is self-contained; `/api/vol-forecast`,
+what `vol-forecast-v2.html`/`v3.html` actually call, is untouched). So the registration
+step was scoped as safe on its own, separate from any later decision about surfacing it
+live.
+
+**`harRV` already existed there — but only in level form**, and cross-checking that
+exact JS code against this study's own filtered archive (same (pair,date) set
+`har_cj_forecast.load()` used: eurusd/gbpusd/usdjpy/gold/nq/spx500/us30, daily GK proxy,
+`yz30` as the incumbent) found log form is the specification that reproduces this
+study's finding: HAR-RV (log) beat YZ30 on 6/7 instruments (+7.8% to +35.5% OOS QLIKE)
+and beat level-form HAR outright on all 3 FX majors (+10.3% to +36.5%), while running
+2-9% behind level-form on gold/indices. (Note this contradicts an earlier, over-dramatic
+diagnostic-script finding of level-form "exploding" on gold/usdjpy — that was a bug in a
+throwaway script missing the ridge term `solve4` already carries in production; the real
+level-form estimator here is not broken, it's just not the one that reproduces the
+result on the pairs where it's strongest.) So `harRvLogPred` was added rather than just
+flipping a switch: shares a new unclamped core (`_harFitCore`, extracted from the
+existing `harRvPred` without changing its behaviour) with the level form, scales by
+`1/median(RV)` (same convention `harIvPred` already uses), fits in log-space, and
+exponentiates back with a Duan (1983) smearing correction.
+
+**A real no-lookahead bug, caught by the JS test suite itself, not by inspection.** The
+first smearing draft used one constant averaged over the whole series — simpler, and it
+looked like "just a bias-correction scalar." `volForecastBench.test.mjs`'s existing
+tamper-the-last-bar contract test failed: because the constant pooled residuals
+including days AFTER the one being predicted, mutating the final bar changed
+predictions for every earlier day too. Fixed by making the smear an EXPANDING (causal)
+running mean, using only residuals strictly before the day being predicted — the same
+causal discipline this study's own `har_cj_forecast.py` enforces with its IS-only smear,
+applied per-day here since this shared `predVar(bars, ctx)` signature has no `oosFrac`
+to support a stricter one-shot split. New tests were added for the log-form estimator
+(a log-space "recovers a known generating law" check, and a numerical-stability check
+against a 5000x single-day outlier) alongside the existing per-estimator no-lookahead
+loop, which now covers `harRvLog` automatically.
+
+**Not wired into `vol-forecast-v2.html`/`v3.html`, or any chart-page visual.** Both pages
+share one backend (`/api/vol-forecast`); this entry is only the registration step the
+owner approved ("Yes.") as the safe next stop, with any live-facing change explicitly
+deferred — "hold off on 'replace the live forecast' until it's run forward for a while
+as a shadow estimate."
+
+**Status: ✅ registered in `js/volForecastBench.js` · reproduces the validated finding
+in log form on the study's own archive · one real no-lookahead bug found and fixed by
+the test suite · `node js/volForecastBench.test.mjs` all passing · NOT wired into any
+live-facing forecast.**
