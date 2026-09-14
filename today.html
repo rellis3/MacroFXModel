@@ -791,20 +791,28 @@
   .chain-sum.broke{border-left:3px solid var(--amber)}
   .chain-sum.hold{border-left:3px solid var(--bull)}
   .chain-sum.quiet{border-left:3px solid var(--border);color:var(--text2);font-weight:600}
-  .chain-r{border-left:2px solid var(--border);padding:2px 0 3px 9px;margin-bottom:7px}
-  .chain-r.broke{border-left-color:var(--amber)}
+  .chain-r{border-left:2px solid var(--border);padding:3px 0 3px 9px;margin-bottom:5px}
+  .chain-r.broke{border-left-color:var(--amber);background:color-mix(in srgb,var(--amber) 6%,transparent);border-radius:0 6px 6px 0;padding-right:8px}
   .chain-r.hold{border-left-color:var(--bull)}
-  .chain-r.quiet{opacity:.72}
-  .chain-top{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap}
-  .chain-v{font-size:9px;letter-spacing:.08em;text-transform:uppercase;font-weight:800;padding:1px 6px;border-radius:4px;background:var(--bg3);color:var(--text3)}
-  .chain-v.broke{color:var(--amber)}
-  .chain-v.hold{color:var(--bull)}
-  .chain-t{font-size:12px;font-weight:700;line-height:1.4}
-  .chain-ends{font-size:11.5px;color:var(--text2);line-height:1.6;margin:1px 0;display:flex;flex-wrap:wrap;gap:4px 6px;align-items:baseline}
-  .chain-n b.up{color:var(--bull)} .chain-n b.dn{color:var(--red)} .chain-n b.muted{color:var(--text3);font-weight:600}
-  .chain-arrow{font-size:10px;color:var(--text3);letter-spacing:.02em}
-  .chain-w{font-size:11.5px;color:var(--text3);line-height:1.6}
+  .chain-r.quiet{opacity:.6}
+  .chain-r.can-open{cursor:pointer}
+  .chain-line{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;line-height:1.5}
+  .chain-v{flex:0 0 auto;min-width:52px;text-align:center;font-size:9px;letter-spacing:.08em;text-transform:uppercase;font-weight:800;padding:1px 6px;border-radius:4px;background:var(--bg3);color:var(--text3)}
+  .chain-v.broke{color:#fff;background:var(--amber)}
+  .chain-v.hold{color:var(--bull);background:color-mix(in srgb,var(--bull) 14%,transparent)}
+  .chain-ends{font-size:12px;color:var(--text2);display:inline-flex;flex-wrap:wrap;gap:4px 6px;align-items:baseline}
+  .chain-n b{font-size:12.5px;font-weight:800} .chain-n b.up{color:var(--bull)} .chain-n b.dn{color:var(--red)} .chain-n b.muted{color:var(--text3);font-weight:600}
+  .chain-exp{font-size:10px;color:var(--amber);font-weight:700;letter-spacing:.02em}
+  .chain-arrow{font-size:12px;color:var(--text3)}
+  .chain-p{font-size:12px;line-height:1.5;margin:2px 0 0 72px;color:var(--text2)}
+  .chain-p.broke{color:var(--text);font-weight:600}
+  .chain-p.quiet{font-size:11px;color:var(--text3)}
+  .chain-more{font-size:10px;color:var(--text3);font-weight:500;margin-left:4px}
+  .chain-r.open .chain-more{display:none}
+  .chain-w{display:none;font-size:11.5px;color:var(--text3);line-height:1.6;margin:3px 0 2px 72px}
+  .chain-r.open .chain-w{display:block}
   .chain-foot{font-size:10.5px;color:var(--text3);line-height:1.5;margin-top:4px}
+  @media (max-width:560px){.chain-p,.chain-w{margin-left:0}}
   .fals{margin-top:12px;border-top:1px solid var(--border);padding-top:9px}
   .fals-h{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--text3);
     margin-bottom:5px;cursor:help}
@@ -1475,8 +1483,15 @@ async function loadCommodityDrivers() {
     // This loader used to read .at(-1) as "yesterday's close" — which was the
     // OLDEST candle, four months back — so the WTI chip's "vs yesterday" and its
     // sparkline were built on March. Ascend once here; nothing downstream sorts.
+    // OANDA stamps a daily candle by its OPEN -- 17:00 New York, the evening
+    // BEFORE the session -- so a candle dated 09-08 is the 09-09 trading day.
+    // Checked against FRED's spot print: OANDA "09-08" close 97.09 = DCOILWTICO
+    // 09-09 97.26; "09-07" 94.71 = 09-08 94.21. Before this shift the same-day
+    // conflict check compared different sessions and cried "sources disagree"
+    // on a 7% gap that was really one day's move. Dated here by session.
+    const sessionDate = d => { const t = Date.parse(d + 'T00:00:00Z'); return Number.isFinite(t) ? new Date(t + 864e5).toISOString().slice(0, 10) : ''; };
     const ascending = oh => (oh?.values ?? [])
-      .map(v => ({ date: String(v.datetime ?? v.time ?? '').slice(0, 10), value: num(v.close) }))
+      .map(v => ({ date: sessionDate(String(v.datetime ?? v.time ?? '').slice(0, 10)), value: num(v.close) }))
       .filter(v => v.date && v.value != null)
       .sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
     const [q, ...ohs] = await Promise.all([
@@ -2641,8 +2656,9 @@ function dataConflicts() {
       out.push({ id: 'wti', label: 'WTI crude', a: { src: 'FRED DCOILWTICO', v: +fredWti.toFixed(2), asOf: fredDate }, b: { src: `OANDA close, same day`, v: +sameDay.toFixed(2) }, diffPct: +diffPct.toFixed(1), loadBearing: 'inflation-expectations and any commodity-currency read' });
     }
     // Agreed on the shared date. If the live price has since moved a lot, that is a
-    // lag to state, not a disagreement to escalate.
-    if (Number.isFinite(liveWti) && fredDate) {
+    // lag to state, not a disagreement to escalate. Only when they DID agree: the
+    // page once showed "sources disagree" and "FRED agreed that day" side by side.
+    if (Math.abs(diffPct) < CONFLICT_PCT && Number.isFinite(liveWti) && fredDate) {
       const days = Math.round((Date.now() - Date.parse(fredDate + 'T00:00:00Z')) / 864e5);
       const movedPct = (liveWti - fredWti) / fredWti * 100;
       if (days >= 2 && Math.abs(movedPct) >= CONFLICT_PCT) _wtiLag = { days, movedPct: +movedPct.toFixed(1), fred: +fredWti.toFixed(2), live: +liveWti.toFixed(2), fredDate };
@@ -2765,24 +2781,35 @@ function chainHtml() {
   const sum = B.summariseChain(links);
   if (sum.judged === 0 && sum.unmeasured === links.length) return '';
   const W = B.CHAIN_WINDOW_DAYS;
-  const asOfs = [...new Set(links.flatMap(l => [l.a?.asOf, l.b?.asOf]).filter(Boolean))].sort();
   const vcls = { holding: 'hold', broken: 'broke', quiet: 'quiet', unmeasured: 'quiet' };
-  const vword = { holding: 'holding', broken: 'broken', quiet: 'quiet', unmeasured: 'not measured' };
-  const end = e => {
+  const vword = { holding: 'holding', broken: 'broken', quiet: 'quiet', unmeasured: 'no data' };
+  const arrow = d => d === 'up' ? '↑' : d === 'down' ? '↓' : '→';
+  // One end: label, move, arrow. Dim when inside its floor. Hover = what it is.
+  const end = (e, expected) => {
     const n = B.CHAIN_NODES[e.key];
     const tip = `${n.what} ${W}-day change; noise floor ${e.floorText ?? ''}${e.asOf ? `; last print ${e.asOf}` : ''}.`;
-    return `<span class="chain-n help" title="${esc0(tip)}">${esc0(e.label)} <b class="${e.delta == null ? 'muted' : !e.moved ? 'muted' : e.dir === 'up' ? 'up' : 'dn'}">${esc0(e.text)}</b></span>`;
+    const cls = e.delta == null || !e.moved ? 'muted' : e.dir === 'up' ? 'up' : 'dn';
+    const exp = expected && e.moved && expected !== e.dir ? ` <span class="chain-exp">textbook said ${arrow(expected)}</span>` : '';
+    return `<span class="chain-n help" title="${esc0(tip)}">${esc0(e.label)} <b class="${cls}">${esc0(e.text)} ${e.moved ? arrow(e.dir) : ''}</b></span>${exp}`;
   };
-  const tip = `Each row is one textbook link, in causal order. Both ends are ${W}-day changes (the same window as the "what moved" strip); a node inside its noise floor is "quiet" and the link is not judged. Holding = both moved the way the textbook says. Broken = both moved, the wrong way round -- read the sentence, that is the mechanism. This panel explains; it does not predict. None of these links is a validated forward signal here.`;
+  // Series printing well behind the rest get ONE footnote, not a note on every row.
+  const asOfs = links.flatMap(l => [l.a, l.b]).filter(e => e?.asOf);
+  const newest = asOfs.map(e => e.asOf).sort().at(-1);
+  const lagging = [...new Map(asOfs.filter(e => (Date.parse(newest) - Date.parse(e.asOf)) / 864e5 > B.CHAIN_DATE_GAP_NOTE_DAYS).map(e => [e.key, e])).values()];
+  const tip = `Each row is one textbook link, in causal order. Both ends are ${W}-day changes (the same window as the "what moved" strip); a node inside its noise floor is "quiet" and the link is not judged. Holding = both moved the way the textbook says. Broken = both moved, the wrong way round -- the one-liner is the mechanism; click the row for the full version. This panel explains; it does not predict. None of these links is a validated forward signal here.`;
   return `<div class="chain">
-    <div class="chain-h help" title="${esc0(tip)}">The chain, today <span class="muted" style="font-weight:400;letter-spacing:0;text-transform:none">· how the textbook links are holding, ${W}-day moves ${_EV('c', _EV_T.c)}</span></div>
+    <div class="chain-h help" title="${esc0(tip)}">The chain, today <span class="muted" style="font-weight:400;letter-spacing:0;text-transform:none">· textbook links vs ${W}-day moves ${_EV('c', _EV_T.c)}</span></div>
     <div class="chain-sum ${sum.broken ? 'broke' : sum.judged ? 'hold' : 'quiet'}">${esc0(sum.headline)}</div>
-    ${links.map(l => `<div class="chain-r ${vcls[l.verdict]}">
-      <div class="chain-top"><span class="chain-v ${vcls[l.verdict]}">${vword[l.verdict]}</span><span class="chain-t">${esc0(l.textbook)}</span></div>
-      <div class="chain-ends">${end(l.a)} <span class="chain-arrow">${l.sign > 0 ? '→ same way →' : '→ opposite →'}</span> ${end(l.b)}</div>
-      ${l.verdict === 'quiet' || l.verdict === 'unmeasured' ? '' : `<div class="chain-w">${esc0(l.read)}</div>`}${l.dateGapDays > B.CHAIN_DATE_GAP_NOTE_DAYS ? `<div class="chain-foot" style="margin-top:1px">ends printed ${l.dateGapDays} days apart (${esc0(l.a.asOf)} vs ${esc0(l.b.asOf)}) — one series publishes with a lag; the verdict spans that gap.</div>` : ''}
-    </div>`).join('')}
-    <div class="chain-foot">${asOfs.length ? `Series last printed ${asOfs[0] === asOfs.at(-1) ? asOfs[0] : `${asOfs[0]} to ${asOfs.at(-1)}`}. ` : ''}Quiet links are still listed so the order of the chain is always in front of you; the habit is the point.</div>
+    ${links.map(l => {
+      const judged = l.verdict === 'holding' || l.verdict === 'broken';
+      return `<div class="chain-r ${vcls[l.verdict]}${judged ? ' can-open' : ''}"${judged ? ` onclick="this.classList.toggle('open')" title="${esc0(l.textbook)} — click for the full mechanism"` : ` title="${esc0(l.textbook)}"`}>
+        <div class="chain-line"><span class="chain-v ${vcls[l.verdict]}">${vword[l.verdict]}</span>
+          <span class="chain-ends">${end(l.a)} <span class="chain-arrow">→</span> ${end(l.b, l.expected)}</span></div>
+        ${l.punch ? `<div class="chain-p ${vcls[l.verdict]}">${esc0(l.punch)}${judged ? ' <span class="chain-more">why ▾</span>' : ''}</div>` : ''}
+        ${judged ? `<div class="chain-w"><b>${esc0(l.textbook)}.</b> ${esc0(l.read)}</div>` : ''}
+      </div>`;
+    }).join('')}
+    <div class="chain-foot">${lagging.length ? lagging.map(e => `${esc0(e.label)} last printed ${esc0(e.asOf)} (${Math.round((Date.parse(newest) - Date.parse(e.asOf)) / 864e5)} days behind the rest — links using it span that gap). `).join('') : ''}Quiet rows stay listed so the order of the chain is always in front of you.</div>
   </div>`;
 }
 function divergenceHtml() {

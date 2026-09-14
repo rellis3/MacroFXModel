@@ -52,9 +52,14 @@ export const CHAIN_NODES = {
 // link that is holding; `broken` has one sentence per direction of the FROM node,
 // because "oil up, breakevens down" and "oil down, breakevens up" are different
 // stories. Written to teach the mechanism, never to forecast.
+// `short` names the link in three words for summaries. `punch` is the one-line
+// version of each read, shown on the row; the full sentence sits behind a click.
+// A twelve-row panel of three-line paragraphs was unreadable in practice.
 export const CHAIN_LINKS = [
   {
-    id: 'oil-bei', from: 'oil', to: 'bei', sign: +1,
+    id: 'oil-bei',
+    short: 'oil → inflation pricing',
+    punch: { holds: 'Oil is reaching the bond market’s inflation pricing.', up: 'Oil up, inflation pricing flat — the bond market calls the oil move temporary.', down: 'Oil down but inflation pricing up — inflation is coming from somewhere else.' }, from: 'oil', to: 'bei', sign: +1,
     textbook: 'Dearer oil lifts inflation expectations',
     holds: 'Energy is feeding through to what the bond market expects for inflation — the first domino is doing its job.',
     broken: {
@@ -63,7 +68,9 @@ export const CHAIN_LINKS = [
     },
   },
   {
-    id: 'bei-us10y', from: 'bei', to: 'us10y', sign: +1,
+    id: 'bei-us10y',
+    short: 'inflation pricing → yields',
+    punch: { holds: 'Yields rising with inflation pricing — partly an inflation move.', up: 'Inflation pricing up, yields down — real yields collapsing: the stagflation shape.', down: 'Inflation pricing down, yields up — real yields doing all the work: tighter money.' }, from: 'bei', to: 'us10y', sign: +1,
     textbook: 'Higher expected inflation pushes nominal yields up',
     holds: 'Nominal yields are moving with inflation expectations — the yield move is at least partly an inflation move.',
     broken: {
@@ -72,7 +79,9 @@ export const CHAIN_LINKS = [
     },
   },
   {
-    id: 'us10y-real', from: 'us10y', to: 'real', sign: +1,
+    id: 'us10y-real',
+    short: 'nominal → real yield',
+    punch: { holds: 'Real yields moved with nominal — money is genuinely tighter or looser.', up: 'Nominal up, real down — the whole rise is inflation compensation; money is looser.', down: 'Nominal down, real up — money tighter in real terms despite the lower headline.' }, from: 'us10y', to: 'real', sign: +1,
     textbook: 'A nominal yield move is usually mostly a real-yield move',
     holds: 'The real yield moved with the nominal — the market is repricing the cost of money, not just inflation.',
     broken: {
@@ -81,7 +90,9 @@ export const CHAIN_LINKS = [
     },
   },
   {
-    id: 'real-dxy', from: 'real', to: 'dxy', sign: +1,
+    id: 'real-dxy',
+    short: 'real yields → dollar',
+    punch: { holds: 'Dollar following real yields — capital is being paid to come in.', up: 'Paid more to hold US assets, still not buying the dollar → risk premium, not carry.', down: 'Real yields down, dollar up → a safety bid, not a yield bid.' }, from: 'real', to: 'dxy', sign: +1,
     textbook: 'Higher real yields pull capital in and lift the dollar',
     holds: 'The dollar is following real yields — the carry version of a rate move. Capital is being paid to come in, and it is coming.',
     broken: {
@@ -90,7 +101,9 @@ export const CHAIN_LINKS = [
     },
   },
   {
-    id: 'real-gold', from: 'real', to: 'gold', sign: -1,
+    id: 'real-gold',
+    short: 'real yields → gold',
+    punch: { holds: 'Gold answering to the real yield, as usual.', up: 'Gold up INTO rising real yields → a bid for money with no counterparty: credibility doubt.', down: 'Real yields down and gold still down → forced selling, or a dollar bid overwhelming it.' }, from: 'real', to: 'gold', sign: -1,
     textbook: 'Higher real yields are gold’s headwind',
     holds: 'Gold is answering to the real yield, as it usually does — the opportunity cost of holding a zero-yield asset is doing the pricing.',
     broken: {
@@ -99,7 +112,9 @@ export const CHAIN_LINKS = [
     },
   },
   {
-    id: 'dxy-gold', from: 'dxy', to: 'gold', sign: -1,
+    id: 'dxy-gold',
+    short: 'dollar → gold',
+    punch: { holds: 'Gold and dollar opposite, as a dollar-priced asset should be.', up: 'Dollar and gold both bid → havens bought together; the market is fleeing something else.', down: 'Dollar down, no gold bid → a risk-on dollar sell, not a credibility sell.' }, from: 'dxy', to: 'gold', sign: -1,
     textbook: 'A stronger dollar makes dollar-priced gold dearer abroad',
     holds: 'Gold and the dollar are moving opposite, as priced in dollars they should.',
     broken: {
@@ -108,7 +123,9 @@ export const CHAIN_LINKS = [
     },
   },
   {
-    id: 'dxy-audusd', from: 'dxy', to: 'audusd', sign: -1,
+    id: 'dxy-audusd',
+    short: 'dollar → AUD',
+    punch: { holds: 'AUD trading against the dollar, as a commodity currency should.', up: 'AUD up against a stronger dollar → a specific Aussie bid: metals, RBA or China.', down: 'Dollar down and AUD down too → a growth scare bigger than the dollar move.' }, from: 'dxy', to: 'audusd', sign: -1,
     textbook: 'A stronger dollar weighs on the commodity currencies',
     holds: 'AUD is moving against the dollar as a commodity currency should.',
     broken: {
@@ -117,7 +134,9 @@ export const CHAIN_LINKS = [
     },
   },
   {
-    id: 'oil-usdcad', from: 'oil', to: 'usdcad', sign: -1,
+    id: 'oil-usdcad',
+    short: 'oil → CAD',
+    punch: { holds: 'CAD trading as an oil currency.', up: 'Oil up, CAD not bid → rates or risk outweighing the oil channel.', down: 'Oil down, CAD holding → a rates or risk story carrying it.' }, from: 'oil', to: 'usdcad', sign: -1,
     textbook: 'Dearer oil supports the Canadian dollar (USD/CAD down)',
     holds: 'CAD is trading as an oil currency — the export channel is doing the pricing.',
     broken: {
@@ -126,7 +145,9 @@ export const CHAIN_LINKS = [
     },
   },
   {
-    id: 'copper-audusd', from: 'copper', to: 'audusd', sign: +1,
+    id: 'copper-audusd',
+    short: 'copper → AUD',
+    punch: { holds: 'AUD moving with copper — one growth read.', up: 'Copper up, AUD down → dollar or rates overriding the growth signal.', down: 'Copper down, AUD up → the currency is ignoring a growth scare.' }, from: 'copper', to: 'audusd', sign: +1,
     textbook: 'Copper and the Aussie read the same growth story',
     holds: 'AUD is moving with copper — the growth read is consistent across the metal and the currency.',
     broken: {
@@ -135,7 +156,9 @@ export const CHAIN_LINKS = [
     },
   },
   {
-    id: 'vix-usdjpy', from: 'vix', to: 'usdjpy', sign: -1,
+    id: 'vix-usdjpy',
+    short: 'fear → yen',
+    punch: { holds: 'The yen trading as the haven.', up: 'Fear up, yen not bid → a US-rates scare, or the yen has stopped being the haven.', down: 'Fear down, yen bid anyway → BoJ or intervention, not fear.' }, from: 'vix', to: 'usdjpy', sign: -1,
     textbook: 'Fear buys the yen (USD/JPY down)',
     holds: 'The yen is trading as the haven it usually is.',
     broken: {
@@ -144,7 +167,9 @@ export const CHAIN_LINKS = [
     },
   },
   {
-    id: 'vix-hy', from: 'vix', to: 'hy', sign: +1,
+    id: 'vix-hy',
+    short: 'fear → credit',
+    punch: { holds: 'Credit and equities agree on the fear.', up: 'Equity fear up, credit calm → credit calls it noise, and credit is usually right.', down: 'Fear down, credit widening → credit sees what equities ignore. Respect it.' }, from: 'vix', to: 'hy', sign: +1,
     textbook: 'Equity fear and credit stress rise together',
     holds: 'Credit and equities agree about how afraid to be.',
     broken: {
@@ -153,7 +178,9 @@ export const CHAIN_LINKS = [
     },
   },
   {
-    id: 'dxy-btc', from: 'dxy', to: 'btc', sign: -1,
+    id: 'dxy-btc',
+    short: 'dollar → bitcoin',
+    punch: { holds: 'Bitcoin trading as the anti-dollar asset.', up: 'Dollar and bitcoin both up → bitcoin trading as risk, not anti-dollar.', down: 'Dollar down, bitcoin down → not a credibility story; risk is being sold.' }, from: 'dxy', to: 'btc', sign: -1,
     textbook: 'A weaker dollar is the anti-dollar trade’s tailwind',
     holds: 'Bitcoin is moving as the anti-dollar asset — the last link on the chain is connected today.',
     broken: {
@@ -202,24 +229,28 @@ export function evaluateChain(vals = {}, links = CHAIN_LINKS, nodes = CHAIN_NODE
   };
   return links.map(l => {
     const a = end(l.from), b = end(l.to);
-    let verdict, read;
+    let verdict, read, punch = '';
+    // What the textbook expected the TO end to do, given what the FROM end did.
+    const expected = (a && a.moved) ? (l.sign > 0 ? a.dir : a.dir === 'up' ? 'down' : 'up') : null;
     if (!a || !b || a.delta == null || b.delta == null) { verdict = 'unmeasured'; read = 'A series this link needs is not loaded, so it is not judged.'; }
     else if (!a.moved || !b.moved) {
       verdict = 'quiet';
       const still = !a.moved && !b.moved ? 'neither end' : !a.moved ? a.label : b.label;
       read = `${still === 'neither end' ? 'Neither end has' : `${still} has not`} moved past its noise floor over ${CHAIN_WINDOW_DAYS} days, so there is nothing to judge the link on.`;
+      punch = !a.moved ? `${a.label} inside its floor (${a.floorText})` : `${b.label} inside its floor (${b.floorText})`;
     }
     else {
       const agree = Math.sign(a.delta) * Math.sign(b.delta) === l.sign;
       verdict = agree ? 'holding' : 'broken';
       read = agree ? l.holds : l.broken[a.dir];
+      punch = agree ? (l.punch?.holds ?? '') : (l.punch?.[a.dir] ?? '');
     }
     // The two ends can print on different days (the broad dollar index lags a
     // week; OANDA closes are yesterday). A verdict across a wide gap is still a
     // verdict, but the reader should see the gap rather than assume one date.
     const ta = Date.parse(a?.asOf ?? ''), tb = Date.parse(b?.asOf ?? '');
     const dateGapDays = (Number.isFinite(ta) && Number.isFinite(tb)) ? Math.round(Math.abs(ta - tb) / 864e5) : null;
-    return { id: l.id, textbook: l.textbook, sign: l.sign, a, b, verdict, read, dateGapDays };
+    return { id: l.id, short: l.short ?? l.id, textbook: l.textbook, sign: l.sign, a, b, expected, verdict, read, punch, dateGapDays };
   });
 }
 
@@ -232,11 +263,12 @@ export function summariseChain(links) {
   for (const l of links) n[l.verdict] = (n[l.verdict] ?? 0) + 1;
   const judged = n.holding + n.broken;
   const brokenIds = links.filter(l => l.verdict === 'broken').map(l => l.id);
+  const brokenShort = links.filter(l => l.verdict === 'broken').map(l => l.short ?? l.id);
   let headline;
   if (judged === 0) headline = n.unmeasured === links.length ? 'Nothing measured yet.' : `Quiet: no link has both ends moving over ${CHAIN_WINDOW_DAYS} days. The textbook is not being tested today.`;
   else if (n.broken === 0) headline = `${n.holding} of ${judged} testable link${judged === 1 ? '' : 's'} holding. The textbook is working — first-order reads are enough today.`;
-  else headline = `${n.broken} of ${judged} testable link${judged === 1 ? '' : 's'} broken. ${n.broken === 1 ? 'That link is' : 'Those links are'} where the story is — read the mechanism, not the level.`;
-  return { ...n, judged, brokenIds, headline };
+  else headline = `${n.broken} of ${judged} testable link${judged === 1 ? '' : 's'} broken: ${brokenShort.join(', ')}. That is where the story is.`;
+  return { ...n, judged, brokenIds, brokenShort, headline };
 }
 
 /** Compact text for an AI prompt: one line per judged link, broken ones with the mechanism. */

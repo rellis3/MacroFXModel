@@ -20,6 +20,8 @@ console.log('[spec integrity]');
   ok('every link has a holds sentence and both broken directions', CHAIN_LINKS.every(l => l.holds && l.broken?.up && l.broken?.down));
   ok('every link sign is ±1', CHAIN_LINKS.every(l => l.sign === 1 || l.sign === -1));
   ok('link ids unique', new Set(CHAIN_LINKS.map(l => l.id)).size === CHAIN_LINKS.length);
+  ok('every link has a short name and three punch lines', CHAIN_LINKS.every(l => l.short && l.punch?.holds && l.punch?.up && l.punch?.down));
+  ok('punch lines are one line (under 110 chars)', CHAIN_LINKS.every(l => [l.punch.holds, l.punch.up, l.punch.down].every(t => t.length <= 110)));
   ok('every node has a floor, unit and teaching text', Object.values(CHAIN_NODES).every(n => n.floor > 0 && ['pct', 'bp', 'pt'].includes(n.unit) && n.what));
 }
 
@@ -61,6 +63,9 @@ console.log('[evaluateChain — verdicts]');
   ok('quiet read names the still end', /has not moved/.test(by['vix-usdjpy'].read));
   ok('ends carry formatted text and asOf', by['oil-bei'].a.text === '+8.0%' && by['oil-bei'].b.text === '+12bp' && by['oil-bei'].a.asOf === '2026-09-10');
   ok('floor text is ± the floor', by['oil-bei'].a.floorText === '±3.0%');
+  ok('expected direction of the TO end follows the sign', by['oil-bei'].expected === 'up' && by['real-gold'].expected === 'down' && by['dxy-gold'].expected === 'up');
+  ok('punch line matches the verdict and direction', by['real-dxy'].punch === CHAIN_LINKS.find(l => l.id === 'real-dxy').punch.up && by['oil-bei'].punch === CHAIN_LINKS[0].punch.holds);
+  ok('quiet punch names the still end and its floor', /Fear gauge \(VIX\) inside its floor \(±3\.0\)/.test(by['vix-hy'].punch), by['vix-hy'].punch);
 
   const partial = evaluateChain({ oil: v(8) });
   ok('missing series -> unmeasured, never a verdict', partial.every(l => l.verdict === 'unmeasured') && partial[0].b.delta === null);
@@ -82,7 +87,7 @@ console.log('[summariseChain]');
   const s = summariseChain(all);
   ok('counts add up to the link count', s.holding + s.broken + s.quiet + s.unmeasured === CHAIN_LINKS.length);
   ok('broken ids listed', s.brokenIds.includes('real-dxy') && s.brokenIds.includes('real-gold'));
-  ok('headline leads with the broken count', /^2 of \d+ testable links broken/.test(s.headline), s.headline);
+  ok('headline leads with the broken count and names the links', /^2 of \d+ testable links broken: real yields → dollar, real yields → gold./.test(s.headline), s.headline);
   const none = summariseChain(evaluateChain({}));
   ok('nothing measured -> says so', none.judged === 0 && /Nothing measured/.test(none.headline));
   const quiet = summariseChain(evaluateChain(Object.fromEntries(Object.keys(CHAIN_NODES).map(k => [k, v(0)]))));
