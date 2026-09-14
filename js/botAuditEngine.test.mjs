@@ -9,7 +9,7 @@ import {
   rollingEdge, breakdowns, hourWeekdayGrid, ukClock,
   dailyByGroup, correlationMatrix, effectiveBets, coincidentLoss, worstJointDays, symEigen,
   legsOf, netLegs, openAt, exposureSeries, drawdownEpisodes, concentration, projectPaths,
-  windowDist, rankAgainst, riskPerTrade,
+  windowDist, rankAgainst, riskPerTrade, monthDetail, perBotSeries,
 } from './botAuditEngine.js';
 
 let fail = 0;
@@ -528,6 +528,43 @@ console.log('\nrisk per trade');
   ok('spread p90/p10', k.spread > 1 && k.spread < 1.6, String(k.spread));
   ok('no capital -> amounts but no %', riskPerTrade(trades).medianPct === null && riskPerTrade(trades).medianAmount === 50);
   ok('empty -> n 0, nulls, no throw', riskPerTrade([]).n === 0 && riskPerTrade([]).medianAmount === null);
+}
+
+
+console.log('\nmonth detail');
+{
+  // Sept 2026: 1st is a Tuesday. Trades on Tue 1st, Fri 4th, Mon 14th.
+  const d = dailySeries(normalizeTrades([tr('2026-09-01', 100), tr('2026-09-04', -40), tr('2026-09-14', 25), tr('2026-08-31', 999)]).trades);
+  const m = monthDetail(d, 2026, 9, 0);
+  ok('August excluded', m.total === 85 && m.n === 3);
+  ok('first week starts on the Monday before the 1st', m.weeks[0].start === '2026-08-31');
+  ok('Aug 31 is marked out-of-month', m.weeks[0].days[0].inMonth === false && m.weeks[0].days[0].dom === 31);
+  ok('week 1 total = Tue + Fri', near(m.weeks[0].total, 60) && m.weeks[0].traded === 2);
+  ok('untraded day is null, not 0', m.weeks[0].days[2].value === null && m.weeks[0].days[2].n === 0);
+  ok('untraded week total is null', m.weeks[1].total === null);
+  ok('week 3 holds the 14th', near(m.weeks[2].total, 25));
+  ok('best / worst day', m.best === 100 && m.worst === -40);
+  const mp = monthDetail(d, 2026, 9, 10000);
+  ok('capital switches to %', near(mp.weeks[0].days[1].value, 1) && mp.pct === true);
+  ok('empty month -> nulls, no throw', monthDetail(d, 2026, 3, 0).total === null && monthDetail(d, 2026, 3, 0).weeks.length >= 4);
+}
+
+console.log('\nper-bot series');
+{
+  const { trades } = normalizeTrades([
+    tr('2026-09-01', 100, { bot: 'A' }), tr('2026-09-03', -50, { bot: 'A' }),
+    tr('2026-09-02', 30,  { bot: 'B' }),
+  ]);
+  const s = perBotSeries(trades, ['A', 'B'], { A: 1000, B: 500 });
+  ok('shared calendar spans both', s.days.join(',') === '2026-09-01,2026-09-02,2026-09-03');
+  ok('percent when every bot has an allocation', s.pct === true);
+  const A = s.bots.find(b => b.key === 'A'), B = s.bots.find(b => b.key === 'B');
+  ok('A: +10% then +5% in its own allocation', near(A.equity[0], 10) && near(A.equity[2], 5));
+  ok('B: null before it exists, carried after', B.equity[0] === null && near(B.equity[1], 6) && near(B.equity[2], 6));
+  ok('A drawdown in % of its own peak', near(A.dd[2], -50 / 1100 * 100));
+  const d = perBotSeries(trades, ['A', 'B'], { A: 1000 });
+  ok('one bot without allocation -> whole set in dollars', d.pct === false && near(d.bots[0].equity[0], 100));
+  ok('unknown bot dropped, not a blank line', perBotSeries(trades, ['A', 'Z'], {}).bots.length === 1);
 }
 
 console.log(fail ? `\n${fail} FAILED\n` : '\nAll passed\n');

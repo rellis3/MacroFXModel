@@ -1191,3 +1191,76 @@ export function riskPerTrade(trades, { capital = 0 } = {}) {
     spread: at(0.10) > 0 ? at(0.90) / at(0.10) : null,
   };
 }
+
+// ── Month drill-down: weeks and days ─────────────────────────────────────────
+//
+// A month cell on the heatmap is one number. Clicking it should answer "which
+// week, which day" without a new fetch: the daily series already has it. Days
+// are laid on ISO weeks (Mon–Sun) so a week total means the trading week, and
+// a day with no trades is null, never 0 — "flat" and "didn't trade" are
+// different facts and the drill must not paint them the same.
+
+export function monthDetail(daily, year, month1to12, capital = 0) {
+  const pre = `${year}-${String(month1to12).padStart(2, '0')}`;
+  const inMonth = daily.filter(d => d.date.startsWith(pre));
+  const byDate = new Map(inMonth.map(d => [d.date, d]));
+  const first = new Date(Date.UTC(year, month1to12 - 1, 1));
+  const last = new Date(Date.UTC(year, month1to12, 0));
+  const conv = v => capital > 0 ? v / capital * 100 : v;
+  // walk Monday-aligned weeks covering the month
+  const start = new Date(first); start.setUTCDate(first.getUTCDate() - ((first.getUTCDay() + 6) % 7));
+  const weeks = [];
+  for (let ws = new Date(start); ws <= last; ws.setUTCDate(ws.getUTCDate() + 7)) {
+    const days = [];
+    let total = 0, n = 0, traded = 0;
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(ws); d.setUTCDate(ws.getUTCDate() + i);
+      const iso = d.toISOString().slice(0, 10);
+      const inM = d.getUTCMonth() === month1to12 - 1;
+      const row = byDate.get(iso);
+      days.push({ date: iso, dom: d.getUTCDate(), inMonth: inM, value: row ? conv(row.pnl) : null, n: row ? row.n : 0 });
+      if (row) { total += conv(row.pnl); n += row.n; traded++; }
+    }
+    weeks.push({ start: days[0].date, days, total: traded ? total : null, n, traded });
+  }
+  const monthTotal = inMonth.length ? conv(inMonth.reduce((s, d) => s + d.pnl, 0)) : null;
+  const flat = inMonth.map(d => conv(d.pnl));
+  return { year, month: month1to12, weeks, total: monthTotal, n: inMonth.reduce((s, d) => s + d.n, 0), tradedDays: inMonth.length,
+           best: flat.length ? Math.max(...flat) : null, worst: flat.length ? Math.min(...flat) : null, pct: capital > 0 };
+}
+
+// ── Per-bot daily series on one shared calendar ──────────────────────────────
+//
+// For laying each bot's own equity and drawdown over the others. Each bot is
+// summarised ALONE (its own trades, its own allocation), then placed on the
+// union calendar: null before the bot's first trade (it did not exist yet —
+// drawing a flat zero would claim it was flat), carried forward after its last
+// (it is still holding that result). Percent mode only when EVERY selected bot
+// has an allocation; one missing and the whole set falls back to dollars, and
+// says so, rather than mixing units on one axis.
+
+export function perBotSeries(trades, keys, allocMap = {}, { gross = false } = {}) {
+  const groups = keys.map(k => ({ key: k, trades: trades.filter(t => t.bot_key === k) })).filter(g => g.trades.length);
+  if (!groups.length) return { days: [], bots: [], pct: false };
+  const pct = groups.every(g => Number(allocMap[g.key]) > 0);
+  const per = groups.map(g => {
+    const cap = pct ? Number(allocMap[g.key]) : 0;
+    const dEq = dailyEquity(dailySeries(g.trades, { gross }), cap);
+    return { key: g.key, cap, dEq, byDate: new Map(dEq.map(d => [d.date, d])) };
+  });
+  const allDays = new Set(); per.forEach(p => p.dEq.forEach(d => allDays.add(d.date)));
+  const days = [...allDays].sort();
+  const bots = per.map(p => {
+    let lastEq = null, lastDd = null, lastPeak = null;
+    const equity = [], dd = [];
+    for (const d of days) {
+      const row = p.byDate.get(d);
+      if (row) { lastEq = row.equity; lastDd = p.cap > 0 ? row.ddPct : row.ddAbs; lastPeak = row.peak; }
+      if (lastEq == null) { equity.push(null); dd.push(null); continue; }
+      equity.push(p.cap > 0 ? (lastEq - p.cap) / p.cap * 100 : lastEq);
+      dd.push(lastDd);
+    }
+    return { key: p.key, cap: p.cap, equity, dd, n: p.dEq.length };
+  });
+  return { days, bots, pct };
+}

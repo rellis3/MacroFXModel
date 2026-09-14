@@ -169,6 +169,21 @@
   .rail b { color:var(--dim); font-weight:600; }
   .rail .sp { flex:1; }
 
+  /* ── month drill ── */
+  .heat td.mo { cursor:pointer; }
+  .heat td.mo:hover { outline:1px solid var(--accent); }
+  .heat td.mo.sel { outline:2px solid var(--accent); }
+  .cal td { text-align:center; padding:0; height:34px; min-width:54px; border:1px solid var(--bg); font-family:var(--mono); font-size:10.5px; vertical-align:middle; }
+  .cal td.out { color:var(--dim2); background:var(--panel2); opacity:.45; }
+  .cal td .dom { display:block; font-size:9px; color:var(--dim2); }
+  .cal td .n { display:block; font-size:9px; color:var(--dim2); }
+  .cal th { font-size:9.5px; text-align:center; }
+  .cal td.wk, .cal th.wk { text-align:left; padding-left:6px; min-width:80px; color:var(--dim); }
+  .cal td.tot { font-weight:700; }
+  .chk { display:inline-flex; align-items:center; gap:5px; color:var(--dim); font-size:10.5px; font-family:var(--mono); cursor:pointer; text-transform:none; letter-spacing:0; }
+  .xbox .row { display:flex; gap:8px; justify-content:space-between; }
+  .xbox .row b { font-weight:600; }
+
   /* ── breakdowns ── */
   .hw td { text-align:center; padding:0; height:22px; min-width:26px; border:1px solid var(--bg); font-size:9.5px; font-family:var(--mono); }
   .hw th { font-size:9.5px; padding:2px 0; text-align:center; }
@@ -315,7 +330,7 @@ import {
   rollingEdge, breakdowns, hourWeekdayGrid, MIN_N_CELL, DOW,
   dailyByGroup, correlationMatrix, effectiveBets, coincidentLoss, worstJointDays, MIN_BOTH_ACTIVE,
   netLegs, exposureSeries, drawdownEpisodes, concentration, projectPaths,
-  windowDist, rankAgainst, riskPerTrade,
+  windowDist, rankAgainst, riskPerTrade, monthDetail, perBotSeries,
 } from './js/botAuditEngine.js';
 import { instrument as _instrument } from './js/instrumentRegistry.js';
 import { histVaR, histCVaR } from './js/metricsCore.js';
@@ -409,6 +424,14 @@ function renderPills() {
 // Backtest overlay state. `BT_CACHE` is keyed by bot so flipping the toggle off
 // and on, or switching bots and back, never re-pays the R2 cost.
 let BT_ON = false, BT_MODE = 'cone', BT = null, BT_LOADING = false;
+// Overview: lay each selected bot's own equity/drawdown over the others
+// instead of the combined book. Off = combined (the default and the only
+// meaningful mode with one bot selected).
+let PERBOT = false;
+window.setPerBot = v => { PERBOT = !!v; try { localStorage.setItem('botAuditPerBot', PERBOT ? '1' : '0'); } catch (e) {} render(); };
+// Month drill: which heatmap cell is open, as 'YYYY-MM' or null.
+let DRILL = null;
+window.drillMonth = key => { DRILL = DRILL === key ? null : key; render(); };
 // The frozen expectation for the selected bot (expect_<bot>), when exactly one
 // bot is selected and one has been frozen. Source of the tile badges, the cone,
 // and the Distributions tab's "expected" mode. Null otherwise — every consumer
@@ -592,9 +615,11 @@ function fmtFor({ fmt, money, pct }, span) {
 }
 
 /** The frame every chart renders into. Registers the series for the crosshair. */
-function frame({ svg, h, lo, hi, fmt, ticks = true, gut = true, xFirst = '', xLast = '', pts = [], colour = '#3fd07a', extra = '' }) {
+function frame({ svg, h, lo, hi, fmt, ticks = true, gut = true, xFirst = '', xLast = '', pts = [], colour = '#3fd07a', extra = '', multi = null }) {
   const id = 'ch' + (++_chartSeq);
-  CHARTS.set(id, { pts, fmt, colour, lo, hi, h });
+  // `multi`: [{label, colour, v[]}] — when present the readout lists every
+  // series at the hovered index, not just the last line drawn.
+  CHARTS.set(id, { pts, fmt, colour, lo, hi, h, multi });
   const y = v => (1 - (v - lo) / (hi - lo)) * h;
   const yl = ticks ? [0, .25, .5, .75, 1].map(f => {
     const v = lo + (hi - lo) * f;
@@ -669,7 +694,12 @@ function moveXhair(fr, clientX) {
   const px = (i / Math.max(1, n - 1)) * r.width;
   const hair = fr.querySelector('.xhair'), dot = fr.querySelector('.xdot'), box = fr.querySelector('.xbox'), date = fr.querySelector('.xdate');
   hair.style.display = 'block'; hair.style.left = px + 'px';
-  if (pt.v != null && isFinite(pt.v)) {
+  if (c.multi) {
+    dot.style.display = 'none';
+    box.style.display = 'block';
+    box.innerHTML = c.multi.map(m => { const v = m.v[i]; return `<div class="row"><span style="color:${m.colour}">${esc(m.label)}</span><b>${v == null || !isFinite(v) ? '—' : c.fmt(v)}</b></div>`; }).join('');
+    box.style.left = Math.min(r.width - box.offsetWidth - 2, Math.max(0, px + 8)) + 'px';
+  } else if (pt.v != null && isFinite(pt.v)) {
     dot.style.display = 'block'; dot.style.left = px + 'px';
     dot.style.top = ((1 - (pt.v - c.lo) / (c.hi - c.lo)) * c.h) + 'px'; dot.style.background = c.colour;
     box.style.display = 'block'; box.textContent = c.fmt(pt.v);
@@ -795,7 +825,7 @@ async function loadBacktest() {
  * which is the whole point: five years next to three months renders live as a
  * two-pixel wiggle at the right-hand edge and shows nothing.
  */
-function overlayChart({ bands = [], lines = [], n, h = 260, xFirst = '', xLast = '', xLabels = [], zero = true, unit = '%' }) {
+function overlayChart({ bands = [], lines = [], n, h = 260, xFirst = '', xLast = '', xLabels = [], zero = true, unit = '%', multi = null, money = false }) {
   const all = [];
   for (const b of bands) all.push(...b.lo.filter(isFinite), ...b.hi.filter(isFinite));
   for (const l of lines) all.push(...l.v.filter(v => v != null && isFinite(v)));
@@ -816,7 +846,8 @@ function overlayChart({ bands = [], lines = [], n, h = 260, xFirst = '', xLast =
   const live = lines[lines.length - 1];
   const pts = (live?.v || []).slice(0, n).map((v, i) => ({ k: xLabels[i] ?? `${i + 1}`, v }));
   const dp = autoDp(hi - lo);
-  return frame({ svg, h, lo, hi, fmt: v => v.toFixed(dp) + unit, xFirst, xLast, pts, colour: live?.stroke || '#3fd07a' });
+  const fmt = money ? fmtFor({ money: true }, hi - lo) : v => v.toFixed(dp) + unit;
+  return frame({ svg, h, lo, hi, fmt, xFirst, xLast, pts, colour: live?.stroke || '#3fd07a', multi });
 }
 
 const swatch = (c, label, dash) =>
@@ -1073,17 +1104,65 @@ function renderOvw(S, C, G) {
   const mc = S.flags.missingCommission;
   if (mc.length && !GROSS) notes.push(`<div class="note warn"><b>${mc.length} bot${mc.length > 1 ? 's report' : ' reports'} no commission</b> — ${mc.map(k => esc(botOf(k).label)).join(', ')}. Their trades are counted with commission = 0, so this book's Net flatters them by however much they were actually charged.</div>`);
 
-  el.innerHTML = notes.join('') + `<div class="tiles">${tiles}</div>` + `
-    <div class="panel"><div class="ph"><span class="badge">EQ</span>Equity curve — by trade<span class="rt">${eq.length} trades · ${C > 0 ? 'from $' + C.toLocaleString('en-GB') : 'cumulative P&L from 0'}</span></div>
+  const keys = selectedKeys();
+  const multiOk = keys.length > 1;
+  const perBotChk = `<label class="chk" style="margin-left:auto" title="${multiOk ? 'Lay each bot\'s own equity and drawdown over the others instead of the combined book' : 'Needs more than one bot selected'}"><input type="checkbox" ${PERBOT ? 'checked' : ''} ${multiOk ? '' : 'disabled'} onchange="setPerBot(this.checked)"> per bot</label>`;
+  let charts;
+  if (PERBOT && multiOk) {
+    // Each bot alone, on one calendar. % only when every bot has an allocation;
+    // otherwise dollars for all, stated — never two units on one axis.
+    const pb = perBotSeries(TRADES, keys, ALLOC, G);
+    const n = pb.days.length, unit = pb.pct ? '%' : '$';
+    const lines = (field) => pb.bots.map(b => ({ v: b[field], stroke: botOf(b.key).color, w: 1.6 }));
+    const multi = (field) => pb.bots.map(b => ({ label: botOf(b.key).label, colour: botOf(b.key).color, v: b[field] }));
+    const legend = pb.bots.map(b => swatch(botOf(b.key).color, `${botOf(b.key).label} · ${b.n}d`)).join('');
+    const mk = (field, h, zero) => n < 2 ? `<div class="empty">Not enough days.</div>` : overlayChart({ n, h, zero, unit: pb.pct ? '%' : '', money: !pb.pct, xFirst: pb.days[0], xLast: pb.days[n - 1], xLabels: pb.days, lines: lines(field), multi: multi(field) });
+    const unitNote = pb.pct ? 'each bot as % of its own declared allocation' : `dollars — ${pb.bots.length === keys.length ? 'declare an allocation for every selected bot to compare in %' : 'some bots have no trades in range'}`;
+    charts = `
+    <div class="panel"><div class="ph"><span class="badge">EQ</span>Equity — per bot<span class="rt">${esc(unitNote)}</span>${perBotChk}</div>
+      <div class="pb">${mk('equity', 230, true)}<div class="rd" style="margin-top:6px">${legend}</div></div></div>
+    <div id="btPanel"></div>
+    <div id="acctPanel"></div>
+    <div class="panel"><div class="ph"><span class="badge">DD</span>Drawdown from peak — per bot<span class="rt">${pb.pct ? '% of each bot\'s own peak' : 'dollars from each bot\'s own peak'}</span></div>
+      <div class="pb">${mk('dd', 200, true)}<div class="rd" style="margin-top:6px">${legend}</div></div></div>
+    <div class="panel"><div class="ph"><span class="badge">R${rollWin}</span>Rolling ${rollWin}-day return<span class="rt">combined book — per-bot rolling adds little over the equity lines</span></div>
+      <div class="pb">${lineChart(roll.map(p => ({ k: p.date, v: p.value })), { stroke: '#5eb0ff', zero: true, pct: C > 0, money: C === 0 })}</div></div>`;
+  } else {
+    charts = `
+    <div class="panel"><div class="ph"><span class="badge">EQ</span>Equity curve — by trade<span class="rt">${eq.length} trades · ${C > 0 ? 'from $' + C.toLocaleString('en-GB') : 'cumulative P&L from 0'}</span>${perBotChk}</div>
       <div class="pb">${lineChart(eq.map(p => ({ k: p.day, v: p.equity })), { fill: 'rgba(63,208,122,.10)', stroke: '#3fd07a', zero: C === 0, money: true })}</div></div>
     <div id="btPanel"></div>
     <div id="acctPanel"></div>
     <div class="panel"><div class="ph"><span class="badge">DD</span>Drawdown from peak<span class="rt">max ${C > 0 ? pct(S.scaleBound.maxDDPct) : money(S.scaleFree.maxDDAbs)}</span></div>
       <div class="pb">${lineChart(dEq.map(p => ({ k: p.date, v: C > 0 ? p.ddPct : p.ddAbs })), { fill: 'rgba(242,85,90,.13)', stroke: '#f2555a', zero: true, pct: C > 0, money: C === 0 })}</div></div>
     <div class="panel"><div class="ph"><span class="badge">R${rollWin}</span>Rolling ${rollWin}-day return<span class="rt">${C > 0 ? '% of capital' : 'dollars'}</span></div>
-      <div class="pb">${lineChart(roll.map(p => ({ k: p.date, v: p.value })), { stroke: '#5eb0ff', zero: true, pct: C > 0, money: C === 0 })}</div></div>
-    <div class="panel"><div class="ph"><span class="badge">MRET</span>Monthly returns<span class="rt">${mg.pct ? '% of capital' : '$ P&L — set Capital for %'}</span></div>
-      <div class="pb">${heat(mg)}</div></div>`;
+      <div class="pb">${lineChart(roll.map(p => ({ k: p.date, v: p.value })), { stroke: '#5eb0ff', zero: true, pct: C > 0, money: C === 0 })}</div></div>`;
+  }
+  el.innerHTML = notes.join('') + `<div class="tiles">${tiles}</div>` + charts + `
+    <div class="panel"><div class="ph"><span class="badge">MRET</span>Monthly returns<span class="rt">${mg.pct ? '% of capital' : '$ P&L — set Capital for %'} · click a month</span></div>
+      <div class="pb">${heat(mg)}</div></div>
+    ${drillPanel(S, C)}`;
+}
+
+// The week/day drill for the open month. Weeks are ISO (Mon–Sun); a day with
+// no trades is a dot, not a zero.
+function drillPanel(S, C) {
+  if (!DRILL) return '';
+  const [y, m] = DRILL.split('-').map(Number);
+  const d = monthDetail(S.series.daily, y, m, C);
+  const fmtv = v => v == null ? '·' : d.pct ? (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(2) : money(v, 0);
+  const lim = Math.max(Math.abs(d.best || 0), Math.abs(d.worst || 0)) || 1;
+  const bg = v => v == null ? '' : `background:rgba(${v >= 0 ? '63,208,122' : '242,85,90'},${(Math.min(1, Math.abs(v) / lim) * 0.6 + 0.08).toFixed(2)})`;
+  const monthName = new Date(Date.UTC(y, m - 1, 1)).toLocaleString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+  const rows = d.weeks.map(w => `<tr><td class="wk">w/c ${w.start.slice(5)}</td>` +
+    w.days.map(x => `<td class="${x.inMonth ? '' : 'out'}" style="${x.inMonth ? bg(x.value) : ''}" title="${x.date} · ${x.n} trade${x.n === 1 ? '' : 's'}">` +
+      `<span class="dom">${x.dom}</span>${x.inMonth ? fmtv(x.value) : ''}${x.n ? `<span class="n">${x.n}</span>` : ''}</td>`).join('') +
+    `<td class="tot ${w.total == null ? '' : cls(w.total)}" style="${bg(w.total)}">${fmtv(w.total)}<span class="n">${w.n ? w.n + ' tr' : ''}</span></td></tr>`).join('');
+  return `<div class="panel" style="border-color:var(--accent)"><div class="ph"><span class="badge">DRILL</span>${esc(monthName)} — by week and day
+      <span class="rt">${d.tradedDays} trading days · ${d.n} trades · total <span class="${cls(d.total || 0)}">${fmtv(d.total)}</span> · best ${fmtv(d.best)} · worst ${fmtv(d.worst)}</span>
+      <button onclick="drillMonth(null)" style="margin-left:10px;padding:1px 8px;font-size:10px">close</button></div>
+    <div class="pb" style="overflow-x:auto"><table class="cal"><thead><tr><th class="wk">Week</th>${DOW.map(x => `<th>${x}</th>`).join('')}<th>Week</th></tr></thead><tbody>${rows}</tbody></table>
+    <div class="rd" style="margin-top:8px;color:var(--dim2);font-size:11px">Day cells: date, ${d.pct ? '% of capital' : 'net P&L'}, trade count. Weeks are Monday–Sunday. A dot is a day with no closed trades — different from a flat one.</div></div></div>`;
 }
 
 const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -1101,7 +1180,8 @@ function heat(mg) {
     : (v >= 0 ? '+' : '−') + '$' + Math.abs(Math.round(v)).toLocaleString('en-GB');
   return `<table class="heat"><thead><tr><th class="l">Year</th>${MON.map(m => `<th>${m}</th>`).join('')}<th>Year</th></tr></thead><tbody>` +
     mg.years.map(y => `<tr><td class="l"><b>${y.year}</b></td>` +
-      y.months.map(v => `<td class="${v == null ? 'na' : ''}" style="${bg(v)}">${fmtc(v)}</td>`).join('') +
+      y.months.map((v, mi) => { const key = `${y.year}-${String(mi + 1).padStart(2, '0')}`;
+        return `<td class="${v == null ? 'na' : 'mo'}${DRILL === key ? ' sel' : ''}" style="${bg(v)}" ${v == null ? '' : `onclick="drillMonth('${key}')" title="click for weeks and days"`}>${fmtc(v)}</td>`; }).join('') +
       `<td style="${bg(y.total)}"><b>${fmtc(y.total)}</b></td></tr>`).join('') +
     `</tbody></table>`;
 }
@@ -1801,6 +1881,7 @@ function renderTrd() {
   try {
     const t = localStorage.getItem('botAuditTab'); if (t) window.tab(t);
     const c = localStorage.getItem('botAuditCap'); if (c) $('inCap').value = c;
+    PERBOT = localStorage.getItem('botAuditPerBot') === '1';
     const ew = +localStorage.getItem('botAuditEdgeWin'); if ([10, 20, 30, 50].includes(ew)) EDGE_WIN = ew;
     const pj = JSON.parse(localStorage.getItem('botAuditPrj') || 'null'); if (pj && pj.horizon) PRJ = pj;
     const sv = JSON.parse(localStorage.getItem('botAuditSel') || 'null');
