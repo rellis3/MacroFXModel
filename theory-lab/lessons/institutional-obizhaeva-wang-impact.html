@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Obizhaeva-Wang Transient Price Impact — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+<style>
+  .tl-table-wrap{overflow-x:auto;margin:14px 0}
+  table.tl-tbl{width:100%;border-collapse:collapse;font-size:13px;background:var(--s1);border:1px solid var(--border);border-radius:var(--r)}
+  table.tl-tbl th,table.tl-tbl td{padding:9px 12px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
+  table.tl-tbl th{color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:.04em;font-weight:700;background:var(--s2)}
+  table.tl-tbl tr:last-child td{border-bottom:none}
+  table.tl-tbl td{color:var(--text2);font-family:'DM Mono',monospace}
+  table.tl-tbl td:first-child{color:var(--text);font-weight:600;white-space:nowrap;font-family:'DM Sans',sans-serif}
+  table.tl-tbl td.tl-num{text-align:right}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Liquidity / Obizhaeva-Wang Transient Price Impact</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Liquidity 2 of 3</div>
+  <h1 class="tl-title">Obizhaeva-Wang Transient Price Impact</h1>
+  <p class="tl-dek">Kyle's impact is permanent because it's information, and it never fades. Almgren-Chriss's temporary impact reverts the instant you stop trading, with no memory of what you did a moment ago. Obizhaeva-Wang sits in between: impact that decays, but not instantly — a limit-order-book "reservoir" that needs real time to refill — and that one assumption is enough to turn the optimal way to trade a large order from a smooth curve into something lumpier at both ends.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — grepped every <code>.js</code> and <code>.py</code> file in this repo, case-insensitive, for "resilien", "transient impact", and "Obizhaeva": no resilience-based transient-impact model, no decaying-impact state variable, and no Obizhaeva-Wang mechanics exist anywhere here. The only "resilien-" hits are <code>bot/main.py</code>'s <code>ResilientStreamHandler</code>/<code>ResilientFileHandler</code> — retry-safe logging handlers, unrelated to market microstructure or price impact in any way</span>
+    <span>~17 min read</span>
+    <span>Prereqs: <a href="institutional-kyle-obizhaeva-invariance.html">Kyle-Obizhaeva Market Microstructure Invariance</a>, <a href="market-impact-almgren-chriss.html">Market Impact Models &amp; Almgren-Chriss</a></span>
+  </div>
+
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="institutional-obizhaeva-wang-impact-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Every trade consumes resting liquidity from a finite limit-order-book <strong>reservoir</strong> near the mid-price, pushing the executed price away from mid. Unlike Kyle's impact, this displacement <strong>decays back toward mid over time</strong> as the book replenishes — that decay, called <strong>resilience</strong>, is the entire idea behind the word "transient."</li>
+      <li>The mechanics: between trades, impact \(D_t\) decays via \(dD_t = -\rho D_t\,dt\) (\(\rho\) = resilience rate); each new trade of size \(dx\) jumps \(D_t\) up by \(\kappa\,dx\) instantly (\(\kappa\) = impact-per-unit-traded). That decay-plus-jump process is the model's confidently-known mechanism; the exact closed-form <em>optimal execution schedule</em> it implies is a genuine dynamic-programming result from the original paper, not something safely reconstructed from scratch here.</li>
+      <li>This is a different kind of memory than Almgren-Chriss's temporary impact. AC's temporary impact is a pure function of the instantaneous trading rate — it vanishes the moment you stop trading at that rate, with no separate state variable and no decay speed to even name. OW's transient impact has a genuine half-life: a trade from a few minutes ago is still partly displacing the book when the next one arrives.</li>
+      <li>Because of that finite memory, the optimal execution schedule under this model is famously <strong>not</strong> a smooth curve. It typically features discrete <strong>block trades</strong> at the very start and end of the horizon, with lighter, smoother trading in between — because a block placed in the middle has to push through your own still-decaying earlier impact, while blocks at the two boundaries don't pay that penalty.</li>
+      <li>A toy numeric illustration below (\(\rho=2\), \(\kappa=0.01\), \(Q=100\) units over 5 evenly-spaced trades) puts a real number on it: trading it all in one block costs ≈50.0; spreading it evenly costs ≈26.45; a simple front-and-back-loaded split costs ≈25.92 — cheapest, but only by a modest ~2%, because bigger boundary blocks also cost more in instantaneous self-impact. That tension, not a free lunch, is the actual content of the result.</li>
+      <li>Same impact-vs-risk trade-off as Almgren-Chriss underneath it all — trade fast and pay more impact, trade slow and eat more timing risk. The resilience assumption doesn't change <em>that</em> trade-off; it changes the <em>shape</em> of the answer.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    This is the second of three lessons in this curriculum's Liquidity category, and it sits between two
+    close relatives that are easy to blur together with this one — worth separating cleanly before any
+    equations show up. The <a href="institutional-kyle-obizhaeva-invariance.html">Kyle-Obizhaeva Market
+    Microstructure Invariance</a> lesson (lesson 1) is about something else entirely: how the overall
+    <em>scale</em> of trading activity — bet sizes, trade counts, dollar volume — compares across different
+    assets and regimes in a way tied to volatility and turnover. It happens to share a coauthor, Anna
+    Obizhaeva, with this lesson's model, but it is a genuinely different paper answering a genuinely
+    different question — nothing in it says anything about how one specific order's own impact decays
+    over the course of its own execution. That is this lesson's entire subject, and the two should never
+    be conflated just because the name "Obizhaeva" appears in both titles.
+  </p>
+  <p>
+    The <a href="market-impact-almgren-chriss.html">Market Impact Models &amp; Almgren-Chriss</a> lesson is
+    the closer relative. It already splits impact into <strong>temporary</strong> (reverts once trading
+    stops) and <strong>permanent</strong> (an information-driven repricing that doesn't revert), and derives
+    the optimal execution trajectory that trades off impact cost against timing risk. Read carefully, that
+    lesson's own temporary-impact term is a function of the instantaneous trading rate alone — it costs
+    \(\tfrac12\eta\dot x(t)^2\) at each instant and, critically, has no memory of anything that happened a
+    moment earlier; the model contains no parameter for <em>how fast</em> a concession fades, because within
+    that framework it fades essentially the instant you stop pushing at that rate. Obizhaeva &amp; Wang
+    (2013, building on an earlier widely-circulated working paper) ask what changes if that assumption is
+    relaxed: what if the book doesn't snap back instantly, but refills gradually, at some finite
+    <strong>resilience rate</strong> \(\rho\)? The mechanics of the answer are this lesson's subject, and the
+    single most famous consequence — that the optimal schedule stops looking smooth — is the headline result
+    worth carrying away.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Footprints in wet sand, not a memory-foam pillow</h3>
+    <p>
+      The Almgren-Chriss lesson uses a memory-foam pillow for temporary impact: press your thumb in, let go,
+      and the dent springs back essentially immediately. That's a fine picture for impact with no decay
+      speed of its own. Obizhaeva-Wang needs a different one. Picture instead a footprint pressed into wet
+      sand at the tide line. The print doesn't disappear the instant your foot lifts — water has to slowly
+      seep back in and level the sand out again, which takes real, measurable time. If you step in the exact
+      same spot again before that time has passed, your foot sinks in <em>deeper</em> than it would have on
+      fresh sand, because you're pressing into ground that hasn't finished recovering from the last step.
+    </p>
+    <p>
+      That is exactly the mechanism. The limit order book near the mid-price is a shallow reservoir of
+      resting orders. Trading draws it down on your side, pushing the price away from where it would
+      otherwise sit. Left alone, new limit orders queue back in — the book's own resilience — and the price
+      drifts back toward the level it would have been at without your trade. But if you trade again before
+      that refill finishes, you're drawing from a reservoir that's already partly drained, and you pay more
+      for the same size than you would have if you'd waited for it to recover. Nothing here is about new
+      information changing anyone's beliefs — it's purely a mechanical, liquidity-supply story, and that's
+      exactly what makes it transient rather than permanent.
+    </p>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Step in wet sand and the footprint stays for a bit before the water smooths it back out — not forever, but not instantly either. If you keep stepping in the same spot before it smooths back out, each new footprint sinks in a little deeper than it would on fresh sand. Trading is the same: push the price away, and it takes real time to drift back. Trade again too soon in the same spot and you're pushing into ground that hasn't recovered yet.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+  <p>
+    The confidently-known part of this model is the mechanism itself — a single state variable that decays
+    continuously and jumps at each trade. What follows describes that mechanism precisely. It deliberately
+    stops short of re-deriving the paper's exact closed-form optimal trajectory: that result comes from a
+    genuine dynamic-programming / calculus-of-variations argument in the original paper, and presenting
+    invented algebra as if it reproduced that derivation exactly would be worse than being honest about the
+    limit of what's safely reconstructed here.
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(D_t\)</td><td>The price-impact state — how far the price currently sits from where it would be with no trading at all. This is the model's one piece of "memory."</td></tr>
+    <tr><td>\(\rho\)</td><td>(rho) The resilience rate — how fast \(D_t\) decays back toward zero between trades, in units of 1/time. Larger \(\rho\) means a faster-healing book.</td></tr>
+    <tr><td>\(\kappa\)</td><td>(kappa) The instantaneous impact coefficient — how much \(D_t\) jumps per unit traded, the instant a trade happens.</td></tr>
+    <tr><td>\(dx\)</td><td>An infinitesimal trade size at a given instant.</td></tr>
+    <tr><td>\(p_t^0\)</td><td>The unaffected price process — what price would do with no trading from this order at all.</td></tr>
+    <tr><td>\(p_t\)</td><td>The actual observed price, \(p_t = p_t^0 + D_t\), in the base version of this model.</td></tr>
+  </table></div>
+
+  <div class="tl-steps">
+    <div class="tl-step">
+      <div class="tl-step-num">1</div>
+      <div class="tl-step-body">
+        <h4>Between trades: exponential decay</h4>
+        <p>With no trading happening, the impact state decays continuously back toward zero:</p>
+        <div class="tl-math">\[ dD_t = -\rho\,D_t\,dt \]</div>
+        <p>This is the same first-order linear decay used for mean reversion in the Ornstein-Uhlenbeck
+        lesson elsewhere in this series — on its own, with no jumps, \(D_t\) just relaxes back to zero at
+        rate \(\rho\), with half-life \(\ln(2)/\rho\).</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">2</div>
+      <div class="tl-step-body">
+        <h4>At a trade: an instantaneous jump</h4>
+        <p>A trade of size \(dx\) at time \(t\) pushes the impact state up immediately, before any decay has a chance to act:</p>
+        <div class="tl-math">\[ D_{t^+} = D_{t^-} + \kappa\,dx \]</div>
+        <p>\(D_{t^-}\) is whatever the previous trade's impact has decayed down to by the time this new
+        trade arrives — the "leftover displacement" from your own earlier activity. \(D_{t^+}\) is the
+        state immediately after this trade lands on top of it.</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">3</div>
+      <div class="tl-step-body">
+        <h4>The price you actually trade at</h4>
+        <p>The base Obizhaeva-Wang setup treats \(D_t\) as the entire displacement from the unaffected
+        price — there is no separate, non-decaying permanent component sitting alongside it in the original
+        model (later extensions in the literature add one; that generalization isn't needed to get the
+        core resilience story right). A trade executed while the book is displaced by \(D_{t^-}\) pays
+        roughly that concession, plus roughly half of its own instantaneous push (the same triangular
+        "walking the book" approximation used elsewhere in this curriculum for a linear-shaped book):</p>
+        <div class="tl-math">\[ \text{cost of trading } dx \text{ at } t \ \approx\ dx\left(D_{t^-} + \tfrac12\kappa\,dx\right) \]</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>D_t</code><span>the "leftover push" your own trading has left in the book right now</span></div>
+    <div class="tl-eq-chip c2"><code>-ρD_t dt</code><span>continuous decay back toward zero — the book healing itself</span></div>
+    <div class="tl-eq-chip c3"><code>κ dx</code><span>an instant jump up, the moment a new trade lands</span></div>
+    <div class="tl-eq-chip c4"><code>D_{t⁻} + ½κdx</code><span>what a marginal unit of the current trade actually pays</span></div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Two rules, and that's the whole engine. Rule one: if nobody's trading, the leftover push from the last trade shrinks smoothly over time, like a ripple flattening out. Rule two: the instant a new trade happens, the push jumps back up, right on top of whatever ripple hadn't flattened out yet. Everything this lesson says about why block trades happen comes from just those two rules working together.</p>
+  </div>
+
+  <p>
+    Three impact models, one axis to compare them on: does the impact you create have a memory, and if so,
+    how long does it last?
+  </p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">📈</div>
+      <h4>Kyle (1985) — permanent, no decay at all</h4>
+      <p>
+        \(\Delta p = \lambda Q\): a linear, information-driven repricing that never fades, because it isn't
+        a liquidity-supply effect in the first place — it's the market rationally updating its belief about
+        fundamental value because your trade revealed something. There's nothing to decay back from; the
+        new belief simply persists.
+      </p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">⚡</div>
+      <h4>Almgren-Chriss's temporary impact — memoryless, instant reversion</h4>
+      <p>
+        Cost \(\tfrac12\eta\dot x(t)^2\) at each instant, a pure function of the current trading rate with no
+        separate state variable behind it. It reverts as soon as the rate drops, with no notion of "how
+        fast" — the model has no resilience parameter because it doesn't need one; recovery isn't gradual,
+        it's built in as immediate.
+      </p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🌊</div>
+      <h4>Obizhaeva-Wang's transient impact — a genuine half-life</h4>
+      <p>
+        \(D_t\) is a real state variable with its own dynamics: it jumps up at each trade and decays
+        continuously at rate \(\rho\) in between. A trade a few minutes ago is still partially displacing
+        the book right now, unless \(\rho\) is large enough (or enough time has passed) for it to have
+        mostly washed out. This is the one genuinely new ingredient relative to both of the other two.
+      </p>
+    </div>
+  </div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Repeated trades, decaying between them — drag resilience ρ</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Chart with x-axis time and y-axis price impact. Five equally-spaced trades each add a jump to the impact level, which decays exponentially between trades. At low resilience the decayed level barely drops before the next trade, so impact ratchets up almost like a permanent effect. At high resilience the impact nearly fully decays back to zero between trades, so each trade looks close to an isolated spike.">
+      <line x1="55" y1="255" x2="610" y2="255" style="stroke:var(--text3);stroke-width:1"/>
+      <line x1="55" y1="255" x2="55" y2="30" style="stroke:var(--text3);stroke-width:1"/>
+      <text x="16" y="145" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)" transform="rotate(-90 16 145)">Impact D(t)</text>
+      <text x="610" y="275" text-anchor="end" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)">Time (5 trades, then a quiet tail) &rarr;</text>
+      <path id="ow-decay-path" style="fill:none;stroke:var(--purple);stroke-width:2.5" d="M55,255 L610,255"/>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Resilience ρ</span><span class="tl-live" id="ow-rho-val">ρ = 2.00</span></div>
+        <input type="range" id="ow-rho-slider" min="0" max="80" step="1" value="20">
+        <div class="tl-hint">Drag left toward ρ = 0 (a book that barely heals — impact stacks up trade after trade, starting to resemble a permanent effect) or right toward high ρ (a fast-healing book — each trade's push nearly vanishes before the next one lands).</div>
+      </div>
+    </div>
+    <div class="tl-readout">Impact half-life ≈ <b id="ow-halflife-val">0.35</b> time units (ln(2)/ρ) — <span id="ow-halflife-note"></span></div>
+    <div class="tl-chart-caption">Five unit-sized trades land at evenly spaced instants; the curve is the exact decay-plus-jump process from Step 1 and Step 2 above, not a hand-drawn approximation. Illustrative units, chosen to make the shape clear.</div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>Why the optimal schedule isn't smooth</h2>
+  <p>
+    Almgren-Chriss's optimal trajectory can be a straight line (risk-neutral) or a smoothly front-loaded curve
+    (risk-averse), but it's always <em>smooth</em> — no sudden jumps in trading rate anywhere in the interior.
+    That falls straight out of the memoryless assumption above: since impact cost only depends on the current
+    rate, and rate enters the cost quadratically, there's never a reason to trade in an abrupt lump rather
+    than spreading the same size out slightly, since a lump costs disproportionately more per the convex
+    \(\dot x^2\) penalty with nothing to offset it. Once impact has real memory, that logic breaks, and it
+    breaks specifically at the two ends of the trading horizon.
+  </p>
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>Trading at the boundaries — cheap, in a specific sense</h4>
+      <p>
+        At \(t=0\), \(D_0=0\) by construction — there's no prior impact to fight, so a large trade right at
+        the start pushes into a completely rested book. At \(t=T\), the opposite argument applies: whatever
+        impact this last trade leaves behind will never have to be paid for again, because no further trading
+        from this order is coming to collide with it. Neither boundary trade has to "pay to restart" against
+        leftover displacement from its own earlier activity — there either isn't any yet, or there's no future
+        trade left to be hurt by it.
+      </p>
+    </div>
+    <div class="tl-compare-card amber">
+      <h4>Trading in the middle — you fight your own footprint</h4>
+      <p>
+        A trade placed in the interior of the horizon has to push through whatever \(D_{t^-}\) is left over
+        from the order's own earlier trading — the book hasn't fully healed yet. Worse, the impact that
+        <em>this</em> trade adds will itself partially decay away before the order finishes, meaning part of
+        the "cost" paid to move the price just evaporates unused rather than helping execute the next chunk
+        any more cheaply. Money spent pushing the price mid-horizon is money partly wasted on a push that
+        heals before it can be leveraged again.
+      </p>
+    </div>
+  </div>
+  <p>
+    That asymmetry — boundaries are structurally cheaper to push hard, the interior structurally isn't — is
+    the entire intuitive content of Obizhaeva &amp; Wang's famous result: the cost-minimizing schedule places
+    discrete block trades at \(t=0\) and \(t=T\), with a lighter, smoother trading rate filling in the
+    interior between them. It is not, however, an argument for pushing the boundary blocks to their logical
+    extreme — the worked example below shows exactly why not.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Stepping in fresh sand at the very start of your walk is easy — nothing's been disturbed yet. Stepping exactly where you'll never walk again, right at the very end, is also fine — you'll never have to step there again while it's still soft. But stepping in the same soft patch in the middle of your walk, over and over, means every step after the first one sinks in deeper than it needs to, and some of that sinking heals back before you even get to use the flattened spot again. Front and back are the two places where a big step doesn't cost you anything extra later.</p>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Comparing three schedules under a toy resilience rate</h3>
+    <p>
+      Sell \(Q=100\) units over a normalized horizon \(T=1\), in 5 evenly-spaced trades at
+      \(t=0,\,0.25,\,0.5,\,0.75,\,1.0\), with \(\rho=2\) and \(\kappa=0.01\). Cost of each trade uses the
+      formula from Step 3 above: \(\text{cost}_i = q_i D_{t_i^-} + \tfrac12\kappa q_i^2\), with \(D\) decaying
+      between trades and jumping by \(\kappa q_i\) right after each one. This is a simplified numerical
+      illustration of the mechanism, not the paper's own optimized solution.
+    </p>
+    <div class="tl-table-wrap"><table class="tl-tbl">
+      <tr><th>Schedule</th><th>Trade sizes (t = 0, 0.25, 0.5, 0.75, 1.0)</th><th>Self-impact cost</th><th>Residual (decay-fighting) cost</th><th>Total cost</th></tr>
+      <tr><td>A — one block</td><td>100, 0, 0, 0, 0</td><td class="tl-num">50.00</td><td class="tl-num">0.00</td><td class="tl-num">50.00</td></tr>
+      <tr><td>B — even split</td><td>20, 20, 20, 20, 20</td><td class="tl-num">10.00</td><td class="tl-num">16.45</td><td class="tl-num">26.45</td></tr>
+      <tr><td>C — front + back loaded</td><td>40, 6.67, 6.67, 6.67, 40</td><td class="tl-num">16.67</td><td class="tl-num">9.25</td><td class="tl-num">25.92</td></tr>
+    </table></div>
+    <p>
+      All-at-once (A) is worst by far — every unit pays the full quadratic self-impact cost of a 100-unit
+      trade at once, with no chance for anything to decay first. Front-and-back-loading (C) beats even
+      splitting (B), but only by about <strong>2%</strong> (25.92 vs. 26.45) — not the dramatic win the
+      "block trades" headline might suggest. The breakdown columns show why: C's boundary trades are bigger,
+      so their own instantaneous self-impact cost is higher (16.67 vs. B's 10.00) — but that's more than made
+      up for by a much lower residual cost from fighting leftover displacement (9.25 vs. B's 16.45). The two
+      effects mostly offset; a small net win survives.
+    </p>
+    <div class="tl-hint">
+      Pushing the idea to its extreme makes the trade-off obvious: trading the entire 100 units in exactly
+      two 50-unit blocks at \(t=0\) and \(t=1\), with <em>nothing at all</em> in between, costs
+      <strong>≈28.38</strong> — worse than either B or C above, because a block that large pays so much extra
+      self-impact cost that it swamps the decay savings. "Front-and-back-load" does not mean "as extreme as
+      possible" — finding the genuinely cost-minimizing block size and interior rate is exactly the
+      optimization the original paper solves, and this toy comparison only samples a few illustrative
+      candidates around it.
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Compare even-split vs. front-and-back-loaded cost, live</h3>
+    <p>
+      Starts on the worked example's own numbers. The front-and-back schedule puts 40% of \(Q\) at the very
+      first and very last of \(N\) evenly-spaced trades, spreading the remaining 20% evenly across whatever
+      trades are left in the middle (with \(N\le2\) there is no middle, so both schedules coincide). Change
+      any input and both totals recompute from the same cost formula used above.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Total quantity Q</span></div>
+        <input type="number" id="ow-calc-Q" class="tl-scratch-input" value="100" step="10" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Resilience ρ</span></div>
+        <input type="number" id="ow-calc-rho" class="tl-scratch-input" value="2" step="0.1" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Impact coefficient κ</span></div>
+        <input type="number" id="ow-calc-kappa" class="tl-scratch-input" value="0.01" step="0.001" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Number of trades N</span></div>
+        <input type="number" id="ow-calc-N" class="tl-scratch-input" value="5" step="1" min="1" max="50">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Even split total cost = <b id="ow-calc-even">26.45</b>&emsp;Front+back total cost = <b id="ow-calc-fb">25.92</b>
+    </div>
+    <div class="tl-readout">
+      <span id="ow-calc-verdict">Front+back-loading is cheaper here by about <b>1.98%</b>.</span>
+    </div>
+    <div class="tl-hint" id="ow-calc-hint">Honesty note: the 40/40/20 split is a fixed, illustrative heuristic, not the paper's actual optimized block size — for some parameter combinations (very low ρ, very small N) this simple split will barely beat, or even lose to, an even split. That's expected: finding the true cost-minimizing schedule requires solving the real optimization, which this calculator does not attempt.</div>
+    <button type="button" id="ow-calc-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
+  <div class="tl-solid blue">
+    <strong>The same impact-vs-risk trade-off as Almgren-Chriss, wearing a different shape.</strong> Trading
+    faster still raises impact cost (here, mostly by adding to \(D_t\) before it can decay); trading slower
+    still raises exposure to ordinary price volatility over a longer window (timing risk, unchanged from the
+    Almgren-Chriss framing). Nothing about resilience removes that trade-off — a fully worked-out
+    Obizhaeva-Wang execution problem still needs a volatility/risk-aversion term layered on top of the impact
+    side to pin down exactly how much to front-load versus how much to leave for the smoother interior. What
+    resilience changes is the <em>shape</em> the impact side of that trade-off wants: continuous and smooth
+    under Almgren-Chriss's memoryless assumption, boundary-loaded under this one.
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Very few desks solve a full Obizhaeva-Wang-style optimization by hand for a live order — but the
+    resilience framing shapes real execution-algorithm design in a specific, recognizable way: it's the
+    formal justification behind why adaptive execution algorithms sometimes deliberately "wait out" a period
+    of unusually thin depth rather than trading straight through it at a constant rate, and why some
+    scheduling logic explicitly avoids clustering large child orders too close together in time even when
+    the target participation rate would otherwise allow it — both are informal, practitioner-level echoes of
+    "don't trade into your own still-decaying impact."
+  </p>
+  <div class="tl-box repo">
+    <div class="tl-icon-badge green">🗂️</div>
+    <div class="tl-box-label">What's actually verified against this repo's code</div>
+    <h3>No resilience-based transient-impact model exists anywhere in this codebase</h3>
+    <p>
+      A direct grep for <code>resilien</code>, <code>transient.impact</code>, and <code>Obizhaeva</code>
+      (case-insensitive) across every <code>.js</code> and <code>.py</code> file in this repo turns up
+      exactly one family of hits, all in <code>bot/main.py</code>: a <code>_ResilientHandlerMixin</code>
+      class and its two subclasses, <code>ResilientStreamHandler</code> and
+      <code>ResilientFileHandler</code>. These are logging-infrastructure classes — handlers built to keep
+      writing log lines without crashing if a stream or file write briefly fails — and have nothing
+      whatsoever to do with market microstructure, price impact, or order-book dynamics; "resilient" there
+      means "doesn't crash," not "how fast the book heals." Nothing in this repo models a decaying price-impact
+      state variable, an exponential resilience rate, or a block-trade optimal execution schedule of any kind.
+      The sibling <a href="market-impact-almgren-chriss.html">Market Impact Models &amp; Almgren-Chriss</a>
+      lesson's own grounding note is consistent with this: that lesson is also flagged CONCEPT, not built or
+      tested anywhere in this repo either. This repo's actual execution-cost machinery, where it exists at
+      all elsewhere in this curriculum, does not implement either family of impact model.
+    </p>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>Two desks, one large FX order, two very different assumptions about how the book heals</h3>
+    <p>
+      A desk needs to work a large EUR/USD order over the next hour. Desk A models temporary impact the
+      Almgren-Chriss way: a rate-dependent cost with no notion of "how fast the book heals," so its optimal
+      schedule — whatever shape risk aversion gives it — is smooth throughout, with no structural reason to
+      ever place a sudden large child order mid-window rather than a slightly smaller one spread over a
+      few extra seconds. Desk B assumes something closer to Obizhaeva-Wang: liquidity providers rebuild
+      depth at some finite, estimated resilience rate, so Desk B's algorithm is willing to front-load a
+      meaningfully larger opening child order (the book is fully rested at the start), trade lighter through
+      the middle of the hour specifically to avoid pushing into its own still-recovering depth, and place a
+      similarly larger closing child order right before the deadline, since nothing will trade against its
+      leftover displacement afterward.
+    </p>
+    <p>
+      Both desks are internally consistent with their own stated model — the disagreement is entirely about
+      which assumption (memoryless instant recovery, or gradual resilience at some rate \(\rho\)) better
+      describes how FX liquidity in this specific pair, at this specific time of day, actually behaves. That
+      is an empirical question about the book's real resilience rate, not a question either model can settle
+      on its own — and it's exactly the kind of parameter the next pitfall below flags as genuinely hard to
+      pin down.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where this model is a stylized approximation, not a photograph of the book</h3>
+    <p>
+      <strong>Linear impact and pure exponential resilience are both simplifications.</strong> The model
+      assumes each unit traded adds exactly \(\kappa\) to \(D_t\) regardless of how much has already been
+      traded (no square-root-law-style concavity, unlike the empirical evidence the Almgren-Chriss lesson's
+      own square-root section documents), and assumes the book heals along a single clean exponential curve
+      with one resilience rate. Real order books plausibly recover along a mix of timescales — a fast
+      initial partial bounce followed by a slower drift — that a single \(\rho\) cannot capture.
+    </p>
+    <p>
+      <strong>The resilience rate \(\rho\) is genuinely hard to estimate, and it moves around.</strong> Unlike
+      a volatility estimate, which has decades of standard estimation machinery behind it, \(\rho\) has to be
+      backed out from how quickly observed post-trade price reversals actually happen — a noisier,
+      less-standardized exercise. It also plausibly varies intraday (thinner around the open and close, or
+      around scheduled data releases) and by volatility regime (a stressed, fast market likely heals slower
+      than a calm one), meaning a single calibrated \(\rho\) is, at best, a time-varying quantity being
+      treated as fixed for tractability.
+    </p>
+    <p>
+      <strong>This is not the invariance framework, and doesn't inherit its insight.</strong> Nothing here
+      says anything about how the resilience rate \(\rho\), the impact coefficient \(\kappa\), or the optimal
+      block sizes should scale from one asset to another, or across volatility regimes — that cross-asset
+      comparability question is exactly what the sibling
+      <a href="institutional-kyle-obizhaeva-invariance.html">Kyle-Obizhaeva Market Microstructure
+      Invariance</a> lesson addresses, from an entirely different paper. A calibrated \(\rho\) for one FX
+      pair says nothing, on its own, about the right \(\rho\) for a different pair or a different regime —
+      that would require exactly the kind of scaling argument this lesson does not make.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Impact here has a genuine half-life.</strong> Between trades, \(dD_t=-\rho D_t\,dt\); at each trade, \(D_t\) jumps up by \(\kappa\,dx\). That decay-plus-jump process is the entire mechanism — the exact optimal-trajectory algebra it implies belongs to the original paper.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Three impact models, one axis: does the impact decay, and how?</strong> Kyle — permanent, no decay. Almgren-Chriss's temporary impact — memoryless, instant reversion, no resilience parameter at all. Obizhaeva-Wang — genuine finite-speed resilience.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The optimal schedule is boundary-loaded, not smooth</strong> — because trades at t=0 and t=T don't have to fight leftover impact the way an interior trade does — but the worked example's ~2% edge over even splitting shows this is a real, modest effect, not a dramatic free lunch.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>More front/back-loading isn't automatically better.</strong> Pushing the boundary blocks to their extreme (two blocks, nothing in between) cost <em>more</em> in the worked example than a moderate split — bigger blocks pay more instantaneous self-impact, which can outweigh the decay savings.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Linear impact, pure exponential resilience, and a hard-to-estimate, regime-varying \(\rho\)</strong> are the model's real limitations — a stylized approximation of book dynamics, not a literal description of one.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>This is not the Kyle-Obizhaeva Invariance framework.</strong> Same coauthor, different paper, different question — nothing here says how \(\rho\) or \(\kappa\) should scale across assets or regimes.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Write the two rules that define the Obizhaeva-Wang impact state D_t.</summary>
+    <div class="tl-answer">
+      Between trades, \(D_t\) decays continuously toward zero: \(dD_t = -\rho D_t\,dt\), where \(\rho\) is the
+      resilience rate. At the instant of a trade of size \(dx\), \(D_t\) jumps up immediately:
+      \(D_{t^+} = D_{t^-} + \kappa\,dx\), where \(\kappa\) is the instantaneous impact coefficient. Together,
+      continuous decay between trades and an instant jump at each trade are the entire mechanism.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. How does Obizhaeva-Wang's transient impact differ from Kyle's impact, specifically in terms of decay?</summary>
+    <div class="tl-answer">
+      Kyle's impact is permanent — it never decays at all, because it isn't a liquidity-supply effect; it's
+      an information-driven repricing that the market has no reason to walk back once it's happened.
+      Obizhaeva-Wang's transient impact is a mechanical, liquidity-consumption effect with no informational
+      content of its own, and it decays continuously back toward zero at rate \(\rho\) whenever no new trade
+      is adding to it. "Transient" versus "permanent" is precisely the decays-eventually versus
+      never-decays-at-all distinction.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. How does Obizhaeva-Wang's transient impact differ from Almgren-Chriss's temporary impact, given that both are said to "revert"?</summary>
+    <div class="tl-answer">
+      Almgren-Chriss's temporary impact is memoryless: it is a pure function of the current instantaneous
+      trading rate, \(\tfrac12\eta\dot x(t)^2\), with no separate state variable behind it, and it reverts
+      essentially the instant the trading rate drops — the model has no parameter for how fast it fades,
+      because it doesn't model gradual fading at all. Obizhaeva-Wang's transient impact is a genuine state
+      variable, \(D_t\), with its own dynamics and a real half-life set by \(\rho\); a trade from a few
+      minutes ago can still be partially displacing the book when a new trade arrives, which is impossible
+      by construction in the memoryless Almgren-Chriss framework.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Why, intuitively, are the two boundaries of the trading horizon (t=0 and t=T) structurally cheaper places to trade a large block than the interior?</summary>
+    <div class="tl-answer">
+      At \(t=0\), \(D_0=0\) by construction, so a large trade there pushes into a fully rested book with no
+      leftover impact to fight. At \(t=T\), whatever impact the final trade leaves behind never has to be
+      paid for again, because no further trading from this order will collide with it. An interior trade has
+      neither advantage: it has to push through leftover displacement from the order's own earlier trading,
+      and part of the price concession it pays will itself decay away, unused, before the order finishes —
+      money spent moving the price that doesn't help execute the rest of the order any more cheaply.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. In the worked example, why did trading the entire 100 units in exactly two 50-unit blocks (nothing in between) cost more than the moderate front-and-back split (40/6.67/6.67/6.67/40)?</summary>
+    <div class="tl-answer">
+      Both schedules avoid the interior-trading penalty in a similar boundary-loaded way, but the two-block
+      version's boundary trades are much larger — 50 units each versus 40. Since the instantaneous self-impact
+      cost of a trade grows with the <em>square</em> of its own size (\(\tfrac12\kappa q^2\)), the two-block
+      schedule pays substantially more in self-impact cost than it saves in reduced residual/decay-fighting
+      cost, and ends up more expensive overall (≈28.38) than the moderate split (≈25.92). Bigger boundary
+      blocks are not automatically better — the genuinely cost-minimizing block size balances both effects,
+      which is exactly what the real optimization (not this toy comparison) solves for.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. True or false: the Kyle-Obizhaeva Market Microstructure Invariance hypothesis and the Obizhaeva-Wang transient impact model in this lesson are the same idea from two papers with the same title.</summary>
+    <div class="tl-answer">
+      False. They share one coauthor (Anna Obizhaeva) but are two distinct papers answering two distinct
+      questions. The invariance hypothesis (with Kyle) is about how the scale of trading activity — bet
+      sizes, trade counts, volume — compares across different assets and regimes. The transient-impact model
+      in this lesson (with Wang) is about how a single order's own price impact decays over the course of its
+      own execution. Neither one says anything about the other's specific question, and this lesson does not
+      inherit the invariance framework's cross-asset scaling insight.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Anna A. Obizhaeva &amp; Jiang Wang, <em>"Optimal Trading Strategy and Supply/Demand Dynamics,"</em> Journal of Financial Markets, 16(1), 2013 — the original derivation of linear transient impact with exponential resilience, and the block-trade-plus-continuous-interior optimal execution result this lesson is built around; a widely circulated working-paper version predates the 2013 print date by several years.</li>
+    <li>Robert Almgren &amp; Neil Chriss, <em>"Optimal Execution of Portfolio Transactions,"</em> Journal of Risk, 3(2), 2000/2001 — the temporary-plus-permanent, memoryless-impact framework this lesson contrasts against throughout; the full derivation lives in the sibling Market Impact Models &amp; Almgren-Chriss lesson.</li>
+    <li>Albert S. Kyle, <em>"Continuous Auctions and Insider Trading,"</em> Econometrica, 53(6), 1985 — the original permanent, linear, information-driven impact model contrasted against here and in the Almgren-Chriss lesson.</li>
+    <li>Aurélien Alfonsi, Antje Fruth &amp; Alexander Schied, <em>"Optimal Execution Strategies in Limit Order Books with General Shape Functions,"</em> Quantitative Finance, 2010 — a widely cited extension generalizing the Obizhaeva-Wang linear-impact, single-exponential-resilience assumptions to a broader class of order-book shapes and resilience functions.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="institutional-kyle-obizhaeva-invariance.html">← Kyle-Obizhaeva Market Microstructure Invariance</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="institutional-market-depth-slope.html">Market Depth, Order-Book Slope &amp; Depth Imbalance →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+<script>
+(function(){
+  // Interactive decay chart — drag resilience rho, redraw the sawtooth.
+  var slider = document.getElementById('ow-rho-slider');
+  if (!slider) return;
+  var rhoVal = document.getElementById('ow-rho-val');
+  var path = document.getElementById('ow-decay-path');
+  var halflifeVal = document.getElementById('ow-halflife-val');
+  var halflifeNote = document.getElementById('ow-halflife-note');
+
+  var JUMP_TIMES = [0, 0.2, 0.4, 0.6, 0.8];
+  var T_END = 1.3;
+  var X0 = 55, X1 = 610, Y0 = 255, Y1 = 30; // pixel mapping
+  var D_AXIS_MAX = 5.3; // headroom for rho -> 0 (5 unit jumps, no decay)
+
+  function jumpPlus(rho){
+    var plus = [];
+    var prev = 0;
+    for (var i = 0; i < JUMP_TIMES.length; i++){
+      var decayed = i === 0 ? 0 : prev * Math.exp(-rho * (JUMP_TIMES[i] - JUMP_TIMES[i - 1]));
+      var val = decayed + 1; // unit jump each trade
+      plus.push(val);
+      prev = val;
+    }
+    return plus;
+  }
+
+  function xPx(t){ return X0 + (t / T_END) * (X1 - X0); }
+  function yPx(d){ return Y0 - Math.min(d / D_AXIS_MAX, 1) * (Y0 - Y1); }
+
+  function buildPath(rho){
+    var plus = jumpPlus(rho);
+    var pts = [];
+    for (var i = 0; i < JUMP_TIMES.length; i++){
+      var t0 = JUMP_TIMES[i];
+      var t1 = (i + 1 < JUMP_TIMES.length) ? JUMP_TIMES[i + 1] : T_END;
+      var steps = 16;
+      for (var s = 0; s <= steps; s++){
+        var t = t0 + (t1 - t0) * (s / steps);
+        var d = plus[i] * Math.exp(-rho * (t - t0));
+        pts.push([t, d]);
+      }
+    }
+    var d = '';
+    pts.forEach(function(p, idx){
+      d += (idx === 0 ? 'M' : 'L') + xPx(p[0]).toFixed(2) + ',' + yPx(p[1]).toFixed(2) + ' ';
+    });
+    return d.trim();
+  }
+
+  function update(){
+    var rho = parseInt(slider.value, 10) / 10; // 0.0 .. 8.0
+    rhoVal.textContent = 'ρ = ' + rho.toFixed(2);
+    path.setAttribute('d', buildPath(rho));
+    if (rho < 1e-6){
+      halflifeVal.textContent = '∞';
+      halflifeNote.textContent = 'impact never decays at rho = 0 — it behaves like a permanent effect';
+    } else {
+      halflifeVal.textContent = (Math.LN2 / rho).toFixed(2);
+      halflifeNote.textContent = 'time for a given push to decay to half its size';
+    }
+  }
+
+  slider.addEventListener('input', update);
+  update();
+})();
+</script>
+<script>
+(function(){
+  // Try-it-yourself: even split vs. front-and-back-loaded total impact cost.
+  var Qin = document.getElementById('ow-calc-Q');
+  if (!Qin) return;
+  var rhoIn = document.getElementById('ow-calc-rho');
+  var kappaIn = document.getElementById('ow-calc-kappa');
+  var Nin = document.getElementById('ow-calc-N');
+  var evenOut = document.getElementById('ow-calc-even');
+  var fbOut = document.getElementById('ow-calc-fb');
+  var verdictOut = document.getElementById('ow-calc-verdict');
+  var resetBtn = document.getElementById('ow-calc-reset');
+  var DEFAULTS = { Q: 100, rho: 2, kappa: 0.01, N: 5 };
+
+  function tradeTimes(N){
+    var times = [];
+    for (var i = 0; i < N; i++) times.push(N === 1 ? 0 : i / (N - 1));
+    return times;
+  }
+
+  function totalCost(qArr, tArr, rho, kappa){
+    var D = 0;
+    var prevT = null;
+    var cost = 0;
+    for (var i = 0; i < qArr.length; i++){
+      if (prevT !== null) D = D * Math.exp(-rho * (tArr[i] - prevT));
+      cost += qArr[i] * D + 0.5 * kappa * qArr[i] * qArr[i];
+      D = D + kappa * qArr[i];
+      prevT = tArr[i];
+    }
+    return cost;
+  }
+
+  function evenSchedule(Q, N){
+    var q = [];
+    for (var i = 0; i < N; i++) q.push(Q / N);
+    return q;
+  }
+
+  function frontBackSchedule(Q, N){
+    if (N <= 2) return evenSchedule(Q, N);
+    var q = new Array(N).fill(0);
+    var front = 0.4 * Q, back = 0.4 * Q, mid = 0.2 * Q / (N - 2);
+    q[0] = front;
+    q[N - 1] = back;
+    for (var i = 1; i < N - 1; i++) q[i] = mid;
+    return q;
+  }
+
+  function recompute(){
+    var Q = parseFloat(Qin.value);
+    var rho = parseFloat(rhoIn.value);
+    var kappa = parseFloat(kappaIn.value);
+    var N = parseInt(Nin.value, 10);
+
+    if (![Q, rho, kappa, N].every(isFinite) || Q <= 0 || rho < 0 || kappa < 0 || N < 1 || N > 50 || N !== Math.round(N)) {
+      evenOut.textContent = '—';
+      fbOut.textContent = '—';
+      verdictOut.textContent = 'Enter a positive Q, non-negative ρ and κ, and an integer N between 1 and 50.';
+      return;
+    }
+
+    var t = tradeTimes(N);
+    var costEven = totalCost(evenSchedule(Q, N), t, rho, kappa);
+    var costFB = totalCost(frontBackSchedule(Q, N), t, rho, kappa);
+
+    evenOut.textContent = costEven.toFixed(2);
+    fbOut.textContent = costFB.toFixed(2);
+
+    if (costEven <= 0) {
+      verdictOut.textContent = 'Total cost rounded to zero — try a larger Q or κ.';
+      return;
+    }
+    var savingsPct = ((costEven - costFB) / costEven) * 100;
+    if (savingsPct > 0.005) {
+      verdictOut.innerHTML = 'Front+back-loading is cheaper here by about <b>' + savingsPct.toFixed(2) + '%</b>.';
+    } else if (savingsPct < -0.005) {
+      verdictOut.innerHTML = 'Under these parameters, this simple front+back split is actually <b>' + Math.abs(savingsPct).toFixed(2) + '% more expensive</b> than an even split — try raising ρ or reducing N to see the resilience effect more clearly.';
+    } else {
+      verdictOut.textContent = 'Both schedules cost about the same here — with N ≤ 2 they are mathematically identical.';
+    }
+  }
+
+  [Qin, rhoIn, kappaIn, Nin].forEach(function(el){ el.addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    Qin.value = DEFAULTS.Q; rhoIn.value = DEFAULTS.rho; kappaIn.value = DEFAULTS.kappa; Nin.value = DEFAULTS.N;
+    recompute();
+  });
+  recompute();
+})();
+</script>
+</body>
+</html>
