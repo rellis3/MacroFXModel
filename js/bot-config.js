@@ -3913,16 +3913,21 @@ function resetVb2Defaults() {
   // max_lot/broker_symbols/Telegram config with no warning beyond the
   // easy-to-miss "click Save to apply" status text.
   if (!confirm('Reset ALL Vote Atlas config fields (risk sizing, broker symbols, Telegram, everything) back to defaults? This does not save until you click Save Config, but will overwrite anything currently loaded once you do.')) return;
-  // CORRECTED 2026-09-14 — a real per-pair max_spread_pips dict got silently
-  // flattened to VB2_DEFAULTS' flat scalar by this exact `{...VB2_DEFAULTS}`
-  // replace, then persisted to the LIVE config on Save, blocking real
-  // EURCHF trades at a wrong 1.0p cap. renderVb2Form/readVb2Form were
-  // already hardened against this same failure mode on 2026-09-01 (twice
-  // that day) — this reset path was the one spot that still bypassed it.
-  // Preserve a real dict across a reset the same way those two already do;
-  // only a scalar/missing value gets replaced by the flat default.
+  // GENERALIZED 2026-09-14 — the 2026-09-14-earlier fix only special-cased
+  // max_spread_pips, but the real bug is broader: ANY field present in the
+  // currently-loaded config that this UI has NO input for at all (not in
+  // VB2_DEFAULTS) was silently DROPPED by the old `_vb2Cfg = {...VB2_DEFAULTS}`
+  // replace -- not reset to a default, just gone, since VB2_DEFAULTS never
+  // had the key. Found a second time via pylego's RiskGuard fields
+  // (cooldown/ddlimit/monthlydd/lockout — this UI has never had controls
+  // for them) vanishing from the live config after a reset+save, the exact
+  // same failure mode as max_spread_pips. Preserve EVERY field this UI
+  // doesn't own across a reset; only fields VB2_DEFAULTS actually manages
+  // get replaced.
+  const untracked = {};
+  for (const k of Object.keys(_vb2Cfg)) if (!(k in VB2_DEFAULTS)) untracked[k] = _vb2Cfg[k];
   const preservedSpread = (_vb2Cfg.max_spread_pips && typeof _vb2Cfg.max_spread_pips === 'object') ? _vb2Cfg.max_spread_pips : undefined;
-  _vb2Cfg = { ...VB2_DEFAULTS };
+  _vb2Cfg = { ...VB2_DEFAULTS, ...untracked };
   if (preservedSpread) _vb2Cfg.max_spread_pips = preservedSpread;
   renderVb2Form();
   const el = document.getElementById('vb2SaveStatus');
@@ -4660,6 +4665,7 @@ async function loadFaLiveStatus() {
   loadFaDecisionLog();
   loadFaFrequencyCheck();
   loadFaEntrySlippage();
+  initFaRefreshResume();
 }
 
 // Frozen reference: the offline backtest's OWN daily trade-count
@@ -4974,46 +4980,134 @@ window.loadFaEntrySlippage = loadFaEntrySlippage;
 // 2026-09-08 incident) rather than erroring, so there's no reliable way to
 // detect "wrong environment" from the response alone; the log lines
 // (streamed below) show real gap-filled bar counts when it's working.
-async function _faPollJob(base, jobId, onLog) {
+//
+// The regeneration ITSELF runs server-side as a detached async IIFE
+// (asiaFibAtlasRoutes.js's startRunJob), tracked in an in-memory `jobs` Map
+// purged after 2h — it keeps running fine with this tab closed. What used
+// to die the moment the tab backgrounded (2026-09-13, direct owner report —
+// "as soon as I leave the page the pull fails but I can't sit staring at
+// it") was purely the CLIENT poll: one failed fetch (a mobile browser
+// throttling/dropping network on a backgrounded tab, a screen lock, a blip)
+// threw straight out of the for(;;) loop with zero retry, and the jobId was
+// never saved anywhere, so reopening the tab had no way to reconnect to a
+// job that might still be running. Two fixes: _faPollJob now retries a
+// transient failure with backoff instead of giving up on the first one, and
+// the jobIds are persisted to localStorage so loadFaLiveStatus's own
+// initFaRefreshResume() (called on every tab load/switch) can silently pick
+// a still-running job back up without the user re-clicking anything.
+const FA_REFRESH_LS_KEY = 'fa_refresh_job_v1';
+function _faSaveRefreshJob(state) { try { localStorage.setItem(FA_REFRESH_LS_KEY, JSON.stringify(state)); } catch {} }
+function _faLoadRefreshJob() { try { return JSON.parse(localStorage.getItem(FA_REFRESH_LS_KEY) || 'null'); } catch { return null; } }
+function _faClearRefreshJob() { try { localStorage.removeItem(FA_REFRESH_LS_KEY); } catch {} }
+
+async function _faPollJob(base, jobId, onLog, { maxConsecutiveFailures = 30, retryDelayMs = 5000 } = {}) {
+  let failures = 0;
   for (;;) {
-    const r = await fetch(`${base}/status/${jobId}`);
-    const j = await r.json();
-    if (!j.ok) throw new Error(j.error || 'status check failed');
+    let j;
+    try {
+      const r = await fetch(`${base}/status/${jobId}`);
+      j = await r.json();
+    } catch (e) {
+      // Network-level failure (tab backgrounded, connection blip) -- NOT
+      // the same as the server telling us something. Retry with backoff
+      // instead of treating one dropped fetch as the job having failed.
+      failures++;
+      if (failures > maxConsecutiveFailures) throw new Error(`lost connection polling ${jobId} after ${failures} attempts: ${e.message}`);
+      await new Promise(res => setTimeout(res, retryDelayMs));
+      continue;
+    }
+    if (!j.ok) {
+      // A real "unknown jobId" response (job purged after 2h, or the server
+      // restarted and lost its in-memory jobs Map) is NOT transient --
+      // retrying it forever would just spin. Anything else, retry.
+      if (j.error === 'unknown jobId') throw new Error('unknown jobId — the job finished/expired server-side more than 2h ago, or the server restarted while this ran. Check the backtest page\'s own "generatedAt" to see if it actually caught up.');
+      failures++;
+      if (failures > maxConsecutiveFailures) throw new Error(j.error || 'status check failed');
+      await new Promise(res => setTimeout(res, retryDelayMs));
+      continue;
+    }
+    failures = 0;
     onLog(j.log || []);
     if (j.status === 'done' || j.status === 'error') return j;
     await new Promise(res => setTimeout(res, 3000));
   }
 }
+
+// Shared by both a fresh Regenerate click and a resumed-on-reload job --
+// same append/track/cleanup logic either way, only how the jobIds were
+// obtained differs.
+async function _faTrackRefreshJobs(asiaJobId, mondayJobId, pairs, { resumed = false } = {}) {
+  const statusEl = document.getElementById('faRefreshStatus');
+  if (statusEl) {
+    statusEl.style.display = 'block';
+    statusEl.textContent += resumed
+      ? `Reconnected to a regeneration already in progress for ${pairs.join(', ')} (started before this tab reloaded — the job itself never stopped) …\n`
+      : `Starting regeneration for ${pairs.join(', ')} (both ladders)…\n`;
+  }
+  const seenAsia = new Set(), seenMonday = new Set();
+  const append = (label, lines) => {
+    if (!statusEl) return;
+    for (const line of lines) {
+      const key = `${label}:${line}`;
+      const seen = label === 'asia' ? seenAsia : seenMonday;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      statusEl.textContent += `[${label}] ${line}\n`;
+      statusEl.scrollTop = statusEl.scrollHeight;
+    }
+  };
+  _faSaveRefreshJob({ asiaJobId, mondayJobId, pairs, startedAt: Date.now() });
+  try {
+    const [asiaResult, mondayResult] = await Promise.all([
+      _faPollJob('/api/asia-fib-atlas', asiaJobId, lines => append('asia', lines)),
+      _faPollJob('/api/monday-fib-atlas', mondayJobId, lines => append('monday', lines)),
+    ]);
+    if (statusEl) statusEl.textContent += `\nDone — asia: ${asiaResult.status}, monday: ${mondayResult.status}. Check the backtest page's "generatedAt"/last-trade-date to confirm it actually caught up (this sandbox-vs-Railway environment can't be distinguished from the response alone — see this function's own comment).`;
+    _faClearRefreshJob();
+  } catch (e) {
+    if (statusEl) statusEl.textContent += `\nFAILED: ${e.message}\n(the regeneration itself keeps running server-side regardless of this tab — reopening/switching back to this tab auto-resumes tracking it, up to the server's own 2h job-retention window.)`;
+    // Deliberately NOT clearing the saved jobIds here (unless the failure
+    // IS "unknown jobId", already the terminal case) -- a resume attempt on
+    // the next tab load gets its own fresh 30-retry budget, which is the
+    // actual fix for "sat backgrounded long enough to exhaust this run's own
+    // retries". Only genuinely stop tracking once the job is confirmed gone.
+    if (String(e.message).includes('unknown jobId')) _faClearRefreshJob();
+  }
+}
+
 async function faRunBacktestRefresh() {
   const input = document.getElementById('faRefreshPairs');
   const statusEl = document.getElementById('faRefreshStatus');
   const pairs = (input?.value || '').split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
   if (!pairs.length) { alert('Enter at least one pair'); return; }
-  statusEl.style.display = 'block';
-  statusEl.textContent = `Starting regeneration for ${pairs.join(', ')} (both ladders)…\n`;
-  const seenAsia = new Set(), seenMonday = new Set();
-  const append = (label, lines) => {
-    for (const line of lines) {
-      const key = `${label}:${line}`;
-      if ((label === 'asia' ? seenAsia : seenMonday).has(key)) continue;
-      (label === 'asia' ? seenAsia : seenMonday).add(key);
-      statusEl.textContent += `[${label}] ${line}\n`;
-      statusEl.scrollTop = statusEl.scrollHeight;
-    }
-  };
+  if (statusEl) { statusEl.style.display = 'block'; statusEl.textContent = ''; }
   try {
     const [asiaStart, mondayStart] = await Promise.all([
       fetch('/api/asia-fib-atlas/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ instruments: pairs }) }).then(r => r.json()),
       fetch('/api/monday-fib-atlas/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ instruments: pairs }) }).then(r => r.json()),
     ]);
     if (!asiaStart.ok || !mondayStart.ok) throw new Error('failed to start job(s)');
-    const [asiaResult, mondayResult] = await Promise.all([
-      _faPollJob('/api/asia-fib-atlas', asiaStart.jobId, lines => append('asia', lines)),
-      _faPollJob('/api/monday-fib-atlas', mondayStart.jobId, lines => append('monday', lines)),
-    ]);
-    statusEl.textContent += `\nDone — asia: ${asiaResult.status}, monday: ${mondayResult.status}. Check the backtest page's "generatedAt"/last-trade-date to confirm it actually caught up (this sandbox-vs-Railway environment can't be distinguished from the response alone — see this function's own comment).`;
+    await _faTrackRefreshJobs(asiaStart.jobId, mondayStart.jobId, pairs);
   } catch (e) {
-    statusEl.textContent += `\nFAILED: ${e.message}`;
+    if (statusEl) statusEl.textContent += `\nFAILED to start: ${e.message}`;
+  }
+}
+
+// Called from loadFaLiveStatus() on every tab load/switch (2026-09-13) --
+// silently reconnects to a still-running regeneration instead of leaving the
+// owner staring at a dead status box with no way back in. A no-op (does
+// nothing, no visible change) when there's no saved job or it's already
+// finished/cleared.
+let _faResumeInFlight = false;
+async function initFaRefreshResume() {
+  if (_faResumeInFlight) return;
+  const saved = _faLoadRefreshJob();
+  if (!saved?.asiaJobId || !saved?.mondayJobId) return;
+  _faResumeInFlight = true;
+  try {
+    await _faTrackRefreshJobs(saved.asiaJobId, saved.mondayJobId, saved.pairs || [], { resumed: true });
+  } finally {
+    _faResumeInFlight = false;
   }
 }
 
