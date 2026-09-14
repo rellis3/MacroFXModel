@@ -1,0 +1,371 @@
+{
+ "preregistered": {
+  "CROWD": 60,
+  "PAIN": 70,
+  "horizon": "24h",
+  "matching": "vol quintile x momentum tercile, different week",
+  "passBar": ">=3 of 4 instruments, 24h paired diff CI clear of 0"
+ },
+ "verdict": "NULL",
+ "passes": 0,
+ "cells": 4,
+ "results": {
+  "EUR_USD": {
+   "pair": "eurusd",
+   "days": 2364,
+   "coverage": {
+    "from": "2017-05-01",
+    "to": "2026-08-20"
+   },
+   "main": {
+    "nDays": 2363,
+    "nSetup": 638,
+    "nPaired": 638,
+    "setupRate": 0.27,
+    "h24": {
+     "meanDiffAtr": 0.017,
+     "t": 0.7,
+     "ci95": [
+      -0.033,
+      0.071
+     ],
+     "setupMean": 1.01,
+     "controlMean": 0.993,
+     "clear": "no"
+    },
+    "h5": {
+     "meanDiffAtr": 0.053,
+     "t": 1,
+     "n": 638
+    },
+    "exploratory_direction": {
+     "meanAgainstCrowdAtr": -0.034,
+     "n": 638,
+     "note": "not scored; would have to survive a momentum control on its own"
+    }
+   },
+   "r1_liveWindow": {
+    "nDays": 1280,
+    "nSetup": 480,
+    "nPaired": 480,
+    "setupRate": 0.375,
+    "h24": {
+     "meanDiffAtr": -0.008,
+     "t": -0.28,
+     "ci95": [
+      -0.076,
+      0.058
+     ],
+     "setupMean": 1.009,
+     "controlMean": 1.017,
+     "clear": "no"
+    },
+    "h5": {
+     "meanDiffAtr": 0.01,
+     "t": 0.16,
+     "n": 478
+    },
+    "exploratory_direction": {
+     "meanAgainstCrowdAtr": -0.025,
+     "n": 480,
+     "note": "not scored; would have to survive a momentum control on its own"
+    }
+   },
+   "r2_tighter": {
+    "nDays": 2363,
+    "nSetup": 0,
+    "nPaired": 0,
+    "setupRate": 0,
+    "h24": {
+     "meanDiffAtr": null,
+     "t": null,
+     "ci95": [
+      null,
+      null
+     ],
+     "setupMean": null,
+     "controlMean": null,
+     "clear": "no"
+    },
+    "h5": {
+     "meanDiffAtr": null,
+     "t": null,
+     "n": 0
+    },
+    "exploratory_direction": {
+     "meanAgainstCrowdAtr": null,
+     "n": 0,
+     "note": "not scored; would have to survive a momentum control on its own"
+    }
+   }
+  },
+  "XAU_USD": {
+   "pair": "gold",
+   "days": 2353,
+   "coverage": {
+    "from": "2017-05-01",
+    "to": "2026-08-20"
+   },
+   "main": {
+    "nDays": 2352,
+    "nSetup": 158,
+    "nPaired": 158,
+    "setupRate": 0.067,
+    "h24": {
+     "meanDiffAtr": 0.065,
+     "t": 1.47,
+     "ci95": [
+      -0.019,
+      0.143
+     ],
+     "setupMean": 1.03,
+     "controlMean": 0.965,
+     "clear": "no"
+    },
+    "h5": {
+     "meanDiffAtr": -0.164,
+     "t": -1.77,
+     "n": 158
+    },
+    "exploratory_direction": {
+     "meanAgainstCrowdAtr": 0.044,
+     "n": 158,
+     "note": "not scored; would have to survive a momentum control on its own"
+    }
+   },
+   "r1_liveWindow": {
+    "nDays": 1273,
+    "nSetup": 56,
+    "nPaired": 56,
+    "setupRate": 0.044,
+    "h24": {
+     "meanDiffAtr": 0.039,
+     "t": 0.66,
+     "ci95": [
+      -0.061,
+      0.155
+     ],
+     "setupMean": 1.039,
+     "controlMean": 0.999,
+     "clear": "no"
+    },
+    "h5": {
+     "meanDiffAtr": 0.034,
+     "t": 0.22,
+     "n": 56
+    },
+    "exploratory_direction": {
+     "meanAgainstCrowdAtr": 0.073,
+     "n": 56,
+     "note": "not scored; would have to survive a momentum control on its own"
+    }
+   },
+   "r2_tighter": {
+    "nDays": 2352,
+    "nSetup": 82,
+    "nPaired": 82,
+    "setupRate": 0.035,
+    "h24": {
+     "meanDiffAtr": 0.012,
+     "t": 0.19,
+     "ci95": [
+      -0.095,
+      0.122
+     ],
+     "setupMean": 1.049,
+     "controlMean": 1.038,
+     "clear": "no"
+    },
+    "h5": {
+     "meanDiffAtr": -0.141,
+     "t": -1.03,
+     "n": 82
+    },
+    "exploratory_direction": {
+     "meanAgainstCrowdAtr": 0.014,
+     "n": 82,
+     "note": "not scored; would have to survive a momentum control on its own"
+    }
+   }
+  },
+  "USD_JPY": {
+   "pair": "usdjpy",
+   "days": 2364,
+   "coverage": {
+    "from": "2017-05-01",
+    "to": "2026-08-20"
+   },
+   "main": {
+    "nDays": 2363,
+    "nSetup": 90,
+    "nPaired": 90,
+    "setupRate": 0.038,
+    "h24": {
+     "meanDiffAtr": -0.044,
+     "t": -0.56,
+     "ci95": [
+      -0.171,
+      0.125
+     ],
+     "setupMean": 0.959,
+     "controlMean": 1.004,
+     "clear": "no"
+    },
+    "h5": {
+     "meanDiffAtr": -0.145,
+     "t": -0.75,
+     "n": 90
+    },
+    "exploratory_direction": {
+     "meanAgainstCrowdAtr": 0.003,
+     "n": 90,
+     "note": "not scored; would have to survive a momentum control on its own"
+    }
+   },
+   "r1_liveWindow": {
+    "nDays": 1280,
+    "nSetup": 2,
+    "nPaired": 2,
+    "setupRate": 0.002,
+    "h24": {
+     "meanDiffAtr": 0.318,
+     "t": null,
+     "ci95": [
+      null,
+      null
+     ],
+     "setupMean": 0.947,
+     "controlMean": 0.628,
+     "clear": "no"
+    },
+    "h5": {
+     "meanDiffAtr": -1.164,
+     "t": null,
+     "n": 2
+    },
+    "exploratory_direction": {
+     "meanAgainstCrowdAtr": 0.109,
+     "n": 2,
+     "note": "not scored; would have to survive a momentum control on its own"
+    }
+   },
+   "r2_tighter": {
+    "nDays": 2363,
+    "nSetup": 1,
+    "nPaired": 1,
+    "setupRate": 0,
+    "h24": {
+     "meanDiffAtr": -0.435,
+     "t": null,
+     "ci95": [
+      null,
+      null
+     ],
+     "setupMean": 0.498,
+     "controlMean": 0.933,
+     "clear": "no"
+    },
+    "h5": {
+     "meanDiffAtr": -0.493,
+     "t": null,
+     "n": 1
+    },
+    "exploratory_direction": {
+     "meanAgainstCrowdAtr": -0.367,
+     "n": 1,
+     "note": "not scored; would have to survive a momentum control on its own"
+    }
+   }
+  },
+  "GBP_USD": {
+   "pair": "gbpusd",
+   "days": 2364,
+   "coverage": {
+    "from": "2017-05-01",
+    "to": "2026-08-20"
+   },
+   "main": {
+    "nDays": 2363,
+    "nSetup": 18,
+    "nPaired": 18,
+    "setupRate": 0.008,
+    "h24": {
+     "meanDiffAtr": 0.15,
+     "t": 1.26,
+     "ci95": [
+      -0.044,
+      0.428
+     ],
+     "setupMean": 1.069,
+     "controlMean": 0.918,
+     "clear": "no"
+    },
+    "h5": {
+     "meanDiffAtr": 0.237,
+     "t": 1,
+     "n": 18
+    },
+    "exploratory_direction": {
+     "meanAgainstCrowdAtr": -0.046,
+     "n": 18,
+     "note": "not scored; would have to survive a momentum control on its own"
+    }
+   },
+   "r1_liveWindow": {
+    "nDays": 1280,
+    "nSetup": 0,
+    "nPaired": 0,
+    "setupRate": 0,
+    "h24": {
+     "meanDiffAtr": null,
+     "t": null,
+     "ci95": [
+      null,
+      null
+     ],
+     "setupMean": null,
+     "controlMean": null,
+     "clear": "no"
+    },
+    "h5": {
+     "meanDiffAtr": null,
+     "t": null,
+     "n": 0
+    },
+    "exploratory_direction": {
+     "meanAgainstCrowdAtr": null,
+     "n": 0,
+     "note": "not scored; would have to survive a momentum control on its own"
+    }
+   },
+   "r2_tighter": {
+    "nDays": 2363,
+    "nSetup": 0,
+    "nPaired": 0,
+    "setupRate": 0,
+    "h24": {
+     "meanDiffAtr": null,
+     "t": null,
+     "ci95": [
+      null,
+      null
+     ],
+     "setupMean": null,
+     "controlMean": null,
+     "clear": "no"
+    },
+    "h5": {
+     "meanDiffAtr": null,
+     "t": null,
+     "n": 0
+    },
+    "exploratory_direction": {
+     "meanAgainstCrowdAtr": null,
+     "n": 0,
+     "note": "not scored; would have to survive a momentum control on its own"
+    }
+   }
+  }
+ },
+ "generatedAt": "2026-09-13T23:02:16.112Z"
+}

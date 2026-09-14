@@ -1,0 +1,7 @@
+checkedWithVote: 102
+directionMatches: 102
+directionMismatches: 0
+matchRate: 100
+thinMarginOrNoVote: 48
+
+Expected from the manual run: checkedWithVote=98, directionMatches=98, matchRate=100

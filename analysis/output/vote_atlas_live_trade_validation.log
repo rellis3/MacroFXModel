@@ -1,0 +1,116 @@
+EURUSD: loading M1, 10 trades to check...
+  local archive ends 2026-08-20, trades go to 2026-09-11 -- fetching the gap from production...
+  fetched 24082 gap-fill bars
+US2000: loading M1, 15 trades to check...
+  local archive ends 2026-08-20, trades go to 2026-09-11 -- fetching the gap from production...
+  fetched 23049 gap-fill bars
+SPX: loading M1, 10 trades to check...
+  local archive ends 2026-06-05, trades go to 2026-09-11 -- fetching the gap from production...
+  fetched 900 gap-fill bars
+DE30: loading M1, 7 trades to check...
+  local archive ends 2026-08-20, trades go to 2026-09-11 -- fetching the gap from production...
+  fetched 20007 gap-fill bars
+UK100: loading M1, 12 trades to check...
+  local archive ends 2026-08-20, trades go to 2026-09-11 -- fetching the gap from production...
+  fetched 19016 gap-fill bars
+GOLD: loading M1, 10 trades to check...
+  local archive ends 2026-08-20, trades go to 2026-09-11 -- fetching the gap from production...
+  fetched 23124 gap-fill bars
+NQ: loading M1, 6 trades to check...
+  local archive ends 2026-08-20, trades go to 2026-09-11 -- fetching the gap from production...
+  fetched 23095 gap-fill bars
+USDCHF: loading M1, 8 trades to check...
+  local archive ends 2026-08-20, trades go to 2026-09-11 -- fetching the gap from production...
+  fetched 23891 gap-fill bars
+DOW: loading M1, 6 trades to check...
+  local archive ends 2026-06-05, trades go to 2026-09-11 -- fetching the gap from production...
+  fetched 876 gap-fill bars
+CHFJPY: loading M1, 10 trades to check...
+  local archive ends 2026-08-20, trades go to 2026-09-11 -- fetching the gap from production...
+  fetched 24076 gap-fill bars
+USDJPY: loading M1, 11 trades to check...
+  local archive ends 2026-08-20, trades go to 2026-09-11 -- fetching the gap from production...
+  fetched 24131 gap-fill bars
+CADJPY: loading M1, 15 trades to check...
+  local archive ends 2026-08-20, trades go to 2026-09-11 -- fetching the gap from production...
+  fetched 23956 gap-fill bars
+GBPUSD: loading M1, 6 trades to check...
+  local archive ends 2026-08-20, trades go to 2026-09-11 -- fetching the gap from production...
+  fetched 24169 gap-fill bars
+AUDJPY: loading M1, 7 trades to check...
+  local archive ends 2026-08-20, trades go to 2026-09-11 -- fetching the gap from production...
+  fetched 24121 gap-fill bars
+EURAUD: loading M1, 8 trades to check...
+  local archive ends 2026-08-20, trades go to 2026-09-11 -- fetching the gap from production...
+  fetched 24131 gap-fill bars
+AUDUSD: loading M1, 4 trades to check...
+  local archive ends 2026-08-20, trades go to 2026-09-11 -- fetching the gap from production...
+  gap-fetch failed for audusd: undefined
+  fetched 0 gap-fill bars
+EURCHF: loading M1, 5 trades to check...
+  local archive ends 2026-08-20, trades go to 2026-09-11 -- fetching the gap from production...
+  fetched 23729 gap-fill bars
+
+Total trades: 150. Parsed+matched to a real touch: 150.
+
+--- PRE-FIX trades (dated before 2026-09-11) ---
+Pre-fix: 89/89 direction matches
+
+--- POST-FIX trades (dated 2026-09-11 or later) ---
+Post-fix: 9/9 direction matches
+
+--- Trades with no vote / thin margin under today's honest logic ---
+  eurusd 2026-08-31 upp75_1 (preFix=true): no vote (insufficient book)
+  eurusd 2026-09-01 downp50_1 (preFix=true): margin 2 < 3, should not have traded
+  eurusd 2026-09-03 upp50_1 (preFix=true): margin 2 < 3, should not have traded
+  eurusd 2026-09-04 downp75_2 (preFix=undefined): no matching touch found (1 on that day)
+  eurusd 2026-09-08 downp50_1 (preFix=true): margin 2 < 3, should not have traded
+  eurusd 2026-09-10 downp75_2 (preFix=true): margin 1 < 3, should not have traded
+  us2000 2026-08-31 downp75_2 (preFix=true): margin 2 < 3, should not have traded
+  us2000 2026-09-04 upp50_1 (preFix=undefined): no matching touch found (0 on that day)
+  us2000 2026-09-11 upp75_6 (preFix=false): margin 2 < 3, should not have traded
+  spx 2026-08-31 downp50_5 (preFix=undefined): no matching touch found (0 on that day)
+  spx 2026-09-01 downp75_2 (preFix=undefined): no matching touch found (0 on that day)
+  spx 2026-09-02 upp75_4 (preFix=undefined): no matching touch found (0 on that day)
+  spx 2026-09-03 upp75_1 (preFix=undefined): no matching touch found (0 on that day)
+  spx 2026-09-03 upp75_2 (preFix=undefined): no matching touch found (0 on that day)
+  spx 2026-09-08 downp50_2 (preFix=undefined): no matching touch found (0 on that day)
+  spx 2026-09-09 downp50_1 (preFix=undefined): no matching touch found (0 on that day)
+  spx 2026-09-09 downp75_1 (preFix=undefined): no matching touch found (0 on that day)
+  spx 2026-09-10 downp50_1 (preFix=undefined): no matching touch found (0 on that day)
+  spx 2026-09-11 upp75_4 (preFix=undefined): no matching touch found (0 on that day)
+  de30 2026-09-10 downp50_1 (preFix=true): margin 2 < 3, should not have traded
+  de30 2026-09-11 upp50_1 (preFix=false): margin 1 < 3, should not have traded
+  uk100 2026-09-08 downp50_3 (preFix=true): no vote (insufficient book)
+  gold 2026-09-02 downp50_2 (preFix=true): margin 2 < 3, should not have traded
+  gold 2026-09-03 upp75_1 (preFix=true): margin 2 < 3, should not have traded
+  gold 2026-09-11 upp50_1 (preFix=false): margin 2 < 3, should not have traded
+  nq 2026-09-04 upp50_2 (preFix=true): margin 2 < 3, should not have traded
+  usdchf 2026-09-01 upp50_3 (preFix=true): margin 2 < 3, should not have traded
+  usdchf 2026-09-01 upp75_1 (preFix=true): margin 1 < 3, should not have traded
+  dow 2026-09-01 downp50_2 (preFix=undefined): no matching touch found (0 on that day)
+  dow 2026-09-02 upp50_1 (preFix=undefined): no matching touch found (0 on that day)
+  dow 2026-09-04 downp75_1 (preFix=undefined): no matching touch found (0 on that day)
+  dow 2026-09-08 downp50_4 (preFix=undefined): no matching touch found (0 on that day)
+  dow 2026-09-08 downp75_1 (preFix=undefined): no matching touch found (0 on that day)
+  dow 2026-09-10 downp75_1 (preFix=undefined): no matching touch found (0 on that day)
+  chfjpy 2026-09-01 downp50_1 (preFix=true): no vote (insufficient book)
+  chfjpy 2026-09-11 downp75_1 (preFix=false): margin 2 < 3, should not have traded
+  usdjpy 2026-09-01 upp50_2 (preFix=true): margin 2 < 3, should not have traded
+  usdjpy 2026-09-02 downp75_3 (preFix=true): margin 2 < 3, should not have traded
+  cadjpy 2026-09-02 downp75_2 (preFix=true): margin 2 < 3, should not have traded
+  cadjpy 2026-09-03 downp75_1 (preFix=true): margin 2 < 3, should not have traded
+  cadjpy 2026-09-04 downp50_3 (preFix=true): margin 1 < 3, should not have traded
+  cadjpy 2026-09-11 downp50_1 (preFix=false): margin 2 < 3, should not have traded
+  gbpusd 2026-09-10 downp75_3 (preFix=true): margin 2 < 3, should not have traded
+  audjpy 2026-09-02 downp75_3 (preFix=true): no vote (insufficient book)
+  audjpy 2026-09-07 downp50_1 (preFix=true): margin 2 < 3, should not have traded
+  audjpy 2026-09-08 downp75_2 (preFix=undefined): no matching touch found (1 on that day)
+  euraud 2026-09-08 upp50_1 (preFix=true): margin 2 < 3, should not have traded
+  audusd 2026-09-02 upp75_4 (preFix=undefined): no matching touch found (0 on that day)
+  audusd 2026-09-04 upp50_1 (preFix=undefined): no matching touch found (0 on that day)
+  audusd 2026-09-07 upp50_2 (preFix=undefined): no matching touch found (0 on that day)
+  audusd 2026-09-11 upp50_1 (preFix=undefined): no matching touch found (0 on that day)
+  eurchf 2026-09-09 upp50_1 (preFix=true): margin 2 < 3, should not have traded
+
+Wrote analysis/output/vote_atlas_live_trade_validation.json
