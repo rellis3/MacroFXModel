@@ -2852,9 +2852,15 @@ function assembleChainSnapshot() {
     .join('\n') || null;
   return { asOf: new Date().toISOString(), moved: moved || null, chain: chain || null, ratesSplit, policy, assets: assets || null, risk: riskLines, equities, ccy, divergences, caveats, events: evs };
 }
+async function peekChainRead() {
+  try {
+    const resp = await fetch('/api/chain-read').then(x => x.json());
+    _chainRead = resp?.ok ? { state: 'ready', data: resp, err: null, at: Date.now() } : { state: 'none', data: null, err: null, at: 0 };
+  } catch { _chainRead = { state: 'none', data: null, err: null, at: 0 }; }
+  render();
+}
 async function loadChainRead(force = false) {
   if (_chainRead.state === 'loading') return;
-  if (!force && _chainRead.state === 'ready' && Date.now() - _chainRead.at < 30 * 60_000) return;
   _chainRead = { ..._chainRead, state: 'loading', err: null };
   render();
   try {
@@ -2920,12 +2926,15 @@ function explainBoxHtml(key) {
 function chainReadHtml() {
   const st = _chainRead.state;
   const r = _chainRead.data?.read;
-  const btn = `<span class="chip neu" role="button" tabindex="0" style="cursor:pointer" onclick="loadChainRead(true)" onkeydown="if(event.key==='Enter'||event.key===' '){loadChainRead(true)}" title="Regenerate from the current numbers. One read is shared by everyone for 30 minutes.">${st === 'loading' ? '… reading' : '↻ re-read'}</span>`;
+  // Generating is a paid model call, so it only ever happens on this click. A
+  // read already made in the last 30 minutes is served from the server for free.
+  const btn = `<span class="chip neu" role="button" tabindex="0" style="cursor:pointer" onclick="loadChainRead(${r ? 'true' : 'false'})" onkeydown="if(event.key==='Enter'||event.key===' '){loadChainRead(${r ? 'true' : 'false'})}" title="${r ? 'Write a new read from the current numbers. This is a model call; nothing is generated automatically.' : 'Write the read from the current numbers. This is a model call; nothing is generated automatically. If one was written in the last 30 minutes you get that instead, free.'}">${st === 'loading' ? '… reading' : r ? '↻ re-read' : '🧠 read the tape'}</span>`;
   const teachBtn = r ? `<span class="chip neu${_explain.key === 'read' ? ' on' : ''}" role="button" tabindex="0" style="cursor:pointer" onclick="explainThis('read', { kind: 'read' }, event)" onkeydown="if(event.key==='Enter'||event.key===' '){explainThis('read', { kind: 'read' }, event)}" title="Every term in this read, in plain words, plus the two or three distinctions you need to hold apart to follow it.">🎓 teach me this read</span>` : '';
   const head = `<div class="chain-read-h"><span>The read <span class="chip warn" style="font-size:9px">AI · not backtested</span></span><span style="display:inline-flex;gap:5px">${teachBtn}${btn}</span></div>`;
   if (!r) {
     if (st === 'loading') return `<div class="chain-read">${head}<div class="muted" style="font-size:11.5px">Reading the tape…</div></div>`;
     if (st === 'error') return `<div class="chain-read">${head}<div class="muted" style="font-size:11.5px">Could not build the read (${esc0(_chainRead.err ?? '')}).</div></div>`;
+    if (st === 'none') return `<div class="chain-read">${head}<div class="muted" style="font-size:11.5px">No read written in the last 30 minutes. The rows below are the measured chain; the button writes the trader's-voice explanation from them when you want it.</div></div>`;
     return '';
   }
   const statusCls = { dominant: 'bull', overshadowed: 'neu', reloading: 'warn', absent: 'neu' };
@@ -2950,11 +2959,12 @@ function chainHtml() {
   if (!B || !links.length) return '';
   const sum = B.summariseChain(links);
   if (sum.judged === 0 && sum.unmeasured === links.length) return '';
-  // First read, once the chain has something to say and the delta strip has
-  // arrived (the read quotes it). Deferred so render() is never re-entered.
-  if (_chainRead.state === 'idle' && sum.unmeasured === 0 && Array.isArray(macroMoved) && macroMoved.length) {
+  // Nothing is generated without a click -- every generation is a paid model
+  // call. On load the page only asks the server for whatever read is already
+  // cached (free); the button makes a new one.
+  if (_chainRead.state === 'idle') {
     _chainRead.state = 'queued';
-    setTimeout(() => loadChainRead(false), 800);
+    setTimeout(() => peekChainRead(), 300);
   }
   const W = B.CHAIN_WINDOW_DAYS;
   const vcls = { holding: 'hold', broken: 'broke', quiet: 'quiet', unmeasured: 'quiet' };

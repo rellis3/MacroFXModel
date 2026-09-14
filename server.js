@@ -3316,6 +3316,13 @@ app.post('/api/explain', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// Free read of whatever is cached -- no model call. The page shows this on load
+// and only generates when the reader clicks.
+app.get('/api/chain-read', (_req, res) => {
+  if (_chainReadCache.data && Date.now() - _chainReadCache.at < _CHAIN_READ_TTL_MS)
+    return res.json({ ok: true, cached: true, ...(_chainReadCache.data) });
+  res.json({ ok: false, none: true });
+});
 app.post('/api/chain-read', async (req, res) => {
   const key = process.env.ANT_KEY;
   if (!key) return res.status(503).json({ error: 'ANT_KEY not configured' });
