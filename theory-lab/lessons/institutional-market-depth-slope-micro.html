@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Market Depth &amp; Order-Book Slope — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Market Depth, Order-Book Slope &amp; Depth Imbalance — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">11</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer full derivations, live math notation, and a 6-question self-test?<a href="institutional-market-depth-slope.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Liquidity 3 · Liquidity</div>
+      <h1 class="sl-h1">Market Depth &amp; Order-Book Slope, <em>What the Book Looks Like Before Anyone Trades It</em></h1>
+      <p class="sl-lede">Every earlier microstructure signal in this Theory Lab looks at trades that already happened, or at changes to the book over time. This deck asks a plainer question: forget what just happened — what does the resting book look like <em>right now</em>? Depth, slope, and depth imbalance answer that from a single snapshot, no trade history required.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">A snapshot statistic, not a flow statistic</h2>
+      <p class="sl-sub">How this deck's signals differ from everything else this Theory Lab has covered so far.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📸</div><div><h4>Depth &amp; slope (this deck)</h4><p>Read directly off ONE book snapshot — how much size rests where, right now. Zero trade history needed.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎞️</div><div><h4>Order Flow Imbalance (sibling deck)</h4><p>Built from CHANGES between consecutive book updates, summed over a window — inherently a time-series quantity.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📈</div><div><h4>Kyle's λ (sibling deck)</h4><p>A reduced-form number estimated statistically from a HISTORY of trades and price changes — not observable from a single snapshot at all.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔗</div><div><h4>Same book, three lenses</h4><p>All three describe "how costly is size" from the same underlying market — just from genuinely different data and genuinely different math.</p></div></div>
+      </div>
+      <div class="sl-quote">A photograph vs. a flip-book vs. a statistical estimate. All three are legitimate; none of them substitutes for the other two.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Depth: level-1 vs. cumulative</h2>
+      <p class="sl-sub">The touch alone is rarely the whole story once an order is bigger than what's sitting right there.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Two ways to measure "how much is here"</div>
+        <div class="sl-row">
+          <div class="sl-box">Level-1 depth</div>
+          <div class="sl-arrow">=</div>
+          <div class="sl-box amber">Q<sup>(1)</sup> — size at the touch only</div>
+        </div>
+        <div class="sl-row">
+          <div class="sl-box">Cumulative depth D(n)</div>
+          <div class="sl-arrow">=</div>
+          <div class="sl-box amber">Q<sup>(1)</sup> + Q<sup>(2)</sup> + … + Q<sup>(n)</sup></div>
+        </div>
+        <div class="sl-verdict">D(n) answers what level-1 depth alone can't: how much size would actually need to be consumed to walk the book out to n ticks from the touch?</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Order-book slope — two conventions, both real</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Depth-vs-distance (this deck's convention)</span>
+          <ul>
+            <li>slope = average per-tick growth of D(n) beyond the touch</li>
+            <li>LARGER slope = depth builds up fast = deep, liquid book</li>
+            <li>Næs &amp; Skjeltorp (2006) construction</li>
+          </ul>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag" style="background:var(--purple-bg);color:var(--purple)">Walk-the-book (colloquial)</span>
+          <ul>
+            <li>Plot price reached vs. quantity consumed — the inverse view</li>
+            <li>STEEP price curve = thin, dangerous book</li>
+            <li>The numerical opposite direction of the first convention</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Same book, opposite word</div>
+        <p>"Steep" means a deep book under one convention and a thin book under the other. Neither usage is wrong — always check which axis a "slope" figure is actually computed against before deciding whether a large number is good news or bad news.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Drag the depth, watch the book's shape change</h2>
+      <p class="sl-sub">Two levels per side. Slope here reduces to one number: how much extra depth level 2 adds beyond level 1.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Grouped bar chart with two groups, level 1 and level 2. Each group shows a green bid bar and a red ask bar whose heights redraw live as the sliders below are dragged.">
+            <line x1="40" y1="220" x2="600" y2="220" style="stroke:var(--text3);stroke-width:1"/>
+            <text x="170" y="240" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">level 1</text>
+            <text x="470" y="240" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">level 2</text>
+            <rect id="ds-b1" x="120" y="220" width="46" height="0" style="fill:var(--green);opacity:.8"/>
+            <rect id="ds-a1" x="176" y="220" width="46" height="0" style="fill:var(--red);opacity:.7"/>
+            <rect id="ds-b2" x="420" y="220" width="46" height="0" style="fill:var(--green);opacity:.8"/>
+            <rect id="ds-a2" x="476" y="220" width="46" height="0" style="fill:var(--red);opacity:.7"/>
+            <text id="ds-b1t" x="143" y="215" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--green)">0</text>
+            <text id="ds-a1t" x="199" y="215" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--red)">0</text>
+            <text id="ds-b2t" x="443" y="215" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--green)">0</text>
+            <text id="ds-a2t" x="499" y="215" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--red)">0</text>
+          </svg>
+        </div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Bid, level 1</label><input type="range" class="sl-slider" id="ds-qb1" min="0" max="500" step="10" value="300"></div>
+          <div class="sl-calc-field"><label>Bid, level 2 (add-on)</label><input type="range" class="sl-slider" id="ds-qb2" min="0" max="500" step="10" value="250"></div>
+        </div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Ask, level 1</label><input type="range" class="sl-slider" id="ds-qa1" min="0" max="500" step="10" value="200"></div>
+          <div class="sl-calc-field"><label>Ask, level 2 (add-on)</label><input type="range" class="sl-slider" id="ds-qa2" min="0" max="500" step="10" value="150"></div>
+        </div>
+        <div class="sl-note" id="ds-readout">Bid: D(1)=300, D(2)=550, slope=250 · Ask: D(1)=200, D(2)=350, slope=150 · DI(1)=0.200, DI(2)=0.222</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Depth imbalance is exactly QI — reused, not reinvented</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Same formula, this deck's own notation</div>
+        <div class="sl-row">
+          <div class="sl-box amber">DI<sup>(1)</sup></div>
+          <div class="sl-arrow">=</div>
+          <div class="sl-box">(Q_b<sup>(1)</sup> − Q_a<sup>(1)</sup>) / (Q_b<sup>(1)</sup> + Q_a<sup>(1)</sup>)</div>
+          <div class="sl-arrow">=</div>
+          <div class="sl-box red">QI</div>
+        </div>
+        <div class="sl-verdict">Because DI<sup>(1)</sup> = QI exactly, the OFI deck's own microprice identity plugs straight in: P_micro = M + (S/2)·QI. Nothing new is derived here — DI(1) is fed into a formula that already existed.</div>
+      </div>
+      <p class="sl-p">What's genuinely new: extending the same ratio to cumulative depth, DI(n) = (D_b(n) − D_a(n)) / (D_b(n) + D_a(n)) — useful once an order is larger than what's resting at the touch alone.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Level-1 vs. cumulative — they can disagree</h2>
+      <p class="sl-sub">Same toy book throughout: bid 300/250/400 across 3 levels, ask 200/150/180.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="di-tabs">
+          <button class="sl-tab active" data-panel="di-l1">DI at level 1 only</button>
+          <button class="sl-tab" data-panel="di-l3">DI cumulative to 3 levels</button>
+        </div>
+        <div class="sl-panel active" id="di-l1">
+          <div style="display:flex;height:38px;border-radius:8px;overflow:hidden;margin:6px 0 14px">
+            <div style="width:60%;background:var(--green);display:flex;align-items:center;justify-content:center;color:#fff;font-family:'DM Mono',monospace;font-size:12px">Bid: 60%</div>
+            <div style="width:40%;background:var(--red);display:flex;align-items:center;justify-content:center;color:#fff;font-family:'DM Mono',monospace;font-size:12px">Ask: 40%</div>
+          </div>
+          <div class="sl-verdict">DI(1) = (300−200)/(300+200) = <strong>0.200</strong> — mildly bid-heavy at the touch alone.</div>
+        </div>
+        <div class="sl-panel" id="di-l3">
+          <div style="display:flex;height:38px;border-radius:8px;overflow:hidden;margin:6px 0 14px">
+            <div style="width:64.2%;background:var(--green);display:flex;align-items:center;justify-content:center;color:#fff;font-family:'DM Mono',monospace;font-size:12px">Bid: 64.2%</div>
+            <div style="width:35.8%;background:var(--red);display:flex;align-items:center;justify-content:center;color:#fff;font-family:'DM Mono',monospace;font-size:11px">Ask: 35.8%</div>
+          </div>
+          <div class="sl-verdict">DI(3) = (950−530)/(950+530) = <strong>0.284</strong> — MORE bid-heavy than the level-1 reading, because the bid's extra depth further out outpaces the ask's.</div>
+        </div>
+      </div>
+      <p class="sl-p">Same book, same instant — only how many levels are included changes the answer. This is a real design choice, not a rounding difference.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Compute it yourself, from any inputs</h2>
+      <p class="sl-sub">Change any of the six sizes — cumulative depth, both slopes, both depth imbalances, and the microprice all recompute live.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Q_b(1)</label><input type="number" class="sl-input" id="mc-qb1" value="300" step="10" min="0"></div>
+          <div class="sl-calc-field"><label>Q_b(2)</label><input type="number" class="sl-input" id="mc-qb2" value="250" step="10" min="0"></div>
+          <div class="sl-calc-field"><label>Q_b(3)</label><input type="number" class="sl-input" id="mc-qb3" value="400" step="10" min="0"></div>
+        </div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Q_a(1)</label><input type="number" class="sl-input" id="mc-qa1" value="200" step="10" min="0"></div>
+          <div class="sl-calc-field"><label>Q_a(2)</label><input type="number" class="sl-input" id="mc-qa2" value="150" step="10" min="0"></div>
+          <div class="sl-calc-field"><label>Q_a(3)</label><input type="number" class="sl-input" id="mc-qa3" value="180" step="10" min="0"></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div id="mc-depth">D_b = 300 / 550 / 950 · D_a = 200 / 350 / 530</div>
+        </div>
+        <div class="sl-calc-row" style="margin-top:10px">
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Slope bid</div><div class="sl-calc-result-val" id="mc-slopeb">287.500</div></div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Slope ask</div><div class="sl-calc-result-val" id="mc-slopea">157.500</div></div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">DI(1)</div><div class="sl-calc-result-val" id="mc-di1">0.200</div></div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">DI(3)</div><div class="sl-calc-result-val" id="mc-di3">0.284</div></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div id="mc-micro">Microprice (from DI(1)): 1.100460</div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="mc-reset">Reset to worked-example numbers</button>
+        <div class="sl-note">Blank, non-numeric, or negative input shows "—" instead of breaking the formula.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Where this quietly goes wrong</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">👻</div><div><h4>Displayed ≠ committed</h4><p>Icebergs hide true size; spoofing fabricates size that was never meant to trade. Every formula here takes displayed size at face value.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧩</div><div><h4>FX has no single book</h4><p>Spot FX is OTC across fragmented ECNs — one venue's slope isn't "the market's" depth. This repo's own OANDA spot venue has no live top-of-book ladder at all.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⏱️</div><div><h4>Snapshots go stale in milliseconds</h4><p>Depth and imbalance can flip entirely on the very next book update — treat either as an instant read, never a forecast.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔀</div><div><h4>Check the slope convention</h4><p>"Steep" means opposite things under the two conventions from Section 3 — confirm which axis before judging a number.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What's the difference between level-1 depth and cumulative depth D(n)?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Level-1 is size at the touch only; D(n) is the running total across the first n levels</button>
+        <button class="sl-quiz-opt">They're the same thing, just different names</button>
+        <button class="sl-quiz-opt">D(n) only counts the ask side</button>
+        <div class="sl-quiz-explain">D(n) answers how much size must be consumed to walk the book to n ticks — a question level-1 depth alone can't answer.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Under this deck's stated convention, does a LARGER slope value mean a deeper book or a thinner one?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Deeper — depth accumulates faster as distance from the touch grows</button>
+        <button class="sl-quiz-opt">Thinner — always, under every convention</button>
+        <button class="sl-quiz-opt">Slope says nothing about depth at all</button>
+        <div class="sl-quiz-explain">The walk-the-book convention inverts this — a deep book gives a FLAT price curve there. Both usages exist; check which one a source means.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>How does DI(1) relate to QI from the Order Flow Imbalance deck?</h4>
+        <button class="sl-quiz-opt" data-correct="true">They are exactly the same formula and the same number</button>
+        <button class="sl-quiz-opt">DI(1) is QI multiplied by the spread</button>
+        <button class="sl-quiz-opt">They're unrelated coincidences</button>
+        <div class="sl-quiz-explain">DI(1) = (Q_b−Q_a)/(Q_b+Q_a) = QI exactly, so the OFI deck's microprice identity plugs in unchanged.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Can DI(1) and DI(n) for a larger n disagree on the same book, at the same instant?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Yes — this deck's own worked example shows exactly that (0.200 vs. 0.284)</button>
+        <button class="sl-quiz-opt">No, they are mathematically forced to be identical</button>
+        <button class="sl-quiz-opt">Only if the spread is zero</button>
+        <div class="sl-quiz-explain">A book can be more (or less) lopsided a few ticks back than right at the touch — which n you choose is a real, consequential decision.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Why can depth imbalance and Order Flow Imbalance point in opposite directions at the same moment?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Depth imbalance is a single-snapshot read; OFI is built from a sequence of changes over time</button>
+        <button class="sl-quiz-opt">One of the two formulas must simply be wrong</button>
+        <button class="sl-quiz-opt">They can never actually disagree</button>
+        <div class="sl-quiz-explain">A book can be bid-heavy right now while that same size has been shrinking over recent updates — a photograph and a flip-book, both true at once.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="6">
+        <div class="sl-quiz-num">Question 6</div>
+        <h4>How does order-book slope differ from Kyle's λ?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Slope is read directly off one book snapshot; λ is estimated statistically from a history of trades</button>
+        <button class="sl-quiz-opt">They are the exact same calculation under different names</button>
+        <button class="sl-quiz-opt">λ requires no data at all, unlike slope</button>
+        <div class="sl-quiz-explain">Related in spirit — both describe how costly size is — but built from entirely different data using entirely different methods.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Depth (level-1 and cumulative D(n)) and order-book slope describe the SHAPE of the resting book from a single snapshot — no trade history needed at all, unlike every other signal in this Theory Lab.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Slope's direction is genuinely convention-dependent: this deck's depth-vs-distance convention says larger = deeper; the walk-the-book convention says the opposite — always check which axis before calling a number "steep."</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Depth imbalance at level 1 is exactly QI from the Order Flow Imbalance deck, feeding the same microprice identity unchanged — extended here to cumulative depth, DI(n), which can disagree with DI(1).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Depth imbalance (a resting snapshot) and OFI (a sequence of book changes) are genuinely different signals that can point opposite ways at the same instant — neither substitutes for the other.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Displayed depth can hide real size (icebergs) or fabricate it (spoofing), and FX's fragmented, OTC structure means no single book ever describes "the whole market" anyway.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Read a raw ladder of resting bid/ask sizes and turn it into cumulative depth, a slope estimate under a clearly-stated convention, and a depth imbalance that plugs directly into the microprice — and know exactly how that reading differs from Order Flow Imbalance and from Kyle's λ.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">End of this category</div>
+        <h3>Liquidity — complete</h3>
+        <p>This is the third and final lesson in Liquidity: Kyle-Obizhaeva Invariance, Obizhaeva-Wang Transient Price Impact, and now Market Depth, Order-Book Slope &amp; Depth Imbalance. The next category in the curriculum isn't built yet — head back to the hub to pick up wherever the roadmap takes you next.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="../hub.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="institutional-market-depth-slope.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Slide 5 — drag depth sliders, redraw the two-level bar chart and recompute
+  // slope + depth imbalance live.
+  (function(){
+    var qb1 = document.getElementById('ds-qb1');
+    if (!qb1) return;
+    var qb2 = document.getElementById('ds-qb2'), qa1 = document.getElementById('ds-qa1'), qa2 = document.getElementById('ds-qa2');
+    var b1 = document.getElementById('ds-b1'), a1 = document.getElementById('ds-a1'), b2 = document.getElementById('ds-b2'), a2 = document.getElementById('ds-a2');
+    var b1t = document.getElementById('ds-b1t'), a1t = document.getElementById('ds-a1t'), b2t = document.getElementById('ds-b2t'), a2t = document.getElementById('ds-a2t');
+    var readout = document.getElementById('ds-readout');
+    var BASELINE_Y = 220, MAX_H = 190, SCALE_MAX = 1000; // slider maxes sum to 1000
+
+    function setBar(rect, txt, x, val){
+      var h = Math.max(0, Math.min(MAX_H, (val / SCALE_MAX) * MAX_H));
+      rect.setAttribute('y', BASELINE_Y - h);
+      rect.setAttribute('height', h);
+      txt.setAttribute('y', BASELINE_Y - h - 6);
+      txt.textContent = val.toFixed(0);
+    }
+
+    function update(){
+      var Qb1 = parseFloat(qb1.value), Qb2 = parseFloat(qb2.value);
+      var Qa1 = parseFloat(qa1.value), Qa2 = parseFloat(qa2.value);
+      var Db1 = Qb1, Db2 = Qb1 + Qb2;
+      var Da1 = Qa1, Da2 = Qa1 + Qa2;
+
+      setBar(b1, b1t, 120, Db1);
+      setBar(a1, a1t, 176, Da1);
+      setBar(b2, b2t, 420, Db2);
+      setBar(a2, a2t, 476, Da2);
+
+      var slopeBid = Db2 - Db1;
+      var slopeAsk = Da2 - Da1;
+      var di1 = (Db1 + Da1) > 0 ? (Db1 - Da1) / (Db1 + Da1) : NaN;
+      var di2 = (Db2 + Da2) > 0 ? (Db2 - Da2) / (Db2 + Da2) : NaN;
+
+      readout.textContent = 'Bid: D(1)=' + Db1.toFixed(0) + ', D(2)=' + Db2.toFixed(0) + ', slope=' + slopeBid.toFixed(0) +
+        ' · Ask: D(1)=' + Da1.toFixed(0) + ', D(2)=' + Da2.toFixed(0) + ', slope=' + slopeAsk.toFixed(0) +
+        ' · DI(1)=' + (isFinite(di1) ? di1.toFixed(3) : '—') + ', DI(2)=' + (isFinite(di2) ? di2.toFixed(3) : '—');
+    }
+    [qb1, qb2, qa1, qa2].forEach(function(el){ el.addEventListener('input', update); });
+    update();
+  })();
+
+  // Slide 8 — full six-input calculator: cumulative depth, both slopes, both
+  // depth imbalances, and the microprice.
+  (function(){
+    var qb1 = document.getElementById('mc-qb1');
+    if (!qb1) return;
+    var ids = ['qb1','qb2','qb3','qa1','qa2','qa3'];
+    var inputs = {};
+    ids.forEach(function(k){ inputs[k] = document.getElementById('mc-' + k); });
+    var depthOut = document.getElementById('mc-depth'), microOut = document.getElementById('mc-micro');
+    var slopeBOut = document.getElementById('mc-slopeb'), slopeAOut = document.getElementById('mc-slopea');
+    var di1Out = document.getElementById('mc-di1'), di3Out = document.getElementById('mc-di3');
+    var resetBtn = document.getElementById('mc-reset');
+    var DEFAULTS = { qb1: 300, qb2: 250, qb3: 400, qa1: 200, qa2: 150, qa3: 180 };
+    var TICK = { pb: 1.1004, pa: 1.1005 };
+    var DASH = '—';
+
+    function recompute(){
+      var v = {}, ok = true;
+      ids.forEach(function(k){
+        var n = parseFloat(inputs[k].value);
+        v[k] = n;
+        if (!isFinite(n) || n < 0) ok = false;
+      });
+
+      if (!ok) {
+        depthOut.textContent = 'Enter non-negative numbers for every level.';
+        slopeBOut.textContent = slopeAOut.textContent = di1Out.textContent = di3Out.textContent = DASH;
+        microOut.textContent = '';
+        return;
+      }
+
+      var Db1 = v.qb1, Db2 = Db1 + v.qb2, Db3 = Db2 + v.qb3;
+      var Da1 = v.qa1, Da2 = Da1 + v.qa2, Da3 = Da2 + v.qa3;
+      depthOut.textContent = 'D_b = ' + Db1.toFixed(0) + ' / ' + Db2.toFixed(0) + ' / ' + Db3.toFixed(0) +
+        ' · D_a = ' + Da1.toFixed(0) + ' / ' + Da2.toFixed(0) + ' / ' + Da3.toFixed(0);
+
+      var slopeBid = (((Db2 - Db1) / 1) + ((Db3 - Db1) / 2)) / 2;
+      var slopeAsk = (((Da2 - Da1) / 1) + ((Da3 - Da1) / 2)) / 2;
+      slopeBOut.textContent = slopeBid.toFixed(3);
+      slopeAOut.textContent = slopeAsk.toFixed(3);
+
+      if (Db1 + Da1 > 0) {
+        var di1 = (Db1 - Da1) / (Db1 + Da1);
+        di1Out.textContent = di1.toFixed(3);
+        var half = (TICK.pa - TICK.pb) / 2, mid = (TICK.pa + TICK.pb) / 2;
+        microOut.textContent = 'Microprice (from DI(1)): ' + (mid + half * di1).toFixed(6);
+      } else {
+        di1Out.textContent = DASH;
+        microOut.textContent = 'Microprice (from DI(1)): — (level-1 sizes are both zero)';
+      }
+
+      di3Out.textContent = (Db3 + Da3) > 0 ? ((Db3 - Da3) / (Db3 + Da3)).toFixed(3) : DASH;
+    }
+
+    ids.forEach(function(k){ inputs[k].addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      ids.forEach(function(k){ inputs[k].value = DEFAULTS[k]; });
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>
