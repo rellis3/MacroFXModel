@@ -29,6 +29,9 @@
     <button type="button" class="tl-diff-btn" data-level="beginner">Beginner</button>
     <button type="button" class="tl-diff-btn" data-level="intermediate">Intermediate</button>
     <button type="button" class="tl-diff-btn" data-level="advanced">Advanced</button>
+    <!-- INSTITUTIONAL:START -->
+    <button type="button" class="tl-diff-btn" data-level="institutional">🔒 Institutional</button>
+    <!-- INSTITUTIONAL:END -->
     <span class="tl-diff-count" data-diff-count></span>
   </div>
 
@@ -860,7 +863,7 @@
   </div>
 
   <!-- INSTITUTIONAL:START -->
-  <div class="tl-cat" data-level="advanced">
+  <div class="tl-cat" data-level="advanced" data-institutional="1">
     <h2>28 · Factor Models</h2>
     <div class="tl-cat-sub">CAPM through commercial multi-factor risk models — how institutions decompose expected returns and portfolio risk into named systematic exposures, and the honest FX/currency analogs (carry, momentum) already trading in this curriculum's own macro content.</div>
     <div class="tl-grid">
@@ -894,7 +897,7 @@
   <!-- INSTITUTIONAL:END -->
 
   <!-- INSTITUTIONAL:START -->
-  <div class="tl-cat" data-level="advanced">
+  <div class="tl-cat" data-level="advanced" data-institutional="1">
     <h2>29 · Volatility Estimation &amp; Jump Detection</h2>
     <div class="tl-cat-sub">The estimators and tests underneath this repo's own volatility machinery — range-based OHLC estimators, realized-volatility forecasting, and the two-stage toolkit (bipower variation, then Lee-Mykland) for separating jumps from ordinary diffusion.</div>
     <div class="tl-grid">
@@ -923,7 +926,7 @@
   <!-- INSTITUTIONAL:END -->
 
   <!-- INSTITUTIONAL:START -->
-  <div class="tl-cat" data-level="advanced">
+  <div class="tl-cat" data-level="advanced" data-institutional="1">
     <h2>30 · Backtest &amp; Research Integrity</h2>
     <div class="tl-cat-sub">Two more pieces of the honesty toolkit alongside this curriculum's existing Deflated Sharpe and Purged Cross-Validation lessons — directly bootstrap-testing every strategy you actually tried, and labeling trades the way a real position is actually exited.</div>
     <div class="tl-grid">
@@ -942,7 +945,7 @@
   <!-- INSTITUTIONAL:END -->
 
   <!-- INSTITUTIONAL:START -->
-  <div class="tl-cat" data-level="advanced">
+  <div class="tl-cat" data-level="advanced" data-institutional="1">
     <h2>31 · Market Microstructure Extensions</h2>
     <div class="tl-cat-sub">Extends this curriculum's existing Market Microstructure category — signing trades without observed intent, why spreads exist and how to estimate them from limited data, how much trading is information-driven, and the real-time order-book signals modern electronic desks watch tick-by-tick.</div>
     <div class="tl-grid">
@@ -976,7 +979,7 @@
   <!-- INSTITUTIONAL:END -->
 
   <!-- INSTITUTIONAL:START -->
-  <div class="tl-cat" data-level="advanced">
+  <div class="tl-cat" data-level="advanced" data-institutional="1">
     <h2>32 · Price Discovery &amp; Lead-Lag</h2>
     <div class="tl-cat-sub">Which venue or instrument moves first when new information arrives, and how to tell — from the two-equation error-correction system, through the classical statistical test for one series leading another, to the variance-decomposition question of how much of that leadership each venue actually accounts for.</div>
     <div class="tl-grid">
@@ -1000,7 +1003,7 @@
   <!-- INSTITUTIONAL:END -->
 
   <!-- INSTITUTIONAL:START -->
-  <div class="tl-cat" data-level="advanced">
+  <div class="tl-cat" data-level="advanced" data-institutional="1">
     <h2>33 · Liquidity</h2>
     <div class="tl-cat-sub">Why trading costs and order sizes scale the way they do across assets, why price impact fades instead of lingering forever, and how to read a resting order book's shape directly — the liquidity-side counterpart to this curriculum's execution and microstructure lessons.</div>
     <div class="tl-grid">
@@ -1024,7 +1027,7 @@
   <!-- INSTITUTIONAL:END -->
 
   <!-- INSTITUTIONAL:START -->
-  <div class="tl-cat" data-level="advanced">
+  <div class="tl-cat" data-level="advanced" data-institutional="1">
     <h2>34 · Market Making</h2>
     <div class="tl-cat-sub">How a two-sided quoter prices inventory risk into its own bid and ask instead of quoting symmetrically around the mid.</div>
     <div class="tl-grid">
@@ -1038,7 +1041,7 @@
   <!-- INSTITUTIONAL:END -->
 
   <!-- INSTITUTIONAL:START -->
-  <div class="tl-cat" data-level="advanced">
+  <div class="tl-cat" data-level="advanced" data-institutional="1">
     <h2>35 · Risk Attribution &amp; Tail Statistics</h2>
     <div class="tl-cat-sub">Pushing this curriculum's existing VaR and extreme-value machinery further — measuring how one distressed position spills risk onto another, estimating raw tail heaviness without fitting a full distribution, and decomposing a portfolio's total risk down to the position or factor actually driving it.</div>
     <div class="tl-grid">
@@ -1062,7 +1065,7 @@
   <!-- INSTITUTIONAL:END -->
 
   <!-- INSTITUTIONAL:START -->
-  <div class="tl-cat" data-level="advanced">
+  <div class="tl-cat" data-level="advanced" data-institutional="1">
     <h2>36 · Options &amp; Vol-Surface Extensions</h2>
     <div class="tl-cat-sub">Extending this curriculum's Black-Scholes, Heston, SABR, and implied-vol-surface lessons — combining stochastic volatility with jumps, backing out a deterministic local-volatility function from a full surface, and extracting model-free risk-neutral information straight from a strip of option prices.</div>
     <div class="tl-grid">
@@ -1086,7 +1089,7 @@
   <!-- INSTITUTIONAL:END -->
 
   <!-- INSTITUTIONAL:START -->
-  <div class="tl-cat" data-level="advanced">
+  <div class="tl-cat" data-level="advanced" data-institutional="1">
     <h2>37 · Covariance Estimation</h2>
     <div class="tl-cat-sub">Fixing the sample covariance matrix's own eigenvalue bias — diagnosed in this curriculum's Random Matrix Theory lesson — by blending it with a low-variance target instead of using it raw.</div>
     <div class="tl-grid">
@@ -1110,7 +1113,8 @@
   function applyFilter(level){
     var visible = 0;
     cats.forEach(function(cat){
-      var show = (level === 'all' || cat.getAttribute('data-level') === level);
+      var show = (level === 'all' || cat.getAttribute('data-level') === level
+        || (level === 'institutional' && cat.getAttribute('data-institutional') === '1'));
       cat.classList.toggle('tl-cat-hidden', !show);
       if(show){ visible += cat.querySelectorAll('.tl-card').length; }
     });
