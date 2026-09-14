@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CoVaR: Conditional Value-at-Risk for Systemic Risk — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+<style>
+  .tl-table-wrap{overflow-x:auto;margin:14px 0}
+  table.tl-tbl{width:100%;border-collapse:collapse;font-size:13px;background:var(--s1);border:1px solid var(--border);border-radius:var(--r)}
+  table.tl-tbl th,table.tl-tbl td{padding:9px 12px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
+  table.tl-tbl th{color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:.04em;font-weight:700;background:var(--s2)}
+  table.tl-tbl tr:last-child td{border-bottom:none}
+  table.tl-tbl td{color:var(--text2)}
+  table.tl-tbl td:first-child{color:var(--text);font-weight:600;white-space:nowrap}
+  table.tl-tbl td.tl-num{font-family:'DM Mono',monospace;text-align:right}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Risk Attribution &amp; Tail Statistics / CoVaR: Conditional Value-at-Risk for Systemic Risk</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Risk Attribution &amp; Tail Statistics 1 of 3</div>
+  <h1 class="tl-title">CoVaR: Conditional Value-at-Risk for Systemic Risk</h1>
+  <p class="tl-dek">Plain VaR asks how bad institution j's own losses can get. CoVaR asks a genuinely different question: how bad can j's losses get <em>given that institution i is already in distress</em> — a measure of spillover and co-movement, not standalone risk. Despite the near-identical name, this is not the same thing as CVaR (Conditional VaR / Expected Shortfall) from the coherent-risk-measures lesson, and confusing the two is one of the easiest mistakes to make in this literature.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — grepping this repo's actual <code>.js</code>/<code>.py</code> source (case-insensitive, for "CoVaR", "systemic.risk", and "quantile.regression") turns up no CoVaR or systemic-risk-spillover measure of any kind anywhere in this codebase. The only "systemic risk" hits at all are two unrelated, descriptive comment/message strings — <code>RegimeV2/macro_overlay.py</code>'s docstring "True when VIX &gt; 25 — elevated systemic risk" and a formatter string in <code>RegimeV2/formatter.py</code> reading "All FX vol indices elevated simultaneously — systemic risk-off, not pair-specific" — both of which label a VIX threshold and a display message, not any co-movement or spillover calculation between two series. The general linear quantile-regression machinery this lesson's estimation approach relies on is covered separately in the sibling <a href="quantile-regression.html">Quantile Regression</a> lesson; see that lesson's own status badge for exactly which narrower piece of that machinery (a pinball-loss scoring rule, not the full q<sub>τ</sub>(x)=x&#8868;β<sub>τ</sub> regression) is actually load-bearing elsewhere in this repo's code.</span>
+    <span>~16 min read</span>
+    <span>Prereqs: <a href="coherent-risk-measures.html">Coherent Risk Measures: VaR, CVaR &amp; the Artzner Axioms</a> (for the CoVaR/CVaR naming distinction), <a href="quantile-regression.html">Quantile Regression</a> (the estimation machinery this lesson leans on)</span>
+  </div>
+
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="institutional-covar-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides with a live slider that redraws the fitted quantile line and recomputes ΔCoVaR.
+  </div>
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li><strong>CoVaR<sub>j|i</sub></strong> (Adrian &amp; Brunnermeier) is the VaR of institution/asset j's returns <em>conditional on</em> institution/asset i being in a distressed state — typically i sitting at its own VaR level — rather than j's plain, unconditional VaR computed alone.</li>
+      <li>The real systemic-risk-ranking tool is <strong>ΔCoVaR = CoVaR<sub>j|i in distress</sub> − CoVaR<sub>j|i at median</sub></strong> — the <em>marginal</em> contribution of i's distress to j's risk, isolating the spillover effect from j's own baseline risk level.</li>
+      <li>The standard estimation approach is a <strong>quantile regression</strong> of j's returns on i's returns: fit the conditional τ-quantile line, then read it off at i's own distress level (i's VaR) versus i's median — the exact same pinball-loss machinery the sibling <a href="quantile-regression.html">Quantile Regression</a> lesson derives from scratch, reused here rather than re-derived.</li>
+      <li><strong>CoVaR and CVaR are not the same thing</strong>, despite the near-identical three letters. CVaR (from <a href="coherent-risk-measures.html">Coherent Risk Measures</a>) is the average loss <em>within</em> one distribution's own tail. CoVaR is a VaR of one variable conditioned on a <em>different</em> variable's distress — a co-movement statistic across two series, not a tail-averaging statistic within one.</li>
+      <li>The original 2016 paper's setting is banking-sector systemic risk. Applying the same machinery to "how does EM currency risk (j) respond to elevated USD funding stress (i)" is a practically useful extension — but it's an application by analogy to a different domain, not something the original paper itself studied.</li>
+      <li>A small toy dataset and a live calculator below compute CoVaR and ΔCoVaR by hand from a fitted conditional-quantile line, and the Pitfalls section is explicit about threshold arbitrariness, small-sample noise, and why CoVaR is a pairwise statistic, not a full network map of systemic risk.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    Every risk measure covered elsewhere in this Theory Lab — VaR, CVaR, a
+    factor-model volatility estimate — answers a question about <em>one</em>
+    portfolio or institution, taken in isolation: how bad can its own losses
+    get? That question is necessary, but it quietly assumes something a
+    financial system almost never delivers: that one institution's distress
+    doesn't change the risk facing everyone else. In reality, one large
+    institution failing, or one currency's funding markets seizing up, can
+    make losses elsewhere <em>more likely and more severe</em> at exactly the
+    same moment — a systemic, co-moving component of risk that a
+    standalone risk number, computed on each institution separately, has no
+    way to see at all.
+  </p>
+  <p>
+    Tobias Adrian and Markus Brunnermeier's CoVaR, introduced in their paper
+    "CoVaR" (Adrian &amp; Brunnermeier's CoVaR paper, published in the
+    American Economic Review in 2016), was built specifically to answer this
+    different question: not "how risky is institution j," but "how much
+    riskier does j become when institution i is in trouble" — turning a
+    standalone risk number into a genuinely relational one.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Not "how sick is this patient," but "how sick does this patient get when their roommate is sick"</h3>
+    <p>
+      Imagine tracking two roommates' health independently — each one's own
+      baseline risk of getting sick this month. That's the equivalent of
+      plain VaR: a standalone number for each person, computed without any
+      reference to the other. Now ask a different question: given that
+      roommate i has already come down with something contagious, how much
+      worse does roommate j's own risk of getting sick become? That's CoVaR —
+      it's not a claim about j's baseline health at all, it's a claim about
+      how j's risk <em>moves</em> in response to i's condition. And the
+      genuinely useful number for ranking "how dangerous is roommate i to be
+      around" isn't roommate j's sick-day risk in absolute terms — some
+      people are just more prone to catching things regardless — it's the
+      <em>difference</em> between j's risk when i is contagious and j's risk
+      when i is healthy. That difference is ΔCoVaR: the marginal, spillover
+      contribution i's distress makes to j's risk, stripped of j's own
+      baseline susceptibility.
+    </p>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Regular VaR is like asking "how bad could your day get?" all by itself. CoVaR is asking "how bad could your day get, GIVEN that your best friend is having a terrible day?" It's not about you on your own — it's about how much your bad-day risk changes because of someone else's trouble. And the really useful number isn't "how bad is your day when your friend is having a bad day" on its own — it's how much worse that is compared to a totally normal day for your friend. That gap is the real measure of how much your friend's mood actually spills over onto you.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>1. Plain VaR, as a reminder</h3>
+  <p>
+    Following the same loss-random-variable convention as the
+    <a href="coherent-risk-measures.html">Coherent Risk Measures</a> lesson,
+    let \(L_j\) be institution/asset j's loss. \(\text{VaR}_q(L_j)\) is the
+    smallest loss threshold exceeded with probability at most \(1-q\) — a
+    single number describing j's own tail risk, computed with no reference
+    to anything else in the system. <strong>CoVaR's entire departure point is
+    replacing "computed alone" with "computed conditional on something
+    else."</strong>
+  </p>
+  <div class="tl-solid amber">
+    <strong>A necessary sign-convention note before going further.</strong>
+    The <a href="coherent-risk-measures.html">Coherent Risk Measures</a>
+    lesson works in <em>loss</em> units, where a bigger positive number is
+    worse. The CoVaR literature, by contrast, is typically stated directly on
+    <em>returns</em>, where a large negative number is the bad outcome and
+    "distress" means a low (very negative) return, not a large positive one.
+    This lesson follows the CoVaR literature's own convention — returns, not
+    losses — throughout, and flags this explicitly so nobody carries the
+    "bigger is worse" reading from the CVaR lesson over into this one by
+    habit, where it would flip every sign.
+  </div>
+
+  <h3>2. CoVaR: a VaR that's conditional on someone else's distress</h3>
+  <p>
+    Let \(X_i\) and \(X_j\) be the returns of institution/asset i and
+    institution/asset j. Fix a quantile level \(q\) (e.g. \(q=0.05\), the
+    same 5% tail probability used throughout this Theory Lab). Adrian &amp;
+    Brunnermeier define \(\text{CoVaR}_{j|i}(q)\) as the \(q\)-quantile of
+    \(X_j\), <em>conditional</em> on \(X_i\) equaling some specified
+    state — most commonly, i's own VaR level:
+  </p>
+  <div class="tl-math">\[ P\Big(X_j \le \text{CoVaR}_{j|i}(q) \;\Big|\; X_i = \text{VaR}_q(X_i) \Big) = q \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>X_i, X_j</code><span>returns of the conditioning institution i and the target institution j</span></div>
+    <div class="tl-eq-chip c2"><code>VaR_q(X_i)</code><span>i's own q-quantile return — i's "distress" level, e.g. i's own 5th-percentile worst return</span></div>
+    <div class="tl-eq-chip c3"><code>q</code><span>the tail probability, e.g. 0.05 — the same q used for both i's own VaR and the conditional quantile of j</span></div>
+  </div>
+  <p>
+    Read this exactly as written: \(\text{CoVaR}_{j|i}(q)\) is the value such
+    that, <em>given i is sitting at its own distress level</em>, j's return
+    falls below that value with probability \(q\). It is a full VaR-style
+    quantile of \(X_j\) — the only thing that changed versus plain
+    \(\text{VaR}_q(X_j)\) is that the whole calculation is now conditioned on
+    a specific state of a different variable, \(X_i\), instead of being
+    computed on \(X_j\)'s own unconditional distribution.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Plain VaR for j asks: "on a normal day, what's j's worst-case-ish outcome?" CoVaR asks a completely different day: "on the specific kind of day where i is already having a really bad one — what's j's worst-case-ish outcome THEN?" Same style of question (a worst-case percentile), asked about a different, conditioned-on world.</p>
+  </div>
+
+  <h3>3. ΔCoVaR: the marginal, spillover part — the number practitioners actually rank institutions by</h3>
+  <p>
+    \(\text{CoVaR}_{j|i}(q)\) alone mixes two things together: whatever
+    baseline risk j already has, plus whatever extra risk comes specifically
+    from i's distress. To isolate the second piece — the actual systemic
+    contribution — Adrian &amp; Brunnermeier define \(\Delta\text{CoVaR}\) as
+    the difference between CoVaR computed with i in distress and CoVaR
+    computed with i at its normal, "nothing going on" state (typically i's
+    own median):
+  </p>
+  <div class="tl-math">\[ \Delta\text{CoVaR}_{j|i} = \text{CoVaR}_{j|i \text{ in distress}} - \text{CoVaR}_{j|i \text{ at median}} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>CoVaR_{j|i in distress}</code><span>j's conditional VaR when i sits at i's own VaR_q(X_i) — i's distress level</span></div>
+    <div class="tl-eq-chip c2"><code>CoVaR_{j|i at median}</code><span>j's conditional VaR when i sits at i's own median return — an ordinary, unremarkable day for i</span></div>
+  </div>
+  <p>
+    <strong>This is the number actually used in practice to rank
+    institutions by systemic importance</strong> — not
+    \(\text{CoVaR}_{j|i}(q)\) alone, which still carries j's own baseline risk
+    level bundled in, but \(\Delta\text{CoVaR}_{j|i}\), which nets that
+    baseline out and isolates specifically how much worse j's risk gets
+    <em>because</em> i is in distress rather than at a normal level. A large,
+    negative \(\Delta\text{CoVaR}\) (in the return convention above) means i's
+    distress genuinely drags j's tail risk down further; a \(\Delta\text{CoVaR}\)
+    near zero means i's condition barely moves j's risk at all, regardless of
+    how risky either institution looks on its own.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Some people are just naturally more likely to catch a cold, contagious roommate or not — that's their baseline risk. ΔCoVaR isn't interested in that baseline at all. It only asks: "how much MORE likely are you to get sick specifically because your roommate is sick right now, compared to a normal day where your roommate is fine?" That "extra, because-of-them" amount is the actual spillover — and it's what you'd use to decide which roommate is genuinely dangerous to live with, not just which roommate happens to get sick a lot on their own.</p>
+  </div>
+
+  <h3>4. Estimating it: quantile regression, read off at two states of i</h3>
+  <p>
+    The standard way to estimate both quantities in practice is a single
+    <strong>quantile regression</strong> of j's returns on i's returns (and,
+    in richer specifications, additional state variables) at the target
+    level \(q\). If quantile regression is new territory, the sibling
+    <a href="quantile-regression.html">Quantile Regression</a> lesson derives
+    the whole machinery from scratch — the pinball loss, why minimizing its
+    expectation recovers a specific conditional quantile rather than the
+    conditional mean OLS targets, and a full worked toy example. This lesson
+    won't re-derive any of that; it only needs the headline result, in one
+    sentence: <strong>quantile regression fits a line that directly targets a
+    chosen percentile of \(Y\) given \(X\), the same way OLS targets the
+    conditional mean — just with an asymmetric loss function instead of
+    squared error.</strong>
+  </p>
+  <p>
+    Fitting that regression at level \(q\) gives a linear conditional
+    quantile function:
+  </p>
+  <div class="tl-math">\[ q_q(X_j \mid X_i = x) = \alpha_q + \beta_q\, x \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>α_q, β_q</code><span>the fitted quantile-regression intercept and slope at level q — β_q is how strongly j's tail co-moves with i</span></div>
+    <div class="tl-eq-chip c2"><code>x</code><span>the specific value of i's return being conditioned on</span></div>
+  </div>
+  <p>
+    CoVaR and ΔCoVaR then fall out of this one fitted line by simply plugging
+    in two different values of \(x\) — i's own VaR (distress) and i's own
+    median (normal):
+  </p>
+  <div class="tl-math">\[ \text{CoVaR}_{j|i \text{ in distress}} = \alpha_q + \beta_q\,\text{VaR}_q(X_i), \qquad \text{CoVaR}_{j|i \text{ at median}} = \alpha_q + \beta_q\,\text{Median}(X_i) \]</div>
+  <div class="tl-math">\[ \Delta\text{CoVaR}_{j|i} = \beta_q\,\big[\text{VaR}_q(X_i) - \text{Median}(X_i)\big] \]</div>
+  <p>
+    That last line is worth sitting with: \(\Delta\text{CoVaR}\) collapses to
+    just \(\beta_q\) — the fitted quantile regression's slope — multiplied by
+    how far i's own distress level sits from i's own normal level. The whole
+    systemic-risk-ranking number reduces to one regression coefficient times
+    one distance, once the quantile regression is fit. Everything genuinely
+    new in this lesson beyond "fit a quantile regression" is contained in
+    that one substitution.
+  </p>
+
+  <div class="tl-solid blue">
+    <strong>β<sub>q</sub> is doing all the systemic-risk work here.</strong>
+    If \(\beta_q = 0\) — j's conditional quantile doesn't move with i's
+    return at all — then \(\Delta\text{CoVaR}_{j|i} = 0\) regardless of how
+    extreme i's own distress level is. A large \(|\beta_q|\) is what makes
+    i's condition actually matter for j; a large VaR gap for i alone, with a
+    near-zero \(\beta_q\), produces almost no systemic spillover onto j at
+    all.
+  </div>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(X_i, X_j\)</td><td>Returns of the conditioning institution/asset i and the target institution/asset j.</td></tr>
+    <tr><td>\(q\)</td><td>The tail probability defining "distress," e.g. 0.05 (a 5% quantile) — the same q used for i's own VaR and for the conditional quantile of j.</td></tr>
+    <tr><td>\(\text{VaR}_q(X_i)\)</td><td>i's own unconditional q-quantile return — i's distress level.</td></tr>
+    <tr><td>\(\text{Median}(X_i)\)</td><td>i's own median return — an ordinary, unremarkable day for i.</td></tr>
+    <tr><td>\(\text{CoVaR}_{j|i}(q)\)</td><td>The q-quantile of j's return, conditional on i being in a specified state (distress or median).</td></tr>
+    <tr><td>\(\Delta\text{CoVaR}_{j|i}\)</td><td>CoVaR<sub>j|i in distress</sub> minus CoVaR<sub>j|i at median</sub> — the marginal, spillover-only contribution of i's distress to j's risk.</td></tr>
+    <tr><td>\(\alpha_q, \beta_q\)</td><td>Fitted quantile-regression intercept and slope of j's returns on i's returns, at level q.</td></tr>
+  </table></div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>A small toy dataset, a fitted 5%-quantile line, and CoVaR / ΔCoVaR by hand</h3>
+    <p>
+      Ten paired daily return observations for institutions/assets i and j,
+      in percent — a genuinely small sample, deliberately, since the Pitfalls
+      section below is about exactly this:
+    </p>
+    <div class="tl-table-wrap"><table class="tl-tbl">
+      <tr><th>i (%)</th><td class="tl-num">−4.5</td><td class="tl-num">−3.0</td><td class="tl-num">−2.0</td><td class="tl-num">−1.0</td><td class="tl-num">−0.5</td><td class="tl-num">0.2</td><td class="tl-num">0.6</td><td class="tl-num">1.0</td><td class="tl-num">1.8</td><td class="tl-num">2.4</td></tr>
+      <tr><th>j (%)</th><td class="tl-num">−4.3</td><td class="tl-num">−2.7</td><td class="tl-num">−1.5</td><td class="tl-num">−0.7</td><td class="tl-num">−0.3</td><td class="tl-num">0.4</td><td class="tl-num">0.7</td><td class="tl-num">1.0</td><td class="tl-num">1.5</td><td class="tl-num">2.1</td></tr>
+    </table></div>
+    <p>
+      Rather than re-running the pinball-loss linear program by hand (the
+      sibling <a href="quantile-regression.html">Quantile Regression</a>
+      lesson does exactly that derivation, in full), take as given a
+      \(q=0.05\) quantile regression fit to this data:
+    </p>
+    <div class="tl-math">\[ q_{0.05}(X_j \mid X_i = x) = -0.4 + 0.8x \]</div>
+    <p>
+      Checking this line against the ten points: exactly <strong>1 of the 10
+      points (10%)</strong> falls below it (the \(i=-4.5\) point, where
+      \(j=-4.3\) sits below the line's \(-4.0\)) — the closest a sample of
+      only 10 integer-count observations can get to a true 5% exceedance
+      rate, and a small, honest illustration of the small-sample noise the
+      Pitfalls section discusses below.
+    </p>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>i's own unconditional median and VaR</h4>
+          <p>
+            These are calibrated separately — typically from a longer or
+            different historical sample than the small toy dataset above,
+            exactly as a real desk would do. Take, for clean arithmetic,
+            \(\text{Median}(X_i) = 0\%\) and \(\text{VaR}_{0.05}(X_i) =
+            -3\%\) (i's own 5th-percentile worst daily return).
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>CoVaR with i at its median (the baseline)</h4>
+          <p>
+            \(\text{CoVaR}_{j|i\text{ at median}} = -0.4 + 0.8\times0 =
+            \mathbf{-0.4\%}\). On an ordinary day for i, j's own conditional
+            5th-percentile return sits at \(-0.4\%\).
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>CoVaR with i in distress</h4>
+          <p>
+            \(\text{CoVaR}_{j|i\text{ in distress}} = -0.4 + 0.8\times(-3) =
+            -0.4 - 2.4 = \mathbf{-2.8\%}\). When i sits at its own 5%-VaR
+            level, j's conditional 5th-percentile return is a full 2.4
+            percentage points worse than the baseline case above.
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">4</div>
+        <div class="tl-step-body">
+          <h4>ΔCoVaR — the actual systemic-risk number</h4>
+          <p>
+            \(\Delta\text{CoVaR}_{j|i} = -2.8 - (-0.4) = \mathbf{-2.4\%}\) —
+            equivalently, \(\beta_{0.05}\times[\text{VaR}_{0.05}(X_i) -
+            \text{Median}(X_i)] = 0.8\times(-3-0) = -2.4\%\). i's distress, on
+            its own, drags j's conditional 5th-percentile return down by 2.4
+            additional percentage points versus a normal day for i.
+          </p>
+        </div>
+      </div>
+    </div>
+    <p>
+      Every number above is cross-checked against the live calculator
+      directly below it and agrees to the last decimal shown.
+    </p>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Specify a linear conditional-quantile relationship and both states of i — compute CoVaR and ΔCoVaR live</h3>
+    <p>
+      Starts on the worked example's own numbers. Change the intercept
+      \(\alpha_q\), the slope \(\beta_q\), or either conditioning state of i
+      (median or distress) and everything below recomputes instantly,
+      including a guard for blank or non-numeric entries.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Intercept \(\alpha_q\) (%)</span></div>
+        <input type="number" id="cv-alpha" class="tl-scratch-input" value="-0.4" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Slope \(\beta_q\)</span></div>
+        <input type="number" id="cv-beta" class="tl-scratch-input" value="0.8" step="0.05">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>i at median (%)</span></div>
+        <input type="number" id="cv-median" class="tl-scratch-input" value="0" step="0.5">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>i in distress, VaR<sub>q</sub>(X<sub>i</sub>) (%)</span></div>
+        <input type="number" id="cv-distress" class="tl-scratch-input" value="-3" step="0.5">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      CoVaR<sub>j|i at median</sub> = <b id="cv-covar-median">-0.4000</b>%&emsp;CoVaR<sub>j|i in distress</sub> = <b id="cv-covar-distress">-2.8000</b>%
+    </div>
+    <div class="tl-readout">
+      &Delta;CoVaR<sub>j|i</sub> = <b id="cv-dcovar">-2.4000</b>%
+      <span id="cv-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="cv-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">j's returns vs. i's returns — the fitted 5%-quantile line, and CoVaR read off at i's median vs. distress state</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Scatter plot of ten toy data points with i's return on the horizontal axis and j's return on the vertical axis, sloping upward together. A fitted quantile regression line runs beneath almost all of the points, touching only the single lowest one. Two markers sit on this line: a blue marker where i is at its median return of zero, and a red marker where i is at its distress level of minus three percent, noticeably lower on the line. A bracket between the two markers' heights is labeled with the gap between them, delta CoVaR.">
+      <line x1="60" y1="20" x2="60" y2="260" style="stroke:var(--border);stroke-width:1"/>
+      <line x1="60" y1="260" x2="600" y2="260" style="stroke:var(--border);stroke-width:1"/>
+      <text x="330" y="285" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">i's return (%)</text>
+      <text x="26" y="140" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)" transform="rotate(-90 26 140)">j's return (%)</text>
+
+      <text x="127.5" y="274" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">-4</text>
+      <text x="262.5" y="274" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">-2</text>
+      <text x="397.5" y="274" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">0</text>
+      <text x="532.5" y="274" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">2</text>
+      <text x="48" y="234" text-anchor="end" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">-4</text>
+      <text x="48" y="174" text-anchor="end" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">-2</text>
+      <text x="48" y="114" text-anchor="end" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">0</text>
+      <text x="48" y="54" text-anchor="end" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">2</text>
+
+      <circle cx="93.75" cy="239" r="4" fill="var(--red)"/>
+      <circle cx="195" cy="191" r="3.5" fill="var(--text2)"/>
+      <circle cx="262.5" cy="155" r="3.5" fill="var(--text2)"/>
+      <circle cx="330" cy="131" r="3.5" fill="var(--text2)"/>
+      <circle cx="363.75" cy="119" r="3.5" fill="var(--text2)"/>
+      <circle cx="411" cy="98" r="3.5" fill="var(--text2)"/>
+      <circle cx="438" cy="89" r="3.5" fill="var(--text2)"/>
+      <circle cx="465" cy="80" r="3.5" fill="var(--text2)"/>
+      <circle cx="519" cy="65" r="3.5" fill="var(--text2)"/>
+      <circle cx="559.5" cy="47" r="3.5" fill="var(--text2)"/>
+      <text x="98" y="228" font-size="9" font-family="'DM Mono',monospace" fill="var(--red)">only point below the line</text>
+
+      <line x1="60" y1="242" x2="600" y2="50" style="stroke:var(--purple);stroke-width:2.5"/>
+      <text x="440" y="70" font-size="11" font-family="'DM Mono',monospace" fill="var(--purple)">q_0.05(j|i) = -0.4 + 0.8i</text>
+
+      <line x1="195" y1="194" x2="195" y2="260" style="stroke:var(--red);stroke-width:1;stroke-dasharray:3,3"/>
+      <line x1="60" y1="194" x2="195" y2="194" style="stroke:var(--red);stroke-width:1;stroke-dasharray:3,3"/>
+      <circle cx="195" cy="194" r="6" fill="var(--red)"/>
+      <text x="205" y="197" font-size="10" font-family="'DM Mono',monospace" fill="var(--red)">i in distress (-3%) → CoVaR = -2.8%</text>
+
+      <line x1="397.5" y1="122" x2="397.5" y2="260" style="stroke:var(--blue);stroke-width:1;stroke-dasharray:3,3"/>
+      <line x1="60" y1="122" x2="397.5" y2="122" style="stroke:var(--blue);stroke-width:1;stroke-dasharray:3,3"/>
+      <circle cx="397.5" cy="122" r="6" fill="var(--blue)"/>
+      <text x="277" y="112" font-size="10" font-family="'DM Mono',monospace" fill="var(--blue)">i at median (0%) → CoVaR = -0.4%</text>
+
+      <line x1="80" y1="122" x2="80" y2="194" style="stroke:var(--amber);stroke-width:2"/>
+      <line x1="74" y1="122" x2="86" y2="122" style="stroke:var(--amber);stroke-width:2"/>
+      <line x1="74" y1="194" x2="86" y2="194" style="stroke:var(--amber);stroke-width:2"/>
+      <text x="90" y="161" font-size="10" font-family="'DM Mono',monospace" fill="var(--amber)">ΔCoVaR = -2.4%</text>
+    </svg>
+    <div class="tl-chart-caption">
+      The same ten toy points and fitted line from the worked example. Sliding
+      from the blue marker (i at its median) to the red marker (i at its own
+      distress level) moves entirely along the fitted quantile line — the
+      vertical gap between them, ΔCoVaR, is the spillover-only contribution
+      of i's distress to j's tail risk.
+    </div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>CoVaR vs. CVaR — a naming collision worth getting exactly right</h2>
+  <p>
+    "CoVaR" and "CVaR" differ by one letter and are, despite that, completely
+    different concepts answering completely different questions. Mixing them
+    up is one of the single easiest mistakes to make in this literature, and
+    it's worth a dedicated section rather than a footnote.
+  </p>
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>CVaR — Conditional Value-at-Risk / Expected Shortfall</h4>
+      <p>
+        Covered in <a href="coherent-risk-measures.html">Coherent Risk
+        Measures</a>: \(\text{CVaR}_p(L) = E[L \mid L >
+        \text{VaR}_p(L)]\) — the <em>average loss within one variable's own
+        tail</em>. It is "conditional" only in the sense of conditioning on
+        already being past that same variable's own VaR threshold. There is
+        exactly one random variable involved throughout.
+      </p>
+    </div>
+    <div class="tl-compare-card purple">
+      <h4>CoVaR — Conditional VaR of j, given i's state</h4>
+      <p>
+        \(\text{CoVaR}_{j|i}(q)\) is a <em>VaR-style quantile of one variable
+        (j), conditioned on the state of a different variable (i)</em>. It
+        is "conditional" in the sense of conditioning on someone else's
+        distress, not on being past its own threshold. There are always
+        (at least) two distinct random variables involved: the target and
+        the conditioning institution.
+      </p>
+    </div>
+  </div>
+  <div class="tl-solid red">
+    <strong>The distinction in one sentence:</strong> CVaR averages <em>over
+    a tail</em>; CoVaR conditions <em>on a different variable's distress</em>.
+    They happen to share letters and a superficial "extends VaR" framing, and
+    nothing else. A number labeled "CVaR" in a risk report and a number
+    labeled "CoVaR" in a systemic-risk report are not interchangeable, not
+    approximately equal, and not answering variations of the same question.
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>CVaR is like asking "on your worst days, on average, how bad do THEY get?" — still just about you. CoVaR is asking "how bad do YOUR days get because of someone ELSE'S bad day?" One looks deeper into a single person's own worst outcomes; the other looks across two different people entirely. Same-sounding names, genuinely different questions — mixing them up is an easy, common mistake.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>From banks to FX and macro: an application by analogy</h2>
+  <p>
+    Adrian &amp; Brunnermeier's original setting is banking-sector systemic
+    risk: i and j are financial institutions, and the question is which
+    banks' distress spills over most into the rest of the financial system —
+    the paper's own motivating use case, and the one its empirical results
+    actually speak to directly. Nothing in the mathematics above, though,
+    actually requires i and j to be banks. The same machinery — fit a
+    conditional quantile of j's returns on i's returns, read it off at i's
+    distress level versus i's median — applies equally to any two return
+    series with a plausible spillover relationship, including currency pairs
+    and macro risk factors.
+  </p>
+  <p>
+    A natural FX/macro reframing of the exact toy numbers above: let \(i\) be
+    a proxy for <strong>USD funding stress</strong> (for instance, a
+    cross-currency basis spread or a short-term USD funding-cost indicator,
+    standardized so a large negative move represents tightening funding
+    conditions) and let \(j\) be the return on a basket of <strong>emerging-market
+    currencies against the dollar</strong>. The same fitted line,
+    \(q_{0.05}(X_j\mid X_i=x) = -0.4 + 0.8x\), would then say: on an ordinary
+    day for USD funding conditions, the EM basket's conditional 5th-percentile
+    return sits at \(-0.4\%\); on a day where USD funding stress is itself at
+    its own worst 5% level, the EM basket's conditional 5th-percentile return
+    worsens to \(-2.8\%\) — a \(\Delta\text{CoVaR}\) of \(-2.4\%\)
+    attributable specifically to the funding-stress spillover, not to the EM
+    basket's own baseline volatility.
+  </p>
+  <div class="tl-solid amber">
+    <strong>Be honest about what this reframing is and isn't.</strong> This
+    is an <em>application by analogy</em> — reusing a technique built and
+    validated for banking-sector systemic risk in a different domain, because
+    the underlying statistical machinery (a conditional quantile of one
+    series given another) doesn't actually care what the two series
+    represent. It is not a claim that Adrian &amp; Brunnermeier's paper
+    itself studied FX or macro risk factors, and it is not a claim that a
+    USD-funding-stress-to-EM-FX spillover of this specific size has been
+    empirically estimated anywhere — the numbers above are the same
+    illustrative toy figures from Section 02, relabeled, not a fresh
+    empirical result.
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The original CoVaR idea was invented to study "which banks are dangerous to the rest of the banking system." The same math doesn't actually know or care that it's looking at banks — it just needs two number series that might move together. So it's perfectly reasonable to point the same tool at "USD funding stress" and "emerging-market currencies" instead. Just be upfront that you're borrowing a tool built for one job and pointing it at a different one, not quoting a result the original inventors actually produced themselves.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>How practitioners actually use this</h2>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📊</div>
+      <h4>Ranking institutions by systemic contribution</h4>
+      <p>Computing ΔCoVaR<sub>system|i</sub> for many institutions i against a system-wide index j, and ranking by the size of ΔCoVaR, is the paper's own headline application — identifying which institutions contribute most to system-wide tail risk, as distinct from which are individually largest or most volatile.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🏦</div>
+      <h4>A complement to size-based "too big to fail" measures</h4>
+      <p>An institution can be individually small but have a large ΔCoVaR (highly interconnected, moves the system a lot when distressed) or individually enormous but contribute little marginal spillover — the two rankings genuinely diverge in practice, which is part of the point of computing ΔCoVaR at all rather than relying on size alone.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">📐</div>
+      <h4>Extending the conditioning set with state variables</h4>
+      <p>Richer specifications add macro state variables (a VIX-style volatility index, a credit-spread proxy, a yield-curve slope) into the quantile regression alongside i's own return, so ΔCoVaR can be computed conditional on the broader macro backdrop, not i's return in isolation.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🌐</div>
+      <h4>A pairwise building block, not a finished network map</h4>
+      <p>In practice CoVaR/ΔCoVaR is usually computed for many (i, j) pairs and read as a set of individual spillover strengths — a genuinely different, and simpler, object than a full systemic-risk network model, discussed in the pitfall below.</p>
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>Two EM currencies that look equally risky in isolation, ranked very differently by ΔCoVaR against USD funding stress</h3>
+    <p>
+      Suppose two EM currencies, X and Y, have nearly identical plain
+      \(\text{VaR}_{0.05}\) computed on their own historical returns — by a
+      standalone-risk read, they look about equally dangerous to hold. Fit a
+      quantile regression of each currency's return against a USD
+      funding-stress indicator, and suppose currency X's fitted \(\beta_{0.05}\)
+      comes out large (its tail return co-moves strongly with funding stress)
+      while currency Y's comes out close to zero (its tail losses are driven
+      mostly by idiosyncratic, country-specific factors, largely independent
+      of USD funding conditions). \(\Delta\text{CoVaR}\) for X against
+      funding stress would then be large and negative, while Y's would be
+      near zero — even though the two currencies' own plain VaR numbers
+      looked essentially identical. A risk desk relying on standalone VaR
+      alone would treat X and Y as equally risky positions; one that also
+      computes \(\Delta\text{CoVaR}\) against a common stress factor would
+      correctly flag X as carrying meaningfully more systemic, co-moving
+      exposure to a funding-stress event than Y does, information the
+      standalone VaR numbers alone cannot provide.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where CoVaR quietly gets over-trusted</h3>
+    <p>
+      <strong>Quantile regression on short or non-stationary samples is
+      noisy.</strong> The worked example's own ten-point toy dataset could
+      only land 1 of 10 points (10%) below its fitted 5%-quantile line, not
+      exactly 5% — a small, honest illustration of a real problem: fitting a
+      tail quantile is inherently a small-effective-sample-size exercise
+      (you're pinning down a line mostly using the handful of points near
+      that specific tail), and financial return series that shift regime
+      over time make "the fitted relationship is stable" an assumption that
+      needs checking, not a given.
+    </p>
+    <p>
+      <strong>The choice of distress threshold is somewhat arbitrary, and
+      results can be sensitive to it.</strong> Nothing in the theory pins
+      down whether "distress" should mean i's 5%, 1%, or 10% quantile — a
+      different choice of \(q\) can produce a meaningfully different fitted
+      \(\beta_q\) and therefore a different \(\Delta\text{CoVaR}\), especially
+      if the relationship between i and j isn't stable across the tail (the
+      same quantile-crossing-adjacent concern the sibling Quantile Regression
+      lesson raises for separately-fit quantile lines in general).
+    </p>
+    <p>
+      <strong>CoVaR captures one pairwise conditional relationship, not a
+      full network map of systemic risk.</strong> \(\Delta\text{CoVaR}_{j|i}\)
+      says something specific and useful about how i's distress relates to
+      j's tail risk — it does not, on its own, describe how distress might
+      propagate through multiple institutions in sequence, feed back on
+      itself, or interact with several institutions' distress occurring
+      together. More elaborate network-based systemic risk measures exist in
+      the broader literature to address exactly that gap; this lesson won't
+      invent specifics of any particular one it isn't certain of, beyond
+      noting honestly that CoVaR is a pairwise building block, not a
+      finished systemic map.
+    </p>
+    <p>
+      <strong>Causal language should be avoided.</strong> A large
+      \(\Delta\text{CoVaR}_{j|i}\) is evidence that j's tail risk and i's
+      distress <em>co-move</em> strongly — it is not, by itself, proof that
+      i's distress <em>causes</em> j's losses. Both could be driven by a
+      shared third factor (a common macro shock hitting both at once)
+      without either institution's distress mechanically causing the
+      other's. CoVaR is a conditional/co-movement statistic; treating a large
+      ΔCoVaR as established proof of a causal spillover channel overstates
+      what the number itself demonstrates.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>CoVaR<sub>j|i</sub> is a VaR of j conditional on i's distress</strong> — not j's plain, unconditional VaR. The conditioning on a second, distinct variable is the entire departure from standard VaR.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>ΔCoVaR = CoVaR<sub>j|i in distress</sub> − CoVaR<sub>j|i at median</sub></strong> is the actual systemic-risk-ranking tool used in practice — it isolates the marginal spillover effect from j's own baseline risk level.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Estimation is a quantile regression of j on i,</strong> read off at i's own VaR level versus its median: \(\Delta\text{CoVaR}_{j|i} = \beta_q[\text{VaR}_q(X_i)-\text{Median}(X_i)]\) — the fitted slope times the distance between i's two states.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>CoVaR is not CVaR.</strong> CVaR averages a loss within one variable's own tail; CoVaR conditions a quantile of one variable on a different variable's distress. Sharing letters is the only thing they share.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Applying CoVaR to FX/macro pairs is an application by analogy,</strong> not something the original 2016 banking-sector paper itself studied — a genuinely useful extension, presented honestly as one.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>ΔCoVaR is a co-movement statistic, not proof of causation, and not a full network map.</strong> Threshold choice, small-sample noise, and the pairwise (not systemic-network) scope of the measure all need to be stated plainly alongside any ΔCoVaR number.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. In your own words, what does CoVaR<sub>j|i</sub>(q) measure, and how does that differ from plain VaR<sub>q</sub>(X_j)?</summary>
+    <div class="tl-answer">
+      CoVaR<sub>j|i</sub>(q) is the q-quantile of j's returns, computed
+      conditional on i being in a specified state (usually i's own VaR
+      level, i.e. distress). Plain VaR<sub>q</sub>(X_j) is j's q-quantile
+      computed on its own, unconditional distribution, with no reference to
+      any other institution or asset at all. The conditioning on a second,
+      distinct variable's state is the entire difference.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Define ΔCoVaR, and explain why it — not CoVaR alone — is the number actually used to rank institutions by systemic importance.</summary>
+    <div class="tl-answer">
+      ΔCoVaR<sub>j|i</sub> = CoVaR<sub>j|i in distress</sub> − CoVaR<sub>j|i
+      at median</sub>. CoVaR<sub>j|i</sub> alone still bundles together j's
+      own baseline risk level with whatever extra risk comes specifically
+      from i's distress. Subtracting the median-state CoVaR nets out j's
+      baseline and isolates only the marginal, spillover-attributable part —
+      which is the genuinely useful quantity for asking "how much does i's
+      distress specifically add to j's risk," as opposed to "how risky does
+      j look overall."
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. What is the standard estimation approach for CoVaR, and what does the fitted slope β_q represent?</summary>
+    <div class="tl-answer">
+      A quantile regression of j's returns on i's returns (and possibly
+      additional state variables) at the target level q, giving a fitted
+      conditional quantile line q_q(X_j|X_i=x) = α_q + β_q·x. CoVaR and
+      ΔCoVaR are then read off this one fitted line by plugging in i's
+      distress level and i's median. β_q represents how strongly j's tail
+      quantile co-moves with i's return — ΔCoVaR reduces to β_q times the
+      distance between i's distress level and i's median, so a near-zero
+      β_q produces near-zero ΔCoVaR regardless of how extreme i's own
+      distress is.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. A colleague says "CoVaR and CVaR are basically the same thing, just spelled slightly differently." What's the precise correction?</summary>
+    <div class="tl-answer">
+      They are not the same thing. CVaR (Conditional VaR / Expected
+      Shortfall, from the Coherent Risk Measures lesson) is the average loss
+      within one variable's own tail — E[L | L > VaR(L)], involving exactly
+      one random variable. CoVaR is a VaR-style quantile of one variable (j)
+      conditioned on a different variable's (i's) distress — it always
+      involves at least two distinct random variables and answers a
+      co-movement/spillover question, not a within-tail-averaging question.
+      The near-identical name is a coincidence of terminology, not a sign
+      the two concepts are related variations of the same idea.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Is applying CoVaR to a currency pair or a macro risk factor something Adrian &amp; Brunnermeier's original paper studied directly? How should that application be described honestly?</summary>
+    <div class="tl-answer">
+      No — the original paper's setting and empirical results are about
+      banking-sector systemic risk, with i and j as financial institutions.
+      Applying the identical quantile-regression machinery to, say, USD
+      funding stress (i) and an EM currency basket (j) is an application by
+      analogy: the underlying statistics don't require i and j to be banks,
+      but doing so borrows a technique validated in one domain and points it
+      at a different one. It should be presented as a plausible, useful
+      extension — not as a result the original paper itself produced or
+      validated in an FX/macro setting.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Name two of the pitfalls this lesson raises about interpreting a computed ΔCoVaR number, beyond "the arithmetic might be wrong."</summary>
+    <div class="tl-answer">
+      Any two of: (1) the choice of distress threshold q is somewhat
+      arbitrary and ΔCoVaR can be sensitive to it; (2) quantile regression
+      on short or non-stationary samples is noisy, since a tail quantile is
+      pinned down mostly by the few observations near that tail; (3) CoVaR
+      captures one pairwise conditional relationship, not a full network map
+      of how distress might propagate through many institutions at once; (4)
+      a large ΔCoVaR is evidence of co-movement, not proof of a causal
+      spillover — a shared third factor could drive both i's distress and
+      j's tail risk without either causing the other.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Tobias Adrian and Markus K. Brunnermeier — Adrian and Brunnermeier's CoVaR paper, published in the <em>American Economic Review</em> in 2016 — the seminal paper introducing CoVaR and ΔCoVaR as measures of systemic risk contribution (this lesson gives the year and journal as provided context rather than inventing further bibliographic specifics such as volume or page numbers it cannot independently verify).</li>
+    <li>Roger Koenker and Gilbert Bassett Jr., "Regression Quantiles," <em>Econometrica</em>, Vol. 46, No. 1, January 1978, pp. 33–50 — the foundational quantile-regression paper the estimation approach in this lesson relies on; derived in full in the sibling <a href="quantile-regression.html">Quantile Regression</a> lesson.</li>
+    <li>Philippe Artzner, Freddy Delbaen, Jean-Marc Eber, and David Heath, "Coherent Measures of Risk," <em>Mathematical Finance</em>, Vol. 9, No. 3, July 1999, pp. 203–228 — the CVaR/Expected Shortfall definitions this lesson's naming-distinction section contrasts CoVaR against, covered in full in the sibling <a href="coherent-risk-measures.html">Coherent Risk Measures</a> lesson.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="institutional-avellaneda-stoikov.html">← Avellaneda-Stoikov Inventory-Aware Market Making</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="institutional-hill-estimator.html">Hill Estimator &amp; Tail-Index Estimation →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+<script>
+(function(){
+  var ids = ['alpha', 'beta', 'median', 'distress'];
+  var inputs = {};
+  ids.forEach(function(f){ inputs[f] = document.getElementById('cv-' + f); });
+  if (!inputs.alpha) return;
+
+  var DEFAULTS = { alpha: -0.4, beta: 0.8, median: 0, distress: -3 };
+  var DASH = '—';
+
+  var covarMedianOut = document.getElementById('cv-covar-median');
+  var covarDistressOut = document.getElementById('cv-covar-distress');
+  var dcovarOut = document.getElementById('cv-dcovar');
+  var note = document.getElementById('cv-note');
+  var resetBtn = document.getElementById('cv-reset');
+
+  function recompute(){
+    var v = {};
+    ids.forEach(function(f){ v[f] = parseFloat(inputs[f].value); });
+
+    if (!ids.every(function(f){ return isFinite(v[f]); })) {
+      covarMedianOut.textContent = DASH;
+      covarDistressOut.textContent = DASH;
+      dcovarOut.textContent = DASH;
+      note.textContent = '(enter numeric values for all four fields)';
+      return;
+    }
+
+    var covarMedian = v.alpha + v.beta * v.median;
+    var covarDistress = v.alpha + v.beta * v.distress;
+    var dcovar = covarDistress - covarMedian;
+
+    covarMedianOut.textContent = covarMedian.toFixed(4);
+    covarDistressOut.textContent = covarDistress.toFixed(4);
+    dcovarOut.textContent = dcovar.toFixed(4);
+    note.textContent = '';
+  }
+
+  ids.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    ids.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
+</body>
+</html>
