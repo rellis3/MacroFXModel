@@ -27,7 +27,7 @@
 import { loadM1ForPair } from './volBacktestM1Engine.js';
 import { atlasWalk } from './levelAtlasEngine.js';
 import { buildAtlasBook, buildAtlasCard, sessionTransitionTable, renderBookText, matchLiveContext, splitAt } from './levelAtlasReport.js';
-import { buildBarrierTrades, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyFadeStopTightening, applyCurrencyLossGate, priceAtTighterStop, voteDecision, VOTE_TRADES_SCHEMA } from './levelAtlasVoteReview.js';
+import { buildBarrierTrades, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyGradedDrawdownThrottle, DEFAULT_GRADED_THROTTLE_TIERS, applyFadeStopTightening, applyCurrencyLossGate, priceAtTighterStop, voteDecision, VOTE_TRADES_SCHEMA } from './levelAtlasVoteReview.js';
 import { summarizeTrades, maxDrawdownFromPnls, sharpeStdError, minTrackRecordLength } from './metricsCore.js';
 import { portfolioStats } from './backtestStats.js';
 import { costForPair } from './perLineStrategy.js';
@@ -1058,21 +1058,37 @@ export function mountLevelAtlasRoutes(app, express) {
       // a sustained, correlated losing STRETCH over time, not a pile-up of
       // concurrent positions. Applied on the FINAL (post-heat-cap) combined
       // series — the two features compose rather than compete.
+      // throttleMode 'graded' swaps in the 3-tier ramp validated 2026-09-14
+      // (institutional idea #2: IS/OOS-stable, insensitive to exact tier
+      // choice, and handles the portfolio's own worst historical episode
+      // BETTER than the single-cliff design below -- see
+      // applyGradedDrawdownThrottle's own doc comment). Deliberately uses
+      // that function's own tested default tiers (NOT derived from the
+      // triggerDD/throttleMult sliders below) so toggling modes with default
+      // settings reproduces exactly the numbers that were actually validated
+      // tonight, rather than an untested interpolation. restoreDD is shared
+      // across both modes -- same hysteresis exit point either way.
       const throttleOn = req.query.throttle === 'true';
+      const throttleMode = req.query.throttleMode === 'graded' ? 'graded' : 'cliff';
       const triggerDD = req.query.triggerDD ? Number(req.query.triggerDD) : -5;
       const restoreDD = req.query.restoreDD ? Number(req.query.restoreDD) : 0;
       const throttleMult = req.query.throttleMult ? Number(req.query.throttleMult) : 0.5;
+      function runThrottle(returns, dates) {
+        return throttleMode === 'graded'
+          ? applyGradedDrawdownThrottle(returns, dates, { restoreDD })
+          : applyDrawdownThrottle(returns, dates, { triggerDD, restoreDD, throttleMult });
+      }
       let throttle = null, dailyReturnsFinal = combined.dailyReturns, datesFinal = combined.dates;
       let stats = withNonCompoundedDD(statsBeforeThrottle, combined.dailyReturns), statsNoThrottle = null;
       if (throttleOn) {
-        const tr = applyDrawdownThrottle(combined.dailyReturns, combined.dates, { triggerDD, restoreDD, throttleMult });
+        const tr = runThrottle(combined.dailyReturns, combined.dates);
         if (tr) {
           dailyReturnsFinal = tr.dailyReturns;
           stats = withNonCompoundedDD(portfolioStats(dailyReturnsFinal, { mc: false, targetVol }), dailyReturnsFinal);
           statsNoThrottle = withNonCompoundedDD(statsBeforeThrottle, combined.dailyReturns);
           statsNoThrottle.avgLossRiskAdjPct = avgLossPct(perPairTradesFinal);
           statsNoThrottle = withSharpeCI(statsNoThrottle, perPairTradesFinal);
-          throttle = { triggerDD, restoreDD, throttleMult, daysThrottled: tr.state.filter(s => s.throttled).length, totalDays: tr.state.length };
+          throttle = { throttleMode, triggerDD, restoreDD, throttleMult, tiers: throttleMode === 'graded' ? DEFAULT_GRADED_THROTTLE_TIERS : null, daysThrottled: tr.state.filter(s => s.throttled).length, totalDays: tr.state.length };
         }
       }
       stats.avgLossRiskAdjPct = avgLossPct(perPairTradesFinal);
@@ -1089,7 +1105,7 @@ export function mountLevelAtlasRoutes(app, express) {
         const combinedUncapped = buildPortfolioDailySeries(perPairTradesForStats, weightsUncapped ? { weights: weightsUncapped } : {});
         let uncappedReturns = combinedUncapped.dailyReturns;
         if (throttleOn) {
-          const trU = applyDrawdownThrottle(uncappedReturns, combinedUncapped.dates, { triggerDD, restoreDD, throttleMult });
+          const trU = runThrottle(uncappedReturns, combinedUncapped.dates);
           if (trU) uncappedReturns = trU.dailyReturns;
         }
         statsUncapped = withNonCompoundedDD(portfolioStats(uncappedReturns, { mc: false, targetVol }), uncappedReturns);
@@ -1126,7 +1142,7 @@ export function mountLevelAtlasRoutes(app, express) {
         const combinedUntightened = buildPortfolioDailySeries(finalUntightened, weightsUntightened ? { weights: weightsUntightened } : {});
         let untightenedReturns = combinedUntightened.dailyReturns;
         if (throttleOn) {
-          const trU = applyDrawdownThrottle(untightenedReturns, combinedUntightened.dates, { triggerDD, restoreDD, throttleMult });
+          const trU = runThrottle(untightenedReturns, combinedUntightened.dates);
           if (trU) untightenedReturns = trU.dailyReturns;
         }
         statsNoFadeTighten = withNonCompoundedDD(portfolioStats(untightenedReturns, { mc: false, targetVol }), untightenedReturns);
@@ -1167,7 +1183,7 @@ export function mountLevelAtlasRoutes(app, express) {
         const combinedNoSl = buildPortfolioDailySeries(finalNoSl, weightsNoSl ? { weights: weightsNoSl } : {});
         let noSlReturns = combinedNoSl.dailyReturns;
         if (throttleOn) {
-          const trN = applyDrawdownThrottle(noSlReturns, combinedNoSl.dates, { triggerDD, restoreDD, throttleMult });
+          const trN = runThrottle(noSlReturns, combinedNoSl.dates);
           if (trN) noSlReturns = trN.dailyReturns;
         }
         statsNoSlFraction = withNonCompoundedDD(portfolioStats(noSlReturns, { mc: false, targetVol }), noSlReturns);
@@ -1215,7 +1231,7 @@ export function mountLevelAtlasRoutes(app, express) {
         const combinedNoP90 = buildPortfolioDailySeries(finalNoP90, weightsNoP90 ? { weights: weightsNoP90 } : {});
         let noP90Returns = combinedNoP90.dailyReturns;
         if (throttleOn) {
-          const trN = applyDrawdownThrottle(noP90Returns, combinedNoP90.dates, { triggerDD, restoreDD, throttleMult });
+          const trN = runThrottle(noP90Returns, combinedNoP90.dates);
           if (trN) noP90Returns = trN.dailyReturns;
         }
         statsNoP90 = withNonCompoundedDD(portfolioStats(noP90Returns, { mc: false, targetVol }), noP90Returns);
@@ -1263,7 +1279,7 @@ export function mountLevelAtlasRoutes(app, express) {
         const combinedNoEE = buildPortfolioDailySeries(finalNoEE, weightsNoEE ? { weights: weightsNoEE } : {});
         let noEEReturns = combinedNoEE.dailyReturns;
         if (throttleOn) {
-          const trN = applyDrawdownThrottle(noEEReturns, combinedNoEE.dates, { triggerDD, restoreDD, throttleMult });
+          const trN = runThrottle(noEEReturns, combinedNoEE.dates);
           if (trN) noEEReturns = trN.dailyReturns;
         }
         statsNoEarlyExit = withNonCompoundedDD(portfolioStats(noEEReturns, { mc: false, targetVol }), noEEReturns);
@@ -1290,7 +1306,7 @@ export function mountLevelAtlasRoutes(app, express) {
         const combinedUngated = buildPortfolioDailySeries(ungatedPerPair, weightsUngated ? { weights: weightsUngated } : {});
         let ungatedReturns = combinedUngated.dailyReturns;
         if (throttleOn) {
-          const trU = applyDrawdownThrottle(ungatedReturns, combinedUngated.dates, { triggerDD, restoreDD, throttleMult });
+          const trU = runThrottle(ungatedReturns, combinedUngated.dates);
           if (trU) ungatedReturns = trU.dailyReturns;
         }
         statsNoCcyGate = withNonCompoundedDD(portfolioStats(ungatedReturns, { mc: false, targetVol }), ungatedReturns);

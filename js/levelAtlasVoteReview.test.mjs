@@ -11,7 +11,7 @@
 // buckets a real dose-response pattern the way the real-data check did.
 
 import assert from 'node:assert/strict';
-import { voteDecision, reorientExcursion, reviewVoteBacktest, priceBarrierTrade, buildBarrierTrades, runBarrierWalkForward, priceAtTighterStop, applyFadeStopFraction, runStopStudy, runExitVariantStudy, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyFadeStopTightening, currencyLegs, applyCurrencyLossGate, mergeMajorEventWindows, applyNewsProximityThrottle, betDirection, tradeFactors, applyExposureCap, applyTrailingContinuation, applyStoredContinuationExit, applyGapFilter } from './levelAtlasVoteReview.js';
+import { voteDecision, reorientExcursion, reviewVoteBacktest, priceBarrierTrade, buildBarrierTrades, runBarrierWalkForward, priceAtTighterStop, applyFadeStopFraction, runStopStudy, runExitVariantStudy, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyGradedDrawdownThrottle, applyFadeStopTightening, currencyLegs, applyCurrencyLossGate, mergeMajorEventWindows, applyNewsProximityThrottle, betDirection, tradeFactors, applyExposureCap, applyTrailingContinuation, applyStoredContinuationExit, applyGapFilter } from './levelAtlasVoteReview.js';
 
 let failures = 0;
 const ok = (name, cond, extra = '') => { console.log(`  ${cond ? '✓' : '✗ FAIL'} ${name}${extra ? '  ' + extra : ''}`); if (!cond) failures++; };
@@ -553,6 +553,53 @@ function mkBook(dimSpecs) {
   ok('T17 custom triggerDD/restoreDD/throttleMult are honoured (tighter trigger fires sooner)', custom.state[2].throttled === true);
 
   ok('T17 empty/null input -> null, not a throw', applyDrawdownThrottle([], []) === null && applyDrawdownThrottle(null, null) === null);
+}
+
+// ── Test 17b: applyGradedDrawdownThrottle ───────────────────────────────────
+{
+  // Same raw path as T17 (A +10, B -8, C -6, D +20, E +4, F +3), but with the
+  // default 3-tier ramp ([-4/.65, -6/.40, -8/.25], restore -2). Verified
+  // against the real function output (not hand-arithmetic -- day C lands on
+  // an IEEE-754 double that's a hair short of exactly -8%, -7.999999999999987,
+  // so it clears the -6% tier but not the -8% one; this is itself a useful
+  // regression guard on the tier loop's `<=` boundary behaviour):
+  //   A +10% -> dd(pre)=0 -> not throttled -> equity 1.10, peak 1.10.
+  //   B  -8% -> dd(pre)=0 -> not throttled -> equity 1.012.
+  //   C  -6% -> dd(pre)=-7.999999999999987% -> <=-4 tier THROTTLES; clears the
+  //             -6% tier (mult .40) but NOT the -8% tier (-7.999999999999987 > -8)
+  //             -> mult 0.40 -> scaled -2.4%, equity 0.987712.
+  //   D +20% -> dd(pre)=-10.21% -> <=-8 tier -> mult 0.25 -> scaled +5%, equity 1.037098.
+  //   E  +4% -> dd(pre)=-5.72% -> between -4/-6 tier -> mult 0.65 -> scaled +2.6%, equity 1.064048.
+  //   F  +3% -> dd(pre)=-3.27% -> above every tier's trigger but restore needs
+  //             >=-2% (not reached) -> stays throttled, tier loop finds no match
+  //             so mult falls back to tiers[0].mult (shallowest, 0.65) -> scaled +1.95%.
+  const dates = ['A', 'B', 'C', 'D', 'E', 'F'];
+  const raw = [10, -8, -6, 20, 4, 3];
+  const rg = applyGradedDrawdownThrottle(raw, dates);
+  ok('T17b multiplier sequence steps through tiers on the way down and back up',
+     JSON.stringify(rg.state.map(s => s.mult)) === JSON.stringify([1, 1, 0.4, 0.25, 0.65, 0.65]),
+     JSON.stringify(rg.state.map(s => s.mult)));
+  ok('T17b throttled boolean sequence (still throttled at F -- restore needs -2%, only reached -3.27%)',
+     JSON.stringify(rg.state.map(s => s.throttled)) === JSON.stringify([false, false, true, true, true, true]));
+  ok('T17b scaled daily returns match (raw x that day\'s multiplier)', JSON.stringify(rg.dailyReturns) === JSON.stringify([10, -8, -2.4, 5, 2.6, 1.95]), JSON.stringify(rg.dailyReturns));
+  ok('T17b the trade\'s OWN day return never influences its OWN multiplier (C uses B\'s outcome, not C\'s)', rg.state[2].mult === 0.4);
+
+  // A recovery that actually crosses restoreDD fully releases back to 1x --
+  // day c's own throttled (0.25x) return still lifts equity from 0.9 to
+  // 0.99 (-1% dd), so day d's decision (made off THAT dd) sees -1% >= -2%
+  // restore and switches fully off before day d's own return is applied.
+  const releases = applyGradedDrawdownThrottle([0, -10, 40, 40], ['a', 'b', 'c', 'd']);
+  ok('T17b a recovery that reaches restoreDD fully un-throttles (mult back to 1)', releases.state.at(-1).mult === 1 && releases.state.at(-1).throttled === false, JSON.stringify(releases.state));
+
+  // A drawdown that never breaches the shallowest tier never throttles at all.
+  const noTrigger = applyGradedDrawdownThrottle([1, 1, -1, 1, -2, 1], dates);
+  ok('T17b a drawdown that never breaches the shallowest tier never throttles', noTrigger.state.every(s => !s.throttled && s.mult === 1));
+
+  // Custom tiers/restore are honoured.
+  const custom = applyGradedDrawdownThrottle([0, -3, -3, 5, 5], dates.slice(0, 5), { tiers: [{ trigger: -2, mult: 0.5 }], restoreDD: 1 });
+  ok('T17b custom tiers/restoreDD are honoured (single-tier collapses to cliff behaviour)', custom.state[2].throttled === true && custom.state[2].mult === 0.5);
+
+  ok('T17b empty/null input -> null, not a throw', applyGradedDrawdownThrottle([], []) === null && applyGradedDrawdownThrottle(null, null) === null && applyGradedDrawdownThrottle([1], ['a'], { tiers: [] }) === null);
 }
 
 // ── Test 18: applyFadeStopTightening ────────────────────────────────────────

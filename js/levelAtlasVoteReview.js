@@ -1178,6 +1178,56 @@ export function applyDrawdownThrottle(dailyReturns, dates, { triggerDD = -5, res
 }
 
 /**
+ * Graded (multi-tier) drawdown throttle — same causal/hysteresis contract as
+ * `applyDrawdownThrottle` above, but instead of one on/off cliff, steps the
+ * multiplier down through several progressively deeper `tiers` as the
+ * drawdown worsens, and back up through them as it recovers (purely a
+ * function of the CURRENT drawdown reading each day — no memory of how it
+ * got there, so it reacts symmetrically on the way down and the way up).
+ * Built 2026-09-14 as "institutional idea #2" after the account's own live
+ * throttle experience showed the single-cliff design (`applyDrawdownThrottle`)
+ * gives back 75% of size in one step at the trigger, and holds that flat
+ * 0.25x through the entire recovery even once the drawdown has mostly
+ * healed — real opportunity cost with no corresponding safety benefit.
+ * Verified against the full 17-pair live-vote-portfolio dataset: IS/OOS
+ * stable (not a curve-fit — Sharpe ~3.65 both halves) and insensitive to the
+ * exact tier boundaries chosen. A separate "cliff down / staged up only"
+ * hybrid was also tested and REJECTED — its ratchet-up-only recovery let it
+ * re-arm to full size faster than the plain cliff design, which then ate a
+ * subsequent shock at 1.0x that the cliff design (still parked at 0.25x)
+ * mostly dodged. Purely reactive tiers, like this function, don't have that
+ * failure mode.
+ *
+ * `tiers`: array of `{trigger, mult}`, in order from shallowest to deepest
+ * (e.g. `[{trigger:-4, mult:0.65}, {trigger:-6, mult:0.40}, {trigger:-8, mult:0.25}]`).
+ * `tiers[0].trigger` is what switches the throttle ON at all; `restoreDD`
+ * (less-negative than every tier, same hysteresis reasoning as above) is
+ * what switches it fully OFF.
+ *
+ *   applyGradedDrawdownThrottle(dailyReturns, dates, { tiers, restoreDD }) ->
+ *     { dailyReturns, dates, state: [{date, throttled, mult, ddAtDecision}] } | null
+ */
+export const DEFAULT_GRADED_THROTTLE_TIERS = [{ trigger: -4, mult: 0.65 }, { trigger: -6, mult: 0.40 }, { trigger: -8, mult: 0.25 }];
+export function applyGradedDrawdownThrottle(dailyReturns, dates, { tiers = DEFAULT_GRADED_THROTTLE_TIERS, restoreDD = -2 } = {}) {
+  if (!dailyReturns?.length || !tiers?.length) return null;
+  let equity = 1, peak = 1, throttled = false;
+  const scaled = [], state = [];
+  for (let i = 0; i < dailyReturns.length; i++) {
+    const ddNow = (equity - peak) / peak * 100;
+    if (!throttled && ddNow <= tiers[0].trigger) throttled = true;
+    else if (throttled && ddNow >= restoreDD) throttled = false;
+    let mult = 1;
+    if (throttled) { mult = tiers[0].mult; for (const t of tiers) if (ddNow <= t.trigger) mult = t.mult; }
+    const r = dailyReturns[i] * mult;
+    scaled.push(+r.toFixed(4));
+    equity *= (1 + r / 100);
+    if (equity > peak) peak = equity;
+    state.push({ date: dates[i], throttled, mult, ddAtDecision: +ddNow.toFixed(2) });
+  }
+  return { dailyReturns: scaled, dates, state };
+}
+
+/**
  * FX pair -> [base, quote] 3-letter currency legs. Non-FX instruments map to
  * a single synthetic "currency" (their own symbol) so the gate below can
  * treat them uniformly without pretending they share USD/EUR/etc exposure

@@ -81,9 +81,15 @@
   </div>
   <div class="controls">
     <label title="De-risks (scales position size down) once the STRATEGY'S OWN realized equity drawdown breaches Trigger DD%, restores full size once it recovers to Restore DD%. Targets a sustained losing STRETCH over time — a different risk than the Portfolio heat cap above, which only caps a pile-up of SIMULTANEOUS positions.">Drawdown throttle <input type="checkbox" id="throttleChk"></label>
-    <label title="The drawdown level (negative %) that switches the throttle ON, de-risking future trades until recovery.">Trigger DD % <input type="number" id="triggerDDInput" value="-8" step="1" max="-1" style="width:55px" disabled></label>
-    <label title="The drawdown level (negative %, closer to zero than Trigger DD) that switches the throttle back OFF, restoring full position size.">Restore DD % <input type="number" id="restoreDDInput" value="-2" step="1" max="0" style="width:55px" disabled></label>
-    <label title="Position-size multiplier applied while throttled — e.g. 0.5 means half-size trades until the equity recovers to Restore DD%.">Throttle × <input type="number" id="throttleMultInput" value="0.5" step="0.1" min="0.1" max="0.9" style="width:55px" disabled></label>
+    <label title="Cliff = single on/off step at Trigger DD% (what's live today). Graded ramp = a 3-tier design validated 2026-09-14 (-4%/-6%/-8% drawdown -> 0.65x/0.40x/0.25x size, same -8% floor and -2% restore) that gives back size progressively instead of one 75%-in-one-day cut, and held up IS/OOS + against the account's own worst historical drawdown episode BETTER than the cliff. Swap between them here to compare before this ever touches the live bot/config.">Throttle style
+      <select id="throttleModeSel" disabled>
+        <option value="cliff" selected>Cliff (current)</option>
+        <option value="graded">Graded ramp (research 2026-09-14)</option>
+      </select>
+    </label>
+    <label title="The drawdown level (negative %) that switches the throttle ON, de-risking future trades until recovery. Cliff mode only — graded mode uses its own fixed, validated tier boundaries (-4%/-6%/-8%) regardless of this value.">Trigger DD % <input type="number" id="triggerDDInput" value="-8" step="1" max="-1" style="width:55px" disabled></label>
+    <label title="The drawdown level (negative %, closer to zero than Trigger DD) that switches the throttle back OFF, restoring full position size. Shared by both throttle styles.">Restore DD % <input type="number" id="restoreDDInput" value="-2" step="1" max="0" style="width:55px" disabled></label>
+    <label title="Position-size multiplier applied while throttled — e.g. 0.5 means half-size trades until the equity recovers to Restore DD%. Cliff mode only — graded mode uses its own fixed, validated tier multipliers (0.65x/0.40x/0.25x) regardless of this value.">Throttle × <input type="number" id="throttleMultInput" value="0.5" step="0.1" min="0.1" max="0.9" style="width:55px" disabled></label>
     <label title="Retunes each pair's FADE stop to a percentile of that pair's own winning fade trades' real adverse excursion (never widens). OOS-validated, but found this session to interact with position sizing in ways not fully isolated from the leverage effect 'Fixed SL fraction' has — read that one's caveat too before trusting this in combination.">Fade-stop tightening <input type="checkbox" id="fadeStopChk"></label>
     <label title="Tightens every fade trade's DECLARED stop to this fraction of its current distance. IMPORTANT: found this session to be MOSTLY an implicit-leverage artifact — a smaller declared stop makes fixed-risk sizing size UP every trade (winners included), so avg win roughly doubled while avg loss barely moved. Real drawdown improvement from this alone is modest (~13% shallower), far less than the Sharpe number suggests. 'Early exit (no re-leverage)' below is the corrected version — prefer that one.">Fixed SL fraction <input type="checkbox" id="slFractionChk">
       <input type="number" id="slFractionInput" value="0.5" step="0.05" min="0.1" max="0.95" style="width:55px" disabled></label>
@@ -413,6 +419,7 @@ const heatCapChk = document.getElementById('heatCapChk');
 const maxHeatPctInput = document.getElementById('maxHeatPctInput');
 const targetVolInput = document.getElementById('targetVolInput');
 const throttleChk = document.getElementById('throttleChk');
+const throttleModeSel = document.getElementById('throttleModeSel');
 const triggerDDInput = document.getElementById('triggerDDInput');
 const restoreDDInput = document.getElementById('restoreDDInput');
 const throttleMultInput = document.getElementById('throttleMultInput');
@@ -435,9 +442,11 @@ function syncSizingUI() {
   heatCapWrap.style.display = fixed ? '' : 'none';
   maxHeatPctInput.disabled = !heatCapChk.checked;
   const throttleOn = throttleChk.checked;
-  triggerDDInput.disabled = !throttleOn;
+  const graded = throttleModeSel.value === 'graded';
+  throttleModeSel.disabled = !throttleOn;
+  triggerDDInput.disabled = !throttleOn || graded;
   restoreDDInput.disabled = !throttleOn;
-  throttleMultInput.disabled = !throttleOn;
+  throttleMultInput.disabled = !throttleOn || graded;
   slFractionInput.disabled = !slFractionChk.checked;
   propDDLimitInput.disabled = !propDDLimitChk.checked;
   maxDailyLossPctInput.disabled = !ccyGateChk.checked;
@@ -929,6 +938,7 @@ async function loadData() {
   if (sizingSel.value === 'fixed-risk' && heatCapChk.checked) params.set('maxHeatPct', maxHeatPctInput.value);
   if (throttleChk.checked) {
     params.set('throttle', 'true');
+    params.set('throttleMode', throttleModeSel.value);
     params.set('triggerDD', triggerDDInput.value);
     params.set('restoreDD', restoreDDInput.value);
     params.set('throttleMult', throttleMultInput.value);
@@ -948,7 +958,9 @@ async function loadData() {
     if (mySeq !== loadSeq) return; // a newer request has since started — drop this stale response
     if (!j.ok) { headerSub.textContent = `error: ${j.error}`; return; }
     const sizingDesc = (j.sizing === 'fixed-risk' ? `${j.riskPct}% risk/trade (fixed)${j.heatCap ? `, ${j.heatCap.maxHeatPct}% portfolio heat cap` : ''}` : `${j.weighting} NAV weighting`)
-      + (j.throttle ? `, throttled ${j.throttle.triggerDD}%→${j.throttle.throttleMult}× (restore ${j.throttle.restoreDD}%)` : '')
+      + (j.throttle ? (j.throttle.throttleMode === 'graded'
+          ? `, graded throttle (-4/-6/-8%→.65/.40/.25×, restore ${j.throttle.restoreDD}%)`
+          : `, throttled ${j.throttle.triggerDD}%→${j.throttle.throttleMult}× (restore ${j.throttle.restoreDD}%)`) : '')
       + (j.fadeStopTighten ? `, fade-stop tightened (${Object.keys(j.fadeStopInfo ?? {}).length} pairs)` : '')
       + (j.ccyGateInfo ? `, currency loss gate ${j.ccyGateInfo.maxDailyLossPct}%` : '');
     headerSub.textContent = `${j.pairs.join(' + ')} · min margin ≥${j.minMargin} · max concurrent ${j.maxConcurrent === 99 ? 'unlimited' : j.maxConcurrent}${j.perDirection ? ' (per-direction)' : ''} · ${sizingDesc} · ${j.days} portfolio trading days${j.missing.length ? ` · missing: ${j.missing.join(',')}` : ''}`;
@@ -1022,7 +1034,9 @@ function render(j) {
     document.getElementById('throttleCompare').innerHTML = `
       <table><thead><tr><th></th><th class="num">Without throttle</th><th class="num">With throttle</th></tr></thead>
       <tbody>${rows.map(([label, a, b]) => `<tr><td>${label}</td><td class="num">${a}</td><td class="num">${b}</td></tr>`).join('')}</tbody></table>
-      <div class="muted" style="margin-top:8px">Throttled on ${j.throttle.daysThrottled} of ${j.throttle.totalDays} portfolio trading days (${fmt1(j.throttle.daysThrottled / j.throttle.totalDays * 100)}%) — de-risked to ${j.throttle.throttleMult}× below ${j.throttle.triggerDD}% drawdown, restored above ${j.throttle.restoreDD}%.</div>`;
+      <div class="muted" style="margin-top:8px">Throttled on ${j.throttle.daysThrottled} of ${j.throttle.totalDays} portfolio trading days (${fmt1(j.throttle.daysThrottled / j.throttle.totalDays * 100)}%)${j.throttle.throttleMode === 'graded'
+        ? ` — graded ramp: ${j.throttle.tiers.map(t => `${t.trigger}%→${t.mult}×`).join(', ')}, restored above ${j.throttle.restoreDD}%.`
+        : ` — de-risked to ${j.throttle.throttleMult}× below ${j.throttle.triggerDD}% drawdown, restored above ${j.throttle.restoreDD}%.`}</div>`;
   } else {
     throttleCard.style.display = 'none';
   }
@@ -1608,6 +1622,7 @@ heatCapChk.addEventListener('change', loadData);
 maxHeatPctInput.addEventListener('change', loadData);
 targetVolInput.addEventListener('change', loadData);
 throttleChk.addEventListener('change', loadData);
+throttleModeSel.addEventListener('change', loadData);
 triggerDDInput.addEventListener('change', loadData);
 restoreDDInput.addEventListener('change', loadData);
 throttleMultInput.addEventListener('change', loadData);
@@ -1637,6 +1652,7 @@ document.getElementById('loadBestConfigBtn').addEventListener('click', () => {
   heatCapChk.checked = false;
   maxHeatPctInput.value = '1';
   throttleChk.checked = true;
+  throttleModeSel.value = 'cliff';
   triggerDDInput.value = '-8';
   restoreDDInput.value = '-2';
   throttleMultInput.value = '0.25';
