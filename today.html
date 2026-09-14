@@ -822,6 +822,15 @@
   .chain-read-body{gap:6px} .chain-read-body p{margin:0;font-size:12.5px;line-height:1.6}
   .chain-read-row{font-size:12px;line-height:1.55;margin-top:4px;color:var(--text2)}
   .chain-read-row b{color:var(--text)}
+  .chain-q{display:inline-block;font-style:normal;font-size:9px;font-weight:800;line-height:12px;width:12px;height:12px;text-align:center;border-radius:50%;background:var(--bg3);color:var(--text3);margin-left:2px}
+  .chain-story{cursor:pointer} .chain-story.on{background:var(--bg3)}
+  .chain-q-link{cursor:pointer;color:var(--blue);font-weight:600}
+  .chip.on{outline:1px solid var(--blue)}
+  .chain-explain{margin:6px 0 8px;padding:8px 10px;border-left:3px solid var(--blue);border-radius:0 6px 6px 0;background:color-mix(in srgb,var(--blue) 7%,transparent);cursor:default}
+  .chain-explain-h{display:flex;justify-content:space-between;align-items:center;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:5px}
+  .chain-x{cursor:pointer;font-size:11px;color:var(--text3);padding:0 3px}
+  .chain-explain-r{font-size:12px;line-height:1.6;color:var(--text2);margin-bottom:4px} .chain-explain-r b{color:var(--text)}
+  .chain-explain-t{font-size:12px;line-height:1.6;color:var(--text2);margin-bottom:3px} .chain-explain-t b{color:var(--text)}
   .fals{margin-top:12px;border-top:1px solid var(--border);padding-top:9px}
   .fals-h{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--text3);
     margin-bottom:5px;cursor:help}
@@ -2860,11 +2869,60 @@ async function loadChainRead(force = false) {
   }
   render();
 }
+// ── Explain this ────────────────────────────────────────────────────────────
+// One open explanation at a time, keyed by what was clicked. The box renders
+// inline under the thing it explains, survives re-render (state, not DOM), and
+// closes on the same click. Cached per key for the session; the server caches
+// per day too.
+let _explain = { key: null, state: 'idle', data: null, err: null };
+const _explainCache = {};
+function _chainReadCtx() {
+  const r = _chainRead.data?.read ?? {};
+  return { hook: r.hook ?? null, read: r.read ?? null, stories: Array.isArray(r.stories) ? r.stories.map(x => ({ name: x.name, legs: x.legs, status: x.status })) : [] };
+}
+async function explainThis(key, item, ev) {
+  ev?.stopPropagation?.(); ev?.preventDefault?.();
+  if (_explain.key === key && _explain.state !== 'loading') { _explain = { key: null, state: 'idle', data: null, err: null }; render(); return; }
+  if (_explainCache[key]) { _explain = { key, state: 'ready', data: _explainCache[key], err: null }; render(); return; }
+  _explain = { key, state: 'loading', data: null, err: null };
+  render();
+  try {
+    const resp = await fetch('/api/explain', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ item, ctx: _chainReadCtx() }),
+    }).then(x => x.json());
+    if (!resp?.ok) throw new Error(resp?.error || 'no explanation');
+    _explainCache[key] = resp.explain;
+    if (_explain.key === key) _explain = { key, state: 'ready', data: resp.explain, err: null };
+  } catch (e) {
+    if (_explain.key === key) _explain = { key, state: 'error', data: null, err: e.message };
+  }
+  render();
+}
+function explainBoxHtml(key) {
+  if (_explain.key !== key) return '';
+  const close = `<span class="chain-x" role="button" tabindex="0" onclick="explainThis('${key}', null, event)" onkeydown="if(event.key==='Enter'||event.key===' '){explainThis('${key}', null, event)}" title="close">✕</span>`;
+  if (_explain.state === 'loading') return `<div class="chain-explain" onclick="event.stopPropagation()"><div class="chain-explain-h">Explaining… ${close}</div><div class="muted" style="font-size:11.5px">Asking for the plain-words version.</div></div>`;
+  if (_explain.state === 'error') return `<div class="chain-explain" onclick="event.stopPropagation()"><div class="chain-explain-h">Couldn't explain ${close}</div><div class="muted" style="font-size:11.5px">${esc0(_explain.err ?? '')}</div></div>`;
+  const d = _explain.data ?? {};
+  const sec = (label, v) => v ? `<div class="chain-explain-r"><b>${label}</b> ${esc0(v)}</div>` : '';
+  if (Array.isArray(d.terms)) {
+    return `<div class="chain-explain" onclick="event.stopPropagation()"><div class="chain-explain-h">The read, term by term ${close}</div>
+      ${d.oneLine ? `<div class="chain-explain-r" style="font-weight:700;margin-bottom:6px">${esc0(d.oneLine)}</div>` : ''}
+      ${d.terms.map(t => `<div class="chain-explain-t"><b>${esc0(t.term)}</b> — ${esc0(t.plain)}</div>`).join('')}
+      ${d.differences ? `<div class="chain-explain-r" style="margin-top:6px"><b>The distinctions to hold apart</b> ${esc0(d.differences)}</div>` : ''}
+      <div class="chain-foot">AI explanation, written from the read above. Definitions are standard; the numbers are today's.</div></div>`;
+  }
+  return `<div class="chain-explain" onclick="event.stopPropagation()"><div class="chain-explain-h">In plain words ${close}</div>
+    ${sec('What it is.', d.what)}${sec('How it differs.', d.difference)}${sec('How to see it.', d.howToSee)}${sec('Today.', d.today)}
+    <div class="chain-foot">AI explanation. Definitions are standard; the numbers are today's.</div></div>`;
+}
 function chainReadHtml() {
   const st = _chainRead.state;
   const r = _chainRead.data?.read;
   const btn = `<span class="chip neu" role="button" tabindex="0" style="cursor:pointer" onclick="loadChainRead(true)" onkeydown="if(event.key==='Enter'||event.key===' '){loadChainRead(true)}" title="Regenerate from the current numbers. One read is shared by everyone for 30 minutes.">${st === 'loading' ? '… reading' : '↻ re-read'}</span>`;
-  const head = `<div class="chain-read-h"><span>The read <span class="chip warn" style="font-size:9px">AI · not backtested</span></span>${btn}</div>`;
+  const teachBtn = r ? `<span class="chip neu${_explain.key === 'read' ? ' on' : ''}" role="button" tabindex="0" style="cursor:pointer" onclick="explainThis('read', { kind: 'read' }, event)" onkeydown="if(event.key==='Enter'||event.key===' '){explainThis('read', { kind: 'read' }, event)}" title="Every term in this read, in plain words, plus the two or three distinctions you need to hold apart to follow it.">🎓 teach me this read</span>` : '';
+  const head = `<div class="chain-read-h"><span>The read <span class="chip warn" style="font-size:9px">AI · not backtested</span></span><span style="display:inline-flex;gap:5px">${teachBtn}${btn}</span></div>`;
   if (!r) {
     if (st === 'loading') return `<div class="chain-read">${head}<div class="muted" style="font-size:11.5px">Reading the tape…</div></div>`;
     if (st === 'error') return `<div class="chain-read">${head}<div class="muted" style="font-size:11.5px">Could not build the read (${esc0(_chainRead.err ?? '')}).</div></div>`;
@@ -2877,7 +2935,8 @@ function chainReadHtml() {
   return `<div class="chain-read">
     ${head}
     ${r.hook ? `<div class="chain-hook">${esc0(r.hook)}</div>` : ''}
-    ${stories.length ? `<div class="chain-stories">${stories.map(x => `<span class="chain-story ${statusCls[x.status] ?? 'neu'}" title="${esc0(`${x.legs ?? ''}${x.evidence ? ' — ' + x.evidence : ''}`)}"><b>${esc0(x.name)}</b> · ${esc0(x.status)}</span>`).join('')}</div>` : ''}
+    ${stories.length ? `<div class="chain-stories">${stories.map((x, i) => { const k = `story:${i}`; const item = JSON.stringify({ kind: 'story', name: x.name, legs: x.legs ?? null, status: x.status ?? null, evidence: x.evidence ?? null }); return `<span class="chain-story ${statusCls[x.status] ?? 'neu'}${_explain.key === k ? ' on' : ''}" role="button" tabindex="0" title="${esc0(`${x.legs ?? ''}${x.evidence ? ' — ' + x.evidence : ''}. Click: explain in plain words.`)}" onclick='explainThis("${k}", ${item.replace(/'/g, '&#39;')}, event)' onkeydown='if(event.key==="Enter"||event.key===" "){explainThis("${k}", ${item.replace(/'/g, '&#39;')}, event)}'><b>${esc0(x.name)}</b> · ${esc0(x.status)} <i class="chain-q">?</i></span>`; }).join('')}</div>${explainBoxHtml(...stories.map((_, i) => `story:${i}`).filter(k => _explain.key === k))}` : ''}
+    ${explainBoxHtml('read')}
     <div class="story chain-read-body">${paras.map(x => `<p>${esc0(x)}</p>`).join('')}</div>
     ${r.shouldHave ? `<div class="chain-read-row"><b>Should be happening, isn't:</b> ${esc0(r.shouldHave)}</div>` : ''}
     ${r.next ? `<div class="chain-read-row"><b>Next:</b> ${esc0(r.next)}</div>` : ''}
@@ -2923,8 +2982,9 @@ function chainHtml() {
       return `<div class="chain-r ${vcls[l.verdict]}${judged ? ' can-open' : ''}"${judged ? ` onclick="this.classList.toggle('open')" title="${esc0(l.textbook)} — click for the full mechanism"` : ` title="${esc0(l.textbook)}"`}>
         <div class="chain-line"><span class="chain-v ${vcls[l.verdict]}">${vword[l.verdict]}</span>
           <span class="chain-ends">${end(l.a)} <span class="chain-arrow">→</span> ${end(l.b, l.expected)}</span></div>
-        ${l.punch ? `<div class="chain-p ${vcls[l.verdict]}">${esc0(l.punch)}${judged ? ' <span class="chain-more">why ▾</span>' : ''}</div>` : ''}
+        ${l.punch ? `<div class="chain-p ${vcls[l.verdict]}">${esc0(l.punch)}${judged ? ' <span class="chain-more">why ▾</span>' : ''} <span class="chain-more chain-q-link" role="button" tabindex="0" onclick='explainThis("link:${l.id}", ${JSON.stringify({ kind: 'link', textbook: l.textbook, a: `${l.a.label} ${l.a.text}`, b: `${l.b.label} ${l.b.text}`, verdict: l.verdict, read: l.read }).replace(/'/g, '&#39;')}, event)' onkeydown='if(event.key==="Enter"||event.key===" "){explainThis("link:${l.id}", ${JSON.stringify({ kind: 'link', textbook: l.textbook, a: `${l.a.label} ${l.a.text}`, b: `${l.b.label} ${l.b.text}`, verdict: l.verdict, read: l.read }).replace(/'/g, '&#39;')}, event)}' title="Explain this link in plain words: the mechanism, holding vs broken, how to see it, today.">explain ?</span></div>` : ''}
         ${judged ? `<div class="chain-w"><b>${esc0(l.textbook)}.</b> ${esc0(l.read)}</div>` : ''}
+        ${explainBoxHtml(`link:${l.id}`)}
       </div>`;
     }).join('')}
     <div class="chain-foot">${lagging.length ? lagging.map(e => `${esc0(e.label)} last printed ${esc0(e.asOf)} (${Math.round((Date.parse(newest) - Date.parse(e.asOf)) / 864e5)} days behind the rest — links using it span that gap). `).join('') : ''}Quiet rows stay listed so the order of the chain is always in front of you.</div>

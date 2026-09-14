@@ -3238,6 +3238,84 @@ HOW TO WRITE IT (style):
 Respond with a single valid JSON object, no markdown, no text outside it:
 {"hook":"one sentence, the thing driving today","read":"4-6 short paragraphs separated by blank lines, 150-240 words total, in the style above","stories":[{"name":"the war trade","legs":"energy up, dollar up","status":"dominant|overshadowed|reloading|absent","evidence":"one clause with the snapshot numbers that show it"}],"shouldHave":"one sentence: what the textbook says should be happening and is not -- or 'nothing is out of place today'","next":"one sentence: the next catalyst and what a surprise would look like","forFx":"1-2 sentences naming the pairs this chain is pushing and through which leg"}`;
 }
+// ── Explain this ────────────────────────────────────────────────────────────
+// A click on any story chip, chain link or the read itself asks for the human
+// version: what the thing IS, how it differs from the other things named today,
+// how you would see it on a screen, and what it means with today's numbers. The
+// page exists to make this second nature; this is the "ask the desk" button.
+// Cached per item per day -- the definitions do not change, only the numbers.
+const _EXPLAIN_TTL_MS = 6 * 60 * 60_000;
+const _explainCache = new Map();
+function buildExplainPrompt(item, ctx) {
+  const others = (ctx?.stories ?? []).filter(x => x?.name && x.name !== item.name).map(x => `${x.name} (${x.legs ?? ''}; ${x.status ?? ''})`).join('; ');
+  const teach = `You are explaining macro to a sharp beginner who trades FX and wants this to become second nature. Plain words. Every term glossed in four words the first time. Short sentences. No hedging filler. Numbers only from what is given below; never invent one.`;
+  if (item.kind === 'story') {
+    return `${teach}
+
+TODAY'S ITEM: "${item.name}" -- legs: ${item.legs ?? 'n/a'}; status today: ${item.status ?? 'n/a'}; evidence today: ${item.evidence ?? 'n/a'}.
+OTHER STORIES NAMED TODAY: ${others || 'none'}.
+THE HOOK TODAY: ${ctx?.hook ?? 'n/a'}
+
+Respond with a single valid JSON object, no markdown:
+{"what":"2-3 sentences: what this story IS -- the mechanism, who is buying what and why","difference":"2-3 sentences: how it differs from the other stories named today, one contrast each, so the reader can tell them apart on a screen","howToSee":"2-3 sentences: which series move which way when this story is running (name them plainly: oil, the 2-year, real yields, the dollar, gold...) and the one tell that says it is THIS story and not its neighbour","today":"1-2 sentences: what today's evidence says and why the status is what it is"}`;
+  }
+  if (item.kind === 'link') {
+    return `${teach}
+
+TODAY'S ITEM: the textbook link "${item.textbook}" -- from ${item.a ?? '?'} to ${item.b ?? '?'}; verdict today: ${item.verdict ?? '?'}; the page's read: ${item.read ?? 'n/a'}.
+THE HOOK TODAY: ${ctx?.hook ?? 'n/a'}
+
+Respond with a single valid JSON object, no markdown:
+{"what":"2-3 sentences: why the textbook says these two move together (or opposite) -- the actual mechanism, who does what","difference":"2-3 sentences: what a HOLDING version of this link looks like versus a BROKEN one, and what each usually means","howToSee":"2 sentences: which two series to put on a screen and over what window, and what counts as a real move versus noise","today":"1-2 sentences: what today's two numbers say and how confident to be, given the verdict"}`;
+  }
+  // kind === 'read': the whole explanation, term by term
+  return `${teach}
+
+THE READ:
+${ctx?.hook ?? ''}
+
+${ctx?.read ?? ''}
+
+STORIES NAMED: ${(ctx?.stories ?? []).map(x => `${x.name} (${x.legs ?? ''}; ${x.status ?? ''})`).join('; ') || 'none'}
+
+Respond with a single valid JSON object, no markdown:
+{"terms":[{"term":"a term or phrase used in the read, in the order it appears","plain":"one or two sentences: what it means, in plain words, and why it matters here"}],"differences":"one short paragraph (60-100 words): the two or three distinctions a beginner most needs to hold apart to follow this read -- e.g. real yield vs breakeven, front end vs long end, dominant vs overshadowed -- each in one sentence","oneLine":"the whole read in one plain sentence a beginner could repeat"}
+List every term a beginner would stumble on (8-14 terms). Do not list plain words.`;
+}
+app.post('/api/explain', async (req, res) => {
+  const key = process.env.ANT_KEY;
+  if (!key) return res.status(503).json({ error: 'ANT_KEY not configured' });
+  try {
+    const { item, ctx } = req.body ?? {};
+    if (!item?.kind) return res.status(400).json({ error: 'Missing item' });
+    const day = new Date().toISOString().slice(0, 10);
+    const ck = `${day}|${item.kind}|${item.name ?? item.textbook ?? ''}|${item.status ?? item.verdict ?? ''}|${String(ctx?.hook ?? '').slice(0, 40)}`;
+    const hit = _explainCache.get(ck);
+    if (hit && Date.now() - hit.at < _EXPLAIN_TTL_MS) return res.json({ ok: true, cached: true, explain: hit.data });
+    const prompt = buildExplainPrompt(item, ctx);
+    const antRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({
+        model: 'claude-opus-5',
+        max_tokens: 3000,
+        system: 'You explain macro markets to a beginner in plain words. You ALWAYS respond with valid complete JSON only -- no markdown, no backticks, no text before or after the JSON object.',
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    });
+    if (!antRes.ok) return res.status(502).json({ error: `Anthropic ${antRes.status}` });
+    const j = await antRes.json();
+    const txt = _antText(j);
+    let explain;
+    try { explain = JSON.parse(txt); }
+    catch { const m = txt.match(/\{[\s\S]*\}/); explain = m ? JSON.parse(m[0]) : null; }
+    if (!explain) return res.status(502).json({ error: 'model did not return parseable JSON' });
+    if (_explainCache.size > 200) _explainCache.clear();
+    _explainCache.set(ck, { at: Date.now(), data: explain });
+    res.json({ ok: true, cached: false, explain });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.post('/api/chain-read', async (req, res) => {
   const key = process.env.ANT_KEY;
   if (!key) return res.status(503).json({ error: 'ANT_KEY not configured' });
