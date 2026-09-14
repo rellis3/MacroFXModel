@@ -7441,3 +7441,41 @@ said "extreme" — the calibration argument, demonstrated.
 **Status: ✅ registered · parity contract passing · 14 unit tests · descriptive only.**
 Says what today IS, never what tomorrow will be (§1as/§1at/§1au: three failed forecast
 tests). Not imported by `volatilityBotPlan.js` / `volatilityBotProducer.js`.
+
+### 1aw. Intraday-RV forecast win, isolated: it's mostly HAR's shape, not the intraday data (2026-09-14)
+
+**Script:** `volatilityExhaustion/har_intraday_isolation.py`. Follow-up to §1au's Phase 14,
+whose headline number (HAR on 5-min RV beating YZ by 9.7-21.0% OOS QLIKE) fell out of a
+CONTROL ARM and conflated two claims: HAR's functional form vs YZ's, and intraday vs
+daily data. Isolates them by fitting the identical HAR machinery (imported from
+`har_cj_forecast.py` — `har_walk`, `gk`, `qlike`, `fit_scale`, `load`, `_scale`,
+`VAR_FLOOR_FRAC`, never copied) on three inputs, and checks every instrument
+INDIVIDUALLY rather than pooled by asset class, since a pooled win has hidden a few
+strong pairs dragging weak ones before in this study (Tier-8's NQ echo, the WaveTrend
+gates).
+
+**Result: both effects are real, and the bigger one has nothing to do with jumps or
+intraday data.**
+- **Functional form (HAR-daily, same daily-OHLC input YZ already reads, vs YZ): 26/26
+  instruments, +2.5% to +18.6% OOS QLIKE.** Zero new data infrastructure needed — every
+  input already exists. This is the strongest, cheapest, most universal result in the
+  whole study, and it fell out of an isolation test, not the original hypothesis.
+- **Granularity (HAR-intraday vs HAR-daily): 20/26 instruments clear the pre-registered
+  2% bar** (fx_major 5/7, fx_cross 14/18, metal 1/1) — majority holds in every class (the
+  pass condition), but weaker and less universal than §1au's pooled number implied. 6/26
+  non-clearing pairs cluster around AUD/NZD (AUDUSD, NZDUSD, AUDNZD, EURNZD, GBPAUD,
+  GBPNZD) — reported descriptively, n=6 too thin to chase further.
+
+**What this changes about the next step.** Two findings now, very different cost:
+1. Swap YZ's functional form for HAR on daily-only data — needs nothing new.
+2. Also feed it intraday RV — real but more mixed, and needs §1as/§1av's intraday
+   infrastructure running live rather than just in the offline backtest.
+
+**Neither is wired anywhere live.** Per this study's standing rule, going from "measured
+here" to "feeds the live forecaster" is the repo owner's call, not something an offline
+script does unilaterally. `js/volForecastBench.js` — the estimator-comparison tool this
+repo already ships for exactly this purpose — is the safe next stop if this is pursued;
+`js/volForecast.js` and the bot's plan-building path are not touched by this entry.
+
+**Status: ✅ registered · isolation confirmed both effects real · per-instrument checked ·
+NOT wired into any live-facing code.**

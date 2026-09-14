@@ -535,6 +535,7 @@ alongside.
 - `jump_exhaustion.py` — Phase-13c conditions `measure_extremes.py`'s fresh-extreme race (reused verbatim) on the causal pre-extreme jump share, within distance bands — **NULL** (jump-driven extremes exhaust the same as smooth ones). Run `python3 jump_exhaustion.py`.
 - `har_cj_forecast.py` — Phase-14 HAR-RV-CJ: continuous/jump as separate HAR regressors vs the same HAR without the split, walk-forward, QLIKE — **NULL** (+0.4% to −0.7% vs a 2% bar). Control arm found intraday-RV HAR beats the shipped YZ σ by 10-21% OOS (not pre-registered). Run `python3 har_cj_forecast.py`.
 - `export_intraday_percentiles.py` — the TIME-OF-DAY yardstick: per 30-min checkpoint, the historical distribution of session-open→checkpoint jump share, plus the frozen diurnal periodicity curve the live detector uses → `data/jump_intraday.json`. Run `python3 export_intraday_percentiles.py`.
+- `har_intraday_isolation.py` — Phase-15 splits Phase 14's pooled win into a functional-form component (HAR-daily vs YZ, **26/26 instruments**) and a granularity component (HAR-intraday vs HAR-daily, **20/26**, majority per class) — per-instrument, not pooled. Run `python3 har_intraday_isolation.py`.
 - `crosscheck_jump.py` / `crosscheck_jump.mjs` — the JS↔Python parity contract for the jump maths (RV, BV, jump fraction, threshold, local sigma, deseasonalised returns, detected indices, all to 1e-12). Run `python3 crosscheck_jump.py`.
 - `export_jump_state.py` — freezes the study into `data/jump_state.json` (per-pair jump-share percentiles + every phase verdict) for `/api/jump-diffusion/state` and `jump-diffusion.html`. Run after the daily + LM scripts.
 - `summary.json` / `forecast_vs_fade_summary.json` / `jump_diffusion_summary.json` / `har_cj_summary.json` — headline stats.
@@ -889,3 +890,52 @@ into a better forward number. Not imported by `volatilityBotPlan.js` /
 
 Run `python3 export_intraday_percentiles.py` (after the gap audit), then
 `python3 crosscheck_jump.py` and `node js/jumpDiffusionCore.test.mjs` to check the contract.
+
+## Phase 15 — the intraday-RV win, isolated and checked per instrument (`har_intraday_isolation.py`)
+
+Phase 14's headline number — HAR on intraday 5-minute realised variance beating the
+shipped Yang-Zhang σ by 9.7-21.0% OOS QLIKE — fell out of a **control arm**, never the
+thing being tested, and conflated two different claims: is HAR's functional form simply
+better than YZ's (true regardless of data), or does intraday data carry real information
+a daily bar throws away? Only the second is the interesting, actionable claim. This
+isolates them by fitting the identical HAR machinery on THREE inputs — YZ (unchanged),
+HAR fed only daily Garman-Klass variance, and HAR fed 5-min realised variance — and checks
+**every instrument individually**, not pooled by asset class (a pooled win has hidden a
+few strong pairs dragging weak ones before in this study).
+
+**Result: both effects are real, and the bigger one is not about jumps or intraday data
+at all.**
+
+| | pass condition | result |
+|---|---|---|
+| **Functional form** (HAR-daily vs YZ) | context only, not pre-registered | **26/26 instruments**, +2.5% to +18.6% OOS QLIKE |
+| **Granularity** (HAR-intraday vs HAR-daily) | ≥2% OOS QLIKE, majority per class | **20/26 instruments**: fx_major 5/7, fx_cross 14/18, metal 1/1 |
+
+**HAR's functional form alone — using the exact same daily-OHLC data YZ already reads,
+zero new infrastructure — beats the shipped estimator on every single instrument.** This
+was not the hypothesis; it fell out of separating the two effects, and it is a larger,
+cleaner, more universal result than the intraday claim that motivated this whole
+follow-up. The incumbent's weakness is its fixed-window shape, not what data it reads.
+
+**Granularity is also real but weaker and less universal than Phase 14's pooled number
+suggested.** Majority holds in every class (the pre-registered bar), but 6/26 pairs don't
+clear it — AUDUSD, NZDUSD, AUDNZD, EURNZD, GBPAUD, GBPNZD, a pattern that looks AUD/NZD-
+related but is reported descriptively, not chased further here (n=6 is too thin to
+characterise a sub-pattern honestly).
+
+**What this changes about the "next step" from Phase 14.** The actionable finding is now
+in two pieces with very different cost/risk:
+1. **Swap YZ's functional form for HAR, still on daily-only data.** Needs no new data
+   pipeline — every input already exists. 26/26 instruments, the strongest and cheapest
+   result in this entire study.
+2. **Also feed it intraday RV.** A further, real, but more mixed improvement, and it
+   does require the intraday infrastructure Phase 13 already built (`jumpDiffusionCore.js`,
+   the live M5 read) to run in real time rather than just in the offline backtest.
+
+Neither has been wired anywhere live. Per this study's own hard rule, going from "measured
+here" to "feeds the live forecaster" is a decision for the repo owner, not something this
+offline script does on its own — `js/volForecastBench.js` (the estimator comparison tool
+this repo already ships, built for exactly this kind of candidate) is the safe next stop,
+not `js/volForecast.js` or the bot's plan-building path.
+
+Run `python3 har_intraday_isolation.py`.
