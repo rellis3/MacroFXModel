@@ -3913,9 +3913,20 @@ function resetVb2Defaults() {
   // max_lot/broker_symbols/Telegram config with no warning beyond the
   // easy-to-miss "click Save to apply" status text.
   if (!confirm('Reset ALL Vote Atlas config fields (risk sizing, broker symbols, Telegram, everything) back to defaults? This does not save until you click Save Config, but will overwrite anything currently loaded once you do.')) return;
-  _vb2Cfg = { ...VB2_DEFAULTS }; renderVb2Form();
+  // CORRECTED 2026-09-14 — a real per-pair max_spread_pips dict got silently
+  // flattened to VB2_DEFAULTS' flat scalar by this exact `{...VB2_DEFAULTS}`
+  // replace, then persisted to the LIVE config on Save, blocking real
+  // EURCHF trades at a wrong 1.0p cap. renderVb2Form/readVb2Form were
+  // already hardened against this same failure mode on 2026-09-01 (twice
+  // that day) — this reset path was the one spot that still bypassed it.
+  // Preserve a real dict across a reset the same way those two already do;
+  // only a scalar/missing value gets replaced by the flat default.
+  const preservedSpread = (_vb2Cfg.max_spread_pips && typeof _vb2Cfg.max_spread_pips === 'object') ? _vb2Cfg.max_spread_pips : undefined;
+  _vb2Cfg = { ...VB2_DEFAULTS };
+  if (preservedSpread) _vb2Cfg.max_spread_pips = preservedSpread;
+  renderVb2Form();
   const el = document.getElementById('vb2SaveStatus');
-  if (el) { el.textContent = 'Defaults restored — click Save to apply'; el.style.color = 'var(--text3)'; }
+  if (el) { el.textContent = preservedSpread ? 'Defaults restored (per-pair spread caps kept) — click Save to apply' : 'Defaults restored — click Save to apply'; el.style.color = 'var(--text3)'; }
 }
 async function loadVb2Creds() { try { _applyCredsToForm(await kvGet('volatility_bot_v2_credentials'), 'vb2_', 'vb2_mt5_password'); } catch (e) {} }
 async function saveVb2Creds() { await _saveCreds('volatility_bot_v2_credentials', 'vb2_', 'vb2_mt5_password', 'vb2CredsStatus'); }
