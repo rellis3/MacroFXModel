@@ -1306,6 +1306,7 @@ export default {
           us2y:     'DGS2',
           us5y:     'DGS5',
           us10y:    'DGS10',
+          us30y:    'DGS30',   // long end -- the vote on inflation credibility, vs the 2Y's vote on the next Fed move
           dxy:      'DTWEXBGS',
           tips:     'DFII10',   // 10Y TIPS real yield — gold model Layer 1 + 2
           tips5:    'DFII5',    // 5Y TIPS real yield — more reactive to near-term policy

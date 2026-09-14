@@ -23,6 +23,7 @@
 export const MACRO_CHANGE_SPEC = {
   us2y:  { label: 'US 2Y',            bps: true,  kind: 'rate' },
   us10y: { label: 'US 10Y',           bps: true,  kind: 'rate' },
+  us30y: { label: 'US 30Y',           bps: true,  kind: 'rate' },
   tips:  { label: 'Real 10Y (TIPS)',  bps: true,  kind: 'rate' },
   bei:   { label: '10Y breakeven',    bps: true,  kind: 'rate' },
   hy:    { label: 'HY credit spread', bps: true,  kind: 'spread', up: 'widening', down: 'tightening' },

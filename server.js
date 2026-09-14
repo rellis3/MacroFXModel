@@ -3166,6 +3166,116 @@ Respond with a single valid JSON object, no markdown, no text outside it:
 {"headline":"one sentence on ${ccy} right now, plain English, no unexplained terms","bias":"STRONG|WEAK|NEUTRAL","conviction":0-10,"convictionWhy":"one clause: what caps or supports the conviction number","whatHappened":"${TEACH ? '1-2' : '1'} sentence(s) on the measured move and what drove it","whatMarketExpects":"${TEACH ? '1-2' : '1'} sentence(s) from the curve, scheduled events and positioning","fundamentals":"${TEACH ? '1-2' : '1'} sentence(s) on the scorecard and surprise data","chain":"${TEACH ? '2-4' : '1-2'} sentences: the measured chain walked forward for ${ccy}, from the first mover to the first link that broke or went quiet; 'not measured' if the snapshot has no chain","cleanestExpression":"which pair and why","risks":"the main thing that would hurt this view","whatWouldChangeIt":"1-2 specific checkable observations","brief":"${TEACH ? 'at most 180 words in 2 short paragraphs: the reasoning that CONNECTS the fields above, teaching the mechanism -- not a restatement of them' : 'at most 80 words, one paragraph, the read in one breath'}"}`;
 }
 
+// ── The chain, read aloud ────────────────────────────────────────────────────
+// The chain panel judges each textbook link on measured moves. This turns those
+// verdicts, plus the day's numbers and headlines, into the kind of explanation a
+// desk trader gives after the close: name what is driving, chain it forward,
+// say what SHOULD be happening and is not, say what the next surprise is, and
+// land it on FX. The style rules below were distilled from a dozen of Nicholas
+// Crown's after-the-close explainers (2026-09); the DATA rules are this repo's.
+// AI opinion, not backtested. Cached 30 minutes -- one global read, not one per
+// viewer -- and regenerable with ?force=1.
+const _CHAIN_READ_TTL_MS = 30 * 60_000;
+let _chainReadCache = { at: 0, data: null, key: '' };
+function buildChainReadPrompt(s, headlines) {
+  const hl = (headlines ?? []).slice(0, 14).map(h => `  [${h.ticker}] ${_redactFedChairName(h.title)}`).join('\n');
+  return `You are a former fixed-income arbitrage trader who now explains the macro tape to a small audience after the close. Read the snapshot below and explain today's chain of cause and effect the way you would to a sharp friend who trades FX.
+
+=== SNAPSHOT (${s.asOf ?? 'now'}) ===
+
+WHAT MOVED (level, then change over 1 day / 5 days / 20 days; rates in basis points)
+${s.moved || '  not available'}
+
+THE CHAIN (textbook links judged on 20-day moves at both ends: HOLDING = moved together as the textbook says, BROKEN = both moved the wrong way round, QUIET = one end inside its noise floor)
+${s.chain || '  not measured'}
+
+RATES, SPLIT (the 10-year move decomposed into real yield vs inflation compensation)
+${s.ratesSplit || '  not interpretable today'}
+
+POLICY PATH PRICED (2-year vs the policy rate)
+${s.policy || '  not available'}
+
+OIL, METALS, CRYPTO, FX (live oil; 20-day changes elsewhere)
+${s.assets || '  not available'}
+
+RISK MOOD
+${s.risk || '  not available'}
+
+EQUITIES (index breadth today)
+${s.equities || '  not available'}
+
+CURRENCY STRENGTH TODAY (measured, cross-sectional fit of every pair's move)
+${s.ccy || '  not available'}
+
+BROKEN RELATIONSHIPS FLAGGED BY THE PAGE
+${s.divergences || '  none flagged'}
+
+DATA CAVEATS
+${s.caveats || '  none'}
+
+NEXT SCHEDULED CATALYSTS (48h)
+${s.events || '  nothing high-impact scheduled'}
+
+HEADLINES (Yahoo, last few hours; may be thin or stale)
+${hl || '  none available'}
+
+=== END SNAPSHOT ===
+
+HOW TO WRITE IT (style):
+- Open with ONE sentence that names what is actually driving today. Provocative, plain, specific. Not a summary.
+- Name the competing stories as THINGS, each with its legs, and say which is dominant, which is overshadowed, which is reloading in the background: e.g. "the war trade (energy up, dollar up)", "the debasement trade (gold, silver, bitcoin up, dollar down)", "the rate shock", "the AI/financing trade". Name a story ONLY when at least two of its legs are measured in the snapshot and point the same way. Do not invent a story the numbers do not show.
+- Chain it: "High oil keeps inflation elevated, that keeps rates elevated, and now the market cares about X." Second and third order. Every step must be a measured number from the snapshot or a HOLDING link.
+- The tell is the break: "Normally an oil shock sends the dollar through the roof. Today the dollar is down 0.7% into it. That means..." Use the BROKEN links and the flagged divergences for this. A QUIET link is not evidence of anything; do not chain through it.
+- Front end versus long end: the 2-year is the vote on what the central bank does next; the 10- and 30-year are the vote on inflation and credibility. Say which end is moving and what that says.
+- Priced-in logic: if the market has already priced a move, say what the SURPRISE would be. Use the POLICY PATH line; if it is missing, do not guess.
+- Surface versus underneath: if the indices are quiet while the chain is loud, say so.
+- Numbers inline, plain: "10-year up 21 basis points over 20 days", "gold down 5.5%". Never round a number to a different value than the snapshot gives. Never invent one.
+- Short sentences. Contractions fine. No jargon without a four-word gloss the first time ("off-the-run bonds -- older, harder to move").
+- Land it on FX: which majors this chain is pushing, and through which leg (rates, oil, risk). Name pairs. No entries, stops, sizes or products, ever. No calls to action.
+- Never name a central-bank official; use the role. Never present positioning (COT, retail book) as a forecast.
+- If the snapshot is thin -- most links quiet, few numbers -- say the chain is quiet today and keep it short. A quiet day is a valid read.
+
+Respond with a single valid JSON object, no markdown, no text outside it:
+{"hook":"one sentence, the thing driving today","read":"4-6 short paragraphs separated by blank lines, 150-240 words total, in the style above","stories":[{"name":"the war trade","legs":"energy up, dollar up","status":"dominant|overshadowed|reloading|absent","evidence":"one clause with the snapshot numbers that show it"}],"shouldHave":"one sentence: what the textbook says should be happening and is not -- or 'nothing is out of place today'","next":"one sentence: the next catalyst and what a surprise would look like","forFx":"1-2 sentences naming the pairs this chain is pushing and through which leg"}`;
+}
+app.post('/api/chain-read', async (req, res) => {
+  const key = process.env.ANT_KEY;
+  if (!key) return res.status(503).json({ error: 'ANT_KEY not configured' });
+  try {
+    const { snapshot } = req.body ?? {};
+    if (!snapshot) return res.status(400).json({ error: 'Missing snapshot' });
+    const force = req.query.force === '1';
+    // One read per half hour for everyone. The snapshot's own stamp is the cache
+    // key so a new trading day (or a fresh chain) is never served yesterday's read.
+    const ck = String(snapshot.asOf ?? '').slice(0, 13);
+    if (!force && _chainReadCache.data && _chainReadCache.key === ck && Date.now() - _chainReadCache.at < _CHAIN_READ_TTL_MS)
+      return res.json({ ok: true, cached: true, ...(_chainReadCache.data) });
+    let headlines = [];
+    try { headlines = await _fetchYahooHeadlines(); } catch { /* prompt tolerates absence */ }
+    const prompt = buildChainReadPrompt(snapshot, headlines);
+    const antRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({
+        model: 'claude-opus-5',
+        max_tokens: 4000,
+        system: 'You are a former fixed-income trader explaining the macro tape after the close. You ALWAYS respond with valid complete JSON only -- no markdown, no backticks, no text before or after the JSON object.',
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    });
+    if (!antRes.ok) return res.status(502).json({ error: `Anthropic ${antRes.status}` });
+    const j = await antRes.json();
+    const txt = _antText(j);
+    let read;
+    try { read = JSON.parse(txt); }
+    catch { const m = txt.match(/\{[\s\S]*\}/); read = m ? JSON.parse(m[0]) : null; }
+    if (!read) return res.status(502).json({ error: 'model did not return parseable JSON' });
+    const data = { read, generatedAt: new Date().toISOString(), headlineCount: headlines.length };
+    _chainReadCache = { at: Date.now(), data, key: ck };
+    res.json({ ok: true, cached: false, ...data });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.post('/api/currency-analysis', async (req, res) => {
   const key = process.env.ANT_KEY;
   if (!key) return res.status(503).json({ error: 'ANT_KEY not configured' });
@@ -30236,7 +30346,7 @@ const _FREDHISTORY_SERIES = {
   // Daily tenors, not GS* monthly averages — see _FRED_DASH_SERIES' note. This
   // map feeds buildMacroChanges' 1d/5d/20d rows directly, so the cadence here IS
   // the label's meaning.
-  us2y: 'DGS2', us5y: 'DGS5', us10y: 'DGS10', dxy: 'DTWEXBGS',
+  us2y: 'DGS2', us5y: 'DGS5', us10y: 'DGS10', us30y: 'DGS30', dxy: 'DTWEXBGS',
   tips: 'DFII10', tips5: 'DFII5', bei: 'T10YIE', vix: 'VIXCLS', vix3m: 'VXVCLS',
   hy: 'BAMLH0A0HYM2', usd_jpy: 'DEXJPUS',
   sofr: 'SOFR', rrp: 'RRPONTSYD',   // repo rate + reverse-repo facility usage (macro-change strip)

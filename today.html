@@ -813,6 +813,15 @@
   .chain-r.open .chain-w{display:block}
   .chain-foot{font-size:10.5px;color:var(--text3);line-height:1.5;margin-top:4px}
   @media (max-width:560px){.chain-p,.chain-w{margin-left:0}}
+  .chain-read{margin:0 0 10px;padding:9px 11px;border:1px solid var(--border);border-radius:8px;background:var(--card2)}
+  .chain-read-h{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;font-weight:700;color:var(--text2);margin-bottom:5px}
+  .chain-hook{font-size:14px;font-weight:800;line-height:1.4;margin-bottom:6px}
+  .chain-stories{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:7px}
+  .chain-story{font-size:10.5px;padding:2px 8px;border-radius:999px;border:1px solid var(--border);color:var(--text2);cursor:help}
+  .chain-story.bull{border-color:var(--bull);color:var(--bull)} .chain-story.warn{border-color:var(--amber);color:var(--amber)}
+  .chain-read-body{gap:6px} .chain-read-body p{margin:0;font-size:12.5px;line-height:1.6}
+  .chain-read-row{font-size:12px;line-height:1.55;margin-top:4px;color:var(--text2)}
+  .chain-read-row b{color:var(--text)}
   .fals{margin-top:12px;border-top:1px solid var(--border);padding-top:9px}
   .fals-h{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--text3);
     margin-bottom:5px;cursor:help}
@@ -2774,12 +2783,120 @@ function chainLinks() {
   const vals = chainVals();
   return (B && vals) ? B.evaluateChain(vals) : [];
 }
+// ── The chain, read aloud ────────────────────────────────────────────────────
+// The rows judge the links. This is the explanation a desk trader gives after the
+// close: what is driving, chained forward, what SHOULD be happening and is not,
+// the next surprise, and where it lands on FX. Built only from what this page has
+// measured (plus server-side headlines); the server holds one read for everyone
+// for 30 minutes. AI opinion -- stamped as such, not backtested.
+let _chainRead = { state: 'idle', data: null, err: null, at: 0 };
+function assembleChainSnapshot() {
+  const B = window.macroChainBrick;
+  const fmt = (v, dp = 0) => v == null ? '?' : `${v > 0 ? '+' : ''}${Number(v).toFixed(dp)}`;
+  const rows = Array.isArray(macroMoved) ? macroMoved : [];
+  const moved = rows.map(r => {
+    const bp = r.unit === 'bps';
+    const d = w => r.deltas?.[w] == null ? '?' : `${fmt(r.deltas[w], bp ? 0 : 2)}${bp ? 'bp' : ''}`;
+    const lvl = r.kind === 'rate' ? `${Number(r.last).toFixed(2)}%` : r.kind === 'spread' ? `${Number(r.last).toFixed(2)}% (${Math.round(r.last * 100)}bp)` : r.kind === 'curve' ? `${r.last}bp` : String(r.last);
+    return `  ${r.label}: ${lvl} (${r.lastDate ?? '?'}) · 1d ${d(1)} · 5d ${d(5)} · 20d ${d(20)}${r.note ? ` · ${r.note}` : ''}`;
+  }).join('\n');
+  const links = chainLinks();
+  const chain = B ? B.chainForPrompt(links) : '';
+  const rd = ratesDecompBest();
+  const ratesSplit = rd && rd.usable ? `  10Y ${fmt(rd.total)}bp over ${rd.win} day(s) = real ${fmt(rd.real)}bp + breakeven ${fmt(rd.bei)}bp -> ${rd.meaningful ? (rd.dominant === 'real' ? 'real-rate driven' : rd.dominant === 'inflation' ? 'inflation-expectations driven' : 'flat') : 'inside the noise floor, nothing to attribute'}` : null;
+  const pp = regimeFx?.policy;
+  const policy = pp ? `  2Y ${pp.twoYear}% vs policy rate ${pp.policyRate}% (${fmt(pp.gapBp)}bp): roughly ${Math.abs(pp.movesPriced).toFixed(1)} ${pp.direction === 'cuts' ? 'cuts' : pp.direction === 'hikes' ? 'hikes' : 'moves'} already priced` : null;
+  const vals = chainVals() ?? {};
+  const wti = commodityDrivers?.wti;
+  const assetLine = (k, label) => vals[k] ? `  ${label}: 20d ${vals[k].delta > 0 ? '+' : ''}${vals[k].delta.toFixed(k === 'bei' || k === 'real' || k === 'us10y' || k === 'hy' ? 0 : 1)}${['pct'].includes(B?.CHAIN_NODES[k]?.unit) ? '%' : B?.CHAIN_NODES[k]?.unit === 'bp' ? 'bp' : ''}${vals[k].last != null ? ` (last ${Number(vals[k].last).toFixed(k === 'btc' ? 0 : k === 'gold' ? 0 : 2)}, ${vals[k].asOf ?? '?'})` : ''}` : null;
+  const assets = [
+    wti ? `  WTI crude: live ${wti.price.toFixed(2)}, ${fmt(wti.pct, 1)}% vs yesterday's close${vals.oil ? `, 20d ${fmt(vals.oil.delta, 1)}%` : ''}` : null,
+    assetLine('gold', 'Gold'), assetLine('copper', 'Copper'), assetLine('btc', 'Bitcoin'),
+    assetLine('audusd', 'AUD/USD'), assetLine('usdcad', 'USD/CAD'), assetLine('usdjpy', 'USD/JPY'),
+    vals.dxy ? `  Broad dollar index: 20d ${fmt(vals.dxy.delta, 1)}% (${vals.dxy.asOf ?? '?'})` : null,
+  ].filter(Boolean).join('\n');
+  const rs = allRows();
+  const risk = equitiesRisk(rs);
+  const cr = correlationRegime();
+  const riskLines = risk ? [
+    `  Mood: ${riskPlain(risk.cls)}${risk.vix != null ? ` · VIX ${risk.vix}${risk.vix3m != null ? ` vs 3m ${risk.vix3m} (${risk.vix > risk.vix3m ? 'backwardated: near-term fear' : 'contango: normal'})` : ''}` : ''}`,
+    risk.credit ? `  Credit: HY ${risk.credit.hyBps}bp, ${risk.credit.widening > 0 ? 'widening' : risk.credit.widening < 0 ? 'tightening' : 'steady'}${risk.credit.d5 != null ? ` (${fmt(risk.credit.d5)}bp/wk)` : ''}` : null,
+    risk.liquidity ? `  Central-bank liquidity: ${risk.liquidity.direction === 'LONG' ? 'expanding' : risk.liquidity.direction === 'SHORT' ? 'contracting' : 'mixed'} (${risk.liquidity.agree}/${risk.liquidity.total} banks agree)` : null,
+    cr ? `  Cross-asset correlation: ${cr.state} (mean |rho| ${cr.mean.toFixed(2)})` : null,
+  ].filter(Boolean).join('\n') : null;
+  const equities = risk?.chips?.length ? `  ${risk.up} of ${risk.chips.length} indices bid today: ${risk.chips.map(c => `${c.name} ${c.dir === 'up' ? 'up' : c.dir === 'down' ? 'down' : 'flat'}`).join(', ')} -> ${risk.tone ?? ''}` : null;
+  const csr = currencyStrengthMeasured(rs);
+  const ccy = csr?.scores?.length ? `  ${csr.scores.map(x => `${x.ccy} ${x.score >= 0 ? '+' : ''}${x.score}`).join(' · ')} (in expected day ranges; fit R-squared ${csr.r2 ?? '?'}${csr.r2 != null && csr.r2 < 0.3 ? ' -- weak, not a clean currency story today' : ''})` : null;
+  const divergences = macroDivergences().map(d => `  ${d.title}: ${d.detail}`).join('\n') || null;
+  const caveats = [
+    ...dataConflicts().map(c => `  CONFLICT ${c.label}: ${c.a.src} ${c.a.v} vs ${c.b.src} ${c.b.v} (${c.diffPct}% gap) -- treat reads built on it as unsupported`),
+    _wtiLag ? `  LAG: FRED's oil print is ${_wtiLag.days} days behind; oil has moved ${_wtiLag.movedPct > 0 ? '+' : ''}${_wtiLag.movedPct}% since. Use the live number.` : null,
+    (() => { const q = links.filter(l => l.verdict === 'quiet').length; return q ? `  ${q} of ${links.length} chain links are QUIET today -- do not chain through them` : null; })(),
+  ].filter(Boolean).join('\n') || null;
+  const now = Date.now();
+  const evs = (events ?? [])
+    .filter(e => (e.impact ?? '').toLowerCase() === 'high')
+    .map(e => ({ ...e, ts: new Date(String(e.time).replace(' ', 'T') + (String(e.time).endsWith('Z') ? '' : 'Z')).getTime() }))
+    .filter(e => Number.isFinite(e.ts) && e.ts > now - 3 * 3600_000 && e.ts < now + 48 * 3600_000)
+    .sort((a, b) => a.ts - b.ts).slice(0, 6)
+    .map(e => { const h = Math.round((e.ts - now) / 3600_000); return `  ${e.country} ${e.event}${e.estimate != null ? ` (consensus ${e.estimate})` : ''} -- ${h < 0 ? `${-h}h ago` : h === 0 ? 'now' : `in ${h}h`}`; })
+    .join('\n') || null;
+  return { asOf: new Date().toISOString(), moved: moved || null, chain: chain || null, ratesSplit, policy, assets: assets || null, risk: riskLines, equities, ccy, divergences, caveats, events: evs };
+}
+async function loadChainRead(force = false) {
+  if (_chainRead.state === 'loading') return;
+  if (!force && _chainRead.state === 'ready' && Date.now() - _chainRead.at < 30 * 60_000) return;
+  _chainRead = { ..._chainRead, state: 'loading', err: null };
+  render();
+  try {
+    const resp = await fetch(`/api/chain-read${force ? '?force=1' : ''}`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ snapshot: assembleChainSnapshot() }),
+    }).then(x => x.json());
+    if (!resp?.ok) throw new Error(resp?.error || 'no read');
+    _chainRead = { state: 'ready', data: resp, err: null, at: Date.now() };
+  } catch (e) {
+    _chainRead = { state: 'error', data: _chainRead.data, err: e.message, at: Date.now() };
+  }
+  render();
+}
+function chainReadHtml() {
+  const st = _chainRead.state;
+  const r = _chainRead.data?.read;
+  const btn = `<span class="chip neu" role="button" tabindex="0" style="cursor:pointer" onclick="loadChainRead(true)" onkeydown="if(event.key==='Enter'||event.key===' '){loadChainRead(true)}" title="Regenerate from the current numbers. One read is shared by everyone for 30 minutes.">${st === 'loading' ? '… reading' : '↻ re-read'}</span>`;
+  const head = `<div class="chain-read-h"><span>The read <span class="chip warn" style="font-size:9px">AI · not backtested</span></span>${btn}</div>`;
+  if (!r) {
+    if (st === 'loading') return `<div class="chain-read">${head}<div class="muted" style="font-size:11.5px">Reading the tape…</div></div>`;
+    if (st === 'error') return `<div class="chain-read">${head}<div class="muted" style="font-size:11.5px">Could not build the read (${esc0(_chainRead.err ?? '')}).</div></div>`;
+    return '';
+  }
+  const statusCls = { dominant: 'bull', overshadowed: 'neu', reloading: 'warn', absent: 'neu' };
+  const stories = Array.isArray(r.stories) ? r.stories.filter(x => x?.name && x.status !== 'absent') : [];
+  const paras = String(r.read ?? '').split(/\n\s*\n|\n/).map(x => x.trim()).filter(Boolean);
+  const when = _chainRead.data?.generatedAt ? new Date(_chainRead.data.generatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+  return `<div class="chain-read">
+    ${head}
+    ${r.hook ? `<div class="chain-hook">${esc0(r.hook)}</div>` : ''}
+    ${stories.length ? `<div class="chain-stories">${stories.map(x => `<span class="chain-story ${statusCls[x.status] ?? 'neu'}" title="${esc0(`${x.legs ?? ''}${x.evidence ? ' — ' + x.evidence : ''}`)}"><b>${esc0(x.name)}</b> · ${esc0(x.status)}</span>`).join('')}</div>` : ''}
+    <div class="story chain-read-body">${paras.map(x => `<p>${esc0(x)}</p>`).join('')}</div>
+    ${r.shouldHave ? `<div class="chain-read-row"><b>Should be happening, isn't:</b> ${esc0(r.shouldHave)}</div>` : ''}
+    ${r.next ? `<div class="chain-read-row"><b>Next:</b> ${esc0(r.next)}</div>` : ''}
+    ${r.forFx ? `<div class="chain-read-row"><b>For FX:</b> ${esc0(r.forFx)}</div>` : ''}
+    <div class="chain-foot">Written from the numbers on this page${_chainRead.data?.headlineCount ? ` and ${_chainRead.data.headlineCount} headlines` : ''}${when ? ` at ${when}` : ''}${_chainRead.data?.cached ? ' (shared read, refreshed every 30 min)' : ''}. An opinion in a trader's voice, not a forecast: the rows below are what it was allowed to use.</div>
+  </div>`;
+}
 function chainHtml() {
   const B = window.macroChainBrick;
   const links = chainLinks();
   if (!B || !links.length) return '';
   const sum = B.summariseChain(links);
   if (sum.judged === 0 && sum.unmeasured === links.length) return '';
+  // First read, once the chain has something to say and the delta strip has
+  // arrived (the read quotes it). Deferred so render() is never re-entered.
+  if (_chainRead.state === 'idle' && sum.unmeasured === 0 && Array.isArray(macroMoved) && macroMoved.length) {
+    _chainRead.state = 'queued';
+    setTimeout(() => loadChainRead(false), 800);
+  }
   const W = B.CHAIN_WINDOW_DAYS;
   const vcls = { holding: 'hold', broken: 'broke', quiet: 'quiet', unmeasured: 'quiet' };
   const vword = { holding: 'holding', broken: 'broken', quiet: 'quiet', unmeasured: 'no data' };
@@ -2800,6 +2917,7 @@ function chainHtml() {
   return `<div class="chain">
     <div class="chain-h help" title="${esc0(tip)}">The chain, today <span class="muted" style="font-weight:400;letter-spacing:0;text-transform:none">· textbook links vs ${W}-day moves ${_EV('c', _EV_T.c)}</span></div>
     <div class="chain-sum ${sum.broken ? 'broke' : sum.judged ? 'hold' : 'quiet'}">${esc0(sum.headline)}</div>
+    ${chainReadHtml()}
     ${links.map(l => {
       const judged = l.verdict === 'holding' || l.verdict === 'broken';
       return `<div class="chain-r ${vcls[l.verdict]}${judged ? ' can-open' : ''}"${judged ? ` onclick="this.classList.toggle('open')" title="${esc0(l.textbook)} — click for the full mechanism"` : ` title="${esc0(l.textbook)}"`}>
