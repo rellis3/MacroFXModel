@@ -40,6 +40,7 @@ import { buildLadder, flattenLadder } from './forecastLadder.js';
 import { forecastSigma } from './forecastSigma.js';
 import { LADDER_PARAMS } from './forecastLadderParams.js';
 import { volAcceleration, termStructureState, rangeEfficiencyRatio, realisedSkew } from './volStateEngine.js';
+import { driftAnatomy } from './driftAnatomy.js';
 
 const TRADING_DAYS = 252;
 const EWMA_LAMBDA  = 0.94;
@@ -465,12 +466,32 @@ const DRIFT_BANDS = [
   { pct: 0.50, min: 0.15, word: 'Mild'        },
 ];
 
-export function driftReadout(ohlc, sigmaFwd, win = 14) {
+/**
+ * @param {object} [opts] optional inputs for the `anatomy` block (js/driftAnatomy.js).
+ *   `rates`   {basePct, quotePct} annual rates for the pair's two legs → carry baseline
+ *   `returns` {daily[], jump[]}   per-day log returns + detected jump returns → composition
+ * Both are optional and independent; without them `anatomy` still carries the
+ * precision block, which needs nothing but `d` itself.
+ */
+export function driftReadout(ohlc, sigmaFwd, win = 14, opts = {}) {
   const d = _driftD(ohlc, sigmaFwd);
-  const out = { d, pct: null, word: 'Neutral', dir: 'flat', pctPerDay: null, text: null, n: 0 };
+  const out = {
+    d, pct: null, word: 'Neutral', dir: 'flat', pctPerDay: null,
+    text: null, textFull: null, anatomy: null, n: 0,
+  };
   if (!Number.isFinite(d) || !(sigmaFwd > 0)) return out;
 
   out.pctPerDay = Math.round(d * sigmaFwd * 100 * 100) / 100;   // signed %/day
+
+  // Anatomy is attached BEFORE the n<60 bail below, because its precision block
+  // needs only d and the window length — a short history blocks the PERCENTILE
+  // (you cannot rank against 40 days honestly), not the error bar.
+  out.anatomy = driftAnatomy({
+    d, pctPerDay: out.pctPerDay, win,
+    sigmaAnnualPct: sigmaFwd * 100 * Math.sqrt(TRADING_DAYS),
+    rates: opts.rates,
+    returns: opts.returns,
+  });
 
   // Historical |d| from the SAME bars this forecast was built on. Each past day's
   // drift uses only closes up to that day, so the distribution is causal.
@@ -501,6 +522,12 @@ export function driftReadout(ohlc, sigmaFwd, win = 14) {
   out.text = out.word === 'Neutral' ? `Neutral · ${mag}`
            : out.pct >= 0.75        ? `${out.word} (top ${top}% of days) · ${mag}`
            :                          `${out.word} · ${mag}`;
+
+  // `text` is FROZEN — js/ladderExport.js emits it on the "Drift (d=μ/σ)" line and a
+  // TradingView indicator parses that line. The anatomy therefore rides on a SECOND
+  // field. A reader gets the rarity claim and the precision that qualifies it:
+  //   "Strong bearish (top 14% of days) · -0.48%/day · t = -1.98 (14d) · 61× carry"
+  out.textFull = out.anatomy?.text ? `${out.text} · ${out.anatomy.text}` : out.text;
   return out;
 }
 
@@ -700,7 +727,10 @@ export function computeForecast(ohlc, assetClass = 'fx', newsMult = 1.0, opts = 
     legacy_oc_median:  r2s(HN_P50       * legacyPct),
     // v2: drift parameter and drifted-BM OH/OL percentiles
     drift_d:       _d,
-    drift_read:    driftReadout(ohlc, sigmaFwd),
+    // opts.drift carries the OPTIONAL anatomy inputs ({rates, returns}) — a caller
+    // with rate or jump data supplies them, everyone else gets the precision block
+    // alone. Never required: computeForecast's own contract is unchanged.
+    drift_read:    driftReadout(ohlc, sigmaFwd, 14, opts.drift ?? {}),
     oh_v2_median:  r2v(_bmMaxQuantile( _d, 0.5)  * _p.oc_50_corr * _sp),
     oh_v2_75:      r2v(_bmMaxQuantile( _d, 0.75) * _p.oc_75_corr * _sp),
     ol_v2_median:  r2v(_bmMaxQuantile(-_d, 0.5)  * _p.oc_50_corr * _sp),
