@@ -7479,3 +7479,44 @@ repo already ships for exactly this purpose — is the safe next stop if this is
 
 **Status: ✅ registered · isolation confirmed both effects real · per-instrument checked ·
 NOT wired into any live-facing code.**
+
+### 1ax. The intraday-RV win replicates on equity indices too (2026-09-14)
+
+Extends §1aw to the 6 equity indices `tier8_multi_index_conviction.py` already knows how
+to pull from R2 (all reachable, no new data source). No new script — `har_intraday_
+isolation.py` is asset-class-agnostic; the gap was that the classifier had no `'index'`
+bucket.
+
+**Two bugs caught before trusting a number:**
+1. Running `m1_gap_audit.py` with explicit pair args (`... nq de30 ...`) overwrites
+   `m1_gap_audit_summary.json` wholesale rather than merging — silently wiped the 26
+   already-audited FX/gold entries. Caught when the next log showed them all `NOT
+   AUDITED`. Fix: always re-run the audit for the FULL discovered set when new
+   instruments join the cache, never a partial one.
+2. `asset_class()` (duplicated, unfixed, in `jump_diffusion_daily.py` AND
+   `jump_detect_lm.py`) defaulted anything outside FX-major/metal to `'fx_cross'` —
+   silently pooling all 6 indices into the FX-cross bucket, exactly the cross-asset
+   pooling §1as's Phase 1 docstring says never to do. Fixed in both copies (`INDICES`
+   list + `'index'` class), `jump_diffusion_daily.csv` regenerated with correct labels.
+
+**DE30 and UK100 correctly excluded, not silently corrupted.** The gap audit's
+holiday/session heuristics (built for FX + gold's CME break) don't recognise DAX/FTSE's
+own market hours — ~93% of their days flag UNEXPLAINED and get dropped, leaving ~185
+usable days each, below the study's minimum. A real tooling gap (Xetra/LSE session
+structure unmodeled), not a data problem; unstarted work.
+
+**NQ, SPX500, US2000, US30 audit cleanly and give the cleanest asset-class result in the
+whole study: 4/4 on both dimensions.**
+
+| index | functional form | granularity |
+|---|---|---|
+| NQ | +12.58% | +5.18% |
+| SPX500 | +19.43% | +3.18% |
+| US2000 | +15.41% | +2.57% |
+| US30 | +15.28% | +4.11% |
+
+Higher clear rate than fx_major (5/7) or fx_cross (14/18); SPX500's +19.4% is the largest
+functional-form gain in the study. Not an FX-specific artifact.
+
+**Status: ✅ registered · replicates on a genuinely different asset class · DE30/UK100
+honestly flagged as untested (tooling gap, not swept under).**

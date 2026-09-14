@@ -66,11 +66,16 @@ MIN_RET = {1: 240, 5: 48}   # minimum usable returns at each step (~4h of sessio
 # asset classes — kept separate everywhere (pitfall: FX/gold need not behave alike)
 MAJORS = ['eurusd', 'gbpusd', 'usdjpy', 'audusd', 'nzdusd', 'usdcad', 'usdchf']
 METALS = ['gold']
+# equity indices (added for the Phase-15 cross-asset check) — a genuinely different asset
+# class, never pooled with FX crosses (Phase 1's own no-pooling rule). Mirrored in both
+# copies of asset_class() in this folder so a reader of either CSV sees the same label.
+INDICES = ['nq', 'de30', 'spx500', 'uk100', 'us2000', 'us30']
 
 
 def asset_class(pair):
     if pair in METALS: return 'metal'
     if pair in MAJORS: return 'fx_major'
+    if pair in INDICES: return 'index'
     return 'fx_cross'
 
 

@@ -536,6 +536,7 @@ alongside.
 - `har_cj_forecast.py` — Phase-14 HAR-RV-CJ: continuous/jump as separate HAR regressors vs the same HAR without the split, walk-forward, QLIKE — **NULL** (+0.4% to −0.7% vs a 2% bar). Control arm found intraday-RV HAR beats the shipped YZ σ by 10-21% OOS (not pre-registered). Run `python3 har_cj_forecast.py`.
 - `export_intraday_percentiles.py` — the TIME-OF-DAY yardstick: per 30-min checkpoint, the historical distribution of session-open→checkpoint jump share, plus the frozen diurnal periodicity curve the live detector uses → `data/jump_intraday.json`. Run `python3 export_intraday_percentiles.py`.
 - `har_intraday_isolation.py` — Phase-15 splits Phase 14's pooled win into a functional-form component (HAR-daily vs YZ, **26/26 instruments**) and a granularity component (HAR-intraday vs HAR-daily, **20/26**, majority per class) — per-instrument, not pooled. Run `python3 har_intraday_isolation.py`.
+- Phase 15b (indices) needs no new script — `har_intraday_isolation.py` is asset-class-agnostic; only `asset_class()` in `jump_diffusion_daily.py`/`jump_detect_lm.py` needed an `'index'` bucket added.
 - `crosscheck_jump.py` / `crosscheck_jump.mjs` — the JS↔Python parity contract for the jump maths (RV, BV, jump fraction, threshold, local sigma, deseasonalised returns, detected indices, all to 1e-12). Run `python3 crosscheck_jump.py`.
 - `export_jump_state.py` — freezes the study into `data/jump_state.json` (per-pair jump-share percentiles + every phase verdict) for `/api/jump-diffusion/state` and `jump-diffusion.html`. Run after the daily + LM scripts.
 - `summary.json` / `forecast_vs_fade_summary.json` / `jump_diffusion_summary.json` / `har_cj_summary.json` — headline stats.
@@ -939,3 +940,54 @@ this repo already ships, built for exactly this kind of candidate) is the safe n
 not `js/volForecast.js` or the bot's plan-building path.
 
 Run `python3 har_intraday_isolation.py`.
+
+## Phase 15b — does the win hold on equity indices? (NQ, SPX500, DE30, UK100, US2000, US30)
+
+Phase 15 only covered FX + gold, because that's what the local M1 cache had. This pulls
+the 6 equity indices `tier8_multi_index_conviction.py` already knows how to fetch from R2
+(all reachable, 49-80MB each) and runs the identical isolation test on them.
+
+**Two real bugs caught before trusting a number, both worth recording:**
+
+1. **The gap audit was run with explicit pair args first** (`m1_gap_audit.py nq de30 ...`),
+   which overwrites `m1_gap_audit_summary.json` wholesale rather than merging — silently
+   wiping the 26 already-audited FX/gold entries and cascading into every downstream
+   script reading "not audited, skipped". Caught because the very next run's log showed
+   26 FX pairs suddenly `NOT AUDITED`. Fixed by always re-running the audit for the FULL
+   discovered set, never a partial one, once new instruments join the cache.
+2. **The asset-class classifier had no concept of "index".** `asset_class()` (duplicated,
+   unfixed, in both `jump_diffusion_daily.py` and `jump_detect_lm.py`) defaults anything
+   outside its FX-major/metal lists to `'fx_cross'` — so all 6 indices were silently
+   pooled into the FX-cross bucket, exactly the cross-asset-class pooling Phase 1's own
+   docstring says never to do. Fixed by adding an `INDICES` list and an `'index'` class to
+   both copies, then regenerating `jump_diffusion_daily.csv` with corrected labels.
+
+**DE30 and UK100 are NOT usable with this audit's current logic, and are correctly
+excluded rather than silently included.** The gap classifier's holiday/session-break
+heuristics were built for FX (near-24h sessions) and gold's CME break pattern — DAX and
+FTSE run genuinely different market hours and holiday calendars the classifier doesn't
+recognise, so ~93% of their days are flagged UNEXPLAINED (1,995/2,715 for DE30,
+1,973/2,687 for UK100) and dropped by the audit gate, leaving ~182-188 usable days each —
+far below the study's own minimum. This is a real gap in the tooling, not a data problem;
+extending the classifier to Xetra/LSE session structure is unstarted work, out of scope
+here. **NQ, SPX500, US2000, US30 audit cleanly** (24-620 excluded days out of ~2700-3300,
+in the same range as the FX pairs) and are trusted.
+
+**Result: the cleanest asset class in the entire study.**
+
+| index | functional form (HAR-daily vs YZ) | granularity (HAR-intraday vs HAR-daily) |
+|---|---|---|
+| NQ | +12.58% | +5.18% |
+| SPX500 | +19.43% | +3.18% |
+| US2000 | +15.41% | +2.57% |
+| US30 | +15.28% | +4.11% |
+
+**4/4 on both dimensions** — a higher clear rate than fx_major (5/7 granularity) or
+fx_cross (14/18). SPX500's functional-form gain (+19.4%) is the single largest in the
+whole study. The win is not an FX-specific artifact; it replicates on a genuinely
+different asset class with different microstructure and a different scheduled-news
+profile.
+
+Run `python3 har_intraday_isolation.py` (after pulling the 6 index parquets into
+`portfolioBacktest/cache/` and re-running `m1_gap_audit.py` / `jump_diffusion_daily.py`
+for the full discovered set).

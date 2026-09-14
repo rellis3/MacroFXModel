@@ -75,7 +75,7 @@ LAG_D, LAG_W, LAG_M = 1, 5, 22
 PASS_PCT = 2.0
 MIN_OOS = 500
 LN2 = math.log(2)
-CLASSES = ('fx_major', 'fx_cross', 'metal')
+CLASSES = ('fx_major', 'fx_cross', 'metal', 'index')
 
 
 def gk(o, h, l, c):
