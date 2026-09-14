@@ -4341,6 +4341,15 @@ function assembleCcySnapshot(ccy) {
 }
 
 let _ccyAiCache = {};
+// Teach vs desk: same facts and structure, different scaffolding. One switch,
+// remembered per browser; the glossary layer will read the same preference.
+function aiMode() { try { return localStorage.getItem('ai_mode') === 'desk' ? 'desk' : 'teach'; } catch { return 'teach'; } }
+function toggleAiMode(ev) {
+  ev?.stopPropagation?.();
+  const next = aiMode() === 'desk' ? 'teach' : 'desk';
+  try { localStorage.setItem('ai_mode', next); } catch {}
+  document.querySelectorAll('.ai-mode').forEach(el => { el.textContent = next === 'desk' ? '📋 desk' : '🎓 teach'; });
+}
 async function analyseCurrency(ccy) {
   const btn = $('ccyAnalyseBtn'), box = $('ccyAnalysis');
   if (!btn || !box) return;
@@ -4350,7 +4359,7 @@ async function analyseCurrency(ccy) {
   try {
     const resp = await fetch('/api/currency-analysis', {
       method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ ccy, snapshot: assembleCcySnapshot(ccy) }),
+      body: JSON.stringify({ ccy, snapshot: assembleCcySnapshot(ccy), mode: aiMode() }),
     }).then(x => x.json());
     if (resp.error || !resp.analysis) throw new Error(resp.error || 'no analysis returned');
     _ccyAiCache[ccy] = { a: resp.analysis, at: resp.generatedAt };
@@ -4363,7 +4372,9 @@ function ccyAnalysisHtml(a, at) {
   if (!a) return '';
   const cls = a.bias === 'STRONG' ? 'bull' : a.bias === 'WEAK' ? 'bear' : 'neu';
   const row = (label, v) => v ? `<div class="ccy-explain" style="margin-top:7px"><b>${label}:</b> ${esc0(v)}</div>` : '';
-  return `<div style="margin-bottom:6px"><span class="chip ${cls}">${esc0(a.bias ?? '—')}${a.conviction != null ? ` · conviction ${a.conviction}/10` : ''}</span>`
+  // "STRONG · conviction 5/10" read as a contradiction until you knew STRONG was the
+  // lean's strength and 5/10 the confidence it holds. Say both, and why.
+  return `<div style="margin-bottom:6px"><span class="chip ${cls}" title="The lean: how strong this currency reads today.">lean ${esc0(a.bias ?? '—')}</span>${a.conviction != null ? ` <span class="chip ${a.conviction >= 7 ? 'bull' : a.conviction <= 3 ? 'bear' : 'neu'}" title="Confidence that the lean holds, 0-10.${a.convictionWhy ? ' ' + esc0(a.convictionWhy) : ''}">confidence ${a.conviction}/10</span>` : ''}${a.convictionWhy ? ` <span class="dim-age">${esc0(a.convictionWhy)}</span>` : ''}`
     + `${at ? ` <span class="dim-age">${new Date(at).toLocaleTimeString()}</span>` : ''}</div>`
     + (a.headline ? `<div style="font-size:13px;line-height:1.55;margin-bottom:6px">${esc0(a.headline)}</div>` : '')
     + row('What happened', a.whatHappened)
@@ -4492,6 +4503,7 @@ function openCcyDrawer(ccy) {
     <div class="dr-sec">
       <h3 class="help" title="A macro read of this CURRENCY on its own terms — not as one leg of a pair. Answers what has actually happened, what the market expects next, and which single instrument expresses a view on it most cleanly. AI OPINION — a reasoned synthesis of the sections below, not a backtested signal.">
         Currency read <span class="chip warn" style="font-size:9px">AI · not backtested</span>
+        <span class="chip neu ai-mode" role="button" tabindex="0" onclick="toggleAiMode(event)" onkeydown="if(event.key==='Enter'||event.key===' '){toggleAiMode(event)}" title="Teach: every term explained once, the mechanism alongside each relationship, ~450 words. Desk: same headings and numbers, no explanations, ~180 words. Same facts either way; only the scaffolding changes. Remembered on this browser.">${aiMode() === 'desk' ? '📋 desk' : '🎓 teach'}</span>
         <button id="ccyAnalyseBtn" class="ai-btn" onclick="analyseCurrency('${ccy}')">🧠 Analyse</button>
       </h3>
       <div id="ccyAnalysis">${cachedAi ? ccyAnalysisHtml(cachedAi.a, cachedAi.at) : '<span class="muted">Not generated yet — click Analyse for a read of ' + ccy + ' as a currency.</span>'}</div>

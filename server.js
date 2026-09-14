@@ -3077,7 +3077,8 @@ function _antText(data) {
   return '';
 }
 
-function buildCurrencyPrompt(ccy, s) {
+function buildCurrencyPrompt(ccy, s, mode = 'teach') {
+  const TEACH = mode !== 'desk';
   return `You are a professional FX macro strategist. Analyse ${ccy} as a CURRENCY -- not a pair -- from the snapshot below, and produce a structured read.
 
 === CURRENCY SNAPSHOT: ${ccy} ===
@@ -3149,21 +3150,25 @@ Rules:
 4. Name the single cleanest INSTRUMENT to express a view on this currency, chosen from the per-pair legs above, and say why that one -- this is the decision the per-pair view cannot make.
 5. Never cite central-bank tone as a directional reason (banked null). Never treat a null or "still collecting" as zero or neutral -- it means unknown.
 6. Say what would CHANGE this read: one or two specific, checkable observations (a level, a release, a spread), not a feeling.
-7. Plain English. Gloss any desk term the first time you use it. No invented numbers -- every figure must come from the snapshot.
-8. TEACH WHILE YOU READ. The reader wants to understand the machinery, not just be handed an answer. Whenever you use a relationship, give the one-clause MECHANISM alongside it -- why a steeper curve implies what it implies, why a crowded position is fuel, why beating consensus matters more than the level itself. One sentence of mechanism per claim, woven into the read; never a separate lecture, and never at the expense of the actual number.
+7. Plain English. No invented numbers -- every figure must come from the snapshot.
+7a. TEACH-THEN-USE. ${TEACH ? 'The first time a term or unit appears, explain it in a short parenthesis in that same sentence -- "R-squared 0.94 (almost all of today\'s pair moves are explained by one currency-level force, so this is a dollar story, not seven pair stories)". Then never explain it again. Never use a term in the headline that has not yet been explained; the headline can use the plain-English version instead.' : 'DESK MODE: the reader is fluent. Do not explain terms, units or mechanisms. Numbers and conclusions only. Keep every section to one sentence.'}
+7b. POSITIONING LANGUAGE. Never call any positioning "fuel", a "squeeze setup" or an "edge". Retail crowding was tested here and predicts nothing; COT extremes are contrarian CONTEXT only. A derived COT read (mirrored from other majors) is second-hand and must be labelled so. Below the 85th/15th percentile it is not crowded and must not be described as if it were.
+7c. CUTS PRICED. The curve's SLOPE is term structure and does NOT tell you whether cuts are priced -- an upward-sloping curve can coexist with priced cuts. For "is the market pricing cuts" use the 2-year-vs-policy-rate read if the snapshot has it, and say "not in this snapshot" if it does not. Do not infer cut pricing from slope.
+7d. NO DUPLICATION. The "brief" must not restate the structured fields. The fields carry the numbers; the brief is the ${TEACH ? 'reasoning that connects them, in prose, at most 180 words' : 'one-breath read, at most 80 words'}. A fact stated in a field is not repeated in the brief.
+8. ${TEACH ? 'TEACH WHILE YOU READ.' : 'DESK MODE: skip the mechanism unless it changes the conclusion.'} The reader wants to understand the machinery, not just be handed an answer. Whenever you use a relationship, give the one-clause MECHANISM alongside it -- why a steeper curve implies what it implies, why a crowded position is fuel, why beating consensus matters more than the level itself. One sentence of mechanism per claim, woven into the read; never a separate lecture, and never at the expense of the actual number.
 9. DATA CONFLICTS AND BROKEN RELATIONSHIPS COME FIRST. If a cross-check disagrees, lead with that and refuse to build on the affected number. If a textbook relationship has broken, that is usually more informative than any level on the page -- explain what the break normally means before giving the currency read.
 
 Respond with a single valid JSON object, no markdown, no text outside it:
-{"headline":"one sentence on ${ccy} right now","bias":"STRONG|WEAK|NEUTRAL","conviction":0-10,"whatHappened":"1-2 sentences on the measured move and what drove it","whatMarketExpects":"1-2 sentences from the curve, scheduled events and positioning","fundamentals":"1-2 sentences on the scorecard and surprise data","cleanestExpression":"which pair and why","risks":"the main thing that would hurt this view","whatWouldChangeIt":"1-2 specific checkable observations","brief":"3-4 short paragraphs separated by blank lines, plain English, teaching the reader WHY not just what"}`;
+{"headline":"one sentence on ${ccy} right now, plain English, no unexplained terms","bias":"STRONG|WEAK|NEUTRAL","conviction":0-10,"convictionWhy":"one clause: what caps or supports the conviction number","whatHappened":"${TEACH ? '1-2' : '1'} sentence(s) on the measured move and what drove it","whatMarketExpects":"${TEACH ? '1-2' : '1'} sentence(s) from the curve, scheduled events and positioning","fundamentals":"${TEACH ? '1-2' : '1'} sentence(s) on the scorecard and surprise data","cleanestExpression":"which pair and why","risks":"the main thing that would hurt this view","whatWouldChangeIt":"1-2 specific checkable observations","brief":"${TEACH ? 'at most 180 words in 2 short paragraphs: the reasoning that CONNECTS the fields above, teaching the mechanism -- not a restatement of them' : 'at most 80 words, one paragraph, the read in one breath'}"}`;
 }
 
 app.post('/api/currency-analysis', async (req, res) => {
   const key = process.env.ANT_KEY;
   if (!key) return res.status(503).json({ error: 'ANT_KEY not configured' });
   try {
-    const { ccy, snapshot } = req.body ?? {};
+    const { ccy, snapshot, mode } = req.body ?? {};
     if (!ccy || !snapshot) return res.status(400).json({ error: 'Missing ccy or snapshot' });
-    const prompt = buildCurrencyPrompt(ccy, snapshot);
+    const prompt = buildCurrencyPrompt(ccy, snapshot, mode === 'desk' ? 'desk' : 'teach');
     const antRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
