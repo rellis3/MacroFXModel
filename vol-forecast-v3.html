@@ -4665,7 +4665,7 @@ async function loadM5Chart(name, f) {
 
       const chart = LightweightCharts.createChart(w, {
         width:  w.clientWidth  || 280,
-        height: 300,
+        height: w.clientHeight || 230,   // v3: follow the wrapper (230px card / 200px phone) so the time axis isn't clipped
         ..._chartTheme(),
         layout: { ..._chartTheme().layout, fontSize: 9, fontFamily: "'DM Mono', monospace" },
         timeScale: { ..._chartTheme().timeScale, timeVisible: true, secondsVisible: false, fixLeftEdge: true, fixRightEdge: false },
@@ -4755,7 +4755,7 @@ async function loadM5Chart(name, f) {
 
       // Resize when card width changes
       const ro = new ResizeObserver(() => {
-        if (_lwCharts[name] && w.clientWidth > 0) chart.applyOptions({ width: w.clientWidth });
+        if (_lwCharts[name] && w.clientWidth > 0) chart.applyOptions({ width: w.clientWidth, height: w.clientHeight || 230 });
       });
       ro.observe(w);
 
