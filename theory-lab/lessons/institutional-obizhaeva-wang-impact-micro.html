@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Obizhaeva-Wang Transient Price Impact — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+<style>
+  /* Scoped to this lesson only — mirrors the full lesson's own local
+     tl-table-wrap/tl-tbl pattern, just re-skinned for the dark deck theme
+     instead of touching the shared deck.css. */
+  .sl-mini-tbl-wrap{overflow-x:auto;margin:14px 0}
+  table.sl-mini-tbl{width:100%;border-collapse:collapse;font-size:12.5px;background:var(--panel);border:1px solid var(--border);border-radius:10px}
+  table.sl-mini-tbl th,table.sl-mini-tbl td{padding:9px 11px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
+  table.sl-mini-tbl th{color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:.05em;font-weight:700;background:var(--panel2)}
+  table.sl-mini-tbl tr:last-child td{border-bottom:none}
+  table.sl-mini-tbl td{color:var(--text2);font-family:'DM Mono',monospace}
+  table.sl-mini-tbl td:first-child{color:var(--text);font-weight:600;white-space:nowrap;font-family:'DM Sans',sans-serif}
+  table.sl-mini-tbl td.sl-num{text-align:right}
+</style>
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Obizhaeva-Wang Transient Price Impact — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">11</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer full derivations, live math notation, and a 6-question self-test?<a href="institutional-obizhaeva-wang-impact.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Liquidity 2 of 3</div>
+      <h1 class="sl-h1">Obizhaeva-Wang, <em>Footprints in Wet Sand</em></h1>
+      <p class="sl-lede">Kyle's impact never fades because it's information. Almgren-Chriss's temporary impact snaps back the instant you stop trading, with no memory of a moment ago. Obizhaeva-Wang sits in between: a limit-order-book reservoir that heals at a finite <strong>resilience rate ρ</strong> — and that one assumption alone turns the optimal way to trade a large order from a smooth curve into something lumpier at both ends.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Three impact models, one axis: does it decay, and how?</h2>
+      <p class="sl-sub">A memory-foam pillow springs back instantly. Wet sand takes real time to smooth back out.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📈</div><div><h4>Kyle (1985) — permanent, no decay at all</h4><p>Δp = λQ: an information-driven repricing that never fades. It isn't a liquidity effect — the market rationally updated its belief, and there's nothing to decay back from.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚡</div><div><h4>Almgren-Chriss's temporary impact — memoryless</h4><p>Cost ½η·ẋ(t)² at each instant, a pure function of the current trading rate. It reverts the moment the rate drops — no separate state variable, no resilience parameter, because it doesn't need one.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🌊</div><div><h4>Obizhaeva-Wang — a genuine half-life</h4><p>D_t is a real state variable: it jumps up at each trade and decays continuously at rate ρ in between. A trade from a few minutes ago can still be partially displacing the book right now.</p></div></div>
+      </div>
+      <div class="sl-quote">Footprints in wet sand, not a memory-foam pillow. The print doesn't vanish the instant your foot lifts — water has to seep back in, which takes real, measurable time. Step in the same spot again too soon and you sink in deeper.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Two rules are the entire engine</h2>
+      <p class="sl-sub">A decay between trades, a jump at each trade — nothing else drives D_t.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The mechanism</div>
+        <div class="sl-row">
+          <div class="sl-box">Between trades</div>
+          <div class="sl-arrow">→</div>
+          <div class="sl-box amber">dD_t = −ρ · D_t · dt</div>
+        </div>
+        <div class="sl-verdict">Continuous exponential decay back toward zero, half-life ln(2)/ρ — the book healing itself. Larger ρ means a faster-healing book.</div>
+        <div class="sl-row" style="margin-top:14px">
+          <div class="sl-box">At a trade of size dx</div>
+          <div class="sl-arrow">→</div>
+          <div class="sl-box amber">D_{t+} = D_{t−} + κ · dx</div>
+        </div>
+        <div class="sl-verdict">An instant jump — D_{t−} is whatever the previous trade's impact has already decayed down to; κ is the instantaneous impact-per-unit-traded coefficient.</div>
+        <div class="sl-row" style="margin-top:14px">
+          <div class="sl-box green">cost of dx at t</div>
+          <div class="sl-arrow">≈</div>
+          <div class="sl-box green">dx · (D_{t−} + ½κ·dx)</div>
+        </div>
+        <div class="sl-verdict">A trade pays roughly the leftover concession D_{t−}, plus half of its own instantaneous push — the same "walking the book" triangle used elsewhere in this curriculum.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Watch the sawtooth — drag resilience ρ</h2>
+      <p class="sl-sub">Five unit-sized trades land at evenly spaced instants; the curve is the exact decay-plus-jump process from Section 2.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Chart with x-axis time and y-axis price impact. Five equally-spaced trades each add a jump to the impact level, which decays exponentially between trades. At low resilience the decayed level barely drops before the next trade, so impact ratchets up almost like a permanent effect. At high resilience the impact nearly fully decays back to zero between trades, so each trade looks close to an isolated spike.">
+            <line x1="55" y1="255" x2="610" y2="255" style="stroke:var(--text3);stroke-width:1"/>
+            <line x1="55" y1="255" x2="55" y2="30" style="stroke:var(--text3);stroke-width:1"/>
+            <text x="16" y="145" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)" transform="rotate(-90 16 145)">Impact D(t)</text>
+            <text x="610" y="278" text-anchor="end" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)">Time (5 trades, then a quiet tail) &rarr;</text>
+            <path id="sl-ow-decay-path" style="fill:none;stroke:var(--purple);stroke-width:2.5" d="M55,255 L610,255"/>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Resilience ρ</span><span class="sl-live" id="sl-ow-rho-val">ρ = 2.00</span></div>
+        <input type="range" class="sl-slider" id="sl-ow-rho-slider" min="0" max="80" step="1" value="20">
+        <div class="sl-note">Drag left toward ρ = 0 (a book that barely heals — impact stacks up trade after trade, resembling a permanent effect) or right toward high ρ (a fast-healing book — each push nearly vanishes before the next trade lands). Impact half-life ≈ <b id="sl-ow-halflife-val">0.35</b> time units (ln(2)/ρ) — <span id="sl-ow-halflife-note"></span></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Why the boundaries beat the interior</h2>
+      <p class="sl-sub">Almgren-Chriss's optimal path is always smooth. Once impact has real memory, that logic breaks — specifically at the two ends.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">t = 0 and t = T — structurally cheap</span>
+          <ul>
+            <li>At t=0, D_0 = 0 by construction — no prior impact to fight</li>
+            <li>At t=T, whatever impact this last trade leaves behind never has to be paid for again</li>
+            <li>Neither boundary trade "pays to restart" against its own leftover displacement</li>
+          </ul>
+        </div>
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">The interior — fighting your own footprint</span>
+          <ul>
+            <li>An interior trade pushes through leftover D_{t−} from the order's own earlier trading</li>
+            <li>Part of the concession it pays will itself decay away, unused, before the order finishes</li>
+            <li>Money spent moving the price mid-horizon is partly wasted on a push that heals before it can be leveraged again</li>
+          </ul>
+        </div>
+      </div>
+      <div class="sl-quote">That asymmetry is the entire intuitive content of the famous result: the cost-minimizing schedule places discrete block trades at t=0 and t=T, with a lighter, smoother rate filling in the interior. It is <strong>not</strong> an argument for pushing those blocks to their logical extreme — the next slide shows exactly why not.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">The worked example: three schedules, one toy ρ</h2>
+      <p class="sl-sub">Q = 100 units, 5 evenly-spaced trades over T = 1, ρ = 2, κ = 0.01. Cost of each trade: q_i · D_{t_i−} + ½κ·q_i².</p>
+      <div class="sl-mini-tbl-wrap"><table class="sl-mini-tbl">
+        <tr><th>Schedule</th><th>Trade sizes</th><th>Self-impact</th><th>Residual (decay)</th><th>Total</th></tr>
+        <tr><td>A — one block</td><td>100, 0, 0, 0, 0</td><td class="sl-num">50.00</td><td class="sl-num">0.00</td><td class="sl-num">50.00</td></tr>
+        <tr><td>B — even split</td><td>20, 20, 20, 20, 20</td><td class="sl-num">10.00</td><td class="sl-num">16.45</td><td class="sl-num">26.45</td></tr>
+        <tr><td>C — front + back</td><td>40, 6.67, 6.67, 6.67, 40</td><td class="sl-num">16.67</td><td class="sl-num">9.25</td><td class="sl-num">25.92</td></tr>
+      </table></div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🐘</div><div><h4>All-at-once is worst by far</h4><p>Every unit pays the full quadratic self-impact of a single 100-unit trade, with no chance for anything to decay first.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📐</div><div><h4>C beats B — but only by ~2%</h4><p>C's boundary trades are bigger, so their own self-impact is higher (16.67 vs. 10.00) — but that's more than offset by a much lower residual/decay-fighting cost (9.25 vs. 16.45).</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚠️</div><div><h4>More boundary-loading isn't automatically better</h4><p>Pushing to the extreme — exactly two 50-unit blocks, nothing in between — costs ≈28.38: worse than C, because a block that large pays too much extra self-impact to be worth the decay savings.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Compare even-split vs. front-and-back, live</h2>
+      <p class="sl-sub">Front-and-back puts 40% of Q at the first and last of N evenly-spaced trades, spreading 20% evenly across the middle. Same cost formula as Section 2 and the full lesson's own calculator.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Quantity Q</label><input type="number" class="sl-input" id="sl-ow-calc-Q" value="100" step="10" min="0"></div>
+          <div class="sl-calc-field"><label>Resilience ρ</label><input type="number" class="sl-input" id="sl-ow-calc-rho" value="2" step="0.1" min="0"></div>
+          <div class="sl-calc-field"><label>Impact κ</label><input type="number" class="sl-input" id="sl-ow-calc-kappa" value="0.01" step="0.001" min="0"></div>
+          <div class="sl-calc-field"><label>Trades N</label><input type="number" class="sl-input" id="sl-ow-calc-N" value="5" step="1" min="1" max="50"></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Even split total cost = <b id="sl-ow-calc-even">26.45</b></div>
+          <div>Front+back total cost = <b id="sl-ow-calc-fb">25.92</b></div>
+          <div id="sl-ow-calc-verdict">Front+back-loading is cheaper here by about <b>1.98%</b>.</div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="sl-ow-calc-reset">Reset to worked-example numbers</button>
+        <div class="sl-note">Honesty note: the 40/40/20 split is a fixed, illustrative heuristic, not the paper's actual optimized block size — for very low ρ or very small N this simple split can barely beat, or even lose to, an even split. Finding the true cost-minimizing schedule is the real optimization, which this calculator does not attempt.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">What's actually in this repo</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🚫</div><div><h4>No resilience-based transient-impact model exists here</h4><p>Grepping every .js and .py file for "resilien", "transient impact", and "Obizhaeva" (case-insensitive) turns up nothing modeling a decaying price-impact state.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🗂️</div><div><h4>The only "resilient" hits are logging code</h4><p><code>bot/main.py</code>'s <code>ResilientStreamHandler</code> / <code>ResilientFileHandler</code> are retry-safe logging handlers — "resilient" means "doesn't crash," not "how fast the book heals."</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔗</div><div><h4>Consistent with the sibling Almgren-Chriss lesson</h4><p>That lesson's own grounding note is also flagged CONCEPT — not built or tested anywhere in this repo either. Neither impact family is implemented here.</p></div></div>
+      </div>
+      <div class="sl-quote">Very few desks solve a full Obizhaeva-Wang-style optimization by hand — but the resilience framing informally justifies why real execution algorithms sometimes "wait out" thin depth, or avoid clustering large child orders too close together in time.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Where this model is a stylized approximation</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📏</div><div><h4>Linear impact, single exponential resilience</h4><p>Each unit adds exactly κ to D_t, and the book heals along one clean exponential curve. Real books plausibly recover along a mix of timescales a single ρ can't capture.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>ρ is genuinely hard to estimate</h4><p>Backed out from how fast post-trade price reversals happen — noisier and less standardized than a volatility estimate, and it plausibly varies intraday and by regime.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧭</div><div><h4>Not the Kyle-Obizhaeva Invariance framework</h4><p>Same coauthor, different paper. Nothing here says how ρ or κ should scale across assets or regimes — that's a different lesson's question entirely.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What are the two rules that define the impact state D_t?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Between trades it decays continuously at rate ρ; at each trade it jumps up instantly by κ·dx</button>
+        <button class="sl-quiz-opt">It only jumps up at each trade and never decays</button>
+        <button class="sl-quiz-opt">It only decays continuously and is never affected by trading</button>
+        <div class="sl-quiz-explain">dD_t = −ρD_t·dt between trades, and D_{t+} = D_{t−} + κ·dx at each trade. Continuous decay plus an instant jump is the entire mechanism.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>How does Obizhaeva-Wang's transient impact differ from Kyle's impact, in terms of decay?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Kyle's impact never decays — it's information, not liquidity consumption; OW's impact decays back to zero at rate ρ once trading stops</button>
+        <button class="sl-quiz-opt">They decay at exactly the same rate</button>
+        <button class="sl-quiz-opt">Kyle's impact decays faster than Obizhaeva-Wang's</button>
+        <div class="sl-quiz-explain">"Transient" vs. "permanent" is precisely the decays-eventually vs. never-decays-at-all distinction. Kyle's repricing is a belief update the market has no reason to walk back; OW's is a mechanical liquidity-supply effect with a genuine half-life.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Almgren-Chriss's temporary impact also "reverts" — so what's actually different about Obizhaeva-Wang?</h4>
+        <button class="sl-quiz-opt" data-correct="true">AC's impact is memoryless — a pure function of the instantaneous rate that reverts instantly; OW has a real state variable with a genuine half-life ln(2)/ρ</button>
+        <button class="sl-quiz-opt">Nothing — they are mathematically identical models</button>
+        <button class="sl-quiz-opt">AC's impact has more memory than OW's</button>
+        <div class="sl-quiz-explain">AC's cost ½η·ẋ(t)² has no separate state variable and no resilience parameter — recovery is built in as immediate. OW's D_t can still be partially displacing the book minutes after the trade that caused it, which is impossible by construction under AC.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Why are trades at t=0 and t=T structurally cheaper than trades placed in the interior?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Boundary trades don't fight leftover impact — at t=0 there isn't any yet, and at t=T none will ever be paid for again; an interior trade pushes through its own still-decaying earlier displacement</button>
+        <button class="sl-quiz-opt">Boundary trades are simply exempt from the cost formula</button>
+        <button class="sl-quiz-opt">The book heals faster at the start and end of the day for unrelated reasons</button>
+        <div class="sl-quiz-explain">Part of an interior trade's price concession decays away, unused, before the order finishes — money spent moving the price that doesn't help execute the rest of the order any more cheaply. Neither boundary pays that penalty.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>Does resilience remove the classic impact-vs-timing-risk trade-off from Almgren-Chriss?</h4>
+        <button class="sl-quiz-opt" data-correct="true">No — trading faster still raises impact cost and trading slower still raises timing risk; resilience only changes the shape of the impact-side schedule, not the underlying trade-off</button>
+        <button class="sl-quiz-opt">Yes — resilience means you can trade instantly with zero cost and zero risk</button>
+        <button class="sl-quiz-opt">Yes — resilience eliminates timing risk entirely</button>
+        <div class="sl-quiz-explain">A fully worked-out OW execution problem still needs a volatility/risk-aversion term layered on top of the impact side. What resilience changes is the shape that impact side wants: continuous and smooth under AC's memoryless assumption, boundary-loaded under this one.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Impact here has a genuine half-life: continuous decay at rate ρ between trades, an instant jump of κ·dx at each one — that decay-plus-jump process is the entire mechanism.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Three models, one axis: Kyle — permanent, no decay. Almgren-Chriss — memoryless, instant reversion. Obizhaeva-Wang — genuine finite-speed resilience.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>The optimal schedule is boundary-loaded, not smooth — but the worked example's ~2% edge over even splitting is a real, modest effect, not a dramatic free lunch.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>More front/back-loading isn't automatically better: pushing boundary blocks to their extreme cost more in the worked example than a moderate split.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Linear impact, pure exponential resilience, and a hard-to-estimate, regime-varying ρ are real limitations — a stylized approximation, not a photograph of the book.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Recognize why an execution algorithm might deliberately front-load or back-load large child orders instead of spreading them evenly, and why that logic depends entirely on the book having genuine, finite-speed resilience — not on the memoryless assumption Almgren-Chriss makes.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Market Depth, Order-Book Slope &amp; Depth Imbalance</h3>
+        <p>From how impact decays over time, to what the book looks like at a single instant — the slope and shape of resting depth that κ and ρ were standing in for all along.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="institutional-market-depth-slope-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="institutional-obizhaeva-wang-impact.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Slide 4 — interactive decay chart. Same decay-plus-jump math as the full
+  // lesson's own chart (JUMP_TIMES, pixel mapping, jumpPlus/buildPath).
+  (function(){
+    var slider = document.getElementById('sl-ow-rho-slider');
+    if (!slider) return;
+    var rhoVal = document.getElementById('sl-ow-rho-val');
+    var path = document.getElementById('sl-ow-decay-path');
+    var halflifeVal = document.getElementById('sl-ow-halflife-val');
+    var halflifeNote = document.getElementById('sl-ow-halflife-note');
+
+    var JUMP_TIMES = [0, 0.2, 0.4, 0.6, 0.8];
+    var T_END = 1.3;
+    var X0 = 55, X1 = 610, Y0 = 255, Y1 = 30;
+    var D_AXIS_MAX = 5.3;
+
+    function jumpPlus(rho){
+      var plus = [];
+      var prev = 0;
+      for (var i = 0; i < JUMP_TIMES.length; i++){
+        var decayed = i === 0 ? 0 : prev * Math.exp(-rho * (JUMP_TIMES[i] - JUMP_TIMES[i - 1]));
+        var val = decayed + 1;
+        plus.push(val);
+        prev = val;
+      }
+      return plus;
+    }
+
+    function xPx(t){ return X0 + (t / T_END) * (X1 - X0); }
+    function yPx(d){ return Y0 - Math.min(d / D_AXIS_MAX, 1) * (Y0 - Y1); }
+
+    function buildPath(rho){
+      var plus = jumpPlus(rho);
+      var pts = [];
+      for (var i = 0; i < JUMP_TIMES.length; i++){
+        var t0 = JUMP_TIMES[i];
+        var t1 = (i + 1 < JUMP_TIMES.length) ? JUMP_TIMES[i + 1] : T_END;
+        var steps = 16;
+        for (var s = 0; s <= steps; s++){
+          var t = t0 + (t1 - t0) * (s / steps);
+          var d = plus[i] * Math.exp(-rho * (t - t0));
+          pts.push([t, d]);
+        }
+      }
+      var d = '';
+      pts.forEach(function(p, idx){
+        d += (idx === 0 ? 'M' : 'L') + xPx(p[0]).toFixed(2) + ',' + yPx(p[1]).toFixed(2) + ' ';
+      });
+      return d.trim();
+    }
+
+    function update(){
+      var rho = parseInt(slider.value, 10) / 10;
+      rhoVal.textContent = 'ρ = ' + rho.toFixed(2);
+      path.setAttribute('d', buildPath(rho));
+      if (rho < 1e-6){
+        halflifeVal.textContent = '∞';
+        halflifeNote.textContent = 'impact never decays at rho = 0 — it behaves like a permanent effect';
+      } else {
+        halflifeVal.textContent = (Math.LN2 / rho).toFixed(2);
+        halflifeNote.textContent = 'time for a given push to decay to half its size';
+      }
+    }
+
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Slide 7 — even split vs. front-and-back-loaded total impact cost, live.
+  // Identical totalCost / evenSchedule / frontBackSchedule logic to the full
+  // lesson's own "Try it yourself" calculator, so the numbers always agree.
+  (function(){
+    var Qin = document.getElementById('sl-ow-calc-Q');
+    if (!Qin) return;
+    var rhoIn = document.getElementById('sl-ow-calc-rho');
+    var kappaIn = document.getElementById('sl-ow-calc-kappa');
+    var Nin = document.getElementById('sl-ow-calc-N');
+    var evenOut = document.getElementById('sl-ow-calc-even');
+    var fbOut = document.getElementById('sl-ow-calc-fb');
+    var verdictOut = document.getElementById('sl-ow-calc-verdict');
+    var resetBtn = document.getElementById('sl-ow-calc-reset');
+    var DEFAULTS = { Q: 100, rho: 2, kappa: 0.01, N: 5 };
+
+    function tradeTimes(N){
+      var times = [];
+      for (var i = 0; i < N; i++) times.push(N === 1 ? 0 : i / (N - 1));
+      return times;
+    }
+
+    function totalCost(qArr, tArr, rho, kappa){
+      var D = 0;
+      var prevT = null;
+      var cost = 0;
+      for (var i = 0; i < qArr.length; i++){
+        if (prevT !== null) D = D * Math.exp(-rho * (tArr[i] - prevT));
+        cost += qArr[i] * D + 0.5 * kappa * qArr[i] * qArr[i];
+        D = D + kappa * qArr[i];
+        prevT = tArr[i];
+      }
+      return cost;
+    }
+
+    function evenSchedule(Q, N){
+      var q = [];
+      for (var i = 0; i < N; i++) q.push(Q / N);
+      return q;
+    }
+
+    function frontBackSchedule(Q, N){
+      if (N <= 2) return evenSchedule(Q, N);
+      var q = new Array(N).fill(0);
+      var front = 0.4 * Q, back = 0.4 * Q, mid = 0.2 * Q / (N - 2);
+      q[0] = front;
+      q[N - 1] = back;
+      for (var i = 1; i < N - 1; i++) q[i] = mid;
+      return q;
+    }
+
+    function recompute(){
+      var Q = parseFloat(Qin.value);
+      var rho = parseFloat(rhoIn.value);
+      var kappa = parseFloat(kappaIn.value);
+      var N = parseInt(Nin.value, 10);
+
+      if (![Q, rho, kappa, N].every(isFinite) || Q <= 0 || rho < 0 || kappa < 0 || N < 1 || N > 50 || N !== Math.round(N)) {
+        evenOut.textContent = '—';
+        fbOut.textContent = '—';
+        verdictOut.textContent = 'Enter a positive Q, non-negative ρ and κ, and an integer N between 1 and 50.';
+        return;
+      }
+
+      var t = tradeTimes(N);
+      var costEven = totalCost(evenSchedule(Q, N), t, rho, kappa);
+      var costFB = totalCost(frontBackSchedule(Q, N), t, rho, kappa);
+
+      evenOut.textContent = costEven.toFixed(2);
+      fbOut.textContent = costFB.toFixed(2);
+
+      if (costEven <= 0) {
+        verdictOut.textContent = 'Total cost rounded to zero — try a larger Q or κ.';
+        return;
+      }
+      var savingsPct = ((costEven - costFB) / costEven) * 100;
+      if (savingsPct > 0.005) {
+        verdictOut.innerHTML = 'Front+back-loading is cheaper here by about <b>' + savingsPct.toFixed(2) + '%</b>.';
+      } else if (savingsPct < -0.005) {
+        verdictOut.innerHTML = 'Under these parameters, this simple front+back split is actually <b>' + Math.abs(savingsPct).toFixed(2) + '% more expensive</b> than an even split — try raising ρ or reducing N to see the resilience effect more clearly.';
+      } else {
+        verdictOut.textContent = 'Both schedules cost about the same here — with N ≤ 2 they are mathematically identical.';
+      }
+    }
+
+    [Qin, rhoIn, kappaIn, Nin].forEach(function(el){ el.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      Qin.value = DEFAULTS.Q; rhoIn.value = DEFAULTS.rho; kappaIn.value = DEFAULTS.kappa; Nin.value = DEFAULTS.N;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>
