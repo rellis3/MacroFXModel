@@ -2950,7 +2950,7 @@ function chainReadHtml() {
     ${r.shouldHave ? `<div class="chain-read-row"><b>Should be happening, isn't:</b> ${esc0(r.shouldHave)}</div>` : ''}
     ${r.next ? `<div class="chain-read-row"><b>Next:</b> ${esc0(r.next)}</div>` : ''}
     ${r.forFx ? `<div class="chain-read-row"><b>For FX:</b> ${esc0(r.forFx)}</div>` : ''}
-    <div class="chain-foot">Written from the numbers on this page${_chainRead.data?.headlineCount ? ` and ${_chainRead.data.headlineCount} headlines` : ''}${when ? ` at ${when}` : ''}${_chainRead.data?.cached ? ' (shared read, refreshed every 30 min)' : ''}. An opinion in a trader's voice, not a forecast: the rows below are what it was allowed to use.</div>
+    <div class="chain-foot">${(() => { const d = _chainRead.data; const age = d?.ageMin; const stale = age != null && age >= 30; return `Written from the numbers on the page${d?.headlineCount ? ` and ${d.headlineCount} headlines` : ''}${when ? ` at <b>${when}</b>` : ''}${age != null && age >= 2 ? ` — <b>${age >= 120 ? `${Math.round(age / 60)}h` : `${age} min`} ago</b>${stale ? '; the numbers in it are from then, the rows below are current' : ''}` : ''}. Last read kept until you write a new one. An opinion in a trader's voice, not a forecast.`; })()}</div>
   </div>`;
 }
 function chainHtml() {

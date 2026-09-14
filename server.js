@@ -3177,6 +3177,34 @@ Respond with a single valid JSON object, no markdown, no text outside it:
 // viewer -- and regenerable with ?force=1.
 const _CHAIN_READ_TTL_MS = 30 * 60_000;
 let _chainReadCache = { at: 0, data: null, key: '' };
+// The last read persists in KV (chain_read_v1) so a reader coming back hours
+// later, or after a redeploy, still sees the last one written -- with its time
+// stamp, so "last refresh 18:19" is honest. The day's earlier reads ride along
+// (newest first, capped) so the page can show how the read moved through the
+// day. Read-modify-write: refuse to write over a store that will not parse.
+const _CHAIN_READ_KV = 'chain_read_v1';
+const _CHAIN_READ_KEEP = 12;
+async function _loadChainReadStore() {
+  try {
+    const raw = await kv.get(_CHAIN_READ_KV);
+    if (!raw) return { latest: null, history: [] };
+    const p = JSON.parse(raw);
+    return { latest: p?.latest ?? null, history: Array.isArray(p?.history) ? p.history : [] };
+  } catch (e) { console.warn('[chain-read] store unreadable, not touching it:', e.message); return null; }
+}
+async function _persistChainRead(data) {
+  const store = await _loadChainReadStore();
+  if (!store) return;   // unparseable: leave it for a human, do not overwrite
+  const day = String(data.generatedAt).slice(0, 10);
+  const history = [store.latest, ...store.history].filter(Boolean)
+    .filter(x => String(x.generatedAt).slice(0, 10) === day)   // earlier reads of the same day only
+    .slice(0, _CHAIN_READ_KEEP - 1);
+  await kv.put(_CHAIN_READ_KV, JSON.stringify({ latest: data, history }));
+}
+async function _warmChainRead() {   // after kv.load(): the first GET after a deploy should not be empty
+  const st = await _loadChainReadStore();
+  if (st?.latest?.generatedAt) _chainReadCache = { at: Date.parse(st.latest.generatedAt) || 0, data: st.latest, key: String(st.latest.snapshotKey ?? '') };
+}
 function buildChainReadPrompt(s, headlines) {
   const hl = (headlines ?? []).slice(0, 14).map(h => `  [${h.ticker}] ${_redactFedChairName(h.title)}`).join('\n');
   return `You are a former fixed-income arbitrage trader who now explains the macro tape to a small audience after the close. Read the snapshot below and explain today's chain of cause and effect the way you would to a sharp friend who trades FX.
@@ -3318,10 +3346,15 @@ app.post('/api/explain', async (req, res) => {
 
 // Free read of whatever is cached -- no model call. The page shows this on load
 // and only generates when the reader clicks.
-app.get('/api/chain-read', (_req, res) => {
-  if (_chainReadCache.data && Date.now() - _chainReadCache.at < _CHAIN_READ_TTL_MS)
-    return res.json({ ok: true, cached: true, ...(_chainReadCache.data) });
-  res.json({ ok: false, none: true });
+app.get('/api/chain-read', async (_req, res) => {
+  // Whatever was last written, however old -- the page shows its time stamp.
+  // `fresh` says whether a POST without force would return it (under 30 min).
+  let latest = _chainReadCache.data, history = [];
+  try { const st = await _loadChainReadStore(); if (st?.latest) { if (!latest || Date.parse(st.latest.generatedAt) > (Date.parse(latest.generatedAt) || 0)) latest = st.latest; history = st.history; } } catch { /* memory copy will do */ }
+  if (!latest) return res.json({ ok: false, none: true });
+  const ageMs = Date.now() - (Date.parse(latest.generatedAt) || 0);
+  res.json({ ok: true, cached: true, fresh: ageMs < _CHAIN_READ_TTL_MS, ageMin: Math.round(ageMs / 60_000), ...latest,
+    earlier: history.map(h => ({ generatedAt: h.generatedAt, hook: h.read?.hook ?? null })) });
 });
 app.post('/api/chain-read', async (req, res) => {
   const key = process.env.ANT_KEY;
@@ -3355,9 +3388,10 @@ app.post('/api/chain-read', async (req, res) => {
     try { read = JSON.parse(txt); }
     catch { const m = txt.match(/\{[\s\S]*\}/); read = m ? JSON.parse(m[0]) : null; }
     if (!read) return res.status(502).json({ error: 'model did not return parseable JSON' });
-    const data = { read, generatedAt: new Date().toISOString(), headlineCount: headlines.length };
+    const data = { read, generatedAt: new Date().toISOString(), headlineCount: headlines.length, snapshotKey: ck };
     _chainReadCache = { at: Date.now(), data, key: ck };
-    res.json({ ok: true, cached: false, ...data });
+    _persistChainRead(data).catch(e => console.warn('[chain-read] persist failed:', e.message));
+    res.json({ ok: true, cached: false, fresh: true, ageMin: 0, ...data });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -30639,6 +30673,7 @@ _backfillSurpriseStore()
 setTimeout(() => _recordScorecardHistory().catch(e => console.error('[scorecard-history] first run failed (store left untouched):', e.message)), 3 * 60_000);
 setTimeout(() => _recordBookHistory().catch(e => console.error('[book-history] first run failed (store left untouched):', e.message)), 4 * 60_000);
 setTimeout(() => _scoreLedger().catch(e => console.error('[ledger] first scoring pass failed (store left untouched):', e.message)), 5 * 60_000);
+_warmChainRead().catch(e => console.warn('[chain-read] warm from KV failed:', e.message));
 await reloadConfig();
 await reloadLevels();
 _restoreVolatilityV2Config().catch(e => console.error('[VOLATILITY-V2] config repair error:', e.message));
