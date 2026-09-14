@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ledoit-Wolf Covariance Shrinkage — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Ledoit-Wolf Covariance Shrinkage — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer full derivations, live math notation, and a 6-question self-test?<a href="institutional-ledoit-wolf-shrinkage.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Covariance Estimation 1 of 1</div>
+      <h1 class="sl-h1">The Fix For a Problem <em>Already Diagnosed</em></h1>
+      <p class="sl-lede">The Random Matrix Theory lesson already proved a sample covariance matrix's eigenvalues are systematically biased — largest too big, smallest too small. This deck covers the treatment: blend the noisy sample matrix with a stable, structured target, in a data-driven proportion.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Picking up exactly where Random Matrix Theory left off</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Diagnosis → treatment</div>
+        <div class="sl-row">
+          <div class="sl-box">Random Matrix Theory: diagnosed the bias</div>
+          <div class="sl-arrow">→</div>
+          <div class="sl-box amber">Largest eigenvalues up, smallest down</div>
+        </div>
+        <div class="sl-row">
+          <div class="sl-box">This lesson: treats it</div>
+          <div class="sl-arrow">→</div>
+          <div class="sl-box green">Blend Σ̂ with a stable target F</div>
+        </div>
+        <div class="sl-verdict">Same underlying problem — a noisy sample covariance matrix — approached from two different, complementary angles: RMT tells you which eigenvalues to distrust, Ledoit-Wolf shrinkage is a whole-matrix fix that doesn't require inspecting eigenvalues one at a time.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">A blurry real photo, and a clean stock illustration</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📷</div><div><h4>Σ̂ — the sample matrix</h4><p>Unbiased: average it over infinite resamples and you get the truth. But noisy — any one estimate is blurred by having only T observations.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🖼️</div><div><h4>F — the shrinkage target</h4><p>Biased: almost never the literal true covariance structure. But it has so few free parameters that it carries almost no estimation variance at all.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎚️</div><div><h4>Blend the two</h4><p>The right mixing ratio can land closer to the truth than either the blurry real photo or the clean illustration alone — less bias² + variance overall.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">The shrinkage formula, and its two boundary cases</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>The whole estimator, in one line</div>
+        <div class="sl-row">
+          <div class="sl-box amber">Σ_shrunk</div>
+          <div class="sl-arrow">=</div>
+          <div class="sl-box">δ · F + (1−δ) · Σ̂</div>
+        </div>
+        <div class="sl-verdict">At δ=0: Σ_shrunk = Σ̂ exactly — pure sample matrix, no target. At δ=1: Σ_shrunk = F exactly — pure target, no sample data at all. Every δ in between is a genuine entry-by-entry blend.</div>
+      </div>
+      <p class="sl-p">Why blending can beat both extremes: total expected error splits into bias² plus variance. F has high bias, ~zero variance. Σ̂ has zero bias, high variance. Because bias enters squared and variance enters linearly, a little deliberate bias can buy a much bigger cut in variance — at the right δ, the blend beats both pure Σ̂ and pure F.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Ledoit-Wolf's actual contribution: a data-driven δ*</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Early-to-mid 2000s</div>
+        <div class="sl-row">
+          <div class="sl-box">δ̂* ≈ (π̂ − ρ̂) / γ̂ / T</div>
+        </div>
+        <div class="sl-verdict">π̂: how noisy Σ̂'s entries are overall. ρ̂: how much of that noise the target already happens to track. γ̂: how wrong the target is overall. The formula's structure, not the exact symbols, is the point — it's a genuine, sample-computable optimum that needs no knowledge of the true covariance matrix.</div>
+      </div>
+      <p class="sl-p">Noisier sample relative to the target's own wrongness → shrink more. A cleaner sample relative to a badly-misspecified target → shrink less. Bigger T shrinks δ̂* toward zero on its own — more history means Σ̂ needs less rescuing, tying directly back to the Random Matrix Theory lesson's own q = N/T.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Watch shrinkage narrow the eigenvalue spread</h2>
+      <p class="sl-sub">Drag the slider — the eigenvalues (illustrative, schematic) interpolate between the sample matrix's wide spread and the target's tight cluster.</p>
+      <div class="sl-svgwrap">
+        <svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two rows of reference dots — the sample matrix's widely spread eigenvalues and the target matrix's tightly clustered eigenvalues — plus a third row of moving dots that shift between the two rows as a slider is dragged.">
+          <line x1="60" y1="50" x2="600" y2="50" style="stroke:var(--border2);stroke-width:1"/>
+          <line x1="60" y1="115" x2="600" y2="115" style="stroke:var(--border2);stroke-width:1"/>
+          <line x1="60" y1="180" x2="600" y2="180" style="stroke:var(--border2);stroke-width:1"/>
+          <text x="60" y="34" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">SAMPLE Σ̂ — wide (RMT bias)</text>
+          <text x="60" y="99" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">TARGET F — tight</text>
+          <text x="60" y="164" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">SHRUNK — moves as δ changes</text>
+
+          <circle cx="90" cy="50" r="5" fill="var(--red)"/>
+          <circle cx="150" cy="50" r="5" fill="var(--red)"/>
+          <circle cx="230" cy="50" r="5" fill="var(--amber)"/>
+          <circle cx="330" cy="50" r="5" fill="var(--amber)"/>
+          <circle cx="540" cy="50" r="5" fill="var(--red)"/>
+
+          <circle cx="330" cy="115" r="5" fill="var(--green)"/>
+          <circle cx="338" cy="115" r="5" fill="var(--green)"/>
+          <circle cx="347" cy="115" r="5" fill="var(--green)"/>
+          <circle cx="356" cy="115" r="5" fill="var(--green)"/>
+          <circle cx="366" cy="115" r="5" fill="var(--green)"/>
+
+          <circle id="lwc-e1" cx="90" cy="180" r="6" fill="var(--blue)"/>
+          <circle id="lwc-e2" cx="150" cy="180" r="6" fill="var(--blue)"/>
+          <circle id="lwc-e3" cx="230" cy="180" r="6" fill="var(--blue)"/>
+          <circle id="lwc-e4" cx="330" cy="180" r="6" fill="var(--blue)"/>
+          <circle id="lwc-e5" cx="540" cy="180" r="6" fill="var(--blue)"/>
+        </svg>
+      </div>
+      <div class="sl-card">
+        <div class="sl-sliderhead"><span>Shrinkage intensity δ</span><span class="sl-live" id="lwc-delta-val">0%</span></div>
+        <input type="range" class="sl-slider" id="lwc-delta-slider" min="0" max="100" step="1" value="0">
+        <div class="sl-note">Illustrative interpolation only — eigenvalues of a matrix blend don't literally move linearly like this unless the two matrices share eigenvectors. The qualitative point stands: shrinkage narrows the spread, roughly between the sample's and the target's.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Three standard targets, three levels of aggression</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📈</div><div><h4>Constant correlation — least aggressive</h4><p>Keep each asset's own variance from Σ̂; replace every pairwise correlation with the basket's average correlation.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📐</div><div><h4>Single-factor model — middle ground</h4><p>The same low-rank-plus-diagonal structure as the sibling Barra-Style Risk Models lesson (Σ = XFX^T + D), collapsed to one factor.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⊙</div><div><h4>Scaled identity — most aggressive</h4><p>Equal variance for everyone, zero correlation everywhere — nearly no free parameters, and nearly none of Σ̂'s real structure kept.</p></div></div>
+      </div>
+      <p class="sl-p">No universal "correct" target — it depends on how much real structure the researcher believes it captures for this specific basket. A badly-fitting target just produces a smaller estimated δ̂*, automatically down-weighting itself.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Worked example — 3 assets, δ = 0.30</h2>
+      <p class="sl-p">σ₁=2.0, σ₂=3.0, σ₃=1.5, correlations ρ₁₂=0.30, ρ₁₃=0.30, ρ₂₃=0.4667. Average correlation ρ̄ ≈ 0.3556 builds the constant-correlation target F, which keeps every diagonal entry the same as Σ̂.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Only the off-diagonals move</div>
+        <div class="sl-row"><div class="sl-box">Σ̂₁₂ = 1.80, F₁₂ = 2.1333</div><div class="sl-arrow">→</div><div class="sl-box green">Σ_shrunk₁₂ = 0.3(2.1333)+0.7(1.80) = 1.90</div></div>
+        <div class="sl-row"><div class="sl-box">Σ̂₁₃ = 0.90, F₁₃ = 1.0667</div><div class="sl-arrow">→</div><div class="sl-box green">Σ_shrunk₁₃ = 0.3(1.0667)+0.7(0.90) = 0.95</div></div>
+        <div class="sl-row"><div class="sl-box">Σ̂₂₃ = 2.10, F₂₃ = 1.6000</div><div class="sl-arrow">→</div><div class="sl-box green">Σ_shrunk₂₃ = 0.3(1.6000)+0.7(2.10) = 1.95</div></div>
+        <div class="sl-verdict">Every diagonal entry (each asset's own variance) is untouched — a constant-correlation target is built to leave variances alone. Setting δ=0 in this same formula reproduces Σ̂ exactly; δ=1 reproduces F exactly — check both, they hold.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Try it — your own 3-asset matrix, shrunk live</h2>
+      <p class="sl-sub">Starts on the worked-example numbers. Change any volatility or correlation, then drag the slider — check δ=0% matches Σ̂ and δ=100% matches F exactly.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — change any input, live</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>σ₁</label><input type="number" class="sl-input" id="lwm-s1" value="2.0" step="0.1" min="0"></div>
+          <div class="sl-calc-field"><label>σ₂</label><input type="number" class="sl-input" id="lwm-s2" value="3.0" step="0.1" min="0"></div>
+          <div class="sl-calc-field"><label>σ₃</label><input type="number" class="sl-input" id="lwm-s3" value="1.5" step="0.1" min="0"></div>
+        </div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>ρ₁₂</label><input type="number" class="sl-input" id="lwm-c12" value="0.30" step="0.01" min="-1" max="1"></div>
+          <div class="sl-calc-field"><label>ρ₁₃</label><input type="number" class="sl-input" id="lwm-c13" value="0.30" step="0.01" min="-1" max="1"></div>
+          <div class="sl-calc-field"><label>ρ₂₃</label><input type="number" class="sl-input" id="lwm-c23" value="0.4667" step="0.01" min="-1" max="1"></div>
+        </div>
+        <div class="sl-sliderhead" style="margin-top:8px"><span>Shrinkage intensity δ</span><span class="sl-live" id="lwm-delta-val">30%</span></div>
+        <input type="range" class="sl-slider" id="lwm-delta-slider" min="0" max="100" step="1" value="30">
+        <div class="sl-calc-row" style="margin-top:12px">
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Σ_shrunk₁₂</div><div class="sl-calc-result-val" id="lwm-x12">1.90</div></div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Σ_shrunk₁₃</div><div class="sl-calc-result-val" id="lwm-x13">0.95</div></div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Σ_shrunk₂₃</div><div class="sl-calc-result-val" id="lwm-x23">1.95</div></div>
+        </div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Σ_shrunk diag (σ₁²,σ₂²,σ₃²)</div><div class="sl-calc-result-val" id="lwm-xdiag">4.00 / 9.00 / 2.25</div></div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Average correlation ρ̄</div><div class="sl-calc-result-val" id="lwm-rbar">0.3556</div></div>
+        </div>
+        <button type="button" class="sl-reset-btn" id="lwm-reset">Reset to worked-example numbers</button>
+        <div class="sl-note" id="lwm-note">The diagonal never moves — a constant-correlation target keeps every asset's own variance from Σ̂ untouched.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Why this matters for portfolio construction</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">What Black-Litterman fixes</span>
+          <p>The Markowitz optimizer's extreme sensitivity to the expected-return vector — a tiny forecast nudge can flip weights into extreme corners.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag green">What shrinkage fixes</span>
+          <p>A separate, independent source of the same symptom: a noisy, ill-conditioned Σ̂ gets inverted by the optimizer, amplifying its noise into wild weights. Shrinkage delivers a better-conditioned Σ_shrunk as a drop-in replacement.</p>
+        </div>
+      </div>
+      <p class="sl-p">Two different inputs, two different fixes — a well-run desk applies both, since an optimizer built on two separately noisy inputs is at least twice as likely to hand back something nobody should trade.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Where shrinkage quietly stops helping</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>A bad target still biases the result</h4><p>Shrinkage trades bias for variance — it doesn't erase target misspecification, just controls how much of it leaks in.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">💥</div><div><h4>Doesn't fix structural breaks</h4><p>A regime shift or broken peg can hurt a shrunk estimator exactly as it hurts any historical one — shrinkage narrows noise, it doesn't detect a moved target.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📏</div><div><h4>δ̂* has its own (small) uncertainty</h4><p>It's data-driven, not error-free — a smaller version of the same overconfidence problem shrinkage exists to fix.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔬</div><div><h4>Nonlinear shrinkage goes further</h4><p>Later Ledoit-Wolf work adjusts each eigenvalue individually rather than blending uniformly by one δ — real further-reading territory, not covered here.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>What does Σ_shrunk equal exactly when δ = 0?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The raw sample covariance matrix Σ̂, unchanged</button>
+        <button class="sl-quiz-opt">The target matrix F, unchanged</button>
+        <button class="sl-quiz-opt">The average of Σ̂ and F</button>
+        <div class="sl-quiz-explain">Σ_shrunk = δF + (1−δ)Σ̂; at δ=0 that's 0·F + 1·Σ̂ = Σ̂ exactly.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Why can blending a biased target with an unbiased sample matrix produce lower total error than either alone?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Bias enters total error squared while variance enters linearly, so a little deliberate bias can remove a disproportionately larger amount of variance</button>
+        <button class="sl-quiz-opt">Averaging two matrices always reduces error, regardless of what they are</button>
+        <button class="sl-quiz-opt">It can't — the sample matrix alone is always at least as good</button>
+        <div class="sl-quiz-explain">Total expected error is bias² + variance. F has high bias, near-zero variance; Σ̂ has zero bias, high variance. The right blend can beat both.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>What is Ledoit and Wolf's actual, specific contribution?</h4>
+        <button class="sl-quiz-opt" data-correct="true">A data-driven formula for the optimal shrinkage intensity δ*, estimable from the sample alone with no need to know the true covariance matrix</button>
+        <button class="sl-quiz-opt">Inventing the idea of averaging two matrices together</button>
+        <button class="sl-quiz-opt">A method for computing the true covariance matrix exactly</button>
+        <div class="sl-quiz-explain">The blend formula itself is simple and predates their specific work; the analytically optimal, sample-computable δ̂* is the genuine contribution.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Which of the three standard shrinkage targets is the LEAST aggressive (closest to leaving Σ̂ alone)?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Constant-correlation matrix — keeps every asset's own variance, only replaces the correlations</button>
+        <button class="sl-quiz-opt">Scaled identity matrix</button>
+        <button class="sl-quiz-opt">Single-factor model matrix</button>
+        <div class="sl-quiz-explain">Constant correlation changes only the pairwise correlations; identity discards essentially everything, and single-factor sits in between.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="5">
+        <div class="sl-quiz-num">Question 5</div>
+        <h4>A desk shrinks Σ̂ well but its return forecasts are still wildly unstable in the optimizer. What's the likely explanation?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Shrinkage fixes covariance-side noise, not the separate expected-return sensitivity problem Black-Litterman addresses</button>
+        <button class="sl-quiz-opt">Shrinkage was applied incorrectly — a correct shrinkage would also fix the return forecasts</button>
+        <button class="sl-quiz-opt">This is impossible; shrinkage fixes every optimizer instability</button>
+        <div class="sl-quiz-explain">Shrinkage and Black-Litterman fix two independent sources of the same symptom — noisy covariance and noisy expected returns, respectively.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="6">
+        <div class="sl-quiz-num">Question 6</div>
+        <h4>A regime shift breaks a currency peg midway through the historical window used to build Σ̂. Does shrinkage fix this?</h4>
+        <button class="sl-quiz-opt" data-correct="true">No — shrinkage reduces sampling-noise-driven estimation error, it does not detect or correct a genuine structural break in the true covariance structure</button>
+        <button class="sl-quiz-opt">Yes — shrinkage automatically detects and adjusts for regime shifts</button>
+        <button class="sl-quiz-opt">Yes, but only if the target is a single-factor model</button>
+        <div class="sl-quiz-explain">A badly-timed structural change can hurt a shrunk estimator exactly as it can hurt any historical estimator — that's a different problem from estimation noise.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Ledoit-Wolf shrinkage treats the exact eigenvalue-bias problem Random Matrix Theory diagnosed: Σ_shrunk = δF + (1−δ)Σ̂, with δ=0 recovering Σ̂ exactly and δ=1 recovering F exactly.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>The blend can beat both pure extremes on total expected error — a controlled amount of target bias, in exchange for a large cut in sample variance.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Ledoit and Wolf's real contribution is a data-driven, sample-computable optimal δ* — no need to know the true covariance matrix in advance.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>This feeds directly into the Markowitz &amp; Black-Litterman lesson's optimizer-instability story — a second, independent fix, for the covariance input rather than the expected-return input.</p></div>
+      </div>
+      <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
+        <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
+        <p>Read "the sample covariance matrix is noisy" as a solvable engineering problem, not a dead end — blend it with a stable target in a data-driven proportion, and hand a portfolio optimizer something meaningfully better-conditioned than the raw estimate.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">End of this category</div>
+        <h3>Covariance Estimation — the only lesson in this category, for now</h3>
+        <p>This is the final category in this curriculum's current buildout. There's nothing further scheduled yet — head back to the hub to revisit anything else.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="../hub.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="institutional-ledoit-wolf-shrinkage.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Eigenvalue-narrowing interactive chart
+  (function(){
+    var slider = document.getElementById('lwc-delta-slider');
+    if (!slider) return;
+    var valEl = document.getElementById('lwc-delta-val');
+    var SAMPLE = [90, 150, 230, 330, 540];
+    var TARGET = [330, 338, 347, 356, 366];
+    var dots = ['lwc-e1', 'lwc-e2', 'lwc-e3', 'lwc-e4', 'lwc-e5'].map(function(id){ return document.getElementById(id); });
+
+    function update(){
+      var d = parseInt(slider.value, 10) / 100;
+      valEl.textContent = Math.round(d * 100) + '%';
+      dots.forEach(function(dot, i){
+        var x = SAMPLE[i] + (TARGET[i] - SAMPLE[i]) * d;
+        dot.setAttribute('cx', x.toFixed(1));
+      });
+    }
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // Live shrunk-matrix calculator
+  (function(){
+    var DASH = '—';
+    var s1El = document.getElementById('lwm-s1');
+    if (!s1El) return;
+    var ids = ['s1', 's2', 's3', 'c12', 'c13', 'c23'];
+    var inputs = {};
+    ids.forEach(function(f){ inputs[f] = document.getElementById('lwm-' + f); });
+    var deltaEl = document.getElementById('lwm-delta-slider');
+    var deltaValEl = document.getElementById('lwm-delta-val');
+    var x12El = document.getElementById('lwm-x12');
+    var x13El = document.getElementById('lwm-x13');
+    var x23El = document.getElementById('lwm-x23');
+    var xdiagEl = document.getElementById('lwm-xdiag');
+    var rbarEl = document.getElementById('lwm-rbar');
+    var note = document.getElementById('lwm-note');
+    var resetBtn = document.getElementById('lwm-reset');
+    var DEFAULT_NOTE = 'The diagonal never moves — a constant-correlation target keeps every asset’s own variance from Σ̂ untouched.';
+    var DEFAULTS = { s1: 2.0, s2: 3.0, s3: 1.5, c12: 0.30, c13: 0.30, c23: 0.4667, delta: 30 };
+
+    function recompute(){
+      var v = {};
+      ids.forEach(function(f){ v[f] = parseFloat(inputs[f].value); });
+      var deltaPct = parseFloat(deltaEl.value);
+      deltaValEl.textContent = isFinite(deltaPct) ? deltaPct + '%' : DASH;
+
+      var vols = [v.s1, v.s2, v.s3];
+      var corrs = [v.c12, v.c13, v.c23];
+      var allFinite = vols.concat(corrs).every(isFinite);
+      var volsOk = vols.every(function(x){ return x >= 0; });
+      var corrsOk = corrs.every(function(c){ return c >= -1 && c <= 1; });
+
+      if (!allFinite || !volsOk || !corrsOk) {
+        x12El.textContent = x13El.textContent = x23El.textContent = DASH;
+        xdiagEl.textContent = DASH;
+        rbarEl.textContent = DASH;
+        note.textContent = !allFinite ? 'All six fields must be numbers.' : (!volsOk ? 'Volatilities cannot be negative.' : 'Correlations must be between -1 and 1.');
+        return;
+      }
+
+      var delta = (isFinite(deltaPct) ? deltaPct : 0) / 100;
+      var S11 = v.s1 * v.s1, S22 = v.s2 * v.s2, S33 = v.s3 * v.s3;
+      var S12 = v.c12 * v.s1 * v.s2, S13 = v.c13 * v.s1 * v.s3, S23 = v.c23 * v.s2 * v.s3;
+      var rbar = (v.c12 + v.c13 + v.c23) / 3;
+      var F12 = rbar * v.s1 * v.s2, F13 = rbar * v.s1 * v.s3, F23 = rbar * v.s2 * v.s3;
+
+      var X12 = delta * F12 + (1 - delta) * S12;
+      var X13 = delta * F13 + (1 - delta) * S13;
+      var X23 = delta * F23 + (1 - delta) * S23;
+
+      x12El.textContent = X12.toFixed(2);
+      x13El.textContent = X13.toFixed(2);
+      x23El.textContent = X23.toFixed(2);
+      xdiagEl.textContent = S11.toFixed(2) + ' / ' + S22.toFixed(2) + ' / ' + S33.toFixed(2);
+      rbarEl.textContent = rbar.toFixed(4);
+      note.textContent = DEFAULT_NOTE;
+    }
+
+    ids.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+    deltaEl.addEventListener('input', recompute);
+    resetBtn.addEventListener('click', function(){
+      ids.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+      deltaEl.value = DEFAULTS.delta;
+      recompute();
+    });
+    recompute();
+  })();
+})();
+</script>
+</body>
+</html>
