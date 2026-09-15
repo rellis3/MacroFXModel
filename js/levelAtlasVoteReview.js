@@ -1315,6 +1315,57 @@ export function applyCurrencyLossGate(trades, { maxDailyLossPct = 3 } = {}) {
 }
 
 /**
+ * Intraday mark-to-market excursion per day, and the days a hard intraday
+ * drawdown limit would have been breached — a DIAGNOSTIC, not a trading rule:
+ * nothing here removes a trade, it only reports what the equity path did
+ * WITHIN each day. A day that closes green can still have gone deep red
+ * mid-session (six losers, then two winners), which a close-to-close daily
+ * series cannot see and a prop-firm intraday limit very much can.
+ *
+ * `perPairDict` is the same {pair: trades} shape `buildPortfolioDailySeries`
+ * consumes, trades carrying `date`/`time`/`pnlPct`. `propDDLimit` is a
+ * NEGATIVE percent (e.g. -2); pass null to get the excursion stats without
+ * the breach tally.
+ *
+ * Extracted 2026-09-15 from `levelAtlasRoutes.js`'s own route-local copy when
+ * `motif-alert-backtest.html` became its second consumer — CLAUDE.md's stated
+ * threshold for extraction ("if two copies already exist, that alone
+ * qualifies"), taken before the second copy was written rather than after.
+ * Pure move, no behaviour change; the route now imports this.
+ *
+ *   computeIntradayMAE({EURUSD: trades, ...}, -2)
+ *     -> { worstDayMAEPct, worstDayDate, worstDays, totalDays,
+ *          propDDLimit?, breachedCount?, breachedDays? }
+ */
+export function computeIntradayMAE(perPairDict, propDDLimit) {
+  const all = Object.values(perPairDict ?? {}).flat();
+  const byDate = new Map();
+  for (const t of all) {
+    if (!byDate.has(t.date)) byDate.set(t.date, []);
+    byDate.get(t.date).push(t);
+  }
+  const dailyMAEs = [];
+  for (const [date, dayTrades] of byDate) {
+    const sorted = [...dayTrades].sort((a, b) => a.time - b.time);
+    let running = 0, dayMin = 0;
+    for (const t of sorted) {
+      running += t.pnlPct;
+      if (running < dayMin) dayMin = running;
+    }
+    dailyMAEs.push({ date, mae: +dayMin.toFixed(3), netResult: +running.toFixed(3), trades: sorted.length });
+  }
+  dailyMAEs.sort((a, b) => a.mae - b.mae); // worst first
+  const worst = dailyMAEs[0] ?? null;
+  const breached = propDDLimit != null ? dailyMAEs.filter(d => d.mae <= propDDLimit) : null;
+  return {
+    worstDayMAEPct: worst?.mae ?? null, worstDayDate: worst?.date ?? null,
+    worstDays: dailyMAEs.slice(0, 10), // top-10 worst intraday excursions, for the callout table
+    totalDays: dailyMAEs.length,
+    ...(propDDLimit != null ? { propDDLimit, breachedCount: breached.length, breachedDays: breached.slice(0, 20) } : {}),
+  };
+}
+
+/**
  * Merges raw event epochs (seconds, e.g. `calendarLoader.majorEventEpochs()`
  * mapped to `.epoch`) into sorted, NON-overlapping `[start,end]` windows
  * (seconds, same units as a trade's `time`/`resolveTime`) — a scheduled news

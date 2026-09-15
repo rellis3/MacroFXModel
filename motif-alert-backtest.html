@@ -104,6 +104,11 @@
     <label title="Blocks a new trade if the currency it is exposed to has already realized this much loss today across the whole book. Catches concentration the per-pair and heat caps cannot see.">Currency daily loss gate <input type="checkbox" id="ccyGateChk">
       <input type="number" id="maxDailyLossPct" value="1" step="0.5" min="0.5" style="width:55px" disabled>%</label>
   </div>
+  <div class="grp"><span class="grp-title">Diagnostics</span>
+    <label title="NOT a trading rule — a diagnostic. Reconstructs each day's running equity path in trade order and flags days that would have breached this intraday drawdown at some point, even if the day closed fine. A day with six losses then two big wins can net positive while still blowing a hard prop-firm intraday limit before the wins arrive.">Prop daily DD limit <input type="checkbox" id="propDDChk">
+      <input type="number" id="propDDLimit" value="2" step="0.5" min="0.1" style="width:55px" disabled>%</label>
+    <label title="Log scale suits a compounded curve (equal vertical distance = equal percentage move); linear shows absolute gains.">Log scale <input type="checkbox" id="logScaleChk" checked></label>
+  </div>
   <div class="grp"><span class="grp-title">Pairs</span>
     <button id="selectAll" type="button">Select all</button>
     <button id="selectNone" type="button">Select none</button>
@@ -196,6 +201,12 @@
   <div style="overflow-x:auto"><table id="ccyTable"></table></div>
 </div>
 
+<div class="card callout warn" id="propDDCard" style="display:none">
+  <h2>Intraday drawdown — days that breached the limit before they recovered</h2>
+  <div class="muted" style="margin-bottom:8px" id="propDDNote"></div>
+  <div style="overflow-x:auto"><table id="propDDTable"></table></div>
+</div>
+
 <div class="card callout">
   <h2>Does the 📊 panel predict anything? — shown PF vs what actually happened</h2>
   <div class="muted" style="margin-bottom:8px">
@@ -245,7 +256,7 @@
 import {
   applyConcurrencyCap, applyPortfolioHeatCap, applyCurrencyLossGate,
   applyDrawdownThrottle, applyGradedDrawdownThrottle,
-  buildPortfolioDailySeries, inverseVolWeights, currencyLegs,
+  buildPortfolioDailySeries, inverseVolWeights, currencyLegs, computeIntradayMAE,
 } from './js/levelAtlasVoteReview.js';
 import { portfolioStats } from './js/backtestStats.js';
 import { withNonCompoundedDD } from './js/fibAtlasVotePortfolio.js';
@@ -282,6 +293,9 @@ function opts() {
     throttleMult: Number($('throttleMult').value),
     ccyGateOn: $('ccyGateChk').checked,
     maxDailyLossPct: Number($('maxDailyLossPct').value),
+    propDDOn: $('propDDChk').checked,
+    propDDLimit: Number($('propDDLimit').value),
+    logScale: $('logScaleChk').checked,
   };
 }
 
@@ -459,7 +473,8 @@ function renderChart(res) {
     data: { labels, datasets: [{ data: values, borderColor: '#5b9dff', borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0 }] },
     options: { responsive: true, plugins: { legend: { display: false } },
                scales: { x: { ticks: { color: '#5a6380', maxTicksLimit: 12 }, grid: { color: '#182030' } },
-                         y: { type: 'logarithmic', ticks: { color: '#5a6380' }, grid: { color: '#182030' } } } },
+                         y: { type: $('logScaleChk').checked ? 'logarithmic' : 'linear',
+                              ticks: { color: '#5a6380' }, grid: { color: '#182030' } } } },
   });
 }
 
@@ -516,6 +531,34 @@ function renderImpactCards(raw, o, res) {
          account. The comparison below covers only the mapped pairs.`
       : 'All selected pairs are mapped to real currency legs, so the gate applies across the whole selection.';
   } else $('ccyCard').style.display = 'none';
+}
+
+/** The intraday-excursion diagnostic, on the trades that survived the levers.
+ *  `computeIntradayMAE` is the SAME function levelAtlasRoutes.js's own
+ *  /vote-portfolio route calls — extracted to the shared module when this page
+ *  became its second consumer, so the two can never drift. Nothing here removes
+ *  a trade; it reports what the within-day equity path did. */
+function renderPropDD(o, res) {
+  if (!o.propDDOn || !res) { $('propDDCard').style.display = 'none'; return; }
+  const limit = -Math.abs(o.propDDLimit);
+  const d = computeIntradayMAE(res.final, limit);
+  $('propDDCard').style.display = '';
+  const rate = d.totalDays ? d.breachedCount / d.totalDays : 0;
+  $('propDDNote').innerHTML =
+    `<strong>${d.breachedCount.toLocaleString()} of ${d.totalDays.toLocaleString()} trading days
+     (${pct(rate)})</strong> went below ${limit}% at some point within the day. Worst intraday
+     excursion: <strong>${fmt(d.worstDayMAEPct, 2)}%</strong> on ${d.worstDayDate ?? '—'}.
+     A day that closed green can still appear here — that is the point: a close-to-close daily
+     series cannot see it, and a hard intraday limit can.`;
+  $('propDDTable').innerHTML =
+    `<thead><tr><th>Date</th><th class="num">Worst intraday</th><th class="num">Day net</th>
+     <th class="num">Trades</th><th>Closed</th></tr></thead><tbody>` +
+    d.worstDays.map(w => `<tr><td>${w.date}</td>
+      <td class="num red">${fmt(w.mae, 2)}%</td>
+      <td class="num ${cls(w.netResult)}">${(w.netResult > 0 ? '+' : '') + fmt(w.netResult, 2)}%</td>
+      <td class="num">${w.trades}</td>
+      <td class="${w.netResult >= 0 ? 'green' : 'red'}">${w.netResult >= 0 ? 'green' : 'red'}</td>
+     </tr>`).join('') + '</tbody>';
 }
 
 function renderDiversification(raw, o, res) {
@@ -637,6 +680,7 @@ function syncEnabled() {
   $('throttleMult').disabled = !th || graded;
   $('restoreDD').disabled = !th;
   $('maxDailyLossPct').disabled = !$('ccyGateChk').checked;
+  $('propDDLimit').disabled = !$('propDDChk').checked;
   const nav = $('sizingSel').value === 'nav';
   $('weightWrap').style.opacity = nav ? 1 : 0.4;
   $('weightSel').disabled = !nav;
@@ -654,6 +698,7 @@ function render() {
   renderKpis(res, trades);
   renderChart(res);
   renderImpactCards(trades, o, res);
+  renderPropDD(o, res);
   renderCalibration(allSelected);
   renderNearingSplit(allSelected);
   renderYears(trades);
@@ -689,7 +734,8 @@ function render() {
   for (const id of ['riskPct', 'targetVol', 'alertSet', 'shownPf', 'sizingSel', 'weightSel',
                     'capSel', 'perDirChk', 'heatCapChk', 'maxHeatPct', 'throttleChk',
                     'throttleMode', 'triggerDD', 'restoreDD', 'throttleMult',
-                    'ccyGateChk', 'maxDailyLossPct']) {
+                    'ccyGateChk', 'maxDailyLossPct', 'propDDChk', 'propDDLimit',
+                    'logScaleChk']) {
     $(id).addEventListener('change', render);
   }
   const p = DATA.summary.portfolio, f = DATA.summary.funnel, pr = DATA.params;
