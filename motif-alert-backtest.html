@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Motif Alert Portfolio</title>
+<title>Motif Alert Backtest</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
   :root { --bg:#0b0e14; --panel:#11151f; --panel2:#0e121b; --line:#1e2436; --text:#cbd5e1; --text2:#94a3b8; --text3:#5a6380; --muted:#64748b; --accent:#5b9dff; --green:#34d399; --red:#f87171; --amber:#fbbf24; --blue:#60a5fa; }
@@ -41,137 +41,71 @@
   .funnel-step .n { font-size:24px; font-weight:700; }
   #tradeTableWrap { max-height:480px; overflow:auto; border:1px solid var(--line); border-radius:8px; }
   code { font-family:'DM Mono',monospace; color:var(--text2); }
-  .grp { display:flex; gap:10px; flex-wrap:wrap; align-items:center; padding:6px 0; }
-  .grp-title { font-size:10px; text-transform:uppercase; letter-spacing:.04em; color:var(--text3); min-width:88px; }
 </style>
 </head>
 <body>
 <header>
   <div>
-    <h1>👀 Motif Alert Portfolio</h1>
+    <h1>👀 Motif Alert Backtest</h1>
     <div class="sub" id="headerSub">loading…</div>
+  </div>
+  <div class="controls">
+    <label title="Scales every trade's R into a % of account. A display and sizing choice only — it changes no entry or exit, and takes no trade out. Sharpe, Sortino, PF, win rate, skew and kurtosis are all unchanged by it; CAGR, drawdown and vol scale with it, because this is leverage.">Risk % / trade <input type="number" id="riskPct" value="1" step="0.1" min="0.1" style="width:60px"></label>
+    <label title="Rescales the return series to this annualised volatility for the vol-target card. A comparison lens, not a rule — it changes nothing about which trades are taken.">Target vol % <input type="number" id="targetVol" value="10" step="1" min="1" style="width:55px"></label>
+    <label title="Log scale suits a compounded curve (equal vertical distance = equal percentage move); linear shows absolute gains.">Log scale <input type="checkbox" id="logScaleChk" checked></label>
   </div>
 </header>
 <main>
 
-<div class="card">
-  <h2>Risk levers — same engine as the Level Atlas vote portfolio</h2>
-  <div class="grp"><span class="grp-title">Alerts</span>
-    <label title="Which alerts to include. Every confirmed alert is one tracked trade; 'with a 👀' keeps only those whose touch-run also produced a nearing alert first.">Alert set <select id="alertSet">
-      <option value="all">All confirmed alerts</option>
-      <option value="with">Only those with a prior 👀</option>
-      <option value="without">Only those with no 👀</option>
-    </select></label>
-    <label title="Filters by the PF the alert's own 📊 panel DISPLAYED at the time, replayed causally. Nothing in the live alert path filters on this — the calibration card below is the check of whether it deserves to be read.">Shown PF <select id="shownPf">
-      <option value="all">any</option>
-      <option value="ge125">≥ 1.25</option>
-      <option value="ge110">≥ 1.10</option>
-      <option value="ge100">≥ 1.00</option>
-      <option value="lt090">&lt; 0.90</option>
-    </select></label>
+<div class="card callout">
+  <h2>What this is</h2>
+  <div class="muted">
+    The trading system is the Telegram alert itself, and nothing else: a touch-motif forms, price
+    closes through the level, the 🟢/🔴 alert fires, and a trade is entered on the <strong>open of the
+    next H1 bar</strong> with a <strong>20-pip stop and a 1.5R target</strong> — the frozen grid
+    <code>motif_track.py</code> already logs live. Every alert that was sent is a trade here.
+    <strong>There are no gates, filters, caps or overlays.</strong> No concurrency limit, no exposure
+    cap, no drawdown throttle, no currency rule, no session or regime filter, no minimum on the
+    alert's own confidence panel. Nothing is skipped: <span id="everyAlert">—</span>.
+    <br><br>
+    <code>AnalogML/motif_alert_backtest.py</code> replays the bot's own emission path bar by bar over
+    2016–2026 — one live touch-run per pair, the <code>provisional</code> refusal, one nearing alert
+    per run, entry only once an H1 close confirms — and races exactly those alerts through
+    <code>pylego.barrier_race</code>, the same walker the tracked record uses. It re-tunes nothing.
+    <br><br>
+    The only two inputs above are <em>risk % per trade</em> and a <em>vol target</em>, and neither
+    removes a trade: the first scales R into account %, the second is a display lens for one card.
+    Pair selection below subsets the book; it does not change any pair's own trades.
   </div>
-  <div class="grp"><span class="grp-title">Sizing</span>
-    <label title="Fixed % risk/trade: every trade risks the same % of account off its own stop. Forward-implementable as-is. NAV split: pre-allocates a capital fraction per pair and lets each pair's return scale within that slice.">Sizing <select id="sizingSel">
-      <option value="fixed-risk">Fixed % risk / trade</option>
-      <option value="nav">NAV split (legacy)</option>
-    </select></label>
-    <label title="Fixed-risk mode only: the % of account risked on every trade. Higher = proportionally bigger Sharpe, CAGR and drawdown together — this is leverage, not free edge.">Risk % / trade <input type="number" id="riskPct" value="1" step="0.1" min="0.1" style="width:60px"></label>
-    <label id="weightWrap" title="NAV-split mode only. Equal: every pair gets the same slice (1/n). Inverse-vol: lower-vol pairs get a bigger slice, aiming to equalise risk contribution.">Weighting <select id="weightSel">
-      <option value="equal">Equal (1/n)</option>
-      <option value="inverse-vol">Inverse vol</option>
-    </select></label>
-    <label title="Rescales the return series to this annualised vol for the Vol Target row — a comparison lens, not a change to which trades are taken.">Target vol % <input type="number" id="targetVol" value="10" step="1" min="1" style="width:55px"></label>
-  </div>
-  <div class="grp"><span class="grp-title">Concurrency</span>
-    <label title="How many overlapping open positions ONE pair may hold. Defaults to UNLIMITED so the page opens on the system exactly as the Telegram bot runs it — the live bot logs every confirmed motif and has no concurrency cap, so any value below unlimited is a rule this backtest is ADDING, not one the alerts follow. 1 means a new alert is skipped while an earlier trade on that pair is still open.">Max concurrent <select id="capSel">
-      <option value="99" selected>unlimited (as the bot runs)</option>
-      <option>1</option><option>2</option><option>3</option><option>5</option><option>10</option>
-    </select></label>
-    <label title="When on, BUY and SELL trades on the same pair get separate concurrency budgets instead of sharing one.">Per-direction budget <input type="checkbox" id="perDirChk"></label>
-    <label title="Caps TOTAL simultaneous risk across ALL pairs, on top of each pair's own cap. Fixed-risk mode only — NAV weights already cap total exposure by construction.">Portfolio heat cap <input type="checkbox" id="heatCapChk">
-      <input type="number" id="maxHeatPct" value="5" step="0.5" min="0.5" style="width:55px" disabled></label>
-  </div>
-  <div class="grp"><span class="grp-title">Drawdown</span>
-    <label title="De-risks once the strategy's OWN realized equity drawdown breaches the trigger, restoring full size on recovery. Targets a sustained losing STRETCH — a different risk from the heat cap, which only caps simultaneous positions.">Drawdown throttle <input type="checkbox" id="throttleChk"></label>
-    <label>Mode <select id="throttleMode" disabled>
-      <option value="cliff">Cliff (one on/off step)</option>
-      <option value="graded">Graded (fixed −4/−6/−8 tiers)</option>
-    </select></label>
-    <label title="Cliff mode only — graded mode uses its own fixed validated tier boundaries regardless of this value.">Trigger DD % <input type="number" id="triggerDD" value="-8" step="1" max="-1" style="width:55px" disabled></label>
-    <label>Restore DD % <input type="number" id="restoreDD" value="-2" step="1" max="0" style="width:55px" disabled></label>
-    <label title="Cliff mode only: position-size multiplier while throttled.">Throttle × <input type="number" id="throttleMult" value="0.5" step="0.1" min="0.1" max="0.9" style="width:55px" disabled></label>
-  </div>
-  <div class="grp"><span class="grp-title">Currency</span>
-    <label title="Blocks a new trade if the currency it is exposed to has already realized this much loss today across the whole book. Catches concentration the per-pair and heat caps cannot see.">Currency daily loss gate <input type="checkbox" id="ccyGateChk">
-      <input type="number" id="maxDailyLossPct" value="1" step="0.5" min="0.5" style="width:55px" disabled>%</label>
-  </div>
-  <div class="grp"><span class="grp-title">Diagnostics</span>
-    <label title="NOT a trading rule — a diagnostic. Reconstructs each day's running equity path in trade order and flags days that would have breached this intraday drawdown at some point, even if the day closed fine. A day with six losses then two big wins can net positive while still blowing a hard prop-firm intraday limit before the wins arrive.">Prop daily DD limit <input type="checkbox" id="propDDChk">
-      <input type="number" id="propDDLimit" value="2" step="0.5" min="0.1" style="width:55px" disabled>%</label>
-    <label title="Log scale suits a compounded curve (equal vertical distance = equal percentage move); linear shows absolute gains.">Log scale <input type="checkbox" id="logScaleChk" checked></label>
-  </div>
-  <div class="grp"><span class="grp-title">Pairs</span>
-    <button id="selectAll" type="button">Select all</button>
-    <button id="selectNone" type="button">Select none</button>
-  </div>
-  <div class="controls" id="pairChecks"></div>
 </div>
 
 <div class="card muted" id="methodCard">
-  Backtest of <strong>the Telegram alerts themselves</strong>, not of the raw signal.
-  <code>AnalogML/motif_alert_backtest.py</code> replays <code>motif_track.py</code> /
-  <code>motif_nearing_watch.py</code>'s own emission gating bar by bar — only one live touch-run per
-  pair at a time, the <code>provisional</code> refusal, one-nearing-alert-per-run dedup, entry on the
-  bar after confirmation — and races only what would actually have been sent, through the shared
-  <code>pylego.barrier_race</code> walker at the frozen grid (sl 20p, tp 1.5R).
-  <br><br>
-  <strong>The levers above are the Level Atlas vote-portfolio engine itself, not a copy of it.</strong>
-  Concurrency cap, portfolio heat cap, inverse-vol weighting, daily-series construction, drawdown
-  throttle (cliff and graded) and the currency loss gate are imported from
-  <code>js/levelAtlasVoteReview.js</code>; stats come from <code>js/backtestStats.js</code>'s
-  <code>portfolioStats</code> and <code>js/fibAtlasVotePortfolio.js</code>'s
-  <code>withNonCompoundedDD</code>. Applied in the same order that module's own
-  <code>buildFibAtlasVotePortfolio</code> uses: per-pair cap → heat cap → currency gate → weights →
-  daily series → throttle. No portfolio maths is reimplemented here.
-  <br><br>
-  <strong>Four vote-atlas levers are deliberately absent</strong> because this signal has no
-  equivalent and faking one would be worse than omitting it: <em>Min vote margin</em> (a motif has no
-  vote dimensions), <em>Include p90 rung</em> (no ladder rungs), <em>Fade-stop tightening</em> and
-  <em>Fixed SL fraction / early exit</em> (fade-trade specific — and
-  <code>fibAtlasVotePortfolio.js</code> itself declines to port fade-stop tightening to other engines
-  for exactly this reason, since no equivalent study has been run).
-  <br><br>
   <strong>Two stated divergences from live</strong>, both measured rather than assumed away.
   (1) <em>Tick vs bar</em> — the nearing poller sees a live quote every 60s; a backtest sees H1 bars,
-  so a 👀 fires when the bar's whole traded range came within <code>0.5 × ATR</code> of the level. The
-  strictly-tighter close-only count is exported beside it (<span id="hlVsClose">—</span>).
-  (2) <em>Confidence panel</em> — replayed with a causal cutoff (only motifs confirmed strictly before
-  the alert bar), which live does not need; a motif confirmed but still open at alert time is excluded
-  from the replayed PF, where live would have raced it to a partial timeout.
+  so a 👀 is counted when the bar's whole traded range came within <code>0.5 × ATR</code> of the level.
+  The strictly-tighter close-only count is exported beside it (<span id="hlVsClose">—</span>). This
+  affects the 👀 <em>funnel counts only</em> — never a trade, since entry always waits for a confirmed
+  H1 close.
+  (2) <em>Confidence panel</em> — the <code>📊 played out · PF · n</code> figures are replayed with a
+  causal cutoff (only motifs confirmed strictly before the alert bar), which live does not need; a
+  motif confirmed but still open at alert time is excluded from the replayed PF, where live would have
+  raced it to a partial timeout.
   <br><br>
-  A <strong>viewer of an already-validated signal, not a new validation</strong> — it re-tunes nothing.
-  Sharpe/DD are mark-to-close with no spread variation. Compounded CAGR over ~30k trades is an
-  artifact of fixed-fractional sizing; read Sharpe, max DD and PF.
-</div>
-
-<div class="card callout warn" id="corrCard">
-  <h2>⚠ Correlated risk — read before selecting many pairs at once</h2>
-  <div class="muted" id="corrBody"></div>
+  Stats come from <code>js/backtestStats.js</code>'s <code>portfolioStats</code>,
+  <code>js/metricsCore.js</code>'s <code>summarizeTrades</code>/<code>sharpeStdError</code>/
+  <code>minTrackRecordLength</code>, and <code>js/levelAtlasVoteReview.js</code>'s
+  <code>buildPortfolioDailySeries</code>/<code>computeIntradayMAE</code> — shared measurement bricks,
+  reused so a number here and the same number elsewhere in the repo cannot drift. No metric is
+  computed in this page, and no trading rule is imported from any other strategy.
+  <br><br>
+  Sharpe/DD are mark-to-close with no spread variation. Compounding at a fixed % of ever-growing
+  equity over ~30k trades makes the raw CAGR absurd; read Sharpe, max DD and PF, not CAGR.
 </div>
 
 <div class="card callout">
   <h2>The funnel — what a 👀 message is actually worth</h2>
   <div class="funnel-row" id="funnelRow"></div>
   <div class="muted" style="margin-top:10px" id="funnelNote"></div>
-</div>
-
-<div class="card callout">
-  <h2>Diversification benefit</h2>
-  <div style="display:flex; gap:40px; align-items:baseline; flex-wrap:wrap">
-    <div><div class="muted">Simple average of each pair's OWN Sharpe, same daily-return formula as the combined figure (no diversification credit)</div><div class="big" id="naiveSharpe">—</div></div>
-    <div style="font-size:22px;color:var(--text3)">→</div>
-    <div><div class="muted">Combined portfolio Sharpe</div><div class="big green" id="combinedSharpe">—</div></div>
-  </div>
 </div>
 
 <div class="card">
@@ -189,10 +123,15 @@
 </div>
 
 <div class="card">
+  <h2>Equity curve (compounded, % of account)</h2>
+  <canvas id="equityChart"></canvas>
+</div>
+
+<div class="card">
   <h2>If levered to <span id="targetVolLabel">10</span>% target annual volatility</h2>
   <div class="muted" style="margin-bottom:10px">A dial YOU set, not a cap the system imposes — it does
-    not limit upside, it shows what the SAME risk-adjusted profile looks like scaled to whatever
-    volatility you are willing to run. Set it above the realised vol to see leverage UP, not just down.</div>
+    not limit upside, it shows what the SAME trades look like scaled to whatever volatility you are
+    willing to run.</div>
   <div class="kpi-grid" id="kpiVolTarget"></div>
 </div>
 
@@ -200,50 +139,26 @@
   <h2>Outlier sensitivity — is this carried by a handful of trades?</h2>
   <div class="muted" style="margin-bottom:8px">Excess kurtosis above describes the daily-return
     distribution's tail shape, but not whether a few individual trades do the work — several trades can
-    land on the same day and average out. This reads the raw per-trade R directly: what share of total
+    land on the same day and average out. This reads per-trade P&amp;L directly: what share of total
     profit comes from the biggest winners, and what happens to Sharpe/CAGR/drawdown if you had simply
-    missed them. Excess kurtosis is repeated here per-TRADE for the same reason.</div>
+    missed them.</div>
   <div id="outlierKurt" class="kpi-grid" style="margin-bottom:12px"></div>
   <div id="outlierConcentration" style="overflow-x:auto;margin-bottom:12px"></div>
   <div id="outlierRemoval" style="overflow-x:auto"></div>
 </div>
 
-<div class="card">
-  <h2>Equity curve (compounded, % of account)</h2>
-  <canvas id="equityChart"></canvas>
-</div>
-
-<div class="card callout" id="heatCapCard" style="display:none">
-  <h2>Portfolio heat cap impact — same trades, with vs without the cross-pair budget</h2>
-  <div class="muted" style="margin-bottom:8px">Each pair already caps its own concurrent positions; this catches what that leaves open — several different pairs firing at once, each independently risking the same %, silently stacking exposure.</div>
-  <div style="overflow-x:auto"><table id="heatCapTable"></table></div>
-</div>
-
-<div class="card callout" id="throttleCard" style="display:none">
-  <h2>Drawdown throttle impact — same trades, with vs without de-risking in a drawdown</h2>
-  <div class="muted" style="margin-bottom:8px">A cap on concurrency cannot fix a sequential-losses problem; this responds to the strategy's own realized equity curve instead.</div>
-  <div style="overflow-x:auto"><table id="throttleTable"></table></div>
-</div>
-
-<div class="card callout" id="ccyCard" style="display:none">
-  <h2>Currency daily loss gate impact — same trades, with vs without the per-currency circuit breaker</h2>
-  <div class="muted" style="margin-bottom:8px" id="ccyNote"></div>
-  <div style="overflow-x:auto"><table id="ccyTable"></table></div>
-</div>
-
-<div class="card callout warn" id="propDDCard" style="display:none">
-  <h2>Intraday drawdown — days that breached the limit before they recovered</h2>
-  <div class="muted" style="margin-bottom:8px" id="propDDNote"></div>
-  <div style="overflow-x:auto"><table id="propDDTable"></table></div>
+<div class="card callout warn">
+  <h2>⚠ Correlated risk — read before running many pairs together</h2>
+  <div class="muted" id="corrBody"></div>
 </div>
 
 <div class="card callout">
   <h2>Does the 📊 panel predict anything? — shown PF vs what actually happened</h2>
   <div class="muted" style="margin-bottom:8px">
     Each confirmed alert displays a profit factor for its own category on its own pair. Nothing in the
-    live path filters on it. This buckets every trade by the number its <em>own message displayed</em>
-    and grades each bucket by what followed. A panel worth reading should rise left to right.
-    Unaffected by the risk levers above — it is a property of the alerts, not of the sizing.
+    live path filters on it, and nothing here does either — this is a read-only breakdown of the same
+    trades, bucketed by the number each message <em>displayed</em> at the time. A panel worth reading
+    should rise left to right.
   </div>
   <div style="overflow-x:auto"><table id="calibTable"></table></div>
 </div>
@@ -251,8 +166,9 @@
 <div class="card callout">
   <h2>With vs without a prior 👀</h2>
   <div class="muted" style="margin-bottom:8px">
-    Same tracked trades, split by whether the touch-run also produced a nearing alert first — whether
-    price loitering within half an ATR of the level before breaking was good news or bad.
+    The same trades, split by whether the touch-run also produced a nearing alert first — whether price
+    loitering within half an ATR of the level before breaking was good news or bad. A breakdown, not a
+    filter: both groups are in every number above.
   </div>
   <div style="overflow-x:auto"><table id="nearingSplitTable"></table></div>
 </div>
@@ -268,6 +184,11 @@
 
 <div class="card">
   <h2>Per pair</h2>
+  <div class="controls" style="margin-bottom:10px">
+    <button id="selectAll" type="button">Select all</button>
+    <button id="selectNone" type="button">Select none</button>
+  </div>
+  <div class="controls" id="pairChecks" style="margin-bottom:12px"></div>
   <div style="overflow-x:auto"><table id="pairTable"></table></div>
 </div>
 
@@ -282,20 +203,21 @@
 
 </main>
 <script type="module">
-// The Level Atlas vote-portfolio engine, imported rather than reimplemented.
-import {
-  applyConcurrencyCap, applyPortfolioHeatCap, applyCurrencyLossGate,
-  applyDrawdownThrottle, applyGradedDrawdownThrottle,
-  buildPortfolioDailySeries, inverseVolWeights, currencyLegs, computeIntradayMAE,
-} from './js/levelAtlasVoteReview.js';
+// Measurement bricks only. Nothing here decides whether a trade is taken —
+// every alert is traded. `buildPortfolioDailySeries` is the repo's standard
+// per-day return construction and `computeIntradayMAE` a read-only excursion
+// diagnostic; neither removes a trade.
+import { buildPortfolioDailySeries, computeIntradayMAE } from './js/levelAtlasVoteReview.js';
 import { portfolioStats } from './js/backtestStats.js';
-import { summarizeTrades, sharpeStdError, minTrackRecordLength } from './js/metricsCore.js';
 import { withNonCompoundedDD } from './js/fibAtlasVotePortfolio.js';
+import { summarizeTrades, sharpeStdError, minTrackRecordLength } from './js/metricsCore.js';
 
 const $ = id => document.getElementById(id);
 const fmt = (v, d = 2) => (v == null || Number.isNaN(v)) ? '—' : Number(v).toFixed(d);
 const pct = (v, d = 1) => (v == null || Number.isNaN(v)) ? '—' : (v * 100).toFixed(d) + '%';
 const cls = v => (v == null || Number.isNaN(v)) ? '' : (v > 0 ? 'green' : v < 0 ? 'red' : '');
+const sign = v => cls(v);
+const OUTLIER_TOP_N = [1, 3, 5, 10, 25];
 
 let DATA = null, SELECTED = new Set();
 
@@ -307,55 +229,12 @@ function summarize(rs) {
   return { n, pf: gl > 0 ? gw / gl : null, avgR: tot / n, winRate: wins / n, totalR: tot };
 }
 
-function opts() {
-  return {
-    riskPct: Number($('riskPct').value),
-    sizing: $('sizingSel').value,
-    weighting: $('weightSel').value,
-    targetVol: Number($('targetVol').value),
-    maxConcurrent: Number($('capSel').value),
-    perDirection: $('perDirChk').checked,
-    heatCapOn: $('heatCapChk').checked,
-    maxHeatPct: Number($('maxHeatPct').value),
-    throttleOn: $('throttleChk').checked,
-    throttleMode: $('throttleMode').value,
-    triggerDD: Number($('triggerDD').value),
-    restoreDD: Number($('restoreDD').value),
-    throttleMult: Number($('throttleMult').value),
-    ccyGateOn: $('ccyGateChk').checked,
-    maxDailyLossPct: Number($('maxDailyLossPct').value),
-    propDDOn: $('propDDChk').checked,
-    propDDLimit: Number($('propDDLimit').value),
-    logScale: $('logScaleChk').checked,
-  };
-}
+const selectedTrades = () => DATA.trades.filter(t => SELECTED.has(t.pair));
 
-function selectedTrades() {
-  const set = $('alertSet').value, spf = $('shownPf').value;
-  return DATA.trades.filter(t => {
-    if (!SELECTED.has(t.pair)) return false;
-    if (set === 'with' && !t.had_nearing_alert) return false;
-    if (set === 'without' && t.had_nearing_alert) return false;
-    if (spf !== 'all') {
-      const v = t.shown_pf;
-      if (v == null) return false;
-      if (spf === 'ge125' && !(v >= 1.25)) return false;
-      if (spf === 'ge110' && !(v >= 1.10)) return false;
-      if (spf === 'ge100' && !(v >= 1.00)) return false;
-      if (spf === 'lt090' && !(v < 0.90)) return false;
-    }
-    return true;
-  });
-}
-
-/** Adapt an exported trade to the field shape the Level Atlas bricks read.
- *  `r` already came from pylego.barrier_race walking the real bar path, so
- *  riskAdjustTrades' price-return→R conversion is skipped as redundant — its
- *  output (pnlPct = r × riskPct, riskPctUsed) is constructed directly.
- *  `date` is the EXIT day: P&L crystallizes at exit, and the throttle and the
- *  currency gate are only causal if the day it lands on is the day it was
- *  realized. `decision`/`side` exist solely so `betDirection` (which the
- *  per-direction budget calls) maps BUY→long and SELL→short. */
+/** Every selected trade, in the field shape the measurement bricks read.
+ *  `r` already came from pylego.barrier_race walking the real bar path.
+ *  `date` is the EXIT day — P&L crystallizes at exit. This is a straight
+ *  mapping: no trade is dropped, reordered or re-weighted. */
 function adapt(trades, riskPct) {
   return trades.map(t => ({
     pair: t.pair.toUpperCase(),
@@ -364,76 +243,29 @@ function adapt(trades, riskPct) {
     date: t.exit_date.slice(0, 10),
     pnlPct: +(t.r * riskPct).toFixed(4),
     rMultiple: t.r,
-    riskPctUsed: riskPct,
-    decision: 'follow',
-    side: t.direction === 'BUY' ? 'up' : 'down',
     src: t,
   }));
 }
 
-/** Same lever order as fibAtlasVotePortfolio.js's buildFibAtlasVotePortfolio:
- *  per-pair cap → heat cap → currency gate → weights → daily series → throttle. */
-function runPipeline(raw, o, overrides = {}) {
-  const cfg = { ...o, ...overrides };
+/** Trades in → stats out. Every trade is included; risk% only scales R into
+ *  account %. Each pair contributes with weight 1 (fixed risk per trade), so
+ *  no pair is up- or down-weighted relative to what the bot actually sent. */
+function computeStats(trades, riskPct, targetVol) {
+  const adapted = adapt(trades, riskPct);
+  if (!adapted.length) return null;
   const byPair = {};
-  for (const t of adapt(raw, cfg.riskPct)) (byPair[t.pair] ??= []).push(t);
-
-  const capped = {};
-  const perPairInfo = {};
-  for (const [pair, ts] of Object.entries(byPair)) {
-    const res = applyConcurrencyCap(ts, { maxConcurrent: cfg.maxConcurrent, perDirection: cfg.perDirection });
-    capped[pair] = res?.kept ?? [];
-    perPairInfo[pair] = { raw: ts.length, kept: capped[pair].length, skipped: res?.skippedCount ?? 0 };
-  }
-
-  // Heat cap is fixed-risk only — NAV weight fractions already bound total exposure.
-  let final = capped, heatCap = null;
-  if (cfg.heatCapOn && cfg.sizing === 'fixed-risk') {
-    const r = applyPortfolioHeatCap(capped, { maxHeatPct: cfg.maxHeatPct });
-    if (r) {
-      const g = {};
-      for (const t of r.kept) (g[t.pair] ??= []).push(t);
-      for (const p of Object.keys(capped)) g[p] ??= [];
-      final = g;
-      heatCap = { skipped: r.skippedCount, total: r.totalCount };
-    }
-  }
-
-  let ccyGate = null;
-  if (cfg.ccyGateOn) {
-    const merged = Object.values(final).flat();
-    const r = applyCurrencyLossGate(merged, { maxDailyLossPct: cfg.maxDailyLossPct });
-    if (r) {
-      const g = {};
-      for (const t of r.kept) (g[t.pair] ??= []).push(t);
-      for (const p of Object.keys(final)) g[p] ??= [];
-      final = g;
-      ccyGate = { skipped: r.skippedCount, total: r.totalCount };
-    }
-  }
-
-  const weights = cfg.sizing === 'fixed-risk'
-    ? Object.fromEntries(Object.keys(final).map(p => [p, 1]))
-    : (cfg.weighting === 'inverse-vol' ? inverseVolWeights(final) : null);
-  const combined = buildPortfolioDailySeries(final, weights ? { weights } : {});
+  for (const t of adapted) (byPair[t.pair] ??= []).push(t);
+  const weights = Object.fromEntries(Object.keys(byPair).map(p => [p, 1]));
+  const combined = buildPortfolioDailySeries(byPair, { weights });
   if (!combined) return null;
+  const stats = withNonCompoundedDD(
+    portfolioStats(combined.dailyReturns, { mc: false, targetVol }), combined.dailyReturns);
+  return { stats, daily: combined.dailyReturns, dates: combined.dates, byPair, adapted };
+}
 
-  const before = portfolioStats(combined.dailyReturns, { mc: false, targetVol: cfg.targetVol });
-  let daily = combined.dailyReturns, dates = combined.dates;
-  let stats = withNonCompoundedDD(before, daily), throttle = null;
-  if (cfg.throttleOn) {
-    const tr = cfg.throttleMode === 'graded'
-      ? applyGradedDrawdownThrottle(combined.dailyReturns, combined.dates, { restoreDD: cfg.restoreDD })
-      : applyDrawdownThrottle(combined.dailyReturns, combined.dates,
-          { triggerDD: cfg.triggerDD, restoreDD: cfg.restoreDD, throttleMult: cfg.throttleMult });
-    if (tr) {
-      daily = tr.dailyReturns;
-      stats = withNonCompoundedDD(portfolioStats(daily, { mc: false, targetVol: cfg.targetVol }), daily);
-      throttle = { daysThrottled: tr.state.filter(s => s.throttled).length, totalDays: tr.state.length };
-    }
-  }
-  const nTaken = Object.values(final).reduce((a, ts) => a + ts.length, 0);
-  return { stats, daily, dates, final, perPairInfo, heatCap, ccyGate, throttle, nTaken, weights };
+function kpiCard(label, value, cl = '', sub = '') {
+  return `<div class="kpi"><div class="label">${label}</div>
+    <div class="value ${cl}">${value}</div><div class="sub">${sub}</div></div>`;
 }
 
 function renderFunnel() {
@@ -442,9 +274,9 @@ function renderFunnel() {
   const near = sum('nearing_alerts'), conv = sum('nearing_converted');
   const conf = sum('confirmed_alerts'), withPrior = sum('confirmed_with_prior_nearing');
   const steps = [
-    ['👀 nearing alerts sent', near, 'one per touch-run, ever'],
+    ['👀 nearing alerts sent', near, 'one per touch-run, ever — not trades'],
     ['→ went on to confirm', conv, near ? pct(conv / near) + ' of them' : '—'],
-    ['🟢🔴 confirmed alerts', conf, 'each one a tracked trade'],
+    ['🟢🔴 confirmed alerts', conf, 'each one a trade, all taken'],
     ['…that had a 👀 first', withPrior, conf ? pct(withPrior / conf) + ' of confirmed' : '—'],
   ];
   $('funnelRow').innerHTML = steps.map(([label, n, sub]) =>
@@ -453,36 +285,20 @@ function renderFunnel() {
   $('funnelNote').innerHTML =
     `A 👀 almost always resolves one way or the other — but "confirmed" includes the pattern
      <em>failing</em> (breaking the opposite way to the 🧭 textbook line), which is a real trade in the
-     opposite direction, not a miss. The gap in the last step is the one worth knowing: most confirmed
-     alerts never got a 👀 first, because only one touch-run per pair is live at a time and a run that
-     never loitered near its level is never flagged.`;
+     opposite direction, not a miss. Most confirmed alerts never got a 👀 first, because only one
+     touch-run per pair is live at a time and a run that never loitered near its level is never
+     flagged. The 👀 is a heads-up; the trade is the 🟢/🔴.`;
   $('hlVsClose').textContent =
     `${sum('nearing_alerts').toLocaleString()} on the bar range vs ${sum('nearing_alerts_close').toLocaleString()} on closes only`;
+  $('everyAlert').textContent =
+    `${sum('confirmed_alerts').toLocaleString()} confirmed alerts → ${DATA.trades.filter(t => SELECTED.has(t.pair)).length.toLocaleString()} trades`;
 }
 
-const OUTLIER_TOP_N = [1, 3, 5, 10, 25];
-
-function kpiCard(label, value, cls = '', sub = '') {
-  return `<div class="kpi"><div class="label">${label}</div>
-    <div class="value ${cls}">${value}</div><div class="sub">${sub}</div></div>`;
-}
-const sign = v => (v == null || Number.isNaN(v)) ? '' : (v > 0 ? 'green' : v < 0 ? 'red' : '');
-
-/** The same three-group summary the Level Atlas vote portfolio renders, on
- *  these trades. Grouping matters and is not cosmetic: Sharpe/Sortino/PF/win
- *  rate/vol/skew/kurtosis/VaR all read the daily-return DISTRIBUTION and are
- *  identical whether or not you reinvest; only CAGR, max DD and Calmar depend
- *  on that assumption, so both bases are shown rather than one picked
- *  silently. Every number comes from portfolioStats / summarizeTrades /
- *  sharpeStdError / minTrackRecordLength — no metric is computed here. */
 function renderKpis(res, trades) {
   const st = res?.stats ?? {};
   const daily = res?.daily ?? [];
-  const taken = res ? Object.values(res.final).flat() : [];
-  // Per-TRADE stats, on the trades that actually survived the levers.
-  const perTrade = taken.length
-    ? summarizeTrades(taken.map(t => t.pnlPct), taken.map(t => t.date)) : null;
-  // CI on the DAILY-basis Sharpe, on the same basis the headline uses.
+  const perTrade = res?.adapted?.length
+    ? summarizeTrades(res.adapted.map(t => t.pnlPct), res.adapted.map(t => t.date)) : null;
   let ci = null, minTrackYears = null;
   if (st.sharpe != null && daily.length > 1) {
     const se = sharpeStdError(st.sharpe, daily.length, 252);
@@ -491,7 +307,7 @@ function renderKpis(res, trades) {
       periodsPerYear: 252, skew: st.skew ?? 0, kurt: (st.excessKurt ?? 0) + 3 });
     if (isFinite(mtry)) minTrackYears = mtry;
   }
-  const idd = res ? computeIntradayMAE(res.final, null) : null;
+  const idd = res ? computeIntradayMAE(res.byPair, null) : null;
 
   $('kpiShared').innerHTML = [
     // Coloured by the LOWER bound of the CI, not the point estimate: a point
@@ -508,7 +324,7 @@ function renderKpis(res, trades) {
     kpiCard('Win Rate (days)', st.winRate == null ? '—' : fmt(st.winRate, 1) + '%', '',
       '% of positive trading DAYS — not per-trade'),
     kpiCard('Win Rate (trades)', perTrade ? fmt(perTrade.winRate, 1) + '%' : '—', '',
-      'traditional per-trade win rate — usually lower than the day-based one'),
+      'traditional per-trade win rate'),
     kpiCard('Worst Intraday MAE', idd?.worstDayMAEPct != null ? fmt(idd.worstDayMAEPct, 1) + '%' : '—',
       idd?.worstDayMAEPct < -1 ? 'red' : '',
       idd?.worstDayDate ? `deepest running loss WITHIN a day, ${idd.worstDayDate}` : ''),
@@ -521,9 +337,7 @@ function renderKpis(res, trades) {
     kpiCard('Lag-1 Autocorr', fmt(st.acf1, 2), '',
       st.acf1 < 0 ? 'mean-reverting days' : st.acf1 > 0 ? 'clustering days' : 'no persistence'),
     kpiCard('Trading Days', (st.days ?? 0).toLocaleString(), '', ''),
-    kpiCard('Alerts → trades taken',
-      `${trades.length.toLocaleString()} → ${(res?.nTaken ?? 0).toLocaleString()}`, '',
-      'selected, then after caps and gates'),
+    kpiCard('Trades', trades.length.toLocaleString(), '', 'every alert sent — none skipped'),
   ].join('');
 
   $('kpiCompounded').innerHTML = [
@@ -550,12 +364,11 @@ function renderKpis(res, trades) {
     kpiCard('Max DD at target', fmt(vt.maxDD, 1) + '%', 'red', 'same trades, scaled'),
   ].join('') : '';
 
-  renderOutliers(taken);
+  renderOutliers(res);
 }
 
-/** Is the result carried by a few trades? Reads per-TRADE pnl, not the daily
- *  series, because several trades landing on one day average out there. */
-function renderOutliers(taken) {
+function renderOutliers(res) {
+  const taken = res?.adapted ?? [];
   if (!taken.length) {
     for (const id of ['outlierKurt', 'outlierConcentration', 'outlierRemoval']) $(id).innerHTML = '';
     return;
@@ -580,13 +393,12 @@ function renderOutliers(taken) {
         <td class="num">${totalProfit !== 0 ? fmt(topSum / totalProfit * 100, 1) + '%' : '—'}</td></tr>`;
     }).join('') + '</tbody></table>';
 
-  // Re-price the book with the biggest winners deleted, on the same daily
-  // series construction the headline stats use.
   const byPnlDesc = [...taken].sort((a, b) => b.pnlPct - a.pnlPct);
   const seriesExcluding = excl => {
     const byPair = {};
     for (const t of taken) if (!excl.has(t)) (byPair[t.pair] ??= []).push(t);
-    const c = buildPortfolioDailySeries(byPair, { weights: Object.fromEntries(Object.keys(byPair).map(p => [p, 1])) });
+    const c = buildPortfolioDailySeries(byPair,
+      { weights: Object.fromEntries(Object.keys(byPair).map(p => [p, 1])) });
     return c ? c.dailyReturns : [];
   };
   const rows = [['Nothing removed (base)', portfolioStats(seriesExcluding(new Set()), { mc: false })]];
@@ -626,105 +438,6 @@ function renderChart(res) {
                          y: { type: $('logScaleChk').checked ? 'logarithmic' : 'linear',
                               ticks: { color: '#5a6380' }, grid: { color: '#182030' } } } },
   });
-}
-
-function compareRow(label, st, extra = '') {
-  return `<tr><td>${label}</td>
-    <td class="num">${fmt(st?.sharpe, 2)}</td>
-    <td class="num ${st?.maxDD < -40 ? 'red' : ''}">${st?.maxDD == null ? '—' : fmt(st.maxDD, 1) + '%'}</td>
-    <td class="num">${fmt(st?.calmar, 2)}</td>
-    <td class="num">${st?.annVol == null ? '—' : fmt(st.annVol, 1) + '%'}</td>${extra}</tr>`;
-}
-
-function renderImpactCards(raw, o, res) {
-  const head = `<thead><tr><th>Arm</th><th class="num">Sharpe</th><th class="num">Max DD</th>
-    <th class="num">Calmar</th><th class="num">Ann. vol</th><th class="num">Trades taken</th></tr></thead>`;
-  const row = (label, r) => compareRow(label, r?.stats, `<td class="num">${(r?.nTaken ?? 0).toLocaleString()}</td>`);
-
-  if (o.heatCapOn && o.sizing === 'fixed-risk') {
-    const without = runPipeline(raw, o, { heatCapOn: false });
-    $('heatCapCard').style.display = '';
-    $('heatCapTable').innerHTML = head + `<tbody>
-      ${row(`With cap (${o.maxHeatPct}% total)`, res)}
-      ${row('Without cap', without)}</tbody>`;
-  } else $('heatCapCard').style.display = 'none';
-
-  if (o.throttleOn) {
-    const without = runPipeline(raw, o, { throttleOn: false });
-    const d = res?.throttle;
-    $('throttleCard').style.display = '';
-    $('throttleTable').innerHTML = head + `<tbody>
-      ${row(`With throttle (${o.throttleMode})`, res)}
-      ${row('Without throttle', without)}</tbody>`
-      + (d ? `<caption class="muted" style="caption-side:bottom;text-align:left;padding-top:6px">
-         throttled on ${d.daysThrottled} of ${d.totalDays} trading days
-         (${pct(d.daysThrottled / d.totalDays)})</caption>` : '');
-  } else $('throttleCard').style.display = 'none';
-
-  if (o.ccyGateOn) {
-    const without = runPipeline(raw, o, { ccyGateOn: false });
-    $('ccyCard').style.display = '';
-    $('ccyTable').innerHTML = head + `<tbody>
-      ${row(`With gate (${o.maxDailyLossPct}% / currency)`, res)}
-      ${row('Without gate', without)}</tbody>`;
-    // currencyLegs falls back to [pair] for anything outside its own CCY_LEGS
-    // table — on those the gate can never fire, so name them rather than let
-    // the comparison above quietly under-report what it covers.
-    const unmapped = [...SELECTED].filter(p => {
-      const legs = currencyLegs(p.toUpperCase());
-      return legs.length === 1 && legs[0].toUpperCase() === p.toUpperCase();
-    });
-    $('ccyNote').innerHTML = unmapped.length
-      ? `⚠ <strong>${unmapped.length} selected pair(s) are not in the shared currency-leg table</strong>
-         (${unmapped.join(', ')}) — <code>currencyLegs</code> falls back to treating the whole symbol as
-         its own currency, so the gate can never fire for them and never blocks anything on their
-         account. The comparison below covers only the mapped pairs.`
-      : 'All selected pairs are mapped to real currency legs, so the gate applies across the whole selection.';
-  } else $('ccyCard').style.display = 'none';
-}
-
-/** The intraday-excursion diagnostic, on the trades that survived the levers.
- *  `computeIntradayMAE` is the SAME function levelAtlasRoutes.js's own
- *  /vote-portfolio route calls — extracted to the shared module when this page
- *  became its second consumer, so the two can never drift. Nothing here removes
- *  a trade; it reports what the within-day equity path did. */
-function renderPropDD(o, res) {
-  if (!o.propDDOn || !res) { $('propDDCard').style.display = 'none'; return; }
-  const limit = -Math.abs(o.propDDLimit);
-  const d = computeIntradayMAE(res.final, limit);
-  $('propDDCard').style.display = '';
-  const rate = d.totalDays ? d.breachedCount / d.totalDays : 0;
-  $('propDDNote').innerHTML =
-    `<strong>${d.breachedCount.toLocaleString()} of ${d.totalDays.toLocaleString()} trading days
-     (${pct(rate)})</strong> went below ${limit}% at some point within the day. Worst intraday
-     excursion: <strong>${fmt(d.worstDayMAEPct, 2)}%</strong> on ${d.worstDayDate ?? '—'}.
-     A day that closed green can still appear here — that is the point: a close-to-close daily
-     series cannot see it, and a hard intraday limit can.`;
-  $('propDDTable').innerHTML =
-    `<thead><tr><th>Date</th><th class="num">Worst intraday</th><th class="num">Day net</th>
-     <th class="num">Trades</th><th>Closed</th></tr></thead><tbody>` +
-    d.worstDays.map(w => `<tr><td>${w.date}</td>
-      <td class="num red">${fmt(w.mae, 2)}%</td>
-      <td class="num ${cls(w.netResult)}">${(w.netResult > 0 ? '+' : '') + fmt(w.netResult, 2)}%</td>
-      <td class="num">${w.trades}</td>
-      <td class="${w.netResult >= 0 ? 'green' : 'red'}">${w.netResult >= 0 ? 'green' : 'red'}</td>
-     </tr>`).join('') + '</tbody>';
-}
-
-function renderDiversification(raw, o, res) {
-  if (!res) { $('naiveSharpe').textContent = '—'; $('combinedSharpe').textContent = '—'; return; }
-  // Each pair's own Sharpe on the SAME daily-series formula as the combined
-  // figure — mixing a per-trade-annualised Sharpe in here would make part of
-  // the apparent benefit a methodology switch rather than diversification.
-  const own = [];
-  for (const [pair, ts] of Object.entries(res.final)) {
-    if (!ts.length) continue;
-    const solo = buildPortfolioDailySeries({ [pair]: ts });
-    if (solo) own.push(portfolioStats(solo.dailyReturns, { mc: false, targetVol: o.targetVol }).sharpe);
-  }
-  const naive = own.length ? own.reduce((a, b) => a + b, 0) / own.length : null;
-  $('naiveSharpe').textContent = fmt(naive, 2);
-  $('combinedSharpe').textContent = fmt(res.stats.sharpe, 2);
 }
 
 function statRow(label, s) {
@@ -768,33 +481,37 @@ function renderYears(trades) {
     [...byYear.entries()].sort().map(([y, rs]) => statRow(y, summarize(rs))).join('') + '</tbody>';
 }
 
-function renderPairs(trades, res) {
+function renderPairs(trades, res, targetVol) {
   const rows = DATA.per_pair.filter(p => SELECTED.has(p.pair)).map(p => {
     const f = p.funnel;
     const s = summarize(trades.filter(t => t.pair === p.pair).map(t => t.r));
-    const info = res?.perPairInfo?.[p.pair.toUpperCase()];
+    // Each pair's own Sharpe on the SAME daily-series formula as the combined
+    // figure — mixing in a per-trade-annualised Sharpe would make part of any
+    // apparent diversification benefit a methodology switch.
+    const own = res?.byPair?.[p.pair.toUpperCase()];
+    const solo = own?.length ? buildPortfolioDailySeries({ [p.pair.toUpperCase()]: own }) : null;
+    const ownSharpe = solo ? portfolioStats(solo.dailyReturns, { mc: false, targetVol }).sharpe : null;
     return `<tr><td>${p.pair}</td>
       <td class="num">${f.nearing_alerts}</td>
       <td class="num">${f.nearing_conversion_rate == null ? '—' : pct(f.nearing_conversion_rate, 0)}</td>
-      <td class="num">${f.confirmed_alerts}</td>
       <td class="num">${s.n}</td>
-      <td class="num">${info ? info.kept : '—'}</td>
       <td class="num ${s.pf != null && s.pf > 1 ? 'green' : 'red'}">${fmt(s.pf, 3)}</td>
       <td class="num ${cls(s.avgR)}">${s.avgR == null ? '—' : (s.avgR > 0 ? '+' : '') + fmt(s.avgR, 4)}</td>
+      <td class="num">${fmt(ownSharpe, 2)}</td>
       <td class="num">${fmt(p.is.profit_factor, 2)}</td>
       <td class="num">${fmt(p.oos.profit_factor, 2)}</td></tr>`;
   });
   $('pairTable').innerHTML =
     `<thead><tr><th>Pair</th><th class="num">👀</th><th class="num">Conv.</th>
-     <th class="num">Confirmed</th><th class="num">Selected</th><th class="num">Taken</th>
-     <th class="num">PF</th><th class="num">Avg R</th><th class="num">IS PF</th>
-     <th class="num">OOS PF</th></tr></thead><tbody>${rows.join('')}</tbody>`;
+     <th class="num">Trades</th><th class="num">PF</th><th class="num">Avg R</th>
+     <th class="num">Own Sharpe</th><th class="num">IS PF</th><th class="num">OOS PF</th></tr></thead>
+     <tbody>${rows.join('')}</tbody>`;
 }
 
 function renderTrades(trades) {
   const shown = trades.slice(0, 500);
   $('tradeCount').textContent =
-    `${trades.length.toLocaleString()} selected alerts${trades.length > 500 ? ' — showing first 500, CSV exports all' : ''}`;
+    `${trades.length.toLocaleString()} trades${trades.length > 500 ? ' — showing first 500, CSV exports all' : ''}`;
   $('tradeTable').innerHTML =
     `<thead><tr><th>Pair</th><th>Entry</th><th>Dir</th><th>Pattern</th><th>👀</th>
      <th class="num">Shown PF</th><th>Outcome</th><th class="num">R</th><th class="num">MAE R</th>
@@ -822,37 +539,18 @@ function exportCsv(trades) {
   URL.revokeObjectURL(url);
 }
 
-function syncEnabled() {
-  $('maxHeatPct').disabled = !$('heatCapChk').checked;
-  const th = $('throttleChk').checked, graded = $('throttleMode').value === 'graded';
-  $('throttleMode').disabled = !th;
-  $('triggerDD').disabled = !th || graded;
-  $('throttleMult').disabled = !th || graded;
-  $('restoreDD').disabled = !th;
-  $('maxDailyLossPct').disabled = !$('ccyGateChk').checked;
-  $('propDDLimit').disabled = !$('propDDChk').checked;
-  const nav = $('sizingSel').value === 'nav';
-  $('weightWrap').style.opacity = nav ? 1 : 0.4;
-  $('weightSel').disabled = !nav;
-  $('heatCapChk').disabled = nav;   // NAV weights already bound total exposure
-}
-
 function render() {
-  syncEnabled();
-  const o = opts();
+  const riskPct = Number($('riskPct').value);
+  const targetVol = Number($('targetVol').value);
   const trades = selectedTrades();
-  const allSelected = DATA.trades.filter(t => SELECTED.has(t.pair));
-  const res = trades.length ? runPipeline(trades, o) : null;
+  const res = computeStats(trades, riskPct, targetVol);
   renderFunnel();
-  renderDiversification(trades, o, res);
   renderKpis(res, trades);
   renderChart(res);
-  renderImpactCards(trades, o, res);
-  renderPropDD(o, res);
-  renderCalibration(allSelected);
-  renderNearingSplit(allSelected);
+  renderCalibration(trades);
+  renderNearingSplit(trades);
   renderYears(trades);
-  renderPairs(trades, res);
+  renderPairs(trades, res, targetVol);
   renderTrades(trades);
   $('exportCsv').onclick = () => exportCsv(trades);
 }
@@ -881,28 +579,21 @@ function render() {
   };
   $('selectAll').onclick = () => setAll(true);
   $('selectNone').onclick = () => setAll(false);
-  for (const id of ['riskPct', 'targetVol', 'alertSet', 'shownPf', 'sizingSel', 'weightSel',
-                    'capSel', 'perDirChk', 'heatCapChk', 'maxHeatPct', 'throttleChk',
-                    'throttleMode', 'triggerDD', 'restoreDD', 'throttleMult',
-                    'ccyGateChk', 'maxDailyLossPct', 'propDDChk', 'propDDLimit',
-                    'logScaleChk']) {
-    $(id).addEventListener('change', render);
-  }
+  for (const id of ['riskPct', 'targetVol', 'logScaleChk']) $(id).addEventListener('change', render);
+
   const p = DATA.summary.portfolio, f = DATA.summary.funnel, pr = DATA.params;
   $('corrBody').innerHTML =
     `These 26 FX pairs are not independent bets — many share a currency leg (EURUSD/EURJPY/EURGBP all
-     carry EUR, GBPUSD/GBPJPY/GBPCAD all carry GBP), so one macro-shock day can move many selected
-     pairs the same way at once. Measured on this book: average pairwise weekly-return correlation is
-     only <strong>${fmt(p.avg_pairwise_correlation, 3)}</strong>, but the Python event-driven sim still
-     records a <strong>${pct(p.max_dd, 1)}</strong> max drawdown at 1%/trade with a 5% concurrent-risk
-     cap. Correlation near zero on average does not mean near zero in the tail. Size down before
-     selecting many pairs together, and use the concurrency, heat-cap and currency-gate levers above
-     rather than reading the raw multi-pair numbers at face value.`;
+     carry EUR, GBPUSD/GBPJPY/GBPCAD all carry GBP), so one macro-shock day can move many of them the
+     same way at once. Average pairwise weekly-return correlation is only
+     <strong>${fmt(p.avg_pairwise_correlation, 3)}</strong>, yet the drawdown is what it is above:
+     correlation near zero on average does not mean near zero in the tail. This page does not manage
+     that risk for you — it has no exposure caps by design, because the alert system has none. The
+     honest lever is position size, and the vol-target card shows what this book looks like scaled.`;
   $('headerSub').textContent =
-    `${DATA.pairs.length} pairs · ${f.nearing_alerts.toLocaleString()} 👀 · ` +
-    `${f.confirmed_alerts.toLocaleString()} confirmed · ${f.trades_resolved.toLocaleString()} trades · ` +
-    `sl ${pr.sl_pips}p / tp ${pr.tp_r}R · nearing ${pr.nearing_atr_mult}×ATR (${pr.nearing_price}) · ` +
-    `generated ${DATA.generated_at.slice(0, 10)}`;
+    `${DATA.pairs.length} pairs · ${f.confirmed_alerts.toLocaleString()} confirmed alerts → ` +
+    `${f.trades_resolved.toLocaleString()} trades, none skipped · entry next H1 open · ` +
+    `sl ${pr.sl_pips}p / tp ${pr.tp_r}R · generated ${DATA.generated_at.slice(0, 10)}`;
   render();
 })();
 </script>
