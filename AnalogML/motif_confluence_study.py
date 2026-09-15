@@ -77,7 +77,7 @@ from pylego.indicators.vumanchu import align_htf_causal, ema, wave_trend  # noqa
 from pylego.instruments import pip_size  # noqa: E402
 from pylego.json_safe import json_safe  # noqa: E402
 from pylego.motif_touch import detect_touch_motifs  # noqa: E402
-from pylego.swing_structure import atr as compute_atr  # noqa: E402
+from pylego.swing_structure import atr as compute_atr, classify_swing_structure, regime_at  # noqa: E402
 from pylego.trade_stats import summarize_r  # noqa: E402
 
 IS_OOS_CUTOFF = "2023-01-01"
@@ -159,7 +159,33 @@ def compute_features(pair: str, bars: pd.DataFrame, args: argparse.Namespace) ->
     ema4_on_h1 = align_htf_causal(h1_close_s, h4_close_s, ema4)
     h4_close_on_h1 = align_htf_causal(h1_close_s, h4_close_s, h4["close"].to_numpy())
 
+    # ── trend regime, the structural read ────────────────────────────────
+    # 4H EMA direction turned out to be inert on this signal (OOS PF 1.177
+    # "with" vs 1.167 "against"), so the trend question is asked structurally
+    # instead: classify_swing_structure walks the actual swing highs/lows and
+    # labels HH+HL / LH+LL / mixed. A pivot is only knowable pivot_n bars
+    # after it prints, which `regime_at` respects by construction (it returns
+    # whichever change-point was already in force at an index).
+    swing = classify_swing_structure(bars, pivot_n=args.pivot_n)
+    swing_dir = np.zeros(n)
+    for i in range(n):
+        rp = regime_at(swing, i)
+        swing_dir[i] = 0 if (rp is None or rp.dir is None) else rp.dir
+    # Daily structure, step-held causally onto H1 by close time.
+    d1 = bars.resample("1D").agg({"open": "first", "high": "max", "low": "min", "close": "last"}).dropna()
+    d1_close_s = (d1.index.astype("int64") // 10**9) + 86400
+    if len(d1) > args.pivot_n * 4:
+        d1_swing = classify_swing_structure(d1, pivot_n=args.pivot_n)
+        d1_dir_raw = np.array([(lambda rp: 0 if (rp is None or rp.dir is None) else rp.dir)(regime_at(d1_swing, j))
+                               for j in range(len(d1))], dtype=float)
+    else:
+        d1_dir_raw = np.zeros(len(d1))
+    d1_dir = align_htf_causal(h1_close_s, d1_close_s, d1_dir_raw)
+    d1_ema = align_htf_causal(h1_close_s, d1_close_s, ema(d1["close"].to_numpy(), args.htf_ema))
+    d1_close_h1 = align_htf_causal(h1_close_s, d1_close_s, d1["close"].to_numpy())
+
     return {
+        "swing_dir": swing_dir, "d1_dir": d1_dir, "d1_ema": d1_ema, "d1_close": d1_close_h1,
         "session": session, "dow": np.array([f"d{d}" for d in dow]), "sess_pos": sess_pos,
         "atr_ratio": atr_ratio, "day_ratio": day_ratio,
         "approach_er": approach_er, "approach_vel": approach_vel, "churn_n": churn_n,
@@ -216,6 +242,15 @@ def bucket_trade(f: dict, i: int, direction: int, level: float, pip: float) -> d
         b["htf_trend"] = "with" if (htf_up == (direction == 1)) else "against"
     else:
         b["htf_trend"] = "unknown"
+    # Structural trend regime vs the trade, on H1 and on D1.
+    sd, dd = num("swing_dir"), num("d1_dir")
+    b["swing_regime"] = "range" if sd == 0 else ("with" if sd == direction else "against")
+    b["d1_regime"] = "range" if (not np.isfinite(dd) or dd == 0) else ("with" if dd == direction else "against")
+    d1e, d1c = num("d1_ema"), num("d1_close")
+    if np.isfinite(d1e) and np.isfinite(d1c):
+        b["d1_trend"] = "with" if ((d1c >= d1e) == (direction == 1)) else "against"
+    else:
+        b["d1_trend"] = "unknown"
     # Where the level sits relative to a round number, in pips.
     if pip > 0:
         step = pip * 100  # a "00" level on a normal FX quote
@@ -290,6 +325,36 @@ def grade(rows: list[dict], key=lambda r: r["r"]) -> dict:
             "max_dd_r": _max_dd_r(rows)}
 
 
+def single_exclusions(rows: list[dict], base_oos: dict, min_n: int = 500) -> list[dict]:
+    """For every bucket big enough to matter: what happens to OOS profit and
+    OOS drawdown if you simply never take those trades? Reported for all of
+    them, ranked by drawdown improvement, so a bucket that cuts drawdown at an
+    unacceptable cost in total R is visible rather than only the flattering
+    ones."""
+    oos = [r for r in rows if r["split"] == "OOS"]
+    base_r, base_dd = base_oos["total_r"], base_oos["max_dd_r"]
+    seen, out = set(), []
+    for r in rows:
+        for dim, bucket in r["buckets"].items():
+            seen.add((dim, bucket))
+    for dim, bucket in sorted(seen):
+        kept = [x for x in oos if x["buckets"].get(dim) != bucket]
+        dropped = len(oos) - len(kept)
+        if dropped < min_n or not kept:
+            continue
+        g = grade(kept)
+        out.append({
+            "dim": dim, "bucket": bucket, "dropped": dropped,
+            "kept_pct": round(len(kept) / len(oos), 4),
+            "oos": g,
+            "total_r_delta": round(g["total_r"] - base_r, 1),
+            "max_dd_delta": round((g["max_dd_r"] or 0) - (base_dd or 0), 1),
+        })
+    # Best drawdown improvement first (max_dd is negative, so larger = shallower).
+    out.sort(key=lambda x: -x["max_dd_delta"])
+    return out
+
+
 def study(rows: list[dict], args: argparse.Namespace) -> dict:
     """Grade every dimension x bucket on IS, verify on OOS, then score the
     stack of IS-chosen winners against OOS."""
@@ -355,6 +420,25 @@ def study(rows: list[dict], args: argparse.Namespace) -> dict:
         "dimensions": dims_out,
         "holding_buckets": [{"dim": d, "bucket": b} for d, b in holding],
         "stack": stack,
+        # Single-dimension EXCLUSIONS, graded with drawdown. The stack answers
+        # "does piling confluences up help"; this answers the blunter and often
+        # more useful question -- is there one bucket whose removal alone cuts
+        # the drawdown without costing the profit? Graded on OOS, and the
+        # bucket list comes from the dimension table above, so nothing extra is
+        # fitted here.
+        "single_exclusions": single_exclusions(rows, base_oos),
+        # Per-trade meta, keyed by the same motif_key the trade export carries,
+        # so a viewer can apply any of these filters itself instead of
+        # re-deriving features it does not have. Compact on purpose -- one
+        # short array per trade, not an object:
+        #   [confluence_count, touches, swing_regime]  where swing_regime is
+        #   0 range / 1 with-trend / 2 against-trend.
+        # A key absent from this map was not part of the study run.
+        "trade_meta": {r["motif_key"]: [
+            r["_conf"],
+            2 if r["buckets"]["n_touches"] == "2_touch" else 3,
+            {"range": 0, "with": 1, "against": 2}.get(r["buckets"].get("swing_regime"), 0),
+        ] for r in rows},
     }
 
 
@@ -429,6 +513,13 @@ def main() -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with out_path.open("w") as fh:
         json.dump(json_safe(out), fh)
+    print("\n[single exclusions] OOS effect of never taking one bucket "
+          f"(baseline totalR={b['oos']['total_r']:.1f}, maxDD={b['oos']['max_dd_r']:.1f}R):")
+    for x in res["single_exclusions"][:8]:
+        print(f"   drop {x['dim']}={x['bucket']:<14} keeps {x['kept_pct']:>5.1%}  "
+              f"PF={x['oos']['pf']:.3f}  totalR={x['oos']['total_r']:>7.1f} "
+              f"({x['total_r_delta']:+.1f})  maxDD={x['oos']['max_dd_r']:>6.1f}R "
+              f"({x['max_dd_delta']:+.1f})")
     print(f"\n[export] {len(rows)} trades, {len(res['dimensions'])} dimensions -> {out_path}")
 
 

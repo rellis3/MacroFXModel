@@ -58,6 +58,15 @@
   <div class="controls">
     <label title="Scales every trade's R into a % of account. A display and sizing choice only — it changes no entry or exit, and takes no trade out. Sharpe, Sortino, PF, win rate, skew and kurtosis are all unchanged by it; CAGR, drawdown and vol scale with it, because this is leverage.">Risk % / trade <input type="number" id="riskPct" value="1" step="0.1" min="0.1" style="width:60px"></label>
     <label title="Rescales the return series to this annualised volatility for the vol-target card. A comparison lens, not a rule — it changes nothing about which trades are taken.">Target vol % <input type="number" id="targetVol" value="10" step="1" min="1" style="width:55px"></label>
+    <label id="filterWrap" title="OPT-IN. Off by default, because the alert system itself has no filter — every alert is a trade. Each option here removes trades, so it changes every figure on the page; the confluence card at the bottom is where the out-of-sample evidence for each one lives.">Filter <select id="filterSel">
+      <option value="none">None — every alert (as the bot runs)</option>
+      <option value="c1">≥1 confluence</option>
+      <option value="c2">≥2 confluences</option>
+      <option value="c3">≥3 confluences</option>
+      <option value="c4">≥4 confluences</option>
+      <option value="no3t">Skip 3-touch motifs</option>
+      <option value="nowith">Skip with-trend (swing regime)</option>
+    </select></label>
     <label title="Log scale suits a compounded curve (equal vertical distance = equal percentage move); linear shows absolute gains.">Log scale <input type="checkbox" id="logScaleChk" checked></label>
   </div>
 </header>
@@ -70,9 +79,10 @@
     closes through the level, the 🟢/🔴 alert fires, and a trade is entered on the <strong>open of the
     next H1 bar</strong> with a <strong>20-pip stop and a 1.5R target</strong> — the frozen grid
     <code>motif_track.py</code> already logs live. Every alert that was sent is a trade here.
-    <strong>There are no gates, filters, caps or overlays.</strong> No concurrency limit, no exposure
-    cap, no drawdown throttle, no currency rule, no session or regime filter, no minimum on the
-    alert's own confidence panel. Nothing is skipped: <span id="everyAlert">—</span>.
+    <strong>By default there are no gates, filters, caps or overlays</strong> — no concurrency limit,
+    no exposure cap, no drawdown throttle, no currency rule, no session or regime filter, no minimum
+    on the alert's own confidence panel. Nothing is skipped: <span id="everyAlert">—</span>.
+    <span id="filterBanner"></span>
     <br><br>
     <code>AnalogML/motif_alert_backtest.py</code> replays the bot's own emission path bar by bar over
     2016–2026 — one live touch-run per pair, the <code>provisional</code> refusal, one nearing alert
@@ -265,7 +275,27 @@ function summarize(rs) {
   return { n, pf: gl > 0 ? gw / gl : null, avgR: tot / n, winRate: wins / n, totalR: tot };
 }
 
-const selectedTrades = () => DATA.trades.filter(t => SELECTED.has(t.pair));
+/** Pair selection, then the OPT-IN filter. Every option here is off by
+ *  default: the alert system has no filter of its own, so anything applied is
+ *  a rule this page is adding, and it is stated as such. The per-trade data
+ *  comes from the confluence study's `trade_meta` -- the page cannot recompute
+ *  those features itself, so a filter is simply unavailable if that export is
+ *  missing rather than silently doing nothing. */
+function selectedTrades() {
+  const base = DATA.trades.filter(t => SELECTED.has(t.pair));
+  const mode = $('filterSel')?.value ?? 'none';
+  if (mode === 'none' || !CONF?.trade_meta) return base;
+  const meta = CONF.trade_meta;
+  return base.filter(t => {
+    const m = meta[t.motif_key];
+    if (!m) return false;              // not in the study run — cannot judge it
+    const [conf, touches, swing] = m;
+    if (mode.startsWith('c')) return conf >= Number(mode.slice(1));
+    if (mode === 'no3t') return touches === 2;
+    if (mode === 'nowith') return swing !== 1;   // 1 = with-trend
+    return true;
+  });
+}
 
 /** Every selected trade, in the field shape the measurement bricks read.
  *  `r` already came from pylego.barrier_race walking the real bar path.
@@ -326,6 +356,14 @@ function renderFunnel() {
      flagged. The 👀 is a heads-up; the trade is the 🟢/🔴.`;
   $('hlVsClose').textContent =
     `${sum('nearing_alerts').toLocaleString()} on the bar range vs ${sum('nearing_alerts_close').toLocaleString()} on closes only`;
+  const mode = $('filterSel')?.value ?? 'none';
+  const LABEL = { c1: '≥1 confluence', c2: '≥2 confluences', c3: '≥3 confluences',
+                  c4: '≥4 confluences', no3t: 'skip 3-touch motifs',
+                  nowith: 'skip with-trend (swing regime)' };
+  $('filterBanner').innerHTML = mode === 'none' ? '' :
+    `<br><br><strong class="amber">A filter is ON: ${LABEL[mode]}.</strong> Every figure on this page
+     now describes that FILTERED set, not the alert stream as sent — the bot itself applies no such
+     rule. The confluence card at the bottom holds the out-of-sample evidence for it.`;
   $('everyAlert').textContent =
     `${sum('confirmed_alerts').toLocaleString()} confirmed alerts → ${DATA.trades.filter(t => SELECTED.has(t.pair)).length.toLocaleString()} trades`;
 }
@@ -747,6 +785,9 @@ async function selectTrade(t, row) {
 }
 
 function render() {
+  // Without the study export there is no per-trade meta to filter on, so the
+  // control is disabled rather than left looking functional.
+  if (!CONF?.trade_meta) { $('filterSel').disabled = true; $('filterSel').value = 'none'; }
   const riskPct = Number($('riskPct').value);
   const targetVol = Number($('targetVol').value);
   const trades = selectedTrades();
@@ -795,7 +836,7 @@ function render() {
   };
   $('selectAll').onclick = () => setAll(true);
   $('selectNone').onclick = () => setAll(false);
-  for (const id of ['riskPct', 'targetVol', 'logScaleChk']) $(id).addEventListener('change', render);
+  for (const id of ['riskPct', 'targetVol', 'logScaleChk', 'filterSel']) $(id).addEventListener('change', render);
 
   const p = DATA.summary.portfolio, f = DATA.summary.funnel, pr = DATA.params;
   $('corrBody').innerHTML =
