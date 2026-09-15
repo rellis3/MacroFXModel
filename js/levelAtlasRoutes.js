@@ -126,12 +126,33 @@ async function runOne(instrument, { rearmFracs = [0.15, 0.3, 0.5], onLog = () =>
   // appends to it automatically. Top it up to "now" from OANDA so the /live
   // section reflects today's actual session rather than whenever the parquet
   // was last synced. Same brick + fetch fn as forecastAnalyserStore.refreshPair.
+  let gapFillChunkFailures = 0;
   if (process.env.OANDA_KEY) {
     try {
       const before = packed.n;
       packed = await gapFillPacked(packed, oandaSymbol(pair), fetchM1Range, { nowSec: Math.floor(Date.now() / 1000), onLog });
+      gapFillChunkFailures = packed.gapFillWarnings?.length ?? 0;
       if (packed.n > before) onLog(`${sym}: gap-filled +${(packed.n - before).toLocaleString()} bars to now`);
-    } catch (e) { onLog(`${sym}: gap-fill failed (${e.message}) — using stored M1`); }
+    } catch (e) { onLog(`${sym}: gap-fill failed (${e.message}) — using stored M1`); gapFillChunkFailures++; }
+  }
+  // dataAsOf/guardAgainstRegression (2026-09-15, ported from Asia Fib Atlas's
+  // own 2026-09-11 fix — js/asiaFibAtlasRoutes.js's runOne carries the full
+  // incident account) — `generatedAt` below says when the JOB ran; `dataAsOf`
+  // says what the DATA actually covers. Only engages when THIS run's own
+  // gap-fill had trouble (a partial OANDA outage mid-run) — a clean run's
+  // dataAsOf is trusted outright. Protects against persisting a truncated
+  // result over already-stored data that covers a LATER date.
+  const dataAsOf = packed.n ? new Date(packed.times[packed.n - 1] * 1000).toISOString() : null;
+  async function guardAgainstRegression(key, label) {
+    if (!gapFillChunkFailures || !dataAsOf) return true;
+    let existing;
+    try { existing = await getJSON(key); } catch (e) { return true; }
+    const existingAsOf = existing?.dataAsOf ?? null;
+    if (existingAsOf && dataAsOf < existingAsOf) {
+      onLog(`${sym}: gap-fill had ${gapFillChunkFailures} failed chunk(s) this run and the result (data through ${dataAsOf}) is OLDER than what's already stored for ${label} (through ${existingAsOf}) — skipping persist to avoid regressing it`);
+      return false;
+    }
+    return true;
   }
   // 2026-09-11: deliberately bounded, not "however far back the R2 snapshot or
   // an OANDA gap-fill happens to reach". A gap-fill against a genuinely empty
@@ -193,10 +214,13 @@ async function runOne(instrument, { rearmFracs = [0.15, 0.3, 0.5], onLog = () =>
         const sub = trades.filter(t => t.margin >= m);
         summaryByMargin[m] = summarizeTrades(sub.map(t => t.pnlPct), sub.map(t => t.date));
       }
-      await putJSON(`${PREFIX}/${pair}-votetrades.json`, {
-        instrument: sym, generatedAt: new Date().toISOString(), cost, splitDate: realSplit,
-        schema: VOTE_TRADES_SCHEMA, trades, summaryByMargin,
-      });
+      const voteKey = `${PREFIX}/${pair}-votetrades.json`;
+      if (await guardAgainstRegression(voteKey, 'vote-trades')) {
+        await putJSON(voteKey, {
+          instrument: sym, generatedAt: new Date().toISOString(), dataAsOf, cost, splitDate: realSplit,
+          schema: VOTE_TRADES_SCHEMA, trades, summaryByMargin,
+        });
+      }
     } catch (e) { onLog(`${sym}: vote-trades build/persist failed (${e.message}) — non-fatal, main book still saved`); }
   }
 
@@ -225,14 +249,17 @@ async function runOne(instrument, { rearmFracs = [0.15, 0.3, 0.5], onLog = () =>
     : [];
 
   const result = {
-    instrument: sym, assetClass, coverage, generatedAt: new Date().toISOString(),
+    instrument: sym, assetClass, coverage, generatedAt: new Date().toISOString(), dataAsOf,
     defaultRearm: DEFAULT_REARM, rearmFracs,
     books, cards, sessionTransitions,
     live: { date: liveDate, touches: liveTouches, pending: pendingTouches },
     // Raw touches are NOT persisted (large; the aggregated book is the product) —
     // re-run to regenerate them if a future dimension needs re-aggregating.
   };
-  await putJSON(`${PREFIX}/${pair}.json`, result);
+  const bookKey = `${PREFIX}/${pair}.json`;
+  if (await guardAgainstRegression(bookKey, 'main book')) {
+    await putJSON(bookKey, result);
+  }
   return result;
 }
 
@@ -418,13 +445,20 @@ async function getFastLive(pair) {
   return { warming: false, ...entry.result };
 }
 
+// Returns { jobId, done } — `done` resolves (never rejects; every failure
+// mode already lands in the `jobs` map above) once every instrument has been
+// attempted, so a caller that cares about completion (the 00:30 reference-
+// engine-rebuild tick, 2026-09-15 — see server.js's own history for why)
+// can `await` it instead of firing-and-forgetting. Existing callers that
+// only want the jobId (the /run route, for polling /status/:jobId) are
+// unaffected — they just don't touch `done`.
 function startRunJob({ instruments }) {
   purgeStale();
   const jobId = `la_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const startedAt = Date.now();
   const log = [];
   jobs.set(jobId, { status: 'running', startedAt, log });
-  (async () => {
+  const done = (async () => {
     try {
       const results = {};
       for (const instrument of instruments) {
@@ -440,7 +474,7 @@ function startRunJob({ instruments }) {
       jobs.set(jobId, { status: 'error', startedAt, log, error: e.message });
     }
   })();
-  return jobId;
+  return { jobId, done };
 }
 
 // Exported for js/levelAtlasRoutes.test.mjs only — not part of the route API.
@@ -454,7 +488,7 @@ export function mountLevelAtlasRoutes(app, express) {
     const instruments = Array.isArray(b.instruments) && b.instruments.length
       ? b.instruments.map(s => String(s).toUpperCase())
       : ['EURUSD'];
-    res.json({ ok: true, jobId: startRunJob({ instruments }) });
+    res.json({ ok: true, jobId: startRunJob({ instruments }).jobId });
   });
 
   app.get('/api/level-atlas/status/:jobId', (req, res) => {

@@ -318,13 +318,16 @@ export async function mondayAllLines(pair, { maxGapMin = FIB_ATLAS_MONDAY_MAX_GA
   return { date: live.date, warming: false, lines };
 }
 
+// Returns { jobId, done } — see js/levelAtlasRoutes.js's startRunJob for
+// why `done` exists (lets the 00:30 reference-engine-rebuild tick await
+// completion instead of firing five of these concurrently).
 function startRunJob({ instruments }) {
   purgeStale();
   const jobId = `mfa_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const startedAt = Date.now();
   const log = [];
   jobs.set(jobId, { status: 'running', startedAt, log });
-  (async () => {
+  const done = (async () => {
     try {
       const results = {};
       for (const instrument of instruments) {
@@ -340,7 +343,7 @@ function startRunJob({ instruments }) {
       jobs.set(jobId, { status: 'error', startedAt, log, error: e.message });
     }
   })();
-  return jobId;
+  return { jobId, done };
 }
 
 // ── Fast live-context poll ────────────────────────────────────────────────
@@ -459,7 +462,7 @@ export function mountMondayFibAtlasRoutes(app, express) {
     const instruments = Array.isArray(b.instruments) && b.instruments.length
       ? b.instruments.map(s => String(s).toUpperCase())
       : ['EURUSD'];
-    res.json({ ok: true, jobId: startRunJob({ instruments }) });
+    res.json({ ok: true, jobId: startRunJob({ instruments }).jobId });
   });
 
   app.get('/api/monday-fib-atlas/status/:jobId', (req, res) => {

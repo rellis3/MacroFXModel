@@ -56,13 +56,16 @@ async function runOne(instrument, { onLog = () => {} } = {}) {
   return result;
 }
 
+// Returns { jobId, done } — see js/levelAtlasRoutes.js's startRunJob for
+// why `done` exists (lets the 00:30 reference-engine-rebuild tick await
+// completion instead of firing five of these concurrently).
 function startRunJob({ instruments }) {
   purgeStale();
   const jobId = `sh_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const startedAt = Date.now();
   const log = [];
   jobs.set(jobId, { status: 'running', startedAt, log });
-  (async () => {
+  const done = (async () => {
     try {
       const results = {};
       for (const instrument of instruments) {
@@ -74,7 +77,7 @@ function startRunJob({ instruments }) {
       jobs.set(jobId, { status: 'error', startedAt, log, error: e.message });
     }
   })();
-  return jobId;
+  return { jobId, done };
 }
 
 // ── Fast live-context poll — same warm, incrementally-updated bounded-window
@@ -164,7 +167,7 @@ export function mountSessionHandoffRoutes(app, express) {
     const instruments = Array.isArray(b.instruments) && b.instruments.length
       ? b.instruments.map(s => String(s).toUpperCase())
       : ['EURUSD'];
-    res.json({ ok: true, jobId: startRunJob({ instruments }) });
+    res.json({ ok: true, jobId: startRunJob({ instruments }).jobId });
   });
 
   app.get('/api/session-handoff/status/:jobId', (req, res) => {

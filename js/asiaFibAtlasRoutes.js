@@ -608,13 +608,16 @@ export async function asiaAllLines(pair, { maxGapMin = FIB_ATLAS_MAX_GAP_MIN } =
   return { date: live.date, warming: false, lines };
 }
 
+// Returns { jobId, done } — see js/levelAtlasRoutes.js's startRunJob for
+// why `done` exists (lets the 00:30 reference-engine-rebuild tick await
+// completion instead of firing five of these concurrently).
 function startRunJob({ instruments }) {
   purgeStale();
   const jobId = `afa_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const startedAt = Date.now();
   const log = [];
   jobs.set(jobId, { status: 'running', startedAt, log });
-  (async () => {
+  const done = (async () => {
     try {
       const results = {};
       for (const instrument of instruments) {
@@ -630,7 +633,7 @@ function startRunJob({ instruments }) {
       jobs.set(jobId, { status: 'error', startedAt, log, error: e.message });
     }
   })();
-  return jobId;
+  return { jobId, done };
 }
 
 // Exported for js/asiaFibAtlasRoutes.test.mjs only — not part of the route API.
@@ -644,7 +647,7 @@ export function mountAsiaFibAtlasRoutes(app, express) {
     const instruments = Array.isArray(b.instruments) && b.instruments.length
       ? b.instruments.map(s => String(s).toUpperCase())
       : ['EURUSD'];
-    res.json({ ok: true, jobId: startRunJob({ instruments }) });
+    res.json({ ok: true, jobId: startRunJob({ instruments }).jobId });
   });
 
   app.get('/api/asia-fib-atlas/status/:jobId', (req, res) => {

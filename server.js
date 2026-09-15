@@ -144,7 +144,7 @@ import { macroContext as _macroContext, macroContextByDate as _macroContextByDat
 import { analyzePair as _mcondAnalyzePair, summarizeRows as _mcondSummarize, verdict as _mcondVerdict } from './js/macroConditionerEngine.js';
 import { creditGate as _creditGateBrick } from './js/creditCore.js';
 import { creditRegime as _creditRegime } from './js/creditHmm.js';
-import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2, fetchFromR2 as gliFetchFromR2, M1_TAIL_PREFIX as _M1_TAIL_PREFIX } from './js/volBacktestM1Engine.js';
+import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2, fetchFromR2 as gliFetchFromR2 } from './js/volBacktestM1Engine.js';
 import { auditVoteAtlasDrift as _auditVoteAtlasDrift } from './js/voteAtlasDriftAudit.js';
 import { resampleBars as plResampleBars, runPatternScan, annotateHtfAlignment as plAnnotateHtfAlignment, confidenceBucketStats as plConfidenceBucketStats, classifySwingStructure as plClassifySwingStructure } from './js/patternEngine.js';
 import { loadTradeLabBars, loadFullArchivePacked } from './js/tradeLabDataSource.js';
@@ -31189,56 +31189,22 @@ const REFERENCE_ENGINE_PAIRS = [
   'EURAUD', 'EURCAD', 'EURNZD', 'GBPAUD', 'GBPCAD', 'AUDCAD', 'NZDCAD', 'NZDJPY',
   'CHFJPY', 'BTCUSD',
 ];
-// Nightly M1 tail append (2026-09-12) — fills the gap _scheduleDailyLondon's
-// own reference-engine-rebuild inherits every night: the R2 parquet archive
-// `loadM1ForPair` reads is a manually re-backfilled snapshot with NO
-// scheduled refresh (found while chasing a candle-chart bug — the archive
-// was over 3 weeks stale). Runs at 00:15 London, 15 minutes BEFORE the
-// 00:30 reference-engine-rebuild below, so that rebuild's own M1 reads
-// already see today's freshly-appended bars. Reuses `fetchM1Gap`
-// (js/m1GapFill.js, fixed the same night with retries + proper chunking)
-// and writes to `M1_TAIL_PREFIX` — a small, growing JSON bars array
-// `loadM1ForPair` merges on top of the base parquet at read time, NOT a
-// parquet rewrite (hyparquet, the reader this file uses, has no write
-// support). Known, deliberate scope limit: the tail file only ever grows;
-// nothing periodically rolls it into a fresh parquet and resets it, so it
-// will need a manual consolidation eventually (same manual-backfill
-// discipline the base archive already has, just less often).
-if (process.env.OANDA_KEY) {
-  _scheduleDailyLondon(0, 15, async () => {
-    let enabled = process.env.M1_NIGHTLY_APPEND !== '0';   // env opt-OUT, defaults on
-    try {
-      const raw = await kv.get('caps');
-      if (raw) { const c = JSON.parse(raw); if (typeof c.m1NightlyAppend === 'boolean') enabled = c.m1NightlyAppend; }
-    } catch (e) { console.error('[m1-nightly-append] caps read failed:', e.message); }
-    if (!enabled) { console.log('[m1-nightly-append] nightly tick — disabled (Caps.m1NightlyAppend=false or M1_NIGHTLY_APPEND=0)'); return; }
-    console.log(`[m1-nightly-append] nightly tick firing — ${REFERENCE_ENGINE_PAIRS.length} instruments`);
-    const nowSec = Math.floor(Date.now() / 1000);
-    let appended = 0, skipped = 0, failed = 0;
-    for (const sym of REFERENCE_ENGINE_PAIRS) {
-      const pair = sym.toLowerCase();
-      try {
-        let osym; try { osym = oandaSymbol(pair); } catch { skipped++; continue; }
-        const base = await loadM1ForPair(pair); // base parquet + any existing tail, so "last known point" already accounts for prior nights' appends
-        if (!base?.n) { skipped++; continue; }
-        const lastSec = base.times[base.n - 1];
-        if (nowSec - lastSec < 3600) { skipped++; continue; } // already current within an hour — nothing to do
-        const bars = await _fetchM1Gap(osym, lastSec + 60, nowSec, _btFetchM1Range, { onLog: m => console.log(`[m1-nightly-append] ${sym}: ${m}`) });
-        if (!bars.length) { skipped++; continue; }
-        if (bars.gaps?.length) console.warn(`[m1-nightly-append] ${sym}: ${bars.gaps.length} window(s) never fetched after retries — appending what did succeed`);
-        const existing = (await _r2GetJSON(`${_M1_TAIL_PREFIX}/${pair}.json`)) ?? { bars: [] };
-        const combined = existing.bars.concat(bars.map(b => ({ time: b.time, open: b.open, high: b.high, low: b.low, close: b.close, volume: b.volume ?? 0 })));
-        await _r2PutJSON(`${_M1_TAIL_PREFIX}/${pair}.json`, { bars: combined, updatedAt: new Date().toISOString() });
-        appended++;
-      } catch (e) {
-        failed++;
-        console.error(`[m1-nightly-append] ${sym} failed:`, e.message);
-      }
-    }
-    console.log(`[m1-nightly-append] done: ${appended} appended, ${skipped} skipped (already current/no OANDA symbol), ${failed} failed`);
-  });
-  console.log('[m1-nightly-append] nightly tick armed at 00:15 London (tops up the M1 archive tail so it never goes stale — gated by Caps.m1NightlyAppend or M1_NIGHTLY_APPEND=0 to disable)');
-}
+// Standalone nightly M1 tail-append job (2026-09-12 -> REMOVED 2026-09-15):
+// built to fix the R2 parquet archive `loadM1ForPair` reads being a
+// manually re-backfilled snapshot with no scheduled refresh. Turned out to
+// be solving a non-problem AND actively harmful: every real consumer of
+// `loadM1ForPair` (Level Atlas, Session Path, Session Handoff, Asia/Monday
+// Fib Atlas — all five reference-engine-rebuild sub-jobs below) already
+// tops itself up live via `gapFillPacked` at generation time, so the base
+// archive's own staleness never actually reached a live page. This job
+// instead added a second, redundant OANDA-fetch pass at 00:15 — 15 minutes
+// before the 00:30 rebuild's own five (then-concurrent) fetch loops — and
+// direct Railway log evidence showed the whole process crashing silently
+// (no stack trace, consistent with an OOM kill) partway through its own
+// 31-pair loop on multiple nights, contributing to the same memory pressure
+// that was starving the rebuild below. `loadM1ForPair`'s tail-merge logic
+// (js/volBacktestM1Engine.js, M1_TAIL_PREFIX) is left in place — a real,
+// tested capability, just nothing schedules a writer for it anymore.
 
 if (process.env.OANDA_KEY) {
   _scheduleDailyLondon(0, 30, async () => {
@@ -31249,9 +31215,32 @@ if (process.env.OANDA_KEY) {
     } catch (e) { console.error('[reference-engine-rebuild] caps read failed:', e.message); }
     if (!enabled) { console.log('[reference-engine-rebuild] nightly tick — disabled (Caps.referenceEngineRebuild=false or REFERENCE_ENGINE_REBUILD=0)'); return; }
     console.log(`[reference-engine-rebuild] nightly tick firing — Level Atlas + Session Path + Session Handoff + Asia/Monday Fib Atlas, ${REFERENCE_ENGINE_PAIRS.length} instruments`);
-    try { _startLevelAtlasRunJob({ instruments: REFERENCE_ENGINE_PAIRS }); } catch (e) { console.error('[reference-engine-rebuild] Level Atlas trigger failed:', e.message); }
-    try { _startSessionPathRunJob({ instruments: REFERENCE_ENGINE_PAIRS }); } catch (e) { console.error('[reference-engine-rebuild] Session Path trigger failed:', e.message); }
-    try { _startSessionHandoffRunJob({ instruments: REFERENCE_ENGINE_PAIRS }); } catch (e) { console.error('[reference-engine-rebuild] Session Handoff trigger failed:', e.message); }
+    // Serialized (2026-09-15, was fire-and-forget-concurrent since this job's
+    // own original 2026-08-xx design) — all five of these used to be kicked
+    // off in the same tick with no `await`, so they ran concurrently, each
+    // doing its own sequential OANDA-fetch loop, all sharing one process's
+    // memory. Direct evidence (Railway deploy logs, R2 lastModified timestamps)
+    // found Level Atlas's R2-persisted books stuck at 2026-09-11 while Fib
+    // Atlas's (a lighter FX/gold-only pair list, no index instruments) kept
+    // updating daily — consistent with the shared process dying under
+    // concurrent memory pressure before Level Atlas's heavier, index-inclusive
+    // loop could finish. Running them one at a time trades a longer total
+    // window (this is an overnight batch job; wall-clock time is free) for a
+    // much lower peak memory footprint. Order: Level Atlas first (heaviest,
+    // and the one actually found broken), then the two session engines, then
+    // both Fib Atlas variants.
+    async function runSeq(label, start) {
+      try {
+        const { done } = start();
+        await done;
+        console.log(`[reference-engine-rebuild] ${label} done`);
+      } catch (e) {
+        console.error(`[reference-engine-rebuild] ${label} trigger failed:`, e.message);
+      }
+    }
+    await runSeq('Level Atlas', () => _startLevelAtlasRunJob({ instruments: REFERENCE_ENGINE_PAIRS }));
+    await runSeq('Session Path', () => _startSessionPathRunJob({ instruments: REFERENCE_ENGINE_PAIRS }));
+    await runSeq('Session Handoff', () => _startSessionHandoffRunJob({ instruments: REFERENCE_ENGINE_PAIRS }));
     // Asia/Monday Fib Atlas are FX/gold-only (Pine indicator's own scope) —
     // filter the shared pair list rather than adding a second hand-maintained
     // one. Exclusion list uses the SAME canonical 'SPX'/'DOW' spelling
@@ -31260,8 +31249,9 @@ if (process.env.OANDA_KEY) {
     // which would silently stop excluding them here once the array's own
     // entries were renamed.
     const fibAtlasPairs = REFERENCE_ENGINE_PAIRS.filter(s => s !== 'NQ' && !['SPX', 'DE30', 'UK100', 'DOW', 'US2000', 'BTCUSD'].includes(s));
-    try { _startAsiaFibAtlasRunJob({ instruments: fibAtlasPairs }); } catch (e) { console.error('[reference-engine-rebuild] Asia Fib Atlas trigger failed:', e.message); }
-    try { _startMondayFibAtlasRunJob({ instruments: fibAtlasPairs }); } catch (e) { console.error('[reference-engine-rebuild] Monday Fib Atlas trigger failed:', e.message); }
+    await runSeq('Asia Fib Atlas', () => _startAsiaFibAtlasRunJob({ instruments: fibAtlasPairs }));
+    await runSeq('Monday Fib Atlas', () => _startMondayFibAtlasRunJob({ instruments: fibAtlasPairs }));
+    console.log('[reference-engine-rebuild] nightly tick complete');
   });
   console.log('[reference-engine-rebuild] nightly tick armed at 00:30 London (Level Atlas + Session Path + Session Handoff + Asia/Monday Fib Atlas, gated by Caps.referenceEngineRebuild or REFERENCE_ENGINE_REBUILD=0 to disable)');
 }
