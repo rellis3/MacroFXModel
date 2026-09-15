@@ -471,6 +471,7 @@ const DRIFT_BANDS = [
 
 /**
  * @param {object} [opts] optional inputs for the `anatomy` block (js/driftAnatomy.js).
+ *   `carry`   a `carryDrift.resolveCarryDrift()` reading → carry baseline, source-aware
  *   `rates`   {basePct, quotePct} annual rates for the pair's two legs → carry baseline
  *   `returns` {daily[], jump[]}   per-day log returns + detected jump returns → composition
  * Both are optional and independent; without them `anatomy` still carries the
@@ -492,7 +493,8 @@ export function driftReadout(ohlc, sigmaFwd, win = 14, opts = {}) {
   out.anatomy = driftAnatomy({
     d, pctPerDay: out.pctPerDay, win,
     sigmaAnnualPct: sigmaFwd * 100 * Math.sqrt(TRADING_DAYS),
-    rates: opts.rates,
+    carry: opts.carry,          // resolved reading from js/carryDrift.js (preferred)
+    rates: opts.rates,          // or two raw legs, for a caller that only has those
     returns: opts.returns,
   });
 

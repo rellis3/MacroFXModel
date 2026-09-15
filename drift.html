@@ -1,0 +1,268 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Drift Anatomy</title>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;
+    --text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;
+    --bull:#10b981;--bear:#f97316;--amber:#d29922;--blue:#4f7df0;--null:#6e7681;}
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--text);font:13px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif;margin:0 auto;padding:18px 20px 60px;max-width:1100px}
+  a{color:var(--blue);text-decoration:none}
+  h1{font-size:20px;margin:0 0 3px}
+  .sub{color:var(--text2);font-size:12.5px;margin-bottom:18px;max-width:78ch}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:15px 17px;margin-bottom:16px}
+  h2{font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin:0 0 12px}
+  .mono{font-variant-numeric:tabular-nums;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
+  select{background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:6px 11px;font-size:13px;font-weight:600;cursor:pointer}
+  select:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+  .lab{color:var(--text2);font-size:12.5px}
+
+  /* stat grid */
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:10px}
+  .st{background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:11px 13px}
+  .st .k{font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
+  .st .v{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums;font-family:ui-monospace,Menlo,monospace}
+  .st .n{font-size:11.5px;color:var(--text3);margin-top:2px}
+  .pos{color:var(--bull)} .neg{color:var(--bear)} .nul{color:var(--null)} .amb{color:var(--amber)}
+
+  .verdict{margin-top:13px;padding:11px 13px;background:var(--card2);border-left:3px solid var(--border);border-radius:0 8px 8px 0;font-size:13px;color:var(--text2)}
+  .verdict b{color:var(--text)}
+  svg{display:block;width:100%;height:auto;overflow:visible}
+  .cap{font-size:11.5px;color:var(--text3);margin-top:9px;max-width:80ch}
+  .note{font-size:12.5px;color:var(--text2);max-width:80ch}
+  .note p{margin:0 0 8px} .note p:last-child{margin:0} .note b{color:var(--text)}
+  .pill{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+    padding:2px 7px;border-radius:5px;border:1px solid var(--border);color:var(--text3);background:var(--card2)}
+  .pill.ok{color:var(--bull);border-color:#10b98155} .pill.warn{color:var(--amber);border-color:#d2992255}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th{text-align:right;color:var(--text3);font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;padding:5px 7px;border-bottom:1px solid var(--border)}
+  th:first-child{text-align:left}
+  td{padding:5px 7px;text-align:right;border-bottom:1px solid var(--border);font-variant-numeric:tabular-nums;font-family:ui-monospace,Menlo,monospace}
+  td:first-child{text-align:left;font-weight:600;font-family:inherit}
+  tr:last-child td{border-bottom:none}
+  #err{display:none;color:var(--bear);font-size:13px}
+</style>
+
+<h1>Drift Anatomy</h1>
+<div class="sub">A drift number on its own says nothing about whether it is real, or whether it is
+anything more than the interest-rate differential. This page puts the estimated drift next to its
+own error bar, next to the carry you can actually observe, and next to the eight currency legs it
+decomposes into. <b>Descriptive only</b> — the pooled cross-section was tested for direction over
+3,302 sessions and came back null at every horizon.</div>
+
+<div id="err"></div>
+
+<div class="row">
+  <span class="lab">Pair</span>
+  <select id="pair"></select>
+  <span class="lab" id="asOf"></span>
+</div>
+
+<div class="card">
+  <h2>This pair&rsquo;s drift <span id="srcPill"></span></h2>
+  <div class="stats" id="stats"></div>
+  <div class="verdict" id="verdict"></div>
+</div>
+
+<div class="card">
+  <h2>The eight currency legs</h2>
+  <svg id="legs" viewBox="0 0 800 360" role="img" aria-label="Currency drift per leg with 95% intervals"></svg>
+  <div class="cap" id="legsCap"></div>
+</div>
+
+<div class="card">
+  <h2>All legs</h2>
+  <table><thead><tr><th>Ccy</th><th>Drift %/day</th><th>95% &plusmn;</th><th>t</th><th>Pairs</th><th style="text-align:left">Reads as</th></tr></thead>
+  <tbody id="tbody"></tbody></table>
+</div>
+
+<div class="card">
+  <h2>How to read this</h2>
+  <div class="note">
+    <p><b>The error bar is the point.</b> &sigma; converges as you sample more finely; &mu; does not
+      &mdash; its standard error is &sigma;/&radic;T in calendar span and is unmoved by sampling
+      frequency (Merton 1980). At a 14-day window SE(d)&nbsp;=&nbsp;0.267, so a reading has to be
+      large before &ldquo;strong&rdquo; means anything. A leg whose bar crosses zero is drawn grey.</p>
+    <p><b>Carry is observed, not estimated.</b> Covered interest parity pins the forward against
+      spot, so &mu;<sub>RN</sub>&nbsp;&asymp;&nbsp;r<sub>quote</sub>&nbsp;&minus;&nbsp;r<sub>base</sub>
+      is a price rather than a forecast. Broker financing is preferred over the interbank
+      differential because it is what you are actually charged; the spread is stripped from the
+      long/short quote rather than taken from one side.</p>
+    <p><b>The standard errors are an upper bound.</b> They assume pair residuals are independent,
+      and FX pairs share risk-on, carry and liquidity factors that survive the decomposition. Read
+      t&nbsp;=&nbsp;6 as well resolved; do not read t&nbsp;=&nbsp;2.1 as 96% confident.</p>
+  </div>
+</div>
+
+<script type="module">
+import { decomposeCurrencyDrift } from './js/driftCrossSection.js';
+
+const TRADING_DAYS = 252, Z95 = 1.96, WIN = 14;
+const $ = id => document.getElementById(id);
+const fmt = (v, d = 3) => v == null ? '—' : (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(d);
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+let FC = null, FIT = null, PAIRS = [];
+
+function isFxPair(name, f) {
+  return /^[A-Z]{6}$/.test(name) && f?.drift_read && Number.isFinite(f.drift_read.pctPerDay);
+}
+/** Daily sigma in %, from the annualised vol the payload already carries. */
+const sigmaDailyPct = f => Number.isFinite(f.vol_annual) ? f.vol_annual / Math.sqrt(TRADING_DAYS) : null;
+
+async function load() {
+  let r;
+  try { r = await fetch('/api/vol-forecast'); } catch { return fail('Could not reach /api/vol-forecast.'); }
+  if (r.status === 202) return fail('Forecast is still computing — check back in a minute.');
+  if (!r.ok) return fail(`/api/vol-forecast returned HTTP ${r.status}.`);
+  FC = await r.json();
+  const insts = FC?.instruments ?? {};
+  PAIRS = Object.keys(insts).filter(n => isFxPair(n, insts[n])).sort();
+  if (!PAIRS.length) return fail('No FX pairs with a drift reading in the latest forecast.');
+
+  // The cross-section runs client-side off the same payload — mu and sigma per
+  // pair are already in it, so the strength line needs no second endpoint and
+  // can never disagree with the per-pair numbers shown above it.
+  const obs = PAIRS.map(p => ({
+    pair: p, base: p.slice(0, 3), quote: p.slice(3, 6),
+    mu: insts[p].drift_read.pctPerDay, sigma: sigmaDailyPct(insts[p]),
+  })).filter(o => Number.isFinite(o.mu) && o.sigma > 0);
+  FIT = obs.length >= 3 ? decomposeCurrencyDrift(obs, { win: WIN }) : null;
+
+  const sel = $('pair');
+  sel.innerHTML = PAIRS.map(p => `<option value="${p}">${p.slice(0,3)}/${p.slice(3,6)}</option>`).join('');
+  sel.value = PAIRS.includes('EURUSD') ? 'EURUSD' : PAIRS[0];
+  sel.addEventListener('change', render);
+  $('asOf').textContent = FC.session_date ? `session ${FC.session_date}` : '';
+  render();
+}
+function fail(msg) { $('err').style.display = 'block'; $('err').textContent = msg; }
+
+function render() {
+  const name = $('pair').value, f = FC.instruments[name];
+  const dr = f.drift_read, an = dr.anatomy ?? {};
+  const p = an.precision ?? {}, carry = an.carry ?? null;
+  // What the two currency legs do NOT explain — the only quantity on this page
+  // that belongs to the cross itself rather than to either of its currencies.
+  const res = FIT && !FIT.error ? (FIT.residuals.find(r => r.pair === name) ?? null) : null;
+
+  // ── stat tiles ──────────────────────────────────────────────────────────
+  const cls = v => v == null ? 'nul' : v > 0 ? 'pos' : v < 0 ? 'neg' : 'nul';
+  const tiles = [
+    { k: 'Estimated drift', v: fmt(dr.pctPerDay, 3) + '%', c: cls(dr.pctPerDay),
+      n: `${WIN}-day &mu;/&sigma; = ${fmt(dr.d, 2)}` },
+    { k: 't-statistic', v: p.t == null ? '—' : fmt(p.t, 2),
+      c: p.significant === true ? 'pos' : 'amb',
+      n: p.significant === true ? 'clears the 2&sigma; bar'
+        : p.daysToSignificance ? `needs ~${p.daysToSignificance}d at this strength` : 'not resolved' },
+    { k: 'Carry drift', v: carry?.fwdDriftPctPerDay == null ? '—' : fmt(carry.fwdDriftPctPerDay, 4) + '%',
+      c: cls(carry?.fwdDriftPctPerDay),
+      n: carry?.source ? `${carry.source}${carry.ageDays != null ? `, ${carry.ageDays}d old` : ''}` : 'no rate data' },
+    { k: 'Excess over carry', v: carry?.excessPctPerDay == null ? '—' : fmt(carry.excessPctPerDay, 3) + '%',
+      c: cls(carry?.excessPctPerDay),
+      n: carry?.multiple == null ? 'carry unavailable' : `${Math.abs(carry.multiple).toFixed(1)}&times; the differential` },
+    { k: 'Pair-specific residual', v: res == null ? '—' : fmt(res.resid, 3) + '%', c: cls(res?.resid),
+      n: res?.residZ == null ? 'legs unavailable'
+        : `${fmt(res.residZ, 2)}&sigma; &mdash; ${Math.abs(res.residZ) > 1.5 ? 'the legs do not explain this' : 'well inside the noise'}` },
+  ];
+  $('stats').innerHTML = tiles.map(t =>
+    `<div class="st"><div class="k">${t.k}</div><div class="v ${t.c}">${t.v}</div><div class="n">${t.n}</div></div>`).join('');
+
+  $('srcPill').innerHTML = carry?.source
+    ? `<span class="pill ${carry.source === 'broker' ? 'ok' : ''}">carry: ${carry.source}</span>`
+    : '<span class="pill warn">carry: unavailable</span>';
+
+  // ── verdict ─────────────────────────────────────────────────────────────
+  const bits = [];
+  bits.push(p.significant === true
+    ? `The drift clears its own error bar (t&nbsp;=&nbsp;${fmt(p.t,2)}), so the move is well resolved &mdash; <b>which is not the same as it continuing</b>.`
+    : `At t&nbsp;=&nbsp;${fmt(p.t,2)} this reading <b>is not distinguishable from zero</b>. The percentile beside it ranks the realised path, not the evidence for a trend.`);
+  if (res && Math.abs(res.residZ ?? 0) > 1.5) {
+    bits.push(`It also moved <b>${fmt(res.resid,3)}%/day beyond what its two currency legs explain</b> `
+      + `(${fmt(res.residZ,2)}&sigma;) &mdash; that part belongs to this cross, not to ${name.slice(0,3)} or ${name.slice(3,6)}.`);
+  }
+  if (carry?.label) bits.push(`Against carry: <b>${carry.label}</b>.`);
+  else bits.push('No usable rate data for this pair, so the carry baseline is absent rather than assumed zero.');
+  $('verdict').innerHTML = bits.join(' ');
+
+  drawLegs(name);
+  drawTable();
+}
+
+// ── the eight legs on one axis ────────────────────────────────────────────
+function drawLegs(pairName) {
+  const svg = $('legs');
+  svg.innerHTML = '';
+  if (!FIT || FIT.error) {
+    $('legsCap').textContent = FIT?.error === 'disconnected'
+      ? 'The available pairs do not form one connected currency graph, so the legs are not identifiable.'
+      : 'Not enough pairs in this forecast to decompose the legs.';
+    return;
+  }
+  const el = (n, a) => { const e = document.createElementNS('http://www.w3.org/2000/svg', n);
+    for (const k in a) e.setAttribute(k, a[k]); return e; };
+  const ccys = [...FIT.rank].map(r => r.ccy);
+  const L = 66, R = 690, TOP = 30, ROW = 30;
+  const vals = ccys.flatMap(c => { const o = FIT.currencies[c]; return [o.drift - Z95*o.se, o.drift + Z95*o.se]; });
+  const lo = Math.min(...vals, 0), hi = Math.max(...vals, 0), pad = (hi - lo) * 0.12 || 0.01;
+  const X = v => L + (v - (lo - pad)) / ((hi + pad) - (lo - pad)) * (R - L);
+  const yOf = i => TOP + i * ROW, BOT = yOf(ccys.length - 1) + 26;
+  const base = pairName.slice(0, 3), quote = pairName.slice(3, 6);
+
+  for (let t = Math.ceil((lo - pad) / 0.05) * 0.05; t <= hi + pad + 1e-9; t += 0.05) {
+    const zero = Math.abs(t) < 1e-9, x = X(t);
+    svg.appendChild(el('line', { x1: x, x2: x, y1: TOP - 14, y2: BOT,
+      stroke: zero ? css('--text3') : css('--border'), 'stroke-width': zero ? 1.5 : 1 }));
+    svg.appendChild(el('text', { x, y: BOT + 15, 'text-anchor': 'middle', 'font-size': 10.5,
+      fill: css('--text3'), 'font-family': 'ui-monospace,Menlo,monospace' })).textContent = (zero ? 0 : t).toFixed(2);
+  }
+
+  // the pair's drift IS the gap between its two legs
+  const ib = ccys.indexOf(base), iq = ccys.indexOf(quote);
+  if (ib >= 0 && iq >= 0) {
+    const xb = X(FIT.currencies[base].drift), xq = X(FIT.currencies[quote].drift);
+    const y1 = yOf(Math.min(ib, iq)), y2 = yOf(Math.max(ib, iq));
+    svg.appendChild(el('rect', { x: Math.min(xb, xq), y: y1 - 12, width: Math.abs(xb - xq),
+      height: (y2 - y1) + 24, fill: css('--blue'), opacity: 0.13, rx: 3 }));
+  }
+
+  ccys.forEach((c, i) => {
+    const o = FIT.currencies[c], y = yOf(i), on = c === base || c === quote;
+    // Grey exactly when the 95% bar crosses zero — a rule the reader can check.
+    const tone = Math.abs(o.drift) <= Z95 * o.se ? css('--null') : (o.drift > 0 ? css('--bull') : css('--bear'));
+    svg.appendChild(el('text', { x: L - 12, y: y + 4, 'text-anchor': 'end', 'font-size': 12,
+      'font-weight': on ? 700 : 500, fill: on ? css('--text') : css('--text2'),
+      'font-family': 'ui-monospace,Menlo,monospace' })).textContent = c;
+    svg.appendChild(el('line', { x1: X(o.drift - Z95*o.se), x2: X(o.drift + Z95*o.se), y1: y, y2: y,
+      stroke: tone, 'stroke-width': on ? 2.5 : 2, 'stroke-linecap': 'round', opacity: on ? 0.95 : 0.45 }));
+    [o.drift - Z95*o.se, o.drift + Z95*o.se].forEach(v => svg.appendChild(el('line',
+      { x1: X(v), x2: X(v), y1: y - 4, y2: y + 4, stroke: tone, 'stroke-width': on ? 2 : 1.5,
+        opacity: on ? 0.95 : 0.45 })));
+    svg.appendChild(el('circle', { cx: X(o.drift), cy: y, r: on ? 6 : 4.5, fill: tone,
+      stroke: css('--card'), 'stroke-width': 2, opacity: on ? 1 : 0.6 }));
+    svg.appendChild(el('text', { x: R + 14, y: y + 4, 'font-size': 11.5,
+      'font-weight': on ? 700 : 400, fill: on ? css('--text') : css('--text3'),
+      'font-family': 'ui-monospace,Menlo,monospace' })).textContent = fmt(o.drift, 3);
+  });
+
+  svg.setAttribute('viewBox', `0 0 800 ${BOT + 28}`);
+  $('legsCap').innerHTML = `Each currency&rsquo;s drift against an equal-weighted basket; the bar is its 95% interval. `
+    + `<b>Grey</b> means the bar crosses zero. The shaded band is the drift ${base}/${quote}&rsquo;s two legs <em>imply</em> `
+    + `&mdash; the measured drift differs from it by the residual above. `
+    + `R<sup>2</sup> ${FIT.r2 == null ? '—' : FIT.r2.toFixed(2)} over ${FIT.n} pairs, ${FIT.weighting} weighted.`;
+}
+
+function drawTable() {
+  if (!FIT || FIT.error) { $('tbody').innerHTML = ''; return; }
+  $('tbody').innerHTML = FIT.rank.map(r => {
+    const grey = Math.abs(r.drift) <= Z95 * r.se;
+    const c = grey ? 'nul' : r.drift > 0 ? 'pos' : 'neg';
+    return `<tr><td>${r.ccy}</td><td class="${c}">${fmt(r.drift,3)}</td><td>${(Z95*r.se).toFixed(3)}</td>`
+      + `<td>${fmt(r.t,2)}</td><td>${r.nPairs}</td>`
+      + `<td style="text-align:left;color:var(--text3)">${grey ? 'not separable' : r.drift > 0 ? 'stronger than basket' : 'weaker than basket'}</td></tr>`;
+  }).join('');
+}
+
+load();
+</script>
