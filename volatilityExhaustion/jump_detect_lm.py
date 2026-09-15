@@ -73,10 +73,17 @@ C_BP = math.sqrt(2.0 / math.pi)
 
 MAJORS = ['eurusd', 'gbpusd', 'usdjpy', 'audusd', 'nzdusd', 'usdcad', 'usdchf']
 METALS = ['gold']
+# equity indices (added for the Phase-15 cross-asset check) — a genuinely different asset
+# class, never pooled with FX crosses (Phase 1's own no-pooling rule). Mirrored in both
+# copies of asset_class() in this folder so a reader of either CSV sees the same label.
+INDICES = ['nq', 'de30', 'spx500', 'uk100', 'us2000', 'us30']
 
 
 def asset_class(p):
-    return 'metal' if p in METALS else ('fx_major' if p in MAJORS else 'fx_cross')
+    if p in METALS: return 'metal'
+    if p in MAJORS: return 'fx_major'
+    if p in INDICES: return 'index'
+    return 'fx_cross'
 
 
 def lm_threshold(n, alpha=ALPHA):

@@ -535,6 +535,8 @@ alongside.
 - `jump_exhaustion.py` — Phase-13c conditions `measure_extremes.py`'s fresh-extreme race (reused verbatim) on the causal pre-extreme jump share, within distance bands — **NULL** (jump-driven extremes exhaust the same as smooth ones). Run `python3 jump_exhaustion.py`.
 - `har_cj_forecast.py` — Phase-14 HAR-RV-CJ: continuous/jump as separate HAR regressors vs the same HAR without the split, walk-forward, QLIKE — **NULL** (+0.4% to −0.7% vs a 2% bar). Control arm found intraday-RV HAR beats the shipped YZ σ by 10-21% OOS (not pre-registered). Run `python3 har_cj_forecast.py`.
 - `export_intraday_percentiles.py` — the TIME-OF-DAY yardstick: per 30-min checkpoint, the historical distribution of session-open→checkpoint jump share, plus the frozen diurnal periodicity curve the live detector uses → `data/jump_intraday.json`. Run `python3 export_intraday_percentiles.py`.
+- `har_intraday_isolation.py` — Phase-15 splits Phase 14's pooled win into a functional-form component (HAR-daily vs YZ, **26/26 instruments**) and a granularity component (HAR-intraday vs HAR-daily, **20/26**, majority per class) — per-instrument, not pooled. Run `python3 har_intraday_isolation.py`.
+- Phase 15b (indices) needs no new script — `har_intraday_isolation.py` is asset-class-agnostic; only `asset_class()` in `jump_diffusion_daily.py`/`jump_detect_lm.py` needed an `'index'` bucket added.
 - `crosscheck_jump.py` / `crosscheck_jump.mjs` — the JS↔Python parity contract for the jump maths (RV, BV, jump fraction, threshold, local sigma, deseasonalised returns, detected indices, all to 1e-12). Run `python3 crosscheck_jump.py`.
 - `export_jump_state.py` — freezes the study into `data/jump_state.json` (per-pair jump-share percentiles + every phase verdict) for `/api/jump-diffusion/state` and `jump-diffusion.html`. Run after the daily + LM scripts.
 - `summary.json` / `forecast_vs_fade_summary.json` / `jump_diffusion_summary.json` / `har_cj_summary.json` — headline stats.
@@ -889,3 +891,215 @@ into a better forward number. Not imported by `volatilityBotPlan.js` /
 
 Run `python3 export_intraday_percentiles.py` (after the gap audit), then
 `python3 crosscheck_jump.py` and `node js/jumpDiffusionCore.test.mjs` to check the contract.
+
+## Phase 15 — the intraday-RV win, isolated and checked per instrument (`har_intraday_isolation.py`)
+
+Phase 14's headline number — HAR on intraday 5-minute realised variance beating the
+shipped Yang-Zhang σ by 9.7-21.0% OOS QLIKE — fell out of a **control arm**, never the
+thing being tested, and conflated two different claims: is HAR's functional form simply
+better than YZ's (true regardless of data), or does intraday data carry real information
+a daily bar throws away? Only the second is the interesting, actionable claim. This
+isolates them by fitting the identical HAR machinery on THREE inputs — YZ (unchanged),
+HAR fed only daily Garman-Klass variance, and HAR fed 5-min realised variance — and checks
+**every instrument individually**, not pooled by asset class (a pooled win has hidden a
+few strong pairs dragging weak ones before in this study).
+
+**Result: both effects are real, and the bigger one is not about jumps or intraday data
+at all.**
+
+| | pass condition | result |
+|---|---|---|
+| **Functional form** (HAR-daily vs YZ) | context only, not pre-registered | **26/26 instruments**, +2.5% to +18.6% OOS QLIKE |
+| **Granularity** (HAR-intraday vs HAR-daily) | ≥2% OOS QLIKE, majority per class | **20/26 instruments**: fx_major 5/7, fx_cross 14/18, metal 1/1 |
+
+**HAR's functional form alone — using the exact same daily-OHLC data YZ already reads,
+zero new infrastructure — beats the shipped estimator on every single instrument.** This
+was not the hypothesis; it fell out of separating the two effects, and it is a larger,
+cleaner, more universal result than the intraday claim that motivated this whole
+follow-up. The incumbent's weakness is its fixed-window shape, not what data it reads.
+
+**Granularity is also real but weaker and less universal than Phase 14's pooled number
+suggested.** Majority holds in every class (the pre-registered bar), but 6/26 pairs don't
+clear it — AUDUSD, NZDUSD, AUDNZD, EURNZD, GBPAUD, GBPNZD, a pattern that looks AUD/NZD-
+related but is reported descriptively, not chased further here (n=6 is too thin to
+characterise a sub-pattern honestly).
+
+**What this changes about the "next step" from Phase 14.** The actionable finding is now
+in two pieces with very different cost/risk:
+1. **Swap YZ's functional form for HAR, still on daily-only data.** Needs no new data
+   pipeline — every input already exists. 26/26 instruments, the strongest and cheapest
+   result in this entire study.
+2. **Also feed it intraday RV.** A further, real, but more mixed improvement, and it
+   does require the intraday infrastructure Phase 13 already built (`jumpDiffusionCore.js`,
+   the live M5 read) to run in real time rather than just in the offline backtest.
+
+Neither has been wired anywhere live. Per this study's own hard rule, going from "measured
+here" to "feeds the live forecaster" is a decision for the repo owner, not something this
+offline script does on its own — `js/volForecastBench.js` (the estimator comparison tool
+this repo already ships, built for exactly this kind of candidate) is the safe next stop,
+not `js/volForecast.js` or the bot's plan-building path.
+
+Run `python3 har_intraday_isolation.py`.
+
+## Phase 15b — does the win hold on equity indices? (NQ, SPX500, DE30, UK100, US2000, US30)
+
+Phase 15 only covered FX + gold, because that's what the local M1 cache had. This pulls
+the 6 equity indices `tier8_multi_index_conviction.py` already knows how to fetch from R2
+(all reachable, 49-80MB each) and runs the identical isolation test on them.
+
+**Two real bugs caught before trusting a number, both worth recording:**
+
+1. **The gap audit was run with explicit pair args first** (`m1_gap_audit.py nq de30 ...`),
+   which overwrites `m1_gap_audit_summary.json` wholesale rather than merging — silently
+   wiping the 26 already-audited FX/gold entries and cascading into every downstream
+   script reading "not audited, skipped". Caught because the very next run's log showed
+   26 FX pairs suddenly `NOT AUDITED`. Fixed by always re-running the audit for the FULL
+   discovered set, never a partial one, once new instruments join the cache.
+2. **The asset-class classifier had no concept of "index".** `asset_class()` (duplicated,
+   unfixed, in both `jump_diffusion_daily.py` and `jump_detect_lm.py`) defaults anything
+   outside its FX-major/metal lists to `'fx_cross'` — so all 6 indices were silently
+   pooled into the FX-cross bucket, exactly the cross-asset-class pooling Phase 1's own
+   docstring says never to do. Fixed by adding an `INDICES` list and an `'index'` class to
+   both copies, then regenerating `jump_diffusion_daily.csv` with corrected labels.
+
+**DE30 and UK100 are NOT usable with this audit's current logic, and are correctly
+excluded rather than silently included.** The gap classifier's holiday/session-break
+heuristics were built for FX (near-24h sessions) and gold's CME break pattern — DAX and
+FTSE run genuinely different market hours and holiday calendars the classifier doesn't
+recognise, so ~93% of their days are flagged UNEXPLAINED (1,995/2,715 for DE30,
+1,973/2,687 for UK100) and dropped by the audit gate, leaving ~182-188 usable days each —
+far below the study's own minimum. This is a real gap in the tooling, not a data problem;
+extending the classifier to Xetra/LSE session structure is unstarted work, out of scope
+here. **NQ, SPX500, US2000, US30 audit cleanly** (24-620 excluded days out of ~2700-3300,
+in the same range as the FX pairs) and are trusted.
+
+**Result: the cleanest asset class in the entire study.**
+
+| index | functional form (HAR-daily vs YZ) | granularity (HAR-intraday vs HAR-daily) |
+|---|---|---|
+| NQ | +12.58% | +5.18% |
+| SPX500 | +19.43% | +3.18% |
+| US2000 | +15.41% | +2.57% |
+| US30 | +15.28% | +4.11% |
+
+**4/4 on both dimensions** — a higher clear rate than fx_major (5/7 granularity) or
+fx_cross (14/18). SPX500's functional-form gain (+19.4%) is the single largest in the
+whole study. The win is not an FX-specific artifact; it replicates on a genuinely
+different asset class with different microstructure and a different scheduled-news
+profile.
+
+Run `python3 har_intraday_isolation.py` (after pulling the 6 index parquets into
+`portfolioBacktest/cache/` and re-running `m1_gap_audit.py` / `jump_diffusion_daily.py`
+for the full discovered set).
+
+## Phase 16 — HAR-RV registered into the site's own JS bench, in log form
+
+Phase 15's "functional form" finding (HAR beats YZ on the SAME daily-only data YZ
+already reads) needed nothing new to act on: `js/volForecastBench.js` already ships an
+estimator-comparison tool (`ESTIMATORS`, `runBench`, `vol-forecast-bench.html`) for
+exactly this purpose, and it's a manual comparison/export surface — confirmed not read
+by any live route (`/api/vol-forecast-bench/*` is self-contained; `/api/vol-forecast`,
+what `vol-forecast-v2.html`/`v3.html` actually call, is untouched). So the registration
+step was scoped as safe on its own, separate from any later decision about surfacing it
+live.
+
+**`harRV` already existed there — but only in level form**, and cross-checking that
+exact JS code against this study's own filtered archive (same (pair,date) set
+`har_cj_forecast.load()` used: eurusd/gbpusd/usdjpy/gold/nq/spx500/us30, daily GK proxy,
+`yz30` as the incumbent) found log form is the specification that reproduces this
+study's finding: HAR-RV (log) beat YZ30 on 6/7 instruments (+7.8% to +35.5% OOS QLIKE)
+and beat level-form HAR outright on all 3 FX majors (+10.3% to +36.5%), while running
+2-9% behind level-form on gold/indices. (Note this contradicts an earlier, over-dramatic
+diagnostic-script finding of level-form "exploding" on gold/usdjpy — that was a bug in a
+throwaway script missing the ridge term `solve4` already carries in production; the real
+level-form estimator here is not broken, it's just not the one that reproduces the
+result on the pairs where it's strongest.) So `harRvLogPred` was added rather than just
+flipping a switch: shares a new unclamped core (`_harFitCore`, extracted from the
+existing `harRvPred` without changing its behaviour) with the level form, scales by
+`1/median(RV)` (same convention `harIvPred` already uses), fits in log-space, and
+exponentiates back with a Duan (1983) smearing correction.
+
+**A real no-lookahead bug, caught by the JS test suite itself, not by inspection.** The
+first smearing draft used one constant averaged over the whole series — simpler, and it
+looked like "just a bias-correction scalar." `volForecastBench.test.mjs`'s existing
+tamper-the-last-bar contract test failed: because the constant pooled residuals
+including days AFTER the one being predicted, mutating the final bar changed
+predictions for every earlier day too. Fixed by making the smear an EXPANDING (causal)
+running mean, using only residuals strictly before the day being predicted — the same
+causal discipline this study's own `har_cj_forecast.py` enforces with its IS-only smear,
+applied per-day here since this shared `predVar(bars, ctx)` signature has no `oosFrac`
+to support a stricter one-shot split. New tests were added for the log-form estimator
+(a log-space "recovers a known generating law" check, and a numerical-stability check
+against a 5000x single-day outlier) alongside the existing per-estimator no-lookahead
+loop, which now covers `harRvLog` automatically.
+
+**Not wired into `vol-forecast-v2.html`/`v3.html`, or any chart-page visual.** Both pages
+share one backend (`/api/vol-forecast`); this entry is only the registration step the
+owner approved ("Yes.") as the safe next stop, with any live-facing change explicitly
+deferred — "hold off on 'replace the live forecast' until it's run forward for a while
+as a shadow estimate."
+
+**Status: ✅ registered in `js/volForecastBench.js` · reproduces the validated finding
+in log form on the study's own archive · one real no-lookahead bug found and fixed by
+the test suite · `node js/volForecastBench.test.mjs` all passing · NOT wired into any
+live-facing forecast.**
+
+## Phase 17 — does jump share move the TAIL, even though it doesn't move the point forecast? (`jump_tail_risk.py`)
+
+Institutions use jump/diffusion decomposition for more than one job, and this study had
+only tested one: forecasting the NEXT-DAY POINT ESTIMATE of variance (Phases 12/13/14, all
+null). Tail-risk/stress sizing is a different question — it cares about the shape of the
+extreme quantile, not the center. Phase 13 already found a real relationship at the mean
+(jumpy day → quieter tomorrow, c = −0.99..−1.47) that wasn't strong enough to win a QLIKE
+horse race; a point forecast and a tail can decouple (a narrower typical day can still
+carry a fat left tail if the compression is asymmetric), and QLIKE — which scores the
+center of the distribution — would never surface that on its own. This was the one
+genuinely open institutional use left after Phase 14 closed the forecast question, so it
+gets its own pre-registered test rather than being assumed closed by association.
+
+**Design, minimal-DOF first.** A median split on the IS period's own jf_5m (jump share),
+frozen before OOS — no continuous regression, no tuned threshold, nothing to overfit.
+OOS days are split into "post-jump" (yesterday's jf_5m ≥ the frozen IS median) vs
+"post-calm" (below it), and VaR95/CVaR95 on next-day returns are compared between the two
+groups against the pooled OOS baseline. VaR/CVaR use the exact same empirical definition
+as `js/metricsCore.js`'s `histVaR`/`histCVaR` (type-7 quantile, CVaR = mean of the tail at
+or beyond it) — reused conceptually, reimplemented in Python since this is an offline
+study script, not something calling into the JS bricks directly. Reuses
+`har_cj_forecast.py`'s own `load()` — the same gap-audited, quality-gated (pair, date) set
+every other phase in this study reads — plus one extra column (close price) pulled
+straight from `daily_bars.csv` for the close-to-close return.
+
+Pre-registered: the relative gap between post-jump and post-calm CVaR95 must be ≥15% OOS
+on a MAJORITY of instruments per asset class, with ≥100 OOS days in each group, checked
+per instrument rather than pooled (this study's own standing discipline, burned before by
+pooled wins hiding a few strong pairs — Tier-8's NQ echo, the WaveTrend gates).
+
+**Result: NULL, for the fourth independent time, and the direction disagrees with itself.**
+
+| class | instruments | clear 15% bar | sign agreement |
+|---|---|---|---|
+| fx_major | 7 | 2/7 | 5/7 better after jump |
+| fx_cross | 18 | 6/18 | 10/18 worse after jump |
+| metal | 1 | 0/1 | worse after jump |
+| index | 4 | 0/4 | better after jump |
+
+No class clears a majority on the magnitude bar. The direction doesn't even agree with
+itself: fx_major leans toward a BETTER tail after a jumpy day (consistent with Phase 13's
+mean-reversion extending to the tail), fx_cross leans WORSE (barely — 10/18, close to a
+coin flip) and gold's lone data point is worse. That inconsistency, not just the missed
+magnitude bar, is itself evidence there's no real underlying effect at the tail — a genuine
+signal would at least point the same direction across most of a class the way Phase 15's
+functional-form result did (26/26, one direction, no exceptions).
+
+**What this closes.** Four independent constructions — scale σ by diffusive share
+(Phase 12), split RV into HAR-CJ regressors (Phase 14), condition exhaustion on jump share
+(§13.6), and now condition the tail-risk quantile on jump share (Phase 17) — have all
+failed to extract forecasting OR tail-risk value from the jump/continuous split. The
+descriptive jump/diffusion page stands (it never claimed a forecast), and nothing gets
+wired into `js/evtTail.js` or `js/bookStress.js`. Of the three other institutional uses of
+jump-diffusion surveyed (options pricing/vol surface, tail-risk, execution/microstructure)
+against a spot/CFD platform with no options book and no execution infrastructure to
+extend, tail-risk was the one with real bricks on both ends and a legitimate open
+question — it has now been tested and closed the same way the others were.
+
+Run `python3 jump_tail_risk.py`.

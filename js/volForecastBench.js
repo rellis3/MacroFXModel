@@ -105,15 +105,23 @@ function garchPred(bars, omega) {
 // an EXPANDING in-sample window via incremental normal equations (4×4) — O(n),
 // no lookahead. `rvSeries` is the realised-variance proxy used as both target and
 // regressor (HAR forecasts the same quantity the others are scored against).
-function harRvPred(rvSeries, { warmup = 60, dailyLag = 1, weekLag = 5, monthLag = 22 } = {}) {
-  const n = rvSeries.length;
+// Unclamped expanding-window HAR core, shared by both the level-form (harRvPred)
+// and log-form (harRvLogPred) predictors below. NO floor is applied here — the
+// caller decides what "invalid" means for its own domain: a raw variance forecast
+// floors at ~0, but a LOG-variance forecast is legitimately negative (log of a
+// small positive number), so baking a positivity floor into this shared core would
+// silently corrupt anything fit in log-space (an early draft did exactly this: it
+// reused the floored output as if it were still additive/loggable, and the
+// resulting exp() blew up by orders of magnitude). Floor at the call site instead.
+function _harFitCore(series, { warmup = 60, dailyLag = 1, weekLag = 5, monthLag = 22 } = {}) {
+  const n = series.length;
   const out = new Float64Array(n).fill(NaN);
   const feat = (i) => {
     if (i - monthLag < 0) return null;
     let wk = 0, mo = 0;
-    for (let k = 1; k <= weekLag; k++)  wk += rvSeries[i - k];
-    for (let k = 1; k <= monthLag; k++) mo += rvSeries[i - k];
-    return [1, rvSeries[i - dailyLag], wk / weekLag, mo / monthLag];
+    for (let k = 1; k <= weekLag; k++)  wk += series[i - k];
+    for (let k = 1; k <= monthLag; k++) mo += series[i - k];
+    return [1, series[i - dailyLag], wk / weekLag, mo / monthLag];
   };
 
   // accumulators for X'X (symmetric 4×4) and X'y (4) over targets already known
@@ -122,8 +130,8 @@ function harRvPred(rvSeries, { warmup = 60, dailyLag = 1, weekLag = 5, monthLag 
   let added = 0, nextAdd = monthLag;
 
   const addObs = (t) => {
-    const x = feat(t); if (!x) return;
-    const y = rvSeries[t];
+    const x = feat(t); if (!x || !Number.isFinite(series[t])) return;
+    const y = series[t];
     for (let a = 0; a < 4; a++) { Xty[a] += x[a] * y; for (let b = 0; b < 4; b++) XtX[a][b] += x[a] * x[b]; }
     added++;
   };
@@ -132,12 +140,76 @@ function harRvPred(rvSeries, { warmup = 60, dailyLag = 1, weekLag = 5, monthLag 
     // ensure all targets with index < i are in the accumulator
     while (nextAdd < i) { addObs(nextAdd); nextAdd++; }
     const x = feat(i);
-    if (x && added >= warmup) {
+    if (x && x.every(Number.isFinite) && added >= warmup) {
       const beta = solve4(XtX, Xty);
       if (beta) {
         let p = 0; for (let a = 0; a < 4; a++) p += beta[a] * x[a];
-        out[i] = Math.max(p, 1e-12);                   // OLS can go negative; clamp for QLIKE
+        out[i] = p;                                     // NO floor — see docstring above
       }
+    }
+  }
+  return out;
+}
+
+// HAR-RV (Corsi 2009), LEVEL form — unchanged public behaviour from before the
+// _harFitCore extraction: same fit, same floor at 1e-12 (OLS can go negative).
+function harRvPred(rvSeries, opts = {}) {
+  const raw = _harFitCore(rvSeries, opts);
+  const out = new Float64Array(raw.length).fill(NaN);
+  for (let i = 0; i < raw.length; i++) if (Number.isFinite(raw[i])) out[i] = Math.max(raw[i], 1e-12);
+  return out;
+}
+
+// HAR-RV, LOG-SCALE form (volatilityExhaustion/har_cj_forecast.py Phase 14/15's
+// primary specification — this is its JS-side counterpart, not a fresh derivation).
+//
+// WHY THIS EXISTS ALONGSIDE harRvPred. Daily variance is heavily right-skewed, so a
+// level-form OLS is dominated by a handful of crisis days — Phase 14 documented this
+// going as far as QLIKE in the millions on an unscaled 7-column system, and this
+// file's own harIvPred already carries the same scaling fix for its wider system.
+// The plain 4-column harRvPred (single self-referential regressor, solve4's own
+// ridge term) does not blow up the way that wider system did, but cross-checking
+// this exact JS code against the Python study's own filtered archive (7 instruments,
+// GK daily proxy, YZ30 as incumbent) confirmed log-form is still the specification
+// that reproduces Phase 14/15's finding: log-form beat the YZ30 incumbent on 6/7
+// instruments (+7.8% to +35.5% OOS QLIKE) and beat level-form HAR outright on 4/7
+// (up to +36.5%, all three FX majors tested), while trailing level-form modestly on
+// the other 3 (gold/indices, -2% to -9%) — level-form is not broken there, just not
+// the one that reproduces the validated result on the pairs where it matters most.
+//
+// Method: scale by 1/median(RV) (same VAR_FLOOR_FRAC/_rvScale convention as
+// harIvPred), fit HAR on log(scaled RV) via the UNCLAMPED core (log values are
+// legitimately negative — harRvPred's floor would corrupt this, see _harFitCore's
+// docstring), then exponentiate back with a smearing correction (Duan 1983 — the
+// standard retransformation for a log-fit predicting a level quantity).
+//
+// The smearing constant is an EXPANDING (causal) running mean of exp(residual),
+// not an aggregate over the whole series. An earlier draft used a single
+// whole-sample constant — simpler, and "only a bias-correction scalar" looked
+// harmless — but this file's own no-lookahead test caught it: tampering the
+// LAST bar changed predictions for every earlier day too, because the constant
+// was computed from residuals that include future bars relative to each day
+// being predicted. Duan (1983)'s estimator is just mean(exp(residual)), so it
+// updates for free as a running mean using only residuals strictly before the
+// day being predicted — the same causal discipline har_cj_forecast.py enforces
+// with its IS-only smear, applied here per-day instead of once over a fixed split.
+function harRvLogPred(rvSeries, opts = {}) {
+  const n = rvSeries.length;
+  const S = _rvScale(rvSeries);
+  const FLOOR = (1 / S) * VAR_FLOOR_FRAC;
+  const logScaled = new Float64Array(n);
+  for (let i = 0; i < n; i++) logScaled[i] = Math.log(Math.max(rvSeries[i], FLOOR) * S);
+
+  const fitted = _harFitCore(logScaled, opts);           // unclamped — negative is normal
+
+  const out = new Float64Array(n).fill(NaN);
+  let sresid = 0, ns = 0;
+  for (let i = 0; i < n; i++) {
+    if (Number.isFinite(fitted[i])) {
+      const smear = ns ? sresid / ns : 1;               // uses only residuals from i' < i
+      out[i] = Math.max(Math.exp(fitted[i]) * smear / S, FLOOR / S);
+      sresid += Math.exp(logScaled[i] - fitted[i]);       // day i's own residual folds in AFTER predicting
+      ns++;
     }
   }
   return out;
@@ -293,6 +365,7 @@ const ESTIMATORS = {
   yz30:    { label: 'Yang-Zhang(30)', predVar: (bars) => yzPred(bars, 30) },
   garch:   { label: 'GARCH(1,1)', predVar: (bars, ctx) => garchPred(bars, ctx.omega) },
   harRV:   { label: 'HAR-RV', predVar: (bars, ctx) => harRvPred(ctx.rv, ctx.harOpts) },
+  harRvLog: { label: 'HAR-RV (log)', predVar: (bars, ctx) => harRvLogPred(ctx.rv, ctx.harOpts) },
   harIV:   { label: 'HAR-IV', predVar: (bars, ctx) => harIvPred(ctx.rv, ctx.ivVar, ctx.harOpts) },
 };
 
@@ -323,6 +396,48 @@ function harRvForecastNext(rvSeries, { warmup = 60, dailyLag = 1, weekLag = 5, m
   if (!beta || !xNext) return null;
   let p = 0; for (let a = 0; a < 4; a++) p += beta[a] * xNext[a];
   return Math.max(p, 1e-12);
+}
+
+// Next-session σ for HAR-RV log-form: mirrors harRvForecastNext's full-sample
+// walk-forward fit, but in log-space (same transform as harRvLogPred), then
+// re-applies the identical smearing correction — computed via the same
+// walk-forward _harFitCore the scored series uses — so the single "tomorrow"
+// number carries the same bias-correction as the history it's appended to,
+// not a separately-derived shortcut.
+function harRvLogForecastNext(rvSeries, { warmup = 60, dailyLag = 1, weekLag = 5, monthLag = 22 } = {}) {
+  const n = rvSeries.length;
+  if (n < monthLag + warmup) return null;
+  const S = _rvScale(rvSeries);
+  const FLOOR = (1 / S) * VAR_FLOOR_FRAC;
+  const logScaled = new Float64Array(n);
+  for (let i = 0; i < n; i++) logScaled[i] = Math.log(Math.max(rvSeries[i], FLOOR) * S);
+
+  const fitted = _harFitCore(logScaled, { warmup, dailyLag, weekLag, monthLag });
+  let sresid = 0, ns = 0;
+  for (let i = 0; i < n; i++) {
+    if (Number.isFinite(fitted[i])) { sresid += Math.exp(logScaled[i] - fitted[i]); ns++; }
+  }
+  const smear = ns ? sresid / ns : 1;
+
+  const feat = (i) => {
+    if (i - monthLag < 0) return null;
+    let wk = 0, mo = 0;
+    for (let k = 1; k <= weekLag; k++)  wk += logScaled[i - k];
+    for (let k = 1; k <= monthLag; k++) mo += logScaled[i - k];
+    return [1, logScaled[i - dailyLag], wk / weekLag, mo / monthLag];
+  };
+  const XtX = Array.from({ length: 4 }, () => new Float64Array(4));
+  const Xty = new Float64Array(4);
+  for (let t = monthLag; t < n; t++) {          // fit on every known target (index < n)
+    const x = feat(t); if (!x) continue;
+    const y = logScaled[t];
+    for (let a = 0; a < 4; a++) { Xty[a] += x[a] * y; for (let b = 0; b < 4; b++) XtX[a][b] += x[a] * x[b]; }
+  }
+  const beta = solve4(XtX, Xty);
+  const xNext = feat(n);                          // lags through the last bar → forecast bar n
+  if (!beta || !xNext) return null;
+  let p = 0; for (let a = 0; a < 4; a++) p += beta[a] * xNext[a];
+  return Math.max(Math.exp(p) * smear / S, FLOOR / S);
 }
 
 // Next-session σ for HAR-IV (fit on all known targets, forecast bar n using the
@@ -376,6 +491,10 @@ function latestSigmaForecast(bars, key, ctx) {
     }
     case 'harRV': {
       const v = harRvForecastNext(ctx.rv, ctx.harOpts);
+      return v == null ? NaN : Math.sqrt(Math.max(v, 1e-12));
+    }
+    case 'harRvLog': {
+      const v = harRvLogForecastNext(ctx.rv, ctx.harOpts);
       return v == null ? NaN : Math.sqrt(Math.max(v, 1e-12));
     }
     case 'harIV': {
@@ -498,4 +617,5 @@ export {
   realizedVarSeries, logReturns, harRvPred, harRvForecastNext, scoreSeries, runBench, ESTIMATORS, solve4,
   latestSigmaForecast, sigmaSeriesForExport, benchCtx,
   harIvPred, harIvForecastNext, ivVarSeries, IV_INDEX_BY_INSTRUMENT, scoreOnIndices, solveN,
+  harRvLogPred, harRvLogForecastNext, _harFitCore,
 };

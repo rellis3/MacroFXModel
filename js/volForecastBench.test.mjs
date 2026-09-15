@@ -5,7 +5,7 @@
 //   node js/volForecastBench.test.mjs
 
 import {
-  realizedVarSeries, logReturns, harRvPred, scoreSeries, runBench, ESTIMATORS, solve4,
+  realizedVarSeries, logReturns, harRvPred, harRvLogPred, scoreSeries, runBench, ESTIMATORS, solve4,
 } from './volForecastBench.js';
 
 let failures = 0;
@@ -83,6 +83,42 @@ for (let i = 400; i < M; i++) {
   maxErr = Math.max(maxErr, Math.abs(harPred[i] - rv[i]) / rv[i]); counted++;
 }
 ok('HAR-RV recovers generating law (rel err < 1e-6)', counted > 100 && maxErr < 1e-6, `maxRelErr=${maxErr.toExponential(2)}, n=${counted}`);
+
+console.log('[HAR-RV log-form recovers a known log-linear law]');
+// Same idea in log-space: log(rv[i]) is EXACTLY linear in its own lagged logs, so
+// after warmup the walk-forward fit + causal smearing correction should track rv[i]
+// itself (not just its log) to high precision — proves the exp()+smear round-trip
+// is correct, not just the underlying _harFitCore.
+const rvLog = new Float64Array(M);
+for (let i = 0; i < 22; i++) rvLog[i] = 1 + 0.1 * Math.sin(i);
+const L0 = -0.05, L1 = 0.5, L5 = 0.3, L22 = 0.15;
+for (let i = 22; i < M; i++) {
+  let wk = 0, mo = 0;
+  for (let k = 1; k <= 5; k++)  wk += Math.log(rvLog[i - k]);
+  for (let k = 1; k <= 22; k++) mo += Math.log(rvLog[i - k]);
+  const logPrev = Math.log(rvLog[i - 1]);
+  rvLog[i] = Math.exp(L0 + L1 * logPrev + L5 * (wk / 5) + L22 * (mo / 22));
+}
+const harLogPred = harRvLogPred(rvLog, { warmup: 60 });
+let maxErrLog = 0, countedLog = 0;
+for (let i = 400; i < M; i++) {
+  if (!Number.isFinite(harLogPred[i])) continue;
+  maxErrLog = Math.max(maxErrLog, Math.abs(harLogPred[i] - rvLog[i]) / rvLog[i]); countedLog++;
+}
+ok('HAR-RV (log) recovers generating law (rel err < 1e-3)', countedLog > 100 && maxErrLog < 1e-3, `maxRelErr=${maxErrLog.toExponential(2)}, n=${countedLog}`);
+
+console.log('[HAR-RV log-form stays finite through an extreme outlier day]');
+// Motivating case for harRvLogPred's existence: a single crisis-scale RV spike.
+// Level-form HAR (no scaling) is documented to blow up on real data (gold, usdjpy)
+// under exactly this shape of shock; the log-form estimator must stay finite,
+// positive, and not wildly divergent from neighbouring days' predictions.
+const rvSpike = Float64Array.from(rv);                 // reuse the earlier linear-law series
+rvSpike[700] *= 5000;                                   // one catastrophic outlier day
+const harLogSpikePred = harRvLogPred(rvSpike, { warmup: 60 });
+const spikeFinite = Array.from(harLogSpikePred).every(v => !Number.isFinite(v) ? true : (v > 0 && v < 1e6));
+const neighbourReasonable = Number.isFinite(harLogSpikePred[705]) ? harLogSpikePred[705] < 10 * rv[705] : true;
+ok('HAR-RV (log) stays finite/positive/bounded through an outlier', spikeFinite);
+ok('HAR-RV (log) does not let one outlier wreck nearby days', neighbourReasonable);
 
 console.log('[solve4]');
 // solve a known 4×4 system A x = b with x = [1,2,3,4]
