@@ -52,8 +52,8 @@ import { fileURLToPath } from 'url';
 // than a freshly-pushed local file (hit for real 2026-08-26: R2 had a
 // pre-`session`-field copy shadowing the local file that had it).
 const VOTE_TRADES_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'analysis', 'output', 'level-atlas-vote-trades');
-function loadLocalVoteTrades(pair) {
-  try { return JSON.parse(fs.readFileSync(path.join(VOTE_TRADES_DIR, `${pair}-votetrades.json`), 'utf8')); }
+function loadLocalVoteTrades(pair, dir = VOTE_TRADES_DIR) {
+  try { return JSON.parse(fs.readFileSync(path.join(dir, `${pair}-votetrades.json`), 'utf8')); }
   catch { return null; }
 }
 
@@ -89,6 +89,19 @@ export function pickFresher(r2Data, localData) {
 
 export const PREFIX = 'level-atlas';
 export const DEFAULT_REARM = 0.3;
+// Vote Atlas v2 (HAR-RV log calibration, forecastLadderParamsV2.js) reads
+// vote-trades from a SEPARATE prefix/directory — never `PREFIX`/`VOTE_TRADES_
+// DIR` above. Those v1 paths are a live-adjacent artifact (the nightly
+// auto-rebuild writes there); a v2 comparison run must not be able to
+// silently shadow or overwrite it. Populated by
+// scripts/build_level_atlas_vote_trades_v2.mjs, same schema as v1's files
+// plus a `ladder: 'v2-har-rv-log'` tag. `/vote-trades/:instrument` and
+// `/vote-portfolio` select between the two via `?ladder=v2`.
+export const PREFIX_V2 = 'level-atlas-v2';
+const VOTE_TRADES_DIR_V2 = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'analysis', 'output', 'level-atlas-vote-trades-v2');
+function ladderSource(req) {
+  return req.query.ladder === 'v2' ? { prefix: PREFIX_V2, dir: VOTE_TRADES_DIR_V2 } : { prefix: PREFIX, dir: VOTE_TRADES_DIR };
+}
 // 2026-09-11 — see runOne's own comment for why this exists. 10 years:
 // roughly what every pair's M1 already spanned before an accidental full
 // backfill (see the same commit) dragged some pairs back to 1970 — long
@@ -607,6 +620,7 @@ export function mountLevelAtlasRoutes(app, express) {
   app.get('/api/level-atlas/vote-trades/:instrument', async (req, res) => {
     try {
       const pair = String(req.params.instrument).toLowerCase();
+      const { prefix, dir } = ladderSource(req);
       // Whichever of R2 / the local bootstrap snapshot has the NEWER
       // `generatedAt` wins — not "R2 always wins". A blind R2-always-wins
       // rule (this route's own first version) has exactly the staleness
@@ -617,7 +631,7 @@ export function mountLevelAtlasRoutes(app, express) {
       // data, and would otherwise permanently shadow the newly-pushed local
       // file until the next nightly run. Comparing timestamps instead of
       // assuming "R2 = newest" fixes this in both directions.
-      const stored = pickFresher(await getJSON(`${PREFIX}/${pair}-votetrades.json`), loadLocalVoteTrades(pair));
+      const stored = pickFresher(await getJSON(`${prefix}/${pair}-votetrades.json`), loadLocalVoteTrades(pair, dir));
       if (!stored) return res.status(404).json({ ok: false, error: `no vote-backtest data for ${req.params.instrument} yet` });
       // A stale-schema file is not just old, it is SILENTLY BIASED — see
       // VOTE_TRADES_SCHEMA's own doc (js/levelAtlasVoteReview.js).
@@ -669,6 +683,7 @@ export function mountLevelAtlasRoutes(app, express) {
   // above the portfolio's own realized vol LEVERS UP instead of down.
   app.get('/api/level-atlas/vote-portfolio', async (req, res) => {
     try {
+      const { prefix: votePrefix, dir: voteDir } = ladderSource(req);
       const pairs = (req.query.pairs ? String(req.query.pairs).split(',') : ['eurusd', 'gbpusd', 'gold', 'usdjpy', 'audusd'])
         .map(p => p.trim().toLowerCase()).filter(Boolean);
       const minMargin = req.query.minMargin ? Number(req.query.minMargin) : 3;
@@ -765,7 +780,7 @@ export function mountLevelAtlasRoutes(app, express) {
       const earlyExitInfo = {};
       const storedByPair = {};
       for (const pair of pairs) {
-        const stored = pickFresher(await getJSON(`${PREFIX}/${pair}-votetrades.json`), loadLocalVoteTrades(pair));
+        const stored = pickFresher(await getJSON(`${votePrefix}/${pair}-votetrades.json`), loadLocalVoteTrades(pair, voteDir));
         if (!stored) { missing.push(pair.toUpperCase()); continue; }
         // A schema-1 file silently EXCLUDES every unresolved touch — see
         // VOTE_TRADES_SCHEMA's own doc. Skipped rather than served, same

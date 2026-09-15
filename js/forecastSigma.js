@@ -17,7 +17,7 @@
  * tests were written to catch.
  */
 
-import { realizedVarSeries, _harFitCore, VAR_FLOOR_FRAC } from './volForecastBench.js';
+import { realizedVarSeries, _harFitCore, VAR_FLOOR_FRAC, harRvLogForecastNext } from './volForecastBench.js';
 
 const SQRT252 = Math.sqrt(252);
 
@@ -220,8 +220,38 @@ export const SIGMA_ESTIMATORS = {
  * produced a finite value.
  */
 export function forecastSigma(bars, estimator = 'yz_30') {
+  if (!Array.isArray(bars) || bars.length < 2) return null;
+  // har_rv_log is a genuinely different kind of estimator from every other
+  // entry in SIGMA_ESTIMATORS, and the generic path below silently breaks for
+  // it. YZ/EWMA/naive measure bar i's OWN volatility using bar i's own OHLC —
+  // a CONTEMPORANEOUS reading — and this function's generic convention
+  // ("read the estimator's value at the LAST bar of whatever `bars` was
+  // truncated to, treat it as the forecast for the bar after") is really a
+  // naive persistence assumption: yesterday's contemporaneous measurement IS
+  // today's forecast. That's index-shift-symmetric, so it works whether you
+  // truncate-then-read-last (this function) or compute-once-then-shift
+  // (forge/vol.py's build_forecast_frame/as_of_yesterday, harRvLogSigma's own
+  // contract for THAT pipeline).
+  // HAR-RV is not contemporaneous — it IS already a forecast, built from lags
+  // strictly before the day it's for. harRvLogSigma's array form is shaped to
+  // survive forge/vol.py's compute-once-then-shift pipeline (LEGO_MODULES.md
+  // §1bb) — its last element is deliberately, unconditionally NaN so that
+  // shift lands correctly. Reading that same last element directly here
+  // (this function's generic path) returns NaN for every call, no matter how
+  // much history precedes it: `atlasWalk` fed `har_rv_log` through this path
+  // produced ZERO touches on every pair, caught before it shipped by the
+  // v2 backtest script's own "insufficient OOS touches" guard rather than a
+  // silent bad result. The correct "forecast for the bar after `bars`" is
+  // exactly what harRvLogForecastNext already computes (volForecastBench.js
+  // — fits on everything in `bars`, forecasts the ONE next bar), so that's
+  // used directly instead of going through the generic fn(bars)[last] path.
+  if (estimator === 'har_rv_log') {
+    const rv = realizedVarSeries(bars, 'gk');
+    const nextVar = harRvLogForecastNext(rv);
+    return Number.isFinite(nextVar) && nextVar > 0 ? Math.sqrt(nextVar) : null;
+  }
   const fn = SIGMA_ESTIMATORS[estimator];
-  if (!fn || !Array.isArray(bars) || bars.length < 2) return null;
+  if (!fn) return null;
   const series = fn(bars);
   const last = series[series.length - 1];       // as-of-close of the LAST bar =
   if (!Number.isFinite(last)) return null;      // what is knowable for the next one

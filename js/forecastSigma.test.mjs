@@ -7,7 +7,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-import { SIGMA_ESTIMATORS, asOfYesterday, harRvLogSigma } from './forecastSigma.js';
+import { SIGMA_ESTIMATORS, asOfYesterday, harRvLogSigma, forecastSigma } from './forecastSigma.js';
 import { realizedVarSeries, harRvLogPred } from './volForecastBench.js';
 
 test('every JS estimator reproduces the Python (forge/vol.py) it was fit with', () => {
@@ -76,6 +76,50 @@ test('harRvLogSigma returns NaN for the last bar (no day n+1 to forecast)', () =
   const out = harRvLogSigma(bars);
   assert.equal(out.length, bars.length);
   assert.ok(!Number.isFinite(out[out.length - 1]), 'last element should be NaN — no future bar to forecast');
+});
+
+// Regression: forecastSigma(bars, 'har_rv_log') is the actual call atlasWalk/the
+// live forecaster make, ONE TRUNCATED SLICE AT A TIME (`forecastSigma(d1.slice(0,
+// i), est)` — never the whole series at once). The generic path (`fn(bars)`, then
+// read the LAST array element) works for every other estimator because a
+// contemporaneous-then-persisted forecast is index-shift-symmetric — but
+// harRvLogSigma's array form is deliberately shaped for forge/vol.py's
+// compute-once-then-shift pipeline, where its LAST element is UNCONDITIONALLY
+// NaN by design (see the test above). Fed through the generic path on a
+// truncated slice, that NaN-last-element never goes away no matter how much
+// history precedes it — this exact bug produced ZERO touches for every
+// instrument the first time Vote Atlas v2's build script ran (caught by its own
+// "insufficient OOS touches" guard, not silently). forecastSigma() now special-
+// cases har_rv_log via harRvLogForecastNext instead; this test is the guard
+// against that regression coming back unnoticed.
+test('forecastSigma(bars, "har_rv_log") returns a real number on a TRUNCATED slice — the actual atlasWalk/live calling pattern', () => {
+  const N = 400;
+  const bars = [];
+  let px = 1.1;
+  for (let i = 0; i < N; i++) {
+    const sig = 0.004 + 0.003 * Math.sin(i / 60);
+    const ret = sig * Math.sin(i / 3.3);
+    const o = px, c = o * (1 + ret);
+    const hi = Math.max(o, c) * (1 + Math.abs(sig) * 0.8);
+    const lo = Math.min(o, c) * (1 - Math.abs(sig) * 0.8);
+    bars.push({ open: o, high: hi, low: lo, close: c });
+    px = c;
+  }
+  let checked = 0;
+  for (let i = 90; i <= N; i += 15) {
+    const slice = bars.slice(0, i);
+    const s = forecastSigma(slice, 'har_rv_log');
+    assert.ok(Number.isFinite(s) && s > 0, `forecastSigma at truncation ${i}: expected a positive daily sigma, got ${s}`);
+    checked++;
+  }
+  assert.ok(checked > 10, `only ${checked} truncation points checked — test isn't exercising enough of the series`);
+});
+
+test('forecastSigma(bars, "har_rv_log") returns null on too little history, never throws', () => {
+  const bars = Array.from({ length: 30 }, (_, i) => ({
+    open: 100 + i * 0.01, high: 100.5 + i * 0.01, low: 99.5 + i * 0.01, close: 100.1 + i * 0.01,
+  }));
+  assert.equal(forecastSigma(bars, 'har_rv_log'), null);
 });
 
 console.log('forecastSigma.test.mjs: run via `node --test js/forecastSigma.test.mjs`');

@@ -1,0 +1,1679 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Level Atlas Vote Portfolio — v2 (HAR-RV log)</title>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root { --bg:#0b0e14; --panel:#11151f; --panel2:#0e121b; --line:#1e2436; --text:#cbd5e1; --text2:#94a3b8; --text3:#5a6380; --muted:#64748b; --accent:#5b9dff; --green:#34d399; --red:#f87171; --amber:#fbbf24; --blue:#60a5fa; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.5 'DM Sans',system-ui,sans-serif; }
+  header { padding:14px 20px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+  h1 { margin:0; font-size:16px; font-weight:600; white-space:nowrap; }
+  h2 { margin:0 0 10px; font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--text2); }
+  .sub { color:var(--muted); font-size:12px; }
+  select, input[type=checkbox], button, input[type=number] { background:#1e293b; color:var(--text); border:1px solid var(--line); border-radius:6px; padding:6px 10px; font-size:12px; }
+  button { cursor:pointer; }
+  button:hover { border-color:var(--accent); }
+  .export-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:8px; }
+  .export-note { font-size:11px; color:var(--text3); margin-bottom:4px; }
+  .controls { display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
+  .controls label { font-size:11px; color:var(--muted); display:flex; align-items:center; gap:6px; }
+  .pair-check { display:flex; align-items:center; gap:4px; font-family:'DM Mono',monospace; font-size:12px; }
+  main { padding:16px 20px 60px; max-width:1300px; margin:0 auto; display:flex; flex-direction:column; gap:16px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:14px 16px; }
+  .kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; }
+  .kpi { background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:10px 12px; }
+  .kpi .label { font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:.04em; }
+  .kpi .value { font-size:22px; font-weight:700; margin-top:2px; }
+  .kpi .sub { font-size:10px; color:var(--text3); margin-top:2px; }
+  .green { color:var(--green); } .red { color:var(--red); } .amber { color:var(--amber); } .blue { color:var(--blue); }
+  canvas { max-height:320px; }
+  table { width:100%; border-collapse:collapse; font-family:'DM Mono',monospace; font-size:12px; }
+  thead th { text-align:left; color:var(--text3); font-weight:500; padding:6px 10px; border-bottom:1px solid var(--line); }
+  thead th.num, td.num { text-align:right; }
+  tbody td { padding:6px 10px; border-bottom:1px solid #182030; }
+  .muted { color:var(--muted); font-size:11px; }
+  .callout { background:linear-gradient(135deg,#132030,#0e121b); border:1px solid #1e3a52; border-radius:8px; padding:14px 16px; }
+  .callout .big { font-size:28px; font-weight:700; }
+  .barwrap { display:flex; height:10px; border-radius:5px; overflow:hidden; margin-top:4px; }
+  .bar { height:100%; }
+  #chart { height:420px; background:var(--panel2); border:1px solid var(--line); border-radius:8px; }
+  .legend { display:flex; gap:14px; font-size:11px; color:var(--muted); padding:6px 2px 0; flex-wrap:wrap; }
+  .dot { width:9px; height:9px; border-radius:50%; display:inline-block; }
+  #tradeTableWrap { max-height:480px; overflow:auto; border:1px solid var(--line); border-radius:8px; }
+  tbody tr.selected { background:#1f2b45; }
+  tbody tr[data-i] { cursor:pointer; }
+  tbody tr[data-i]:hover { background:#161d2e; }
+</style>
+</head>
+<body>
+<div style="background:#132030;border-bottom:1px solid #1e3a52;padding:10px 20px;font-size:12px;color:#94a3b8;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+  <span style="background:#5b9dff;color:#0b0e14;font-weight:700;font-size:11px;padding:2px 8px;border-radius:4px;">v2</span>
+  <span>Ladder rebuilt against <strong style="color:#cbd5e1">HAR-RV (log)</strong> instead of Yang-Zhang — independently calibrated (own fitted widths, own estimator), not a swapped-in sigma against v1's widths. Comparison run, not a replacement — v1 keeps running unchanged.</span>
+  <a href="level-atlas-vote-portfolio.html" style="color:#60a5fa;margin-left:auto;white-space:nowrap;">&larr; v1 (Yang-Zhang)</a>
+</div>
+<header>
+  <h1>Level Atlas Vote Portfolio — v2 (HAR-RV log)</h1>
+  <div class="controls">
+    <button id="selectAllBtn" type="button" title="Selects all 27 tracked pairs, including the 10 correlated-risk ones excluded by 'Select recommended' below — combining highly-correlated pairs overstates diversification benefit.">Select all</button>
+    <button id="selectRecommendedBtn" type="button" title="OOS-validated: this exclusion set was chosen on the first 70% of history and still improved the untouched last 30% (max DD -42.7%→-25.1%, Sharpe 2.36→3.65) — not just an in-sample pick.">Select recommended (excl. 10 correlated-risk pairs)</button>
+    <button id="loadBestConfigBtn" type="button" style="border-color:#38bdf8;color:#38bdf8" title="CORRECTED 2026-09-12 — the prior version of this button (max concurrent 1 + 1% portfolio heat cap) was never re-checked against the current 17-pair, corrected-data population and turned out to be badly miscalibrated: isolated live testing found the 1% heat cap alone skips 66.5% of ALL trades and collapses Sharpe from 3.62 to ~1.2 (max concurrent 1 alone also drops it to ~1.25) — far worse than this button's own old documentation predicted (it expected ~2.0-2.7, not 0.5). Corrected settings, each verified in isolation against live production data: recommended pairs, margin≥3, max concurrent 3 (NOT 1), fixed 0.5% risk/trade, portfolio heat cap OFF (NOT on — too tight for a 17-pair book at current trade density), currency loss gate ON at 1% (confirmed near-FREE in isolation: Sharpe 3.62→3.62, real tail-risk insurance for no measured cost), drawdown throttle ON at trigger -8% / restore -2% / ×0.25 (~40% shallower DD both IS and OOS, at a real Sharpe/CAGR cost — genuine insurance, not free), early exit (no re-leverage) ON (the one stop lever with a provably clean mechanism). Turns OFF: Fixed SL fraction and Include p90 (real but not drawdown-favoring), and Fade-stop tightening (re-tested 2026-09-12 on the corrected data: only 41% of pairs improved, average OOS Sharpe lift negative).">⚡ Load best config (least drawdown)</button>
+  </div>
+  <div class="controls" id="pairChecks"></div>
+  <div class="controls">
+    <label title="Only trades where the vote-margin (supporting minus challenging dimensions) meets this bar are taken. Higher = fewer, higher-conviction trades — this is the primary edge filter everything else builds on top of.">Min margin <select id="marginSel">
+      <option value="1">≥1</option><option value="2">≥2</option><option value="3" selected>≥3</option><option value="4">≥4</option>
+    </select></label>
+    <label title="How many overlapping open positions ONE pair can hold at once. 1 (strictest) means a new touch on a pair is skipped entirely while an earlier trade on that same pair is still open — higher values let them stack, which increases trade count but also concentration risk per pair. CORRECTED 2026-09-12: defaults to 3, not 1 — isolated live testing found max concurrent=1 alone (everything else off) already drops Sharpe from 3.62 to ~1.25 on the current 17-pair book by blocking legitimately-diversified overlapping trades across pairs.">Max concurrent <select id="capSel">
+      <option value="1">1 (strictest)</option><option value="2">2</option><option value="3" selected>3</option><option value="99">unlimited</option>
+    </select></label>
+    <label title="When on, up-side and down-side trades on the same pair get SEPARATE concurrency budgets instead of sharing one — lets a pair hold one long AND one short at once rather than the second one blocking the first.">Per-direction budget <input type="checkbox" id="perDirChk"></label>
+    <label title="Fixed % risk/trade: every trade risks the SAME % of account off its OWN real stop distance — no capital-split guess needed, forward-implementable as-is (what the live bot actually does). NAV split (legacy): pre-allocates a fixed capital fraction per pair up front and lets each pair's raw price return scale within that slice — kept for comparison only.">Sizing <select id="sizingSel">
+      <option value="fixed-risk" selected>Fixed % risk / trade</option><option value="nav">NAV split (legacy)</option>
+    </select></label>
+    <label id="weightSelWrap" title="NAV-split mode only. Equal: every pair gets the same capital slice (1/n). Risk parity: pairs with lower realized volatility get a bigger slice, higher-vol pairs a smaller one — aims to equalize each pair's risk CONTRIBUTION rather than its capital share.">Weighting <select id="weightSel">
+      <option value="equal" selected>Equal (1/n each)</option><option value="inverse-vol">Risk parity (inverse-vol)</option>
+    </select></label>
+    <label id="riskPctWrap" title="Fixed-risk mode only: the % of account risked on EVERY trade, sized off that trade's own stop distance. Higher = bigger positions, proportionally bigger Sharpe/CAGR/drawdown all at once — this is leverage, not free edge.">Risk % / trade <input type="number" id="riskPctInput" value="1" step="0.1" min="0.1" style="width:60px"></label>
+  </div>
+  <div class="controls">
+    <label id="heatCapWrap" title="Caps TOTAL simultaneous exposure across ALL pairs combined, on top of each pair's own cap above. CORRECTED 2026-09-12 — defaults OFF: isolated live testing on the current 17-pair, corrected-data book found a 1% cap skips 66.5% of ALL trades and collapses Sharpe from 3.62 to ~1.2, far worse than this label used to claim (~2.0-2.7). Too tight for a 17-pair book at current trade density, not realistic insurance. Uncheck/check to compare directly — the 'Without cap' column below always shows both side by side.">Portfolio heat cap <input type="checkbox" id="heatCapChk">
+      <input type="number" id="maxHeatPctInput" value="1" step="0.5" min="0.5" style="width:55px"></label>
+    <label title="Rescales the whole return series to this annualized volatility for the 'Vol Target' row in the stats card — a display/comparison lens, not a change to which trades are taken.">Target annual vol % <input type="number" id="targetVolInput" value="10" step="1" min="1" style="width:55px"></label>
+  </div>
+  <div class="controls">
+    <label title="De-risks (scales position size down) once the STRATEGY'S OWN realized equity drawdown breaches Trigger DD%, restores full size once it recovers to Restore DD%. Targets a sustained losing STRETCH over time — a different risk than the Portfolio heat cap above, which only caps a pile-up of SIMULTANEOUS positions.">Drawdown throttle <input type="checkbox" id="throttleChk"></label>
+    <label title="Cliff = single on/off step at Trigger DD% (what's live today). Graded ramp = a 3-tier design validated 2026-09-14 (-4%/-6%/-8% drawdown -> 0.65x/0.40x/0.25x size, same -8% floor and -2% restore) that gives back size progressively instead of one 75%-in-one-day cut, and held up IS/OOS + against the account's own worst historical drawdown episode BETTER than the cliff. Swap between them here to compare before this ever touches the live bot/config.">Throttle style
+      <select id="throttleModeSel" disabled>
+        <option value="cliff" selected>Cliff (current)</option>
+        <option value="graded">Graded ramp (research 2026-09-14)</option>
+      </select>
+    </label>
+    <label title="The drawdown level (negative %) that switches the throttle ON, de-risking future trades until recovery. Cliff mode only — graded mode uses its own fixed, validated tier boundaries (-4%/-6%/-8%) regardless of this value.">Trigger DD % <input type="number" id="triggerDDInput" value="-8" step="1" max="-1" style="width:55px" disabled></label>
+    <label title="The drawdown level (negative %, closer to zero than Trigger DD) that switches the throttle back OFF, restoring full position size. Shared by both throttle styles.">Restore DD % <input type="number" id="restoreDDInput" value="-2" step="1" max="0" style="width:55px" disabled></label>
+    <label title="Position-size multiplier applied while throttled — e.g. 0.5 means half-size trades until the equity recovers to Restore DD%. Cliff mode only — graded mode uses its own fixed, validated tier multipliers (0.65x/0.40x/0.25x) regardless of this value.">Throttle × <input type="number" id="throttleMultInput" value="0.5" step="0.1" min="0.1" max="0.9" style="width:55px" disabled></label>
+    <label title="Retunes each pair's FADE stop to a percentile of that pair's own winning fade trades' real adverse excursion (never widens). OOS-validated, but found this session to interact with position sizing in ways not fully isolated from the leverage effect 'Fixed SL fraction' has — read that one's caveat too before trusting this in combination.">Fade-stop tightening <input type="checkbox" id="fadeStopChk"></label>
+    <label title="Tightens every fade trade's DECLARED stop to this fraction of its current distance. IMPORTANT: found this session to be MOSTLY an implicit-leverage artifact — a smaller declared stop makes fixed-risk sizing size UP every trade (winners included), so avg win roughly doubled while avg loss barely moved. Real drawdown improvement from this alone is modest (~13% shallower), far less than the Sharpe number suggests. 'Early exit (no re-leverage)' below is the corrected version — prefer that one.">Fixed SL fraction <input type="checkbox" id="slFractionChk">
+      <input type="number" id="slFractionInput" value="0.5" step="0.05" min="0.1" max="0.95" style="width:55px" disabled></label>
+    <label title="Adds the outermost ladder rung (p90), excluded everywhere else because it has no real stop in the 3-rung ladder and its vote-margin never clears the confidence bar (checked directly: 0 votes across hundreds of touches). Traded UNCONDITIONALLY instead, priced against each pair's own empirical 90th-percentile continuation distance. Modest, believable improvement on the full book (Sharpe 3.63→3.99) — not dramatic.">Include p90 rung <input type="checkbox" id="includeP90Chk"></label>
+    <label title="The corrected version of 'Fixed SL fraction': position sizing stays anchored to each trade's ORIGINAL, unchanged stop (a winner's result is mathematically IDENTICAL on or off), and only the exit trigger changes — cuts a fade trade short if the real price path crosses 40% of its original stop distance before it would normally resolve. Avg win genuinely unaffected, avg loss and drawdown genuinely reduced. CAUTION: even so, this lever's own Sharpe still looks implausibly high (95% CI entirely above any believable range for a real strategy) — trust the shape of the improvement, not the Sharpe number.">Early exit (no re-leverage) <input type="checkbox" id="earlyExitChk"></label>
+    <label title="Not a trading rule — a DIAGNOSTIC. Reconstructs each day's running equity path (trades in entry order) and flags days where the account would have breached this % drawdown intraday at some point, even if the day closed fine. A day with 6 losses then 2 big wins can net positive while still blowing a hard prop-firm intraday limit before the wins arrive — this catches that, nothing else on this page does.">Prop daily DD limit <input type="checkbox" id="propDDLimitChk">
+      <input type="number" id="propDDLimitInput" value="2" step="0.5" min="0.1" style="width:55px" disabled>%</label>
+    <label title="Blocks a new trade if the currency it's exposed to (e.g. taking a 3rd JPY-leg trade after JPY has already lost this much today) has already realized this much loss today across the whole book. Built after finding no single PAIR ever drives more than ~30% of a bad day's loss, but a single CURRENCY (usually JPY or USD) often drives 40-80% of it — this catches concentration risk the per-pair/heat caps above can't see.">Currency daily loss gate <input type="checkbox" id="ccyGateChk"></label>
+    <label title="The per-currency daily realized-loss threshold (% of account) that trips the gate above.">Max daily loss / currency % <input type="number" id="maxDailyLossPctInput" value="1" step="0.5" min="0.5" style="width:55px" disabled></label>
+  </div>
+  <div class="sub" id="headerSub">loading…</div>
+</header>
+
+<main>
+
+<div class="card muted">
+  Combines each selected pair's own vote-margin trades (barrier-priced, concurrency-capped per pair) into ONE portfolio —
+  reusing <code>js/backtestStats.js</code>'s <code>portfolioStats</code> on the combined daily return series, no new metrics.
+  <strong>Fixed % risk / trade</strong> (default) risks the SAME % of account on every trade off its own real stop distance —
+  no capital-split guess, no need to know trade count/frequency in advance, forward-implementable as-is.
+  <strong>NAV split (legacy)</strong> instead pre-allocates a fixed capital fraction per pair (equal or inverse-vol) and lets
+  each pair's own raw price-return scale within that slice — kept for comparison, but requires deciding weights up front.
+  See <code>MD files/LEGO_MODULES.md</code> for the full methodology and per-pair validation.
+  <strong>Portfolio heat cap now defaults OFF</strong> (corrected 2026-09-12) — the prior default (ON at 1%, set 2026-08-29)
+  was never re-checked against the current 17-pair, corrected-data population and turned out to be badly miscalibrated:
+  isolated live testing found a 1% cap alone skips 66.5% of ALL trades and collapses Sharpe from 3.62 to ~1.2, far worse
+  than this note used to claim (it predicted ~2.0-2.7). With 17 pairs each risking 0.5%, a 1% total-portfolio ceiling
+  allows at most ~2 positions open across the WHOLE book at once — too tight for this pair count and trade density, not
+  realistic insurance. Check it to see the capped number for direct comparison — the "Without cap" column below always
+  shows both side by side.
+</div>
+
+<div class="card" style="border-color:#7c2d2d;background:linear-gradient(135deg,#2a1414,#0e121b)">
+  <h2 style="color:#f87171">⚠ Correlated risk — read before selecting many pairs at once</h2>
+  <div class="muted">
+  Every pair here individually shows real edge, but neither FX crosses NOR equity indices are independent bets — many
+  FX pairs share a currency leg (EURUSD/EURJPY/EURGBP all carry EUR exposure, GBPUSD/GBPJPY/GBPAUD all carry GBP, etc.),
+  and NQ/SPX/DOW/US2000/DE30/UK100 are all "risk assets" that tend to move together (often WORSE than FX crosses) on a
+  global risk-off day — so a single macro-shock day can move MANY selected pairs the same direction at once, across
+  BOTH groups. The 5 weakest, highest-cost FX pairs (EURNZD/GBPNZD/AUDNZD/AUDCHF/GBPCAD) have been REMOVED from this
+  page entirely — real edge, but not worth their own spread (see the ⚠ warning on their own page,
+  <a href="level-atlas-vote-backtest.html" style="color:#f87171">the single-pair tearsheet</a>). That curation alone is
+  NOT the fix for the risk below — tested with all 26 FX+gold pairs selected (before removal) at 1% fixed risk/trade:
+  one real day (2024-09-06) saw 72 trades resolve simultaneously, realizing a single-day -27% loss, and the full
+  combination's max drawdown over the period was <strong>-97.8%</strong> — an effective wipeout. Excluding the 5 weak
+  pairs improved Sharpe substantially but STILL left a -70.65% max drawdown from the SAME correlated-stacking effect
+  among the remaining 21 — adding 6 correlated indices on top does not remove that risk, it very plausibly adds to it.
+  The portfolio heat cap above does NOT fix this at this scale (tested 2-10% thresholds — stayed catastrophic) because
+  its "keep whichever trade arrived first" rule becomes close to arbitrary once many pairs compete for a small shared
+  budget, rather than protecting the best trades. A genuinely EXPOSURE-aware risk model (capping net risk per
+  underlying currency AND per correlated asset cluster, not just per trade count) is the real fix and isn't built yet.
+  Until then: keep total selected pairs modest, size risk down substantially before selecting many pairs together, and
+  don't trust the raw numbers from a large multi-pair selection at 1% risk/trade. Separately, SPX/DOW's own headline
+  Sharpe (5.6-5.7) is real but rests on notably LESS validated history than everything else on this page (OOS only
+  from mid-2024, roughly half the track record of the other 25 pairs) — treat those two as promising, not proven.
+  <br><br>
+  <strong>"Select recommended" above</strong> unchecks the 10 pairs a leave-one-out analysis found to be the biggest
+  correlated-drawdown contributors (GBPAUD, GBPCHF, USDCAD, AUDCAD, NZDJPY, EURGBP, GBPJPY, NZDUSD, EURJPY, EURCAD —
+  mostly non-USD crosses whose currency exposure overlaps heavily with other selected pairs). This is NOT a claim that
+  those 10 pairs are individually bad — GBPAUD, for instance, has decent standalone Sharpe — only that combining them
+  with the others compounds correlated risk more than it diversifies. Removing a SINGLE one barely helps (the single
+  best candidate only moved max DD from -64.7% to -61.0%) — the exclusion set only works as a GROUP, found by greedily
+  removing the worst contributor and re-checking 10 times. Because that selection process itself risks overfitting to
+  this exact sample (the same trap that broke the drawdown throttle earlier), it was OOS-tested the same way: chosen
+  on the first 70% of history only, then checked against the untouched last 30% — max DD there improved from -42.7%
+  to -25.1% and Sharpe from 2.36 to 3.65, so the pattern holds on data it wasn't picked from. Still an improvement,
+  not a fix — -25% max DD is far better than -65-98%, but nowhere near what the individual 5-pair or 21-pair
+  portfolios showed earlier; the real fix is still the not-yet-built exposure-aware risk model above.
+  </div>
+</div>
+
+<div class="card callout">
+  <h2>Diversification benefit</h2>
+  <div style="display:flex; gap:40px; align-items:baseline; flex-wrap:wrap">
+    <div><div class="muted">Simple average of each pair's OWN Sharpe, same daily-return formula as the combined figure (no diversification credit)</div><div class="big" id="naiveSharpe">—</div></div>
+    <div style="font-size:22px;color:var(--text3)">→</div>
+    <div><div class="muted">Combined portfolio Sharpe</div><div class="big green" id="combinedSharpe">—</div></div>
+  </div>
+</div>
+
+<div class="card callout" id="heatCapCard" style="display:none">
+  <h2>Portfolio heat cap impact — same trades, with vs without the cross-pair budget</h2>
+  <div class="muted" style="margin-bottom:8px">Each pair already caps ITS OWN concurrent positions; this catches what that leaves open — several different pairs firing at once, each independently risking the same %, silently stacking simultaneous exposure. Real before/after, not an assumption.</div>
+  <div id="heatCapCompare" style="overflow-x:auto"></div>
+</div>
+
+<div class="card callout" id="throttleCard" style="display:none">
+  <h2>Drawdown throttle impact — same trades, with vs without de-risking in a drawdown</h2>
+  <div class="muted" style="margin-bottom:8px">Cuts risk-per-trade to a fraction once the portfolio's OWN equity curve breaches a drawdown threshold, restores once it recovers — targets a sustained losing STRETCH over time, which the heat cap above was shown NOT to fix.</div>
+  <div id="throttleCompare" style="overflow-x:auto"></div>
+</div>
+
+<div class="card callout" id="fadeStopCard" style="display:none">
+  <h2>Fade-stop tightening impact — same trades, with vs without a tighter fade stop</h2>
+  <div class="muted" style="margin-bottom:8px">Re-prices FADE decisions only (follow is left untouched — the same analysis found its current stop is already close to right) using each pair's OWN fade-winners' real MAE, never widening. OOS-validated first (93% of pairs improved OOS Sharpe using a stop chosen only from earlier data) before being wired in here — see <code>scripts/oos_validate_fade_stop.mjs</code>.</div>
+  <div id="fadeStopCompare" style="overflow-x:auto"></div>
+</div>
+
+<div class="card callout" id="slFractionCard" style="display:none">
+  <h2>Fixed SL fraction impact — same trades, with vs without a uniform tighter stop</h2>
+  <div class="muted" style="margin-bottom:8px">Re-prices FADE decisions only, tightening each trade's OWN existing bracket stop to a fixed fraction of its current distance (composes with fade-stop tightening above if both are on — applied second, on top). OOS-validated first (a real adverse-excursion-timing signal — a fade trade already 75% of the way to its stop goes on to lose ~2x more often than one that isn't, at every time horizon checked) before being wired in here — see <code>analysis/mae_timing_study.mjs</code> and <code>analysis/sl_tightening_backtest.mjs</code>.</div>
+  <div id="slFractionCompare" style="overflow-x:auto"></div>
+</div>
+
+<div class="card callout" id="p90Card" style="display:none">
+  <h2>p90 rung impact — same portfolio, with vs without the outermost ladder rung</h2>
+  <div class="muted" style="margin-bottom:8px">p90 is excluded everywhere else (excludeRungs: ['p90']) because a fade there has no real stop in the 3-rung ladder — and its sample is too thin for the normal vote-margin mechanic to ever fire (checked directly: 0 votes across hundreds of OOS touches). This trades it UNCONDITIONALLY instead, priced against each pair's own empirical 90th-percentile continuation distance (the real distance price travels once it clears p90, fit on in-sample data only). Real per-pair spread cost killed the tighter percentiles tested (p75's OOS Sharpe went negative) — only the 90th held up on portfolio Sharpe, per-trade Sharpe, and a cross-pair heat-cap sensitivity check, so that's the only percentile offered here, not a tunable grid. See <code>analysis/p90_empirical_outer_backtest.mjs</code> and <code>scripts/build_p90_votetrades.mjs</code>.</div>
+  <div id="p90Compare" style="overflow-x:auto"></div>
+</div>
+
+<div class="card callout" id="earlyExitCard" style="display:none">
+  <h2>Early exit (no re-leverage) — same fade trades, with vs without cutting likely losers short</h2>
+  <div class="muted" style="margin-bottom:8px">
+    Built after finding the "Fixed SL fraction" lever above was mostly an implicit-leverage artifact — tightening the DECLARED stop let fixed-fractional sizing size UP every trade (winners included), so avg win more than doubled while avg loss barely moved. This is the corrected version: position sizing stays anchored to each trade's ORIGINAL, unchanged stop (a winner's risk-adjusted result is mathematically identical on or off), and only the exit trigger changes — if the real M1 path shows a fade trade crossing 40% of its original stop distance before it would normally resolve, it exits there instead, a genuinely smaller realized loss. Unlike the p90/SL-fraction grids, this one has a real peak (same threshold, both in-sample and out-of-sample) instead of running to the edge of the tested range.
+    <strong style="color:#f87171">That said: even correctly computed, this lever's own Sharpe 95% CI sits entirely above any believable range for a real strategy (~[5.8, 9.5] at a realistic 1% heat cap). Trust the shape of the result below — avg win unchanged, avg loss and drawdown genuinely reduced — not the Sharpe number itself.</strong>
+  </div>
+  <div id="earlyExitCompare" style="overflow-x:auto"></div>
+</div>
+
+<div class="card callout" id="intradayMAECard" style="display:none">
+  <h2>Intraday MAE — worst point reached WITHIN a day, not just the net result</h2>
+  <div class="muted" style="margin-bottom:8px">Every other number on this page is an end-of-day net result. That hides a real risk for a prop account with an intraday drawdown rule: 6 losses followed by 2 big wins can net a fine-looking day while still breaching a hard intraday limit before those wins arrive. This reconstructs each day's running equity path (trades ordered by entry time) and reports the worst point reached mid-day, across the whole backtest.</div>
+  <div id="intradayMAECompare" style="overflow-x:auto"></div>
+</div>
+
+<div class="card callout" id="ccyGateCard" style="display:none">
+  <h2>Currency daily loss gate impact — same trades, with vs without the circuit breaker</h2>
+  <div class="muted" style="margin-bottom:8px">Blocks new trades in a currency (e.g. JPY, USD) for the rest of the day once that currency's REALIZED loss that day already breaches the threshold — built after inspecting the worst portfolio days showed no single pair drives more than ~30% of a bad day's loss, but a single currency often drives 40-80% of it. OOS-validated first (IS-chosen 1% cap improved EVERY OOS metric — Sharpe, vol, max DD, and CVaR — not just Sharpe) before being wired in here — see <code>scripts/oos_validate_currency_loss_gate.mjs</code>. Strictly causal: only counts a trade's loss once it has actually CLOSED, never one still open.</div>
+  <div id="ccyGateCompare" style="overflow-x:auto"></div>
+</div>
+
+<div class="card">
+  <h2>Portfolio summary (raw — capital split across pairs, not levered)</h2>
+  <div class="muted" style="margin-bottom:10px">Sharpe, Sortino, profit factor, win rate, vol, skew/kurtosis and VaR/CVaR are computed straight off the daily-return DISTRIBUTION — they're the SAME number either way, reinvesting or not. Only CAGR, max drawdown, and Calmar genuinely differ by that assumption, so those three are split out below instead of picking one silently.</div>
+  <h2 style="margin-top:4px">Distribution &amp; risk-adjusted (same either way)</h2>
+  <div class="kpi-grid" id="kpiShared"></div>
+  <h2 style="margin-top:14px">If you reinvest (compounded — risk grows with equity)</h2>
+  <div class="kpi-grid" id="kpiCompounded"></div>
+  <h2 style="margin-top:14px">If you don't reinvest (fixed risk — same % of ORIGINAL capital every trade)</h2>
+  <div class="kpi-grid" id="kpiNonCompounded"></div>
+</div>
+
+<div class="card">
+  <h2>Outlier sensitivity — is this carried by a handful of trades?</h2>
+  <div class="muted" style="margin-bottom:8px">Excess kurtosis above tells you the daily-return distribution's tail shape, but not whether a few individual trades are doing the work — several trades can land on the same day and average out in that number. This looks at the raw per-trade PnL directly: what share of total profit comes from the biggest winners, and what happens to Sharpe/CAGR/drawdown if you'd simply missed them. Excess kurtosis (normal = 0, not 3 — see the card above) is repeated here per-TRADE rather than per-day for the same reason.</div>
+  <div id="outlierKurt" class="kpi-grid" style="margin-bottom:12px"></div>
+  <div id="outlierConcentration" style="overflow-x:auto;margin-bottom:12px"></div>
+  <div id="outlierRemoval" style="overflow-x:auto"></div>
+</div>
+
+<div class="card">
+  <h2>If levered to <span id="targetVolLabel">10</span>% target annual volatility</h2>
+  <div class="muted" style="margin-bottom:10px">This is a dial YOU set, not a cap the system imposes — it doesn't limit upside, it just shows what the SAME risk-adjusted profile looks like scaled to whatever volatility you're willing to run. Set it above the realized vol below to see leverage UP, not just down.</div>
+  <div class="kpi-grid" id="kpiLevered"></div>
+</div>
+
+<div class="card">
+  <h2>Cumulative portfolio return % <label style="font-size:11px;color:var(--muted);font-weight:400;margin-left:10px">Log scale (compounded) <input type="checkbox" id="logScaleChk"></label></h2>
+  <div class="muted" style="margin-bottom:10px">Compounded reinvests each day's % return into the next day's base (what a real account does). Non-compounded just sums the daily % returns (what a fixed-size bet run every day would show) — the gap between the two lines IS the compounding effect. A flat-then-explosive compounded curve on a LINEAR axis is the expected shape of a STABLE growth rate, not evidence it's accelerating — toggle log scale to see the real underlying rate (a constant rate draws as a straight line; only a genuine change in slope means the edge itself changed).</div>
+  <canvas id="eqChart"></canvas>
+</div>
+
+<div class="card">
+  <h2>Monte Carlo — randomised trade order <span class="muted" style="font-weight:400;text-transform:none;letter-spacing:0" id="mcRunsLabel"></span></h2>
+  <div class="muted" style="margin-bottom:10px">Same trades, same days — just reshuffled into a different chronological order — replayed <span id="mcRunsLabel2"></span> times to build a corridor of possible equity curves. This is path-dependent risk: total return is invariant to order (it's the same sum either way), but drawdown and how bumpy the ride feels are NOT — a bad stretch landing early vs. spread out changes what you'd have actually lived through. The bold line is what actually happened; the bands are what COULD have happened with the exact same edge, just different luck in the ordering.</div>
+  <canvas id="mcFanChart" style="height:340px"></canvas>
+  <div class="kpi-grid" id="mcKpi" style="margin-top:12px"></div>
+</div>
+
+<div class="card">
+  <h2>Extreme tail fit — Peaks-Over-Threshold (Generalized Pareto)</h2>
+  <div class="muted" style="margin-bottom:10px" id="evtExplainer"></div>
+  <canvas id="evtChart" style="height:320px"></canvas>
+  <div class="kpi-grid" id="evtKpi" style="margin-top:12px"></div>
+  <div id="evtCompare" style="overflow-x:auto;margin-top:12px"></div>
+</div>
+
+<div class="card">
+  <h2>Capacity — cost-sensitivity test</h2>
+  <div class="muted" style="margin-bottom:10px">Proxy for "how much size/crowding can this absorb": re-prices every trade at a multiple of today's real per-pair transaction cost (bigger size and more competition for the same fades both show up as effectively higher realised cost) and finds where the edge dies. This does NOT give a clean £ capital figure — that needs a real assumption about how size maps to slippage, which there's no order-book data to calibrate — but it tells you the right order of magnitude and, more usefully, exactly which pairs run out of room first.</div>
+  <canvas id="capacityChart" style="height:280px"></canvas>
+  <div class="kpi-grid" id="capacityKpi" style="margin-top:12px;margin-bottom:12px"></div>
+  <div id="capacityTable" style="overflow-x:auto"></div>
+</div>
+
+<div class="card">
+  <h2>Per-pair breakdown — where the diversification is coming from</h2>
+  <table>
+    <thead><tr>
+      <th>Pair</th><th class="num">Decided (margin gate)</th><th class="num">Kept (after cap)</th><th class="num">Skipped</th>
+      <th class="num">Own win rate</th><th class="num">Own Sharpe</th><th class="num" id="weightColHead">Portfolio weight</th>
+    </tr></thead>
+    <tbody id="perPairBody"></tbody>
+  </table>
+  <div class="barwrap" id="weightBar"></div>
+</div>
+
+<div class="card">
+  <h2>Monthly &amp; daily breakdown — click a month to see the days inside it</h2>
+  <div class="muted" style="margin-bottom:10px">Non-compounded (additive) daily returns, same convention as the "Fixed risk" KPIs — every trading day, no reinvestment assumption, so a bad week doesn't look worse or better just from where it lands on the equity curve. Most recent month first. Click any row to expand its individual trading days (and see which pairs made them up) — useful for checking whether a rough week you're living through actually looks unusual against the strategy's own history, or is well within normal variance.</div>
+  <div id="monthlyBody" style="overflow-x:auto"></div>
+</div>
+
+<div class="card">
+  <h2>Trade detail — real M1 candles</h2>
+  <div id="chart"></div>
+  <div class="legend">
+    <span><span class="dot" style="background:#94a3b8"></span>entry</span>
+    <span><span class="dot" style="background:#10b981"></span>target</span>
+    <span><span class="dot" style="background:#f87171"></span>stop</span>
+  </div>
+  <div class="sub" id="chartMeta" style="padding-top:6px">Click a trade in the table below to load its chart.</div>
+</div>
+
+<div class="card">
+  <h2>Trade log — every individual trade taken (<span id="tradeCount">0</span>)</h2>
+  <div class="export-row">
+    <span class="muted">Export:</span>
+    <button id="expReturns">% Returns CSV</button>
+    <button id="expR">R-Multiples CSV</button>
+    <button id="expCash">Currency P&amp;L CSV</button>
+    <label>Account $ <input type="number" id="acctSize" value="10000" step="1000" style="width:80px"></label>
+    <label>Risk % / trade <input type="number" id="riskPct" value="1" step="0.1" style="width:60px"></label>
+    <button id="perfSummaryBtn">📄 Performance Summary</button>
+  </div>
+  <div class="export-note">
+    Every kept (post concurrency-cap) trade across the selected pairs, tagged with which pair it belongs to. In
+    <strong>Fixed % risk / trade</strong> mode, Return % is already the real risk-scaled outcome (pair weight = 1, a
+    no-op) — Currency P&amp;L's Risk($) = Account × Risk% (the SAME risk% the chart was built with, auto-synced above).
+    In <strong>NAV split</strong> mode, Return %/Currency P&amp;L are scaled by each trade's pair weight so summing
+    either column reproduces the portfolio's combined result. R (both modes) = the trade's own outcome ÷ its own real
+    stop distance — a per-trade ratio, always left unscaled by weight since scaling both sides of a ratio cancels out.
+  </div>
+  <div class="export-row" style="margin-top:10px">
+    <span class="muted">Filter:</span>
+    <select id="tlPairSel"><option value="all">All pairs</option></select>
+    <select id="tlDecSel"><option value="all">All decisions</option><option value="fade">Fade</option><option value="follow">Follow</option></select>
+    <select id="tlOutSel"><option value="all">All outcomes</option><option value="win">Wins</option><option value="loss">Losses</option></select>
+    <span class="muted" style="margin-left:auto">Click a row to load its chart above</span>
+  </div>
+  <div id="tradeTableWrap">
+    <table id="tradeTable">
+      <thead><tr>
+        <th data-k="date">Date</th><th data-k="pair">Pair</th><th data-k="side">Side</th><th data-k="rung">Rung</th><th data-k="session">Session</th>
+        <th data-k="decision">Dec</th><th data-k="margin">Marg</th><th data-k="win">Res</th><th data-k="pnlPct" class="num">PnL%</th>
+      </tr></thead>
+      <tbody id="tradeBody"></tbody>
+    </table>
+  </div>
+</div>
+
+</main>
+
+<div id="perfSummaryOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;overflow-y:auto;padding:30px 20px">
+  <div id="perfSummaryReport" style="max-width:700px;margin:0 auto;background:#f7f7f5;color:#1a1a1a;border-radius:10px;overflow:hidden;font-family:'DM Sans',system-ui,sans-serif;box-shadow:0 20px 60px rgba(0,0,0,.5)">
+    <div style="padding:20px 24px;border-bottom:3px solid #1a1a1a;display:flex;justify-content:space-between;align-items:flex-start">
+      <div>
+        <div style="font-size:22px;font-weight:800">Performance Summary</div>
+        <div id="perfSummarySub1" style="font-size:12px;color:#6b7280;margin-top:6px"></div>
+        <div id="perfSummarySub2" style="font-size:12px;color:#6b7280;margin-top:2px"></div>
+      </div>
+      <button id="perfSummaryClose" type="button" style="background:#1a1a1a;color:#fff;border:none;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:12px">Close</button>
+    </div>
+    <div id="perfSummaryBody" style="padding:0 24px 24px"></div>
+  </div>
+</div>
+
+<script type="module">
+import { summarizeTrades, sortinoRatio, calmar as calmarRatio, histVaR } from './js/metricsCore.js';
+import { createLevelChart } from './js/levelChart.js';
+import { portfolioStats, backtestStats, shuffle } from './js/backtestStats.js';
+import { mulberry32 } from './js/statsCore.js';
+import { fitTailModel } from './js/evtTail.js';
+// The "26 multitasking portfolio" universe (same list scripts/run_asia_fib_atlas.mjs
+// already established), MINUS 5 pairs removed for real, cost-driven (not a
+// bug — verified against each pair's own spread) near-zero Sharpe-after-cost:
+// EURNZD/GBPNZD/AUDNZD/AUDCHF/GBPCAD (Sharpe 0.02-0.68 vs 1.3+ for everything
+// else — see LEGO_MODULES.md). Real edge, genuinely not worth the spread —
+// removed from selection here rather than just unchecked, per the owner's
+// explicit call; still viewable (with their own warning) on the single-pair
+// tearsheet, level-atlas-vote-backtest.html.
+// Indices (2026-08-27) — same pipeline, same cost/asset-class tables already
+// had real entries for these (js/perLineStrategy.js's PAIR_COST_PCT). All 6
+// clear the Sharpe>1.0 quality bar, some comfortably (NQ/US2000/DE30/UK100
+// have OOS from 2022 — same length as the FX pairs). SPX/DOW's headline
+// Sharpe (5.6-5.7) is real but rests on LESS local M1 history than everything
+// else here (OOS only from mid-2024, n=462-507 vs 1000+ elsewhere) — a
+// shorter, less-established track record, not a different finding.
+const PAIRS = ['eurusd', 'gbpusd', 'usdjpy', 'audusd', 'nzdusd', 'usdcad', 'usdchf',
+  'eurjpy', 'eurgbp', 'euraud', 'eurcad', 'eurchf', 'gbpjpy', 'gbpaud',
+  'gbpchf', 'audjpy', 'audcad', 'cadjpy', 'chfjpy', 'nzdjpy', 'gold',
+  'nq', 'spx', 'dow', 'us2000', 'de30', 'uk100'];
+const DEFAULT_CHECKED = new Set(['eurusd', 'gbpusd', 'gold', 'usdjpy', 'audusd']);
+// The 10 biggest correlated-drawdown contributors from a leave-one-out study
+// (scripts/leave_one_out_portfolio.mjs) — NOT individually weak (unlike the 5
+// already removed above), just heavily overlapping in currency exposure with
+// other selected pairs. OOS-validated (scripts/oos_validate_pair_selection.mjs):
+// chosen on the first 70% of history, still improved the untouched last 30%
+// (max DD -42.7%→-25.1%, Sharpe 2.36→3.65) — see the warning card below for
+// the full caveat (a real improvement, not a fix for the correlated-risk
+// problem, which still needs a real exposure-aware sizing model).
+const CORRELATED_RISK_EXCLUDE = new Set(['gbpaud', 'gbpchf', 'usdcad', 'audcad', 'nzdjpy', 'eurgbp', 'gbpjpy', 'nzdusd', 'eurjpy', 'eurcad']);
+const PAIR_COLORS = Object.fromEntries(PAIRS.map((p, i) => [p.toUpperCase(), `hsl(${Math.round(i * 360 / PAIRS.length)}, 65%, 62%)`]));
+
+const pairChecksEl = document.getElementById('pairChecks');
+pairChecksEl.innerHTML = PAIRS.map(p => `<label class="pair-check"><input type="checkbox" ${DEFAULT_CHECKED.has(p) ? 'checked' : ''} data-pair="${p}">${p.toUpperCase()}</label>`).join('');
+
+document.getElementById('selectAllBtn').addEventListener('click', () => {
+  pairChecksEl.querySelectorAll('input[type=checkbox]').forEach(el => { el.checked = true; });
+  loadData();
+});
+document.getElementById('selectRecommendedBtn').addEventListener('click', () => {
+  pairChecksEl.querySelectorAll('input[type=checkbox]').forEach(el => { el.checked = !CORRELATED_RISK_EXCLUDE.has(el.dataset.pair); });
+  loadData();
+});
+
+const marginSel = document.getElementById('marginSel');
+const capSel = document.getElementById('capSel');
+const perDirChk = document.getElementById('perDirChk');
+const sizingSel = document.getElementById('sizingSel');
+const weightSel = document.getElementById('weightSel');
+const weightSelWrap = document.getElementById('weightSelWrap');
+const riskPctWrap = document.getElementById('riskPctWrap');
+const riskPctInput = document.getElementById('riskPctInput');
+const heatCapWrap = document.getElementById('heatCapWrap');
+const heatCapChk = document.getElementById('heatCapChk');
+const maxHeatPctInput = document.getElementById('maxHeatPctInput');
+const targetVolInput = document.getElementById('targetVolInput');
+const throttleChk = document.getElementById('throttleChk');
+const throttleModeSel = document.getElementById('throttleModeSel');
+const triggerDDInput = document.getElementById('triggerDDInput');
+const restoreDDInput = document.getElementById('restoreDDInput');
+const throttleMultInput = document.getElementById('throttleMultInput');
+const fadeStopChk = document.getElementById('fadeStopChk');
+const slFractionChk = document.getElementById('slFractionChk');
+const slFractionInput = document.getElementById('slFractionInput');
+const includeP90Chk = document.getElementById('includeP90Chk');
+const earlyExitChk = document.getElementById('earlyExitChk');
+const propDDLimitChk = document.getElementById('propDDLimitChk');
+const propDDLimitInput = document.getElementById('propDDLimitInput');
+const ccyGateChk = document.getElementById('ccyGateChk');
+const maxDailyLossPctInput = document.getElementById('maxDailyLossPctInput');
+const logScaleChk = document.getElementById('logScaleChk');
+const headerSub = document.getElementById('headerSub');
+
+function syncSizingUI() {
+  const fixed = sizingSel.value === 'fixed-risk';
+  weightSelWrap.style.display = fixed ? 'none' : '';
+  riskPctWrap.style.display = fixed ? '' : 'none';
+  heatCapWrap.style.display = fixed ? '' : 'none';
+  maxHeatPctInput.disabled = !heatCapChk.checked;
+  const throttleOn = throttleChk.checked;
+  const graded = throttleModeSel.value === 'graded';
+  throttleModeSel.disabled = !throttleOn;
+  triggerDDInput.disabled = !throttleOn || graded;
+  restoreDDInput.disabled = !throttleOn;
+  throttleMultInput.disabled = !throttleOn || graded;
+  slFractionInput.disabled = !slFractionChk.checked;
+  propDDLimitInput.disabled = !propDDLimitChk.checked;
+  maxDailyLossPctInput.disabled = !ccyGateChk.checked;
+}
+syncSizingUI();
+
+let eqChart = null;
+let mcFanChart = null;
+let evtChart = null;
+let capacityChart = null;
+let lastTrades = [];
+let lastResponse = null;
+
+// ── Trade log + chart-on-click — same facility as level-atlas-vote-backtest.html's
+// "Trade detail — real M1 candles" (js/levelChart.js's createLevelChart, plus
+// /api/vol-backtest/candles/:pair). The one real difference: trades here span
+// MULTIPLE instruments, so loadTradeChart keys the candle fetch off the trade's
+// OWN `t.pair` (already tagged server-side, js/levelAtlasRoutes.js's
+// `{ ...t, pair: sym }`) instead of a single page-level pair selector.
+const tradeBody = document.getElementById('tradeBody');
+const chartMeta = document.getElementById('chartMeta');
+const tlPairSel = document.getElementById('tlPairSel');
+const tlDecSel = document.getElementById('tlDecSel');
+const tlOutSel = document.getElementById('tlOutSel');
+const view = createLevelChart(document.getElementById('chart'), { height: 420 });
+let sortKey = 'date', sortDir = -1;
+let selectedTrade = null;
+let tlPairOptionsBuilt = new Set();
+
+function isoToEpoch(iso) { return Math.floor(Date.parse(iso.endsWith('Z') ? iso : iso + 'Z') / 1000); }
+
+function filteredTrades() {
+  const pair = tlPairSel.value, dec = tlDecSel.value, out = tlOutSel.value;
+  return lastTrades.filter(t => (pair === 'all' || t.pair === pair)
+    && (dec === 'all' || t.decision === dec) && (out === 'all' || (out === 'win') === t.win));
+}
+
+function renderTradeTable(rows) {
+  const sorted = rows.slice().sort((a, b) => {
+    const av = a[sortKey], bv = b[sortKey];
+    const cmp = typeof av === 'string' ? av.localeCompare(bv) : (av - bv);
+    return cmp * sortDir;
+  });
+  document.getElementById('tradeCount').textContent = sorted.length;
+  tradeBody.innerHTML = sorted.map((t, i) => `
+    <tr data-i="${i}" class="${t === selectedTrade ? 'selected' : ''}">
+      <td>${t.date}</td><td>${(t.pair || t.instrument || '').toUpperCase()}</td><td>${t.side}</td><td>${t.rung}</td><td>${t.session ?? '—'}</td>
+      <td>${t.decision}</td><td>${t.margin ?? '—'}</td>
+      <td class="${t.win ? 'green' : 'red'}">${t.win ? 'WIN' : 'LOSS'}</td>
+      <td class="num ${signClass(t.pnlPct)}">${fmtPct(t.pnlPct, 3)}</td>
+    </tr>`).join('');
+  [...tradeBody.querySelectorAll('tr')].forEach(tr => tr.addEventListener('click', () => loadTradeChart(sorted[+tr.dataset.i])));
+}
+
+function priceLinesFor(t) {
+  const isUp = t.side === 'up';
+  const contSign = isUp ? 1 : -1;
+  const targetSign = t.decision === 'fade' ? -contSign : contSign;
+  const stopSign = t.decision === 'fade' ? contSign : -contSign;
+  return [
+    { price: t.entry, kind: 'voteEntry', label: `entry ${t.entry.toFixed(5)}` },
+    { price: t.entry + targetSign * t.targetPips * t.pip, kind: 'voteTarget', label: `target (+${t.targetPips}p)` },
+    { price: t.entry + stopSign * t.stopPips * t.pip, kind: 'voteStop', label: `stop (-${t.stopPips}p)` },
+  ];
+}
+
+// Same retry-once-on-cold-cache pattern as level-atlas-vote-backtest.html's
+// own loadTradeChart — the candle cache behind this route is shared site-wide,
+// so a pair not recently viewed anywhere else is often a cold miss.
+async function fetchJsonWithRetry(url, { retries = 1, delayMs = 1500, onRetry } = {}) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const res = await fetch(url);
+      return await res.json();
+    } catch (e) {
+      if (attempt >= retries) throw e;
+      onRetry?.();
+      await new Promise(r => setTimeout(r, delayMs));
+    }
+  }
+}
+
+async function loadTradeChart(t) {
+  selectedTrade = t;
+  renderTradeTable(filteredTrades());
+  const pair = t.pair || (t.instrument || '').toLowerCase();
+  const bufferSecs = 4 * 3600;
+  const fromDate = new Date((t.time - bufferSecs) * 1000).toISOString().slice(0, 10);
+  const toDate = new Date((t.resolveTime + bufferSecs) * 1000).toISOString().slice(0, 10);
+  chartMeta.textContent = `Loading ${pair.toUpperCase()} M1 candles ${fromDate}…${toDate}…`;
+  try {
+    const j = await fetchJsonWithRetry(
+      `/api/vol-backtest/candles/${pair}?from=${fromDate}&to=${toDate}`,
+      { onRetry: () => { chartMeta.textContent = `retrying ${pair.toUpperCase()} M1 candles ${fromDate}…${toDate} (first load of this pair can be slow)…`; } }
+    );
+    if (!j.ok || !j.candles?.length) { chartMeta.textContent = `no candle data for ${fromDate}…${toDate}`; return; }
+    const bars = j.candles.map(c => ({ time: isoToEpoch(c.time), open: c.open, high: c.high, low: c.low, close: c.close }));
+    view.setCandles(bars);
+    view.setLevels(priceLinesFor(t), { showTitle: true });
+    view.series.setMarkers([
+      { time: t.time, position: 'inBar', color: '#94a3b8', shape: 'circle', text: `entry ${t.decision}/${t.side}` },
+      { time: t.resolveTime, position: t.win ? 'belowBar' : 'aboveBar', color: t.win ? '#10b981' : '#f87171', shape: t.win ? 'arrowUp' : 'arrowDown', text: `${t.win ? 'WIN' : 'LOSS'} ${t.pnlPct.toFixed(3)}%` },
+    ]);
+    view.fit();
+    chartMeta.textContent = `${pair.toUpperCase()} · ${t.date} · ${t.side} ${t.rung} · ${t.decision} (margin ${t.margin ?? '—'}) · ${t.win ? 'WIN' : 'LOSS'} ${fmtPct(t.pnlPct, 3)} · target ${t.targetPips}p / stop ${t.stopPips}p`;
+  } catch (e) {
+    chartMeta.textContent = `error loading candles: ${e.message}`;
+  }
+}
+
+// ── Outlier sensitivity — per-trade kurtosis + "remove the top-N winners"
+// robustness check. Same math validated ad hoc in conversation (real live
+// data: top 50 of 16,422 trades = 5.8% of total profit; removing them drops
+// Sharpe 3.59→3.40 and doesn't move maxDD at all) — persisted here so it's a
+// standing card next to the daily-return Skew/Excess Kurtosis KPIs above,
+// not a one-off answer. Client-side only: `lastTrades` already carries
+// everything needed (pnlPct, weight, date), same fields the CSV exports use.
+const OUTLIER_TOP_N = [1, 5, 10, 20, 50];
+
+function outlierDailySeriesExcluding(excludeSet) {
+  const m = new Map();
+  for (const t of lastTrades) {
+    if (excludeSet.has(t)) continue;
+    const p = t.pnlPct * (t.weight ?? 1);
+    m.set(t.date, (m.get(t.date) || 0) + p);
+  }
+  return [...m.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([, p]) => p);
+}
+
+function renderOutlierSensitivity() {
+  const kurtEl = document.getElementById('outlierKurt');
+  const concEl = document.getElementById('outlierConcentration');
+  const remEl = document.getElementById('outlierRemoval');
+  if (!kurtEl || !lastTrades.length) { if (kurtEl) kurtEl.innerHTML = ''; if (concEl) concEl.innerHTML = ''; if (remEl) remEl.innerHTML = ''; return; }
+
+  const pnls = lastTrades.map(t => t.pnlPct * (t.weight ?? 1));
+  const dates = lastTrades.map(t => t.date);
+  const summary = summarizeTrades(pnls, dates);
+  kurtEl.innerHTML = [
+    kpiCard('Trade Skew', fmt2(summary.skew), '', 'per-trade pnl distribution'),
+    kpiCard('Trade Excess Kurtosis', fmt2(summary.excessKurt), '', summary.excessKurt > 0 ? 'fatter tails than normal' : 'thinner tails than normal — bounded target/stop caps single-trade outliers'),
+  ].join('');
+
+  const totalProfit = pnls.reduce((a, b) => a + b, 0);
+  const sortedDesc = [...pnls].sort((a, b) => b - a);
+  concEl.innerHTML = `<table><thead><tr><th>Top N trades (of ${lastTrades.length})</th><th class="num">Summed pnl%</th><th class="num">% of total profit</th></tr></thead><tbody>`
+    + OUTLIER_TOP_N.map(n => {
+      const topSum = sortedDesc.slice(0, n).reduce((a, b) => a + b, 0);
+      return `<tr><td>${n}</td><td class="num">${fmtPct(topSum, 1)}</td><td class="num">${totalProfit !== 0 ? fmt1(topSum / totalProfit * 100) + '%' : '—'}</td></tr>`;
+    }).join('')
+    + '</tbody></table>';
+
+  const byPnlDesc = [...lastTrades].sort((a, b) => (b.pnlPct * (b.weight ?? 1)) - (a.pnlPct * (a.weight ?? 1)));
+  const base = portfolioStats(outlierDailySeriesExcluding(new Set()), { mc: false });
+  const rows = [['Nothing removed (base)', base]];
+  for (const n of OUTLIER_TOP_N) {
+    const excl = new Set(byPnlDesc.slice(0, n));
+    rows.push([`Top ${n} winners removed`, portfolioStats(outlierDailySeriesExcluding(excl), { mc: false })]);
+  }
+  remEl.innerHTML = `<table><thead><tr><th></th><th class="num">Sharpe</th><th class="num">CAGR</th><th class="num">Max DD</th></tr></thead><tbody>`
+    + rows.map(([label, s]) => `<tr><td>${label}</td><td class="num">${fmt2(s.sharpe)}</td><td class="num">${fmt1(s.cagr)}%</td><td class="num red">${fmt1(s.maxDD)}%</td></tr>`).join('')
+    + '</tbody></table>';
+}
+
+// ── Monte Carlo — reshuffle the SAME daily returns into a different
+// chronological order, replay each as a compounded equity path, and band
+// the result at every percentile — visualizes path-dependent risk (same
+// edge, same trades, different luck in the ORDER they arrived). Total
+// return is order-invariant (same sum) but drawdown and how the ride feels
+// are not, which is exactly what this corridor shows next to the real path.
+// Reuses `shuffle` (Fisher-Yates, exported from js/backtestStats.js — the
+// same primitive portfolioStats' own opt-in `mc:true` mode uses internally,
+// just extended here to keep the full PATH per run instead of only a
+// scalar drawdown-percentile summary) with a fixed seed so results are
+// reproducible across reloads of the SAME data, not fresh noise every time.
+const MC_RUNS = 300;
+function runOrderShuffleFan(dailyReturns, runs = MC_RUNS) {
+  const rng = mulberry32(0x9e3779b9);
+  const n = dailyReturns.length;
+  const paths = new Array(runs);
+  for (let r = 0; r < runs; r++) {
+    const shuffled = shuffle(dailyReturns, rng);
+    let eq = 1;
+    const path = new Array(n);
+    for (let i = 0; i < n; i++) { eq *= (1 + shuffled[i] / 100); path[i] = +((eq - 1) * 100).toFixed(3); }
+    paths[r] = path;
+  }
+  const q = (sorted, p) => {
+    const pos = p * (sorted.length - 1), lo = Math.floor(pos), frac = pos - lo;
+    return lo + 1 < sorted.length ? sorted[lo] + frac * (sorted[lo + 1] - sorted[lo]) : sorted[lo];
+  };
+  const bands = { p5: new Array(n), p25: new Array(n), p50: new Array(n), p75: new Array(n), p95: new Array(n) };
+  for (let i = 0; i < n; i++) {
+    const vals = paths.map(p => p[i]).sort((a, b) => a - b);
+    bands.p5[i] = +q(vals, 0.05).toFixed(2);
+    bands.p25[i] = +q(vals, 0.25).toFixed(2);
+    bands.p50[i] = +q(vals, 0.50).toFixed(2);
+    bands.p75[i] = +q(vals, 0.75).toFixed(2);
+    bands.p95[i] = +q(vals, 0.95).toFixed(2);
+  }
+  return bands;
+}
+
+function renderMonteCarlo(j) {
+  document.getElementById('mcRunsLabel').textContent = `(${MC_RUNS} reshuffles)`;
+  document.getElementById('mcRunsLabel2').textContent = MC_RUNS;
+  const dailyReturns = (j.equityCurve || []).map(p => p.dailyReturn);
+  const labels = (j.equityCurve || []).map(p => p.date);
+  if (mcFanChart) { mcFanChart.destroy(); mcFanChart = null; }
+  if (dailyReturns.length < 5) { document.getElementById('mcKpi').innerHTML = ''; return; }
+
+  const bands = runOrderShuffleFan(dailyReturns);
+  let eq = 1;
+  const actual = dailyReturns.map(r => { eq *= (1 + r / 100); return +((eq - 1) * 100).toFixed(2); });
+
+  // Same log-scale toggle the equity chart above uses, and for the same
+  // reason: a strongly compounding strategy's total return can reach
+  // thousands of percent, which crushes a linear axis flat for most of its
+  // length. `index = pctGain + 100` (100 = starting capital) is a strictly
+  // positive transform of the same % bands, so a log axis works on it —
+  // log(0) / log(negative) doesn't, which is why the linear view keeps the
+  // more intuitive "% gain" framing instead.
+  const logMode = logScaleChk.checked;
+  const toIndex = arr => arr.map(v => v + 100);
+  const plotBands = logMode
+    ? { p5: toIndex(bands.p5), p25: toIndex(bands.p25), p50: toIndex(bands.p50), p75: toIndex(bands.p75), p95: toIndex(bands.p95) }
+    : bands;
+  const plotActual = logMode ? toIndex(actual) : actual;
+
+  mcFanChart = new Chart(document.getElementById('mcFanChart'), {
+    type: 'line',
+    data: { labels, datasets: [
+      { label: '5th–95th pctile', data: plotBands.p95, borderColor: 'transparent', backgroundColor: 'rgba(96,165,250,.10)', fill: 1, pointRadius: 0, tension: .1 },
+      { label: '_p5', data: plotBands.p5, borderColor: 'transparent', backgroundColor: 'transparent', fill: false, pointRadius: 0, tension: .1 },
+      { label: '25th–75th pctile', data: plotBands.p75, borderColor: 'transparent', backgroundColor: 'rgba(96,165,250,.22)', fill: 3, pointRadius: 0, tension: .1 },
+      { label: '_p25', data: plotBands.p25, borderColor: 'transparent', backgroundColor: 'transparent', fill: false, pointRadius: 0, tension: .1 },
+      { label: 'Median reshuffled path', data: plotBands.p50, borderColor: '#94a3b8', borderDash: [3, 3], borderWidth: 1.2, pointRadius: 0, tension: .1, fill: false },
+      { label: 'What actually happened', data: plotActual, borderColor: '#5b9dff', borderWidth: 2, pointRadius: 0, tension: .1, fill: false },
+    ] },
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: true, labels: { color: '#94a3b8', boxWidth: 12, font: { size: 11 },
+        filter: item => !item.text.startsWith('_') } } },
+      scales: {
+        x: { ticks: { color: '#5a6380', maxTicksLimit: 10 }, grid: { display: false } },
+        y: { type: logMode ? 'logarithmic' : 'linear', ticks: { color: '#5a6380', callback: v => logMode ? Number(v).toLocaleString() : (v + '%') }, grid: { color: '#1e2436' },
+          title: { display: true, text: logMode ? 'Equity index (100 = start)' : '% gain', color: '#5a6380', font: { size: 10 } } },
+      } },
+  });
+
+  // Scalar summary alongside the chart — reuses backtestStats' own bootstrap
+  // (resample WITH replacement — sample uncertainty, "how sure are we given
+  // only this many trades") and montecarlo (shuffle order — the SAME thing
+  // the fan chart draws, collapsed to just the drawdown percentiles) fields
+  // directly rather than recomputing either. Per-TRADE basis (pnlPct×weight),
+  // matching the outlier-sensitivity card above.
+  const pnls = lastTrades.map(t => t.pnlPct * (t.weight ?? 1));
+  const dates = lastTrades.map(t => t.date);
+  const bs = backtestStats(pnls, dates);
+  document.getElementById('mcKpi').innerHTML = [
+    kpiCard('P(profitable)', fmt1(bs.bootstrap.pPositive * 100) + '%', bs.bootstrap.pPositive >= 0.95 ? 'green' : bs.bootstrap.pPositive >= 0.8 ? 'blue' : 'red', 'resampled with replacement — sample-size uncertainty'),
+    kpiCard('Total Return (5th–95th)', `${fmt1(bs.bootstrap.total.p5)}% – ${fmt1(bs.bootstrap.total.p95)}%`, '', `median ${fmt1(bs.bootstrap.total.p50)}%`),
+    kpiCard('Sharpe (5th–95th)', `${fmt2(bs.bootstrap.sharpe.p5)} – ${fmt2(bs.bootstrap.sharpe.p95)}`, '', `median ${fmt2(bs.bootstrap.sharpe.p50)}`),
+    kpiCard('Reshuffled Max DD (p50/p95/p99)', `${fmt1(bs.montecarlo.maxDD.p50)}% / ${fmt1(bs.montecarlo.maxDD.p95)}% / ${fmt1(bs.montecarlo.maxDD.p99)}%`, 'red', `vs ${fmt1(bs.maxDD)}% actually realised`),
+  ].join('');
+}
+
+// ── Extreme tail fit — Peaks-Over-Threshold / Generalized Pareto (js/evtTail.js).
+// Answers a genuinely different question than the empirical VaR/CVaR cards
+// above: how bad could a day be BEYOND anything actually observed. Fit on
+// the daily-return series (same basis as Skew/Excess Kurtosis and the
+// Monte Carlo fan above), threshold at the 90th loss percentile.
+function renderEvtTail(j) {
+  const explainerEl = document.getElementById('evtExplainer');
+  const kpiEl = document.getElementById('evtKpi');
+  const compareEl = document.getElementById('evtCompare');
+  const dailyReturns = (j.equityCurve || []).map(p => p.dailyReturn);
+  const model = fitTailModel(dailyReturns);
+  if (evtChart) { evtChart.destroy(); evtChart = null; }
+
+  if (!model.ok) {
+    explainerEl.textContent = `Tail fit unavailable: ${model.reason}.`;
+    kpiEl.innerHTML = ''; compareEl.innerHTML = '';
+    return;
+  }
+  const tailType = model.shape > 0.05 ? 'a fat, unbounded tail — extreme losses genuinely more likely than the bulk of the data suggests'
+    : model.shape < -0.05 ? 'a bounded tail — the fit implies a hard ceiling on how bad a single day can get'
+    : 'a roughly exponential tail — moderate, no strong evidence either way';
+  const ceiling = model.shape < -1e-6 ? model.threshold + model.scale / Math.abs(model.shape) : null;
+  explainerEl.innerHTML = `Fit on the worst ${fmt1(model.freq * 100)}% of days (${model.nExceed} of ${model.n}, above a ${fmt2(model.threshold)}% loss threshold). `
+    + `Shape ξ = ${fmt2(model.shape)} → <b>${tailType}</b>.`
+    + (ceiling != null ? ` The fit's own implied ceiling: no single day should exceed roughly <b>${fmt1(ceiling)}%</b>.` : '')
+    + ` Dots = actual days; the line is the fitted model, extrapolated a bit past your worst day so far.`;
+
+  kpiEl.innerHTML = [
+    kpiCard('Shape (ξ)', fmt2(model.shape), model.shape < -0.05 ? 'green' : model.shape > 0.05 ? 'red' : '', model.shape < -0.05 ? 'bounded tail' : model.shape > 0.05 ? 'fat tail' : 'exponential-ish'),
+    kpiCard('Scale (β)', fmt2(model.scale), '', 'GPD scale, loss % units'),
+    kpiCard('Threshold', fmt2(model.threshold) + '%', '', `90th pctile of daily loss`),
+    kpiCard('Exceedances', `${model.nExceed} / ${model.n}`, '', 'days used to fit the tail'),
+    ...(ceiling != null ? [kpiCard('Implied ceiling', fmt1(ceiling) + '%', 'amber', "the fit's own worst-case claim")] : []),
+  ].join('');
+
+  // Log-probability axis is the standard way to look at a tail fit — the
+  // survival probabilities span ~2 orders of magnitude (roughly 10% down to
+  // 0.1%), which a linear axis would flatten into an unreadable hook.
+  // gpdSurvival can return an exact 0 beyond a bounded (shape<0) tail's own
+  // ceiling — filtered out here (log(0) is undefined), not in evtTail.js,
+  // since this is a presentation-layer constraint, not a math one.
+  const fittedPts = model.fittedCurve.filter(pt => pt.survival > 0);
+  evtChart = new Chart(document.getElementById('evtChart'), {
+    // Base type 'scatter' (not 'line') — both datasets use {x,y} object
+    // pairs rather than a shared `labels` array, which is what a scatter
+    // base expects; a bare 'line' base needs per-dataset type overrides to
+    // render the empirical points as unconnected dots instead of a jagged
+    // connected line through every observed exceedance.
+    type: 'scatter',
+    data: {
+      datasets: [
+        { type: 'scatter', label: 'Actual days (empirical)', data: model.empiricalPoints.map(p => ({ x: p.lossPct, y: p.survival })),
+          backgroundColor: '#5b9dff', pointRadius: 2.5, pointHoverRadius: 4 },
+        { type: 'line', label: 'Fitted GPD tail', data: fittedPts.map(p => ({ x: p.lossPct, y: p.survival })),
+          borderColor: '#f87171', backgroundColor: 'transparent', borderWidth: 1.5, pointRadius: 0, tension: 0 },
+      ],
+    },
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: true, labels: { color: '#94a3b8', boxWidth: 12, font: { size: 11 } } } },
+      scales: {
+        x: { type: 'linear', title: { display: true, text: 'Daily loss %', color: '#5a6380', font: { size: 10 } }, ticks: { color: '#5a6380', callback: v => v + '%' }, grid: { color: '#1e2436' } },
+        y: { type: 'logarithmic', title: { display: true, text: 'P(loss ≥ x) — log scale', color: '#5a6380', font: { size: 10 } }, ticks: { color: '#5a6380' }, grid: { color: '#1e2436' } },
+      } },
+  });
+
+  // Empirical VaR (a plain historical quantile) is computable at ANY
+  // confidence level from the raw sample — always shown, so every row is a
+  // real fit-vs-reality check. `pr.empirical` (from evtTail.js) instead
+  // describes whether the FITTED number needed the GPD at all: below the
+  // threshold's own crossing rate (~90th pctile of loss here) evtTail.js
+  // already falls back to a plain quantile internally, so fitted ≈ empirical
+  // by construction there — the label column is what tells you which is
+  // which, not the numbers being shown or hidden.
+  compareEl.innerHTML = `<table><thead><tr><th>Confidence</th><th class="num">Empirical VaR</th><th class="num">Fitted VaR</th><th class="num">Fitted CVaR</th><th></th></tr></thead><tbody>`
+    + model.probes.map(pr => {
+      const empVar = -histVaR(dailyReturns, pr.p); // histVaR returns signed (negative); flip to a positive loss%
+      return `<tr><td>${(pr.p * 100).toFixed(1)}%</td><td class="num">${fmt2(empVar)}%</td>`
+        + `<td class="num">${fmt2(pr.varLossPct)}%</td><td class="num">${pr.cvarLossPct != null ? fmt2(pr.cvarLossPct) + '%' : '—'}</td>`
+        + `<td class="muted" style="font-size:10px">${pr.empirical ? 'within sample (fitted ≈ empirical by construction)' : 'extrapolated beyond your worst day'}</td></tr>`;
+    }).join('')
+    + '</tbody></table>';
+}
+
+// ── Capacity — cost-sensitivity test ────────────────────────────────────────
+// Proxy for strategy capacity: every trade's pnlPct already has that pair's
+// FIXED roundtrip cost baked in at build time (priceBarrierTrade: pnlPct =
+// gross - cost, server-side js/levelAtlasVoteReview.js), so re-netting at a
+// higher multiplier is exact, not an approximation: pnlPct - cost*(mult-1).
+// `cost` comes straight from the server's own perPair[sym].cost (added
+// specifically for this) rather than re-deriving costForPair/assetClassFor
+// client-side, which would need js/forecastAnalyserStore.js's Node-only
+// (fs/R2) import chain that can't run in a browser.
+const CAPACITY_MULTS = [1, 1.5, 2, 3, 4, 5, 7, 10, 15, 20, 30, 50];
+function capacityDailySeriesAt(tradeList, mult, costByPair) {
+  const m = new Map();
+  for (const t of tradeList) {
+    const cost = costByPair[t.pair];
+    if (cost == null) continue;
+    const pnl = (t.pnlPct - cost * (mult - 1)) * (t.weight ?? 1);
+    m.set(t.date, (m.get(t.date) || 0) + pnl);
+  }
+  return [...m.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([, v]) => v);
+}
+// Linear-interpolated multiplier where Sharpe first crosses zero going down
+// the mult ladder; null if it never crosses within CAPACITY_MULTS' range.
+function capacityZeroCrossing(rows) {
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i - 1].sharpe > 0 && rows[i].sharpe <= 0) {
+      const a = rows[i - 1], b = rows[i];
+      const frac = a.sharpe / (a.sharpe - b.sharpe);
+      return a.mult + frac * (b.mult - a.mult);
+    }
+  }
+  return rows[rows.length - 1].sharpe > 0 ? null : rows[0].mult;
+}
+function computeCapacityTest(j) {
+  const trades = j.trades ?? [];
+  const costByPair = {};
+  for (const [sym, p] of Object.entries(j.perPair ?? {})) if (p.cost != null) costByPair[sym] = p.cost;
+  if (!trades.length || !Object.keys(costByPair).length) return null;
+  const portfolioRows = CAPACITY_MULTS.map(mult => {
+    const s = portfolioStats(capacityDailySeriesAt(trades, mult, costByPair), { mc: false });
+    return { mult, sharpe: s.sharpe, cagr: s.cagr, maxDD: s.maxDD };
+  });
+  const byPair = {};
+  for (const t of trades) (byPair[t.pair] ??= []).push(t);
+  const perPairResults = Object.entries(byPair)
+    .filter(([, ts]) => ts.length >= 30 && costByPair[ts[0].pair] != null)
+    .map(([pair, ts]) => {
+      const rows = CAPACITY_MULTS.map(mult => ({ mult, sharpe: portfolioStats(capacityDailySeriesAt(ts, mult, costByPair), { mc: false }).sharpe }));
+      return { pair, n: ts.length, cost: costByPair[pair], baseSharpe: rows[0].sharpe, crossing: capacityZeroCrossing(rows) };
+    })
+    .sort((a, b) => (a.crossing ?? 999) - (b.crossing ?? 999));
+  return { portfolioRows, portfolioCrossing: capacityZeroCrossing(portfolioRows), perPairResults };
+}
+
+function renderCapacity(j) {
+  const chartEl = document.getElementById('capacityChart');
+  const kpiEl = document.getElementById('capacityKpi');
+  const tableEl = document.getElementById('capacityTable');
+  if (capacityChart) { capacityChart.destroy(); capacityChart = null; }
+  const cap = computeCapacityTest(j);
+  if (!cap) { kpiEl.innerHTML = ''; tableEl.innerHTML = '<div class="muted">no cost data on these trades</div>'; return; }
+
+  capacityChart = new Chart(chartEl, {
+    type: 'line',
+    data: { labels: cap.portfolioRows.map(r => r.mult + 'x'), datasets: [
+      { label: 'Portfolio Sharpe', data: cap.portfolioRows.map(r => r.sharpe), borderColor: '#5b9dff', backgroundColor: 'rgba(91,157,255,.08)', fill: true, tension: .2, pointRadius: 2 },
+    ] },
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { title: { display: true, text: 'Cost multiplier (1x = today)', color: '#5a6380', font: { size: 10 } }, ticks: { color: '#5a6380' }, grid: { display: false } },
+        y: { title: { display: true, text: 'Sharpe', color: '#5a6380', font: { size: 10 } }, ticks: { color: '#5a6380' }, grid: { color: '#1e2436' } },
+      } },
+  });
+
+  const frag = cap.perPairResults.slice(0, 3);
+  const robust = cap.perPairResults.slice(-3).reverse();
+  kpiEl.innerHTML = [
+    kpiCard('Portfolio dies at', cap.portfolioCrossing != null ? fmt2(cap.portfolioCrossing) + 'x' : `>${CAPACITY_MULTS.at(-1)}x`, cap.portfolioCrossing == null || cap.portfolioCrossing >= 5 ? 'green' : cap.portfolioCrossing >= 2 ? 'blue' : 'red', "today's transaction cost"),
+    kpiCard('Most fragile', frag[0] ? `${frag[0].pair} (${fmt1(frag[0].crossing)}x)` : '—', 'red', frag[1] ? `then ${frag[1].pair} (${fmt1(frag[1].crossing)}x)` : ''),
+    kpiCard('Most robust', robust[0] ? `${robust[0].pair} (${robust[0].crossing != null ? fmt1(robust[0].crossing) + 'x' : '>' + CAPACITY_MULTS.at(-1) + 'x'})` : '—', 'green', ''),
+  ].join('');
+
+  tableEl.innerHTML = `<table><thead><tr><th>Pair</th><th class="num">Cost %</th><th class="num">Base Sharpe</th><th class="num">Dies at</th></tr></thead><tbody>`
+    + cap.perPairResults.map(r => `<tr><td style="color:${PAIR_COLORS[r.pair] ?? '#cbd5e1'}">${r.pair}</td><td class="num">${fmt2(r.cost)}%</td>`
+      + `<td class="num">${fmt2(r.baseSharpe)}</td><td class="num ${r.crossing != null && r.crossing < 3 ? 'red' : ''}">${r.crossing != null ? fmt1(r.crossing) + 'x' : '>' + CAPACITY_MULTS.at(-1) + 'x'}</td></tr>`).join('')
+    + '</tbody></table>';
+}
+
+function syncTlPairOptions() {
+  const pairs = [...new Set(lastTrades.map(t => t.pair).filter(Boolean))].sort();
+  const key = pairs.join(',');
+  if (tlPairOptionsBuilt.has(key)) return;
+  tlPairOptionsBuilt = new Set([key]);
+  const cur = tlPairSel.value;
+  tlPairSel.innerHTML = '<option value="all">All pairs</option>'
+    + pairs.map(p => `<option value="${p}">${p.toUpperCase()}</option>`).join('');
+  tlPairSel.value = pairs.includes(cur) ? cur : 'all';
+}
+
+document.querySelectorAll('#tradeTable thead th').forEach(th => {
+  th.addEventListener('click', () => {
+    const k = th.dataset.k;
+    sortDir = (sortKey === k) ? -sortDir : -1;
+    sortKey = k;
+    renderTradeTable(filteredTrades());
+  });
+});
+[tlPairSel, tlDecSel, tlOutSel].forEach(el => el.addEventListener('change', () => renderTradeTable(filteredTrades())));
+
+function fmt1(v) { return v == null ? '—' : Number(v).toFixed(1); }
+function fmt2(v) { return v == null ? '—' : Number(v).toFixed(2); }
+function fmtPct(v, dp = 1) { return v == null ? '—' : (v >= 0 ? '+' : '') + Number(v).toFixed(dp) + '%'; }
+function ciStr(o) { return o?.sharpeCI95 ? `[${fmt2(o.sharpeCI95[0])}, ${fmt2(o.sharpeCI95[1])}]` : '—'; }
+function signClass(v) { return v > 0 ? 'green' : v < 0 ? 'red' : ''; }
+function kpiCard(label, value, cls, sub) {
+  return `<div class="kpi"><div class="label">${label}</div><div class="value ${cls || ''}">${value}</div>${sub ? `<div class="sub">${sub}</div>` : ''}</div>`;
+}
+
+function selectedPairs() {
+  return [...pairChecksEl.querySelectorAll('input:checked')].map(el => el.dataset.pair);
+}
+
+// With 26 selectable pairs, rapid checkbox toggles fire many overlapping
+// fetches — nothing guaranteed they'd RESOLVE in the order they were sent,
+// so a stale, smaller-selection response could land after and silently
+// overwrite a newer one. This sequence counter discards any response that
+// isn't from the MOST RECENTLY STARTED request.
+let loadSeq = 0;
+async function loadData() {
+  const mySeq = ++loadSeq;
+  syncSizingUI();
+  const pairs = selectedPairs();
+  if (!pairs.length) { headerSub.textContent = 'select at least one pair'; return; }
+  headerSub.textContent = 'loading…';
+  const params = new URLSearchParams({
+    pairs: pairs.join(','), minMargin: marginSel.value, maxConcurrent: capSel.value,
+    perDirection: perDirChk.checked ? 'true' : 'false', weighting: weightSel.value,
+    sizing: sizingSel.value, riskPct: riskPctInput.value, targetVol: targetVolInput.value,
+  });
+  if (sizingSel.value === 'fixed-risk' && heatCapChk.checked) params.set('maxHeatPct', maxHeatPctInput.value);
+  if (throttleChk.checked) {
+    params.set('throttle', 'true');
+    params.set('throttleMode', throttleModeSel.value);
+    params.set('triggerDD', triggerDDInput.value);
+    params.set('restoreDD', restoreDDInput.value);
+    params.set('throttleMult', throttleMultInput.value);
+  }
+  if (fadeStopChk.checked) params.set('fadeStopTighten', 'true');
+  if (slFractionChk.checked) params.set('slFraction', slFractionInput.value);
+  if (includeP90Chk.checked) params.set('includeP90', 'true');
+  if (earlyExitChk.checked) params.set('earlyExit', 'true');
+  if (propDDLimitChk.checked) params.set('propDDLimit', propDDLimitInput.value);
+  if (ccyGateChk.checked) {
+    params.set('ccyLossGate', 'true');
+    params.set('maxDailyLossPct', maxDailyLossPctInput.value);
+  }
+  params.set('ladder', 'v2');   // the ONE difference from level-atlas-vote-portfolio.html — selects forecastLadderParamsV2.js's HAR-RV(log) trade files instead of v1's
+  try {
+    const res = await fetch(`/api/level-atlas/vote-portfolio?${params}`);
+    const j = await res.json();
+    if (mySeq !== loadSeq) return; // a newer request has since started — drop this stale response
+    if (!j.ok) { headerSub.textContent = `error: ${j.error}`; return; }
+    const sizingDesc = (j.sizing === 'fixed-risk' ? `${j.riskPct}% risk/trade (fixed)${j.heatCap ? `, ${j.heatCap.maxHeatPct}% portfolio heat cap` : ''}` : `${j.weighting} NAV weighting`)
+      + (j.throttle ? (j.throttle.throttleMode === 'graded'
+          ? `, graded throttle (-4/-6/-8%→.65/.40/.25×, restore ${j.throttle.restoreDD}%)`
+          : `, throttled ${j.throttle.triggerDD}%→${j.throttle.throttleMult}× (restore ${j.throttle.restoreDD}%)`) : '')
+      + (j.fadeStopTighten ? `, fade-stop tightened (${Object.keys(j.fadeStopInfo ?? {}).length} pairs)` : '')
+      + (j.ccyGateInfo ? `, currency loss gate ${j.ccyGateInfo.maxDailyLossPct}%` : '');
+    headerSub.textContent = `${j.pairs.join(' + ')} · min margin ≥${j.minMargin} · max concurrent ${j.maxConcurrent === 99 ? 'unlimited' : j.maxConcurrent}${j.perDirection ? ' (per-direction)' : ''} · ${sizingDesc} · ${j.days} portfolio trading days${j.missing.length ? ` · missing: ${j.missing.join(',')}` : ''}`;
+    // Keep the CSV export panel's own risk% input in sync with the sizing
+    // model's riskPct by default (fixed-risk mode) — same knob, avoids the
+    // chart and the $ export silently disagreeing on what "risk %" means.
+    if (j.sizing === 'fixed-risk') document.getElementById('riskPct').value = j.riskPct;
+    lastResponse = j;
+    render(j);
+  } catch (e) {
+    if (mySeq === loadSeq) headerSub.textContent = `error: ${e.message}`;
+  }
+}
+
+function render(j) {
+  lastTrades = j.trades ?? [];
+  document.getElementById('tradeCount').textContent = lastTrades.length;
+  syncTlPairOptions();
+  selectedTrade = null;
+  renderTradeTable(filteredTrades());
+  renderOutlierSensitivity();
+  renderMonteCarlo(j);
+  renderEvtTail(j);
+  renderCapacity(j);
+  renderMonthlyBreakdown(j);
+  const s = j.stats;
+  document.getElementById('naiveSharpe').textContent = fmt2(j.naiveAvgSharpe);
+  document.getElementById('combinedSharpe').textContent = fmt2(s.sharpe);
+
+  const heatCard = document.getElementById('heatCapCard');
+  if (j.heatCap && j.statsUncapped) {
+    heatCard.style.display = '';
+    const u = j.statsUncapped;
+    const rows = [
+      ['Sharpe', fmt2(u.sharpe), fmt2(s.sharpe)],
+      ['Sharpe 95% CI', ciStr(u), ciStr(s)],
+      ['Sortino', fmt2(u.sortino), fmt2(s.sortino)],
+      ['CAGR (compounded)', fmt1(u.cagr) + '%', fmt1(s.cagr) + '%'],
+      ['Annualised Return (fixed risk)', fmt1(u.cagrNonCompounded) + '%', fmt1(s.cagrNonCompounded) + '%'],
+      ['Max DD (compounded)', fmt1(u.maxDD) + '%', fmt1(s.maxDD) + '%'],
+      ['Max DD (fixed risk)', fmt1(u.maxDDNonCompounded) + '%', fmt1(s.maxDDNonCompounded) + '%'],
+      ['Calmar (compounded)', fmt2(u.calmar), fmt2(s.calmar)],
+      ['Calmar (fixed risk)', fmt2(u.calmarNonCompounded), fmt2(s.calmarNonCompounded)],
+      ['Annualised Vol', fmt1(u.annVol) + '%', fmt1(s.annVol) + '%'],
+      ['Trades taken', j.heatCap.totalCount, j.heatCap.totalCount - j.heatCap.skippedCount],
+    ];
+    document.getElementById('heatCapCompare').innerHTML = `
+      <table><thead><tr><th></th><th class="num">Without cap</th><th class="num">With ${j.heatCap.maxHeatPct}% cap</th></tr></thead>
+      <tbody>${rows.map(([label, a, b]) => `<tr><td>${label}</td><td class="num">${a}</td><td class="num">${b}</td></tr>`).join('')}</tbody></table>
+      <div class="muted" style="margin-top:8px">${j.heatCap.skippedCount} of ${j.heatCap.totalCount} trades (${fmt1(j.heatCap.skippedCount / j.heatCap.totalCount * 100)}%) skipped by the cross-pair budget.</div>`;
+  } else {
+    heatCard.style.display = 'none';
+  }
+
+  const throttleCard = document.getElementById('throttleCard');
+  if (j.throttle && j.statsNoThrottle) {
+    throttleCard.style.display = '';
+    const n = j.statsNoThrottle;
+    const rows = [
+      ['Sharpe', fmt2(n.sharpe), fmt2(s.sharpe)],
+      ['Sharpe 95% CI', ciStr(n), ciStr(s)],
+      ['Sortino', fmt2(n.sortino), fmt2(s.sortino)],
+      ['CAGR (compounded)', fmt1(n.cagr) + '%', fmt1(s.cagr) + '%'],
+      ['Annualised Return (fixed risk)', fmt1(n.cagrNonCompounded) + '%', fmt1(s.cagrNonCompounded) + '%'],
+      ['Max DD (compounded)', fmt1(n.maxDD) + '%', fmt1(s.maxDD) + '%'],
+      ['Max DD (fixed risk)', fmt1(n.maxDDNonCompounded) + '%', fmt1(s.maxDDNonCompounded) + '%'],
+      ['Calmar (compounded)', fmt2(n.calmar), fmt2(s.calmar)],
+      ['Calmar (fixed risk)', fmt2(n.calmarNonCompounded), fmt2(s.calmarNonCompounded)],
+      ['Annualised Vol', fmt1(n.annVol) + '%', fmt1(s.annVol) + '%'],
+    ];
+    document.getElementById('throttleCompare').innerHTML = `
+      <table><thead><tr><th></th><th class="num">Without throttle</th><th class="num">With throttle</th></tr></thead>
+      <tbody>${rows.map(([label, a, b]) => `<tr><td>${label}</td><td class="num">${a}</td><td class="num">${b}</td></tr>`).join('')}</tbody></table>
+      <div class="muted" style="margin-top:8px">Throttled on ${j.throttle.daysThrottled} of ${j.throttle.totalDays} portfolio trading days (${fmt1(j.throttle.daysThrottled / j.throttle.totalDays * 100)}%)${j.throttle.throttleMode === 'graded'
+        ? ` — graded ramp: ${j.throttle.tiers.map(t => `${t.trigger}%→${t.mult}×`).join(', ')}, restored above ${j.throttle.restoreDD}%.`
+        : ` — de-risked to ${j.throttle.throttleMult}× below ${j.throttle.triggerDD}% drawdown, restored above ${j.throttle.restoreDD}%.`}</div>`;
+  } else {
+    throttleCard.style.display = 'none';
+  }
+
+  const fadeStopCard = document.getElementById('fadeStopCard');
+  if (j.fadeStopTighten && j.statsNoFadeTighten) {
+    fadeStopCard.style.display = '';
+    const n = j.statsNoFadeTighten;
+    const rows = [
+      ['Sharpe', fmt2(n.sharpe), fmt2(s.sharpe)],
+      ['Sharpe 95% CI', ciStr(n), ciStr(s)],
+      ['Sortino', fmt2(n.sortino), fmt2(s.sortino)],
+      ['CAGR (compounded)', fmt1(n.cagr) + '%', fmt1(s.cagr) + '%'],
+      ['Annualised Return (fixed risk)', fmt1(n.cagrNonCompounded) + '%', fmt1(s.cagrNonCompounded) + '%'],
+      ['Max DD (compounded)', fmt1(n.maxDD) + '%', fmt1(s.maxDD) + '%'],
+      ['Max DD (fixed risk)', fmt1(n.maxDDNonCompounded) + '%', fmt1(s.maxDDNonCompounded) + '%'],
+      ['Calmar (compounded)', fmt2(n.calmar), fmt2(s.calmar)],
+      ['Calmar (fixed risk)', fmt2(n.calmarNonCompounded), fmt2(s.calmarNonCompounded)],
+      ['Annualised Vol', fmt1(n.annVol) + '%', fmt1(s.annVol) + '%'],
+      ['Avg loss / trade (risk-adj %)', fmtPct(n.avgLossRiskAdjPct), fmtPct(s.avgLossRiskAdjPct)],
+    ];
+    const info = j.fadeStopInfo ?? {};
+    const infoRows = Object.entries(info).map(([pair, v]) => `<tr><td>${pair}</td><td class="num">${v.stopPips} (p${v.percentile})</td></tr>`).join('');
+    document.getElementById('fadeStopCompare').innerHTML = `
+      <table><thead><tr><th></th><th class="num">Without tightening</th><th class="num">With tightening</th></tr></thead>
+      <tbody>${rows.map(([label, a, b]) => `<tr><td>${label}</td><td class="num">${a}</td><td class="num">${b}</td></tr>`).join('')}</tbody></table>
+      <div class="muted" style="margin-top:8px">Tightened fade stop per pair (pips, percentile of that pair's own fade winners' real MAE):</div>
+      <table style="margin-top:4px"><tbody>${infoRows}</tbody></table>`;
+  } else {
+    fadeStopCard.style.display = 'none';
+  }
+
+  const slFractionCard = document.getElementById('slFractionCard');
+  if (j.slFraction && j.statsNoSlFraction) {
+    slFractionCard.style.display = '';
+    const n = j.statsNoSlFraction;
+    const rows = [
+      ['Sharpe', fmt2(n.sharpe), fmt2(s.sharpe)],
+      ['Sharpe 95% CI', ciStr(n), ciStr(s)],
+      ['Sortino', fmt2(n.sortino), fmt2(s.sortino)],
+      ['CAGR (compounded)', fmt1(n.cagr) + '%', fmt1(s.cagr) + '%'],
+      ['Annualised Return (fixed risk)', fmt1(n.cagrNonCompounded) + '%', fmt1(s.cagrNonCompounded) + '%'],
+      ['Max DD (compounded)', fmt1(n.maxDD) + '%', fmt1(s.maxDD) + '%'],
+      ['Max DD (fixed risk)', fmt1(n.maxDDNonCompounded) + '%', fmt1(s.maxDDNonCompounded) + '%'],
+      ['Calmar (compounded)', fmt2(n.calmar), fmt2(s.calmar)],
+      ['Calmar (fixed risk)', fmt2(n.calmarNonCompounded), fmt2(s.calmarNonCompounded)],
+      ['Annualised Vol', fmt1(n.annVol) + '%', fmt1(s.annVol) + '%'],
+      ['Avg loss / trade (risk-adj %)', fmtPct(n.avgLossRiskAdjPct), fmtPct(s.avgLossRiskAdjPct)],
+    ];
+    document.getElementById('slFractionCompare').innerHTML = `
+      <table><thead><tr><th></th><th class="num">Without fraction</th><th class="num">With ${j.slFraction}× fraction</th></tr></thead>
+      <tbody>${rows.map(([label, a, b]) => `<tr><td>${label}</td><td class="num">${a}</td><td class="num">${b}</td></tr>`).join('')}</tbody></table>
+      <div class="muted" style="margin-top:8px">Risk-adjusted avg loss per trade often barely moves — fixed-risk position sizing rescales up to hit the same target risk when the declared stop tightens. The real effect shows in maxDD and Sharpe/PF above, not in per-trade loss size, unless sizing is deliberately decoupled from the tightened stop.</div>`;
+  } else {
+    slFractionCard.style.display = 'none';
+  }
+
+  const p90Card = document.getElementById('p90Card');
+  if (j.includeP90 && j.statsNoP90) {
+    p90Card.style.display = '';
+    const n = j.statsNoP90;
+    const rows = [
+      ['Sharpe', fmt2(n.sharpe), fmt2(s.sharpe)],
+      ['Sharpe 95% CI', ciStr(n), ciStr(s)],
+      ['Sortino', fmt2(n.sortino), fmt2(s.sortino)],
+      ['CAGR (compounded)', fmt1(n.cagr) + '%', fmt1(s.cagr) + '%'],
+      ['Annualised Return (fixed risk)', fmt1(n.cagrNonCompounded) + '%', fmt1(s.cagrNonCompounded) + '%'],
+      ['Max DD (compounded)', fmt1(n.maxDD) + '%', fmt1(s.maxDD) + '%'],
+      ['Max DD (fixed risk)', fmt1(n.maxDDNonCompounded) + '%', fmt1(s.maxDDNonCompounded) + '%'],
+      ['Calmar (compounded)', fmt2(n.calmar), fmt2(s.calmar)],
+      ['Annualised Vol', fmt1(n.annVol) + '%', fmt1(s.annVol) + '%'],
+      ['Profit Factor', fmt2(n.profitFactor), fmt2(s.profitFactor)],
+      ['Avg loss / trade (risk-adj %)', fmtPct(n.avgLossRiskAdjPct), fmtPct(s.avgLossRiskAdjPct)],
+    ];
+    const info = j.p90Info ?? {};
+    const infoRows = Object.entries(info).map(([pair, v]) => `<tr><td>${pair}</td><td class="num">${v.stopPips} pips (p${v.percentile} of runPips)</td><td class="num">${v.tradesAdded}</td></tr>`).join('');
+    document.getElementById('p90Compare').innerHTML = `
+      <table><thead><tr><th></th><th class="num">Without p90</th><th class="num">With p90</th></tr></thead>
+      <tbody>${rows.map(([label, a, b]) => `<tr><td>${label}</td><td class="num">${a}</td><td class="num">${b}</td></tr>`).join('')}</tbody></table>
+      <div class="muted" style="margin-top:8px">p90 stop distance per pair (fit on in-sample data, frozen — not re-fit per request) and OOS trades added:</div>
+      <table style="margin-top:4px"><thead><tr><th>Pair</th><th class="num">Stop</th><th class="num">Trades added</th></tr></thead><tbody>${infoRows}</tbody></table>`;
+  } else {
+    p90Card.style.display = 'none';
+  }
+
+  const earlyExitCard = document.getElementById('earlyExitCard');
+  if (j.earlyExit && j.statsNoEarlyExit) {
+    earlyExitCard.style.display = '';
+    const n = j.statsNoEarlyExit;
+    const rows = [
+      ['Sharpe', fmt2(n.sharpe), fmt2(s.sharpe)],
+      ['Sharpe 95% CI', ciStr(n), ciStr(s)],
+      ['Sortino', fmt2(n.sortino), fmt2(s.sortino)],
+      ['CAGR (compounded)', fmt1(n.cagr) + '%', fmt1(s.cagr) + '%'],
+      ['Max DD (compounded)', fmt1(n.maxDD) + '%', fmt1(s.maxDD) + '%'],
+      ['Max DD (fixed risk)', fmt1(n.maxDDNonCompounded) + '%', fmt1(s.maxDDNonCompounded) + '%'],
+      ['Annualised Vol', fmt1(n.annVol) + '%', fmt1(s.annVol) + '%'],
+      ['Profit Factor', fmt2(n.profitFactor), fmt2(s.profitFactor)],
+      ['Avg loss / trade (risk-adj %)', fmtPct(n.avgLossRiskAdjPct), fmtPct(s.avgLossRiskAdjPct)],
+    ];
+    const info = j.earlyExitInfo ?? {};
+    const infoRows = Object.entries(info).map(([pair, v]) => `<tr><td>${pair}</td><td class="num">${(v.threshold * 100).toFixed(0)}%</td><td class="num">${v.tradesReprised}</td></tr>`).join('');
+    document.getElementById('earlyExitCompare').innerHTML = `
+      <table><thead><tr><th></th><th class="num">Without early exit</th><th class="num">With early exit</th></tr></thead>
+      <tbody>${rows.map(([label, a, b]) => `<tr><td>${label}</td><td class="num">${a}</td><td class="num">${b}</td></tr>`).join('')}</tbody></table>
+      <div class="muted" style="margin-top:8px">Threshold (% of the ORIGINAL, unchanged stop distance) and OOS trades cut short per pair:</div>
+      <table style="margin-top:4px"><thead><tr><th>Pair</th><th class="num">Threshold</th><th class="num">Trades cut short</th></tr></thead><tbody>${infoRows}</tbody></table>`;
+  } else {
+    earlyExitCard.style.display = 'none';
+  }
+
+  const intradayMAECard = document.getElementById('intradayMAECard');
+  if (j.intradayMAE) {
+    intradayMAECard.style.display = '';
+    const im = j.intradayMAE;
+    const breachRow = im.breachedCount != null
+      ? `<div class="muted" style="margin-top:8px">At a ${im.propDDLimit}% daily DD limit: <strong style="color:${im.breachedCount > 0 ? '#f87171' : '#4ade80'}">${im.breachedCount} of ${im.totalDays}</strong> days would have breached it intraday at some point — regardless of how each day ultimately closed.</div>`
+      : `<div class="muted" style="margin-top:8px">Set "Prop daily DD limit" above to check how many days would have breached a specific intraday threshold.</div>`;
+    const worstRows = im.worstDays.map(d => `<tr><td>${d.date}</td><td class="num" style="color:#f87171">${fmt1(d.mae)}%</td><td class="num" style="color:${d.netResult >= 0 ? '#4ade80' : '#f87171'}">${fmtPct(d.netResult)}</td><td class="num">${d.trades}</td></tr>`).join('');
+    document.getElementById('intradayMAECompare').innerHTML = `
+      <div class="kpi" style="display:inline-block"><div class="label">Worst intraday MAE ever</div><div class="value" style="color:#f87171">${fmt1(im.worstDayMAEPct)}%</div><div class="sub">${im.worstDayDate}</div></div>
+      ${breachRow}
+      <div class="muted" style="margin-top:8px">10 worst intraday excursions (MAE = deepest running loss reached mid-day; Net = how the day actually closed):</div>
+      <table style="margin-top:4px"><thead><tr><th>Date</th><th class="num">Intraday MAE</th><th class="num">Net result</th><th class="num">Trades</th></tr></thead><tbody>${worstRows}</tbody></table>`;
+  } else {
+    intradayMAECard.style.display = 'none';
+  }
+
+  const ccyGateCard = document.getElementById('ccyGateCard');
+  if (j.ccyGateInfo && j.statsNoCcyGate) {
+    ccyGateCard.style.display = '';
+    const n = j.statsNoCcyGate;
+    const rows = [
+      ['Sharpe', fmt2(n.sharpe), fmt2(s.sharpe)],
+      ['Sharpe 95% CI', ciStr(n), ciStr(s)],
+      ['Sortino', fmt2(n.sortino), fmt2(s.sortino)],
+      ['CAGR (compounded)', fmt1(n.cagr) + '%', fmt1(s.cagr) + '%'],
+      ['Annualised Return (fixed risk)', fmt1(n.cagrNonCompounded) + '%', fmt1(s.cagrNonCompounded) + '%'],
+      ['Max DD (compounded)', fmt1(n.maxDD) + '%', fmt1(s.maxDD) + '%'],
+      ['Max DD (fixed risk)', fmt1(n.maxDDNonCompounded) + '%', fmt1(s.maxDDNonCompounded) + '%'],
+      ['Calmar (compounded)', fmt2(n.calmar), fmt2(s.calmar)],
+      ['Calmar (fixed risk)', fmt2(n.calmarNonCompounded), fmt2(s.calmarNonCompounded)],
+      ['Annualised Vol', fmt1(n.annVol) + '%', fmt1(s.annVol) + '%'],
+      ['CVaR 95%', fmt2(n.cvar95) + '%', fmt2(s.cvar95) + '%'],
+      ['Trades taken', j.ccyGateInfo.totalCount, j.ccyGateInfo.totalCount - j.ccyGateInfo.skippedCount],
+    ];
+    document.getElementById('ccyGateCompare').innerHTML = `
+      <table><thead><tr><th></th><th class="num">Without gate</th><th class="num">With ${j.ccyGateInfo.maxDailyLossPct}% gate</th></tr></thead>
+      <tbody>${rows.map(([label, a, b]) => `<tr><td>${label}</td><td class="num">${a}</td><td class="num">${b}</td></tr>`).join('')}</tbody></table>
+      <div class="muted" style="margin-top:8px">${j.ccyGateInfo.skippedCount} of ${j.ccyGateInfo.totalCount} trades (${fmt1(j.ccyGateInfo.skippedCount / j.ccyGateInfo.totalCount * 100)}%) blocked by the currency loss gate.</div>`;
+  } else {
+    ccyGateCard.style.display = 'none';
+  }
+
+  document.getElementById('kpiShared').innerHTML = [
+    kpiCard('Sharpe', fmt2(s.sharpe),
+      // Colored by the LOWER bound of the 95% CI, not the point estimate — a
+      // point estimate of 2.7 on a couple years of data can still have a CI
+      // lower bound near 1 (a solid-but-unremarkable system) or near 0 (not
+      // distinguishable from no edge at all). A single bare Sharpe number
+      // invites exactly the "is this better than the best system ever"
+      // reaction it deserves; the CI is the honest version of this card.
+      (s.sharpeCI95?.[0] >= 1.5) ? 'green' : (s.sharpeCI95?.[0] >= 0) ? 'blue' : 'red',
+      s.sharpeCI95 ? `95% CI [${fmt2(s.sharpeCI95[0])}, ${fmt2(s.sharpeCI95[1])}] · PSR ${fmt2(s.psr)}` : `PSR ${fmt2(s.psr)}`),
+    kpiCard('Sortino', fmt2(s.sortino), s.sortino >= 2 ? 'green' : s.sortino >= 1 ? 'blue' : 'amber', 'downside-deviation-only Sharpe'),
+    kpiCard('Profit Factor', fmt2(s.profitFactor), s.profitFactor >= 1.5 ? 'green' : s.profitFactor >= 1 ? 'blue' : 'red', 'gross up-days ÷ gross down-days'),
+    kpiCard('Win Rate (days)', fmt1(s.winRate) + '%', '', '% of positive trading days — NOT per-trade (a losing trade can still land on a net-positive day)'),
+    kpiCard('Win Rate (trades)', s.perTradeWinRate != null ? fmt1(s.perTradeWinRate) + '%' : '—', '', 'traditional per-trade win rate — usually lower than the day-based one above'),
+    kpiCard('Worst Intraday MAE', j.intradayMAE?.worstDayMAEPct != null ? fmt1(j.intradayMAE.worstDayMAEPct) + '%' : '—', j.intradayMAE?.worstDayMAEPct < -1 ? 'red' : '', j.intradayMAE?.worstDayDate ? `worst point WITHIN a day, ${j.intradayMAE.worstDayDate} — a losses-then-wins day can breach this before recovering` : 'deepest running loss reached mid-day, before any same-day recovery'),
+    kpiCard('Annualised Vol', fmt1(s.annVol) + '%', '', 'realised, unlevered'),
+    kpiCard('Skew', fmt2(s.skew), '', 'daily return distribution'),
+    kpiCard('Excess Kurtosis', fmt2(s.excessKurt), '', s.excessKurt > 0 ? 'fatter tails than normal' : 'thinner tails than normal'),
+    kpiCard('VaR 95%', fmt2(s.var95) + '%', 'red', 'daily loss at the 95th-pctile tail'),
+    kpiCard('CVaR 95%', fmt2(s.cvar95) + '%', 'red', 'mean daily loss BEYOND that tail'),
+    kpiCard('Lag-1 Autocorr', fmt2(s.acf1), '', s.acf1 < 0 ? 'mean-reverting days' : s.acf1 > 0 ? 'clustering days' : 'no persistence'),
+    kpiCard('Trading Days', s.days, '', ''),
+  ].join('');
+
+  document.getElementById('kpiCompounded').innerHTML = [
+    kpiCard('CAGR', fmt1(s.cagr) + '%', signClass(s.cagr), 'reinvested daily'),
+    kpiCard('Max Drawdown', fmt1(s.maxDD) + '%', 'red', 'compounded equity, peak→trough'),
+    kpiCard('Calmar', fmt2(s.calmar), '', 'CAGR / |max DD|'),
+  ].join('');
+
+  document.getElementById('kpiNonCompounded').innerHTML = [
+    kpiCard('Annualised Return', fmt1(s.cagrNonCompounded) + '%', signClass(s.cagrNonCompounded), 'sum of daily %, ÷ years — never reinvested'),
+    kpiCard('Max Drawdown', fmt1(s.maxDDNonCompounded) + '%', 'red', 'additive equity, peak→trough'),
+    kpiCard('Calmar', fmt2(s.calmarNonCompounded), '', 'annualised return / |max DD|'),
+  ].join('');
+
+  const vt = s.volTarget;
+  document.getElementById('targetVolLabel').textContent = vt.target;
+  const scale = s.annVol > 0 ? vt.target / s.annVol : null;
+  const leveredCards = [
+    kpiCard('Target Vol', vt.target + '%', 'blue', 'the chosen scale'),
+    kpiCard('CAGR (levered)', fmt1(vt.cagr) + '%', signClass(vt.cagr), `vs ${fmt1(s.cagr)}% unlevered`),
+    kpiCard('Max DD (levered)', fmt1(vt.maxDD) + '%', 'red', `vs ${fmt1(s.maxDD)}% unlevered`),
+    kpiCard('Calmar (levered)', fmt2(vt.calmar), '', 'same Sharpe, scaled risk'),
+  ];
+  if (j.sizing === 'fixed-risk' && scale != null) {
+    leveredCards.push(kpiCard('Risk % / trade to hit target', fmt2(j.riskPct * scale) + '%', 'amber', `${fmt2(scale)}× today's ${j.riskPct}%/trade`));
+  }
+  document.getElementById('kpiLevered').innerHTML = leveredCards.join('');
+
+  if (eqChart) eqChart.destroy();
+  let eq = 1, sum = 0;
+  // Equity INDEX (100 = starting capital) alongside the % gain — the index
+  // is always positive (unless a drawdown wipes the account out entirely),
+  // which is what a log-scale axis needs; log(0) / log(negative) is invalid,
+  // so the log view plots the index while the linear view keeps the more
+  // intuitive "% gain" framing.
+  const eqIndex = j.equityCurve.map(p => { eq *= (1 + p.dailyReturn / 100); return +(eq * 100).toFixed(3); });
+  const eqCurve = eqIndex.map(v => +(v - 100).toFixed(3));
+  const sumCurve = j.equityCurve.map(p => { sum += p.dailyReturn; return +sum.toFixed(3); });
+  const logMode = logScaleChk.checked;
+  // Compounding can make the two lines differ by 10-30x+ in scale (real —
+  // that gap IS the compounding effect). On a SHARED axis the smaller
+  // non-compounded line gets crushed flat and unreadable once the compounded
+  // line gets big enough, so it gets its OWN right-hand axis instead — same
+  // data, both curves actually visible. Log mode additionally straightens a
+  // STABLE growth rate into a line, so a genuine change in slope (not just
+  // "it's compounding") is what a real acceleration/slowdown looks like.
+  eqChart = new Chart(document.getElementById('eqChart'), {
+    type: 'line',
+    data: { labels: j.equityCurve.map(p => p.date), datasets: [
+      { label: `Compounded % (final ${fmt1(eqCurve[eqCurve.length - 1])}%)`, data: logMode ? eqIndex : eqCurve, borderColor: '#5b9dff', backgroundColor: 'rgba(91,157,255,.08)', fill: !logMode, tension: .15, pointRadius: 0, borderWidth: 1.5, yAxisID: 'y' },
+      { label: `Non-compounded (final ${fmt1(sumCurve[sumCurve.length - 1])}%)`, data: sumCurve, borderColor: '#fbbf24', backgroundColor: 'transparent', borderDash: [4, 3], fill: false, tension: .15, pointRadius: 0, borderWidth: 1.5, yAxisID: 'y1' },
+    ] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, labels: { color: '#94a3b8', boxWidth: 12, font: { size: 11 } } } },
+      scales: {
+        x: { ticks: { color: '#5a6380', maxTicksLimit: 12 }, grid: { display: false } },
+        y: { type: logMode ? 'logarithmic' : 'linear', position: 'left', ticks: { color: '#5b9dff', callback: v => logMode ? Number(v).toLocaleString() : (v + '%') }, grid: { color: '#1e2436' }, title: { display: true, text: logMode ? 'Compounded (equity index — 100 = start)' : 'Compounded %', color: '#5b9dff', font: { size: 10 } } },
+        y1: { position: 'right', ticks: { color: '#fbbf24', callback: v => v + '%' }, grid: { display: false }, title: { display: true, text: 'Non-compounded %', color: '#fbbf24', font: { size: 10 } } },
+      } },
+  });
+
+  // In fixed-risk mode every pair's combine-`weight` is forced to 1 (no NAV
+  // split), so it's meaningless as a "capital %" — show each pair's share of
+  // TRADE COUNT instead (the natural meaning of "weight" when every trade
+  // already risks the same fixed %).
+  const fixedRisk = j.sizing === 'fixed-risk';
+  document.getElementById('weightColHead').textContent = fixedRisk ? 'Share of trades' : 'Portfolio weight';
+  const rows = Object.entries(j.perPair);
+  const shareOf = p => fixedRisk ? p.tradeShare : p.weight;
+  document.getElementById('perPairBody').innerHTML = rows.map(([pair, p]) => `
+    <tr><td style="color:${PAIR_COLORS[pair] ?? '#cbd5e1'}">${pair}</td>
+      <td class="num">${p.totalDecided}</td><td class="num">${p.kept}</td><td class="num muted">${p.skipped}</td>
+      <td class="num">${fmt1(p.ownWinRate)}%</td><td class="num">${fmt2(p.ownSharpe)}</td>
+      <td class="num">${fmt1(shareOf(p) * 100)}%</td></tr>`).join('');
+  document.getElementById('weightBar').innerHTML = rows.map(([pair, p]) =>
+    `<div class="bar" style="width:${shareOf(p) * 100}%;background:${PAIR_COLORS[pair] ?? '#5a6380'}" title="${pair}: ${fmt1(shareOf(p) * 100)}%"></div>`).join('');
+}
+
+function csvDownload(filename, rows) {
+  const blob = new Blob([rows.map(r => r.join(',')).join('\n')], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+function riskPctOf(t) { return t.stopPips * t.pip / t.entry * 100; }
+
+// The house convention (MD files/CLAUDE.md) and the external reference
+// importer we cross-check against both expect these 3 LEADING columns
+// exactly, by name and by POSITION — `Date,Return %,MAE %` /
+// `date,R,MAE (R)` / `Trade Date,PnL ($),Risk ($)`. Putting `Pair` in
+// position 2 (as an earlier version of this export did) shifts every
+// column after it, so a positional importer reads the pair NAME where it
+// expects a number — a real, silent import-breaking bug, not just a style
+// nit. `Pair` is now a TRAILING 4th column instead: safe for any importer
+// that reads by name or by the first 3 positions, while still preserving
+// per-pair attribution for anyone reading the extra column.
+// MAE is an UNSIGNED magnitude on the trade object (engine contract — E-ratio
+// = MFE÷MAE needs both positive; see js/levelAtlasVoteReview.js). Both CSV
+// exports below flip it negative, matching the CSV convention (an adverse
+// excursion IS a drawdown, so it belongs on the same negative side of zero
+// as a loss) — a display-only sign flip, not a change to what MAE means.
+document.getElementById('expReturns').addEventListener('click', () => {
+  const rows = [['Date', 'Return %', 'MAE %', 'Pair'], ...lastTrades.map(t =>
+    [t.date, (t.pnlPct * t.weight).toFixed(4), (t.maePct != null ? (-Math.abs(t.maePct * t.weight)).toFixed(4) : ''), t.pair])];
+  csvDownload('level-atlas-vote-portfolio-returns.csv', rows);
+});
+document.getElementById('expR').addEventListener('click', () => {
+  // t.rMultiple comes straight from the server (js/levelAtlasVoteReview.js's
+  // riskAdjustTrades) — invariant to sizing mode, since it's the trade's own
+  // outcome ÷ its own stop-based risk unit. Recomputing R from raw fields
+  // here would be WRONG in fixed-risk mode, where t.pnlPct has already been
+  // rescaled to the chosen risk% (dividing it by the raw stop-risk% again
+  // would double-apply the scaling).
+  const rows = [['date', 'R', 'MAE (R)', 'pair'], ...lastTrades.map(t => {
+    const rp = riskPctOf(t);
+    const maeR = (t.maePct != null && rp > 0) ? t.maePct / rp : '';
+    return [t.date, t.rMultiple.toFixed(3), maeR === '' ? '' : (-Math.abs(maeR)).toFixed(3), t.pair];
+  })];
+  csvDownload('level-atlas-vote-portfolio-r-multiples.csv', rows);
+});
+document.getElementById('expCash').addEventListener('click', () => {
+  const acct = parseFloat(document.getElementById('acctSize').value) || 10000;
+  const riskPct = parseFloat(document.getElementById('riskPct').value) || 1;
+  const rows = [['Trade Date', 'PnL ($)', 'Risk ($)', 'Pair'], ...lastTrades.map(t => {
+    const riskDollars = acct * riskPct / 100 * t.weight;
+    return [t.date, (t.rMultiple * riskDollars).toFixed(2), riskDollars.toFixed(2), t.pair];
+  })];
+  csvDownload('level-atlas-vote-portfolio-currency-pnl.csv', rows);
+});
+
+// ── Performance Summary report ──────────────────────────────────────────────
+// A single-page, print-style report — deliberately built from stats ALREADY
+// on the page (s.cagrNonCompounded, s.maxDDNonCompounded, s.sharpe, etc. —
+// see the "compounded vs non-compounded" split above for why "no compounding"
+// is the honest framing here) plus a few genuinely NEW derived numbers this
+// report needs that nothing else on the page shows yet:
+//   - monthly buckets (best/worst/avg month, positive/negative month counts)
+//   - max drawdown DURATION (trading days from a peak until a new one) —
+//     distinct from max drawdown SIZE, which the page already has
+//   - PER-TRADE win rate/avg win/avg loss/profit factor — deliberately
+//     different from the page's own day-level win rate/profit factor
+//     (several trades can net to one positive day), the same distinction
+//     the single-pair tearsheet already draws between its own per-trade and
+//     daily-series numbers.
+function monthKey(dateStr) { return dateStr.slice(0, 7); }
+function fmtDateLong(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00Z');
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' });
+}
+
+// Monthly & daily breakdown (2026-09-09) -- built entirely from data the page
+// already has loaded (j.equityCurve for the day-by-day return series, j.trades
+// for which trades made up each day) -- no server change needed. Non-
+// compounded (additive) daily returns throughout, same convention as the
+// "Fixed risk" KPIs elsewhere on this page, so a rough week isn't made to
+// look artificially worse/better by where it happens to land on a compounding
+// equity curve. Exists to answer "is the week I'm living through unusual, or
+// does the strategy's own history already contain weeks like this" directly,
+// rather than by eye off the equity chart.
+function buildMonthlyBreakdown(j) {
+  const eq = j.equityCurve ?? [];
+  const trades = j.trades ?? [];
+  const tradesByDate = new Map();
+  for (const t of trades) {
+    if (!tradesByDate.has(t.date)) tradesByDate.set(t.date, []);
+    tradesByDate.get(t.date).push(t);
+  }
+  const byMonth = new Map(); // 'YYYY-MM' -> { days: [{date, dailyReturn, trades}] }
+  for (const p of eq) {
+    const mk = monthKey(p.date);
+    if (!byMonth.has(mk)) byMonth.set(mk, []);
+    byMonth.get(mk).push({ date: p.date, dailyReturn: p.dailyReturn, trades: tradesByDate.get(p.date) ?? [] });
+  }
+  const months = [...byMonth.entries()].map(([mk, days]) => {
+    const winDays = days.filter(d => d.dailyReturn > 0).length;
+    const monthReturn = days.reduce((a, d) => a + d.dailyReturn, 0);
+    const best = days.reduce((a, d) => (d.dailyReturn > (a?.dailyReturn ?? -Infinity) ? d : a), null);
+    const worst = days.reduce((a, d) => (d.dailyReturn < (a?.dailyReturn ?? Infinity) ? d : a), null);
+    const tradeCount = days.reduce((a, d) => a + d.trades.length, 0);
+    return { month: mk, days: days.sort((a, b) => a.date < b.date ? -1 : 1), tradingDays: days.length, winDays, winRatePct: days.length ? 100 * winDays / days.length : 0, monthReturn, best, worst, tradeCount };
+  });
+  months.sort((a, b) => b.month < a.month ? -1 : b.month > a.month ? 1 : 0); // most recent first
+  return months;
+}
+function renderMonthlyBreakdown(j) {
+  const months = buildMonthlyBreakdown(j);
+  const rowsHtml = months.map((m, i) => {
+    const rowId = `mBreak_${i}`;
+    const dayRows = m.days.map(d => {
+      const pairs = d.trades.length ? [...new Set(d.trades.map(t => `${t.pair}(${t.decision === 'fade' ? 'F' : 'C'})`))].join(', ') : '—';
+      const dWins = d.trades.filter(t => t.win).length;
+      return `<tr>
+        <td style="padding-left:28px">${fmtDateLong(d.date)}</td>
+        <td class="num" style="color:${d.dailyReturn >= 0 ? '#10b981' : '#ef4444'}">${fmtPct(d.dailyReturn, 2)}</td>
+        <td class="num">${d.trades.length}</td>
+        <td class="num">${d.trades.length ? `${dWins}/${d.trades.length}` : '—'}</td>
+        <td style="font-size:12px;color:#6b7280">${pairs}</td>
+      </tr>`;
+    }).join('');
+    return `<tr class="mBreakMonthRow" data-target="${rowId}" style="cursor:pointer">
+        <td>▸ ${m.month}</td>
+        <td class="num">${m.tradingDays}</td>
+        <td class="num">${fmt1(m.winRatePct)}%</td>
+        <td class="num" style="color:${m.monthReturn >= 0 ? '#10b981' : '#ef4444'};font-weight:600">${fmtPct(m.monthReturn, 2)}</td>
+        <td class="num">${m.tradeCount}</td>
+        <td class="num" style="color:#10b981">${m.best ? fmtPct(m.best.dailyReturn, 2) : '—'}</td>
+        <td class="num" style="color:#ef4444">${m.worst ? fmtPct(m.worst.dailyReturn, 2) : '—'}</td>
+      </tr>
+      <tr id="${rowId}" style="display:none"><td colspan="7" style="padding:0">
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead><tr style="color:#6b7280"><th style="padding-left:28px;text-align:left">Date</th><th class="num">Return</th><th class="num">Trades</th><th class="num">Win/Total</th><th style="text-align:left">Pairs (F=fade, C=continuation)</th></tr></thead>
+          <tbody>${dayRows}</tbody>
+        </table>
+      </td></tr>`;
+  }).join('');
+  document.getElementById('monthlyBody').innerHTML = `
+    <table>
+      <thead><tr><th>Month</th><th class="num">Trading days</th><th class="num">Win rate (days)</th><th class="num">Return</th><th class="num">Trades</th><th class="num">Best day</th><th class="num">Worst day</th></tr></thead>
+      <tbody>${rowsHtml}</tbody>
+    </table>`;
+  document.querySelectorAll('.mBreakMonthRow').forEach(row => {
+    row.addEventListener('click', () => {
+      const detail = document.getElementById(row.dataset.target);
+      const open = detail.style.display !== 'none';
+      detail.style.display = open ? 'none' : '';
+      row.firstElementChild.textContent = (open ? '▸ ' : '▾ ') + row.firstElementChild.textContent.slice(2);
+    });
+  });
+}
+// Per-trade risk-adjusted stats (2026-08-31) -- same brick + same fix as
+// asia-fib-atlas-vote-portfolio.html's Performance Summary: `j.stats`'s
+// Sharpe/Sortino/Calmar are computed off the DAY-POOLED portfolio return
+// series (legit for capital sizing, since concurrent trades really do share
+// one account), which is a different statistical basis than the per-trade
+// win rate/profit factor already shown alongside them below. Reusing
+// summarizeTrades/sortinoRatio/calmar here keeps both figures honest and
+// each internally consistent instead of mixing bases on one row.
+function computeTradeRiskStats(trades) {
+  if (!trades.length) return null;
+  const sorted = [...trades].sort((a, b) => a.resolveTime - b.resolveTime);
+  const pnls = sorted.map(t => t.pnlPct), dates = sorted.map(t => t.date);
+  const base = summarizeTrades(pnls, dates);
+  let addEq = 0, addPeak = 0, addMaxDD = 0;
+  for (const t of sorted) { addEq += t.pnlPct; addPeak = Math.max(addPeak, addEq); addMaxDD = Math.min(addMaxDD, addEq - addPeak); }
+  const firstD = sorted[0].date, lastD = sorted[sorted.length - 1].date;
+  const years = Math.max((Date.parse(lastD) - Date.parse(firstD)) / (365.25 * 864e5), 1 / 52);
+  const cagrNonCompounded = addEq / years;
+  const sortino = sortinoRatio(pnls, base.tradesPerYr);
+  const calmarNonCompounded = calmarRatio(cagrNonCompounded, addMaxDD);
+  // Exact inverse of summarizeTrades' own annSharpe formula (× √tradesPerYr)
+  // -- the honest, un-annualized single-trade Sharpe, not a re-derivation.
+  const rawTradeSharpe = base.tradesPerYr > 0 ? base.sharpe / Math.sqrt(base.tradesPerYr) : base.sharpe;
+  return { ...base, rawTradeSharpe, sortino, calmarNonCompounded };
+}
+function buildPerformanceSummary(j) {
+  const eq = j.equityCurve ?? [];
+  const trades = j.trades ?? [];
+  const s = j.stats;
+  const pt = computeTradeRiskStats(trades);
+
+  const byMonth = new Map();
+  for (const p of eq) byMonth.set(monthKey(p.date), (byMonth.get(monthKey(p.date)) ?? 0) + p.dailyReturn);
+  const monthlySums = [...byMonth.values()];
+  const positiveMonths = monthlySums.filter(v => v > 0).length;
+  const negativeMonths = monthlySums.filter(v => v < 0).length;
+  const bestMonth = monthlySums.length ? Math.max(...monthlySums) : 0;
+  const worstMonth = monthlySums.length ? Math.min(...monthlySums) : 0;
+  const avgMonthly = monthlySums.length ? monthlySums.reduce((a, b) => a + b, 0) / monthlySums.length : 0;
+  const totalReturn = eq.reduce((a, p) => a + p.dailyReturn, 0);
+
+  // Max drawdown DURATION on the ADDITIVE (non-compounded) equity path —
+  // longest run of trading days spent below the running peak before a new one.
+  let cum = 0, peak = 0, peakIdx = 0, maxDur = 0;
+  eq.forEach((p, i) => {
+    cum += p.dailyReturn;
+    if (cum >= peak) { peak = cum; peakIdx = i; } else { maxDur = Math.max(maxDur, i - peakIdx); }
+  });
+
+  const wins = trades.filter(t => t.win), losses = trades.filter(t => !t.win);
+  const avgWin = wins.length ? wins.reduce((a, t) => a + t.pnlPct, 0) / wins.length : 0;
+  const avgLoss = losses.length ? losses.reduce((a, t) => a + t.pnlPct, 0) / losses.length : 0;
+  const avgTrade = trades.length ? trades.reduce((a, t) => a + t.pnlPct, 0) / trades.length : 0;
+
+  // Tail-risk block — same three bricks the standing on-page cards use
+  // (outlier sensitivity / Monte Carlo / EVT tail fit), collapsed to the
+  // handful of headline numbers a print sheet has room for. Skew/excess
+  // kurtosis are already on `s` (the same daily-return-distribution basis
+  // the "Distribution & risk-adjusted" KPI grid shows) — reused, not
+  // recomputed. Everything else is derived fresh from `trades`/`eq` so this
+  // report never depends on the on-page cards having already rendered.
+  const dailyReturns = eq.map(p => p.dailyReturn);
+  const pnls = trades.map(t => t.pnlPct * (t.weight ?? 1));
+  const totalProfit = pnls.reduce((a, b) => a + b, 0);
+  const top10Sum = [...pnls].sort((a, b) => b - a).slice(0, 10).reduce((a, b) => a + b, 0);
+  const top10SharePct = totalProfit !== 0 ? (top10Sum / totalProfit * 100) : 0;
+  const byPnlDesc = [...trades].sort((a, b) => (b.pnlPct * (b.weight ?? 1)) - (a.pnlPct * (a.weight ?? 1)));
+  const top10Excluded = new Set(byPnlDesc.slice(0, 10));
+  const sharpeExTop10 = portfolioStats(outlierDailySeriesExcluding(top10Excluded), { mc: false }).sharpe;
+  const bs = trades.length ? backtestStats(pnls, trades.map(t => t.date)) : null;
+  const evt = dailyReturns.length >= 30 ? fitTailModel(dailyReturns) : { ok: false };
+  const evt995 = evt.ok ? evt.probes.find(p => p.p === 0.995) : null;
+  const cap = computeCapacityTest(j);
+
+  return {
+    dateFrom: eq[0]?.date, dateTo: eq[eq.length - 1]?.date,
+    totalReturn, annualReturn: s.cagrNonCompounded, monthlyReturn: avgMonthly, avgTrade, bestMonth, worstMonth,
+    annVol: s.annVol, maxDD: s.maxDDNonCompounded, maxDDDurationDays: maxDur,
+    var95: s.var95, var99: s.var99, cvar95: s.cvar95,
+    portfolioSharpe: s.sharpe, portfolioSortino: s.sortino, portfolioCalmar: s.calmarNonCompounded,
+    tradeSharpe: pt?.rawTradeSharpe ?? 0, tradeSortino: pt?.sortino ?? 0, tradeCalmar: pt?.calmarNonCompounded ?? 0,
+    profitFactor: pt?.profitFactor ?? 0, winRate: pt?.winRate ?? 0, avgWin, avgLoss,
+    positiveMonths, negativeMonths, totalRoundTrips: trades.length,
+    skew: s.skew, excessKurt: s.excessKurt, top10SharePct, sharpeExTop10,
+    pProfitable: bs ? bs.bootstrap.pPositive * 100 : null,
+    reshuffledMaxDDp95: bs ? bs.montecarlo.maxDD.p95 : null,
+    evtShape: evt.ok ? evt.shape : null,
+    evtCeiling: evt.ok && evt.shape < -1e-6 ? evt.threshold + evt.scale / Math.abs(evt.shape) : null,
+    evtVar995: evt995 ? evt995.varLossPct : null, evtCvar995: evt995 ? evt995.cvarLossPct : null,
+    capacityCrossing: cap?.portfolioCrossing ?? null,
+    capacityFragile: cap?.perPairResults?.slice(0, 3) ?? [],
+    capacityRobust: cap?.perPairResults?.slice(-3).reverse() ?? [],
+  };
+}
+function perfRow(label, value) {
+  return `<tr><td style="padding:8px 4px;border-bottom:1px solid #e5e5e0;color:#374151">${label}</td><td style="padding:8px 4px;border-bottom:1px solid #e5e5e0;text-align:right;font-weight:600">${value}</td></tr>`;
+}
+function perfSection(title, rows, note) {
+  return `<div style="background:#0f2a4a;color:#fff;font-size:12px;font-weight:700;letter-spacing:.03em;padding:8px 12px;margin-top:16px;border-radius:4px 4px 0 0">${title}${note ? `<div style="font-size:10px;font-weight:400;letter-spacing:normal;color:#9db4d4;margin-top:2px">${note}</div>` : ''}</div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px"><tbody>${rows}</tbody></table>`;
+}
+function renderPerformanceSummary() {
+  if (!lastResponse) return;
+  const r = buildPerformanceSummary(lastResponse);
+  const acct = parseFloat(document.getElementById('acctSize').value) || 10000;
+  document.getElementById('perfSummarySub1').textContent = `Simple returns on $${acct.toLocaleString()} starting capital · no compounding`;
+  document.getElementById('perfSummarySub2').textContent = `${fmtDateLong(r.dateFrom)} - ${fmtDateLong(r.dateTo)}`;
+  document.getElementById('perfSummaryBody').innerHTML =
+    perfSection('RETURNS', [
+      perfRow('Total Return', fmtPct(r.totalReturn, 2)),
+      perfRow('Annual Return', fmtPct(r.annualReturn, 2)),
+      perfRow('Monthly Return', fmtPct(r.monthlyReturn, 2)),
+      perfRow('Average Trade', fmtPct(r.avgTrade, 2)),
+      perfRow('Best Month', fmtPct(r.bestMonth, 2)),
+      perfRow('Worst Month', fmtPct(r.worstMonth, 2)),
+      perfRow('Positive Months', r.positiveMonths),
+      perfRow('Negative Months', r.negativeMonths),
+    ].join('')) +
+    perfSection('PORTFOLIO RISK', [
+      perfRow('Annual Volatility', fmt2(r.annVol) + '%'),
+      perfRow('Max Drawdown', fmt2(r.maxDD) + '%'),
+      perfRow('Max DD Duration (bdays)', r.maxDDDurationDays),
+      perfRow('VaR (95%)', fmt2(r.var95) + '%'),
+      perfRow('VaR (99%)', fmt2(r.var99) + '%'),
+      perfRow('CVaR (95%)', fmt2(r.cvar95) + '%'),
+    ].join(''), 'daily returns, all open positions pooled — the real correlation basis for sizing/DD') +
+    perfSection('PORTFOLIO RISK-ADJUSTED', [
+      perfRow('Sharpe Ratio', fmt2(r.portfolioSharpe)),
+      perfRow('Sortino Ratio', fmt2(r.portfolioSortino)),
+      perfRow('Calmar Ratio', fmt2(r.portfolioCalmar)),
+    ].join(''), 'same day-pooled basis as above — valid for capital sizing, NOT a per-trade hit rate') +
+    perfSection('PER-TRADE STATISTICS', [
+      perfRow('Sharpe (single trade)', fmt2(r.tradeSharpe)),
+      perfRow('Sortino (per-trade)', fmt2(r.tradeSortino)),
+      perfRow('Calmar (per-trade)', fmt2(r.tradeCalmar)),
+      perfRow('Profit Factor', fmt2(r.profitFactor)),
+      perfRow('Win Rate', fmt2(r.winRate) + '%'),
+      perfRow('Average Win', fmtPct(r.avgWin, 2)),
+      perfRow('Average Loss', fmtPct(r.avgLoss, 2)),
+      perfRow('Total Round Trips', r.totalRoundTrips),
+    ].join(''), 'individual wins/losses, chronological order — Sharpe here is raw (mean ÷ stdev of ONE trade), not annualized. Sortino/Calmar ride the same additive per-trade curve and can run large from trade overlap, not a real edge multiplier — Sharpe (single trade) above is the one honest headline number here.') +
+    perfSection('TAIL RISK', [
+      perfRow('Skew (daily)', fmt2(r.skew)),
+      perfRow('Excess Kurtosis (daily)', fmt2(r.excessKurt)),
+      perfRow('Top 10 Trades = % of Profit', fmt1(r.top10SharePct) + '%'),
+      perfRow('Sharpe ex Top 10 Winners', fmt2(r.sharpeExTop10)),
+      perfRow('Bootstrap P(profitable)', r.pProfitable != null ? fmt1(r.pProfitable) + '%' : '—'),
+      perfRow('Reshuffled Max DD (p95)', r.reshuffledMaxDDp95 != null ? fmt2(r.reshuffledMaxDDp95) + '%' : '—'),
+      perfRow('EVT Tail Shape (ξ)', r.evtShape != null ? fmt2(r.evtShape) + (r.evtShape < -0.05 ? ' (bounded)' : r.evtShape > 0.05 ? ' (fat)' : '') : '—'),
+      perfRow('EVT Implied Ceiling (1 day)', r.evtCeiling != null ? fmt1(r.evtCeiling) + '%' : '— (unbounded fit)'),
+      perfRow('EVT VaR 99.5% / CVaR 99.5%', r.evtVar995 != null ? `${fmt2(r.evtVar995)}% / ${r.evtCvar995 != null ? fmt2(r.evtCvar995) + '%' : '—'}` : '—'),
+    ].join(''), 'excess kurtosis: normal = 0, not 3. Top-10/reshuffle/EVT numbers are the same bricks as the standing cards on this page (Outlier sensitivity, Monte Carlo, Extreme tail fit) — see those for the full charts and per-confidence-level detail.') +
+    perfSection('CAPACITY', [
+      perfRow('Portfolio Dies At (cost multiplier)', r.capacityCrossing != null ? fmt2(r.capacityCrossing) + 'x' : '>50x'),
+      ...r.capacityFragile.map((p, i) => perfRow(`Most Fragile #${i + 1}`, `${p.pair} — dies at ${p.crossing != null ? fmt1(p.crossing) + 'x' : '>50x'} (Sharpe now ${fmt2(p.baseSharpe)})`)),
+      ...r.capacityRobust.map((p, i) => perfRow(`Most Robust #${i + 1}`, `${p.pair} — dies at ${p.crossing != null ? fmt1(p.crossing) + 'x' : '>50x'} (Sharpe now ${fmt2(p.baseSharpe)})`)),
+    ].join(''), 'proxy for how much size/crowding the edge can absorb — reprices every trade at a multiple of its real per-pair transaction cost and finds where Sharpe crosses zero. NOT a £ capital figure (that needs an untested size-to-slippage assumption); the multiplier ranking of which pairs run out of room first is the honest, useful part. See the Capacity card for the full per-pair table.');
+}
+document.getElementById('perfSummaryBtn').addEventListener('click', () => {
+  renderPerformanceSummary();
+  document.getElementById('perfSummaryOverlay').style.display = '';
+});
+document.getElementById('perfSummaryClose').addEventListener('click', () => {
+  document.getElementById('perfSummaryOverlay').style.display = 'none';
+});
+document.getElementById('perfSummaryOverlay').addEventListener('click', (e) => {
+  if (e.target.id === 'perfSummaryOverlay') e.currentTarget.style.display = 'none';
+});
+
+pairChecksEl.addEventListener('change', loadData);
+marginSel.addEventListener('change', loadData);
+capSel.addEventListener('change', loadData);
+perDirChk.addEventListener('change', loadData);
+sizingSel.addEventListener('change', loadData);
+weightSel.addEventListener('change', loadData);
+riskPctInput.addEventListener('change', loadData);
+heatCapChk.addEventListener('change', loadData);
+maxHeatPctInput.addEventListener('change', loadData);
+targetVolInput.addEventListener('change', loadData);
+throttleChk.addEventListener('change', loadData);
+throttleModeSel.addEventListener('change', loadData);
+triggerDDInput.addEventListener('change', loadData);
+restoreDDInput.addEventListener('change', loadData);
+throttleMultInput.addEventListener('change', loadData);
+fadeStopChk.addEventListener('change', loadData);
+slFractionChk.addEventListener('change', loadData);
+slFractionInput.addEventListener('change', loadData);
+includeP90Chk.addEventListener('change', loadData);
+earlyExitChk.addEventListener('change', loadData);
+propDDLimitChk.addEventListener('change', loadData);
+propDDLimitInput.addEventListener('change', loadData);
+ccyGateChk.addEventListener('change', loadData);
+maxDailyLossPctInput.addEventListener('change', loadData);
+logScaleChk.addEventListener('change', () => { if (lastResponse) render(lastResponse); });
+
+// One-click preset: every lever actually validated this session, tuned for
+// LEAST drawdown specifically (not generic "best Sharpe") -- see the
+// button's own title attribute above for the full reasoning per lever.
+// Sets values directly (not via .click()/dispatched events) then calls
+// loadData() exactly once at the end, so this doesn't fire a fetch per field.
+document.getElementById('loadBestConfigBtn').addEventListener('click', () => {
+  pairChecksEl.querySelectorAll('input[type=checkbox]').forEach(el => { el.checked = !CORRELATED_RISK_EXCLUDE.has(el.dataset.pair); });
+  marginSel.value = '3';
+  capSel.value = '3';
+  perDirChk.checked = false;
+  sizingSel.value = 'fixed-risk';
+  riskPctInput.value = '0.5';
+  heatCapChk.checked = false;
+  maxHeatPctInput.value = '1';
+  throttleChk.checked = true;
+  throttleModeSel.value = 'cliff';
+  triggerDDInput.value = '-8';
+  restoreDDInput.value = '-2';
+  throttleMultInput.value = '0.25';
+  fadeStopChk.checked = false;
+  slFractionChk.checked = false;
+  slFractionInput.value = '0.5';
+  includeP90Chk.checked = false;
+  earlyExitChk.checked = true;
+  propDDLimitChk.checked = false;
+  ccyGateChk.checked = true;
+  maxDailyLossPctInput.value = '1';
+  loadData();
+});
+
+loadData();
+</script>
+</body>
+</html>

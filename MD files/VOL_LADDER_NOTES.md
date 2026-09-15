@@ -146,3 +146,16 @@ correct and reusable. It just does not currently earn its place in the fit.
 7. **The 12 retired export builders** are still in `vol-forecast-v2.html`, marked and
    unreachable, so any one can be re-wired in a line. Delete once the Forecast family
    has a few live sessions behind it.
+
+8. **HAR-RV(log) tried as a replacement sigma estimator (Vote Atlas v2), tested, and
+   rejected — 2026-09-15.** Won the walk-forward range-calibration objective almost
+   universally (94.8% of fold-selections in `forge/run_vol.py`), but the actual vote/
+   barrier-trade book built against it (`js/levelAtlasEngine.js`'s `atlasWalk` +
+   `ladderParams` override, `js/forecastLadderParamsV2.js`) scored a combined-portfolio
+   Sharpe of 0.24 against v1's 0.42 across all 26 pairs — worse, not better. A per-pair
+   hybrid (pick whichever estimator wins per instrument) looked promising at one
+   train/test split and did not hold up across three others — not a real effect. See
+   `MD files/LEGO_MODULES.md` §1bb/§1bc for the full account. v1 (Yang-Zhang) remains the
+   shipped estimator; nothing here changes what's live. Worth remembering before anyone
+   re-proposes "swap the sigma estimator" as a lever on this ladder without a fresh
+   reason to expect a different answer this time.

@@ -25,7 +25,7 @@ import { fileURLToPath } from 'url';
 import { loadM1ForPair } from '../js/volBacktestM1Engine.js';
 import { atlasWalk } from '../js/levelAtlasEngine.js';
 import { buildAtlasBook } from '../js/levelAtlasReport.js';
-import { buildBarrierTrades } from '../js/levelAtlasVoteReview.js';
+import { buildBarrierTrades, VOTE_TRADES_SCHEMA } from '../js/levelAtlasVoteReview.js';
 import { summarizeTrades } from '../js/metricsCore.js';
 import { costForPair } from '../js/perLineStrategy.js';
 import { assetClassFor } from '../js/forecastAnalyserStore.js';
@@ -68,7 +68,7 @@ async function buildOne(pair) {
     summaryByMargin[m] = summarizeTrades(sub.map(t => t.pnlPct), sub.map(t => t.date));
   }
 
-  const payload = { instrument: sym, generatedAt: new Date().toISOString(), cost, splitDate: book.splitDate, trades, summaryByMargin };
+  const payload = { instrument: sym, generatedAt: new Date().toISOString(), schema: VOTE_TRADES_SCHEMA, cost, splitDate: book.splitDate, trades, summaryByMargin };
   fs.mkdirSync(OUT_DIR, { recursive: true });
   fs.writeFileSync(path.join(OUT_DIR, `${pair}-votetrades.json`), JSON.stringify(payload));
 
