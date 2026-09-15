@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Motif Alert Backtest</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <style>
   :root { --bg:#0b0e14; --panel:#11151f; --panel2:#0e121b; --line:#1e2436; --text:#cbd5e1; --text2:#94a3b8; --text3:#5a6380; --muted:#64748b; --accent:#5b9dff; --green:#34d399; --red:#f87171; --amber:#fbbf24; --blue:#60a5fa; }
   * { box-sizing:border-box; }
@@ -41,6 +42,11 @@
   .funnel-step .n { font-size:24px; font-weight:700; }
   #tradeTableWrap { max-height:480px; overflow:auto; border:1px solid var(--line); border-radius:8px; }
   code { font-family:'DM Mono',monospace; color:var(--text2); }
+  #tradeChart { height:380px; }
+  tbody tr[data-i] { cursor:pointer; }
+  tbody tr[data-i]:hover { background:#161d2e; }
+  tbody tr.selected { background:#1f2b45; }
+  .flag { border-radius:6px; padding:8px 10px; font-size:12px; }
 </style>
 </head>
 <body>
@@ -193,9 +199,21 @@
 </div>
 
 <div class="card">
+  <h2>Trade viewer</h2>
+  <div class="muted" id="chartTitle">Click any trade row below to draw it on the real candles.</div>
+  <div id="chartPlaceholder" class="muted" style="padding:12px 0">— select a trade —</div>
+  <div id="chartErr" class="flag" style="display:none;background:#2d1414;border:1px solid #5c1212;color:#f0a3a3"></div>
+  <div id="chartLoading" class="muted" style="display:none">loading candles from OANDA…</div>
+  <div id="tradeChart" style="display:none"></div>
+</div>
+
+<div class="card">
   <h2>Trades</h2>
+  <div class="muted" id="acctHint" style="margin-bottom:8px"></div>
   <div class="controls" style="margin-bottom:8px">
-    <button id="exportCsv" type="button">Export CSV</button>
+    <button id="csv1" type="button">CSV · % Returns</button>
+    <button id="csv2" type="button">CSV · R-Multiples</button>
+    <button id="csv3" type="button">CSV · Currency P&amp;L</button>
     <span class="muted" id="tradeCount"></span>
   </div>
   <div id="tradeTableWrap"><table id="tradeTable"></table></div>
@@ -211,6 +229,7 @@ import { buildPortfolioDailySeries, computeIntradayMAE } from './js/levelAtlasVo
 import { portfolioStats } from './js/backtestStats.js';
 import { withNonCompoundedDD } from './js/fibAtlasVotePortfolio.js';
 import { summarizeTrades, sharpeStdError, minTrackRecordLength } from './js/metricsCore.js';
+import { oandaSymbol } from './js/instrumentRegistry.js';
 
 const $ = id => document.getElementById(id);
 const fmt = (v, d = 2) => (v == null || Number.isNaN(v)) ? '—' : Number(v).toFixed(d);
@@ -516,7 +535,7 @@ function renderTrades(trades) {
     `<thead><tr><th>Pair</th><th>Entry</th><th>Dir</th><th>Pattern</th><th>👀</th>
      <th class="num">Shown PF</th><th>Outcome</th><th class="num">R</th><th class="num">MAE R</th>
      <th>IS/OOS</th></tr></thead><tbody>` +
-    shown.map(t => `<tr>
+    shown.map((t, i) => `<tr data-i="${i}">
       <td>${t.pair}</td><td>${t.entry_date.slice(0, 16).replace('T', ' ')}</td>
       <td class="${t.direction === 'BUY' ? 'green' : 'red'}">${t.direction}</td>
       <td>${t.n_touches}-touch ${t.is_top ? 'top' : 'bottom'}</td>
@@ -526,17 +545,125 @@ function renderTrades(trades) {
       <td class="num ${cls(t.r)}">${fmt(t.r, 3)}</td>
       <td class="num">${fmt(t.mae_r, 3)}</td>
       <td>${t.is_oos}</td></tr>`).join('') + '</tbody>';
+  // Delegated so re-renders never leave stale per-row listeners behind.
+  $('tradeTable').onclick = e => {
+    const row = e.target.closest('tr[data-i]');
+    if (row) selectTrade(shown[Number(row.dataset.i)], row);
+  };
 }
 
-function exportCsv(trades) {
-  const cols = ['pair', 'entry_date', 'exit_date', 'direction', 'n_touches', 'is_top',
-                'had_nearing_alert', 'shown_pf', 'shown_played_out_rate', 'outcome', 'r',
-                'mae_r', 'return_pct', 'mae_pct', 'pnl_dollars', 'risk_dollars', 'is_oos'];
-  const rows = [cols.join(',')].concat(trades.map(t => cols.map(c => t[c] ?? '').join(',')));
-  const url = URL.createObjectURL(new Blob([rows.join('\n')], { type: 'text/csv' }));
+// ── CSV exports — the 3 exact house schemas (CLAUDE.md) ──────────────────
+// One trade-log row per closed trade, headers byte-for-byte as specified.
+// MAE is stored on-page as a POSITIVE magnitude ("how far adverse did it
+// go"); the spec's columns are excursions, so they are negated on the way
+// out — same convention touches-backtest.html and motif-combined use.
+function dl(name, rows) {
+  const b = new Blob([rows.join('\n') + '\n'], { type: 'text/csv' });
   const a = document.createElement('a');
-  a.href = url; a.download = 'motif_alert_trades.csv'; a.click();
-  URL.revokeObjectURL(url);
+  a.href = URL.createObjectURL(b);
+  a.download = name; a.click();
+  URL.revokeObjectURL(a.href);
+}
+function exportCsv(tag, header, rowFn) {
+  const t = selectedTrades();
+  if (!t.length) return;
+  dl(`motif_alert_${SELECTED.size === DATA.pairs.length ? 'all' : [...SELECTED].join('-')}_${tag}.csv`,
+     [header, ...t.map(rowFn)]);
+}
+
+// ── Trade viewer — candles + entry/stop/target lines + entry/exit markers ──
+// Same lightweight-charts pattern as motif-combined-backtest.html's viewer
+// (createChart + addCandlestickSeries + createPriceLine + setMarkers), and
+// the same generic /api/ohlc-range endpoint — reused, not reinvented.
+let tvChart = null, tvSeries = null, tvLines = [];
+function ensureTradeChart() {
+  if (tvChart) return;
+  tvChart = LightweightCharts.createChart($('tradeChart'), {
+    height: 380, autoSize: true,
+    layout: { background: { color: '#0e121b' }, textColor: '#cbd5e1' },
+    grid: { vertLines: { color: '#1e2436' }, horzLines: { color: '#1e2436' } },
+    timeScale: { timeVisible: true, secondsVisible: false },
+    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+  });
+  tvSeries = tvChart.addCandlestickSeries({
+    upColor: '#34d399', downColor: '#f87171', borderVisible: false,
+    wickUpColor: '#34d399', wickDownColor: '#f87171',
+  });
+}
+
+async function selectTrade(t, row) {
+  $('tradeTable').querySelectorAll('tr.selected').forEach(r => r.classList.remove('selected'));
+  if (row) row.classList.add('selected');
+  $('chartPlaceholder').style.display = 'none';
+  $('chartErr').style.display = 'none';
+  $('chartTitle').textContent =
+    `${t.pair.toUpperCase()} · ${t.direction} · ${t.n_touches}-touch ${t.is_top ? 'top' : 'bottom'} · `
+    + `${t.entry_date.slice(0, 16).replace('T', ' ')} · ${t.outcome.toUpperCase()} · R=${fmt(t.r, 2)}`
+    + (t.had_nearing_alert ? ' · had a 👀 first' : '');
+
+  let sym = null;
+  try { sym = oandaSymbol(t.pair); } catch { sym = null; }
+  if (!sym) {
+    $('chartErr').textContent = `No OANDA symbol mapping for "${t.pair}".`;
+    $('chartErr').style.display = 'block';
+    return;
+  }
+  if (t.entry_price == null) {
+    $('chartErr').textContent =
+      'This export predates the entry/stop/target fields — re-run '
+      + 'python AnalogML/motif_alert_backtest.py --all-pairs to draw trade levels.';
+    $('chartErr').style.display = 'block';
+    return;
+  }
+
+  $('chartLoading').style.display = 'block';
+  const entry = new Date(t.entry_date), exit = new Date(t.exit_date);
+  const from = new Date(entry.getTime() - 3 * 86400000).toISOString().slice(0, 10);
+  const to = new Date(exit.getTime() + 1 * 86400000).toISOString().slice(0, 10);
+  try {
+    // The container must be visible BEFORE createChart runs, or it measures a
+    // 0x0 box and never gets a real size. Chart setup stays inside the try so
+    // a blocked CDN (LightweightCharts undefined) surfaces here rather than
+    // dying silently before the fetch.
+    $('tradeChart').style.display = 'block';
+    // Distinguish "chart library never loaded" from "candles failed": both
+    // land in the same catch, and blaming OANDA for a blocked CDN sends the
+    // reader to check the wrong thing.
+    if (typeof LightweightCharts === 'undefined') {
+      throw new Error('__nolib__');
+    }
+    ensureTradeChart();
+    tvLines.forEach(l => { try { tvSeries.removePriceLine(l); } catch {} });
+    tvLines = [];
+    const res = await fetch(
+      `/api/ohlc-range?symbol=${encodeURIComponent(sym)}&granularity=H1&from=${from}&to=${to}`
+    ).then(r => r.json());
+    $('chartLoading').style.display = 'none';
+    if (res.error) throw new Error(res.error);
+    if (!res.values || !res.values.length) throw new Error('no candles returned for this window');
+    tvSeries.setData(res.values.map(v => ({ time: v.t, open: v.open, high: v.high, low: v.low, close: v.close })));
+    tvLines = [
+      tvSeries.createPriceLine({ price: t.entry_price, color: '#7a88a8', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dotted, title: 'entry' }),
+      tvSeries.createPriceLine({ price: t.stop_price, color: '#f87171', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dashed, title: 'stop' }),
+      tvSeries.createPriceLine({ price: t.target_price, color: '#34d399', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dashed, title: 'target' }),
+    ];
+    tvSeries.setMarkers([
+      { time: Math.floor(entry.getTime() / 1000), position: t.direction === 'BUY' ? 'belowBar' : 'aboveBar',
+        color: '#5b9dff', shape: t.direction === 'BUY' ? 'arrowUp' : 'arrowDown', text: 'entry' },
+      { time: Math.floor(exit.getTime() / 1000), position: 'inBar',
+        color: t.r > 0 ? '#34d399' : '#f87171', shape: 'circle', text: t.outcome },
+    ]);
+    tvChart.timeScale().fitContent();
+  } catch (e) {
+    $('chartLoading').style.display = 'none';
+    $('tradeChart').style.display = 'none';
+    $('chartErr').textContent = e.message === '__nolib__'
+      ? 'Chart library unavailable — lightweight-charts did not load from its CDN. '
+        + 'Every table and CSV export on this page is unaffected.'
+      : 'Could not load candles: ' + e.message
+        + ' (needs OANDA_KEY configured server-side — this page has no local-data fallback).';
+    $('chartErr').style.display = 'block';
+  }
 }
 
 function render() {
@@ -552,7 +679,13 @@ function render() {
   renderYears(trades);
   renderPairs(trades, res, targetVol);
   renderTrades(trades);
-  $('exportCsv').onclick = () => exportCsv(trades);
+  // Exact headers from CLAUDE.md's 3-CSV spec; MAE negated to an excursion.
+  $('csv1').onclick = () => exportCsv('pct', 'Date,Return %,MAE %',
+    x => `${x.date},${x.return_pct},${-x.mae_pct}`);
+  $('csv2').onclick = () => exportCsv('R', 'date,R,MAE (R)',
+    x => `${x.date},${x.r},${-x.mae_r}`);
+  $('csv3').onclick = () => exportCsv('pnl', 'Trade Date,PnL ($),Risk ($)',
+    x => `${x.date},${x.pnl_dollars},${x.risk_dollars}`);
 }
 
 (async function init() {
@@ -590,6 +723,20 @@ function render() {
      correlation near zero on average does not mean near zero in the tail. This page does not manage
      that risk for you — it has no exposure caps by design, because the alert system has none. The
      honest lever is position size, and the vol-target card shows what this book looks like scaled.`;
+  // CLAUDE.md: state the account size and the R-unit definition next to the
+  // buttons rather than letting them float as hidden constants. Not the
+  // degenerate case that spec warns about: R is measured against the fixed
+  // 20-pip stop while Return % is the raw price move, so the two columns are
+  // genuinely different numbers, not one relabelled.
+  $('acctHint').innerHTML =
+    `Account <strong>$${pr.account_size.toLocaleString()}</strong>, risk `
+    + `<strong>${(pr.risk_pct * 100).toFixed(2)}%</strong> `
+    + `($${(pr.account_size * pr.risk_pct).toLocaleString()}) per trade, FIXED — not compounding — for `
+    + `this trade-log export, independent of the risk% control in the header (which only scales the `
+    + `stats above). <strong>R-unit = the fixed ${pr.sl_pips}-pip stop</strong>, not vol-scaled, so R `
+    + `and Return % are NOT the same number relabelled. MAE in both exports comes from the real `
+    + `intra-trade OHLC path (low-vs-entry for longs, high-vs-entry for shorts), capped at the stop, `
+    + `and is written out as a negative excursion.`;
   $('headerSub').textContent =
     `${DATA.pairs.length} pairs · ${f.confirmed_alerts.toLocaleString()} confirmed alerts → ` +
     `${f.trades_resolved.toLocaleString()} trades, none skipped · entry next H1 open · ` +
