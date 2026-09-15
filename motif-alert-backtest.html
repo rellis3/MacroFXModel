@@ -284,17 +284,35 @@ function summarize(rs) {
 function selectedTrades() {
   const base = DATA.trades.filter(t => SELECTED.has(t.pair));
   const mode = $('filterSel')?.value ?? 'none';
-  if (mode === 'none' || !CONF?.trade_meta) return base;
-  const meta = CONF.trade_meta;
-  return base.filter(t => {
-    const m = meta[t.motif_key];
-    if (!m) return false;              // not in the study run — cannot judge it
-    const [conf, touches, swing] = m;
-    if (mode.startsWith('c')) return conf >= Number(mode.slice(1));
-    if (mode === 'no3t') return touches === 2;
-    if (mode === 'nowith') return swing !== 1;   // 1 = with-trend
-    return true;
-  });
+  if (mode === 'none') return base;
+  // Single-feature filters read the backtest export's OWN per-trade features
+  // (compact ints against a shared legend) -- they are properties of the trade,
+  // so they need no companion file. Confluence COUNT is different: it depends
+  // on which buckets the study picked in-sample, so it can only come from the
+  // study export.
+  if (mode === 'no3t') return base.filter(t => t.n_touches === 2);
+  if (mode === 'nowith') {
+    const i = featureIndex('swing_regime', 'with');
+    return i ? base.filter(t => t.f?.[i.dim] !== i.bucket) : base;
+  }
+  if (mode.startsWith('c')) {
+    const meta = CONF?.trade_meta;
+    if (!meta) return base;
+    const k = Number(mode.slice(1));
+    return base.filter(t => (meta[t.motif_key]?.[0] ?? 0) >= k);
+  }
+  return base;
+}
+
+/** Resolve a (dimension, bucket) pair to its positions in a trade's `f` array,
+ *  or null if this export's legend does not carry it. */
+function featureIndex(dim, bucket) {
+  const lg = DATA.feature_legend;
+  if (!lg) return null;
+  const d = lg.dims.indexOf(dim);
+  if (d < 0) return null;
+  const b = lg.buckets[dim]?.indexOf(bucket) ?? -1;
+  return b < 0 ? null : { dim: d, bucket: b };
 }
 
 /** Every selected trade, in the field shape the measurement bricks read.
@@ -787,7 +805,12 @@ async function selectTrade(t, row) {
 function render() {
   // Without the study export there is no per-trade meta to filter on, so the
   // control is disabled rather than left looking functional.
-  if (!CONF?.trade_meta) { $('filterSel').disabled = true; $('filterSel').value = 'none'; }
+  // Only the confluence options need the study export; the single-feature ones
+  // ride on the backtest's own features, so they stay usable without it.
+  if (!CONF?.trade_meta) {
+    for (const o of $('filterSel').options) if (o.value.startsWith('c')) o.disabled = true;
+    if ($('filterSel').value.startsWith('c')) $('filterSel').value = 'none';
+  }
   const riskPct = Number($('riskPct').value);
   const targetVol = Number($('targetVol').value);
   const trades = selectedTrades();
