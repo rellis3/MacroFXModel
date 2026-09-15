@@ -174,8 +174,37 @@
 </div>
 
 <div class="card">
-  <h2>Portfolio — selected pairs, selected levers</h2>
-  <div class="kpi-grid" id="kpiGrid"></div>
+  <h2>Portfolio summary (raw — capital split across pairs, not levered)</h2>
+  <div class="muted" style="margin-bottom:10px">Sharpe, Sortino, profit factor, win rate, vol,
+    skew/kurtosis and VaR/CVaR are computed straight off the daily-return DISTRIBUTION — the SAME
+    number either way, reinvesting or not. Only CAGR, max drawdown and Calmar genuinely differ by
+    that assumption, so those three are split out below rather than picking one silently.</div>
+  <h2 style="margin-top:4px">Distribution &amp; risk-adjusted (same either way)</h2>
+  <div class="kpi-grid" id="kpiShared"></div>
+  <h2 style="margin-top:14px">If you reinvest (compounded — risk grows with equity)</h2>
+  <div class="kpi-grid" id="kpiCompounded"></div>
+  <h2 style="margin-top:14px">If you don't reinvest (fixed risk — same % of ORIGINAL capital every trade)</h2>
+  <div class="kpi-grid" id="kpiNonCompounded"></div>
+</div>
+
+<div class="card">
+  <h2>If levered to <span id="targetVolLabel">10</span>% target annual volatility</h2>
+  <div class="muted" style="margin-bottom:10px">A dial YOU set, not a cap the system imposes — it does
+    not limit upside, it shows what the SAME risk-adjusted profile looks like scaled to whatever
+    volatility you are willing to run. Set it above the realised vol to see leverage UP, not just down.</div>
+  <div class="kpi-grid" id="kpiVolTarget"></div>
+</div>
+
+<div class="card">
+  <h2>Outlier sensitivity — is this carried by a handful of trades?</h2>
+  <div class="muted" style="margin-bottom:8px">Excess kurtosis above describes the daily-return
+    distribution's tail shape, but not whether a few individual trades do the work — several trades can
+    land on the same day and average out. This reads the raw per-trade R directly: what share of total
+    profit comes from the biggest winners, and what happens to Sharpe/CAGR/drawdown if you had simply
+    missed them. Excess kurtosis is repeated here per-TRADE for the same reason.</div>
+  <div id="outlierKurt" class="kpi-grid" style="margin-bottom:12px"></div>
+  <div id="outlierConcentration" style="overflow-x:auto;margin-bottom:12px"></div>
+  <div id="outlierRemoval" style="overflow-x:auto"></div>
 </div>
 
 <div class="card">
@@ -259,6 +288,7 @@ import {
   buildPortfolioDailySeries, inverseVolWeights, currencyLegs, computeIntradayMAE,
 } from './js/levelAtlasVoteReview.js';
 import { portfolioStats } from './js/backtestStats.js';
+import { summarizeTrades, sharpeStdError, minTrackRecordLength } from './js/metricsCore.js';
 import { withNonCompoundedDD } from './js/fibAtlasVotePortfolio.js';
 
 const $ = id => document.getElementById(id);
@@ -429,26 +459,145 @@ function renderFunnel() {
     `${sum('nearing_alerts').toLocaleString()} on the bar range vs ${sum('nearing_alerts_close').toLocaleString()} on closes only`;
 }
 
+const OUTLIER_TOP_N = [1, 3, 5, 10, 25];
+
+function kpiCard(label, value, cls = '', sub = '') {
+  return `<div class="kpi"><div class="label">${label}</div>
+    <div class="value ${cls}">${value}</div><div class="sub">${sub}</div></div>`;
+}
+const sign = v => (v == null || Number.isNaN(v)) ? '' : (v > 0 ? 'green' : v < 0 ? 'red' : '');
+
+/** The same three-group summary the Level Atlas vote portfolio renders, on
+ *  these trades. Grouping matters and is not cosmetic: Sharpe/Sortino/PF/win
+ *  rate/vol/skew/kurtosis/VaR all read the daily-return DISTRIBUTION and are
+ *  identical whether or not you reinvest; only CAGR, max DD and Calmar depend
+ *  on that assumption, so both bases are shown rather than one picked
+ *  silently. Every number comes from portfolioStats / summarizeTrades /
+ *  sharpeStdError / minTrackRecordLength — no metric is computed here. */
 function renderKpis(res, trades) {
-  const s = summarize(trades.map(t => t.r));
   const st = res?.stats ?? {};
-  const kpis = [
-    ['Alerts selected', s.n.toLocaleString(), 'before the risk levers'],
-    ['Trades taken', (res?.nTaken ?? 0).toLocaleString(), 'after caps and gates'],
-    ['Sharpe', fmt(st.sharpe, 2), 'daily series, annualised'],
-    ['Sortino', fmt(st.sortino, 2), 'downside only'],
-    ['Max DD', st.maxDD == null ? '—' : fmt(st.maxDD, 1) + '%', 'compounded'],
-    ['Max DD (non-comp.)', st.maxDDNonCompounded == null ? '—' : fmt(st.maxDDNonCompounded, 1) + '%', 'additive basis'],
-    ['Calmar', fmt(st.calmar, 2), 'CAGR / |max DD|'],
-    ['Ann. vol', st.annVol == null ? '—' : fmt(st.annVol, 1) + '%', ''],
-    ['Vol-target DD', st.volTarget ? fmt(st.volTarget.maxDD, 1) + '%' : '—', `scaled to ${$('targetVol').value}% vol`],
-    ['Profit factor', fmt(s.pf, 3), 'per trade, costs ON'],
-    ['Avg R', fmt(s.avgR, 4), 'per trade'],
-    ['Win rate', pct(s.winRate), 'per trade'],
-  ];
-  $('kpiGrid').innerHTML = kpis.map(([label, value, sub]) =>
-    `<div class="kpi"><div class="label">${label}</div><div class="value">${value}</div>
-     <div class="sub">${sub}</div></div>`).join('');
+  const daily = res?.daily ?? [];
+  const taken = res ? Object.values(res.final).flat() : [];
+  // Per-TRADE stats, on the trades that actually survived the levers.
+  const perTrade = taken.length
+    ? summarizeTrades(taken.map(t => t.pnlPct), taken.map(t => t.date)) : null;
+  // CI on the DAILY-basis Sharpe, on the same basis the headline uses.
+  let ci = null, minTrackYears = null;
+  if (st.sharpe != null && daily.length > 1) {
+    const se = sharpeStdError(st.sharpe, daily.length, 252);
+    if (isFinite(se)) ci = [st.sharpe - 1.96 * se, st.sharpe + 1.96 * se];
+    const mtry = minTrackRecordLength(st.sharpe, {
+      periodsPerYear: 252, skew: st.skew ?? 0, kurt: (st.excessKurt ?? 0) + 3 });
+    if (isFinite(mtry)) minTrackYears = mtry;
+  }
+  const idd = res ? computeIntradayMAE(res.final, null) : null;
+
+  $('kpiShared').innerHTML = [
+    // Coloured by the LOWER bound of the CI, not the point estimate: a point
+    // Sharpe of 2.8 can sit on a CI whose floor is near zero.
+    kpiCard('Sharpe', fmt(st.sharpe, 2),
+      ci ? (ci[0] >= 1.5 ? 'green' : ci[0] >= 0 ? 'blue' : 'red') : '',
+      (ci ? `95% CI [${fmt(ci[0], 2)}, ${fmt(ci[1], 2)}] · ` : '') + `PSR ${fmt(st.psr, 2)}`
+        + (minTrackYears != null ? ` · needs ${fmt(minTrackYears, 1)}y to trust SR>0` : '')),
+    kpiCard('Sortino', fmt(st.sortino, 2), st.sortino >= 2 ? 'green' : st.sortino >= 1 ? 'blue' : 'amber',
+      'downside-deviation-only Sharpe'),
+    kpiCard('Profit Factor', fmt(st.profitFactor, 2),
+      st.profitFactor >= 1.5 ? 'green' : st.profitFactor >= 1 ? 'blue' : 'red',
+      'gross up-days ÷ gross down-days'),
+    kpiCard('Win Rate (days)', st.winRate == null ? '—' : fmt(st.winRate, 1) + '%', '',
+      '% of positive trading DAYS — not per-trade'),
+    kpiCard('Win Rate (trades)', perTrade ? fmt(perTrade.winRate, 1) + '%' : '—', '',
+      'traditional per-trade win rate — usually lower than the day-based one'),
+    kpiCard('Worst Intraday MAE', idd?.worstDayMAEPct != null ? fmt(idd.worstDayMAEPct, 1) + '%' : '—',
+      idd?.worstDayMAEPct < -1 ? 'red' : '',
+      idd?.worstDayDate ? `deepest running loss WITHIN a day, ${idd.worstDayDate}` : ''),
+    kpiCard('Annualised Vol', st.annVol == null ? '—' : fmt(st.annVol, 1) + '%', '', 'realised, unlevered'),
+    kpiCard('Skew', fmt(st.skew, 2), '', 'daily return distribution'),
+    kpiCard('Excess Kurtosis', fmt(st.excessKurt, 2), '',
+      st.excessKurt > 0 ? 'fatter tails than normal' : 'thinner tails than normal'),
+    kpiCard('VaR 95%', st.var95 == null ? '—' : fmt(st.var95, 2) + '%', 'red', 'daily loss at the 95th-pctile tail'),
+    kpiCard('CVaR 95%', st.cvar95 == null ? '—' : fmt(st.cvar95, 2) + '%', 'red', 'mean daily loss BEYOND that tail'),
+    kpiCard('Lag-1 Autocorr', fmt(st.acf1, 2), '',
+      st.acf1 < 0 ? 'mean-reverting days' : st.acf1 > 0 ? 'clustering days' : 'no persistence'),
+    kpiCard('Trading Days', (st.days ?? 0).toLocaleString(), '', ''),
+    kpiCard('Alerts → trades taken',
+      `${trades.length.toLocaleString()} → ${(res?.nTaken ?? 0).toLocaleString()}`, '',
+      'selected, then after caps and gates'),
+  ].join('');
+
+  $('kpiCompounded').innerHTML = [
+    kpiCard('CAGR', st.cagr == null ? '—' : fmt(st.cagr, 1) + '%', sign(st.cagr), 'reinvested daily'),
+    kpiCard('Max Drawdown', st.maxDD == null ? '—' : fmt(st.maxDD, 1) + '%', 'red', 'compounded equity, peak→trough'),
+    kpiCard('Calmar', fmt(st.calmar, 2), '', 'CAGR / |max DD|'),
+  ].join('');
+
+  $('kpiNonCompounded').innerHTML = [
+    kpiCard('Annualised Return', st.cagrNonCompounded == null ? '—' : fmt(st.cagrNonCompounded, 1) + '%',
+      sign(st.cagrNonCompounded), 'sum of daily %, ÷ years — never reinvested'),
+    kpiCard('Max Drawdown', st.maxDDNonCompounded == null ? '—' : fmt(st.maxDDNonCompounded, 1) + '%',
+      'red', 'additive equity, peak→trough'),
+    kpiCard('Calmar', fmt(st.calmarNonCompounded, 2), '', 'annualised return / |max DD|'),
+  ].join('');
+
+  const vt = st.volTarget;
+  $('targetVolLabel').textContent = vt?.target ?? $('targetVol').value;
+  const scale = st.annVol > 0 && vt ? vt.target / st.annVol : null;
+  $('kpiVolTarget').innerHTML = vt ? [
+    kpiCard('Leverage implied', scale == null ? '—' : fmt(scale, 2) + '×', scale > 1 ? 'amber' : '',
+      `realised vol ${fmt(st.annVol, 1)}% → target ${vt.target}%`),
+    kpiCard('CAGR at target', fmt(vt.cagr, 1) + '%', sign(vt.cagr), 'same trades, scaled'),
+    kpiCard('Max DD at target', fmt(vt.maxDD, 1) + '%', 'red', 'same trades, scaled'),
+  ].join('') : '';
+
+  renderOutliers(taken);
+}
+
+/** Is the result carried by a few trades? Reads per-TRADE pnl, not the daily
+ *  series, because several trades landing on one day average out there. */
+function renderOutliers(taken) {
+  if (!taken.length) {
+    for (const id of ['outlierKurt', 'outlierConcentration', 'outlierRemoval']) $(id).innerHTML = '';
+    return;
+  }
+  const pnls = taken.map(t => t.pnlPct);
+  const summary = summarizeTrades(pnls, taken.map(t => t.date));
+  $('outlierKurt').innerHTML = [
+    kpiCard('Trade Skew', fmt(summary.skew, 2), '', 'per-trade pnl distribution'),
+    kpiCard('Trade Excess Kurtosis', fmt(summary.excessKurt, 2), '',
+      summary.excessKurt > 0 ? 'fatter tails than normal'
+        : 'thinner tails than normal — a bounded stop/target caps single-trade outliers'),
+  ].join('');
+
+  const totalProfit = pnls.reduce((a, b) => a + b, 0);
+  const sortedDesc = [...pnls].sort((a, b) => b - a);
+  $('outlierConcentration').innerHTML =
+    `<table><thead><tr><th>Top N trades (of ${taken.length.toLocaleString()})</th>
+     <th class="num">Summed pnl%</th><th class="num">% of total profit</th></tr></thead><tbody>`
+    + OUTLIER_TOP_N.map(n => {
+      const topSum = sortedDesc.slice(0, n).reduce((a, b) => a + b, 0);
+      return `<tr><td>${n}</td><td class="num">${fmt(topSum, 2)}%</td>
+        <td class="num">${totalProfit !== 0 ? fmt(topSum / totalProfit * 100, 1) + '%' : '—'}</td></tr>`;
+    }).join('') + '</tbody></table>';
+
+  // Re-price the book with the biggest winners deleted, on the same daily
+  // series construction the headline stats use.
+  const byPnlDesc = [...taken].sort((a, b) => b.pnlPct - a.pnlPct);
+  const seriesExcluding = excl => {
+    const byPair = {};
+    for (const t of taken) if (!excl.has(t)) (byPair[t.pair] ??= []).push(t);
+    const c = buildPortfolioDailySeries(byPair, { weights: Object.fromEntries(Object.keys(byPair).map(p => [p, 1])) });
+    return c ? c.dailyReturns : [];
+  };
+  const rows = [['Nothing removed (base)', portfolioStats(seriesExcluding(new Set()), { mc: false })]];
+  for (const n of OUTLIER_TOP_N) {
+    rows.push([`Top ${n} winner${n > 1 ? 's' : ''} removed`,
+      portfolioStats(seriesExcluding(new Set(byPnlDesc.slice(0, n))), { mc: false })]);
+  }
+  $('outlierRemoval').innerHTML = `<table><thead><tr><th></th><th class="num">Sharpe</th>
+    <th class="num">CAGR</th><th class="num">Max DD</th></tr></thead><tbody>`
+    + rows.map(([label, x]) => `<tr><td>${label}</td><td class="num">${fmt(x.sharpe, 2)}</td>
+       <td class="num">${fmt(x.cagr, 1)}%</td><td class="num red">${fmt(x.maxDD, 1)}%</td></tr>`).join('')
+    + '</tbody></table>';
 }
 
 let chart = null;
