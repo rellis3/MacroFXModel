@@ -1043,3 +1043,63 @@ as a shadow estimate."
 in log form on the study's own archive · one real no-lookahead bug found and fixed by
 the test suite · `node js/volForecastBench.test.mjs` all passing · NOT wired into any
 live-facing forecast.**
+
+## Phase 17 — does jump share move the TAIL, even though it doesn't move the point forecast? (`jump_tail_risk.py`)
+
+Institutions use jump/diffusion decomposition for more than one job, and this study had
+only tested one: forecasting the NEXT-DAY POINT ESTIMATE of variance (Phases 12/13/14, all
+null). Tail-risk/stress sizing is a different question — it cares about the shape of the
+extreme quantile, not the center. Phase 13 already found a real relationship at the mean
+(jumpy day → quieter tomorrow, c = −0.99..−1.47) that wasn't strong enough to win a QLIKE
+horse race; a point forecast and a tail can decouple (a narrower typical day can still
+carry a fat left tail if the compression is asymmetric), and QLIKE — which scores the
+center of the distribution — would never surface that on its own. This was the one
+genuinely open institutional use left after Phase 14 closed the forecast question, so it
+gets its own pre-registered test rather than being assumed closed by association.
+
+**Design, minimal-DOF first.** A median split on the IS period's own jf_5m (jump share),
+frozen before OOS — no continuous regression, no tuned threshold, nothing to overfit.
+OOS days are split into "post-jump" (yesterday's jf_5m ≥ the frozen IS median) vs
+"post-calm" (below it), and VaR95/CVaR95 on next-day returns are compared between the two
+groups against the pooled OOS baseline. VaR/CVaR use the exact same empirical definition
+as `js/metricsCore.js`'s `histVaR`/`histCVaR` (type-7 quantile, CVaR = mean of the tail at
+or beyond it) — reused conceptually, reimplemented in Python since this is an offline
+study script, not something calling into the JS bricks directly. Reuses
+`har_cj_forecast.py`'s own `load()` — the same gap-audited, quality-gated (pair, date) set
+every other phase in this study reads — plus one extra column (close price) pulled
+straight from `daily_bars.csv` for the close-to-close return.
+
+Pre-registered: the relative gap between post-jump and post-calm CVaR95 must be ≥15% OOS
+on a MAJORITY of instruments per asset class, with ≥100 OOS days in each group, checked
+per instrument rather than pooled (this study's own standing discipline, burned before by
+pooled wins hiding a few strong pairs — Tier-8's NQ echo, the WaveTrend gates).
+
+**Result: NULL, for the fourth independent time, and the direction disagrees with itself.**
+
+| class | instruments | clear 15% bar | sign agreement |
+|---|---|---|---|
+| fx_major | 7 | 2/7 | 5/7 better after jump |
+| fx_cross | 18 | 6/18 | 10/18 worse after jump |
+| metal | 1 | 0/1 | worse after jump |
+| index | 4 | 0/4 | better after jump |
+
+No class clears a majority on the magnitude bar. The direction doesn't even agree with
+itself: fx_major leans toward a BETTER tail after a jumpy day (consistent with Phase 13's
+mean-reversion extending to the tail), fx_cross leans WORSE (barely — 10/18, close to a
+coin flip) and gold's lone data point is worse. That inconsistency, not just the missed
+magnitude bar, is itself evidence there's no real underlying effect at the tail — a genuine
+signal would at least point the same direction across most of a class the way Phase 15's
+functional-form result did (26/26, one direction, no exceptions).
+
+**What this closes.** Four independent constructions — scale σ by diffusive share
+(Phase 12), split RV into HAR-CJ regressors (Phase 14), condition exhaustion on jump share
+(§13.6), and now condition the tail-risk quantile on jump share (Phase 17) — have all
+failed to extract forecasting OR tail-risk value from the jump/continuous split. The
+descriptive jump/diffusion page stands (it never claimed a forecast), and nothing gets
+wired into `js/evtTail.js` or `js/bookStress.js`. Of the three other institutional uses of
+jump-diffusion surveyed (options pricing/vol surface, tail-risk, execution/microstructure)
+against a spot/CFD platform with no options book and no execution infrastructure to
+extend, tail-risk was the one with real bricks on both ends and a legitimate open
+question — it has now been tested and closed the same way the others were.
+
+Run `python3 jump_tail_risk.py`.

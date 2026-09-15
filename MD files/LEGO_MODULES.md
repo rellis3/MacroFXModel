@@ -7577,3 +7577,46 @@ is still open, this entry is only the registration step.
 **Status: ✅ registered · reproduces the validated finding in log form · one real
 no-lookahead bug found and fixed by the test suite itself · NOT wired into any
 live-facing forecast.**
+
+### 1az. Jump-conditioned tail risk — the fourth independent null (2026-09-15)
+
+**Script:** `volatilityExhaustion/jump_tail_risk.py`. §1au/§1aw closed the FORECAST use of
+jump/diffusion decomposition (point estimate of next-day variance, three independent
+nulls). A survey of what institutions actually use jump-diffusion for turned up three
+other candidate uses this study hadn't tested: options pricing/vol surface (no fit on a
+spot/CFD platform with no options book — closed without a test, nothing to build against),
+execution/microstructure (no infrastructure to extend, and §13.6's own null on
+exhaustion-at-a-level argues against it), and tail-risk/stress sizing — the one with real
+bricks on both ends (`js/evtTail.js`'s EVT/GPD VaR/CVaR, `js/bookStress.js`'s crisis-window
+replay, and the jump-share data itself) and a genuinely open question: Phase 13 found jump
+share moves the MEAN of next-day variance even though it couldn't win a point-forecast
+QLIKE contest — does it move the TAIL instead, a different target QLIKE never scores?
+
+**Design, minimal-DOF first:** a median split on the IS period's own jf_5m, frozen before
+OOS — no regression, no tuned threshold. OOS days split into post-jump (yesterday's jf_5m
+≥ the frozen median) vs post-calm, comparing VaR95/CVaR95 (same empirical definition as
+`js/metricsCore.js`'s `histVaR`/`histCVaR`) on next-day close-to-close returns. Reuses
+`har_cj_forecast.py`'s own gap-audited `load()` — the exact (pair,date) set every other
+phase in this study reads — plus one extra column (close price) for the return itself.
+Pre-registered: ≥15% relative CVaR95 gap OOS on a MAJORITY of instruments per class,
+checked per-instrument, never pooled.
+
+**Result: null for the fourth independent time, and the direction doesn't even agree with
+itself.** No asset class clears a majority on the magnitude bar (fx_major 2/7, fx_cross
+6/18, metal 0/1, index 0/4), and the SIGN splits differently by class — fx_major leans
+toward a better tail after a jumpy day (5/7, consistent with Phase 13's mean-reversion
+extending to the tail), fx_cross leans worse (10/18, near a coin flip), gold's single data
+point is worse. A real effect would point one direction across most of a class the way
+Phase 15's functional-form win did (26/26, unanimous) — this doesn't, which is itself
+evidence against a real underlying effect, not just a missed threshold.
+
+**What this closes.** Four independent constructions (σ-scaling by diffusive share,
+HAR-CJ regressor split, exhaustion conditioning, now tail-quantile conditioning) have all
+failed to extract value from the jump/continuous split, covering both institutional uses
+of jump-diffusion this platform has any infrastructure to test (forecasting and tail
+risk). Nothing is wired into `js/evtTail.js` or `js/bookStress.js`. The descriptive
+jump/diffusion page (§1au) is unaffected — it never claimed a forecast or a tail-risk
+edge, only "what today IS."
+
+**Status: ✅ tested · pre-registered bar not cleared · fourth independent null ·
+descriptive jump-diffusion page unaffected · nothing wired anywhere.**
