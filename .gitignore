@@ -18,6 +18,10 @@ vmcResearch/data/*.parquet
 vmcResearch/data/*.npy
 VolRangeForecaster/data/m1/
 AnalogML/data/m1/
+# ...and the same path as a SYMLINK (a local dev convenience pointing at an
+# existing M1 cache elsewhere in the repo) -- the trailing-slash rule above
+# only matches a real directory, so a symlink here shows up as untracked.
+AnalogML/data/m1
 SessionResearch/out/*/session_table.json
 SessionResearch/out/*/day_checkpoints.json
 SessionResearch/out/*/impulse_events.json

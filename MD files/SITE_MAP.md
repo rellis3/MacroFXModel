@@ -180,6 +180,7 @@ Pages with a later date have genuinely been worked on since.
 | `hedge-signals-v2.html` | Cointegration-gated pairs mean-reversion signals | 🔬 Research | ≤2026-08-09 | 🔧 IS/OOS split by bar index not calendar (Q10) |
 | `macro-conditioner.html` | Tests if VIX+HY risk regime moves day character beyond forecast σ | 🔬 Research | ≤2026-08-09 | Pre-registered; HY series short — re-run needed |
 | `motif-combined-backtest.html` | Results card for Python motif adaptive-SL/TP + HTF-sizing combo | 📚 Reference | 2026-08-14 | Reads pre-computed AnalogML export JSON; Python-only signal |
+| `motif-alert-backtest.html` | Backtest of the motif TELEGRAM ALERTS themselves — nearing→confirmed funnel, alert-panel PF calibration, portfolio card | 📚 Reference | 2026-09-15 | Reads pre-computed AnalogML export JSON; replays the live emission gating, not just detection |
 | `mve.html` | Standalone sandbox demo of the Market Valuation Engine pipeline | 📚 Reference | ≤2026-08-09 | Self-contained synthetic sandbox; no server route |
 | `range-level-edge.html` | Test whether 5m Asia range levels beat a shifted-level placebo | 🔬 Research | ≤2026-08-09 | 🟡 built, not yet run (needs M1 on Railway) |
 | `regime-viewer.html` | Overlay V1 HMM and V2 Baum-Welch regime on price | 🟢 Live | ≤2026-08-09 | Classifier inspection UI |

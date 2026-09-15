@@ -27,7 +27,7 @@
 import { loadM1ForPair } from './volBacktestM1Engine.js';
 import { atlasWalk } from './levelAtlasEngine.js';
 import { buildAtlasBook, buildAtlasCard, sessionTransitionTable, renderBookText, matchLiveContext, splitAt } from './levelAtlasReport.js';
-import { buildBarrierTrades, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyGradedDrawdownThrottle, DEFAULT_GRADED_THROTTLE_TIERS, applyFadeStopTightening, applyCurrencyLossGate, priceAtTighterStop, voteDecision, VOTE_TRADES_SCHEMA } from './levelAtlasVoteReview.js';
+import { buildBarrierTrades, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyGradedDrawdownThrottle, DEFAULT_GRADED_THROTTLE_TIERS, applyFadeStopTightening, applyCurrencyLossGate, computeIntradayMAE, priceAtTighterStop, voteDecision, VOTE_TRADES_SCHEMA } from './levelAtlasVoteReview.js';
 import { summarizeTrades, maxDrawdownFromPnls, sharpeStdError, minTrackRecordLength } from './metricsCore.js';
 import { portfolioStats } from './backtestStats.js';
 import { costForPair } from './perLineStrategy.js';
@@ -1033,33 +1033,6 @@ export function mountLevelAtlasRoutes(app, express) {
       // resolve on a later date -- exactly precise same-day sequencing would
       // need resolve-time-aware position tracking, which nothing on this
       // page does today.
-      function computeIntradayMAE(perPairDict, propDDLimit) {
-        const all = Object.values(perPairDict).flat();
-        const byDate = new Map();
-        for (const t of all) {
-          if (!byDate.has(t.date)) byDate.set(t.date, []);
-          byDate.get(t.date).push(t);
-        }
-        const dailyMAEs = [];
-        for (const [date, dayTrades] of byDate) {
-          const sorted = [...dayTrades].sort((a, b) => a.time - b.time);
-          let running = 0, dayMin = 0;
-          for (const t of sorted) {
-            running += t.pnlPct;
-            if (running < dayMin) dayMin = running;
-          }
-          dailyMAEs.push({ date, mae: +dayMin.toFixed(3), netResult: +running.toFixed(3), trades: sorted.length });
-        }
-        dailyMAEs.sort((a, b) => a.mae - b.mae); // worst first
-        const worst = dailyMAEs[0] ?? null;
-        const breached = propDDLimit != null ? dailyMAEs.filter(d => d.mae <= propDDLimit) : null;
-        return {
-          worstDayMAEPct: worst?.mae ?? null, worstDayDate: worst?.date ?? null,
-          worstDays: dailyMAEs.slice(0, 10), // top-10 worst intraday excursions, for the callout table
-          totalDays: dailyMAEs.length,
-          ...(propDDLimit != null ? { propDDLimit, breachedCount: breached.length, breachedDays: breached.slice(0, 20) } : {}),
-        };
-      }
       const propDDLimit = req.query.propDDLimit ? -Math.abs(Number(req.query.propDDLimit)) : null;
 
       const weights = buildWeights(perPairTradesFinal);

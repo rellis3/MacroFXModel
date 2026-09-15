@@ -1,0 +1,601 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Motif Alert Backtest</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root { --bg:#0b0e14; --panel:#11151f; --panel2:#0e121b; --line:#1e2436; --text:#cbd5e1; --text2:#94a3b8; --text3:#5a6380; --muted:#64748b; --accent:#5b9dff; --green:#34d399; --red:#f87171; --amber:#fbbf24; --blue:#60a5fa; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.5 'DM Sans',system-ui,sans-serif; }
+  header { padding:14px 20px; border-bottom:1px solid var(--line); display:flex; align-items:flex-start; gap:16px; flex-wrap:wrap; }
+  h1 { margin:0; font-size:16px; font-weight:600; white-space:nowrap; }
+  h2 { margin:0 0 10px; font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--text2); }
+  .sub { color:var(--muted); font-size:12px; }
+  select, input[type=checkbox], button, input[type=number] { background:#1e293b; color:var(--text); border:1px solid var(--line); border-radius:6px; padding:6px 10px; font-size:12px; }
+  button { cursor:pointer; }
+  button:hover { border-color:var(--accent); }
+  .controls { display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
+  .controls label { font-size:11px; color:var(--muted); display:flex; align-items:center; gap:6px; }
+  .pair-check { display:flex; align-items:center; gap:4px; font-family:'DM Mono',monospace; font-size:12px; }
+  main { padding:16px 20px 60px; max-width:1300px; margin:0 auto; display:flex; flex-direction:column; gap:16px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:14px 16px; }
+  .kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; }
+  .kpi { background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:10px 12px; }
+  .kpi .label { font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:.04em; }
+  .kpi .value { font-size:22px; font-weight:700; margin-top:2px; }
+  .kpi .sub { font-size:10px; color:var(--text3); margin-top:2px; }
+  .green { color:var(--green); } .red { color:var(--red); } .amber { color:var(--amber); } .blue { color:var(--blue); }
+  canvas { max-height:320px; }
+  table { width:100%; border-collapse:collapse; font-family:'DM Mono',monospace; font-size:12px; }
+  thead th { text-align:left; color:var(--text3); font-weight:500; padding:6px 10px; border-bottom:1px solid var(--line); }
+  thead th.num, td.num { text-align:right; }
+  tbody td { padding:6px 10px; border-bottom:1px solid #182030; }
+  .muted { color:var(--muted); font-size:11px; }
+  .callout { background:linear-gradient(135deg,#132030,#0e121b); border:1px solid #1e3a52; border-radius:8px; padding:14px 16px; }
+  .callout .big { font-size:28px; font-weight:700; }
+  .warn { background:linear-gradient(135deg,#2a1414,#0e121b); border:1px solid #7c2d2d; }
+  .funnel-row { display:flex; gap:10px; align-items:stretch; flex-wrap:wrap; }
+  .funnel-step { flex:1; min-width:150px; background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:10px 12px; }
+  .funnel-step .n { font-size:24px; font-weight:700; }
+  #tradeTableWrap { max-height:480px; overflow:auto; border:1px solid var(--line); border-radius:8px; }
+  code { font-family:'DM Mono',monospace; color:var(--text2); }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>👀 Motif Alert Backtest</h1>
+    <div class="sub" id="headerSub">loading…</div>
+  </div>
+  <div class="controls">
+    <label title="Scales every trade's R into a % of account. A display and sizing choice only — it changes no entry or exit, and takes no trade out. Sharpe, Sortino, PF, win rate, skew and kurtosis are all unchanged by it; CAGR, drawdown and vol scale with it, because this is leverage.">Risk % / trade <input type="number" id="riskPct" value="1" step="0.1" min="0.1" style="width:60px"></label>
+    <label title="Rescales the return series to this annualised volatility for the vol-target card. A comparison lens, not a rule — it changes nothing about which trades are taken.">Target vol % <input type="number" id="targetVol" value="10" step="1" min="1" style="width:55px"></label>
+    <label title="Log scale suits a compounded curve (equal vertical distance = equal percentage move); linear shows absolute gains.">Log scale <input type="checkbox" id="logScaleChk" checked></label>
+  </div>
+</header>
+<main>
+
+<div class="card callout">
+  <h2>What this is</h2>
+  <div class="muted">
+    The trading system is the Telegram alert itself, and nothing else: a touch-motif forms, price
+    closes through the level, the 🟢/🔴 alert fires, and a trade is entered on the <strong>open of the
+    next H1 bar</strong> with a <strong>20-pip stop and a 1.5R target</strong> — the frozen grid
+    <code>motif_track.py</code> already logs live. Every alert that was sent is a trade here.
+    <strong>There are no gates, filters, caps or overlays.</strong> No concurrency limit, no exposure
+    cap, no drawdown throttle, no currency rule, no session or regime filter, no minimum on the
+    alert's own confidence panel. Nothing is skipped: <span id="everyAlert">—</span>.
+    <br><br>
+    <code>AnalogML/motif_alert_backtest.py</code> replays the bot's own emission path bar by bar over
+    2016–2026 — one live touch-run per pair, the <code>provisional</code> refusal, one nearing alert
+    per run, entry only once an H1 close confirms — and races exactly those alerts through
+    <code>pylego.barrier_race</code>, the same walker the tracked record uses. It re-tunes nothing.
+    <br><br>
+    The only two inputs above are <em>risk % per trade</em> and a <em>vol target</em>, and neither
+    removes a trade: the first scales R into account %, the second is a display lens for one card.
+    Pair selection below subsets the book; it does not change any pair's own trades.
+  </div>
+</div>
+
+<div class="card muted" id="methodCard">
+  <strong>Two stated divergences from live</strong>, both measured rather than assumed away.
+  (1) <em>Tick vs bar</em> — the nearing poller sees a live quote every 60s; a backtest sees H1 bars,
+  so a 👀 is counted when the bar's whole traded range came within <code>0.5 × ATR</code> of the level.
+  The strictly-tighter close-only count is exported beside it (<span id="hlVsClose">—</span>). This
+  affects the 👀 <em>funnel counts only</em> — never a trade, since entry always waits for a confirmed
+  H1 close.
+  (2) <em>Confidence panel</em> — the <code>📊 played out · PF · n</code> figures are replayed with a
+  causal cutoff (only motifs confirmed strictly before the alert bar), which live does not need; a
+  motif confirmed but still open at alert time is excluded from the replayed PF, where live would have
+  raced it to a partial timeout.
+  <br><br>
+  Stats come from <code>js/backtestStats.js</code>'s <code>portfolioStats</code>,
+  <code>js/metricsCore.js</code>'s <code>summarizeTrades</code>/<code>sharpeStdError</code>/
+  <code>minTrackRecordLength</code>, and <code>js/levelAtlasVoteReview.js</code>'s
+  <code>buildPortfolioDailySeries</code>/<code>computeIntradayMAE</code> — shared measurement bricks,
+  reused so a number here and the same number elsewhere in the repo cannot drift. No metric is
+  computed in this page, and no trading rule is imported from any other strategy.
+  <br><br>
+  Sharpe/DD are mark-to-close with no spread variation. Compounding at a fixed % of ever-growing
+  equity over ~30k trades makes the raw CAGR absurd; read Sharpe, max DD and PF, not CAGR.
+</div>
+
+<div class="card callout">
+  <h2>The funnel — what a 👀 message is actually worth</h2>
+  <div class="funnel-row" id="funnelRow"></div>
+  <div class="muted" style="margin-top:10px" id="funnelNote"></div>
+</div>
+
+<div class="card">
+  <h2>Portfolio summary (raw — capital split across pairs, not levered)</h2>
+  <div class="muted" style="margin-bottom:10px">Sharpe, Sortino, profit factor, win rate, vol,
+    skew/kurtosis and VaR/CVaR are computed straight off the daily-return DISTRIBUTION — the SAME
+    number either way, reinvesting or not. Only CAGR, max drawdown and Calmar genuinely differ by
+    that assumption, so those three are split out below rather than picking one silently.</div>
+  <h2 style="margin-top:4px">Distribution &amp; risk-adjusted (same either way)</h2>
+  <div class="kpi-grid" id="kpiShared"></div>
+  <h2 style="margin-top:14px">If you reinvest (compounded — risk grows with equity)</h2>
+  <div class="kpi-grid" id="kpiCompounded"></div>
+  <h2 style="margin-top:14px">If you don't reinvest (fixed risk — same % of ORIGINAL capital every trade)</h2>
+  <div class="kpi-grid" id="kpiNonCompounded"></div>
+</div>
+
+<div class="card">
+  <h2>Equity curve (compounded, % of account)</h2>
+  <canvas id="equityChart"></canvas>
+</div>
+
+<div class="card">
+  <h2>If levered to <span id="targetVolLabel">10</span>% target annual volatility</h2>
+  <div class="muted" style="margin-bottom:10px">A dial YOU set, not a cap the system imposes — it does
+    not limit upside, it shows what the SAME trades look like scaled to whatever volatility you are
+    willing to run.</div>
+  <div class="kpi-grid" id="kpiVolTarget"></div>
+</div>
+
+<div class="card">
+  <h2>Outlier sensitivity — is this carried by a handful of trades?</h2>
+  <div class="muted" style="margin-bottom:8px">Excess kurtosis above describes the daily-return
+    distribution's tail shape, but not whether a few individual trades do the work — several trades can
+    land on the same day and average out. This reads per-trade P&amp;L directly: what share of total
+    profit comes from the biggest winners, and what happens to Sharpe/CAGR/drawdown if you had simply
+    missed them.</div>
+  <div id="outlierKurt" class="kpi-grid" style="margin-bottom:12px"></div>
+  <div id="outlierConcentration" style="overflow-x:auto;margin-bottom:12px"></div>
+  <div id="outlierRemoval" style="overflow-x:auto"></div>
+</div>
+
+<div class="card callout warn">
+  <h2>⚠ Correlated risk — read before running many pairs together</h2>
+  <div class="muted" id="corrBody"></div>
+</div>
+
+<div class="card callout">
+  <h2>Does the 📊 panel predict anything? — shown PF vs what actually happened</h2>
+  <div class="muted" style="margin-bottom:8px">
+    Each confirmed alert displays a profit factor for its own category on its own pair. Nothing in the
+    live path filters on it, and nothing here does either — this is a read-only breakdown of the same
+    trades, bucketed by the number each message <em>displayed</em> at the time. A panel worth reading
+    should rise left to right.
+  </div>
+  <div style="overflow-x:auto"><table id="calibTable"></table></div>
+</div>
+
+<div class="card callout">
+  <h2>With vs without a prior 👀</h2>
+  <div class="muted" style="margin-bottom:8px">
+    The same trades, split by whether the touch-run also produced a nearing alert first — whether price
+    loitering within half an ATR of the level before breaking was good news or bad. A breakdown, not a
+    filter: both groups are in every number above.
+  </div>
+  <div style="overflow-x:auto"><table id="nearingSplitTable"></table></div>
+</div>
+
+<div class="card">
+  <h2>Calendar-year folds — the alert population, graded the way the raw signal is</h2>
+  <div class="muted" style="margin-bottom:8px">
+    <code>motif_walkforward.py</code> grades the underlying signal in consecutive calendar-year folds.
+    Same read here, on the alerts actually sent, so the two can be compared fold for fold.
+  </div>
+  <div style="overflow-x:auto"><table id="yearTable"></table></div>
+</div>
+
+<div class="card">
+  <h2>Per pair</h2>
+  <div class="controls" style="margin-bottom:10px">
+    <button id="selectAll" type="button">Select all</button>
+    <button id="selectNone" type="button">Select none</button>
+  </div>
+  <div class="controls" id="pairChecks" style="margin-bottom:12px"></div>
+  <div style="overflow-x:auto"><table id="pairTable"></table></div>
+</div>
+
+<div class="card">
+  <h2>Trades</h2>
+  <div class="controls" style="margin-bottom:8px">
+    <button id="exportCsv" type="button">Export CSV</button>
+    <span class="muted" id="tradeCount"></span>
+  </div>
+  <div id="tradeTableWrap"><table id="tradeTable"></table></div>
+</div>
+
+</main>
+<script type="module">
+// Measurement bricks only. Nothing here decides whether a trade is taken —
+// every alert is traded. `buildPortfolioDailySeries` is the repo's standard
+// per-day return construction and `computeIntradayMAE` a read-only excursion
+// diagnostic; neither removes a trade.
+import { buildPortfolioDailySeries, computeIntradayMAE } from './js/levelAtlasVoteReview.js';
+import { portfolioStats } from './js/backtestStats.js';
+import { withNonCompoundedDD } from './js/fibAtlasVotePortfolio.js';
+import { summarizeTrades, sharpeStdError, minTrackRecordLength } from './js/metricsCore.js';
+
+const $ = id => document.getElementById(id);
+const fmt = (v, d = 2) => (v == null || Number.isNaN(v)) ? '—' : Number(v).toFixed(d);
+const pct = (v, d = 1) => (v == null || Number.isNaN(v)) ? '—' : (v * 100).toFixed(d) + '%';
+const cls = v => (v == null || Number.isNaN(v)) ? '' : (v > 0 ? 'green' : v < 0 ? 'red' : '');
+const sign = v => cls(v);
+const OUTLIER_TOP_N = [1, 3, 5, 10, 25];
+
+let DATA = null, SELECTED = new Set();
+
+function summarize(rs) {
+  const n = rs.length;
+  if (!n) return { n: 0, pf: null, avgR: null, winRate: null, totalR: 0 };
+  let gw = 0, gl = 0, wins = 0, tot = 0;
+  for (const r of rs) { tot += r; if (r > 0) { gw += r; wins++; } else if (r < 0) gl -= r; }
+  return { n, pf: gl > 0 ? gw / gl : null, avgR: tot / n, winRate: wins / n, totalR: tot };
+}
+
+const selectedTrades = () => DATA.trades.filter(t => SELECTED.has(t.pair));
+
+/** Every selected trade, in the field shape the measurement bricks read.
+ *  `r` already came from pylego.barrier_race walking the real bar path.
+ *  `date` is the EXIT day — P&L crystallizes at exit. This is a straight
+ *  mapping: no trade is dropped, reordered or re-weighted. */
+function adapt(trades, riskPct) {
+  return trades.map(t => ({
+    pair: t.pair.toUpperCase(),
+    time: Date.parse(t.entry_date) / 1000,
+    resolveTime: Date.parse(t.exit_date) / 1000,
+    date: t.exit_date.slice(0, 10),
+    pnlPct: +(t.r * riskPct).toFixed(4),
+    rMultiple: t.r,
+    src: t,
+  }));
+}
+
+/** Trades in → stats out. Every trade is included; risk% only scales R into
+ *  account %. Each pair contributes with weight 1 (fixed risk per trade), so
+ *  no pair is up- or down-weighted relative to what the bot actually sent. */
+function computeStats(trades, riskPct, targetVol) {
+  const adapted = adapt(trades, riskPct);
+  if (!adapted.length) return null;
+  const byPair = {};
+  for (const t of adapted) (byPair[t.pair] ??= []).push(t);
+  const weights = Object.fromEntries(Object.keys(byPair).map(p => [p, 1]));
+  const combined = buildPortfolioDailySeries(byPair, { weights });
+  if (!combined) return null;
+  const stats = withNonCompoundedDD(
+    portfolioStats(combined.dailyReturns, { mc: false, targetVol }), combined.dailyReturns);
+  return { stats, daily: combined.dailyReturns, dates: combined.dates, byPair, adapted };
+}
+
+function kpiCard(label, value, cl = '', sub = '') {
+  return `<div class="kpi"><div class="label">${label}</div>
+    <div class="value ${cl}">${value}</div><div class="sub">${sub}</div></div>`;
+}
+
+function renderFunnel() {
+  const pairs = DATA.per_pair.filter(p => SELECTED.has(p.pair));
+  const sum = k => pairs.reduce((a, p) => a + (p.funnel[k] || 0), 0);
+  const near = sum('nearing_alerts'), conv = sum('nearing_converted');
+  const conf = sum('confirmed_alerts'), withPrior = sum('confirmed_with_prior_nearing');
+  const steps = [
+    ['👀 nearing alerts sent', near, 'one per touch-run, ever — not trades'],
+    ['→ went on to confirm', conv, near ? pct(conv / near) + ' of them' : '—'],
+    ['🟢🔴 confirmed alerts', conf, 'each one a trade, all taken'],
+    ['…that had a 👀 first', withPrior, conf ? pct(withPrior / conf) + ' of confirmed' : '—'],
+  ];
+  $('funnelRow').innerHTML = steps.map(([label, n, sub]) =>
+    `<div class="funnel-step"><div class="muted">${label}</div>
+     <div class="n">${n.toLocaleString()}</div><div class="muted">${sub}</div></div>`).join('');
+  $('funnelNote').innerHTML =
+    `A 👀 almost always resolves one way or the other — but "confirmed" includes the pattern
+     <em>failing</em> (breaking the opposite way to the 🧭 textbook line), which is a real trade in the
+     opposite direction, not a miss. Most confirmed alerts never got a 👀 first, because only one
+     touch-run per pair is live at a time and a run that never loitered near its level is never
+     flagged. The 👀 is a heads-up; the trade is the 🟢/🔴.`;
+  $('hlVsClose').textContent =
+    `${sum('nearing_alerts').toLocaleString()} on the bar range vs ${sum('nearing_alerts_close').toLocaleString()} on closes only`;
+  $('everyAlert').textContent =
+    `${sum('confirmed_alerts').toLocaleString()} confirmed alerts → ${DATA.trades.filter(t => SELECTED.has(t.pair)).length.toLocaleString()} trades`;
+}
+
+function renderKpis(res, trades) {
+  const st = res?.stats ?? {};
+  const daily = res?.daily ?? [];
+  const perTrade = res?.adapted?.length
+    ? summarizeTrades(res.adapted.map(t => t.pnlPct), res.adapted.map(t => t.date)) : null;
+  let ci = null, minTrackYears = null;
+  if (st.sharpe != null && daily.length > 1) {
+    const se = sharpeStdError(st.sharpe, daily.length, 252);
+    if (isFinite(se)) ci = [st.sharpe - 1.96 * se, st.sharpe + 1.96 * se];
+    const mtry = minTrackRecordLength(st.sharpe, {
+      periodsPerYear: 252, skew: st.skew ?? 0, kurt: (st.excessKurt ?? 0) + 3 });
+    if (isFinite(mtry)) minTrackYears = mtry;
+  }
+  const idd = res ? computeIntradayMAE(res.byPair, null) : null;
+
+  $('kpiShared').innerHTML = [
+    // Coloured by the LOWER bound of the CI, not the point estimate: a point
+    // Sharpe of 2.8 can sit on a CI whose floor is near zero.
+    kpiCard('Sharpe', fmt(st.sharpe, 2),
+      ci ? (ci[0] >= 1.5 ? 'green' : ci[0] >= 0 ? 'blue' : 'red') : '',
+      (ci ? `95% CI [${fmt(ci[0], 2)}, ${fmt(ci[1], 2)}] · ` : '') + `PSR ${fmt(st.psr, 2)}`
+        + (minTrackYears != null ? ` · needs ${fmt(minTrackYears, 1)}y to trust SR>0` : '')),
+    kpiCard('Sortino', fmt(st.sortino, 2), st.sortino >= 2 ? 'green' : st.sortino >= 1 ? 'blue' : 'amber',
+      'downside-deviation-only Sharpe'),
+    kpiCard('Profit Factor', fmt(st.profitFactor, 2),
+      st.profitFactor >= 1.5 ? 'green' : st.profitFactor >= 1 ? 'blue' : 'red',
+      'gross up-days ÷ gross down-days'),
+    kpiCard('Win Rate (days)', st.winRate == null ? '—' : fmt(st.winRate, 1) + '%', '',
+      '% of positive trading DAYS — not per-trade'),
+    kpiCard('Win Rate (trades)', perTrade ? fmt(perTrade.winRate, 1) + '%' : '—', '',
+      'traditional per-trade win rate'),
+    kpiCard('Worst Intraday MAE', idd?.worstDayMAEPct != null ? fmt(idd.worstDayMAEPct, 1) + '%' : '—',
+      idd?.worstDayMAEPct < -1 ? 'red' : '',
+      idd?.worstDayDate ? `deepest running loss WITHIN a day, ${idd.worstDayDate}` : ''),
+    kpiCard('Annualised Vol', st.annVol == null ? '—' : fmt(st.annVol, 1) + '%', '', 'realised, unlevered'),
+    kpiCard('Skew', fmt(st.skew, 2), '', 'daily return distribution'),
+    kpiCard('Excess Kurtosis', fmt(st.excessKurt, 2), '',
+      st.excessKurt > 0 ? 'fatter tails than normal' : 'thinner tails than normal'),
+    kpiCard('VaR 95%', st.var95 == null ? '—' : fmt(st.var95, 2) + '%', 'red', 'daily loss at the 95th-pctile tail'),
+    kpiCard('CVaR 95%', st.cvar95 == null ? '—' : fmt(st.cvar95, 2) + '%', 'red', 'mean daily loss BEYOND that tail'),
+    kpiCard('Lag-1 Autocorr', fmt(st.acf1, 2), '',
+      st.acf1 < 0 ? 'mean-reverting days' : st.acf1 > 0 ? 'clustering days' : 'no persistence'),
+    kpiCard('Trading Days', (st.days ?? 0).toLocaleString(), '', ''),
+    kpiCard('Trades', trades.length.toLocaleString(), '', 'every alert sent — none skipped'),
+  ].join('');
+
+  $('kpiCompounded').innerHTML = [
+    kpiCard('CAGR', st.cagr == null ? '—' : fmt(st.cagr, 1) + '%', sign(st.cagr), 'reinvested daily'),
+    kpiCard('Max Drawdown', st.maxDD == null ? '—' : fmt(st.maxDD, 1) + '%', 'red', 'compounded equity, peak→trough'),
+    kpiCard('Calmar', fmt(st.calmar, 2), '', 'CAGR / |max DD|'),
+  ].join('');
+
+  $('kpiNonCompounded').innerHTML = [
+    kpiCard('Annualised Return', st.cagrNonCompounded == null ? '—' : fmt(st.cagrNonCompounded, 1) + '%',
+      sign(st.cagrNonCompounded), 'sum of daily %, ÷ years — never reinvested'),
+    kpiCard('Max Drawdown', st.maxDDNonCompounded == null ? '—' : fmt(st.maxDDNonCompounded, 1) + '%',
+      'red', 'additive equity, peak→trough'),
+    kpiCard('Calmar', fmt(st.calmarNonCompounded, 2), '', 'annualised return / |max DD|'),
+  ].join('');
+
+  const vt = st.volTarget;
+  $('targetVolLabel').textContent = vt?.target ?? $('targetVol').value;
+  const scale = st.annVol > 0 && vt ? vt.target / st.annVol : null;
+  $('kpiVolTarget').innerHTML = vt ? [
+    kpiCard('Leverage implied', scale == null ? '—' : fmt(scale, 2) + '×', scale > 1 ? 'amber' : '',
+      `realised vol ${fmt(st.annVol, 1)}% → target ${vt.target}%`),
+    kpiCard('CAGR at target', fmt(vt.cagr, 1) + '%', sign(vt.cagr), 'same trades, scaled'),
+    kpiCard('Max DD at target', fmt(vt.maxDD, 1) + '%', 'red', 'same trades, scaled'),
+  ].join('') : '';
+
+  renderOutliers(res);
+}
+
+function renderOutliers(res) {
+  const taken = res?.adapted ?? [];
+  if (!taken.length) {
+    for (const id of ['outlierKurt', 'outlierConcentration', 'outlierRemoval']) $(id).innerHTML = '';
+    return;
+  }
+  const pnls = taken.map(t => t.pnlPct);
+  const summary = summarizeTrades(pnls, taken.map(t => t.date));
+  $('outlierKurt').innerHTML = [
+    kpiCard('Trade Skew', fmt(summary.skew, 2), '', 'per-trade pnl distribution'),
+    kpiCard('Trade Excess Kurtosis', fmt(summary.excessKurt, 2), '',
+      summary.excessKurt > 0 ? 'fatter tails than normal'
+        : 'thinner tails than normal — a bounded stop/target caps single-trade outliers'),
+  ].join('');
+
+  const totalProfit = pnls.reduce((a, b) => a + b, 0);
+  const sortedDesc = [...pnls].sort((a, b) => b - a);
+  $('outlierConcentration').innerHTML =
+    `<table><thead><tr><th>Top N trades (of ${taken.length.toLocaleString()})</th>
+     <th class="num">Summed pnl%</th><th class="num">% of total profit</th></tr></thead><tbody>`
+    + OUTLIER_TOP_N.map(n => {
+      const topSum = sortedDesc.slice(0, n).reduce((a, b) => a + b, 0);
+      return `<tr><td>${n}</td><td class="num">${fmt(topSum, 2)}%</td>
+        <td class="num">${totalProfit !== 0 ? fmt(topSum / totalProfit * 100, 1) + '%' : '—'}</td></tr>`;
+    }).join('') + '</tbody></table>';
+
+  const byPnlDesc = [...taken].sort((a, b) => b.pnlPct - a.pnlPct);
+  const seriesExcluding = excl => {
+    const byPair = {};
+    for (const t of taken) if (!excl.has(t)) (byPair[t.pair] ??= []).push(t);
+    const c = buildPortfolioDailySeries(byPair,
+      { weights: Object.fromEntries(Object.keys(byPair).map(p => [p, 1])) });
+    return c ? c.dailyReturns : [];
+  };
+  const rows = [['Nothing removed (base)', portfolioStats(seriesExcluding(new Set()), { mc: false })]];
+  for (const n of OUTLIER_TOP_N) {
+    rows.push([`Top ${n} winner${n > 1 ? 's' : ''} removed`,
+      portfolioStats(seriesExcluding(new Set(byPnlDesc.slice(0, n))), { mc: false })]);
+  }
+  $('outlierRemoval').innerHTML = `<table><thead><tr><th></th><th class="num">Sharpe</th>
+    <th class="num">CAGR</th><th class="num">Max DD</th></tr></thead><tbody>`
+    + rows.map(([label, x]) => `<tr><td>${label}</td><td class="num">${fmt(x.sharpe, 2)}</td>
+       <td class="num">${fmt(x.cagr, 1)}%</td><td class="num red">${fmt(x.maxDD, 1)}%</td></tr>`).join('')
+    + '</tbody></table>';
+}
+
+let chart = null;
+function renderChart(res) {
+  if (typeof Chart === 'undefined') {
+    const c = $('equityChart');
+    if (c && c.parentElement) {
+      c.parentElement.innerHTML =
+        '<div class="muted">Equity chart unavailable — Chart.js did not load from its CDN. ' +
+        'Every table below is unaffected, and the CSV export carries the full trade list.</div>';
+    }
+    return;
+  }
+  let eq = 100;
+  const labels = [], values = [];
+  for (let i = 0; i < (res?.daily?.length ?? 0); i++) {
+    eq *= (1 + res.daily[i] / 100); labels.push(res.dates[i]); values.push(eq);
+  }
+  if (chart) chart.destroy();
+  chart = new Chart($('equityChart'), {
+    type: 'line',
+    data: { labels, datasets: [{ data: values, borderColor: '#5b9dff', borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0 }] },
+    options: { responsive: true, plugins: { legend: { display: false } },
+               scales: { x: { ticks: { color: '#5a6380', maxTicksLimit: 12 }, grid: { color: '#182030' } },
+                         y: { type: $('logScaleChk').checked ? 'logarithmic' : 'linear',
+                              ticks: { color: '#5a6380' }, grid: { color: '#182030' } } } },
+  });
+}
+
+function statRow(label, s) {
+  return `<tr><td>${label}</td><td class="num">${s.n.toLocaleString()}</td>
+    <td class="num ${s.pf != null && s.pf > 1 ? 'green' : 'red'}">${fmt(s.pf, 3)}</td>
+    <td class="num ${cls(s.avgR)}">${s.avgR == null ? '—' : (s.avgR > 0 ? '+' : '') + fmt(s.avgR, 4)}</td>
+    <td class="num">${pct(s.winRate)}</td></tr>`;
+}
+
+function renderCalibration(trades) {
+  const edges = [[null, 0.9, '< 0.90'], [0.9, 1.0, '0.90 – 1.00'], [1.0, 1.1, '1.00 – 1.10'],
+                 [1.1, 1.25, '1.10 – 1.25'], [1.25, null, '≥ 1.25']];
+  const rows = edges.map(([lo, hi, label]) => statRow(`panel showed ${label}`,
+    summarize(trades.filter(t => t.shown_pf != null &&
+      (lo == null || t.shown_pf >= lo) && (hi == null || t.shown_pf < hi)).map(t => t.r))));
+  rows.push(statRow('no panel shown (n &lt; 10)',
+    summarize(trades.filter(t => t.shown_pf == null).map(t => t.r))));
+  $('calibTable').innerHTML =
+    `<thead><tr><th>Shown PF bucket</th><th class="num">Trades</th><th class="num">Actual PF</th>
+     <th class="num">Avg R</th><th class="num">Win rate</th></tr></thead><tbody>${rows.join('')}</tbody>`;
+}
+
+function renderNearingSplit(all) {
+  $('nearingSplitTable').innerHTML =
+    `<thead><tr><th>Group</th><th class="num">Trades</th><th class="num">PF</th>
+     <th class="num">Avg R</th><th class="num">Win rate</th></tr></thead><tbody>
+     ${statRow('Had a 👀 nearing alert first', summarize(all.filter(t => t.had_nearing_alert).map(t => t.r)))}
+     ${statRow('No 👀 — confirmed straight out', summarize(all.filter(t => !t.had_nearing_alert).map(t => t.r)))}</tbody>`;
+}
+
+function renderYears(trades) {
+  const byYear = new Map();
+  for (const t of trades) {
+    const y = t.entry_date.slice(0, 4);
+    if (!byYear.has(y)) byYear.set(y, []);
+    byYear.get(y).push(t.r);
+  }
+  $('yearTable').innerHTML =
+    `<thead><tr><th>Fold</th><th class="num">Trades</th><th class="num">PF</th>
+     <th class="num">Avg R</th><th class="num">Win rate</th></tr></thead><tbody>` +
+    [...byYear.entries()].sort().map(([y, rs]) => statRow(y, summarize(rs))).join('') + '</tbody>';
+}
+
+function renderPairs(trades, res, targetVol) {
+  const rows = DATA.per_pair.filter(p => SELECTED.has(p.pair)).map(p => {
+    const f = p.funnel;
+    const s = summarize(trades.filter(t => t.pair === p.pair).map(t => t.r));
+    // Each pair's own Sharpe on the SAME daily-series formula as the combined
+    // figure — mixing in a per-trade-annualised Sharpe would make part of any
+    // apparent diversification benefit a methodology switch.
+    const own = res?.byPair?.[p.pair.toUpperCase()];
+    const solo = own?.length ? buildPortfolioDailySeries({ [p.pair.toUpperCase()]: own }) : null;
+    const ownSharpe = solo ? portfolioStats(solo.dailyReturns, { mc: false, targetVol }).sharpe : null;
+    return `<tr><td>${p.pair}</td>
+      <td class="num">${f.nearing_alerts}</td>
+      <td class="num">${f.nearing_conversion_rate == null ? '—' : pct(f.nearing_conversion_rate, 0)}</td>
+      <td class="num">${s.n}</td>
+      <td class="num ${s.pf != null && s.pf > 1 ? 'green' : 'red'}">${fmt(s.pf, 3)}</td>
+      <td class="num ${cls(s.avgR)}">${s.avgR == null ? '—' : (s.avgR > 0 ? '+' : '') + fmt(s.avgR, 4)}</td>
+      <td class="num">${fmt(ownSharpe, 2)}</td>
+      <td class="num">${fmt(p.is.profit_factor, 2)}</td>
+      <td class="num">${fmt(p.oos.profit_factor, 2)}</td></tr>`;
+  });
+  $('pairTable').innerHTML =
+    `<thead><tr><th>Pair</th><th class="num">👀</th><th class="num">Conv.</th>
+     <th class="num">Trades</th><th class="num">PF</th><th class="num">Avg R</th>
+     <th class="num">Own Sharpe</th><th class="num">IS PF</th><th class="num">OOS PF</th></tr></thead>
+     <tbody>${rows.join('')}</tbody>`;
+}
+
+function renderTrades(trades) {
+  const shown = trades.slice(0, 500);
+  $('tradeCount').textContent =
+    `${trades.length.toLocaleString()} trades${trades.length > 500 ? ' — showing first 500, CSV exports all' : ''}`;
+  $('tradeTable').innerHTML =
+    `<thead><tr><th>Pair</th><th>Entry</th><th>Dir</th><th>Pattern</th><th>👀</th>
+     <th class="num">Shown PF</th><th>Outcome</th><th class="num">R</th><th class="num">MAE R</th>
+     <th>IS/OOS</th></tr></thead><tbody>` +
+    shown.map(t => `<tr>
+      <td>${t.pair}</td><td>${t.entry_date.slice(0, 16).replace('T', ' ')}</td>
+      <td class="${t.direction === 'BUY' ? 'green' : 'red'}">${t.direction}</td>
+      <td>${t.n_touches}-touch ${t.is_top ? 'top' : 'bottom'}</td>
+      <td>${t.had_nearing_alert ? '👀' : ''}</td>
+      <td class="num">${fmt(t.shown_pf, 2)}</td>
+      <td class="${t.outcome === 'tp' ? 'green' : t.outcome === 'sl' ? 'red' : 'amber'}">${t.outcome}</td>
+      <td class="num ${cls(t.r)}">${fmt(t.r, 3)}</td>
+      <td class="num">${fmt(t.mae_r, 3)}</td>
+      <td>${t.is_oos}</td></tr>`).join('') + '</tbody>';
+}
+
+function exportCsv(trades) {
+  const cols = ['pair', 'entry_date', 'exit_date', 'direction', 'n_touches', 'is_top',
+                'had_nearing_alert', 'shown_pf', 'shown_played_out_rate', 'outcome', 'r',
+                'mae_r', 'return_pct', 'mae_pct', 'pnl_dollars', 'risk_dollars', 'is_oos'];
+  const rows = [cols.join(',')].concat(trades.map(t => cols.map(c => t[c] ?? '').join(',')));
+  const url = URL.createObjectURL(new Blob([rows.join('\n')], { type: 'text/csv' }));
+  const a = document.createElement('a');
+  a.href = url; a.download = 'motif_alert_trades.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function render() {
+  const riskPct = Number($('riskPct').value);
+  const targetVol = Number($('targetVol').value);
+  const trades = selectedTrades();
+  const res = computeStats(trades, riskPct, targetVol);
+  renderFunnel();
+  renderKpis(res, trades);
+  renderChart(res);
+  renderCalibration(trades);
+  renderNearingSplit(trades);
+  renderYears(trades);
+  renderPairs(trades, res, targetVol);
+  renderTrades(trades);
+  $('exportCsv').onclick = () => exportCsv(trades);
+}
+
+(async function init() {
+  try {
+    DATA = await (await fetch('./AnalogML/data/motif_alert_backtest.json')).json();
+  } catch {
+    $('headerSub').textContent = 'failed to load AnalogML/data/motif_alert_backtest.json — run ' +
+      'python AnalogML/motif_alert_backtest.py --all-pairs';
+    return;
+  }
+  SELECTED = new Set(DATA.pairs);
+  $('pairChecks').innerHTML = DATA.pairs.map(p =>
+    `<label class="pair-check"><input type="checkbox" data-pair="${p}" checked>${p}</label>`).join('');
+  $('pairChecks').addEventListener('change', e => {
+    const p = e.target.dataset.pair;
+    if (!p) return;
+    e.target.checked ? SELECTED.add(p) : SELECTED.delete(p);
+    render();
+  });
+  const setAll = on => {
+    SELECTED = on ? new Set(DATA.pairs) : new Set();
+    $('pairChecks').querySelectorAll('input').forEach(i => { i.checked = on; });
+    render();
+  };
+  $('selectAll').onclick = () => setAll(true);
+  $('selectNone').onclick = () => setAll(false);
+  for (const id of ['riskPct', 'targetVol', 'logScaleChk']) $(id).addEventListener('change', render);
+
+  const p = DATA.summary.portfolio, f = DATA.summary.funnel, pr = DATA.params;
+  $('corrBody').innerHTML =
+    `These 26 FX pairs are not independent bets — many share a currency leg (EURUSD/EURJPY/EURGBP all
+     carry EUR, GBPUSD/GBPJPY/GBPCAD all carry GBP), so one macro-shock day can move many of them the
+     same way at once. Average pairwise weekly-return correlation is only
+     <strong>${fmt(p.avg_pairwise_correlation, 3)}</strong>, yet the drawdown is what it is above:
+     correlation near zero on average does not mean near zero in the tail. This page does not manage
+     that risk for you — it has no exposure caps by design, because the alert system has none. The
+     honest lever is position size, and the vol-target card shows what this book looks like scaled.`;
+  $('headerSub').textContent =
+    `${DATA.pairs.length} pairs · ${f.confirmed_alerts.toLocaleString()} confirmed alerts → ` +
+    `${f.trades_resolved.toLocaleString()} trades, none skipped · entry next H1 open · ` +
+    `sl ${pr.sl_pips}p / tp ${pr.tp_r}R · generated ${DATA.generated_at.slice(0, 10)}`;
+  render();
+})();
+</script>
+</body>
+</html>
