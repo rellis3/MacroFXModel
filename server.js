@@ -257,6 +257,7 @@ import { computeExitScore } from './js/cogExitEngine.js';
 import { runV2Backtest } from './js/cogStateEngine.js';
 import { loadHistoricalCogDataset } from './js/cogHistoricalDataLoader.js';
 import { runCogV3 } from './js/cogV3Engine.js';
+import { serviceEnabled, servicesSnapshot, SERVICES } from './js/serviceFlags.js';
 import { runQmrV2 } from './js/qmrV2Engine.js';
 import { checkOISignals } from './cog-replication/engine/oiSignalCheck.js';
 import { computeG1 as computeCogG1, computeG2 as computeCogG2, computeG3 as computeCogG3, combine as combineCogGates } from './cog-replication/engine/cogShadow.js';
@@ -279,6 +280,76 @@ const REFRESH_LEVELS_MS  = parseInt(process.env.REFRESH_LEVELS_MS  || String(30 
 const HMM5M_REFRESH_MS        = parseInt(process.env.HMM5M_REFRESH_MS   || String(30 * 1000)); // 30s — V2 bot polls at 30s cadence
 const MACRO_REFRESH_MS        = parseInt(process.env.MACRO_REFRESH_MS    || String(6 * 60 * 60 * 1000)); // 6h — FRED data updates once daily
 const HMM5M_ALERT_COOLDOWN_MS = 15 * 60 * 1000; // min gap between regime-change Telegram alerts per pair
+
+// ── Background-service switches ──────────────────────────────────────────────
+// Every periodic job below is registered in `js/serviceFlags.js` and started
+// through `svcInterval` / `svcEnabled` instead of a bare `setInterval`. Two
+// things follow from that, and both are the point:
+//
+//   1. Any of them can be switched off from the Railway env alone — no code
+//      change, no redeploy of a different build. `SVC_<ID>=0`, or
+//      `SERVICES_OFF=a,b,c`, or `SERVICE_PROFILE=lean`. Defaults are unchanged
+//      (everything that ran before still runs), so this file's own deploy
+//      switches nothing off.
+//   2. Every gated job is TIMED. `/api/services` reports runs, cumulative wall
+//      time, last duration and error count per service. That turns "which job
+//      is actually costing the money" from a guess into a reading —
+//      `MD files/INFRASTRUCTURE_COST_ANALYSIS.md` §6 asks for exactly this and
+//      the repo had no way to answer it.
+//
+// `svcInterval` returns null for a disabled service, so `if (svcInterval(...))`
+// is a safe way to skip a companion boot-time run.
+const _serverBootedAt = Date.now();
+const _svcStats = new Map();   // id → { runs, errors, totalMs, lastMs, lastAt, startedAt }
+
+function _svcStat(id) {
+  let s = _svcStats.get(id);
+  if (!s) { s = { runs: 0, errors: 0, totalMs: 0, lastMs: null, lastAt: null, intervalMs: null, started: false }; _svcStats.set(id, s); }
+  return s;
+}
+
+/** `serviceEnabled` + a record that this process knows about the service. */
+function svcEnabled(id) {
+  const st = _svcStat(id);
+  const on = serviceEnabled(id);
+  st.enabled = on;
+  return on;
+}
+
+/**
+ * Run `fn` with timing recorded against `id`. Error handling is deliberately
+ * pass-through: a throw still throws and a rejected promise still rejects, so
+ * each job's existing `.catch(...)` keeps behaving exactly as it did.
+ */
+function svcRun(id, fn) {
+  const st = _svcStat(id);
+  const t0 = Date.now();
+  const done = () => { st.runs++; st.lastMs = Date.now() - t0; st.totalMs += st.lastMs; st.lastAt = new Date().toISOString(); };
+  let out;
+  try { out = fn(); }
+  catch (e) { st.errors++; done(); throw e; }
+  if (out && typeof out.then === 'function') {
+    return out.then(v => { done(); return v; }, e => { st.errors++; done(); throw e; });
+  }
+  done();
+  return out;
+}
+
+/** Gated, timed `setInterval`. Returns null (and starts nothing) when the service is off. */
+function svcInterval(id, fn, ms) {
+  const st = _svcStat(id);
+  if (!svcEnabled(id)) return null;
+  st.started = true;
+  st.intervalMs = ms;
+  return setInterval(() => svcRun(id, fn), ms);
+}
+
+/** Gated, timed `setTimeout` — for the one-off boot run several jobs pair with their interval. */
+function svcTimeout(id, fn, ms) {
+  if (!svcEnabled(id)) return null;
+  _svcStat(id).started = true;
+  return setTimeout(() => svcRun(id, fn), ms);
+}
 
 // ── Bounded TTL caches ───────────────────────────────────────────────────────
 // Most caches here check `Date.now() - hit.ts < TTL` on READ but never delete,
@@ -4475,7 +4546,7 @@ app.post('/api/brief-auto/run-now', async (_req, res) => {
 });
 // Hourly-ish poll: fire once/day at the configured London hour when anything is enabled.
 let _autoBriefLastRun = null;
-setInterval(async () => {
+svcInterval('morningBrief', async () => {
   try {
     const cfg = await _getAutoBriefCfg();
     if (!cfg.morningBrief && !Object.keys(cfg.pairs || {}).length) return;
@@ -4711,7 +4782,7 @@ app.get('/api/fomc/fetch-status', async (_req, res) => {
 // "actually posted" so a late release is still caught same-day. Shares the
 // same running-guard as the manual trigger so the two can never overlap and
 // race on the same KV writes.
-setInterval(() => { _fomcRunCheck('poll'); }, 30 * 60_000);
+svcInterval('cbSentiment', () => { _fomcRunCheck('poll'); }, 30 * 60_000);
 
 // ── FOMC Statement Backfill — Stage 2 of MD files/CB_SENTIMENT_PRICE_TEST.md ──
 // Backfills every scheduled FOMC statement 2016→today (js/fomcHistory.js —
@@ -5288,7 +5359,7 @@ app.get('/api/ecb/fetch-status', async (_req, res) => {
   const raw = await kv.get('ecb_fetch_log').catch(() => null);
   res.json({ ok: true, running: _ecbCheckRunning, last: raw ? JSON.parse(raw) : null });
 });
-setInterval(() => { _ecbRunCheck('poll'); }, 30 * 60_000);
+svcInterval('cbSentiment', () => { _ecbRunCheck('poll'); }, 30 * 60_000);
 
 // Diagnostic — kept from the HTML-scraping debug pass that found the real
 // problem (the ECB's HTML index page is JavaScript-rendered: 100KB fetched
@@ -5479,7 +5550,7 @@ app.get('/api/boe/fetch-status', async (_req, res) => {
   const raw = await kv.get('boe_fetch_log').catch(() => null);
   res.json({ ok: true, running: _boeCheckRunning, last: raw ? JSON.parse(raw) : null });
 });
-setInterval(() => { _boeRunCheck('poll'); }, 30 * 60_000);
+svcInterval('cbSentiment', () => { _boeRunCheck('poll'); }, 30 * 60_000);
 
 // ── BoJ Sentiment Engine ────────────────────────────────────────────────────
 // Same shape again, but structurally the most complex of the four banks:
@@ -5646,7 +5717,7 @@ app.get('/api/boj/fetch-status', async (_req, res) => {
   const raw = await kv.get('boj_fetch_log').catch(() => null);
   res.json({ ok: true, running: _bojCheckRunning, last: raw ? JSON.parse(raw) : null });
 });
-setInterval(() => { _bojRunCheck('poll'); }, 30 * 60_000);
+svcInterval('cbSentiment', () => { _bojRunCheck('poll'); }, 30 * 60_000);
 
 // Diagnostic endpoint — direct-URL construction (statement/outlook/opinions
 // same as boeFetch.js's pattern) can't distinguish "genuinely not yet
@@ -5825,7 +5896,7 @@ app.get('/api/beigebook/fetch-status', async (_req, res) => {
   const raw = await kv.get('beigebook_fetch_log').catch(() => null);
   res.json({ ok: true, running: _beigeBookCheckRunning, last: raw ? JSON.parse(raw) : null });
 });
-setInterval(() => { _beigeBookRunCheck('poll'); }, 30 * 60_000);
+svcInterval('cbSentiment', () => { _beigeBookRunCheck('poll'); }, 30 * 60_000);
 
 // Diagnostic endpoint — same reasoning as /api/boj/debug-fetch: a 404 on a
 // direct-constructed URL silently reads as notYetPublished and
@@ -5947,7 +6018,7 @@ const _laborMarketPoller = _createReleasePoller({
   read: async () => { const r = await kv.get(_LABOR_MARKET_KV).catch(() => null); return r ? JSON.parse(r) : null; },
   log: m => console.log(m),
 });
-setInterval(() => { if (process.env.FRED_KEY) _laborMarketPoller.tick().catch(() => {}); }, 10 * 60_000);
+svcInterval('econPollers', () => { if (process.env.FRED_KEY) _laborMarketPoller.tick().catch(() => {}); }, 10 * 60_000);
 setTimeout(() => { if (process.env.FRED_KEY) _laborMarketPoller.tick().catch(() => {}); }, 60 * 1000);
 
 // ── CPI / Inflation Numeric-Composition Engine ──────────────────────────────
@@ -6004,7 +6075,7 @@ const _cpiPoller = _createReleasePoller({
   read: async () => { const r = await kv.get(_CPI_KV).catch(() => null); return r ? JSON.parse(r) : null; },
   log: m => console.log(m),
 });
-setInterval(() => { if (process.env.FRED_KEY) _cpiPoller.tick().catch(() => {}); }, 10 * 60_000);
+svcInterval('econPollers', () => { if (process.env.FRED_KEY) _cpiPoller.tick().catch(() => {}); }, 10 * 60_000);
 setTimeout(() => { if (process.env.FRED_KEY) _cpiPoller.tick().catch(() => {}); }, 67 * 1000);
 
 // ── GDP / Growth Numeric-Composition Engine ─────────────────────────────────
@@ -6061,7 +6132,7 @@ const _gdpPoller = _createReleasePoller({
   read: async () => { const r = await kv.get(_GDP_KV).catch(() => null); return r ? JSON.parse(r) : null; },
   log: m => console.log(m),
 });
-setInterval(() => { if (process.env.FRED_KEY) _gdpPoller.tick().catch(() => {}); }, 10 * 60_000);
+svcInterval('econPollers', () => { if (process.env.FRED_KEY) _gdpPoller.tick().catch(() => {}); }, 10 * 60_000);
 setTimeout(() => { if (process.env.FRED_KEY) _gdpPoller.tick().catch(() => {}); }, 74 * 1000);
 
 // ── Business Activity Engine (ISM backlog item — see js/ismEngine.js) ──────
@@ -6118,7 +6189,7 @@ const _ismPoller = _createReleasePoller({
   read: async () => { const r = await kv.get(_ISM_KV).catch(() => null); return r ? JSON.parse(r) : null; },
   log: m => console.log(m),
 });
-setInterval(() => { if (process.env.FRED_KEY) _ismPoller.tick().catch(() => {}); }, 10 * 60_000);
+svcInterval('econPollers', () => { if (process.env.FRED_KEY) _ismPoller.tick().catch(() => {}); }, 10 * 60_000);
 setTimeout(() => { if (process.env.FRED_KEY) _ismPoller.tick().catch(() => {}); }, 81 * 1000);
 
 // ── Geopolitical Risk Index (Caldara & Iacoviello, Fed Board) — see js/gprEngine.js ──
@@ -6199,7 +6270,7 @@ const _gprPoller = _createReleasePoller({
   read: async () => { const r = await kv.get(_GPR_KV).catch(() => null); return r ? JSON.parse(r) : null; },
   log: m => console.log(m),
 });
-setInterval(() => { if (process.env.FRED_KEY) _gprPoller.tick().catch(() => {}); }, 10 * 60_000);
+svcInterval('econPollers', () => { if (process.env.FRED_KEY) _gprPoller.tick().catch(() => {}); }, 10 * 60_000);
 setTimeout(() => { if (process.env.FRED_KEY) _gprPoller.tick().catch(() => {}); }, 88 * 1000);
 
 // ── Retail Sales Numeric-Composition Engine (see js/retailSalesEngine.js) ──
@@ -6256,7 +6327,7 @@ const _retailSalesPoller = _createReleasePoller({
   read: async () => { const r = await kv.get(_RETAIL_SALES_KV).catch(() => null); return r ? JSON.parse(r) : null; },
   log: m => console.log(m),
 });
-setInterval(() => { if (process.env.FRED_KEY) _retailSalesPoller.tick().catch(() => {}); }, 10 * 60_000);
+svcInterval('econPollers', () => { if (process.env.FRED_KEY) _retailSalesPoller.tick().catch(() => {}); }, 10 * 60_000);
 setTimeout(() => { if (process.env.FRED_KEY) _retailSalesPoller.tick().catch(() => {}); }, 95 * 1000);
 
 // ── Trade Balance Numeric-Composition Engine (see js/tradeBalanceEngine.js) ─
@@ -6311,7 +6382,7 @@ const _tradeBalancePoller = _createReleasePoller({
   read: async () => { const r = await kv.get(_TRADE_BALANCE_KV).catch(() => null); return r ? JSON.parse(r) : null; },
   log: m => console.log(m),
 });
-setInterval(() => { if (process.env.FRED_KEY) _tradeBalancePoller.tick().catch(() => {}); }, 10 * 60_000);
+svcInterval('econPollers', () => { if (process.env.FRED_KEY) _tradeBalancePoller.tick().catch(() => {}); }, 10 * 60_000);
 setTimeout(() => { if (process.env.FRED_KEY) _tradeBalancePoller.tick().catch(() => {}); }, 102 * 1000);
 
 // ── Real Yield Differential Engine (see js/realYieldEngine.js) ─────────────
@@ -6368,7 +6439,7 @@ const _realYieldPoller = _createReleasePoller({
   read: async () => { const r = await kv.get(_REAL_YIELD_KV).catch(() => null); return r ? JSON.parse(r) : null; },
   log: m => console.log(m),
 });
-setInterval(() => { if (process.env.FRED_KEY) _realYieldPoller.tick().catch(() => {}); }, 10 * 60_000);
+svcInterval('econPollers', () => { if (process.env.FRED_KEY) _realYieldPoller.tick().catch(() => {}); }, 10 * 60_000);
 setTimeout(() => { if (process.env.FRED_KEY) _realYieldPoller.tick().catch(() => {}); }, 109 * 1000);
 
 // ── Rate ("Carry") Differential Engine (see js/rateDiffEngine.js) ──────────
@@ -6426,7 +6497,7 @@ const _rateDiffPoller = _createReleasePoller({
   read: async () => { const r = await kv.get(_RATE_DIFF_KV).catch(() => null); return r ? JSON.parse(r) : null; },
   log: m => console.log(m),
 });
-setInterval(() => { if (process.env.FRED_KEY) _rateDiffPoller.tick().catch(() => {}); }, 10 * 60_000);
+svcInterval('econPollers', () => { if (process.env.FRED_KEY) _rateDiffPoller.tick().catch(() => {}); }, 10 * 60_000);
 setTimeout(() => { if (process.env.FRED_KEY) _rateDiffPoller.tick().catch(() => {}); }, 116 * 1000);
 
 // ── PPI / Pipeline Inflation Engine (see js/ppiEngine.js) ──────────────────
@@ -6520,7 +6591,7 @@ async function _ppiTick() {
   } catch (e) { console.warn('[ppi] refresh failed:', e.message); }
   finally { _ppiRunning = false; }
 }
-setInterval(() => { _ppiTick().catch(() => {}); }, 10 * 60_000);
+svcInterval('econPollers', () => { _ppiTick().catch(() => {}); }, 10 * 60_000);
 setTimeout(() => { _ppiTick().catch(() => {}); }, 45_000);
 
 // ── Yield Curve Engine (see js/yieldCurveEngine.js) ─────────────────────────
@@ -6574,7 +6645,7 @@ const _yieldCurvePoller = _createReleasePoller({
   read: async () => { const r = await kv.get(_YIELD_CURVE_KV).catch(() => null); return r ? JSON.parse(r) : null; },
   log: m => console.log(m),
 });
-setInterval(() => { if (process.env.FRED_KEY) _yieldCurvePoller.tick().catch(() => {}); }, 10 * 60_000);
+svcInterval('econPollers', () => { if (process.env.FRED_KEY) _yieldCurvePoller.tick().catch(() => {}); }, 10 * 60_000);
 setTimeout(() => { if (process.env.FRED_KEY) _yieldCurvePoller.tick().catch(() => {}); }, 130 * 1000);
 
 // ── Consumer Confidence Engine (see js/consumerConfidenceEngine.js) ─────────
@@ -6627,7 +6698,7 @@ const _consumerConfidencePoller = _createReleasePoller({
   read: async () => { const r = await kv.get(_CONSUMER_CONFIDENCE_KV).catch(() => null); return r ? JSON.parse(r) : null; },
   log: m => console.log(m),
 });
-setInterval(() => { if (process.env.FRED_KEY) _consumerConfidencePoller.tick().catch(() => {}); }, 10 * 60_000);
+svcInterval('econPollers', () => { if (process.env.FRED_KEY) _consumerConfidencePoller.tick().catch(() => {}); }, 10 * 60_000);
 setTimeout(() => { if (process.env.FRED_KEY) _consumerConfidencePoller.tick().catch(() => {}); }, 137 * 1000);
 
 // ── Macro Scorecard (see js/macroScorecardEngine.js) ────────────────────────
@@ -6885,7 +6956,7 @@ async function _recordBookHistory() {
     return { appended, failed, changed };
   } finally { _bookHistRunning = false; }
 }
-setInterval(() => _recordBookHistory().catch(e => console.error('[book-history]', e.message)), 10 * 60_000);
+svcInterval('bookHistory', () => _recordBookHistory().catch(e => console.error('[book-history]', e.message)), 10 * 60_000);
 
 app.get('/api/oanda-book/history', async (req, res) => {
   try {
@@ -6995,7 +7066,7 @@ async function _scoreLedger() {
     return { scored: r.scored, pending: pending.length };
   } finally { _ledgerScoring = false; }
 }
-setInterval(() => _scoreLedger().catch(e => console.error('[ledger]', e.message)), 6 * 3600_000);
+svcInterval('scoreLedger', () => _scoreLedger().catch(e => console.error('[ledger]', e.message)), 6 * 3600_000);
 
 app.get('/api/ledger', async (req, res) => {
   try {
@@ -7040,7 +7111,7 @@ async function _recordScorecardHistory() {
 // Every 2h. The row is replaced if the day's state moved, so the last run before
 // midnight UTC is what the series keeps. First run is deferred until after kv.load()
 // (see the boot section) — scheduling it here would race the store replacement.
-setInterval(() => _recordScorecardHistory().catch(e => console.error('[scorecard-history]', e.message)), 2 * 3600_000);
+svcInterval('scorecardHistory', () => _recordScorecardHistory().catch(e => console.error('[scorecard-history]', e.message)), 2 * 3600_000);
 
 app.get('/api/macro-scorecard/history', async (req, res) => {
   try {
@@ -10262,9 +10333,11 @@ async function _vmLogCycle() {
   }
 }
 
-if (process.env.VM_LOG_ENABLED !== '0') {
-  setInterval(_vmLogCycle, VM_LOG_MIN * 60_000);
-  setTimeout(_vmLogCycle, 45_000);          // one shortly after boot
+// VM_LOG_ENABLED=0 still switches this off — js/serviceFlags.js keeps it as a
+// legacy alias for SVC_MVE_LOG, so nothing already set in Railway changes meaning.
+if (svcEnabled('mveLog')) {
+  svcInterval('mveLog', _vmLogCycle, VM_LOG_MIN * 60_000);
+  svcTimeout('mveLog', _vmLogCycle, 45_000);          // one shortly after boot
 }
 
 
@@ -10376,8 +10449,9 @@ async function _vmHeartbeat() {
   }
 }
 
-if (process.env.VM_LOG_ENABLED !== '0' && process.env.VM_HEARTBEAT !== '0') {
-  setInterval(() => {
+// Unchanged nesting: the logger being off still takes the heartbeat with it.
+if (svcEnabled('mveLog') && svcEnabled('mveHeartbeat')) {
+  svcInterval('mveHeartbeat', () => {
     const d = new Date();
     const hhmm = String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0');
     const today = d.toISOString().slice(0, 10);
@@ -11347,7 +11421,7 @@ const _creditQualityPoller = _createReleasePoller({
   read: async () => { const r = await kv.get(_CREDIT_QUALITY_KV).catch(() => null); return r ? JSON.parse(r) : null; },
   log: m => console.log(m),
 });
-setInterval(() => { if (process.env.FRED_KEY) _creditQualityPoller.tick().catch(() => {}); }, 10 * 60_000);
+svcInterval('econPollers', () => { if (process.env.FRED_KEY) _creditQualityPoller.tick().catch(() => {}); }, 10 * 60_000);
 setTimeout(() => { if (process.env.FRED_KEY) _creditQualityPoller.tick().catch(() => {}); }, 144 * 1000);
 
 // ── /api/fx-carry — the HONEST FX carry factor ───────────────────────────────
@@ -11437,7 +11511,7 @@ async function _captureFinancingSnapshot(reason = 'schedule') {
 // Poll every 6h and capture once per calendar day. Cheap (one API call) and the
 // de-dupe makes extra ticks harmless; rates change rarely but unpredictably, so
 // a daily snapshot is the honest cadence rather than guessing when they move.
-setInterval(() => {
+svcInterval('financing', () => {
   const today = new Date().toISOString().slice(0, 10);
   if (_financingLastRun === today) return;
   _financingLastRun = today;
@@ -11750,7 +11824,7 @@ async function cogShadowRun(stage, manual = false) {
   }
 }
 
-setInterval(() => {
+svcInterval('cogShadow', () => {
   const d = new Date(), h = d.getUTCHours(), m = d.getUTCMinutes(), dow = d.getUTCDay();
   if (dow === 0 || dow === 6) return;
   if (h === 8  && m >= 0  && m < 5)  cogShadowRun('g1');
@@ -13286,8 +13360,8 @@ app.post('/api/macro-regime-fx/refresh', async (_req, res) => {
 });
 // Daily rebuild — the underlying series are daily and one more day changes nothing
 // abruptly, so this is a cheap keep-warm rather than a schedule anything depends on.
-setTimeout(() => { _refreshRegimeStudy().catch(e => console.warn('[regime-fx] initial build skipped:', e.message)); }, 120_000);
-setInterval(() => { _refreshRegimeStudy().catch(e => console.warn('[regime-fx] rebuild failed:', e.message)); }, _REGIME_TTL_MS);
+svcTimeout('regimeStudy', () => { _refreshRegimeStudy().catch(e => console.warn('[regime-fx] initial build skipped:', e.message)); }, 120_000);
+svcInterval('regimeStudy', () => { _refreshRegimeStudy().catch(e => console.warn('[regime-fx] rebuild failed:', e.message)); }, _REGIME_TTL_MS);
 
 // -- Economic surprise index (actual vs consensus, per currency) ---------------
 // today.html's "Growth surprise by currency" bars never measured surprise: they
@@ -13423,7 +13497,7 @@ app.post('/api/econ-surprise/refresh', async (_req, res) => {
 // kv.load()` further down — and fileLoad() does `store = JSON.parse(raw)`, a wholesale
 // replace. Anything written to KV up here is discarded a moment later. That is why the
 // surprise store read as empty on every boot. The trigger now sits after kv.load().
-setInterval(() => _refreshSurpriseStore().catch(e => console.error('[surprise] refresh failed:', e.message)), _SURPRISE_REFRESH_MS);
+svcInterval('surpriseStore', () => _refreshSurpriseStore().catch(e => console.error('[surprise] refresh failed:', e.message)), _SURPRISE_REFRESH_MS);
 
 app.get('/api/spreads', async (req, res) => {
   try {
@@ -15090,7 +15164,7 @@ app.get('/api/range-line-bot/confluence', async (_req, res) => {
 // (prior-day data only), so 6am is simply when the bot needs today's graded zones.
 const RL_CONF_UTC_MIN = Number(process.env.RANGE_LINE_CONF_UTC_MIN ?? 10);
 let _rlConfLastFired = null;
-setInterval(() => {
+svcInterval('rangeLineConfluence', () => {
   const now = new Date();
   const targetHour = (_rlBoundaryHour(now) + 6) % 24;    // 6am London in UTC, DST-aware
   const dateKey = now.toISOString().slice(0, 10);
@@ -15212,7 +15286,7 @@ async function _rlAccumulateTradeLog() {
     console.log(`[range-line-oi] trade log +${added} (${log.length} total)`);
   } catch (e) { console.error('[range-line-oi] trade-log accumulate failed:', e.message); }
 }
-setInterval(_rlAccumulateTradeLog, 10 * 60_000);                  // every 10 min
+svcInterval('tradeLogs', _rlAccumulateTradeLog, 10 * 60_000);                  // every 10 min
 setTimeout(_rlAccumulateTradeLog, 30_000);                        // and shortly after boot
 
 // OI bot has no durable trade log of its own — its `today_closed_trades` is
@@ -15264,7 +15338,7 @@ async function _oiAccumulateTradeLog() {
     console.log(`[oi-bot] trade log +${added} (${log.length} total)`);
   } catch (e) { console.error('[oi-bot] trade-log accumulate failed:', e.message); }
 }
-setInterval(_oiAccumulateTradeLog, 10 * 60_000);                  // every 10 min
+svcInterval('tradeLogs', _oiAccumulateTradeLog, 10 * 60_000);                  // every 10 min
 setTimeout(_oiAccumulateTradeLog, 35_000);                        // and shortly after boot
 
 // Confluence bot: same story — it journals closed trades to per-pair FILES (not
@@ -15303,7 +15377,7 @@ async function _confluenceAccumulateTradeLog() {
     console.log(`[confluence] trade log +${added} (${log.length} total)`);
   } catch (e) { console.error('[confluence] trade-log accumulate failed:', e.message); }
 }
-setInterval(_confluenceAccumulateTradeLog, 10 * 60_000);
+svcInterval('tradeLogs', _confluenceAccumulateTradeLog, 10 * 60_000);
 setTimeout(_confluenceAccumulateTradeLog, 40_000);
 
 // Reuse the OI the user ALREADY computes in the index.html OI analyser (KV
@@ -15358,7 +15432,7 @@ async function _rlSnapshotOIFromStore() {
     return n;
   } catch (e) { console.error('[range-line-oi] oi_store snapshot failed:', e.message); return 0; }
 }
-setInterval(_rlSnapshotOIFromStore, 10 * 60_000);                 // keep today's snapshot current with the morning paste
+svcInterval('oiBot', _rlSnapshotOIFromStore, 10 * 60_000);                 // keep today's snapshot current with the morning paste
 setTimeout(_rlSnapshotOIFromStore, 40_000);
 
 // On-demand: pull the analyser's OI into today's forward-test slot now.
@@ -15638,7 +15712,7 @@ async function _snapshotOIHistory(force = false) {
     return { n, wrote, day, changed, rawChanged, staleAlerts: staleAlerts.length ? staleAlerts : undefined };
   } catch (e) { console.error('[oi-history] snapshot failed:', e.message); return { n: 0, wrote: false, day: null, error: e.message }; }
 }
-setInterval(_snapshotOIHistory, 30 * 60_000);                    // archive the day's paste periodically
+svcInterval('oiBot', _snapshotOIHistory, 30 * 60_000);                    // archive the day's paste periodically
 setTimeout(_snapshotOIHistory, 50_000);
 
 // History + day-over-day deltas. With ?pair= → one pair's full history + deltas
@@ -16137,7 +16211,7 @@ async function _refreshOIBotZones() {
     return Object.keys(instruments).length;
   } catch (e) { console.error('[oi-bot] zones refresh failed:', e.message); return 0; }
 }
-setInterval(_refreshOIBotZones, 10 * 60_000);
+svcInterval('oiBot', _refreshOIBotZones, 10 * 60_000);
 setTimeout(_refreshOIBotZones, 60_000);
 
 // ── volatility_bot_v2 (Level Atlas Vote Portfolio) plan producer ─────────────
@@ -16469,11 +16543,11 @@ async function _refreshVolatilityV2Plan() {
 // where every cold-start pays the full local-parquet-load cost on repeat
 // (nothing to persist a snapshot TO without R2) rather than the cheap R2-
 // snapshot-restore path this producer is designed around in production.
-if (process.env.VOLATILITY_V2_PLAN_REFRESH !== '0') {
-  setInterval(_refreshVolatilityV2Plan, 45_000);
-  setTimeout(_refreshVolatilityV2Plan, 60_000);
+if (svcEnabled('volatilityV2Plan')) {
+  svcInterval('volatilityV2Plan', _refreshVolatilityV2Plan, 45_000);
+  svcTimeout('volatilityV2Plan', _refreshVolatilityV2Plan, 60_000);
 } else {
-  console.log('[volatility-v2] plan refresh disabled (VOLATILITY_V2_PLAN_REFRESH=0)');
+  console.log('[volatility-v2] plan refresh disabled (SVC_VOLATILITY_V2_PLAN / VOLATILITY_V2_PLAN_REFRESH)');
 }
 
 // ── fib_atlas_bot (Asia + Monday range-extension vote) plan producer ────────
@@ -16604,11 +16678,11 @@ async function _refreshFibAtlasPlan() {
     return Object.keys(instruments).length;
   } catch (e) { console.error('[fib-atlas-bot] plan refresh failed:', e.message); return 0; }
 }
-if (process.env.FIB_ATLAS_PLAN_REFRESH !== '0') {
-  setInterval(_refreshFibAtlasPlan, 45_000);
-  setTimeout(_refreshFibAtlasPlan, 75_000);   // staggered a little after volatility-v2's own 60s warm-up so both producers' cold-starts don't collide on the same tick
+if (svcEnabled('fibAtlasPlan')) {
+  svcInterval('fibAtlasPlan', _refreshFibAtlasPlan, 45_000);
+  svcTimeout('fibAtlasPlan', _refreshFibAtlasPlan, 75_000);   // staggered a little after volatility-v2's own 60s warm-up so both producers' cold-starts don't collide on the same tick
 } else {
-  console.log('[fib-atlas-bot] plan refresh disabled (FIB_ATLAS_PLAN_REFRESH=0)');
+  console.log('[fib-atlas-bot] plan refresh disabled (SVC_FIB_ATLAS_PLAN / FIB_ATLAS_PLAN_REFRESH)');
 }
 
 // GET /api/fib-atlas-bot/rung-diagnostic — read-only aggregation over
@@ -16719,7 +16793,7 @@ async function _volatilityV2AccumulateTradeLog() {
     console.log(`[volatility-v2] trade log +${added} (${log.length} total)`);
   } catch (e) { console.error('[volatility-v2] trade-log accumulate failed:', e.message); }
 }
-setInterval(_volatilityV2AccumulateTradeLog, 10 * 60_000);
+svcInterval('tradeLogs', _volatilityV2AccumulateTradeLog, 10 * 60_000);
 setTimeout(_volatilityV2AccumulateTradeLog, 35_000);
 
 // Weekly live-vs-backtest drift audit (2026-09-13) — automates the manual
@@ -17101,7 +17175,7 @@ app.get('/api/fib-atlas-bot/all-lines', async (req, res) => {
 // 15 min cadence: frequent enough that a restart's gap-fill catch-up stays
 // small, infrequent enough to be a trivial R2 write volume (R2 has no
 // per-write quota concern the way CF KV does here).
-setInterval(_laSaveAllLiveSnapshots, 15 * 60_000);
+svcInterval('atlasSnapshots', _laSaveAllLiveSnapshots, 15 * 60_000);
 setTimeout(_laSaveAllLiveSnapshots, 5 * 60_000);   // let pairs actually warm up first
 
 // Fib Atlas's own copies of the snapshot job above (js/asiaFibAtlasRoutes.js
@@ -17110,9 +17184,9 @@ setTimeout(_laSaveAllLiveSnapshots, 5 * 60_000);   // let pairs actually warm up
 // wipe this in-memory cache, forcing a full ~16-pair x 2-ladder cold-start
 // marathon repeatedly on a repo with several pushes/day). Two separate
 // module-level caches (Asia, Monday), so two separate interval calls.
-setInterval(_faAsiaSaveAllLiveSnapshots, 15 * 60_000);
+svcInterval('atlasSnapshots', _faAsiaSaveAllLiveSnapshots, 15 * 60_000);
 setTimeout(_faAsiaSaveAllLiveSnapshots, 5 * 60_000);
-setInterval(_faMondaySaveAllLiveSnapshots, 15 * 60_000);
+svcInterval('atlasSnapshots', _faMondaySaveAllLiveSnapshots, 15 * 60_000);
 setTimeout(_faMondaySaveAllLiveSnapshots, 5 * 60_000);
 
 // ── OI hold-score AUTO-CALIBRATION ────────────────────────────────────────────
@@ -17186,7 +17260,7 @@ async function _refreshOIHoldCalibration() {
     return { status: 'active', n };
   } catch (e) { console.error('[oi-hold-calib] refresh failed:', e.message); return { status: 'error', error: e.message }; }
 }
-setInterval(_refreshOIHoldCalibration, 6 * 60 * 60_000);   // the log grows a few rows a day — 6h is plenty
+svcInterval('oiBot', _refreshOIHoldCalibration, 6 * 60 * 60_000);   // the log grows a few rows a day — 6h is plenty
 setTimeout(_refreshOIHoldCalibration, 70_000);
 
 app.get('/api/oi-bot/hold-calibration', async (req, res) => {
@@ -17225,7 +17299,7 @@ async function _refreshOIBasis() {
     return changed;
   } catch (e) { console.warn('[oi-basis] refresh failed:', e.message); return 0; }
 }
-setInterval(_refreshOIBasis, 15 * 60_000);
+svcInterval('oiBot', _refreshOIBasis, 15 * 60_000);
 setTimeout(_refreshOIBasis, 90_000);
 
 app.get('/api/oi-bot/zones', async (req, res) => {
@@ -22860,10 +22934,10 @@ const SESSION_RESEARCH_FULL_INTERVAL_MS = (parseInt(process.env.SESSION_RESEARCH
 // Fires once immediately on boot (same behavior the bash-loop predecessor
 // had), then on its own interval — fire-and-forget, does not block server
 // startup below.
-_sessionResearchLiveTick();
-_sessionResearchFullTick();
-setInterval(_sessionResearchLiveTick, SESSION_RESEARCH_LIVE_INTERVAL_MS);
-setInterval(_sessionResearchFullTick, SESSION_RESEARCH_FULL_INTERVAL_MS);
+if (svcEnabled('sessionResearchLive')) svcRun('sessionResearchLive', _sessionResearchLiveTick);
+if (svcEnabled('sessionResearchFull')) svcRun('sessionResearchFull', _sessionResearchFullTick);
+svcInterval('sessionResearchLive', _sessionResearchLiveTick, SESSION_RESEARCH_LIVE_INTERVAL_MS);
+svcInterval('sessionResearchFull', _sessionResearchFullTick, SESSION_RESEARCH_FULL_INTERVAL_MS);
 
 // ── Nasdaq Macro Lead: native in-process scheduling ─────────────────────────
 // RESEARCH TOOL, NOT A TRADING BOT — see NasdaqMacroLead/README.md. Tests
@@ -23061,8 +23135,8 @@ async function _nasdaqMacroLeadTick() {
   catch (e) { console.warn(`[nasdaq-macro-lead] tick failed: ${e.message}`); }
   finally { _nasdaqMacroLeadBusy = false; }
 }
-_nasdaqMacroLeadTick();
-setInterval(_nasdaqMacroLeadTick, NASDAQ_MACRO_LEAD_INTERVAL_MS);
+if (svcEnabled('nasdaqMacroLead')) svcRun('nasdaqMacroLead', _nasdaqMacroLeadTick);
+svcInterval('nasdaqMacroLead', _nasdaqMacroLeadTick, NASDAQ_MACRO_LEAD_INTERVAL_MS);
 
 app.get('/api/nasdaq-macro-lead/summary', async (_req, res) => {
   const out = await _loadAnalogMLJson(NASDAQ_MACRO_LEAD_SUMMARY_PATH, 'nasdaq-macro-lead/dashboard_summary.json');
@@ -25144,8 +25218,8 @@ app.get('/api/forecast-path/forward', async (_req, res) => {
 
 // Auto-tick: record + resolve every 30 min so the forward record accumulates
 // without a manual poke (OANDA-gated; opt out with CONE_FWD_AUTO=0).
-if (process.env.OANDA_KEY && process.env.CONE_FWD_AUTO !== '0') {
-  setInterval(() => { _coneForwardRefresh().catch(() => {}); }, 30 * 60_000);
+if (process.env.OANDA_KEY && svcEnabled('coneForward')) {
+  svcInterval('coneForward', () => { _coneForwardRefresh().catch(() => {}); }, 30 * 60_000);
 }
 
 // ── Surprise alert — Telegram ping when a cone reading is unusually stretched
@@ -25263,8 +25337,8 @@ app.post('/api/forecast-path/alert/scan', async (req, res) => {
 });
 
 // Auto-scan every 20 min (OANDA-gated; opt out with SURPRISE_ALERT_AUTO=0).
-if (process.env.OANDA_KEY && process.env.SURPRISE_ALERT_AUTO !== '0') {
-  setInterval(() => { _surpriseAlertScan().catch(() => {}); }, 20 * 60_000);
+if (process.env.OANDA_KEY && svcEnabled('surpriseAlerts')) {
+  svcInterval('surpriseAlerts', () => { _surpriseAlertScan().catch(() => {}); }, 20 * 60_000);
 }
 
 // Level hit analysis — async job queue (same pattern as vol-backtest/run)
@@ -28887,8 +28961,8 @@ app.get('/api/hedge-signals-v2/backtest/status/:jobId', (req, res) => {
 // Recompute live v2 signals on the same cadence as v1 (5 min after boot, then 15-min).
 // H4 bars only change every 4 hours — hourly cadence gives the same signal without
 // burning OANDA quota or CPU on 14 redundant identical runs per hour.
-setTimeout(() => computeHedgeSignalsV2().catch(e => console.error('[HEDGE-SIG-V2]', e.message)), 6 * 60_000);
-setInterval(() => computeHedgeSignalsV2().catch(e => console.error('[HEDGE-SIG-V2]', e.message)), 60 * 60_000);
+svcTimeout('hedgeSignalsV2', () => computeHedgeSignalsV2().catch(e => console.error('[HEDGE-SIG-V2]', e.message)), 6 * 60_000);
+svcInterval('hedgeSignalsV2', () => computeHedgeSignalsV2().catch(e => console.error('[HEDGE-SIG-V2]', e.message)), 60 * 60_000);
 
 // ── Regime history — automatic recorder ─────────────────────────────────────
 // The log-parse backfill below (_parseRegimeLog / /api/regime-backfill-trigger)
@@ -29609,9 +29683,9 @@ async function _tdeAccumulateShadowBook() {
     if (records.length) { await _tdeShadowRecord(records); console.log(`[tde-shadow] booked ${records.length} open position(s)`); }
   } catch (e) { console.error('[tde-shadow] accumulate failed:', e.message); }
 }
-if (process.env.OANDA_KEY) {
-  setInterval(_tdeAccumulateShadowBook, 7 * 60_000);
-  setTimeout(_tdeAccumulateShadowBook, 45_000);
+if (process.env.OANDA_KEY && svcEnabled('tde')) {
+  svcInterval('tde', _tdeAccumulateShadowBook, 7 * 60_000);
+  svcTimeout('tde', _tdeAccumulateShadowBook, 45_000);
 }
 
 // Read the shadow book (optionally a subset by ?ids=a,b,c) — the audit joins it.
@@ -29786,8 +29860,8 @@ async function _creditFlipCheck() {
     if (sent) _lastCreditAlertAt = Date.now();
   } catch (e) { console.warn('[credit-alert] check failed:', e.message ?? e); }
 }
-if (process.env.FRED_KEY) {
-  setTimeout(() => { _creditFlipCheck(); setInterval(_creditFlipCheck, 30 * 60_000); }, 90_000);
+if (process.env.FRED_KEY && svcEnabled('creditFlip')) {
+  setTimeout(() => { svcRun('creditFlip', _creditFlipCheck); svcInterval('creditFlip', _creditFlipCheck, 30 * 60_000); }, 90_000);
 }
 
 // Slow-loop refresh (OANDA + Finnhub) — { pair } or { pairs: [...] }
@@ -29807,6 +29881,51 @@ app.post('/api/trade-decision/refresh', express.json(), async (req, res) => {
 
 app.get('/api/trade-decision/log', (req, res) => {
   res.json({ ok: true, decisions: tdeReadRecent(Math.min(parseInt(req.query.limit ?? '50'), 500)) });
+});
+
+// ── /api/services — what is running in the background, and what it costs ─────
+// The registry (js/serviceFlags.js) plus this process's own measurements: runs,
+// cumulative wall time and last duration per service since boot. That second
+// half is the part the repo never had — INFRASTRUCTURE_COST_ANALYSIS.md §6 asks
+// for measurement before any cost claim, and this is it, for the scheduled half
+// of the workload. Read it after a day of uptime, sort by totalMs, and the
+// expensive jobs name themselves.
+//
+// GET /api/services?on=1 to list only what is running.
+app.get('/api/services', (req, res) => {
+  const bootedAt = _serverBootedAt;
+  const upMs = Date.now() - bootedAt;
+  let rows = servicesSnapshot().map(s => {
+    const st = _svcStats.get(s.id) ?? {};
+    const totalMs = st.totalMs ?? 0;
+    return {
+      ...s,
+      started: st.started === true,
+      runs: st.runs ?? 0,
+      errors: st.errors ?? 0,
+      totalMs,
+      lastMs: st.lastMs ?? null,
+      lastAt: st.lastAt ?? null,
+      intervalMs: st.intervalMs ?? null,
+      // Share of wall-clock time this process spent inside this job. Single
+      // process, so these are comparable to each other; they are NOT CPU time
+      // (an awaiting job is idle, not burning CPU) and can sum past 100%.
+      busyPct: upMs > 0 ? +(100 * totalMs / upMs).toFixed(2) : null,
+    };
+  });
+  if (String(req.query.on ?? '') === '1') rows = rows.filter(r => r.enabled);
+  const order = { high: 0, med: 1, low: 2 };
+  rows.sort((a, b) => (b.totalMs - a.totalMs) || (order[a.cost] - order[b.cost]) || a.id.localeCompare(b.id));
+  res.json({
+    ok: true,
+    bootedAt: new Date(bootedAt).toISOString(),
+    uptimeSec: Math.round(upMs / 1000),
+    profile: process.env.SERVICE_PROFILE || null,
+    counts: { total: rows.length, enabled: rows.filter(r => r.enabled).length },
+    note: 'totalMs/busyPct are measured in THIS process since boot; start.sh bots report flag state only. '
+        + 'Switch a service off with its env var (see MD files/RAILWAY_SERVICE_FLAGS.md) and redeploy.',
+    services: rows,
+  });
 });
 
 app.get('/api/trade-decision/health', (_req, res) => {
@@ -29832,8 +29951,9 @@ if (process.env.TDE_PAIRS) {
     _tdeLoopBusy = false;
   };
   setTimeout(() => {
-    _tdeTick();
-    setInterval(_tdeTick, tdeMin * 60_000);
+    if (!svcEnabled('tde')) return console.log('[trade-decision] slow loop off (SVC_TDE=0)');
+    svcRun('tde', _tdeTick);
+    svcInterval('tde', _tdeTick, tdeMin * 60_000);
     console.log(`[trade-decision] macro-aware slow loop started: ${tdePairs.join(', ')} every ${Math.round(tdeMin * 60)}s`);
   }, 5_000);
 }
@@ -30090,7 +30210,7 @@ app.post('/api/trade-decision/config', express.json(), async (req, res) => {
 // from live OANDA M1 first (m1GapFill brick), so this does NOT depend on the R2
 // store having been refreshed. Idempotent: no new sessions → nothing appended.
 let tdeLastAutoBackfill = null;
-setInterval(async () => {
+svcInterval('tde', async () => {
   const cfg = await tdeGetConfig();
   if (!cfg.backfill_daily) return;
   const [bfH, bfM] = String(cfg.backfill_utc).split(':').map(x => parseInt(x, 10));
@@ -30705,9 +30825,9 @@ _backfillSurpriseStore()
 // store above, and delayed so it does not join the boot-time FRED burst — the
 // scorecard build reads only cached engine KV, but the engines it reads may still be
 // seeding.
-setTimeout(() => _recordScorecardHistory().catch(e => console.error('[scorecard-history] first run failed (store left untouched):', e.message)), 3 * 60_000);
-setTimeout(() => _recordBookHistory().catch(e => console.error('[book-history] first run failed (store left untouched):', e.message)), 4 * 60_000);
-setTimeout(() => _scoreLedger().catch(e => console.error('[ledger] first scoring pass failed (store left untouched):', e.message)), 5 * 60_000);
+svcTimeout('scorecardHistory', () => _recordScorecardHistory().catch(e => console.error('[scorecard-history] first run failed (store left untouched):', e.message)), 3 * 60_000);
+svcTimeout('bookHistory', () => _recordBookHistory().catch(e => console.error('[book-history] first run failed (store left untouched):', e.message)), 4 * 60_000);
+svcTimeout('scoreLedger', () => _scoreLedger().catch(e => console.error('[ledger] first scoring pass failed (store left untouched):', e.message)), 5 * 60_000);
 _warmChainRead().catch(e => console.warn('[chain-read] warm from KV failed:', e.message));
 await reloadConfig();
 await reloadLevels();
@@ -30723,18 +30843,18 @@ try {
   console.error('[HMM5M-V2] Failed to load trained params:', e.message);
 }
 
-setInterval(monitorTick, MONITOR_MS);
-monitorTick().catch(console.error);
+svcInterval('monitor', monitorTick, MONITOR_MS);
+if (svcEnabled('monitor')) svcRun('monitor', monitorTick).catch(console.error);
 
 // Run an initial level refresh on boot, then every REFRESH_LEVELS_MS (default 30 min)
-setInterval(runLevelsRefresh, REFRESH_LEVELS_MS);
-runLevelsRefresh().catch(console.error);
+svcInterval('levels', runLevelsRefresh, REFRESH_LEVELS_MS);
+if (svcEnabled('levels')) svcRun('levels', runLevelsRefresh).catch(console.error);
 
 // Telegram-v2 fast alert loop: zones recompute every 30 min, but proximity to LIVE
 // price is checked every 90s so alerts fire on approach mid-cycle (no-op unless v2
 // alerts are enabled + a bot is configured).
 const V2_ALERT_MS = parseInt(process.env.V2_ALERT_MS || String(90 * 1000));
-setInterval(() => {
+svcInterval('levelsV2Alerts', () => {
   if (!tgOn('levelsV2')) return;   // master override — see TG_SENDERS
   const v2pairs = (state.cfg?.pairs?.length ? state.cfg.pairs : DEFAULT_PAIRS).map(p => p.toUpperCase?.() ?? p);
   checkV2AlertsNow(v2pairs).catch(e => console.error('[LEVELS-V2] alert loop error:', e.message));
@@ -30744,54 +30864,59 @@ setInterval(() => {
 // every 90s (no-op unless enabled + a dedicated bot is configured). See
 // checkVolLevelAlertsNow / /api/vol-forecast/level-alerts/*.
 const VOL_LEVEL_ALERT_MS = parseInt(process.env.VOL_LEVEL_ALERT_MS || String(90 * 1000));
-setInterval(() => {
+svcInterval('volLevelAlerts', () => {
   checkVolLevelAlertsNow().catch(e => console.error('[VOL-LEVEL-ALERT] loop error:', e.message));
 }, VOL_LEVEL_ALERT_MS);
 
 // Live 5m HMM — runs every minute, initial run after a short delay so levels load first
 setTimeout(() => {
-  runHMM5mRefresh().catch(console.error);
-  setInterval(runHMM5mRefresh, HMM5M_REFRESH_MS);
+  if (!svcEnabled('hmm5m')) return;
+  svcRun('hmm5m', runHMM5mRefresh).catch(console.error);
+  svcInterval('hmm5m', runHMM5mRefresh, HMM5M_REFRESH_MS);
 }, 15_000);
 
 // V2 shadow HMM — same cadence, 5s offset so it doesn't fire simultaneously with V1
 setTimeout(() => {
-  runHMM5mV2Refresh().catch(console.error);
-  setInterval(runHMM5mV2Refresh, HMM5M_REFRESH_MS);
+  if (!svcEnabled('hmm5mV2')) return;
+  svcRun('hmm5mV2', runHMM5mV2Refresh).catch(console.error);
+  svcInterval('hmm5mV2', runHMM5mV2Refresh, HMM5M_REFRESH_MS);
 }, 20_000);
 
 // Regime-history auto-recorder flush — local KV every 5 min (cheap, unmetered),
 // R2 every hour (durable across redeploys). See recordRegimeSnapshot() above;
 // this just persists whatever the live HMM loops have already accumulated.
-setInterval(() => flushRegimeHistoryToLocalKV().catch(e => console.error('[REGIME-HIST] local flush error:', e.message)), 5 * 60 * 1000);
-setInterval(() => flushRegimeHistoryToR2().catch(e => console.error('[REGIME-HIST] R2 flush error:', e.message)), 60 * 60 * 1000);
+svcInterval('regimeHistory', () => flushRegimeHistoryToLocalKV().catch(e => console.error('[REGIME-HIST] local flush error:', e.message)), 5 * 60 * 1000);
+svcInterval('regimeHistory', () => flushRegimeHistoryToR2().catch(e => console.error('[REGIME-HIST] R2 flush error:', e.message)), 60 * 60 * 1000);
 
 // V2 1h HTF HMM — refreshes every 5 min (H1 bars change slowly), 10s offset
 setTimeout(() => {
-  runHMM1hV2Refresh().catch(console.error);
-  setInterval(runHMM1hV2Refresh, 5 * 60 * 1000);
+  if (!svcEnabled('hmm1h')) return;
+  svcRun('hmm1h', runHMM1hV2Refresh).catch(console.error);
+  svcInterval('hmm1h', runHMM1hV2Refresh, 5 * 60 * 1000);
 }, 25_000);
 
 // V2 30m MTF HMM — primary signal for regime_bot_v7.py, refreshes every 5 min
 setTimeout(() => {
-  runHMM30mV2Refresh().catch(console.error);
-  setInterval(runHMM30mV2Refresh, 5 * 60 * 1000);
+  if (!svcEnabled('hmm30m')) return;
+  svcRun('hmm30m', runHMM30mV2Refresh).catch(console.error);
+  svcInterval('hmm30m', runHMM30mV2Refresh, 5 * 60 * 1000);
 }, 30_000);
 
 // V2 2h HTF HMM — optional 4x confirmation gate for regime_bot_v7.py, refreshes every 10 min
 setTimeout(() => {
-  runHMM2hV2Refresh().catch(console.error);
-  setInterval(runHMM2hV2Refresh, 10 * 60 * 1000);
+  if (!svcEnabled('hmm2h')) return;
+  svcRun('hmm2h', runHMM2hV2Refresh).catch(console.error);
+  svcInterval('hmm2h', runHMM2hV2Refresh, 10 * 60 * 1000);
 }, 35_000);
 
 // Macro context (VIX, HY spread, yield curve via FRED) — refresh every 6h, run once at startup
-refreshMacroContext().catch(console.error);
-setInterval(refreshMacroContext, MACRO_REFRESH_MS);
+if (svcEnabled('macroContext')) svcRun('macroContext', refreshMacroContext).catch(console.error);
+svcInterval('macroContext', refreshMacroContext, MACRO_REFRESH_MS);
 
 // FRED dashboard cache — sequential fetch at startup + every 6h to pre-populate fred_data_v3
 // so /api/fred always serves from KV without client-triggered concurrent FRED batches.
-refreshFredDashboard().catch(console.error);
-setInterval(refreshFredDashboard, MACRO_REFRESH_MS);
+if (svcEnabled('fredDashboard')) svcRun('fredDashboard', refreshFredDashboard).catch(console.error);
+svcInterval('fredDashboard', refreshFredDashboard, MACRO_REFRESH_MS);
 
 // Event-blackout windows — hourly Finnhub calendar → eventGateCore →
 // KV `event_windows_v1` for the Python bots ("ship timestamps, not logic":
@@ -30819,34 +30944,35 @@ async function _refreshEventWindows() {
 }
 // ForexFactory needs no key, so the gate now runs for every deploy (Finnhub, when
 // present, is only a best-effort fallback inside _fetchWeekEvents).
-_refreshEventWindows().catch(e => console.error('[event-gate] refresh failed:', e.message));
-setInterval(() => _refreshEventWindows().catch(e => console.error('[event-gate] refresh failed:', e.message)), 60 * 60_000);
+if (svcEnabled('eventGate')) svcRun('eventGate', () => _refreshEventWindows().catch(e => console.error('[event-gate] refresh failed:', e.message)));
+svcInterval('eventGate', () => _refreshEventWindows().catch(e => console.error('[event-gate] refresh failed:', e.message)), 60 * 60_000);
 
 // fredhistory series cache — 21 series × 90 obs, starts 30s after dashboard refresh to avoid
 // concurrent FRED requests, then every 6h.  Allows /api/fredhistory to serve entirely from KV.
 setTimeout(() => {
-  refreshFredHistory().catch(console.error);
-  setInterval(refreshFredHistory, MACRO_REFRESH_MS);
+  if (!svcEnabled('fredHistory')) return;
+  svcRun('fredHistory', refreshFredHistory).catch(console.error);
+  svcInterval('fredHistory', refreshFredHistory, MACRO_REFRESH_MS);
 }, 30_000);
 
 // Correlation history — builds on startup if missing/stale, then every 6 hours.
 // Fetches 5y of H4 OANDA bars for all pairs, computes rolling Pearson correlations + factor betas.
 // ~3 min to build, ~500-900 KB output. Stored at bot/data/corr_history.json.
 // 6-hour cadence keeps z-scores fresh: each H4 bar advances the rolling window by one step.
-setTimeout(() => runCorrHistoryRefresh().catch(e => console.error('[CORR]', e.message)), 60_000);
-setInterval(() => runCorrHistoryRefresh().catch(e => console.error('[CORR]', e.message)), 6 * 60 * 60 * 1000);
+svcTimeout('corrHistory', () => runCorrHistoryRefresh().catch(e => console.error('[CORR]', e.message)), 60_000);
+svcInterval('corrHistory', () => runCorrHistoryRefresh().catch(e => console.error('[CORR]', e.message)), 6 * 60 * 60 * 1000);
 
 // Beta estimation — runs every 2 hours; first run 90s after startup (after corr fetch begins)
-setTimeout(() => buildBetaEstimates().catch(e => console.error('[BETA]', e.message)), 90_000);
-setInterval(() => buildBetaEstimates().catch(e => console.error('[BETA]', e.message)), BETA_INTERVAL_MS);
+svcTimeout('betaEstimates', () => buildBetaEstimates().catch(e => console.error('[BETA]', e.message)), 90_000);
+svcInterval('betaEstimates', () => buildBetaEstimates().catch(e => console.error('[BETA]', e.message)), BETA_INTERVAL_MS);
 
 // Hedge signal scanner — first run 5 min after startup (corr history must exist), then every 15 min.
 // Reduced from 30 min: exits now fire within 15 min of z-score reverting, not up to 30 min.
-setTimeout(() => computeHedgeSignals().catch(e => console.error('[HEDGE-SIG]', e.message)), 5 * 60_000);
-setInterval(() => computeHedgeSignals().catch(e => console.error('[HEDGE-SIG]', e.message)), 15 * 60_000);
+svcTimeout('hedgeSignals', () => computeHedgeSignals().catch(e => console.error('[HEDGE-SIG]', e.message)), 5 * 60_000);
+svcInterval('hedgeSignals', () => computeHedgeSignals().catch(e => console.error('[HEDGE-SIG]', e.message)), 15 * 60_000);
 
 // Vol & Range Forecast scheduler — runs daily at 22:00 UTC, computes on startup if stale
-startVolForecastScheduler().catch(e => console.error('[VOL-FORECAST] Scheduler init failed:', e.message));
+if (svcEnabled('volForecastScheduler')) svcRun('volForecastScheduler', () => startVolForecastScheduler().catch(e => console.error('[VOL-FORECAST] Scheduler init failed:', e.message)));
 
 // Volatility Bot plan — refresh once per session, just AFTER the session open.
 // The session open is the midnight (00:00 UTC) anchor, so pulling earlier just
@@ -30883,8 +31009,8 @@ function _scheduleDailyLondon(hour, minute, fn) {
   };
   return arm();
 }
-if (process.env.OANDA_KEY) {
-  const _runVolPlan = () => _refreshVolatilityPlan().catch(e => console.error('[volatility-bot] plan refresh failed:', e.message));
+if (process.env.OANDA_KEY && svcEnabled('volatilityPlan')) {
+  const _runVolPlan = () => svcRun('volatilityPlan', () => _refreshVolatilityPlan().catch(e => console.error('[volatility-bot] plan refresh failed:', e.message)));
   // Default: 00:05 EUROPE/LONDON — 5 min after the session-open anchor exists,
   // in BOTH DST seasons. Setting VOL_PLAN_UTC_HOUR/MIN switches back to the
   // legacy fixed-UTC schedule (ops escape hatch).
@@ -30959,7 +31085,7 @@ if (process.env.FRED_KEY) {
       }
     } catch (e) { console.error('[yield-spread] schedule check failed:', e.message); }
   };
-  setInterval(_ysCheck, 5 * 60_000);
+  svcInterval('yieldSpread', _ysCheck, 5 * 60_000);
   console.log('[yield-spread] plan refresh is config-driven (yield_spread_config.plan_utc_hour/min, default 13:05 UTC) — checked every 5 min');
   // Bootstrap: build a first plan shortly after boot if none exists (don't wait for the target).
   setTimeout(async () => {
@@ -31225,7 +31351,7 @@ function _sessionStatsAgeMs() {
 // Hit rates: incremental (only the new day's H1 data, ~30–60s).
 // Event impact: re-matches all session audits against Finnhub calendar (~15s).
 let _volDataDailyDate = null;
-setInterval(async () => {
+svcInterval('volDataDaily', async () => {
   const now = new Date();
   if (now.getUTCDay() === 0 || now.getUTCDay() === 6) return;
   const h = now.getUTCHours(), m = now.getUTCMinutes();
@@ -31934,7 +32060,7 @@ async function nqRestoreFromKv() {
   // Restore gate state from KV in case this is a mid-day Railway redeploy
   setTimeout(() => nqRestoreFromKv().catch(e => console.error('[nq-mon]', e.message)), 3_000);
 
-  setInterval(async () => {
+  svcInterval('qmrMonitors', async () => {
     const now = new Date();
     const dow = now.getUTCDay();
     if (dow === 0 || dow === 6) return; // skip weekends
@@ -32287,7 +32413,7 @@ async function _iqrRestoreFromKv(mon) {
   setTimeout(() => {
     mons.forEach(m => _iqrRestoreFromKv(m).catch(e => console.error(`[${m.id}-mon]`, e.message)));
   }, 3_500);
-  setInterval(async () => {
+  svcInterval('qmrMonitors', async () => {
     const now = new Date();
     const dow = now.getUTCDay();
     if (dow === 0 || dow === 6) return;
@@ -32322,4 +32448,13 @@ app.listen(PORT, () => {
   console.log(`FINNHUB_KEY      ${finnhub}`);
   console.log(`KV persistence   ${cfKv}`);
   console.log(`Data dir         ${process.env.DATA_DIR || path.join(__dirname, 'data')}`);
+
+  // Background-service roll-call. Printed at boot so a Railway deploy log says
+  // plainly what this container is about to spend its CPU on — and, when
+  // something has been switched off, that it really is off.
+  const snap = servicesSnapshot();
+  const off  = snap.filter(s => !s.enabled);
+  console.log(`Background jobs  ${snap.length - off.length}/${snap.length} on`
+    + (off.length ? ` — OFF: ${off.map(s => s.id).join(', ')}` : ' (all defaults)')
+    + `  ·  see /api/services`);
 });

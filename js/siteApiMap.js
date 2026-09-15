@@ -882,6 +882,8 @@
       <div class="am-cat" data-cat="infrastructure &amp; shared data">
         <div class="am-cat-hd" style="color:#64748b">Infrastructure &amp; Shared Data</div>
         <div class="am-feat">
+          <div class="am-feat-hd">Background services</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/services</span><span class="am-desc">Every background job: on/off flag, what decided it, and measured runs/total ms/busy% since boot. <code>?on=1</code> for enabled only. Registry: js/serviceFlags.js</span><span class="am-consumers">ops — MD files/RAILWAY_SERVICE_FLAGS.md</span></div>
           <div class="am-feat-hd">KV, config &amp; R2</div>
           <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/kv-health</span><span class="am-desc">KV persistence backend status + round-trip probe of critical keys</span><span class="am-consumers">js/bot-config.js</span></div>
           <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/nav-layout</span><span class="am-desc">Saved dashboard nav dropdown ordering from KV</span><span class="am-consumers">index.html</span></div>

@@ -391,6 +391,7 @@ var is set in Railway first.
 | `VOL_FORECAST_UTC` | when the vol-forecast recompute runs |
 | `TDE_PAIRS`, `TDE_REFRESH_MIN` | Trade Decision Engine live slow loop — pairs to keep snapshots warm (off if unset) + refresh cadence (default 5 min) |
 | `TDE_BACKFILL_UTC`, `TDE_BACKFILL_DAILY` | Trade Decision Engine nightly incremental backfill — time (default `03:05` UTC, **on by default**); `TDE_BACKFILL_DAILY=0` disables |
+| `SVC_<ID>`, `SERVICES_OFF`, `SERVICES_ON`, `SERVICE_PROFILE` | **background-job switches** — every scheduler in `server.js` and every bot in `start.sh` can be turned off from the Railway env without a code change. Registry: `js/serviceFlags.js`; live state + per-job timings: `/api/services`; operator guide: `MD files/RAILWAY_SERVICE_FLAGS.md`. Defaults are unchanged, so setting none of these keeps today's behaviour |
 
 > The volatility-bot plan producer recomputes σ from OANDA D1 via
 > `volSigmaSeries` (the backtest's exact math) — **not** `/api/vol-forecast`,
@@ -548,6 +549,13 @@ Report the green honestly and the red honestly.
 - Keep commits scoped and messages descriptive.
 
 ## Live deployment
+
+**Before adding a new background job**, read `MD files/RAILWAY_SERVICE_FLAGS.md`.
+Everything periodic on Railway runs in ONE container — eight supervised bot
+processes plus `server.js`'s 75 timers (48 jobs) — and every one is registered in
+`js/serviceFlags.js` and started via `svcInterval(...)` / `start_bot ...` so it
+can be switched off from the env. A bare `setInterval` in `server.js` is a job
+nobody can turn off without a redeploy; `js/serviceFlags.test.mjs` fails on one.
 
 Production runs on Railway at **https://macrofxmodel-production.up.railway.app**
 — this is where `OANDA_KEY`/live OANDA and Yahoo Finance fetches actually work.

@@ -33,10 +33,14 @@ RUN apt-get update \
 COPY requirements.txt ./
 RUN pip3 install --no-cache-dir --break-system-packages -r requirements.txt
 
-# Node deps. playwright is an unused dependency for this service (nothing
-# in server.js or any live bot launches a browser at runtime) -- skip its
-# browser download, same as this repo's own dev sandbox already does.
-ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+# Node deps. `playwright` used to be declared here and was imported by nothing
+# (js/pngCanvas.js exists precisely so the server can rasterise a chart WITHOUT
+# a headless browser, and oi_recon/recon.py uses the separate PYTHON playwright
+# in a manually-run script, never in this container). It was removed from
+# package.json 2026-09-15, which takes ~18 MB of node_modules and its install
+# time out of every build. If it is ever added back, restore
+# ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 above this line first -- otherwise npm
+# postinstall pulls a browser bundle nothing here launches.
 COPY package.json package-lock.json ./
 RUN npm ci
 

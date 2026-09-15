@@ -7819,3 +7819,44 @@ score on TEST" methodology from scratch.
 **Status: ✅ tested with a real book, not a proxy metric · v2 loses the portfolio
 comparison · the per-pair hybrid does not survive a robustness check across split points ·
 v1 stays the incumbent · nothing wired live.**
+
+---
+
+### 1bd. Service-flag registry — every background job switchable from the env (2026-09-15)
+
+**Files:** `js/serviceFlags.js` (the brick), `js/serviceFlags.test.mjs` (16 tests),
+`server.js` (`svcInterval`/`svcTimeout`/`svcRun`/`svcEnabled` + `GET /api/services`),
+`start.sh` (`svc_on`/`start_bot`), `MD files/RAILWAY_SERVICE_FLAGS.md` (operator guide).
+
+**What it owns.** One list of every background job the Railway container runs — 48
+`server.js` schedulers plus the 8 supervised bot processes — with each one's cadence,
+relative cost, what consumes its output, and the env var that switches it off. Two
+consumers, which is what makes it a brick rather than a config constant: `server.js`
+imports `serviceEnabled`, and `start.sh` shells out to the *same module*
+(`node --input-type=module -e "import { serviceEnabled } …"`) rather than reimplementing
+`SERVICES_OFF`/`SERVICE_PROFILE` parsing in bash. A second copy in shell is exactly the
+drift Lego Principle 1 forbids, and it would drift the first time a profile changed.
+
+**Why it exists.** Before this, 75 timers and 8 processes ran unconditionally and the
+only way to stop one was to edit `server.js` and redeploy. Six schedulers had already
+grown private opt-out vars (`VOLATILITY_V2_PLAN_REFRESH`, `FIB_ATLAS_PLAN_REFRESH`,
+`CONE_FWD_AUTO`, `SURPRISE_ALERT_AUTO`, `VM_LOG_ENABLED`, `VM_HEARTBEAT`) with no index of
+what existed — all six are kept working as `legacyEnv` aliases, so nothing already set in
+Railway changes meaning.
+
+**Defaults are the old behaviour, deliberately.** Every service defaults to the state it
+was already in; a test asserts it (`an empty env leaves every service in its documented
+default state`). The deploy switches nothing off — cutting cost is an explicit env change,
+which is the reversible direction for a change nobody can A/B test.
+
+**It measures as well as gates.** `svcRun` times every gated job (runs, cumulative ms,
+last ms, errors) and `/api/services` reports them sorted by time spent.
+`INFRASTRUCTURE_COST_ANALYSIS.md` §6 says no cost claim should be made without
+measurement and that nothing in the repo recorded any; this is that measurement for the
+scheduled half of the workload. It is wall time, not CPU time — an awaiting job is idle —
+and the doc says so rather than letting the number be read as more than it is.
+
+**Guardrails in the test, not in review.** `serviceFlags.test.mjs` fails if a registered
+service is gated at no call site, if `start.sh` starts an id the registry does not know,
+or if a bare `setInterval` reappears in `server.js` (two documented exceptions). An
+unswitchable background job cannot be added by accident again.

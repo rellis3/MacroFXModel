@@ -199,7 +199,17 @@ numbers requires measurement (§6), not another static read.
 
 ## 6. What would need measuring before any cost claim
 
-Nothing in this repo currently records resource use, so cost attribution is
+> **Update 2026-09-15 — the first half of this is now instrumented.** Every
+> background job in `server.js` runs through `svcInterval`, which records its
+> run count, cumulative wall time and error count. `GET /api/services` returns
+> them sorted by time spent, alongside each job's on/off flag. That answers
+> "which timer is doing the work" from a reading rather than a static review —
+> for the scheduled half of the workload. It still does not measure the eight
+> `start.sh` bot processes, request-time work, or RSS: items 1 and 3 below stand
+> and remain Railway-Metrics questions. See
+> [`RAILWAY_SERVICE_FLAGS.md`](RAILWAY_SERVICE_FLAGS.md).
+
+Nothing else in this repo records resource use, so cost attribution is
 guesswork either way. Before optimising for spend rather than correctness:
 
 1. Railway per-service memory and CPU over a week — is `server.js` RSS actually
@@ -229,3 +239,10 @@ Summary of order:
 4. **Housekeeping** — `beta_history.jsonl` rotation; `.iterrows()` opportunistically.
 
 **Out of scope by owner decision:** all polling and scheduler interval changes.
+
+> **2026-09-15:** still out of scope as *code* changes — no cadence in this repo
+> was altered. What changed is that each job can now be switched OFF from the
+> Railway env (`SVC_<ID>=0` / `SERVICES_OFF` / `SERVICE_PROFILE=lean`) without
+> touching the schedule in code, and §1's process list is out of date: `start.sh`
+> now supervises **eight** bot processes, not four, and `server.js` arms 75
+> timers across 48 jobs, not ~40. `RAILWAY_SERVICE_FLAGS.md` §4 is the current inventory.
