@@ -22,7 +22,7 @@
 import * as kv from '../kv.js';
 import { computeForecast, computeForecastFromRV, detectNewsMultiplier, detectEventTagFor } from './volForecast.js';
 import { fetchWeekEvents as _fetchWeekEvents } from './econCalendar.js';
-import { harShadowFields, harIvShadowFields } from './forecastExport.js';
+import { harShadowFields, harLogShadowFields, harIvShadowFields } from './forecastExport.js';
 import { IV_INDEX_BY_INSTRUMENT } from './volForecastBench.js';
 import { fetchFredSeries, forwardFillToDates } from './fredFetch.js';
 import { londonMidnightSec } from './volBacktestEngine.js';
@@ -31,6 +31,12 @@ import { pathEfficiency, touchProbability, amihudIlliquidity } from './volStateE
 // HAR-RV shadow forecast (challenger σ through the incumbent band math, stored
 // as `f.har` per instrument — purely additive). Kill switch: VOL_FORECAST_HAR=0.
 const HAR_SHADOW_ON = process.env.VOL_FORECAST_HAR !== '0';
+// HAR-RV LOG-form shadow (MD files/LEGO_MODULES.md §1ay/§1az) — the specification
+// that actually reproduces the validated archive win, tracked forward on real
+// live data before any decision to promote it past the level-form `f.har` shadow
+// it rides alongside. Stored as `f.harLog`, purely additive. Kill switch:
+// VOL_FORECAST_HARLOG=0.
+const HARLOG_SHADOW_ON = process.env.VOL_FORECAST_HARLOG !== '0';
 // HAR-IV shadow (COG-v2 gold σ): implied-vol-augmented HAR from the listed IV index
 // (GVZ for gold), stored as `f.harIv`. Needs FRED_KEY. Kill switch: VOL_FORECAST_HARIV=0.
 const HARIV_SHADOW_ON = process.env.VOL_FORECAST_HARIV !== '0';
@@ -438,6 +444,10 @@ export async function runVolForecast(targetDate) {
         try { f.har = harShadowFields(ohlc, cfg.assetClass, newsMult); }
         catch (e) { f.har = null; console.warn(`[VOL-FORECAST] ${cfg.name} HAR shadow failed: ${e.message}`); }
       }
+      if (HARLOG_SHADOW_ON) {
+        try { f.harLog = harLogShadowFields(ohlc, cfg.assetClass, newsMult); }
+        catch (e) { f.harLog = null; console.warn(`[VOL-FORECAST] ${cfg.name} HAR-log shadow failed: ${e.message}`); }
+      }
       // COG-v2 gold σ: HAR-IV from the GVZ implied-vol series (indices/gold that have
       // a listed IV index). Additive — attaches `f.harIv`; the primary never moves.
       if (HARIV_SHADOW_ON) {
@@ -466,7 +476,7 @@ export async function runVolForecast(targetDate) {
       }
       f.data_source = instSource;   // per-instrument: 'oanda' | 'yahoo' | 'yahoo-fallback'
       instruments[cfg.name] = f;
-      console.log(`[VOL-FORECAST]  ${cfg.name.padEnd(6)} vol=${f.vol_annual.toFixed(2)}%  HL=${f.hl_median}–${f.hl_75}%  OC=${f.oc_median}–${f.oc_75}%  ${f.har ? `har=${f.har.vol_annual.toFixed(2)}%  ` : ''}[${instSource}]`);
+      console.log(`[VOL-FORECAST]  ${cfg.name.padEnd(6)} vol=${f.vol_annual.toFixed(2)}%  HL=${f.hl_median}–${f.hl_75}%  OC=${f.oc_median}–${f.oc_75}%  ${f.har ? `har=${f.har.vol_annual.toFixed(2)}%  ` : ''}${f.harLog ? `harLog=${f.harLog.vol_annual.toFixed(2)}%  ` : ''}[${instSource}]`);
     } catch (err) {
       console.error(`[VOL-FORECAST] ${cfg.name} error: ${err.message}`);
       errors.push({ name: cfg.name, error: err.message });
@@ -885,7 +895,8 @@ export async function startVolForecastScheduler() {
     f.ewma_vol_annual == null || f.legacy_vol_annual == null ||
     // har === undefined → shadow never attempted (pre-HAR cache) → recompute.
     // har === null      → attempted but unavailable — do NOT re-run for it.
-    (HAR_SHADOW_ON && f.har === undefined)
+    (HAR_SHADOW_ON && f.har === undefined) ||
+    (HARLOG_SHADOW_ON && f.harLog === undefined)
   );
   // A cached forecast that is missing instruments, or serving carried-forward
   // (stale) copies of them, came from a run where a data source was down
@@ -901,7 +912,7 @@ export async function startVolForecastScheduler() {
       : cachedDate !== neededDate ? `date mismatch (${cachedDate})`
       : missingInstruments ? 'instruments missing from cached forecast'
       : staleInstruments ? 'cached forecast has carried-forward (stale) instruments'
-      : 'shadow fields missing (YZ/HV/EWMA/HAR)';
+      : 'shadow fields missing (YZ/HV/EWMA/HAR/HAR-log)';
     console.log(`[VOL-FORECAST] ${reason} — computing on startup …`);
     _lastRepairMs = Date.now();   // the startup run IS the first repair attempt — don't double-run
     runVolForecast(new Date(neededDate + 'T12:00:00Z'))

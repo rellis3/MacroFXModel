@@ -7622,6 +7622,53 @@ edge, only "what today IS."
 **Status: ✅ tested · pre-registered bar not cleared · fourth independent null ·
 descriptive jump-diffusion page unaffected · nothing wired anywhere.**
 
+### 1ba. HAR-RV (log) tracked forward as a live shadow estimate (2026-09-15)
+
+**Files:** `js/forecastExport.js` (`harLogShadowFields`), `js/volForecastScheduler.js`.
+§1ay registered the log-form HAR-RV estimator into the offline comparison tool
+(`js/volForecastBench.js`) and reproduced the validated archive win there — but the
+owner's explicit steer throughout this whole thread was to hold off on touching the LIVE
+forecast until the new estimator has "run forward for a while as a shadow estimate," not
+just backtested. This entry is that step: `f.harLog` now rides alongside the EXISTING
+`f.har` shadow field (level-form HAR-RV, tracked forward since before §1ay existed) inside
+`runVolForecast()`'s daily scheduler run — computed once per session, purely additive,
+persisted to the same `vol_forecast_${date}` KV record the primary (Yang-Zhang) forecast
+already writes.
+
+**Not new infrastructure — one more field riding an existing, already-proven mechanism.**
+`js/forecastExport.js` already had exactly this pattern twice (`harShadowFields` for
+level-form HAR-RV, `harIvShadowFields` for the COG-v2 gold σ): compute a challenger σ
+series via the bench's own `sigmaSeriesForExport`, run it through the SAME band math and
+correction factors as the incumbent (`forecastFields`, imported from `volForecast.js` —
+never reimplemented), and attach the result as an extra field the primary forecast never
+reads. `harLogShadowFields` mirrors `harShadowFields` byte-for-byte except for one
+estimator key (`'harRvLog'` vs `'harRV'`) — no new math, no new band logic. Kill switch
+`VOL_FORECAST_HARLOG=0` (mirrors `VOL_FORECAST_HAR`/`VOL_FORECAST_HARIV`); wrapped in the
+same try/catch-to-null discipline so a shadow failure can never break the primary
+forecast; the startup self-repair check that detects a stale cache missing a shadow field
+now also checks `f.harLog`.
+
+**No new KV registration needed.** `f.harLog` lives inside the same per-day `instruments`
+object already persisted under the `vol_forecast_` prefix `kv.js` already marks
+persistent — it rides the existing archive (`vol_forecast_latest` / `vol_forecast_YYYY-
+MM-DD`), not a new key.
+
+**Deliberately NOT an export button or a visual yet.** `buildExportHarText`/
+`buildAllExports` (the copy-paste export surface) were left untouched — this is
+observation-only. The point is to accumulate a genuine forward (not backtested) track
+record before any decision to promote `harLog` past shadow status, expose it as an export,
+or show it on `vol-forecast-v2.html`/`v3.html`. That decision stays open and explicit,
+not something this step decides by default.
+
+Tested: `js/forecastExport.test.mjs` gained a mirror of the existing `harShadowFields`
+suite for `harLogShadowFields` (produces a shadow, fields finite/ordered, delegates
+exactly to `sigmaSeriesForExport`+`forecastFields` with no math of its own, news
+multiplier scales correctly, null on insufficient bars) — all passing, plus the existing
+`har`/`harIv` suites re-run clean to confirm nothing regressed.
+
+**Status: ✅ shadow-tracking forward on live data (Railway) · purely additive, kill-
+switched, non-breaking · no export/visual surface yet · promotion decision deferred.**
+
 ### 1bb. HAR-RV (log) registered into forge's ladder calibration pipeline (2026-09-15)
 
 **Files:** `forge/vol.py` (`har_rv_log_sigma`), `js/forecastSigma.js` (`harRvLogSigma`,
