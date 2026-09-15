@@ -176,6 +176,162 @@ def naive_expanding_sigma(daily: pd.DataFrame, min_periods: int = 60) -> np.ndar
     return np.sqrt(np.maximum(cum, 0.0)) * SQRT252 * 100.0
 
 
+# Exact port of js/volForecastBench.js's solve4 — Gauss-Jordan with partial
+# pivoting and its specific (slightly asymmetric: column 0 gets an extra 1e-12
+# for rows 1-3, on top of the uniform diagonal ridge) conditioning term. Ported
+# rather than re-derived with np.linalg.solve because the two solvers otherwise
+# solve *equivalent but not identical* systems — verified this matters: an
+# np.linalg.solve(XtX + eye*1e-12) version agreed with the JS core to only
+# ~4e-5 relative on this module's own fixture, not the 1e-10 every other
+# estimator in ESTIMATORS achieves, because HAR's daily/weekly/monthly
+# regressors are correlated enough that even a 1e-12-level ridge difference
+# is amplified by the system's conditioning. Solving the IDENTICAL system
+# removes that as a variable.
+def _solve4_like_js(A: np.ndarray, b: np.ndarray) -> np.ndarray | None:
+    M = np.zeros((4, 5))
+    for r in range(4):
+        M[r, 0] = A[r, 0] + (0.0 if r == 0 else 1e-12)
+        M[r, 1:4] = A[r, 1:4]
+        M[r, 4] = b[r]
+        M[r, r] += 1e-12
+    for c in range(4):
+        piv = c + int(np.argmax(np.abs(M[c:, c])))
+        if abs(M[piv, c]) < 1e-18:
+            return None
+        if piv != c:
+            M[[c, piv]] = M[[piv, c]]
+        for r in range(4):
+            if r == c:
+                continue
+            f = M[r, c] / M[c, c]
+            M[r, c:] -= f * M[c, c:]
+    return np.array([M[i, 4] / M[i, i] for i in range(4)])
+
+
+# Mirrors js/volForecastBench.js's _harFitCore exactly (warmup=60, lags 1/5/22,
+# incremental normal equations, solve4's own ridge) — kept local to this
+# function rather than imported so this module's own "write each estimator
+# fresh from the published method, cross-check for agreement" discipline
+# (this file's docstring, and how yang_zhang_sigma relates to
+# js/forecastSigma.js) applies to HAR-RV too.
+def _har_fit_core(series: np.ndarray, warmup: int = 60,
+                  lag_d: int = 1, lag_w: int = 5, lag_m: int = 22) -> np.ndarray:
+    n = len(series)
+    out = np.full(n, np.nan)
+
+    def feat(i):
+        if i - lag_m < 0:
+            return None
+        wk = float(np.mean(series[i - lag_w:i]))
+        mo = float(np.mean(series[i - lag_m:i]))
+        return np.array([1.0, series[i - lag_d], wk, mo])
+
+    XtX = np.zeros((4, 4)); Xty = np.zeros(4); added = 0; nxt = lag_m
+    for i in range(lag_m, n):
+        while nxt < i:
+            xf = feat(nxt)
+            if xf is not None and np.all(np.isfinite(xf)) and np.isfinite(series[nxt]):
+                XtX += np.outer(xf, xf); Xty += xf * series[nxt]; added += 1
+            nxt += 1
+        xf = feat(i)
+        if xf is None or not np.all(np.isfinite(xf)) or added < warmup:
+            continue
+        beta = _solve4_like_js(XtX, Xty)
+        if beta is None:
+            continue
+        out[i] = float(xf @ beta)
+    return out
+
+
+def har_rv_log_sigma(daily: pd.DataFrame) -> np.ndarray:
+    """HAR-RV, LOG form, on Garman-Klass daily realized variance — the
+    estimator validated in `volatilityExhaustion/har_cj_forecast.py`
+    (Phase 14/15) and `js/volForecastBench.js`'s `harRvLogPred`/
+    `harRvLogForecastNext` (LEGO_MODULES.md §1ay/§1az). Written fresh here
+    rather than imported from either (this file's own convention — see
+    `yang_zhang_sigma`'s docstring), and cross-checked against the JS-side
+    `harRvLogSigma` (`js/forecastSigma.js`) on a shared synthetic fixture,
+    the same contract `forecastLadder.test.mjs` already enforces for every
+    other estimator in `ESTIMATORS`.
+
+    UNLIKE `yang_zhang_sigma`/`ewma_sigma`/`naive_expanding_sigma` (which
+    measure day t's OWN volatility using day t's own OHLC, and only become a
+    forecast via this module's ONE explicit later step, `as_of_yesterday`),
+    HAR-RV is inherently a walk-forward FORECAST already: `_har_fit_core`'s
+    value at index i is built purely from lagged history STRICTLY BEFORE i.
+    To still go through the same uniform `as_of_yesterday` shift every other
+    entry in `ESTIMATORS` goes through (`build_forecast_frame` applies it
+    identically to every candidate, never special-cased), this function
+    pre-shifts its own output one step EARLY: index i holds the forecast for
+    day i+1, not day i. `as_of_yesterday`'s later right-shift
+    (`out[t] = in[t-1]`) then lands the value back on the day it actually
+    forecasts, un-double-shifted. Getting this backwards would silently serve
+    a forecast one day stale — verified by a dedicated round-trip test, not
+    just asserted here (same class of bug this file's own event-tag and
+    causality notes elsewhere warn about).
+
+    The smearing correction is a CAUSAL EXPANDING running mean (only
+    residuals strictly before the day being predicted), matching the fix
+    `js/volForecastBench.js`'s `harRvLogPred` needed after its own
+    no-lookahead test caught a whole-sample smear leaking future bars into
+    every prediction (LEGO_MODULES.md §1ay) — applied here from the start.
+    """
+    o, h, l, c = (daily[col].to_numpy(dtype=float) for col in ("open", "high", "low", "close"))
+    with np.errstate(divide="ignore", invalid="ignore"):
+        gk = np.maximum(0.5 * np.log(h / l) ** 2 - (2 * np.log(2.0) - 1) * np.log(c / o) ** 2, 1e-12)
+    n = len(gk)
+
+    # Scale by 1/median(gk), matching js/volForecastBench.js's _rvScale EXACTLY:
+    # the element at the sorted array's `n >> 1` index (the "upper" median for even
+    # n), not np.median's average-the-two-middle-elements convention — a real
+    # discrepancy found by this estimator's own JS/Python parity check
+    # (LEGO_MODULES.md §1bb): using np.median here reproduced the JS output to only
+    # ~4e-5 relative instead of the 1e-10 every other estimator achieves.
+    #
+    # CAUSALITY: the median is taken over a FIXED EARLY WINDOW (the first
+    # `_SCALE_WINDOW` rows), never the whole series. OLS with an intercept is
+    # provably invariant to a UNIFORM additive shift applied to target and every
+    # regressor alike — scaling by a single global constant before the log is
+    # exactly that (log(rv*S) = log(rv) + log(S), the same log(S) added to every
+    # observation), so the constant's VALUE never changes the fitted predictions,
+    # only the solve's conditioning. But this file's own prefix-invariance test
+    # (`test_all_estimators_are_prefix_invariant`) caught that the invariance
+    # breaks down near the FLOOR: `floor = (1/S) * floor_frac`, and floor-clamping
+    # is a nonlinear max(), so a scale that depends on the WHOLE series changes
+    # which near-zero-range days get floored (and to what) depending on data that
+    # hasn't happened yet — a genuine, if small (~1e-4 absolute annualized-%),
+    # lookahead leak, not floating-point noise (measured directly by this file's
+    # test before this fix). Deriving the scale from a FIXED early prefix instead
+    # makes it depend only on data any predictor from that point on already has by
+    # construction — exactly invariant to truncation anywhere after the window,
+    # not just approximately so.
+    _SCALE_WINDOW = 250   # ~1 trading year
+    early = gk[:min(_SCALE_WINDOW, n)]
+    pos = np.sort(early[np.isfinite(early) & (early > 0)])
+    scale = 1.0 / float(pos[len(pos) >> 1]) if pos.size else 1e4
+    floor_frac = 0.01                        # mirrors VAR_FLOOR_FRAC elsewhere in this repo
+    floor = (1.0 / scale) * floor_frac
+    log_scaled = np.log(np.maximum(gk, floor) * scale)
+
+    fitted = _har_fit_core(log_scaled)       # unclamped — log values are legitimately negative
+
+    var_scaled = np.full(n, np.nan)
+    sresid, ns = 0.0, 0
+    for i in range(n):
+        if np.isfinite(fitted[i]):
+            smear = (sresid / ns) if ns else 1.0     # residuals from i' < i only
+            var_scaled[i] = max(np.exp(fitted[i]) * smear, floor)
+            sresid += np.exp(log_scaled[i] - fitted[i])
+            ns += 1
+
+    out = np.full(n, np.nan)
+    for i in range(n - 1):                    # shift LEFT by one — see docstring
+        daily_var = var_scaled[i + 1] / scale
+        if np.isfinite(daily_var):
+            out[i] = float(np.sqrt(max(daily_var, 0.0)) * SQRT252 * 100.0)
+    return out
+
+
 ESTIMATORS = {
     "ewma_094": lambda d: ewma_sigma(d, 0.94),
     "ewma_090": lambda d: ewma_sigma(d, 0.90),
@@ -183,6 +339,7 @@ ESTIMATORS = {
     "yz_20": lambda d: yang_zhang_sigma(d, 20),
     "yz_30": lambda d: yang_zhang_sigma(d, 30),      # the incumbent production primary
     "naive": lambda d: naive_expanding_sigma(d),      # the skeptical baseline
+    "har_rv_log": lambda d: har_rv_log_sigma(d),      # LEGO_MODULES.md §1ay/§1az/§1bb
 }
 # Every estimator above measures day t's OWN volatility, using day t's own
 # OHLC/return — a consistent, natural convention. None of them are forecasts
