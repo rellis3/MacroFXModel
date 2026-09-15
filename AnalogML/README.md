@@ -1395,3 +1395,87 @@ of permanent cleanliness.
   tuning them is reasonable ONLY after a feature/idea has shown it's worth
   tuning around (`analog_margin` now qualifies; the price-only feature set
   on its own did not).
+
+---
+
+## `motif_alert_backtest.py` — backtesting the TELEGRAM ALERTS, not the signal
+
+Every number above grades the SIGNAL: each motif `pylego.motif_touch` detects,
+raced at the frozen grid. That is not the same population as the messages that
+actually reach a phone, because the alert path gates on top of detection:
+
+* only ONE touch-run per pair is ever live — `compute_motif_state` takes
+  `max(in_progress, key=last touch)`, so an older run forming at the same time
+  is silently never alerted;
+* a run is not alerted while `provisional` (fewer than `pivot_n` bars since its
+  last touch);
+* the 👀 nearing alert fires at most ONCE per touch-run, on the first poll that
+  finds price within `0.5 × ATR` of the level — a run that never gets that
+  close is never flagged at all;
+* the 🟢/🔴 confirmed alert needs an entry bar after `confirm_idx`.
+
+This script replays that emission path bar by bar over 2016–2026 and races only
+what would actually have been sent, in the same house results-card format
+`motif_backtest_export.py` uses. **It re-tunes nothing** — it is a viewer of an
+already-validated signal, and it reproduces `motif_walkforward.py`'s fold table
+closely enough to serve as an independent check on the replay itself (2025
+PF 1.036 vs the walk-forward's 1.04; 2022 1.101 vs 1.10; 2016 1.225 vs 1.23).
+
+**Full book, 26 pairs, 30,062 resolved trades:** 11,059 👀 nearing alerts,
+30,065 confirmed alerts; IS PF 1.180 / OOS PF 1.170; cost-on PF 1.176 vs
+cost-off 1.261; portfolio Sharpe 1.69, max DD −66.0% at 1%/trade and 5% max
+concurrent risk, avg pairwise correlation +0.013. Three findings worth having:
+
+1. **A 👀 almost always resolves — 92.4% of them go on to confirm.** But
+   "confirm" includes the pattern FAILING (breaking the opposite way to the
+   🧭 textbook line), which is a real trade in the other direction, not a miss.
+   The 🧭 line is not a forecast and the conversion rate must not be read as one.
+2. **Most confirmed alerts never got a 👀 first — only 34.0% did.** One live
+   run per pair plus the proximity requirement means the nearing alert covers
+   roughly a third of the eventual trades. It is not a preview of the book.
+3. **A prior 👀 marked WORSE trades, not better:** PF 1.102 (n=10,221) with one
+   versus PF 1.217 (n=19,841) without. Price loitering within half an ATR of the
+   level before breaking is, on this record, mildly bad news — the opposite of
+   how an early-warning ping naturally reads.
+
+**Does the `📊 PF` panel deserve to be read?** Partly. Bucketing every trade by
+the PF its own message DISPLAYED (replayed causally) against what followed:
+
+| Panel showed | Trades | Actual PF | Avg R |
+|---|---:|---:|---:|
+| < 0.90 | 3,250 | **0.996** | −0.003 |
+| 0.90–1.00 | 1,703 | 1.153 | +0.086 |
+| 1.00–1.10 | 3,805 | 1.168 | +0.095 |
+| 1.10–1.25 | 6,950 | 1.151 | +0.086 |
+| ≥ 1.25 | 13,312 | **1.240** | +0.133 |
+
+The extremes carry information — a sub-0.90 panel really does mark a bucket
+that delivers nothing (PF 0.996, avg R −0.003), and a ≥1.25 panel marks the
+best one. The three middle buckets are indistinguishable from each other, so
+the panel is a coarse three-way sort (bad / unremarkable / good), not a
+readout to rank setups by. Nothing in the live path filters on it.
+
+**Two stated divergences from live**, both measured rather than assumed away:
+(1) the nearing poller sees live ticks every 60s, a backtest sees H1 bars, so
+`--nearing-price hl` (default) tests the bar's whole traded range against the
+level and the strictly-tighter close-only count is exported beside it (11,059
+vs 4,809 — the approximation is large and visible, not hidden); (2) the
+confidence panel is replayed with a causal cutoff live does not need, and a
+motif confirmed-but-still-open at alert time is excluded from the replayed PF
+where live would have raced it to a partial timeout. `motif_alert_backtest_test.py`
+pins both the live-motif pick and the lookahead cutoff.
+
+**`motif-alert-backtest.html`** (repo root) reads the export: the funnel card,
+the panel-calibration table, the with/without-👀 split, calendar-year folds, a
+per-pair table and a filterable trade table with CSV export. Portfolio metrics
+come from `js/backtestStats.js`'s `portfolioStats` on the combined daily return
+series — the same method (and the same no-new-metrics rule) the Level Atlas
+vote-portfolio page uses; the Python event-driven sim's own Sharpe/DD are shown
+alongside as the authoritative full-book figure rather than reimplemented in JS.
+
+Usage:
+
+```
+python AnalogML/motif_alert_backtest.py --all-pairs
+python AnalogML/motif_alert_backtest.py --pairs gbpusd,gbpcad --nearing-price close
+```

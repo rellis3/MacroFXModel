@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Motif Alert Backtest</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root { --bg:#0b0e14; --panel:#11151f; --panel2:#0e121b; --line:#1e2436; --text:#cbd5e1; --text2:#94a3b8; --text3:#5a6380; --muted:#64748b; --accent:#5b9dff; --green:#34d399; --red:#f87171; --amber:#fbbf24; --blue:#60a5fa; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.5 'DM Sans',system-ui,sans-serif; }
+  header { padding:14px 20px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+  h1 { margin:0; font-size:16px; font-weight:600; white-space:nowrap; }
+  h2 { margin:0 0 10px; font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--text2); }
+  .sub { color:var(--muted); font-size:12px; }
+  select, input[type=checkbox], button, input[type=number] { background:#1e293b; color:var(--text); border:1px solid var(--line); border-radius:6px; padding:6px 10px; font-size:12px; }
+  button { cursor:pointer; }
+  button:hover { border-color:var(--accent); }
+  .export-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:8px; }
+  .controls { display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
+  .controls label { font-size:11px; color:var(--muted); display:flex; align-items:center; gap:6px; }
+  .pair-check { display:flex; align-items:center; gap:4px; font-family:'DM Mono',monospace; font-size:12px; }
+  main { padding:16px 20px 60px; max-width:1300px; margin:0 auto; display:flex; flex-direction:column; gap:16px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:14px 16px; }
+  .kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; }
+  .kpi { background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:10px 12px; }
+  .kpi .label { font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:.04em; }
+  .kpi .value { font-size:22px; font-weight:700; margin-top:2px; }
+  .kpi .sub { font-size:10px; color:var(--text3); margin-top:2px; }
+  .green { color:var(--green); } .red { color:var(--red); } .amber { color:var(--amber); } .blue { color:var(--blue); }
+  canvas { max-height:320px; }
+  table { width:100%; border-collapse:collapse; font-family:'DM Mono',monospace; font-size:12px; }
+  thead th { text-align:left; color:var(--text3); font-weight:500; padding:6px 10px; border-bottom:1px solid var(--line); }
+  thead th.num, td.num { text-align:right; }
+  tbody td { padding:6px 10px; border-bottom:1px solid #182030; }
+  .muted { color:var(--muted); font-size:11px; }
+  .callout { background:linear-gradient(135deg,#132030,#0e121b); border:1px solid #1e3a52; border-radius:8px; padding:14px 16px; }
+  .callout .big { font-size:28px; font-weight:700; }
+  .funnel-row { display:flex; gap:10px; align-items:stretch; flex-wrap:wrap; }
+  .funnel-step { flex:1; min-width:150px; background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:10px 12px; }
+  .funnel-step .n { font-size:24px; font-weight:700; }
+  .arrow { display:flex; align-items:center; font-size:20px; color:var(--text3); }
+  #tradeTableWrap { max-height:480px; overflow:auto; border:1px solid var(--line); border-radius:8px; }
+  code { font-family:'DM Mono',monospace; color:var(--text2); }
+</style>
+</head>
+<body>
+<header>
+  <h1>👀 Motif Alert Backtest</h1>
+  <div class="controls">
+    <label title="Every trade risks this % of the account off its own stop distance. This is leverage — Sharpe, CAGR and drawdown all scale with it together; it is not free edge.">Risk % / trade <input type="number" id="riskPct" value="1" step="0.1" min="0.1" style="width:60px"></label>
+    <label title="Rescales the return series to this annualized volatility for the Vol Target row — a comparison lens, not a change to which trades are taken.">Target vol % <input type="number" id="targetVol" value="10" step="1" min="1" style="width:55px"></label>
+    <label title="Which alerts to include. 'Had a 👀 first' keeps only confirmed alerts whose touch-run also produced a nearing alert; 'No 👀' keeps the rest. Note these are NOT different trades — every confirmed alert is one tracked trade either way.">Alert set <select id="alertSet">
+      <option value="all">All confirmed alerts</option>
+      <option value="with">Only those with a prior 👀</option>
+      <option value="without">Only those with no 👀</option>
+    </select></label>
+    <label title="Filters by the PF the alert's own 📊 panel DISPLAYED at the time, computed causally. Nothing in the live alert path filters on this — the calibration card below is the check of whether it deserves to be read as guidance.">Shown PF <select id="shownPf">
+      <option value="all">any</option>
+      <option value="ge125">≥ 1.25</option>
+      <option value="ge110">≥ 1.10</option>
+      <option value="ge100">≥ 1.00</option>
+      <option value="lt090">&lt; 0.90</option>
+    </select></label>
+  </div>
+  <div class="sub" id="headerSub">loading…</div>
+</header>
+<main>
+
+<div class="card muted" id="methodCard">
+  Backtest of <strong>the Telegram alerts themselves</strong>, not of the raw signal.
+  <code>AnalogML/motif_alert_backtest.py</code> replays <code>motif_track.py</code> /
+  <code>motif_nearing_watch.py</code>'s own emission gating bar by bar — only one live touch-run per
+  pair at a time, the <code>provisional</code> refusal, one-nearing-alert-per-run dedup, entry on the
+  bar after confirmation — and races only what would actually have been sent, through the shared
+  <code>pylego.barrier_race</code> walker at the frozen grid (sl 20p, tp 1.5R). Portfolio metrics come
+  from <code>js/backtestStats.js</code>'s <code>portfolioStats</code> on the combined daily return
+  series — the same method (and the same no-new-metrics rule) the Level Atlas vote portfolio page uses.
+  <br><br>
+  <strong>Two stated divergences from live, both measured rather than assumed away.</strong>
+  (1) <em>Tick vs bar</em> — the nearing poller sees a live quote every 60s; a backtest sees H1 bars, so
+  a 👀 fires when the bar's whole traded range came within <code>0.5 × ATR</code> of the level. The
+  strictly-tighter close-only count is exported beside it (<span id="hlVsClose">—</span>), so the size of
+  the approximation is visible. (2) <em>Confidence panel</em> — the <code>📊 played out · PF · n</code>
+  figures are replayed with a causal cutoff (only motifs confirmed strictly before the alert bar), which
+  live does not need; a motif confirmed but still open at alert time is excluded from the replayed PF,
+  where live would have raced it to a partial timeout.
+  <br><br>
+  This is a <strong>viewer of an already-validated signal, not a new validation</strong> — it re-tunes
+  nothing. Sharpe/DD are mark-to-close with no spread variation, the caveat every
+  <code>pylego.portfolio_sim</code> caller carries. Compounding at a fixed % of ever-growing equity over
+  ~30k trades makes the raw total-return/CAGR figures absurd; read Sharpe, max DD and PF, not CAGR.
+</div>
+
+<div class="card callout">
+  <h2>The funnel — what a 👀 message is actually worth</h2>
+  <div class="funnel-row" id="funnelRow"></div>
+  <div class="muted" style="margin-top:10px" id="funnelNote"></div>
+</div>
+
+<div class="card">
+  <h2>Portfolio — selected pairs, selected alert set</h2>
+  <div class="kpi-grid" id="kpiGrid"></div>
+</div>
+
+<div class="card">
+  <h2>Equity curve (compounded, % of account)</h2>
+  <canvas id="equityChart"></canvas>
+</div>
+
+<div class="card callout">
+  <h2>Does the 📊 panel predict anything? — shown PF vs what actually happened</h2>
+  <div class="muted" style="margin-bottom:8px">
+    Each confirmed alert displays a profit factor for its own category on its own pair. Nothing in the
+    live path filters on it — it is shown to a human and nothing more. This buckets every trade by the
+    number its <em>own message displayed</em> and grades each bucket by what followed. A panel worth
+    reading should rise left to right.
+  </div>
+  <div style="overflow-x:auto"><table id="calibTable"></table></div>
+</div>
+
+<div class="card callout">
+  <h2>With vs without a prior 👀</h2>
+  <div class="muted" style="margin-bottom:8px">
+    Same tracked trades, split by whether the touch-run also produced a nearing alert first. A 👀 means
+    price loitered within half an ATR of the level at a non-provisional bar before breaking — this is
+    whether that loitering was good news or bad.
+  </div>
+  <div style="overflow-x:auto"><table id="nearingSplitTable"></table></div>
+</div>
+
+<div class="card">
+  <h2>Calendar-year folds — the alert population, graded the way the raw signal is</h2>
+  <div class="muted" style="margin-bottom:8px">
+    <code>motif_walkforward.py</code> grades the underlying signal in consecutive calendar-year folds.
+    Same read here, on the alerts actually sent, so the two can be compared fold for fold.
+  </div>
+  <div style="overflow-x:auto"><table id="yearTable"></table></div>
+</div>
+
+<div class="card">
+  <h2>Per pair</h2>
+  <div class="controls" style="margin-bottom:10px">
+    <button id="selectAll" type="button">Select all</button>
+    <button id="selectNone" type="button">Select none</button>
+  </div>
+  <div class="controls" id="pairChecks" style="margin-bottom:12px"></div>
+  <div style="overflow-x:auto"><table id="pairTable"></table></div>
+</div>
+
+<div class="card">
+  <h2>Trades</h2>
+  <div class="export-row">
+    <button id="exportCsv" type="button">Export CSV</button>
+    <span class="muted" id="tradeCount"></span>
+  </div>
+  <div id="tradeTableWrap"><table id="tradeTable"></table></div>
+</div>
+
+</main>
+<script type="module">
+import { portfolioStats } from './js/backtestStats.js';
+
+const $ = id => document.getElementById(id);
+const fmt = (v, d = 2) => (v == null || Number.isNaN(v)) ? '—' : Number(v).toFixed(d);
+const pct = (v, d = 1) => (v == null || Number.isNaN(v)) ? '—' : (v * 100).toFixed(d) + '%';
+const cls = v => (v == null || Number.isNaN(v)) ? '' : (v > 0 ? 'green' : v < 0 ? 'red' : '');
+
+let DATA = null, SELECTED = new Set();
+
+/** Profit factor / win rate / avg R over a list of R-multiples — the same
+ *  quantities pylego.trade_stats.summarize_r reports, so a bucket rendered here
+ *  and the same bucket printed by the exporter agree. */
+function summarize(rs) {
+  const n = rs.length;
+  if (!n) return { n: 0, pf: null, avgR: null, winRate: null, totalR: 0 };
+  let gw = 0, gl = 0, wins = 0, tot = 0;
+  for (const r of rs) { tot += r; if (r > 0) { gw += r; wins++; } else if (r < 0) gl -= r; }
+  return { n, pf: gl > 0 ? gw / gl : null, avgR: tot / n, winRate: wins / n, totalR: tot };
+}
+
+/** Daily % returns from a trade list, credited on EXIT date — the construction
+ *  the Level Atlas vote portfolio page feeds portfolioStats. Deliberately NOT a
+ *  re-implementation of pylego.portfolio_sim's event-driven account sim: that
+ *  one's own numbers are reported separately below as the authoritative
+ *  full-book figure, and two sims would be two things to drift apart. */
+function dailyReturns(trades, riskPct) {
+  const byDay = new Map();
+  for (const t of trades) {
+    const d = t.exit_date.slice(0, 10);
+    byDay.set(d, (byDay.get(d) || 0) + t.r * riskPct);
+  }
+  return [...byDay.entries()].sort((a, b) => a[0] < b[0] ? -1 : 1);
+}
+
+function filteredTrades() {
+  const set = $('alertSet').value, spf = $('shownPf').value;
+  return DATA.trades.filter(t => {
+    if (!SELECTED.has(t.pair)) return false;
+    if (set === 'with' && !t.had_nearing_alert) return false;
+    if (set === 'without' && t.had_nearing_alert) return false;
+    if (spf !== 'all') {
+      const v = t.shown_pf;
+      if (v == null) return false;
+      if (spf === 'ge125' && !(v >= 1.25)) return false;
+      if (spf === 'ge110' && !(v >= 1.10)) return false;
+      if (spf === 'ge100' && !(v >= 1.00)) return false;
+      if (spf === 'lt090' && !(v < 0.90)) return false;
+    }
+    return true;
+  });
+}
+
+function renderFunnel() {
+  const pairs = DATA.per_pair.filter(p => SELECTED.has(p.pair));
+  const sum = k => pairs.reduce((a, p) => a + (p.funnel[k] || 0), 0);
+  const near = sum('nearing_alerts'), conv = sum('nearing_converted');
+  const conf = sum('confirmed_alerts'), withPrior = sum('confirmed_with_prior_nearing');
+  const steps = [
+    ['👀 nearing alerts sent', near, 'one per touch-run, ever'],
+    ['→ went on to confirm', conv, near ? pct(conv / near) + ' of them' : '—'],
+    ['🟢🔴 confirmed alerts', conf, 'each one a tracked trade'],
+    ['…that had a 👀 first', withPrior, conf ? pct(withPrior / conf) + ' of confirmed' : '—'],
+  ];
+  $('funnelRow').innerHTML = steps.map(([label, n, sub]) =>
+    `<div class="funnel-step"><div class="label muted">${label}</div>
+     <div class="n">${n.toLocaleString()}</div><div class="muted">${sub}</div></div>`).join('');
+  $('funnelNote').innerHTML =
+    `A 👀 almost always resolves one way or the other — but "confirmed" includes the pattern
+     <em>failing</em> (breaking the opposite way to the 🧭 textbook line), which is a real trade in the
+     opposite direction, not a miss. The gap in the last step is the one worth knowing: most confirmed
+     alerts never got a 👀 warning first, because only one touch-run per pair is live at a time and a
+     run that never loitered near its level is never flagged.`;
+  const hl = sum('nearing_alerts'), close = sum('nearing_alerts_close');
+  $('hlVsClose').textContent = `${hl.toLocaleString()} on the bar range vs ${close.toLocaleString()} on closes only`;
+}
+
+function renderKpis(trades, riskPct, targetVol) {
+  const s = summarize(trades.map(t => t.r));
+  const daily = dailyReturns(trades, riskPct * 100);
+  const ps = daily.length > 2
+    ? portfolioStats(daily.map(d => d[1]), { targetVol, periodsPerYear: 252 })
+    : { sharpe: null, maxDD: null, cagr: null, volTarget: {} };
+  const p = DATA.summary.portfolio;
+  const kpis = [
+    ['Trades', s.n.toLocaleString(), 'alerts that resolved'],
+    ['Profit factor', fmt(s.pf, 3), 'costs ON'],
+    ['Avg R', fmt(s.avgR, 4), 'per trade'],
+    ['Win rate', pct(s.winRate), ''],
+    ['Sharpe', fmt(ps.sharpe, 2), 'daily series, ann.'],
+    ['Max DD', ps.maxDD == null ? '—' : fmt(ps.maxDD, 1) + '%', 'compounded'],
+    ['Total R', fmt(s.totalR, 0), 'sum of R'],
+    ['Full-book Sharpe', fmt(p.sharpe, 2), 'python event-driven sim, all 26 pairs'],
+    ['Full-book max DD', pct(p.max_dd, 1), 'same sim — the authoritative figure'],
+    ['Avg pair correlation', fmt(p.avg_pairwise_correlation, 3), 'weekly returns, all pairs'],
+  ];
+  $('kpiGrid').innerHTML = kpis.map(([label, value, sub]) =>
+    `<div class="kpi"><div class="label">${label}</div><div class="value">${value}</div>
+     <div class="sub">${sub}</div></div>`).join('');
+  return daily;
+}
+
+let chart = null;
+function renderChart(daily) {
+  // Chart.js comes from a CDN, so it can simply be absent (blocked network,
+  // offline, strict CSP). Everything below the chart — the calibration table,
+  // the folds, the per-pair and trade tables — is the actual content, so a
+  // missing chart says so in place and lets the rest of the page render
+  // rather than throwing render() away at its first line.
+  if (typeof Chart === 'undefined') {
+    const c = $('equityChart');
+    if (c && c.parentElement) {
+      c.parentElement.innerHTML =
+        '<div class="muted">Equity chart unavailable — Chart.js did not load from its CDN. ' +
+        'Every table below is unaffected, and the CSV export carries the full trade list.</div>';
+    }
+    return;
+  }
+  let eq = 100;
+  const labels = [], values = [];
+  for (const [d, r] of daily) { eq *= (1 + r / 100); labels.push(d); values.push(eq); }
+  if (chart) chart.destroy();
+  chart = new Chart($('equityChart'), {
+    type: 'line',
+    data: { labels, datasets: [{ data: values, borderColor: '#5b9dff', borderWidth: 1.5,
+                                 pointRadius: 0, fill: false, tension: 0 }] },
+    options: { responsive: true, plugins: { legend: { display: false } },
+               scales: { x: { ticks: { color: '#5a6380', maxTicksLimit: 12 }, grid: { color: '#182030' } },
+                         y: { type: 'logarithmic', ticks: { color: '#5a6380' }, grid: { color: '#182030' } } } },
+  });
+}
+
+function statRow(label, s, extra = '') {
+  return `<tr><td>${label}</td><td class="num">${s.n.toLocaleString()}</td>
+    <td class="num ${s.pf != null && s.pf > 1 ? 'green' : 'red'}">${fmt(s.pf, 3)}</td>
+    <td class="num ${cls(s.avgR)}">${s.avgR == null ? '—' : (s.avgR > 0 ? '+' : '') + fmt(s.avgR, 4)}</td>
+    <td class="num">${pct(s.winRate)}</td>${extra}</tr>`;
+}
+
+function renderCalibration(trades) {
+  const edges = [[null, 0.9, '< 0.90'], [0.9, 1.0, '0.90 – 1.00'], [1.0, 1.1, '1.00 – 1.10'],
+                 [1.1, 1.25, '1.10 – 1.25'], [1.25, null, '≥ 1.25']];
+  const rows = edges.map(([lo, hi, label]) => {
+    const rs = trades.filter(t => t.shown_pf != null &&
+      (lo == null || t.shown_pf >= lo) && (hi == null || t.shown_pf < hi)).map(t => t.r);
+    return statRow(`panel showed ${label}`, summarize(rs));
+  });
+  rows.push(statRow('no panel shown (n &lt; 10)',
+    summarize(trades.filter(t => t.shown_pf == null).map(t => t.r))));
+  $('calibTable').innerHTML =
+    `<thead><tr><th>Shown PF bucket</th><th class="num">Trades</th><th class="num">Actual PF</th>
+     <th class="num">Avg R</th><th class="num">Win rate</th></tr></thead><tbody>${rows.join('')}</tbody>`;
+}
+
+function renderNearingSplit(allSelected) {
+  const w = summarize(allSelected.filter(t => t.had_nearing_alert).map(t => t.r));
+  const wo = summarize(allSelected.filter(t => !t.had_nearing_alert).map(t => t.r));
+  $('nearingSplitTable').innerHTML =
+    `<thead><tr><th>Group</th><th class="num">Trades</th><th class="num">PF</th>
+     <th class="num">Avg R</th><th class="num">Win rate</th></tr></thead><tbody>
+     ${statRow('Had a 👀 nearing alert first', w)}
+     ${statRow('No 👀 — confirmed straight out', wo)}</tbody>`;
+}
+
+function renderYears(trades) {
+  const byYear = new Map();
+  for (const t of trades) {
+    const y = t.entry_date.slice(0, 4);
+    if (!byYear.has(y)) byYear.set(y, []);
+    byYear.get(y).push(t.r);
+  }
+  const rows = [...byYear.entries()].sort().map(([y, rs]) => statRow(y, summarize(rs)));
+  $('yearTable').innerHTML =
+    `<thead><tr><th>Fold</th><th class="num">Trades</th><th class="num">PF</th>
+     <th class="num">Avg R</th><th class="num">Win rate</th></tr></thead><tbody>${rows.join('')}</tbody>`;
+}
+
+function renderPairs() {
+  const rows = DATA.per_pair.map(p => {
+    const f = p.funnel;
+    const rs = DATA.trades.filter(t => t.pair === p.pair).map(t => t.r);
+    const s = summarize(rs);
+    return `<tr><td>${p.pair}</td>
+      <td class="num">${f.nearing_alerts}</td>
+      <td class="num">${f.nearing_conversion_rate == null ? '—' : pct(f.nearing_conversion_rate, 0)}</td>
+      <td class="num">${f.confirmed_alerts}</td>
+      <td class="num">${s.n}</td>
+      <td class="num ${s.pf != null && s.pf > 1 ? 'green' : 'red'}">${fmt(s.pf, 3)}</td>
+      <td class="num ${cls(s.avgR)}">${s.avgR == null ? '—' : (s.avgR > 0 ? '+' : '') + fmt(s.avgR, 4)}</td>
+      <td class="num">${fmt(p.is.profit_factor, 2)}</td>
+      <td class="num">${fmt(p.oos.profit_factor, 2)}</td></tr>`;
+  });
+  $('pairTable').innerHTML =
+    `<thead><tr><th>Pair</th><th class="num">👀</th><th class="num">Conv.</th>
+     <th class="num">Confirmed</th><th class="num">Trades</th><th class="num">PF</th>
+     <th class="num">Avg R</th><th class="num">IS PF</th><th class="num">OOS PF</th></tr></thead>
+     <tbody>${rows.join('')}</tbody>`;
+}
+
+function renderTrades(trades) {
+  const shown = trades.slice(0, 500);
+  $('tradeCount').textContent =
+    `${trades.length.toLocaleString()} trades${trades.length > 500 ? ' — showing first 500, CSV exports all' : ''}`;
+  $('tradeTable').innerHTML =
+    `<thead><tr><th>Pair</th><th>Entry</th><th>Dir</th><th>Pattern</th><th>👀</th>
+     <th class="num">Shown PF</th><th>Outcome</th><th class="num">R</th><th class="num">MAE R</th>
+     <th>IS/OOS</th></tr></thead><tbody>` +
+    shown.map(t => `<tr>
+      <td>${t.pair}</td><td>${t.entry_date.slice(0, 16).replace('T', ' ')}</td>
+      <td class="${t.direction === 'BUY' ? 'green' : 'red'}">${t.direction}</td>
+      <td>${t.n_touches}-touch ${t.is_top ? 'top' : 'bottom'}</td>
+      <td>${t.had_nearing_alert ? '👀' : ''}</td>
+      <td class="num">${fmt(t.shown_pf, 2)}</td>
+      <td class="${t.outcome === 'tp' ? 'green' : t.outcome === 'sl' ? 'red' : 'amber'}">${t.outcome}</td>
+      <td class="num ${cls(t.r)}">${fmt(t.r, 3)}</td>
+      <td class="num">${fmt(t.mae_r, 3)}</td>
+      <td>${t.is_oos}</td></tr>`).join('') + '</tbody>';
+}
+
+function exportCsv(trades) {
+  const cols = ['pair', 'entry_date', 'exit_date', 'direction', 'n_touches', 'is_top',
+                'had_nearing_alert', 'shown_pf', 'shown_played_out_rate', 'outcome', 'r',
+                'mae_r', 'return_pct', 'mae_pct', 'pnl_dollars', 'risk_dollars', 'is_oos'];
+  const rows = [cols.join(',')].concat(trades.map(t => cols.map(c => t[c] ?? '').join(',')));
+  const url = URL.createObjectURL(new Blob([rows.join('\n')], { type: 'text/csv' }));
+  const a = document.createElement('a');
+  a.href = url; a.download = 'motif_alert_trades.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function render() {
+  const riskPct = Number($('riskPct').value) / 100;
+  const targetVol = Number($('targetVol').value);
+  const trades = filteredTrades();
+  const allSelected = DATA.trades.filter(t => SELECTED.has(t.pair));
+  renderFunnel();
+  const daily = renderKpis(trades, riskPct, targetVol);
+  renderChart(daily);
+  renderCalibration(allSelected);
+  renderNearingSplit(allSelected);
+  renderYears(trades);
+  renderPairs();
+  renderTrades(trades);
+  $('exportCsv').onclick = () => exportCsv(trades);
+}
+
+(async function init() {
+  try {
+    DATA = await (await fetch('./AnalogML/data/motif_alert_backtest.json')).json();
+  } catch (e) {
+    $('headerSub').textContent = 'failed to load AnalogML/data/motif_alert_backtest.json — run ' +
+      'python AnalogML/motif_alert_backtest.py --all-pairs';
+    return;
+  }
+  SELECTED = new Set(DATA.pairs);
+  $('pairChecks').innerHTML = DATA.pairs.map(p =>
+    `<label class="pair-check"><input type="checkbox" data-pair="${p}" checked>${p}</label>`).join('');
+  $('pairChecks').addEventListener('change', e => {
+    const p = e.target.dataset.pair;
+    if (!p) return;
+    e.target.checked ? SELECTED.add(p) : SELECTED.delete(p);
+    render();
+  });
+  const setAll = on => {
+    SELECTED = on ? new Set(DATA.pairs) : new Set();
+    $('pairChecks').querySelectorAll('input').forEach(i => { i.checked = on; });
+    render();
+  };
+  $('selectAll').onclick = () => setAll(true);
+  $('selectNone').onclick = () => setAll(false);
+  for (const id of ['riskPct', 'targetVol', 'alertSet', 'shownPf']) $(id).addEventListener('change', render);
+  const f = DATA.summary.funnel, pr = DATA.params;
+  $('headerSub').textContent =
+    `${DATA.pairs.length} pairs · ${f.nearing_alerts.toLocaleString()} 👀 · ` +
+    `${f.confirmed_alerts.toLocaleString()} confirmed · ${f.trades_resolved.toLocaleString()} trades · ` +
+    `sl ${pr.sl_pips}p / tp ${pr.tp_r}R · nearing ${pr.nearing_atr_mult}×ATR (${pr.nearing_price}) · ` +
+    `generated ${DATA.generated_at.slice(0, 10)}`;
+  render();
+})();
+</script>
+</body>
+</html>
