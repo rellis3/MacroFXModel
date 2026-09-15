@@ -1103,3 +1103,18 @@ extend, tail-risk was the one with real bricks on both ends and a legitimate ope
 question — it has now been tested and closed the same way the others were.
 
 Run `python3 jump_tail_risk.py`.
+
+## Phase 18 — HAR-RV (log) now runs forward as a live shadow estimate
+
+Phase 16 registered the log-form HAR-RV estimator into the site's offline comparison
+tool and reproduced the validated archive win there — but a backtest is still scored on
+data the estimator (and this study) has already seen. The owner's steer throughout this
+thread was explicit: hold off on touching the live forecast until the new estimator has
+"run forward for a while as a shadow estimate." That's this step, done on the JS/live
+side rather than in this Python archive: `js/volForecastScheduler.js`'s daily forecast
+run now also computes `f.harLog` (log-form HAR-RV, same estimator §16 registered) every
+session, purely additive, riding the exact mechanism already proven safe for the
+level-form `f.har` shadow and the HAR-IV COG-v2 shadow — same band math, same
+kill-switch/try-catch discipline, same KV archive. No export button or visual was added;
+this is observation-only, so a genuine calendar-forward track record accumulates before
+any decision to promote it. See `MD files/LEGO_MODULES.md` §1ba for the full account.

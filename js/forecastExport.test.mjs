@@ -4,7 +4,7 @@
 //
 //   node js/forecastExport.test.mjs
 
-import { forecastFields, harShadowFields, buildExportText, buildExportV2Text, buildExtendedText, buildExportHarText, buildAllExports } from './forecastExport.js';
+import { forecastFields, harShadowFields, harLogShadowFields, buildExportText, buildExportV2Text, buildExtendedText, buildExportHarText, buildAllExports } from './forecastExport.js';
 import { _buildOutput, _driftD, _bmMaxQuantile, ASSET_PARAMS } from './volForecast.js';
 import { realizedVarSeries, sigmaSeriesForExport } from './volForecastBench.js';
 
@@ -170,6 +170,28 @@ if (har) {
   ok('news multiplier scales bands via σ', JSON.stringify(har12) === JSON.stringify(manual12));
 }
 ok('returns null when bars are insufficient', harShadowFields(ohlc.slice(0, 70), 'fx', 1.0) === null);
+
+console.log('[harLogShadowFields — bench HAR-RV (log) σ through the incumbent band math]');
+const harLog = harLogShadowFields(ohlc, 'fx', 1.0);
+ok('produces a shadow on sufficient synthetic bars', harLog !== null);
+if (harLog) {
+  ok('fields finite and ordered',
+     Number.isFinite(harLog.vol_annual) && harLog.vol_annual > 0
+     && harLog.hl_75 > harLog.hl_median && harLog.hl_median > 0
+     && harLog.oc_75 > harLog.oc_median && harLog.oc_median > 0);
+  // Delegation identity: byte-equal to composing the two bricks by hand — proves
+  // harLogShadowFields adds NO math of its own (only the news_mult display field).
+  const { series: hls, sigmaFwd: hlsF } = sigmaSeriesForExport(ohlc, 'harRvLog', { rv: realizedVarSeries(ohlc, 'gk') });
+  const manualLog = forecastFields(hls, hlsF, ohlc, 'fx');
+  manualLog.news_mult = 1.0;
+  ok('delegates exactly to sigmaSeriesForExport + forecastFields',
+     JSON.stringify(harLog) === JSON.stringify(manualLog));
+  const harLog12    = harLogShadowFields(ohlc, 'fx', 1.2);
+  const manualLog12 = forecastFields(hls, hlsF * 1.2, ohlc, 'fx');
+  manualLog12.news_mult = 1.2;
+  ok('news multiplier scales bands via σ', JSON.stringify(harLog12) === JSON.stringify(manualLog12));
+}
+ok('returns null when bars are insufficient', harLogShadowFields(ohlc.slice(0, 70), 'fx', 1.0) === null);
 
 // round-trip: feed forecastFields output straight into the builders without throwing
 console.log('[round-trip]');

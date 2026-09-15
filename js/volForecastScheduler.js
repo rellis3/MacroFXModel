@@ -22,15 +22,23 @@
 import * as kv from '../kv.js';
 import { computeForecast, computeForecastFromRV, detectNewsMultiplier, detectEventTagFor } from './volForecast.js';
 import { fetchWeekEvents as _fetchWeekEvents } from './econCalendar.js';
-import { harShadowFields, harIvShadowFields } from './forecastExport.js';
+import { harShadowFields, harLogShadowFields, harIvShadowFields } from './forecastExport.js';
 import { IV_INDEX_BY_INSTRUMENT } from './volForecastBench.js';
 import { fetchFredSeries, forwardFillToDates } from './fredFetch.js';
 import { londonMidnightSec } from './volBacktestEngine.js';
 import { pathEfficiency, touchProbability, amihudIlliquidity } from './volStateEngine.js';
+import { resolveCarryDrift } from './carryDrift.js';
+import { RATE_DIFF_UNIVERSE } from './rateDiffEngine.js';
 
 // HAR-RV shadow forecast (challenger σ through the incumbent band math, stored
 // as `f.har` per instrument — purely additive). Kill switch: VOL_FORECAST_HAR=0.
 const HAR_SHADOW_ON = process.env.VOL_FORECAST_HAR !== '0';
+// HAR-RV LOG-form shadow (MD files/LEGO_MODULES.md §1ay/§1az) — the specification
+// that actually reproduces the validated archive win, tracked forward on real
+// live data before any decision to promote it past the level-form `f.har` shadow
+// it rides alongside. Stored as `f.harLog`, purely additive. Kill switch:
+// VOL_FORECAST_HARLOG=0.
+const HARLOG_SHADOW_ON = process.env.VOL_FORECAST_HARLOG !== '0';
 // HAR-IV shadow (COG-v2 gold σ): implied-vol-augmented HAR from the listed IV index
 // (GVZ for gold), stored as `f.harIv`. Needs FRED_KEY. Kill switch: VOL_FORECAST_HARIV=0.
 const HARIV_SHADOW_ON = process.env.VOL_FORECAST_HARIV !== '0';
@@ -405,6 +413,83 @@ function _lastGoodForecastFor(name) {
   return null;
 }
 
+// ── Carry drift (the observable one) ─────────────────────────────────────────
+// `driftAnatomy`'s carry block has existed since the drift work but nothing ever
+// supplied it, so every live reading shipped with `carry: null`. This fills it.
+//
+// Both sources are read ONCE per run and shared across instruments: the broker
+// snapshot is a single KV read, and the interbank legs are 8 FRED series, not 8
+// per pair. Financing history is keyed by OANDA instrument name (`EUR_USD`),
+// which is why `cfg.oandaInstrument` is the lookup and not `cfg.name`.
+//
+// Failure here must never cost a forecast — same contract as the HAR shadow
+// above. Every path returns a map (possibly empty) and the caller attaches
+// whatever it got, so a dead FRED key degrades the carry block to null rather
+// than dropping the session's volatility numbers.
+const _FINANCING_KV = 'oanda_financing_history';
+// Only the newest print is used, but FRED needs a start date; a few years keeps
+// the response small while still covering a series that publishes with a lag.
+const RATE_FROM_DATE = '2022-01-01';
+
+async function _loadCarryDrift() {
+  const out = {};
+
+  // 1. Broker financing — the tradeable number, captured daily.
+  let broker = null, brokerDate = null;
+  try {
+    const raw = await kv.get(_FINANCING_KV);
+    const days = raw ? (JSON.parse(raw)?.days ?? []) : [];
+    const last = days.at(-1);
+    if (last?.rates) { broker = last.rates; brokerDate = last.date; }
+  } catch (e) { console.warn('[VOL-FORECAST] financing history unreadable:', e.message); }
+
+  // 2. Interbank short rates — theoretical, monthly, and the leg that has gone
+  //    stale before in this repo, so the date rides along for the age gate.
+  const rates = {};
+  const fredKey = process.env.FRED_KEY || process.env.FRED_API_KEY;
+  if (fredKey) {
+    for (const [ccy, seriesId] of Object.entries(RATE_DIFF_UNIVERSE)) {
+      try {
+        // NOTE the signature: (seriesId, fromDate, fredKey) — passing the key
+        // second throws "FRED key not set" into the catch below and leaves every
+        // currency silently unpriced. And it returns a date->value MAP in
+        // ascending order, not an array, so the newest observation is the last
+        // ENTRY rather than `.at(-1)` on something that has no such method.
+        const obs = await fetchFredSeries(seriesId, RATE_FROM_DATE, fredKey);
+        const last = [...(obs?.entries?.() ?? [])].at(-1);
+        if (last && Number.isFinite(last[1])) rates[ccy] = { pct: last[1], asOf: last[0] };
+      } catch (e) { console.warn(`[VOL-FORECAST] rate ${ccy} (${seriesId}):`, e.message); }
+    }
+  }
+
+  const now = Date.now();
+  for (const cfg of INSTRUMENTS) {
+    // Only FX has two currency legs. Gold and the indices have no carry in this
+    // sense — a synthetic leg for them would be a number with no referent.
+    if (cfg.assetClass !== 'fx' || cfg.name.length !== 6) continue;
+    const base = cfg.name.slice(0, 3), quote = cfg.name.slice(3, 6);
+    const bf = broker?.[cfg.oandaInstrument];
+    const r = resolveCarryDrift({
+      pair: cfg.name, base, quote,
+      // OANDA reports financing as FRACTIONS; carryDrift wants percent, the same
+      // x100 `carryEngine.financingHaircut` applies to the identical field.
+      broker: bf && Number.isFinite(bf.longRate) && Number.isFinite(bf.shortRate)
+        ? { longRatePct: bf.longRate * 100, shortRatePct: bf.shortRate * 100, asOf: brokerDate }
+        : undefined,
+      interbank: (rates[base] && rates[quote])
+        ? { basePct: rates[base].pct, quotePct: rates[quote].pct,
+            baseAsOf: rates[base].asOf, quoteAsOf: rates[quote].asOf }
+        : undefined,
+      now,
+    });
+    if (r.source || r.refused.length) out[cfg.name] = r;
+  }
+  const usable = Object.values(out).filter(r => r.source).length;
+  console.log(`[VOL-FORECAST] carry drift: ${usable}/${Object.keys(out).length} pairs priced`
+    + (brokerDate ? ` (broker ${brokerDate})` : ' (no broker snapshot)'));
+  return out;
+}
+
 // ── Core computation ──────────────────────────────────────────────────────────
 export async function runVolForecast(targetDate) {
   const target = targetDate ?? new Date(_applicableSessionDate(new Date()) + 'T12:00:00Z');
@@ -423,6 +508,11 @@ export async function runVolForecast(targetDate) {
   const sessionLabel = formatSessionLabel(target);
   const dataSource   = process.env.OANDA_KEY ? 'oanda' : 'yahoo';
 
+  // Resolved once for the whole run and handed to each instrument below.
+  let carryByPair = {};
+  try { carryByPair = await _loadCarryDrift(); }
+  catch (e) { console.warn('[VOL-FORECAST] carry drift unavailable:', e.message); }
+
   const instruments = {};
   const errors      = [];
   const harivDiag   = {};   // per-IV-instrument HAR-IV outcome, surfaced in meta for live diagnosis
@@ -432,11 +522,16 @@ export async function runVolForecast(targetDate) {
       const { bars: ohlc, source: instSource } = await fetchOHLC(cfg);
       forecastState.ohlcCache[cfg.name] = ohlc;
       const eventTag = detectEventTagFor(events, cfg.name);
-      const f    = computeForecast(ohlc, cfg.assetClass, newsMult, { instrument: cfg.name, eventTag });
+      const f    = computeForecast(ohlc, cfg.assetClass, newsMult,
+        { instrument: cfg.name, eventTag, drift: { carry: carryByPair[cfg.name] } });
       if (HAR_SHADOW_ON) {
         // Shadow must never break the primary forecast: any HAR failure → null.
         try { f.har = harShadowFields(ohlc, cfg.assetClass, newsMult); }
         catch (e) { f.har = null; console.warn(`[VOL-FORECAST] ${cfg.name} HAR shadow failed: ${e.message}`); }
+      }
+      if (HARLOG_SHADOW_ON) {
+        try { f.harLog = harLogShadowFields(ohlc, cfg.assetClass, newsMult); }
+        catch (e) { f.harLog = null; console.warn(`[VOL-FORECAST] ${cfg.name} HAR-log shadow failed: ${e.message}`); }
       }
       // COG-v2 gold σ: HAR-IV from the GVZ implied-vol series (indices/gold that have
       // a listed IV index). Additive — attaches `f.harIv`; the primary never moves.
@@ -466,7 +561,7 @@ export async function runVolForecast(targetDate) {
       }
       f.data_source = instSource;   // per-instrument: 'oanda' | 'yahoo' | 'yahoo-fallback'
       instruments[cfg.name] = f;
-      console.log(`[VOL-FORECAST]  ${cfg.name.padEnd(6)} vol=${f.vol_annual.toFixed(2)}%  HL=${f.hl_median}–${f.hl_75}%  OC=${f.oc_median}–${f.oc_75}%  ${f.har ? `har=${f.har.vol_annual.toFixed(2)}%  ` : ''}[${instSource}]`);
+      console.log(`[VOL-FORECAST]  ${cfg.name.padEnd(6)} vol=${f.vol_annual.toFixed(2)}%  HL=${f.hl_median}–${f.hl_75}%  OC=${f.oc_median}–${f.oc_75}%  ${f.har ? `har=${f.har.vol_annual.toFixed(2)}%  ` : ''}${f.harLog ? `harLog=${f.harLog.vol_annual.toFixed(2)}%  ` : ''}[${instSource}]`);
     } catch (err) {
       console.error(`[VOL-FORECAST] ${cfg.name} error: ${err.message}`);
       errors.push({ name: cfg.name, error: err.message });
@@ -885,7 +980,8 @@ export async function startVolForecastScheduler() {
     f.ewma_vol_annual == null || f.legacy_vol_annual == null ||
     // har === undefined → shadow never attempted (pre-HAR cache) → recompute.
     // har === null      → attempted but unavailable — do NOT re-run for it.
-    (HAR_SHADOW_ON && f.har === undefined)
+    (HAR_SHADOW_ON && f.har === undefined) ||
+    (HARLOG_SHADOW_ON && f.harLog === undefined)
   );
   // A cached forecast that is missing instruments, or serving carried-forward
   // (stale) copies of them, came from a run where a data source was down
@@ -901,7 +997,7 @@ export async function startVolForecastScheduler() {
       : cachedDate !== neededDate ? `date mismatch (${cachedDate})`
       : missingInstruments ? 'instruments missing from cached forecast'
       : staleInstruments ? 'cached forecast has carried-forward (stale) instruments'
-      : 'shadow fields missing (YZ/HV/EWMA/HAR)';
+      : 'shadow fields missing (YZ/HV/EWMA/HAR/HAR-log)';
     console.log(`[VOL-FORECAST] ${reason} — computing on startup …`);
     _lastRepairMs = Date.now();   // the startup run IS the first repair attempt — don't double-run
     runVolForecast(new Date(neededDate + 'T12:00:00Z'))
