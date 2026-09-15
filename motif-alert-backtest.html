@@ -577,12 +577,18 @@ function renderOutliers(res) {
 }
 
 const CHART_X = { ticks: { color: '#5a6380', maxTicksLimit: 12 }, grid: { color: '#182030' } };
+/** Replace JUST the canvas with a note, never its parent's innerHTML: on the
+ *  tail-fit and capacity cards the canvas is a sibling of that card's stats
+ *  and TABLE, so wiping the parent took the numbers out with the chart --
+ *  exactly the content a reader with a blocked CDN still needs. */
 const chartMissing = (id, what) => {
   const c = $(id);
-  if (c && c.parentElement) {
-    c.parentElement.innerHTML = `<div class="muted">${what} unavailable — Chart.js did not load from ` +
-      'its CDN. Every table on this page is unaffected.</div>';
-  }
+  if (!c) return;   // already replaced on an earlier render
+  const note = document.createElement('div');
+  note.className = 'muted';
+  note.textContent = `${what} unavailable — Chart.js did not load from its CDN. `
+    + 'The figures and tables on this card are unaffected.';
+  c.replaceWith(note);
 };
 
 /** Compounded and non-compounded on their OWN axes. One axis cannot show both:
