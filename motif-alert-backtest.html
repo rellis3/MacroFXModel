@@ -83,8 +83,9 @@
     <label title="Rescales the return series to this annualised vol for the Vol Target row — a comparison lens, not a change to which trades are taken.">Target vol % <input type="number" id="targetVol" value="10" step="1" min="1" style="width:55px"></label>
   </div>
   <div class="grp"><span class="grp-title">Concurrency</span>
-    <label title="How many overlapping open positions ONE pair may hold. 1 means a new alert on a pair is skipped while an earlier trade on that pair is still open.">Max concurrent <select id="capSel">
-      <option>1</option><option>2</option><option selected>3</option><option>5</option><option>10</option>
+    <label title="How many overlapping open positions ONE pair may hold. Defaults to UNLIMITED so the page opens on the system exactly as the Telegram bot runs it — the live bot logs every confirmed motif and has no concurrency cap, so any value below unlimited is a rule this backtest is ADDING, not one the alerts follow. 1 means a new alert is skipped while an earlier trade on that pair is still open.">Max concurrent <select id="capSel">
+      <option value="99" selected>unlimited (as the bot runs)</option>
+      <option>1</option><option>2</option><option>3</option><option>5</option><option>10</option>
     </select></label>
     <label title="When on, BUY and SELL trades on the same pair get separate concurrency budgets instead of sharing one.">Per-direction budget <input type="checkbox" id="perDirChk"></label>
     <label title="Caps TOTAL simultaneous risk across ALL pairs, on top of each pair's own cap. Fixed-risk mode only — NAV weights already cap total exposure by construction.">Portfolio heat cap <input type="checkbox" id="heatCapChk">
