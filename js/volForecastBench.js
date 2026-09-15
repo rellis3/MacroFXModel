@@ -617,5 +617,5 @@ export {
   realizedVarSeries, logReturns, harRvPred, harRvForecastNext, scoreSeries, runBench, ESTIMATORS, solve4,
   latestSigmaForecast, sigmaSeriesForExport, benchCtx,
   harIvPred, harIvForecastNext, ivVarSeries, IV_INDEX_BY_INSTRUMENT, scoreOnIndices, solveN,
-  harRvLogPred, harRvLogForecastNext, _harFitCore,
+  harRvLogPred, harRvLogForecastNext, _harFitCore, _rvScale, VAR_FLOOR_FRAC,
 };
