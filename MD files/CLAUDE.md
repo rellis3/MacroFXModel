@@ -638,18 +638,20 @@ bot that caches anything to local disk between runs, assume that cache is
 gone on the next deploy unless you've explicitly R2-backed it the same
 way.
 
-**Known, not-yet-fixed bug:** `server.js`'s `_resolvePython()` (used by
-SessionResearch's native scheduling and the vol-backtest routes) hardcodes
-`/usr/local/bin/python3` as its first candidate and returns it
-unconditionally — the `execFile(..., callback)` version check it runs is
-async and its result is never awaited before the function returns, so the
-"check" does nothing. Now that Python actually installs via `apt-get`
-(see above), the real binary lives at `/usr/bin/python3`, not
-`/usr/local/bin/python3`, so every SessionResearch tick fails with `spawn
-/usr/local/bin/python3 ENOENT`. Simplest real fix: just return `'python3'`
-(bare, no path) and let `execFile`/`spawn`'s own `PATH` lookup resolve
-it — same as every bot in `start.sh` already relies on `python-is-python3`
-for. Left unfixed as of 2026-08-17 to avoid piling more unverified `server.js`
-changes onto an already-long incident; low risk to production alerts
-(AnalogML's own bots don't go through this resolver) but breaks
-SessionResearch's dashboard predictions.
+**Resolved (was: "known, not-yet-fixed bug").** `server.js`'s
+`_resolvePython()` (used by SessionResearch's native scheduling and the
+vol-backtest routes) used to hardcode `/usr/local/bin/python3` and return it
+unconditionally, because its `execFile(..., callback)` version check was async
+and never awaited — so the "check" did nothing and every SessionResearch tick
+failed with `spawn /usr/local/bin/python3 ENOENT` (Python installs via
+`apt-get` at `/usr/bin/python3`, per the Dockerfile note above). It now uses
+`execFileSync` and genuinely walks its candidate list
+(`PYTHON_BIN` → `/usr/local/bin/python3` → `/usr/bin/python3` → … → bare
+`python3`), so the second candidate resolves. Fixed in `8f36eeb`
+(2026-09-11); this paragraph was stale until 2026-09-15. The consequence
+matters for cost, not just correctness: SessionResearch really does spawn
+26 Python processes an hour (and 26 full studies a day), which is why it
+leads the "heavy end" table in `MD files/RAILWAY_SERVICE_FLAGS.md` §4.
+Verified by reading the code, not by observing a Railway run — if you need
+certainty that it is working in production, check `/api/services` for
+`sessionResearchLive`'s `errors` count.
