@@ -391,6 +391,7 @@ var is set in Railway first.
 | `VOL_FORECAST_UTC` | when the vol-forecast recompute runs |
 | `TDE_PAIRS`, `TDE_REFRESH_MIN` | Trade Decision Engine live slow loop — pairs to keep snapshots warm (off if unset) + refresh cadence (default 5 min) |
 | `TDE_BACKFILL_UTC`, `TDE_BACKFILL_DAILY` | Trade Decision Engine nightly incremental backfill — time (default `03:05` UTC, **on by default**); `TDE_BACKFILL_DAILY=0` disables |
+| `SVC_<ID>`, `SERVICES_OFF`, `SERVICES_ON`, `SERVICE_PROFILE` | **background-job switches** — every scheduler in `server.js` and every bot in `start.sh` can be turned off from the Railway env without a code change. Registry: `js/serviceFlags.js`; live state + per-job timings: `/api/services`; operator guide: `MD files/RAILWAY_SERVICE_FLAGS.md`. Defaults are unchanged, so setting none of these keeps today's behaviour |
 
 > The volatility-bot plan producer recomputes σ from OANDA D1 via
 > `volSigmaSeries` (the backtest's exact math) — **not** `/api/vol-forecast`,
@@ -549,6 +550,13 @@ Report the green honestly and the red honestly.
 
 ## Live deployment
 
+**Before adding a new background job**, read `MD files/RAILWAY_SERVICE_FLAGS.md`.
+Everything periodic on Railway runs in ONE container — eight supervised bot
+processes plus `server.js`'s 75 timers (48 jobs) — and every one is registered in
+`js/serviceFlags.js` and started via `svcInterval(...)` / `start_bot ...` so it
+can be switched off from the env. A bare `setInterval` in `server.js` is a job
+nobody can turn off without a redeploy; `js/serviceFlags.test.mjs` fails on one.
+
 Production runs on Railway at **https://macrofxmodel-production.up.railway.app**
 — this is where `OANDA_KEY`/live OANDA and Yahoo Finance fetches actually work.
 Sandboxed dev sessions get 403 from both (an egress policy on the sandbox, not a
@@ -630,18 +638,20 @@ bot that caches anything to local disk between runs, assume that cache is
 gone on the next deploy unless you've explicitly R2-backed it the same
 way.
 
-**Known, not-yet-fixed bug:** `server.js`'s `_resolvePython()` (used by
-SessionResearch's native scheduling and the vol-backtest routes) hardcodes
-`/usr/local/bin/python3` as its first candidate and returns it
-unconditionally — the `execFile(..., callback)` version check it runs is
-async and its result is never awaited before the function returns, so the
-"check" does nothing. Now that Python actually installs via `apt-get`
-(see above), the real binary lives at `/usr/bin/python3`, not
-`/usr/local/bin/python3`, so every SessionResearch tick fails with `spawn
-/usr/local/bin/python3 ENOENT`. Simplest real fix: just return `'python3'`
-(bare, no path) and let `execFile`/`spawn`'s own `PATH` lookup resolve
-it — same as every bot in `start.sh` already relies on `python-is-python3`
-for. Left unfixed as of 2026-08-17 to avoid piling more unverified `server.js`
-changes onto an already-long incident; low risk to production alerts
-(AnalogML's own bots don't go through this resolver) but breaks
-SessionResearch's dashboard predictions.
+**Resolved (was: "known, not-yet-fixed bug").** `server.js`'s
+`_resolvePython()` (used by SessionResearch's native scheduling and the
+vol-backtest routes) used to hardcode `/usr/local/bin/python3` and return it
+unconditionally, because its `execFile(..., callback)` version check was async
+and never awaited — so the "check" did nothing and every SessionResearch tick
+failed with `spawn /usr/local/bin/python3 ENOENT` (Python installs via
+`apt-get` at `/usr/bin/python3`, per the Dockerfile note above). It now uses
+`execFileSync` and genuinely walks its candidate list
+(`PYTHON_BIN` → `/usr/local/bin/python3` → `/usr/bin/python3` → … → bare
+`python3`), so the second candidate resolves. Fixed in `8f36eeb`
+(2026-09-11); this paragraph was stale until 2026-09-15. The consequence
+matters for cost, not just correctness: SessionResearch really does spawn
+26 Python processes an hour (and 26 full studies a day), which is why it
+leads the "heavy end" table in `MD files/RAILWAY_SERVICE_FLAGS.md` §4.
+Verified by reading the code, not by observing a Railway run — if you need
+certainty that it is working in production, check `/api/services` for
+`sessionResearchLive`'s `errors` count.
