@@ -4338,7 +4338,7 @@ function currencyDetail(ccy) {
 
   // 2) COT positioning — read straight off this currency's own CME future, not derived per-pair.
   let cotInfo = null;
-  if (ccy !== 'USD' && cot?.[ccy]) {
+  if (cot?.[ccy]) {   // USD included now that the ICE dollar-index future is in the pull; the mirror below is the fallback
     const c = cot[ccy];
     const oi = c.openInterest ?? 0;
     // 200-week series is a separate lazy fetch (/api/cot-extremes?history=) — not
@@ -4355,10 +4355,8 @@ function currencyDetail(ccy) {
       reportDate: c.reportDate ?? null, derived: false, series,
     };
   } else if (ccy === 'USD') {
-    // This feed's CFTC pull (_worker.js TFF list) doesn't currently include the ICE
-    // US Dollar Index future (CFTC code 098662 — it's a real, CFTC-tracked contract,
-    // just not wired into this dashboard's data source yet). Until it is, USD's
-    // position here is derived as the mirror image of the other vs-USD futures.
+    // Fallback only: the ICE US Dollar Index future (CFTC 098662) is in the pull as
+    // cot.USD, so this mirror-of-the-majors read is used only when that row is missing.
     const others = CCY_ORDER.filter(c => c !== 'USD' && cot?.[c]);
     if (others.length) {
       let sumNet = 0, sumOi = 0;
@@ -4744,7 +4742,7 @@ function openCcyDrawer(ccy) {
       : '<div class="muted" style="margin-top:6px">Loading 52-week positioning history…</div>';
     cotHtml = `
       <div class="ccy-explain">${c.derived
-        ? `This feed doesn't currently pull the ICE US Dollar Index future — a real CFTC-tracked contract (code 098662), just not wired into this dashboard yet — so USD's position here is derived as the mirror image of the other majors' futures vs USD. Read it as a rough cross-check, not a direct read.${dxyLine}`
+        ? `The ICE US Dollar Index future (CFTC code 098662) did not come through in this pull, so USD's position here is derived as the mirror image of the other majors' futures vs USD. Read it as a rough cross-check, not a direct read.${dxyLine}`
         : `Large speculators (CFTC weekly report) are <b>${dirWord}</b> ${ccy} — about <b>${(c.pct ?? 0).toFixed(1)}%</b> of open interest${c.pctile != null ? ` (${Math.round(c.pctile)}th percentile of recent history)` : ''}. This is <i>who's positioned</i>, not <i>who's moving</i> — a crowded one-way bet (≥20% OI) raises the odds of a snap-back squeeze if it's wrong.`}</div>
       <div class="csrow"><span class="ccy">${ccy}</span><span class="track"><span class="mid"></span>${bar}</span><span class="val">${(c.specNet ?? 0) >= 0 ? '+' : ''}${fmtN(c.specNet ?? 0, 0)}</span></div>
       <div class="ccy-stat">
@@ -4873,7 +4871,7 @@ function openCcyDrawer(ccy) {
 // fetched snapshot) and, if this drawer is still open on the same currency when
 // it lands, repaints just the sparkline slot rather than the whole drawer.
 async function loadCotHistoryFor(ccy) {
-  if (ccy === 'USD' || cotHistCache[ccy]) return;   // USD has no direct COT future here (see cotInfo derivation)
+  if (cotHistCache[ccy]) return;   // USD included: the ICE dollar-index future is in the pull (cot.USD); a missing row just yields null here
   cotHistCache[ccy] = 'loading';
   try {
     const r = await fetch(`/api/cot-extremes?history=${encodeURIComponent(ccy)}`, { cache: 'no-store' });
