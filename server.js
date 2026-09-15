@@ -3071,6 +3071,23 @@ app.post('/api/levels/reload-kv', async (_req, res) => {
 // adaptive thinking is ON BY DEFAULT, so `content[0]` is a THINKING block and
 // `content[0].text` is undefined — every one of these calls would have started
 // returning empty with no error raised. Find the block by TYPE, never by index.
+// First balanced {...} in a model reply, string-aware. JSON.parse of the whole
+// text fails on any trailing commentary; a greedy /\{[\s\S]*\}/ fails when the
+// commentary itself contains a brace.
+function _firstJsonObject(txt) {
+  try { return JSON.parse(txt); } catch { /* fall through */ }
+  const start = txt.indexOf('{');
+  if (start < 0) throw new Error('no JSON object in model reply');
+  let depth = 0, inStr = false, esc = false;
+  for (let i = start; i < txt.length; i++) {
+    const ch = txt[i];
+    if (inStr) { if (esc) esc = false; else if (ch === '\\') esc = true; else if (ch === '"') inStr = false; continue; }
+    if (ch === '"') inStr = true;
+    else if (ch === '{') depth++;
+    else if (ch === '}') { depth--; if (depth === 0) return JSON.parse(txt.slice(start, i + 1)); }
+  }
+  throw new Error('unbalanced JSON object in model reply');
+}
 function _antText(data) {
   const blocks = Array.isArray(data?.content) ? data.content : [];
   for (const b of blocks) if (b?.type === 'text' && typeof b.text === 'string') return b.text;
@@ -4000,7 +4017,10 @@ Respond with ONLY valid JSON, no markdown:
   const antData = await antRes.json();
   if (antData.stop_reason === 'max_tokens') throw new Error('response truncated — try again');
   const clean = (_antText(antData)).replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
-  const analysis = JSON.parse(clean);
+  // The model occasionally appends a sentence after the closing brace ("Unexpected
+  // non-whitespace character after JSON at position 3840"), which threw the whole
+  // brief away. Take the first balanced object; the trailing text is never wanted.
+  const analysis = _firstJsonObject(clean);
   const payload = { analysis, generatedAt: new Date().toISOString(), headlineCount: headlines.length, session: fc?.session_label ?? null };
   await kv.put(_MORNING_BRIEF_KV, JSON.stringify(payload)).catch(() => {});
   return payload;
