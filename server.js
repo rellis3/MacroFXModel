@@ -3750,19 +3750,34 @@ async function _buildMorningBrief() {
   // "our WTI print is near $91" while the header beside it read $97.09, and then built
   // an inflation-expectations story on the stale one. Two readings of the same barrel
   // must be compared before either is narrated.
+  // Same barrel, SAME DAY. This used to compare FRED's last print to OANDA's latest
+  // close and, whenever FRED was a few days behind a fast oil move, called the lag a
+  // "DATA CONFLICT" -- which fed the board trade gate as a blocker, which returned
+  // NO STANDOUT PAIR every day the tape was moving (three days running, 2026-09-12
+  // to 09-14, with FRED six days behind a +7% oil move). A source that is BEHIND is
+  // a lag to state; only a disagreement on a shared date is a conflict.
   let conflictLine = '';
   try {
-    const fredWti = g('wti');
-    const bars = await _btFetchD1('WTICO_USD', 3).catch(() => null);
+    const fredWti = g('wti'), fredDate = fred?.wti?.asOf ?? null;
+    const bars = await _btFetchD1('WTICO_USD', 15).catch(() => null);   // session-dated (fetchD1 shifts evening opens)
     const liveWti = bars?.at(-1)?.close ?? null;
-    if (Number.isFinite(fredWti) && Number.isFinite(liveWti) && fredWti > 0) {
-      const gap = (liveWti - fredWti) / fredWti * 100;
+    const sameDay = fredDate ? bars?.find(b => b.date === fredDate)?.close ?? null : null;
+    if (Number.isFinite(fredWti) && fredWti > 0 && Number.isFinite(sameDay)) {
+      const gap = (sameDay - fredWti) / fredWti * 100;
       if (Math.abs(gap) >= 4) {
-        conflictLine = `DATA CONFLICT — WTI: FRED DCOILWTICO reads ${fredWti.toFixed(2)}${fred?.wti?.asOf ? ` (as of ${fred.wti.asOf})` : ''} while the live OANDA daily close reads ${liveWti.toFixed(2)} — a ${gap.toFixed(1)}% gap. `
-          + `The live print is the current one; the FRED series settles with a lag. Oil is load-bearing for any inflation-expectations story and for the commodity currencies, so LEAD with this conflict and treat oil-driven reads as unsupported until it resolves. Do NOT quote the FRED number as "our print" when a fresher one disagrees.`;
-      } else if (Number.isFinite(liveWti)) {
-        conflictLine = `WTI cross-check: FRED ${fredWti.toFixed(2)} vs live ${liveWti.toFixed(2)} — sources agree.`;
+        conflictLine = `DATA CONFLICT — WTI: FRED DCOILWTICO reads ${fredWti.toFixed(2)} for ${fredDate} while OANDA's close for the same session reads ${sameDay.toFixed(2)} — a ${gap.toFixed(1)}% gap on a shared date. `
+          + `Oil is load-bearing for any inflation-expectations story and for the commodity currencies, so LEAD with this conflict and treat oil-driven reads as unsupported until it resolves.`;
+      } else {
+        const days = Math.round((Date.now() - Date.parse(fredDate + 'T00:00:00Z')) / 864e5);
+        const moved = Number.isFinite(liveWti) ? (liveWti - fredWti) / fredWti * 100 : null;
+        conflictLine = `WTI cross-check: FRED ${fredWti.toFixed(2)} and OANDA ${sameDay.toFixed(2)} agree for ${fredDate}.`
+          + (moved != null && days >= 2 && Math.abs(moved) >= 4
+              ? ` FRED is ${days} days BEHIND, not wrong: oil has since moved ${moved > 0 ? '+' : ''}${moved.toFixed(1)}% to ${liveWti.toFixed(2)}. Use the live number for anything about oil today; FRED-derived reads are ${days} days stale, not contradicted.`
+              : Number.isFinite(liveWti) ? ` Live ${liveWti.toFixed(2)}.` : '');
       }
+    } else if (Number.isFinite(fredWti) && fredWti > 0 && Number.isFinite(liveWti)) {
+      const gap = (liveWti - fredWti) / fredWti * 100;
+      conflictLine = `WTI cross-check: no OANDA close for FRED's date (${fredDate ?? '?'}), so only live ${liveWti.toFixed(2)} vs FRED ${fredWti.toFixed(2)} (${gap > 0 ? '+' : ''}${gap.toFixed(1)}%) is available — unverified, not a conflict.`;
     }
   } catch { /* omitted when the live leg is unavailable */ }
 

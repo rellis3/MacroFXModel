@@ -2591,7 +2591,13 @@ function tradeGate(r) {
   if (r.cost && r.cost.gate === 'fail') blockers.push(`spread is ${(r.cost.ofLevel * 100).toFixed(0)}% of the distance to the nearest level — past the point this desk measured the edge gone`);
   const pf = priceFreshness();
   if (pf?.stale) blockers.push('the price feed is stale, so every level distance is measured against a frozen number');
-  for (const c of dataConflicts()) blockers.push(`${c.label} disagrees across sources by ${c.diffPct}% and is load-bearing for ${c.loadBearing}`);
+  // A conflict blocks only the pairs the disagreeing number is load-bearing FOR. An
+  // oil-source disagreement is a reason not to trade CAD; it is not a reason the
+  // EUR/USD or gold gate should return NO TRADE, which is what it did for three days.
+  for (const c of dataConflicts()) {
+    const hits = !c.ccys?.length || (PAIR_CCY[r.name] ?? []).some(cy => c.ccys.includes(cy)) || c.instruments?.includes(r.name);
+    if (hits) blockers.push(`${c.label} disagrees across sources by ${c.diffPct}% and is load-bearing for ${c.loadBearing}`);
+  }
 
   // Agreeing evidence — independent reads pointing the same way.
   const dir = directionFor(r);
@@ -2671,7 +2677,7 @@ function dataConflicts() {
     // The honest comparison: same barrel, same day.
     const diffPct = (sameDay - fredWti) / fredWti * 100;
     if (Math.abs(diffPct) >= CONFLICT_PCT) {
-      out.push({ id: 'wti', label: 'WTI crude', a: { src: 'FRED DCOILWTICO', v: +fredWti.toFixed(2), asOf: fredDate }, b: { src: `OANDA close, same day`, v: +sameDay.toFixed(2) }, diffPct: +diffPct.toFixed(1), loadBearing: 'inflation-expectations and any commodity-currency read' });
+      out.push({ id: 'wti', label: 'WTI crude', a: { src: 'FRED DCOILWTICO', v: +fredWti.toFixed(2), asOf: fredDate }, b: { src: `OANDA close, same day`, v: +sameDay.toFixed(2) }, diffPct: +diffPct.toFixed(1), loadBearing: 'inflation-expectations and any commodity-currency read', ccys: ['CAD'], instruments: ['WTI'] });
     }
     // Agreed on the shared date. If the live price has since moved a lot, that is a
     // lag to state, not a disagreement to escalate. Only when they DID agree: the
@@ -2686,7 +2692,7 @@ function dataConflicts() {
     // that the gap may be lag rather than disagreement.
     const diffPct = (liveWti - fredWti) / fredWti * 100;
     if (Math.abs(diffPct) >= CONFLICT_PCT) {
-      out.push({ id: 'wti', label: 'WTI crude', a: { src: 'FRED DCOILWTICO', v: +fredWti.toFixed(2), asOf: fredDate }, b: { src: 'live OANDA quote (no same-day close to compare)', v: +liveWti.toFixed(2) }, diffPct: +diffPct.toFixed(1), loadBearing: 'inflation-expectations and any commodity-currency read', unverified: true });
+      out.push({ id: 'wti', label: 'WTI crude', a: { src: 'FRED DCOILWTICO', v: +fredWti.toFixed(2), asOf: fredDate }, b: { src: 'live OANDA quote (no same-day close to compare)', v: +liveWti.toFixed(2) }, diffPct: +diffPct.toFixed(1), loadBearing: 'inflation-expectations and any commodity-currency read', unverified: true, ccys: ['CAD'], instruments: ['WTI'] });
     }
   }
   return out;
