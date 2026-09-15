@@ -568,6 +568,12 @@ def main() -> None:
         },
         "equity_curve": [[d.isoformat() if hasattr(d, "isoformat") else str(d), round(e, 6)]
                          for d, e in port["equity_curve"]],
+        # Each pair's round-trip cost expressed in R (spread / stop distance).
+        # Constant per pair because the stop is a fixed 20 pips, which is what
+        # lets a viewer re-price every trade at a MULTIPLE of today's cost
+        # (the capacity test) without re-racing: R(k) = R(1) - (k-1) * cost_r.
+        "pair_cost_r": {p_: round(default_spread(p_) / (args.sl_pips * pip_size(p_)), 5)
+                        for p_ in pairs},
         "per_pair": per_pair,
         # Written AFTER every other section so `encode_features` has seen every
         # trade's vocabulary before the legend is frozen.
