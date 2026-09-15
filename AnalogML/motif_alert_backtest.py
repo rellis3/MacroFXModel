@@ -311,6 +311,15 @@ def build_pair(pair: str, args: argparse.Namespace) -> dict:
                 "exit_date": bars.index[t["exit_idx"]].isoformat(),
                 "direction": "BUY" if t["direction"] == 1 else "SELL",
                 "outcome": t["outcome"],
+                # The three levels the trade actually ran against, so a viewer
+                # can draw entry/stop/target on the real candles without
+                # re-deriving them (and risking a viewer that disagrees with
+                # the race that produced `r`). Taken from the raced entry
+                # price, not re-read from the bar, for exactly that reason.
+                "entry_price": round(t["entry_price"], 5),
+                "stop_price": round(t["entry_price"] - t["direction"] * sl_price, 5),
+                "target_price": round(t["entry_price"] + t["direction"] * sl_price * args.tp_r, 5),
+                "exit_price": round(t["exit_price"], 5),
                 "n_touches": m.n_touches,
                 "is_top": bool(m.is_top),
                 "r": round(t["r"], 4),
