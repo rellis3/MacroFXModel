@@ -314,7 +314,9 @@ export function driftComposition(dailyReturns, jumpReturns) {
 /**
  * Attaches whichever of the three readings the caller has data for.
  *
- *   driftAnatomy({ d, pctPerDay, win, rates: {basePct, quotePct},
+ *   driftAnatomy({ d, pctPerDay, win,
+ *                  carry: <resolveCarryDrift() output>,   // preferred
+ *                  rates: {basePct, quotePct},            // or raw legs
  *                  returns: {daily, jump}, sigmaAnnualPct })
  *
  * Every block is independent and optional: precision needs only `d`, so it is always
@@ -323,7 +325,7 @@ export function driftComposition(dailyReturns, jumpReturns) {
  * read a stable shape.
  */
 export function driftAnatomy(opts = {}) {
-  const { d, pctPerDay, win = 14, rates, returns, sigmaAnnualPct } = opts;
+  const { d, pctPerDay, win = 14, rates, carry, returns, sigmaAnnualPct } = opts;
 
   const precision = driftPrecision(d, win);
   const out = { precision, carry: null, composition: null, yearsToDetect: null, text: null };
@@ -334,9 +336,17 @@ export function driftAnatomy(opts = {}) {
     out.yearsToDetect = yearsToDetectDrift(pctPerDay * 252, sigmaAnnualPct);
   }
 
-  if (rates && Number.isFinite(rates.basePct) && Number.isFinite(rates.quotePct)) {
+  // `carry` is a pre-resolved reading from `js/carryDrift.js` — which picks
+  // between broker financing and the interbank differential, strips the broker's
+  // spread, and refuses a stale source. It wins over raw `rates` because the
+  // broker path has no two legs to hand: OANDA quotes the PAIR's financing, not
+  // the two currencies', so reconstructing legs to feed `carryDrift()` would be
+  // inventing numbers to satisfy a signature.
+  if (carry && Number.isFinite(carry.fwdDriftPctPerDay)) {
+    out.carry = { ...carry, ...driftVsCarry(pctPerDay, carry.fwdDriftPctPerDay) };
+  } else if (rates && Number.isFinite(rates.basePct) && Number.isFinite(rates.quotePct)) {
     const cd = carryDrift(rates.basePct, rates.quotePct);
-    out.carry = { ...cd, ...driftVsCarry(pctPerDay, cd.fwdDriftPctPerDay) };
+    out.carry = { source: 'interbank', ...cd, ...driftVsCarry(pctPerDay, cd.fwdDriftPctPerDay) };
   }
 
   if (returns && Array.isArray(returns.daily) && Array.isArray(returns.jump)) {
