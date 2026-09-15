@@ -76,6 +76,7 @@ from pattern_scan import load_bars  # noqa: E402
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
+from motif_features import bucket_trade, compute_features  # noqa: E402
 from pylego.barrier_race import Entry, mae_from_path, race_trades  # noqa: E402
 from pylego.costs import default_spread  # noqa: E402
 from pylego.instruments import pip_size  # noqa: E402
@@ -214,6 +215,11 @@ def build_pair(pair: str, args: argparse.Namespace) -> dict:
     cutoff = pd.Timestamp(IS_OOS_CUTOFF, tz=bars.index.tz)
 
     highs, lows, closes, opens = (bars[c].to_numpy() for c in ("high", "low", "close", "open"))
+    # Context features at entry. The confluence study found several of these
+    # genuinely separate outcomes -- the H1 swing regime most of all -- so the
+    # backtest carries them per trade rather than leaving them study-only.
+    # Shared with that study via motif_features, one computation.
+    feats = compute_features(pair, bars, args)
 
     # ---- every confirmed motif's trade, raced once on the real bar path ----
     # scan_pair_motif's contract: entry is the OPEN of the bar after confirmation.
@@ -329,6 +335,10 @@ def build_pair(pair: str, args: argparse.Namespace) -> dict:
                 "pnl_dollars": round(t["r"] * account_risk_dollars, 2),
                 "risk_dollars": round(account_risk_dollars, 2),
                 "is_oos": "OOS" if entry_date >= cutoff else "IS",
+                # Read at the CONFIRM bar; entry is the next bar's open, so
+                # nothing here sees its own trade.
+                "features": bucket_trade(feats, m.confirm_idx, m.direction,
+                                         float(m.level), pip),
                 # The alert-path tags this export exists for.
                 "motif_key": key,
                 "had_nearing_alert": near is not None,
@@ -370,6 +380,29 @@ def build_pair(pair: str, args: argparse.Namespace) -> dict:
             "trades_resolved": len(trades),
         },
     }
+
+
+def encode_features(trades: list[dict]) -> dict:
+    """Replace each trade's `features` dict with a compact integer array plus
+    one shared legend.
+
+    Verbatim string buckets on every trade cost ~950 bytes each -- on 30k
+    trades that is ~29MB, roughly doubling the export for data that is 17 short
+    labels drawn from a handful of values. The legend holds the vocabulary once
+    (`{dim: [bucket, ...]}`, dims sorted so the array order is stable) and each
+    trade keeps `f`: one index per dim, -1 for a bucket that was absent. Same
+    information, ~40 bytes a trade."""
+    dims: dict[str, list] = {}
+    for t in trades:
+        for dim, bucket in (t.get("features") or {}).items():
+            dims.setdefault(dim, set()).add(bucket)
+    legend = {d: sorted(v) for d, v in sorted(dims.items())}
+    order = list(legend)
+    pos = {d: {b: i for i, b in enumerate(legend[d])} for d in order}
+    for t in trades:
+        f = t.pop("features", None) or {}
+        t["f"] = [pos[d].get(f.get(d), -1) for d in order]
+    return {"dims": order, "buckets": legend}
 
 
 def _strip_curve(bench: dict) -> dict:
@@ -536,6 +569,9 @@ def main() -> None:
         "equity_curve": [[d.isoformat() if hasattr(d, "isoformat") else str(d), round(e, 6)]
                          for d, e in port["equity_curve"]],
         "per_pair": per_pair,
+        # Written AFTER every other section so `encode_features` has seen every
+        # trade's vocabulary before the legend is frozen.
+        "feature_legend": encode_features(all_trades),
         "trades": all_trades,
     }
     if args.include_alerts:

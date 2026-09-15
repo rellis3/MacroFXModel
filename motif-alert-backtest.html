@@ -58,6 +58,15 @@
   <div class="controls">
     <label title="Scales every trade's R into a % of account. A display and sizing choice only — it changes no entry or exit, and takes no trade out. Sharpe, Sortino, PF, win rate, skew and kurtosis are all unchanged by it; CAGR, drawdown and vol scale with it, because this is leverage.">Risk % / trade <input type="number" id="riskPct" value="1" step="0.1" min="0.1" style="width:60px"></label>
     <label title="Rescales the return series to this annualised volatility for the vol-target card. A comparison lens, not a rule — it changes nothing about which trades are taken.">Target vol % <input type="number" id="targetVol" value="10" step="1" min="1" style="width:55px"></label>
+    <label id="filterWrap" title="OPT-IN. Off by default, because the alert system itself has no filter — every alert is a trade. Each option here removes trades, so it changes every figure on the page; the confluence card at the bottom is where the out-of-sample evidence for each one lives.">Filter <select id="filterSel">
+      <option value="none">None — every alert (as the bot runs)</option>
+      <option value="c1">≥1 confluence</option>
+      <option value="c2">≥2 confluences</option>
+      <option value="c3">≥3 confluences</option>
+      <option value="c4">≥4 confluences</option>
+      <option value="no3t">Skip 3-touch motifs</option>
+      <option value="nowith">Skip with-trend (swing regime)</option>
+    </select></label>
     <label title="Log scale suits a compounded curve (equal vertical distance = equal percentage move); linear shows absolute gains.">Log scale <input type="checkbox" id="logScaleChk" checked></label>
   </div>
 </header>
@@ -70,9 +79,10 @@
     closes through the level, the 🟢/🔴 alert fires, and a trade is entered on the <strong>open of the
     next H1 bar</strong> with a <strong>20-pip stop and a 1.5R target</strong> — the frozen grid
     <code>motif_track.py</code> already logs live. Every alert that was sent is a trade here.
-    <strong>There are no gates, filters, caps or overlays.</strong> No concurrency limit, no exposure
-    cap, no drawdown throttle, no currency rule, no session or regime filter, no minimum on the
-    alert's own confidence panel. Nothing is skipped: <span id="everyAlert">—</span>.
+    <strong>By default there are no gates, filters, caps or overlays</strong> — no concurrency limit,
+    no exposure cap, no drawdown throttle, no currency rule, no session or regime filter, no minimum
+    on the alert's own confidence panel. Nothing is skipped: <span id="everyAlert">—</span>.
+    <span id="filterBanner"></span>
     <br><br>
     <code>AnalogML/motif_alert_backtest.py</code> replays the bot's own emission path bar by bar over
     2016–2026 — one live touch-run per pair, the <code>provisional</code> refusal, one nearing alert
@@ -122,14 +132,21 @@
     that assumption, so those three are split out below rather than picking one silently.</div>
   <h2 style="margin-top:4px">Distribution &amp; risk-adjusted (same either way)</h2>
   <div class="kpi-grid" id="kpiShared"></div>
-  <h2 style="margin-top:14px">If you reinvest (compounded — risk grows with equity)</h2>
-  <div class="kpi-grid" id="kpiCompounded"></div>
-  <h2 style="margin-top:14px">If you don't reinvest (fixed risk — same % of ORIGINAL capital every trade)</h2>
+  <h2 style="margin-top:14px">Fixed risk — same % of ORIGINAL capital every trade (the basis used here)</h2>
   <div class="kpi-grid" id="kpiNonCompounded"></div>
+  <h2 style="margin-top:14px">If you reinvest instead (compounded — risk grows with equity)</h2>
+  <div class="muted" style="margin:-4px 0 8px">Shown for comparison only. Compounding at a fixed % of
+    ever-growing equity over ~30k trades produces absurd totals, which is why the fixed-risk figures
+    above are the ones this page leads with.</div>
+  <div class="kpi-grid" id="kpiCompounded"></div>
 </div>
 
 <div class="card">
-  <h2>Equity curve (compounded, % of account)</h2>
+  <h2>Equity curve — fixed risk (non-compounded), % of starting account</h2>
+  <div class="muted" style="margin-bottom:8px">The solid line risks the same % of the ORIGINAL account
+    on every trade and never reinvests, so it is a straight sum of daily returns — the basis every
+    headline figure on this page uses. The faint line is the same trades compounded, for contrast
+    only. Log scale is disabled on the additive line because it can legitimately cross zero.</div>
   <canvas id="equityChart"></canvas>
 </div>
 
@@ -156,6 +173,16 @@
 <div class="card callout warn">
   <h2>⚠ Correlated risk — read before running many pairs together</h2>
   <div class="muted" id="corrBody"></div>
+</div>
+
+<div class="card callout" id="confCard" style="display:none">
+  <h2>Confluence screen — would a Level-Atlas-style context filter have helped?</h2>
+  <div class="muted" style="margin-bottom:8px" id="confIntro"></div>
+  <div style="overflow-x:auto;margin-bottom:12px"><table id="confStackTable"></table></div>
+  <div class="muted" style="margin-bottom:6px">Buckets chosen on in-sample evidence alone. The OOS
+    column is the verification, never part of the selection — an earlier draft used OOS to pick the
+    buckets and then graded the stack on OOS, which inflates the dose-response for free.</div>
+  <div style="overflow-x:auto"><table id="confBucketTable"></table></div>
 </div>
 
 <div class="card callout">
@@ -248,7 +275,45 @@ function summarize(rs) {
   return { n, pf: gl > 0 ? gw / gl : null, avgR: tot / n, winRate: wins / n, totalR: tot };
 }
 
-const selectedTrades = () => DATA.trades.filter(t => SELECTED.has(t.pair));
+/** Pair selection, then the OPT-IN filter. Every option here is off by
+ *  default: the alert system has no filter of its own, so anything applied is
+ *  a rule this page is adding, and it is stated as such. The per-trade data
+ *  comes from the confluence study's `trade_meta` -- the page cannot recompute
+ *  those features itself, so a filter is simply unavailable if that export is
+ *  missing rather than silently doing nothing. */
+function selectedTrades() {
+  const base = DATA.trades.filter(t => SELECTED.has(t.pair));
+  const mode = $('filterSel')?.value ?? 'none';
+  if (mode === 'none') return base;
+  // Single-feature filters read the backtest export's OWN per-trade features
+  // (compact ints against a shared legend) -- they are properties of the trade,
+  // so they need no companion file. Confluence COUNT is different: it depends
+  // on which buckets the study picked in-sample, so it can only come from the
+  // study export.
+  if (mode === 'no3t') return base.filter(t => t.n_touches === 2);
+  if (mode === 'nowith') {
+    const i = featureIndex('swing_regime', 'with');
+    return i ? base.filter(t => t.f?.[i.dim] !== i.bucket) : base;
+  }
+  if (mode.startsWith('c')) {
+    const meta = CONF?.trade_meta;
+    if (!meta) return base;
+    const k = Number(mode.slice(1));
+    return base.filter(t => (meta[t.motif_key]?.[0] ?? 0) >= k);
+  }
+  return base;
+}
+
+/** Resolve a (dimension, bucket) pair to its positions in a trade's `f` array,
+ *  or null if this export's legend does not carry it. */
+function featureIndex(dim, bucket) {
+  const lg = DATA.feature_legend;
+  if (!lg) return null;
+  const d = lg.dims.indexOf(dim);
+  if (d < 0) return null;
+  const b = lg.buckets[dim]?.indexOf(bucket) ?? -1;
+  return b < 0 ? null : { dim: d, bucket: b };
+}
 
 /** Every selected trade, in the field shape the measurement bricks read.
  *  `r` already came from pylego.barrier_race walking the real bar path.
@@ -309,6 +374,14 @@ function renderFunnel() {
      flagged. The 👀 is a heads-up; the trade is the 🟢/🔴.`;
   $('hlVsClose').textContent =
     `${sum('nearing_alerts').toLocaleString()} on the bar range vs ${sum('nearing_alerts_close').toLocaleString()} on closes only`;
+  const mode = $('filterSel')?.value ?? 'none';
+  const LABEL = { c1: '≥1 confluence', c2: '≥2 confluences', c3: '≥3 confluences',
+                  c4: '≥4 confluences', no3t: 'skip 3-touch motifs',
+                  nowith: 'skip with-trend (swing regime)' };
+  $('filterBanner').innerHTML = mode === 'none' ? '' :
+    `<br><br><strong class="amber">A filter is ON: ${LABEL[mode]}.</strong> Every figure on this page
+     now describes that FILTERED set, not the alert stream as sent — the bot itself applies no such
+     rule. The confluence card at the bottom holds the out-of-sample evidence for it.`;
   $('everyAlert').textContent =
     `${sum('confirmed_alerts').toLocaleString()} confirmed alerts → ${DATA.trades.filter(t => SELECTED.has(t.pair)).length.toLocaleString()} trades`;
 }
@@ -439,23 +512,40 @@ function renderChart(res) {
     if (c && c.parentElement) {
       c.parentElement.innerHTML =
         '<div class="muted">Equity chart unavailable — Chart.js did not load from its CDN. ' +
-        'Every table below is unaffected, and the CSV export carries the full trade list.</div>';
+        'Every table below is unaffected, and the CSV exports carry the full trade list.</div>';
     }
     return;
   }
-  let eq = 100;
-  const labels = [], values = [];
+  // Two paths over the SAME daily returns. Additive is the page's basis: risk
+  // a fixed % of the ORIGINAL account every trade and never reinvest, so the
+  // curve is a running sum. Compounded is the same trades reinvested, drawn
+  // faint for contrast — over ~30k trades it runs away to numbers that say
+  // more about fixed-fractional sizing than about the signal.
+  const labels = [], additive = [], compounded = [];
+  let addEq = 100, cmpEq = 100;
   for (let i = 0; i < (res?.daily?.length ?? 0); i++) {
-    eq *= (1 + res.daily[i] / 100); labels.push(res.dates[i]); values.push(eq);
+    addEq += res.daily[i];
+    cmpEq *= (1 + res.daily[i] / 100);
+    labels.push(res.dates[i]); additive.push(addEq); compounded.push(cmpEq);
   }
+  // A log axis cannot render the additive line, which may legitimately sit at
+  // or below zero in a deep drawdown; the toggle only governs the compounded
+  // axis, and is ignored (linear) whenever additive is on screen.
+  const logOk = $('logScaleChk').checked && additive.every(v => v > 0);
   if (chart) chart.destroy();
   chart = new Chart($('equityChart'), {
     type: 'line',
-    data: { labels, datasets: [{ data: values, borderColor: '#5b9dff', borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0 }] },
-    options: { responsive: true, plugins: { legend: { display: false } },
-               scales: { x: { ticks: { color: '#5a6380', maxTicksLimit: 12 }, grid: { color: '#182030' } },
-                         y: { type: $('logScaleChk').checked ? 'logarithmic' : 'linear',
-                              ticks: { color: '#5a6380' }, grid: { color: '#182030' } } } },
+    data: { labels, datasets: [
+      { label: 'Fixed risk (non-compounded)', data: additive, borderColor: '#5b9dff',
+        borderWidth: 1.8, pointRadius: 0, fill: false, tension: 0 },
+      { label: 'Compounded (comparison)', data: compounded, borderColor: '#5a6380',
+        borderWidth: 1, pointRadius: 0, fill: false, tension: 0, borderDash: [4, 3] },
+    ] },
+    options: { responsive: true,
+      plugins: { legend: { display: true, labels: { color: '#94a3b8', boxWidth: 18, font: { size: 11 } } } },
+      scales: { x: { ticks: { color: '#5a6380', maxTicksLimit: 12 }, grid: { color: '#182030' } },
+                y: { type: logOk ? 'logarithmic' : 'linear',
+                     ticks: { color: '#5a6380' }, grid: { color: '#182030' } } } },
   });
 }
 
@@ -464,6 +554,52 @@ function statRow(label, s) {
     <td class="num ${s.pf != null && s.pf > 1 ? 'green' : 'red'}">${fmt(s.pf, 3)}</td>
     <td class="num ${cls(s.avgR)}">${s.avgR == null ? '—' : (s.avgR > 0 ? '+' : '') + fmt(s.avgR, 4)}</td>
     <td class="num">${pct(s.winRate)}</td></tr>`;
+}
+
+/** The confluence study, if its export is present. Read-only: it reports what
+ *  a filter WOULD have done, and changes nothing about the trades above. */
+let CONF = null;
+function renderConfluence() {
+  if (!CONF) { $('confCard').style.display = 'none'; return; }
+  $('confCard').style.display = '';
+  const b = CONF.baseline.oos, st = CONF.stack;
+  const ratio = r => (r.max_dd_r ? Math.abs(r.total_r / r.max_dd_r) : null);
+  $('confIntro').innerHTML =
+    `Every trade is scored on ${CONF.dimensions.length} context dimensions recomputed from the same
+     H1 bars at the confirm bar — session, volatility regime, how price arrived, WaveTrend state, HTF
+     trend and the motif's own shape. These are the <em>kind</em> of dimension the Level Atlas vote
+     book uses, rebuilt for this signal: that book's cells are keyed to its own ladder rungs, so it
+     cannot be pointed at a motif directly. Of them, <strong>${CONF.holding_buckets.length}
+     buckets</strong> beat the in-sample baseline by ${CONF.params.min_edge} PF at
+     n≥${CONF.params.min_n}. The table below counts, per trade, how many of those it sits in, and
+     grades that count <strong>out of sample</strong>.`;
+  $('confStackTable').innerHTML =
+    `<thead><tr><th>Min confluences</th><th class="num">Trades kept</th><th class="num">OOS n</th>
+     <th class="num">OOS PF</th><th class="num">Avg R</th><th class="num">Total R</th>
+     <th class="num">Max DD (R)</th><th class="num">Total R ÷ |DD|</th></tr></thead><tbody>` +
+    st.filter(r => r.oos.n >= 50).map(r => {
+      const o = r.oos, rr = ratio(o);
+      return `<tr><td>≥ ${r.min_confluences}${r.min_confluences === 0 ? ' (no filter)' : ''}</td>
+        <td class="num">${pct(r.kept_pct)}</td>
+        <td class="num">${o.n.toLocaleString()}</td>
+        <td class="num ${o.pf > b.pf ? 'green' : ''}">${fmt(o.pf, 3)}</td>
+        <td class="num ${cls(o.avg_r)}">${fmt(o.avg_r, 4)}</td>
+        <td class="num">${fmt(o.total_r, 1)}</td>
+        <td class="num red">${fmt(o.max_dd_r, 1)}</td>
+        <td class="num ${rr > Math.abs(b.total_r / b.max_dd_r) ? 'green' : ''}">${fmt(rr, 1)}</td></tr>`;
+    }).join('') + '</tbody>';
+  const chosen = CONF.dimensions.flatMap(d =>
+    d.buckets.filter(x => x.chosen_on_is).map(x => ({ dim: d.dim, ...x })));
+  $('confBucketTable').innerHTML =
+    `<thead><tr><th>Dimension = bucket</th><th class="num">IS n</th><th class="num">IS PF</th>
+     <th class="num">OOS n</th><th class="num">OOS PF</th><th>Confirmed OOS?</th></tr></thead><tbody>` +
+    chosen.sort((a, x) => (x.oos.pf ?? 0) - (a.oos.pf ?? 0)).map(x =>
+      `<tr><td>${x.dim} = ${x.bucket}</td>
+       <td class="num">${x.is.n.toLocaleString()}</td><td class="num">${fmt(x.is.pf, 3)}</td>
+       <td class="num">${x.oos.n.toLocaleString()}</td>
+       <td class="num ${x.confirms_oos ? 'green' : 'red'}">${fmt(x.oos.pf, 3)}</td>
+       <td class="${x.confirms_oos ? 'green' : 'red'}">${x.confirms_oos ? 'yes' : 'no — IS only'}</td></tr>`
+    ).join('') + '</tbody>';
 }
 
 function renderCalibration(trades) {
@@ -667,6 +803,14 @@ async function selectTrade(t, row) {
 }
 
 function render() {
+  // Without the study export there is no per-trade meta to filter on, so the
+  // control is disabled rather than left looking functional.
+  // Only the confluence options need the study export; the single-feature ones
+  // ride on the backtest's own features, so they stay usable without it.
+  if (!CONF?.trade_meta) {
+    for (const o of $('filterSel').options) if (o.value.startsWith('c')) o.disabled = true;
+    if ($('filterSel').value.startsWith('c')) $('filterSel').value = 'none';
+  }
   const riskPct = Number($('riskPct').value);
   const targetVol = Number($('targetVol').value);
   const trades = selectedTrades();
@@ -674,6 +818,7 @@ function render() {
   renderFunnel();
   renderKpis(res, trades);
   renderChart(res);
+  renderConfluence();
   renderCalibration(trades);
   renderNearingSplit(trades);
   renderYears(trades);
@@ -696,6 +841,8 @@ function render() {
       'python AnalogML/motif_alert_backtest.py --all-pairs';
     return;
   }
+  // Optional companion export — the page works fine without it.
+  try { CONF = await (await fetch('./AnalogML/data/motif_confluence_study.json')).json(); } catch { CONF = null; }
   SELECTED = new Set(DATA.pairs);
   $('pairChecks').innerHTML = DATA.pairs.map(p =>
     `<label class="pair-check"><input type="checkbox" data-pair="${p}" checked>${p}</label>`).join('');
@@ -712,7 +859,7 @@ function render() {
   };
   $('selectAll').onclick = () => setAll(true);
   $('selectNone').onclick = () => setAll(false);
-  for (const id of ['riskPct', 'targetVol', 'logScaleChk']) $(id).addEventListener('change', render);
+  for (const id of ['riskPct', 'targetVol', 'logScaleChk', 'filterSel']) $(id).addEventListener('change', render);
 
   const p = DATA.summary.portfolio, f = DATA.summary.funnel, pr = DATA.params;
   $('corrBody').innerHTML =
