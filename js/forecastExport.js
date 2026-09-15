@@ -60,6 +60,30 @@ function harShadowFields(ohlc, assetClass = 'fx', newsMult = 1.0) {
   return out;
 }
 
+// ── HAR-RV shadow forecast, LOG form (the challenger that reproduces the
+// validated Phase 14/15/16 archive finding) ────────────────────────────────
+// `harShadowFields` above uses volForecastBench.js's LEVEL-form harRV — the
+// estimator that was already shadow-tracked before the log-form variant
+// existed (MD files/LEGO_MODULES.md §1ay). Cross-checking that exact JS
+// estimator against this study's own filtered archive found LOG form is the
+// specification that actually reproduces the win: it beat the YZ incumbent on
+// 6/7 test instruments and beat level-form outright on all 3 FX majors, while
+// running slightly behind level-form on gold/indices — so it earns its own
+// shadow track record rather than assuming the level-form's is representative.
+// Identical structure to harShadowFields (same forecastFields/band-math path,
+// same additive/null-on-failure contract); the only difference is the
+// estimator key passed to sigmaSeriesForExport ('harRvLog' vs 'harRV').
+// Purely additive: callers attach the result as `f.harLog`; the primary and
+// `f.har` fields never move.
+function harLogShadowFields(ohlc, assetClass = 'fx', newsMult = 1.0) {
+  const { series, sigmaFwd } = sigmaSeriesForExport(ohlc, 'harRvLog', { rv: realizedVarSeries(ohlc, 'gk') });
+  if (!Number.isFinite(sigmaFwd) || sigmaFwd <= 0 || series.length < 60) return null;
+  const sF  = newsMult > 1 ? sigmaFwd * newsMult : sigmaFwd;
+  const out = forecastFields(series, sF, ohlc, assetClass);
+  out.news_mult = Math.round(newsMult * 100) / 100;
+  return out;
+}
+
 // ── HAR-IV shadow forecast (the COG-v2 gold σ) ───────────────────────────────
 // The gold leg of COG-v2: the bench's OOS-winning gold σ (HAR-IV — realised-variance
 // HAR + a forward-looking implied-variance regressor from GVZ) run through the SAME
@@ -214,4 +238,4 @@ function buildAllExports(data) {
   return out;
 }
 
-export { forecastFields, harShadowFields, harIvShadowFields, buildExportText, buildExportV2Text, buildExtendedText, buildExportHarText, buildAllExports };
+export { forecastFields, harShadowFields, harLogShadowFields, harIvShadowFields, buildExportText, buildExportV2Text, buildExtendedText, buildExportHarText, buildAllExports };
