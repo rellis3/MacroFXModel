@@ -202,6 +202,14 @@ export const REARM_FRACS = [0.15, 0.30, 0.50];
  *   atlasWalk(packed, { instrument, assetClass })
  *     -> { touches: [...], sessionMeta: { pair, coverage } }
  *
+ * `ladderParams` (optional, defaults to the live LADDER_PARAMS import) is the
+ * one seam a parallel calibration needs — e.g. Vote Atlas v2 passing
+ * `forecastLadderParamsV2.js`'s HAR-RV(log)-fit params instead of the
+ * incumbent Yang-Zhang ones. Threaded straight through to `buildLadder`
+ * (which also defaults to the live params) — nothing else in this file reads
+ * LADDER_PARAMS, so this is the only override needed to run the whole walk
+ * against a different calibration.
+ *
  * A "touch" record's outward/backward outcome is a genuine race between the
  * REAL neighbouring lines (open for p50, the previous rung for p75/p90; the
  * next rung out, or session-close for p90) — see the module docstring for why
@@ -210,7 +218,8 @@ export const REARM_FRACS = [0.15, 0.30, 0.50];
  */
 export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = REARM_FRACS,
                                      minLookback = 60, htfMinBars, structural = true, confLookback = 5,
-                                     ivByDate = null, pendingRearmFrac = null, liveWindowDays = null } = {}) {
+                                     ivByDate = null, pendingRearmFrac = null, liveWindowDays = null,
+                                     ladderParams = LADDER_PARAMS } = {}) {
   const sym = String(instrument).toUpperCase();
   const sessions = bucketM1IntoSessions(packed, 'Europe/London');
   const _allDates = [...sessions.keys()].sort();
@@ -267,7 +276,7 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
     for (const x of b) { if (x.high > hi) hi = x.high; if (x.low < lo) lo = x.low; }
     return { date: d, open: b[0].open, high: hi, low: lo, close: b[b.length - 1].close };
   });
-  const est = LADDER_PARAMS.pairs?.[sym]?.estimator ?? LADDER_PARAMS.classDefaults?.[assetClass]?.estimator ?? 'yz_30';
+  const est = ladderParams.pairs?.[sym]?.estimator ?? ladderParams.classDefaults?.[assetClass]?.estimator ?? 'yz_30';
 
   let pip = 1; try { pip = pipSize(instrument) || 1; } catch { /* unknown symbol → raw price units */ }
 
@@ -290,7 +299,7 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
     let sigma = 0;
     try { sigma = forecastSigma(d1.slice(0, i), est); } catch { continue; }
     if (!(sigma > 0)) continue;
-    const lad = buildLadder(sigma, { instrument: sym, assetClass, horizon: 'daily', eventTag: 'none' });
+    const lad = buildLadder(sigma, { instrument: sym, assetClass, horizon: 'daily', eventTag: 'none', ladderParams });
     if (!lad?.oh?.p90 || !lad?.ol?.p90) continue;
 
     // Yesterday's CLOSE location relative to ITS OWN forecast bands — an
@@ -303,7 +312,7 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
       if (i < 1) return null;
       let ySigma; try { ySigma = forecastSigma(d1.slice(0, i - 1), est); } catch { return null; }
       if (!(ySigma > 0)) return null;
-      const yLad = buildLadder(ySigma, { instrument: sym, assetClass, horizon: 'daily', eventTag: 'none' });
+      const yLad = buildLadder(ySigma, { instrument: sym, assetClass, horizon: 'daily', eventTag: 'none', ladderParams });
       if (!yLad?.oh?.p75 || !yLad?.ol?.p75) return null;
       const yOpen = d1[i - 1].open, yClose = d1[i - 1].close;
       if (!(yOpen > 0)) return null;

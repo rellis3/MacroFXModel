@@ -3071,6 +3071,23 @@ app.post('/api/levels/reload-kv', async (_req, res) => {
 // adaptive thinking is ON BY DEFAULT, so `content[0]` is a THINKING block and
 // `content[0].text` is undefined — every one of these calls would have started
 // returning empty with no error raised. Find the block by TYPE, never by index.
+// First balanced {...} in a model reply, string-aware. JSON.parse of the whole
+// text fails on any trailing commentary; a greedy /\{[\s\S]*\}/ fails when the
+// commentary itself contains a brace.
+function _firstJsonObject(txt) {
+  try { return JSON.parse(txt); } catch { /* fall through */ }
+  const start = txt.indexOf('{');
+  if (start < 0) throw new Error('no JSON object in model reply');
+  let depth = 0, inStr = false, esc = false;
+  for (let i = start; i < txt.length; i++) {
+    const ch = txt[i];
+    if (inStr) { if (esc) esc = false; else if (ch === '\\') esc = true; else if (ch === '"') inStr = false; continue; }
+    if (ch === '"') inStr = true;
+    else if (ch === '{') depth++;
+    else if (ch === '}') { depth--; if (depth === 0) return JSON.parse(txt.slice(start, i + 1)); }
+  }
+  throw new Error('unbalanced JSON object in model reply');
+}
 function _antText(data) {
   const blocks = Array.isArray(data?.content) ? data.content : [];
   for (const b of blocks) if (b?.type === 'text' && typeof b.text === 'string') return b.text;
@@ -3750,19 +3767,34 @@ async function _buildMorningBrief() {
   // "our WTI print is near $91" while the header beside it read $97.09, and then built
   // an inflation-expectations story on the stale one. Two readings of the same barrel
   // must be compared before either is narrated.
+  // Same barrel, SAME DAY. This used to compare FRED's last print to OANDA's latest
+  // close and, whenever FRED was a few days behind a fast oil move, called the lag a
+  // "DATA CONFLICT" -- which fed the board trade gate as a blocker, which returned
+  // NO STANDOUT PAIR every day the tape was moving (three days running, 2026-09-12
+  // to 09-14, with FRED six days behind a +7% oil move). A source that is BEHIND is
+  // a lag to state; only a disagreement on a shared date is a conflict.
   let conflictLine = '';
   try {
-    const fredWti = g('wti');
-    const bars = await _btFetchD1('WTICO_USD', 3).catch(() => null);
+    const fredWti = g('wti'), fredDate = fred?.wti?.asOf ?? null;
+    const bars = await _btFetchD1('WTICO_USD', 15).catch(() => null);   // session-dated (fetchD1 shifts evening opens)
     const liveWti = bars?.at(-1)?.close ?? null;
-    if (Number.isFinite(fredWti) && Number.isFinite(liveWti) && fredWti > 0) {
-      const gap = (liveWti - fredWti) / fredWti * 100;
+    const sameDay = fredDate ? bars?.find(b => b.date === fredDate)?.close ?? null : null;
+    if (Number.isFinite(fredWti) && fredWti > 0 && Number.isFinite(sameDay)) {
+      const gap = (sameDay - fredWti) / fredWti * 100;
       if (Math.abs(gap) >= 4) {
-        conflictLine = `DATA CONFLICT — WTI: FRED DCOILWTICO reads ${fredWti.toFixed(2)}${fred?.wti?.asOf ? ` (as of ${fred.wti.asOf})` : ''} while the live OANDA daily close reads ${liveWti.toFixed(2)} — a ${gap.toFixed(1)}% gap. `
-          + `The live print is the current one; the FRED series settles with a lag. Oil is load-bearing for any inflation-expectations story and for the commodity currencies, so LEAD with this conflict and treat oil-driven reads as unsupported until it resolves. Do NOT quote the FRED number as "our print" when a fresher one disagrees.`;
-      } else if (Number.isFinite(liveWti)) {
-        conflictLine = `WTI cross-check: FRED ${fredWti.toFixed(2)} vs live ${liveWti.toFixed(2)} — sources agree.`;
+        conflictLine = `DATA CONFLICT — WTI: FRED DCOILWTICO reads ${fredWti.toFixed(2)} for ${fredDate} while OANDA's close for the same session reads ${sameDay.toFixed(2)} — a ${gap.toFixed(1)}% gap on a shared date. `
+          + `Oil is load-bearing for any inflation-expectations story and for the commodity currencies, so LEAD with this conflict and treat oil-driven reads as unsupported until it resolves.`;
+      } else {
+        const days = Math.round((Date.now() - Date.parse(fredDate + 'T00:00:00Z')) / 864e5);
+        const moved = Number.isFinite(liveWti) ? (liveWti - fredWti) / fredWti * 100 : null;
+        conflictLine = `WTI cross-check: FRED ${fredWti.toFixed(2)} and OANDA ${sameDay.toFixed(2)} agree for ${fredDate}.`
+          + (moved != null && days >= 2 && Math.abs(moved) >= 4
+              ? ` FRED is ${days} days BEHIND, not wrong: oil has since moved ${moved > 0 ? '+' : ''}${moved.toFixed(1)}% to ${liveWti.toFixed(2)}. Use the live number for anything about oil today; FRED-derived reads are ${days} days stale, not contradicted.`
+              : Number.isFinite(liveWti) ? ` Live ${liveWti.toFixed(2)}.` : '');
       }
+    } else if (Number.isFinite(fredWti) && fredWti > 0 && Number.isFinite(liveWti)) {
+      const gap = (liveWti - fredWti) / fredWti * 100;
+      conflictLine = `WTI cross-check: no OANDA close for FRED's date (${fredDate ?? '?'}), so only live ${liveWti.toFixed(2)} vs FRED ${fredWti.toFixed(2)} (${gap > 0 ? '+' : ''}${gap.toFixed(1)}%) is available — unverified, not a conflict.`;
     }
   } catch { /* omitted when the live leg is unavailable */ }
 
@@ -3985,7 +4017,10 @@ Respond with ONLY valid JSON, no markdown:
   const antData = await antRes.json();
   if (antData.stop_reason === 'max_tokens') throw new Error('response truncated — try again');
   const clean = (_antText(antData)).replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
-  const analysis = JSON.parse(clean);
+  // The model occasionally appends a sentence after the closing brace ("Unexpected
+  // non-whitespace character after JSON at position 3840"), which threw the whole
+  // brief away. Take the first balanced object; the trailing text is never wanted.
+  const analysis = _firstJsonObject(clean);
   const payload = { analysis, generatedAt: new Date().toISOString(), headlineCount: headlines.length, session: fc?.session_label ?? null };
   await kv.put(_MORNING_BRIEF_KV, JSON.stringify(payload)).catch(() => {});
   return payload;

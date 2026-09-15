@@ -50,11 +50,15 @@ const _r2 = x => Math.round(x * 100) / 100;
 // Instrument → the key its fitted params are stored under. Falls back to the
 // asset-class default when an instrument has no local price history to fit on
 // (DE30 / UK100 / US2000 today — see LADDER_PARAMS.coverage).
-export function paramsFor(instrument, assetClass = 'fx') {
+// `ladderParams` is an OPTIONAL override (defaults to the live LADDER_PARAMS
+// import) — the one seam a parallel calibration (e.g. Vote Atlas v2's
+// forecastLadderParamsV2.js) needs to swap in, without touching this
+// function's behaviour for any existing caller that doesn't pass it.
+export function paramsFor(instrument, assetClass = 'fx', ladderParams = LADDER_PARAMS) {
   const key = String(instrument || '').toUpperCase();
-  const pair = LADDER_PARAMS.pairs?.[key];
+  const pair = ladderParams.pairs?.[key];
   if (pair) return { ...pair, source: 'fitted', key };
-  const cls = LADDER_PARAMS.classDefaults?.[assetClass] ?? LADDER_PARAMS.classDefaults?.fx;
+  const cls = ladderParams.classDefaults?.[assetClass] ?? ladderParams.classDefaults?.fx;
   return { ...cls, source: 'class-default', key: assetClass };
 }
 
@@ -77,15 +81,18 @@ export function eventMultiplier(params, tag = 'none') {
  *   eventTag     'FOMC' | 'NFP' | 'CPI' | 'other' | 'none'
  *   horizon      'daily' | 'weekly' | 'monthly'
  *   open         optional price; when given, each rung also carries ± levels
+ *   ladderParams optional — a params object shaped like LADDER_PARAMS, for a
+ *                parallel calibration (e.g. Vote Atlas v2). Defaults to the
+ *                live import, so every existing caller is unaffected.
  * @returns {object} ladder — percentages of price, plus `levels` when `open` is set
  */
 export function buildLadder(sigmaDaily, opts = {}) {
   const {
     instrument = '', assetClass = 'fx', eventTag = 'none',
-    horizon = 'daily', open = null,
+    horizon = 'daily', open = null, ladderParams = LADDER_PARAMS,
   } = opts;
 
-  const params = paramsFor(instrument, assetClass);
+  const params = paramsFor(instrument, assetClass, ladderParams);
   const evMult = eventMultiplier(params, eventTag);
   // Per-horizon fitted widths where they exist, else the daily widths with the
   // σ scaled by √time. Flagged either way so a caller can tell them apart —

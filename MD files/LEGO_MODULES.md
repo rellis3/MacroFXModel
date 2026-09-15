@@ -7668,3 +7668,153 @@ multiplier scales correctly, null on insufficient bars) — all passing, plus th
 
 **Status: ✅ shadow-tracking forward on live data (Railway) · purely additive, kill-
 switched, non-breaking · no export/visual surface yet · promotion decision deferred.**
+
+### 1bb. HAR-RV (log) registered into forge's ladder calibration pipeline (2026-09-15)
+
+**Files:** `forge/vol.py` (`har_rv_log_sigma`), `js/forecastSigma.js` (`harRvLogSigma`,
+registered in `SIGMA_ESTIMATORS`). Scoping step for a proposed Vote Atlas v2: rebuild
+the fitted ladder (`js/forecastLadder.js`/`js/forecastLadderParams.js`) against HAR-RV
+log form instead of Yang-Zhang, calibrated independently (own fitted widths) rather than
+reusing v1's YZ-fit multipliers — §1ay/§1az registered the estimator into the JS
+comparison tool and the offline archive study; this is the same estimator registered
+into the actual production calibration pipeline (`forge/vol.py`'s `ESTIMATORS`,
+`design_vol`/`walk_forward_vol`) that produces `js/forecastLadderParams.js` itself.
+
+`har_rv_log_sigma` is a fresh Python implementation (not ported from the JS version —
+this file's own convention, same relationship `yang_zhang_sigma` has to
+`js/forecastSigma.js`), cross-checked against the new `harRvLogSigma` to 1e-10 via the
+existing `forecastSigma.fixture.json` parity contract (`forecastLadder.test.mjs`'s
+existing loop over `SIGMA_ESTIMATORS` covers it automatically — no per-estimator
+special-casing needed).
+
+**Two real bugs found getting parity, not just asserted.** (1) The initial port used
+`np.median`; JS's `_rvScale` takes the sorted array's `n >> 1` element (the "upper"
+median for even n, not averaged) — agreement was only ~4e-5 relative until matched
+exactly, vs 1e-10 everywhere else. (2) `forge/vol.py`'s own prefix-invariance test
+(`test_all_estimators_are_prefix_invariant`) caught a genuine, low-materiality (~1e-4
+absolute annualized-%) lookahead leak: scaling by `1/median(realized variance)` over
+the WHOLE series doesn't change predictions in general (OLS is invariant to a uniform
+scale constant applied to target and regressors alike), but it DOES change which
+near-floor days get clamped by the numerical floor, using data that hasn't happened
+yet. Fixed by deriving the scale from a fixed early window (first ~250 rows) instead of
+the whole series — same conditioning benefit, exactly prefix-invariant. This same leak
+exists in the already-shipped `js/volForecastBench.js` `harRvLogPred` (§1ay/§1az,
+running live as a shadow estimate) at a magnitude far below the 7-35% OOS QLIKE effects
+already measured there — flagged, not backported.
+
+**Walk-forward calibration run: HAR-RV(log) wins almost universally.** `forge/run_vol.py`
+across all 32 instruments (10y, 6 folds, all 7 estimators × 2 width sources competing by
+train-selected/OOS-scored HL/OC pinball loss — the actual range-ladder calibration
+objective, not QLIKE on raw variance): **har_rv_log won 182/192 fold-selections (94.8%),
+and every single instrument's final/production fold picked it** — including gold and all
+6 equity indices, not just FX. Only 4 pairs (USDCAD, AUDCAD, AUDUSD, GBPCAD) show any
+early-fold preference for yz_10/naive, and even those resolve to har_rv_log by their most-
+trained fold. Exported to `js/forecastLadderParamsV2.js` via `export_ladder_params.py`
+(`forge/out_vol_harlog/vol_report.json` — a NEW output directory, never `forge/out_vol_v2/`,
+which already held the report backing the CURRENTLY-SHIPPED `forecastLadderParams.js`;
+the first run here wrote there by accident via `run_vol.py`'s own default `--out`, caught
+via `git status` showing the file as MODIFIED rather than new before committing, and
+restored via `git checkout` — a near-miss worth flagging as a landmine for any future run
+of this script).
+
+**Not wired into anything live.** `js/forecastLadderParamsV2.js` isn't imported anywhere
+yet — this is only the calibration-registration step. See §1bc for what it revealed once
+actually run through the book.
+
+**Status: ✅ registered · walk-forward calibration confirms HAR-RV(log) wins the range-
+calibration objective almost universally · one real no-lookahead bug found and fixed ·
+NOT wired into any live path.**
+
+### 1bc. Vote Atlas v2 (HAR-RV log book), built and tested against v1: NULL
+
+**Files:** `js/forecastLadder.js`/`js/levelAtlasEngine.js` (`ladderParams` override, additive,
+defaults preserve v1 behaviour exactly — 32/32 existing tests still pass),
+`js/levelAtlasRoutes.js` (`?ladder=v2` on `/vote-trades/:instrument` and `/vote-portfolio`,
+reading a separate `level-atlas-v2` R2 prefix / local dir — never v1's), `level-atlas-
+vote-portfolio-v2.html` (clone of v1's page, clearly banner-labelled, pointing at the v2
+data), `scripts/build_level_atlas_vote_trades_v2.mjs`, `scripts/compare_vote_atlas_v1_v2.mjs`,
+`scripts/compare_vote_atlas_hybrid.mjs`. §1bb's calibration win, actually run through the
+book, to answer the real question: does a better-calibrated range estimator produce a
+better TRADING book (`voteDecision`/`priceBarrierTrade`), not just a better range forecast.
+
+**A real bug caught before any number could be trusted.** `harRvLogSigma`'s array output
+is shaped for `forge/vol.py`'s compute-once-then-shift pipeline (§1bb) — its last element
+is unconditionally NaN by design. `js/forecastSigma.js`'s `forecastSigma(bars, estimator)`
+(what `atlasWalk`/the live forecaster actually call, once per day, on a TRUNCATED array)
+reads that same last element directly — a different, incompatible calling convention for
+a self-forecasting estimator. Result: `har_rv_log` produced ZERO touches on every
+instrument, caught by the v2 build script's own "insufficient OOS touches" guard, not
+silently. Fixed by special-casing `har_rv_log` in `forecastSigma()` via
+`harRvLogForecastNext` (already built for exactly "forecast one bar past the end, fit on
+everything given"). Regression-tested (`forecastSigma.test.mjs`) so this exact class of
+bug — an estimator that works when read one way and silently returns nothing when read
+the other way — can't come back unnoticed.
+
+**A second near-miss: v1's own local trade cache was stale.** The git-committed
+`analysis/output/level-atlas-vote-trades/*.json` (dev-sandbox fallback for when R2 has
+nothing newer) were generated 2026-08-27 — before two real fixes to `buildBarrierTrades`
+landed 2026-09-11 (the outcome:'neither' exclusion, a book-construction lookahead leak;
+`VOTE_TRADES_SCHEMA` bumped to 4 to guard exactly this). Comparing fresh v2 data against
+that would have compared v2 against a known-buggy v1. Regenerated all 26 pairs of v1 fresh
+with current code before trusting anything. Neither script actually stamped a `schema`
+field into its output at all (a real gap in `scripts/build_level_atlas_vote_trades.mjs`,
+inherited into the v2 copy) — fixed in both.
+
+**Result: v2 loses at the portfolio level.** All 26 pairs, margin≥3, max concurrent 1,
+equal-weight NAV sizing (both books' shared vanilla baseline, no extra levers):
+
+| metric | v1 (YZ) | v2 (HAR-log) |
+|---|---|---|
+| Sharpe | 0.42 | 0.24 |
+| CAGR | 0.55% | 0.32% |
+| Calmar | 0.14 | 0.10 |
+| Sortino | 0.44 | 0.24 |
+| maxDD | −3.95% | **−3.15%** (v2 better) |
+| winRate | 49.3% | **51.3%** (v2 better) |
+
+v1's combined Sharpe is nearly double v2's. Per-pair standalone it is close and genuinely
+mixed (v1 wins 12/26, v2 wins 14/26, no instrument shows a large one-sided edge) — the
+combined-portfolio number is what the correlation/diversification structure actually
+produces, and it clearly favours v1. Confirms, with a real book rather than a calibration
+metric, the caveat repeated throughout §1ay-§1bb: a better-calibrated range forecast does
+not automatically make a better trading book — the vote-decision P&L depends on where
+price actually reverses relative to specific levels, a different question from HL/OC
+pinball loss.
+
+**The hybrid idea, tested properly and also NULL.** Obvious next question: pick whichever
+estimator wins per pair. Tested honestly, not by cherry-picking off the OOS table above
+(picking winners from data already inspected is p-hacking, not a test) — the stored trade
+files only ever persist OOS trades (0 IS trades in any file), so the OOS window itself was
+split at ONE global cutoff date into a SELECT half (pick each pair's better estimator by
+Sharpe here) and a TEST half (frozen picks scored here, never touched during selection).
+At the 60th-percentile cutoff the hybrid looked like a clear win (Sharpe 0.65 vs pure
+v1 0.39 / pure v2 0.36) — but re-run at 3 other reasonable cutoffs (40th/50th/70th
+percentile) it did NOT hold up:
+
+| split (test days) | pure v1 | pure v2 | hybrid |
+|---|---|---|---|
+| 40th (639d) | −0.23 | **−0.17** | −0.20 |
+| 50th (531d) | 0.11 | 0.09 | **0.20** |
+| 60th (426d) | 0.39 | 0.36 | **0.65** |
+| 70th (330d) | −0.15 | **0.57** | 0.32 |
+
+At 2 of 4 splits the hybrid lands BETWEEN the two pure strategies rather than beating
+both — diluted toward whichever happened to do better that period, not genuinely
+capturing "the best of each." A real, exploitable per-pair-selection effect would beat or
+match the better pure strategy consistently; this doesn't. That inconsistency is itself
+the evidence against a real effect, the same read Phase 17 gave a jump-conditioned tail
+signal that also flipped sign across classes.
+
+**What this closes.** Two independent, real questions about HAR-RV(log) as a Vote Atlas
+calibration — does it make a better book, does a per-pair hybrid help — both tested with
+a genuine book rather than a proxy metric, both null. Nothing is wired into any live path;
+`level-atlas-vote-portfolio.html`/v1's ladder/the live bot are completely untouched
+throughout. The comparison tooling (`compare_vote_atlas_v1_v2.mjs`,
+`compare_vote_atlas_hybrid.mjs`) and the v2 route/page are kept — reusable if a future
+session wants to re-test a different estimator against v1 the same honest way, without
+re-deriving the "run the real route, not a reimplementation" or "select on SELECT, freeze,
+score on TEST" methodology from scratch.
+
+**Status: ✅ tested with a real book, not a proxy metric · v2 loses the portfolio
+comparison · the per-pair hybrid does not survive a robustness check across split points ·
+v1 stays the incumbent · nothing wired live.**

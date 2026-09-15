@@ -17,6 +17,8 @@
  * tests were written to catch.
  */
 
+import { realizedVarSeries, _harFitCore, VAR_FLOOR_FRAC, harRvLogForecastNext } from './volForecastBench.js';
+
 const SQRT252 = Math.sqrt(252);
 
 // Rolling sample variance (ddof=1) — matches pandas .rolling(n).var().
@@ -111,6 +113,86 @@ export function naiveExpandingSigma(bars, minPeriods = 60) {
 }
 
 /**
+ * HAR-RV, LOG form, on Garman-Klass daily realized variance — the estimator
+ * validated in `volatilityExhaustion/har_cj_forecast.py` (Phase 14/15) and
+ * registered into the bench as `harRvLogPred`/`harRvLogForecastNext`
+ * (`js/volForecastBench.js`, LEGO_MODULES.md §1ay/§1az). Reuses that file's
+ * `realizedVarSeries` and `_harFitCore` (the unclamped walk-forward HAR core)
+ * directly — no second implementation of the OLS machinery, per the Lego
+ * Principle. Mirrors `forge/vol.py`'s `har_rv_log_sigma` (LEGO_MODULES.md
+ * §1bb) exactly, including the fixed-window scale below — see that
+ * function's docstring for the full causality argument.
+ *
+ * UNLIKE yangZhangSigma/ewmaSigma/naiveExpandingSigma (which measure bar i's
+ * OWN volatility using bar i's own OHLC, and only become a forecast via this
+ * module's ONE explicit later step, `asOfYesterday`), HAR-RV is inherently a
+ * walk-forward FORECAST already: `_harFitCore`'s value at index i is built
+ * purely from lagged history STRICTLY BEFORE i. To still go through the same
+ * uniform `asOfYesterday` shift every other entry in `SIGMA_ESTIMATORS` goes
+ * through — never special-cased, so a caller can treat every estimator the
+ * same way — this function pre-shifts its own output one step EARLY: index i
+ * holds the forecast for bar i+1, not bar i. `asOfYesterday`'s later
+ * right-shift (`out[t] = in[t-1]`) then lands the value back on the bar it
+ * actually forecasts, un-double-shifted. Getting this backwards would
+ * silently serve a forecast one day stale — verified by a dedicated
+ * round-trip test in `forecastSigma.test.mjs`, not just asserted here.
+ *
+ * The smearing correction is a CAUSAL EXPANDING running mean (only residuals
+ * strictly before the bar being predicted), not the whole-sample constant an
+ * earlier draft of `harRvLogPred` used before its own no-lookahead test
+ * caught the leak (LEGO_MODULES.md §1ay) — same fix, applied here from the
+ * start rather than found the same way twice.
+ *
+ * SCALE IS FROM A FIXED EARLY WINDOW, not `_rvScale`'s whole-series median
+ * (deliberately NOT reused here — see below). OLS with an intercept is
+ * provably invariant to a uniform additive shift applied to target and every
+ * regressor alike, and scaling by a constant before the log is exactly that
+ * (log(rv·S) = log(rv) + log(S), the same log(S) on every observation) — so
+ * the constant's VALUE never moves the fitted predictions, only the solve's
+ * conditioning. But `forge/vol.py`'s prefix-invariance test caught that this
+ * breaks down near the FLOOR: floor-clamping is a nonlinear max(), so a scale
+ * depending on the WHOLE series changes which near-zero-range days get
+ * floored (and to what) using data that hasn't happened yet at the day being
+ * predicted — a genuine, if small (~1e-4 absolute annualized-%), lookahead
+ * leak. `_rvScale` is correct and unchanged for `harRvLogPred`'s own use
+ * (a one-shot backtest score, not a per-day causal series); this function
+ * needs day-by-day causal purity, so it derives its own scale from a FIXED
+ * early window instead — invariant to truncation anywhere after that window.
+ */
+const HAR_SIGMA_SCALE_WINDOW = 250;   // ~1 trading year
+
+export function harRvLogSigma(bars) {
+  const n = bars.length;
+  const rv = realizedVarSeries(bars, 'gk');
+  const early = rv.slice(0, Math.min(HAR_SIGMA_SCALE_WINDOW, n));
+  const pos = early.filter(v => Number.isFinite(v) && v > 0).sort((a, b) => a - b);
+  const S = pos.length ? 1 / pos[pos.length >> 1] : 1e4;
+  const FLOOR = (1 / S) * VAR_FLOOR_FRAC;
+  const logScaled = new Float64Array(n);
+  for (let i = 0; i < n; i++) logScaled[i] = Math.log(Math.max(rv[i], FLOOR) * S);
+
+  const fitted = _harFitCore(logScaled);               // unclamped — negative is normal
+
+  const varScaled = new Float64Array(n).fill(NaN);
+  let sresid = 0, ns = 0;
+  for (let i = 0; i < n; i++) {
+    if (Number.isFinite(fitted[i])) {
+      const smear = ns ? sresid / ns : 1;               // residuals from i' < i only
+      varScaled[i] = Math.max(Math.exp(fitted[i]) * smear, FLOOR);
+      sresid += Math.exp(logScaled[i] - fitted[i]);
+      ns++;
+    }
+  }
+
+  const out = new Array(n).fill(NaN);
+  for (let i = 0; i < n - 1; i++) {                     // shift LEFT by one — see docstring
+    const dailyVar = varScaled[i + 1] / S;
+    if (Number.isFinite(dailyVar)) out[i] = Math.sqrt(Math.max(dailyVar, 0)) * SQRT252 * 100;
+  }
+  return out;
+}
+
+/**
  * Turn an as-of-close series into a forecast-ready one: the value at bar i is what
  * was knowable BEFORE bar i traded. The single place this shift happens.
  */
@@ -129,6 +211,7 @@ export const SIGMA_ESTIMATORS = {
   yz_20:    bars => yangZhangSigma(bars, 20),
   yz_30:    bars => yangZhangSigma(bars, 30),
   naive:    bars => naiveExpandingSigma(bars),
+  har_rv_log: bars => harRvLogSigma(bars),
 };
 
 /**
@@ -137,8 +220,38 @@ export const SIGMA_ESTIMATORS = {
  * produced a finite value.
  */
 export function forecastSigma(bars, estimator = 'yz_30') {
+  if (!Array.isArray(bars) || bars.length < 2) return null;
+  // har_rv_log is a genuinely different kind of estimator from every other
+  // entry in SIGMA_ESTIMATORS, and the generic path below silently breaks for
+  // it. YZ/EWMA/naive measure bar i's OWN volatility using bar i's own OHLC —
+  // a CONTEMPORANEOUS reading — and this function's generic convention
+  // ("read the estimator's value at the LAST bar of whatever `bars` was
+  // truncated to, treat it as the forecast for the bar after") is really a
+  // naive persistence assumption: yesterday's contemporaneous measurement IS
+  // today's forecast. That's index-shift-symmetric, so it works whether you
+  // truncate-then-read-last (this function) or compute-once-then-shift
+  // (forge/vol.py's build_forecast_frame/as_of_yesterday, harRvLogSigma's own
+  // contract for THAT pipeline).
+  // HAR-RV is not contemporaneous — it IS already a forecast, built from lags
+  // strictly before the day it's for. harRvLogSigma's array form is shaped to
+  // survive forge/vol.py's compute-once-then-shift pipeline (LEGO_MODULES.md
+  // §1bb) — its last element is deliberately, unconditionally NaN so that
+  // shift lands correctly. Reading that same last element directly here
+  // (this function's generic path) returns NaN for every call, no matter how
+  // much history precedes it: `atlasWalk` fed `har_rv_log` through this path
+  // produced ZERO touches on every pair, caught before it shipped by the
+  // v2 backtest script's own "insufficient OOS touches" guard rather than a
+  // silent bad result. The correct "forecast for the bar after `bars`" is
+  // exactly what harRvLogForecastNext already computes (volForecastBench.js
+  // — fits on everything in `bars`, forecasts the ONE next bar), so that's
+  // used directly instead of going through the generic fn(bars)[last] path.
+  if (estimator === 'har_rv_log') {
+    const rv = realizedVarSeries(bars, 'gk');
+    const nextVar = harRvLogForecastNext(rv);
+    return Number.isFinite(nextVar) && nextVar > 0 ? Math.sqrt(nextVar) : null;
+  }
   const fn = SIGMA_ESTIMATORS[estimator];
-  if (!fn || !Array.isArray(bars) || bars.length < 2) return null;
+  if (!fn) return null;
   const series = fn(bars);
   const last = series[series.length - 1];       // as-of-close of the LAST bar =
   if (!Number.isFinite(last)) return null;      // what is knowable for the next one

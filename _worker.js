@@ -1930,6 +1930,10 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
           { name:'SWISS FRANC - CHICAGO MERCANTILE EXCHANGE',          sym:'CHF',   label:'CHF',         group:'fx',       flip:true  },
           { name:'NZ DOLLAR - CHICAGO MERCANTILE EXCHANGE',             alt:['NEW ZEALAND DOLLAR - CHICAGO MERCANTILE EXCHANGE'], sym:'NZD', label:'NZD', group:'fx', flip:false },
           { name:'MEXICAN PESO - CHICAGO MERCANTILE EXCHANGE',         sym:'MXN',   label:'MXN',         group:'fx',       flip:false },
+          // The ICE US Dollar Index future (CFTC code 098662): the DIRECT read on dollar
+          // positioning. Until this line, USD was derived on today.html as the mirror of
+          // the other majors' CME futures. Quoted as dollar-per-basket, so no flip.
+          { name:'USD INDEX - ICE FUTURES U.S.',                      alt:['U.S. DOLLAR INDEX - ICE FUTURES U.S.'], sym:'USD', label:'USD INDEX (DXY)', group:'fx', flip:false },
           { name:'NASDAQ MINI - CHICAGO MERCANTILE EXCHANGE',          alt:['NASDAQ-100 MINI - CHICAGO MERCANTILE EXCHANGE','E-MINI NASDAQ-100 - CHICAGO MERCANTILE EXCHANGE'], sym:'NQ', label:'NQ', group:'equities', flip:false },
           { name:'E-MINI S&P 500 - CHICAGO MERCANTILE EXCHANGE',       sym:'ES',    label:'ES (S&P500)', group:'equities', flip:false },
           { name:'DJIA x $5 - CHICAGO BOARD OF TRADE',                 sym:'YM',    label:'DOW',         group:'equities', flip:false },
