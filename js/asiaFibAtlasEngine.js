@@ -639,6 +639,20 @@ export function asiaFibAtlasWalk(packed, { instrument, assetClass = 'fx', rearmF
             ordinal++;
             armed = false;
 
+            // clearancePips (2026-09-15, FIB_ATLAS_BACKTEST_VS_LIVE.md item #2
+            // "touch != fill", quantified) — how far BEYOND the rung this
+            // touch's own bar's wick (px = bar.high/low, already the reach()
+            // check's own value) actually reached, in pips. Purely additive,
+            // never changes outcome/win/pnl. Median across the full live
+            // universe measured at under 1 pip (analysis/fib_atlas_limit_
+            // order_clearance_test.mjs) -- a touch this thin is plausibly
+            // just this M1 source's own bid/ask noise, not a real, broadly
+            // reachable price on any given broker's feed, live poll or
+            // resting limit order alike. Lets applyClearanceFilter (Fib-
+            // Atlas-owned, asiaFibAtlasVoteReview.js) gate on it downstream,
+            // same pattern as gapMin/asiaConfPips.
+            const clearancePips = (isAbove ? (px - here) : (here - px)) / pip;
+
             // levelFlipState: has price already CLOSED beyond this rung
             // (body, not wick) earlier in this SAME window, before this
             // touch? A fresh touch (reversal candidate) vs a retest of an
@@ -810,7 +824,7 @@ export function asiaFibAtlasWalk(packed, { instrument, assetClass = 'fx', rearmF
               otherSideTouchedBefore: null,   // filled in a post-pass below (needs both sides' first-touch times)
               price: +here.toFixed(6), pip,
               dayOpen, asiaHigh: asia.high, asiaLow: asia.low, asiaRange: asia.range,
-              time: bar.time, resolveTime, concurrencyResolveTime, outcome, resolveIdx, sameBarAmbiguous,
+              time: bar.time, resolveTime, concurrencyResolveTime, outcome, resolveIdx, sameBarAmbiguous, clearancePips: +clearancePips.toFixed(4),
               sessionClose: sessionCloseBar.close, sessionCloseTime: sessionCloseBar.time,
               minsToResolve: minsToResolve != null ? +minsToResolve.toFixed(0) : null,
               pullbackFrac: pullbackFrac != null ? +pullbackFrac.toFixed(3) : null,

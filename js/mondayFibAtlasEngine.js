@@ -160,6 +160,12 @@ export function mondayFibAtlasWalk(packed, { instrument, assetClass = 'fx', rear
             if (!reach(px, here)) continue;
             armed = false;
 
+            // clearancePips (2026-09-15) — mirrors asiaFibAtlasWalk's own
+            // field exactly, see that engine's own comment for the full
+            // reasoning (FIB_ATLAS_BACKTEST_VS_LIVE.md item #2, "touch !=
+            // fill", quantified). Purely additive.
+            const clearancePips = (isAbove ? (px - here) : (here - px)) / pip;
+
             // ── Outcome: race the two real neighbours from this touch —
             // IDENTICAL mechanics to asiaFibAtlasWalk's own resolution loop.
             let outcome = 'neither', deepest = here, resolveTime = null, extreme = here;
@@ -223,7 +229,7 @@ export function mondayFibAtlasWalk(packed, { instrument, assetClass = 'fx', rear
               instrument: sym, assetClass, date: barDate, mondayDate: mon.date,
               side, level, rearmFrac,
               price: +here.toFixed(6), pip,
-              time: bar.time, resolveTime, concurrencyResolveTime, outcome,
+              time: bar.time, resolveTime, concurrencyResolveTime, outcome, clearancePips: +clearancePips.toFixed(4),
               sessionClose: sessionCloseBar.close, sessionCloseTime: sessionCloseBar.time,
               minsToResolve: minsToResolve != null ? +minsToResolve.toFixed(0) : null,
               pullbackFrac: pullbackFrac != null ? +pullbackFrac.toFixed(3) : null,

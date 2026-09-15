@@ -116,6 +116,7 @@
     <label title="Tighten fade trades' stop to 0.9x their native distance — validated on held-out data, follow trades untouched (analysis/fib_atlas_sl_tightening_backtest.mjs). Position size is held at what the ORIGINAL (untightened) stop would size, not resized off the new tighter stop — same Sharpe either way (a uniform per-trade rescale can't change it), but this keeps avg win matching the untightened baseline exactly and avg loss shrinking in direct proportion to the fraction, instead of a bigger bet inflating both legs and distorting maxDD/CAGR.">Tighten fade stop (0.9×) <input type="checkbox" id="stopTightenChk"></label>
     <label title="Skip trades whose gross target doesn't clear the pair's own round-trip cost by the chosen multiple — fixes the flat-cost-subtraction bias that shrinks small-target winners disproportionately. OOS-validated (analysis/fib_atlas_cost_efficiency_filter.mjs): Asia ratio>=3x took OOS Sharpe 6.66->13.64, maxDD -39.24%->-14.96%; Monday ratio>=4x took OOS maxDD -7.1%->-5.44% (Sharpe roughly flat, 10.54->10.51). Threshold auto-switches with the ladder toggle above.">Cost-efficiency filter <input type="checkbox" id="costEfficiencyChk"></label>
     <label title="Whiplash gap filter (2026-09-04) — only take a touch that fired within this many minutes of THIS EXACT rung's own last touch this session/week. Owner's own question after reviewing live paper-trading: does a rung getting hit repeatedly in quick succession mean anything? Finding was the opposite of the naive worry: the FASTEST repeats win far more than slow 'clean' retests (31/31 pairs agree on direction, analysis/fib_atlas_whiplash_analysis.mjs + fib_atlas_whiplash_gap_deepdive.mjs). Cutoff swept per ladder (analysis/fib_atlas_gap_filter_backtest.mjs, LEGO_MODULES.md): Asia's own optimum is the tightest tested, 30min (16/16 live-universe pairs improve, pooled Sharpe 32.02->39.83, maxDD -1.45%->-0.62%); Monday's is far wider, 180min, since its ladder trades far less densely (16/16 pairs improve, Sharpe 18.22->22.05, maxDD -3.10%->-1.01%). Already shipped live-side (asiaFibAtlasRoutes.js/mondayFibAtlasRoutes.js's zonesFromLiveAndBook) — this exposes the SAME gate here so the interactive backtest can reproduce it. Threshold auto-switches with the ladder toggle above.">Whiplash gap filter <input type="checkbox" id="gapFilterChk"></label>
+    <label title="Minimum clearance filter (2026-09-15) — drops any touch whose own triggering M1 bar cleared the rung by less than this many pips, instead of counting ANY reach (even a hairline wick) as a real, fillable touch. Direct owner ask after a live-vs-backtest reconciliation traced two 'phantom' backtest wins to touches that cleared their rung by 0.2-0.3 pips — thinner than live tick polling OR a resting limit order could realistically be expected to catch. Measured separately across the full live universe (analysis/fib_atlas_limit_order_clearance_test.mjs): median clearance is under 1 pip, and Sharpe/PF/CAGR collapse sharply as the threshold tightens even though win rate barely moves — a large share of the unfiltered book's headline numbers rides on touches unlikely to be reliably achievable by ANY execution method, live poll or resting limit order alike. NOT yet part of 'Select recommended' — exposed here as an honest-numbers lever, not yet swept/OOS-validated to a single optimum the way every other lever on this page was before being defaulted on.">Min clearance (pips) <input type="checkbox" id="clearanceFilterChk"> <input type="number" id="clearancePipsInput" value="1" step="0.5" min="0" style="width:55px" disabled></label>
     <label title="A touch that hits neither the inner nor outer barrier within its own window (same-day for Asia, ~8 days for Monday) is currently DROPPED entirely — not counted as a win or a loss. This lets it keep searching further (14 more days Asia, 21 more Monday) for a real resolution: ~99.8%+ eventually resolve given that time, with a win rate close to the already-counted trades' own (not the near-coin-flip you'd get marking to an arbitrary close price instead). Concurrency occupancy is capped at the next session's build time regardless of the real resolution time (6am next day for Asia, next Monday's own range for Monday), so a still-open extended trade can never block a fresh signal. Real finding (LEGO_MODULES.md, 2026-08-31): per-trade edge is essentially unchanged either way — what changes is trade count, since the vote book rebuilt from the fuller data is more selective. Priced with full parity to the baseline pipeline (giveback + chandelier trailing both apply).">Let ride (extended resolution) <input type="checkbox" id="letRideChk"></label>
     <label title="Instead of closing a WINNING trade (either side — fade or follow) at its fixed target the instant price touches it, trail a stop that only ratchets favorably (floored at the original target, so the worst case is identical to today's exit) — lets a genuine move run further. Losses on either side are completely untouched.&#10;&#10;Giveback: gives back a fixed 2% of the excursion made past target — OOS-validated (analysis/fib_atlas_trailing_continuation_backtest.mjs): follow alone Sharpe 16.15->16.73; fade alone Sharpe 15.38->16.33, maxDD -4.43%->-2.65%; both sides together Sharpe 15.38->16.05, maxDD -4.43%->-2.64%. Exits almost immediately on any pullback (median hold-time extension ~0).&#10;&#10;Chandelier (2026-08-31): trails a multiple of this pair's own rolling ATR instead of a fixed fraction, so it survives normal noise and actually rides continuations — a materially BIGGER OOS win (analysis/fib_atlas_chandelier_exit_backtest.mjs): Asia (mult=3) Sharpe 15.33->19.47, maxDD -4.51%->-2.43%; Monday (mult=1.5) Sharpe 11.39->12.85, maxDD -3.11%->-2.57%. Avg loss unaffected in both modes (no leverage-in-disguise — unlike the SL-tightening levers, neither ever touches stopPips).">Trailing/continuation exit <select id="continuationExitSel">
       <option value="off" selected>Off</option>
@@ -507,6 +508,8 @@ const throttleMultInput = document.getElementById('throttleMultInput');
 const stopTightenChk = document.getElementById('stopTightenChk');
 const costEfficiencyChk = document.getElementById('costEfficiencyChk');
 const gapFilterChk = document.getElementById('gapFilterChk');
+const clearanceFilterChk = document.getElementById('clearanceFilterChk');
+const clearancePipsInput = document.getElementById('clearancePipsInput');
 const letRideChk = document.getElementById('letRideChk');
 const continuationExitSel = document.getElementById('continuationExitSel');
 const logScaleChk = document.getElementById('logScaleChk');
@@ -522,6 +525,7 @@ function syncSizingUI() {
   triggerDDInput.disabled = !throttleOn;
   restoreDDInput.disabled = !throttleOn;
   throttleMultInput.disabled = !throttleOn;
+  clearancePipsInput.disabled = !clearanceFilterChk.checked;
 }
 syncSizingUI();
 
@@ -1109,6 +1113,7 @@ async function loadData() {
   if (stopTightenChk.checked) params.set('stopTightenFrac', '0.9');
   if (costEfficiencyChk.checked) params.set('minCostRatio', String(costRatioFor(ladder)));
   if (gapFilterChk.checked) params.set('maxGapMin', String(gapMinFor(ladder)));
+  if (clearanceFilterChk.checked) params.set('minClearancePips', clearancePipsInput.value);
   if (letRideChk.checked) params.set('letRide', 'true');
   if (continuationExitSel.value !== 'off') params.set('continuationExit', continuationExitSel.value);
   // Combined mode hits a DIFFERENT route (each pair contributes an Asia AND
@@ -1580,6 +1585,8 @@ throttleMultInput.addEventListener('change', loadData);
 stopTightenChk.addEventListener('change', loadData);
 costEfficiencyChk.addEventListener('change', loadData);
 gapFilterChk.addEventListener('change', loadData);
+clearanceFilterChk.addEventListener('change', loadData);
+clearancePipsInput.addEventListener('change', loadData);
 letRideChk.addEventListener('change', loadData);
 continuationExitSel.addEventListener('change', loadData);
 logScaleChk.addEventListener('change', () => { if (lastResponse) render(lastResponse); });

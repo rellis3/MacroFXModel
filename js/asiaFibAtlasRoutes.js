@@ -25,7 +25,7 @@ import { loadM1ForPair } from './volBacktestM1Engine.js';
 import { asiaFibAtlasWalk, asiaFibAtlasLiveLadder, asiaRungBarrierPips } from './asiaFibAtlasEngine.js';
 import { buildAsiaFibAtlasBook, renderAsiaFibBookText, DIMENSIONS } from './asiaFibAtlasReport.js';
 import { matchLiveContext } from './levelAtlasReport.js';
-import { runBarrierWalkForward, voteDecision } from './asiaFibAtlasVoteReview.js';
+import { runBarrierWalkForward, voteDecision, applyClearanceFilter } from './asiaFibAtlasVoteReview.js';
 import { applyFadeStopFraction, applyCostEfficiencyFilter, applyGapFilter, applyTrailingContinuation, applyStoredContinuationExit } from './levelAtlasVoteReview.js';
 import { buildFibAtlasVotePortfolio, computeFibAtlasDeflatedSharpe } from './fibAtlasVotePortfolio.js';
 import { cvolSeries, CVOL_PRODUCTS } from './cvolLoader.js';
@@ -830,6 +830,10 @@ export function mountAsiaFibAtlasRoutes(app, express) {
       // means no filter (this route's own default stays "off" so existing
       // callers/pages see byte-identical output until they opt in).
       const maxGapMin = req.query.maxGapMin ? Number(req.query.maxGapMin) : null;
+      // Minimum-clearance filter (2026-09-15) -- see applyClearanceFilter's
+      // own doc (asiaFibAtlasVoteReview.js) for the full reasoning. Same
+      // "omitted means no filter" convention as maxGapMin above.
+      const minClearancePips = req.query.minClearancePips ? Number(req.query.minClearancePips) : null;
       // 'true'|'giveback'|'chandelier'|undefined -- applyStoredContinuationExit
       // does its own interpreting now (2026-08-31), so no boolean coercion here.
       const continuationExit = req.query.continuationExit;
@@ -848,11 +852,12 @@ export function mountAsiaFibAtlasRoutes(app, express) {
       const swapped = applyStoredContinuationExit(baseTrades, continuationExit);
       const marginFiltered = swapped.filter(t => t.margin >= minMargin);
       const costFiltered = applyCostEfficiencyFilter(marginFiltered, stored.cost, minCostRatio);
-      const filtered = applyGapFilter(costFiltered, maxGapMin);
+      const gapFiltered = applyGapFilter(costFiltered, maxGapMin);
+      const filtered = applyClearanceFilter(gapFiltered, minClearancePips);
       const trades = applyFadeStopFraction(filtered, stopTightenFrac, 0, { preserveSizing: true });
       const summaryByMargin = letRide ? (stored.extSummaryByMargin ?? stored.summaryByMargin) : stored.summaryByMargin;
       res.json({ ok: true, instrument: stored.instrument, generatedAt: stored.generatedAt, cost: stored.cost,
-                 splitDate: stored.splitDate, minMargin, stopTightenFrac, minCostRatio, maxGapMin, continuationExit, letRide,
+                 splitDate: stored.splitDate, minMargin, stopTightenFrac, minCostRatio, maxGapMin, minClearancePips, continuationExit, letRide,
                  summary: summaryByMargin?.[minMargin] ?? null, trades });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
@@ -907,6 +912,9 @@ export function mountAsiaFibAtlasRoutes(app, express) {
         // own comment above for the full reasoning; threaded straight
         // through to buildFibAtlasVotePortfolio.
         maxGapMin: req.query.maxGapMin ? Number(req.query.maxGapMin) : null,
+        // Minimum-clearance filter (2026-09-15) — see buildFibAtlasVotePortfolio's
+        // own doc for the full reasoning; threaded straight through.
+        minClearancePips: req.query.minClearancePips ? Number(req.query.minClearancePips) : null,
         continuationExit: req.query.continuationExit, // 'true'|'giveback'|'chandelier'|undefined -- applyStoredContinuationExit interprets it
       };
       const result = await buildFibAtlasVotePortfolio({ ...opts, loadPairVoteTrades: cachedLoader });
@@ -986,6 +994,9 @@ export function mountAsiaFibAtlasRoutes(app, express) {
         // reused rather than resolved per-ladder (Asia is the dominant risk
         // driver — see this route's own header comment).
         maxGapMin: req.query.maxGapMin ? Number(req.query.maxGapMin) : null,
+        // Minimum-clearance filter (2026-09-15) — same "one shared value,
+        // Asia's frozen choice reused" precedent as maxGapMin above.
+        minClearancePips: req.query.minClearancePips ? Number(req.query.minClearancePips) : null,
         continuationExit: req.query.continuationExit, // 'true'|'giveback'|'chandelier'|undefined -- applyStoredContinuationExit interprets it
       };
       const result = await buildFibAtlasVotePortfolio({ ...opts, loadPairVoteTrades: cachedLoader });

@@ -34,6 +34,11 @@ import {
   riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyFadeStopFraction,
   applyCostEfficiencyFilter, applyGapFilter, applyStoredContinuationExit,
 } from './levelAtlasVoteReview.js';
+// applyClearanceFilter is Fib-Atlas-owned (asiaFibAtlasVoteReview.js), NOT
+// the shared levelAtlasVoteReview.js above — see that function's own doc
+// for why (a pure, generic gate duplicated here rather than added to the
+// Vote-Atlas-shared file, which this workstream never edits).
+import { applyClearanceFilter } from './asiaFibAtlasVoteReview.js';
 import { maxDrawdownFromPnls, neweyWestSharpe, summarizeTrades } from './metricsCore.js';
 import { portfolioStats, deflatedSharpe } from './backtestStats.js';
 
@@ -58,7 +63,25 @@ export function withNonCompoundedDD(statsObj, dailyReturns) {
  * opts: { pairs, minMargin=2, maxConcurrent=1, perDirection=false,
  *   weighting='equal'|'inverse-vol', sizing='fixed-risk'|'nav', riskPct=1,
  *   maxHeatPct=null, targetVol=10, throttleOn=false, triggerDD=-5,
- *   restoreDD=0, throttleMult=0.5, stopTightenFrac=null, loadPairVoteTrades }
+ *   restoreDD=0, throttleMult=0.5, stopTightenFrac=null, minClearancePips=null,
+ *   loadPairVoteTrades }
+ *
+ * `minClearancePips` (2026-09-15): a pure SELECTION gate (drops trades
+ * outright, resizes nothing) — drops any touch whose own triggering bar
+ * cleared the rung by less than this many pips (`clearancePips`, set at
+ * walk time by asiaFibAtlasWalk/mondayFibAtlasWalk). Direct owner ask after
+ * a live-vs-backtest reconciliation traced two "phantom" backtest trades to
+ * touches that cleared their rung by 0.2-0.3 pips — thinner than live tick
+ * polling OR a resting limit order could realistically be expected to
+ * catch. Measured separately (analysis/fib_atlas_limit_order_clearance_
+ * test.mjs) across the full live universe: median clearance under 1 pip,
+ * and Sharpe/PF/CAGR collapse sharply as the threshold tightens even though
+ * win rate barely moves — a large share of the unfiltered book's headline
+ * numbers rides on touches unlikely to be reliably achievable by ANY
+ * execution method. Applied at the same selection-gate stage as
+ * minCostRatio/maxGapMin (before the concurrency cap). `null` (default) is
+ * a no-op passthrough, so every existing caller is unaffected until it
+ * opts in.
  *
  * `stopTightenFrac` (2026-08-29): validated by analysis/
  * fib_atlas_sl_tightening_backtest.mjs (see LEGO_MODULES.md) — tightens FADE
@@ -99,6 +122,7 @@ export async function buildFibAtlasVotePortfolio({
   maxHeatPct = null, targetVol = 10,
   throttleOn = false, triggerDD = -5, restoreDD = 0, throttleMult = 0.5,
   stopTightenFrac = null, minCostRatio = null, maxGapMin = null, continuationExit = false,
+  minClearancePips = null,
   loadPairVoteTrades,
 }) {
   // Each iteration is one "constituent" of the combined portfolio — normally
@@ -125,7 +149,14 @@ export async function buildFibAtlasVotePortfolio({
     // applyCostEfficiencyFilter above, so applied at the same stage (before
     // the concurrency cap — a gap-filtered-out trade should never occupy a
     // concurrency slot either).
-    const filtered = applyGapFilter(costFiltered, maxGapMin);
+    const gapFiltered = applyGapFilter(costFiltered, maxGapMin);
+    // Minimum-clearance filter (2026-09-15) — same selection-gate stage as
+    // cost-efficiency/gap above, same reasoning (a filtered-out trade should
+    // never occupy a concurrency slot). See applyClearanceFilter's own doc
+    // for why this exists: a large share of this book's trade volume rides
+    // on touches that cleared their rung by well under a pip, thin enough
+    // that no real execution method was likely to catch them reliably.
+    const filtered = applyClearanceFilter(gapFiltered, minClearancePips);
     const capped = applyConcurrencyCap(filtered, { maxConcurrent, perDirection });
     const tightened = applyFadeStopFraction(capped?.kept ?? [], stopTightenFrac, 0, { preserveSizing: true });
     const sym = stored.groupKey ?? stored.instrument;

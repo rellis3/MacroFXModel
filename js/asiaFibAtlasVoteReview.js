@@ -212,9 +212,42 @@ export function buildBarrierTrades(touches, book, { rearmFrac = 0.3, cost = 0, m
       // applyGapFilter can gate on it downstream, same pattern as
       // asiaConfPips above.
       gapMin: t.gapMin ?? null,
+      // Carried straight through from the touch record (both engines set it,
+      // shared trade shape) so applyClearanceFilter can gate on it downstream
+      // — same pattern as gapMin/asiaConfPips above. See asiaFibAtlasEngine.
+      // js's own comment on clearancePips for the full reasoning.
+      clearancePips: t.clearancePips ?? null,
     });
   }
   return trades;
+}
+
+// Minimum-clearance filter (2026-09-15, direct owner ask after tracing a
+// live-vs-backtest reconciliation mismatch to two USDCAD touches that
+// cleared their rung by 0.2-0.3 pips — thin enough that neither live tick
+// polling nor a resting limit order could reliably be expected to catch
+// them, and quantified separately (analysis/fib_atlas_limit_order_
+// clearance_test.mjs): across the full live universe, median clearance is
+// under 1 pip, and Sharpe/PF/CAGR collapse sharply as the threshold
+// tightens even though win rate barely moves — meaning a large share of
+// this book's headline numbers rides on touches that were arguably never
+// realistically achievable, by ANY execution method, not just this bot's
+// own market-order mechanics.
+//
+// Deliberately NOT in levelAtlasVoteReview.js (shared with Vote Atlas —
+// never edited by this workstream): a pure, generic selection gate exactly
+// like applyGapFilter/applyCostEfficiencyFilter there, just owned here
+// instead so the shared brick stays untouched. buildFibAtlasVotePortfolio
+// imports this from here, not from the shared file, for this one filter.
+//
+// A pure selection gate (drops trades outright, resizes nothing) — same
+// convention as applyCostEfficiencyFilter/applyGapFilter: applied BEFORE
+// the concurrency cap, since a filtered-out trade should never occupy a
+// concurrency slot either. `null`/absent is a no-op passthrough, so every
+// existing caller is unaffected until it opts in.
+export function applyClearanceFilter(trades, minClearancePips) {
+  if (!trades?.length || minClearancePips == null) return trades ?? [];
+  return trades.filter(t => t.clearancePips != null && t.clearancePips >= minClearancePips);
 }
 
 /**

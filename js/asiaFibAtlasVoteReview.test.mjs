@@ -38,7 +38,7 @@
 // helps explain.
 
 import assert from 'node:assert/strict';
-import { voteDecision, priceBarrierTrade, buildBarrierTrades, runBarrierWalkForward, VOTE_DIMS } from './asiaFibAtlasVoteReview.js';
+import { voteDecision, priceBarrierTrade, buildBarrierTrades, runBarrierWalkForward, VOTE_DIMS, applyClearanceFilter } from './asiaFibAtlasVoteReview.js';
 
 let failures = 0;
 const ok = (name, cond, extra = '') => { console.log(`  ${cond ? '✓' : '✗ FAIL'} ${name}${extra ? '  ' + extra : ''}`); if (!cond) failures++; };
@@ -301,6 +301,41 @@ function mkBook(dimSpecs) {
   ok('T22 the trade row carries timedOut:true for a mark-to-close trade, and false for a resolved one in the same batch',
     tradesMixed?.length === 2 && tradesMixed[0].timedOut === true && tradesMixed[1].timedOut === false,
     JSON.stringify(tradesMixed));
+
+  // T23 (2026-09-15): applyClearanceFilter — a pure selection gate, same
+  // convention as applyGapFilter/applyCostEfficiencyFilter (levelAtlasVoteReview.js).
+  // Drops any trade whose own clearancePips is below the threshold, or null
+  // (unresolvable — treated as "not confirmed thin enough to keep", not
+  // silently passed through). `minClearancePips == null` must be a full
+  // no-op passthrough, same as every other lever here defaulting off.
+  const clearanceTrades = [
+    { pnlPct: 1, clearancePips: 0.1 },
+    { pnlPct: 2, clearancePips: 0.9 },
+    { pnlPct: 3, clearancePips: 1.0 },
+    { pnlPct: 4, clearancePips: 3.0 },
+    { pnlPct: 5, clearancePips: null },
+  ];
+  const filteredAt1 = applyClearanceFilter(clearanceTrades, 1);
+  ok('T23a applyClearanceFilter keeps only trades with clearancePips >= threshold, dropping null clearance',
+    filteredAt1.length === 2 && filteredAt1.every(t => t.clearancePips >= 1),
+    JSON.stringify(filteredAt1));
+  const filteredNoop = applyClearanceFilter(clearanceTrades, null);
+  ok('T23b applyClearanceFilter is a no-op passthrough when minClearancePips is null',
+    filteredNoop.length === clearanceTrades.length && filteredNoop === clearanceTrades,
+    JSON.stringify(filteredNoop));
+
+  // T23c: buildBarrierTrades must surface clearancePips straight through
+  // from the touch record onto the output row (same pattern as gapMin/
+  // asiaConfPips) so applyClearanceFilter has something real to gate on.
+  const touchesWithClearance = [
+    { instrument: 'EURUSD', date: '2022-06-01', time: 1000, resolveTime: 1050, rearmFrac: 0.3, side: 'above', level: 1.5,
+      price: 1.16863, pip: 0.0001, innerDistPips: 8, outerDistPips: 15, outcome: 'out', fadePips: -3, runPips: 6,
+      prevOutcomeSameDay: 'out', sessionHandoff: '2·london-morning', asiaConfPips: 1.2, clearancePips: 0.42 },
+  ];
+  const tradesWithClearance = buildBarrierTrades(touchesWithClearance, book21, { rearmFrac: 0.3, cost: 0, minMargin: 1 });
+  ok('T23c buildBarrierTrades surfaces clearancePips onto the output row unchanged',
+    tradesWithClearance?.length === 1 && tradesWithClearance[0].clearancePips === 0.42,
+    JSON.stringify(tradesWithClearance));
 }
 
 console.log(`\n${failures === 0 ? 'all passed' : failures + ' FAILURES'}`);
