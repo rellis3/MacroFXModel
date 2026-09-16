@@ -246,7 +246,18 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
   // in this file already gets.
   const _lastDate = _allDates.at(-1);
   const dates = _allDates.filter(d => (sessions.get(d)?.length ?? 0) >= 200 || d === _lastDate);
-  if (dates.length <= minLookback) return { touches: [], coverage: null };
+  if (dates.length <= minLookback) {
+    // TEMP DIAGNOSTIC (2026-09-16) — chasing EURUSD/GBPUSD reproducibly
+    // returning 0 touches/sessions tonight despite loading 3.8M+ real,
+    // clean bars (ruled out: corrupted timestamps, a new m1-tail file,
+    // corrupted OANDA source data — all checked directly). Remove once the
+    // real cause is found and fixed.
+    const counts = _allDates.map(d => sessions.get(d)?.length ?? 0);
+    console.warn(`[atlasWalk-diag] ${sym}: packed.n=${packed?.n ?? 0} _allDates.length=${_allDates.length} qualifying dates.length=${dates.length} (need >${minLookback}) `
+      + `firstDate=${_allDates[0]} lastDate=${_allDates.at(-1)} minBarsPerDate=${counts.length ? Math.min(...counts) : 'n/a'} maxBarsPerDate=${counts.length ? Math.max(...counts) : 'n/a'} `
+      + `medianBarsPerDate=${counts.length ? counts.slice().sort((a,b)=>a-b)[Math.floor(counts.length/2)] : 'n/a'} datesUnder200=${counts.filter(c => c < 200).length}`);
+    return { touches: [], coverage: null };
+  }
   // `liveWindowDays` — everything in the per-day context block (sigma,
   // dayVol, ivRegime, confLevels, htf features) only ever reads a BOUNDED
   // trailing window regardless of how much MORE history precedes it —
