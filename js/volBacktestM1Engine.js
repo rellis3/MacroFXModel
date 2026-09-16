@@ -1459,22 +1459,27 @@ export async function loadM1ForPair(pairKey, m1Dir = BT_M1_DIR) {
     const volumes = new Float32Array(n);   // parquet col[4] = tick volume (FX activity proxy)
     for (let i = 0; i < n; i++) {
       const r = rows[i];
-      // TEMP DIAGNOSTIC (2026-09-16) — the toEpoch(number/BigInt) fix just
-      // shipped did NOT resolve EURUSD/GBPUSD still bucketing to
-      // 1970-01-01, so the raw-number hypothesis was wrong or incomplete.
-      // Log the ACTUAL row 0 shape/value instead of guessing again. Remove
-      // once the real cause is found.
-      if (i === 0) {
-        // JSON.stringify throws on BigInt -- exactly one of the types this
-        // is trying to detect -- so serialize by hand instead of risking a
-        // crash on the very case being diagnosed.
-        const safeRow = Array.isArray(r) ? r.map(x => typeof x === 'bigint' ? `${x}n` : x) : r;
-        console.warn(`[pack-diag] ${pairKey}: row0.length=${r?.length} r[5]=${String(r?.[5])} typeof r[5]=${typeof r?.[5]} full row0=${JSON.stringify(safeRow)}`);
-      }
+      // Real root cause, found via a targeted diagnostic 2026-09-16: NOT a
+      // type-parsing issue (the toEpoch(number/BigInt) handling above this
+      // loop is still a genuine improvement, just wasn't the actual fix).
+      // EURUSD's/GBPUSD's/AUDUSD's parquet rows have EIGHT columns, not
+      // six — two extra columns (small decimals, ~0.0002, likely a
+      // spread/ATR-adjacent pair — never identified further, not needed to
+      // fix this) inserted before the date, pushing the real ISO timestamp
+      // string from index 5 to index 7. `r[5]` for these files was reading
+      // one of those tiny decimals, and toEpoch() correctly (if
+      // uselessly) parsed ~0.0002 as epoch second 0 — every row for these
+      // pairs collapsed to 1970-01-01, the entire multi-year archive
+      // bucketed into ONE session, atlasWalk correctly (if silently)
+      // returned zero touches. O/H/L/C/volume stayed at the same indices
+      // 0-4 in both schemas — confirmed sane in the diagnosed row. Reading
+      // the LAST column instead of a hardcoded index 5 is correct for
+      // both the 6-column and 8-column files: the timestamp is always
+      // the final field regardless of how many extra columns precede it.
+      times[i] = toEpoch(r[r.length - 1]);
       // Number() (not unary +) so an int64/BigInt column converts instead of
       // throwing "Cannot convert a BigInt value to a number" (some index parquets
       // store volume — and occasionally OHLC — as BigInt).
-      times[i] = toEpoch(r[5]);
       opens[i] = Number(r[0]); highs[i] = Number(r[1]); lows[i] = Number(r[2]); closes[i] = Number(r[3]);
       volumes[i] = Number(r[4]) || 0;
     }
