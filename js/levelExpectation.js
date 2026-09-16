@@ -117,6 +117,9 @@ export function levelExpectation(level, ctx = {}) {
   const gist = GIST[e.act] || '';
   return {
     band,
+    // Exposed as a plain boolean so a caller can FILTER on it (the export's `today`
+    // mode drops far levels) without parsing it back out of the strings below.
+    far,
     // Chart label: the action word, plus a flag when the level is out of reach.
     short: far ? `${e.act}·far` : e.act,
     // Same word with a three-word reminder of what it means. Used on the export

@@ -18360,6 +18360,9 @@ app.get('/api/vol-forecast/zones', async (req, res) => {
       }
       const terms = String(req.query.terms || '') === 'futures' ? 'futures' : 'spot';   // default spot; 'futures' for a futures/CME chart
       const allExpiry = String(req.query.allExpiry || '') === '1';   // full unbounded term structure (vs the default day-band selection)
+      // `?mode=today` — only the primary + day books the model analyses, no other-expiry /
+      // catch / far levels, ordered by price. See buildOILevelText's note on the three tiers.
+      const mode = String(req.query.mode || '') === 'today' ? 'today' : 'full';
       // The day's trading band per pair (from the forecast's annualised vol, K=3 ≈ beyond the
       // 99th-pct day). Drives which OTHER-expiry walls show by default: in-band + a catch level.
       // `?bandK=` overrides the multiplier. Flat-vol fallback inside oiDayBandFrac when no vol.
@@ -18370,7 +18373,7 @@ app.get('/api/vol-forecast/zones', async (req, res) => {
         const vol = fk && forecastState.latest?.instruments?.[fk]?.vol_annual;
         bandByPair[p] = _oiDayBand(Number.isFinite(vol) ? vol : null, p, { k: bandK });
       }
-      const oiText = buildOILevelText(store, { generated: forecastState.latest.session_date, cot, reachByPair, terms, allExpiry, bandByPair });
+      const oiText = buildOILevelText(store, { generated: forecastState.latest.session_date, cot, reachByPair, terms, allExpiry, bandByPair, mode });
       if (oiText && !oiText.includes('no OI data')) text += '\n\n' + oiText;
     } catch { /* OI is a bonus section — never fail the zones export over it */ }
     res.type('text/plain').send(text);
