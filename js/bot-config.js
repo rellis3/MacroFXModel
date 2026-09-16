@@ -5872,3 +5872,218 @@ setInterval(loadConfluenceStatus, 60_000);
 setInterval(loadBtJournal,   120_000);
 setInterval(loadHbStatus,     60_000);
 setInterval(loadPhbStatus,    60_000);
+
+// ══════════════════════════════════════════════════════════════════════════
+// motif_bot (touch-motif structural signal) — mirrors the Fa-prefixed block
+// above field-for-field, scoped DOWN: no ladders (one strategy), no
+// chandelier/gap-filter/throttle (this strategy runs a fixed SL/TP with no
+// trailing exit -- a tighter stop, a breakeven stop and a Chandelier trail
+// were each tested on the M1 path this session and none beat simply trading
+// smaller once verified OOS), no unfiltered "All Lines"/entry-slippage
+// tables (no per-pair rung zones to enumerate -- a motif either exists or
+// it doesn't). The plan itself is built by AnalogML/motif_track.py's own
+// hourly Railway scan, not a fast server.js interval -- see that module's
+// own doc for why (the detection engine is native Python and already runs
+// there; porting it into JS would create a second copy to drift).
+// ══════════════════════════════════════════════════════════════════════════
+
+const MT_DEFAULTS = {
+  kill_switch: false, paper_mode: true, enabled_pairs: [],
+  risk_pct: 0.25, max_lot: 5.0, max_open: 20, max_concurrent_per_pair: 2,
+  max_spread_pips: 3.0, ddlimit: 3.0, monthlydd: 5.0, lockout: 3, cooldown: 60,
+  plan_max_age_hours: 3, poll_secs: 60, status_secs: 30,
+  tg_enabled: true, tg_token: '', tg_chat_id: '',
+};
+let _mtCfg = { ...MT_DEFAULTS };
+let _mtLastStatus = null;
+
+function renderMtForm() {
+  const c = _mtCfg;
+  const set = (id, v) => { const el = document.getElementById(id); if (el) { if (el.type === 'checkbox') el.checked = !!v; else el.value = v ?? ''; } };
+  set('mt_paper_mode', c.paper_mode); set('mt_kill_switch', c.kill_switch);
+  set('mt_enabled_pairs', (c.enabled_pairs || []).join(', '));
+  set('mt_risk_pct', c.risk_pct); set('mt_max_lot', c.max_lot);
+  set('mt_max_open', c.max_open); set('mt_max_concurrent_per_pair', c.max_concurrent_per_pair);
+  set('mt_max_spread_pips', c.max_spread_pips);
+  set('mt_ddlimit', c.ddlimit); set('mt_monthlydd', c.monthlydd);
+  set('mt_lockout', c.lockout); set('mt_cooldown', c.cooldown);
+  set('mt_poll_secs', c.poll_secs); set('mt_status_secs', c.status_secs);
+  set('mt_plan_max_age_hours', c.plan_max_age_hours);
+  set('mt_tg_enabled', c.tg_enabled); set('mt_tg_token', c.tg_token); set('mt_tg_chat_id', c.tg_chat_id);
+}
+function readMtForm() {
+  const get = (id) => document.getElementById(id);
+  const num = (id, d) => { const v = parseFloat(get(id)?.value); return Number.isFinite(v) ? v : d; };
+  const bool = (id) => !!get(id)?.checked;
+  const pairs = (get('mt_enabled_pairs')?.value || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+  _mtCfg = {
+    ...MT_DEFAULTS,
+    paper_mode: bool('mt_paper_mode'), kill_switch: bool('mt_kill_switch'),
+    enabled_pairs: pairs,
+    risk_pct: num('mt_risk_pct', MT_DEFAULTS.risk_pct), max_lot: num('mt_max_lot', MT_DEFAULTS.max_lot),
+    max_open: num('mt_max_open', MT_DEFAULTS.max_open),
+    max_concurrent_per_pair: num('mt_max_concurrent_per_pair', MT_DEFAULTS.max_concurrent_per_pair),
+    max_spread_pips: num('mt_max_spread_pips', MT_DEFAULTS.max_spread_pips),
+    ddlimit: num('mt_ddlimit', MT_DEFAULTS.ddlimit), monthlydd: num('mt_monthlydd', MT_DEFAULTS.monthlydd),
+    lockout: num('mt_lockout', MT_DEFAULTS.lockout), cooldown: num('mt_cooldown', MT_DEFAULTS.cooldown),
+    poll_secs: num('mt_poll_secs', MT_DEFAULTS.poll_secs), status_secs: num('mt_status_secs', MT_DEFAULTS.status_secs),
+    plan_max_age_hours: num('mt_plan_max_age_hours', MT_DEFAULTS.plan_max_age_hours),
+    tg_enabled: bool('mt_tg_enabled'), tg_token: get('mt_tg_token')?.value || '', tg_chat_id: get('mt_tg_chat_id')?.value || '',
+  };
+}
+async function loadMtConfig() {
+  try { const stored = await kvGet('motif_bot_config'); if (stored) _mtCfg = { ...MT_DEFAULTS, ...stored }; renderMtForm(); } catch (e) {}
+}
+async function saveMtConfig() {
+  readMtForm();
+  const el = document.getElementById('mtSaveStatus');
+  if (el) { el.textContent = 'Saving…'; el.style.color = 'var(--text3)'; }
+  try { await kvSet('motif_bot_config', _mtCfg);
+    if (el) { el.textContent = 'Saved ✓'; el.style.color = '#fb923c'; setTimeout(() => { el.textContent = ''; }, 3000); }
+  } catch (e) { if (el) { el.textContent = `Error: ${e.message}`; el.style.color = 'var(--red)'; } }
+}
+async function testMtTelegram() {
+  const el = document.getElementById('mtSaveStatus');
+  if (el) { el.textContent = 'Sending test…'; el.style.color = 'var(--text3)'; }
+  try {
+    const r = await fetch('/api/motif-bot/telegram-test', { method: 'POST' });
+    const d = await r.json();
+    if (el) { el.textContent = d.ok ? 'Test sent ✓' : `Test failed: ${d.error || ''}`; el.style.color = d.ok ? '#fb923c' : 'var(--red)'; }
+  } catch (e) { if (el) { el.textContent = `Test failed: ${e.message}`; el.style.color = 'var(--red)'; } }
+}
+function resetMtDefaults() {
+  _mtCfg = { ...MT_DEFAULTS }; renderMtForm();
+  const el = document.getElementById('mtSaveStatus');
+  if (el) { el.textContent = 'Defaults restored — click Save to apply'; el.style.color = 'var(--text3)'; }
+}
+async function loadMtCreds() { try { _applyCredsToForm(await kvGet('motif_bot_credentials'), 'mt_', 'mt_mt5_password'); } catch (e) {} }
+async function saveMtCreds() { await _saveCreds('motif_bot_credentials', 'mt_', 'mt_mt5_password', 'mtCredsStatus'); }
+
+async function loadMtLiveStatus() {
+  const ageEl = document.getElementById('mtLiveAge'), modeEl = document.getElementById('mtLiveMode');
+  const balEl = document.getElementById('mtLiveBal'), openEl = document.getElementById('mtOpenN');
+  try {
+    const st = await kvGet('motif_bot_status');
+    _mtLastStatus = st || null;
+    if (!st) { if (ageEl) ageEl.textContent = 'Bot not running — no status yet'; }
+    else {
+      if (ageEl)  ageEl.textContent  = st.running ? 'Running' : 'Idle';
+      if (modeEl) { modeEl.textContent = st.mode === 'live' ? '🟢 LIVE' : '📄 PAPER'; modeEl.style.color = st.mode === 'live' ? 'var(--green)' : 'var(--amber)'; }
+      if (balEl)  balEl.textContent  = st.balance != null ? `Balance ${st.balance}` : '';
+      const positions = st.mt5_positions || [];
+      if (openEl) openEl.textContent = positions.length;
+      const tradesEl = document.getElementById('mtTradesN');
+      if (tradesEl) tradesEl.textContent = (st.today_closed_trades || []).length;
+      const planNEl = document.getElementById('mtPlanN');
+      if (planNEl) planNEl.textContent = st.plan_entries ?? '—';
+      const actedEl = document.getElementById('mtActedN');
+      if (actedEl) actedEl.textContent = st.acted_entries ?? '—';
+
+      const guardEl = document.getElementById('mtRiskGuard');
+      if (guardEl) {
+        const rg = st.risk_guard;
+        if (!rg) { guardEl.textContent = 'no data yet'; guardEl.style.color = 'var(--text3)'; }
+        else if (rg.locked) { guardEl.textContent = `🔒 LOCKED — ${rg.locked_mins_remaining}m remaining (day DD ${rg.day_dd_pct ?? '—'}%)`; guardEl.style.color = 'var(--red)'; }
+        else { guardEl.textContent = `clear (day DD ${rg.day_dd_pct ?? '—'}% / month ${rg.month_dd_pct ?? '—'}%)`; guardEl.style.color = 'var(--green)'; }
+      }
+      const planGateEl = document.getElementById('mtPlanGate');
+      if (planGateEl) {
+        if (st.plan_age_blocked) { planGateEl.textContent = '⚠ BLOCKED — plan stale, no new entries'; planGateEl.style.color = 'var(--red)'; }
+        else { planGateEl.textContent = 'fresh'; planGateEl.style.color = 'var(--green)'; }
+      }
+      const pa = document.getElementById('mtPlanAge');
+      if (pa) pa.textContent = st.generatedAt ? new Date(st.generatedAt).toISOString().slice(0, 19).replace('T', ' ') + 'Z' : '—';
+
+      const openBody = document.getElementById('mtOpenBody');
+      if (openBody) {
+        if (!positions.length) {
+          openBody.innerHTML = '<tr><td colspan="6" style="padding:12px;text-align:center;color:var(--text3)">No open positions</td></tr>';
+        } else {
+          const dp = (sym, v) => v == null ? '—' : (+v).toFixed(/jpy/i.test(sym) ? 3 : 5);
+          openBody.innerHTML = positions.map(p => {
+            const buy = (p.direction || '').toUpperCase() === 'BUY';
+            const pnl = +(p.profit || 0);
+            return `<tr>
+              <td style="padding:5px 10px;font-weight:600;text-align:left">${(p.symbol || '?').toUpperCase()}</td>
+              <td style="padding:5px 10px;text-align:left;color:${buy ? 'var(--green)' : 'var(--red)'}">${buy ? 'BUY' : 'SELL'}</td>
+              <td style="padding:5px 10px;text-align:right">${(+(p.lots || 0)).toFixed(2)}</td>
+              <td style="padding:5px 10px;text-align:right;color:var(--text3)">${dp(p.symbol, p.open_price)}</td>
+              <td style="padding:5px 10px;text-align:right">${dp(p.symbol, p.price)}</td>
+              <td style="padding:5px 10px;text-align:right;color:${pnl >= 0 ? 'var(--green)' : 'var(--red)'}">${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}</td>
+            </tr>`;
+          }).join('');
+        }
+      }
+    }
+  } catch (e) { if (ageEl) { ageEl.textContent = e.message; } }
+  loadMtPlan();
+  loadMtDecisionLog();
+}
+
+// Plan table is sourced straight from motif_bot_plan (not the bot's own
+// status) -- so an operator can see "what would the bot trade right now"
+// even before starting the bot process, same reasoning as Fib Atlas's own
+// Today's Levels table.
+async function loadMtPlan() {
+  const body = document.getElementById('mtPlanBody');
+  if (!body) return;
+  try {
+    const plan = await kvGet('motif_bot_plan');
+    const entries = plan?.entries || [];
+    if (!entries.length) {
+      body.innerHTML = '<tr><td colspan="6" style="padding:14px;text-align:center;color:var(--text3)">No open motifs currently pass the best-config filter</td></tr>';
+      return;
+    }
+    const acted = new Set();   // best-effort -- the bot's own _state carries the authoritative set; this is a display hint only
+    body.innerHTML = entries.map(e => {
+      const buy = e.direction === 'BUY';
+      const kind = e.is_top ? 'top' : 'bottom';
+      const when = e.confirmed_at ? new Date(e.confirmed_at).toISOString().slice(0, 16).replace('T', ' ') : '—';
+      return `<tr>
+        <td style="padding:5px 10px;font-weight:600;text-align:left">${(e.pair || '?').toUpperCase()}</td>
+        <td style="padding:5px 10px;text-align:left;color:${buy ? 'var(--green)' : 'var(--red)'}">${buy ? 'BUY' : 'SELL'}</td>
+        <td style="padding:5px 10px;text-align:left">${e.n_touches ?? '?'}-touch ${kind}</td>
+        <td style="padding:5px 10px;text-align:left;color:var(--text3)">${e.swing_regime ?? '—'}</td>
+        <td style="padding:5px 10px;text-align:left;color:var(--text3)">${when}</td>
+        <td style="padding:5px 10px;text-align:center;color:var(--text3)">${acted.has(e.motif_key) ? '✓' : '—'}</td>
+      </tr>`;
+    }).join('');
+  } catch (e) { body.innerHTML = `<tr><td colspan="6" style="padding:14px;text-align:center;color:var(--text3)">${e.message}</td></tr>`; }
+}
+
+const MT_DEC_STATUS_COLOR = { entered: 'var(--green)', rejected: 'var(--red)', pair_blocked: 'var(--amber,#e0a93b)' };
+async function loadMtDecisionLog() {
+  const body = document.getElementById('mtDecisionBody');
+  if (!body) return;
+  const filter = (document.getElementById('mtDecFilter')?.value || '').trim().toLowerCase();
+  try {
+    const log = await kvGet('motif_bot_decision_log');
+    let events = (log?.events || []).slice().reverse();
+    if (filter) events = events.filter(e => (e.pair || '').toLowerCase().includes(filter));
+    if (!events.length) {
+      body.innerHTML = `<tr><td colspan="7" style="padding:14px;text-align:center;color:var(--text3)">${filter ? 'No events for that pair yet' : 'No decision events logged yet'}</td></tr>`;
+      return;
+    }
+    const dp = (sym, v) => v == null ? '—' : (+v).toFixed(/jpy/i.test(sym) ? 3 : 5);
+    body.innerHTML = events.slice(0, 300).map(e => {
+      const ts = e.t ? new Date(e.t * 1000).toISOString().slice(0, 19).replace('T', ' ') : '—';
+      return `<tr>
+        <td style="padding:5px 10px;text-align:left;color:var(--text3)">${ts}</td>
+        <td style="padding:5px 10px;font-weight:600;text-align:left">${(e.pair || '?').toUpperCase()}</td>
+        <td style="padding:5px 10px;text-align:left;color:var(--text3)">${e.motif_key || '—'}</td>
+        <td style="padding:5px 10px;text-align:left;color:${MT_DEC_STATUS_COLOR[e.status] || 'var(--text3)'}">${e.status || '—'}</td>
+        <td style="padding:5px 10px;text-align:left;color:var(--text3)">${e.reason || '—'}</td>
+        <td style="padding:5px 10px;text-align:right">${dp(e.pair, e.sl)}</td>
+        <td style="padding:5px 10px;text-align:right">${dp(e.pair, e.tp)}</td>
+      </tr>`;
+    }).join('') + (events.length > 300 ? `<tr><td colspan="7" style="padding:8px;text-align:center;color:var(--text3)">…${events.length - 300} older event(s) not shown</td></tr>` : '');
+  } catch (e) { body.innerHTML = `<tr><td colspan="7" style="padding:14px;text-align:center;color:var(--text3)">${e.message}</td></tr>`; }
+}
+
+window.saveMtConfig = saveMtConfig; window.saveMtCreds = saveMtCreds;
+window.resetMtDefaults = resetMtDefaults; window.testMtTelegram = testMtTelegram;
+window.loadMtLiveStatus = loadMtLiveStatus; window.loadMtPlan = loadMtPlan; window.loadMtDecisionLog = loadMtDecisionLog;
+document.querySelector('.tab-btn[data-tab="motifbot"]')?.addEventListener('click', loadMtLiveStatus);
+loadMtConfig();
+loadMtCreds();
+loadMtLiveStatus();

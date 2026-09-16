@@ -37,6 +37,20 @@ const NOT_WIRED = {
   bot_status:                'MacroFX trades the live confluence path, which the Asia-range backtest does not reproduce (LEGO_MODULES.md drift #8).',
   volatility_bot_v2_status:  'Level Atlas has a vote-portfolio backtest, but it has not been confirmed to run the same config as the live Vote Atlas bot.',
   macro_equity_bot_status:   'A backtest exists (/api/macro-equity-backtest/results) but its config has not been checked against the live bot.',
+  // Unlike the two above, this ISN'T a "does the backtest even match the
+  // strategy" question -- motif_bot_plan is built by re-running the exact
+  // same pylego.motif_touch/pylego.barrier_race code the backtest uses
+  // (AnalogML/motif_track.py, see that module's own doc), so there is
+  // structurally only one implementation to disagree with. What's missing is
+  // the curve-construction glue: AnalogML/data/motif_alert_backtest.json's
+  // equity_curve is PER-TRADE compounded (not a daily-return series), and
+  // deriving one needs the SAME best-config trade filter motif-alert-
+  // backtest.html's own featureIndex()/selectedTrades() already implement --
+  // re-deriving that threshold a third time here (after pylego.motif_policy
+  // and the page's own JS) risks exactly the silent-drift failure this
+  // repo's Lego Principle exists to prevent. Wire this once that reuses the
+  // page's own filter rather than re-encoding it.
+  motif_bot_status:          'A backtest exists and provably runs the SAME detection engine as the live plan (motif_track.py), but the daily-return curve this route needs has not been built from it yet -- see this file’s own comment for why that is deliberately deferred rather than guessed at.',
 };
 
 export function mountBotAuditRoutes(app, express, { fibAtlasPairs = [], buildFibAtlasCurve = null } = {}) {
