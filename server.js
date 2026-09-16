@@ -144,7 +144,7 @@ import { macroContext as _macroContext, macroContextByDate as _macroContextByDat
 import { analyzePair as _mcondAnalyzePair, summarizeRows as _mcondSummarize, verdict as _mcondVerdict } from './js/macroConditionerEngine.js';
 import { creditGate as _creditGateBrick } from './js/creditCore.js';
 import { creditRegime as _creditRegime } from './js/creditHmm.js';
-import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2, fetchFromR2 as gliFetchFromR2 } from './js/volBacktestM1Engine.js';
+import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2, fetchFromR2 as gliFetchFromR2, M1_TAIL_PREFIX as _M1_TAIL_PREFIX } from './js/volBacktestM1Engine.js';
 import { auditVoteAtlasDrift as _auditVoteAtlasDrift } from './js/voteAtlasDriftAudit.js';
 import { resampleBars as plResampleBars, runPatternScan, annotateHtfAlignment as plAnnotateHtfAlignment, confidenceBucketStats as plConfidenceBucketStats, classifySwingStructure as plClassifySwingStructure } from './js/patternEngine.js';
 import { loadTradeLabBars, loadFullArchivePacked } from './js/tradeLabDataSource.js';
@@ -31348,22 +31348,71 @@ const REFERENCE_ENGINE_PAIRS = [
   'EURAUD', 'EURCAD', 'EURNZD', 'GBPAUD', 'GBPCAD', 'AUDCAD', 'NZDCAD', 'NZDJPY',
   'CHFJPY', 'BTCUSD',
 ];
-// Standalone nightly M1 tail-append job (2026-09-12 -> REMOVED 2026-09-15):
+// Standalone nightly M1 tail-append job (2026-09-12 -> REMOVED 2026-09-15
+// -> REINSTATED as a shared PRE-FETCH phase, 2026-09-16): first version
 // built to fix the R2 parquet archive `loadM1ForPair` reads being a
-// manually re-backfilled snapshot with no scheduled refresh. Turned out to
-// be solving a non-problem AND actively harmful: every real consumer of
-// `loadM1ForPair` (Level Atlas, Session Path, Session Handoff, Asia/Monday
-// Fib Atlas — all five reference-engine-rebuild sub-jobs below) already
-// tops itself up live via `gapFillPacked` at generation time, so the base
-// archive's own staleness never actually reached a live page. This job
-// instead added a second, redundant OANDA-fetch pass at 00:15 — 15 minutes
-// before the 00:30 rebuild's own five (then-concurrent) fetch loops — and
-// direct Railway log evidence showed the whole process crashing silently
-// (no stack trace, consistent with an OOM kill) partway through its own
-// 31-pair loop on multiple nights, contributing to the same memory pressure
-// that was starving the rebuild below. `loadM1ForPair`'s tail-merge logic
-// (js/volBacktestM1Engine.js, M1_TAIL_PREFIX) is left in place — a real,
-// tested capability, just nothing schedules a writer for it anymore.
+// manually re-backfilled snapshot with no scheduled refresh, then removed
+// as redundant once it was clear every reference-engine sub-job already
+// tops itself up live via its OWN `gapFillPacked` call at generation time —
+// but that left FIVE independent OANDA fetches per overlapping pair every
+// night (Level Atlas + Session Path + Session Handoff + Asia Fib + Monday
+// Fib Atlas all separately re-fetching the SAME candles for e.g. EURUSD),
+// and was itself found to have crashed the process solo on 2026-09-12/13
+// BEFORE the 00:30 tick's own concurrency issue even entered the picture.
+//
+// This version fixes both problems by fetching ONCE, shared: runs first, at
+// 00:05 London (comfortably after the London-midnight session boundary
+// Level Atlas/Session Path/Session Handoff all key off — see
+// bucketM1IntoSessions's own doc — so it's not cutting that boundary short),
+// tops up every REFERENCE_ENGINE_PAIRS pair's M1_TAIL_PREFIX tail file in R2
+// ONE pair at a time (discarding each pair's fetched bars before moving to
+// the next — no cross-pair accumulation, the exact discipline this session
+// learned the hard way tonight testing throttle variants locally). By the
+// time the 00:30 rebuild's five sub-jobs run, `loadM1ForPair` already
+// returns current data for everything this job successfully covered, so
+// each engine's own `gapFillPacked` call becomes a fast near-no-op instead
+// of a real fetch — NOT removed from those engines, deliberately kept as a
+// per-pair fallback: if this job fails or only partially completes for some
+// pairs, those specific pairs simply fall back to today's already-proven
+// per-engine top-up instead of silently staying stale. No hard dependency
+// between the two phases, so a slow or partial Phase 1 degrades gracefully
+// rather than blocking Phase 2.
+
+if (process.env.OANDA_KEY) {
+  _scheduleDailyLondon(0, 5, async () => {
+    let enabled = process.env.M1_SHARED_GAPFILL !== '0';   // env opt-OUT, defaults on
+    try {
+      const raw = await kv.get('caps');
+      if (raw) { const c = JSON.parse(raw); if (typeof c.m1SharedGapFill === 'boolean') enabled = c.m1SharedGapFill; }
+    } catch (e) { console.error('[m1-shared-gapfill] caps read failed:', e.message); }
+    if (!enabled) { console.log('[m1-shared-gapfill] nightly tick — disabled (Caps.m1SharedGapFill=false or M1_SHARED_GAPFILL=0)'); return; }
+    console.log(`[m1-shared-gapfill] nightly tick firing — ${REFERENCE_ENGINE_PAIRS.length} instruments`);
+    const nowSec = Math.floor(Date.now() / 1000);
+    let appended = 0, skipped = 0, failed = 0;
+    for (const sym of REFERENCE_ENGINE_PAIRS) {
+      const pair = sym.toLowerCase();
+      try {
+        let osym; try { osym = oandaSymbol(pair); } catch { skipped++; continue; }
+        const base = await loadM1ForPair(pair); // base parquet + any existing tail, so "last known point" already accounts for prior nights' appends
+        if (!base?.n) { skipped++; continue; }
+        const lastSec = base.times[base.n - 1];
+        if (nowSec - lastSec < 3600) { skipped++; continue; } // already current within an hour — nothing to do
+        const bars = await _fetchM1Gap(osym, lastSec + 60, nowSec, _btFetchM1Range, { onLog: m => console.log(`[m1-shared-gapfill] ${sym}: ${m}`) });
+        if (!bars.length) { skipped++; continue; }
+        if (bars.gaps?.length) console.warn(`[m1-shared-gapfill] ${sym}: ${bars.gaps.length} window(s) never fetched after retries — appending what did succeed`);
+        const existing = (await _r2GetJSON(`${_M1_TAIL_PREFIX}/${pair}.json`)) ?? { bars: [] };
+        const combined = existing.bars.concat(bars.map(b => ({ time: b.time, open: b.open, high: b.high, low: b.low, close: b.close, volume: b.volume ?? 0 })));
+        await _r2PutJSON(`${_M1_TAIL_PREFIX}/${pair}.json`, { bars: combined, updatedAt: new Date().toISOString() });
+        appended++;
+      } catch (e) {
+        failed++;
+        console.error(`[m1-shared-gapfill] ${sym} failed:`, e.message);
+      }
+    }
+    console.log(`[m1-shared-gapfill] done: ${appended} appended, ${skipped} skipped (already current/no OANDA symbol), ${failed} failed`);
+  });
+  console.log('[m1-shared-gapfill] nightly tick armed at 00:05 London (shared M1 top-up feeding all five reference-engine sub-jobs, 25min before the 00:30 rebuild — gated by Caps.m1SharedGapFill or M1_SHARED_GAPFILL=0 to disable)');
+}
 
 if (process.env.OANDA_KEY) {
   _scheduleDailyLondon(0, 30, async () => {
