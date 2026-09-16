@@ -3878,7 +3878,7 @@ async function resetVb2Throttle() {
 // Book freshness (2026-09-16, same incident that motivated the drift-history
 // card above) -- server.js's /api/level-atlas/staleness reads the ACTUAL R2
 // generatedAt for every enabled pair (not a cached/local guess) and reports
-// the oldest. Red past the SAME 30h threshold the daily Telegram-alert job
+// the oldest. Red past the SAME 15h threshold the daily Telegram-alert job
 // uses, so this tile and that alert never disagree about what "stale" means.
 async function loadVb2Staleness() {
   const el = document.getElementById('vb2Staleness');
@@ -3888,7 +3888,7 @@ async function loadVb2Staleness() {
     const j = await r.json();
     if (!j.ok || j.oldestAgeHours == null) { el.textContent = 'no data yet'; el.style.color = 'var(--text3)'; return; }
     const days = (j.oldestAgeHours / 24).toFixed(1);
-    if (j.oldestAgeHours > 30) {
+    if (j.oldestAgeHours > 15) { // same threshold as server.js's daily Telegram check -- keep these in sync
       el.textContent = `⚠ ${j.oldestPair?.toUpperCase()} ${days}d stale`;
       el.style.color = 'var(--red)';
     } else {
@@ -4728,7 +4728,7 @@ async function loadFaStaleness() {
     const j = await r.json();
     if (!j.ok || j.oldestAgeHours == null) { el.textContent = 'no data yet'; el.style.color = 'var(--text3)'; return; }
     const days = (j.oldestAgeHours / 24).toFixed(1);
-    if (j.oldestAgeHours > 30) {
+    if (j.oldestAgeHours > 15) { // same threshold as server.js's daily Telegram check -- keep these in sync
       el.textContent = `⚠ ${j.oldestPair?.toUpperCase()} (${j.oldestLadder}) ${days}d stale`;
       el.style.color = 'var(--red)';
     } else {

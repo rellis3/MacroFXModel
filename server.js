@@ -17154,12 +17154,24 @@ app.post('/api/fib-atlas-bot/refresh-now', async (_req, res) => {
 });
 
 if (process.env.OANDA_KEY) {
-  _scheduleDailyLondon(6, 0, async () => {
-    // Fires well after the 00:30 rebuild (now serialized, ~1.5-2h for all
-    // five sub-jobs — see that job's own history) should have finished, so
-    // "still stale at 06:00" means the rebuild genuinely didn't complete
-    // last night, not that it's simply still running.
-    const STALE_HOURS = 30; // >1 missed night before alarming, catches 2+ in a row
+  _scheduleDailyLondon(3, 30, async () => {
+    // Owner's own correction (2026-09-16): staleness at ALL is a live-vs-
+    // backtest alignment risk (the exact mechanism behind the 2026-09-15
+    // incident this whole system exists because of), not just something to
+    // avoid getting nagged about — a loose threshold trades faster detection
+    // for fewer false alarms in exactly the wrong direction given "I want
+    // this perfect". Was 06:00/30h (tolerated 2 consecutive missed nights
+    // before saying anything); tightened to 03:30/15h:
+    //   - 03:30 gives ~3h buffer past the confirmed ~1.5-2h full five-engine
+    //     runtime (00:30 kickoff), catching a failure the same night instead
+    //     of waiting until 06:00 — less time trading on a stale book with no
+    //     warning, and more time left to react before the trading day starts.
+    //   - 15h still comfortably clears a HEALTHY run's own natural spread
+    //     (first-processed pair vs last-processed, ~1.5-2h apart, so a
+    //     healthy night's oldest pair is at most ~5h old by 03:30) while
+    //     catching a genuinely missed night (24h+) with real margin — no
+    //     tolerance for a SECOND miss baked in anymore.
+    const STALE_HOURS = 15;
     try {
       const st = await _levelAtlasStaleness();
       if (st.oldestAgeHours != null && st.oldestAgeHours > STALE_HOURS) {
@@ -17191,7 +17203,7 @@ if (process.env.OANDA_KEY) {
       }
     } catch (e) { console.error('[fib-atlas-staleness] check failed:', e.message); }
   });
-  console.log('[level-atlas-staleness] daily check armed at 06:00 London (Telegram-alerts Vote Atlas AND Fib Atlas if any enabled pair\'s book is >30h stale)');
+  console.log('[level-atlas-staleness] daily check armed at 03:30 London (Telegram-alerts Vote Atlas AND Fib Atlas if any enabled pair\'s book is >15h stale)');
 }
 
 // "Send test alert" for the bot-config.html Vote Atlas tab's Telegram fields
