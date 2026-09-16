@@ -1459,6 +1459,18 @@ export async function loadM1ForPair(pairKey, m1Dir = BT_M1_DIR) {
     const volumes = new Float32Array(n);   // parquet col[4] = tick volume (FX activity proxy)
     for (let i = 0; i < n; i++) {
       const r = rows[i];
+      // TEMP DIAGNOSTIC (2026-09-16) — the toEpoch(number/BigInt) fix just
+      // shipped did NOT resolve EURUSD/GBPUSD still bucketing to
+      // 1970-01-01, so the raw-number hypothesis was wrong or incomplete.
+      // Log the ACTUAL row 0 shape/value instead of guessing again. Remove
+      // once the real cause is found.
+      if (i === 0) {
+        // JSON.stringify throws on BigInt -- exactly one of the types this
+        // is trying to detect -- so serialize by hand instead of risking a
+        // crash on the very case being diagnosed.
+        const safeRow = Array.isArray(r) ? r.map(x => typeof x === 'bigint' ? `${x}n` : x) : r;
+        console.warn(`[pack-diag] ${pairKey}: row0.length=${r?.length} r[5]=${String(r?.[5])} typeof r[5]=${typeof r?.[5]} full row0=${JSON.stringify(safeRow)}`);
+      }
       // Number() (not unary +) so an int64/BigInt column converts instead of
       // throwing "Cannot convert a BigInt value to a number" (some index parquets
       // store volume — and occasionally OHLC — as BigInt).
