@@ -87,7 +87,6 @@ import { rungLevelsForLadder as _laRungLevelsForLadder, RUNGS as _LA_RUNGS } fro
 import { forecastSigma as _laForecastSigma } from './js/forecastSigma.js';
 import { buildLadder as _laBuildLadder } from './js/forecastLadder.js';
 import { LADDER_PARAMS as _LA_LADDER_PARAMS } from './js/forecastLadderParams.js';
-import { resamplePacked as _resamplePacked } from './js/barUtils.js';
 import { costForPair as _laCostForPair } from './js/perLineStrategy.js';
 import { assetClass as _assetClassOf } from './js/instrumentRegistry.js';
 import { getPerLineBook, runRefresh as _runAnalyserRefresh, runPerLineBook as _runPerLineBook } from './js/forecastAnalyserStore.js';
@@ -16426,10 +16425,30 @@ async function _volatilityV2InstrumentPreview(pair, { fadeStopTighten = false, e
 
   // Ladder for pricing PENDING (not-yet-touched) rungs — daily bars UP TO
   // (not including) today, from getFastLive's own bounded, already-warm
-  // packed M1 via resamplePacked (no re-fetch, no OANDA call needed).
+  // packed M1.
+  //
+  // FIXED 2026-09-16 (owner-flagged, real bug, not a staleness artifact):
+  // this used to resample via `resamplePacked(packed, 1440)`, which buckets
+  // by plain UTC midnight (`times[i] % 86400`) — a completely different day
+  // boundary than `atlasWalk`'s own `bucketM1IntoSessions(packed,
+  // 'Europe/London')`, the DST-aware London-midnight boundary EVERY other
+  // part of Level Atlas (the backtest, the stored book, every vote/margin
+  // decision) is built on. During BST (UTC+1), that meant this function's
+  // `todayOpen` was captured a full HOUR into the real London session —
+  // wrong anchor, wrong rung levels, on every live trade, independent of
+  // and in addition to any data-staleness issue. Now uses the SAME
+  // `bucketM1IntoSessions` call and the SAME day-open/high/low/close
+  // construction `atlasWalk` itself uses (`d1 = dates.map(...)`), so the
+  // live plan and the backtest finally agree on what "today" means.
   let ladderBySide = {};
   if (packed?.n) {
-    const daily = _resamplePacked(packed, 1440).map(b => ({ date: new Date(b.time * 1000).toISOString().slice(0, 10), open: b.open, high: b.high, low: b.low, close: b.close }));
+    const _sessions = _bucketM1IntoSessions(packed, 'Europe/London');
+    const daily = [..._sessions.keys()].sort().map(d => {
+      const b = _sessions.get(d);
+      let hi = -Infinity, lo = Infinity;
+      for (const x of b) { if (x.high > hi) hi = x.high; if (x.low < lo) lo = x.low; }
+      return { date: d, open: b[0].open, high: hi, low: lo, close: b[b.length - 1].close };
+    });
     const todayIdx = daily.findIndex(d => d.date === live.date);
     const priorDaily = todayIdx > 0 ? daily.slice(0, todayIdx) : daily.slice(0, -1);
     const todayOpen = todayIdx >= 0 ? daily[todayIdx].open : daily.at(-1)?.open;
