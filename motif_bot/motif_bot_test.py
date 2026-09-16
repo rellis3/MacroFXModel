@@ -181,6 +181,39 @@ def test_default_paper_mode_is_true():
     assert mb.DEFAULT_CFG["paper_mode"] is True
 
 
+def test_default_risk_guard_enabled_is_false():
+    """OFF by default (2026-09-16): with the guard not enforced, the live bot
+    trades the SAME population motif_alert_backtest.py's ungated export does
+    -- the user's own ask, so a live account can match the backtest exactly
+    until/unless it actually needs the daily/monthly DD lockout + cooldown."""
+    assert mb.DEFAULT_CFG["risk_guard_enabled"] is False
+
+
+def test_log_guard_transition_logs_would_block_when_not_enforced():
+    import logging
+    msgs = []
+    h = logging.Handler(); h.emit = lambda r: msgs.append(r.getMessage())
+    lg = logging.getLogger("mt_guard_transition_test"); lg.addHandler(h); lg.setLevel(logging.INFO)
+    state = {}
+    mb._log_guard_transition(lg, state, "eurusd", "Daily DD 4.0% >= 3.0% -- locked 3h", enforced=False)
+    assert len(msgs) == 1
+    assert "would block" in msgs[0] and "NOT enforced" in msgs[0]
+    assert "NEW entries blocked" not in msgs[0], \
+        "must never claim entries were blocked while risk_guard_enabled is false"
+
+
+def test_log_guard_transition_logs_real_block_when_enforced():
+    import logging
+    msgs = []
+    h = logging.Handler(); h.emit = lambda r: msgs.append(r.getMessage())
+    lg = logging.getLogger("mt_guard_transition_test2"); lg.addHandler(h); lg.setLevel(logging.INFO)
+    state = {}
+    mb._log_guard_transition(lg, state, "eurusd", "Daily DD 4.0% >= 3.0% -- locked 3h", enforced=True)
+    assert len(msgs) == 1 and "NEW entries blocked" in msgs[0]
+    mb._log_guard_transition(lg, state, "eurusd", None, enforced=True)
+    assert len(msgs) == 2 and "resumed" in msgs[1]
+
+
 if __name__ == "__main__":
     import pytest
     raise SystemExit(pytest.main([__file__, "-v"]))

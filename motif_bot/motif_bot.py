@@ -58,7 +58,7 @@ from pylego.sizing import position_size                              # noqa: E40
 from pylego.broker.paper import PaperBroker                          # noqa: E402
 from pylego.quotes import QuoteFeed                                   # noqa: E402
 from pylego.costs import expected_fill, max_spread                    # noqa: E402
-from pylego.risk_guard import RiskGuard, log_block_transition, block_category  # noqa: E402
+from pylego.risk_guard import RiskGuard, block_category  # noqa: E402
 from pylego.telegram import send_telegram                             # noqa: E402
 from pylego.motif_policy import RISK_GUARD_DEFAULTS                   # noqa: E402
 
@@ -88,6 +88,14 @@ DEFAULT_CFG = {
                                      # max_spread_pips plays in every other bot's config.
     **RISK_GUARD_DEFAULTS,           # ddlimit/monthlydd/lockout/cooldown -- shared with the backtest's
                                      # --replay-risk-guard default (pylego.motif_policy) so the two never drift.
+    "risk_guard_enabled": False,     # OFF by default (2026-09-16): with this off, the guard is still tracked
+                                     # (balance/DD/cooldown state, visible on the dashboard) but never blocks an
+                                     # entry -- the bot trades exactly the population motif_alert_backtest.py's
+                                     # UNGATED export does (best-config filter only). Flip it on to add the
+                                     # daily/monthly DD lockout + per-pair cooldown on top, matching what
+                                     # `--replay-risk-guard` simulates. Kept opt-in rather than always-on so the
+                                     # live book can match the backtest exactly until/unless the account actually
+                                     # needs the protection -- see the user's own ask, 2026-09-16 session.
     "plan_max_age_hours": 3,        # motif_track_loop.sh refreshes hourly; 3x that before failing closed on a stale plan.
     "poll_secs": 60,                # how often this bot re-reads motif_bot_plan / checks for a fill to act on.
     "status_secs": 30,
@@ -105,6 +113,24 @@ def _deep_merge(base: dict, over: dict) -> dict:
     for k, v in (over or {}).items():
         out[k] = _deep_merge(base[k], v) if isinstance(v, dict) and isinstance(base.get(k), dict) else v
     return out
+
+
+def _log_guard_transition(log: logging.Logger, state: dict, key: str,
+                          reason: str | None, enforced: bool) -> None:
+    """`pylego.risk_guard.log_block_transition`, but enforcement-aware: that
+    shared helper's own log line always says "NEW entries blocked", which
+    would be a straight lie while `risk_guard_enabled` is off (nothing is
+    being blocked -- see DEFAULT_CFG's own note on why that flag defaults
+    off). Same once-per-state-change dedup, worded honestly either way."""
+    prev = state.get(key)
+    if block_category(reason) == block_category(prev):
+        return
+    state[key] = reason
+    if reason:
+        verb = "NEW entries blocked" if enforced else "would block new entries (risk_guard_enabled=false, NOT enforced)"
+        log.warning(f'RiskGuard [{key}]: {verb} — {reason}')
+    elif prev:
+        log.info(f'RiskGuard [{key}]: clear{" — entries resumed" if enforced else ""}')
 
 
 def _mt5_sym(pair: str) -> str:
@@ -246,6 +272,11 @@ def build_status(cfg, broker, plan, paper, guard=None, plan_age_blocked=False, a
         "mt5_positions": broker.serialize_open_positions(),
         "today_closed_trades": broker.serialize_closed_trades(),
         "risk_guard": guard.snapshot(bal) if guard is not None else None,
+        # The snapshot above reflects the guard's TRACKED state regardless of
+        # this flag (so the dashboard can show "would be locked" before you
+        # switch it on) -- this flag is what actually decides whether that
+        # state is allowed to block a new entry.
+        "risk_guard_enabled": bool(cfg.get("risk_guard_enabled", False)),
         "plan_age_blocked": bool(plan_age_blocked),
         "pushed_at": int(time.time()),
     }
@@ -459,12 +490,22 @@ def run(base_url: str, force_live: bool) -> None:
                 if open_for_pair >= cfg.get("max_concurrent_per_pair", 2):
                     continue
 
+                # Always evaluated (and always logged/decision-logged on a
+                # transition) regardless of risk_guard_enabled -- so the
+                # dashboard's risk_guard snapshot and the decision log stay
+                # accurate to "what the guard is tracking" even while it is
+                # not gating anything, and a lockout/cooldown already in
+                # progress is immediately live the moment the flag flips on
+                # rather than needing a fresh breach to arm it.
+                risk_guard_enabled = bool(cfg.get("risk_guard_enabled", False))
                 guard_why = guard.block_reason(guard_bal, pair)
                 was_blocked = guard_blocks.get(pair)
-                log_block_transition(log, guard_blocks, pair, guard_why)
+                _log_guard_transition(log, guard_blocks, pair, guard_why, risk_guard_enabled)
                 if guard_why and block_category(guard_why) != block_category(was_blocked):
-                    _record_decision(pair, motif_key, "pair_blocked", reason=f"risk_guard: {guard_why}")
-                if guard_why:
+                    status = "pair_blocked" if risk_guard_enabled else "would_block"
+                    tag = "" if risk_guard_enabled else " (NOT enforced -- risk_guard_enabled=false)"
+                    _record_decision(pair, motif_key, status, reason=f"risk_guard: {guard_why}{tag}")
+                if guard_why and risk_guard_enabled:
                     continue
 
                 is_long = entry.get("direction") == "BUY"
