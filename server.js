@@ -30815,7 +30815,7 @@ async function refreshMacroContext() {
 // cadence. (seriesDeltas is now calendar-day aware too, so a monthly series
 // degrades honestly instead of silently; this is the other half of that fix.)
 const _FRED_DASH_SERIES = {
-  vix: 'VIXCLS', vix3m: 'VXVCLS', us2y: 'DGS2', us5y: 'DGS5', us10y: 'DGS10',
+  vix: 'VIXCLS', vix3m: 'VXVCLS', us2y: 'DGS2', us5y: 'DGS5', us10y: 'DGS10', us30y: 'DGS30',
   dxy: 'DTWEXBGS', hy: 'BAMLH0A0HYM2', nfci: 'NFCI',
   tips: 'DFII10', tips5: 'DFII5', bei: 'T10YIE',
   aud_usd: 'DEXUSAL', usd_jpy: 'DEXJPUS',

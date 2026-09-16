@@ -1609,13 +1609,13 @@ function vixStatTabsHtml() {
     `<button class="stat-tab${vixStatTab === id ? ' on' : ''}" onclick="event.stopPropagation();setVixStatTab('${id}')">${lbl}</button>`).join('')}</div>`;
 }
 function rateStatTabsHtml() {
-  const tabs = [['us10y', '10Y'], ['us2y', '2Y'], ['spread', '2s10s']];
+  const tabs = [['us10y', '10Y'], ['us2y', '2Y'], ['spread', '2s10s'], ['spread30', '2s30s']];
   return `<div class="stat-tabs">${tabs.map(([id, lbl]) =>
     `<button class="stat-tab${rateStatTab === id ? ' on' : ''}" onclick="event.stopPropagation();setRateStatTab('${id}')">${lbl}</button>`).join('')}</div>`;
 }
 function renderStatRow() {
   const el = $('statRow');
-  const us10y = fred?.us10y, us2y = fred?.us2y, dxy = fred?.dxy, vix = fred?.vix, wti = commodityDrivers?.wti;
+  const us10y = fred?.us10y, us2y = fred?.us2y, us30y = fred?.us30y, dxy = fred?.dxy, vix = fred?.vix, wti = commodityDrivers?.wti;
   if (!us10y?.value && !dxy?.value && !vix?.value && !wti) { el.style.display = 'none'; return; }
   const cards = [];
 
@@ -1638,6 +1638,23 @@ function renderStatRow() {
     const wkAgo = spreadHist.length >= 6 ? spreadHist[spreadHist.length - 6] : null;
     const wkBps = wkAgo != null ? spreadBps - wkAgo : null;
     cards.push(statCardHtml('2s10s Spread', `${spreadBps >= 0 ? '+' : ''}${spreadBps.toFixed(0)} bps`,
+      dBps != null ? `${dBps >= 0 ? '+' : ''}${dBps.toFixed(0)} bps` : null, dBps == null || dBps >= 0,
+      spreadHist, wkBps == null || wkBps >= 0,
+      wkBps != null ? `${wkBps >= 0 ? '+' : ''}${wkBps.toFixed(0)} bps` : null, wkBps == null || wkBps >= 0,
+      rateStatTabsHtml()));
+  } else if (rateStatTab === 'spread30' && us30y?.value != null && us2y?.value != null) {
+    // 2s30s: the whole curve, front end to long end. 2s10s is the policy /
+    // recession gauge; this one is where fiscal and inflation-credibility doubt
+    // shows up first, because the 30-year is the tenor that has to be paid to
+    // ignore it. Same construction as the 2s10s card, so the two can be compared.
+    const spreadBps = (us30y.value - us2y.value) * 100;
+    const dBps = (us30y.prev != null && us2y.prev != null) ? spreadBps - (us30y.prev - us2y.prev) * 100 : null;
+    const h30 = (fredHist?.us30y ?? []).map(p => p.value), h2 = (fredHist?.us2y ?? []).map(p => p.value);
+    const n = Math.min(h30.length, h2.length);
+    const spreadHist = n ? h30.slice(-n).map((v, i) => (v - h2.slice(-n)[i]) * 100) : [];
+    const wkAgo = spreadHist.length >= 6 ? spreadHist[spreadHist.length - 6] : null;
+    const wkBps = wkAgo != null ? spreadBps - wkAgo : null;
+    cards.push(statCardHtml('2s30s Spread', `${spreadBps >= 0 ? '+' : ''}${spreadBps.toFixed(0)} bps`,
       dBps != null ? `${dBps >= 0 ? '+' : ''}${dBps.toFixed(0)} bps` : null, dBps == null || dBps >= 0,
       spreadHist, wkBps == null || wkBps >= 0,
       wkBps != null ? `${wkBps >= 0 ? '+' : ''}${wkBps.toFixed(0)} bps` : null, wkBps == null || wkBps >= 0,
