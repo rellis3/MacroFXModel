@@ -329,7 +329,7 @@
 import { buildPortfolioDailySeries, computeIntradayMAE } from './js/levelAtlasVoteReview.js';
 import { portfolioStats } from './js/backtestStats.js';
 import { withNonCompoundedDD } from './js/fibAtlasVotePortfolio.js';
-import { summarizeTrades, sharpeStdError, minTrackRecordLength } from './js/metricsCore.js';
+import { summarizeTrades, sharpeStdError, minTrackRecordLength, maxDrawdownDurationFromPnls } from './js/metricsCore.js';
 import { shuffle } from './js/backtestStats.js';
 import { mulberry32 } from './js/statsCore.js';
 import { fitTailModel } from './js/evtTail.js';
@@ -874,13 +874,19 @@ function activeCostR() {
   return (mode === 'retail' && DATA.retail_cost_r) ? DATA.retail_cost_r : DATA.pair_cost_r;
 }
 
+// Read by renderPerfSummary so the modal's CAPACITY section reports the exact
+// same numbers as the standing card, without a second (expensive -- diesAt is
+// itself ~30 portfolio simulations per pair) capacity sweep. Matches this
+// module's own stated rule: every number in the summary is read from what a
+// standing card already computed, never recomputed.
+let LAST_CAPACITY = null;
 let capChart = null;
 function renderCapacity(trades, riskPct, targetVol) {
   const costR = activeCostR();
   if (!costR) {
     $('capStats').innerHTML = '<div class="muted">Per-pair cost not in this export — re-run ' +
       'python AnalogML/motif_alert_backtest.py --all-pairs.</div>';
-    $('capTable').innerHTML = ''; return;
+    $('capTable').innerHTML = ''; LAST_CAPACITY = null; return;
   }
   const curve = COST_MULTIPLIERS.map(k => sharpeAtCost(trades, k, costR, riskPct, targetVol));
   const portDies = diesAt(trades, costR, riskPct, targetVol);
@@ -890,6 +896,7 @@ function renderCapacity(trades, riskPct, targetVol) {
              base: sharpeAtCost(own, 1, costR, riskPct, targetVol),
              dies: diesAt(own, costR, riskPct, targetVol) };
   }).filter(x => x.base != null).sort((a, b) => (a.dies ?? 1e9) - (b.dies ?? 1e9));
+  LAST_CAPACITY = { portDies, perPair };
   const frag = perPair[0], robust = perPair[perPair.length - 1];
   $('capStats').innerHTML = [
     kpiCard('Portfolio dies at', portDies == null ? '> 50×' : fmt(portDies, 2) + '×',
@@ -1000,11 +1007,34 @@ function renderPerfSummary(res, trades) {
     months.set(mk, (months.get(mk) ?? 0) + t.r * Number($('riskPct').value));
   }
   const mv = [...months.values()];
+  const avgMonthly = mv.length ? mv.reduce((a, b) => a + b, 0) / mv.length : null;
+  // Concentration: how much of total profit rides on the ten biggest single
+  // trades, and what the per-trade Sharpe looks like without them. Ten winners
+  // out of a filtered book always numbers in the thousands, so "top 10 by R"
+  // and "top 10 winners" are the same set here -- no separate win/loss split
+  // needed to pick them out.
+  const rSorted = trades.map(t => t.r).slice().sort((a, b) => b - a);
+  const grossProfit = rSorted.filter(x => x > 0).reduce((a, b) => a + b, 0);
+  const top10Sum = rSorted.slice(0, 10).reduce((a, b) => a + b, 0);
+  const top10SharePct = grossProfit > 0 ? (top10Sum / grossProfit) * 100 : null;
+  const exTop10 = rSorted.slice(10);
+  const tradeSharpe = (rs => { // raw mean/stdev of ONE trade, unannualised
+    if (rs.length < 2) return null;
+    const mu = rs.reduce((a, b) => a + b, 0) / rs.length;
+    const sd = Math.sqrt(rs.reduce((a, b) => a + (b - mu) ** 2, 0) / rs.length);
+    return sd > 1e-9 ? mu / sd : null;
+  });
+  const sharpeAll = tradeSharpe(rSorted), sharpeExTop10 = tradeSharpe(exTop10);
+  // EVT-implied ceiling: only meaningful when the fitted tail is BOUNDED
+  // (shape < 0 -- a Pareto-type tail has no such ceiling, so this is left
+  // blank rather than printing a number the fit itself says doesn't exist).
+  const evtCeiling = fit.ok && fit.shape < -1e-6 ? fit.threshold + fit.scale / Math.abs(fit.shape) : null;
   $('perfRange').textContent = dates.length ? `${dates[0]} – ${dates.at(-1)}` : '—';
   $('perfBody').innerHTML =
     sec('RETURNS', 'non-compounded (fixed risk) unless stated', [
       row('Total Return', fmt(st.cagrNonCompounded == null ? null : daily.reduce((a, b) => a + b, 0), 2) + '%', 'green'),
       row('Annual Return', fmt(st.cagrNonCompounded, 2) + '%'),
+      row('Monthly Return', avgMonthly == null ? '—' : (avgMonthly >= 0 ? '+' : '') + fmt(avgMonthly, 2) + '%', cls(avgMonthly)),
       row('Compounded CAGR', fmt(st.cagr, 2) + '%'),
       row('Average Trade', fmt(s.avgR, 4) + ' R'),
       row('Best Month', mv.length ? '+' + fmt(Math.max(...mv), 2) + '%' : '—', 'green'),
@@ -1015,8 +1045,10 @@ function renderPerfSummary(res, trades) {
     sec('PORTFOLIO RISK', 'daily returns, all open positions pooled — the real correlation basis', [
       row('Annual Volatility', fmt(st.annVol, 2) + '%'),
       row('Max Drawdown (non-comp.)', fmt(st.maxDDNonCompounded, 2) + '%', 'red'),
+      row('Max DD Duration (bdays)', daily.length ? maxDrawdownDurationFromPnls(daily).toLocaleString() : '—'),
       row('Max Drawdown (compounded)', fmt(st.maxDD, 2) + '%', 'red'),
       row('VaR (95%)', fmt(st.var95, 2) + '%', 'red'),
+      row('VaR (99%)', fmt(st.var99, 2) + '%', 'red'),
       row('CVaR (95%)', fmt(st.cvar95, 2) + '%', 'red'),
       row('Trading Days', (st.days ?? 0).toLocaleString()),
     ].join('')) +
@@ -1026,23 +1058,41 @@ function renderPerfSummary(res, trades) {
       row('Calmar Ratio', fmt(st.calmar, 2)),
       row('Probabilistic Sharpe', fmt(st.psr, 2)),
     ].join('')) +
-    sec('PER-TRADE STATISTICS', 'individual wins/losses — Sharpe here is raw (mean ÷ stdev of ONE trade), not annualised', [
+    sec('PER-TRADE STATISTICS', 'individual wins/losses — Sharpe here is raw (mean ÷ stdev of ONE trade), not annualised. ' +
+        'Sortino/Calmar on this same additive per-trade curve are deliberately NOT shown here — trade overlap can inflate ' +
+        'them into a number that is not a real edge multiplier; the day-pooled Sortino/Calmar above are the ones to size against.', [
+      row('Sharpe (single trade)', sharpeAll == null ? '—' : fmt(sharpeAll, 3)),
       row('Profit Factor', fmt(s.pf, 3)),
       row('Win Rate', pct(s.winRate, 2)),
-      row('Average Win', perTrade ? '+' + fmt(perTrade.avgWin, 3) + '%' : '—', 'green'),
-      row('Average Loss', perTrade ? fmt(perTrade.avgLoss, 3) + '%' : '—', 'red'),
+      row('Average Win', perTrade?.avgWin != null ? '+' + fmt(perTrade.avgWin, 3) + '%' : '—', 'green'),
+      row('Average Loss', perTrade?.avgLoss != null ? fmt(perTrade.avgLoss, 3) + '%' : '—', 'red'),
       row('Total Round Trips', s.n.toLocaleString()),
       row('Expectancy', fmt(s.avgR, 4) + ' R'),
     ].join('')) +
     sec('TAIL RISK', 'excess kurtosis: normal = 0, not 3. Same bricks as the standing cards above', [
       row('Skew (daily)', fmt(st.skew, 2)),
       row('Excess Kurtosis (daily)', fmt(st.excessKurt, 2)),
+      row('Top 10 Trades = % of Profit', top10SharePct == null ? '—' : fmt(top10SharePct, 1) + '%',
+          top10SharePct != null && top10SharePct > 20 ? 'red' : ''),
+      row('Sharpe ex Top 10 Winners', sharpeExTop10 == null ? '—' : fmt(sharpeExTop10, 3)),
       row('Bootstrap P(profitable)', m ? pct(m.pProfit, 1) : '—', 'green'),
       row('Reshuffled Max DD (p95)', m ? fmt(m.q(m.dds, .05), 2) + '%' : '—', 'red'),
-      row('EVT Tail Shape (ξ)', fit.ok ? fmt(fit.shape, 2) : '—'),
+      row('EVT Tail Shape (ξ)', fit.ok ? fmt(fit.shape, 2) + (fit.shape < -0.05 ? ' (bounded)' : fit.shape > 0.05 ? ' (fat)' : '') : '—'),
+      row('EVT Implied Ceiling (1 day)', evtCeiling != null ? fmt(evtCeiling, 1) + '%' : '— (unbounded fit)'),
       row('EVT VaR 99.5% / CVaR 99.5%', fit.ok && fit.probes[2]
           ? `${fmt(fit.probes[2].varLossPct, 2)}% / ${fit.probes[2].cvarLossPct == null ? '—' : fmt(fit.probes[2].cvarLossPct, 2) + '%'}` : '—', 'red'),
-    ].join(''));
+    ].join('')) +
+    sec('CAPACITY', "proxy for how much size/crowding the edge can absorb — same numbers as the standing Capacity card, read from its last render rather than re-swept here", (() => {
+      if (!LAST_CAPACITY) return row('Portfolio Dies At', '— (open the Capacity card first)');
+      const { portDies, perPair } = LAST_CAPACITY;
+      const rows = [row('Portfolio Dies At (cost multiplier)', portDies == null ? '> 50×' : fmt(portDies, 2) + '×',
+                        portDies != null && portDies < 5 ? 'red' : 'green')];
+      perPair.slice(0, 3).forEach((p, i) => rows.push(row(`Most Fragile #${i + 1}`,
+        `${p.pair.toUpperCase()} — dies at ${p.dies == null ? '>50' : fmt(p.dies, 1)}× (Sharpe now ${fmt(p.base, 2)})`, 'red')));
+      perPair.slice(-3).reverse().forEach((p, i) => rows.push(row(`Most Robust #${i + 1}`,
+        `${p.pair.toUpperCase()} — dies at ${p.dies == null ? '>50' : fmt(p.dies, 1)}× (Sharpe now ${fmt(p.base, 2)})`, 'green')));
+      return rows.join('');
+    })());
 }
 
 function statRow(label, s) {
@@ -1410,8 +1460,12 @@ function render() {
     + `and Return % are NOT the same number relabelled. MAE in both exports comes from the real `
     + `intra-trade OHLC path (low-vs-entry for longs, high-vs-entry for shorts), capped at the stop, `
     + `and is written out as a negative excursion.`;
+  // Describes the EXPORT, so it is fixed -- but it sat above a filtered view
+  // reading "26 pairs / 30,062 trades" while the table showed 13,480, which
+  // reads as a contradiction rather than as two different things. Say which
+  // it is.
   $('headerSub').textContent =
-    `${DATA.pairs.length} pairs · ${f.confirmed_alerts.toLocaleString()} confirmed alerts → ` +
+    `Export: ${DATA.pairs.length} pairs · ${f.confirmed_alerts.toLocaleString()} confirmed alerts → ` +
     `${f.trades_resolved.toLocaleString()} trades, none skipped · entry next H1 open · ` +
     `sl ${pr.sl_pips}p / tp ${pr.tp_r}R · generated ${DATA.generated_at.slice(0, 10)}`;
   render();

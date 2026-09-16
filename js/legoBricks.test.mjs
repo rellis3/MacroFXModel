@@ -7,7 +7,7 @@
 import { bisect, extractBars, resampleTo, bodyRange, calcATR } from './barUtils.js';
 import { rollingZScore, rollingPercentile, rollingZAt, linregSlope, ewma, stdev, rankData, spearman, rankIC, mulberry32, blockResample, blockBootstrapIC } from './statsCore.js';
 import { atrWilder, adxWilder, ema, rsiWilder, pmo } from './indicatorCore.js';
-import { summarizeTrades, sharpeRatio, maxDrawdownFromPnls, profitFactor, winRate, sharpeStdError, minTrackRecordLength, skewness, excessKurtosis, histVaR, histCVaR, neweyWestSharpe, neweyWestOLS } from './metricsCore.js';
+import { summarizeTrades, sharpeRatio, maxDrawdownFromPnls, maxDrawdownDurationFromPnls, profitFactor, winRate, sharpeStdError, minTrackRecordLength, skewness, excessKurtosis, histVaR, histCVaR, neweyWestSharpe, neweyWestOLS } from './metricsCore.js';
 import { FIB_LEVELS, calcFibs } from './fibProjection.js';
 import { instrument, pipSize, resolveKey, INSTRUMENT_KEYS } from './instrumentRegistry.js';
 import { summarize } from './honestForecastEngine.js';
@@ -787,6 +787,25 @@ console.log('[metricsCore — distribution shape / tail]');
      ['skew', 'excessKurt', 'var95', 'cvar95'].every(k => Number.isFinite(st[k])),
      `skew=${st.skew} exKurt=${st.excessKurt} var95=${st.var95} cvar95=${st.cvar95}`);
   ok('summarizeTrades var95 ≥ cvar95 (tail is worse than threshold)', st.var95 >= st.cvar95);
+
+  // avgWin/avgLoss (2026-09): were referenced by a viewer (motif-alert-backtest.html's
+  // performance summary) but never populated by this function, silently rendering
+  // "+—%" on every page that used them -- caught only by eye, not by a test. Pinned
+  // against the same fixture summarizeTrades' own golden test uses.
+  ok('summarizeTrades carries avgWin/avgLoss', Number.isFinite(st.avgWin) && Number.isFinite(st.avgLoss),
+     `avgWin=${st.avgWin} avgLoss=${st.avgLoss}`);
+  ok('summarizeTrades avgWin > 0 > avgLoss (signs match win/loss)', st.avgWin > 0 && st.avgLoss < 0,
+     `avgWin=${st.avgWin} avgLoss=${st.avgLoss}`);
+  ok('summarizeTrades avgWin/avgLoss are null, not 0, on a one-sided series',
+     summarizeTrades([1, 2, 3], ['2022-01-01', '2022-01-02', '2022-01-03']).avgLoss === null &&
+     summarizeTrades([-1, -2, -3], ['2022-01-01', '2022-01-02', '2022-01-03']).avgWin === null);
+
+  // cum: 5, 4, 3, 2, 12 -- peak set at 5, three points strictly below it
+  // (4,3,2), then the 4th point clears it and resets the counter to 0.
+  ok('maxDrawdownDurationFromPnls counts consecutive under-peak points',
+     maxDrawdownDurationFromPnls([5, -1, -1, -1, 10]) === 3);
+  ok('maxDrawdownDurationFromPnls is 0 on a series that never dips below its own peak',
+     maxDrawdownDurationFromPnls([1, 1, 2, 3]) === 0);
 }
 
 // ── oiLevelExport: the OI-walls paste-block builder ──────────────────────────

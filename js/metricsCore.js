@@ -38,6 +38,22 @@ export function maxDrawdownFromEquity(equity) {
   return maxDD;
 }
 
+// Consecutive-observation count spent under the running peak of the CUMULATIVE
+// SUM -- the same additive (non-compounded) series maxDrawdownFromPnls measures.
+// A companion to it, not a replacement: "how deep" and "how long" are two
+// different questions a viewer needs both answers to, and a shallow-but-long
+// drawdown reads very differently from a deep-but-brief one even at the same
+// maxDD. Pass the same series to both for an internally consistent pair.
+export function maxDrawdownDurationFromPnls(pnls) {
+  let cum = 0, peak = 0, under = 0, maxUnder = 0;
+  for (const x of pnls) {
+    cum += x;
+    if (cum >= peak) { peak = cum; under = 0; }
+    else { under++; if (under > maxUnder) maxUnder = under; }
+  }
+  return maxUnder;
+}
+
 // ── Ratios ───────────────────────────────────────────────────────────────────
 // Sharpe of a per-period return series, annualised by √periodsPerYear.
 // ddof=0 (population) by default to match the engines that scale per-trade.
@@ -279,7 +295,7 @@ export const expectancy = pnls => (pnls.length ? mean(pnls) : 0);
 // actual trade frequency, clamped to ≥0.25yr so tiny samples don't blow up.
 export function summarizeTrades(pnls, dates) {
   const n = pnls.length;
-  if (!n) return { trades: 0, winRate: 0, profitFactor: 0, expectancy: 0, sharpe: 0, sharpeSE: null, minTrackYears: null, maxDD: 0, totalPnl: 0, skew: 0, excessKurt: 0, var95: 0, cvar95: 0 };
+  if (!n) return { trades: 0, winRate: 0, profitFactor: 0, expectancy: 0, sharpe: 0, sharpeSE: null, minTrackYears: null, maxDD: 0, totalPnl: 0, skew: 0, excessKurt: 0, var95: 0, cvar95: 0, avgWin: 0, avgLoss: 0 };
   const m = mean(pnls);
   const sd = stdev(pnls, 0);            // population std, as in the original
   const sorted = dates.slice().sort();
@@ -303,6 +319,13 @@ export function summarizeTrades(pnls, dates) {
   // kurtosis, so pass excessKurt + 3.)
   const sk = skewness(pnls), ek = excessKurtosis(pnls);
   const mtrYears = minTrackRecordLength(annSharpe, { periodsPerYear: tradesPerYr, skew: sk, kurt: ek + 3 });
+  // Mean of the winners and mean of the losers, SEPARATELY -- a payoff read
+  // (avgWin / -avgLoss) needs both sides, and a blended `expectancy` above
+  // cannot be unmixed back into them. null (not 0) when a side is empty, so a
+  // caller can tell "no losers yet" from "average loss happens to be zero".
+  const winPnls = pnls.filter(x => x > 0), lossPnls = pnls.filter(x => x < 0);
+  const avgWin = winPnls.length ? winPnls.reduce((a, b) => a + b, 0) / winPnls.length : null;
+  const avgLoss = lossPnls.length ? lossPnls.reduce((a, b) => a + b, 0) / lossPnls.length : null;
   return {
     trades: n,
     tradesPerYr: +tradesPerYr.toFixed(1),
@@ -319,5 +342,7 @@ export function summarizeTrades(pnls, dates) {
     excessKurt: +ek.toFixed(3),
     var95: +histVaR(pnls, 0.95).toFixed(4),
     cvar95: +histCVaR(pnls, 0.95).toFixed(4),
+    avgWin: avgWin == null ? null : +avgWin.toFixed(4),
+    avgLoss: avgLoss == null ? null : +avgLoss.toFixed(4),
   };
 }
