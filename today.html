@@ -2782,7 +2782,7 @@ function chainVals() {
   const B = window.macroChainBrick;
   if (!B) return null;
   const out = {};
-  const fredSrc = { bei: 'bei', us10y: 'us10y', real: 'tips', dxy: 'dxy', vix: 'vix', hy: 'hy' };
+  const fredSrc = { bei: 'bei', us2y: 'us2y', us10y: 'us10y', us30y: 'us30y', real: 'tips', dxy: 'dxy', vix: 'vix', hy: 'hy' };
   for (const [node, key] of Object.entries(fredSrc)) {
     const pts = fredHist?.[key];
     out[node] = Array.isArray(pts) && pts.length ? B.nodeDelta(pts, B.CHAIN_NODES[node]) : null;
@@ -9303,7 +9303,7 @@ const DRIVERS = {
   AUDJPY: { a: 'au10y', b: 'jp10y', label: 'AU–JP 10y', sign: +1 },
   CADJPY: { a: 'ca10y', b: 'jp10y', label: 'CA–JP 10y', sign: +1 },
 };
-const FREDHIST_KEYS = 'us10y,us2y,de10y,gb10y,jp10y,au10y,ca10y,ch10y,tips,bei,vix,vix3m,dxy,hy,walcl,tga,rrp,ecb_assets,boj_assets';
+const FREDHIST_KEYS = 'us10y,us2y,us30y,de10y,gb10y,jp10y,au10y,ca10y,ch10y,tips,bei,vix,vix3m,dxy,hy,walcl,tga,rrp,ecb_assets,boj_assets';
 
 async function getFredHist() {
   if (fredHist) return fredHist;

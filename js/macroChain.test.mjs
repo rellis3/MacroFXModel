@@ -76,6 +76,13 @@ console.log('[evaluateChain — verdicts]');
   const gap = evaluateChain({ ...vals, dxy: { delta: -1.5, last: 1, asOf: '2026-09-04' } });
   ok('date gap between the ends is measured', gap.find(l => l.id === 'real-dxy').dateGapDays === 6 && gap.find(l => l.id === 'oil-bei').dateGapDays === 0);
   ok('no asOf -> gap null', evaluateChain({ oil: { delta: 8 }, bei: { delta: 12 } })[0].dateGapDays === null);
+  const curve = evaluateChain({ ...vals, us2y: v(32), us30y: v(10) });
+  ok('front end and long end both up -> holding', curve.find(l => l.id === 'us2y-us30y').verdict === 'holding');
+  const flat = evaluateChain({ ...vals, us2y: v(32), us30y: v(-12) });
+  ok('2y up, 30y down -> broken, the policy-mistake sentence', flat.find(l => l.id === 'us2y-us30y').verdict === 'broken' && /policy mistake/.test(flat.find(l => l.id === 'us2y-us30y').read));
+  const steep = evaluateChain({ ...vals, us2y: v(-20), us30y: v(15) });
+  ok('2y down, 30y up -> broken, the credibility sentence', steep.find(l => l.id === 'us2y-us30y').verdict === 'broken' && /rates-crisis/.test(steep.find(l => l.id === 'us2y-us30y').read) && /credibility/.test(steep.find(l => l.id === 'us2y-us30y').punch));
+  ok('long end inside its floor -> quiet', evaluateChain({ ...vals, us2y: v(32), us30y: v(3) }).find(l => l.id === 'us2y-us30y').verdict === 'quiet');
   const exact = evaluateChain({ ...vals, vix: v(3), hy: v(20) });
   ok('a move exactly at the floor counts as moved', exact.find(l => l.id === 'vix-hy').verdict !== 'quiet');
 }

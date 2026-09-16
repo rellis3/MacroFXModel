@@ -34,6 +34,8 @@ export const CHAIN_WINDOW_DAYS = 20;
 export const CHAIN_NODES = {
   oil:    { label: 'Oil (WTI)',                       unit: 'pct', floor: 3,   dp: 1, what: 'Front-month crude in dollars. Energy is the first domino: it is in every input cost and every headline inflation print.' },
   bei:    { label: 'Inflation expectations',          unit: 'bp',  floor: 5,   dp: 0, what: 'The 10-year breakeven (T10YIE): nominal yield minus the TIPS real yield. What the bond market is pricing for average inflation over ten years.' },
+  us2y:   { label: 'US 2Y yield',                     unit: 'bp',  floor: 8,   dp: 0, what: 'The two-year Treasury yield (DGS2): the market\u2019s vote on what the central bank does over the next couple of years. It moves first, and hardest, on policy.' },
+  us30y:  { label: 'US 30Y yield',                    unit: 'bp',  floor: 8,   dp: 0, what: 'The thirty-year (DGS30): the vote on inflation and fiscal credibility over a generation. When it moves against the front end, that is the story.' },
   us10y:  { label: 'US 10Y yield',                    unit: 'bp',  floor: 8,   dp: 0, what: 'The nominal 10-year Treasury yield (DGS10). It is the real yield plus expected inflation, so a move in it always has a cause on one side or the other.' },
   real:   { label: 'Real yield (10Y TIPS)',           unit: 'bp',  floor: 8,   dp: 0, what: 'The inflation-adjusted 10-year (DFII10). The true cost of money. Gold, the dollar and long-duration assets answer to this, not to the nominal.' },
   dxy:    { label: 'Dollar (broad index)',            unit: 'pct', floor: 0.5, dp: 1, what: 'The Fed’s trade-weighted broad dollar (DTWEXBGS). Up = the dollar bought against everything.' },
@@ -87,6 +89,18 @@ export const CHAIN_LINKS = [
     broken: {
       up:   'Nominal yields rose while real yields fell: the entire rise is inflation compensation. Money is not getting tighter in real terms — it is getting looser, which is why gold and commodities can rally into it.',
       down: 'Nominal yields fell while real yields rose: inflation expectations collapsed faster than yields did. Money is tighter in real terms even as the headline rate falls — a disinflation or growth-scare shape.',
+    },
+  },
+  {
+    id: 'us2y-us30y',
+    short: 'front end \u2192 long end',
+    punch: { holds: 'Long end following the front end \u2014 the curve believes the policy path.', up: '2-year up, 30-year down \u2192 hard flattening: the market thinks tightening bites before inflation does.', down: '2-year down, 30-year up \u2192 bear steepening on easing: credibility, not policy, is being priced.' },
+    from: 'us2y', to: 'us30y', sign: +1,
+    textbook: 'A front-end repricing pulls the long end with it',
+    holds: 'The long end is following the front end \u2014 the whole curve is repricing the policy path, and the market believes it. Front end leading is the policy read; long end leading is the credibility read.',
+    broken: {
+      up:   'The front end sold off but the long end rallied: a hard flattening. The market thinks the tightening will bite growth, or break something, before it lets inflation through \u2014 the "policy mistake" shape. Dollar-supportive near term, growth-negative after.',
+      down: 'The front end rallied but the long end sold off: bear steepening on easing. Investors want MORE compensation to lend long even as policy eases \u2014 fiscal or inflation-credibility doubt. This is the rates-crisis shape: policy easing that the bond market refuses to pass along.',
     },
   },
   {
