@@ -3,7 +3,8 @@ import numpy as np
 import pandas as pd
 
 from barrier_race import (Entry, VariableEntry, excursion, mae_from_path, race_grid,
-                          race_trades, race_trades_variable, race_trailing)
+                          race_trades, race_trades_on_finer_path,
+                          race_trades_variable, race_trailing)
 
 
 def _bars(opens, highs, lows, closes):
@@ -370,3 +371,89 @@ if __name__ == '__main__':
             print(f'FAIL {fn.__name__}: {type(e).__name__}: {e}')
     print(f'\n{len(fns) - failed}/{len(fns)} passed')
     sys.exit(1 if failed else 0)
+
+
+# --- race_trades_on_finer_path -------------------------------------------
+# The whole point of this function is the case an HTF bar CANNOT resolve: one
+# bar whose range covers both barriers. These build an H1 frame and the M1
+# frame it was aggregated from, so the disagreement is exact rather than
+# approximate.
+
+def _h1(n, highs, lows, opens=None, closes=None):
+    idx = pd.date_range("2024-01-01", periods=n, freq="1h", tz="UTC")
+    opens = opens if opens is not None else [100.0] * n
+    closes = closes if closes is not None else [100.0] * n
+    return pd.DataFrame({'open': opens, 'high': highs, 'low': lows,
+                         'close': closes}, index=idx)
+
+
+def _m1_from(segments):
+    """segments: one list of (o,h,l,c) minutes per H1 bar, concatenated onto a
+    continuous minute index so each hour's minutes fall inside that hour."""
+    rows, idx = [], []
+    start = pd.Timestamp("2024-01-01", tz="UTC")
+    for h, mins in enumerate(segments):
+        for m, ohlc in enumerate(mins):
+            rows.append(ohlc)
+            idx.append(start + pd.Timedelta(hours=h, minutes=m))
+    return pd.DataFrame(rows, columns=['open', 'high', 'low', 'close'],
+                        index=pd.DatetimeIndex(idx))
+
+
+def test_finer_path_overturns_an_unresolvable_htf_bar():
+    """THE case this exists for. H1 bar 1 spans both barriers, so race_trades'
+    default awards it to the target; the M1 path shows the STOP was touched
+    first and must win."""
+    h1 = _h1(3, highs=[100.0, 102.0, 100.0], lows=[100.0, 98.5, 100.0])
+    flat = [(100.0, 100.0, 100.0, 100.0)] * 3
+    # Hour 1: down through the stop FIRST, then up through the target.
+    hour1 = [(100.0, 100.0, 98.5, 99.0),      # stop (99.0) touched
+             (99.0, 102.0, 99.0, 101.8)]      # target (101.5) only after
+    m1 = _m1_from([flat, hour1, flat])
+    ent = [Entry(idx=0, direction=1)]
+
+    htf = race_trades(h1, ent, sl=1.0, tp_r=1.5, max_bars_ahead=3, min_bars_ahead=1)
+    fine = race_trades_on_finer_path(h1, m1, ent, sl=1.0, tp_r=1.5,
+                                     max_bars_ahead=3, min_bars_ahead=1)
+    assert htf[0]['outcome'] == 'tp' and htf[0]['r'] == 1.5    # optimistic default
+    assert fine[0]['outcome'] == 'sl' and fine[0]['r'] == -1.0  # what really happened
+
+
+def test_finer_path_returns_htf_indices():
+    """`idx`/`exit_idx`/`bars_held` stay HTF positions so callers need no
+    changes; the exact minute is available separately."""
+    h1 = _h1(4, highs=[100.0, 100.5, 101.6, 100.0], lows=[100.0, 99.8, 100.0, 100.0])
+    flat = [(100.0, 100.0, 100.0, 100.0)] * 2
+    m1 = _m1_from([flat,
+                   [(100.0, 100.5, 99.8, 100.2)] * 2,
+                   [(100.2, 101.0, 100.2, 100.9), (100.9, 101.6, 100.9, 101.5)],
+                   flat])
+    res = race_trades_on_finer_path(h1, m1, [Entry(idx=0, direction=1)],
+                                    sl=1.0, tp_r=1.5, max_bars_ahead=4, min_bars_ahead=1)
+    assert res[0]['idx'] == 0
+    assert res[0]['exit_idx'] == 2          # the H1 bar CONTAINING the exit minute
+    assert res[0]['bars_held'] == 2
+    assert res[0]['fine_exit_idx'] == 5     # 2 flat + 2 + the second minute of hour 2
+
+
+def test_finer_path_keeps_the_htf_entry_set():
+    """Entries are admitted on HTF terms, so an M1 race and an H1 race cover
+    exactly the same trades -- otherwise the two are not comparable and any
+    difference could just be a different sample."""
+    h1 = _h1(6, highs=[100.0] * 6, lows=[100.0] * 6)
+    m1 = _m1_from([[(100.0, 100.0, 100.0, 100.0)] * 2] * 6)
+    ents = [Entry(idx=0, direction=1), Entry(idx=4, direction=1), Entry(idx=99, direction=1)]
+    htf = race_trades(h1, ents, sl=1.0, tp_r=1.5, max_bars_ahead=10, min_bars_ahead=3)
+    fine = race_trades_on_finer_path(h1, m1, ents, sl=1.0, tp_r=1.5,
+                                     max_bars_ahead=10, min_bars_ahead=3)
+    assert [t['idx'] for t in htf] == [t['idx'] for t in fine] == [0]
+
+
+def test_finer_path_entry_price_comes_from_the_htf_bar():
+    """Bit-identical fills between the two races -- a differing entry price
+    would contaminate the comparison this function exists to enable."""
+    h1 = _h1(3, highs=[100.0] * 3, lows=[100.0] * 3, opens=[123.5, 100.0, 100.0])
+    m1 = _m1_from([[(999.0, 999.0, 999.0, 999.0)]] + [[(100.0, 100.0, 100.0, 100.0)]] * 2)
+    res = race_trades_on_finer_path(h1, m1, [Entry(idx=0, direction=1)],
+                                    sl=1.0, tp_r=1.5, max_bars_ahead=3, min_bars_ahead=1)
+    assert res[0]['entry_price'] == 123.5   # the H1 open, NOT the stray M1 open

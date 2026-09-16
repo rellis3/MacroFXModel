@@ -25,6 +25,16 @@ nearing->confirmed FUNNEL, which is the question a 👀 message actually raises:
 "I got told this was coming; how often does it arrive, and what happens when
 it does?"
 
+TRADES ARE RESOLVED ON THE M1 PATH, not on the H1 bars the motifs are
+detected on. At the frozen grid a 20-pip stop and a 30-pip target frequently
+sit inside ONE H1 bar's range, and OHLC cannot say which was touched first.
+`race_trades` settles that with a flag, but neither setting is the answer: on
+six pairs the same entries score 458.2R with ties given to the target (its
+default, what this export used to ship) and 333.2R given to the stop, while
+the real minutes say 395.7R. The old default therefore overstated total R by
+~14%, PF by 1.120 vs 1.103, and understated max drawdown by ~6%.
+`race_trades_on_finer_path` removes the guess.
+
 TWO STATED DIVERGENCES FROM LIVE, both unavoidable and both measured rather
 than hidden:
 
@@ -71,13 +81,17 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from pattern_scan import load_bars  # noqa: E402
+from pattern_scan import load_m1_and_bars  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
 from motif_features import bucket_trade, compute_features  # noqa: E402
-from pylego.barrier_race import Entry, mae_from_path, race_trades  # noqa: E402
+from pylego.barrier_race import (  # noqa: E402
+    Entry,
+    mae_from_path,
+    race_trades_on_finer_path,
+)
 from pylego.costs import default_spread  # noqa: E402
 from pylego.instruments import pip_size  # noqa: E402
 from pylego.json_safe import json_safe  # noqa: E402
@@ -198,7 +212,12 @@ class CausalConfidence:
 
 def build_pair(pair: str, args: argparse.Namespace) -> dict:
     """Replay one pair's full alert stream and attach each alert's trade."""
-    bars = load_bars(pair, args.timeframe)
+    # Signals are detected on the resampled frame; trades are RESOLVED on
+    # the M1 path. An H1 bar whose range covers both the 20-pip stop and
+    # the 30-pip target cannot say which came first, and resolving that
+    # tie in the target's favour (race_trades' default) overstated total R
+    # by ~14% against the real minutes -- measured, not assumed.
+    m1, bars = load_m1_and_bars(pair, args.timeframe)
     n = len(bars)
     atr_arr = compute_atr(bars, period=args.atr_period)
     motifs = detect_touch_motifs(
@@ -226,12 +245,14 @@ def build_pair(pair: str, args: argparse.Namespace) -> dict:
     confirmed = [m for m in motifs if m.confirm_idx is not None and m.confirm_idx + 1 < n]
     entries = [Entry(idx=m.confirm_idx + 1, direction=m.direction) for m in confirmed]
     by_entry_idx = {m.confirm_idx + 1: m for m in confirmed}
-    raced = race_trades(bars, entries, sl=sl_price, tp_r=args.tp_r,
-                        max_bars_ahead=args.max_bars_ahead, cost_price=cost_price,
-                        min_bars_ahead=args.min_bars_ahead)
-    raced_nocost = race_trades(bars, entries, sl=sl_price, tp_r=args.tp_r,
-                               max_bars_ahead=args.max_bars_ahead, cost_price=0.0,
-                               min_bars_ahead=args.min_bars_ahead)
+    raced = race_trades_on_finer_path(bars, m1, entries, sl=sl_price, tp_r=args.tp_r,
+                                      max_bars_ahead=args.max_bars_ahead,
+                                      cost_price=cost_price,
+                                      min_bars_ahead=args.min_bars_ahead)
+    raced_nocost = race_trades_on_finer_path(bars, m1, entries, sl=sl_price, tp_r=args.tp_r,
+                                             max_bars_ahead=args.max_bars_ahead,
+                                             cost_price=0.0,
+                                             min_bars_ahead=args.min_bars_ahead)
     nocost_r_by_idx = {t["idx"]: t["r"] for t in raced_nocost}
     raced_by_entry = {t["idx"]: t for t in raced}
     # Keyed by confirm_idx for the confidence panel (which thinks in motifs).
@@ -307,8 +328,10 @@ def build_pair(pair: str, args: argparse.Namespace) -> dict:
             "resolved": t is not None,
         }
         if t is not None:
-            mae_r, mae_pct = mae_from_path(bars, t["idx"], t["exit_idx"], t["direction"],
-                                           t["entry_price"], sl_price)
+            # MAE on the M1 path too: the H1 exit bar's full range extends
+            # past the actual exit minute, which inflates it.
+            mae_r, mae_pct = mae_from_path(m1, t["fine_entry_idx"], t["fine_exit_idx"],
+                                           t["direction"], t["entry_price"], sl_price)
             price_return_pct = t["direction"] * (t["exit_price"] - t["entry_price"]) / t["entry_price"] * 100.0
             trade = {
                 "pair": pair,
@@ -523,8 +546,11 @@ def main() -> None:
             "motif_track.py/motif_nearing_watch.py's own emission gating (one live touch-run "
             "per pair, the `provisional` refusal, one-nearing-alert-per-run dedup, entry on the "
             "bar after confirmation) and races only what would actually have been sent. "
-            "Trades are scored by the shared pylego.barrier_race walker at the frozen grid, the "
-            "same resolution motif_backtest_export.py and the live tracked record use. "
+            "Trades are scored by the shared pylego.barrier_race walker at the frozen grid, RESOLVED "
+            "ON THE M1 PATH: at a 20-pip stop and a 30-pip target one H1 bar often covers both "
+            "barriers and cannot say which came first, and awarding those ties to the target "
+            "(the previous behaviour, still the walker's default) overstated total R by ~14% "
+            "against the real minutes on a six-pair check. Signal detection stays on H1. "
             "TWO STATED DIVERGENCES FROM LIVE, both measured rather than assumed away: (1) the "
             "nearing poller sees live ticks, a backtest sees H1 bars -- `nearing_price=hl` tests "
             "the bar's whole traded range as the closest proxy, and funnel.nearing_alerts_close "

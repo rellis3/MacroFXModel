@@ -70,7 +70,11 @@ from pylego.trade_stats import summarize_r  # noqa: E402
 M1_DIR = REPO_ROOT / "AnalogML" / "data" / "m1"
 
 
-def load_bars(pair: str, timeframe: str) -> pd.DataFrame:
+def load_m1_and_bars(pair: str, timeframe: str) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Both resolutions from ONE parquet read, for callers that resolve trades
+    on the M1 path (`race_trades_on_finer_path`) while detecting signals on
+    the resampled frame. `bars` is bit-identical to `load_bars`' output --
+    they share this resample rule rather than each carrying a copy of it."""
     path = M1_DIR / f"{pair.lower()}_m1.parquet"
     if not path.exists():
         raise SystemExit(f"no local M1 data for {pair!r} at {path}")
@@ -78,7 +82,11 @@ def load_bars(pair: str, timeframe: str) -> pd.DataFrame:
     bars = m1.resample(timeframe).agg(
         {"open": "first", "high": "max", "low": "min", "close": "last"}
     ).dropna()
-    return bars
+    return m1, bars
+
+
+def load_bars(pair: str, timeframe: str) -> pd.DataFrame:
+    return load_m1_and_bars(pair, timeframe)[1]
 
 
 def pick_queries(n_bars: int, window: int, stride: int, eval_start_idx: int,

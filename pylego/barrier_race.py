@@ -132,6 +132,77 @@ def race_trades(bars: pd.DataFrame, entries: list[Entry], sl: float, tp_r: float
     return out
 
 
+def race_trades_on_finer_path(htf_bars: pd.DataFrame, fine_bars: pd.DataFrame,
+                              entries: list[Entry], sl: float, tp_r: float,
+                              max_bars_ahead: int, cost_price: float = 0.0,
+                              min_bars_ahead: int = 10) -> list[dict]:
+    """`race_trades` for HTF-defined entries resolved on a FINER path (M1).
+
+    Returns records shaped exactly like `race_trades` -- `idx`, `exit_idx` and
+    `bars_held` are HTF positions -- so a caller swaps one call for the other
+    and nothing downstream has to learn about M1. `fine_exit_idx` is added for
+    anything wanting the exact minute.
+
+    WHY: on H1 a 20-pip stop and a 30-pip target frequently sit inside ONE
+    bar's range, and OHLC cannot say which came first. `race_trades` settles
+    that with `pessimistic_ties`, but neither setting is the answer -- on six
+    pairs the same entries score 458.2R optimistic (the default) and 333.2R
+    pessimistic, while the M1 path says 395.7R. So the optimistic default
+    overstates total R by ~14% and the pessimistic one understates by ~16%.
+    A study whose barriers sit CLOSER together is far more exposed: a
+    breakeven-stop rule measured on H1 swung from +2839R to -59R on the tie
+    setting alone, and on M1 it simply loses. Anything of that shape has to be
+    decided here, not on HTF bars.
+
+    The entry SET is chosen on HTF terms (the same `max_bars_ahead` /
+    `min_bars_ahead` window `race_trades` would apply), so an M1 race and an
+    H1 race over the same entries differ ONLY in path resolution -- which is
+    what makes the two directly comparable.
+    """
+    h_index, f_index = htf_bars.index, fine_bars.index
+    n_htf, n_fine = len(htf_bars), len(fine_bars)
+    fhigh = fine_bars['high'].to_numpy(); flow = fine_bars['low'].to_numpy()
+    fclose = fine_bars['close'].to_numpy()
+    h_open = htf_bars['open'].to_numpy()
+    tp_dist = sl * tp_r
+    out: list[dict] = []
+    for e in entries:
+        idx = e.idx
+        if idx >= n_htf:
+            continue
+        end_htf = min(idx + max_bars_ahead, n_htf)
+        if end_htf - idx < min_bars_ahead:
+            continue
+        f_start = int(f_index.searchsorted(h_index[idx], side='left'))
+        if f_start >= n_fine:
+            continue
+        f_end = (int(f_index.searchsorted(h_index[end_htf], side='left'))
+                 if end_htf < n_htf else n_fine)
+        f_end = min(max(f_end, f_start + 1), n_fine)
+        cmax = np.maximum.accumulate(fhigh[f_start:f_end])
+        cmin = np.minimum.accumulate(flow[f_start:f_end])
+        # Entry price is read from the HTF bar, not the first fine bar: they
+        # are the same open, but taking it from HTF guarantees an M1 race and
+        # an H1 race fill at a bit-identical price.
+        entry_price = e.entry_price if e.entry_price is not None else float(h_open[idx])
+        outcome, off, exit_price, r = _first_touch(
+            entry_price, e.direction, sl, tp_dist, cmax, cmin,
+            float(fclose[f_end - 1]), tp_r, pessimistic_ties=False)
+        f_exit = f_start + off
+        # Map the exit minute back to the HTF bar CONTAINING it.
+        exit_htf = int(h_index.searchsorted(f_index[f_exit], side='right')) - 1
+        exit_htf = max(idx, min(exit_htf, n_htf - 1))
+        out.append({
+            'idx': idx, 'direction': e.direction, 'entry_price': entry_price,
+            'exit_idx': exit_htf, 'exit_price': float(exit_price),
+            'outcome': outcome,
+            'r': float(r - (cost_price / sl if sl > 0 else 0.0)),
+            'bars_held': exit_htf - idx,
+            'fine_entry_idx': f_start, 'fine_exit_idx': f_exit,
+        })
+    return out
+
+
 def mae_from_path(bars: pd.DataFrame, idx: int, exit_idx: int, direction: int,
                   entry_price: float, sl_price: float) -> tuple[float, float]:
     """MAE from the REAL bar path between entry and exit (inclusive) — low-vs-
