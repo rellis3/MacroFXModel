@@ -31248,7 +31248,30 @@ if (process.env.OANDA_KEY) {
     // 2026-08-28) — not the stale 'SPX500'/'US30' broker-ticker spelling,
     // which would silently stop excluding them here once the array's own
     // entries were renamed.
-    const fibAtlasPairs = REFERENCE_ENGINE_PAIRS.filter(s => s !== 'NQ' && !['SPX', 'DE30', 'UK100', 'DOW', 'US2000', 'BTCUSD'].includes(s));
+    const fibAtlasPairsBase = REFERENCE_ENGINE_PAIRS.filter(s => s !== 'NQ' && !['SPX', 'DE30', 'UK100', 'DOW', 'US2000', 'BTCUSD'].includes(s));
+    // Rotate the starting pair each night (2026-09-16) — found by comparing
+    // every Fib Atlas pair's own `generatedAt` after this file's own
+    // 2026-09-15 cross-engine concurrency fix above (a28ff41): GOLD (this
+    // list's own item 0) completed on the very first sequential run, but
+    // EURUSD (item 1) and everything after it did NOT (stuck 4+ days
+    // behind). So a single pair's own gap-fill can apparently still be
+    // heavy enough to kill the whole process mid-list, independent of the
+    // cross-engine concurrency that fix already serializes against.
+    // `runOne`'s own per-pair try/catch (startRunJob's loop,
+    // asiaFibAtlasRoutes.js/mondayFibAtlasRoutes.js) can only catch a
+    // THROWN exception, not an OOM kill of the whole container — so a
+    // fixed list order always dies at the same point and starves
+    // everything after it, every single night, forever (this exact
+    // symptom documented recurring across multiple past sessions, MD
+    // files/LEGO_MODULES.md, never actually root-caused for lack of
+    // Railway log access). Day-of-year rotation needs no persisted state
+    // and is self-healing across restarts: whatever pair a persistent
+    // crash-after-K pattern currently starves gets a turn as an EARLY pair
+    // within one rotation cycle (~24 nights) instead of never.
+    const _dayOfYear = Math.floor((Date.now() - Date.UTC(new Date().getUTCFullYear(), 0, 0)) / 86400_000);
+    const _fibRotOffset = _dayOfYear % fibAtlasPairsBase.length;
+    const fibAtlasPairs = [...fibAtlasPairsBase.slice(_fibRotOffset), ...fibAtlasPairsBase.slice(0, _fibRotOffset)];
+    console.log(`[reference-engine-rebuild] Fib Atlas pair order rotated to start at "${fibAtlasPairs[0]}" (offset ${_fibRotOffset}/${fibAtlasPairsBase.length}, day-of-year ${_dayOfYear})`);
     await runSeq('Asia Fib Atlas', () => _startAsiaFibAtlasRunJob({ instruments: fibAtlasPairs }));
     await runSeq('Monday Fib Atlas', () => _startMondayFibAtlasRunJob({ instruments: fibAtlasPairs }));
     console.log('[reference-engine-rebuild] nightly tick complete');
