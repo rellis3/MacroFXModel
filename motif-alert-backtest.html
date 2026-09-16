@@ -1410,8 +1410,12 @@ function render() {
     + `and Return % are NOT the same number relabelled. MAE in both exports comes from the real `
     + `intra-trade OHLC path (low-vs-entry for longs, high-vs-entry for shorts), capped at the stop, `
     + `and is written out as a negative excursion.`;
+  // Describes the EXPORT, so it is fixed -- but it sat above a filtered view
+  // reading "26 pairs / 30,062 trades" while the table showed 13,480, which
+  // reads as a contradiction rather than as two different things. Say which
+  // it is.
   $('headerSub').textContent =
-    `${DATA.pairs.length} pairs · ${f.confirmed_alerts.toLocaleString()} confirmed alerts → ` +
+    `Export: ${DATA.pairs.length} pairs · ${f.confirmed_alerts.toLocaleString()} confirmed alerts → ` +
     `${f.trades_resolved.toLocaleString()} trades, none skipped · entry next H1 open · ` +
     `sl ${pr.sl_pips}p / tp ${pr.tp_r}R · generated ${DATA.generated_at.slice(0, 10)}`;
   render();
