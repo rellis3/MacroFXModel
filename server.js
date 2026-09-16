@@ -17098,15 +17098,70 @@ app.post('/api/level-atlas/refresh-now', async (_req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
+// Fib Atlas book staleness — same incident class, confirmed present
+// 2026-09-16 while checking whether the live Fib Atlas bot (mode:'live',
+// same real-demo-account status as Vote Atlas — NOT paper, despite the
+// dashboard's stale "[paper]" chip) had the same problem: GBPUSD/USDJPY/
+// AUDUSD/NZDUSD were found stuck ~94h stale while other traded pairs were
+// hours old. Fib Atlas trades TWO ladders per pair (asia + monday, both
+// enabled by default in fib_atlas_bot_config.ladders) — checks both books
+// and reports whichever is older, since either being stale degrades that
+// pair's actual live signal.
+async function _fibAtlasStaleness() {
+  const cfgRaw = await kv.get('fib_atlas_bot_config').catch(() => null);
+  const cfg = cfgRaw ? (JSON.parse(cfgRaw).data ?? JSON.parse(cfgRaw)) : {};
+  const pairs = Array.isArray(cfg.enabled_pairs) && cfg.enabled_pairs.length ? cfg.enabled_pairs : ['eurusd'];
+  const ladders = [
+    ...(cfg.ladders?.asia !== false ? [{ label: 'asia', prefix: 'asia-fib-atlas' }] : []),
+    ...(cfg.ladders?.monday !== false ? [{ label: 'monday', prefix: 'monday-fib-atlas' }] : []),
+  ];
+  const rows = [];
+  for (const pair of pairs) {
+    for (const l of ladders) {
+      try {
+        const book = await _r2GetJSON(`${l.prefix}/${pair}-votetrades.json`);
+        rows.push({ pair, ladder: l.label, generatedAt: book?.generatedAt ?? null });
+      } catch (e) {
+        rows.push({ pair, ladder: l.label, generatedAt: null, error: e.message });
+      }
+    }
+  }
+  const withAges = rows.map(r => ({ ...r, ageHours: r.generatedAt ? (Date.now() - Date.parse(r.generatedAt)) / 3_600_000 : Infinity }));
+  withAges.sort((a, b) => b.ageHours - a.ageHours); // oldest first
+  const oldest = withAges[0];
+  return { pairs: withAges, oldestPair: oldest?.pair ?? null, oldestLadder: oldest?.ladder ?? null, oldestAgeHours: oldest ? +oldest.ageHours.toFixed(1) : null };
+}
+
+app.get('/api/fib-atlas-bot/staleness', async (_req, res) => {
+  try { res.json({ ok: true, ...await _fibAtlasStaleness() }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// Manual refresh — same rationale/pattern as /api/level-atlas/refresh-now.
+// Triggers BOTH ladder engines for the bot's enabled pairs (whichever are
+// actually turned on in fib_atlas_bot_config.ladders).
+app.post('/api/fib-atlas-bot/refresh-now', async (_req, res) => {
+  try {
+    const cfgRaw = await kv.get('fib_atlas_bot_config').catch(() => null);
+    const cfg = cfgRaw ? (JSON.parse(cfgRaw).data ?? JSON.parse(cfgRaw)) : {};
+    const pairs = Array.isArray(cfg.enabled_pairs) && cfg.enabled_pairs.length ? cfg.enabled_pairs : ['eurusd'];
+    const instruments = pairs.map(p => p.toUpperCase());
+    const jobs = {};
+    if (cfg.ladders?.asia !== false) jobs.asia = _startAsiaFibAtlasRunJob({ instruments }).jobId;
+    if (cfg.ladders?.monday !== false) jobs.monday = _startMondayFibAtlasRunJob({ instruments }).jobId;
+    res.json({ ok: true, jobs, pairs });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 if (process.env.OANDA_KEY) {
   _scheduleDailyLondon(6, 0, async () => {
     // Fires well after the 00:30 rebuild (now serialized, ~1.5-2h for all
     // five sub-jobs — see that job's own history) should have finished, so
     // "still stale at 06:00" means the rebuild genuinely didn't complete
     // last night, not that it's simply still running.
+    const STALE_HOURS = 30; // >1 missed night before alarming, catches 2+ in a row
     try {
       const st = await _levelAtlasStaleness();
-      const STALE_HOURS = 30; // >1 missed night before alarming, catches 2+ in a row
       if (st.oldestAgeHours != null && st.oldestAgeHours > STALE_HOURS) {
         console.warn(`[level-atlas-staleness] ${st.oldestPair} is ${st.oldestAgeHours}h stale (>${STALE_HOURS}h threshold)`);
         const cfgRaw = await kv.get('volatility_bot_v2_config').catch(() => null);
@@ -17120,8 +17175,23 @@ if (process.env.OANDA_KEY) {
         console.log(`[level-atlas-staleness] OK — oldest traded book is ${st.oldestAgeHours}h old`);
       }
     } catch (e) { console.error('[level-atlas-staleness] check failed:', e.message); }
+    try {
+      const st = await _fibAtlasStaleness();
+      if (st.oldestAgeHours != null && st.oldestAgeHours > STALE_HOURS) {
+        console.warn(`[fib-atlas-staleness] ${st.oldestPair}/${st.oldestLadder} is ${st.oldestAgeHours}h stale (>${STALE_HOURS}h threshold)`);
+        const cfgRaw = await kv.get('fib_atlas_bot_config').catch(() => null);
+        const cfg = cfgRaw ? (JSON.parse(cfgRaw).data ?? JSON.parse(cfgRaw)) : {};
+        if (cfg.tg_token && cfg.tg_chat_id) {
+          const days = (st.oldestAgeHours / 24).toFixed(1);
+          await sendTelegram(cfg.tg_token, cfg.tg_chat_id,
+            `⚠️ Fib Atlas — ${st.oldestPair.toUpperCase()} (${st.oldestLadder}) hasn't refreshed in ${days} days (last update ${st.oldestAgeHours}h ago). The nightly rebuild may be failing again. Trigger a manual refresh: POST /api/fib-atlas-bot/refresh-now.`);
+        }
+      } else {
+        console.log(`[fib-atlas-staleness] OK — oldest traded book is ${st.oldestAgeHours}h old`);
+      }
+    } catch (e) { console.error('[fib-atlas-staleness] check failed:', e.message); }
   });
-  console.log('[level-atlas-staleness] daily check armed at 06:00 London (Telegram-alerts if any enabled pair\'s book is >30h stale)');
+  console.log('[level-atlas-staleness] daily check armed at 06:00 London (Telegram-alerts Vote Atlas AND Fib Atlas if any enabled pair\'s book is >30h stale)');
 }
 
 // "Send test alert" for the bot-config.html Vote Atlas tab's Telegram fields

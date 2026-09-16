@@ -4239,6 +4239,11 @@ python volatility_bot_v2/volatility_bot_v2.py --live --url &lt;dashboard-url&gt;
           <div style="color:var(--text3);margin-bottom:3px">Plan age gate</div>
           <div id="faPlanGate" style="font-weight:600">—</div>
         </div>
+        <div style="border:1px solid var(--border);border-radius:6px;padding:8px 10px" title="How old is the STALEST enabled pair's book, across BOTH ladders (asia/monday). Found 2026-09-16: Fib Atlas is a genuinely live bot (mode:'live', same as Vote Atlas — NOT paper) and had the exact same silent-rebuild-failure problem, GBPUSD/USDJPY/AUDUSD/NZDUSD stuck ~94h stale while other pairs were hours old. A daily check auto-alerts by Telegram past 30h; this tile is for checking anytime without waiting for that.">
+          <div style="color:var(--text3);margin-bottom:3px">Book freshness</div>
+          <div id="faStaleness" style="font-weight:600">—</div>
+          <button id="faRefreshBookBtn" type="button" onclick="refreshFaBook()" style="margin-top:6px;font-size:10px;padding:3px 8px" title="Manually re-runs the Fib Atlas rebuild (both ladders) for this bot's enabled pairs right now — the same job the nightly 00:30 tick runs. Takes several minutes; check back on this tile to confirm it advanced.">Refresh book now</button>
+        </div>
       </div>
     </div>
 

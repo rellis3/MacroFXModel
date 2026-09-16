@@ -4711,7 +4711,48 @@ async function loadFaLiveStatus() {
   loadFaFrequencyCheck();
   loadFaEntrySlippage();
   initFaRefreshResume();
+  loadFaStaleness();
 }
+
+// Book freshness (2026-09-16) — Fib Atlas is a genuinely live bot
+// (mode:'live', NOT paper despite the dashboard's stale "[paper]" chip) and
+// was found to have the SAME silent-rebuild-failure exposure Vote Atlas did:
+// GBPUSD/USDJPY/AUDUSD/NZDUSD stuck ~94h stale while other traded pairs were
+// hours old. Same pattern as loadVb2Staleness — server reads the ACTUAL R2
+// generatedAt (both ladders) for every enabled pair, this just renders it.
+async function loadFaStaleness() {
+  const el = document.getElementById('faStaleness');
+  if (!el) return;
+  try {
+    const r = await fetch('/api/fib-atlas-bot/staleness');
+    const j = await r.json();
+    if (!j.ok || j.oldestAgeHours == null) { el.textContent = 'no data yet'; el.style.color = 'var(--text3)'; return; }
+    const days = (j.oldestAgeHours / 24).toFixed(1);
+    if (j.oldestAgeHours > 30) {
+      el.textContent = `⚠ ${j.oldestPair?.toUpperCase()} (${j.oldestLadder}) ${days}d stale`;
+      el.style.color = 'var(--red)';
+    } else {
+      el.textContent = `fresh (oldest: ${j.oldestPair?.toUpperCase()} ${j.oldestLadder} ${j.oldestAgeHours.toFixed(0)}h)`;
+      el.style.color = 'var(--green)';
+    }
+  } catch (e) { el.textContent = 'check failed'; el.style.color = 'var(--red)'; }
+}
+
+async function refreshFaBook() {
+  const btn = document.getElementById('faRefreshBookBtn');
+  if (!confirm('Manually re-run the Fib Atlas rebuild (both ladders) for this bot\'s enabled pairs now?\n\nThis is the same job the nightly 00:30 tick runs — takes several minutes. Use this if Book freshness shows stale and you don\'t want to wait for the next scheduled run.')) return;
+  if (btn) { btn.disabled = true; btn.textContent = 'Refreshing…'; }
+  try {
+    const r = await fetch('/api/fib-atlas-bot/refresh-now', { method: 'POST' });
+    const j = await r.json();
+    if (btn) { btn.textContent = j.ok ? 'Refresh started ✓' : `Failed: ${j.error}`; }
+    setTimeout(() => { if (btn) { btn.disabled = false; btn.textContent = 'Refresh book now'; } loadFaStaleness(); }, 8000);
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Refresh book now'; }
+    alert(`Refresh failed: ${e.message}`);
+  }
+}
+window.refreshFaBook = refreshFaBook;
 
 // Frozen reference: the offline backtest's OWN daily trade-count
 // distribution (both ladders combined, 16-pair recommended universe,
