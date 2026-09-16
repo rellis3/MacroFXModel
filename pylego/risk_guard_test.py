@@ -7,7 +7,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from pylego.risk_guard import RiskGuard  # noqa: E402
+from datetime import datetime, timezone  # noqa: E402
+
+from pylego.risk_guard import RiskGuard, simulate_blocks  # noqa: E402
 
 
 def _guard(**cfg):
@@ -136,6 +138,63 @@ def test_snapshot_handles_no_balance_yet():
     g = RiskGuard()
     s = g.snapshot(None)
     assert s["day_dd_pct"] is None and s["month_dd_pct"] is None and s["locked"] is False
+
+
+def test_injected_clock_drives_cooldown_instead_of_wall_clock():
+    # A fake clock that never advances on its own -- if block_reason/record_trade
+    # ever fell back to a real time.time() call, this cooldown would appear to
+    # clear ~instantly (real elapsed time is microseconds), not stay blocked.
+    fake_now = {"t": 1_000_000.0}
+    g = RiskGuard(now_fn=lambda: fake_now["t"], today_fn=lambda: datetime.fromtimestamp(fake_now["t"], timezone.utc).date())
+    g.sync_cfg({"cooldown": 240})
+    g.update_balance(10_000)
+    g.record_trade("eurusd")
+    assert "Cooldown" in g.block_reason(10_000, "eurusd")
+    fake_now["t"] += 239  # just under the 240s cooldown
+    assert "Cooldown" in g.block_reason(10_000, "eurusd")
+    fake_now["t"] += 2  # now past it
+    assert g.block_reason(10_000, "eurusd") is None
+
+
+def test_simulate_blocks_replays_a_historical_dd_lockout_deterministically():
+    # Trade 1 alone blows through the 3% daily-DD limit (risk_pct=3.5, r=-1 ->
+    # -3.5% on the account). Trade 2, minutes later same day, must be BLOCKED.
+    # Trade 3, the next calendar day (past both the lockout window and the
+    # daily reset), must be TAKEN again -- this is the exact behaviour a live
+    # RiskGuard has, replayed against historical timestamps instead of the
+    # real wall clock.
+    day1 = datetime(2024, 1, 1, 1, 0, 0, tzinfo=timezone.utc).timestamp()
+    day2 = datetime(2024, 1, 2, 2, 0, 0, tzinfo=timezone.utc).timestamp()
+    trades = [
+        (day1,       "eurusd", -1.0),
+        (day1 + 100, "gbpusd",  1.0),
+        (day2,       "audusd",  1.0),
+    ]
+    cfg = {"ddlimit": 3.0, "monthlydd": 99.0, "lockout": 3, "cooldown": 0}
+    results = simulate_blocks(trades, cfg, starting_balance=10_000.0, risk_pct=3.5)
+
+    assert results[0]["taken"] is True
+    assert results[0]["balance_after"] < 10_000.0 * 0.97, "the DD-triggering trade itself must still fill"
+
+    assert results[1]["taken"] is False
+    assert "Daily DD" in results[1]["reason"] or "Locked out" in results[1]["reason"]
+    assert results[1]["balance_after"] is None
+
+    assert results[2]["taken"] is True, "next calendar day, past the lockout window, must resume"
+
+
+def test_simulate_blocks_orders_by_epoch_not_input_order():
+    # Feed trades out of chronological order; the replay must still process
+    # them oldest-first (a backtest's own trade list is not guaranteed sorted).
+    t0 = datetime(2024, 3, 1, 0, 0, 0, tzinfo=timezone.utc).timestamp()
+    trades = [
+        (t0 + 200, "gbpusd", 1.0),
+        (t0,       "eurusd", 1.0),
+    ]
+    cfg = {"ddlimit": 3.0, "monthlydd": 5.0, "lockout": 3, "cooldown": 0}
+    results = simulate_blocks(trades, cfg, starting_balance=10_000.0, risk_pct=0.25)
+    assert results[1]["balance_after"] < results[0]["balance_after"], \
+        "the earlier (eurusd) trade must compound before the later (gbpusd) one"
 
 
 if __name__ == "__main__":

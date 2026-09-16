@@ -97,6 +97,7 @@ from pylego.instruments import pip_size  # noqa: E402
 from pylego.json_safe import json_safe  # noqa: E402
 from pylego import motif_policy  # noqa: E402
 from pylego.motif_touch import detect_touch_motifs  # noqa: E402
+from pylego.risk_guard import simulate_blocks  # noqa: E402
 from pylego.portfolio_sim import (  # noqa: E402
     matched_utilization_benchmark,
     pairwise_correlation_summary,
@@ -480,6 +481,70 @@ def confidence_buckets(trades: list[dict]) -> list[dict]:
     return out
 
 
+def replay_risk_guard(trades: list[dict], cfg: dict, starting_balance: float,
+                       risk_pct: float) -> dict:
+    """Opt-in (`--replay-risk-guard`): reduce the alert stream to the SAME
+    population motif_bot actually acts on -- `motif_policy.passes_best_config`
+    on each trade's own `features.swing_regime`, exactly what motif_track.py
+    applies when it builds `motif_bot_plan` -- then replay it through
+    `pylego.risk_guard.simulate_blocks`, the live bot's own RiskGuard state
+    machine driven by a fake clock instead of the real one.
+
+    This is the direct answer to "does live's daily/monthly DD lockout and
+    cooldown exist in the backtest": before this, it did not -- the backtest
+    took every filtered trade unconditionally. `cfg` should be the live bot's
+    actual ddlimit/monthlydd/lockout/cooldown (its DEFAULT_CFG values unless
+    the dashboard config overrides them) so a replay run today answers "what
+    would live have taken", not a guess at different numbers.
+    """
+    gated = [t for t in trades
+             if motif_policy.passes_best_config(t["pair"], t.get("features", {}).get("swing_regime"))]
+    keyed = [(pd.Timestamp(t["entry_date"]).timestamp(), t["pair"], t["r"], t["motif_key"]) for t in gated]
+    keyed.sort(key=lambda k: k[0])
+    sim_trades = [(epoch, pair, r) for epoch, pair, r, _ in keyed]
+    results = simulate_blocks(sim_trades, cfg, starting_balance=starting_balance, risk_pct=risk_pct)
+
+    by_key = {}
+    equity_curve = []
+    n_taken = n_blocked = 0
+    blocked_by_kind: dict[str, int] = {}
+    for (epoch, pair, r, motif_key), res in zip(keyed, results):
+        by_key[motif_key] = {"taken": res["taken"], "reason": res["reason"]}
+        if res["taken"]:
+            n_taken += 1
+            equity_curve.append([datetime.fromtimestamp(epoch, timezone.utc).isoformat(), round(res["balance_after"], 2)])
+        else:
+            n_blocked += 1
+            kind = "cooldown" if "Cooldown" in (res["reason"] or "") else \
+                   "locked_out" if "Locked out" in (res["reason"] or "") else \
+                   "monthly_dd" if "Monthly DD" in (res["reason"] or "") else \
+                   "daily_dd" if "Daily DD" in (res["reason"] or "") else "other"
+            blocked_by_kind[kind] = blocked_by_kind.get(kind, 0) + 1
+
+    final_balance = equity_curve[-1][1] if equity_curve else starting_balance
+    peak = starting_balance
+    max_dd_pct = 0.0
+    for _, bal in equity_curve:
+        peak = max(peak, bal)
+        max_dd_pct = max(max_dd_pct, (peak - bal) / peak * 100 if peak else 0.0)
+
+    return {
+        "cfg": cfg,
+        "starting_balance": starting_balance,
+        "risk_pct": risk_pct,
+        "best_config_trades": len(gated),
+        "taken": n_taken,
+        "blocked": n_blocked,
+        "blocked_by_kind": blocked_by_kind,
+        "final_balance": round(final_balance, 2),
+        "max_drawdown_pct": round(max_dd_pct, 2),
+        "equity_curve": equity_curve,
+        # Keyed by motif_key so a viewer can cross-reference against `trades`
+        # without re-deriving the best-config filter or the guard's decisions.
+        "by_motif_key": by_key,
+    }
+
+
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -509,6 +574,25 @@ def main() -> None:
     p.add_argument("--account-size", type=float, default=10000.0)
     p.add_argument("--risk-pct", type=float, default=0.01)
     p.add_argument("--max-concurrent-risk-pct", type=float, default=0.05)
+    p.add_argument("--replay-risk-guard", action="store_true",
+                   help="also replay motif_bot's live RiskGuard (daily/monthly DD lockout + "
+                        "cooldown) over the best-config trade population, so this backtest can "
+                        "answer 'which of these would the live bot actually have taken' -- see "
+                        "replay_risk_guard()'s own doc. Off by default: it re-sorts and re-walks "
+                        "the whole trade population an extra time for a question most callers "
+                        "(the ⭐ Best Config viewer, capacity/cost-sensitivity re-pricing) don't ask.")
+    p.add_argument("--replay-risk-pct", type=float, default=0.25,
+                   help="percent-of-balance risk per trade for the RiskGuard replay's OWN "
+                        "compounding balance (NOT the same convention as --risk-pct above, which "
+                        "is a fraction of --account-size for the dollar PnL columns). Defaults to "
+                        "motif_bot's own shipped 0.25%% (DEFAULT_CFG['risk_pct'] -- not in "
+                        "motif_policy.RISK_GUARD_DEFAULTS since pylego.risk_guard.RiskGuard.sync_cfg "
+                        "never reads it, only pylego.sizing does) so a replay with no live-bot "
+                        "dashboard overrides matches production exactly.")
+    p.add_argument("--replay-ddlimit", type=float, default=motif_policy.RISK_GUARD_DEFAULTS["ddlimit"])
+    p.add_argument("--replay-monthlydd", type=float, default=motif_policy.RISK_GUARD_DEFAULTS["monthlydd"])
+    p.add_argument("--replay-lockout", type=float, default=motif_policy.RISK_GUARD_DEFAULTS["lockout"])
+    p.add_argument("--replay-cooldown", type=float, default=motif_policy.RISK_GUARD_DEFAULTS["cooldown"])
     p.add_argument("--out", default=str(DATA_DIR / "motif_alert_backtest.json"))
     args = p.parse_args()
 
@@ -539,6 +623,18 @@ def main() -> None:
     port_stats = sharpe_and_dd(port["equity_curve"])
     near_all = [a for a in all_alerts if a["kind"] == "nearing"]
     converted = sum(1 for a in near_all if a["converted"])
+
+    risk_guard_replay = None
+    if args.replay_risk_guard:
+        replay_cfg = {"ddlimit": args.replay_ddlimit, "monthlydd": args.replay_monthlydd,
+                      "lockout": args.replay_lockout, "cooldown": args.replay_cooldown}
+        risk_guard_replay = replay_risk_guard(all_trades, replay_cfg, args.account_size,
+                                              args.replay_risk_pct)
+        print(f"\n[risk-guard replay] {risk_guard_replay['best_config_trades']} best-config trades -> "
+              f"{risk_guard_replay['taken']} taken, {risk_guard_replay['blocked']} blocked "
+              f"{risk_guard_replay['blocked_by_kind']}  "
+              f"final=${risk_guard_replay['final_balance']:,.2f}  "
+              f"maxDD={risk_guard_replay['max_drawdown_pct']:.1f}%")
 
     out = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -625,6 +721,8 @@ def main() -> None:
     }
     if args.include_alerts:
         out["alerts"] = all_alerts
+    if risk_guard_replay is not None:
+        out["risk_guard_replay"] = risk_guard_replay
 
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)

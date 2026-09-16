@@ -47,6 +47,22 @@ BEST_CONFIG = {
 }
 
 
+# motif_bot's shipped RiskGuard defaults (daily/monthly DD lockout + cooldown),
+# centralised here for the same reason BEST_CONFIG is: motif_bot/motif_bot.py's
+# DEFAULT_CFG and AnalogML/motif_alert_backtest.py's optional --replay-risk-guard
+# both need the SAME numbers, or a backtest replay run against the wrong
+# defaults would silently answer a different question than "what would live
+# have done" -- exactly the drift this file exists to prevent. A live instance
+# with dashboard-configured overrides (KV `motif_bot_config`) is running
+# DIFFERENT numbers than these; a replay is only exact when passed those.
+RISK_GUARD_DEFAULTS = {
+    "ddlimit": 3.0,
+    "monthlydd": 5.0,
+    "lockout": 3,
+    "cooldown": 60,
+}
+
+
 def passes_best_config(pair: str, swing_regime: str | None) -> bool:
     """True if a confirmed motif on `pair` with this `swing_regime` is part of
     the validated best config -- i.e. should be paper-tracked as "actionable"

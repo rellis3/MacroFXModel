@@ -60,6 +60,7 @@ from pylego.quotes import QuoteFeed                                   # noqa: E4
 from pylego.costs import expected_fill, max_spread                    # noqa: E402
 from pylego.risk_guard import RiskGuard, log_block_transition, block_category  # noqa: E402
 from pylego.telegram import send_telegram                             # noqa: E402
+from pylego.motif_policy import RISK_GUARD_DEFAULTS                   # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("motif_bot")
@@ -85,10 +86,8 @@ DEFAULT_CFG = {
                                      # modelled spread exceeds 2.0p (pylego.motif_policy.BEST_CONFIG); this guards
                                      # an included pair whose spread has temporarily widened, same role
                                      # max_spread_pips plays in every other bot's config.
-    "ddlimit": 3.0,
-    "monthlydd": 5.0,
-    "lockout": 3,
-    "cooldown": 60,
+    **RISK_GUARD_DEFAULTS,           # ddlimit/monthlydd/lockout/cooldown -- shared with the backtest's
+                                     # --replay-risk-guard default (pylego.motif_policy) so the two never drift.
     "plan_max_age_hours": 3,        # motif_track_loop.sh refreshes hourly; 3x that before failing closed on a stale plan.
     "poll_secs": 60,                # how often this bot re-reads motif_bot_plan / checks for a fill to act on.
     "status_secs": 30,
