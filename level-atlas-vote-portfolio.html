@@ -81,10 +81,10 @@
   </div>
   <div class="controls">
     <label title="De-risks (scales position size down) once the STRATEGY'S OWN realized equity drawdown breaches Trigger DD%, restores full size once it recovers to Restore DD%. Targets a sustained losing STRETCH over time — a different risk than the Portfolio heat cap above, which only caps a pile-up of SIMULTANEOUS positions.">Drawdown throttle <input type="checkbox" id="throttleChk"></label>
-    <label title="Cliff = single on/off step at Trigger DD% (what's live today). Graded ramp = a 3-tier design validated 2026-09-14 (-4%/-6%/-8% drawdown -> 0.65x/0.40x/0.25x size, same -8% floor and -2% restore) that gives back size progressively instead of one 75%-in-one-day cut, and held up IS/OOS + against the account's own worst historical drawdown episode BETTER than the cliff. Swap between them here to compare before this ever touches the live bot/config.">Throttle style
+    <label title="Graded ramp = a 3-tier design validated 2026-09-14 (-4%/-6%/-8% drawdown -> 0.65x/0.40x/0.25x size, same -8% floor and -2% restore) that gives back size progressively instead of one 75%-in-one-day cut, and held up IS/OOS + against the account's own worst historical drawdown episode BETTER than the cliff -- made the LIVE bot's default 2026-09-15 after that validation. Cliff = the original single on/off step at Trigger DD%, kept here for rollback/comparison. Swap between them to compare directly.">Throttle style
       <select id="throttleModeSel" disabled>
-        <option value="cliff" selected>Cliff (current)</option>
-        <option value="graded">Graded ramp (research 2026-09-14)</option>
+        <option value="cliff">Cliff (single step)</option>
+        <option value="graded" selected>Graded ramp (live default, corrected 2026-09-16)</option>
       </select>
     </label>
     <label title="The drawdown level (negative %) that switches the throttle ON, de-risking future trades until recovery. Cliff mode only — graded mode uses its own fixed, validated tier boundaries (-4%/-6%/-8%) regardless of this value.">Trigger DD % <input type="number" id="triggerDDInput" value="-8" step="1" max="-1" style="width:55px" disabled></label>
@@ -1652,7 +1652,13 @@ document.getElementById('loadBestConfigBtn').addEventListener('click', () => {
   heatCapChk.checked = false;
   maxHeatPctInput.value = '1';
   throttleChk.checked = true;
-  throttleModeSel.value = 'cliff';
+  // 'graded' matches the live bot's own DEFAULT_CFG (made the live default
+  // 2026-09-15 after validation — see drawdown_throttle.py's own doc) —
+  // was left at 'cliff' here, a real backtest-vs-live config mismatch,
+  // corrected 2026-09-16 alongside riskPctInput above. triggerDD/restoreDD/
+  // throttleMult below are cliff-only and ignored in graded mode; left set
+  // for a quick manual toggle back to 'cliff' without losing these values.
+  throttleModeSel.value = 'graded';
   triggerDDInput.value = '-8';
   restoreDDInput.value = '-2';
   throttleMultInput.value = '0.25';
