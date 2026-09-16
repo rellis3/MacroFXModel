@@ -5890,7 +5890,8 @@ setInterval(loadPhbStatus,    60_000);
 const MT_DEFAULTS = {
   kill_switch: false, paper_mode: true, enabled_pairs: [],
   risk_pct: 0.25, max_lot: 5.0, max_open: 20, max_concurrent_per_pair: 2,
-  max_spread_pips: 3.0, ddlimit: 3.0, monthlydd: 5.0, lockout: 3, cooldown: 60,
+  max_spread_pips: 3.0, risk_guard_enabled: false,
+  ddlimit: 3.0, monthlydd: 5.0, lockout: 3, cooldown: 60,
   plan_max_age_hours: 3, poll_secs: 60, status_secs: 30,
   tg_enabled: true, tg_token: '', tg_chat_id: '',
 };
@@ -5905,6 +5906,7 @@ function renderMtForm() {
   set('mt_risk_pct', c.risk_pct); set('mt_max_lot', c.max_lot);
   set('mt_max_open', c.max_open); set('mt_max_concurrent_per_pair', c.max_concurrent_per_pair);
   set('mt_max_spread_pips', c.max_spread_pips);
+  set('mt_risk_guard_enabled', c.risk_guard_enabled);
   set('mt_ddlimit', c.ddlimit); set('mt_monthlydd', c.monthlydd);
   set('mt_lockout', c.lockout); set('mt_cooldown', c.cooldown);
   set('mt_poll_secs', c.poll_secs); set('mt_status_secs', c.status_secs);
@@ -5924,6 +5926,7 @@ function readMtForm() {
     max_open: num('mt_max_open', MT_DEFAULTS.max_open),
     max_concurrent_per_pair: num('mt_max_concurrent_per_pair', MT_DEFAULTS.max_concurrent_per_pair),
     max_spread_pips: num('mt_max_spread_pips', MT_DEFAULTS.max_spread_pips),
+    risk_guard_enabled: bool('mt_risk_guard_enabled'),
     ddlimit: num('mt_ddlimit', MT_DEFAULTS.ddlimit), monthlydd: num('mt_monthlydd', MT_DEFAULTS.monthlydd),
     lockout: num('mt_lockout', MT_DEFAULTS.lockout), cooldown: num('mt_cooldown', MT_DEFAULTS.cooldown),
     poll_secs: num('mt_poll_secs', MT_DEFAULTS.poll_secs), status_secs: num('mt_status_secs', MT_DEFAULTS.status_secs),
@@ -5982,9 +5985,18 @@ async function loadMtLiveStatus() {
       const guardEl = document.getElementById('mtRiskGuard');
       if (guardEl) {
         const rg = st.risk_guard;
+        // The bot tracks day/month DD and cooldown state regardless of
+        // risk_guard_enabled -- so it can show "would be locked" here before
+        // you ever switch enforcement on. Only the wording/color changes;
+        // `rg.locked` itself means the same thing either way.
+        const enforced = !!st.risk_guard_enabled;
+        const offTag = enforced ? '' : ' · NOT ENFORCED — off, trading like the backtest';
         if (!rg) { guardEl.textContent = 'no data yet'; guardEl.style.color = 'var(--text3)'; }
-        else if (rg.locked) { guardEl.textContent = `🔒 LOCKED — ${rg.locked_mins_remaining}m remaining (day DD ${rg.day_dd_pct ?? '—'}%)`; guardEl.style.color = 'var(--red)'; }
-        else { guardEl.textContent = `clear (day DD ${rg.day_dd_pct ?? '—'}% / month ${rg.month_dd_pct ?? '—'}%)`; guardEl.style.color = 'var(--green)'; }
+        else if (rg.locked) {
+          if (enforced) { guardEl.textContent = `🔒 LOCKED — ${rg.locked_mins_remaining}m remaining (day DD ${rg.day_dd_pct ?? '—'}%)`; guardEl.style.color = 'var(--red)'; }
+          else { guardEl.textContent = `⚠ would be locked — ${rg.locked_mins_remaining}m (day DD ${rg.day_dd_pct ?? '—'}%)${offTag}`; guardEl.style.color = 'var(--amber)'; }
+        }
+        else { guardEl.textContent = `clear (day DD ${rg.day_dd_pct ?? '—'}% / month ${rg.month_dd_pct ?? '—'}%)${offTag}`; guardEl.style.color = enforced ? 'var(--green)' : 'var(--text3)'; }
       }
       const planGateEl = document.getElementById('mtPlanGate');
       if (planGateEl) {
@@ -6051,7 +6063,7 @@ async function loadMtPlan() {
   } catch (e) { body.innerHTML = `<tr><td colspan="6" style="padding:14px;text-align:center;color:var(--text3)">${e.message}</td></tr>`; }
 }
 
-const MT_DEC_STATUS_COLOR = { entered: 'var(--green)', rejected: 'var(--red)', pair_blocked: 'var(--amber,#e0a93b)' };
+const MT_DEC_STATUS_COLOR = { entered: 'var(--green)', rejected: 'var(--red)', pair_blocked: 'var(--amber,#e0a93b)', would_block: 'var(--text3)' };
 async function loadMtDecisionLog() {
   const body = document.getElementById('mtDecisionBody');
   if (!body) return;

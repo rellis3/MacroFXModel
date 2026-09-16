@@ -28,10 +28,22 @@ from datetime import datetime, timezone, date as date_type
 
 class RiskGuard:
     """Daily/monthly DD lockout + per-pair cooldown. Fields are re-read from
-    config each cycle (`sync_cfg`) so live changes take effect."""
+    config each cycle (`sync_cfg`) so live changes take effect.
 
-    def __init__(self, log: logging.Logger | None = None):
+    `now_fn`/`today_fn` (2026-09-16): the guard's only side inputs, injectable
+    so its exact state machine can be REPLAYED against historical timestamps
+    instead of the real wall clock -- see `simulate_blocks` below, built
+    specifically so a backtest can answer "which of these trades would a live
+    account, under these guard settings, have actually taken" and reproduce
+    it deterministically. Defaults (`time.time`, real `datetime.now(utc)`)
+    are exactly the previous behaviour -- every existing live caller is
+    unaffected."""
+
+    def __init__(self, log: logging.Logger | None = None,
+                 now_fn=time.time, today_fn=None):
         self.log = log or logging.getLogger("pylego.risk_guard")
+        self._now_fn = now_fn
+        self._today_fn = today_fn or (lambda: datetime.now(timezone.utc).date())
 
         self.dd_limit_pct:   float = 3.0
         self.monthly_dd_pct: float = 5.0
@@ -51,7 +63,7 @@ class RiskGuard:
         self.cooldown_secs  = float(cfg.get('cooldown',   240))
 
     def update_balance(self, bal: float) -> None:
-        today = datetime.now(timezone.utc).date()
+        today = self._today_fn()
         if self._day_start is None:
             self._day_start  = bal
             self._reset_date = today
@@ -63,7 +75,7 @@ class RiskGuard:
             self._reset_date = today
 
     def record_trade(self, pair: str) -> None:
-        self._last_trade[pair] = time.time()
+        self._last_trade[pair] = self._now_fn()
 
     def force_unlock(self) -> None:
         """Clear the lockout flag but PRESERVE the day-start baseline: resetting
@@ -73,7 +85,7 @@ class RiskGuard:
         self._locked_until = 0.0
 
     def block_reason(self, bal: float, pair: str = '') -> str | None:
-        now = time.time()
+        now = self._now_fn()
 
         if now < self._locked_until:
             return f'Locked out — {(self._locked_until - now) / 60:.0f}m remaining'
@@ -103,7 +115,7 @@ class RiskGuard:
         EXTEND the lockout on a fresh breach; this never mutates state, safe
         to call every status cycle regardless of how often that already
         happens elsewhere in the same tick)."""
-        now = time.time()
+        now = self._now_fn()
         locked_secs = max(0.0, self._locked_until - now)
         day_dd = ((self._day_start - bal) / self._day_start * 100) if (self._day_start and bal) else None
         month_dd = ((self._month_start - bal) / self._month_start * 100) if (self._month_start and bal) else None
@@ -115,6 +127,65 @@ class RiskGuard:
             "dd_limit_pct": self.dd_limit_pct,
             "monthly_dd_pct": self.monthly_dd_pct,
         }
+
+
+def simulate_blocks(trades: list[tuple[float, str, float]], cfg: dict,
+                     starting_balance: float = 10_000.0,
+                     risk_pct: float = 0.25) -> list[dict]:
+    """Replay a historical trade sequence through a FRESH RiskGuard, driven by
+    a fake clock set to each trade's own timestamp, so a backtest can answer
+    "which of these trades would a live account, under these guard settings,
+    have actually taken" -- deterministically, using the exact same state
+    machine (lockout/cooldown/DD-breach logic) live runs, not a second
+    reimplementation of it that could drift from the real one.
+
+    `trades` is a list of `(epoch_seconds, pair, r_multiple)`, one entry per
+    filtered candidate trade the backtest would otherwise take unconditionally
+    -- order does not matter, this sorts by epoch itself. `cfg` is the same
+    dict shape `RiskGuard.sync_cfg` already takes (`ddlimit`/`monthlydd`/
+    `lockout`/`cooldown`), so a replay can be run under the live bot's actual
+    dashboard-configured values rather than assumed defaults.
+
+    Returns one result dict per input trade (same order as `trades`), each
+    `{"epoch", "pair", "r", "taken", "reason", "balance_after"}` -- `reason`
+    is the guard's block string when `taken` is False, `balance_after` is the
+    compounding account balance immediately after a taken trade (None when
+    blocked, since a blocked trade has no fill to compound).
+
+    `risk_pct` is the fraction of balance risked per trade (as a percent, so
+    0.25 == 0.25%), applied to `r` the same way every live bot sizes off its
+    account balance -- this only affects the compounding balance path that
+    feeds back into the DD checks, not which trades pass the filter upstream.
+    """
+    ordered = sorted(range(len(trades)), key=lambda i: trades[i][0])
+    balance = float(starting_balance)
+    out: list[dict | None] = [None] * len(trades)
+    state = {"t": trades[ordered[0]][0] if ordered else 0.0}
+
+    def _now() -> float:
+        return state["t"]
+
+    def _today() -> date_type:
+        return datetime.fromtimestamp(state["t"], timezone.utc).date()
+
+    guard = RiskGuard(now_fn=_now, today_fn=_today)
+    guard.sync_cfg(cfg)
+
+    for i in ordered:
+        epoch, pair, r = trades[i]
+        state["t"] = epoch
+        guard.update_balance(balance)
+        reason = guard.block_reason(balance, pair)
+        if reason:
+            out[i] = {"epoch": epoch, "pair": pair, "r": r, "taken": False,
+                      "reason": reason, "balance_after": None}
+            continue
+        guard.record_trade(pair)
+        balance *= (1.0 + (risk_pct / 100.0) * r)
+        out[i] = {"epoch": epoch, "pair": pair, "r": r, "taken": True,
+                  "reason": None, "balance_after": balance}
+
+    return out
 
 
 _COUNTDOWN_RE = re.compile(r'\d+(?:\.\d+)?m remaining')
