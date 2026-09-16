@@ -257,9 +257,6 @@ import { runV2Backtest } from './js/cogStateEngine.js';
 import { loadHistoricalCogDataset } from './js/cogHistoricalDataLoader.js';
 import { runCogV3 } from './js/cogV3Engine.js';
 import { serviceEnabled, servicesSnapshot, SERVICES } from './js/serviceFlags.js';
-import { dayKey as _svcDayKey, emptyStore as _svcEmptyStore, normalizeStore as _svcNormalizeStore,
-         mergeDeltas as _svcMergeDeltas, rollup as _svcRollup, pendingDeltas as _svcPendingDeltas,
-         DEFAULT_KEEP_DAYS as _SVC_KEEP_DAYS } from './js/serviceStats.js';
 import { runQmrV2 } from './js/qmrV2Engine.js';
 import { checkOISignals } from './cog-replication/engine/oiSignalCheck.js';
 import { computeG1 as computeCogG1, computeG2 as computeCogG2, computeG3 as computeCogG3, combine as combineCogGates } from './cog-replication/engine/cogShadow.js';
@@ -306,12 +303,7 @@ const _svcStats = new Map();   // id → { runs, errors, totalMs, lastMs, lastAt
 
 function _svcStat(id) {
   let s = _svcStats.get(id);
-  // `intervalsMs` is an ARRAY because several services register more than one
-  // timer under one id (econPollers has 13, oiBot 5, tde 3). The old single
-  // `intervalMs` field reported whichever job happened to register last, which
-  // made `tde` look like a 20-second job when 20s is only its daily-backfill
-  // clock. Report them all, and how many there are.
-  if (!s) { s = { runs: 0, errors: 0, totalMs: 0, lastMs: null, lastAt: null, intervalsMs: [], started: false }; _svcStats.set(id, s); }
+  if (!s) { s = { runs: 0, errors: 0, totalMs: 0, lastMs: null, lastAt: null, intervalMs: null, started: false }; _svcStats.set(id, s); }
   return s;
 }
 
@@ -330,7 +322,6 @@ function svcEnabled(id) {
  */
 function svcRun(id, fn) {
   const st = _svcStat(id);
-  st.started = true;   // a one-shot svcRun (e.g. volForecastScheduler's boot call) counts as started
   const t0 = Date.now();
   const done = () => { st.runs++; st.lastMs = Date.now() - t0; st.totalMs += st.lastMs; st.lastAt = new Date().toISOString(); };
   let out;
@@ -348,7 +339,7 @@ function svcInterval(id, fn, ms) {
   const st = _svcStat(id);
   if (!svcEnabled(id)) return null;
   st.started = true;
-  st.intervalsMs.push(ms);
+  st.intervalMs = ms;
   return setInterval(() => svcRun(id, fn), ms);
 }
 
@@ -357,127 +348,6 @@ function svcTimeout(id, fn, ms) {
   if (!svcEnabled(id)) return null;
   _svcStat(id).started = true;
   return setTimeout(() => svcRun(id, fn), ms);
-}
-
-// ── Making the meter survive a redeploy ──────────────────────────────────────
-// The counters above live in the process, and Railway redeploys on every push
-// to `main`. On a repo with several pushes a day that meant the meter was reset
-// before it ever measured a day — the first real read after shipping it showed
-// `uptimeSec: 17`, every row zero. So the counters are flushed to R2 as UTC day
-// buckets (js/serviceStats.js owns the merge; this owns the I/O) and reloaded
-// on boot. R2 rather than CF KV on purpose: this writes ~96×/day, and the CF KV
-// free-plan write quota is exactly why `CLAUDE.md` says to keep churny keys out
-// of `_CF_EXACT`. R2 has no equivalent per-write concern (same reasoning the
-// Level Atlas snapshots already run on).
-const SVC_STATS_R2_KEY   = process.env.SVC_STATS_R2_KEY || 'ops/service-stats.json';   // overridable so a test run never touches production's history
-const SVC_STATS_FLUSH_MS = parseInt(process.env.SVC_STATS_FLUSH_MS || String(15 * 60_000));
-
-// WRITES ONLY FROM THE REAL SERVICE. R2 credentials are present in dev sandboxes
-// too, so without this a local `node server.js` merges its own boot-run numbers
-// into production's history — which happened once while building this, and is
-// the same class of mistake CLAUDE.md's "never let a sandbox run write back to
-// R2" rule exists for. Railway injects RAILWAY_ENVIRONMENT/SERVICE_ID/PROJECT_ID
-// into every deploy; absent those we read but never write. `SVC_STATS_PERSIST=1`
-// forces writes on anywhere (and `=0` off), and the boot log says which mode is
-// live so a silent no-persist is diagnosable at a glance rather than by
-// wondering why `today` is empty tomorrow.
-const SVC_STATS_PERSIST = (() => {
-  const explicit = (process.env.SVC_STATS_PERSIST ?? '').trim().toLowerCase();
-  if (explicit) return !['0', 'false', 'off', 'no'].includes(explicit);
-  return !!(process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_SERVICE_ID || process.env.RAILWAY_PROJECT_ID);
-})();
-let _svcStore        = _svcEmptyStore();
-let _svcFlushed      = {};        // cumulative counters the last SUCCESSFUL flush persisted
-let _svcStoreLoaded  = null;      // ISO, or null if we never got the store
-let _svcLastFlushAt  = null;
-let _svcFlushing     = false;
-
-async function svcStatsLoad() {
-  if (!_r2Ok()) { console.log('[service-stats] R2 not configured — history will not survive this process'); return; }
-  if (!SVC_STATS_PERSIST) console.log('[service-stats] read-only here (not a Railway deploy) — set SVC_STATS_PERSIST=1 to write');
-  try {
-    _svcStore = _svcNormalizeStore(await _r2GetJSON(SVC_STATS_R2_KEY));
-    _svcStoreLoaded = new Date().toISOString();
-    const days = Object.keys(_svcStore.days).length;
-    console.log(`[service-stats] loaded ${days} day bucket(s) from R2 (last update ${_svcStore.updatedAt ?? 'never'})`);
-  } catch (e) {
-    console.warn(`[service-stats] load failed, starting a fresh store: ${e.message}`);
-    _svcStore = _svcEmptyStore();
-  }
-}
-
-/**
- * Persist everything accrued since the last successful flush.
- *
- * The merge happens on a COPY and the copy is only adopted once the R2 write
- * lands. A failed write therefore leaves both `_svcStore` and `_svcFlushed`
- * untouched, so the next flush retries the same deltas whole — without that,
- * a transient R2 error would merge the deltas locally, fail, and merge them
- * again next tick, double-counting the very numbers this exists to get right.
- */
-async function svcStatsFlush(reason = 'interval') {
-  if (_svcFlushing || !_r2Ok() || !SVC_STATS_PERSIST) return false;
-  _svcFlushing = true;
-  try {
-    const [deltas, next] = _svcPendingDeltas(_svcStats, _svcFlushed);
-    if (!Object.keys(deltas).length) return false;
-    const candidate = _svcMergeDeltas(structuredClone(_svcStore), deltas, { keepDays: _SVC_KEEP_DAYS });
-    await _r2PutJSON(SVC_STATS_R2_KEY, candidate);
-    _svcStore      = candidate;
-    _svcFlushed    = next;
-    _svcLastFlushAt = new Date().toISOString();
-    return true;
-  } catch (e) {
-    console.warn(`[service-stats] flush (${reason}) failed, will retry whole next tick: ${e.message}`);
-    return false;
-  } finally {
-    _svcFlushing = false;
-  }
-}
-
-// A redeploy is a SIGTERM, and it is the single most common way this process
-// dies — so flush on the way out rather than losing up to a whole interval of
-// measurements every push. The bail-out timer means a slow/hung R2 write can
-// never hold a deploy open; the exit codes are the ones Node would have used
-// with no handler at all (128+signal), so nothing downstream sees a change.
-let _svcShuttingDown = false;
-for (const [sig, code] of [['SIGTERM', 143], ['SIGINT', 130]]) {
-  process.on(sig, () => {
-    if (_svcShuttingDown) return;
-    _svcShuttingDown = true;
-    console.log(`[service-stats] ${sig} — flushing before exit`);
-    const bail = setTimeout(() => process.exit(code), 4_000);
-    svcStatsFlush(sig).finally(() => { clearTimeout(bail); process.exit(code); });
-  });
-}
-
-/** Today + the trailing window, persisted buckets PLUS whatever has not been flushed yet. */
-function svcStatsView() {
-  const [pending] = _svcPendingDeltas(_svcStats, _svcFlushed);
-  const merge = (base) => {
-    const out = {};
-    for (const [id, v] of Object.entries(base)) out[id] = { ...v };
-    for (const [id, d] of Object.entries(pending)) {
-      const cur = out[id] ?? (out[id] = { runs: 0, errors: 0, totalMs: 0 });
-      cur.runs += d.runs; cur.errors += d.errors; cur.totalMs += d.totalMs;
-    }
-    return out;
-  };
-  const today  = _svcRollup(_svcStore, { days: 1 });
-  const window = _svcRollup(_svcStore, { days: 7 });
-  return {
-    today:  { ...today,  services: merge(today.services) },
-    window: { ...window, services: merge(window.services) },
-    persistence: {
-      backend: _r2Ok() ? 'r2' : 'none',
-      key: SVC_STATS_R2_KEY,
-      loadedAt: _svcStoreLoaded,
-      lastFlushAt: _svcLastFlushAt,
-      flushEveryMs: SVC_STATS_FLUSH_MS,
-      daysStored: Object.keys(_svcStore.days).length,
-      keepDays: _SVC_KEEP_DAYS,
-    },
-  };
 }
 
 // ── Bounded TTL caches ───────────────────────────────────────────────────────
@@ -4161,24 +4031,62 @@ async function _buildMorningBrief() {
           : '')
     : null;
   const events = await _fetchTodayEvents().catch(() => []);
+  // The brief has no clock. It listed today's events with no past/upcoming mark,
+  // dropped anything more than an hour old, and the forecast's news_flag said
+  // "FOMC Rate" with no time -- so a brief GENERATED four hours after the
+  // decision led with "sit on your hands until the Fed decides this afternoon".
+  // Every event now carries RELEASED/UPCOMING and how long ago or until, the
+  // day's released events stay on the list, and the prompt is told the time.
+  const nowMs = Date.now();
+  const nowUtc = new Date(nowMs).toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
+  const _ago = ms => { const h = Math.abs(nowMs - ms) / 3600e3; return h < 1 ? `${Math.round(h * 60)}m` : `${h.toFixed(1)}h`; };
   const bigEvents = events
-    .filter(e => ['high', 'medium'].includes((e.impact ?? '').toLowerCase()) && e.ms >= Date.now() - 60 * 60000)
+    .filter(e => ['high', 'medium'].includes((e.impact ?? '').toLowerCase()))
     .sort((a, b) => a.ms - b.ms)
-    .slice(0, 12)
-    .map(e => `• ${new Date(e.ms).toISOString().slice(11, 16)} UTC — [${e.country}] ${_redactFedChairName(e.event)} (${(e.impact ?? '').toLowerCase()} impact)`)
+    .slice(0, 16)
+    .map(e => `• ${new Date(e.ms).toISOString().slice(11, 16)} UTC — ${e.ms <= nowMs ? `RELEASED ${_ago(e.ms)} ago` : `UPCOMING in ${_ago(e.ms)}`} — [${e.country}] ${_redactFedChairName(e.event)} (${(e.impact ?? '').toLowerCase()} impact)${e.estimate != null ? ` consensus ${e.estimate}` : ''}${e.actual != null ? ` ACTUAL ${e.actual}` : ''}`)
     .join('\n')
     || (_calFeedOk
       ? '(no tier-1/2 scheduled events on the calendar today)'
       : '(ECONOMIC CALENDAR FEED UNAVAILABLE — the scheduled-events feed could not be loaded. Do NOT describe today as quiet, data-light or event-free; state plainly that the economic calendar is unavailable and treat scheduled-event risk as unknown.)');
+  // The FOMC engine (below) captures the statement, transcript and SEP for every
+  // meeting and reads them. When the latest meeting is recent, the brief gets the
+  // verdict -- otherwise it can only see "FOMC" on the calendar and guesses.
+  let fomcBlock = '';
+  try {
+    const latestRaw = await kv.get('fomc_latest');
+    const latest = latestRaw ? JSON.parse(latestRaw) : null;
+    const mDate = latest?.meetingDate;
+    const ageH = mDate ? (nowMs - Date.parse(mDate + 'T18:00:00Z')) / 3600e3 : null;
+    if (mDate && ageH != null && ageH > -12 && ageH < 7 * 24) {
+      const parts = [];
+      for (const kind of ['statement', 'sep', 'transcript', 'minutes']) {
+        const raw = await kv.get(`fomc_analysis_${kind}_${mDate}`).catch(() => null);
+        if (!raw) continue;
+        const a = JSON.parse(raw)?.analysis;
+        if (!a) continue;
+        parts.push(`[${_fomcKindLabel(kind).split(' (')[0]}] ${a.regime ?? '?'} (hawkish score ${a.hawkishScore ?? '?'}, read confidence ${a.confidence ?? '?'}): ${_redactFedChairName(String(a.headline ?? ''))}`
+          + (a.whatChanged ? `\n   What changed vs last meeting: ${_redactFedChairName(String(a.whatChanged))}` : '')
+          + (Array.isArray(a.byAsset) && a.byAsset.length ? `\n   By asset: ${a.byAsset.map(x => `${x.asset} ${x.lean}${x.note ? ` — ${_redactFedChairName(String(x.note))}` : ''}`).join(' | ')}` : ''));
+      }
+      const when = ageH >= 0 ? `${ageH < 1 ? Math.round(ageH * 60) + ' minutes' : ageH.toFixed(1) + ' hours'} ago` : `today, due in ${(-ageH).toFixed(1)} hours`;
+      fomcBlock = parts.length
+        ? `\n=== FOMC: THE DECISION IS IN (meeting ${mDate}, decision ${when}) ===\n${parts.join('\n')}\nThis has ALREADY HAPPENED. Do not frame the day as waiting for the Fed, do not call the decision a binary or a coin-flip, and do not describe the statement as pending. Lead with what was decided and how the tape responded (WHAT MOVED), then what it means from here.\n`
+        : (ageH >= 0
+          ? `\n=== FOMC: DECISION RELEASED ${when}, CONTENT NOT YET CAPTURED ===\nThe meeting was today and the decision is out, but its text has not reached this snapshot. Say the decision is out and its content is not in your data; do NOT describe it as pending or upcoming.\n`
+          : '');
+    }
+  } catch { /* the calendar line still says FOMC; the block is additive */ }
   const prompt = `You are writing the MORNING MARKET COLUMN for an FX/macro trading desk — the front page a trader reads before anything else. Work TOP-DOWN: macro & policy backdrop → risk regime → the US dollar → what it means for the FX complex and risk-sensitive instruments (indices, gold). Be specific and plain-spoken, like a sharp market columnist. Use ONLY the data, headlines and scheduled events below — do NOT invent events, numbers, or geopolitics you were not given. If headlines are thin, say the read is data-driven, not news-driven.
 
-If a central-bank decision (FOMC/ECB/BoE/BoJ etc.) or a tier-1 release (CPI, NFP, GDP) is on today's calendar below, it is the single most important thing on the page — LEAD with it, say what's expected/at stake, and frame the day as a wait-for-it around that event. Do not bury it.
+If a central-bank decision (FOMC/ECB/BoE/BoJ etc.) or a tier-1 release (CPI, NFP, GDP) is on today's calendar below, it is the single most important thing on the page — LEAD with it. If it is marked UPCOMING, say what's expected/at stake and frame the day as a wait-for-it around that event. If it is marked RELEASED, it has happened: lead with what came out (the FOMC block, or the event's ACTUAL vs consensus) and how the market responded, and never write as if it were still ahead. Do not bury it either way.
 
 NEVER name a specific central-bank official (Fed Chair, FOMC governor, ECB/BoE/BoJ head, etc.) anywhere in your output, even if a name appears in the headlines or calendar below — refer to them only by role ("the Fed Chair", "the FOMC", "the ECB"). A named individual anchors the read on their personal reputation or past statements, and that read goes stale (or becomes wrong) the moment leadership changes — describe the institution and the decision, not the person.
 
 === MACRO SNAPSHOT (${fc?.session_label ?? 'today'}) ===
 ${macro}
-${fc?.meta?.news_flag ? `Scheduled risk event today: ${fc.meta.news_flag}` : ''}
+TIME NOW: ${nowUtc}. Every event below is marked RELEASED or UPCOMING against this clock -- a released event is history to be read, not a wait.
+${fc?.meta?.news_flag ? `Scheduled risk event today: ${fc.meta.news_flag}${fomcBlock ? ' (see the FOMC block: already decided)' : ''}` : ''}${fomcBlock}
 ${macroChanges?.text ? `\n=== WHAT MOVED (change vs prior day / 1w / 1m — USE THIS to say what's shifting, not just the level) ===\n${macroChanges.text}` : ''}
 ${scorecardLines ? `\n=== MACRO SCORECARD -- this project's own cross-engine ranking, strongest to weakest ===\nEach currency is scored on real economic data, then the dimensions are GROUPED INTO SIX FACTORS -- rates & policy (rate differential, real yield, yield curve), inflation (CPI, PPI), growth (GDP, business activity), labour market, domestic demand (retail sales, consumer confidence), external balance (trade balance) -- and the factors are averaged with EQUAL WEIGHT. That grouping is the point: three dimensions measure rates and two measure inflation, so a flat average across dimensions would hand rates triple weight and inflation double, purely because more series happen to point at them. Every score is already on a -1..+1 scale; missing or stale dimensions are left out, never treated as neutral. Central-bank tone is shown per currency elsewhere but is deliberately in NO factor and scores nothing -- hawkish-score momentum was tested against forward price here and banked a clean null.\n${scorecardLines}\nHOW TO USE IT. Ground the dollar/FX-complex section in this project's own scoring rather than generic yield/DXY levels, and go one level deeper than the headline number: say WHICH FACTOR is carrying a currency's score, because "USD is strong on rates but weak on growth" is a teachable, falsifiable statement and "USD scores +0.4" is not. Lean hardest on the WHAT IS SEPARATING THE BOARD line -- that is the factor currencies are actually spread across today, and a currency being strong on a factor everyone agrees about tells you far less than one leading the factor in dispute. Name the disagreements too: a composite where every factor points the same way is a much stronger read than one where growth and inflation pull opposite ways and net out near zero, and those two look identical in the headline number. A curve reading near 0 or negative means that currency's curve is flat or inverted -- name it directly if rates is the factor driving the score. Do not give a thin read the confidence of a well-covered one: [n/6 factors] and the per-factor "(x/y series fresh)" counts say how much is actually behind each number, and any dimension listed as excluded-as-stale is genuinely absent, not neutral. Finally, this whole composite is CONTEXT, not a signal -- macro-as-signal has been tested and banked as null in this project five times over. Use it to explain why the FX board looks the way it does; never present it as a forecast.` : ''}
 
@@ -17387,19 +17295,6 @@ app.post('/api/fib-atlas-bot/telegram-test', async (_req, res) => {
   }
 });
 
-// Motif Bot's own test-alert route, same contract as Fib Atlas's above.
-app.post('/api/motif-bot/telegram-test', async (_req, res) => {
-  try {
-    const cfgRaw = await kv.get('motif_bot_config').catch(() => null);
-    const cfg = cfgRaw ? (JSON.parse(cfgRaw).data ?? JSON.parse(cfgRaw)) : {};
-    if (!cfg.tg_token || !cfg.tg_chat_id) return res.json({ ok: false, error: 'no tg_token/tg_chat_id saved on the Motif Bot config yet' });
-    const sent = await sendTelegram(cfg.tg_token, cfg.tg_chat_id, '✅ Motif Bot — test alert. Entered/rejected + TP/SL close alerts will use this bot.');
-    res.json({ ok: sent, error: sent ? undefined : 'Telegram API call failed' });
-  } catch (e) {
-    res.status(500).json({ ok: false, error: e.message });
-  }
-});
-
 // GET /api/fib-atlas-bot/trade-log?from=YYYY-MM-DD&to=YYYY-MM-DD — the
 // durable closed-trade log (`_fibAtlasBotAccumulateTradeLog` above) PLUS the
 // matching decision-log events (entered/rejected/skipped, now carrying the
@@ -30219,57 +30114,35 @@ app.get('/api/trade-decision/log', (req, res) => {
 app.get('/api/services', (req, res) => {
   const bootedAt = _serverBootedAt;
   const upMs = Date.now() - bootedAt;
-  const view = svcStatsView();
-  const zero = { runs: 0, errors: 0, totalMs: 0 };
-  view.persistence.writing = SVC_STATS_PERSIST;
   let rows = servicesSnapshot().map(s => {
     const st = _svcStats.get(s.id) ?? {};
     const totalMs = st.totalMs ?? 0;
-    // A start.sh bot runs in its OWN process — this one cannot observe whether
-    // it is up, so reporting `started: false` (as the first version did) reads
-    // as "not running" when it is fine. Say "not observable" instead.
-    const observable = s.where === 'server';
     return {
       ...s,
-      observable,
-      started: observable ? st.started === true : null,
-      jobs: (st.intervalsMs ?? []).length,
-      intervalsMs: st.intervalsMs ?? [],
-      sinceBoot: {
-        runs: st.runs ?? 0,
-        errors: st.errors ?? 0,
-        totalMs,
-        lastMs: st.lastMs ?? null,
-        lastAt: st.lastAt ?? null,
-        // Share of wall-clock time this process spent inside this job. Single
-        // process, so these are comparable to each other; they are NOT CPU time
-        // (an awaiting job is idle, not burning CPU) and can sum past 100%.
-        busyPct: upMs > 0 ? +(100 * totalMs / upMs).toFixed(2) : null,
-      },
-      today:  view.today.services[s.id]  ?? { ...zero },
-      window: view.window.services[s.id] ?? { ...zero },
+      started: st.started === true,
+      runs: st.runs ?? 0,
+      errors: st.errors ?? 0,
+      totalMs,
+      lastMs: st.lastMs ?? null,
+      lastAt: st.lastAt ?? null,
+      intervalMs: st.intervalMs ?? null,
+      // Share of wall-clock time this process spent inside this job. Single
+      // process, so these are comparable to each other; they are NOT CPU time
+      // (an awaiting job is idle, not burning CPU) and can sum past 100%.
+      busyPct: upMs > 0 ? +(100 * totalMs / upMs).toFixed(2) : null,
     };
   });
   if (String(req.query.on ?? '') === '1') rows = rows.filter(r => r.enabled);
   const order = { high: 0, med: 1, low: 2 };
-  // Sort by TODAY's measured time — that survives restarts, so it is the column
-  // to cut from. Since-boot time only breaks ties.
-  rows.sort((a, b) => (b.today.totalMs - a.today.totalMs)
-    || (b.sinceBoot.totalMs - a.sinceBoot.totalMs)
-    || (order[a.cost] - order[b.cost])
-    || a.id.localeCompare(b.id));
+  rows.sort((a, b) => (b.totalMs - a.totalMs) || (order[a.cost] - order[b.cost]) || a.id.localeCompare(b.id));
   res.json({
     ok: true,
     bootedAt: new Date(bootedAt).toISOString(),
     uptimeSec: Math.round(upMs / 1000),
     profile: process.env.SERVICE_PROFILE || null,
     counts: { total: rows.length, enabled: rows.filter(r => r.enabled).length },
-    note: '`today` and `window` (7d) are UTC day totals persisted to R2, so they survive a redeploy — cut from those. '
-        + '`sinceBoot` is this process only. start.sh bots report flag state only (observable: false); '
-        + 'their CPU is not measured here. Switch a service off with its env var (see MD files/RAILWAY_SERVICE_FLAGS.md).',
-    today: { date: view.today.to, span: view.today.days },
-    window: { from: view.window.from, to: view.window.to, days: view.window.days },
-    persistence: view.persistence,
+    note: 'totalMs/busyPct are measured in THIS process since boot; start.sh bots report flag state only. '
+        + 'Switch a service off with its env var (see MD files/RAILWAY_SERVICE_FLAGS.md) and redeploy.',
     services: rows,
   });
 });
@@ -31188,12 +31061,6 @@ try {
 } catch (e) {
   console.error('[HMM5M-V2] Failed to load trained params:', e.message);
 }
-
-// Service-stat persistence: pull the day buckets R2 already holds, then flush
-// every SVC_STATS_FLUSH_MS (and once more on SIGTERM), so a push at 3pm no
-// longer throws away the morning's measurements.
-await svcStatsLoad();
-svcInterval('serviceStats', () => svcStatsFlush('interval'), SVC_STATS_FLUSH_MS);
 
 svcInterval('monitor', monitorTick, MONITOR_MS);
 if (svcEnabled('monitor')) svcRun('monitor', monitorTick).catch(console.error);
