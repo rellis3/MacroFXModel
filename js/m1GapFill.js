@@ -21,6 +21,18 @@ const MIN = 60;                    // seconds per M1 bar
 const DEFAULT_MAX_BARS = 5000;     // OANDA candles cap per request
 const DEFAULT_MAX_RETRIES = 3;     // per chunk, before giving up on it
 const DEFAULT_RETRY_BASE_MS = 500; // doubles each attempt (500, 1000, 2000, ...)
+// Sanity floor for a "last known bar" timestamp (2026-09-16 incident: a
+// single corrupted/unparseable trailing timestamp silently became epoch 0
+// when written into the Int32Array `times` column — see `pack()` in
+// volBacktestM1Engine.js, `times[i] = toEpoch(r[5])`; assigning NaN to a
+// typed array index silently coerces to 0, no error, no warning — and
+// computeGap then read that as "last bar was 1970-01-01", triggering a
+// ~7.9M-bar refetch of this pair's entire history and hammering OANDA hard
+// enough to draw 504s on the next pair in the same run). Anything before
+// this floor is treated as corrupted, not a real "we're missing decades"
+// gap. 2015-01-01 comfortably predates every real M1 archive this project
+// uses (per the owner: "we only care about ~10 years, 2016 onwards").
+export const SANE_EPOCH_FLOOR = Math.floor(Date.UTC(2015, 0, 1) / 1000);
 
 function _sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
@@ -32,16 +44,35 @@ export function toEpochSec(t) {
 }
 
 // Epoch seconds of the last bar in a packed series, or null if empty.
+// Scans backward past any trailing timestamp(s) below SANE_EPOCH_FLOOR
+// (corrupted -- see that constant's own doc) instead of trusting index
+// n-1 blindly, so one bad tail value can't make the whole series look
+// decades older than it really is. Only the true END of the array is ever
+// corrupted by the known failure mode (a bad LAST row) -- this deliberately
+// does not scan the whole array (that's `loadM1ForPair`'s/the parquet
+// read's job, not a gap-fill helper's), just refuses to trust a nonsense
+// tail.
 export function lastPackedEpoch(packed) {
   if (!packed || !packed.n) return null;
-  return toEpochSec(packed.times[packed.n - 1]);
+  for (let i = packed.n - 1; i >= 0 && i >= packed.n - 5; i--) {
+    const t = toEpochSec(packed.times[i]);
+    if (t != null && t >= SANE_EPOCH_FLOOR) return t;
+  }
+  return null; // last up to 5 bars are ALL corrupted/pre-floor -- don't guess, let the caller decide
 }
 
 // The gap window [fromSec, toSec] to fetch (next minute after the last bar → now),
 // or null if there's no parquet to extend or it's already current within minGapSec.
+// Relies entirely on `lastPackedEpoch` above to keep `last` (and therefore
+// `fromSec`) at or after SANE_EPOCH_FLOOR — a genuinely ancient-only series
+// (every scanned bar pre-2015) reads as "no valid last bar" and returns
+// null here rather than a floored-but-still-wrong fetch window; a real
+// series with just a corrupted tail gets its true recent `last` back, no
+// flooring needed. No separate clamp here — one enforcement point, not two
+// that could quietly drift apart.
 export function computeGap(packed, nowSec, { minGapSec = 3600 } = {}) {
   const last = lastPackedEpoch(packed);
-  if (last == null) return null;                 // no base series — nothing to extend onto
+  if (last == null) return null;                 // no base series (or every scanned bar corrupted/pre-floor) — nothing to extend onto
   if (nowSec - last < minGapSec) return null;    // current enough; skip the fetch
   return { fromSec: last + MIN, toSec: nowSec };
 }
