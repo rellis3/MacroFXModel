@@ -202,8 +202,12 @@ numbers requires measurement (§6), not another static read.
 > **Update 2026-09-15 — the first half of this is now instrumented.** Every
 > background job in `server.js` runs through `svcInterval`, which records its
 > run count, cumulative wall time and error count. `GET /api/services` returns
-> them sorted by time spent, alongside each job's on/off flag. That answers
-> "which timer is doing the work" from a reading rather than a static review —
+> them sorted by time spent, alongside each job's on/off flag. **Since
+> 2026-09-16 those counters survive a redeploy** (flushed to R2 as UTC day
+> buckets every 15 min and on SIGTERM) — the first version kept them in the
+> process, and with Railway redeploying on every push the meter reset before it
+> ever measured a day. That answers "which timer is doing the work" from a
+> reading rather than a static review —
 > for the scheduled half of the workload. It still does not measure the eight
 > `start.sh` bot processes, request-time work, or RSS: items 1 and 3 below stand
 > and remain Railway-Metrics questions. See

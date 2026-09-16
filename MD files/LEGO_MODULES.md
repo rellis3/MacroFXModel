@@ -7860,3 +7860,54 @@ and the doc says so rather than letting the number be read as more than it is.
 service is gated at no call site, if `start.sh` starts an id the registry does not know,
 or if a bare `setInterval` reappears in `server.js` (two documented exceptions). An
 unswitchable background job cannot be added by accident again.
+
+---
+
+### 1be. Service-stat day buckets — a meter that survives a redeploy (2026-09-16)
+
+**Files:** `js/serviceStats.js` (the brick), `js/serviceStats.test.mjs` (13 tests),
+`server.js` (`svcStatsLoad`/`svcStatsFlush`/`svcStatsView` + the SIGTERM hook + `/api/services`).
+
+**What it owns.** The pure half of "where did the day actually go": UTC day buckets of
+per-service `{runs, errors, totalMs}`, merged from flush deltas, trimmed to a 14-day
+window, rolled up over a span. `normalizeStore` makes a corrupt or foreign store degrade
+to empty rather than throw — losing history is a nuisance, refusing to boot over it is
+worse. The I/O (R2 read/write, the flush timer, the signal handler) stays in `server.js`;
+this stays pure and testable on synthetic data.
+
+**Why it exists — §1bd shipped a meter that could not measure.** The counters lived in
+the process, and Railway redeploys on every push to `main`. The first real read of
+`/api/services` after shipping it came back `uptimeSec: 17`, every row zero: the service
+had restarted seconds earlier and the day's measurements were gone. Advice to "leave it a
+day and read it" was worthless on a repo with several pushes a day. Flushing to R2 every
+15 minutes **and on SIGTERM** (a redeploy IS a SIGTERM) caps the loss at a few minutes.
+
+**Deltas, not totals — the one invariant.** A flush contributes only what accrued since
+the last successful flush, so a mid-day flush adds rather than overwrites, and a counter
+that has gone *backwards* is read as "the process restarted" and taken whole instead of
+as a negative. The merge happens on a structured clone and the clone is adopted only once
+the R2 write lands — without that, a transient R2 error would merge locally, fail, and
+merge the same deltas again next tick, double-counting the very numbers the module exists
+to get right. `serviceStats.test.mjs` runs a full flush → kill → reboot → flush cycle and
+asserts the day total is 97, not 7.
+
+**R2, not CF KV, deliberately.** ~96 writes/day. `CLAUDE.md` is explicit that churny keys
+stay out of `_CF_EXACT` to protect the CF KV free-plan write quota; R2 has no equivalent
+concern (the same reasoning the Level Atlas snapshots already run on).
+
+**A mistake worth keeping written down.** R2 credentials are present in dev sandboxes too,
+so the first boot test merged its own numbers straight into production's history — exactly
+the class of error `CLAUDE.md`'s "never let a sandbox run write back to R2" rule covers,
+in new code that had not inherited the rule. The flush is now gated on Railway's own env
+vars (`RAILWAY_ENVIRONMENT`/`SERVICE_ID`/`PROJECT_ID`), reads work anywhere, and
+`SVC_STATS_PERSIST=1` is the explicit override. The polluted key was reset.
+
+**Also fixed in `/api/services` while here:** `started` was reported `false` for all eight
+`start.sh` bots — they run in their own processes and this one cannot observe them, so it
+now reports `observable: false` / `started: null` instead of something that reads as "not
+running". And `intervalMs` reported whichever timer registered last for any service with
+several (`econPollers` has 13, `tde` 3), which made `tde` look like a 20-second job when
+20s is only its daily-backfill clock; it is now `jobs` + `intervalsMs[]`.
+
+**Status: ✅ built, unit-tested, and verified end-to-end against real R2 — boot, kill,
+reboot, and the day total carried across (`levels` 10.7s in-process vs 21.4s for the day).**

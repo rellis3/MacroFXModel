@@ -391,7 +391,8 @@ var is set in Railway first.
 | `VOL_FORECAST_UTC` | when the vol-forecast recompute runs |
 | `TDE_PAIRS`, `TDE_REFRESH_MIN` | Trade Decision Engine live slow loop — pairs to keep snapshots warm (off if unset) + refresh cadence (default 5 min) |
 | `TDE_BACKFILL_UTC`, `TDE_BACKFILL_DAILY` | Trade Decision Engine nightly incremental backfill — time (default `03:05` UTC, **on by default**); `TDE_BACKFILL_DAILY=0` disables |
-| `SVC_<ID>`, `SERVICES_OFF`, `SERVICES_ON`, `SERVICE_PROFILE` | **background-job switches** — every scheduler in `server.js` and every bot in `start.sh` can be turned off from the Railway env without a code change. Registry: `js/serviceFlags.js`; live state + per-job timings: `/api/services`; operator guide: `MD files/RAILWAY_SERVICE_FLAGS.md`. Defaults are unchanged, so setting none of these keeps today's behaviour |
+| `SVC_<ID>`, `SERVICES_OFF`, `SERVICES_ON`, `SERVICE_PROFILE` | **background-job switches** — every scheduler in `server.js` and every bot in `start.sh` can be turned off from the Railway env without a code change. Registry: `js/serviceFlags.js`; live state + per-job timings: `/api/services`; operator guide: `MD files/RAILWAY_SERVICE_FLAGS.md` |
+| `SVC_STATS_PERSIST`, `SVC_STATS_FLUSH_MS`, `SVC_STATS_R2_KEY` | `/api/services`'s day counters → R2 (`ops/service-stats.json`), flushed every 15 min + on SIGTERM so a redeploy does not reset them. Writes only when Railway's own env vars are present, so a dev sandbox never merges into production's history; `SVC_STATS_PERSIST=1` forces it on |
 
 > The volatility-bot plan producer recomputes σ from OANDA D1 via
 > `volSigmaSeries` (the backtest's exact math) — **not** `/api/vol-forecast`,
@@ -549,6 +550,16 @@ Report the green honestly and the red honestly.
 - Keep commits scoped and messages descriptive.
 
 ## Live deployment
+
+> **The five HMM services default OFF (owner, 2026-09-16).** If you are looking
+> at `RegimeV2/regime_bot_v2.py` sitting in `watching` on every pair and never
+> trading, this is why — not a bug in the bot. `/api/hmm5m-v2` serves `{}` when
+> `hmm5mV2` is off, which the bot reads as no-regime. `hmm1h` matters too and in
+> the opposite direction: its E7 gate is skipped rather than enforced when the
+> feed is empty, so **re-enable `hmm5mV2` and `hmm1h` together** (`SVC_HMM5M_V2=1
+> SVC_HMM1H=1`) or the bot trades with one less safety gate. `hmm5m` off also
+> silently disables the polarity-flip direction override and the VuManChu M5
+> reads in the live level alerts. Full account: `RAILWAY_SERVICE_FLAGS.md` §5.1.
 
 **Before adding a new background job**, read `MD files/RAILWAY_SERVICE_FLAGS.md`.
 Everything periodic on Railway runs in ONE container — eight supervised bot
