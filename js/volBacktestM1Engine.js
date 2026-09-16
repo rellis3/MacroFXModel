@@ -1428,8 +1428,24 @@ export async function runFullM1Backtest(opts = {}, instruments = INSTRUMENTS, m1
  * or null if no data source available.
  */
 export async function loadM1ForPair(pairKey, m1Dir = BT_M1_DIR) {
+  // Real incident, 2026-09-16: this only ever handled a Date instance or a
+  // date/datetime STRING -- assumed every parquet's timestamp column is one
+  // of those. EURUSD's and GBPUSD's R2 files store it as a raw epoch
+  // number/BigInt instead (the same schema-drift this function's own OHLC/
+  // volume handling right below already works around via Number() instead
+  // of unary + -- just never extended to the timestamp column). String(v)
+  // on a bare number produces something like "1757980800", which
+  // `new Date("1757980800Z")` fails to parse (NaN) -- and assigning NaN
+  // into the Int32Array `times` column silently coerces to 0, no error, no
+  // warning. Every row for that pair got timestamp 0 (1970-01-01), so the
+  // entire multi-year archive collapsed into ONE session bucket and
+  // atlasWalk correctly (if silently) bailed out with zero touches. Now
+  // branches on the real JS type instead of assuming it's date-like.
   const toEpoch = v => {
-    const s = v instanceof Date ? v.toISOString().substring(0, 19) : String(v).substring(0, 19).replace(' ', 'T');
+    if (v instanceof Date) return Math.floor(v.getTime() / 1000);
+    if (typeof v === 'bigint') return Number(v) < 1e12 ? Number(v) : Math.floor(Number(v) / 1000);
+    if (typeof v === 'number') return v < 1e12 ? Math.floor(v) : Math.floor(v / 1000);
+    const s = String(v).substring(0, 19).replace(' ', 'T');
     return Math.floor(new Date(s + 'Z').getTime() / 1000);
   };
 
