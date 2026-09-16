@@ -17047,6 +17047,83 @@ app.get('/api/level-atlas/vote-state/:instrument', async (req, res) => {
   }
 });
 
+// Level Atlas book staleness — surfaces exactly what the 2026-09-15 incident
+// showed was invisible until the owner noticed a live-vs-backtest P&L gap
+// several days in: the reference-engine-rebuild can silently stop
+// completing (crash, OOM, whatever) with NO signal anywhere except the
+// persisted books quietly stopping short of "now". Checks every one of the
+// bot's own `enabled_pairs` (not the full REFERENCE_ENGINE_PAIRS list —
+// staleness in a pair the bot doesn't even trade isn't this alert's job)
+// and reports the OLDEST `generatedAt` found, since a genuinely healthy
+// rebuild should leave every traded pair reasonably fresh — one straggler
+// is exactly the signal worth surfacing, not averaging away.
+async function _levelAtlasStaleness() {
+  const cfgRaw = await kv.get('volatility_bot_v2_config').catch(() => null);
+  const cfg = cfgRaw ? (JSON.parse(cfgRaw).data ?? JSON.parse(cfgRaw)) : {};
+  const pairs = Array.isArray(cfg.enabled_pairs) && cfg.enabled_pairs.length ? cfg.enabled_pairs : ['eurusd'];
+  const rows = [];
+  for (const pair of pairs) {
+    try {
+      const book = await _r2GetJSON(`level-atlas/${pair}.json`);
+      rows.push({ pair, generatedAt: book?.generatedAt ?? null });
+    } catch (e) {
+      rows.push({ pair, generatedAt: null, error: e.message });
+    }
+  }
+  const withAges = rows.map(r => ({ ...r, ageHours: r.generatedAt ? (Date.now() - Date.parse(r.generatedAt)) / 3_600_000 : Infinity }));
+  withAges.sort((a, b) => b.ageHours - a.ageHours); // oldest first
+  const oldest = withAges[0];
+  return { pairs: withAges, oldestPair: oldest?.pair ?? null, oldestAgeHours: oldest ? +oldest.ageHours.toFixed(1) : null };
+}
+
+app.get('/api/level-atlas/staleness', async (_req, res) => {
+  try { res.json({ ok: true, ...await _levelAtlasStaleness() }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// Manual refresh — the owner's own explicit ask (2026-09-16, after the
+// nightly rebuild silently sat broken for days): "even if occasionally I
+// have to hit a manual api call to trigger the refresh". Thin wrapper over
+// the EXISTING /api/level-atlas/run job (same one the nightly tick calls) so
+// there's exactly one rebuild code path, not a second one to drift from it.
+// Scoped to just the bot's own enabled_pairs (not all 31 reference pairs) —
+// faster, and it's the ONLY set the live bot actually depends on.
+app.post('/api/level-atlas/refresh-now', async (_req, res) => {
+  try {
+    const cfgRaw = await kv.get('volatility_bot_v2_config').catch(() => null);
+    const cfg = cfgRaw ? (JSON.parse(cfgRaw).data ?? JSON.parse(cfgRaw)) : {};
+    const pairs = Array.isArray(cfg.enabled_pairs) && cfg.enabled_pairs.length ? cfg.enabled_pairs : ['eurusd'];
+    const { jobId } = _startLevelAtlasRunJob({ instruments: pairs.map(p => p.toUpperCase()) });
+    res.json({ ok: true, jobId, pairs });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+if (process.env.OANDA_KEY) {
+  _scheduleDailyLondon(6, 0, async () => {
+    // Fires well after the 00:30 rebuild (now serialized, ~1.5-2h for all
+    // five sub-jobs — see that job's own history) should have finished, so
+    // "still stale at 06:00" means the rebuild genuinely didn't complete
+    // last night, not that it's simply still running.
+    try {
+      const st = await _levelAtlasStaleness();
+      const STALE_HOURS = 30; // >1 missed night before alarming, catches 2+ in a row
+      if (st.oldestAgeHours != null && st.oldestAgeHours > STALE_HOURS) {
+        console.warn(`[level-atlas-staleness] ${st.oldestPair} is ${st.oldestAgeHours}h stale (>${STALE_HOURS}h threshold)`);
+        const cfgRaw = await kv.get('volatility_bot_v2_config').catch(() => null);
+        const cfg = cfgRaw ? (JSON.parse(cfgRaw).data ?? JSON.parse(cfgRaw)) : {};
+        if (cfg.tg_token && cfg.tg_chat_id) {
+          const days = (st.oldestAgeHours / 24).toFixed(1);
+          await sendTelegram(cfg.tg_token, cfg.tg_chat_id,
+            `⚠️ Vote Atlas — ${st.oldestPair.toUpperCase()}'s book hasn't refreshed in ${days} days (last update ${st.oldestAgeHours}h ago). The nightly rebuild may be failing again. Trigger a manual refresh: POST /api/level-atlas/refresh-now, or from bot-config.html's Vote Atlas card.`);
+        }
+      } else {
+        console.log(`[level-atlas-staleness] OK — oldest traded book is ${st.oldestAgeHours}h old`);
+      }
+    } catch (e) { console.error('[level-atlas-staleness] check failed:', e.message); }
+  });
+  console.log('[level-atlas-staleness] daily check armed at 06:00 London (Telegram-alerts if any enabled pair\'s book is >30h stale)');
+}
+
 // "Send test alert" for the bot-config.html Vote Atlas tab's Telegram fields
 // — reads whatever tg_token/tg_chat_id is CURRENTLY SAVED in
 // volatility_bot_v2_config (save the form first) and fires one test message,

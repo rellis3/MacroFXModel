@@ -3875,6 +3875,45 @@ async function resetVb2Throttle() {
     if (el) { el.textContent = 'Throttle reset ✓ (takes effect within one status cycle)'; el.style.color = '#38bdf8'; setTimeout(() => { el.textContent = ''; }, 5000); }
   } catch (e) { if (el) { el.textContent = `Reset failed: ${e.message}`; el.style.color = 'var(--red)'; } }
 }
+// Book freshness (2026-09-16, same incident that motivated the drift-history
+// card above) -- server.js's /api/level-atlas/staleness reads the ACTUAL R2
+// generatedAt for every enabled pair (not a cached/local guess) and reports
+// the oldest. Red past the SAME 30h threshold the daily Telegram-alert job
+// uses, so this tile and that alert never disagree about what "stale" means.
+async function loadVb2Staleness() {
+  const el = document.getElementById('vb2Staleness');
+  if (!el) return;
+  try {
+    const r = await fetch('/api/level-atlas/staleness');
+    const j = await r.json();
+    if (!j.ok || j.oldestAgeHours == null) { el.textContent = 'no data yet'; el.style.color = 'var(--text3)'; return; }
+    const days = (j.oldestAgeHours / 24).toFixed(1);
+    if (j.oldestAgeHours > 30) {
+      el.textContent = `⚠ ${j.oldestPair?.toUpperCase()} ${days}d stale`;
+      el.style.color = 'var(--red)';
+    } else {
+      el.textContent = `fresh (oldest: ${j.oldestPair?.toUpperCase()} ${j.oldestAgeHours.toFixed(0)}h)`;
+      el.style.color = 'var(--green)';
+    }
+  } catch (e) { el.textContent = 'check failed'; el.style.color = 'var(--red)'; }
+}
+
+async function refreshVb2Book() {
+  const btn = document.getElementById('vb2RefreshBookBtn');
+  if (!confirm('Manually re-run the Level Atlas rebuild for this bot\'s enabled pairs now?\n\nThis is the same job the nightly 00:30 tick runs — takes several minutes, one pair at a time. Use this if Book freshness shows stale and you don\'t want to wait for the next scheduled run.')) return;
+  if (btn) { btn.disabled = true; btn.textContent = 'Refreshing…'; }
+  try {
+    const r = await fetch('/api/level-atlas/refresh-now', { method: 'POST' });
+    const j = await r.json();
+    if (btn) { btn.textContent = j.ok ? 'Refresh started ✓' : `Failed: ${j.error}`; }
+    setTimeout(() => { if (btn) { btn.disabled = false; btn.textContent = 'Refresh book now'; } loadVb2Staleness(); }, 8000);
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Refresh book now'; }
+    alert(`Refresh failed: ${e.message}`);
+  }
+}
+window.refreshVb2Book = refreshVb2Book;
+
 // Live vs backtest drift history -- server.js's own weekly job
 // (_volatilityV2WeeklyDriftAudit) writes this, this just renders it. A red
 // row (real mismatches) is fundamentally different from an amber one (thin
@@ -4087,6 +4126,7 @@ async function loadVb2LiveStatus() {
   loadVb2AllLines();
   loadVb2DecisionLog();
   loadVb2DriftHistory();
+  loadVb2Staleness();
 }
 
 // Unfiltered companion to the table above: EVERY currently-armed or
