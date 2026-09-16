@@ -66,13 +66,13 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from motif_alert_backtest import ALL_PAIRS, FROZEN, _motif_key  # noqa: E402
-from pattern_scan import load_bars  # noqa: E402
+from pattern_scan import load_m1_and_bars  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
 from motif_features import APPROACH_BARS, bucket_trade, compute_features  # noqa: E402
-from pylego.barrier_race import Entry, race_trades  # noqa: E402
+from pylego.barrier_race import Entry, race_trades_on_finer_path  # noqa: E402
 from pylego.costs import default_spread  # noqa: E402
 from pylego.instruments import pip_size  # noqa: E402
 from pylego.json_safe import json_safe  # noqa: E402
@@ -86,7 +86,9 @@ DATA_DIR = Path(__file__).resolve().parent / "data"
 
 def build_pair_rows(pair: str, args: argparse.Namespace) -> list[dict]:
     """One row per raced motif alert: its R, plus every confluence bucket."""
-    bars = load_bars(pair, args.timeframe)
+    # M1 resolution, matching motif_alert_backtest -- the two feed the same
+    # page, so a bucket's PF here has to mean what a trade's R means there.
+    m1, bars = load_m1_and_bars(pair, args.timeframe)
     n = len(bars)
     atr_arr = compute_atr(bars, period=args.atr_period)
     motifs = detect_touch_motifs(
@@ -97,9 +99,10 @@ def build_pair_rows(pair: str, args: argparse.Namespace) -> list[dict]:
     pip = pip_size(pair)
     sl_price = args.sl_pips * pip
     confirmed = [m for m in motifs if m.confirm_idx is not None and m.confirm_idx + 1 < n]
-    raced = race_trades(bars, [Entry(idx=m.confirm_idx + 1, direction=m.direction) for m in confirmed],
-                        sl=sl_price, tp_r=args.tp_r, max_bars_ahead=args.max_bars_ahead,
-                        cost_price=default_spread(pair), min_bars_ahead=args.min_bars_ahead)
+    raced = race_trades_on_finer_path(
+        bars, m1, [Entry(idx=m.confirm_idx + 1, direction=m.direction) for m in confirmed],
+        sl=sl_price, tp_r=args.tp_r, max_bars_ahead=args.max_bars_ahead,
+        cost_price=default_spread(pair), min_bars_ahead=args.min_bars_ahead)
     by_entry = {t["idx"]: t for t in raced}
     f = compute_features(pair, bars, args)
     cutoff = pd.Timestamp(IS_OOS_CUTOFF, tz=bars.index.tz)
