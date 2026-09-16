@@ -115,6 +115,28 @@ DATA_DIR = Path(__file__).resolve().parent / "data"
 FROZEN = dict(atr_period=14, pivot_n=5, tol_atr_mult=1.2, min_retrace_atr_mult=2.5,
               min_bars_between_touches=10, breakout_max_bars=40,
               sl_pips=20.0, tp_r=1.5, max_bars_ahead=200, min_bars_ahead=10)
+# Per-pair RETAIL spread estimates, in pips, for a raw-spread account with
+# commission folded in (~0.7 pip round trip). These are ESTIMATES, not measured
+# fills -- replace them with your broker's own averages before trusting any
+# figure derived from them.
+#
+# They exist because `pylego.costs.DEFAULT_SPREAD_PIPS` prices EVERY fx pair at
+# 0.8 pips (1.0 for JPY crosses), which is fair for EURUSD and badly wrong for
+# the crosses: GBPNZD is nearer 4 pips. Averaged over this book the real cost is
+# ~2.1x modelled, which takes the ungated stream from PF 1.15 to 1.07 -- the
+# difference between a system and a coin flip. The export ships BOTH cost bases
+# so the viewer can show either and the optimistic one is never the only story.
+#
+# Deliberately NOT in pylego.costs: that table is the paper-fill model the live
+# bots price against, and these are a research assumption about one broker.
+RETAIL_SPREAD_PIPS = {
+    "eurusd": 0.8, "usdjpy": 0.9, "gbpusd": 1.0, "audusd": 1.0, "eurgbp": 1.1,
+    "usdcad": 1.2, "usdchf": 1.2, "eurjpy": 1.2, "nzdusd": 1.3, "eurchf": 1.4,
+    "audjpy": 1.5, "gbpjpy": 1.6, "cadjpy": 1.7, "euraud": 1.7, "audcad": 1.9,
+    "audchf": 1.9, "nzdjpy": 1.9, "eurcad": 2.0, "chfjpy": 2.0, "audnzd": 2.2,
+    "gbpaud": 2.5, "gbpchf": 2.5, "eurnzd": 2.9, "gbpcad": 2.9, "gbpnzd": 4.2,
+}
+
 NEARING_ATR_MULT = 0.5
 MIN_CONFIDENCE_SAMPLES = 10  # _category_confidence's own floor
 
@@ -600,6 +622,16 @@ def main() -> None:
         # (the capacity test) without re-racing: R(k) = R(1) - (k-1) * cost_r.
         "pair_cost_r": {p_: round(default_spread(p_) / (args.sl_pips * pip_size(p_)), 5)
                         for p_ in pairs},
+        # The same figure at RETAIL spreads (see RETAIL_SPREAD_PIPS). Pairs
+        # absent from that table (gold) keep the modelled cost. Same exact
+        # re-pricing identity as above, so the viewer can switch cost basis
+        # without re-racing: R_retail = R + pair_cost_r - retail_cost_r.
+        "retail_cost_r": {
+            p_: round((RETAIL_SPREAD_PIPS[p_] * pip_size(p_)) / (args.sl_pips * pip_size(p_)), 5)
+            if p_ in RETAIL_SPREAD_PIPS
+            else round(default_spread(p_) / (args.sl_pips * pip_size(p_)), 5)
+            for p_ in pairs},
+        "retail_spread_pips": {p_: RETAIL_SPREAD_PIPS.get(p_) for p_ in pairs},
         "per_pair": per_pair,
         # Written AFTER every other section so `encode_features` has seen every
         # trade's vocabulary before the legend is frozen.
