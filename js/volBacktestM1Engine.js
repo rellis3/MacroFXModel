@@ -16,7 +16,7 @@ import { readFileSync, existsSync, writeFileSync, mkdirSync } from 'fs';
 import path                         from 'path';
 import { fileURLToPath }            from 'url';
 import { parquetRead, parquetMetadataAsync } from 'hyparquet';
-import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, GetObjectCommand, PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import {
   ewmaVarSeries, hvVarSeries, yzVolSeries, garchSigmas, classifyRegime, ASSET_PARAMS,
   BM_P50, BM_P75, HN_P50, HN_P75, fetchD1, INSTRUMENTS,
@@ -86,6 +86,105 @@ async function fetchFromR2(pairKey) {
       console.warn(`[M1] R2 attempt ${attempt} failed for ${pairKey}: ${err?.message} — retrying`);
     }
   }
+}
+
+// ── Decoded-parquet snapshot cache (2026-09-16) ──────────────────────────────
+// The raw-parquet decode above (`fetchFromR2` + `pack(readM1Parquet(...))`) is
+// the genuinely expensive step — profiled ~40-160s for one real ~3.8M-row FX
+// pair in isolation (levelAtlasRoutes.js's own profiling comment), far worse
+// under concurrent load (confirmed live tonight: a manual refresh sat on
+// EURUSD's decode for 20+ minutes competing with every other bot's own 45s
+// loop on the same box). All 5 nightly reference engines (Level Atlas,
+// Session Path, Session Handoff, Asia Fib Atlas, Monday Fib Atlas) call
+// `loadM1ForPair` independently and each pays this cost separately, once per
+// pair, every single run — even though this file's own header comment says
+// the R2 parquet is "a manually re-backfilled snapshot with NO scheduled
+// refresh": it essentially never changes between runs.
+//
+// Cache the DECODED array (not the raw bytes) and key its validity off TWO
+// things: the raw object's own R2 ETag (so a genuine manual re-backfill is
+// never missed — this is checked via a cheap HEAD, not a time-based guess)
+// AND `M1_DECODE_VERSION` below (so a future fix to `pack()`'s own row
+// interpretation — exactly the class of bug fixed tonight — can't be masked
+// by an old cached decode that silently outlives the code that produced it;
+// bump this constant whenever `pack()`'s logic changes and every existing
+// cache entry invalidates itself on next read). Either mismatch falls
+// straight through to the original full-decode path unchanged and refreshes
+// the cache — this can only make a correct load faster, never a wrong load
+// look right.
+const M1_DECODED_PREFIX = 'm1-decoded';
+const M1_DECODE_VERSION = 1;   // bump when pack()'s row-interpretation logic changes
+
+async function headR2Etag(client, key) {
+  try {
+    const resp = await client.send(new HeadObjectCommand({ Bucket: R2_BUCKET, Key: key }));
+    return resp.ETag || null;
+  } catch {
+    return null;   // HEAD failing just means "no cache info" — falls through to a full decode
+  }
+}
+
+// Binary layout (no JSON — these arrays run into the millions of rows, and
+// JSON.stringify/parse of that many numbers is itself a real cost this cache
+// exists to avoid): [u32 n][u32 decodeVersion][u32 etagLen][etag utf8 bytes,
+// padded to a 4-byte boundary][n×i32 times][n×f32 opens/highs/lows/closes/volumes].
+function packToBinary(packed, sourceEtag) {
+  const etagBytes = Buffer.from(sourceEtag, 'utf8');
+  const etagPadded = Math.ceil(etagBytes.length / 4) * 4;
+  const n = packed.n;
+  const headerLen = 12 + etagPadded;   // always a multiple of 4
+  const buf = Buffer.alloc(headerLen + n * 4 * 6);   // zero-filled — covers the etag pad bytes
+  buf.writeUInt32LE(n, 0);
+  buf.writeUInt32LE(M1_DECODE_VERSION, 4);
+  buf.writeUInt32LE(etagBytes.length, 8);
+  etagBytes.copy(buf, 12);
+  let off = headerLen;
+  // Buffer.alloc for a size this large is never pool-allocated, so
+  // buf.byteOffset is 0 and every `off` below (always a multiple of 4) is a
+  // valid typed-array view boundary.
+  const writeArr = (arr, Ctor) => { new Ctor(buf.buffer, buf.byteOffset + off, n).set(arr); off += n * 4; };
+  writeArr(packed.times, Int32Array);
+  writeArr(packed.opens, Float32Array);
+  writeArr(packed.highs, Float32Array);
+  writeArr(packed.lows, Float32Array);
+  writeArr(packed.closes, Float32Array);
+  writeArr(packed.volumes, Float32Array);
+  return buf;
+}
+
+function packFromBinary(rawBytes) {
+  if (!rawBytes || rawBytes.length < 12) return null;
+  // Copy onto a fresh Buffer so byteOffset is guaranteed 0 — the caller's
+  // bytes (from transformToByteArray()) aren't guaranteed aligned for
+  // constructing typed-array views directly.
+  const buf = Buffer.from(rawBytes);
+  const n = buf.readUInt32LE(0);
+  const decodeVersion = buf.readUInt32LE(4);
+  const etagLen = buf.readUInt32LE(8);
+  const sourceEtag = buf.toString('utf8', 12, 12 + etagLen);
+  let off = 12 + Math.ceil(etagLen / 4) * 4;
+  const readArr = (Ctor) => { const view = new Ctor(buf.buffer, buf.byteOffset + off, n); off += n * 4; return view; };
+  const times = readArr(Int32Array), opens = readArr(Float32Array), highs = readArr(Float32Array),
+        lows = readArr(Float32Array), closes = readArr(Float32Array), volumes = readArr(Float32Array);
+  return { packed: { n, times, opens, highs, lows, closes, volumes }, sourceEtag, decodeVersion };
+}
+
+async function loadDecodedSnapshot(client, pairKey) {
+  try {
+    const key = `${M1_DECODED_PREFIX}/${pairKey}.bin`;
+    const resp = await client.send(new GetObjectCommand({ Bucket: R2_BUCKET, Key: key }));
+    const bytes = await resp.Body.transformToByteArray();
+    return packFromBinary(bytes);
+  } catch {
+    return null;   // no snapshot yet, or unreadable — fall through to a full decode
+  }
+}
+
+async function saveDecodedSnapshot(client, pairKey, packed, sourceEtag) {
+  const key = `${M1_DECODED_PREFIX}/${pairKey}.bin`;
+  await client.send(new PutObjectCommand({
+    Bucket: R2_BUCKET, Key: key, Body: packToBinary(packed, sourceEtag), ContentType: 'application/octet-stream',
+  }));
 }
 
 // ── Drive file IDs for all 25 M1 parquets ────────────────────────────────────
@@ -1486,12 +1585,35 @@ export async function loadM1ForPair(pairKey, m1Dir = BT_M1_DIR) {
     return { n, times, opens, highs, lows, closes, volumes };
   };
 
-  // 1. R2
+  // 1. R2 — decoded-snapshot cache first (see M1_DECODED_PREFIX's own doc
+  // above): the raw parquet almost never changes, so most calls should skip
+  // the expensive decode entirely once a cheap HEAD confirms the source
+  // object (and the decoder's own version) still match what's cached.
   let packed = null;
   let r2Error = null;
   try {
-    const r2ab = await fetchFromR2(pairKey);
-    if (r2ab) packed = pack(await readM1Parquet(r2ab));
+    const client = makeR2Client();
+    if (client) {
+      const rawKey = `${R2_KEY_PREFIX}/${pairKey}_m1.parquet`;
+      const currentEtag = await headR2Etag(client, rawKey);
+      if (currentEtag) {
+        const cached = await loadDecodedSnapshot(client, pairKey);
+        if (cached && cached.sourceEtag === currentEtag && cached.decodeVersion === M1_DECODE_VERSION) {
+          packed = cached.packed;
+          console.log(`[M1] decoded-snapshot HIT for ${pairKey} (${packed.n.toLocaleString()} bars) — skipped full parquet decode, source unchanged`);
+        }
+      }
+      if (!packed) {
+        const r2ab = await fetchFromR2(pairKey);
+        if (r2ab) {
+          packed = pack(await readM1Parquet(r2ab));
+          if (currentEtag) {
+            saveDecodedSnapshot(client, pairKey, packed, currentEtag)
+              .catch(e => console.warn(`[M1] decoded-snapshot save failed for ${pairKey}: ${e.message}`));
+          }
+        }
+      }
+    }
   } catch (err) {
     r2Error = err?.message ?? String(err);
     console.warn(`[M1] R2 failed for ${pairKey}: ${r2Error}`);
@@ -1578,6 +1700,7 @@ export { INSTRUMENTS };
 
 // ── M1 loading utilities (re-exported for use in weekly backtester) ───────────
 export { readM1Parquet, groupByDate, fetchFromR2, fetchFromDrive };
+export { packToBinary, packFromBinary, M1_DECODE_VERSION };
 
 // ── R2 regime-history helpers (used by server.js) ────────────────────────────
 
