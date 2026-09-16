@@ -95,6 +95,7 @@ from pylego.barrier_race import (  # noqa: E402
 from pylego.costs import default_spread  # noqa: E402
 from pylego.instruments import pip_size  # noqa: E402
 from pylego.json_safe import json_safe  # noqa: E402
+from pylego import motif_policy  # noqa: E402
 from pylego.motif_touch import detect_touch_motifs  # noqa: E402
 from pylego.portfolio_sim import (  # noqa: E402
     matched_utilization_benchmark,
@@ -115,27 +116,11 @@ DATA_DIR = Path(__file__).resolve().parent / "data"
 FROZEN = dict(atr_period=14, pivot_n=5, tol_atr_mult=1.2, min_retrace_atr_mult=2.5,
               min_bars_between_touches=10, breakout_max_bars=40,
               sl_pips=20.0, tp_r=1.5, max_bars_ahead=200, min_bars_ahead=10)
-# Per-pair RETAIL spread estimates, in pips, for a raw-spread account with
-# commission folded in (~0.7 pip round trip). These are ESTIMATES, not measured
-# fills -- replace them with your broker's own averages before trusting any
-# figure derived from them.
-#
-# They exist because `pylego.costs.DEFAULT_SPREAD_PIPS` prices EVERY fx pair at
-# 0.8 pips (1.0 for JPY crosses), which is fair for EURUSD and badly wrong for
-# the crosses: GBPNZD is nearer 4 pips. Averaged over this book the real cost is
-# ~2.1x modelled, which takes the ungated stream from PF 1.15 to 1.07 -- the
-# difference between a system and a coin flip. The export ships BOTH cost bases
-# so the viewer can show either and the optimistic one is never the only story.
-#
-# Deliberately NOT in pylego.costs: that table is the paper-fill model the live
-# bots price against, and these are a research assumption about one broker.
-RETAIL_SPREAD_PIPS = {
-    "eurusd": 0.8, "usdjpy": 0.9, "gbpusd": 1.0, "audusd": 1.0, "eurgbp": 1.1,
-    "usdcad": 1.2, "usdchf": 1.2, "eurjpy": 1.2, "nzdusd": 1.3, "eurchf": 1.4,
-    "audjpy": 1.5, "gbpjpy": 1.6, "cadjpy": 1.7, "euraud": 1.7, "audcad": 1.9,
-    "audchf": 1.9, "nzdjpy": 1.9, "eurcad": 2.0, "chfjpy": 2.0, "audnzd": 2.2,
-    "gbpaud": 2.5, "gbpchf": 2.5, "eurnzd": 2.9, "gbpcad": 2.9, "gbpnzd": 4.2,
-}
+# Per-pair RETAIL spread estimates -- now the SINGLE copy in pylego.motif_policy
+# (used by the live plan producer / execution bot too as of the motif-bot build;
+# see that module's own docstring for why it moved rather than growing a second
+# hand-typed copy the moment a second consumer needed it).
+RETAIL_SPREAD_PIPS = motif_policy.RETAIL_SPREAD_PIPS
 
 NEARING_ATR_MULT = 0.5
 MIN_CONFIDENCE_SAMPLES = 10  # _category_confidence's own floor

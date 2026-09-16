@@ -11,9 +11,10 @@ this REPLACES as the live-tracked signal -- that method banked null on
 2026-08-12; this is a structurally different idea (motif/structural-event
 matching, not fixed-window Euclidean shape distance), tracked separately.
 
-Two outputs, same disk+R2 persistence pattern as paper_track.py (a SEPARATE
-log/state pair -- this does not touch paper_trades.json/shape_state.json,
-which stay as the retired k-NN method's historical record):
+Three outputs. Two are disk+R2 (same persistence pattern as paper_track.py --
+a SEPARATE log/state pair, this does not touch paper_trades.json/
+shape_state.json, which stay as the retired k-NN method's historical
+record); the third is KV, for the live execution bot:
   - `AnalogML/data/motif_trades.json` -- append-only forward-tracking log.
     Every run: (1) re-races still-`open` logged trades against newly-visible
     bars via the SAME shared barrier walker (pylego.barrier_race), (2) scans
@@ -31,6 +32,16 @@ which stay as the retired k-NN method's historical record):
     price makes one more new high/low). "Confidence" is the historical
     win-rate/PF/avg-R for THAT category (n_touches, is_top) -- a real,
     already-measured aggregate, never a fabricated per-instance probability.
+  - KV key `motif_bot_plan` (2026-09-16) -- every currently-`open` trade
+    (from motif_trades.json above) that passes `pylego.motif_policy.
+    passes_best_config` (skip swing_regime=with, drop pairs whose realistic
+    spread exceeds 2.0 pips -- the same validated filter the backtest
+    viewer's ⭐ Best Config button applies). This is `motif_bot/motif_bot.py`'s
+    ONLY input -- that bot NEVER computes a vote/level/stop/direction from
+    strategy logic, same doctrine as fib_atlas_bot/volatility_bot_v2. Pushed
+    as a full snapshot every run (not a delta), so a bot that was briefly
+    offline never silently loses an entry. Skipped entirely on a --as-of
+    replay run, same guard --telegram already uses.
 
 **Data-access blocker (same as paper_track.py):** this sandbox cannot reach
 OANDA (403 policy denial from the outbound proxy, confirmed not assumed).
@@ -108,6 +119,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from pattern_scan import load_bars  # noqa: E402
+from motif_features import bucket_trade, compute_features  # noqa: E402
 from motif_multi_tf import DETECT_KW, htf_lean_at  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -116,6 +128,8 @@ sys.path.insert(0, str(REPO_ROOT))
 from pylego.barrier_race import Entry, race_trades  # noqa: E402
 from pylego.costs import default_spread  # noqa: E402
 from pylego.instruments import pip_size  # noqa: E402
+from pylego.kv import KvClient  # noqa: E402
+from pylego.motif_policy import passes_best_config  # noqa: E402
 from pylego.motif_touch import detect_touch_motifs  # noqa: E402
 from pylego.r2 import r2_client as _r2_client, R2_BUCKET  # noqa: E402
 from pylego.swing_structure import atr as compute_atr  # noqa: E402
@@ -393,7 +407,7 @@ def _confidence_bar(rate: float, width: int = 5) -> str:
 
 
 def format_alert(pair: str, t: dict, m, atr_arr, htf_lean: int | None, confidence: dict | None,
-                 current_price: float | None = None) -> str:
+                 current_price: float | None = None, swing_regime: str | None = None) -> str:
     """Telegram HTML for one new confirmed motif. Two sizing lines, not
     three: "Tracked (frozen grid)" stays -- it is the actual record
     motif_trades.json logs and the ONLY thing every validated Sharpe/PF
@@ -416,7 +430,18 @@ def format_alert(pair: str, t: dict, m, atr_arr, htf_lean: int | None, confidenc
     CONFIRMATION, up to an hour stale by the time this alert is read, and a
     bare historical number doesn't say that. Relabelled "Confirmed @" and
     the drift line makes the staleness and its direction (better/worse than
-    the tracked price) explicit instead of implied."""
+    the tracked price) explicit instead of implied.
+
+    `swing_regime` (2026-09-16): the causal H1-vs-D1 structural read at the
+    confirm bar (AnalogML.motif_features.bucket_trade's own field) -- with/
+    against/range/unknown. Added specifically because this alert had no way
+    to tell a human filtering by eye whether a trade matched the SAME
+    definition the backtest's confluence study validated: with-trend fails
+    to clear breakeven on BOTH sides of the IS/OOS split (PF 0.976 IS / 0.974
+    OOS, motif-alert-backtest.html). A `pylego.motif_policy.passes_best_config`
+    verdict is shown alongside it for exactly that reason -- this is also the
+    field motif_bot_plan filters on, so the alert now states, for every trade,
+    whether the execution bot would act on it."""
     pip = pip_size(pair)
     direction = m.direction
     entry = t["entry_price"]
@@ -470,10 +495,17 @@ def format_alert(pair: str, t: dict, m, atr_arr, htf_lean: int | None, confidenc
         price_now_line = (f"\U0001f4b9 Price now  <code>{current_price:.5f}</code>  "
                           f"({drift_pips:.1f}p {verdict})\n")
 
+    regime_line = ""
+    if swing_regime is not None:
+        acted = passes_best_config(pair, swing_regime)
+        tag = "✅ bot would act on this" if acted else "⏸️ bot skips (best-config filter)"
+        regime_line = f"\U0001f4d0 Swing regime  <b>{swing_regime}</b> · {tag}\n"
+
     return (f"{direction_icon} <b>{pair.upper()}</b> · {t['direction']} · {m.n_touches}-touch {kind}\n"
            f"{_DIVIDER}\n"
            f"\U0001f3af <b>Confirmed @</b>  <code>{entry:.5f}</code>  (tracked reference — may be up to 1hr old)\n"
            f"{price_now_line}"
+           f"{regime_line}"
            f"\U0001f4cd <b>Tracked (frozen grid)</b>\n"
            f"    SL <code>{t['sl_price']:.5f}</code> ({t['sl_dist'] / pip:.0f}p) "
            f"· TP <code>{t['tp_price']:.5f}</code> ({tp_dist_pips:.0f}p, {t['tp_r']}R)\n"
@@ -616,6 +648,19 @@ def run(args: argparse.Namespace) -> None:
     new_signals, resolved_total, alerts_sent = 0, 0, 0
     states: list[dict] = []
     forming = 0
+    # motif_bot_plan (2026-09-16): the execution bot's ONLY input -- it never
+    # computes a vote/level/stop/direction itself (same doctrine as
+    # fib_atlas_bot/volatility_bot_v2's server-built plans; see motif_bot.py's
+    # own module docstring). Rebuilt from ALL currently-`open` logged trades
+    # (not just this run's new signals) so a bot that was briefly offline
+    # never silently loses one -- the plan is a full snapshot each run, not a
+    # delta. carries sl_pips/tp_r (the FROZEN grid), never an absolute price:
+    # the tracked entry_price can be up to 1hr stale, but a pip DISTANCE
+    # from the bot's own real fill is exactly what the backtest's own grid
+    # means, so the bot computes its actual SL/TP from ITS fill, not a stale
+    # reference (see motif_bot.py's own doc for why re-using the tracked
+    # price would be wrong).
+    plan_entries: list[dict] = []
 
     for pair in pairs:
         # A single pair's bad data (corrupt cache, a detection-logic edge
@@ -642,22 +687,64 @@ def run(args: argparse.Namespace) -> None:
 
             resolved_total += resolve_open_trades(pair, bars, log, FROZEN)
             new = scan_pair_motif(pair, bars, log, motifs, FROZEN)
+            pip = pip_size(pair)
+            # Computed once per pair, only when there's an open/new trade to
+            # read it for -- the WaveTrend/D1/H4 resample inside is the
+            # expensive part of this function, no need to pay it on a pair
+            # with nothing currently open or newly confirmed this scan.
+            feats = None
+            still_open = [t for t in log["trades"] if t["pair"] == pair and t["status"] == "open"]
+            if new or still_open:
+                try:
+                    feats = compute_features(pair, bars, None)
+                except Exception as e:
+                    print(f"  [warn] {pair}: swing_regime features failed ({e}) -- "
+                          f"alert/plan for this pair proceeds without a regime read")
+
+            def _swing_regime(confirm_idx: int, direction: int, level: float) -> str | None:
+                if feats is None or confirm_idx < 0 or confirm_idx >= len(bars):
+                    return None
+                try:
+                    return bucket_trade(feats, confirm_idx, direction, level, pip)["swing_regime"]
+                except Exception:
+                    return None
+
             for t, m in new:
                 log["trades"].append(t)
                 new_signals += 1
+                swing_regime = _swing_regime(m.confirm_idx, m.direction, m.level)
                 print(f"  [new] {pair:<8} {t['n_touches']}-touch {'top' if t['is_top'] else 'bottom'} "
                       f"{t['direction']} @ {t['entry_price']:.5f}  sl={t['sl_price']:.5f} "
-                      f"tp={t['tp_price']:.5f}  {t['entry_date']}")
+                      f"tp={t['tp_price']:.5f}  {t['entry_date']}  swing_regime={swing_regime}")
                 if tg_ready:
                     htf_lean = _htf_lean_for_entry(pair, bars.index[m.confirm_idx])
                     confidence = _category_confidence(motifs, m.n_touches, m.is_top,
                                                       pair, bars, FROZEN)
                     current_price = float(bars["close"].to_numpy()[-1])
-                    text = format_alert(pair, t, m, atr_arr, htf_lean, confidence, current_price)
+                    text = format_alert(pair, t, m, atr_arr, htf_lean, confidence, current_price,
+                                        swing_regime)
                     if send_via_dashboard(args.dashboard_url, text):
                         alerts_sent += 1
                     else:
                         print(f"  [warn] Telegram alert failed to send for {pair}")
+
+            for t in [t for t in log["trades"] if t["pair"] == pair and t["status"] == "open"]:
+                # confirm_idx = entry_idx - 1: entry is always the OPEN of the
+                # bar AFTER confirmation (scan_pair_motif's own contract) --
+                # never re-derive this differently in two places.
+                direction = 1 if t["direction"] == "BUY" else -1
+                swing_regime = _swing_regime(t["entry_idx"] - 1, direction, t["level"])
+                if not passes_best_config(pair, swing_regime):
+                    continue
+                plan_entries.append({
+                    "motif_key": t["motif_key"], "pair": pair, "direction": t["direction"],
+                    "n_touches": t["n_touches"], "is_top": t["is_top"],
+                    "level": t["level"], "swing_regime": swing_regime,
+                    "confirmed_at": t["entry_date"],
+                    "sl_pips": FROZEN["sl_pips"], "tp_r": FROZEN["tp_r"],
+                    "rationale": f"{t['n_touches']}-touch {'top' if t['is_top'] else 'bottom'} "
+                                 f"· swing={swing_regime}",
+                })
 
             # "Nearing" alerts are NOT sent from here -- motif_nearing_watch.py
             # owns that job now, polling a live quote every MOTIF_NEARING_POLL_
@@ -676,6 +763,21 @@ def run(args: argparse.Namespace) -> None:
 
     save_log(log)
     save_state(states)
+    plan_pushed = False
+    if not args.as_of:
+        # A replay/testing run (--as-of) must never publish a plan the
+        # execution bot could act on -- same guard --telegram already
+        # applies above, for the same reason.
+        try:
+            KvClient(args.dashboard_url).put_json("motif_bot_plan", {
+                "generatedAt": datetime.now(timezone.utc).isoformat(),
+                "strategy": "motif-touch",
+                "entries": plan_entries,
+            })
+            plan_pushed = True
+        except Exception as e:
+            print(f"  [warn] motif_bot_plan push failed: {e} -- the execution bot keeps trading "
+                  f"its last-known plan until this recovers")
     open_n = sum(1 for t in log["trades"] if t["status"] == "open")
     closed = [t for t in log["trades"] if t["status"] != "open"]
     wins = sum(1 for t in closed if t.get("r", 0) > 0)
@@ -683,7 +785,8 @@ def run(args: argparse.Namespace) -> None:
     print(f"\n[motif_track] as_of={args.as_of or 'latest available (static local snapshot)'}  "
           f"new_signals={new_signals}  resolved_this_run={resolved_total}  "
           f"currently_open={open_n}  closed={len(closed)} (wins={wins}, total_R={total_r:.2f})  "
-          f"currently_forming={forming}/{len(pairs)} pairs  total_logged={len(log['trades'])}"
+          f"currently_forming={forming}/{len(pairs)} pairs  total_logged={len(log['trades'])}  "
+          f"plan_entries={len(plan_entries)} (best-config filtered) pushed={plan_pushed}"
           + (f"  telegram_alerts_sent={alerts_sent}" if args.telegram else ""))
     if not args.as_of:
         print("[note] no --as-of given: this ran against the static local snapshot, NOT live data. "

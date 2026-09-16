@@ -17079,6 +17079,19 @@ app.post('/api/fib-atlas-bot/telegram-test', async (_req, res) => {
   }
 });
 
+// Motif Bot's own test-alert route, same contract as Fib Atlas's above.
+app.post('/api/motif-bot/telegram-test', async (_req, res) => {
+  try {
+    const cfgRaw = await kv.get('motif_bot_config').catch(() => null);
+    const cfg = cfgRaw ? (JSON.parse(cfgRaw).data ?? JSON.parse(cfgRaw)) : {};
+    if (!cfg.tg_token || !cfg.tg_chat_id) return res.json({ ok: false, error: 'no tg_token/tg_chat_id saved on the Motif Bot config yet' });
+    const sent = await sendTelegram(cfg.tg_token, cfg.tg_chat_id, '✅ Motif Bot — test alert. Entered/rejected + TP/SL close alerts will use this bot.');
+    res.json({ ok: sent, error: sent ? undefined : 'Telegram API call failed' });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // GET /api/fib-atlas-bot/trade-log?from=YYYY-MM-DD&to=YYYY-MM-DD — the
 // durable closed-trade log (`_fibAtlasBotAccumulateTradeLog` above) PLUS the
 // matching decision-log events (entered/rejected/skipped, now carrying the

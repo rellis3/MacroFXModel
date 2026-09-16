@@ -489,6 +489,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
     <button class="tab-btn" data-tab="volatility" onclick="switchTab('volatility')" style="color:#e0a93b" id="vbTabBtn">📐 Volatility</button>
     <button class="tab-btn" data-tab="volatilityv2" onclick="switchTab('volatilityv2')" style="color:#38bdf8" id="vb2TabBtn">🗳 Vote Atlas</button>
     <button class="tab-btn" data-tab="fibatlas" onclick="switchTab('fibatlas')" style="color:#a78bfa" id="faTabBtn">🌐 Fib Atlas</button>
+    <button class="tab-btn" data-tab="motifbot" onclick="switchTab('motifbot')" style="color:#fb923c" id="mtTabBtn">👀 Motif Touch</button>
     <button class="tab-btn" data-tab="rangeline" onclick="switchTab('rangeline')" style="color:#4fd1c5" id="rlTabBtn">📊 Range-Line</button>
     <button class="tab-btn" data-tab="oibot" onclick="switchTab('oibot')" style="color:#4dd0e1" id="oiTabBtn">🧲 OI Gamma</button>
     <button class="tab-btn" data-tab="yieldspread" onclick="switchTab('yieldspread')" style="color:#f472b6" id="ysTabBtn">🧮 Yield-Spread</button>
@@ -4505,6 +4506,226 @@ python fib_atlas_bot/fib_atlas_bot.py --live --url &lt;dashboard-url&gt;</pre>
 
   </div><!-- /tab-fibatlas -->
 
+  <!-- ══════════════════════════════════════════════════════ MOTIF BOT TAB -->
+  <div class="tab-pane" id="tab-motifbot">
+
+    <div class="bot-banner" style="background:rgba(251,146,60,0.08);border:1px solid rgba(251,146,60,0.28)">
+      <div class="bot-banner-icon">👀</div>
+      <div style="flex:1">
+        <div class="bot-banner-title" style="color:#fb923c">Motif Bot — touch-motif structural signal</div>
+        <div class="bot-banner-sub">N-touches-of-a-level, H1 close confirms the breakout · fixed 20-pip stop / 1.5R target, no trailing exit (tested and rejected this session) · AnalogML/motif_track.py's own hourly scan builds the plan — this bot never re-derives the signal · motif_bot/motif_bot.py</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-shrink:0">
+        <a href="motif-alert-backtest.html" target="_blank" style="text-decoration:none">
+          <button style="background:transparent;border:1px solid #fb923c;border-radius:7px;color:#fb923c;font-weight:600;padding:8px 14px;cursor:pointer;font-size:12px">Backtest</button>
+        </a>
+        <button style="background:#fb923c;border:none;border-radius:7px;color:#2a1300;font-weight:700;padding:8px 14px;cursor:pointer;font-size:12px" onclick="saveMtConfig();saveMtCreds()">Save All</button>
+      </div>
+    </div>
+
+    <!-- How it decides -->
+    <details class="card" style="padding:0;margin-bottom:14px">
+      <summary style="cursor:pointer;padding:12px 16px;font-size:12px;font-weight:600;color:#fb923c;list-style:none">
+        ▸ How the bot decides &amp; how this stays honest to the backtest <span style="color:var(--text3);font-weight:400">(read this if the table looks confusing)</span>
+      </summary>
+      <div style="padding:0 16px 14px;font-size:12px;line-height:1.6;color:var(--text2)">
+        <div style="font-weight:600;color:var(--text);margin-bottom:2px">The hour, start to finish</div>
+        <ol style="margin:0 0 10px 18px;padding:0">
+          <li><code>AnalogML/motif_track.py</code> already runs hourly on Railway (<code>motif_track_loop.sh</code>) — it detects touch-motifs via <code>pylego.motif_touch</code>, the EXACT module the backtest replays. This bot does not have — and does not need — its own copy of that detection logic.</li>
+          <li>At the end of every scan, motif_track.py filters its currently-open trades through <code>pylego.motif_policy.passes_best_config</code> (skip swing_regime=with, drop pairs whose realistic spread exceeds 2.0p — the same rule the backtest's ⭐ Best Config button applies) and pushes the survivors to <code>motif_bot_plan</code>. This bot NEVER computes a vote, a level, or a stop from strategy logic — the plan does.</li>
+          <li>The plan carries a pip DISTANCE (20p stop, 1.5R target), never an absolute price — motif_track's own tracked reference can be up to an hour stale by the time this bot reads it, so SL/TP are computed from THIS bot's own fill, not the plan's reference.</li>
+          <li>Before every entry: kill switch → plan freshness → daily/monthly drawdown lockout → max open / max concurrent per pair → spread cap.</li>
+          <li>Once open, the position runs to its fixed SL/TP with <b>no trailing exit</b> — a tighter stop, a breakeven stop, and a Chandelier trail were each tested on the M1 path this session and none beat simply trading smaller once verified out-of-sample (see the backtest page's own findings).</li>
+        </ol>
+      </div>
+    </details>
+
+    <!-- Live status -->
+    <div class="card" style="padding:0">
+      <div style="display:flex;align-items:center;gap:10px;padding:14px 16px 8px">
+        <span style="font-size:12px;font-weight:600;color:#fb923c">Live Status</span>
+        <span id="mtLiveAge" style="font-size:11px;color:var(--text3)">Waiting for bot…</span>
+        <span id="mtLiveMode" style="font-size:11px;font-weight:600"></span>
+        <span style="flex:1"></span>
+        <span id="mtLiveBal" style="font-size:11px;color:var(--text3)"></span>
+        <button onclick="loadMtLiveStatus()" style="background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text3);padding:3px 10px;font-size:11px;cursor:pointer">↺ Refresh</button>
+      </div>
+      <div style="display:flex;gap:20px;padding:4px 16px 12px;font-size:11px;font-family:'DM Mono',monospace;flex-wrap:wrap">
+        <span>Open positions: <b id="mtOpenN">—</b></span>
+        <span>Today's trades: <b id="mtTradesN">—</b></span>
+        <span>Plan entries: <b id="mtPlanN">—</b></span>
+        <span style="margin-left:auto">Plan: <b id="mtPlanAge">—</b></span>
+      </div>
+    </div>
+
+    <!-- Risk systems -->
+    <div class="card" style="padding:0">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 6px">
+        <span style="font-size:12px;font-weight:600;color:#fb923c">Risk Systems</span>
+        <span class="bot-banner-sub" style="margin:0">every risk mechanism's CURRENT state, at a glance — not just its config value</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;padding:6px 16px 14px;font-size:11px;font-family:'DM Mono',monospace">
+        <div style="border:1px solid var(--border);border-radius:6px;padding:8px 10px" title="Daily/monthly drawdown lockout (pylego.risk_guard). Locked = ALL new entries blocked account-wide until the lockout window expires, regardless of pair.">
+          <div style="color:var(--text3);margin-bottom:3px">Risk guard</div>
+          <div id="mtRiskGuard" style="font-weight:600">—</div>
+        </div>
+        <div style="border:1px solid var(--border);border-radius:6px;padding:8px 10px" title="Fail-closed safety: if the bot hasn't fetched a fresh plan within plan_max_age_hours (motif_track.py refreshes hourly), NEW entries are blocked rather than trading against a stale snapshot.">
+          <div style="color:var(--text3);margin-bottom:3px">Plan age gate</div>
+          <div id="mtPlanGate" style="font-weight:600">—</div>
+        </div>
+        <div style="border:1px solid var(--border);border-radius:6px;padding:8px 10px" title="Motif keys this bot instance has already acted on, ever (persisted across restarts) — a motif is a one-shot event, never re-armed, so this only ever grows.">
+          <div style="color:var(--text3);margin-bottom:3px">Motifs acted on</div>
+          <div id="mtActedN" style="font-weight:600">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Open positions -->
+    <div class="card" style="padding:0">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 6px">
+        <span style="font-size:12px;font-weight:600;color:#fb923c">Open Positions</span>
+        <span class="bot-banner-sub" style="margin:0">what the bot is holding right now</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace">
+          <thead>
+            <tr style="background:var(--s2);color:var(--text3)">
+              <th style="padding:6px 10px;text-align:left">Pair</th>
+              <th style="padding:6px 10px;text-align:left">Dir</th>
+              <th style="padding:6px 10px;text-align:right">Lots</th>
+              <th style="padding:6px 10px;text-align:right">Open</th>
+              <th style="padding:6px 10px;text-align:right">Live</th>
+              <th style="padding:6px 10px;text-align:right">P&amp;L</th>
+            </tr>
+          </thead>
+          <tbody id="mtOpenBody">
+            <tr><td colspan="6" style="padding:12px;text-align:center;color:var(--text3)">No open positions</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Current plan -->
+    <div class="card" style="padding:0">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 6px">
+        <span style="font-size:12px;font-weight:600;color:#fb923c">Current Plan — motif_bot_plan</span>
+        <span class="bot-banner-sub" style="margin:0">every currently-open, best-config-filtered motif motif_track.py is offering this bot right now</span>
+        <button onclick="loadMtPlan()" style="background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text3);padding:3px 10px;font-size:11px;cursor:pointer;margin-left:auto">↺ Refresh</button>
+      </div>
+      <div style="overflow-x:auto;max-height:420px;overflow-y:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace">
+          <thead>
+            <tr style="background:var(--s2);color:var(--text3)">
+              <th style="padding:6px 10px;text-align:left">Pair</th>
+              <th style="padding:6px 10px;text-align:left">Dir</th>
+              <th style="padding:6px 10px;text-align:left">Motif</th>
+              <th style="padding:6px 10px;text-align:left">Swing regime</th>
+              <th style="padding:6px 10px;text-align:left">Confirmed</th>
+              <th style="padding:6px 10px;text-align:center">Acted?</th>
+            </tr>
+          </thead>
+          <tbody id="mtPlanBody">
+            <tr><td colspan="6" style="padding:14px;text-align:center;color:var(--text3)">Waiting for the plan</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Decision audit log -->
+    <div class="card" style="padding:0">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 6px">
+        <span style="font-size:12px;font-weight:600;color:#f59e0b">Decision Timeline</span>
+        <span class="bot-banner-sub" style="margin:0">persistent audit — why was each motif entered, rejected, or blocked. Written by the bot itself, most recent first.</span>
+        <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3);margin-left:auto">
+          Pair <input type="text" id="mtDecFilter" placeholder="all" style="width:70px;background:var(--s3);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:2px 6px;font-size:11px" oninput="loadMtDecisionLog()">
+        </label>
+        <button onclick="loadMtDecisionLog()" style="background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text3);padding:3px 10px;font-size:11px;cursor:pointer">↺ Refresh</button>
+      </div>
+      <div style="overflow-x:auto;max-height:480px;overflow-y:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace">
+          <thead>
+            <tr style="background:var(--s2);color:var(--text3)">
+              <th style="padding:6px 10px;text-align:left">Time (UTC)</th>
+              <th style="padding:6px 10px;text-align:left">Pair</th>
+              <th style="padding:6px 10px;text-align:left">Motif</th>
+              <th style="padding:6px 10px;text-align:left">Status</th>
+              <th style="padding:6px 10px;text-align:left">Reason</th>
+              <th style="padding:6px 10px;text-align:right">SL</th>
+              <th style="padding:6px 10px;text-align:right">TP</th>
+            </tr>
+          </thead>
+          <tbody id="mtDecisionBody">
+            <tr><td colspan="7" style="padding:14px;text-align:center;color:var(--text3)">loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- How to run -->
+    <div class="card">
+      <div class="card-title">How to run</div>
+      <div class="bot-banner-sub" style="margin-bottom:8px">Run from the repo root. Paper mode is the default; go live only after a clean paper run + credentials below — this strategy has NO live track record yet, backtest + OOS only.</div>
+      <pre style="background:var(--s3);border:1px solid var(--border);border-radius:6px;padding:10px 12px;font-size:11px;font-family:'DM Mono',monospace;overflow-x:auto;white-space:pre;color:var(--text)"># 1) Paper trade (default) — point --url at this dashboard:
+python motif_bot/motif_bot.py --url &lt;dashboard-url&gt;
+#    (or: DASHBOARD_URL=&lt;dashboard-url&gt; python motif_bot/motif_bot.py)
+
+# 2) Go live on MT5 (after saving credentials below + a clean paper run):
+python motif_bot/motif_bot.py --live --url &lt;dashboard-url&gt;</pre>
+      <div class="bot-banner-sub" style="margin-top:8px">The plan is built by motif_track.py's own hourly Railway scan, not a fast server interval — polling much faster than the plan actually refreshes just re-reads the same snapshot. <b>Needs:</b> Python <code>requests</code> (+ <code>MetaTrader5</code> for <code>--live</code>) and network to the dashboard; MT5 has no Linux wheel, so live trading runs on a Windows box with an MT5 terminal, not on Railway.</div>
+    </div>
+
+    <div class="grid">
+      <!-- ── Controls ─────────────────────────────────────────────────────── -->
+      <div class="card">
+        <div class="card-title">Bot Control</div>
+        <div class="form-row"><span class="form-lbl" title="Paper trade (checked): fills are simulated, no real orders sent — safe default with zero live track record. Unchecked (LIVE): the bot sends real MT5 orders using the credentials below. Only go live after a clean paper run.">Mode</span>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" id="mt_paper_mode"> Paper trade <small style="color:var(--text3)">(uncheck = LIVE)</small></label></div>
+        <div class="form-row"><span class="form-lbl" title="Emergency stop: blocks all NEW entries immediately (existing open positions are left alone, not force-closed). Use to freeze the bot without killing the process or losing its state.">Kill switch <small>no new entries</small></span>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="mt_kill_switch"> stop</label></div>
+        <div class="form-row"><span class="form-lbl" title="Restricts which of the plan's pairs THIS bot instance acts on. Blank = every pair the plan carries — the plan's own best-config filter (swing_regime, spread) is the real strategy gate, this is a further bot-local restriction only.">Pairs override <small>blank = all</small></span><input type="text" id="mt_enabled_pairs" placeholder="eurusd, gbpusd, ..." style="width:220px;text-align:left"></div>
+        <div class="form-row"><span class="form-lbl" title="% of account balance risked on EVERY trade, sized off the frozen 20-pip stop from this bot's own fill. This session's OOS-validated figure is 0.25% — +46.5%/yr, worst drawdown -12.5%.">Risk % / trade</span><input type="number" id="mt_risk_pct" min="0.05" max="5" step="0.05" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="Hard ceiling on any single position's lot size, regardless of what the risk-% sizing formula would otherwise compute.">Max lot</span><input type="number" id="mt_max_lot" min="0.01" max="50" step="0.01" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="Caps how many positions this bot can hold open across ALL pairs simultaneously.">Max open positions</span><input type="number" id="mt_max_open" min="1" max="60" step="1" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="Caps how many positions this bot can hold open on the SAME pair at once — distinct confirmed motifs (different touch runs) can legitimately overlap, this is not a re-arming zone.">Max concurrent / pair</span><input type="number" id="mt_max_concurrent_per_pair" min="1" max="10" step="1" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="Bot-local execution safety net: skips an entry if the live bid/ask spread on that symbol is wider than this many pips at fill. The plan already excludes pairs whose MODELLED spread exceeds 2.0p — this guards a temporarily-widened spread on a pair the plan otherwise includes.">Max spread (pips)</span><input type="number" id="mt_max_spread_pips" min="0.1" max="50" step="0.1" style="width:80px"></div>
+        <div style="margin-top:8px;margin-bottom:4px;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Risk overlays</div>
+        <div class="form-row"><span class="form-lbl" title="Hard daily/monthly drawdown lockout — once breached, ALL new entries are blocked for the configured lockout window.">Daily DD limit %</span><input type="number" id="mt_ddlimit" min="0.5" max="30" step="0.5" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="Same lockout, monthly baseline instead of daily.">Monthly DD limit %</span><input type="number" id="mt_monthlydd" min="1" max="50" step="1" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="How long (hours) the lockout above holds once triggered.">↳ Lockout (hours)</span><input type="number" id="mt_lockout" min="0.5" max="48" step="0.5" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="Minimum seconds between two entries on the SAME pair — a light cooldown, separate from the per-motif dedupe guard (which never re-fires a motif_key regardless of cooldown).">↳ Cooldown (sec)</span><input type="number" id="mt_cooldown" min="0" max="3600" step="10" style="width:80px"></div>
+        <div style="margin-top:8px;margin-bottom:4px;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Cadences</div>
+        <div class="form-row"><span class="form-lbl" title="How often the bot re-fetches motif_bot_plan. motif_track.py only refreshes it hourly, so pulling much faster than that just re-reads the same snapshot.">Plan re-pull (sec) <small>plan itself refreshes ~hourly</small></span><input type="number" id="mt_poll_secs" min="15" max="3600" step="15" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="How often the bot pushes its own status (open positions, today's trades, risk-gate state) to the dashboard for this page to display.">Status push (sec)</span><input type="number" id="mt_status_secs" min="10" max="300" step="5" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="Fail-closed safety: if the bot hasn't successfully fetched a fresh plan within this many hours, it stops taking NEW entries rather than trading against a stale plan. Existing positions are unaffected — they run to their own fixed SL/TP regardless.">Plan max age (hours) <small>fail-closed on new entries beyond this</small></span><input type="number" id="mt_plan_max_age_hours" min="0.1" max="24" step="0.1" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="Telegram alert on every entered/skipped/rejected motif (entry price, stop-loss, take-profit, lot size) plus close outcomes (P&amp;L, TP/SL, trade duration), threaded as a reply to the entry alert.">Telegram alerts</span>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="mt_tg_enabled"> on</label></div>
+        <div class="form-row"><span class="form-lbl" title="This bot's own dedicated Telegram bot token.">↳ Bot token</span><input type="text" id="mt_tg_token" placeholder="123456789:ABC..." style="width:220px;text-align:left"></div>
+        <div class="form-row"><span class="form-lbl">↳ Chat ID</span><input type="text" id="mt_tg_chat_id" placeholder="123456789" style="width:160px;text-align:left"></div>
+        <div style="margin-top:16px;display:flex;gap:10px;align-items:center">
+          <button class="btn-save" style="background:#fb923c;color:#2a1300" onclick="saveMtConfig()">Save Config</button>
+          <button class="btn-save" style="background:transparent;border:1px solid #444;color:var(--text3)" onclick="resetMtDefaults()">Reset Defaults</button>
+          <button class="btn-save" style="background:transparent;border:1px solid #444;color:var(--text3)" onclick="testMtTelegram()">Send test alert</button>
+          <span id="mtSaveStatus" style="font-size:12px;color:var(--text3)"></span>
+        </div>
+      </div>
+
+      <!-- ── MT5 Credentials ──────────────────────────────────────────────── -->
+      <div class="card">
+        <div class="card-title">MT5 Account</div>
+        <div class="form-row"><span class="form-lbl">Account #</span><input type="text" id="mt_mt5_account" placeholder="12345678" style="width:160px;text-align:left"></div>
+        <div class="form-row"><span class="form-lbl">Password</span><input type="password" id="mt_mt5_password" placeholder="(saved — leave blank to keep)" style="width:160px"></div>
+        <div class="form-row"><span class="form-lbl">Server</span><input type="text" id="mt_mt5_server" placeholder="Broker-Server" style="width:160px;text-align:left"></div>
+        <div class="form-row"><span class="form-lbl">Terminal path <small>optional</small></span><input type="text" id="mt_mt5_path" placeholder="C:\\...\\terminal64.exe" style="width:200px;text-align:left"></div>
+        <div style="margin-top:16px;display:flex;gap:10px;align-items:center">
+          <button class="btn-save" style="background:#fb923c;color:#2a1300" onclick="saveMtCreds()">Save Credentials</button>
+          <span id="mtCredsStatus" style="font-size:12px;color:var(--text3)"></span>
+        </div>
+        <div class="bot-banner-sub" style="margin-top:12px">Saved to KV (<code style="background:var(--s3);padding:1px 5px;border-radius:3px">motif_bot_credentials</code>). The bot reads them on connect when paper trade is OFF. Flip to live only after a paper run looks right.</div>
+      </div>
+    </div>
+
+  </div><!-- /tab-motifbot -->
+
   <!-- ══════════════════════════════════════════════════════ RANGE-LINE TAB -->
   <div class="tab-pane" id="tab-rangeline">
 
@@ -6143,6 +6364,7 @@ const TAB_BOT_KEY_MAP = {
   volatility:  ['volatility_bot_status', 'volatility_ride_status'],
   volatilityv2: 'volatility_bot_v2_status',
   fibatlas:    'fib_atlas_bot_status',
+  motifbot:    'motif_bot_status',
   rangeline:   'range_line_bot_status',
   oibot:       'oi_bot_status',
   yieldspread:    'yield_spread_status',
