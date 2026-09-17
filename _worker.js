@@ -67,6 +67,7 @@ function isAllowedKVKey(key) {
     'fib_atlas_bot_plan', 'fib_atlas_bot_state', 'fib_atlas_bot_trade_log', 'fib_atlas_bot_decision_log',
     'motif_bot_config', 'motif_bot_credentials', 'motif_bot_status',
     'motif_bot_plan', 'motif_bot_state', 'motif_bot_decision_log',
+    'egress_audit',
     'pattern_bot_state', 'pattern_bot_status', 'pattern_bot_config',
     'level_engine_bot_state', 'level_engine_bot_status', 'level_engine_fwd_log',
     'bot_allocations']);
@@ -1098,6 +1099,7 @@ export default {
             'fib_atlas_bot_state', 'fib_atlas_bot_trade_log', 'fib_atlas_bot_decision_log',
             'motif_bot_config', 'motif_bot_credentials', 'motif_bot_plan',
             'motif_bot_state', 'motif_bot_decision_log',
+            'egress_audit',
             'hmm5m_trained_params', 'hmm5m_macro_context',
             'zone_audit_history',
             // These were allowed through isAllowedKVKey and marked persistent in

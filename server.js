@@ -223,7 +223,7 @@ import { scanFeatures } from './js/forecastFeatureScan.js';
 import { bandCalcAB } from './js/bandCalcAB.js';
 import { putJSON as _r2PutJSON, getJSON as _r2GetJSON, r2Configured as _r2Ok } from './js/r2Store.js';
 import compression from 'compression';
-import { egressMiddleware, egressSnapshot } from './js/egressMeter.js';
+import { egressMiddleware, egressSnapshot, egressPersist } from './js/egressMeter.js';
 import { loadM1Resampled as _loadM1ForAB } from './js/weeklyVolBacktestEngine.js';
 import { evaluateSessions, dailySessionContributions } from './js/forecastSessionResearch.js';
 import { _fetchAllH1 as _fetchH1AB, _fetchAllH1 as _fetchH1 } from './js/sessionStats.js';
@@ -3029,6 +3029,8 @@ app.use(compression());
 app.use(express.json({ limit: '25mb' }));
 // Where the outbound bytes go, ranked, since boot -- see js/egressMeter.js.
 app.get('/api/egress-audit', (req, res) => res.json(egressSnapshot(Number(req.query.limit) || 40)));
+// Ledger survives redeploys via KV (egress_audit): load now, flush every 5 min + on SIGTERM.
+egressPersist({ get: k => kv.get(k), put: (k, v) => kv.put(k, v) }).catch(e => console.warn('[egress] persist init failed:', e.message));
 
 // Real-time monitoring + level-refresh status
 app.get('/api/monitor/status', (_req, res) => {
