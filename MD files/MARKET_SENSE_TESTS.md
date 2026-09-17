@@ -248,6 +248,25 @@ be right on individual meetings; it is not a base rate you can lean on. What is
 usable is the plain base rate: after a decision day, the move you see at the close
 has about even odds of being half-undone within 20 sessions, same as any big day.
 
+### S10 — Crowded short in long bonds into the Fed. **Wrong on all three counts.**
+84 meetings 2010→2026 with CFTC T-bond positioning (leveraged funds, TFF).
+(1) *Squaring up*: leveraged gross positioning/OI **rose** +0.4pp into meetings
+(CI across zero) vs −0.0pp in random fortnights — no squaring-up. (2) *Crowded
+short*: the crowded-short tercile of meetings (net ≤ 28th percentile, mean −24%
+of OI) exists, but **right now leveraged funds are the LEAST short in three years**
+— net −15% of OI at the **94th** percentile on the 2026-09-08 report (the fund
+community is structurally short T-bond futures through the basis trade, so the
+percentile is what matters, not the sign). "Everybody's short TLT" is not what the
+CFTC data shows for this meeting. (3) *The rally*: after crowded-short meetings the
+30-year yield **rose** +4.0bp over 5 sessions vs −0.3bp after the rest (diff
++4.3bp [−2.3, +10.6]); on consensus decisions only (day-0 |Δ2Y| < 5bp) the gap
+is **+9.1bp [+1.3, +16.5]** — the long end sold off *more*, the shorts were paid.
+The same positioning split on non-FOMC days shows +0.7bp — the direction is
+general, the Fed only amplifies it. Banked as: a crowded leveraged short in
+long-bond futures into a Fed meeting has NOT been followed by a long-end rally;
+if anything the reverse. A single meeting can go the other way; that is not a
+tendency.
+
 ## What changed on the page and in the briefs (2026-09-17)
 
 - ✓ chip on SPX500 / NAS100 / XAU / USD/JPY cards while VIX ≥ VIX3M: "wider week

@@ -377,6 +377,84 @@ if (want('S9')) {
   results.studies.S9 = out;
 }
 
+// ═══ S10 crowded short in long bonds into the Fed ════════════════════════════
+// Pre-registered 2026-09-17 (commit 5966a70) before running.
+if (want('S10')) {
+  log('\n═══ S10  crowded short in long bonds into the Fed ═══');
+  const S30 = await fred('DGS30');
+  async function cftc(names) {
+    const rows = [];
+    for (const name of names) {
+      const u = `https://publicreporting.cftc.gov/resource/gpe5-46if.json?market_and_exchange_names=${encodeURIComponent(name)}&$limit=3000&$order=report_date_as_yyyy_mm_dd%20ASC`;
+      const r = await fetch(u, { signal: AbortSignal.timeout(30000) }).then(x => x.json());
+      for (const x of r) rows.push({ date: String(x.report_date_as_yyyy_mm_dd).slice(0, 10), oi: +(x.open_interest_all ?? x.open_interest), levL: +(x.lev_money_positions_long_all ?? x.lev_money_positions_long), levS: +(x.lev_money_positions_short_all ?? x.lev_money_positions_short) });
+    }
+    const byDate = new Map(); for (const r of rows) if (Number.isFinite(r.oi) && r.oi > 0 && Number.isFinite(r.levL) && Number.isFinite(r.levS)) byDate.set(r.date, r);
+    const out = [...byDate.values()].sort((a, b) => a.date < b.date ? -1 : 1);
+    for (let i = 0; i < out.length; i++) { const r = out[i]; r.net = (r.levL - r.levS) / r.oi; r.gross = (r.levL + r.levS) / r.oi; const win = out.slice(Math.max(0, i - 156), i).map(x => x.net); r.pct = win.length >= 52 ? win.filter(v => v < r.net).length / win.length : null; }
+    return out;
+  }
+  const tb = await cftc(['U.S. TREASURY BONDS - CHICAGO BOARD OF TRADE', 'UST BOND - CHICAGO BOARD OF TRADE']);
+  const tn = await cftc(['10-YEAR U.S. TREASURY NOTES - CHICAGO BOARD OF TRADE', 'UST 10Y NOTE - CHICAGO BOARD OF TRADE']);
+  log(`  T-bond COT ${tb.length} weeks ${tb[0]?.date} → ${tb.at(-1)?.date}; 10Y note ${tn.length} weeks`);
+  const lastReportOnOrBefore = (series, date) => { let best = null; for (const r of series) { if (r.date <= date) best = r; else break; } return best; };
+  const rowsX = T.EUR_USD.rows;   // daily calendar; add DGS30 carried forward
+  { let last = null; for (const r of rowsX) { const v = S30.get(r.date); if (v != null) last = v; r.us30 = last; } }
+  const idx = new Map(rowsX.map(r => [r.date, r.i]));
+  const meetings = allMeetings().map(m => m.date).filter(d => d >= '2010-01-01' && idx.has(d) && idx.get(d) + 20 < rowsX.length);
+  // Tuesday of the meeting week: the report dated on/before it is the positioning INTO the meeting
+  const tueOf = d => { const t = new Date(d + 'T00:00:00Z'); const dow = (t.getUTCDay() + 6) % 7; t.setUTCDate(t.getUTCDate() - dow + 1); return t.toISOString().slice(0, 10); };
+  const rec = [];
+  for (const d of meetings) {
+    const i = idx.get(d), r = rowsX[i], p = rowsX[i - 1];
+    const rep = lastReportOnOrBefore(tb, tueOf(d)), rep2 = rep ? tb[tb.indexOf(rep) - 2] : null;
+    const repN = lastReportOnOrBefore(tn, tueOf(d)), repN2 = repN ? tn[tn.indexOf(repN) - 2] : null;
+    if (!rep || rep.pct == null || r.us30 == null || r.us10y == null || p?.us2y == null) continue;
+    rec.push({ date: d, week: r.week, pct: rep.pct, net: rep.net, gross: rep.gross, dGross: rep2 ? rep.gross - rep2.gross : null, dGrossN: (repN && repN2) ? repN.gross - repN2.gross : null,
+      d2y0: (r.us2y - p.us2y) * 100, d30_5: (rowsX[i + 5].us30 - r.us30) * 100, d30_20: (rowsX[i + 20].us30 - r.us30) * 100, d10_5: (rowsX[i + 5].us10y - r.us10y) * 100, d10_20: (rowsX[i + 20].us10y - r.us10y) * 100,
+      d30_0: (r.us30 - p.us30) * 100 });
+  }
+  log(`  FOMC meetings with positioning + yields: ${rec.length}`);
+  const out = { n: rec.length };
+  // (1) squaring up: gross positioning change into the meeting vs random fortnights
+  const rndS = mulberry32(SEED + 10);
+  const randFort = (series, k) => { const v = []; for (let j = 0; j < k; j++) { const a = 2 + Math.floor(rndS() * (series.length - 2)); v.push(series[a].gross - series[a - 2].gross); } return v; };
+  for (const [name, key, series] of [['T-bond', 'dGross', tb], ['10Y note', 'dGrossN', tn]]) {
+    const v = rec.map(r => r[key]).filter(Number.isFinite); const b = bootMean(v, rec.filter(r => Number.isFinite(r[key])).map(r => r.week), SEED + 11);
+    const rf = randFort(series, 2000); const rb = rf.reduce((s, x) => s + x, 0) / rf.length;
+    log(`    (1) ${name}: leveraged gross/OI change over the two reports into the meeting ${fmt(b.mean * 100, 2)}pp [${fmt(b.lo * 100, 2)}, ${fmt(b.hi * 100, 2)}] vs random fortnights ${fmt(rb * 100, 2)}pp  → ${b.hi < rb ? 'SQUARES UP (gross falls more than usual)' : 'no squaring-up visible'}`);
+    out[`squareUp_${key}`] = { fomc: b, random: rb };
+  }
+  // (2) how crowded were shorts into each meeting; terciles
+  const sorted = [...rec].sort((a, b) => a.pct - b.pct); const t1 = sorted[Math.floor(rec.length / 3)].pct, t2 = sorted[Math.floor(2 * rec.length / 3)].pct;
+  const short = rec.filter(r => r.pct < t1), rest = rec.filter(r => r.pct >= t1), long = rec.filter(r => r.pct >= t2);
+  log(`    (2) leveraged-fund net/OI percentile at the meeting: tercile cut-points ${(t1 * 100).toFixed(0)}th / ${(t2 * 100).toFixed(0)}th; crowded-short meetings ${short.length} (mean net ${(short.reduce((s, r) => s + r.net, 0) / short.length * 100).toFixed(1)}% of OI), rest ${rest.length}`);
+  // (3) the rally: 30Y and 10Y after the decision, crowded-short vs rest; then vs matched non-FOMC days in the same positioning tercile
+  const bootDiffMean = (a, b, seed) => { const r2 = mulberry32(seed); const ds = []; for (let k = 0; k < REPS; k++) { const x = a.map(() => a[Math.floor(r2() * a.length)]), y = b.map(() => b[Math.floor(r2() * b.length)]); ds.push(x.reduce((s, v) => s + v, 0) / x.length - y.reduce((s, v) => s + v, 0) / y.length); } ds.sort((x, y) => x - y); return { diff: a.reduce((s, v) => s + v, 0) / a.length - b.reduce((s, v) => s + v, 0) / b.length, lo: ds[Math.floor(REPS * 0.025)], hi: ds[Math.floor(REPS * 0.975)] }; };
+  // non-FOMC comparison: every non-FOMC day 2010→ with a report percentile, same tercile
+  const fomcSet = new Set(meetings);
+  const daily = [];
+  for (let i = 1; i < rowsX.length - 20; i++) { const r = rowsX[i]; if (r.date < '2010-01-01' || fomcSet.has(r.date) || r.us30 == null || rowsX[i + 20].us30 == null) continue; const rep = lastReportOnOrBefore(tb, r.date); if (!rep || rep.pct == null) continue; daily.push({ date: r.date, pct: rep.pct, d30_5: (rowsX[i + 5].us30 - r.us30) * 100, d30_20: (rowsX[i + 20].us30 - r.us30) * 100, d10_5: (rowsX[i + 5].us10y - r.us10y) * 100 }); }
+  const dShort = daily.filter(d => d.pct < t1), dRest = daily.filter(d => d.pct >= t1);
+  for (const [lbl, key] of [['30Y d0..d+5', 'd30_5'], ['30Y d0..d+20', 'd30_20'], ['10Y d0..d+5', 'd10_5'], ['10Y d0..d+20', 'd10_20']]) {
+    const a = short.map(r => r[key]), b = rest.map(r => r[key]);
+    const f = bootDiffMean(a, b, SEED + 12);
+    const na = dShort.map(r => r[key]).filter(Number.isFinite), nb = dRest.map(r => r[key]).filter(Number.isFinite);
+    const g = na.length && nb.length ? bootDiffMean(na, nb, SEED + 13) : null;
+    const pass = key === 'd30_5' && f.diff <= -5 && f.hi < 0 && g && f.diff < g.diff;
+    log(`    (3) ${lbl}: crowded-short meetings ${fmt(a.reduce((s, v) => s + v, 0) / a.length, 1)}bp vs rest ${fmt(b.reduce((s, v) => s + v, 0) / b.length, 1)}bp → diff ${fmt(f.diff, 1)}bp [${fmt(f.lo, 1)}, ${fmt(f.hi, 1)}]  |  same split on NON-FOMC days: diff ${g ? `${fmt(g.diff, 1)}bp [${fmt(g.lo, 1)}, ${fmt(g.hi, 1)}]` : 'n/a'}  ${pass ? 'PASS' : ''}`);
+    (out.rally ??= []).push({ lbl, nShort: a.length, nRest: b.length, fomcDiff: f, nonFomcDiff: g, pass });
+  }
+  // consensus sub-split
+  const cons = short.filter(r => Math.abs(r.d2y0) < 5), consRest = rest.filter(r => Math.abs(r.d2y0) < 5);
+  if (cons.length >= 10 && consRest.length >= 10) { const f = bootDiffMean(cons.map(r => r.d30_5), consRest.map(r => r.d30_5), SEED + 14); log(`    (3b) consensus decisions only (day-0 |Δ2Y| < 5bp): crowded-short ${cons.length} vs rest ${consRest.length}: 30Y d0..d+5 diff ${fmt(f.diff, 1)}bp [${fmt(f.lo, 1)}, ${fmt(f.hi, 1)}]`); out.consensus = { n: cons.length, nRest: consRest.length, diff: f }; }
+  else log(`    (3b) consensus sub-split too thin (${cons.length} vs ${consRest.length})`);
+  // today
+  const nowRep = tb.at(-1); log(`    now: T-bond leveraged net ${(nowRep.net * 100).toFixed(1)}% of OI, ${nowRep.pct != null ? Math.round(nowRep.pct * 100) + 'th' : '?'} percentile (report ${nowRep.date}); into the 2026-09-16 meeting: ${(() => { const r = rec.find(x => x.date === '2026-09-16'); return r ? `${Math.round(r.pct * 100)}th percentile, ${r.pct < t1 ? 'CROWDED SHORT tercile' : 'not crowded short'}` : 'not in sample (needs d+20)'; })()}`);
+  out.now = { date: nowRep.date, net: nowRep.net, pct: nowRep.pct, t1, t2 };
+  results.studies.S10 = out;
+}
+
 // merge into the existing output rather than overwrite it when only some studies ran
 const prev = fs.existsSync(OUT) ? JSON.parse(fs.readFileSync(OUT, 'utf8')) : { studies: {} };
 fs.writeFileSync(OUT, JSON.stringify({ ...prev, ranAt: results.ranAt, studies: { ...prev.studies, ...results.studies } }, null, 1));
