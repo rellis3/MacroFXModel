@@ -228,6 +228,7 @@ import { bandCalcAB } from './js/bandCalcAB.js';
 import { putJSON as _r2PutJSON, getJSON as _r2GetJSON, r2Configured as _r2Ok } from './js/r2Store.js';
 import compression from 'compression';
 import { egressMiddleware, egressSnapshot, egressPersist } from './js/egressMeter.js';
+import { spreadProfileInit, spreadProfileSample, spreadProfileFlush, spreadProfileReport, MOTIF_UNIVERSE as _SPREAD_UNIVERSE } from './js/spreadProfile.js';
 import { loadM1Resampled as _loadM1ForAB } from './js/weeklyVolBacktestEngine.js';
 import { evaluateSessions, dailySessionContributions } from './js/forecastSessionResearch.js';
 import { _fetchAllH1 as _fetchH1AB, _fetchAllH1 as _fetchH1 } from './js/sessionStats.js';
@@ -13685,6 +13686,28 @@ app.get('/api/spreads', async (req, res) => {
     res.json({ ok: false, reason: e.message, pairs: {}, asOf: new Date().toISOString(), count: 0 });
   }
 });
+
+// ── Spread profile: measured spread per pair per UTC hour ───────────────────
+// Every 10 min, the tracker's 26-pair universe through the same OANDA pricing
+// call /api/spreads uses (one request, ~2 KB), accumulated per hour in KV.
+// Exists because the motif strategy's spread gate rests on an estimate table
+// and no spread history existed anywhere -- see js/spreadProfile.js.
+// The estimate table itself (pylego/motif_policy.py RETAIL_SPREAD_PIPS) is
+// mirrored here for the report's ratio column; keep the two in step.
+const _SPREAD_TABLE = {
+  eurusd: 0.8, usdjpy: 0.9, gbpusd: 1.0, audusd: 1.0, eurgbp: 1.1, usdcad: 1.2, usdchf: 1.2, eurjpy: 1.2,
+  nzdusd: 1.3, eurchf: 1.4, audjpy: 1.5, gbpjpy: 1.6, cadjpy: 1.7, euraud: 1.7, audcad: 1.9, audchf: 1.9,
+  nzdjpy: 1.9, eurcad: 2.0, chfjpy: 2.0, audnzd: 2.2, gbpaud: 2.5, gbpchf: 2.5, eurnzd: 2.9, gbpcad: 2.9, gbpnzd: 4.2,
+};
+spreadProfileInit({ get: k => kv.get(k), put: (k, v) => kv.put(k, v) }).catch(e => console.warn('[spread-profile] init failed:', e.message));
+async function _spreadProfileTick() {
+  const out = await _fetchSpreads(_SPREAD_UNIVERSE);
+  if (!out.ok) return;
+  if (spreadProfileSample(out.pairs)) await spreadProfileFlush();
+}
+svcInterval('spreadProfile', _spreadProfileTick, 10 * 60_000);
+svcTimeout('spreadProfile', _spreadProfileTick, 60_000);
+app.get('/api/spread-profile', (_req, res) => res.json(spreadProfileReport(_SPREAD_TABLE)));
 
 // ── Gold ETF flow (GLD + IAU combined AUM) ────────────────────────────────────
 // A genuine data gap flagged by the owner's own colleague's gold brief ("+$5.5bn

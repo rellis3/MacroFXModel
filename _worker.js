@@ -68,6 +68,7 @@ function isAllowedKVKey(key) {
     'motif_bot_config', 'motif_bot_credentials', 'motif_bot_status',
     'motif_bot_plan', 'motif_bot_state', 'motif_bot_decision_log',
     'egress_audit',
+    'spread_profile_v1',
     'pattern_bot_state', 'pattern_bot_status', 'pattern_bot_config',
     'level_engine_bot_state', 'level_engine_bot_status', 'level_engine_fwd_log',
     'bot_allocations']);
@@ -1101,6 +1102,7 @@ export default {
             'motif_bot_config', 'motif_bot_credentials', 'motif_bot_plan',
             'motif_bot_state', 'motif_bot_decision_log',
             'egress_audit',
+            'spread_profile_v1',
             'hmm5m_trained_params', 'hmm5m_macro_context',
             'zone_audit_history',
             // These were allowed through isAllowedKVKey and marked persistent in

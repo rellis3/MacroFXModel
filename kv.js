@@ -239,6 +239,7 @@ const _CF_EXACT = new Set([
   'motif_bot_state',       // Motif Bot one-shot state (acted motif_keys, tg message ids, dedup sets) — survives BOT restarts via KV
   'motif_bot_decision_log', // Motif Bot per-motif decision audit (entered/rejected/blocked + why), capped rolling window — bot-config.html's Decision Timeline
   'egress_audit',          // js/egressMeter.js ledger — bytes out by route/KV key/R2 prefix + per-day series; the whole point is surviving redeploys
+  'spread_profile_v1',     // js/spreadProfile.js — measured spread per pair per UTC hour, weeks of accumulation; the motif spread gate's evidence base
   // NOTE: motif_bot_status is deliberately NOT here — the bot rewrites it every ~30s (same reason as fib_atlas_bot_status below)
   // NOTE: fib_atlas_bot_status is deliberately NOT here — the bot rewrites it every ~30s (same reason as volatility_bot_v2_status below)
   // NOTE: volatility_bot_v2_status is deliberately NOT here — the bot rewrites it every ~30s
