@@ -93,6 +93,31 @@ the top decile. Outcomes: next-20d range on NAS100 and SPX500 vs control.
 Descriptive: the relative-return series' own persistence (does an extreme
 mean-revert or extend over the following 20 sessions — reported as a base rate).
 
+**S9 — Two moves after the Fed (pre-registered 2026-09-17 evening, after S1–S8 had
+run; before S9 was run).** Claim (Crown, 2026-09-17): the first move after an
+FOMC decision trades *surprise vs what was priced* — front end, dollar, stocks —
+and the second move, over the following sessions, trades *what the policy does
+to the economy*: the 10-year, which the Fed does not control, can fall as slower
+growth and lower inflation are priced, flattening the curve and unwinding the
+dollar and equity impulse. Population: the 85 FOMC decision days 2016→2026.
+Day-0 move = decision-day close vs prior close; second move = sessions d+1..d+5
+and d+1..d+20. Four questions, each a base rate on FOMC days against the same
+statistic on matched non-FOMC days (a random non-FOMC day with a day-0 move of
+the same instrument in the same absolute-size quintile, different week):
+(a) **Curve after a hawkish day 0** (Δ2Y d0 ≥ +5bp): Δ(10Y − 2Y) over d+1..d+20
+— does the long end lag the front end (flattening) more than after a matched
+non-FOMC 2Y jump? (b) **Dollar fade**: share of meetings where the dollar
+(DTWEXBGS; EUR/USD and USD/JPY as checks) gives back ≥ half of its day-0 move
+within 20 sessions, vs the same share after matched non-FOMC dollar days.
+(c) **Equity relief**: same for SPX500. (d) **First move ≠ final verdict**:
+continuation rate — sign(d+1..d+20 move) = sign(day-0 move) — on FOMC days vs
+matched non-FOMC days, per instrument (2Y, 10Y, dollar, SPX500). Pass bar for
+(a): flattening ≥ 5bp more than control with the CI clear of zero. (b)–(d) are
+base rates with bootstrap intervals over meetings; a difference of ≥ 15
+percentage points with the interval clear of zero is reported as a finding,
+anything less as "no difference from an ordinary big day". n ≈ 40 per hawkish/
+dovish half is thin; that is stated wherever it binds.
+
 ## What a pass changes on the page
 
 A validated range effect earns a ✓ chip on the instrument it was measured on,
