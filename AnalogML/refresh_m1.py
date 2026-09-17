@@ -78,6 +78,35 @@ DEFAULT_LOOKBACK_YEARS = 5  # only used when NEITHER local disk NOR R2 has this 
 # "top up since last run" cost as any other hourly scan, not a full reload.
 R2_M1_PREFIX = "analogml/m1"
 
+# How often the local parquet is mirrored back UP to R2 (2026-09-17). Every
+# upload is the whole file (~25 MB/pair) and leaves Railway as billed egress
+# ($0.05/GB): hourly x 26 pairs was ~0.65 GB per market hour, ~$25/month --
+# and until today two loops did it. R2's only job is the redeploy cold
+# start above, where a copy up to a day old costs a one-day OANDA delta
+# (seconds). So: daily, tracked per pair in a sidecar stamp; a pair just
+# pulled FROM R2 inherits the object's own timestamp (nothing to send back),
+# a pair backfilled from scratch uploads immediately (nothing on R2 yet).
+R2_UPLOAD_EVERY_HOURS = float(os.environ.get("M1_R2_UPLOAD_EVERY_HOURS", "24"))
+
+
+def _stamp_path(path: Path) -> Path:
+    return path.with_suffix(".r2sync")
+
+
+def _stamp_read(path: Path) -> datetime | None:
+    try:
+        t = datetime.fromisoformat(_stamp_path(path).read_text().strip())
+        return t if t.tzinfo else t.replace(tzinfo=timezone.utc)
+    except Exception:
+        return None
+
+
+def _stamp_write(path: Path, when: datetime) -> None:
+    try:
+        _stamp_path(path).write_text(when.astimezone(timezone.utc).isoformat())
+    except Exception:
+        pass
+
 
 def _r2_m1_key(pair: str) -> str:
     return f"{R2_M1_PREFIX}/{pair}_m1.parquet"
@@ -120,6 +149,10 @@ def _load_existing(pair: str, path: Path):
         return None
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(obj["Body"].read())
+    # What we just pulled IS what R2 holds -- stamp it so the first refresh on
+    # a fresh container doesn't send the same bytes straight back.
+    lm = obj.get("LastModified")
+    _stamp_write(path, lm if isinstance(lm, datetime) else datetime.now(timezone.utc))
     try:
         return pd.read_parquet(path)
     except Exception as e:
@@ -190,10 +223,15 @@ def refresh_pair(pair: str) -> int:
     os.replace(tmp_path, path)
 
     s3 = r2_client()
-    if s3 is not None:
+    last_up = _stamp_read(path)
+    from_scratch = existing is None or not len(existing)
+    due = (from_scratch or last_up is None
+           or (datetime.now(timezone.utc) - last_up) >= timedelta(hours=R2_UPLOAD_EVERY_HOURS))
+    if s3 is not None and due:
         try:
             s3.put_object(Bucket=R2_BUCKET, Key=_r2_m1_key(pair), Body=body,
                           ContentType="application/octet-stream")
+            _stamp_write(path, datetime.now(timezone.utc))
         except Exception as e:
             print(f"  {pair}: R2 M1 cache upload failed ({e}) -- local copy at {path} is "
                   f"current, R2 cache may be stale until the next successful run")
