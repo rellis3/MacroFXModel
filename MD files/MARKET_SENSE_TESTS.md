@@ -118,6 +118,28 @@ percentage points with the interval clear of zero is reported as a finding,
 anything less as "no difference from an ordinary big day". n ≈ 40 per hawkish/
 dovish half is thin; that is stated wherever it binds.
 
+**S10 — Crowded short in long bonds into the Fed (pre-registered 2026-09-17,
+before running).** Claim (Crown, 2026-09-17, on a TLT call spread): into an FOMC
+positions square up, long bonds were the exception — everyone short — and when the
+consensus hike was delivered the long end rallied (yields fell from the 10-year
+out) as term premium slipped, forcing shorts to cover. Three testable pieces:
+(1) **Squaring up**: leveraged-fund gross positioning (long + short, share of open
+interest) in T-bond and 10Y-note futures on the report before an FOMC vs two
+reports before, against the same two-week change in random non-FOMC fortnights.
+(2) **Crowded short into the event**: leveraged-fund net (long − short) / open
+interest in T-bond futures (merged CFTC names "U.S. TREASURY BONDS" / "UST BOND",
+TFF futures-only, 2010→), as of the last report dated on or before the Tuesday of
+the meeting week; percentile over the trailing 156 weeks; bottom tercile of
+meetings = crowded short. (3) **The rally**: change in DGS30 and DGS10 over d0..d+5
+and d0..d+20 after the decision, crowded-short meetings vs the rest, bootstrap over
+meetings; and the same statistic on matched non-FOMC days with the same
+positioning tercile (a random day in the same report week), to separate
+"crowded shorts revert" from "crowded shorts revert *because of the Fed*".
+Sub-split reported for consensus decisions (day-0 |Δ2Y| < 5bp). Pass: crowded-short
+meetings show DGS30 falling ≥ 5bp more than the rest over d0..d+5 with the CI
+clear of zero AND more than the matched non-FOMC comparison. n ≈ 28 per tercile is
+thin; stated wherever it binds.
+
 ## What a pass changes on the page
 
 A validated range effect earns a ✓ chip on the instrument it was measured on,
