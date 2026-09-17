@@ -129,7 +129,7 @@ export const CHAIN_LINKS = [
   {
     id: 'real-nq',
     short: 'real yields \u2192 growth stocks',
-    punch: { holds: 'Growth stocks answering to the discount rate, as the textbook says.', up: 'Real yields up, Nasdaq up anyway \u2192 earnings or the financing story are outrunning the discount rate; the rally is paying to ignore rates.', down: 'Real yields down, Nasdaq down \u2192 a growth scare: rates are falling because earnings are expected to, not because money is easier.' },
+    punch: { holds: 'Growth stocks answering to the discount rate, as the textbook says.', up: 'Real yields up, Nasdaq up anyway \u2192 earnings or financing outrunning the discount rate; paying to ignore rates.', down: 'Real yields down, Nasdaq down \u2192 growth scare: rates fall because earnings will, not because money is easier.' },
     from: 'real', to: 'nq', sign: -1,
     textbook: 'Higher real yields hit growth stocks hardest',
     holds: 'Growth stocks are answering to the real yield \u2014 the discount rate is doing the pricing. Tested 2026-09-17 (analysis/growth_vs_yields_study.mjs): what this link does NEXT is nothing \u2014 a Nasdaq down-week widens the following session on its own, and the yield leg adds nothing to that. Read it as description.',
