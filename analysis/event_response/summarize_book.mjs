@@ -118,6 +118,9 @@ for (const [kind, label] of [['cells', 'joint  (lead-up × outcome)'], ['lead', 
   console.log(`  ${label.padEnd(28)} ${t.held}/${t.total} held their sign = ${pct((t.held / t.total) * 100, 1)}`
     + `   ·  of the ${t.big} with |median| ≥ 15bp: ${pct((t.bigHeld / t.big) * 100, 1)}`);
 }
+console.log('\n  The ">=15bp" column is NOT a second, better result. A pooled median is an average');
+console.log('  of the two halves, so selecting cells with a LARGE pooled median mechanically');
+console.log('  selects cells whose halves agree — the 72-80% there is arithmetic, not evidence.');
 console.log('\n  Same question by category (joint cells):');
 for (const [cat, rs] of Object.entries(catRows)) {
   let held = 0, total = 0;

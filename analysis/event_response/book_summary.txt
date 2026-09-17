@@ -1,0 +1,109 @@
+
+═══ EVENT RESPONSE BOOK — built 2026-09-17 08:25Z
+DESCRIPTIVE — history with sample sizes. Not a forecast, not a signal. The confirmatory test registered in §6 is separate and is not run here.
+
+── 1. COVERAGE ─────────────────────────────────────────────────
+86 families · 26 instruments · 632 family×instrument rows
+by category: labor 11 · inflation 9 · other 9 · growth 9 · retail 8 · business-activity 7 · housing 7 · rates 7 · consumer-confidence 6 · trade 5 · orders-fiscal 5 · energy 3
+by currency: USD 36 · GBP 24 · EUR 22 · CAD 2 · AUD 1 · NZD 1
+
+18 candidate families DROPPED (clock unprovable — all from the ForexFactory archive):
+  2x  peak only Nx the next hour — not decisive
+     CA Employment Change, CH CPI m/m
+  16x  peak Nx below the Nx bar
+     AU Unemployment Rate, CA GDP m/m, CA Core Retail Sales m/m, CA CPI m/m, CA Retail Sales m/m, AU Cash Rate …+10
+  economies affected: CA, AU, CH — these are the economies vendor 2 carries no consensus for,
+  so AUD/NZD/CAD/CHF/JPY news is thin in this book by data availability, not by choice.
+
+── 2. JOIN PROOF — can the market even see this release? ────────
+median |30-min move| ÷ the same clock on an ordinary day, across the instruments that trade it
+
+  strongest:
+    6.91x  NZ Official Cash Rate                        5/5 instruments clear 2x
+    5.54x  US FOMC statement (tone)                     8/8 instruments clear 2x
+    5.06x  US Fed Interest Rate Decision                8/8 instruments clear 2x
+    4.90x  GB BoE Interest Rate Decision                7/7 instruments clear 2x
+    3.27x  AU Employment Change                         7/7 instruments clear 2x
+    2.95x  US Payroll Jobs Growth                       8/8 instruments clear 2x
+    2.95x  US Headline Unemployment Rate                8/8 instruments clear 2x
+    2.95x  US Annual Wage Growth                        8/8 instruments clear 2x
+    2.82x  US Core Inflation Rate Month-over-Month      8/8 instruments clear 2x
+    2.64x  EU ECB Interest Rate Decision                7/7 instruments clear 2x
+    2.64x  EU Deposit Facility Rate                     7/7 instruments clear 2x
+    2.56x  CA Unemployment Rate                         5/5 instruments clear 2x
+  weakest (the market barely registers these):
+    0.94x  US Housing Starts Level                      0/8
+    0.94x  EU Retail Sales Month-over-Month             0/7
+    0.94x  GB Public Sector Net Borrowing               0/7
+    0.90x  US Building Permits Level                    0/8
+    0.87x  US Current Account Balance                   0/8
+    0.86x  GB GFK Consumer Confidence Index             0/7
+  13 of 86 families clear 2x on the median instrument.
+
+── 3. SIZE — how much bigger than an ordinary day (next-day |move| ÷ baseline) ──
+  category            families  median×  best family (median × across its instruments)
+  rates                    7     1.35   US FOMC statement (tone) 1.66x
+  inflation                9     1.07   US Core Inflation Rate Month-over-Month 1.29x
+  energy                   3     1.06   US EIA Weekly Gasoline Inventory 1.08x
+  trade                    5     1.06   US Current Account Balance 1.24x
+  growth                   9     1.04   US GDP Growth Quarter-over-Quarter Second Estimate 1.12x
+  labor                   11     1.04   GB Employment Change 1.17x
+  business-activity        7     0.99   US ISM Manufacturing PMI 1.13x
+  other                    9     0.98   EU Deposit Facility Rate 1.20x
+  orders-fiscal            5     0.97   GB Public Sector Net Borrowing Ex Banks 1.08x
+  housing                  7     0.96   EU Construction Output Year-over-Year 1.07x
+  retail                   8     0.96   GB Retail Sales Excluding Fuel Month-over-Month 0.99x
+  consumer-confidence      6     0.96   GB GFK Consumer Confidence Index 1.06x
+
+  top 12 single family×instrument rows by size multiple:
+   2.19x  usdjpy  US Fed Interest Rate Decision            n=134
+   2.06x  usdchf  US Fed Interest Rate Decision            n=134
+   2.05x  usdchf  US FOMC statement (tone)                 n=78
+   2.02x  gbpusd  US Fed Interest Rate Decision            n=134
+   1.95x  gbpusd  US FOMC statement (tone)                 n=78
+   1.85x  usdjpy  US FOMC statement (tone)                 n=78
+   1.71x  eurcad  EU Inflation Rate Year-over-Year Flash Estimate n=205
+   1.70x  gbpusd  US Current Account Balance               n=68
+   1.68x  audusd  US FOMC statement (tone)                 n=78
+   1.67x  audnzd  NZ Official Cash Rate                    n=63
+   1.64x  usdcad  US Fed Interest Rate Decision            n=134
+   1.64x  usdcad  US FOMC statement (tone)                 n=78
+
+── 4. DIRECTION, unconditional — next-day up-rate against the 50% floor ──
+  632 rows · median up-rate 50.3% · mean 50.1%
+  distribution: <40% 29 · 40-45% 80 · 45-55% 422 · 55-60% 72 · >=60% 29
+  Reading: a release that predicted direction would push this distribution away from 50.
+
+── 5. THE CONDITIONAL QUESTION — do cells hold their sign across their own halves? ──
+  A cell whose R1 median flips sign between the earlier and later half of its own
+  sample is noise however big it looks. With no effect at all, ~50% hold by chance.
+
+  joint  (lead-up × outcome)   1599/3262 held their sign = 49.0%   ·  of the 907 with |median| ≥ 15bp: 72.1%
+  lead-up only                 911/1861 held their sign = 49.0%   ·  of the 254 with |median| ≥ 15bp: 79.5%
+  outcome only                 846/1700 held their sign = 49.8%   ·  of the 248 with |median| ≥ 15bp: 76.2%
+
+  The ">=15bp" column is NOT a second, better result. A pooled median is an average
+  of the two halves, so selecting cells with a LARGE pooled median mechanically
+  selects cells whose halves agree — the 72-80% there is arithmetic, not evidence.
+
+  Same question by category (joint cells):
+   inflation             227/451   50.3%
+   labor                 139/296   47.0%
+   business-activity     147/292   50.3%
+   trade                  81/168   48.2%
+   retail                217/416   52.2%
+   housing               102/236   43.2%
+   orders-fiscal         113/215   52.6%
+   other                 187/357   52.4%
+   consumer-confidence   134/296   45.3%
+   rates                  51/112   45.5%
+   growth                110/207   53.1%
+   energy                 91/216   42.1%
+
+  Joint cells whose |next-day median| exceeds their own unconditional row: 2538/3262 = 77.8%.
+  (Cutting a sample three ways ALWAYS produces sub-cells further from the pooled
+   median — this number is a sanity check on effect size, not evidence of an effect.)
+
+  The registered test that settles the conditional claim is EVENT_RESPONSE_BOOK.md §6.
+  It is not run here and nothing above is a substitute for it.
+

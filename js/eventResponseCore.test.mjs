@@ -11,6 +11,7 @@ import assert from 'node:assert/strict';
 import {
   bisectAtOrBefore, closeAt, rollSessions, eventWindows, indexYields, leadUpFor,
   deadZoneBp, classifyLead, outcomeBucket, summarize, buildEventResponseBook, median,
+  zSeriesFromReleases,
 } from './eventResponseCore.js';
 
 const MIN = 60, DAY = 86_400;
@@ -200,6 +201,47 @@ test('eventResponseCore', async t => {
     const wrong = book.families.mistimed.instruments.eurusd.all.joinProof;
     assert.equal(onTime.pass, true, `a correctly-timed release should spike: ${JSON.stringify(onTime)}`);
     assert.equal(wrong.pass, false, `a mistimed one should not: ${JSON.stringify(wrong)}`);
+  });
+
+  await t.test('the surprise scale survives a COVID-sized outlier, and duplicates are dropped', () => {
+    // 24 ordinary payroll prints missing by ±40k against a 200k consensus, then
+    // one April-2020-style print missing by 10 MILLION. Under an SD scale that
+    // single row inflates sigma ~100x and every ordinary print collapses to
+    // "in line"; under MAD the ordinary prints keep their buckets.
+    const rel = [];
+    const spread = [-90, -70, -55, -40, -30, -20, -12, -6, -2, 3, 9, 15, 24, 33, 45, 58, 72, 88, -48, 51, -25, 28, -65, 66];
+    for (let i = 0; i < spread.length; i++) {
+      rel.push({ country: 'US', event: 'Non-Farm Employment Change', impact: 'high',
+        ms: Date.parse('2019-01-04T13:30:00Z') + i * 28 * DAY * 1000,
+        actual: String(200_000 + spread[i] * 1000), estimate: '200000' });
+    }
+    rel.push({ country: 'US', event: 'Non-Farm Employment Change', impact: 'high',
+      ms: Date.parse('2020-05-08T12:30:00Z'), actual: '-20500000', estimate: '-22000000' });
+    // Every row duplicated, exactly as calendar_events.csv stores them.
+    const withDupes = rel.flatMap(r => [r, { ...r }]);
+
+    const z = zSeriesFromReleases(withDupes, 'US', 'Non-Farm Employment Change');
+    assert.equal(z.length, 25, 'duplicates must collapse to one row per timestamp');
+    const buckets = z.map(x => outcomeBucket(x.z));
+    const inline = buckets.filter(b => b === 'inline').length;
+    assert.ok(inline <= 8, `MAD must keep the ordinary prints spread out, got ${inline}/25 in line`);
+    assert.ok(buckets.filter(b => b === 'beat').length >= 8, `beats must survive, got ${buckets.filter(b => b === 'beat').length}`);
+    assert.equal(buckets.at(-1), 'beat', 'the outlier keeps its sign and rank');
+  });
+
+  await t.test('polarity is inherited from econSurprise, not re-decided here', () => {
+    const dev = [-0.4, -0.3, -0.2, -0.1, 0, 0.1, 0.2, 0.3, 0.4, 0.5, -0.5, 0.6];
+    const rel = dev.map((d, i) => ({
+      country: 'US', event: 'Unemployment Rate', impact: 'high',
+      ms: Date.parse('2019-01-04T13:30:00Z') + i * 28 * DAY * 1000,
+      actual: (4 + d).toFixed(1), estimate: '4.0',
+    }));
+    const z = zSeriesFromReleases(rel, 'US', 'Unemployment Rate');
+    // A HIGHER unemployment rate is WEAKER for the currency, so it must score negative.
+    const worst = z[z.length - 1];        // +0.6pp, the highest rate in the fixture
+    assert.ok(worst.z < 0, `higher unemployment must map to a negative (weak) z, got ${worst.z}`);
+    const best = z[z.findIndex((_, i) => dev[i] === -0.5)];
+    assert.ok(best.z > 0, 'lower unemployment must map to a positive (strong) z');
   });
 
   await t.test('an instrument the release cannot touch is skipped, not scored', () => {

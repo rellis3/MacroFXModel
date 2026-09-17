@@ -40,7 +40,7 @@
  * brick, in `analysis/event_response/`, as the pre-registration requires.
  */
 
-import { scoreReleases, seriesKey } from './econSurprise.js';
+import { parseCalNumber, seriesKey, polarityFor } from './econSurprise.js';
 
 export const ER_DEFAULTS = {
   minCellObs: 12,        // matches buildEventStudy — below this a cell is omitted, not greyed
@@ -232,19 +232,61 @@ export function outcomeBucket(z, inlineZ = ER_DEFAULTS.inlineZ) {
 }
 
 /**
- * Releases → `[{ ms, z }]` for one series, standardised by THAT series' own
- * surprise dispersion with the polarity sign applied (z > 0 = economically
- * strong for the currency, so unemployment and claims are already flipped).
- * Thin wrapper over `econSurprise.scoreReleases` — the sigma and the parser
- * have one home, and this is not it.
+ * Releases → `[{ ms, z }]` for one series: the surprise, standardised by that
+ * series' own dispersion, with the polarity sign applied (z > 0 = economically
+ * strong for the currency, so unemployment and claims come back already
+ * flipped).
+ *
+ * Deliberately NOT a pass-through to `econSurprise.scoreReleases`, and the two
+ * differences are the whole point:
+ *
+ * 1. **A ROBUST scale (MAD), not the standard deviation.** `scoreReleases` feeds
+ *    a decaying index where recent releases dominate, and an SD is fine there.
+ *    Over a ten-year event study it is not: April 2020 payrolls missed by more
+ *    than ten MILLION jobs against a series whose typical surprise is ~60k. One
+ *    such print inflates the SD ~100x and crushes every other release to z≈0 —
+ *    measured, not theorised: it put 176 of 204 payroll prints in the "in line"
+ *    bucket and left 6 "beats" in a decade. The median absolute deviation
+ *    (x1.4826, the normal-consistent constant) ignores the outlier's magnitude
+ *    while keeping its sign and rank, so the buckets mean what they say.
+ * 2. **De-duplication.** `calendar_events.csv` carries each release TWICE (204
+ *    payroll rows for 102 real prints), which double-counts every event, halves
+ *    the effective sample behind each cell and makes n look twice as reassuring
+ *    as it is. One row per (series, timestamp) survives.
+ *
+ * The parser and the polarity table are still imported from `econSurprise` —
+ * those must never diverge (`parseFloat('1,250')` is 1, silently), and only the
+ * scale and the de-dup differ.
  */
 export function zSeriesFromReleases(releases = [], country, title, opts = {}) {
   const key = seriesKey({ country, event: title });
-  const { scored } = scoreReleases(releases, {
-    impacts: ['high', 'medium'], maxAgeDays: 1e6, minSeriesObs: 6,
-    now: opts.now ?? Date.now(), ...opts,
-  });
-  return scored.filter(s => s.series === key).map(s => ({ ms: s.ms, z: s.z })).sort((a, b) => a.ms - b.ms);
+  const minObs = opts.minSeriesObs ?? 6;
+  const seen = new Set();
+  const rows = [];
+  for (const ev of releases) {
+    if (!ev || ev.ms == null || seriesKey(ev) !== key) continue;
+    const dedup = `${ev.ms}`;
+    if (seen.has(dedup)) continue;
+    seen.add(dedup);
+    const a = parseCalNumber(ev.actual), c = parseCalNumber(ev.estimate);
+    if (a == null || c == null) continue;
+    rows.push({ ms: ev.ms, raw: a - c });
+  }
+  if (rows.length < minObs) return [];
+  const raws = rows.map(r => r.raw);
+  const mid = median(raws);
+  const mad = median(raws.map(v => Math.abs(v - mid)));
+  const scale = mad > 0 ? mad * 1.4826 : null;
+  // A series whose typical release matches consensus exactly — every central
+  // bank decision, where the rate itself is priced weeks ahead — has NO outcome
+  // axis. That is a fact about the series, not a reason to delete the biggest
+  // movers on the board: the events keep their place with `z: null`, so the
+  // size row and the lead-up marginal still compute and only the outcome
+  // dimension goes missing. (For FOMC the platform already has the right
+  // outcome variable — the statement's tone — and it enters as its own family.)
+  if (!scale) return rows.map(r => ({ ms: r.ms, z: null })).sort((a, b) => a.ms - b.ms);
+  const sign = polarityFor(title).sign;
+  return rows.map(r => ({ ms: r.ms, z: ((r.raw - mid) / scale) * sign })).sort((a, b) => a.ms - b.ms);
 }
 
 // ── the book ──────────────────────────────────────────────────────────────────
