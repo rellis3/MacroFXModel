@@ -59,6 +59,34 @@ ok("primed record stores the price + entry", rec and rec["price"] == 4310 and re
 ok("primed record stores how far price was past the entry", rec and rec["past"] == 10, str(rec))
 ok("un-primed zone has no record", "fade_buy_4100" not in sp.primed)
 
+print("[priming ignores the touch tolerance — approach is not crossing]")
+# The two real gold skips from 2026-09-16, reproduced with the fixtures' geometry.
+# A 2-point tolerance makes a LIVE touch fire when price is within 2 of the level.
+# Priming must not inherit that: price 1 point SHORT of a level has not gone through it.
+sa = OISession("gold", 4200, [SELL_FADE, BUY_FADE])
+sa.decide(4299, dry_run=True, tol=2.0, now=1.0)    # 1 below the 4300 resistance, approaching
+ok("sell fade 1pt BELOW resistance is NOT primed (was: bug-primed via tol)",
+   "fade_sell_4300" not in sa.primed, str(sa.primed))
+sa.decide(4101, dry_run=True, tol=2.0, now=2.0)    # 1 above the 4100 support, approaching
+ok("buy fade 1pt ABOVE support is NOT primed (was: bug-primed via tol)",
+   "fade_buy_4100" not in sa.primed, str(sa.primed))
+ok("...and both still fire on a live touch inside tol",
+   any(x["zone_id"] == "fade_sell_4300" for x in sa.decide(4299, tol=2.0))
+   and any(x["zone_id"] == "fade_buy_4100" for x in sa.decide(4101, tol=2.0)))
+
+sb2 = OISession("gold", 4200, [SELL_FADE, BUY_FADE])
+sb2.decide(4301, dry_run=True, tol=2.0, now=3.0)   # 1 THROUGH the resistance
+ok("sell fade 1pt THROUGH resistance IS primed (genuine crossing, tol irrelevant)",
+   "fade_sell_4300" in sb2.primed and sb2.primed["fade_sell_4300"]["past"] == 1)
+sb2.decide(4099, dry_run=True, tol=2.0, now=4.0)
+ok("buy fade 1pt THROUGH support IS primed", "fade_buy_4100" in sb2.primed)
+
+sc = OISession("gold", 4200, [SELL_FADE])
+sc.decide(4300, dry_run=True, tol=2.0, now=5.0)    # exactly ON the level
+ok("price exactly AT the level is 'at', not 'past' -> not primed",
+   "fade_sell_4300" not in sc.primed)
+ok("...and it fires live at the level", any(x["zone_id"] == "fade_sell_4300" for x in sc.decide(4300)))
+
 print("[maxpain — enters near current price, never primed]")
 sm = OISession("gold", 4260, [MAXPAIN])
 sm.decide(4260, dry_run=True)                      # priming must NOT swallow maxpain
