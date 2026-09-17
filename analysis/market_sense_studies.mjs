@@ -455,6 +455,61 @@ if (want('S10')) {
   results.studies.S10 = out;
 }
 
+// ═══ S11 price vs yield spread: divergence, alignment, who pays ══════════════
+// Pre-registered 2026-09-17 (commit 276661e) before running.
+if (want('S11')) {
+  log('\n═══ S11  price vs 10Y yield spread: divergence vs alignment ═══');
+  const bond = {};
+  for (const sym of ['USB10Y_USD', 'DE10YB_EUR', 'UK10YB_GBP']) { try { bond[sym] = (await fetchD1(sym, 5000)).sort((a, b) => a.date < b.date ? -1 : 1); log(`  ${sym} ${bond[sym].length} bars ${bond[sym][0]?.date} → ${bond[sym].at(-1)?.date}`); } catch (e) { log(`  ${sym}: ${e.message}`); } await new Promise(r => setTimeout(r, 150)); }
+  const out = {};
+  for (const [pair, sym, foreign] of [['EUR/USD', 'EUR_USD', 'DE10YB_EUR'], ['GBP/USD', 'GBP_USD', 'UK10YB_GBP']]) {
+    const us = new Map((bond.USB10Y_USD ?? []).map(b => [b.date, b.close])), fo = new Map((bond[foreign] ?? []).map(b => [b.date, b.close]));
+    const rows = T[sym].rows;
+    for (const r of rows) { const u = us.get(r.date), f = fo.get(r.date); r.spread = (u != null && f != null) ? u - f : null; }   // +US price − foreign price ∝ foreign yield − US yield
+    // carry forward across missing bond sessions
+    { let last = null; for (const r of rows) { if (r.spread != null) last = r.spread; else r.spread = last; } }
+    for (let i = 270; i < rows.length; i++) {
+      const r = rows[i]; if (!r.ok || r.spread == null || rows[i - 20].spread == null) continue;
+      r.pair20 = Math.log(r.c / rows[i - 20].c) * 100;
+      r.spr20 = r.spread - rows[i - 20].spread;
+      const w = rows.slice(i - 250, i).map((x, k) => (x.spread != null && rows[i - 250 + k - 20]?.spread != null) ? x.spread - rows[i - 250 + k - 20].spread : null).filter(Number.isFinite);
+      const wp = rows.slice(i - 250, i).map((x, k) => Number.isFinite(x.pair20) ? x.pair20 : null).filter(Number.isFinite);
+      const sd = a => { const m = a.reduce((s, v) => s + v, 0) / a.length; return Math.sqrt(a.reduce((s, v) => s + (v - m) ** 2, 0) / a.length); };
+      if (w.length < 100 || wp.length < 100) continue;
+      r.sprZ = r.spr20 / sd(w); r.pairZ = r.pair20 / sd(wp);
+      r.gap = r.pairZ - r.sprZ;
+    }
+    // second pass: forward gap needs the FORWARD row's z-scores, which the first pass had not reached yet
+    for (let i = 270; i < rows.length - 20; i++) { const r = rows[i], n = rows[i + 20]; if (r.gap == null || n?.pairZ == null || n?.sprZ == null) continue; r.gapF = n.pairZ - n.sprZ; r.pairF = Math.log(n.c / r.c) * 100; r.sprF = n.spread != null ? n.spread - r.spread : null; }
+    const pop = T[sym].pop.filter(r => r.sprZ != null && r.pairZ != null);
+    const div = r => Math.abs(r.sprZ) >= 1 && Math.abs(r.pairZ) >= 1 && Math.sign(r.sprZ) !== Math.sign(r.pairZ);
+    const ali = r => Math.abs(r.sprZ) >= 1 && Math.abs(r.pairZ) >= 1 && Math.sign(r.sprZ) === Math.sign(r.pairZ);
+    const first = (f) => pop.filter(r => f(r) && !(rows[r.i - 1] && f(rows[r.i - 1])));
+    const dDays = first(div), aDays = first(ali);
+    log(`  ${pair}: population ${pop.length} days; divergence episodes ${dDays.length}, alignment episodes ${aDays.length} (first day of each)`);
+    const o = { pop: pop.length, divergence: dDays.length, alignment: aDays.length, tests: [] };
+    for (const [tag, days, ex] of [['divergence', dDays, div], ['alignment', aDays, ali]]) {
+      for (const t of [paired(sym, days, 'r20', { excludeFn: r => div(r) || ali(r), label: `${pair} ${tag}` }), paired(sym, days, 'r5', { excludeFn: r => div(r) || ali(r), label: `${pair} ${tag}` })]) { log(line(t)); o.tests.push(t); }
+    }
+    // closure base rates on divergence days
+    const withF = dDays.filter(r => r.gapF != null && r.pairF != null && r.sprF != null);
+    if (withF.length >= 20) {
+      const closed = withF.filter(r => Math.abs(r.gapF) <= 0.5 * Math.abs(r.gap));
+      const byPair = closed.filter(r => Math.sign(r.pairF) === -Math.sign(r.pairZ) && Math.abs(r.pairF) >= Math.abs(r.sprF) / 0.01 * 0);   // pair moved back toward the spread
+      const pairBack = withF.filter(r => Math.sign(r.pairF) === -Math.sign(r.pairZ)).length / withF.length;
+      const sprBack = withF.filter(r => Math.sign(r.sprF) === -Math.sign(r.sprZ)).length / withF.length;
+      const bC = bootShareArr(withF.map(r => Math.abs(r.gapF) <= 0.5 * Math.abs(r.gap)), SEED + 21), bP = bootShareArr(withF.map(r => Math.sign(r.pairF) === -Math.sign(r.pairZ)), SEED + 22), bS = bootShareArr(withF.map(r => Math.sign(r.sprF) === -Math.sign(r.sprZ)), SEED + 23);
+      log(`    closure over the next 20 sessions (n=${withF.length}): gap halved in ${(bC.p * 100).toFixed(0)}% [${(bC.lo * 100).toFixed(0)}, ${(bC.hi * 100).toFixed(0)}]; the PAIR reversed toward the spread in ${(bP.p * 100).toFixed(0)}% [${(bP.lo * 100).toFixed(0)}, ${(bP.hi * 100).toFixed(0)}]; the SPREAD reversed toward the pair in ${(bS.p * 100).toFixed(0)}% [${(bS.lo * 100).toFixed(0)}, ${(bS.hi * 100).toFixed(0)}]`);
+      const uncPair = pop.filter(r => r.pairF != null).length ? pop.filter(r => r.pairF != null && Math.sign(r.pairF) === -Math.sign(r.pairZ)).length / pop.filter(r => r.pairF != null).length : null;
+      log(`    unconditional: the pair reverses its own 20-day sign over the next 20 in ${(uncPair * 100).toFixed(0)}% of all days`);
+      o.closure = { n: withF.length, closed: bC, pairBack: bP, spreadBack: bS, uncPairBack: uncPair };
+    } else log(`    closure: too few divergence episodes with forward data (${withF.length})`);
+    out[pair] = o;
+  }
+  results.studies.S11 = out;
+}
+function bootShareArr(bools, seed) { const rnd = mulberry32(seed); const n = bools.length; const ps = []; for (let k = 0; k < REPS; k++) { let c = 0; for (let j = 0; j < n; j++) if (bools[Math.floor(rnd() * n)]) c++; ps.push(c / n); } ps.sort((a, b) => a - b); return { p: bools.filter(Boolean).length / n, lo: ps[Math.floor(REPS * 0.025)], hi: ps[Math.floor(REPS * 0.975)] }; }
+
 // merge into the existing output rather than overwrite it when only some studies ran
 const prev = fs.existsSync(OUT) ? JSON.parse(fs.readFileSync(OUT, 'utf8')) : { studies: {} };
 fs.writeFileSync(OUT, JSON.stringify({ ...prev, ranAt: results.ranAt, studies: { ...prev.studies, ...results.studies } }, null, 1));

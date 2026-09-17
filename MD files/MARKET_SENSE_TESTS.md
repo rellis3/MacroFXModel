@@ -288,6 +288,21 @@ long-bond futures into a Fed meeting has NOT been followed by a long-end rally;
 if anything the reverse. A single meeting can go the other way; that is not a
 tendency.
 
+### S11 — Price vs yield spread: divergence, alignment, who pays. **NULL.**
+EUR/USD (Bund vs T-note) and GBP/USD (Gilt vs T-note), 4,629 days each; 44 and 51
+first-day divergence episodes, 145 and 149 alignments. Next-20-session range vs
+matched controls: EUR/USD divergence −0.51 ATR [−1.21, +0.19] (if anything calmer),
+GBP/USD +0.16 [−0.86, +1.16]; alignment +0.10 / −0.28, all across zero. A pair
+moving against its yield spread does not get "damaged" afterwards, and moving with
+it does not get quieter. Closure: the standardised gap halved within 20 sessions in
+64% / 71% of divergences — but the PAIR reversing toward the spread happened in
+48% / 39%, against an unconditional 49% / 50% — no tendency; on GBP it was the
+spread that gave (59%). Consistent with the banked yields → FX direction null and
+with the Event Response Book's §6/§7. Divergence is description; the only
+yield-spread object with a validated record here remains the 2Y spread's own
+z-score mean reversion (YIELD_SPREAD_STRATEGY.md), which is a different thing.
+n=44/51 is thin and stated as such.
+
 ## What changed on the page and in the briefs (2026-09-17)
 
 - ✓ chip on SPX500 / NAS100 / XAU / USD/JPY cards while VIX ≥ VIX3M: "wider week
