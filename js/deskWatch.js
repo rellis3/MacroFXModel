@@ -47,6 +47,41 @@ export const EVENT_RANGE_EFFECT = {
   pmi:             { USDJPY: '+0.22 ATR on the day' },
 };
 const CCY_PAIRS = { US: ['EURUSD', 'USDJPY'], GB: ['GBPUSD'], EU: ['EURUSD'], JP: ['USDJPY'], AU: ['AUDUSD'], CA: ['USDCAD'] };
+
+// ── What the effect means in the instrument's own units ─────────────────────
+// A tested finding is measured in ATR so 2008 and 2026 sit on one scale. The
+// reader wants points and pips: so each ✓ trigger also carries `expect` -- the
+// instrument's ATR14 right now, what an ORDINARY window of that length has run
+// (the unconditional medians measured in MARKET_SENSE_TESTS: ~1.0 ATR for a
+// session, ~2.3 for five), and what history says after this signal. Ranges
+// (high to low), never a direction; a point estimate with the finding's CI
+// available in the book, not a promise.
+const SERIES_INSTR = { spx: 'SPX500', nq: 'NQ', gold: 'GOLD', usdjpy: 'USDJPY', eurusd: 'EURUSD', gbpusd: 'GBPUSD', audusd: 'AUDUSD', usdcad: 'USDCAD' };
+const UNIT = { SPX500: [1, 'pts', 0], NQ: [1, 'pts', 0], GOLD: [1, '$', 0], USDJPY: [100, 'pips', 0], EURUSD: [10000, 'pips', 0], GBPUSD: [10000, 'pips', 0], AUDUSD: [10000, 'pips', 0], USDCAD: [10000, 'pips', 0] };
+const BASE_RANGE = { 1: 1.0, 5: 2.3, 20: 4.6 };   // unconditional median range in ATR by window (sessions)
+export function atr14(bars) {
+  if (!Array.isArray(bars) || bars.length < 15) return null;
+  let s = 0, n = 0;
+  for (let i = bars.length - 14; i < bars.length; i++) { const b = bars[i], p = bars[i - 1]; if (b?.high == null || b?.low == null || p?.value == null) return null; s += Math.max(b.high - b.low, Math.abs(b.high - p.value), Math.abs(b.low - p.value)); n++; }
+  return n ? s / n : null;
+}
+function atrTable(series) { const out = {}; for (const [k, inst] of Object.entries(SERIES_INSTR)) { const a = atr14(series[k]); if (a) out[inst] = a; } return out; }
+/** One expectation per instrument: { inst, window, atr, base, after, unit } with base/after in instrument units. */
+function expectFor(atrBy, effects, window) {
+  const out = [];
+  for (const [inst, eff] of Object.entries(effects)) {
+    const atr = atrBy[inst]; if (!atr) continue;
+    const [mult, unit, dp] = UNIT[inst] ?? [1, '', 2];
+    const base = BASE_RANGE[window] ?? 1, after = base + eff;
+    out.push({ inst, window, atr: +(atr * mult).toFixed(dp), base: +(base * atr * mult).toFixed(dp), after: +(after * atr * mult).toFixed(dp), effAtr: eff, unit });
+  }
+  return out;
+}
+export function expectText(expect) {
+  if (!expect?.length) return '';
+  const w = expect[0].window;
+  return `Expected range (history, not a promise) over the next ${w === 1 ? 'session' : `${w} sessions`}: ` + expect.map(e => `${e.inst} ~${e.after}${e.unit} vs ~${e.base}${e.unit} on an ordinary ${w === 1 ? 'day' : 'week'} (ATR14 ${e.atr}${e.unit})`).join('; ') + '. High to low, either direction.';
+}
 import { eventImpact } from './eventImpactMap.js';
 
 /**
@@ -57,6 +92,7 @@ export function evaluateTriggers(inp = {}) {
   const { fred = {}, hist = {}, series = {}, chain = [], stockBond = null, events = [], fomcDates = [], now = Date.now() } = inp;
   const out = [];
   const push = t => out.push({ firing: false, instruments: [], evidenceId: null, ...t });
+  const atrBy = atrTable(series);
 
   // ── tested: VIX above VIX3M ────────────────────────────────────────────────
   {
@@ -65,7 +101,8 @@ export function evaluateTriggers(inp = {}) {
       const inv = v >= v3;
       let dayN = 0;
       if (inv) { dayN = 1; const h = hist.vix ?? [], h3 = hist.vix3m ?? []; for (let i = h.length - 2, j = h3.length - 2; i >= 0 && j >= 0; i--, j--) { if (h[i].date !== h3[j].date) break; if (h[i].value >= h3[j].value) dayN++; else break; } }
-      push({ id: 'vix-inversion', kind: 'tested', evidenceId: 'vix-inversion', label: 'VIX above VIX3M', firing: inv, value: { vix: v, vix3m: v3, dayN },
+      const expect = inv ? expectFor(atrBy, { SPX500: 0.76, NQ: 0.82, USDJPY: 0.44, GOLD: 0.43 }, 5) : [];
+      push({ id: 'vix-inversion', kind: 'tested', evidenceId: 'vix-inversion', label: 'VIX above VIX3M', firing: inv, value: { vix: v, vix3m: v3, dayN }, expect,
         instruments: ['SPX500', 'NQ', 'USDJPY', 'GOLD'],
         detail: inv
           ? `VIX ${v.toFixed(1)} is above VIX3M ${v3.toFixed(1)} (day ${dayN}): near-term fear priced above the 3-month. Tested here: on the first day of an inversion the next five sessions ran +0.76 ATR wider on SPX500, +0.82 on Nasdaq, +0.44 on USD/JPY, +0.43 on gold (86 inversions since 2008). Inversions usually last a session or two. Range, not direction.`
@@ -77,7 +114,7 @@ export function evaluateTriggers(inp = {}) {
     const nq = series.nq; const last = _last(nq), ref = _nth(nq, 5);
     if (last && ref) {
       const wk = (last.value / ref.value - 1) * 100; const on = wk <= -1;
-      push({ id: 'nq-down-week', kind: 'tested', evidenceId: 'nq-down-week', label: 'Nasdaq down-week', firing: on, value: { wk }, instruments: ['NQ'],
+      push({ id: 'nq-down-week', kind: 'tested', evidenceId: 'nq-down-week', label: 'Nasdaq down-week', firing: on, value: { wk }, instruments: ['NQ'], expect: on ? expectFor(atrBy, { NQ: 0.21 }, 1) : [],
         detail: on ? `NAS100 is ${wk.toFixed(1)}% over five sessions (${ref.date} → ${last.date}). Tested here: after a down-week of 1%+ the next session has run about 20% wider (+0.19 to +0.23 ATR, n=1,232). Range, not direction; the 5-day up-share afterwards is 58%, a base rate.` : `NAS100 is ${wk.toFixed(1)}% over five sessions — no longer a down-week.` });
     }
   }
@@ -106,7 +143,9 @@ export function evaluateTriggers(inp = {}) {
     const line = h => `${h.e.country} ${h.e.event} ${when(h.e)}${h.e.estimate != null ? ` (consensus ${h.e.estimate})` : ''} → ${h.pair}: ` +
       [h.bk ? `has moved ${h.bk.spike}× an ordinary half-hour on release and left a next day ${h.bk.next}× normal (n=${h.bk.n}; next-day direction ${h.bk.upPct}% up — a coin flip)` : null,
        h.eff ? `release-session range ${h.eff} vs matched days (S7)` : null].filter(Boolean).join('; ') + '. Size, not direction.';
-    push({ id: 'event-range', kind: 'tested', evidenceId: 'surprise-size', label: 'Market-moving release in the next 24h', firing: uniq.length > 0, value: { n: uniq.length }, instruments: [...new Set(uniq.map(h => h.pair))],
+    // the S7 effect where it exists; the book's next-day multiple otherwise (next = k× an ordinary day → effect k−1)
+    const effs = {}; for (const h of uniq) { const s7 = h.eff ? parseFloat(h.eff) : null; const bk = h.bk?.next != null ? h.bk.next - 1 : null; const e = s7 ?? bk; if (e != null && !(h.pair in effs)) effs[h.pair] = e; }
+    push({ id: 'event-range', kind: 'tested', evidenceId: 'surprise-size', label: 'Market-moving release in the next 24h', firing: uniq.length > 0, value: { n: uniq.length }, instruments: [...new Set(uniq.map(h => h.pair))], expect: uniq.length ? expectFor(atrBy, effs, 1) : [],
       detail: uniq.length ? uniq.map(line).join('\n') : 'No release that has measurably moved a pair is due in the next 24h.' });
   }
   // ── described: front-end shock (tested: FX ran calmer after hawkish ones) ──
@@ -183,7 +222,7 @@ export function formatTelegram({ started = [], stopped = [] }, when = new Date()
   const stamp = when.toISOString().slice(11, 16) + ' UTC';
   const tag = t => t.kind === 'tested' ? '✓' : '~';
   const lines = [`<b>Desk watch · ${stamp}</b>`];
-  for (const t of started) lines.push(`\n${tag(t)} <b>${_esc(t.label)}</b>\n${_esc(t.detail)}`);
+  for (const t of started) lines.push(`\n${tag(t)} <b>${_esc(t.label)}</b>\n${_esc(t.detail)}${t.expect?.length ? `\n<i>${_esc(expectText(t.expect))}</i>` : ''}`);
   for (const t of stopped) lines.push(`\n· <b>${_esc(t.label)} — cleared</b>\n${_esc(t.detail)}`);
   if (started.length >= 2) lines.push(`\n<i>${started.length} conditions started in the same pass — read them together; that is the domino the chain panel is for.</i>`);
   lines.push(`\n<i>✓ tested on this desk (range, never direction) · ~ described state</i>`);

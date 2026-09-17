@@ -818,6 +818,7 @@
   .dw-r.tested{border-left-color:var(--bull)} .dw-r.described{border-left-color:var(--amber)}
   .dw-k{font-size:11px} .dw-l{font-size:12.5px;font-weight:700} .dw-since{font-size:10.5px} .dw-ins{grid-column:2/4;font-size:10.5px}
   .dw-d{grid-column:1/4;font-size:11.5px;color:var(--text2);line-height:1.5;margin-top:2px}
+  .dw-x{grid-column:1/4;font-size:11.5px;line-height:1.5;margin-top:3px;padding:4px 8px;border-radius:5px;background:var(--bg3)}
   .dw-h{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--text3);margin:8px 0 4px}
   .dw-log{font-size:11.5px;line-height:1.6;color:var(--text2)} .dw-log.cleared{color:var(--text3)}
   .chain-read{margin:0 0 10px;padding:9px 11px;border:1px solid var(--border);border-radius:8px;background:var(--card2)}
@@ -5199,7 +5200,7 @@ function renderDeskWatch() {
   const firing = w.states.filter(t => t.firing);
   const ago = iso => { const m = Math.round((Date.now() - Date.parse(iso)) / 60000); return m < 60 ? `${m}m` : m < 48 * 60 ? `${Math.round(m / 60)}h` : `${Math.round(m / 1440)}d`; };
   const glyph = k => k === 'tested' ? _EV('v', _EV_T.v) : _EV('c', _EV_T.c);
-  const row = t => `<div class="dw-r ${t.kind}" title="${esc0(t.detail)}"><span class="dw-k">${glyph(t.kind)}</span><span class="dw-l">${esc0(t.label)}</span><span class="dw-since muted">since ${t.since ? ago(t.since) : '?'}</span>${t.instruments?.length ? `<span class="dw-ins muted">${t.instruments.map(dispName).join(' · ')}</span>` : ''}<div class="dw-d">${esc0(t.detail.split('\n')[0])}</div></div>`;
+  const row = t => `<div class="dw-r ${t.kind}" title="${esc0(t.detail)}"><span class="dw-k">${glyph(t.kind)}</span><span class="dw-l">${esc0(t.label)}</span><span class="dw-since muted">since ${t.since ? ago(t.since) : '?'}</span>${t.instruments?.length ? `<span class="dw-ins muted">${t.instruments.map(dispName).join(' · ')}</span>` : ''}<div class="dw-d">${esc0(t.detail.split('\n')[0])}</div>${t.expect?.length ? `<div class="dw-x">${t.expect.map(e => `<b>${dispName(e.inst)}</b> next ${e.window === 1 ? 'session' : `${e.window} sessions`}: ~${e.after}${e.unit} <span class="muted">vs ~${e.base}${e.unit} ordinary · ATR ${e.atr}${e.unit}</span>`).join(' · ')} <span class="muted">— range either way, history not a promise</span></div>` : ''}</div>`;
   const log = (w.log ?? []).slice(0, 6).map(f => `<div class="dw-log ${f.event}"><span class="muted">${new Date(f.at).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span> ${f.event === 'started' ? '▲' : '▽'} ${esc0(f.label)}${f.after5 ? ` <span class="muted">→ next 5 sessions ran ${f.after5.map(a => `${dispName(a.inst)} ${a.range5} ATR`).join(', ')}</span>` : ''}</div>`).join('');
   el.style.display = 'block';
   el.innerHTML = `
