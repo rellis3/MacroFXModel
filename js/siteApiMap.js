@@ -138,6 +138,7 @@
         <a class="sm-item" href="real-yield.html" target="_blank"><span class="sm-item-name">💰 Real Yield</span><span class="sm-item-desc">Per-currency real yields for macro context</span></a>
         <a class="sm-item" href="yield-curve.html" target="_blank"><span class="sm-item-name">📉 Yield Curve</span><span class="sm-item-desc">Yield curve macro dashboard (distinct from the P3 display panel)</span></a>
         <a class="sm-item" href="rate-matrix.html" target="_blank"><span class="sm-item-name">🧮 Rate Matrix</span><span class="sm-item-desc">Cross-currency rate-differential matrix</span></a>
+        <a class="sm-item" href="event-response.html" target="_blank"><span class="sm-item-name">📅 Event Response</span><span class="sm-item-desc">What each scheduled release actually does to each pair — size, timing and the spread of outcomes, measured, with sample sizes</span></a>
       </div>
 
       <div class="sm-group" data-group="volresearch">
