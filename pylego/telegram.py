@@ -123,7 +123,13 @@ def send_via_dashboard(dashboard_url: str, text: str, *, parse_mode: str = "HTML
     try:
         r = http.post(f"{dashboard_url.rstrip('/')}/api/telegram",
                       json={"message": text, "parseMode": parse_mode}, timeout=10)
-        return bool(r.json().get("ok"))
+        body = r.json()
+        if bool(body.get("ok")):
+            return True
+        # The proxy relays Telegram's own description ("can't parse entities",
+        # "chat not found", ...) -- say it, or every failure looks the same.
+        log.warning("Telegram send (via dashboard) refused: %s", body.get("error") or body)
+        return False
     except Exception as exc:  # noqa: BLE001 -- best-effort send, never propagate
         log.warning("Telegram send (via dashboard) failed: %s", exc)
         return False
