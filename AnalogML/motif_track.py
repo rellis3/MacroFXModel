@@ -118,7 +118,7 @@ from pathlib import Path
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from pattern_scan import load_bars  # noqa: E402
+from pattern_scan import load_bars, load_m1_and_bars  # noqa: E402
 from motif_features import bucket_trade, compute_features  # noqa: E402
 from motif_multi_tf import DETECT_KW, htf_lean_at  # noqa: E402
 
@@ -242,7 +242,7 @@ def _watermark_idx(mark, bars: pd.DataFrame) -> int | None:
 
 
 def scan_pair_motif(pair: str, bars: pd.DataFrame, log: dict, motifs: list,
-                    params: dict) -> list[tuple[dict, object]]:
+                    params: dict, pending: tuple | None = None) -> list[tuple[dict, object]]:
     """Logs any motif that confirmed SINCE THE LAST RUN and isn't already
     recorded -- keyed by touch identity (survives a missed run), gated by a
     per-pair watermark (survives a re-run against the same data). The
@@ -265,13 +265,29 @@ def scan_pair_motif(pair: str, bars: pd.DataFrame, log: dict, motifs: list,
     late. A timestamp is immune to the data window changing shape. A legacy
     integer watermark is re-seeded at the latest bar (nothing logged from
     the past), exactly like a fresh pair -- there is no honest way to map an
-    old index onto a window that may already have moved under it."""
+    old index onto a window that may already have moved under it.
+
+    `bars` must be COMPLETE bars only (see split_complete_bars) -- the
+    backtest never sees a half-formed bar, so neither may this. `pending`
+    is (timestamp, open) of the bar currently forming, if any M1 of it has
+    printed: a motif confirming on the LAST complete bar enters at that
+    open, exactly the backtest's "open of the bar after confirmation". Until
+    2026-09-17 the forming bar sat inside `bars` as a real bar: it became
+    the watermark, so when it completed an hour later any confirmation on
+    it was already "<= watermark" and skipped for good. Only bars that
+    opened after one scan AND closed before the next were ever caught --
+    6 live trades in a month against a backtest rate of ~2/day.
+
+    If a confirmation lands on the last complete bar and no forming-bar
+    open exists yet, it is deferred (watermark held one bar back) and
+    picked up on the next scan with that bar's real open."""
     n = len(bars)
     watermarks = log.setdefault("watermarks", {})
     last_scanned = _watermark_idx(watermarks.get(pair), bars)
     if last_scanned is None:
         watermarks[pair] = bars.index[n - 1].isoformat()
         return []
+    deferred = False
 
     already = {t["motif_key"] for t in log["trades"] if t["pair"] == pair}
     pip = pip_size(pair)
@@ -284,9 +300,17 @@ def scan_pair_motif(pair: str, bars: pd.DataFrame, log: dict, motifs: list,
         if key in already:
             continue
         entry_idx = m.confirm_idx + 1
-        if entry_idx >= n:
-            continue  # confirmed on the very last bar -- no entry bar exists yet
-        entry_price = float(bars["open"].to_numpy()[entry_idx])
+        if entry_idx < n:
+            entry_price = float(bars["open"].to_numpy()[entry_idx])
+            entry_date = bars.index[entry_idx].isoformat()
+        elif pending is not None:
+            # Confirmed on the last complete bar: the entry bar is the one
+            # forming right now, and its open is already known.
+            entry_price = float(pending[1])
+            entry_date = pd.Timestamp(pending[0]).isoformat()
+        else:
+            deferred = True   # no forming-bar open yet -- next scan, same bar, real open
+            continue
         tp_price = entry_price + m.direction * sl_price * params["tp_r"]
         sl_level = entry_price - m.direction * sl_price
         new.append(({
@@ -294,14 +318,39 @@ def scan_pair_motif(pair: str, bars: pd.DataFrame, log: dict, motifs: list,
             "n_touches": m.n_touches, "is_top": m.is_top,
             "level": m.level, "touch_level": m.touch_level,
             "played_out": m.played_out,
-            "entry_idx": int(entry_idx), "entry_date": bars.index[entry_idx].isoformat(),
+            "entry_idx": int(entry_idx), "entry_date": entry_date,
             "direction": "BUY" if m.direction == 1 else "SELL",
             "entry_price": entry_price, "sl_price": sl_level, "tp_price": tp_price,
             "sl_dist": sl_price, "tp_r": params["tp_r"], "status": "open",
             "logged_at": datetime.now(timezone.utc).isoformat(),
         }, m))
-    watermarks[pair] = bars.index[n - 1].isoformat()
+    watermarks[pair] = bars.index[n - 2 if deferred and n >= 2 else n - 1].isoformat()
     return new
+
+
+def split_complete_bars(m1: pd.DataFrame, bars: pd.DataFrame, timeframe: str,
+                        now: datetime | None = None) -> tuple[pd.DataFrame, tuple | None]:
+    """(complete_bars, pending). Drops the last resampled bar if its period
+    hasn't closed -- the M1 parquet holds only COMPLETE M1 candles (OANDA's
+    `complete` flag), so the last H1 bar is "however many minutes of this
+    hour have printed", which the backtest never sees. A bar counts as
+    closed when its final M1 candle has printed (last M1 >= bar open +
+    period - 1min), or -- sparse-tape fallback -- when wall-clock is well
+    past its close. `pending` is (timestamp, open) of the dropped bar so a
+    confirmation on the last complete bar can enter at the forming bar's
+    real open; None when nothing is forming or nothing was dropped."""
+    if len(bars) == 0:
+        return bars, None
+    period = pd.Timedelta(timeframe)
+    last_open = bars.index[-1]
+    last_m1 = m1.index[-1]
+    now_ts = pd.Timestamp(now or datetime.now(timezone.utc))
+    now_ts = now_ts.tz_localize("UTC") if now_ts.tzinfo is None else now_ts.tz_convert("UTC")
+    closed_by_data = last_m1 >= last_open + period - pd.Timedelta(minutes=1)
+    closed_by_clock = now_ts.tz_convert(last_open.tz) >= last_open + period + pd.Timedelta(minutes=10)
+    if closed_by_data or closed_by_clock:
+        return bars, None
+    return bars.iloc[:-1], (last_open, float(bars["open"].iloc[-1]))
 
 
 def resolve_open_trades(pair: str, bars: pd.DataFrame, log: dict, params: dict) -> int:
@@ -713,10 +762,14 @@ def run(args: argparse.Namespace) -> None:
         # silently undoing every other pair's successful refresh. Same
         # per-pair isolation the refresh loop above already has.
         try:
-            bars = load_bars(pair, args.timeframe)
+            m1, bars = load_m1_and_bars(pair, args.timeframe)
+            pending = None
             if args.as_of:
                 cutoff = pd.Timestamp(args.as_of, tz=bars.index.tz)
-                bars = bars[bars.index <= cutoff]
+                bars = bars[bars.index <= cutoff]     # replay: every bar is history, all complete
+            else:
+                bars, pending = split_complete_bars(m1, bars, args.timeframe)
+            del m1
             if len(bars) < 200:
                 continue
 
@@ -729,7 +782,7 @@ def run(args: argparse.Namespace) -> None:
             )
 
             resolved_total += resolve_open_trades(pair, bars, log, FROZEN)
-            new = scan_pair_motif(pair, bars, log, motifs, FROZEN)
+            new = scan_pair_motif(pair, bars, log, motifs, FROZEN, pending=pending)
             pip = pip_size(pair)
             # Computed once per pair, only when there's an open/new trade to
             # read it for -- the WaveTrend/D1/H4 resample inside is the
