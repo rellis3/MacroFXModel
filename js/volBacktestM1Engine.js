@@ -17,6 +17,7 @@ import path                         from 'path';
 import { fileURLToPath }            from 'url';
 import { parquetRead, parquetMetadataAsync } from 'hyparquet';
 import { S3Client, GetObjectCommand, PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
+import { noteBytes } from './egressMeter.js';
 import {
   ewmaVarSeries, hvVarSeries, yzVolSeries, garchSigmas, classifyRegime, ASSET_PARAMS,
   BM_P50, BM_P75, HN_P50, HN_P75, fetchD1, INSTRUMENTS,
@@ -182,8 +183,10 @@ async function loadDecodedSnapshot(client, pairKey) {
 
 async function saveDecodedSnapshot(client, pairKey, packed, sourceEtag) {
   const key = `${M1_DECODED_PREFIX}/${pairKey}.bin`;
+  const body = packToBinary(packed, sourceEtag);
+  noteBytes('r2', `${M1_DECODED_PREFIX}/*`, body.length ?? body.byteLength ?? 0);
   await client.send(new PutObjectCommand({
-    Bucket: R2_BUCKET, Key: key, Body: packToBinary(packed, sourceEtag), ContentType: 'application/octet-stream',
+    Bucket: R2_BUCKET, Key: key, Body: body, ContentType: 'application/octet-stream',
   }));
 }
 
@@ -1725,6 +1728,7 @@ export async function saveRegimeHistoryToR2(bot, pair, data) {
   if (!client) return false;
   const key  = `regime_history/${bot}/${pair}.json`;
   const body = Buffer.from(JSON.stringify(data));
+  noteBytes('r2', `regime_history/${bot}/*`, body.length);
   await client.send(new PutObjectCommand({ Bucket: R2_BUCKET, Key: key, Body: body, ContentType: 'application/json' }));
   return true;
 }

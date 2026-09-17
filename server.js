@@ -222,6 +222,8 @@ import { analyzeCrossPair, portfolioIndependence } from './js/crossPairResearch.
 import { scanFeatures } from './js/forecastFeatureScan.js';
 import { bandCalcAB } from './js/bandCalcAB.js';
 import { putJSON as _r2PutJSON, getJSON as _r2GetJSON, r2Configured as _r2Ok } from './js/r2Store.js';
+import compression from 'compression';
+import { egressMiddleware, egressSnapshot } from './js/egressMeter.js';
 import { loadM1Resampled as _loadM1ForAB } from './js/weeklyVolBacktestEngine.js';
 import { evaluateSessions, dailySessionContributions } from './js/forecastSessionResearch.js';
 import { _fetchAllH1 as _fetchH1AB, _fetchAllH1 as _fetchH1 } from './js/sessionStats.js';
@@ -3019,7 +3021,14 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
 // ── Express app ───────────────────────────────────────────────────────────────
 
 const app = express();
+// Egress meter FIRST (counts on-the-wire bytes), then gzip. Until 2026-09-17
+// every JSON response left uncompressed -- /api/analogml/motif-trades alone
+// was 2.3 MB a hit -- against a bill that showed 392 GB out in 2.6 days.
+app.use(egressMiddleware);
+app.use(compression());
 app.use(express.json({ limit: '25mb' }));
+// Where the outbound bytes go, ranked, since boot -- see js/egressMeter.js.
+app.get('/api/egress-audit', (req, res) => res.json(egressSnapshot(Number(req.query.limit) || 40)));
 
 // Real-time monitoring + level-refresh status
 app.get('/api/monitor/status', (_req, res) => {

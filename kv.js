@@ -17,6 +17,7 @@
 //                          fredhistory_*, and anything else not listed above
 
 import { readFile, writeFile, mkdir } from 'fs/promises';
+import { noteBytes } from './js/egressMeter.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -440,6 +441,7 @@ async function cfGet(key) {
 
 async function cfPut(key, value, opts = {}) {
   cacheInvalidate(key);
+  noteBytes('kv', key, Buffer.byteLength(typeof value === 'string' ? value : JSON.stringify(value)));
   const r = await cfFetch('PUT', key, value, opts);
   if (!r.ok) throw new Error(`CF KV PUT ${key}: ${r.status}`);
 }

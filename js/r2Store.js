@@ -11,6 +11,7 @@
  */
 
 import { S3Client, GetObjectCommand, PutObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
+import { noteBytes } from './egressMeter.js';
 
 export const R2_ENDPOINT = process.env.R2_ENDPOINT || 'https://3e867110ae519cd24afc877c72e5026e.r2.cloudflarestorage.com';
 export const R2_BUCKET   = process.env.R2_BUCKET   || 'r2-storage';
@@ -47,9 +48,11 @@ export function r2Configured() { return !!(process.env.R2_ACCESS_KEY && process.
 export async function putJSON(key, obj) {
   const client = makeR2Client();
   if (!client) return false;
+  const body = JSON.stringify(obj);
+  noteBytes('r2', key.replace(/\/[^/]+$/, '/*'), Buffer.byteLength(body));
   await client.send(new PutObjectCommand({
     Bucket: R2_BUCKET, Key: key,
-    Body: JSON.stringify(obj), ContentType: 'application/json',
+    Body: body, ContentType: 'application/json',
   }));
   return true;
 }
