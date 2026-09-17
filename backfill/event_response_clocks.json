@@ -1,5 +1,5 @@
 {
- "builtAt": "2026-09-17T08:21:01.582Z",
+ "builtAt": "2026-09-17T08:29:59.898Z",
  "bar": {
   "minSpike": 2,
   "minDecisiveness": 1.5,
@@ -14,14 +14,98 @@
    "hours": 0,
    "pass": true,
    "trusted": true,
-   "spike": 1.32,
+   "spike": 1.04,
    "bestShift": 0,
-   "bestSpike": 1.32,
+   "bestSpike": 1.14,
    "suspect": false
   },
   {
    "family": "us|core-inflation-rate-month-over-month",
    "label": "US Core Inflation Rate Month-over-Month",
+   "ref": "eurusd",
+   "hours": 0,
+   "pass": true,
+   "trusted": true,
+   "spike": 2.96,
+   "bestShift": 0,
+   "bestSpike": 2.96,
+   "suspect": false
+  },
+  {
+   "family": "us|core-pce-price-index-month-over-month",
+   "label": "US Core PCE Price Index Month-over-Month",
+   "ref": "eurusd",
+   "hours": 0,
+   "pass": true,
+   "trusted": true,
+   "spike": 1.58,
+   "bestShift": 0,
+   "bestSpike": 1.65,
+   "suspect": false
+  },
+  {
+   "family": "eu|inflation-rate-year-over-year-flash-estimate",
+   "label": "EU Inflation Rate Year-over-Year Flash Estimate",
+   "ref": "eurusd",
+   "hours": 0,
+   "pass": true,
+   "trusted": true,
+   "spike": 1.53,
+   "bestShift": 0,
+   "bestSpike": 1.53,
+   "suspect": false
+  },
+  {
+   "family": "eu|headline-unemployment-rate",
+   "label": "EU Headline Unemployment Rate",
+   "ref": "eurusd",
+   "hours": 0,
+   "pass": true,
+   "trusted": true,
+   "spike": 1.12,
+   "bestShift": 0,
+   "bestSpike": 1.12,
+   "suspect": false
+  },
+  {
+   "family": "us|ism-manufacturing-pmi",
+   "label": "US ISM Manufacturing PMI",
+   "ref": "eurusd",
+   "hours": 0,
+   "pass": true,
+   "trusted": true,
+   "spike": 1.55,
+   "bestShift": 0,
+   "bestSpike": 1.55,
+   "suspect": false
+  },
+  {
+   "family": "us|trade-balance",
+   "label": "US Trade Balance",
+   "ref": "eurusd",
+   "hours": 0,
+   "pass": true,
+   "trusted": true,
+   "spike": 1.01,
+   "bestShift": 0,
+   "bestSpike": 1.01,
+   "suspect": false
+  },
+  {
+   "family": "us|payroll-jobs-growth",
+   "label": "US Payroll Jobs Growth",
+   "ref": "eurusd",
+   "hours": 0,
+   "pass": true,
+   "trusted": true,
+   "spike": 3.26,
+   "bestShift": 0,
+   "bestSpike": 3.26,
+   "suspect": false
+  },
+  {
+   "family": "us|headline-unemployment-rate",
+   "label": "US Headline Unemployment Rate",
    "ref": "eurusd",
    "hours": 0,
    "pass": true,
@@ -32,99 +116,15 @@
    "suspect": false
   },
   {
-   "family": "us|core-pce-price-index-month-over-month",
-   "label": "US Core PCE Price Index Month-over-Month",
-   "ref": "eurusd",
-   "hours": 0,
-   "pass": true,
-   "trusted": true,
-   "spike": 1.56,
-   "bestShift": 0,
-   "bestSpike": 1.79,
-   "suspect": false
-  },
-  {
-   "family": "eu|inflation-rate-year-over-year-flash-estimate",
-   "label": "EU Inflation Rate Year-over-Year Flash Estimate",
-   "ref": "eurusd",
-   "hours": 0,
-   "pass": true,
-   "trusted": true,
-   "spike": 1.75,
-   "bestShift": 0,
-   "bestSpike": 1.75,
-   "suspect": false
-  },
-  {
-   "family": "eu|headline-unemployment-rate",
-   "label": "EU Headline Unemployment Rate",
-   "ref": "eurusd",
-   "hours": 0,
-   "pass": true,
-   "trusted": true,
-   "spike": 1.24,
-   "bestShift": 0,
-   "bestSpike": 1.24,
-   "suspect": false
-  },
-  {
-   "family": "us|ism-manufacturing-pmi",
-   "label": "US ISM Manufacturing PMI",
-   "ref": "eurusd",
-   "hours": 0,
-   "pass": true,
-   "trusted": true,
-   "spike": 1.54,
-   "bestShift": 0,
-   "bestSpike": 1.54,
-   "suspect": false
-  },
-  {
-   "family": "us|trade-balance",
-   "label": "US Trade Balance",
-   "ref": "eurusd",
-   "hours": 0,
-   "pass": true,
-   "trusted": true,
-   "spike": 0.95,
-   "bestShift": 0,
-   "bestSpike": 1.14,
-   "suspect": false
-  },
-  {
-   "family": "us|payroll-jobs-growth",
-   "label": "US Payroll Jobs Growth",
-   "ref": "eurusd",
-   "hours": 0,
-   "pass": true,
-   "trusted": true,
-   "spike": 3.36,
-   "bestShift": 0,
-   "bestSpike": 3.36,
-   "suspect": false
-  },
-  {
-   "family": "us|headline-unemployment-rate",
-   "label": "US Headline Unemployment Rate",
-   "ref": "eurusd",
-   "hours": 0,
-   "pass": true,
-   "trusted": true,
-   "spike": 3.36,
-   "bestShift": 0,
-   "bestSpike": 3.36,
-   "suspect": false
-  },
-  {
    "family": "us|retail-sales-month-over-month",
    "label": "US Retail Sales Month-over-Month",
    "ref": "eurusd",
    "hours": 0,
    "pass": true,
    "trusted": true,
-   "spike": 1.59,
+   "spike": 1.33,
    "bestShift": 0,
-   "bestSpike": 1.59,
+   "bestSpike": 1.33,
    "suspect": false
   },
   {
@@ -134,9 +134,9 @@
    "hours": 0,
    "pass": true,
    "trusted": true,
-   "spike": 0.99,
+   "spike": 0.97,
    "bestShift": 0,
-   "bestSpike": 1.13,
+   "bestSpike": 1.07,
    "suspect": false
   },
   {
@@ -146,9 +146,9 @@
    "hours": 0,
    "pass": true,
    "trusted": true,
-   "spike": 1.43,
+   "spike": 1.06,
    "bestShift": 0,
-   "bestSpike": 1.43,
+   "bestSpike": 1.25,
    "suspect": false
   },
   {
@@ -158,9 +158,9 @@
    "hours": 0,
    "pass": true,
    "trusted": true,
-   "spike": 1.56,
+   "spike": 1.58,
    "bestShift": 0,
-   "bestSpike": 1.79,
+   "bestSpike": 1.65,
    "suspect": false
   },
   {
@@ -170,9 +170,9 @@
    "hours": 0,
    "pass": true,
    "trusted": true,
-   "spike": 1.56,
+   "spike": 1.58,
    "bestShift": 0,
-   "bestSpike": 1.79,
+   "bestSpike": 1.65,
    "suspect": false
   },
   {
@@ -182,9 +182,9 @@
    "hours": 0,
    "pass": true,
    "trusted": true,
-   "spike": 1.64,
+   "spike": 1.31,
    "bestShift": 0,
-   "bestSpike": 1.64,
+   "bestSpike": 1.31,
    "suspect": false
   },
   {
@@ -194,9 +194,9 @@
    "hours": 0,
    "pass": true,
    "trusted": true,
-   "spike": 0.79,
+   "spike": 0.76,
    "bestShift": 0,
-   "bestSpike": 1.26,
+   "bestSpike": 1.22,
    "suspect": false
   },
   {
@@ -206,9 +206,9 @@
    "hours": 0,
    "pass": true,
    "trusted": true,
-   "spike": 1.3,
+   "spike": 1.29,
    "bestShift": 0,
-   "bestSpike": 1.32,
+   "bestSpike": 1.29,
    "suspect": false
   },
   {
@@ -218,9 +218,9 @@
    "hours": 0,
    "pass": true,
    "trusted": true,
-   "spike": 2.15,
+   "spike": 2.11,
    "bestShift": 0,
-   "bestSpike": 2.15,
+   "bestSpike": 2.43,
    "suspect": false
   },
   {
@@ -230,9 +230,9 @@
    "hours": 0,
    "pass": true,
    "trusted": true,
-   "spike": 2.15,
+   "spike": 2.11,
    "bestShift": 0,
-   "bestSpike": 2.15,
+   "bestSpike": 2.43,
    "suspect": false
   },
   {
@@ -242,9 +242,9 @@
    "hours": 0,
    "pass": true,
    "trusted": true,
-   "spike": 4.73,
+   "spike": 4.97,
    "bestShift": 0,
-   "bestSpike": 5.05,
+   "bestSpike": 4.97,
    "suspect": false
   },
   {
@@ -254,9 +254,9 @@
    "hours": 0,
    "pass": true,
    "trusted": true,
-   "spike": 1.31,
+   "spike": 1.32,
    "bestShift": 0,
-   "bestSpike": 1.56,
+   "bestSpike": 1.54,
    "suspect": false
   },
   {
@@ -266,7 +266,7 @@
    "hours": 0,
    "pass": true,
    "trusted": true,
-   "spike": 1.17,
+   "spike": 1.08,
    "bestShift": 0,
    "bestSpike": 1.59,
    "suspect": false
@@ -278,9 +278,9 @@
    "hours": 0,
    "pass": true,
    "trusted": true,
-   "spike": 1,
+   "spike": 1.22,
    "bestShift": 0,
-   "bestSpike": 1.63,
+   "bestSpike": 1.57,
    "suspect": false
   },
   {
@@ -290,81 +290,9 @@
    "hours": 0,
    "pass": true,
    "trusted": true,
-   "spike": 0.83,
+   "spike": 0.94,
    "bestShift": 0,
-   "bestSpike": 1.12,
-   "suspect": false
-  },
-  {
-   "family": "us|gdp-growth-quarter-over-quarter-final-estimate",
-   "label": "US GDP Growth Quarter-over-Quarter Final Estimate",
-   "ref": "eurusd",
-   "hours": 0,
-   "pass": true,
-   "trusted": true,
-   "spike": 1.27,
-   "bestShift": 0,
-   "bestSpike": 1.82,
-   "suspect": false
-  },
-  {
-   "family": "eu|gdp-growth-quarter-over-quarter-flash-estimate",
-   "label": "EU GDP Growth Quarter-over-Quarter Flash Estimate",
-   "ref": "eurusd",
-   "hours": 0,
-   "pass": true,
-   "trusted": true,
-   "spike": 1.38,
-   "bestShift": 0,
-   "bestSpike": 1.67,
-   "suspect": false
-  },
-  {
-   "family": "eu|gdp-growth-year-over-year-flash-estimate",
-   "label": "EU GDP Growth Year-over-Year Flash Estimate",
-   "ref": "eurusd",
-   "hours": 0,
-   "pass": true,
-   "trusted": true,
-   "spike": 1.38,
-   "bestShift": 0,
-   "bestSpike": 1.67,
-   "suspect": false
-  },
-  {
-   "family": "us|gdp-growth-quarter-over-quarter-second-estimate",
-   "label": "US GDP Growth Quarter-over-Quarter Second Estimate",
-   "ref": "eurusd",
-   "hours": 0,
-   "pass": true,
-   "trusted": true,
-   "spike": 1.73,
-   "bestShift": 0,
-   "bestSpike": 1.73,
-   "suspect": false
-  },
-  {
-   "family": "us|gdp-growth-quarter-over-quarter-advance-estimate",
-   "label": "US GDP Growth Quarter-over-Quarter Advance Estimate",
-   "ref": "eurusd",
-   "hours": 0,
-   "pass": true,
-   "trusted": true,
-   "spike": 1.65,
-   "bestShift": 0,
-   "bestSpike": 1.65,
-   "suspect": false
-  },
-  {
-   "family": "eu|business-confidence-index",
-   "label": "EU Business Confidence Index",
-   "ref": "eurusd",
-   "hours": 0,
-   "pass": true,
-   "trusted": true,
-   "spike": 1.14,
-   "bestShift": 0,
-   "bestSpike": 1.22,
+   "bestSpike": 1.15,
    "suspect": false
   },
   {
@@ -374,9 +302,9 @@
    "hours": 0,
    "pass": true,
    "trusted": true,
-   "spike": 0.96,
+   "spike": 0.92,
    "bestShift": 0,
-   "bestSpike": 1.56,
+   "bestSpike": 1.3,
    "suspect": false
   },
   {
@@ -386,9 +314,9 @@
    "hours": 0,
    "pass": true,
    "trusted": true,
-   "spike": 0.84,
+   "spike": 0.86,
    "bestShift": 0,
-   "bestSpike": 1.4,
+   "bestSpike": 1.36,
    "suspect": false
   },
   {
@@ -398,9 +326,9 @@
    "hours": 0,
    "pass": true,
    "trusted": true,
-   "spike": 1.04,
+   "spike": 0.97,
    "bestShift": 0,
-   "bestSpike": 1.58,
+   "bestSpike": 1.28,
    "suspect": false
   },
   {
@@ -410,9 +338,9 @@
    "hours": 0,
    "pass": true,
    "trusted": true,
-   "spike": 0.79,
+   "spike": 0.75,
    "bestShift": 0,
-   "bestSpike": 1.5,
+   "bestSpike": 1.38,
    "suspect": false
   },
   {
@@ -422,9 +350,9 @@
    "hours": 0,
    "pass": true,
    "trusted": true,
-   "spike": 0.96,
+   "spike": 1,
    "bestShift": 0,
-   "bestSpike": 1.19,
+   "bestSpike": 1.15,
    "suspect": false
   },
   {
@@ -434,9 +362,9 @@
    "hours": 0,
    "pass": true,
    "trusted": true,
-   "spike": 0.78,
+   "spike": 0.9,
    "bestShift": 0,
-   "bestSpike": 1.3,
+   "bestSpike": 1.11,
    "suspect": false
   },
   {
@@ -446,9 +374,9 @@
    "hours": 0,
    "pass": true,
    "trusted": true,
-   "spike": 0.78,
+   "spike": 0.9,
    "bestShift": 0,
-   "bestSpike": 1.3,
+   "bestSpike": 1.11,
    "suspect": false
   },
   {
@@ -458,9 +386,9 @@
    "hours": 0,
    "pass": true,
    "trusted": true,
-   "spike": 3.39,
+   "spike": 3.26,
    "bestShift": 0,
-   "bestSpike": 3.39,
+   "bestSpike": 3.26,
    "suspect": false
   },
   {
@@ -470,9 +398,9 @@
    "hours": 0,
    "pass": true,
    "trusted": true,
-   "spike": 1.6,
+   "spike": 1.53,
    "bestShift": 0,
-   "bestSpike": 1.6,
+   "bestSpike": 1.53,
    "suspect": false
   },
   {
@@ -482,9 +410,9 @@
    "hours": 0,
    "pass": true,
    "trusted": true,
-   "spike": 0.82,
+   "spike": 0.94,
    "bestShift": 0,
-   "bestSpike": 1.27,
+   "bestSpike": 1.11,
    "suspect": false
   },
   {
@@ -494,9 +422,9 @@
    "hours": 0,
    "pass": true,
    "trusted": true,
-   "spike": 1.59,
+   "spike": 1.33,
    "bestShift": 0,
-   "bestSpike": 1.59,
+   "bestSpike": 1.33,
    "suspect": false
   },
   {
@@ -506,9 +434,9 @@
    "hours": 0,
    "pass": true,
    "trusted": true,
-   "spike": 1.43,
+   "spike": 1.06,
    "bestShift": 0,
-   "bestSpike": 1.43,
+   "bestSpike": 1.25,
    "suspect": false
   },
   {
@@ -518,9 +446,9 @@
    "hours": 0,
    "pass": true,
    "trusted": true,
-   "spike": 0.63,
+   "spike": 1,
    "bestShift": 0,
-   "bestSpike": 1.26,
+   "bestSpike": 1.36,
    "suspect": false
   },
   {
@@ -530,9 +458,9 @@
    "hours": 0,
    "pass": true,
    "trusted": true,
-   "spike": 0.95,
+   "spike": 0.8,
    "bestShift": 0,
-   "bestSpike": 1.28,
+   "bestSpike": 1.17,
    "suspect": false
   },
   {
@@ -542,9 +470,9 @@
    "hours": 0,
    "pass": true,
    "trusted": true,
-   "spike": 0.79,
+   "spike": 1.11,
    "bestShift": 0,
-   "bestSpike": 1.38,
+   "bestSpike": 1.32,
    "suspect": false
   },
   {
@@ -554,9 +482,9 @@
    "hours": 0,
    "pass": true,
    "trusted": true,
-   "spike": 1.09,
+   "spike": 1.03,
    "bestShift": 0,
-   "bestSpike": 1.18,
+   "bestSpike": 1.21,
    "suspect": false
   },
   {
@@ -566,9 +494,9 @@
    "hours": 0,
    "pass": true,
    "trusted": true,
-   "spike": 0.53,
+   "spike": 0.9,
    "bestShift": 0,
-   "bestSpike": 1.22,
+   "bestSpike": 1.34,
    "suspect": false
   },
   {
@@ -578,9 +506,9 @@
    "hours": 0,
    "pass": true,
    "trusted": true,
-   "spike": 1.3,
+   "spike": 1.26,
    "bestShift": 0,
-   "bestSpike": 1.33,
+   "bestSpike": 1.26,
    "suspect": false
   },
   {
@@ -590,9 +518,9 @@
    "hours": 0,
    "pass": true,
    "trusted": true,
-   "spike": 1.3,
+   "spike": 1.26,
    "bestShift": 0,
-   "bestSpike": 1.33,
+   "bestSpike": 1.26,
    "suspect": false
   },
   {
@@ -602,9 +530,9 @@
    "hours": 0,
    "pass": true,
    "trusted": true,
-   "spike": 1.29,
+   "spike": 1.26,
    "bestShift": 0,
-   "bestSpike": 1.29,
+   "bestSpike": 1.26,
    "suspect": false
   },
   {
@@ -614,9 +542,9 @@
    "hours": 0,
    "pass": true,
    "trusted": true,
-   "spike": 1.46,
+   "spike": 1.54,
    "bestShift": 0,
-   "bestSpike": 1.46,
+   "bestSpike": 1.54,
    "suspect": false
   },
   {
@@ -626,57 +554,9 @@
    "hours": 0,
    "pass": true,
    "trusted": true,
-   "spike": 1.71,
+   "spike": 1.32,
    "bestShift": 0,
-   "bestSpike": 1.75,
-   "suspect": false
-  },
-  {
-   "family": "us|current-account-balance",
-   "label": "US Current Account Balance",
-   "ref": "eurusd",
-   "hours": 0,
-   "pass": true,
-   "trusted": true,
-   "spike": 0.75,
-   "bestShift": 0,
-   "bestSpike": 1.27,
-   "suspect": false
-  },
-  {
-   "family": "eu|employment-change-quarter-over-quarter-final",
-   "label": "EU Employment Change Quarter-over-Quarter Final",
-   "ref": "eurusd",
-   "hours": 0,
-   "pass": true,
-   "trusted": true,
-   "spike": 0.91,
-   "bestShift": 0,
-   "bestSpike": 1.84,
-   "suspect": false
-  },
-  {
-   "family": "eu|employment-change-quarter-over-quarter-prel",
-   "label": "EU Employment Change Quarter-over-Quarter Prel",
-   "ref": "eurusd",
-   "hours": 0,
-   "pass": true,
-   "trusted": true,
-   "spike": 1.43,
-   "bestShift": 0,
-   "bestSpike": 1.64,
-   "suspect": false
-  },
-  {
-   "family": "eu|construction-output-year-over-year",
-   "label": "EU Construction Output Year-over-Year",
-   "ref": "eurusd",
-   "hours": 0,
-   "pass": true,
-   "trusted": true,
-   "spike": 1.16,
-   "bestShift": 0,
-   "bestSpike": 1.7,
+   "bestSpike": 1.57,
    "suspect": false
   },
   {

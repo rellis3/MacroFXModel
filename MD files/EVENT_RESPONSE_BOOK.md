@@ -454,6 +454,88 @@ fix is the same either way: re-source or re-time the archive.
 
 ---
 
+## What the widened book says (2026-09-17, descriptive)
+
+76 families · 7 economies · 12 categories · 26 instruments · **558 family×instrument
+rows**. Printed by `analysis/event_response/summarize_book.mjs`, saved verbatim at
+`analysis/event_response/book_summary.txt`. Every number below is history with a
+sample size attached. None of it is a forecast, and §6 is still unrun.
+
+### 1. Most scheduled news does not move FX at all
+
+Join proof — median |30-minute move| ÷ the same clock on an ordinary day:
+
+| Family | × | Family | × |
+|---|---|---|---|
+| NZ Official Cash Rate | **6.91** | US Payroll Jobs Growth | 2.92 |
+| US FOMC statement | **5.54** | US Core CPI m/m | 2.82 |
+| US Fed rate decision | **5.06** | EU ECB rate decision | 2.57 |
+| GB BoE rate decision | **4.90** | CA Unemployment Rate | 2.56 |
+| AU Employment Change | 3.27 | US Unemployment Rate / Wage Growth | 2.95 |
+
+**13 of 76 families clear 2× on the median instrument.** The rest — housing
+starts, building permits, EU retail sales, GB public sector net borrowing, GFK
+consumer confidence — sit at **0.86–0.95×**, i.e. *quieter than an ordinary
+half-hour*. That is the single most useful thing in the book: a news panel that
+writes a beat/miss scenario for all of them is writing fiction for four fifths of
+its rows. The short list is dominated by **central-bank decisions and the US
+labour report**, with US core CPI the only pure inflation print in it.
+
+### 2. The reaction is the release, not the day
+
+Next-day size (median |R1| ÷ an ordinary day) by category:
+`rates 1.35× · labor 1.10× · energy 1.07× · inflation 1.06× · growth 1.05× ·
+trade 1.02× · business-activity 0.99× · retail 0.96× · consumer-confidence 0.96×`.
+
+So a family that moves the tape **5×** in its first thirty minutes leaves a next
+day that is **1.35×** an ordinary one, and most leave a next day that is
+indistinguishable from ordinary. This is the 30-minute-pricing result from
+`CB_SENTIMENT_PRICE_TEST.md` again, now across 76 families instead of one.
+
+### 3. Direction is a coin flip, unconditionally
+
+558 rows: **median next-day up-rate 50.5%**, mean 50.2%, and 394 of 558 rows sit
+between 45% and 55%. A release that predicted direction would push that
+distribution off 50. It does not.
+
+### 4. The conditional claim has no support in the descriptive grid
+
+The honest aggregate on a grid this size is not "which cell is biggest" — it is
+how often a cell's sign survives its own sample's two halves. With no effect,
+~50% survive by chance:
+
+| Cut | held their sign |
+|---|---|
+| joint (lead-up × outcome) | 987/1996 = **49.4%** |
+| lead-up only | 791/1651 = **47.9%** |
+| outcome only | 723/1432 = **50.5%** |
+
+All three are chance. No category departs from it by more than noise would
+produce across twelve categories (best: orders-fiscal 56.8%, labour 55.8%;
+worst: housing 42.3%). **The "was it priced in" conditioning shows nothing
+descriptively** — which is what §6 exists to test properly, and what the
+banked nulls in §2 would have predicted.
+
+A trap worth naming, since the book reports it: cells with a large pooled median
+held their sign 78–82% of the time. That is **arithmetic, not evidence** — a
+pooled median is an average of the two halves, so selecting on a large pooled
+median mechanically selects halves that agree. Any UI that ranks cells by size
+and shows the "stable" ones is selecting on exactly this.
+
+### What this licenses, and what it does not
+
+- **Licensed:** an impact map. "This release has moved this pair N× an ordinary
+  half-hour across n prints, and direction was a coin flip" is measured, stable
+  across the board, and directly useful for whether to be in a position through
+  an event and how wide to be.
+- **Licensed:** suppressing scenario text for the ~63 families that have never
+  moved anything.
+- **Not licensed:** any statement of the form "when yields rose into it and the
+  print was hot, this pair went down." The grid contains many such cells; the
+  stability rate says they are noise.
+
+---
+
 ## Results (§6 confirmatory cell)
 
 *(not run — appended here when §6 executes, design above untouched)*
