@@ -5892,7 +5892,7 @@ const MT_DEFAULTS = {
   risk_pct: 0.25, max_lot: 5.0, max_open: 20, max_concurrent_per_pair: 2,
   max_spread_pips: 3.0, risk_guard_enabled: false,
   ddlimit: 3.0, monthlydd: 5.0, lockout: 3, cooldown: 60,
-  plan_max_age_hours: 3, poll_secs: 60, status_secs: 30,
+  plan_max_age_hours: 3, max_entry_age_hours: 3, poll_secs: 60, status_secs: 30,
   tg_enabled: true, tg_token: '', tg_chat_id: '',
 };
 let _mtCfg = { ...MT_DEFAULTS };
@@ -5911,6 +5911,7 @@ function renderMtForm() {
   set('mt_lockout', c.lockout); set('mt_cooldown', c.cooldown);
   set('mt_poll_secs', c.poll_secs); set('mt_status_secs', c.status_secs);
   set('mt_plan_max_age_hours', c.plan_max_age_hours);
+  set('mt_max_entry_age_hours', c.max_entry_age_hours ?? MT_DEFAULTS.max_entry_age_hours);
   set('mt_tg_enabled', c.tg_enabled); set('mt_tg_token', c.tg_token); set('mt_tg_chat_id', c.tg_chat_id);
 }
 function readMtForm() {
@@ -5931,6 +5932,7 @@ function readMtForm() {
     lockout: num('mt_lockout', MT_DEFAULTS.lockout), cooldown: num('mt_cooldown', MT_DEFAULTS.cooldown),
     poll_secs: num('mt_poll_secs', MT_DEFAULTS.poll_secs), status_secs: num('mt_status_secs', MT_DEFAULTS.status_secs),
     plan_max_age_hours: num('mt_plan_max_age_hours', MT_DEFAULTS.plan_max_age_hours),
+    max_entry_age_hours: num('mt_max_entry_age_hours', MT_DEFAULTS.max_entry_age_hours),
     tg_enabled: bool('mt_tg_enabled'), tg_token: get('mt_tg_token')?.value || '', tg_chat_id: get('mt_tg_chat_id')?.value || '',
   };
 }
@@ -6063,7 +6065,7 @@ async function loadMtPlan() {
   } catch (e) { body.innerHTML = `<tr><td colspan="6" style="padding:14px;text-align:center;color:var(--text3)">${e.message}</td></tr>`; }
 }
 
-const MT_DEC_STATUS_COLOR = { entered: 'var(--green)', rejected: 'var(--red)', pair_blocked: 'var(--amber,#e0a93b)', would_block: 'var(--text3)' };
+const MT_DEC_STATUS_COLOR = { entered: 'var(--green)', rejected: 'var(--red)', skipped: 'var(--amber,#e0a93b)', pair_blocked: 'var(--amber,#e0a93b)', would_block: 'var(--text3)' };
 async function loadMtDecisionLog() {
   const body = document.getElementById('mtDecisionBody');
   if (!body) return;

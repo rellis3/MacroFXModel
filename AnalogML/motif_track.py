@@ -210,6 +210,37 @@ def _motif_key(pair: str, m) -> str:
     return f"{pair}:{'top' if m.is_top else 'bottom'}:{'-'.join(str(i) for i in m.touch_idxs)}"
 
 
+def _hours_since(iso: str, now: datetime | None = None) -> float:
+    """Wall-clock hours from an ISO timestamp (tz-aware or naive-as-UTC) to
+    now. Used to keep expired trades out of motif_bot_plan."""
+    ts = pd.Timestamp(iso)
+    ts = ts.tz_localize("UTC") if ts.tzinfo is None else ts.tz_convert("UTC")
+    now_ts = pd.Timestamp(now or datetime.now(timezone.utc))
+    now_ts = now_ts.tz_localize("UTC") if now_ts.tzinfo is None else now_ts.tz_convert("UTC")
+    return float((now_ts - ts).total_seconds() / 3600.0)
+
+
+def _watermark_idx(mark, bars: pd.DataFrame) -> int | None:
+    """Position in `bars` of the stored watermark -- None means "seed fresh":
+    no watermark yet, a legacy integer one (see scan_pair_motif's doc), or a
+    timestamp the current window no longer contains. A watermark that fell
+    in a gap resolves to the last bar at or before it (searchsorted), so a
+    missed bar never re-opens already-scanned history."""
+    if mark is None or isinstance(mark, (int, float)):
+        return None
+    try:
+        ts = pd.Timestamp(mark)
+    except (TypeError, ValueError):
+        return None
+    if ts.tzinfo is None:
+        ts = ts.tz_localize(bars.index.tz)
+    else:
+        ts = ts.tz_convert(bars.index.tz)
+    if ts < bars.index[0]:
+        return None
+    return int(bars.index.searchsorted(ts, side="right")) - 1
+
+
 def scan_pair_motif(pair: str, bars: pd.DataFrame, log: dict, motifs: list,
                     params: dict) -> list[tuple[dict, object]]:
     """Logs any motif that confirmed SINCE THE LAST RUN and isn't already
@@ -222,12 +253,24 @@ def scan_pair_motif(pair: str, bars: pd.DataFrame, log: dict, motifs: list,
     happened during development: 28,524 "new signals" on one run). A fresh
     pair's watermark is seeded at the current latest bar with nothing
     logged -- same "only what's new since last run, never backfill"
-    contract as paper_track.py's scan_pair()."""
+    contract as paper_track.py's scan_pair().
+
+    The watermark is the latest scanned bar's TIMESTAMP, not its index.
+    It used to be the raw index (n - 1) -- the same class of bug
+    `resolve_open_trades` was fixed for on 2026-08-19, and it bit here on
+    2026-09-16: three pairs' M1 parquet grew a longer history, every bar's
+    position shifted, and 211 motifs from 2021 sat "above" the stale index
+    and were logged as brand-new open trades -- which motif_bot_plan would
+    then have handed the execution bot to enter at market, five years
+    late. A timestamp is immune to the data window changing shape. A legacy
+    integer watermark is re-seeded at the latest bar (nothing logged from
+    the past), exactly like a fresh pair -- there is no honest way to map an
+    old index onto a window that may already have moved under it."""
     n = len(bars)
     watermarks = log.setdefault("watermarks", {})
-    last_scanned = watermarks.get(pair)
+    last_scanned = _watermark_idx(watermarks.get(pair), bars)
     if last_scanned is None:
-        watermarks[pair] = n - 1
+        watermarks[pair] = bars.index[n - 1].isoformat()
         return []
 
     already = {t["motif_key"] for t in log["trades"] if t["pair"] == pair}
@@ -257,7 +300,7 @@ def scan_pair_motif(pair: str, bars: pd.DataFrame, log: dict, motifs: list,
             "sl_dist": sl_price, "tp_r": params["tp_r"], "status": "open",
             "logged_at": datetime.now(timezone.utc).isoformat(),
         }, m))
-    watermarks[pair] = n - 1
+    watermarks[pair] = bars.index[n - 1].isoformat()
     return new
 
 
@@ -729,6 +772,18 @@ def run(args: argparse.Namespace) -> None:
                         print(f"  [warn] Telegram alert failed to send for {pair}")
 
             for t in [t for t in log["trades"] if t["pair"] == pair and t["status"] == "open"]:
+                # A trade past its own barrier horizon (max_bars_ahead H1
+                # bars after entry) can no longer be a live entry whatever
+                # its status says -- if it is still "open" it is stranded
+                # (entry bar outside the current data window, so
+                # resolve_open_trades can't race it), not tradeable. The 211
+                # 2021-vintage zombies logged on 2026-09-16 (see
+                # scan_pair_motif's doc) were exactly this, and would have
+                # gone into the plan as 137 fresh entries. The execution bot
+                # has its own, much tighter max_entry_age_hours gate; this is
+                # the plan refusing to carry the impossible in the first place.
+                if _hours_since(t["entry_date"]) > FROZEN["max_bars_ahead"]:
+                    continue
                 # confirm_idx = entry_idx - 1: entry is always the OPEN of the
                 # bar AFTER confirmation (scan_pair_motif's own contract) --
                 # never re-derive this differently in two places.

@@ -97,6 +97,13 @@ DEFAULT_CFG = {
                                      # live book can match the backtest exactly until/unless the account actually
                                      # needs the protection -- see the user's own ask, 2026-09-16 session.
     "plan_max_age_hours": 3,        # motif_track_loop.sh refreshes hourly; 3x that before failing closed on a stale plan.
+    "max_entry_age_hours": 3,       # a plan entry confirmed longer ago than this is NOT the backtest's trade any more
+                                     # (the backtest enters at the open of the bar after confirmation; the plan is
+                                     # rebuilt hourly and this bot polls every minute, so anything genuinely live is
+                                     # well under this) -- skipped, decision-logged once. The plan is a full snapshot
+                                     # of every still-open tracked trade, so without this gate a first start, or a
+                                     # tracker that mis-logged history (211 trades from 2021 landed as "open" on
+                                     # 2026-09-16), would enter every stale motif at market.
     "poll_secs": 60,                # how often this bot re-reads motif_bot_plan / checks for a fill to act on.
     "status_secs": 30,
     "tg_enabled": True,
@@ -179,17 +186,36 @@ def _plan_entries(plan: dict | None) -> list[dict]:
     return list((plan or {}).get("entries") or [])
 
 
-def _plan_age_hours(plan: dict, now_epoch: float) -> float | None:
-    ga = (plan or {}).get("generatedAt")
-    if not ga:
+def _hours_since(iso, now_epoch: float) -> float | None:
+    if not iso:
         return None
     try:
-        t = datetime.fromisoformat(str(ga).replace("Z", "+00:00"))
+        t = datetime.fromisoformat(str(iso).replace("Z", "+00:00"))
         if t.tzinfo is None:
             t = t.replace(tzinfo=timezone.utc)
         return max(0.0, (now_epoch - t.timestamp()) / 3600.0)
     except Exception:
         return None
+
+
+def _plan_age_hours(plan: dict, now_epoch: float) -> float | None:
+    return _hours_since((plan or {}).get("generatedAt"), now_epoch)
+
+
+def _entry_age_hours(entry: dict, now_epoch: float) -> float | None:
+    """Hours since the motif confirmed (plan's `confirmed_at` = the tracked
+    entry bar's open). None when the plan didn't carry a timestamp -- the
+    caller treats that as stale, fail-closed: an entry whose age can't be
+    established is not one this bot should be first to trust."""
+    return _hours_since((entry or {}).get("confirmed_at"), now_epoch)
+
+
+def _entry_is_stale(entry: dict, cfg: dict, now_epoch: float) -> bool:
+    max_age = float(cfg.get("max_entry_age_hours", 3) or 0)
+    if max_age <= 0:
+        return False   # gate switched off explicitly
+    age = _entry_age_hours(entry, now_epoch)
+    return age is None or age > max_age
 
 
 def _enabled_entries(cfg: dict, plan: dict) -> list[dict]:
@@ -339,6 +365,7 @@ def run(base_url: str, force_live: bool) -> None:
     tg_master_on = True
     acted_keys: set[str] = set()
     reject_until: dict[str, float] = {}
+    stale_logged: set[str] = set()      # motif_keys already decision-logged as too old to enter (once each, not every tick)
     tg_entry_msgid: dict[int, int] = {}
     tg_closed_alerted: set[int] = set()
     sym_key: dict[str, str] = {}
@@ -478,6 +505,16 @@ def run(base_url: str, force_live: bool) -> None:
                 motif_key = entry.get("motif_key")
                 pair = str(entry.get("pair", "")).lower()
                 if not motif_key or motif_key in acted_keys:
+                    continue
+                if _entry_is_stale(entry, cfg, nowt):
+                    if motif_key not in stale_logged:
+                        stale_logged.add(motif_key)
+                        age = _entry_age_hours(entry, nowt)
+                        why = (f"stale: confirmed {age:.1f}h ago (> max_entry_age_hours="
+                               f"{cfg.get('max_entry_age_hours', 3)})" if age is not None
+                               else "stale: plan entry carries no confirmed_at")
+                        log.info(f"{pair} {motif_key} skipped -- {why}")
+                        _record_decision(pair, motif_key, "skipped", reason=why)
                     continue
                 if reject_until.get(motif_key, 0) > nowt:
                     continue

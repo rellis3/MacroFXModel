@@ -73,8 +73,14 @@ start_bot botLevelTouch "level-touch-bot" \
 start_bot botAnalogPaper "analogml-paper-track" \
     bash AnalogML/paper_track_loop.sh
 
+# DASHBOARD_URL is load-bearing here, not cosmetic: motif_track.py pushes
+# motif_bot_plan (the execution bot's ONLY input) to --dashboard-url, which
+# defaults to localhost:3000 -- and Railway's node process isn't on 3000, so
+# without this every hourly scan computed the plan and dropped it
+# ("Connection refused", caught 2026-09-17; motif_bot ran for hours with
+# generatedAt=null). Same explicit URL the three neighbours already pass.
 start_bot botAnalogMotif "analogml-motif-track" \
-    bash AnalogML/motif_track_loop.sh
+    env DASHBOARD_URL=https://macrofxmodel-production.up.railway.app bash AnalogML/motif_track_loop.sh
 
 start_bot botAnalogNearing "analogml-nearing-watch" \
     env DASHBOARD_URL=https://macrofxmodel-production.up.railway.app python AnalogML/motif_nearing_watch.py
